@@ -194,6 +194,133 @@ pub(super) struct Resolved {
     pub notes: Vec<FileNote>,
 }
 
+/// What resolving one message's files needs.
+struct FileScope<'a> {
+    project_id: &'a str,
+    root: &'a Path,
+    /// The project folder as the agent spells it.
+    spelled: PathBuf,
+    data_root: &'a Path,
+    session_id: &'a str,
+    caps: &'a Capabilities,
+}
+
+impl FileScope<'_> {
+    /// A file from Oleafly's attachment store: copied into the session
+    /// folder, then linked.
+    fn add_stored(
+        &self,
+        resolved: &mut Resolved,
+        sha256: &str,
+        name: &str,
+        mime: &str,
+    ) -> Result<(), String> {
+        let scope = crate::attachments::locate(self.data_root, Some(self.project_id), sha256)
+            .ok_or("An attachment is no longer stored. Attach the file again.")?;
+        let bytes = crate::attachments::read_bytes(self.data_root, &scope, sha256)
+            .map_err(|_| "An attachment is no longer stored. Attach the file again.")?;
+        let path = copy_into_session(self.root, self.session_id, &bytes, name, sha256)?;
+        let display = path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_else(|| safe_file_name(name));
+        let uri = oleafly_acp::paths::file_uri(
+            &self
+                .spelled
+                .join(path.strip_prefix(self.root).unwrap_or(&path)),
+        )?;
+        let mime = Some(mime.to_owned()).filter(|mime| !mime.is_empty() && mime.len() <= 100);
+        if self.caps.embedded_context {
+            if let Some(text) = embedded(&path, &display, mime.as_deref(), &uri) {
+                resolved.texts.push(text);
+            }
+        }
+        resolved.links.push(ResourceLink {
+            uri,
+            name: display.clone(),
+            mime_type: mime.clone(),
+            size: Some(bytes.len() as u64),
+        });
+        resolved.notes.push(FileNote {
+            name: display,
+            mime,
+            size: Some(bytes.len() as u64),
+        });
+        Ok(())
+    }
+
+    /// A file of the project, linked in place.
+    fn add_project(&self, resolved: &mut Resolved, path: &str) -> Result<(), String> {
+        let relative = Path::new(path);
+        if path.is_empty()
+            || relative.is_absolute()
+            || !oleafly_acp::paths::path_within(self.root, &self.spelled, relative)
+        {
+            return Err("Attach files from inside this project.".into());
+        }
+        let absolute = self.root.join(relative);
+        let metadata = std::fs::metadata(&absolute)
+            .map_err(|_| "An attached project file no longer exists.")?;
+        if !metadata.is_file() {
+            return Err("Attach files, not folders.".into());
+        }
+        let name = absolute
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_else(|| path.to_owned());
+        let uri = oleafly_acp::paths::file_uri(&self.spelled.join(relative))?;
+        if self.caps.embedded_context {
+            if let Some(text) = embedded(&absolute, &name, None, &uri) {
+                resolved.texts.push(text);
+            }
+        }
+        resolved.links.push(ResourceLink {
+            uri,
+            name: name.clone(),
+            mime_type: None,
+            size: Some(metadata.len()),
+        });
+        resolved.notes.push(FileNote {
+            name: path.to_owned(),
+            mime: None,
+            size: Some(metadata.len()),
+        });
+        Ok(())
+    }
+
+    /// A selection quoted as text; `None` for a blank one.
+    fn selection_text(&self, selection: &PromptSelection) -> Option<EmbeddedText> {
+        let text: String = selection.text.chars().take(MAX_SELECTION).collect();
+        if text.trim().is_empty() {
+            return None;
+        }
+        let (name, uri) = match selection.path.as_deref().filter(|path| !path.is_empty()) {
+            Some(path)
+                if !Path::new(path).is_absolute()
+                    && oleafly_acp::paths::path_within(
+                        self.root,
+                        &self.spelled,
+                        Path::new(path),
+                    ) =>
+            {
+                (
+                    format!("Selection from {path}"),
+                    oleafly_acp::paths::file_uri(&self.spelled.join(path)).ok(),
+                )
+            }
+            _ => ("Selection".to_string(), None),
+        };
+        Some(EmbeddedText {
+            // A selection is quoted, not linked: the link would bring the
+            // whole file.
+            uri: uri.filter(|_| self.caps.embedded_context),
+            name,
+            mime_type: Some("text/plain".into()),
+            text,
+        })
+    }
+}
+
 /// Turns the message's files and selections into links and texts.
 /// `data_root` is Oleafly's data folder (the attachment store).
 pub(super) fn resolve(
@@ -208,7 +335,14 @@ pub(super) fn resolve(
     if count > MAX_ATTACHMENTS {
         return Err("Attach at most 10 files to one message.".into());
     }
-    let spelled = super::runtime::launch_root_for(root);
+    let scope = FileScope {
+        project_id,
+        root,
+        spelled: super::runtime::launch_root_for(root),
+        data_root,
+        session_id,
+        caps,
+    };
     let mut resolved = Resolved {
         links: Vec::new(),
         texts: Vec::new(),
@@ -217,100 +351,17 @@ pub(super) fn resolve(
     for file in &input.files {
         match file {
             PromptFile::Stored { sha256, name, mime } => {
-                let scope = crate::attachments::locate(data_root, Some(project_id), sha256)
-                    .ok_or("An attachment is no longer stored. Attach the file again.")?;
-                let bytes = crate::attachments::read_bytes(data_root, &scope, sha256)
-                    .map_err(|_| "An attachment is no longer stored. Attach the file again.")?;
-                let path = copy_into_session(root, session_id, &bytes, name, sha256)?;
-                let display = path
-                    .file_name()
-                    .map(|name| name.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| safe_file_name(name));
-                let uri = oleafly_acp::paths::file_uri(
-                    &spelled.join(path.strip_prefix(root).unwrap_or(&path)),
-                )?;
-                let mime = Some(mime.clone()).filter(|mime| !mime.is_empty() && mime.len() <= 100);
-                if caps.embedded_context {
-                    if let Some(text) = embedded(&path, &display, mime.as_deref(), &uri) {
-                        resolved.texts.push(text);
-                    }
-                }
-                resolved.links.push(ResourceLink {
-                    uri,
-                    name: display.clone(),
-                    mime_type: mime.clone(),
-                    size: Some(bytes.len() as u64),
-                });
-                resolved.notes.push(FileNote {
-                    name: display,
-                    mime,
-                    size: Some(bytes.len() as u64),
-                });
+                scope.add_stored(&mut resolved, sha256, name, mime)?
             }
-            PromptFile::Project { path } => {
-                let relative = Path::new(path);
-                if path.is_empty()
-                    || relative.is_absolute()
-                    || !oleafly_acp::paths::path_within(root, &spelled, relative)
-                {
-                    return Err("Attach files from inside this project.".into());
-                }
-                let absolute = root.join(relative);
-                let metadata = std::fs::metadata(&absolute)
-                    .map_err(|_| "An attached project file no longer exists.")?;
-                if !metadata.is_file() {
-                    return Err("Attach files, not folders.".into());
-                }
-                let name = absolute
-                    .file_name()
-                    .map(|name| name.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| path.clone());
-                let uri = oleafly_acp::paths::file_uri(&spelled.join(relative))?;
-                if caps.embedded_context {
-                    if let Some(text) = embedded(&absolute, &name, None, &uri) {
-                        resolved.texts.push(text);
-                    }
-                }
-                resolved.links.push(ResourceLink {
-                    uri,
-                    name: name.clone(),
-                    mime_type: None,
-                    size: Some(metadata.len()),
-                });
-                resolved.notes.push(FileNote {
-                    name: path.clone(),
-                    mime: None,
-                    size: Some(metadata.len()),
-                });
-            }
+            PromptFile::Project { path } => scope.add_project(&mut resolved, path)?,
         }
     }
-    for selection in &input.selections {
-        let text: String = selection.text.chars().take(MAX_SELECTION).collect();
-        if text.trim().is_empty() {
-            continue;
-        }
-        let (name, uri) = match selection.path.as_deref().filter(|path| !path.is_empty()) {
-            Some(path)
-                if !Path::new(path).is_absolute()
-                    && oleafly_acp::paths::path_within(root, &spelled, Path::new(path)) =>
-            {
-                (
-                    format!("Selection from {path}"),
-                    oleafly_acp::paths::file_uri(&spelled.join(path)).ok(),
-                )
-            }
-            _ => ("Selection".to_string(), None),
-        };
-        resolved.texts.push(EmbeddedText {
-            // A selection is quoted, not linked: the link would bring the
-            // whole file.
-            uri: uri.filter(|_| caps.embedded_context),
-            name,
-            mime_type: Some("text/plain".into()),
-            text,
-        });
-    }
+    resolved.texts.extend(
+        input
+            .selections
+            .iter()
+            .filter_map(|selection| scope.selection_text(selection)),
+    );
     // Without embedded context, file texts would only repeat the link.
     if !caps.embedded_context {
         resolved

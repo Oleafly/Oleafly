@@ -77,6 +77,30 @@ describe("user messages", () => {
     ]);
   });
 
+  it("reads text files side by side but spends the budget in file order", async () => {
+    let releaseFirst!: (text: string) => void;
+    const first = new Promise<string>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const readText = vi.fn(async (_scope: string | null, sha: string) => (sha === "first" ? first : "bbbb"));
+    const running = userModelMessage(
+      "",
+      [
+        draft({ sha256: "first", name: "first.txt", mime: "text/plain", kind: "text" }),
+        draft({ sha256: "second", name: "second.txt", mime: "text/plain", kind: "text" }),
+      ],
+      [],
+      ctx({ readText, textBudget: 6 }),
+    );
+    await vi.waitFor(() => expect(readText).toHaveBeenCalledTimes(2));
+    releaseFirst("aaaa");
+    const message = await running;
+    expect(message.content).toEqual([
+      { type: "text", text: attachedFileText("first.txt", "aaaa", 6) },
+      { type: "text", text: attachedFileText("second.txt", "bbbb", 2) },
+    ]);
+  });
+
   it("caps an inlined text file at the budget with a plain note", () => {
     expect(attachedFileText("a.txt", "abcdef", 3)).toBe(
       'Attached file "a.txt":\n\nabc\n\n[Only the first 3 characters of this file are included.]',

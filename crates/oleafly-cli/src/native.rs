@@ -42,7 +42,7 @@ use oleafly_core::{
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Stdio};
 use std::sync::{
@@ -562,6 +562,33 @@ struct ToolResolution {
     rejected_override: Option<ToolRejection>,
 }
 
+/// Makes the file names in Typst's errors relative to the project.
+async fn relativize_typst_errors(errors: &mut [BuildError], working_directory: &Path) {
+    let canonical = tokio::fs::canonicalize(working_directory)
+        .await
+        .unwrap_or_else(|_| working_directory.to_path_buf());
+    for error in errors {
+        error.file = error.file.take().map(|file| {
+            let file = typst_path_relative_to(&file, &canonical);
+            typst_path_relative_to(&file, working_directory)
+        });
+    }
+}
+
+/// Publishes the outputs a build staged. A failed build keeps the last good
+/// PDF (and its SyncTeX) in place.
+async fn promote_staging(staging: OutputStaging, ok: bool) -> std::result::Result<(), CliError> {
+    if !ok {
+        for name in [
+            format!("{ENTRY_STEM}.pdf"),
+            format!("{ENTRY_STEM}.synctex.gz"),
+        ] {
+            let _ = tokio::fs::remove_file(staging.path().join(name)).await;
+        }
+    }
+    staging.promote_all().map(|_| ()).map_err(output_locked_or)
+}
+
 #[derive(Clone)]
 pub struct NativeCompiler {
     tools: BuildTools,
@@ -669,22 +696,9 @@ impl NativeCompiler {
             append_bounded(&mut output, note.as_bytes());
         }
         if !status.success() && command.bundle_pinned && is_bundle_fetch_failure(&output) {
-            let first = std::mem::take(&mut output);
-            let note = format!("\n{BUNDLE_FALLBACK_NOTE}\n");
-            self.log.emit(&note);
-            let retry = self.command(build, flags, false)?;
-            let (retry_output, retry_status) =
-                run_command(&retry.launch(), self.timeout, &self.log).await?;
-            if build.engine() == Engine::Markdown {
-                append_bounded(&mut output, first.as_bytes());
-            }
-            append_bounded(&mut output, note.as_bytes());
-            append_bounded(&mut output, retry_output.as_bytes());
-            if let Some(crash) = compiler_crash_note(&retry_status) {
-                append_bounded(&mut output, crash.as_bytes());
-            }
-            status = retry_status;
-            command = retry;
+            (status, command) = self
+                .retry_without_pinned_bundle(build, flags, &mut output)
+                .await?;
         }
 
         let tex_engine = matches!(build.engine(), Engine::Tectonic | Engine::Latexmk);
@@ -709,15 +723,7 @@ impl NativeCompiler {
         };
         let mut errors = parse_errors(build.engine(), &log);
         if build.engine() == Engine::Typst {
-            let canonical = tokio::fs::canonicalize(&command.working_directory)
-                .await
-                .unwrap_or_else(|_| command.working_directory.clone());
-            for error in &mut errors {
-                error.file = error.file.take().map(|file| {
-                    let file = typst_path_relative_to(&file, &canonical);
-                    typst_path_relative_to(&file, &command.working_directory)
-                });
-            }
+            relativize_typst_errors(&mut errors, &command.working_directory).await;
         }
         let wrote_pdf = match &in_place {
             None => produced_pdf,
@@ -726,16 +732,7 @@ impl NativeCompiler {
         let ok = status.success() && wrote_pdf && !errors.iter().any(|error| error.kind == "error");
 
         if let Some(staging) = command.staging.take() {
-            if !ok {
-                // Keep the last good PDF (and its SyncTeX) in place.
-                for name in [
-                    format!("{ENTRY_STEM}.pdf"),
-                    format!("{ENTRY_STEM}.synctex.gz"),
-                ] {
-                    let _ = tokio::fs::remove_file(staging.path().join(name)).await;
-                }
-            }
-            staging.promote_all().map_err(output_locked_or)?;
+            promote_staging(staging, ok).await?;
         }
         if let Some(mut outputs) = in_place.take() {
             outputs.finish(ok);
@@ -782,6 +779,32 @@ impl NativeCompiler {
                 Vec::new()
             },
         })
+    }
+
+    /// Builds again against the installed TeX bundle after the pinned one
+    /// could not be fetched. `output` becomes the log of both runs; the
+    /// retry's status and command come back.
+    async fn retry_without_pinned_bundle(
+        &self,
+        build: &PreparedBuild,
+        flags: EngineFlags,
+        output: &mut String,
+    ) -> std::result::Result<(ExitStatus, BuildCommand), CliError> {
+        let first = std::mem::take(output);
+        let note = format!("\n{BUNDLE_FALLBACK_NOTE}\n");
+        self.log.emit(&note);
+        let retry = self.command(build, flags, false)?;
+        let (retry_output, retry_status) =
+            run_command(&retry.launch(), self.timeout, &self.log).await?;
+        if build.engine() == Engine::Markdown {
+            append_bounded(output, first.as_bytes());
+        }
+        append_bounded(output, note.as_bytes());
+        append_bounded(output, retry_output.as_bytes());
+        if let Some(crash) = compiler_crash_note(&retry_status) {
+            append_bounded(output, crash.as_bytes());
+        }
+        Ok((retry_status, retry))
     }
 
     async fn explain_image_failures(
@@ -1345,7 +1368,7 @@ fn seed_staging(build_dir: &Path, staging: &Path) {
         };
         let seeded = path
             .extension()
-            .and_then(|extension| extension.to_str())
+            .and_then(OsStr::to_str)
             .is_some_and(|extension| SEEDED_EXTENSIONS.contains(&extension));
         if metadata.is_file() && seeded && metadata.len() <= MAX_SEEDED_BYTES {
             let _ = std::fs::copy(&path, staging.join(entry.file_name()));

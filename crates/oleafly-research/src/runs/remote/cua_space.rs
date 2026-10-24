@@ -224,7 +224,7 @@ struct Space<'a> {
 fn per_task_name(task_id: &str) -> String {
     let short: String = task_id
         .chars()
-        .filter(|character| character.is_ascii_alphanumeric())
+        .filter(char::is_ascii_alphanumeric)
         .take(8)
         .collect();
     format!("oleafly-{}", short.to_ascii_lowercase())
@@ -328,7 +328,7 @@ impl Space<'_> {
         }
         let name = Path::new(remote)
             .file_name()
-            .map(|name| name.to_os_string())
+            .map(std::ffi::OsStr::to_os_string)
             .unwrap_or_default();
         Ok(dest.join(name))
     }

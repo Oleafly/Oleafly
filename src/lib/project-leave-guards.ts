@@ -28,7 +28,9 @@ export function registerProjectLeaveGuard(guard: ProjectLeaveGuard): () => void 
  * counts as yes, so a broken check never traps the user in a project.
  */
 export async function projectLeaveAllowed(leave: ProjectLeave): Promise<boolean> {
-  for (const guard of [...guards]) {
+  // A guard can unregister while it awaits; walking the live list would skip the next one.
+  const snapshot = [...guards];
+  for (const guard of snapshot) {
     try {
       if (!(await guard(leave))) return false;
     } catch (error) {

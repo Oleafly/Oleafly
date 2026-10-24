@@ -293,8 +293,7 @@ fn supervise(run_dir: &Path, spec: &RunSpec, started_at: i64) -> Result<(), Stri
     // The shell line goes through as written: `/bin/sh -c` on macOS and Linux,
     // and `cmd.exe /D /S /C "<line>"` on Windows, where quoting it like an
     // argument would turn every `"` of the command into `\"`.
-    let mut command =
-        oleafly_sandbox::shell_command(&sandbox, &spec.command).map_err(String::from)?;
+    let mut command = oleafly_sandbox::shell_command(&sandbox, &spec.command)?;
     // `cmd.exe` refuses a `\\?\` working folder and starts in the Windows
     // folder instead, so the child gets the plain form of the path.
     command

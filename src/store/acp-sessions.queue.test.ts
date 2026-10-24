@@ -600,4 +600,14 @@ describe("registering the listeners", () => {
     detach();
     expect(stopAgain).toHaveBeenCalledOnce();
   });
+
+  it("lets go of every earlier one when the last one fails", async () => {
+    const stops = [vi.fn(), vi.fn(), vi.fn()];
+    mocks.onAcpEvent.mockResolvedValueOnce(stops[0]);
+    mocks.onAcpResync.mockResolvedValueOnce(stops[1]);
+    mocks.onAcpSession.mockResolvedValueOnce(stops[2]);
+    mocks.onAcpBufferRequest.mockRejectedValueOnce(new Error("no buffer bridge"));
+    await expect(attachAcpListeners()).rejects.toThrow("no buffer bridge");
+    for (const stop of stops) expect(stop).toHaveBeenCalledOnce();
+  });
 });

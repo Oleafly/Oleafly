@@ -1,6 +1,7 @@
 //! Where AI clients keep their MCP server lists, and the `oleafly` entry
 //! each needs. Writes keep every other server and setting, back the file up
 //! first, and never include tokens or secrets.
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use clap::ValueEnum;
@@ -374,7 +375,7 @@ pub fn write_entry(
         Some(bytes) => {
             let mut name = path
                 .file_name()
-                .map(|name| name.to_os_string())
+                .map(OsStr::to_os_string)
                 .unwrap_or_default();
             name.push(BACKUP_SUFFIX);
             let backup = path.with_file_name(name);

@@ -422,6 +422,24 @@ describe("ACP projection details", () => {
     expect(rows[0].msg.notices).toEqual(["Rate limited: Retrying soon"]);
   });
 
+  it("shows a notice with only a title or only a description, and none with neither", () => {
+    const rows = projectAcpEvents([
+      event(1, "notice", { title: "Rate limited" }),
+      event(2, "notice", { description: "Retrying soon" }),
+      event(3, "notice", {}),
+    ], false);
+    expect(rows.map((row) => row.msg.notices)).toEqual([["Rate limited"], ["Retrying soon"]]);
+  });
+
+  it("shows a failed or cancelled compaction as an error and an unfinished one as running", () => {
+    // While the turn is live, an unfinished step still reads as running.
+    const statusOf = (status: string) =>
+      projectAcpEvents([event(1, "compaction", { compactionId: "c", status })], true)[0].msg.toolCalls?.[0].status;
+    expect(statusOf("failed")).toBe("error");
+    expect(statusOf("cancelled")).toBe("error");
+    expect(statusOf("in_progress")).toBe("running");
+  });
+
   it("shows compaction as a step with its summary", () => {
     const rows = projectAcpEvents([
       event(1, "compaction", { compactionId: "c1", status: "in_progress", summary: "" }),
@@ -475,6 +493,44 @@ describe("ACP projection details", () => {
     });
     const rows = projectAcpEvents([event(1, "tool_call", { toolCallId: "t", title: "Run" }), piece(2, "ab"), piece(3, "c")], true);
     expect(rows[0].msg.toolCalls?.[0].output).toBe("abc");
+  });
+
+  it("keeps a tool call's output and diffs through an update that carries none", () => {
+    const diff = { type: "diff", path: "main.tex", oldText: "a", newText: "b" };
+    const output = { type: "content", content: { type: "text", text: "first" } };
+    const rows = projectAcpEvents([
+      event(1, "tool_call", { toolCallId: "t", title: "Edit", status: "in_progress", content: [diff, output] }),
+      event(2, "tool_call_update", { toolCallId: "t", status: "completed" }),
+    ], true);
+    expect(rows[0].msg.toolCalls?.[0]).toMatchObject({
+      status: "done",
+      output: "first",
+      diffs: [{ path: "main.tex", oldText: "a", newText: "b", truncated: false }],
+    });
+  });
+
+  it("replaces output, and drops diffs, when a replacing update has new content without diffs", () => {
+    const diff = { type: "diff", path: "main.tex", oldText: "a", newText: "b" };
+    const text = (value: string) => ({ type: "content", content: { type: "text", text: value } });
+    const rows = projectAcpEvents([
+      event(1, "tool_call", { toolCallId: "t", title: "Edit", status: "in_progress", content: [diff, text("first")] }),
+      event(2, "tool_call_update", { toolCallId: "t", status: "in_progress", content: [text("second")] }),
+    ], true);
+    expect(rows[0].msg.toolCalls?.[0].output).toBe("second");
+    expect(rows[0].msg.toolCalls?.[0]).not.toHaveProperty("diffs");
+  });
+
+  it("keeps the diffs when an appending update has none", () => {
+    const diff = { type: "diff", path: "main.tex", oldText: "a", newText: "b" };
+    const text = (value: string) => ({ type: "content", content: { type: "text", text: value } });
+    const rows = projectAcpEvents([
+      event(1, "tool_call", { toolCallId: "t", title: "Edit", status: "in_progress", content: [diff, text("first")] }),
+      event(2, "tool_call_update", { toolCallId: "t", status: "in_progress", append: true, content: [text(" more")] }),
+    ], true);
+    expect(rows[0].msg.toolCalls?.[0]).toMatchObject({
+      output: "first more",
+      diffs: [{ path: "main.tex" }],
+    });
   });
 
   it("records the turn of every row", () => {

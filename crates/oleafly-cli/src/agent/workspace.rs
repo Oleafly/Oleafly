@@ -289,7 +289,7 @@ pub(crate) fn protected_folders(root: &Path) -> Vec<PathBuf> {
             continue;
         };
         let mut entries: Vec<_> = entries.flatten().collect();
-        entries.sort_by_key(|entry| entry.file_name());
+        entries.sort_by_key(std::fs::DirEntry::file_name);
         for entry in entries {
             let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
                 continue;
@@ -355,6 +355,33 @@ fn skipped_folder(name: &str) -> bool {
         || name.eq_ignore_ascii_case(".private")
 }
 
+/// The names in `directory` with whether each is a folder, sorted. Links and
+/// the folders a run leaves out are skipped.
+fn listed_children(directory: &Dir) -> Result<Vec<(String, bool)>, ToolError> {
+    let mut children: Vec<(String, bool)> = Vec::new();
+    for entry in directory
+        .entries()
+        .map_err(|error| ToolError::Io(error.to_string()))?
+        .flatten()
+    {
+        let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+            continue;
+        };
+        let Ok(kind) = entry.file_type() else {
+            continue;
+        };
+        if kind.is_symlink() {
+            continue;
+        }
+        if kind.is_dir() && skipped_folder(&name) {
+            continue;
+        }
+        children.push((name, kind.is_dir()));
+    }
+    children.sort();
+    Ok(children)
+}
+
 /// Breadth-first walk of `root`'s files, skipping links, cloud-only files,
 /// generated and hidden folders and files over `max_file_bytes`. `visit`
 /// returns `false` to stop.
@@ -383,58 +410,91 @@ fn walk(
             continue;
         };
         let mut entries: Vec<_> = entries.flatten().collect();
-        entries.sort_by_key(|entry| entry.file_name());
+        entries.sort_by_key(std::fs::DirEntry::file_name);
         for entry in entries {
-            let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
-                counts.note_unnamed(&entry.file_name().to_string_lossy());
-                continue;
-            };
-            let Ok(metadata) = std::fs::symlink_metadata(entry.path()) else {
-                continue;
-            };
-            if metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
-                counts.links += 1;
-                continue;
-            }
-            let child = if relative.is_empty() {
-                name.clone()
-            } else {
-                format!("{relative}/{name}")
-            };
-            if metadata.is_dir() {
-                if skipped_folder(&name) {
-                    continue;
-                }
-                if path_problem(&child).is_none() {
-                    queue.push_back(child);
-                } else {
-                    // The whole folder is out, so count it once.
-                    counts.note_unnamed(&child);
-                }
-            } else if metadata.is_file() {
-                if oleafly_core::is_cloud_placeholder(&metadata) {
-                    counts.cloud += 1;
-                    continue;
-                }
-                if metadata.len() > max_file_bytes {
-                    counts.large += 1;
-                    continue;
-                }
-                if path_problem(&child).is_some() {
-                    counts.note_unnamed(&child);
-                    continue;
-                }
-                if !visit(WalkedFile {
-                    relative: child,
-                    absolute: entry.path(),
-                    size: metadata.len(),
-                })? {
-                    return Ok(());
-                }
+            if !walk_entry(
+                &entry,
+                &relative,
+                max_file_bytes,
+                &mut queue,
+                counts,
+                &mut visit,
+            )? {
+                return Ok(());
             }
         }
     }
     Ok(())
+}
+
+/// Handles one entry of a walked folder. `false` stops the walk.
+fn walk_entry(
+    entry: &std::fs::DirEntry,
+    relative: &str,
+    max_file_bytes: u64,
+    queue: &mut VecDeque<String>,
+    counts: &mut WalkCounts,
+    visit: &mut impl FnMut(WalkedFile) -> Result<bool, CliError>,
+) -> Result<bool, CliError> {
+    let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+        counts.note_unnamed(&entry.file_name().to_string_lossy());
+        return Ok(true);
+    };
+    let Ok(metadata) = std::fs::symlink_metadata(entry.path()) else {
+        return Ok(true);
+    };
+    if metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
+        counts.links += 1;
+        return Ok(true);
+    }
+    let child = if relative.is_empty() {
+        name.clone()
+    } else {
+        format!("{relative}/{name}")
+    };
+    if metadata.is_dir() {
+        if skipped_folder(&name) {
+            return Ok(true);
+        }
+        if path_problem(&child).is_none() {
+            queue.push_back(child);
+        } else {
+            // The whole folder is out, so count it once.
+            counts.note_unnamed(&child);
+        }
+    } else if metadata.is_file() {
+        return walk_file(entry, &metadata, child, max_file_bytes, counts, visit);
+    }
+    Ok(true)
+}
+
+/// Hands one walked file to `visit`, unless it is cloud-only, too large or
+/// has a name a run can't use. `false` stops the walk.
+fn walk_file(
+    entry: &std::fs::DirEntry,
+    metadata: &std::fs::Metadata,
+    child: String,
+    max_file_bytes: u64,
+    counts: &mut WalkCounts,
+    visit: &mut impl FnMut(WalkedFile) -> Result<bool, CliError>,
+) -> Result<bool, CliError> {
+    if oleafly_core::is_cloud_placeholder(metadata) {
+        counts.cloud += 1;
+        return Ok(true);
+    }
+    if metadata.len() > max_file_bytes {
+        counts.large += 1;
+        return Ok(true);
+    }
+    if path_problem(&child).is_some() {
+        counts.note_unnamed(&child);
+        return Ok(true);
+    }
+    visit(WalkedFile {
+        relative: child,
+        absolute: entry.path(),
+        size: metadata.len(),
+    })
 }
 
 fn too_large(files: usize) -> CliError {
@@ -767,19 +827,14 @@ impl AgentWorkspace {
         }))
     }
 
-    /// Files and folders under `path`, up to `max_depth` (1–5) levels.
-    pub fn list(&self, path: &str, max_depth: usize) -> Result<Value, ToolError> {
-        let start = if path.is_empty() || path == "." {
-            None
-        } else {
-            Some(self.checked(path.trim_end_matches('/'))?)
-        };
-        let max_depth = max_depth.clamp(1, 5);
+    /// The folder `start` names in this project, opened without following
+    /// links; the project folder itself for `None`.
+    fn open_listed_folder(&self, path: &str, start: Option<&Path>) -> Result<Dir, ToolError> {
         let mut directory = self
             .directory
             .try_clone()
             .map_err(|error| ToolError::Io(error.to_string()))?;
-        if let Some(start) = &start {
+        if let Some(start) = start {
             for component in start.components() {
                 directory = directory
                     .open_dir_nofollow(Path::new(component.as_os_str()))
@@ -788,6 +843,18 @@ impl AgentWorkspace {
                     })?;
             }
         }
+        Ok(directory)
+    }
+
+    /// Files and folders under `path`, up to `max_depth` (1–5) levels.
+    pub fn list(&self, path: &str, max_depth: usize) -> Result<Value, ToolError> {
+        let start = if path.is_empty() || path == "." {
+            None
+        } else {
+            Some(self.checked(path.trim_end_matches('/'))?)
+        };
+        let max_depth = max_depth.clamp(1, 5);
+        let directory = self.open_listed_folder(path, start.as_deref())?;
         let prefix = start
             .as_ref()
             .map(|start| format!("{}/", start.to_string_lossy().replace('\\', "/")))
@@ -796,27 +863,7 @@ impl AgentWorkspace {
         let mut truncated = false;
         let mut queue = VecDeque::from([(directory, String::new(), 1usize)]);
         'outer: while let Some((directory, relative, depth)) = queue.pop_front() {
-            let mut children: Vec<(String, bool)> = Vec::new();
-            for entry in directory
-                .entries()
-                .map_err(|error| ToolError::Io(error.to_string()))?
-                .flatten()
-            {
-                let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
-                    continue;
-                };
-                let Ok(kind) = entry.file_type() else {
-                    continue;
-                };
-                if kind.is_symlink() {
-                    continue;
-                }
-                if kind.is_dir() && skipped_folder(&name) {
-                    continue;
-                }
-                children.push((name, kind.is_dir()));
-            }
-            children.sort();
+            let children = listed_children(&directory)?;
             for (name, is_dir) in children {
                 if entries.len() >= MAX_LIST_ENTRIES {
                     truncated = true;
@@ -1296,17 +1343,36 @@ pub fn apply_review(
     project: &Path,
     dry_run: bool,
 ) -> Result<Vec<FileChange>, CliError> {
+    let manifest = read_review_manifest(review_dir)?;
+    let project = real_folder(project)?;
+    check_review_manifest(&manifest, &project)?;
+    let pending = pending_changes(&manifest, &project)?;
+    verify_saved_copies(review_dir, &pending)?;
+    if dry_run {
+        return Ok(manifest.changes);
+    }
+    let directory = open_dir(&project)?;
+    for change in &pending {
+        apply_change(&directory, review_dir, change)?;
+    }
+    Ok(manifest.changes)
+}
+
+/// The review's `changes.json`, if the folder holds one.
+fn read_review_manifest(review_dir: &Path) -> Result<ReviewManifest, CliError> {
     let manifest_path = review_dir.join("changes.json");
     let metadata = std::fs::symlink_metadata(&manifest_path).map_err(|_| not_a_review())?;
     if !metadata.is_file() || metadata.len() > MAX_CHANGES_JSON_BYTES {
         return Err(not_a_review());
     }
-    let manifest: ReviewManifest =
-        serde_json::from_slice(&std::fs::read(&manifest_path).map_err(io_error)?)
-            .map_err(|_| not_a_review())?;
-    let project = real_folder(project)?;
+    serde_json::from_slice(&std::fs::read(&manifest_path).map_err(io_error)?)
+        .map_err(|_| not_a_review())
+}
+
+/// The review must be of this project and name each usable path once.
+fn check_review_manifest(manifest: &ReviewManifest, project: &Path) -> Result<(), CliError> {
     if manifest.version != REVIEW_VERSION
-        || dunce::canonicalize(&manifest.project).ok().as_deref() != Some(project.as_path())
+        || dunce::canonicalize(&manifest.project).ok().as_deref() != Some(project)
     {
         return Err(not_a_review());
     }
@@ -1316,10 +1382,16 @@ pub fn apply_review(
             return Err(not_a_review());
         }
     }
+    Ok(())
+}
+
+/// The changes still to apply. A file that changed since the review is a
+/// conflict.
+fn pending_changes(manifest: &ReviewManifest, project: &Path) -> Result<Vec<FileChange>, CliError> {
     let mut conflicts = Vec::new();
     let mut pending = Vec::new();
     for change in &manifest.changes {
-        let now = project_sha(&project, &change.path)?;
+        let now = project_sha(project, &change.path)?;
         let ok = match change.kind {
             ChangeKind::Added => now.is_none() || now == change.after_sha256,
             ChangeKind::Modified | ChangeKind::Deleted => {
@@ -1335,8 +1407,12 @@ pub fn apply_review(
     if !conflicts.is_empty() {
         return Err(conflict(&conflicts));
     }
-    // Every new file must be the one the review saved.
-    for change in &pending {
+    Ok(pending)
+}
+
+/// Every new file must be the one the review saved.
+fn verify_saved_copies(review_dir: &Path, pending: &[FileChange]) -> Result<(), CliError> {
+    for change in pending {
         if change.kind == ChangeKind::Deleted {
             continue;
         }
@@ -1352,68 +1428,65 @@ pub fn apply_review(
             ));
         }
     }
-    if dry_run {
-        return Ok(manifest.changes);
-    }
-    let directory = open_dir(&project)?;
-    for change in &pending {
-        let path = Path::new(&change.path);
-        let components: Vec<_> = path.components().collect();
-        let (name, parents) = components.split_last().ok_or_else(not_a_review)?;
-        let mut folder = directory.try_clone().map_err(io_error)?;
-        for component in parents {
-            let step = Path::new(component.as_os_str());
-            if change.kind != ChangeKind::Deleted {
-                match folder.create_dir(step) {
-                    Ok(()) => {}
-                    Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
-                    Err(error) => return Err(io_error(error)),
-                }
+    Ok(())
+}
+
+/// Writes or deletes one file of a review in the project.
+fn apply_change(directory: &Dir, review_dir: &Path, change: &FileChange) -> Result<(), CliError> {
+    let path = Path::new(&change.path);
+    let components: Vec<_> = path.components().collect();
+    let (name, parents) = components.split_last().ok_or_else(not_a_review)?;
+    let mut folder = directory.try_clone().map_err(io_error)?;
+    for component in parents {
+        let step = Path::new(component.as_os_str());
+        if change.kind != ChangeKind::Deleted {
+            match folder.create_dir(step) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+                Err(error) => return Err(io_error(error)),
             }
-            folder = folder.open_dir_nofollow(step).map_err(|_| {
-                CliError::new(
-                    ErrorKind::UnsafePath,
-                    "project.unsafe_path",
-                    format!("{} goes through a link.", change.path),
-                )
-            })?;
         }
-        let name = Path::new(name.as_os_str());
-        if change.kind == ChangeKind::Deleted {
-            folder.remove_file(name).map_err(io_error)?;
-            continue;
-        }
-        let bytes =
-            std::fs::read(review_dir.join("changes").join(&change.path)).map_err(io_error)?;
-        if sha256_hex(&bytes).as_str() != change.after_sha256.as_deref().unwrap_or_default() {
-            return Err(not_a_review());
-        }
-        let permissions = folder
-            .symlink_metadata(name)
-            .ok()
-            .filter(|metadata| metadata.is_file())
-            .and_then(|metadata| kept_permissions(&metadata))
-            .or_else(|| saved_permissions(&review_dir.join("changes").join(&change.path)));
-        let staging = format!(".agent-write-{:032x}", rand::random::<u128>());
-        let mut options = OpenOptions::new();
-        options
-            .write(true)
-            .create_new(true)
-            .follow(FollowSymlinks::No);
-        let written = (|| -> std::io::Result<()> {
-            let mut file = folder.open_with(&staging, &options)?;
-            file.write_all(&bytes)?;
-            apply_permissions(&file, permissions)?;
-            file.sync_all()?;
-            drop(file);
-            folder.rename(&staging, &folder, name)
-        })();
-        if let Err(error) = written {
-            let _ = folder.remove_file(&staging);
-            return Err(io_error(error));
-        }
+        folder = folder.open_dir_nofollow(step).map_err(|_| {
+            CliError::new(
+                ErrorKind::UnsafePath,
+                "project.unsafe_path",
+                format!("{} goes through a link.", change.path),
+            )
+        })?;
     }
-    Ok(manifest.changes)
+    let name = Path::new(name.as_os_str());
+    if change.kind == ChangeKind::Deleted {
+        return folder.remove_file(name).map_err(io_error);
+    }
+    let bytes = std::fs::read(review_dir.join("changes").join(&change.path)).map_err(io_error)?;
+    if sha256_hex(&bytes).as_str() != change.after_sha256.as_deref().unwrap_or_default() {
+        return Err(not_a_review());
+    }
+    let permissions = folder
+        .symlink_metadata(name)
+        .ok()
+        .filter(|metadata| metadata.is_file())
+        .and_then(|metadata| kept_permissions(&metadata))
+        .or_else(|| saved_permissions(&review_dir.join("changes").join(&change.path)));
+    let staging = format!(".agent-write-{:032x}", rand::random::<u128>());
+    let mut options = OpenOptions::new();
+    options
+        .write(true)
+        .create_new(true)
+        .follow(FollowSymlinks::No);
+    let written = (|| -> std::io::Result<()> {
+        let mut file = folder.open_with(&staging, &options)?;
+        file.write_all(&bytes)?;
+        apply_permissions(&file, permissions)?;
+        file.sync_all()?;
+        drop(file);
+        folder.rename(&staging, &folder, name)
+    })();
+    if let Err(error) = written {
+        let _ = folder.remove_file(&staging);
+        return Err(io_error(error));
+    }
+    Ok(())
 }
 
 #[cfg(test)]

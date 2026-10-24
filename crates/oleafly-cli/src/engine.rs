@@ -2,6 +2,7 @@
 //! sees it (its own `project.json`, a folder the app opened in place, or a
 //! detected main document) and build it with the app's compilers. The
 //! headless agent (`oleafly agent`) builds through this too.
+use std::ffi::OsStr;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -503,7 +504,7 @@ pub(crate) fn output_destination(
     }
     let is_pdf = requested
         .extension()
-        .and_then(|extension| extension.to_str())
+        .and_then(OsStr::to_str)
         .is_some_and(|extension| extension.eq_ignore_ascii_case("pdf"));
     if !is_pdf {
         return Err(CliError::usage(format!(

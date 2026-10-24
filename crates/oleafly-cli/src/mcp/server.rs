@@ -38,41 +38,7 @@ impl StdinLines {
     /// The next line (blank lines skipped), or `None` at end of input.
     pub async fn next(&mut self) -> Option<Line> {
         loop {
-            let mut line: Vec<u8> = Vec::new();
-            let mut oversized = false;
-            loop {
-                let buffer = match self.reader.fill_buf().await {
-                    Ok(buffer) => buffer,
-                    Err(_) => return None,
-                };
-                if buffer.is_empty() {
-                    if line.is_empty() && !oversized {
-                        return None;
-                    }
-                    break;
-                }
-                match buffer.iter().position(|byte| *byte == b'\n') {
-                    Some(newline) => {
-                        if !oversized && line.len() + newline <= MAX_LINE_BYTES {
-                            line.extend_from_slice(&buffer[..newline]);
-                        } else {
-                            oversized = true;
-                        }
-                        self.reader.consume(newline + 1);
-                        break;
-                    }
-                    None => {
-                        let length = buffer.len();
-                        if !oversized && line.len() + length <= MAX_LINE_BYTES {
-                            line.extend_from_slice(buffer);
-                        } else {
-                            oversized = true;
-                            line.clear();
-                        }
-                        self.reader.consume(length);
-                    }
-                }
-            }
+            let (line, oversized) = self.read_raw_line().await?;
             if oversized {
                 return Some(Line::Reply(rpc_error(
                     Value::Null,
@@ -86,6 +52,48 @@ impl StdinLines {
             }
             return Some(classify(&text));
         }
+    }
+
+    /// One line's bytes and whether it was over the cap (an oversized line is
+    /// read to its end and not kept). `None` at end of input or on a read
+    /// error.
+    async fn read_raw_line(&mut self) -> Option<(Vec<u8>, bool)> {
+        let mut line: Vec<u8> = Vec::new();
+        let mut oversized = false;
+        loop {
+            let buffer = match self.reader.fill_buf().await {
+                Ok(buffer) => buffer,
+                Err(_) => return None,
+            };
+            if buffer.is_empty() {
+                if line.is_empty() && !oversized {
+                    return None;
+                }
+                break;
+            }
+            match buffer.iter().position(|byte| *byte == b'\n') {
+                Some(newline) => {
+                    if !oversized && line.len() + newline <= MAX_LINE_BYTES {
+                        line.extend_from_slice(&buffer[..newline]);
+                    } else {
+                        oversized = true;
+                    }
+                    self.reader.consume(newline + 1);
+                    break;
+                }
+                None => {
+                    let length = buffer.len();
+                    if !oversized && line.len() + length <= MAX_LINE_BYTES {
+                        line.extend_from_slice(buffer);
+                    } else {
+                        oversized = true;
+                        line.clear();
+                    }
+                    self.reader.consume(length);
+                }
+            }
+        }
+        Some((line, oversized))
     }
 }
 

@@ -111,7 +111,9 @@ export function isAllowedRemoteUrl(url: string): boolean {
   const before = text.slice(0, colon);
   if (before.includes("/") || before.includes("\\")) return false;
   const at = before.lastIndexOf("@");
-  return at >= 0 && [...before.slice(at + 1)].length > 1;
+  if (at < 0) return false;
+  const host = before.slice(at + 1);
+  return [...host].length > 1;
 }
 
 // Token prefixes of the hosts Oleafly signs in to: GitHub (classic, OAuth,
@@ -187,7 +189,8 @@ function basePath(base: string): string {
 
 function defaultPort(url: URL): string {
   if (url.port) return url.port;
-  return url.protocol === "https:" ? "443" : url.protocol === "http:" ? "80" : "";
+  if (url.protocol === "https:") return "443";
+  return url.protocol === "http:" ? "80" : "";
 }
 
 /** Whether an `http(s)` remote lies under a base: same scheme, host and
@@ -288,6 +291,20 @@ function isTransientPollError(error: unknown): boolean {
   return code !== undefined && TRANSIENT_POLL_ERRORS.has(code);
 }
 
+/** The count of polls that failed in a row once this one has. Throws when the
+ * failure is not worth another try. */
+function countPollFailure(error: unknown, failures: number): number {
+  if (!isTransientPollError(error) || failures >= POLL_FAILURES_TOLERATED) throw error;
+  return failures + 1;
+}
+
+/** The wait before the next poll. RFC 8628: each slow_down adds 5 s to the
+ * interval, whether or not the server names a new one. */
+function nextPollWait(result: ForgeDevicePoll, wait: number): number {
+  if (result.status !== "slow_down") return wait;
+  return Math.max(result.interval * 1000, wait + 5000);
+}
+
 /** Poll a browser sign-in until it is granted, cancelled or past its
  * deadline. Returns the signed-in account, or null. A poll that fails because
  * of the network or the server is tried again a few times; any other failure
@@ -314,16 +331,13 @@ export async function waitForDeviceSignIn(
       result = await poll(start.flowId);
     } catch (error) {
       if (options.cancelled()) return null;
-      failures += 1;
-      if (!isTransientPollError(error) || failures > POLL_FAILURES_TOLERATED) throw error;
+      failures = countPollFailure(error, failures);
       continue;
     }
     failures = 0;
     if (options.cancelled()) return null;
     if (result.status === "done") return result.account;
-    // RFC 8628: each slow_down adds 5 s to the interval, whether or not the
-    // server names a new one.
-    if (result.status === "slow_down") wait = Math.max(result.interval * 1000, wait + 5000);
+    wait = nextPollWait(result, wait);
   }
   return null;
 }

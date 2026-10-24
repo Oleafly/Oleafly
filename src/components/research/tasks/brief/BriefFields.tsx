@@ -126,6 +126,337 @@ function parseNumber(text: string): number | null {
   return Number.isFinite(value) ? value : Number.NaN;
 }
 
+/** The choices, plus the saved value when it is not one of them. */
+function optionsWith(options: number[], current: number): number[] {
+  return options.includes(current) ? options : [...options, current].sort((a, b) => a - b);
+}
+
+/** What every field of the brief shares. */
+interface FieldProps {
+  brief: ResearchBrief;
+  disabled: boolean;
+  fieldId: (name: string) => string;
+  update: (patch: Partial<ResearchBrief>) => void;
+}
+
+function MetricField({ brief, disabled, fieldId, update, error }: Readonly<FieldProps & { error?: string }>) {
+  const { t } = useTranslation(["researchTools"]);
+  return (
+    <div className="grid gap-1.5">
+      <label htmlFor={fieldId("metric")} className="text-xs font-medium">
+        {t(($) => $.researchTools.brief.metricLabel)}
+      </label>
+      <div className="flex gap-2">
+        <Input
+          id={fieldId("metric")}
+          className="min-w-0 flex-1"
+          disabled={disabled}
+          value={brief.primaryMetric?.name ?? ""}
+          maxLength={64}
+          placeholder={t(($) => $.researchTools.brief.metricPlaceholder)}
+          aria-invalid={Boolean(error)}
+          onChange={(event) => {
+            const name = event.target.value.trim();
+            update({
+              primaryMetric: name
+                ? { name, goal: brief.primaryMetric?.goal ?? "minimize" }
+                : null,
+            });
+          }}
+        />
+        <Select
+          value={brief.primaryMetric?.goal ?? "minimize"}
+          disabled={disabled || !brief.primaryMetric}
+          onValueChange={(goal) =>
+            brief.primaryMetric &&
+            update({ primaryMetric: { ...brief.primaryMetric, goal: goal as MetricGoal } })
+          }
+        >
+          <SelectTrigger className="w-44" aria-label={t(($) => $.researchTools.brief.metricLabel)}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="minimize">{t(($) => $.researchTools.brief.metricMinimize)}</SelectItem>
+            <SelectItem value="maximize">{t(($) => $.researchTools.brief.metricMaximize)}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+    </div>
+  );
+}
+
+interface BudgetFieldsProps extends FieldProps {
+  errors: BriefErrors;
+  costText: string;
+  onCostTextChange: (text: string) => void;
+  runsText: string;
+  onRunsTextChange: (text: string) => void;
+}
+
+function BudgetFields({
+  brief,
+  disabled,
+  fieldId,
+  update,
+  errors,
+  costText,
+  onCostTextChange,
+  runsText,
+  onRunsTextChange,
+}: Readonly<BudgetFieldsProps>) {
+  const { t } = useTranslation(["researchTools"]);
+  const updateBudget = (patch: Partial<ResearchBrief["budget"]>) =>
+    update({ budget: { ...brief.budget, ...patch } });
+  const timeOptions = optionsWith(TIME_BUDGET_OPTIONS, brief.budget.wallClockMinutes);
+  const timeoutOptions = optionsWith(RUN_TIMEOUT_OPTIONS[brief.profile], brief.budget.runTimeoutMinutes);
+  return (
+    <fieldset className="grid gap-3">
+      <legend className="mb-2 text-xs font-medium">{t(($) => $.researchTools.brief.budgetLabel)}</legend>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-1.5">
+          <label htmlFor={fieldId("time")} className="text-xs text-muted-foreground">
+            {t(($) => $.researchTools.brief.timeLabel)}
+          </label>
+          <Select
+            value={String(brief.budget.wallClockMinutes)}
+            disabled={disabled}
+            onValueChange={(value) => updateBudget({ wallClockMinutes: Number(value) })}
+          >
+            <SelectTrigger id={fieldId("time")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {timeOptions.map((minutes) => (
+                <SelectItem key={minutes} value={String(minutes)}>
+                  {durationLabel(minutes)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-1.5">
+          <label htmlFor={fieldId("cost")} className="text-xs text-muted-foreground">
+            {t(($) => $.researchTools.brief.costLabel)}
+          </label>
+          <Input
+            id={fieldId("cost")}
+            inputMode="decimal"
+            disabled={disabled}
+            value={costText}
+            placeholder={t(($) => $.researchTools.brief.noLimit)}
+            aria-invalid={Boolean(errors.cost)}
+            onChange={(event) => {
+              onCostTextChange(event.target.value);
+              updateBudget({ usdCap: parseNumber(event.target.value) });
+            }}
+          />
+          {errors.cost ? <p className="text-xs text-destructive">{errors.cost}</p> : null}
+        </div>
+        <div className="grid gap-1.5">
+          <label htmlFor={fieldId("runs")} className="text-xs text-muted-foreground">
+            {t(($) => $.researchTools.brief.runsLabel)}
+          </label>
+          <Input
+            id={fieldId("runs")}
+            inputMode="numeric"
+            disabled={disabled}
+            value={runsText}
+            placeholder={t(($) => $.researchTools.brief.noLimit)}
+            aria-invalid={Boolean(errors.runs)}
+            onChange={(event) => {
+              onRunsTextChange(event.target.value);
+              updateBudget({ maxRuns: parseNumber(event.target.value) });
+            }}
+          />
+          {errors.runs ? <p className="text-xs text-destructive">{errors.runs}</p> : null}
+        </div>
+        <div className="grid gap-1.5">
+          <label htmlFor={fieldId("timeout")} className="text-xs text-muted-foreground">
+            {t(($) => $.researchTools.brief.runTimeoutLabel)}
+          </label>
+          <Select
+            value={String(brief.budget.runTimeoutMinutes)}
+            disabled={disabled}
+            onValueChange={(value) => updateBudget({ runTimeoutMinutes: Number(value) })}
+          >
+            <SelectTrigger id={fieldId("timeout")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {timeoutOptions.map((minutes) => (
+                <SelectItem key={minutes} value={String(minutes)}>
+                  {durationLabel(minutes)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </fieldset>
+  );
+}
+
+interface ComputeFieldProps extends FieldProps {
+  computeTargets: { id: string; label: string; executor: string }[];
+  renderCompute?: (fieldId: string) => ReactNode;
+}
+
+function ComputeField({ brief, disabled, fieldId, update, computeTargets, renderCompute }: Readonly<ComputeFieldProps>) {
+  const { t } = useTranslation(["researchTools"]);
+  return (
+    <div className="grid gap-1.5">
+      <label htmlFor={fieldId("compute")} className="text-xs font-medium">
+        {t(($) => $.researchTools.brief.computeLabel)}
+      </label>
+      {renderCompute ? (
+        renderCompute(fieldId("compute"))
+      ) : (
+        <Select
+          value={brief.compute.target ?? "local"}
+          disabled={disabled || computeTargets.length === 0}
+          onValueChange={(chosen) => {
+            const target = computeTargets.find((item) => item.id === chosen);
+            update({
+              compute: target
+                ? { executor: target.executor, target: target.id, resources: null }
+                : { executor: "local", target: null, resources: null },
+            });
+          }}
+        >
+          <SelectTrigger id={fieldId("compute")}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="local">{t(($) => $.researchTools.brief.computeLocal)}</SelectItem>
+            {computeTargets.map((target) => (
+              <SelectItem key={target.id} value={target.id}>
+                {target.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  );
+}
+
+interface StartFieldProps {
+  disabled: boolean;
+  fieldId: (name: string) => string;
+  runAfter: number | null;
+  onRunAfterChange: (runAfter: number | null) => void;
+  startText: string;
+  onStartTextChange: (text: string) => void;
+  /** The webview draws no date and time field, so the box takes typed text. */
+  startAsText: boolean;
+  startProblem: string | undefined;
+  onDropDesktopApps: () => void;
+}
+
+function StartField({
+  disabled,
+  fieldId,
+  runAfter,
+  onRunAfterChange,
+  startText,
+  onStartTextChange,
+  startAsText,
+  startProblem,
+  onDropDesktopApps,
+}: Readonly<StartFieldProps>) {
+  const { t } = useTranslation(["researchTools"]);
+  return (
+    <div className="grid gap-1.5">
+      <label htmlFor={fieldId("start")} className="text-xs font-medium">
+        {t(($) => $.researchTools.brief.startAtLabel)}
+      </label>
+      <Input
+        id={fieldId("start")}
+        type="datetime-local"
+        disabled={disabled}
+        value={startText}
+        min={localDateTime(Date.now())}
+        max={localDateTime(Date.now() + START_AHEAD_MS)}
+        placeholder={localDateTime(Date.now() + 24 * 60 * 60 * 1000)}
+        aria-invalid={Boolean(startProblem)}
+        onChange={(event) => {
+          const value = event.target.value;
+          onStartTextChange(value);
+          // Text that is not a time stays in the box; the composer sees `NaN` and won't save it.
+          const next = value.trim() === "" ? null : parseLocalDateTime(value);
+          if (next !== null && Number.isFinite(next)) onDropDesktopApps();
+          onRunAfterChange(next);
+        }}
+      />
+      {startProblem ? <p className="text-xs text-destructive">{startProblem}</p> : null}
+      {startAsText && !startProblem ? (
+        <p className="text-xs text-muted-foreground">
+          {t(($) => $.researchTools.brief.startAtFormat, {
+            example: localDateTime(Date.now() + 24 * 60 * 60 * 1000),
+          })}
+        </p>
+      ) : null}
+      {runAfter === null ? (
+        <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.brief.startNow)}</p>
+      ) : null}
+    </div>
+  );
+}
+
+interface KeepRunningFieldProps {
+  disabled: boolean;
+  fieldId: (name: string) => string;
+  keepRunning: boolean;
+  onKeepRunningChange: (keepRunning: boolean) => void;
+  backgroundEnabled: boolean;
+  onDropDesktopApps: () => void;
+}
+
+function KeepRunningField({
+  disabled,
+  fieldId,
+  keepRunning,
+  onKeepRunningChange,
+  backgroundEnabled,
+  onDropDesktopApps,
+}: Readonly<KeepRunningFieldProps>) {
+  const { t } = useTranslation(["researchTools"]);
+  return (
+    <>
+      <label htmlFor={fieldId("keep")} className="flex items-start gap-2 text-xs">
+        <Checkbox
+          id={fieldId("keep")}
+          disabled={disabled || !backgroundEnabled}
+          checked={keepRunning && backgroundEnabled}
+          onCheckedChange={(next) => {
+            if (next === true) onDropDesktopApps();
+            onKeepRunningChange(next === true);
+          }}
+        />
+        <span>
+          <span className="font-medium">{t(($) => $.researchTools.brief.keepRunning)}</span>
+          {!backgroundEnabled ? (
+            <span className="block text-muted-foreground">{t(($) => $.researchTools.brief.keepRunningHint)}</span>
+          ) : null}
+        </span>
+      </label>
+      {!backgroundEnabled ? (
+        <Button
+          type="button"
+          size="xs"
+          variant="link"
+          className="-mt-2 justify-start px-0"
+          data-testid="research-brief-keep-running-settings"
+          onClick={openResearchSettings}
+        >
+          {t(($) => $.researchTools.compute.brief.openSettings)}
+        </Button>
+      ) : null}
+    </>
+  );
+}
+
 interface BriefFieldsProps {
   brief: ResearchBrief;
   onChange: (brief: ResearchBrief) => void;
@@ -180,15 +511,8 @@ export function BriefFields({
       update({ permissions: { ...brief.permissions, desktopApps: false } });
     }
   };
-  const updateBudget = (patch: Partial<ResearchBrief["budget"]>) =>
-    update({ budget: { ...brief.budget, ...patch } });
-  const timeOptions = TIME_BUDGET_OPTIONS.includes(brief.budget.wallClockMinutes)
-    ? TIME_BUDGET_OPTIONS
-    : [...TIME_BUDGET_OPTIONS, brief.budget.wallClockMinutes].sort((a, b) => a - b);
-  const timeoutOptions = RUN_TIMEOUT_OPTIONS[brief.profile].includes(brief.budget.runTimeoutMinutes)
-    ? RUN_TIMEOUT_OPTIONS[brief.profile]
-    : [...RUN_TIMEOUT_OPTIONS[brief.profile], brief.budget.runTimeoutMinutes].sort((a, b) => a - b);
   const fieldId = (name: string) => `${id}-${name}`;
+  const field: FieldProps = { brief, disabled, fieldId, update };
 
   return (
     <div className="grid gap-4" data-testid="research-brief-fields">
@@ -278,47 +602,7 @@ export function BriefFields({
             />
           </div>
 
-          <div className="grid gap-1.5">
-            <label htmlFor={fieldId("metric")} className="text-xs font-medium">
-              {t(($) => $.researchTools.brief.metricLabel)}
-            </label>
-            <div className="flex gap-2">
-              <Input
-                id={fieldId("metric")}
-                className="min-w-0 flex-1"
-                disabled={disabled}
-                value={brief.primaryMetric?.name ?? ""}
-                maxLength={64}
-                placeholder={t(($) => $.researchTools.brief.metricPlaceholder)}
-                aria-invalid={Boolean(errors.metric)}
-                onChange={(event) => {
-                  const name = event.target.value.trim();
-                  update({
-                    primaryMetric: name
-                      ? { name, goal: brief.primaryMetric?.goal ?? "minimize" }
-                      : null,
-                  });
-                }}
-              />
-              <Select
-                value={brief.primaryMetric?.goal ?? "minimize"}
-                disabled={disabled || !brief.primaryMetric}
-                onValueChange={(goal) =>
-                  brief.primaryMetric &&
-                  update({ primaryMetric: { ...brief.primaryMetric, goal: goal as MetricGoal } })
-                }
-              >
-                <SelectTrigger className="w-44" aria-label={t(($) => $.researchTools.brief.metricLabel)}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="minimize">{t(($) => $.researchTools.brief.metricMinimize)}</SelectItem>
-                  <SelectItem value="maximize">{t(($) => $.researchTools.brief.metricMaximize)}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {errors.metric ? <p className="text-xs text-destructive">{errors.metric}</p> : null}
-          </div>
+          <MetricField {...field} error={errors.metric} />
 
           <label htmlFor={fieldId("plan")} className="flex items-start gap-2 text-xs">
             <Checkbox
@@ -378,89 +662,14 @@ export function BriefFields({
             onCheckedChange={(desktopApps) => update({ permissions: { ...brief.permissions, desktopApps } })}
           />
 
-          <fieldset className="grid gap-3">
-            <legend className="mb-2 text-xs font-medium">{t(($) => $.researchTools.brief.budgetLabel)}</legend>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="grid gap-1.5">
-                <label htmlFor={fieldId("time")} className="text-xs text-muted-foreground">
-                  {t(($) => $.researchTools.brief.timeLabel)}
-                </label>
-                <Select
-                  value={String(brief.budget.wallClockMinutes)}
-                  disabled={disabled}
-                  onValueChange={(value) => updateBudget({ wallClockMinutes: Number(value) })}
-                >
-                  <SelectTrigger id={fieldId("time")}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeOptions.map((minutes) => (
-                      <SelectItem key={minutes} value={String(minutes)}>
-                        {durationLabel(minutes)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <label htmlFor={fieldId("cost")} className="text-xs text-muted-foreground">
-                  {t(($) => $.researchTools.brief.costLabel)}
-                </label>
-                <Input
-                  id={fieldId("cost")}
-                  inputMode="decimal"
-                  disabled={disabled}
-                  value={costText}
-                  placeholder={t(($) => $.researchTools.brief.noLimit)}
-                  aria-invalid={Boolean(errors.cost)}
-                  onChange={(event) => {
-                    setCostText(event.target.value);
-                    updateBudget({ usdCap: parseNumber(event.target.value) });
-                  }}
-                />
-                {errors.cost ? <p className="text-xs text-destructive">{errors.cost}</p> : null}
-              </div>
-              <div className="grid gap-1.5">
-                <label htmlFor={fieldId("runs")} className="text-xs text-muted-foreground">
-                  {t(($) => $.researchTools.brief.runsLabel)}
-                </label>
-                <Input
-                  id={fieldId("runs")}
-                  inputMode="numeric"
-                  disabled={disabled}
-                  value={runsText}
-                  placeholder={t(($) => $.researchTools.brief.noLimit)}
-                  aria-invalid={Boolean(errors.runs)}
-                  onChange={(event) => {
-                    setRunsText(event.target.value);
-                    updateBudget({ maxRuns: parseNumber(event.target.value) });
-                  }}
-                />
-                {errors.runs ? <p className="text-xs text-destructive">{errors.runs}</p> : null}
-              </div>
-              <div className="grid gap-1.5">
-                <label htmlFor={fieldId("timeout")} className="text-xs text-muted-foreground">
-                  {t(($) => $.researchTools.brief.runTimeoutLabel)}
-                </label>
-                <Select
-                  value={String(brief.budget.runTimeoutMinutes)}
-                  disabled={disabled}
-                  onValueChange={(value) => updateBudget({ runTimeoutMinutes: Number(value) })}
-                >
-                  <SelectTrigger id={fieldId("timeout")}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeoutOptions.map((minutes) => (
-                      <SelectItem key={minutes} value={String(minutes)}>
-                        {durationLabel(minutes)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </fieldset>
+          <BudgetFields
+            {...field}
+            errors={errors}
+            costText={costText}
+            onCostTextChange={setCostText}
+            runsText={runsText}
+            onRunsTextChange={setRunsText}
+          />
 
           <div className="grid gap-1.5">
             <label htmlFor={fieldId("profile")} className="text-xs font-medium">
@@ -493,104 +702,28 @@ export function BriefFields({
             </p>
           </div>
 
-          <div className="grid gap-1.5">
-            <label htmlFor={fieldId("compute")} className="text-xs font-medium">
-              {t(($) => $.researchTools.brief.computeLabel)}
-            </label>
-            {renderCompute ? (
-              renderCompute(fieldId("compute"))
-            ) : (
-              <Select
-                value={brief.compute.target ?? "local"}
-                disabled={disabled || computeTargets.length === 0}
-                onValueChange={(chosen) => {
-                  const target = computeTargets.find((item) => item.id === chosen);
-                  update({
-                    compute: target
-                      ? { executor: target.executor, target: target.id, resources: null }
-                      : { executor: "local", target: null, resources: null },
-                  });
-                }}
-              >
-                <SelectTrigger id={fieldId("compute")}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="local">{t(($) => $.researchTools.brief.computeLocal)}</SelectItem>
-                  {computeTargets.map((target) => (
-                    <SelectItem key={target.id} value={target.id}>
-                      {target.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
+          <ComputeField {...field} computeTargets={computeTargets} renderCompute={renderCompute} />
 
-          <div className="grid gap-1.5">
-            <label htmlFor={fieldId("start")} className="text-xs font-medium">
-              {t(($) => $.researchTools.brief.startAtLabel)}
-            </label>
-            <Input
-              id={fieldId("start")}
-              type="datetime-local"
-              disabled={disabled}
-              value={startText}
-              min={localDateTime(Date.now())}
-              max={localDateTime(Date.now() + START_AHEAD_MS)}
-              placeholder={localDateTime(Date.now() + 24 * 60 * 60 * 1000)}
-              aria-invalid={Boolean(startProblem)}
-              onChange={(event) => {
-                const value = event.target.value;
-                setStartText(value);
-                // Text that is not a time stays in the box; the composer sees `NaN` and won't save it.
-                const next = value.trim() === "" ? null : parseLocalDateTime(value);
-                if (next !== null && Number.isFinite(next)) dropDesktopApps();
-                onRunAfterChange(next);
-              }}
-            />
-            {startProblem ? <p className="text-xs text-destructive">{startProblem}</p> : null}
-            {startAsText && !startProblem ? (
-              <p className="text-xs text-muted-foreground">
-                {t(($) => $.researchTools.brief.startAtFormat, {
-                  example: localDateTime(Date.now() + 24 * 60 * 60 * 1000),
-                })}
-              </p>
-            ) : null}
-            {runAfter === null ? (
-              <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.brief.startNow)}</p>
-            ) : null}
-          </div>
+          <StartField
+            disabled={disabled}
+            fieldId={fieldId}
+            runAfter={runAfter}
+            onRunAfterChange={onRunAfterChange}
+            startText={startText}
+            onStartTextChange={setStartText}
+            startAsText={startAsText}
+            startProblem={startProblem}
+            onDropDesktopApps={dropDesktopApps}
+          />
 
-          <label htmlFor={fieldId("keep")} className="flex items-start gap-2 text-xs">
-            <Checkbox
-              id={fieldId("keep")}
-              disabled={disabled || !backgroundEnabled}
-              checked={keepRunning && backgroundEnabled}
-              onCheckedChange={(next) => {
-                if (next === true) dropDesktopApps();
-                onKeepRunningChange(next === true);
-              }}
-            />
-            <span>
-              <span className="font-medium">{t(($) => $.researchTools.brief.keepRunning)}</span>
-              {!backgroundEnabled ? (
-                <span className="block text-muted-foreground">{t(($) => $.researchTools.brief.keepRunningHint)}</span>
-              ) : null}
-            </span>
-          </label>
-          {!backgroundEnabled ? (
-            <Button
-              type="button"
-              size="xs"
-              variant="link"
-              className="-mt-2 justify-start px-0"
-              data-testid="research-brief-keep-running-settings"
-              onClick={openResearchSettings}
-            >
-              {t(($) => $.researchTools.compute.brief.openSettings)}
-            </Button>
-          ) : null}
+          <KeepRunningField
+            disabled={disabled}
+            fieldId={fieldId}
+            keepRunning={keepRunning}
+            onKeepRunningChange={onKeepRunningChange}
+            backgroundEnabled={backgroundEnabled}
+            onDropDesktopApps={dropDesktopApps}
+          />
         </div>
       ) : null}
     </div>

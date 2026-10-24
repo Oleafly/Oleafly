@@ -100,6 +100,37 @@ fn block_text(value: &Value) -> String {
     }
 }
 
+/// Whether an update still applies while a loading session replays history
+/// that is already stored: only the agent's state (options, usage,
+/// commands).
+fn applies_while_replaying(kind: &str) -> bool {
+    matches!(
+        kind,
+        "config_option_update"
+            | "config_options_update"
+            | "current_model_update"
+            | "current_mode_update"
+            | "usage_update"
+            | "available_commands_update"
+    )
+}
+
+/// An update for a session other than the live one: ignored when the live
+/// session is forking or the id is a known fork, an error otherwise.
+fn foreign_update(session: &LiveSession, native: Option<&str>) -> Result<(), String> {
+    let forked = session.forking.load(Ordering::Acquire)
+        || native.is_some_and(|id| {
+            session
+                .known_foreign
+                .lock()
+                .is_ok_and(|ids| ids.contains(id))
+        });
+    if forked {
+        return Ok(());
+    }
+    Err("The agent sent an update for another session.".into())
+}
+
 impl AcpRuntime {
     /// A `session/update` from the agent, in wire order.
     pub(super) fn handle_update(
@@ -120,17 +151,7 @@ impl AcpRuntime {
         }
         let native = params["sessionId"].as_str();
         if native != state.record.native_session_id.as_deref() {
-            let forked = session.forking.load(Ordering::Acquire)
-                || native.is_some_and(|id| {
-                    session
-                        .known_foreign
-                        .lock()
-                        .is_ok_and(|ids| ids.contains(id))
-                });
-            if forked {
-                return Ok(());
-            }
-            return Err("The agent sent an update for another session.".into());
+            return foreign_update(session, native);
         }
         let update = &params["update"];
         let kind = update["sessionUpdate"]
@@ -138,17 +159,7 @@ impl AcpRuntime {
             .ok_or("The agent update has no type.")?;
         // A loading session replays history that is already stored; only
         // the agent's state (options, usage, commands) still applies.
-        if state.replaying
-            && !matches!(
-                kind,
-                "config_option_update"
-                    | "config_options_update"
-                    | "current_model_update"
-                    | "current_mode_update"
-                    | "usage_update"
-                    | "available_commands_update"
-            )
-        {
+        if state.replaying && !applies_while_replaying(kind) {
             return Ok(());
         }
         if state.hidden.is_some() {
@@ -159,50 +170,8 @@ impl AcpRuntime {
             "config_option_update"
             | "config_options_update"
             | "current_model_update"
-            | "current_mode_update" => {
-                session.redactor.validate_metadata_ids(update)?;
-                state
-                    .record
-                    .controls
-                    .apply_update(&session.redactor.value(update));
-                let controls =
-                    serde_json::to_value(&state.record.controls).map_err(|e| e.to_string())?;
-                let blocked =
-                    !state.replaying && state.record.controls.blocked_mode(None).is_some();
-                self.emit_locked(
-                    session,
-                    &mut state,
-                    "controls",
-                    json!({"controls": controls}),
-                )?;
-                // The agent went into a mode with permission checks off.
-                if blocked {
-                    let (runtime, session) = (self.clone(), session.clone());
-                    tokio::spawn(async move { runtime.leave_blocked_mode(&session).await });
-                }
-            }
-            "usage_update" => {
-                let counters = {
-                    let usage = state.record.usage.get_or_insert_with(SessionUsage::default);
-                    usage.apply_usage_update(update, now_ms());
-                    usage.redact(&session.redactor);
-                    UsageCounters {
-                        context_used: usage.context_used,
-                        context_size: usage.context_size,
-                        cost_amount: usage.cost_amount,
-                        cost_currency: usage.cost_currency.clone(),
-                        session: Some(usage.without_plan()),
-                        source: "acp_context".into(),
-                        ..UsageCounters::default()
-                    }
-                };
-                self.emit_locked(
-                    session,
-                    &mut state,
-                    "usage",
-                    serde_json::to_value(counters).map_err(|e| e.to_string())?,
-                )?;
-            }
+            | "current_mode_update" => self.controls_update(session, &mut state, update)?,
+            "usage_update" => self.usage_update(session, &mut state, update)?,
             "available_commands_update" => {
                 let commands = parse_commands(&update["availableCommands"], &session.redactor);
                 state.record.available_commands = commands.clone();
@@ -213,25 +182,7 @@ impl AcpRuntime {
                     json!({"commands": commands}),
                 )?;
             }
-            "session_info_update" => {
-                let title = update["title"]
-                    .as_str()
-                    .map(str::trim)
-                    .filter(|title| !title.is_empty());
-                if let Some(title) = title {
-                    if !state.record.title_locked {
-                        let title: String = bounded(&session.redactor.text(title), MAX_TITLE);
-                        state.record.title = title.clone();
-                        state.default_title = false;
-                        self.emit_locked(
-                            session,
-                            &mut state,
-                            "session_info",
-                            json!({"title": title}),
-                        )?;
-                    }
-                }
-            }
+            "session_info_update" => self.session_info_update(session, &mut state, update)?,
             "notice" => {
                 let notice = parse_notice(update, &session.redactor);
                 self.emit_locked(session, &mut state, "notice", notice)?;
@@ -243,51 +194,148 @@ impl AcpRuntime {
             | "agent_thought_chunk"
             | "tool_call"
             | "tool_call_update"
-            | "plan" => {
-                // Outside a turn, or after the agent ended it: the status
-                // only changes once the turn task runs, which can be after
-                // the agent's next updates arrive.
-                if state.turn_closed
-                    || !matches!(
-                        state.record.status,
-                        SessionStatus::Running | SessionStatus::Cancelling
-                    )
-                {
-                    return Ok(());
-                }
-                if matches!(kind, "agent_message_chunk" | "agent_thought_chunk") {
-                    if let Some(text) = chunk_text(update) {
-                        let turn = state.record.turn_id.clone();
-                        let now = Instant::now();
-                        let pushed = state.coalescer.push(
-                            kind,
-                            turn.as_deref(),
-                            update["messageId"].as_str(),
-                            text,
-                            now,
-                        );
-                        if let Pushed::Flush(previous) = pushed {
-                            let previous_kind = previous["sessionUpdate"]
-                                .as_str()
-                                .unwrap_or("agent_message_chunk")
-                                .to_owned();
-                            self.store_event(session, &mut state, &previous_kind, previous)?;
-                        }
-                        if state.coalescer.due(now) {
-                            self.flush_held(session, &mut state)?;
-                        } else if !state.flush_timer {
-                            state.flush_timer = true;
-                            self.schedule_flush(session);
-                        }
-                        return Ok(());
-                    }
-                }
-                if matches!(kind, "tool_call" | "tool_call_update") {
-                    permission_view::track(&mut state.tool_calls, update);
-                }
-                self.emit_locked(session, &mut state, kind, update.clone())?;
-            }
+            | "plan" => self.agent_output(session, &mut state, kind, update)?,
             _ => {}
+        }
+        Ok(())
+    }
+
+    /// The agent changed its options, model or mode.
+    fn controls_update(
+        self: &Arc<Self>,
+        session: &Arc<LiveSession>,
+        state: &mut LiveState,
+        update: &Value,
+    ) -> Result<(), String> {
+        session.redactor.validate_metadata_ids(update)?;
+        state
+            .record
+            .controls
+            .apply_update(&session.redactor.value(update));
+        let controls = serde_json::to_value(&state.record.controls).map_err(|e| e.to_string())?;
+        let blocked = !state.replaying && state.record.controls.blocked_mode(None).is_some();
+        self.emit_locked(session, state, "controls", json!({"controls": controls}))?;
+        // The agent went into a mode with permission checks off.
+        if blocked {
+            let (runtime, session) = (self.clone(), session.clone());
+            tokio::spawn(async move { runtime.leave_blocked_mode(&session).await });
+        }
+        Ok(())
+    }
+
+    /// The agent reported its context and cost counters.
+    fn usage_update(
+        &self,
+        session: &LiveSession,
+        state: &mut LiveState,
+        update: &Value,
+    ) -> Result<(), String> {
+        let counters = {
+            let usage = state.record.usage.get_or_insert_with(SessionUsage::default);
+            usage.apply_usage_update(update, now_ms());
+            usage.redact(&session.redactor);
+            UsageCounters {
+                context_used: usage.context_used,
+                context_size: usage.context_size,
+                cost_amount: usage.cost_amount,
+                cost_currency: usage.cost_currency.clone(),
+                session: Some(usage.without_plan()),
+                source: "acp_context".into(),
+                ..UsageCounters::default()
+            }
+        };
+        self.emit_locked(
+            session,
+            state,
+            "usage",
+            serde_json::to_value(counters).map_err(|e| e.to_string())?,
+        )
+    }
+
+    /// The agent named the session; a title the user set stays.
+    fn session_info_update(
+        &self,
+        session: &LiveSession,
+        state: &mut LiveState,
+        update: &Value,
+    ) -> Result<(), String> {
+        let title = update["title"]
+            .as_str()
+            .map(str::trim)
+            .filter(|title| !title.is_empty());
+        let Some(title) = title else {
+            return Ok(());
+        };
+        if state.record.title_locked {
+            return Ok(());
+        }
+        let title: String = bounded(&session.redactor.text(title), MAX_TITLE);
+        state.record.title = title.clone();
+        state.default_title = false;
+        self.emit_locked(session, state, "session_info", json!({"title": title}))
+    }
+
+    /// Streamed output, tool calls and plans: kept only during a turn.
+    fn agent_output(
+        self: &Arc<Self>,
+        session: &Arc<LiveSession>,
+        state: &mut LiveState,
+        kind: &str,
+        update: &Value,
+    ) -> Result<(), String> {
+        // Outside a turn, or after the agent ended it: the status
+        // only changes once the turn task runs, which can be after
+        // the agent's next updates arrive.
+        if state.turn_closed
+            || !matches!(
+                state.record.status,
+                SessionStatus::Running | SessionStatus::Cancelling
+            )
+        {
+            return Ok(());
+        }
+        if matches!(kind, "agent_message_chunk" | "agent_thought_chunk") {
+            if let Some(text) = chunk_text(update) {
+                return self.hold_chunk(session, state, kind, update, text);
+            }
+        }
+        if matches!(kind, "tool_call" | "tool_call_update") {
+            permission_view::track(&mut state.tool_calls, update);
+        }
+        self.emit_locked(session, state, kind, update.clone())
+    }
+
+    /// Holds a text chunk for coalescing; held text of another message is
+    /// stored, and the rest is stored once it is due.
+    fn hold_chunk(
+        self: &Arc<Self>,
+        session: &Arc<LiveSession>,
+        state: &mut LiveState,
+        kind: &str,
+        update: &Value,
+        text: &str,
+    ) -> Result<(), String> {
+        let turn = state.record.turn_id.clone();
+        let now = Instant::now();
+        let pushed = state.coalescer.push(
+            kind,
+            turn.as_deref(),
+            update["messageId"].as_str(),
+            text,
+            now,
+        );
+        if let Pushed::Flush(previous) = pushed {
+            let previous_kind = previous["sessionUpdate"]
+                .as_str()
+                .unwrap_or("agent_message_chunk")
+                .to_owned();
+            self.store_event(session, state, &previous_kind, previous)?;
+        }
+        if state.coalescer.due(now) {
+            self.flush_held(session, state)?;
+        } else if !state.flush_timer {
+            state.flush_timer = true;
+            self.schedule_flush(session);
         }
         Ok(())
     }

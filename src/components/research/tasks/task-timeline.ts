@@ -149,11 +149,32 @@ function applyToolEvent(state: TimelineState, base: TimelineBase, event: TaskToo
   if (existing.status !== "running") resolveCall(state.unresolved, resolved);
 }
 
+type EntryEvent = TaskTranscriptEvent["event"];
+
+function runMilestoneText(event: Extract<EntryEvent, { kind: "run" }>): string {
+  if (event.state === "starting" || event.state === "running") {
+    return i18n.t(($) => $.researchTools.tasks.timeline.runStarted, { name: event.name });
+  }
+  return i18n.t(($) => $.researchTools.tasks.timeline.runFinished, {
+    name: event.name,
+    status: runStateLabel(event.state),
+  });
+}
+
+function approvalMilestoneText(event: Extract<EntryEvent, { kind: "approval" }>): string {
+  if (event.status === "pending") {
+    return i18n.t(($) => $.researchTools.tasks.timeline.approvalRequested, { summary: event.summary });
+  }
+  return i18n.t(($) => $.researchTools.tasks.timeline.approvalDecided, {
+    status: approvalStatusLabel(event.status),
+  });
+}
+
 function appendEntry(
   state: TimelineState,
   usage: TaskTimelineUsage,
   base: TimelineBase,
-  event: TaskTranscriptEvent["event"],
+  event: EntryEvent,
 ) {
   switch (event.kind) {
     case "sessionBound":
@@ -183,29 +204,10 @@ function appendEntry(
       applyToolEvent(state, base, event);
       break;
     case "run":
-      state.items.push({
-        ...base,
-        kind: "milestone",
-        text:
-          event.state === "starting" || event.state === "running"
-            ? i18n.t(($) => $.researchTools.tasks.timeline.runStarted, { name: event.name })
-            : i18n.t(($) => $.researchTools.tasks.timeline.runFinished, {
-                name: event.name,
-                status: runStateLabel(event.state),
-              }),
-      });
+      state.items.push({ ...base, kind: "milestone", text: runMilestoneText(event) });
       break;
     case "approval":
-      state.items.push({
-        ...base,
-        kind: "milestone",
-        text:
-          event.status === "pending"
-            ? i18n.t(($) => $.researchTools.tasks.timeline.approvalRequested, { summary: event.summary })
-            : i18n.t(($) => $.researchTools.tasks.timeline.approvalDecided, {
-                status: approvalStatusLabel(event.status),
-              }),
-      });
+      state.items.push({ ...base, kind: "milestone", text: approvalMilestoneText(event) });
       break;
     case "phase":
       // The header shows the current phase; the timeline marks the waits.

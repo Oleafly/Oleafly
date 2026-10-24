@@ -5,8 +5,9 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
-use biblatex::{Bibliography, ChunksExt, Entry};
+use biblatex::{ChunksExt, Entry};
 use futures_util::StreamExt;
+use oleafly_doctools::bib_parse::parse_library;
 
 use crate::citation::CitationCheck;
 use crate::model::EvidenceItem;
@@ -52,11 +53,11 @@ fn field(entry: &Entry, name: &str) -> Option<String> {
 
 /// Entries of `after` whose keys `before` did not have.
 pub(crate) fn new_entries(before: Option<&str>, after: &str, file: &str) -> Vec<NewEntry> {
-    let Ok(after) = Bibliography::parse(after) else {
+    let Ok(after) = parse_library(after) else {
         return Vec::new();
     };
     let known: HashSet<String> = before
-        .and_then(|text| Bibliography::parse(text).ok())
+        .and_then(|text| parse_library(text).ok())
         .map(|bibliography| bibliography.iter().map(|entry| entry.key.clone()).collect())
         .unwrap_or_default();
     after

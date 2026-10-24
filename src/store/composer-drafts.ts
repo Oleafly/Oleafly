@@ -199,7 +199,7 @@ function readHistory(): StoredHistory {
     const raw = localStorage.getItem(HISTORY_KEY);
     if (!raw) return { v: 1, byProject: {} };
     const parsed = JSON.parse(raw) as Partial<StoredHistory> | null;
-    if (!parsed || parsed.v !== 1 || typeof parsed.byProject !== "object" || !parsed.byProject) {
+    if (parsed?.v !== 1 || typeof parsed.byProject !== "object" || !parsed.byProject) {
       return { v: 1, byProject: {} };
     }
     const byProject: StoredHistory["byProject"] = {};

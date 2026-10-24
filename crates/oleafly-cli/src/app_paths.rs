@@ -1,6 +1,7 @@
 //! Where the desktop app keeps things, from the CLI's side: the data folder,
 //! the installed app (and the engines bundled beside it), a project's
 //! identity in the app, its checkpoint store and its worktree lock.
+use std::ffi::OsStr;
 use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -234,10 +235,7 @@ fn valid_project_id(id: &str) -> bool {
 /// The app's id for the project at `root`, if the app knows it.
 pub fn project_identity(root: &Path, data_root: &Path) -> Option<ProjectIdentity> {
     let real = root.canonicalize().ok()?;
-    if let (Some(parent), Some(name)) = (
-        real.parent(),
-        real.file_name().and_then(|name| name.to_str()),
-    ) {
+    if let (Some(parent), Some(name)) = (real.parent(), real.file_name().and_then(OsStr::to_str)) {
         let projects = data_root.join("projects").canonicalize().ok();
         if projects.as_deref() == Some(parent) && valid_project_id(name) {
             return Some(ProjectIdentity::Library {

@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
 import type { AcpSession } from "@/lib/acp";
 import { booleanOption, choice, claudeOptions, codexOptions, geminiControls, selectOption } from "./tests/ui-fixtures";
-import { currentName, groupControls, listboxFocusTarget } from "./acp-controls";
+import {
+  currentModeId,
+  currentModelId,
+  currentName,
+  entryChoiceId,
+  groupControls,
+  groupHeadings,
+  listboxFocusTarget,
+  modeChoices,
+  modelChoices,
+  type ModeControl,
+  type ModelControl,
+} from "./acp-controls";
 
 const controls = (options: AcpSession["controls"]["options"]): AcpSession["controls"] => ({
   models: [],
@@ -73,6 +85,90 @@ describe("agent controls", () => {
     expect(currentName(fast)).toBeNull();
     expect(currentName(booleanOption("fast", "Fast", "model_config", true))).toBe("Fast");
     expect(currentName({ id: "x", name: "X", description: null, category: null, kind: { type: "unsupported", rawType: "x" } })).toBeNull();
+  });
+});
+
+describe("model and mode choices", () => {
+  it("lists a config model's choices with their groups, and the current one", () => {
+    const { model } = groupControls(
+      controls([
+        selectOption("model", "Model", "model", "b", [
+          choice("a", "A", { group: "Fast" }),
+          choice("b", "B", { blocked: true }),
+        ]),
+      ]),
+    );
+    expect(modelChoices(model)).toEqual([
+      { id: "a", name: "A", group: "Fast", blocked: false },
+      { id: "b", name: "B", group: null, blocked: true },
+    ]);
+    expect(currentModelId(model)).toBe("b");
+  });
+
+  it("lists a legacy agent's models without groups", () => {
+    const { model } = groupControls(geminiControls());
+    expect(modelChoices(model).map((entry) => [entry.id, entry.group, entry.blocked])).toEqual([
+      ["gemini-3-pro", null, false],
+      ["gemini-3-flash", null, false],
+    ]);
+    expect(currentModelId(model)).toBe("gemini-3-pro");
+  });
+
+  it("offers no models when there is no list, or the option is not a select", () => {
+    expect(modelChoices(null)).toEqual([]);
+    expect(currentModelId(null)).toBeNull();
+    const toggle: ModelControl = { kind: "config", option: booleanOption("model", "Model", "model", true) };
+    expect(modelChoices(toggle)).toEqual([]);
+    expect(currentModelId(toggle)).toBeNull();
+  });
+
+  it("shows a group heading where a group starts, not for ungrouped choices in between", () => {
+    const group = (name: string | null) => ({ group: name });
+    expect(groupHeadings([group(null), group("A"), group("A"), group(null), group("A"), group("B")])).toEqual([
+      null,
+      "A",
+      null,
+      null,
+      null,
+      "B",
+    ]);
+  });
+
+  it("puts the current model in the tab order, else the first one that can be chosen", () => {
+    const choices = [
+      { id: "a", name: "A", group: null, blocked: true },
+      { id: "b", name: "B", group: null, blocked: false },
+      { id: "c", name: "C", group: null, blocked: false },
+    ];
+    expect(entryChoiceId(choices, "c")).toBe("c");
+    expect(entryChoiceId(choices, "a")).toBe("b");
+    expect(entryChoiceId(choices, null)).toBe("b");
+    expect(entryChoiceId([choices[0]], null)).toBeUndefined();
+  });
+
+  it("lists a config agent's modes and the current one", () => {
+    const { mode } = groupControls(
+      controls([selectOption("mode", "Mode", "mode", "plan", [choice("default", "Default"), choice("plan", "Plan")])]),
+    );
+    if (!mode) throw new Error("expected a mode");
+    expect(modeChoices(mode)).toEqual([
+      { id: "default", name: "Default", blocked: false },
+      { id: "plan", name: "Plan", blocked: false },
+    ]);
+    expect(currentModeId(mode)).toBe("plan");
+  });
+
+  it("lists a legacy agent's modes and the current one", () => {
+    const { mode } = groupControls(geminiControls());
+    if (!mode) throw new Error("expected a mode");
+    expect(modeChoices(mode).map((entry) => entry.id)).toEqual(["default", "plan", "yolo"]);
+    expect(currentModeId(mode)).toBe("default");
+  });
+
+  it("offers no modes when the mode option is not a select", () => {
+    const toggle: ModeControl = { kind: "config", option: booleanOption("mode", "Mode", "mode", true) };
+    expect(modeChoices(toggle)).toEqual([]);
+    expect(currentModeId(toggle)).toBeNull();
   });
 });
 

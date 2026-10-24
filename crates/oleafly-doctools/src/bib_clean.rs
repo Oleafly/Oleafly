@@ -3,9 +3,10 @@
 //! `firstauthorYEARfirstword` scheme, dedupe compatible DOI entries and flag
 //! similar titles. Preview fingerprints the source before citations are updated.
 
-use biblatex::{Bibliography, ChunksExt, Entry, Person, RawBibliography};
+use biblatex::{Bibliography, ChunksExt, Entry, Pair, Person, RawBibliography, RawEntry, Spanned};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap};
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use crate::DocError;
@@ -259,336 +260,501 @@ fn citation_renames(actions: &[CleanAction]) -> HashMap<String, String> {
     result
 }
 
+/// The environments whose body LaTeX prints verbatim or discards.
+const VERBATIM_ENVIRONMENTS: [&str; 5] =
+    ["verbatim", "Verbatim", "lstlisting", "minted", "comment"];
+
+/// How a LaTeX citation command takes its arguments.
+struct CitationCommand {
+    /// The plural form (`\cites`) takes any number of groups.
+    multiple: bool,
+    /// The volume forms (`\volcite`) take a volume group before the keys.
+    volume: bool,
+}
+
+impl CitationCommand {
+    /// Braced groups a non-plural command reads.
+    fn groups(&self) -> usize {
+        if self.volume {
+            2
+        } else {
+            1
+        }
+    }
+}
+
+fn citation_command(name: &str) -> Option<CitationCommand> {
+    let command = name.to_ascii_lowercase();
+    let single = if matches!(
+        command.as_str(),
+        "defcitealias" | "citetalias" | "citepalias"
+    ) {
+        command.as_str()
+    } else {
+        command.strip_suffix('s').unwrap_or(&command)
+    };
+    if !matches!(
+        single,
+        "cite"
+            | "citet"
+            | "citep"
+            | "citealt"
+            | "citealp"
+            | "citeauthor"
+            | "citeyear"
+            | "citeyearpar"
+            | "citetitle"
+            | "citeurl"
+            | "autocite"
+            | "parencite"
+            | "textcite"
+            | "footcite"
+            | "footcitetext"
+            | "supercite"
+            | "smartcite"
+            | "fullcite"
+            | "footfullcite"
+            | "nocite"
+            | "notecite"
+            | "pnotecite"
+            | "fnotecite"
+            | "citefield"
+            | "defcitealias"
+            | "citetalias"
+            | "citepalias"
+            | "bibentry"
+            | "volcite"
+            | "pvolcite"
+            | "tvolcite"
+            | "fvolcite"
+            | "ftvolcite"
+    ) {
+        return None;
+    }
+    Some(CitationCommand {
+        multiple: command != single,
+        volume: single.ends_with("volcite"),
+    })
+}
+
+/// The end of the citation key that starts at `start`. A sentence-ending
+/// period is not part of a citation unless that exact key exists in the plan.
+fn reference_key_end(text: &str, start: usize, renames: &HashMap<String, String>) -> usize {
+    let mut end = start;
+    for ch in text[start..].chars().take_while(|c| key_char(*c)) {
+        end += ch.len_utf8();
+    }
+    while end > start
+        && !renames.contains_key(&text[start..end])
+        && text.as_bytes()[end - 1] == b'.'
+    {
+        end -= 1;
+    }
+    end
+}
+
+/// Length of a LaTeX `\verb` span at the start of `tail`.
+fn tex_verb_length(tail: &str) -> Option<usize> {
+    let start = if tail.as_bytes().get(5) == Some(&b'*') {
+        6
+    } else {
+        5
+    };
+    tail.get(start..)
+        .and_then(|s| s.chars().next())
+        .and_then(|delimiter| {
+            tail[start + delimiter.len_utf8()..]
+                .find(delimiter)
+                .map(|n| start + n + 2 * delimiter.len_utf8())
+        })
+}
+
+/// Length of a verbatim-like LaTeX environment at the start of `tail`.
+fn tex_environment_length(tail: &str) -> Option<usize> {
+    VERBATIM_ENVIRONMENTS.iter().find_map(|env| {
+        tail.starts_with(&format!("\\begin{{{env}}}")).then(|| {
+            let end = format!("\\end{{{env}}}");
+            tail.find(&end).map_or(tail.len(), |n| n + end.len())
+        })
+    })
+}
+
+/// Length of the LaTeX comment or verbatim text at the start of `tail`.
+fn tex_masked_length(tail: &str) -> Option<usize> {
+    if tail.starts_with('%') {
+        Some(tail.find('\n').unwrap_or(tail.len()))
+    } else if tail.starts_with("\\verb")
+        && tail
+            .as_bytes()
+            .get(5)
+            .is_some_and(|c| !c.is_ascii_alphabetic())
+    {
+        tex_verb_length(tail)
+    } else {
+        tex_environment_length(tail)
+    }
+}
+
+/// Length of the backtick code span or fence at the start of `tail`.
+fn code_span_length(tail: &str) -> Option<usize> {
+    if !tail.starts_with('`') {
+        return None;
+    }
+    let count = tail.bytes().take_while(|b| *b == b'`').count();
+    let fence = "`".repeat(count);
+    Some(
+        tail[count..]
+            .find(&fence)
+            .map_or(tail.len(), |n| n + 2 * count),
+    )
+}
+
+/// The end of the Typst string that opens at `start`.
+fn typst_string_end(source: &str, start: usize) -> usize {
+    let mut end = start + 1;
+    while end < source.len() {
+        let ch = source[end..].chars().next().unwrap();
+        end += ch.len_utf8();
+        if ch == '"' {
+            break;
+        }
+        if ch == char::from(92) && end < source.len() {
+            end += source[end..].chars().next().unwrap().len_utf8();
+        }
+    }
+    end
+}
+
+/// Whether a quoted Typst string holds a reference to a key the plan renames.
+fn quotes_renamed_reference(quoted: &str, renames: &HashMap<String, String>) -> bool {
+    quoted
+        .char_indices()
+        .filter(|(_, ch)| matches!(ch, '@' | '<'))
+        .any(|(at, marker)| {
+            if marker == '@' && at > 0 && quoted[..at].chars().next_back().is_some_and(key_char) {
+                return false;
+            }
+            let start = at + 1;
+            let stop = reference_key_end(quoted, start, renames);
+            renames.contains_key(&quoted[start..stop])
+        })
+}
+
+/// The end of the nested Typst block comment that opens at `start`.
+fn typst_block_comment_end(source: &str, start: usize) -> usize {
+    let mut depth = 1;
+    let mut end = start + 2;
+    while end < source.len() && depth > 0 {
+        if source[end..].starts_with("/*") {
+            depth += 1;
+            end += 2;
+        } else if source[end..].starts_with("*/") {
+            depth -= 1;
+            end += 2;
+        } else {
+            end += source[end..].chars().next().unwrap().len_utf8();
+        }
+    }
+    end
+}
+
+/// Length of the Typst string or comment at byte `i`. A string may hold a
+/// reference to a renamed key; that sets `quoted_reference`.
+fn typst_masked_length(
+    source: &str,
+    i: usize,
+    renames: &HashMap<String, String>,
+    quoted_reference: &mut bool,
+) -> Option<usize> {
+    let tail = &source[i..];
+    if tail.starts_with('"') {
+        let end = typst_string_end(source, i);
+        // Quotes may delimit code strings or quoted markup. Preserve both,
+        // and refuse a project rewrite if that ambiguity could leave a
+        // renamed citation unresolved.
+        if quotes_renamed_reference(&source[i..end], renames) {
+            *quoted_reference = true;
+        }
+        Some(end - i)
+    } else if tail.starts_with("//") {
+        Some(tail.find('\n').unwrap_or(tail.len()))
+    } else if tail.starts_with("/*") {
+        Some(typst_block_comment_end(source, i) - i)
+    } else {
+        None
+    }
+}
+
+/// Length of a `~~~` fenced code block at the start of `tail`.
+fn tilde_fence_length(tail: &str) -> usize {
+    let tildes = |text: &str| text.bytes().take_while(|b| *b == b'~').count();
+    let count = tildes(tail.trim_start_matches(' '));
+    let mut length = tail.find('\n').map_or(tail.len(), |n| n + 1);
+    for line in tail[length..].split_inclusive('\n') {
+        length += line.len();
+        let closing = line.trim_start_matches(' ');
+        let closing_count = tildes(closing);
+        if line.len() - closing.len() <= 3
+            && closing_count >= count
+            && closing[closing_count..].trim().is_empty()
+        {
+            break;
+        }
+    }
+    length
+}
+
+/// Length of the Markdown code block or comment at byte `i`.
+fn markdown_masked_length(source: &str, i: usize) -> Option<usize> {
+    let tail = &source[i..];
+    let line_start = i == 0 || source.as_bytes()[i - 1] == b'\n';
+    if line_start && (tail.starts_with("    ") || tail.starts_with('\t')) {
+        Some(tail.find('\n').unwrap_or(tail.len()))
+    } else if line_start && tail.trim_start_matches(' ').starts_with("~~~") {
+        Some(tilde_fence_length(tail))
+    } else if tail.starts_with("<!--") {
+        Some(tail.find("-->").map_or(tail.len(), |n| n + 3))
+    } else {
+        None
+    }
+}
+
+/// Length of the comment or code that starts at byte `i`, if one does.
+fn masked_length(
+    source: &str,
+    i: usize,
+    extension: &str,
+    renames: &HashMap<String, String>,
+    quoted_reference: &mut bool,
+) -> Option<usize> {
+    let tail = &source[i..];
+    match extension {
+        "tex" => tex_masked_length(tail),
+        "typ" => code_span_length(tail)
+            .or_else(|| typst_masked_length(source, i, renames, quoted_reference)),
+        "md" => code_span_length(tail).or_else(|| markdown_masked_length(source, i)),
+        _ => code_span_length(tail),
+    }
+}
+
+/// How far to move past text that is not masked. A LaTeX control symbol
+/// (`\%`) is one step, so its character is not read as a comment.
+fn unmasked_step(tail: &str) -> usize {
+    if tail.starts_with('\\')
+        && !tail.starts_with("\\cite")
+        && tail
+            .as_bytes()
+            .get(1)
+            .is_some_and(|b| !b.is_ascii_alphabetic())
+    {
+        1 + tail[1..].chars().next().map_or(0, char::len_utf8)
+    } else {
+        tail.chars().next().unwrap().len_utf8()
+    }
+}
+
+/// Mask comments and code without changing byte offsets. The original text
+/// supplies every replacement, preserving formatting and comment contents.
+/// The flag says a quoted Typst string held a reference to a renamed key.
+fn mask_source(source: &str, extension: &str, renames: &HashMap<String, String>) -> (String, bool) {
+    let mut quoted_reference = false;
+    let mut masked = source.as_bytes().to_vec();
+    let mut i = 0;
+    while i < masked.len() {
+        if let Some(length) = masked_length(source, i, extension, renames, &mut quoted_reference) {
+            masked[i..i + length].fill(b' ');
+            i += length;
+        } else {
+            i += unmasked_step(&source[i..]);
+        }
+    }
+    let mask = String::from_utf8(masked).expect("mask preserves UTF-8");
+    (mask, quoted_reference)
+}
+
+/// The index of the bracket that closes the group opened just before
+/// `cursor`, if the text has one.
+fn matching_close(bytes: &[u8], mut cursor: usize, open: u8, close: u8) -> Option<usize> {
+    let mut depth = 1;
+    while cursor < bytes.len() && depth > 0 {
+        if bytes[cursor] == open {
+            depth += 1;
+        }
+        if bytes[cursor] == close {
+            depth -= 1;
+        }
+        if depth > 0 {
+            cursor += 1;
+        }
+    }
+    (depth == 0).then_some(cursor)
+}
+
+/// Rewrite the keys in the braced groups after a LaTeX citation command and
+/// return where scanning resumes. `cursor` starts just after the command name.
+fn citation_group_edits(
+    source: &str,
+    bytes: &[u8],
+    mut cursor: usize,
+    command: &CitationCommand,
+    renames: &HashMap<String, String>,
+    edits: &mut Vec<(std::ops::Range<usize>, String)>,
+) -> usize {
+    let mut arguments = 0;
+    if bytes.get(cursor) == Some(&b'*') {
+        cursor += 1;
+    }
+    loop {
+        while bytes.get(cursor).is_some_and(u8::is_ascii_whitespace) {
+            cursor += 1;
+        }
+        let Some(open) = bytes
+            .get(cursor)
+            .copied()
+            .filter(|b| matches!(b, b'[' | b'{'))
+        else {
+            break;
+        };
+        let close = if open == b'[' { b']' } else { b'}' };
+        cursor += 1;
+        let start = cursor;
+        let Some(end) = matching_close(bytes, cursor, open, close) else {
+            return bytes.len();
+        };
+        if open == b'{' {
+            arguments += 1;
+            if !command.volume || arguments % 2 == 0 {
+                edits.extend(citation_argument_edits(&source[start..end], start, renames));
+            }
+        }
+        cursor = end + 1;
+        if !command.multiple && arguments >= command.groups() {
+            break;
+        }
+    }
+    cursor
+}
+
+fn tex_citation_edits(
+    source: &str,
+    mask: &str,
+    renames: &HashMap<String, String>,
+) -> Vec<(std::ops::Range<usize>, String)> {
+    let bytes = mask.as_bytes();
+    let mut edits = Vec::new();
+    let mut cursor = 0;
+    while cursor < bytes.len() {
+        if bytes[cursor] != b'\\' {
+            cursor += 1;
+            continue;
+        }
+        cursor += 1;
+        let start = cursor;
+        while cursor < bytes.len() && bytes[cursor].is_ascii_alphabetic() {
+            cursor += 1;
+        }
+        if start == cursor {
+            cursor = (cursor + 1).min(bytes.len());
+            continue;
+        }
+        if let Some(command) = citation_command(&mask[start..cursor]) {
+            cursor = citation_group_edits(source, bytes, cursor, &command, renames, &mut edits);
+        }
+    }
+    edits
+}
+
+/// Whether the Markdown `@` at `at` follows `-` as a suppressed author.
+fn is_suppressed_author(source: &str, at: usize) -> bool {
+    at > 0
+        && source.as_bytes()[at - 1] == b'-'
+        && (at == 1
+            || source[..at - 1]
+                .chars()
+                .next_back()
+                .is_some_and(|c| !key_char(c)))
+}
+
+/// Whether the `@` at `at` ends a longer word (an email address, a macro, a
+/// doubled sign) instead of starting a citation.
+fn at_sign_is_embedded(source: &str, at: usize, extension: &str) -> bool {
+    let suppressed_author = extension == "md" && is_suppressed_author(source, at);
+    !suppressed_author
+        && at > 0
+        && source[..at]
+            .chars()
+            .next_back()
+            .is_some_and(|c| key_char(c) || c == '\\' || c == '@')
+}
+
+fn at_sign_edits(
+    source: &str,
+    mask: &str,
+    extension: &str,
+    renames: &HashMap<String, String>,
+) -> Vec<(std::ops::Range<usize>, String)> {
+    let mut edits = Vec::new();
+    for (at, _) in mask.match_indices('@') {
+        if at_sign_is_embedded(source, at, extension) {
+            continue;
+        }
+        let start = at + 1;
+        let end = reference_key_end(source, start, renames);
+        if let Some(new) = renames.get(&source[start..end]) {
+            edits.push((start..end, new.clone()));
+        }
+    }
+    edits
+}
+
+/// The text after the `<` of a `cite(<key>)` call, given the text after `cite`.
+fn typst_cite_key(after_cite: &str) -> Option<&str> {
+    after_cite
+        .trim_start()
+        .strip_prefix('(')?
+        .trim_start()
+        .strip_prefix('<')
+}
+
+fn typst_cite_edits(
+    source: &str,
+    mask: &str,
+    renames: &HashMap<String, String>,
+) -> Vec<(std::ops::Range<usize>, String)> {
+    let mut edits = Vec::new();
+    for (at, _) in mask.match_indices("cite") {
+        if at > 0 && mask[..at].chars().next_back().is_some_and(key_char) {
+            continue;
+        }
+        let Some(key) = typst_cite_key(&mask[at + 4..]) else {
+            continue;
+        };
+        let Some(end) = key.find('>') else {
+            continue;
+        };
+        if let Some(new) = renames.get(&key[..end]) {
+            let start = source.len() - key.len();
+            edits.push((start..start + end, new.clone()));
+        }
+    }
+    edits
+}
+
 fn rewrite_citations_with_quotes(
     source: &str,
     extension: &str,
     renames: &HashMap<String, String>,
 ) -> (String, bool) {
-    let mut quoted_reference = false;
-    // Mask comments and code without changing byte offsets. The original text
-    // supplies every replacement, preserving formatting and comment contents.
-    let mut masked = source.as_bytes().to_vec();
-    let mut i = 0;
-    while i < masked.len() {
-        let tail = &source[i..];
-        let skip = if extension == "tex" && tail.starts_with('%') {
-            Some(tail.find('\n').unwrap_or(tail.len()))
-        } else if extension == "tex"
-            && tail.starts_with("\\verb")
-            && tail
-                .as_bytes()
-                .get(5)
-                .is_some_and(|c| !c.is_ascii_alphabetic())
-        {
-            let start = if tail.as_bytes().get(5) == Some(&b'*') {
-                6
-            } else {
-                5
-            };
-            tail.get(start..)
-                .and_then(|s| s.chars().next())
-                .and_then(|delimiter| {
-                    tail[start + delimiter.len_utf8()..]
-                        .find(delimiter)
-                        .map(|n| start + n + 2 * delimiter.len_utf8())
-                })
-        } else if extension == "tex"
-            && ["verbatim", "Verbatim", "lstlisting", "minted", "comment"]
-                .iter()
-                .any(|env| tail.starts_with(&format!("\\begin{{{env}}}")))
-        {
-            ["verbatim", "Verbatim", "lstlisting", "minted", "comment"]
-                .iter()
-                .find_map(|env| {
-                    let end = format!("\\end{{{env}}}");
-                    tail.starts_with(&format!("\\begin{{{env}}}"))
-                        .then(|| tail.find(&end).map_or(tail.len(), |n| n + end.len()))
-                })
-        } else if extension != "tex" && tail.starts_with('`') {
-            let count = tail.bytes().take_while(|b| *b == b'`').count();
-            let fence = "`".repeat(count);
-            Some(
-                tail[count..]
-                    .find(&fence)
-                    .map_or(tail.len(), |n| n + 2 * count),
-            )
-        } else if extension == "typ" && tail.starts_with('"') {
-            let mut end = i + 1;
-            while end < source.len() {
-                let ch = source[end..].chars().next().unwrap();
-                end += ch.len_utf8();
-                if ch == '"' {
-                    break;
-                }
-                if ch == char::from(92) && end < source.len() {
-                    end += source[end..].chars().next().unwrap().len_utf8();
-                }
-            }
-            // Quotes may delimit code strings or quoted markup. Preserve
-            // both, and refuse a project rewrite if that ambiguity could
-            // leave a renamed citation unresolved.
-            let quoted = &source[i..end];
-            for (at, marker) in quoted
-                .char_indices()
-                .filter(|(_, ch)| matches!(ch, '@' | '<'))
-            {
-                if marker == '@' && at > 0 && quoted[..at].chars().next_back().is_some_and(key_char)
-                {
-                    continue;
-                }
-                let start = at + 1;
-                let mut stop = start;
-                for ch in quoted[start..].chars().take_while(|ch| key_char(*ch)) {
-                    stop += ch.len_utf8();
-                }
-                while stop > start
-                    && !renames.contains_key(&quoted[start..stop])
-                    && quoted.as_bytes()[stop - 1] == b'.'
-                {
-                    stop -= 1;
-                }
-                if renames.contains_key(&quoted[start..stop]) {
-                    quoted_reference = true;
-                }
-            }
-            Some(end - i)
-        } else if extension == "md"
-            && (i == 0 || source.as_bytes()[i - 1] == b'\n')
-            && (tail.starts_with("    ") || tail.starts_with('\t'))
-        {
-            Some(tail.find('\n').unwrap_or(tail.len()))
-        } else if extension == "md"
-            && (i == 0 || source.as_bytes()[i - 1] == b'\n')
-            && tail.trim_start_matches(' ').starts_with("~~~")
-        {
-            let opening = tail.trim_start_matches(' ');
-            let count = opening.bytes().take_while(|b| *b == b'~').count();
-            let mut length = tail.find('\n').map_or(tail.len(), |n| n + 1);
-            for line in tail[length..].split_inclusive('\n') {
-                length += line.len();
-                let closing = line.trim_start_matches(' ');
-                let closing_count = closing.bytes().take_while(|b| *b == b'~').count();
-                if line.len() - closing.len() <= 3
-                    && closing_count >= count
-                    && closing[closing_count..].trim().is_empty()
-                {
-                    break;
-                }
-            }
-            Some(length)
-        } else if extension == "md" && tail.starts_with("<!--") {
-            Some(tail.find("-->").map_or(tail.len(), |n| n + 3))
-        } else if extension == "typ" && tail.starts_with("//") {
-            Some(tail.find('\n').unwrap_or(tail.len()))
-        } else if extension == "typ" && tail.starts_with("/*") {
-            let mut depth = 1;
-            let mut end = i + 2;
-            while end < source.len() && depth > 0 {
-                if source[end..].starts_with("/*") {
-                    depth += 1;
-                    end += 2;
-                } else if source[end..].starts_with("*/") {
-                    depth -= 1;
-                    end += 2;
-                } else {
-                    end += source[end..].chars().next().unwrap().len_utf8();
-                }
-            }
-            Some(end - i)
-        } else {
-            None
-        };
-        if let Some(length) = skip {
-            masked[i..i + length].fill(b' ');
-            i += length;
-        } else if tail.starts_with('\\')
-            && !tail.starts_with("\\cite")
-            && tail
-                .as_bytes()
-                .get(1)
-                .is_some_and(|b| !b.is_ascii_alphabetic())
-        {
-            i += 1 + tail[1..].chars().next().map_or(0, char::len_utf8);
-        } else {
-            i += tail.chars().next().unwrap().len_utf8();
+    let (mask, quoted_reference) = mask_source(source, extension, renames);
+    let edits = match extension {
+        "tex" => tex_citation_edits(source, &mask, renames),
+        "typ" => {
+            let mut edits = at_sign_edits(source, &mask, extension, renames);
+            edits.extend(typst_cite_edits(source, &mask, renames));
+            edits
         }
-    }
-    let mask = String::from_utf8(masked).expect("mask preserves UTF-8");
-    let mut edits = Vec::new();
-    if extension == "tex" {
-        let bytes = mask.as_bytes();
-        let mut cursor = 0;
-        while cursor < bytes.len() {
-            if bytes[cursor] != b'\\' {
-                cursor += 1;
-                continue;
-            }
-            cursor += 1;
-            let start = cursor;
-            while cursor < bytes.len() && bytes[cursor].is_ascii_alphabetic() {
-                cursor += 1;
-            }
-            if start == cursor {
-                cursor = (cursor + 1).min(bytes.len());
-                continue;
-            }
-            let command = mask[start..cursor].to_ascii_lowercase();
-            let single = if matches!(
-                command.as_str(),
-                "defcitealias" | "citetalias" | "citepalias"
-            ) {
-                command.as_str()
-            } else {
-                command.strip_suffix('s').unwrap_or(&command)
-            };
-            if !matches!(
-                single,
-                "cite"
-                    | "citet"
-                    | "citep"
-                    | "citealt"
-                    | "citealp"
-                    | "citeauthor"
-                    | "citeyear"
-                    | "citeyearpar"
-                    | "citetitle"
-                    | "citeurl"
-                    | "autocite"
-                    | "parencite"
-                    | "textcite"
-                    | "footcite"
-                    | "footcitetext"
-                    | "supercite"
-                    | "smartcite"
-                    | "fullcite"
-                    | "footfullcite"
-                    | "nocite"
-                    | "notecite"
-                    | "pnotecite"
-                    | "fnotecite"
-                    | "citefield"
-                    | "defcitealias"
-                    | "citetalias"
-                    | "citepalias"
-                    | "bibentry"
-                    | "volcite"
-                    | "pvolcite"
-                    | "tvolcite"
-                    | "fvolcite"
-                    | "ftvolcite"
-            ) {
-                continue;
-            }
-            let multiple = command != single;
-            let volume = single.ends_with("volcite");
-            let mut arguments = 0;
-            if bytes.get(cursor) == Some(&b'*') {
-                cursor += 1;
-            }
-            loop {
-                while bytes.get(cursor).is_some_and(u8::is_ascii_whitespace) {
-                    cursor += 1;
-                }
-                let Some(open) = bytes
-                    .get(cursor)
-                    .copied()
-                    .filter(|b| matches!(b, b'[' | b'{'))
-                else {
-                    break;
-                };
-                let close = if open == b'[' { b']' } else { b'}' };
-                cursor += 1;
-                let start = cursor;
-                let mut depth = 1;
-                while cursor < bytes.len() && depth > 0 {
-                    if bytes[cursor] == open {
-                        depth += 1;
-                    }
-                    if bytes[cursor] == close {
-                        depth -= 1;
-                    }
-                    if depth > 0 {
-                        cursor += 1;
-                    }
-                }
-                if depth > 0 {
-                    break;
-                }
-                if open == b'{' {
-                    arguments += 1;
-                    if !volume || arguments % 2 == 0 {
-                        edits.extend(citation_argument_edits(
-                            &source[start..cursor],
-                            start,
-                            renames,
-                        ));
-                    }
-                }
-                cursor += 1;
-                if !multiple && arguments >= if volume { 2 } else { 1 } {
-                    break;
-                }
-            }
-        }
-    } else {
-        for (at, _) in mask.match_indices('@') {
-            let suppressed_author = extension == "md"
-                && at > 0
-                && source.as_bytes()[at - 1] == b'-'
-                && (at == 1
-                    || source[..at - 1]
-                        .chars()
-                        .next_back()
-                        .is_some_and(|c| !key_char(c)));
-            if !suppressed_author
-                && at > 0
-                && source[..at]
-                    .chars()
-                    .next_back()
-                    .is_some_and(|c| key_char(c) || c == '\\' || c == '@')
-            {
-                continue;
-            }
-            let start = at + 1;
-            let mut end = start;
-            for ch in source[start..].chars().take_while(|c| key_char(*c)) {
-                end += ch.len_utf8();
-            }
-            // A sentence-ending period is not part of a citation unless that
-            // exact key exists in the plan.
-            while end > start
-                && !renames.contains_key(&source[start..end])
-                && source.as_bytes()[end - 1] == b'.'
-            {
-                end -= 1;
-            }
-            if let Some(new) = renames.get(&source[start..end]) {
-                edits.push((start..end, new.clone()));
-            }
-        }
-        if extension == "typ" {
-            for (at, _) in mask.match_indices("cite") {
-                if at > 0 && mask[..at].chars().next_back().is_some_and(key_char) {
-                    continue;
-                }
-                let tail = &mask[at + 4..];
-                let tail = tail.trim_start();
-                let Some(tail) = tail.strip_prefix('(').map(str::trim_start) else {
-                    continue;
-                };
-                let Some(key) = tail.strip_prefix('<') else {
-                    continue;
-                };
-                let Some(end) = key.find('>') else {
-                    continue;
-                };
-                if let Some(new) = renames.get(&key[..end]) {
-                    let start = source.len() - key.len();
-                    edits.push((start..start + end, new.clone()));
-                }
-            }
-        }
-    }
+        _ => at_sign_edits(source, &mask, extension, renames),
+    };
     (edit_text(source, edits), quoted_reference)
 }
 
@@ -682,34 +848,52 @@ fn contains_fields(keeper: &Entry, other: &Entry) -> bool {
         })
 }
 
-/// The pure cleaning pass: parse `source`, plan every action, and emit the
-/// rewritten library. Exposed separately so it is unit-testable.
-pub fn clean_bibtex_source(source: &str) -> Result<CleanOutcome, DocError> {
-    let bib =
-        Bibliography::parse(source).map_err(|e| format!("the library could not be parsed: {e}"))?;
-    let entries_before = bib.len();
-    if let Some(entry) = bib.iter().find(|entry| !entry.key.chars().all(key_char)) {
-        return Err(format!("Citation key {} uses punctuation that cannot be rewritten safely. Rename it before cleaning.", entry.key).into());
-    }
-    let mut actions: Vec<CleanAction> = Vec::new();
+/// Edits for the keys that the `crossref`-style fields of an entry name.
+fn relation_key_edits(
+    source: &str,
+    fields: Vec<Pair<'_>>,
+    renames: &HashMap<String, String>,
+) -> Vec<(std::ops::Range<usize>, String)> {
+    fields
+        .into_iter()
+        .filter(|field| {
+            matches!(
+                field.key.v.to_ascii_lowercase().as_str(),
+                "crossref" | "xref" | "xdata" | "related" | "entryset"
+            )
+        })
+        .flat_map(|field| {
+            key_edits(
+                &source[field.value.span.clone()],
+                field.value.span.start,
+                renames,
+            )
+        })
+        .collect()
+}
 
-    let raw = RawBibliography::parse(source).map_err(|e| e.to_string())?;
-    let commented: std::collections::HashSet<_> = raw
-        .entries
-        .iter()
-        .filter(|entry| source[entry.span.clone()].contains('%'))
-        .map(|entry| entry.v.key.v)
-        .collect();
+/// Remove entries whose DOI matches a keeper that fully preserves their
+/// fields, and note the other DOI matches. Only fully preserved entries are
+/// removed: similar titles are review hints, not sufficient evidence to
+/// delete a reference, especially across editions or different authors.
+fn merge_doi_duplicates(
+    bib: Bibliography,
+    commented: &std::collections::HashSet<&str>,
+    links: &HashMap<&str, Vec<String>>,
+    actions: &mut Vec<CleanAction>,
+) -> Vec<Entry> {
     let mut kept: Vec<Entry> = Vec::new();
     let mut seen_dois: HashMap<String, usize> = HashMap::new();
-    // Only remove entries whose fields are fully preserved by their keeper.
-    // Similar titles are review hints; they are not sufficient evidence to
-    // delete a reference, especially across editions or different authors.
     for entry in bib.into_iter() {
         let doi = field_string(&entry, "doi")
             .map(|d| normalize_doi(&d))
             .filter(|d| !d.is_empty());
-        if let Some(index) = doi.as_ref().and_then(|doi| seen_dois.get(doi)).copied() {
+        let duplicate_of = doi
+            .as_ref()
+            .and_then(|doi| seen_dois.get(doi))
+            .copied()
+            .filter(|&index| !linked(links, &kept[index].key, &entry.key));
+        if let Some(index) = duplicate_of {
             let keeper = &mut kept[index];
             if !commented.contains(keeper.key.as_str())
                 && !commented.contains(entry.key.as_str())
@@ -739,11 +923,48 @@ pub fn clean_bibtex_source(source: &str) -> Result<CleanOutcome, DocError> {
                 ),
             ));
         } else if let Some(doi) = doi {
-            seen_dois.insert(doi, kept.len());
+            seen_dois.entry(doi).or_insert(kept.len());
         }
         kept.push(entry);
     }
+    kept
+}
 
+/// Whether one entry names the other in `crossref` or `xdata`. A chapter
+/// inherits its book's DOI that way, but the two aren't duplicates.
+fn linked(links: &HashMap<&str, Vec<String>>, a: &str, b: &str) -> bool {
+    let names = |from: &str, to: &str| {
+        links
+            .get(from)
+            .is_some_and(|targets| targets.iter().any(|target| target == to))
+    };
+    names(a, b) || names(b, a)
+}
+
+/// Whether two normalized titles, with their years, look like one work.
+fn titles_are_similar(first: &(String, i64), second: &(String, i64)) -> bool {
+    let (a, year_a) = first;
+    let (b, year_b) = second;
+    !a.is_empty()
+        && !b.is_empty()
+        && a.len() <= 1_000
+        && b.len() <= 1_000
+        && (year_a == &0 || year_b == &0 || (year_a - year_b).abs() <= YEAR_WINDOW)
+        && rapidfuzz::distance::levenshtein::normalized_similarity(a.chars(), b.chars())
+            >= FUZZY_TITLE_THRESHOLD
+}
+
+/// Flag entries whose title is close to an earlier entry's.
+fn flag_similar_titles(kept: &[Entry], actions: &mut Vec<CleanAction>) {
+    // Bound expensive fuzzy comparisons in large libraries; exact DOI matching
+    // remains linear regardless of library size.
+    if kept.len() > 500 {
+        actions.push(CleanAction::advisory(
+            String::new(),
+            "Title comparisons were skipped because this library has more than 500 entries.".into(),
+        ));
+        return;
+    }
     let titles: Vec<_> = kept
         .iter()
         .map(|entry| {
@@ -753,64 +974,52 @@ pub fn clean_bibtex_source(source: &str) -> Result<CleanOutcome, DocError> {
             )
         })
         .collect();
-    // Bound expensive fuzzy comparisons in large libraries; exact DOI matching
-    // remains linear regardless of library size.
-    if kept.len() <= 500 {
-        let mut flagged_titles = std::collections::HashSet::new();
-        for i in 0..kept.len() {
-            for j in i + 1..kept.len() {
-                if flagged_titles.contains(&j) {
-                    continue;
-                }
-                let (a, year_a) = &titles[i];
-                let (b, year_b) = &titles[j];
-                if !a.is_empty()
-                    && !b.is_empty()
-                    && a.len() <= 1_000
-                    && b.len() <= 1_000
-                    && (year_a == &0 || year_b == &0 || (year_a - year_b).abs() <= YEAR_WINDOW)
-                    && rapidfuzz::distance::levenshtein::normalized_similarity(a.chars(), b.chars())
-                        >= FUZZY_TITLE_THRESHOLD
-                {
-                    flagged_titles.insert(j);
-                    actions.push(CleanAction::advisory(
-                        kept[j].key.clone(),
-                        format!(
-                            "Similar title to {}; review these entries before merging them.",
-                            kept[i].key
-                        ),
-                    ));
-                }
+    let mut flagged_titles = std::collections::HashSet::new();
+    for i in 0..kept.len() {
+        for j in i + 1..kept.len() {
+            if flagged_titles.contains(&j) || !titles_are_similar(&titles[i], &titles[j]) {
+                continue;
             }
+            flagged_titles.insert(j);
+            actions.push(CleanAction::advisory(
+                kept[j].key.clone(),
+                format!(
+                    "Similar title to {}; review these entries before merging them.",
+                    kept[i].key
+                ),
+            ));
         }
-    } else {
-        actions.push(CleanAction::advisory(
-            String::new(),
-            "Title comparisons were skipped because this library has more than 500 entries.".into(),
-        ));
     }
+}
 
-    // Pass 3: rename keys to the app scheme, keeping each key unique.
+/// The first key of the form `desired`, `desiredb`, ... that is not taken.
+fn unused_key(desired: &str, taken: &std::collections::HashSet<String>) -> String {
+    let mut final_key = desired.to_string();
+    let mut n = 0;
+    while taken.contains(&final_key) {
+        final_key = format!("{}{}", desired, collision_suffix(n));
+        n += 1;
+    }
+    final_key
+}
+
+/// Rename keys to the app scheme, keeping each key unique, and note the
+/// entries that lack an author, title or year.
+fn rename_keys(kept: &mut [Entry], actions: &mut Vec<CleanAction>) {
     let mut taken: std::collections::HashSet<String> =
         kept.iter().map(|entry| entry.key.clone()).collect();
-    for entry in &mut kept {
-        let (entry_key, author, year, title, has_author, has_title) = {
-            (
-                entry.key.clone(),
-                author_string(entry),
-                year_string(entry),
-                field_string(entry, "title").unwrap_or_default(),
-                field_string(entry, "author").is_some(),
-                field_string(entry, "title").is_some(),
-            )
-        };
-        if !has_author {
+    for entry in kept {
+        let entry_key = entry.key.clone();
+        let author = author_string(entry);
+        let year = year_string(entry);
+        let title = field_string(entry, "title");
+        if field_string(entry, "author").is_none() {
             actions.push(CleanAction::advisory(
                 entry_key.clone(),
                 "missing author".into(),
             ));
         }
-        if !has_title {
+        if title.is_none() {
             actions.push(CleanAction::advisory(
                 entry_key.clone(),
                 "missing title".into(),
@@ -822,30 +1031,29 @@ pub fn clean_bibtex_source(source: &str) -> Result<CleanOutcome, DocError> {
                 "missing year".into(),
             ));
         }
-        let desired = oleafly_core::bibkey::cite_key(&author, &year, &title);
+        let desired = oleafly_core::bibkey::cite_key(&author, &year, &title.unwrap_or_default());
         if desired.is_empty() || desired == entry_key {
             taken.insert(entry_key);
             continue;
         }
         taken.remove(&entry_key);
-        let mut final_key = desired.clone();
-        let mut n = 0;
-        while taken.contains(&final_key) {
-            final_key = format!("{}{}", desired, collision_suffix(n));
-            n += 1;
-        }
+        let final_key = unused_key(&desired, &taken);
         actions.push(CleanAction::renamed_key(entry_key, final_key.clone()));
         entry.key = final_key.clone();
         taken.insert(final_key);
     }
+}
 
-    let renames = citation_renames(&actions);
-    let removed: std::collections::HashSet<_> = actions
-        .iter()
-        .filter_map(|a| a.removed.as_deref())
-        .collect();
+/// Edits that delete the removed entries, rename the kept keys and rewrite
+/// the keys that `crossref`-style fields name.
+fn library_edits(
+    source: &str,
+    entries: Vec<Spanned<RawEntry<'_>>>,
+    removed: &std::collections::HashSet<&str>,
+    renames: &HashMap<String, String>,
+) -> Result<Vec<(std::ops::Range<usize>, String)>, DocError> {
     let mut edits = Vec::new();
-    for entry in raw.entries {
+    for entry in entries {
         if removed.contains(entry.v.key.v) {
             let end = entry.span.end
                 + source[entry.span.end..]
@@ -858,21 +1066,42 @@ pub fn clean_bibtex_source(source: &str) -> Result<CleanOutcome, DocError> {
         if let Some(new) = renames.get(entry.v.key.v) {
             edits.push((entry.v.key.span, new.clone()));
         }
-        for field in entry.v.fields {
-            if matches!(
-                field.key.v.to_ascii_lowercase().as_str(),
-                "crossref" | "xref" | "xdata" | "related" | "entryset"
-            ) {
-                edits.extend(key_edits(
-                    &source[field.value.span.clone()],
-                    field.value.span.start,
-                    &renames,
-                ));
-            }
-        }
+        edits.extend(relation_key_edits(source, entry.v.fields, renames));
     }
+    Ok(edits)
+}
+
+/// The pure cleaning pass: parse `source`, plan every action, and emit the
+/// rewritten library. Exposed separately so it is unit-testable.
+pub fn clean_bibtex_source(source: &str) -> Result<CleanOutcome, DocError> {
+    let bib = crate::bib_parse::parse_library(source)
+        .map_err(|e| format!("the library could not be parsed: {e}"))?;
+    let entries_before = bib.len();
+    if let Some(entry) = bib.iter().find(|entry| !entry.key.chars().all(key_char)) {
+        return Err(format!("Citation key {} uses punctuation that cannot be rewritten safely. Rename it before cleaning.", entry.key).into());
+    }
+    let mut actions: Vec<CleanAction> = Vec::new();
+
+    let raw = RawBibliography::parse(source).map_err(|e| e.to_string())?;
+    let commented: std::collections::HashSet<_> = raw
+        .entries
+        .iter()
+        .filter(|entry| source[entry.span.clone()].contains('%'))
+        .map(|entry| entry.v.key.v)
+        .collect();
+    let links = crate::bib_parse::entry_links(source, &raw);
+    let mut kept = merge_doi_duplicates(bib, &commented, &links, &mut actions);
+    flag_similar_titles(&kept, &mut actions);
+    rename_keys(&mut kept, &mut actions);
+
+    let renames = citation_renames(&actions);
+    let removed: std::collections::HashSet<_> = actions
+        .iter()
+        .filter_map(|a| a.removed.as_deref())
+        .collect();
+    let edits = library_edits(source, raw.entries, &removed, &renames)?;
     let cleaned = edit_text(source, edits);
-    Bibliography::parse(&cleaned)
+    crate::bib_parse::parse_library(&cleaned)
         .map_err(|e| format!("The cleaned library could not be parsed: {e}"))?;
     Ok(CleanOutcome {
         original: source.to_string(),
@@ -898,16 +1127,11 @@ pub struct CleanPlan {
     changes: Vec<FileChange>,
 }
 
-pub fn plan_project(root: &Path, bib_path: &str) -> Result<CleanPlan, DocError> {
-    let target = oleafly_core::resolve_project_path(root, bib_path)
-        .map_err(|error| DocError::other(error.to_string()))?;
-    if target.extension().and_then(|e| e.to_str()) != Some("bib") {
-        return Err("Choose a .bib file to clean.".into());
-    }
-    let paths = project_text_files(root)?;
-    if !paths.contains(&target) {
-        return Err("The bibliography is not a regular project file.".into());
-    }
+/// Read every project source, within the size limits.
+fn read_project_sources(
+    root: &Path,
+    paths: Vec<PathBuf>,
+) -> Result<BTreeMap<PathBuf, String>, DocError> {
     let mut snapshots = BTreeMap::new();
     let mut total_bytes = 0;
     for path in paths {
@@ -927,18 +1151,21 @@ pub fn plan_project(root: &Path, bib_path: &str) -> Result<CleanPlan, DocError> 
             .map_err(|e| format!("Could not read {}: {e}", path.display()))?;
         snapshots.insert(path, content);
     }
-    let mut outcome = clean_bibtex_source(
-        snapshots
-            .get(&target)
-            .ok_or("The bibliography is missing.")?,
-    )?;
-    let renames = citation_renames(&outcome.actions);
+    Ok(snapshots)
+}
+
+/// A key shared by another library is ambiguous. Preserve both libraries and
+/// ask the user to resolve the collision before rewriting citations.
+fn check_other_libraries(
+    root: &Path,
+    target: &Path,
+    snapshots: &BTreeMap<PathBuf, String>,
+    renames: &HashMap<String, String>,
+) -> Result<(), DocError> {
     let renamed_targets: std::collections::HashSet<_> =
         renames.values().map(String::as_str).collect();
-    // A key shared by another library is ambiguous. Preserve both libraries
-    // and ask the user to resolve the collision before rewriting citations.
-    for (path, source) in &snapshots {
-        if path != &target && path.extension().and_then(|e| e.to_str()) == Some("bib") {
+    for (path, source) in snapshots {
+        if path != target && path.extension().and_then(OsStr::to_str) == Some("bib") {
             let raw = RawBibliography::parse(source)
                 .map_err(|e| format!("Could not parse {}: {e}", path.display()))?;
             if raw.entries.iter().any(|entry| {
@@ -948,6 +1175,52 @@ pub fn plan_project(root: &Path, bib_path: &str) -> Result<CleanPlan, DocError> 
             }
         }
     }
+    Ok(())
+}
+
+/// The new text of a project file other than the cleaned library. A `.bib`
+/// file only follows renamed `crossref`-style keys; other sources have their
+/// citations rewritten.
+fn rewrite_project_source(
+    source: &str,
+    extension: &str,
+    relative: &str,
+    renames: &HashMap<String, String>,
+) -> Result<String, DocError> {
+    if extension == "bib" {
+        let raw = RawBibliography::parse(source).map_err(|e| e.to_string())?;
+        let edits = raw
+            .entries
+            .into_iter()
+            .flat_map(|entry| relation_key_edits(source, entry.v.fields, renames))
+            .collect();
+        return Ok(edit_text(source, edits));
+    }
+    let (updated, quoted_reference) = rewrite_citations_with_quotes(source, extension, renames);
+    if quoted_reference {
+        return Err(format!("{relative} contains a citation key inside quotation marks. Update those references manually before cleaning; quoted text is left unchanged.").into());
+    }
+    Ok(updated)
+}
+
+pub fn plan_project(root: &Path, bib_path: &str) -> Result<CleanPlan, DocError> {
+    let target = oleafly_core::resolve_project_path(root, bib_path)
+        .map_err(|error| DocError::other(error.to_string()))?;
+    if target.extension().and_then(OsStr::to_str) != Some("bib") {
+        return Err("Choose a .bib file to clean.".into());
+    }
+    let paths = project_text_files(root)?;
+    if !paths.contains(&target) {
+        return Err("The bibliography is not a regular project file.".into());
+    }
+    let snapshots = read_project_sources(root, paths)?;
+    let mut outcome = clean_bibtex_source(
+        snapshots
+            .get(&target)
+            .ok_or("The bibliography is missing.")?,
+    )?;
+    let renames = citation_renames(&outcome.actions);
+    check_other_libraries(root, &target, &snapshots, &renames)?;
     let mut digest = Sha256::new();
     digest.update(bib_path.as_bytes());
     let mut changes = Vec::new();
@@ -961,34 +1234,11 @@ pub fn plan_project(root: &Path, bib_path: &str) -> Result<CleanPlan, DocError> 
             digest.update((value.len() as u64).to_le_bytes());
             digest.update(value);
         }
-        let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
         let updated = if path == target {
             outcome.cleaned.clone()
-        } else if extension == "bib" {
-            let raw = RawBibliography::parse(&source).map_err(|e| e.to_string())?;
-            let mut edits = Vec::new();
-            for entry in raw.entries {
-                for field in entry.v.fields {
-                    if matches!(
-                        field.key.v.to_ascii_lowercase().as_str(),
-                        "crossref" | "xref" | "xdata" | "related" | "entryset"
-                    ) {
-                        edits.extend(key_edits(
-                            &source[field.value.span.clone()],
-                            field.value.span.start,
-                            &renames,
-                        ));
-                    }
-                }
-            }
-            edit_text(&source, edits)
         } else {
-            let (updated, quoted_reference) =
-                rewrite_citations_with_quotes(&source, extension, &renames);
-            if quoted_reference {
-                return Err(format!("{relative} contains a citation key inside quotation marks. Update those references manually before cleaning; quoted text is left unchanged.").into());
-            }
-            updated
+            let extension = path.extension().and_then(OsStr::to_str).unwrap_or("");
+            rewrite_project_source(&source, extension, &relative, &renames)?
         };
         if updated != source {
             outcome.changed_files.push(relative);
@@ -1159,6 +1409,43 @@ mod tests {
             source.replace("@article{old,", "@article{smith2020safe,")
         );
     }
+    #[test]
+    fn entries_linked_by_crossref_or_xdata_are_never_merged() {
+        // A child shares its parent's DOI through crossref or xdata. Merging the
+        // two pointed the kept entry's link at itself, and parsing that library
+        // overflowed the stack.
+        let explicit = "@inproceedings{parent, author={Smith, Jane}, title={The Art}, doi={10.1/test},}\n\
+                        @inproceedings{k1, author={Smith, Jane}, title={The Art}, doi={10.1/test}, crossref={parent},}";
+        let shared = "@xdata{press, publisher={Press}, doi={10.3/x}}\n\
+                      @book{uses, xdata={press}, author={Roe, Al}, title={Uses}}";
+        let inherited = "@book{book, author={Doe, Ann}, title={Big Book}, doi={10.2/book}}\n\
+                         @inbook{chapter, crossref={book}, chapter={3}}";
+        for source in [explicit, shared, inherited] {
+            let out = clean_bibtex_source(source).unwrap();
+            assert_eq!(out.entries_after, 2, "{source}");
+            assert!(
+                !out.actions
+                    .iter()
+                    .any(|action| action.kind == "removed-duplicate"
+                        || action
+                            .field
+                            .as_deref()
+                            .is_some_and(|note| note.starts_with("Shares a DOI"))),
+                "{source}: {:?}",
+                out.actions
+            );
+        }
+    }
+
+    #[test]
+    fn a_library_that_links_back_to_itself_is_refused() {
+        let error = clean_bibtex_source("@book{x, title={T}, crossref={x}}").unwrap_err();
+        assert!(
+            error.to_string().contains("leads back to itself"),
+            "{error}"
+        );
+    }
+
     #[test]
     fn rewrites_bibliography_crossrefs() {
         let source = "@proceedings{old,author={Smith, Jane},title={Safe References},year={2020}}\n@inproceedings{child,author={Doe, John},title={Different Paper},crossref={old}}";

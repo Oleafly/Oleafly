@@ -658,6 +658,95 @@ fn drop_empty_review(dir: &Path) {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// Every value the run must never print: the stored keys, the provider's
+/// credential and any provider key set in the environment.
+fn run_secrets(
+    config: &DesktopConfig,
+    resolved: &ResolvedProvider,
+    env: &(dyn Fn(&str) -> Option<String> + Sync),
+) -> Vec<String> {
+    let mut secrets = secret_values(config);
+    if resolved.resolved.credential.trim().len() >= 8 {
+        secrets.push(resolved.resolved.credential.trim().to_string());
+    }
+    for name in all_key_variables() {
+        if let Some(value) = env(name).filter(|value| value.trim().len() >= 8) {
+            secrets.push(value.trim().to_string());
+        }
+    }
+    secrets
+}
+
+/// Cancels the run on Ctrl+C, and on Unix on a closed terminal (SIGHUP) or a
+/// stop from a supervisor (SIGTERM): the commands the run started die with
+/// it. A second signal quits at once.
+fn watch_for_interrupt(cancel: CancellationToken, quiet: bool) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
+        crate::daemon::serve::termination().await;
+        cancel.cancel();
+        if !quiet {
+            crate::human::note("Stopping. Press Ctrl+C again to quit at once.");
+        }
+        crate::daemon::serve::termination().await;
+        std::process::exit(Exit::Interrupted as i32);
+    })
+}
+
+/// The warning code for a note about the files a run left out.
+fn workspace_warning_code(warning: &str) -> &'static str {
+    if warning.contains("names a run can't use") {
+        "agent.skipped_names"
+    } else if warning.contains("link") {
+        "agent.skipped_links"
+    } else if warning.contains("cloud") {
+        "agent.skipped_cloud"
+    } else {
+        "agent.workspace"
+    }
+}
+
+/// Appends the run's usage for Oleafly's usage view; a failure is a warning.
+async fn record_usage(ctx: &Context, root: &Path, event: UsageSpoolEvent) {
+    let root = root.to_path_buf();
+    let appended = tokio::task::spawn_blocking(move || usage_spool::append(&root, &event)).await;
+    if !matches!(appended, Ok(Ok(()))) {
+        ctx.warn(
+            "agent.usage_not_saved",
+            "This run's usage could not be recorded for Oleafly's usage view.",
+        );
+    }
+}
+
+/// Warns when the run stopped at its step limit or its time limit.
+fn warn_if_cut_short(ctx: &Context, stop: StopKind, steps: u32, timeout: Duration) {
+    match stop {
+        StopKind::StepLimit => ctx.warn(
+            "agent.step_limit",
+            format!("The agent stopped after {steps} steps."),
+        ),
+        StopKind::Timeout => ctx.warn(
+            "agent.timeout",
+            format!("The agent stopped after {} seconds.", timeout.as_secs()),
+        ),
+        _ => {}
+    }
+}
+
+/// Tells a person where the run's changes went.
+fn say_changes(ctx: &Context, review_dir: Option<&Path>, mode: &WriteMode, count: usize) {
+    let noun = if count == 1 { "change" } else { "changes" };
+    match (review_dir, mode) {
+        (Some(dir), WriteMode::Review { .. }) => {
+            let dir = shown(dir);
+            ctx.say(format!("Saved {count} {noun} for review in {dir}. Apply them with: oleafly agent apply {dir}"));
+        }
+        (_, WriteMode::Apply) if count > 0 => {
+            ctx.say(format!("Made {count} {noun} in the project."))
+        }
+        _ => {}
+    }
+}
+
 /// Runs the agent for `request` and reports.
 pub async fn execute(
     ctx: &Context,
@@ -711,36 +800,14 @@ pub async fn execute(
     for warning in &resolved.warnings {
         ctx.warn("agent.model_not_enabled", warning.clone());
     }
-    let mut secrets = secret_values(&config);
-    if resolved.resolved.credential.trim().len() >= 8 {
-        secrets.push(resolved.resolved.credential.trim().to_string());
-    }
-    for name in all_key_variables() {
-        if let Some(value) = env(name).filter(|value| value.trim().len() >= 8) {
-            secrets.push(value.trim().to_string());
-        }
-    }
+    let secrets = run_secrets(&config, &resolved, env);
     let redactor = Arc::new(Redactor::new(&secrets));
     let provider = resolved.resolved.provider_id.clone();
     let model = resolved.resolved.model_id.clone();
     let credential_source = resolved.source.label();
 
     let cancel = CancellationToken::new();
-    let interrupt = {
-        let cancel = cancel.clone();
-        let quiet = ctx.json() || ctx.quiet();
-        tokio::spawn(async move {
-            // Ctrl+C, and on Unix a closed terminal (SIGHUP) or a stop from
-            // a supervisor (SIGTERM): the commands the run started die with it.
-            crate::daemon::serve::termination().await;
-            cancel.cancel();
-            if !quiet {
-                crate::human::note("Stopping. Press Ctrl+C again to quit at once.");
-            }
-            crate::daemon::serve::termination().await;
-            std::process::exit(Exit::Interrupted as i32);
-        })
-    };
+    let interrupt = watch_for_interrupt(cancel.clone(), ctx.json() || ctx.quiet());
     let result = run_with(
         ctx,
         &request,
@@ -785,16 +852,7 @@ pub async fn execute(
     .await
     .map_err(|_| CliError::internal("The run's changes could not be collected."))??;
     for warning in &set.warnings {
-        let code = if warning.contains("names a run can't use") {
-            "agent.skipped_names"
-        } else if warning.contains("link") {
-            "agent.skipped_links"
-        } else if warning.contains("cloud") {
-            "agent.skipped_cloud"
-        } else {
-            "agent.workspace"
-        };
-        ctx.warn(code, warning.clone());
+        ctx.warn(workspace_warning_code(warning), warning.clone());
     }
     let mut review_dir = set.review_dir.clone();
     if set.changes.is_empty() && !request.keep_workspace {
@@ -825,15 +883,7 @@ pub async fn execute(
                 status: spool_status(stop.as_ref().ok().copied()).into(),
                 at: now_ms(),
             };
-            let root = root.clone();
-            let appended =
-                tokio::task::spawn_blocking(move || usage_spool::append(&root, &event)).await;
-            if !matches!(appended, Ok(Ok(()))) {
-                ctx.warn(
-                    "agent.usage_not_saved",
-                    "This run's usage could not be recorded for Oleafly's usage view.",
-                );
-            }
+            record_usage(ctx, root, event).await;
         }
     }
     let stop = stop?;
@@ -855,33 +905,14 @@ pub async fn execute(
         changes: set.changes.clone(),
         usage: usage_summary(&tracker.usage, tracker.usage_seen, cost),
     };
-    match stop {
-        StopKind::StepLimit => ctx.warn(
-            "agent.step_limit",
-            format!("The agent stopped after {} steps.", tracker.steps),
-        ),
-        StopKind::Timeout => ctx.warn(
-            "agent.timeout",
-            format!(
-                "The agent stopped after {} seconds.",
-                request.timeout.as_secs()
-            ),
-        ),
-        _ => {}
-    }
+    warn_if_cut_short(ctx, stop, tracker.steps, request.timeout);
     if !ctx.json() && !ctx.quiet() {
-        let count = set.changes.len();
-        let noun = if count == 1 { "change" } else { "changes" };
-        match (&review_dir, run_policy.mode.clone()) {
-            (Some(dir), WriteMode::Review { .. }) => {
-                let dir = shown(dir);
-                ctx.say(format!("Saved {count} {noun} for review in {dir}. Apply them with: oleafly agent apply {dir}"));
-            }
-            (_, WriteMode::Apply) if count > 0 => {
-                ctx.say(format!("Made {count} {noun} in the project."))
-            }
-            _ => {}
-        }
+        say_changes(
+            ctx,
+            review_dir.as_deref(),
+            &run_policy.mode,
+            set.changes.len(),
+        );
     }
     let value =
         json!({ "run": redactor.value(serde_json::to_value(&report).unwrap_or(Value::Null)) });
@@ -1178,6 +1209,23 @@ async fn run_with(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn workspace_notes_get_a_code_by_what_they_say() {
+        assert_eq!(
+            workspace_warning_code("3 names a run can't use were left out"),
+            "agent.skipped_names"
+        );
+        assert_eq!(
+            workspace_warning_code("2 links were left out"),
+            "agent.skipped_links"
+        );
+        assert_eq!(
+            workspace_warning_code("1 cloud-only file was left out"),
+            "agent.skipped_cloud"
+        );
+        assert_eq!(workspace_warning_code("Anything else"), "agent.workspace");
+    }
 
     #[test]
     fn effort_reaches_the_completion_request() {

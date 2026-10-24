@@ -137,23 +137,28 @@ function shiftEnterBytes(ctx: TerminalKeyContext): string {
   return ESC_CR_SHELLS.has(shell) ? "\x1b\r" : "\n";
 }
 
+/** Ctrl+Shift+C copies a selection (nothing else happens without one), Ctrl+Shift+V pastes. */
+function shiftClipboardChord(key: string, ctx: TerminalKeyContext): TerminalKeyAction | null {
+  if (key === "c") {
+    return ctx.hasSelection ? { kind: "copy", clearSelection: false } : { kind: "ignore" };
+  }
+  return key === "v" ? { kind: "paste" } : null;
+}
+
+/** Windows Terminal: Ctrl+C copies a selection (else it is ^C), Ctrl+V pastes. */
+function windowsClipboardChord(key: string, ctx: TerminalKeyContext): TerminalKeyAction | null {
+  if (key === "c" && ctx.hasSelection) return { kind: "copy", clearSelection: true };
+  return key === "v" ? { kind: "paste" } : null;
+}
+
 function copyOrPaste(
   event: TerminalKeyEvent,
   key: string,
   ctx: TerminalKeyContext,
 ): TerminalKeyAction | null {
   if (ctx.platform === "mac") return null;
-  if (only(event, { ctrl: true, shift: true })) {
-    if (key === "c") {
-      return ctx.hasSelection ? { kind: "copy", clearSelection: false } : { kind: "ignore" };
-    }
-    if (key === "v") return { kind: "paste" };
-  }
-  // Windows Terminal: Ctrl+C copies a selection (else it is ^C), Ctrl+V pastes.
-  if (ctx.platform === "windows" && only(event, { ctrl: true })) {
-    if (key === "c" && ctx.hasSelection) return { kind: "copy", clearSelection: true };
-    if (key === "v") return { kind: "paste" };
-  }
+  if (only(event, { ctrl: true, shift: true })) return shiftClipboardChord(key, ctx);
+  if (ctx.platform === "windows" && only(event, { ctrl: true })) return windowsClipboardChord(key, ctx);
   return null;
 }
 
@@ -186,6 +191,19 @@ function lineAndWordKeys(event: TerminalKeyEvent, platform: TerminalPlatform): T
   return null;
 }
 
+function isFindChord(event: TerminalKeyEvent, key: string, platform: TerminalPlatform): boolean {
+  if (key !== "f") return false;
+  // Plain Ctrl+F belongs to the program (vim and less page forward, readline
+  // moves a character), so Windows and Linux use Ctrl+Shift+F, as Windows
+  // Terminal and GNOME Terminal do.
+  return platform === "mac" ? only(event, { meta: true }) : only(event, { ctrl: true, shift: true });
+}
+
+/** Ctrl+/ sends 0x1f, also on layouts that need Shift for "/". */
+function isCtrlSlash(event: TerminalKeyEvent): boolean {
+  return event.key === "/" && event.ctrlKey && !event.altKey && !event.metaKey;
+}
+
 /** What a key event in the terminal does. Only keydown is routed. */
 export function routeTerminalKey(event: TerminalKeyEvent, ctx: TerminalKeyContext): TerminalKeyAction {
   if (event.type !== "keydown") return DEFAULT;
@@ -195,17 +213,11 @@ export function routeTerminalKey(event: TerminalKeyEvent, ctx: TerminalKeyContex
   const { platform } = ctx;
   if (platform === "mac" && only(event, { meta: true }) && key === "k") return { kind: "clear" };
   if (ctx.isAppShortcut(event)) return { kind: "app" };
-  // Plain Ctrl+F belongs to the program (vim and less page forward, readline
-  // moves a character), so Windows and Linux use Ctrl+Shift+F, as Windows
-  // Terminal and GNOME Terminal do.
-  const findChord =
-    platform === "mac" ? only(event, { meta: true }) : only(event, { ctrl: true, shift: true });
-  if (key === "f" && findChord) return { kind: "find" };
+  if (isFindChord(event, key, platform)) return { kind: "find" };
   const clipboard = copyOrPaste(event, key, ctx);
   if (clipboard) return clipboard;
   if (event.key === "Enter" && only(event, { shift: true })) return send(shiftEnterBytes(ctx));
-  // Layouts that need Shift for "/" still send 0x1f.
-  if (event.key === "/" && event.ctrlKey && !event.altKey && !event.metaKey) return send("\x1f");
+  if (isCtrlSlash(event)) return send("\x1f");
   const mapped = arrowWithAlt(event, platform) ?? lineAndWordKeys(event, platform);
   if (mapped) return mapped;
   // Every other Cmd chord on macOS is an app shortcut (menu items included).

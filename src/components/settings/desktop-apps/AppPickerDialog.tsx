@@ -26,8 +26,21 @@ export interface AppPickerDialogProps {
   onPick(app: InstalledApp): void;
 }
 
+/** The line under an app's name: its bundle id, or the path of its program. */
+function AppSubtitle({ app }: Readonly<{ app: InstalledApp }>) {
+  if (app.bundleId) return <span className="text-xs text-muted-foreground">{app.bundleId}</span>;
+  if (app.executable) {
+    return (
+      <span className="text-xs text-muted-foreground">
+        <SettingsPath path={app.executable} focusable={false} />
+      </span>
+    );
+  }
+  return null;
+}
+
 /** Picks an installed app agents may use. Blocked apps show why. */
-export default function AppPickerDialog({ open, onOpenChange, existing, onPick }: AppPickerDialogProps) {
+export default function AppPickerDialog({ open, onOpenChange, existing, onPick }: Readonly<AppPickerDialogProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const apps = useInstalledApps(open);
   const reasonIds = useId();
@@ -63,11 +76,69 @@ export default function AppPickerDialog({ open, onOpenChange, existing, onPick }
         return;
       }
       pick(app);
-    } catch (failure) {
-      setError(describeError(failure));
+    } catch (error_) {
+      setError(describeError(error_));
     } finally {
       setChoosing(false);
     }
+  };
+
+  const renderResults = () => {
+    if (apps.isPending) {
+      return <LoadingState label={t(($) => $.settings.integrations.desktopApps.apps.dialog.loading)} size="compact" />;
+    }
+    if (apps.isError) return <IntegrationError>{describeError(apps.error)}</IntegrationError>;
+    if (shown.length === 0) {
+      return <p className="text-sm text-muted-foreground">{t(($) => $.settings.integrations.desktopApps.apps.dialog.none)}</p>;
+    }
+    return (
+      <>
+        <ul className="max-h-80 space-y-1 overflow-y-auto" data-testid="desktop-apps-picker-list">
+          {shown.map((app, index) => {
+            const added = existing.some((known) => sameApp(known, app));
+            const unavailable = Boolean(app.blocked) || added;
+            const isSelected = selected !== null && appRowKey(selected) === appRowKey(app);
+            // The row's position, not its program: several entries can
+            // run the same program, and a path can hold spaces.
+            const reasonId = `${reasonIds}-reason-${index}`;
+            return (
+              <li key={appRowKey(app)}>
+                <button
+                  type="button"
+                  disabled={unavailable}
+                  aria-pressed={isSelected}
+                  aria-describedby={unavailable ? reasonId : undefined}
+                  onClick={() => setSelected(app)}
+                  onDoubleClick={() => !unavailable && pick(app)}
+                  className={cn(
+                    "flex w-full flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors",
+                    "hover:bg-accent focus-visible:border-ring focus-visible:bg-accent",
+                    "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent",
+                    isSelected ? "border-primary bg-accent" : "border-transparent",
+                  )}
+                >
+                  <span className="text-sm font-medium">{app.name}</span>
+                  <AppSubtitle app={app} />
+                  {unavailable ? (
+                    <span id={reasonId} className="text-xs text-muted-foreground">
+                      {app.blocked ? blockedText(app.blocked) : t(($) => $.settings.integrations.desktopApps.apps.dialog.added)}
+                    </span>
+                  ) : null}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        {matches.length > shown.length ? (
+          <p className="text-xs text-muted-foreground" data-testid="desktop-apps-picker-more">
+            {t(($) => $.settings.integrations.desktopApps.apps.dialog.more, {
+              shown: shown.length,
+              total: matches.length,
+            })}
+          </p>
+        ) : null}
+      </>
+    );
   };
 
   return (
@@ -101,66 +172,7 @@ export default function AppPickerDialog({ open, onOpenChange, existing, onPick }
           </Button>
         </div>
 
-        {apps.isPending ? (
-          <LoadingState label={t(($) => $.settings.integrations.desktopApps.apps.dialog.loading)} size="compact" />
-        ) : apps.isError ? (
-          <IntegrationError>{describeError(apps.error)}</IntegrationError>
-        ) : shown.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t(($) => $.settings.integrations.desktopApps.apps.dialog.none)}</p>
-        ) : (
-          <>
-            <ul className="max-h-80 space-y-1 overflow-y-auto" data-testid="desktop-apps-picker-list">
-              {shown.map((app, index) => {
-                const added = existing.some((known) => sameApp(known, app));
-                const unavailable = Boolean(app.blocked) || added;
-                const isSelected = selected !== null && appRowKey(selected) === appRowKey(app);
-                // The row's position, not its program: several entries can
-                // run the same program, and a path can hold spaces.
-                const reasonId = `${reasonIds}-reason-${index}`;
-                return (
-                  <li key={appRowKey(app)}>
-                    <button
-                      type="button"
-                      disabled={unavailable}
-                      aria-pressed={isSelected}
-                      aria-describedby={unavailable ? reasonId : undefined}
-                      onClick={() => setSelected(app)}
-                      onDoubleClick={() => !unavailable && pick(app)}
-                      className={cn(
-                        "flex w-full flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors",
-                        "hover:bg-accent focus-visible:border-ring focus-visible:bg-accent",
-                        "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent",
-                        isSelected ? "border-primary bg-accent" : "border-transparent",
-                      )}
-                    >
-                      <span className="text-sm font-medium">{app.name}</span>
-                      {app.bundleId ? (
-                        <span className="text-xs text-muted-foreground">{app.bundleId}</span>
-                      ) : app.executable ? (
-                        <span className="text-xs text-muted-foreground">
-                          <SettingsPath path={app.executable} focusable={false} />
-                        </span>
-                      ) : null}
-                      {unavailable ? (
-                        <span id={reasonId} className="text-xs text-muted-foreground">
-                          {app.blocked ? blockedText(app.blocked) : t(($) => $.settings.integrations.desktopApps.apps.dialog.added)}
-                        </span>
-                      ) : null}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-            {matches.length > shown.length ? (
-              <p className="text-xs text-muted-foreground" data-testid="desktop-apps-picker-more">
-                {t(($) => $.settings.integrations.desktopApps.apps.dialog.more, {
-                  shown: shown.length,
-                  total: matches.length,
-                })}
-              </p>
-            ) : null}
-          </>
-        )}
+        {renderResults()}
 
         {error ? <IntegrationError>{error}</IntegrationError> : null}
 

@@ -57,8 +57,8 @@ export function GitHostingSection() {
     try {
       await useForgeAccountsStore.getState().signOut(account.base);
       setNotice(t(($) => $.settings.gitHosting.notice.signedOut, { host: hostLabel(account.base) }));
-    } catch (failure) {
-      setError(describeError(failure));
+    } catch (error_) {
+      setError(describeError(error_));
     } finally {
       setBusyBase(null);
     }
@@ -79,8 +79,8 @@ export function GitHostingSection() {
     setError(null);
     try {
       await useForgeAccountsStore.getState().setCaFile(account.base, next);
-    } catch (failure) {
-      setError(describeError(failure));
+    } catch (error_) {
+      setError(describeError(error_));
     } finally {
       setBusyBase(null);
     }

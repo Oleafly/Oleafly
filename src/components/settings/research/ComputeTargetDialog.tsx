@@ -15,6 +15,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { describeError } from "@/lib/app-error";
+import { cn } from "@/lib/utils";
 import {
   formatSlurmTime,
   parseMemory,
@@ -103,60 +104,72 @@ function count(value: string): number | null {
   return /^\d+$/.test(trimmed) ? Number(trimmed) : Number.NaN;
 }
 
+type ParseErrors = Partial<Record<TargetField, TargetError>>;
+
+function cuaSpaceFromDraft(id: string, draft: Draft): ComputeTarget {
+  return {
+    kind: "cuaSpace",
+    id,
+    label: draft.label.trim(),
+    space: draft.perTask ? "" : draft.space.trim(),
+    perTask: draft.perTask,
+    image: optional(draft.image),
+  };
+}
+
+/** The fields an SSH host and a Slurm cluster share. */
+function remoteFromDraft(id: string, draft: Draft, parseErrors: ParseErrors) {
+  const port = count(draft.port);
+  if (Number.isNaN(port)) parseErrors.port = "port";
+  return {
+    id,
+    label: draft.label.trim(),
+    host: draft.host.trim(),
+    user: optional(draft.user),
+    port: Number.isNaN(port) ? null : port,
+    remoteRoot: optional(draft.remoteRoot),
+    prelude: draft.prelude,
+  };
+}
+
+function slurmDefaultsFromDraft(draft: Draft, parseErrors: ParseErrors): Extract<ComputeTarget, { kind: "slurm" }>["defaults"] {
+  const timeMinutes = draft.time.trim() === "" ? null : parseSlurmTime(draft.time);
+  if (draft.time.trim() !== "" && timeMinutes === null) parseErrors.time = "time";
+  const memoryGb = draft.mem.trim() === "" ? null : parseMemory(draft.mem);
+  if (draft.mem.trim() !== "" && memoryGb === null) parseErrors.mem = "mem";
+  const gpus = count(draft.gpus);
+  if (Number.isNaN(gpus)) parseErrors.gpus = "count";
+  const cpus = count(draft.cpus);
+  if (Number.isNaN(cpus)) parseErrors.cpus = "count";
+  return {
+    timeMinutes,
+    partition: optional(draft.partition),
+    account: optional(draft.account),
+    qos: optional(draft.qos),
+    gpus: Number.isNaN(gpus) ? null : gpus,
+    cpus: Number.isNaN(cpus) ? null : cpus,
+    memoryGb,
+  };
+}
+
 /** The target the draft describes, and the errors the form shows. */
 export function targetFromDraft(
   original: ComputeTarget,
   draft: Draft,
 ): { target: ComputeTarget; errors: Partial<Record<TargetField, TargetError>> } {
-  const parseErrors: Partial<Record<TargetField, TargetError>> = {};
+  const parseErrors: ParseErrors = {};
   let target: ComputeTarget;
   if (original.kind === "cuaSpace") {
-    target = {
-      kind: "cuaSpace",
-      id: original.id,
-      label: draft.label.trim(),
-      space: draft.perTask ? "" : draft.space.trim(),
-      perTask: draft.perTask,
-      image: optional(draft.image),
-    };
+    target = cuaSpaceFromDraft(original.id, draft);
+  } else if (original.kind === "ssh") {
+    target = { kind: "ssh", ...remoteFromDraft(original.id, draft, parseErrors) };
   } else {
-    const port = count(draft.port);
-    if (Number.isNaN(port)) parseErrors.port = "port";
-    const remote = {
-      id: original.id,
-      label: draft.label.trim(),
-      host: draft.host.trim(),
-      user: optional(draft.user),
-      port: Number.isNaN(port) ? null : port,
-      remoteRoot: optional(draft.remoteRoot),
-      prelude: draft.prelude,
+    target = {
+      kind: "slurm",
+      ...remoteFromDraft(original.id, draft, parseErrors),
+      defaults: slurmDefaultsFromDraft(draft, parseErrors),
+      gpuFlag: draft.gpuFlag,
     };
-    if (original.kind === "ssh") {
-      target = { kind: "ssh", ...remote };
-    } else {
-      const timeMinutes = draft.time.trim() === "" ? null : parseSlurmTime(draft.time);
-      if (draft.time.trim() !== "" && timeMinutes === null) parseErrors.time = "time";
-      const memoryGb = draft.mem.trim() === "" ? null : parseMemory(draft.mem);
-      if (draft.mem.trim() !== "" && memoryGb === null) parseErrors.mem = "mem";
-      const gpus = count(draft.gpus);
-      if (Number.isNaN(gpus)) parseErrors.gpus = "count";
-      const cpus = count(draft.cpus);
-      if (Number.isNaN(cpus)) parseErrors.cpus = "count";
-      target = {
-        kind: "slurm",
-        ...remote,
-        defaults: {
-          timeMinutes,
-          partition: optional(draft.partition),
-          account: optional(draft.account),
-          qos: optional(draft.qos),
-          gpus: Number.isNaN(gpus) ? null : gpus,
-          cpus: Number.isNaN(cpus) ? null : cpus,
-          memoryGb,
-        },
-        gpuFlag: draft.gpuFlag,
-      };
-    }
   }
   return { target, errors: { ...validateTarget(target), ...parseErrors } };
 }
@@ -168,19 +181,17 @@ function Field({
   error,
   children,
 }: Readonly<{ id: string; label: string; hint?: string; error?: string; children: ReactNode }>) {
+  // An error replaces the hint.
+  const note = error || hint;
   return (
     <div className="grid gap-1.5">
       <label htmlFor={id} className="text-xs font-medium">
         {label}
       </label>
       {children}
-      {error ? (
-        <p id={`${id}-message`} className="text-xs text-destructive">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${id}-message`} className="text-xs text-muted-foreground">
-          {hint}
+      {note ? (
+        <p id={`${id}-message`} className={cn("text-xs", error ? "text-destructive" : "text-muted-foreground")}>
+          {note}
         </p>
       ) : null}
     </div>

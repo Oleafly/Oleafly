@@ -721,6 +721,48 @@ fn standalone_usage(
     ))
 }
 
+/// The usage status of a finished run.
+fn run_status<E>(cancelled: bool, outcome: &Result<oleafly_agent::RunOutcome, E>) -> &'static str {
+    if cancelled {
+        "cancelled"
+    } else if matches!(outcome, Ok(outcome) if outcome.error.is_none()) {
+        "completed"
+    } else {
+        "failed"
+    }
+}
+
+/// Appends the run's recorded turn to its thread's rollout and re-indexes
+/// the thread.
+async fn persist_recorded_turn(
+    recorder: &Mutex<oleafly_agent::items::TurnRecorder>,
+    thread_id: &str,
+    project: String,
+    stopped_at_cap: bool,
+) {
+    // The guard must drop before the persist await keeps this future Send; a
+    // poisoned lock simply skips persistence.
+    let snapshot = recorder.lock().ok().map(|mut recorder| {
+        recorder.finish(stopped_at_cap);
+        recorder.snapshot().clone()
+    });
+    let Some(snapshot) = snapshot else {
+        return;
+    };
+    let thread_id = thread_id.to_string();
+    let persist = tauri::async_runtime::spawn_blocking(move || {
+        let Ok(root) = crate::paths::oleafly_root() else {
+            return;
+        };
+        if crate::rollout::append_turn(&root, &thread_id, &snapshot).is_ok() {
+            if let Ok(turns) = crate::rollout::read_turns(&root, &thread_id) {
+                let _ = crate::library_db::resync_thread(&root, &thread_id, &project, &turns);
+            }
+        }
+    });
+    let _ = persist.await;
+}
+
 #[tauri::command]
 #[allow(clippy::too_many_arguments)] // Tauri command surface; each arg is IPC-named.
 pub async fn agent_run(
@@ -946,13 +988,7 @@ pub async fn agent_run(
         subagent_manager_for_registry
             .cancel_descendants("/root")
             .await;
-        usage.finish(if run_token.is_cancelled() {
-            "cancelled"
-        } else if matches!(&outcome, Ok(outcome) if outcome.error.is_none()) {
-            "completed"
-        } else {
-            "failed"
-        });
+        usage.finish(run_status(run_token.is_cancelled(), &outcome));
         // The run's cost with its subagents', from the models' prices.
         let mut outcome = outcome;
         if let Ok(outcome) = &mut outcome {
@@ -960,30 +996,14 @@ pub async fn agent_run(
         }
         persist_guard.settled = true;
         if let Some((thread_id, shared)) = &record_sink {
-            // The guard must drop before the persist await keeps this future
-            // Send; a poisoned lock simply skips persistence.
-            let snapshot = shared.lock().ok().map(|mut recorder| {
-                let stopped_at_cap = matches!(&outcome, Ok(outcome) if outcome.stopped_at_cap);
-                recorder.finish(stopped_at_cap);
-                recorder.snapshot().clone()
-            });
-            if let Some(snapshot) = snapshot {
-                let thread_id = thread_id.clone();
-                let project = pinned_project.clone().unwrap_or_default();
-                let persist = tauri::async_runtime::spawn_blocking(move || {
-                    let Ok(root) = crate::paths::oleafly_root() else {
-                        return;
-                    };
-                    if crate::rollout::append_turn(&root, &thread_id, &snapshot).is_ok() {
-                        if let Ok(turns) = crate::rollout::read_turns(&root, &thread_id) {
-                            let _ = crate::library_db::resync_thread(
-                                &root, &thread_id, &project, &turns,
-                            );
-                        }
-                    }
-                });
-                let _ = persist.await;
-            }
+            let stopped_at_cap = matches!(&outcome, Ok(outcome) if outcome.stopped_at_cap);
+            persist_recorded_turn(
+                shared,
+                thread_id,
+                pinned_project.clone().unwrap_or_default(),
+                stopped_at_cap,
+            )
+            .await;
         }
         let _ = on_event.send(AgentEvent::RunEnd);
         outcome.map_err(tagged)

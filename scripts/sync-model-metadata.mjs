@@ -99,29 +99,30 @@ export function normalizeCost(value) {
   return Object.keys(cost).length > 0 ? cost : undefined;
 }
 
+function normalizeReasoningOption(option) {
+  if (!isRecord(option)) return undefined;
+  if (option.type === "effort") {
+    const values = Array.isArray(option.values)
+      ? EFFORT_VALUES.filter((effort) => option.values.includes(effort))
+      : [];
+    return values.length > 0 ? { type: "effort", values } : undefined;
+  }
+  if (option.type === "budget_tokens") {
+    const entry = { type: "budget_tokens" };
+    const min = nonNegativeInteger(option.min);
+    if (min !== undefined) entry.min = min;
+    const max = positiveInteger(option.max);
+    if (max !== undefined) entry.max = max;
+    return entry;
+  }
+  return option.type === "toggle" ? { type: "toggle" } : undefined;
+}
+
 // How a model's reasoning is controlled: effort names, a thinking budget,
 // or a switch. Unknown option types and effort names are dropped.
 export function normalizeReasoningOptions(value) {
   if (!Array.isArray(value)) return undefined;
-  const options = [];
-  for (const option of value) {
-    if (!isRecord(option)) continue;
-    if (option.type === "effort") {
-      const values = Array.isArray(option.values)
-        ? EFFORT_VALUES.filter((effort) => option.values.includes(effort))
-        : [];
-      if (values.length > 0) options.push({ type: "effort", values });
-    } else if (option.type === "budget_tokens") {
-      const entry = { type: "budget_tokens" };
-      const min = nonNegativeInteger(option.min);
-      if (min !== undefined) entry.min = min;
-      const max = positiveInteger(option.max);
-      if (max !== undefined) entry.max = max;
-      options.push(entry);
-    } else if (option.type === "toggle") {
-      options.push({ type: "toggle" });
-    }
-  }
+  const options = value.map(normalizeReasoningOption).filter((option) => option !== undefined);
   return options.length > 0 ? options : undefined;
 }
 

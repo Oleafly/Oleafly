@@ -9,7 +9,6 @@ import {
   useState,
   type ChangeEvent,
   type ClipboardEvent,
-  type DragEvent,
   type KeyboardEvent,
   type ReactNode,
 } from "react";
@@ -37,10 +36,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ATTACHMENT_ACCEPT } from "@/lib/attachments";
 import { activeMentionQuery, mentionTokenEnd } from "@/lib/composer-tokens";
-import { logError } from "@/lib/log";
-import { takeNativeDrop } from "@/lib/native-drop";
-import { treeDragPath } from "@/lib/tree-drag";
-import { cn, isLinux } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/store/settings";
 import { promptHistory, rememberPrompt } from "@/store/composer-drafts";
 import {
@@ -49,18 +45,17 @@ import {
   COMPOSER_DEFAULT_HEIGHT,
   COMPOSER_MAX_PANEL_SHARE,
   COMPOSER_MIN_REM,
-  composerDropKind,
   composerGrowMax,
   composerKeyAction,
-  dropEffectFor,
   historyStep,
   pastedFiles,
   slashMenuQuery,
-  type ComposerDropKind,
 } from "./composer-input";
 import { ComposerResizeHandle } from "./ComposerResizeHandle";
 import { isImeEnter } from "./ime";
 import type { ComposerAttachment, MentionItem, SlashItem } from "./types";
+import { useComposerDrop } from "./use-composer-drop";
+import { useMentionResults } from "./use-mention-results";
 
 export { isImeEnter } from "./ime";
 export type { ComposerAttachment, MentionItem, SlashItem } from "./types";
@@ -118,11 +113,20 @@ function rootFontPx(): number {
   return Number.isFinite(size) && size > 0 ? size : 16;
 }
 
-function sameMentions(left: readonly MentionItem[], right: readonly MentionItem[]): boolean {
-  return (
-    left.length === right.length &&
-    left.every((item, index) => item.id === right[index].id && item.kind === right[index].kind)
-  );
+/** The option the textarea points at: the highlighted mention, else the highlighted command. */
+function activeDescendantId(
+  mention: { open: boolean; key: string | null },
+  slash: { shown: boolean; id: string | null },
+): string | undefined {
+  if (mention.open && mention.key) return `ai-mention-${mention.key}`;
+  if (slash.shown && slash.id) return `ai-slash-command-${slash.id}`;
+  return undefined;
+}
+
+/** The id of the menu the textarea controls while one is open. */
+function openMenuId(mentionOpen: boolean, slashShown: boolean): string | undefined {
+  if (mentionOpen) return "ai-mention-menu";
+  return slashShown ? "ai-slash-command-menu" : undefined;
 }
 
 export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(function ChatComposer(
@@ -198,9 +202,9 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
   useAutoSizeTextarea(textareaRef, shellRef, value, placeholder, growMax, resting);
 
   // Caret, for mentions and for placing it after programmatic edits.
-  const [caret, setCaretState] = useState(value.length);
+  const [caretPosition, setCaretPosition] = useState(value.length);
   const syncCaret = useCallback((textarea: HTMLTextAreaElement) => {
-    setCaretState(
+    setCaretPosition(
       typeof textarea.selectionStart === "number" ? textarea.selectionStart : textarea.value.length,
     );
   }, []);
@@ -210,7 +214,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
     if (position === null || !textarea) return;
     pendingCaret.current = null;
     textarea.setSelectionRange(position, position);
-    setCaretState(position);
+    setCaretPosition(position);
   }, [value]);
 
   const focus = useCallback(() => {
@@ -225,7 +229,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
         // No re-render follows, so place the caret now.
         pendingCaret.current = null;
         textareaRef.current?.setSelectionRange(caretAt, caretAt);
-        setCaretState(caretAt);
+        setCaretPosition(caretAt);
       }
     },
     [onChange, value],
@@ -269,40 +273,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
   };
 
   // Mentions.
-  const mentionToken = mentionItems ? activeMentionQuery(value, caret) : null;
+  const mentionToken = mentionItems ? activeMentionQuery(value, caretPosition) : null;
   const mentionQuery = mentionToken?.query ?? null;
   const [mentionDismissedFor, setMentionDismissedFor] = useState<string | null>(null);
   const [activeMentionKey, setActiveMentionKey] = useState<string | null>(null);
-  const mentionResult = useMemo(
-    () => (mentionQuery === null || !mentionItems ? null : mentionItems(mentionQuery)),
-    [mentionItems, mentionQuery],
-  );
-  const [asyncMentions, setAsyncMentions] = useState<{
-    query: string;
-    items: MentionItem[];
-  } | null>(null);
-  const mentionSequence = useRef(0);
-  useEffect(() => {
-    if (mentionResult === null || Array.isArray(mentionResult) || mentionQuery === null) return;
-    const sequence = ++mentionSequence.current;
-    const query = mentionQuery;
-    mentionResult.then(
-      (items) => {
-        if (sequence !== mentionSequence.current) return;
-        setAsyncMentions((current) =>
-          current && current.query === query && sameMentions(current.items, items)
-            ? current
-            : { query, items },
-        );
-      },
-      (error: unknown) => void logError("mention suggestions", error),
-    );
-  }, [mentionQuery, mentionResult]);
-  const mentionResults: readonly MentionItem[] = Array.isArray(mentionResult)
-    ? mentionResult
-    : asyncMentions && asyncMentions.query === mentionQuery
-      ? asyncMentions.items
-      : [];
+  const mentionResults = useMentionResults(mentionItems, mentionQuery);
   const mentionOpen =
     mentionToken !== null && mentionResults.length > 0 && mentionDismissedFor !== value;
   const mentionEntries = useMemo<MentionEntry[]>(
@@ -425,62 +400,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
     onAddFiles(files);
   };
 
-  // Drops: files from the computer, project paths from the file tree, and
-  // Linux file drops through the native bridge.
-  const [dropKind, setDropKind] = useState<ComposerDropKind | null>(null);
-  const dragDepth = useRef(0);
-  const acceptedDrop = (transfer: DataTransfer | null): ComposerDropKind | null => {
-    const kind = composerDropKind(transfer, isLinux);
-    if (kind === "tree") return onDropProjectPaths ? kind : null;
-    if (kind) return onAddFiles ? kind : null;
-    return null;
-  };
-  const showDropEffect = (event: DragEvent<HTMLDivElement>, kind: ComposerDropKind) => {
-    event.dataTransfer.dropEffect =
-      kind === "tree" ? dropEffectFor(event.dataTransfer.effectAllowed) : "copy";
-  };
-  const onDragEnter = (event: DragEvent<HTMLDivElement>) => {
-    const kind = acceptedDrop(event.dataTransfer);
-    if (!kind) return;
-    event.preventDefault();
-    dragDepth.current += 1;
-    setDropKind(kind);
-    showDropEffect(event, kind);
-  };
-  const onDragOver = (event: DragEvent<HTMLDivElement>) => {
-    const kind = acceptedDrop(event.dataTransfer);
-    if (!kind) return;
-    event.preventDefault();
-    showDropEffect(event, kind);
-  };
-  const onDragLeave = () => {
-    if (dragDepth.current === 0) return;
-    dragDepth.current -= 1;
-    if (dragDepth.current === 0) setDropKind(null);
-  };
-  const onDrop = (event: DragEvent<HTMLDivElement>) => {
-    const kind = acceptedDrop(event.dataTransfer);
-    dragDepth.current = 0;
-    setDropKind(null);
-    if (!kind) return;
-    event.preventDefault();
-    if (kind === "tree") {
-      const path = treeDragPath(event.dataTransfer);
-      if (path) onDropProjectPaths?.([path]);
-      return;
-    }
-    if (kind === "files") {
-      const files = Array.from(event.dataTransfer.files);
-      if (files.length > 0) onAddFiles?.(files);
-      return;
-    }
-    void takeNativeDrop()
-      .then(async (items) => (await import("@/lib/attachments-intake")).readDroppedFiles(items))
-      .then((files) => {
-        if (files.length > 0) onAddFiles?.(files);
-      })
-      .catch((error: unknown) => void logError("read dropped files", error));
-  };
+  const drop = useComposerDrop({ onAddFiles, onDropProjectPaths });
 
   useImperativeHandle(
     ref,
@@ -491,7 +411,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
         if (!textarea) return;
         const at = Math.max(0, Math.min(position, textarea.value.length));
         textarea.setSelectionRange(at, at);
-        setCaretState(at);
+        setCaretPosition(at);
       },
       insertText(text: string) {
         const textarea = textareaRef.current;
@@ -512,12 +432,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
     [focus, replaceValue, value],
   );
 
-  const activeDescendant =
-    mentionOpen && activeMentionKey
-      ? `ai-mention-${activeMentionKey}`
-      : slashShown && activeSlashId
-        ? `ai-slash-command-${activeSlashId}`
-        : undefined;
+  const activeDescendant = activeDescendantId(
+    { open: mentionOpen, key: activeMentionKey },
+    { shown: slashShown, id: activeSlashId },
+  );
   const sendLabel = labels?.send ?? t(($) => $.ai.composer.send);
   const stopLabel = labels?.stop ?? t(($) => $.ai.composer.stop);
   const stopTitle = labels?.stopTitle ?? t(($) => $.ai.composer.stopTitle);
@@ -529,10 +447,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
       data-chat-composer=""
       data-composer-id={composerId}
       className="relative"
-      onDragEnter={onDragEnter}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
+      onDragEnter={drop.onDragEnter}
+      onDragOver={drop.onDragOver}
+      onDragLeave={drop.onDragLeave}
+      onDrop={drop.onDrop}
     >
       <AttachmentChips items={attachments} onRemove={onRemoveAttachment} />
       <div
@@ -610,9 +528,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
             role="combobox"
             aria-label={labels?.textarea}
             aria-autocomplete="list"
-            aria-controls={
-              mentionOpen ? "ai-mention-menu" : slashShown ? "ai-slash-command-menu" : undefined
-            }
+            aria-controls={openMenuId(mentionOpen, slashShown)}
             aria-expanded={mentionOpen || slashShown}
             aria-haspopup="listbox"
             aria-activedescendant={activeDescendant}
@@ -683,12 +599,12 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
             )}
           </div>
         </div>
-        {dropKind && (
+        {drop.dropKind && (
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-[1.375rem] border-2 border-dashed border-primary/60 bg-primary/5 text-xs font-medium text-primary"
           >
-            {dropKind === "tree"
+            {drop.dropKind === "tree"
               ? t(($) => $.ai.attachments.dropProjectFile)
               : t(($) => $.ai.attachments.dropFiles)}
           </div>

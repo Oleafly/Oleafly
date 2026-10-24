@@ -179,8 +179,7 @@ pub(super) async fn execute(
                 arguments["year_to"].as_u64().map(|year| year as u16),
                 arguments["open_access_only"].as_bool().unwrap_or(false),
             )
-            .await
-            .map_err(String::from)?,
+            .await?,
         ),
         "literature_arxiv_lookup" => source_payload(
             crate::literature::literature_arxiv_lookup(

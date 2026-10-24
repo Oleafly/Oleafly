@@ -440,6 +440,105 @@ async fn connect_one(
     }
 }
 
+/// The servers a selection names. A named server that isn't turned on gets a
+/// warning.
+fn choose_servers<'a>(
+    servers: &'a [McpServer],
+    selection: &McpSelection,
+    warnings: &mut Vec<String>,
+) -> Vec<&'a McpServer> {
+    match selection {
+        McpSelection::None => Vec::new(),
+        McpSelection::All => servers.iter().collect(),
+        McpSelection::Named(names) => {
+            for name in names {
+                if !servers.iter().any(|server| &server.name == name) {
+                    warnings.push(format!(
+                        "No MCP server named {name} is turned on in Oleafly."
+                    ));
+                }
+            }
+            servers
+                .iter()
+                .filter(|server| names.contains(&server.name))
+                .collect()
+        }
+    }
+}
+
+/// Drops the servers the policy doesn't allow, with a warning for each.
+fn retain_allowed(chosen: &mut Vec<&McpServer>, policy: &RunPolicy, warnings: &mut Vec<String>) {
+    chosen.retain(|server| match &server.transport {
+        McpTransport::Stdio { .. } if policy.question => {
+            warnings.push(format!(
+                "The MCP server {} runs a program on this computer, which oleafly ask doesn't do.",
+                server.name
+            ));
+            false
+        }
+        McpTransport::Stdio { .. } if !policy.allow.commands => {
+            warnings.push(format!(
+                "The MCP server {} runs a program on this computer, so it needs --allow commands.",
+                server.name
+            ));
+            false
+        }
+        McpTransport::Remote { .. } if !policy.allow.network => {
+            warnings.push(format!(
+                "The MCP server {} is on the network, so it needs --allow network.",
+                server.name
+            ));
+            false
+        }
+        _ => true,
+    });
+}
+
+/// One listed tool as the run exposes it. `None` when its name is unusable or
+/// shows a stored value, `oleafly ask` can't use it, or `known` has it.
+fn tool_spec(
+    server: &McpServer,
+    tool: &Value,
+    values: Option<&AhoCorasick>,
+    policy: &RunPolicy,
+    known: &[McpToolSpec],
+) -> Option<McpToolSpec> {
+    let name = tool["name"]
+        .as_str()
+        .filter(|name| !name.is_empty() && name.len() <= 128)?;
+    // A tool named after a stored value would show it to the model.
+    if values.is_some_and(|values| values.is_match(name)) {
+        return None;
+    }
+    let read_only_hint = tool["annotations"]["readOnlyHint"].as_bool() == Some(true);
+    if policy.question && !read_only_hint {
+        return None;
+    }
+    let agent_name = agent_tool_name(&server.name, name);
+    if known.iter().any(|known| known.agent_name == agent_name) {
+        return None;
+    }
+    let description = redact_with(tool["description"].as_str().unwrap_or_default(), values);
+    let schema = match tool.get("inputSchema") {
+        Some(schema) if schema.is_object() => strip_header_extensions(schema.clone()),
+        _ => json!({"type": "object", "properties": {}}),
+    };
+    Some(McpToolSpec {
+        agent_name: agent_name.clone(),
+        server: server.name.clone(),
+        tool: name.to_string(),
+        schema: ToolSchema {
+            name: agent_name,
+            description: bounded(
+                &format!("{} (MCP server {})", description.trim(), server.name),
+                MAX_DESCRIPTION_CHARS,
+            ),
+            input_schema: schema,
+        },
+        read_only_hint,
+    })
+}
+
 impl McpHub {
     /// No servers.
     pub fn empty() -> Self {
@@ -474,44 +573,8 @@ impl McpHub {
         cancel: &CancellationToken,
     ) -> (McpHub, Vec<String>) {
         let mut warnings = Vec::new();
-        let mut chosen: Vec<&McpServer> = match selection {
-            McpSelection::None => Vec::new(),
-            McpSelection::All => servers.iter().collect(),
-            McpSelection::Named(names) => {
-                for name in names {
-                    if !servers.iter().any(|server| &server.name == name) {
-                        warnings.push(format!(
-                            "No MCP server named {name} is turned on in Oleafly."
-                        ));
-                    }
-                }
-                servers
-                    .iter()
-                    .filter(|server| names.contains(&server.name))
-                    .collect()
-            }
-        };
-        chosen.retain(|server| match &server.transport {
-            McpTransport::Stdio { .. } if policy.question => {
-                warnings.push(format!(
-                    "The MCP server {} runs a program on this computer, which oleafly ask doesn't do.",
-                    server.name
-                ));
-                false
-            }
-            McpTransport::Stdio { .. } if !policy.allow.commands => {
-                warnings.push(format!(
-                    "The MCP server {} runs a program on this computer, so it needs --allow commands.",
-                    server.name
-                ));
-                false
-            }
-            McpTransport::Remote { .. } if !policy.allow.network => {
-                warnings.push(format!("The MCP server {} is on the network, so it needs --allow network.", server.name));
-                false
-            }
-            _ => true,
-        });
+        let mut chosen = choose_servers(servers, selection, &mut warnings);
+        retain_allowed(&mut chosen, policy, &mut warnings);
         let mut all_secrets: Vec<String> = secrets.to_vec();
         for server in &chosen {
             all_secrets.extend(server_values(server));
@@ -536,56 +599,7 @@ impl McpHub {
         for (server, values, result) in results {
             match result {
                 Ok((connection, tools)) => {
-                    for tool in tools {
-                        if hub.tools.len() >= MAX_TOOLS {
-                            warnings
-                                .push(format!("Only the first {MAX_TOOLS} MCP tools are used."));
-                            break;
-                        }
-                        let Some(name) = tool["name"]
-                            .as_str()
-                            .filter(|name| !name.is_empty() && name.len() <= 128)
-                        else {
-                            continue;
-                        };
-                        // A tool named after a stored value would show it to the model.
-                        if values.as_ref().is_some_and(|values| values.is_match(name)) {
-                            continue;
-                        }
-                        let read_only_hint =
-                            tool["annotations"]["readOnlyHint"].as_bool() == Some(true);
-                        if policy.question && !read_only_hint {
-                            continue;
-                        }
-                        let agent_name = agent_tool_name(&server.name, name);
-                        if hub.tools.iter().any(|known| known.agent_name == agent_name) {
-                            continue;
-                        }
-                        let description = redact_with(
-                            tool["description"].as_str().unwrap_or_default(),
-                            values.as_ref(),
-                        );
-                        let schema = match tool.get("inputSchema") {
-                            Some(schema) if schema.is_object() => {
-                                strip_header_extensions(schema.clone())
-                            }
-                            _ => json!({"type": "object", "properties": {}}),
-                        };
-                        hub.tools.push(McpToolSpec {
-                            agent_name: agent_name.clone(),
-                            server: server.name.clone(),
-                            tool: name.to_string(),
-                            schema: ToolSchema {
-                                name: agent_name,
-                                description: bounded(
-                                    &format!("{} (MCP server {})", description.trim(), server.name),
-                                    MAX_DESCRIPTION_CHARS,
-                                ),
-                                input_schema: schema,
-                            },
-                            read_only_hint,
-                        });
-                    }
+                    hub.add_tools(server, tools, values.as_ref(), policy, &mut warnings);
                     hub.servers.push(Server {
                         name: server.name.clone(),
                         connection,
@@ -603,6 +617,27 @@ impl McpHub {
             .map(|warning| redact_with(&warning, hub.secrets.as_ref()))
             .collect();
         (hub, warnings)
+    }
+
+    /// Adds a server's tools, up to the run's limit, skipping the ones it
+    /// can't use.
+    fn add_tools(
+        &mut self,
+        server: &McpServer,
+        tools: Vec<Value>,
+        values: Option<&AhoCorasick>,
+        policy: &RunPolicy,
+        warnings: &mut Vec<String>,
+    ) {
+        for tool in tools {
+            if self.tools.len() >= MAX_TOOLS {
+                warnings.push(format!("Only the first {MAX_TOOLS} MCP tools are used."));
+                break;
+            }
+            if let Some(spec) = tool_spec(server, &tool, values, policy, &self.tools) {
+                self.tools.push(spec);
+            }
+        }
     }
 
     pub fn tools(&self) -> &[McpToolSpec] {

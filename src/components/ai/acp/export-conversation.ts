@@ -81,7 +81,8 @@ function header(input: ConversationExportInput): string[] {
   if (commits.length > 0) {
     lines.push(`**${i18n.t(($) => $.ai.acp.export.commits)}**`, "");
     for (const commit of commits) {
-      lines.push(`- ${commit.commit.slice(0, 7)}${commit.message ? ` ${commit.message.split("\n")[0]}` : ""}`);
+      const subject = commit.message ? ` ${commit.message.split("\n")[0]}` : "";
+      lines.push(`- ${commit.commit.slice(0, 7)}${subject}`);
     }
     lines.push("");
   }

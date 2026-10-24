@@ -1055,7 +1055,7 @@ impl<'a> Journal<'a> {
         self.sequence += 1;
         let name = destination
             .file_name()
-            .and_then(|name| name.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .unwrap_or("file");
         destination.with_file_name(oleafly_secrets::fs::staging_name(
             name,
@@ -1266,7 +1266,20 @@ fn write_back_steps(
     seen: &Snapshot,
     journal: &mut Journal<'_>,
 ) -> Result<(Vec<String>, Vec<String>), OnlineError> {
-    let mut wrote = Vec::new();
+    let deleted = remove_files(project, removed, apply, seen, journal)?;
+    let wrote = write_files(project, repo, written, apply, seen, journal)?;
+    Ok((wrote, deleted))
+}
+
+/// Deletes the project files the mirror removed (only lists them without
+/// `apply`) and returns their paths.
+fn remove_files(
+    project: &Path,
+    removed: &[String],
+    apply: bool,
+    seen: &Snapshot,
+    journal: &mut Journal<'_>,
+) -> Result<Vec<String>, OnlineError> {
     let mut deleted = Vec::new();
     for rel in removed {
         if excluded(rel) || !safe_relative(rel) {
@@ -1289,6 +1302,32 @@ fn write_back_steps(
             _ => {}
         }
     }
+    Ok(deleted)
+}
+
+/// The bytes of a project file, or `None` when it doesn't exist.
+fn read_current(destination: &Path) -> Result<Option<Vec<u8>>, OnlineError> {
+    match std::fs::read(destination) {
+        Ok(current) => Ok(Some(current)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(OnlineError::io(format!(
+            "could not read {}: {error}",
+            destination.display()
+        ))),
+    }
+}
+
+/// Copies the mirror files that differ into the project (only lists them
+/// without `apply`) and returns their paths.
+fn write_files(
+    project: &Path,
+    repo: &Path,
+    written: &[String],
+    apply: bool,
+    seen: &Snapshot,
+    journal: &mut Journal<'_>,
+) -> Result<Vec<String>, OnlineError> {
+    let mut wrote = Vec::new();
     for rel in written {
         if excluded(rel) || !safe_relative(rel) {
             continue;
@@ -1305,16 +1344,7 @@ fn write_back_steps(
             return Err(OnlineError::new(OnlineErrorKind::SyncPathBlocked).param("file", rel));
         }
         let bytes = std::fs::read(&source)?;
-        let current = match std::fs::read(&destination) {
-            Ok(current) => Some(current),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
-            Err(error) => {
-                return Err(OnlineError::io(format!(
-                    "could not read {}: {error}",
-                    destination.display()
-                )))
-            }
-        };
+        let current = read_current(&destination)?;
         if current.as_deref() == Some(bytes.as_slice()) {
             continue;
         }
@@ -1330,7 +1360,7 @@ fn write_back_steps(
         }
         wrote.push(rel.clone());
     }
-    Ok((wrote, deleted))
+    Ok(wrote)
 }
 
 fn conflicted_paths(git: &dyn MirrorGit, repo: &Path) -> Result<Vec<String>, OnlineError> {

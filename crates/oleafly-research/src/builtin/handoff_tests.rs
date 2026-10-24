@@ -1,21 +1,30 @@
 //! 0.4.8 L: a built-in task that moves to another process continues the
 //! same conversation, waits for its runs again, or falls back to the
 //! research record when its conversation cannot be restored.
+use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use oleafly_agent::{AgentEvent, CancellationToken, Message};
 use serde_json::{json, Value};
 use tokio::sync::Notify;
 
-use super::*;
+use super::{BuiltinTaskAdapter, TaskBridge, TaskHost, TaskProvider, UsageSink};
 use crate::approvals::APPROVAL_WITHDRAWN;
+use crate::conversation::{ConversationSnapshot, CONVERSATION_VERSION};
 use crate::handoff::{HandoffReason, HandoffRecord};
 use crate::host::OwnerKind;
 use crate::model::{
     CommandPolicy, ResearchBrief, ResearchTask, ResearchTaskDraft, ResearchTaskStatus,
+    TaskRunContext, TaskRuntimeEvent,
 };
-use crate::scheduler::{handoff_record_for, ResearchTaskState, SuspendMode, SuspendResult};
+use crate::scheduler::{
+    handoff_record_for, ResearchTaskState, SuspendMode, SuspendResult, TaskRuntimeFuture,
+};
+use crate::task_tools::extra::TaskBinding;
+use crate::task_tools::lock;
 use crate::test_support::{FakeEnv, FakeHost, CHILD_PATIENCE};
 
 #[derive(Clone)]

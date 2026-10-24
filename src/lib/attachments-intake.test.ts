@@ -163,6 +163,35 @@ describe("intake", () => {
     });
   });
 
+  it("keeps the page images in page order when their stores finish out of order", async () => {
+    mocks.normalizeAttachment.mockResolvedValue({
+      name: "scan.pdf",
+      mime: "application/pdf",
+      bytes: new Uint8Array([1]),
+      pages: 4,
+      pageImages: [
+        { mime: "image/png", bytes: new Uint8Array([2]) },
+        { mime: "image/png", bytes: new Uint8Array([3]) },
+      ],
+    });
+    let releaseFirstPage!: (value: ReturnType<typeof stored>) => void;
+    const firstPage = new Promise<ReturnType<typeof stored>>((resolve) => {
+      releaseFirstPage = resolve;
+    });
+    mocks.attachmentPut
+      .mockResolvedValueOnce(stored("scan.pdf", "pdf", "application/pdf"))
+      .mockReturnValueOnce(firstPage)
+      .mockResolvedValueOnce(stored("scan.pdf page 2.png", "i2"));
+    const running = intakeFiles([file("scan.pdf", "application/pdf")], { composerId: COMPOSER, scope: "p1" });
+    await vi.waitFor(() => expect(mocks.attachmentPut).toHaveBeenCalledTimes(3));
+    releaseFirstPage(stored("scan.pdf page 1.png", "i1"));
+    await running;
+    expect(draftAttachments(COMPOSER)[0].pageImages).toEqual([
+      { sha256: "i1", mime: "image/png" },
+      { sha256: "i2", mime: "image/png" },
+    ]);
+  });
+
   it("drops a second copy of a file already in the draft", async () => {
     mocks.normalizeAttachment.mockResolvedValue({
       name: "a.png",

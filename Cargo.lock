@@ -6397,6 +6397,7 @@ dependencies = [
  "libc",
  "oleafly-agent",
  "oleafly-core",
+ "oleafly-doctools",
  "oleafly-sandbox",
  "pdf-extract",
  "rand 0.8.7",

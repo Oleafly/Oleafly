@@ -29,7 +29,7 @@ pub struct BuildArtifacts {
 fn modified(path: &Path) -> Option<SystemTime> {
     std::fs::symlink_metadata(path)
         .ok()
-        .filter(|metadata| metadata.is_file())
+        .filter(std::fs::Metadata::is_file)
         .and_then(|metadata| metadata.modified().ok())
 }
 

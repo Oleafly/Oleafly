@@ -20,6 +20,9 @@ describe("usage tone", () => {
     expect(contextFraction({ context: { used: 50, size: 200 } })).toBe(0.25);
     expect(contextFraction({ context: { used: 500, size: 200 } })).toBe(1);
     expect(contextFraction({ context: { used: 5, size: 0 } })).toBeNull();
+    expect(contextFraction({ context: { used: 5, size: -1 } })).toBeNull();
+    expect(contextFraction({ context: { used: 5, size: Number.NaN } })).toBeNull();
+    expect(contextFraction({ context: { used: Number.NaN, size: 200 } })).toBeNull();
     expect(contextFraction({})).toBeNull();
   });
 });

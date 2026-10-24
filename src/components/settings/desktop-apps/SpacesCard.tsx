@@ -40,7 +40,10 @@ export function SpacesCard({
             description={t(($) => $.settings.integrations.desktopApps.spaces.connect.description)}
             checked={connected}
             disabled={loading}
-            onChange={(on) => void (on ? connect(command, options) : disconnect())}
+            onChange={(on) => {
+              if (on) void connect(command, options);
+              else void disconnect();
+            }}
           />
           {connected ? (
             <>

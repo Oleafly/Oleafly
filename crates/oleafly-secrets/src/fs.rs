@@ -77,7 +77,7 @@ pub fn write_atomic(destination: &Path, bytes: &[u8]) -> Result<(), String> {
         .ok_or_else(|| "the destination has no parent folder".to_string())?;
     let file_name = destination
         .file_name()
-        .and_then(|name| name.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .ok_or_else(|| "the destination has an invalid file name".to_string())?;
     let existing = match std::fs::symlink_metadata(destination) {
         Ok(metadata) if metadata.file_type().is_symlink() => {
@@ -152,7 +152,7 @@ pub(crate) fn write_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
     let tmp = parent.join(format!(
         ".{}.{}.{}.tmp",
         path.file_name()
-            .and_then(|name| name.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .ok_or_else(|| "secret path has an invalid filename".to_string())?,
         std::process::id(),
         crate::generate_token()

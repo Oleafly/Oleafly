@@ -16,7 +16,7 @@ import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { durationLabel, TIME_BUDGET_OPTIONS } from "@/components/research/tasks/brief/BriefFields";
 import { researchNotificationPermission, type NotificationPermission } from "@/lib/research-tasks";
-import { getConfig, mcpServersList, setConfig, type AppConfig } from "@/lib/tauri";
+import { getConfig, mcpServersList, setConfig as saveConfig, type AppConfig } from "@/lib/tauri";
 import { ResearchCard } from "./ResearchCard";
 import { ResearchBackgroundSlot, ResearchComputeSlot } from "./slots";
 
@@ -49,7 +49,7 @@ function ownedValues(config: AppConfig): Partial<AppConfig> {
 /** Settings › Research: defaults and behaviour of research tasks. */
 export function ResearchSettingsSection() {
   const { t } = useTranslation(["common", "researchTools"]);
-  const [config, setConfigState] = useState<AppConfig | null>(null);
+  const [config, setConfig] = useState<AppConfig | null>(null);
   const [servers, setServers] = useState<string[] | null>(null);
   const [permission, setPermission] = useState<NotificationPermission | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -83,7 +83,7 @@ export function ResearchSettingsSection() {
       .then((next) => {
         if (current !== request.current) return;
         shown.current = next;
-        setConfigState(next);
+        setConfig(next);
       })
       .catch(() => {
         if (current === request.current) setLoadFailed(true);
@@ -102,13 +102,13 @@ export function ResearchSettingsSection() {
     if (!before) return;
     const next = { ...before, ...patch };
     shown.current = next;
-    setConfigState(next);
+    setConfig(next);
     setSaveFailed(false);
     // Each save reads the config again and sets only this section's keys, so a
     // change another window made to anything else is not written over.
     saves.current = saves.current
       .then(() => getConfig())
-      .then((latest) => setConfig({ ...latest, ...ownedValues(shown.current ?? next) }))
+      .then((latest) => saveConfig({ ...latest, ...ownedValues(shown.current ?? next) }))
       .catch(() => {
         // The change did not reach the config: its switch goes back, unless it changed again since.
         const current = shown.current;
@@ -118,7 +118,7 @@ export function ResearchSettingsSection() {
             if (Object.is(current[key], patch[key])) restored[key] = before[key];
           }
           shown.current = { ...current, ...(restored as Partial<AppConfig>) };
-          setConfigState(shown.current);
+          setConfig(shown.current);
         }
         setSaveFailed(true);
       });
@@ -216,7 +216,7 @@ export function ResearchSettingsSection() {
           <p className="text-xs text-muted-foreground">
             {t(($) => $.researchTools.tasks.settings.mcpServersHint)}
           </p>
-          {servers && servers.length === 0 ? (
+          {servers?.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.tasks.settings.noMcpServers)}</p>
           ) : null}
           {servers?.map((name) => {

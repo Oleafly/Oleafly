@@ -150,7 +150,7 @@ fn save_target(root: &std::path::Path, mut target: ComputeTarget) -> Result<Comp
     if target.id().is_empty() {
         target.set_id(settings::new_target_id());
     }
-    settings::validate_target(&target).map_err(String::from)?;
+    settings::validate_target(&target)?;
     settings::update(root, |saved| {
         let id = target.id().to_string();
         // An edited target needs a new test.
@@ -169,8 +169,7 @@ fn save_target(root: &std::path::Path, mut target: ComputeTarget) -> Result<Comp
             None => saved.targets.push(target.clone()),
         }
         Ok(())
-    })
-    .map_err(String::from)?;
+    })?;
     Ok(view(root))
 }
 
@@ -189,8 +188,7 @@ fn remove_target(root: &std::path::Path, target_id: &str) -> Result<ComputeView,
         saved.targets.retain(|target| target.id() != target_id);
         saved.tested.remove(target_id);
         Ok(())
-    })
-    .map_err(String::from)?;
+    })?;
     Ok(view(root))
 }
 
@@ -287,15 +285,14 @@ pub async fn research_compute_trust_host_key<R: tauri::Runtime>(
     let target = find_target(&root, &target_id)?;
     let endpoint = endpoint_of(&target)?;
     let host = AppComputeHost::new(root.clone());
-    let ctx = SshContext::new(&root, &|name| host.locate_program(name)).map_err(String::from)?;
+    let ctx = SshContext::new(&root, &|name| host.locate_program(name))?;
     let cancel = CancellationToken::new();
     tokio::time::timeout(
         TEST_LIMIT,
         host_keys::trust(&ctx, &endpoint, &fingerprints, &cancel),
     )
     .await
-    .map_err(|_| "Checking the host key took too long.".to_string())?
-    .map_err(String::from)?;
+    .map_err(|_| "Checking the host key took too long.".to_string())??;
     Ok(run_test(root, target).await)
 }
 

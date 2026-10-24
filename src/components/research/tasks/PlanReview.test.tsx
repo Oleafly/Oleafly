@@ -117,6 +117,21 @@ describe("PlanReview", () => {
     expect(api.loadResearchTaskPlan).toHaveBeenCalledTimes(2);
   });
 
+  it("drops the missing note when the next run has a plan", async () => {
+    api.loadResearchTaskPlan.mockRejectedValueOnce(new Error("No such file")).mockResolvedValueOnce(PLAN);
+    const view = render(
+      <PlanReview task={planReady(1)} busy={false} onApprove={vi.fn(async () => {})} onDiscard={vi.fn(async () => {})} />,
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(copy.missing);
+
+    view.rerender(
+      <PlanReview task={planReady(2)} busy={false} onApprove={vi.fn(async () => {})} onDiscard={vi.fn(async () => {})} />,
+    );
+
+    expect(await screen.findByRole("textbox", { name: copy.title })).toHaveValue(PLAN);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("ignores a failure that arrives after the task moved on", async () => {
     const first = deferred<string>();
     api.loadResearchTaskPlan.mockReturnValueOnce(first.promise).mockResolvedValueOnce(PLAN);

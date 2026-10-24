@@ -57,7 +57,7 @@ function serverHostname(server: string): string | null {
  * is locked to the service's own host. Hidden until some browser profile can
  * be read (today only on macOS).
  */
-export function BrowserSignInCopy({ server, onSignedIn, variant = "row" }: BrowserSignInCopyProps) {
+export function BrowserSignInCopy({ server, onSignedIn, variant = "row" }: Readonly<BrowserSignInCopyProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const domain = serverHostname(server);
   const detection = useRef(0);

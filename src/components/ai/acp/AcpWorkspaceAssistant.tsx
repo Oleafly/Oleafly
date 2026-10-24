@@ -656,6 +656,17 @@ function sessionStatusLabel(status: AcpSession["status"]): string {
 
 function SessionStatusPill({ session, agentName, busy }: Readonly<{ session: AcpSession; agentName: string; busy: boolean }>) {
   const { t } = useTranslation(["common", "ai"]);
+  let text: string;
+  if (busy) {
+    text = t(($) => $.ai.acp.connecting);
+  } else if (session.status === "ready") {
+    text = agentName;
+  } else {
+    text = t(($) => $.ai.acp.sessionStatusPill, {
+      agent: agentName,
+      status: sessionStatusLabel(session.status),
+    });
+  }
   return (
     <Badge
       variant={busy ? "outline" : STATUS_TONE[session.status]}
@@ -675,16 +686,7 @@ function SessionStatusPill({ session, agentName, busy }: Readonly<{ session: Acp
           )}
         />
       )}
-      <span className="truncate">
-        {busy
-          ? t(($) => $.ai.acp.connecting)
-          : session.status === "ready"
-            ? agentName
-            : t(($) => $.ai.acp.sessionStatusPill, {
-                agent: agentName,
-                status: sessionStatusLabel(session.status),
-              })}
-      </span>
+      <span className="truncate">{text}</span>
       {/* Ready shows as the green dot alone; screen readers still hear it. */}
       {!busy && session.status === "ready" && (
         <span className="sr-only"> {sessionStatusLabel(session.status)}</span>

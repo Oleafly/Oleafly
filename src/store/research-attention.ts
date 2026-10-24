@@ -13,23 +13,24 @@ let started: Promise<void> | null = null;
 // Kept once it works, so a retry after a failed load doesn't listen twice.
 let listening: Promise<unknown> | null = null;
 
+async function listenAndLoad(): Promise<void> {
+  const { listenForResearchAttention, loadResearchAttention } = await import("@/lib/research-tasks");
+  listening ??= listenForResearchAttention((summary) =>
+    useResearchAttentionStore.setState({ byProject: summary.byProject }),
+  ).catch((error: unknown) => {
+    listening = null;
+    throw error;
+  });
+  await listening;
+  const summary = await loadResearchAttention();
+  useResearchAttentionStore.setState({ byProject: summary.byProject });
+}
+
 /** One listener for the whole app, however many badges mount. */
 export function startResearchAttention(): Promise<void> {
-  started ??= import("@/lib/research-tasks")
-    .then(async ({ listenForResearchAttention, loadResearchAttention }) => {
-      listening ??= listenForResearchAttention((summary) =>
-        useResearchAttentionStore.setState({ byProject: summary.byProject }),
-      ).catch((error: unknown) => {
-        listening = null;
-        throw error;
-      });
-      await listening;
-      const summary = await loadResearchAttention();
-      useResearchAttentionStore.setState({ byProject: summary.byProject });
-    })
-    .catch(() => {
-      started = null;
-    });
+  started ??= listenAndLoad().catch(() => {
+    started = null;
+  });
   return started;
 }
 

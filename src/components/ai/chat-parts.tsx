@@ -28,7 +28,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { ChatMessage, ReasoningBlockData, SubagentEntry, ToolEntry } from "@/store/chats";
+import type { AttachmentMeta, ChatMessage, ReasoningBlockData, SubagentEntry, ToolEntry } from "@/store/chats";
 import { agentTodoProgress, type AgentTodo } from "@/store/agent-todos";
 import {
   agentFileChangeTotals,
@@ -1235,6 +1235,70 @@ function messageTimestamp(createdAt: number | undefined): Readonly<{ iso?: strin
 
 const MessageAttachments = lazy(() => import("@/components/ai/MessageAttachments"));
 
+/** A chip per attachment, keyed so the same file attached twice stays two chips. */
+function AttachmentNameChips({
+  attachments,
+  identity,
+}: Readonly<{ attachments: readonly AttachmentMeta[]; identity: (attachment: AttachmentMeta) => string }>) {
+  const occurrences = new Map<string, number>();
+  return attachments.map((a) => {
+    const id = identity(a);
+    const occurrence = occurrences.get(id) ?? 0;
+    occurrences.set(id, occurrence + 1);
+    return (
+      <span
+        key={`${id}:${occurrence}`}
+        className="flex items-center gap-1 rounded-md border bg-muted/60 px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground"
+      >
+        <Paperclip className="size-3" />
+        <span className="max-w-[140px] truncate">{a.name}</span>
+      </span>
+    );
+  });
+}
+
+/** The files a message carries: stored ones load on demand; older chats keep only the names. */
+function MessageAttachmentRows({ attachments }: Readonly<{ attachments: readonly AttachmentMeta[] }>) {
+  if (attachments.some((a) => a.sha256)) {
+    return (
+      <Suspense
+        fallback={
+          <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
+            <AttachmentNameChips attachments={attachments} identity={(a) => a.sha256 ?? a.name} />
+          </div>
+        }
+      >
+        <div className="flex max-w-[85%] justify-end">
+          <MessageAttachments attachments={attachments} />
+        </div>
+      </Suspense>
+    );
+  }
+  if (attachments.length === 0) return null;
+  return (
+    <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
+      <AttachmentNameChips attachments={attachments} identity={(a) => `${a.name}:${a.mediaType}`} />
+    </div>
+  );
+}
+
+/** Whether a tool call ended in something the reader should see even when the steps fold away. */
+function hasVisibleOutcome(tools: readonly ToolEntry[]): boolean {
+  return tools.some((tool) => {
+    const view = projectToolEntry(tool);
+    return (
+      view.status === "failed" ||
+      view.status === "cancelled" ||
+      view.status === "declined" ||
+      view.kind === "literature" ||
+      view.kind === "citation" ||
+      view.kind === "compile" ||
+      view.kind === "artifact" ||
+      view.kind === "delegation"
+    );
+  });
+}
+
 export type MessageAction = "regenerate" | "edit";
 
 // Replies often name files by absolute path; show the home folder as ~.
@@ -1351,6 +1415,46 @@ function messageBubble({
   );
 }
 
+/** The edit and regenerate buttons beside a finished message. */
+function MessageActionButtons({
+  messageId,
+  editable,
+  regenerateKind,
+  onMessageAction,
+}: Readonly<{
+  messageId: string;
+  editable?: boolean;
+  regenerateKind?: "regenerate" | "retry";
+  onMessageAction: (action: MessageAction, messageId: string) => void;
+}>) {
+  const { t } = useTranslation(["common", "ai"]);
+  return (
+    <>
+      {editable && (
+        <MessageActionButton
+          label={t(($) => $.ai.messageActions.edit)}
+          icon={Pencil}
+          testId="message-action-edit"
+          onClick={() => onMessageAction("edit", messageId)}
+        />
+      )}
+      {regenerateKind && (
+        <MessageActionButton
+          label={
+            regenerateKind === "retry"
+              ? t(($) => $.ai.messageActions.retry)
+              : t(($) => $.ai.messageActions.regenerate)
+          }
+          icon={RotateCcw}
+          visible={regenerateKind === "retry"}
+          testId="message-action-regenerate"
+          onClick={() => onMessageAction("regenerate", messageId)}
+        />
+      )}
+    </>
+  );
+}
+
 export const MessageItem = memo(function MessageItem({
   msg,
   live,
@@ -1380,34 +1484,16 @@ export const MessageItem = memo(function MessageItem({
   const copyText = msg.role === "assistant" ? localizeMarkers(msg.content, markerLabels) : msg.content;
   const messageId = msg.id;
   const actionButtons =
-    !live && messageId && onMessageAction ? (
-      <>
-        {editable && (
-          <MessageActionButton
-            label={t(($) => $.ai.messageActions.edit)}
-            icon={Pencil}
-            testId="message-action-edit"
-            onClick={() => onMessageAction("edit", messageId)}
-          />
-        )}
-        {regenerateKind && (
-          <MessageActionButton
-            label={
-              regenerateKind === "retry"
-                ? t(($) => $.ai.messageActions.retry)
-                : t(($) => $.ai.messageActions.regenerate)
-            }
-            icon={RotateCcw}
-            visible={regenerateKind === "retry"}
-            testId="message-action-regenerate"
-            onClick={() => onMessageAction("regenerate", messageId)}
-          />
-        )}
-      </>
+    !live && messageId && onMessageAction && (editable || regenerateKind) ? (
+      <MessageActionButtons
+        messageId={messageId}
+        editable={editable}
+        regenerateKind={regenerateKind}
+        onMessageAction={onMessageAction}
+      />
     ) : null;
-  const hasActionButtons = Boolean(actionButtons && (editable || regenerateKind));
+  const hasActionButtons = actionButtons !== null;
   const tools = msg.toolCalls ?? [];
-  const attachmentOccurrences = new Map<string, number>();
   // Fall back to the legacy single-block fields for chats persisted before
   // reasoningBlocks existed.
   const blocks =
@@ -1417,24 +1503,11 @@ export const MessageItem = memo(function MessageItem({
   // interleave thinking phases and tool badges in arrival order.
   const rows = buildMessageRows({ msg, live, actions, expansionScope, tools, blocks });
   const totalMs = blocks.reduce((sum, block) => sum + (block.ms ?? 0), 0);
-  const hasVisibleOutcome = tools.some((tool) => {
-    const view = projectToolEntry(tool);
-    return (
-      view.status === "failed" ||
-      view.status === "cancelled" ||
-      view.status === "declined" ||
-      view.kind === "literature" ||
-      view.kind === "citation" ||
-      view.kind === "compile" ||
-      view.kind === "artifact" ||
-      view.kind === "delegation"
-    );
-  });
   const foldSteps =
     !live &&
     rows.length > 0 &&
     msg.role === "assistant" &&
-    !hasVisibleOutcome &&
+    !hasVisibleOutcome(tools) &&
     !(msg.subagents?.length);
   const pictures = !live && msg.role === "assistant" ? lastFinishedPicture(msg.toolCalls ?? []) : [];
   const timestamp = messageTimestamp(msg.createdAt);
@@ -1464,45 +1537,7 @@ export const MessageItem = memo(function MessageItem({
           {t(($) => $.ai.chat.steered)}
         </span>
       )}
-      {msg.attachments && msg.attachments.some((a) => a.sha256) && (
-        <Suspense
-          fallback={
-            <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
-              {msg.attachments.map((a, index) => (
-                <span
-                  key={`${a.sha256 ?? a.name}:${index}`}
-                  className="flex items-center gap-1 rounded-md border bg-muted/60 px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground"
-                >
-                  <Paperclip className="size-3" />
-                  <span className="max-w-[140px] truncate">{a.name}</span>
-                </span>
-              ))}
-            </div>
-          }
-        >
-          <div className="flex max-w-[85%] justify-end">
-            <MessageAttachments attachments={msg.attachments} />
-          </div>
-        </Suspense>
-      )}
-      {msg.attachments && msg.attachments.length > 0 && !msg.attachments.some((a) => a.sha256) && (
-        <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
-          {msg.attachments.map((a) => {
-            const identity = `${a.name}:${a.mediaType}`;
-            const occurrence = attachmentOccurrences.get(identity) ?? 0;
-            attachmentOccurrences.set(identity, occurrence + 1);
-            return (
-            <span
-              key={`${identity}:${occurrence}`}
-              className="flex items-center gap-1 rounded-md border bg-muted/60 px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground"
-            >
-              <Paperclip className="size-3" />
-              <span className="max-w-[140px] truncate">{a.name}</span>
-            </span>
-            );
-          })}
-        </div>
-      )}
+      {msg.attachments && <MessageAttachmentRows attachments={msg.attachments} />}
       {msg.role === "user" && msg.skill ? (
         <span
           data-testid="user-skill-chip"

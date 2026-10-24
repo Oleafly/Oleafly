@@ -701,7 +701,7 @@ fn collect_desktop_files(
             }
             continue;
         }
-        if path.extension().and_then(|extension| extension.to_str()) != Some("desktop") {
+        if path.extension().and_then(std::ffi::OsStr::to_str) != Some("desktop") {
             continue;
         }
         let id = path

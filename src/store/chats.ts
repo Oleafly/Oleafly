@@ -285,17 +285,19 @@ export function chatForDisk(chat: StoredChat): StoredChat {
 export function chatAttachmentRefs(chats: readonly StoredChat[]): Set<string> {
   const refs = new Set<string>();
   for (const chat of chats) {
-    for (const message of chat.messages) {
-      for (const attachment of message.attachments ?? []) {
-        if (attachment.sha256) refs.add(attachment.sha256);
-        for (const page of attachment.pageImages ?? []) refs.add(page.sha256);
-      }
-      for (const tool of message.toolCalls ?? []) {
-        if (tool.imageRef) refs.add(tool.imageRef.sha256);
-      }
-    }
+    for (const message of chat.messages) addMessageRefs(refs, message);
   }
   return refs;
+}
+
+function addMessageRefs(refs: Set<string>, message: ChatMessage): void {
+  for (const attachment of message.attachments ?? []) {
+    if (attachment.sha256) refs.add(attachment.sha256);
+    for (const page of attachment.pageImages ?? []) refs.add(page.sha256);
+  }
+  for (const tool of message.toolCalls ?? []) {
+    if (tool.imageRef) refs.add(tool.imageRef.sha256);
+  }
 }
 
 export function chatMessageCount(chat: StoredChat): number {
@@ -363,6 +365,11 @@ function setSaveProblem(chatId: string, problem: ChatSaveProblem | null) {
   });
 }
 
+function isChatTooLarge(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes(CHAT_TOO_LARGE);
+}
+
 async function drainSaves(projectId: string, chatId: string, key: string): Promise<void> {
   for (;;) {
     const job = pendingSaves.get(key);
@@ -380,8 +387,7 @@ async function drainSaves(projectId: string, chatId: string, key: string): Promi
       await chatSave(projectId, chatId, json, job.index);
       setSaveProblem(chatId, null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (message.includes(CHAT_TOO_LARGE)) {
+      if (isChatTooLarge(error)) {
         setSaveProblem(chatId, "tooLarge");
       } else {
         void logError("save chat", error);

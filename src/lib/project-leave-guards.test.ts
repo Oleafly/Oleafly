@@ -44,4 +44,22 @@ describe("project leave guards", () => {
     for (const stop of stops) stop();
     expect(await projectLeaveAllowed(leave)).toBe(true);
   });
+
+  it("still runs the next guard when one unregisters itself while it runs", async () => {
+    const calls: string[] = [];
+    const stopFirst = registerProjectLeaveGuard(async () => {
+      calls.push("first");
+      await Promise.resolve();
+      stopFirst();
+      return true;
+    });
+    const stopSecond = registerProjectLeaveGuard(() => {
+      calls.push("second");
+      return Promise.resolve(true);
+    });
+
+    expect(await projectLeaveAllowed(leave)).toBe(true);
+    expect(calls).toEqual(["first", "second"]);
+    stopSecond();
+  });
 });

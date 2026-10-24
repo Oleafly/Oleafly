@@ -64,7 +64,7 @@ export function requestTerminalPrompt(prompt: TerminalPrompt): Promise<boolean> 
 /** Called by the component that renders prompts while it is mounted. */
 export function registerTerminalPromptHost(): () => void {
   hosts += 1;
-  for (const wake of [...hostWaiters]) wake();
+  for (const wake of hostWaiters) wake();
   let registered = true;
   return () => {
     if (!registered) return;

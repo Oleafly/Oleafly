@@ -12,7 +12,7 @@ use oleafly_lint::proofread::{
 };
 use oleafly_lint::{
     editor_catalog, format_for_path, is_bibtex_source_path, is_latex_source_path, lint_bibtex_text,
-    lint_latex_text, prose_for, render, LintDiagnostic, LintMessage, LintSource,
+    lint_latex_text, prose_for, render, LintDiagnostic, LintMessage, LintSource, ProseFormat,
 };
 use oleafly_preflight::{describe_template, Severity, SourceText};
 use serde_json::{json, Value};
@@ -231,29 +231,115 @@ fn diagnose(
     diagnostics
 }
 
+/// The proofreader, or `None` with a warning when it can't start.
+fn start_proofreader(
+    dialect: DialectArg,
+    ignored: &IgnoredWords,
+    warnings: &mut Vec<Warning>,
+) -> Option<Proofreader> {
+    match Proofreader::new(dialect.dialect(), ignored) {
+        Ok(built) => Some(built),
+        Err(ProofreadError::Unavailable) => {
+            warnings.push(Warning::new(
+                "lint.proofread_unavailable",
+                "This build of oleafly has no spelling and grammar checks.",
+            ));
+            None
+        }
+        Err(ProofreadError::Panicked(message)) => {
+            warnings.push(Warning::new(
+                "lint.proofread_failed",
+                format!("Spelling and grammar couldn't start: {message}"),
+            ));
+            None
+        }
+    }
+}
+
+/// A file's text, and whether it was valid UTF-8 (if not, invalid bytes
+/// read as replacement characters).
+fn decode(bytes: Vec<u8>) -> (String, bool) {
+    match String::from_utf8(bytes) {
+        Ok(text) => (text, true),
+        Err(error) => (
+            String::from_utf8_lossy(error.as_bytes()).into_owned(),
+            false,
+        ),
+    }
+}
+
+/// The certain, non-overlapping fixes for a file's spelling and grammar
+/// problems. None for a file that isn't prose.
+fn planned_edits(
+    diagnostics: &[LintDiagnostic],
+    source: &SourceText,
+    format: Option<ProseFormat>,
+) -> Vec<(usize, usize, String)> {
+    let Some(prose) = format.map(|format| prose_for(format, source)) else {
+        return Vec::new();
+    };
+    let edits = diagnostics
+        .iter()
+        .filter_map(|diagnostic| safe_fix(diagnostic, source, &prose))
+        .collect();
+    without_overlaps(edits)
+}
+
+/// The fixes of `edits` that were written, as the report lists them.
+/// `source` is the text before the fixes.
+fn applied_fixes(
+    target: &str,
+    diagnostics: &[LintDiagnostic],
+    edits: &[(usize, usize, String)],
+    source: &SourceText,
+) -> Vec<Value> {
+    let mut fixed = Vec::new();
+    for diagnostic in diagnostics {
+        let applied = edits.iter().find(|(from, to, _)| {
+            *from == diagnostic.from
+                && *to == diagnostic.to
+                && diagnostic.source == LintSource::Harper
+        });
+        if let Some((from, to, replacement)) = applied {
+            fixed.push(json!({
+                "file": target,
+                "rule_id": diagnostic.rule_id,
+                "range": {"from": from, "to": to, "start": source.position(*from), "end": source.position(*to)},
+                "replacement": replacement,
+            }));
+        }
+    }
+    fixed
+}
+
+/// Why a file was left unfixed.
+fn fix_warning(target: &str, error: &FixError) -> Warning {
+    match error {
+        FixError::ChangedOnDisk => Warning::new(
+            "lint.fix_changed",
+            format!("Didn't fix {target} because it changed while oleafly was checking it."),
+        ),
+        FixError::NotUtf8 => Warning::new(
+            "lint.fix_not_utf8",
+            format!("Didn't fix {target} because it isn't valid UTF-8."),
+        ),
+        _ => Warning::new(
+            "lint.fix_write_failed",
+            format!("Couldn't write {target}: {error}"),
+        ),
+    }
+}
+
 /// Lints the targets (blocking: reads files, runs Harper on this thread).
 pub fn execute_lint(input: LintInput) -> Result<LintRun, CliError> {
     let targets = select::lint_targets(&input.root, &input.paths, &input.cwd)?;
     let mut warnings = Vec::new();
     let ignored = IgnoredWords::from_lines(&input.words);
-    let mut proofreader = None;
-    if input.prose {
-        match Proofreader::new(input.dialect.dialect(), &ignored) {
-            Ok(built) => proofreader = Some(built),
-            Err(ProofreadError::Unavailable) => {
-                warnings.push(Warning::new(
-                    "lint.proofread_unavailable",
-                    "This build of oleafly has no spelling and grammar checks.",
-                ));
-            }
-            Err(ProofreadError::Panicked(message)) => {
-                warnings.push(Warning::new(
-                    "lint.proofread_failed",
-                    format!("Spelling and grammar couldn't start: {message}"),
-                ));
-            }
-        }
-    }
+    let mut proofreader = if input.prose {
+        start_proofreader(input.dialect, &ignored, &mut warnings)
+    } else {
+        None
+    };
     let harper_rules = oleafly_lint::proofread::rule_descriptions();
     let mut rows = Vec::new();
     let mut rules: Vec<RuleMeta> = Vec::new();
@@ -274,27 +360,13 @@ pub fn execute_lint(input: LintInput) -> Result<LintRun, CliError> {
         }
         let stamp = FileStamp::of(&path).map_err(CliError::from)?;
         let bytes = std::fs::read(&path).map_err(CliError::from)?;
-        let (original, utf8) = match String::from_utf8(bytes) {
-            Ok(text) => (text, true),
-            Err(error) => (
-                String::from_utf8_lossy(error.as_bytes()).into_owned(),
-                false,
-            ),
-        };
+        let (original, utf8) = decode(bytes);
         let (normalized, map) = LineEndingMap::new(&original);
         let mut source = SourceText::new(normalized);
         let format = format_for_path(target);
         let mut diagnostics = diagnose(target, &source, proofreader.as_mut(), &mut warnings);
         if input.fix {
-            let prose = format.map(|format| prose_for(format, &source));
-            let mut edits: Vec<(usize, usize, String)> = Vec::new();
-            if let Some(prose) = &prose {
-                edits = diagnostics
-                    .iter()
-                    .filter_map(|diagnostic| safe_fix(diagnostic, &source, prose))
-                    .collect();
-            }
-            let edits = without_overlaps(edits);
+            let edits = planned_edits(&diagnostics, &source, format);
             if !edits.is_empty() {
                 let result = if utf8 {
                     apply_fixes(&original, &map, &source, &edits).and_then(|text| {
@@ -306,21 +378,7 @@ pub fn execute_lint(input: LintInput) -> Result<LintRun, CliError> {
                 match result {
                     Ok(fixed_text) => {
                         fixed_files += 1;
-                        for diagnostic in &diagnostics {
-                            let applied = edits.iter().find(|(from, to, _)| {
-                                *from == diagnostic.from
-                                    && *to == diagnostic.to
-                                    && diagnostic.source == LintSource::Harper
-                            });
-                            if let Some((from, to, replacement)) = applied {
-                                fixed.push(json!({
-                                    "file": target,
-                                    "rule_id": diagnostic.rule_id,
-                                    "range": {"from": from, "to": to, "start": source.position(*from), "end": source.position(*to)},
-                                    "replacement": replacement,
-                                }));
-                            }
-                        }
+                        fixed.extend(applied_fixes(target, &diagnostics, &edits, &source));
                         // What is left is what the fixed file has, where it
                         // has it: a fix moves every column after it on its
                         // line, and one that joins lines moves every line.
@@ -329,21 +387,7 @@ pub fn execute_lint(input: LintInput) -> Result<LintRun, CliError> {
                         diagnostics =
                             diagnose(target, &source, proofreader.as_mut(), &mut Vec::new());
                     }
-                    Err(FixError::ChangedOnDisk) => {
-                        warnings.push(Warning::new("lint.fix_changed", format!("Didn't fix {target} because it changed while oleafly was checking it.")));
-                    }
-                    Err(FixError::NotUtf8) => {
-                        warnings.push(Warning::new(
-                            "lint.fix_not_utf8",
-                            format!("Didn't fix {target} because it isn't valid UTF-8."),
-                        ));
-                    }
-                    Err(error) => {
-                        warnings.push(Warning::new(
-                            "lint.fix_write_failed",
-                            format!("Couldn't write {target}: {error}"),
-                        ));
-                    }
+                    Err(error) => warnings.push(fix_warning(target, &error)),
                 }
             }
         }
@@ -493,6 +537,29 @@ mod tests {
         assert!(ids.iter().any(|id| id.starts_with("bibtex/")), "{ids:?}");
         assert_eq!(run.payload["files_checked"], 2);
         assert_eq!(run.payload["prose"], false);
+    }
+
+    #[test]
+    fn invalid_utf8_is_read_with_replacement_characters_and_flagged() {
+        assert_eq!(decode(b"abc".to_vec()), ("abc".to_string(), true));
+        assert_eq!(
+            decode(vec![b'a', 0xff, b'b']),
+            ("a\u{fffd}b".to_string(), false)
+        );
+    }
+
+    #[test]
+    fn a_file_left_unfixed_gets_a_warning_that_says_why() {
+        let code = |error: FixError| fix_warning("main.tex", &error).code.to_string();
+        assert_eq!(code(FixError::ChangedOnDisk), "lint.fix_changed");
+        assert_eq!(code(FixError::NotUtf8), "lint.fix_not_utf8");
+        assert_eq!(code(FixError::Overlap), "lint.fix_write_failed");
+    }
+
+    #[test]
+    fn nothing_is_planned_for_a_file_that_is_not_prose() {
+        let source = SourceText::new("x".to_string());
+        assert!(planned_edits(&[], &source, None).is_empty());
     }
 
     #[test]

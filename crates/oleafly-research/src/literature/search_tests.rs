@@ -4,8 +4,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use super::*;
+use super::{
+    cache, response_text, search_all, LiteratureClient, LiteratureError, LiteratureQuery,
+    LiteratureRecord, LiteratureSource, LiteratureSourceId,
+};
 use crate::host::NoSecrets;
+use crate::model::now_ms;
 
 struct Fake {
     id: LiteratureSourceId,

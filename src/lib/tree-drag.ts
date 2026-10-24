@@ -16,5 +16,5 @@ export function treeDragPath(
 ): string | null {
   if (!transfer || !carriesTreePath(transfer)) return null;
   const path = trimTrailingCharacter(transfer.getData(TREE_DRAG_TYPE).replaceAll("\\", "/"), "/");
-  return path ? path : null;
+  return path || null;
 }

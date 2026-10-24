@@ -170,6 +170,63 @@ fn task_command_detail(redactor: &Redactor, tool_call: &Value) -> String {
     detail
 }
 
+/// A command of a research task that waits in the task's approval queue.
+struct QueuedCommand {
+    approval: Arc<dyn super::types::TaskCommandApproval>,
+    /// The card's summary.
+    summary: String,
+    /// The command, redacted.
+    detail: String,
+}
+
+/// How a research task's permission request is handled without a card.
+struct TaskPolicy {
+    /// The request is refused: a deny rule, the task's command policy or a
+    /// file request that names no path.
+    refuse: bool,
+    queued: Option<QueuedCommand>,
+}
+
+/// The task's policy for a request. A task works on a temporary copy and
+/// nobody answers its cards, so it never waits for one. The original
+/// project's deny rules still hold. The runtime lives in the data folder
+/// next to them.
+fn task_policy(
+    data_root: Option<&Path>,
+    session: &LiveSession,
+    project_id: &str,
+    request: &PermissionRequest,
+    tool_call: &Value,
+    policy: &Value,
+) -> TaskPolicy {
+    let is_task = session.task_temp.is_some();
+    let kind = request.kind.as_deref();
+    let refused = is_task && crate::approvals::task_request_refused(data_root, project_id, kind);
+    // The task's command policy: off refuses commands, ask first sends them
+    // to the task's approval queue (the queue's own day-long expiry replaces
+    // the card's; the task's cancel ends the wait).
+    let command = is_task && !refused && kind == Some("execute");
+    let commands_off =
+        command && matches!(session.task_commands, Some(super::types::TaskCommands::Off));
+    let queued = match &session.task_commands {
+        Some(super::types::TaskCommands::Ask(approval)) if command => Some(QueuedCommand {
+            approval: approval.clone(),
+            summary: request.title.chars().take(300).collect::<String>(),
+            detail: task_command_detail(&session.redactor, tool_call),
+        }),
+        _ => None,
+    };
+    // A task answers file requests itself, so a read or change that names
+    // no path at all is not allowed on a guess.
+    let paths_unknown = is_task
+        && matches!(kind, Some("read" | "edit" | "delete" | "move"))
+        && !permission_view::names_paths(policy);
+    TaskPolicy {
+        refuse: refused || commands_off || paths_unknown,
+        queued,
+    }
+}
+
 impl Drop for LiveSession {
     fn drop(&mut self) {
         if let Ok(servers) = self.mcp_servers.get_mut() {
@@ -2537,32 +2594,15 @@ impl AcpRuntime {
             .iter()
             .find(|option| option.kind == "allow_once")
             .map(|option| option.option_id.clone());
-        // A research task works on a temporary copy and nobody answers its
-        // cards, so it never waits for one. The original project's deny rules
-        // still hold. The runtime lives in the data folder next to them.
-        let task_refused = session.task_temp.is_some()
-            && crate::approvals::task_request_refused(
-                self.root.parent(),
-                &record.project_id,
-                request.kind.as_deref(),
-            );
-        // The task's command policy: off refuses commands, ask first sends
-        // them to the task's approval queue (the queue's own day-long expiry
-        // replaces the card's; the task's cancel ends the wait).
-        let task_command = session.task_temp.is_some()
-            && !task_refused
-            && request.kind.as_deref() == Some("execute");
-        let commands_off =
-            task_command && matches!(session.task_commands, Some(super::types::TaskCommands::Off));
-        let ask_first = match &session.task_commands {
-            Some(super::types::TaskCommands::Ask(approval)) if task_command => Some((
-                approval.clone(),
-                request.title.chars().take(300).collect::<String>(),
-                task_command_detail(&session.redactor, &params["toolCall"]),
-            )),
-            _ => None,
-        };
-        let task_queue = ask_first.is_some();
+        let task = task_policy(
+            self.root.parent(),
+            session,
+            &record.project_id,
+            &request,
+            &params["toolCall"],
+            &policy,
+        );
+        let task_queue = task.queued.is_some();
         if task_queue {
             request.expires_at =
                 now_ms() + oleafly_research::approvals::APPROVAL_EXPIRY.as_millis() as u64;
@@ -2572,18 +2612,10 @@ impl AcpRuntime {
             .iter()
             .find(|option| option.kind == "reject_once")
             .map(|option| option.option_id.clone());
-        // A task answers file requests itself, so a read or change that names
-        // no path at all is not allowed on a guess.
-        let paths_unknown = session.task_temp.is_some()
-            && matches!(
-                request.kind.as_deref(),
-                Some("read" | "edit" | "delete" | "move")
-            )
-            && !permission_view::names_paths(&policy);
         // A skill read without an "allow once" choice goes to the card.
-        let automatic = (session.task_temp.is_some() && ask_first.is_none())
-            || (skill_read && allow_once.is_some());
-        let auto_option = if task_refused || commands_off || paths_unknown {
+        let automatic =
+            (session.task_temp.is_some() && !task_queue) || (skill_read && allow_once.is_some());
+        let auto_option = if task.refuse {
             reject_once.clone()
         } else if automatic {
             allow_once.clone()
@@ -2623,31 +2655,14 @@ impl AcpRuntime {
         if automatic {
             return self.resolve_permission_in(session, &permission_id, auto_option);
         }
-        if let Some((approval, summary, detail)) = ask_first {
-            let weak = Arc::downgrade(self);
-            let session_id = record.id.clone();
-            tokio::spawn(async move {
-                let answer = approval.ask(summary, detail).await;
-                if let Some(runtime) = weak.upgrade() {
-                    let option = if answer.is_ok() {
-                        allow_once
-                    } else {
-                        reject_once
-                    };
-                    // An answer that cannot be applied (the turn moved on, the
-                    // option is gone) still answers the agent, as cancelled,
-                    // so it never waits for a reply that will not come.
-                    if runtime
-                        .resolve_permission(&session_id, &permission_id, option)
-                        .await
-                        .is_err()
-                    {
-                        let _ = runtime
-                            .resolve_permission(&session_id, &permission_id, None)
-                            .await;
-                    }
-                }
-            });
+        if let Some(queued) = task.queued {
+            self.answer_when_approved(
+                record.id.clone(),
+                permission_id,
+                queued,
+                allow_once,
+                reject_once,
+            );
             return Ok(());
         }
         if delegate == PermissionDelegate::None && record.parent_session_id.is_some() {
@@ -2664,6 +2679,41 @@ impl AcpRuntime {
             }
         });
         Ok(())
+    }
+
+    /// Answers a task's queued command request once the task's approval
+    /// does.
+    fn answer_when_approved(
+        self: &Arc<Self>,
+        session_id: String,
+        permission_id: String,
+        queued: QueuedCommand,
+        allow_once: Option<String>,
+        reject_once: Option<String>,
+    ) {
+        let weak = Arc::downgrade(self);
+        tokio::spawn(async move {
+            let answer = queued.approval.ask(queued.summary, queued.detail).await;
+            if let Some(runtime) = weak.upgrade() {
+                let option = if answer.is_ok() {
+                    allow_once
+                } else {
+                    reject_once
+                };
+                // An answer that cannot be applied (the turn moved on, the
+                // option is gone) still answers the agent, as cancelled,
+                // so it never waits for a reply that will not come.
+                if runtime
+                    .resolve_permission(&session_id, &permission_id, option)
+                    .await
+                    .is_err()
+                {
+                    let _ = runtime
+                        .resolve_permission(&session_id, &permission_id, None)
+                        .await;
+                }
+            }
+        });
     }
 
     pub async fn resolve_permission(

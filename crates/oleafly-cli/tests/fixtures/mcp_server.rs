@@ -9,7 +9,7 @@ use std::io::{BufRead, Write};
 fn number_after(line: &str, key: &str) -> Option<String> {
     let start = line.find(key)? + key.len();
     let rest = line[start..].trim_start();
-    let digits: String = rest.chars().take_while(|character| character.is_ascii_digit()).collect();
+    let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
     (!digits.is_empty()).then_some(digits)
 }
 

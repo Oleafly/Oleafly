@@ -1,7 +1,7 @@
 //! `oleafly stats`, `oleafly synctex`, `oleafly export` and `oleafly convert`:
 //! the app's document tools on the command line. The counting, SyncTeX
 //! search, export and conversion code is the app's own (`oleafly-doctools`).
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -13,7 +13,7 @@ use oleafly_core::typst_toolchain::{
 };
 use oleafly_core::{Engine, Workspace};
 use oleafly_doctools::conversion::{
-    ad_hoc_plan, export_args, export_writer, fixup_typst_source, ExportSource,
+    ad_hoc_plan, export_args, export_writer, fixup_typst_source, AdHocPlan, ExportSource,
 };
 use oleafly_doctools::export::{
     export_formats, export_would_write_inside_project, run_export_pandoc, ExportJob,
@@ -606,7 +606,7 @@ fn export_destination(
     } else {
         let matches = requested
             .extension()
-            .and_then(|value| value.to_str())
+            .and_then(OsStr::to_str)
             .is_some_and(|value| value.eq_ignore_ascii_case(extension));
         if !matches {
             return Err(CliError::usage(format!(
@@ -1224,36 +1224,92 @@ async fn run_convert(ctx: &Context, args: ConvertArgs) -> Result<Outcome, CliErr
         })?,
     };
     let to = args.to;
-    let mut plan = ad_hoc_plan(from.id(), to.id()).ok_or_else(|| {
-        let targets = conversion_targets(from);
-        let error = CliError::new(
-            ErrorKind::InvalidInput,
-            "convert.unsupported_route",
-            format!("Oleafly can't convert {} to {}.", from.label(), to.label()),
-        );
-        if targets.is_empty() {
-            error
-        } else {
-            error.hint(format!(
-                "{} converts to: {}.",
-                from.label(),
-                targets.join(", ")
-            ))
+    let mut plan = ad_hoc_plan(from.id(), to.id()).ok_or_else(|| unsupported_route(from, to))?;
+    let input = read_convert_input(&args.input, from).await?;
+    let destination = convert_destination(&args)?;
+    // The output names the source's bibliographies by file name only, so no
+    // path from this computer ends up in it.
+    if plan.local_bibliography {
+        if let Some(kind) = BibliographySource::for_reader(from.id()) {
+            let declared =
+                pandoc_citations::declared_bibliographies(kind, &String::from_utf8_lossy(&input));
+            let names = pandoc_citations::unique_local_names(declared.iter().map(String::as_str));
+            plan.add_bibliographies(&names);
         }
-    })?;
-    let metadata = match tokio::fs::metadata(&args.input).await {
+    }
+    let cwd = std::env::current_dir().map_err(CliError::from)?;
+    let pandoc = find_pandoc(&Discovery::from_env(&cwd))?;
+    let workspace = tempfile::Builder::new()
+        .prefix("oleafly-convert-")
+        .tempdir()
+        .map_err(CliError::from)?;
+    let root = workspace.path().to_path_buf();
+    let produced = convert_in_workspace(ctx, &plan, &input, from, to, &root, &pandoc).await?;
+    let media = extracted_media(&root)?;
+    let media_folder = destination
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    if !args.force {
+        ensure_media_free(&media, media_folder)?;
+    }
+    let mut written = Vec::new();
+    for relative in &media {
+        let target = media_folder.join(relative);
+        if let Some(parent) = target.parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(CliError::from)?;
+        }
+        publish(&root.join(relative), &target)?;
+        written.push(target);
+    }
+    publish(&produced, &destination)?;
+    if !ctx.json() {
+        say_converted(ctx, &args.input, &destination, written.len(), &cwd);
+    }
+    Ok(Outcome::success(json!({
+        "convert": {
+            "from": from.id(),
+            "to": to.id(),
+            "input": args.input,
+            "output": destination,
+            "media": written,
+        }
+    })))
+}
+
+/// The error for a pair of formats Oleafly has no route between, with the
+/// formats the input does convert to.
+fn unsupported_route(from: DocumentKind, to: DocumentKind) -> CliError {
+    let targets = conversion_targets(from);
+    let error = CliError::new(
+        ErrorKind::InvalidInput,
+        "convert.unsupported_route",
+        format!("Oleafly can't convert {} to {}.", from.label(), to.label()),
+    );
+    if targets.is_empty() {
+        error
+    } else {
+        error.hint(format!(
+            "{} converts to: {}.",
+            from.label(),
+            targets.join(", ")
+        ))
+    }
+}
+
+/// The input's bytes, once it is a file within the size limit and, for a
+/// Word file, looks like one.
+async fn read_convert_input(path: &Path, from: DocumentKind) -> Result<Vec<u8>, CliError> {
+    let metadata = match tokio::fs::metadata(path).await {
         Ok(metadata) if metadata.is_file() => metadata,
-        Ok(_) => {
-            return Err(CliError::usage(format!(
-                "{} isn't a file.",
-                args.input.display()
-            )))
-        }
+        Ok(_) => return Err(CliError::usage(format!("{} isn't a file.", path.display()))),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
             return Err(CliError::new(
                 ErrorKind::InvalidInput,
                 "convert.input_missing",
-                format!("{} doesn't exist.", args.input.display()),
+                format!("{} doesn't exist.", path.display()),
             ));
         }
         Err(error) => return Err(error.into()),
@@ -1269,26 +1325,32 @@ async fn run_convert(ctx: &Context, args: ConvertArgs) -> Result<Outcome, CliErr
             "convert.too_large",
             format!(
                 "{} is larger than the {} MB conversion limit.",
-                args.input.display(),
+                path.display(),
                 limit / (1024 * 1024)
             ),
         ));
     }
-    let input = tokio::fs::read(&args.input).await.map_err(CliError::from)?;
+    let input = tokio::fs::read(path).await.map_err(CliError::from)?;
     if from == DocumentKind::Docx && !input.starts_with(b"PK") {
         return Err(CliError::new(
             ErrorKind::InvalidInput,
             "convert.invalid_input",
-            format!("{} isn't a Word (.docx) file.", args.input.display()),
+            format!("{} isn't a Word (.docx) file.", path.display()),
         ));
     }
+    Ok(input)
+}
+
+/// Where the converted file goes: `-o`, or beside the input. It must not
+/// replace the input, and an existing file needs `--force`.
+fn convert_destination(args: &ConvertArgs) -> Result<PathBuf, CliError> {
     let default_name = format!(
         "{}.{}",
         args.input.file_stem().map_or_else(
             || "converted".into(),
             |stem| stem.to_string_lossy().into_owned()
         ),
-        to.extension()
+        args.to.extension()
     );
     let destination = match &args.output {
         Some(output) if output.is_dir() => output.join(&default_name),
@@ -1315,37 +1377,34 @@ async fn run_convert(ctx: &Context, args: ConvertArgs) -> Result<Outcome, CliErr
         )
         .hint("Pass --force to replace it, or pick another name with -o."));
     }
-    // The output names the source's bibliographies by file name only, so no
-    // path from this computer ends up in it.
-    if plan.local_bibliography {
-        if let Some(kind) = BibliographySource::for_reader(from.id()) {
-            let declared =
-                pandoc_citations::declared_bibliographies(kind, &String::from_utf8_lossy(&input));
-            let names = pandoc_citations::unique_local_names(declared.iter().map(String::as_str));
-            plan.add_bibliographies(&names);
-        }
-    }
-    let cwd = std::env::current_dir().map_err(CliError::from)?;
-    let pandoc = find_pandoc(&Discovery::from_env(&cwd))?;
-    let workspace = tempfile::Builder::new()
-        .prefix("oleafly-convert-")
-        .tempdir()
-        .map_err(CliError::from)?;
-    let root = workspace.path().to_path_buf();
-    tokio::fs::write(root.join(plan.source_name), &input)
+    Ok(destination)
+}
+
+/// Stages the source in `root`, runs Pandoc there and returns the converted
+/// file.
+async fn convert_in_workspace(
+    ctx: &Context,
+    plan: &AdHocPlan,
+    input: &[u8],
+    from: DocumentKind,
+    to: DocumentKind,
+    root: &Path,
+    pandoc: &Path,
+) -> Result<PathBuf, CliError> {
+    tokio::fs::write(root.join(plan.source_name), input)
         .await
         .map_err(CliError::from)?;
     if plan.references_filter {
-        pandoc_citations::stage_filter(&root)
+        pandoc_citations::stage_filter(root)
             .map_err(|message| CliError::new(ErrorKind::Io, "io.failed", message))?;
     }
     if plan.ocr_filter {
-        oleafly_doctools::conversion::stage_ocr_filter(&root)
+        oleafly_doctools::conversion::stage_ocr_filter(root)
             .map_err(|message| CliError::new(ErrorKind::Io, "io.failed", message))?;
     }
     ctx.event("convert_started", json!({"from": from.id(), "to": to.id()}))?;
     let (log, code) = CliToolRunner
-        .run(&pandoc, &plan.args, &root, &[])
+        .run(pandoc, &plan.args, root, &[])
         .await
         .map_err(|message| CliError::new(ErrorKind::Build, "convert.failed", message))?;
     if code != Some(0) {
@@ -1373,64 +1432,49 @@ async fn run_convert(ctx: &Context, args: ConvertArgs) -> Result<Outcome, CliErr
             .await
             .map_err(CliError::from)?;
     }
-    let media = extracted_media(&root)?;
-    let media_folder = destination
-        .parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-        .unwrap_or_else(|| Path::new("."));
-    if !args.force {
-        if let Some(existing) = media
-            .iter()
-            .map(|relative| media_folder.join(relative))
-            .find(|path| path.exists())
-        {
-            return Err(CliError::new(
-                ErrorKind::Conflict,
-                "convert.output_exists",
-                format!("{} already exists.", existing.display()),
-            )
-            .hint("Pass --force to replace the extracted images, or convert into another folder with -o."));
-        }
+    Ok(produced)
+}
+
+/// Stops when an extracted image would replace a file in `media_folder`.
+fn ensure_media_free(media: &[PathBuf], media_folder: &Path) -> Result<(), CliError> {
+    let existing = media
+        .iter()
+        .map(|relative| media_folder.join(relative))
+        .find(|path| path.exists());
+    match existing {
+        Some(existing) => Err(CliError::new(
+            ErrorKind::Conflict,
+            "convert.output_exists",
+            format!("{} already exists.", existing.display()),
+        )
+        .hint(
+            "Pass --force to replace the extracted images, or convert into another folder with -o.",
+        )),
+        None => Ok(()),
     }
-    let mut written = Vec::new();
-    for relative in &media {
-        let target = media_folder.join(relative);
-        if let Some(parent) = target.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .map_err(CliError::from)?;
-        }
-        publish(&root.join(relative), &target)?;
-        written.push(target);
+}
+
+/// Tells a person what was converted and how many images came with it.
+fn say_converted(ctx: &Context, input: &Path, destination: &Path, images: usize, cwd: &Path) {
+    if ctx.quiet() {
+        ctx.say(destination.display().to_string());
+        return;
     }
-    publish(&produced, &destination)?;
-    if !ctx.json() {
-        if ctx.quiet() {
-            ctx.say(destination.display().to_string());
-        } else {
-            ctx.say(format!(
-                "Converted {} to {}",
-                args.input.display(),
-                destination.display()
-            ));
-            if !written.is_empty() {
-                ctx.note(format!(
-                    "Extracted {} images into {}.",
-                    written.len(),
-                    display_path(&media_folder.join("assets"), &cwd)
-                ));
-            }
-        }
+    ctx.say(format!(
+        "Converted {} to {}",
+        input.display(),
+        destination.display()
+    ));
+    if images > 0 {
+        let media_folder = destination
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .unwrap_or_else(|| Path::new("."));
+        ctx.note(format!(
+            "Extracted {images} images into {}.",
+            display_path(&media_folder.join("assets"), cwd)
+        ));
     }
-    Ok(Outcome::success(json!({
-        "convert": {
-            "from": from.id(),
-            "to": to.id(),
-            "input": args.input,
-            "output": destination,
-            "media": written,
-        }
-    })))
 }
 
 #[cfg(test)]
@@ -1462,6 +1506,90 @@ mod tests {
         assert_eq!(DocumentKind::of_path(Path::new("data.csv")), None);
         assert!(conversion_targets(DocumentKind::Latex).contains(&"typst"));
         assert!(!conversion_targets(DocumentKind::Markdown).contains(&"docx"));
+    }
+
+    fn convert_args(input: PathBuf, output: Option<PathBuf>, force: bool) -> ConvertArgs {
+        ConvertArgs {
+            input,
+            to: DocumentKind::Markdown,
+            from: None,
+            output,
+            force,
+        }
+    }
+
+    #[test]
+    fn convert_writes_beside_the_input_and_never_over_it_or_an_existing_file() {
+        let folder = tempfile::tempdir().unwrap();
+        let input = folder.path().join("paper.tex");
+        std::fs::write(&input, "x").unwrap();
+        let beside = convert_destination(&convert_args(input.clone(), None, false)).unwrap();
+        assert_eq!(beside, folder.path().join("paper.md"));
+        std::fs::write(&beside, "old").unwrap();
+        let exists = convert_destination(&convert_args(input.clone(), None, false)).unwrap_err();
+        assert_eq!(exists.code, "convert.output_exists");
+        let forced = convert_destination(&convert_args(input.clone(), None, true)).unwrap();
+        assert_eq!(forced, beside);
+        let same = convert_destination(&convert_args(input.clone(), Some(input.clone()), true))
+            .unwrap_err();
+        assert!(same.message.contains("would replace the input"));
+        let nowhere = folder.path().join("nope").join("out.md");
+        let missing =
+            convert_destination(&convert_args(input.clone(), Some(nowhere), false)).unwrap_err();
+        assert!(missing.message.contains("doesn't exist"));
+        // A folder given to -o takes the default name inside it.
+        let inside = convert_args(input, Some(folder.path().to_path_buf()), true);
+        assert_eq!(convert_destination(&inside).unwrap(), beside);
+    }
+
+    #[tokio::test]
+    async fn convert_input_must_be_a_file_of_the_right_kind_within_the_limit() {
+        let folder = tempfile::tempdir().unwrap();
+        let missing = read_convert_input(&folder.path().join("none.md"), DocumentKind::Markdown)
+            .await
+            .unwrap_err();
+        assert_eq!(missing.code, "convert.input_missing");
+        let not_a_file = read_convert_input(folder.path(), DocumentKind::Markdown)
+            .await
+            .unwrap_err();
+        assert!(not_a_file.message.contains("isn't a file"));
+        let big = folder.path().join("big.md");
+        std::fs::File::create(&big)
+            .unwrap()
+            .set_len(MAX_TEXT_INPUT_BYTES + 1)
+            .unwrap();
+        let too_large = read_convert_input(&big, DocumentKind::Markdown)
+            .await
+            .unwrap_err();
+        assert_eq!(too_large.code, "convert.too_large");
+        let fake = folder.path().join("fake.docx");
+        std::fs::write(&fake, "not a zip").unwrap();
+        let invalid = read_convert_input(&fake, DocumentKind::Docx)
+            .await
+            .unwrap_err();
+        assert_eq!(invalid.code, "convert.invalid_input");
+        let real = folder.path().join("real.docx");
+        std::fs::write(&real, b"PK\x03\x04").unwrap();
+        let bytes = read_convert_input(&real, DocumentKind::Docx).await.unwrap();
+        assert_eq!(bytes, b"PK\x03\x04");
+    }
+
+    #[test]
+    fn extracted_images_do_not_replace_existing_files() {
+        let folder = tempfile::tempdir().unwrap();
+        let media = [PathBuf::from("assets/a.png")];
+        assert!(ensure_media_free(&media, folder.path()).is_ok());
+        std::fs::create_dir(folder.path().join("assets")).unwrap();
+        std::fs::write(folder.path().join("assets/a.png"), "x").unwrap();
+        let error = ensure_media_free(&media, folder.path()).unwrap_err();
+        assert_eq!(error.code, "convert.output_exists");
+    }
+
+    #[test]
+    fn an_unsupported_route_says_which_formats_it_joins() {
+        let error = unsupported_route(DocumentKind::Docx, DocumentKind::Docx);
+        assert_eq!(error.code, "convert.unsupported_route");
+        assert!(error.message.contains("Word to Word"));
     }
 
     #[test]

@@ -126,6 +126,40 @@ fn continuation_prompts_say_the_turn_was_interrupted_and_name_the_handoff() {
 }
 
 #[test]
+fn only_an_end_turn_stop_reason_finishes_the_task() {
+    assert_eq!(unfinished_reason(&json!({"stopReason": "end_turn"})), None);
+    assert_eq!(
+        unfinished_reason(&json!({"stopReason": "max_tokens"})).as_deref(),
+        Some("max_tokens")
+    );
+    assert_eq!(
+        unfinished_reason(&json!({})).as_deref(),
+        Some("no completion event")
+    );
+}
+
+#[test]
+fn http_servers_become_stdio_servers_and_the_others_stay() {
+    let mut servers = vec![
+        json!({"type": "http", "name": "research", "url": "http://127.0.0.1:1/mcp",
+            "headers": [{"name": "Authorization", "value": "Bearer secret"}]}),
+        json!({"name": "other", "command": "tool", "args": []}),
+    ];
+    bridge_http_servers(&mut servers).unwrap();
+    assert_eq!(servers[0]["name"], "research");
+    assert!(servers[0]["command"].is_string() && servers[0]["type"].is_null());
+    assert_eq!(
+        servers[1],
+        json!({"name": "other", "command": "tool", "args": []})
+    );
+    let mut without_credential = vec![json!({"type": "http", "url": "http://127.0.0.1:1/mcp"})];
+    assert_eq!(
+        bridge_http_servers(&mut without_credential),
+        Err("The research tool server has no credential.".to_string())
+    );
+}
+
+#[test]
 fn updates_map_like_the_app() {
     let mut outcome = TaskRuntimeOutcome {
         summary: String::new(),

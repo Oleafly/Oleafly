@@ -227,6 +227,11 @@ export function HermesSection({ projectId }: Readonly<{ projectId: string }>) {
   const folder = fieldProps("folder", { mono: true, hinted: true });
   const command = fieldProps("command", { mono: true });
   const profile = fieldProps("profile", { mono: true });
+  const modeLabel = (mode: AcpHermesSettings["mode"]): string => {
+    if (mode === "default") return t(($) => $.settings.ai.agents.hermes.default);
+    if (mode === "project") return t(($) => $.settings.ai.agents.hermes.project);
+    return t(($) => $.settings.ai.agents.hermes.remote);
+  };
   return (
     <section data-testid="acp-hermes-section" className="space-y-2">
       <SectionHeading as="h4">{t(($) => $.settings.ai.agents.hermes.title)}</SectionHeading>
@@ -234,11 +239,7 @@ export function HermesSection({ projectId }: Readonly<{ projectId: string }>) {
         {(["default", "project", "remote"] as const).map((mode) => (
           <label key={mode} htmlFor={`${fieldId}-${mode}`} className="flex items-center gap-2 text-xs">
             <RadioGroupItem id={`${fieldId}-${mode}`} value={mode} disabled={busy} />
-            {mode === "default"
-              ? t(($) => $.settings.ai.agents.hermes.default)
-              : mode === "project"
-                ? t(($) => $.settings.ai.agents.hermes.project)
-                : t(($) => $.settings.ai.agents.hermes.remote)}
+            {modeLabel(mode)}
           </label>
         ))}
       </RadioGroup>

@@ -655,7 +655,7 @@ fn call_pattern(names: &[&str]) -> Arc<JsRegex> {
         .join("|");
     let mut cache = CALL_PATTERNS
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     cache
         .entry(alternation.clone())
         .or_insert_with(|| {

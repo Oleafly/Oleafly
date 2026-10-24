@@ -6,7 +6,7 @@ import { registerAttachmentHolder, useComposerDrafts } from "@/store/composer-dr
 import {
   acpBufferReply, acpCatalog, acpDisconnect, acpError, acpEvents, acpPrompt, acpSessions, acpSnapshot,
   acpStart, acpSteer, onAcpBufferRequest, onAcpEvent, onAcpResync, onAcpSession,
-  type AcpAgentStatus, type AcpCommand, type AcpElicitation, type AcpEvent, type AcpPermission,
+  type AcpAgentStatus, type AcpBufferRequest, type AcpCommand, type AcpElicitation, type AcpEvent, type AcpPermission,
   type AcpSession, type AcpSessionSummary, type AcpSessionUsage, type AcpSnapshot, type AcpTurnCommit,
 } from "@/lib/acp";
 
@@ -131,6 +131,16 @@ function withoutEvents(
   return { events, earlierLoaded };
 }
 
+function turnCommitFrom({ data, timestamp }: AcpEvent): AcpTurnCommit {
+  return {
+    turnId: typeof data.turnId === "string" ? data.turnId : "",
+    commit: typeof data.commit === "string" ? data.commit : "",
+    paths: Array.isArray(data.paths) ? (data.paths as string[]) : [],
+    message: "",
+    createdAt: timestamp,
+  };
+}
+
 /** Fields an event changes on its session without a snapshot round trip. */
 function applySessionEvent(sessions: Record<string, AcpSession>, event: AcpEvent): void {
   const session = sessions[event.sessionId];
@@ -166,17 +176,9 @@ function applySessionEvent(sessions: Record<string, AcpSession>, event: AcpEvent
         next.controls = { ...session.controls, ...(data.controls as AcpSession["controls"]) };
       }
       break;
-    case "turn_commit": {
-      const commit: AcpTurnCommit = {
-        turnId: String(data.turnId ?? ""),
-        commit: String(data.commit ?? ""),
-        paths: Array.isArray(data.paths) ? (data.paths as string[]) : [],
-        message: "",
-        createdAt: event.timestamp,
-      };
-      next.commits = [...(session.commits ?? []), commit];
+    case "turn_commit":
+      next.commits = [...(session.commits ?? []), turnCommitFrom(event)];
       break;
-    }
   }
   sessions[event.sessionId] = next;
 }
@@ -522,7 +524,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
   steerQueued: async (projectId, sessionId, id) => {
     const item = get().queues[sessionId]?.find((entry) => entry.id === id);
     const session = get().sessions[sessionId];
-    if (!item || !session || session.status !== "running" || !session.capabilities.steering) return;
+    if (!item || session?.status !== "running" || !session.capabilities.steering) return;
     if (item.attachments.length > 0 || item.selections.length > 0 || item.skill) return;
     try {
       const outcome = await acpSteer(projectId, sessionId, item.text);
@@ -606,6 +608,16 @@ function statusForEvent(
   return current;
 }
 
+/** Answers the agent's request for an open editor's text; with nothing when it cannot be read. */
+async function answerBufferRequest({ requestId, projectId, path }: AcpBufferRequest): Promise<void> {
+  try {
+    const { bufferContent } = await import("@/components/ai/acp/acp-buffers");
+    await acpBufferReply(requestId, bufferContent(projectId, path));
+  } catch {
+    await acpBufferReply(requestId, null).catch(() => {});
+  }
+}
+
 export async function attachAcpListeners(): Promise<() => void> {
   listenerCount++;
   listenerPromise ??= (async () => {
@@ -641,11 +653,7 @@ export async function attachAcpListeners(): Promise<() => void> {
         for (const [project, id] of Object.entries(state.activeByProject)) if (id) void state.resync(project, id).catch(() => {});
       }));
       stops.push(await onAcpSession((summary) => useAcpSessionsStore.getState().applySummary(summary)));
-      stops.push(await onAcpBufferRequest(({ requestId, projectId, path }) => {
-        void import("@/components/ai/acp/acp-buffers")
-          .then(({ bufferContent }) => acpBufferReply(requestId, bufferContent(projectId, path)))
-          .catch(() => acpBufferReply(requestId, null).catch(() => {}));
-      }));
+      stops.push(await onAcpBufferRequest((request) => void answerBufferRequest(request)));
     } catch (error) {
       for (const stop of stops) stop();
       throw error;

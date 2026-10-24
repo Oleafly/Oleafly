@@ -109,8 +109,7 @@ export function ToolsModelPicker({
   const { t } = useTranslation(["researchTools"]);
   const { choice, groups, select } = useToolsModel();
   return (
-    <div
-      role="group"
+    <fieldset
       aria-label={t(($) => $.researchTools.converterModel.label)}
       data-testid="tools-model-picker"
       className={cn("min-w-0", className)}
@@ -124,7 +123,7 @@ export function ToolsModelPicker({
         contentClassName={cn("z-[100]", contentClassName)}
         onChange={(providerId, modelId) => void select(providerId, modelId)}
       />
-    </div>
+    </fieldset>
   );
 }
 

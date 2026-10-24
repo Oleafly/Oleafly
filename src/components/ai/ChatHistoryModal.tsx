@@ -213,13 +213,12 @@ export function ChatHistoryModal({
       </div>
 
       {skipped > 0 && (
-        <p
+        <output
           data-testid="chat-history-skipped"
-          role="status"
-          className="shrink-0 px-4 pb-2 text-xs text-muted-foreground"
+          className="block shrink-0 px-4 pb-2 text-xs text-muted-foreground"
         >
           {t(($) => $.ai.history.skipped, { count: skipped })}
-        </p>
+        </output>
       )}
       <div ref={listRef} className="min-h-0 flex-1 overflow-auto p-2">
         {chats.length === 0 ? (

@@ -119,8 +119,8 @@ export function joinOcrPages(pages: readonly string[], target: OcrTarget): strin
 export function mathpixToOcrMarkdown(mmd: string, target: OcrTarget): string {
   const pages: string[][] = [[]];
   for (const line of mmd.replace(/\r\n?/g, "\n").split("\n")) {
-    if (line.trim() === "\\pagebreak") pages.push([]);
-    else pages[pages.length - 1].push(line);
+    if (line.trim() === String.raw`\pagebreak`) pages.push([]);
+    else pages.at(-1)?.push(line);
   }
   return joinOcrPages(
     pages.map((lines) => normalizeOcrMarkdown(lines.join("\n"))).filter(Boolean),

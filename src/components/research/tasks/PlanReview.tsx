@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/empty";
@@ -15,25 +15,24 @@ interface PlanReviewProps {
 /** The plan a plan-first task wrote, editable, with Approve and Discard. */
 export function PlanReview({ task, busy, onApprove, onDiscard }: Readonly<PlanReviewProps>) {
   const { t } = useTranslation(["researchTools"]);
-  const [original, setOriginal] = useState<string | null>(null);
+  // The plan, and the failure, are tagged with the run they belong to, so a new run starts empty.
+  const [loaded, setLoaded] = useState<{ key: string; plan: string } | null>(null);
+  const [missingKey, setMissingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
-  const [missing, setMissing] = useState(false);
   const taskKey = `${task.id}:${task.executionGeneration}`;
+  const original = loaded?.key === taskKey ? loaded.plan : null;
+  const missing = missingKey === taskKey;
 
   useEffect(() => {
-    // A new run of the task has a new plan.
-    void taskKey;
     let current = true;
-    setOriginal(null);
-    setMissing(false);
     loadResearchTaskPlan(task.id)
       .then((plan) => {
         if (!current) return;
-        setOriginal(plan);
+        setLoaded({ key: taskKey, plan });
         setDraft(plan);
       })
       .catch(() => {
-        if (current) setMissing(true);
+        if (current) setMissingKey(taskKey);
       });
     return () => {
       current = false;
@@ -41,6 +40,28 @@ export function PlanReview({ task, busy, onApprove, onDiscard }: Readonly<PlanRe
   }, [taskKey, task.id]);
 
   const edited = original !== null && draft.trim() !== original.trim();
+
+  let body: ReactNode;
+  if (missing) {
+    body = (
+      <p role="alert" className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+        {t(($) => $.researchTools.tasks.plan.missing)}
+      </p>
+    );
+  } else if (original === null) {
+    body = <LoadingState size="compact" label={t(($) => $.researchTools.tasks.plan.loading)} />;
+  } else {
+    body = (
+      <Textarea
+        aria-labelledby="research-task-plan"
+        className="min-h-64 font-mono text-xs"
+        disabled={busy}
+        value={draft}
+        maxLength={64 * 1024}
+        onChange={(event) => setDraft(event.target.value)}
+      />
+    );
+  }
 
   return (
     <section aria-labelledby="research-task-plan" className="space-y-3" data-testid="research-task-plan">
@@ -50,22 +71,7 @@ export function PlanReview({ task, busy, onApprove, onDiscard }: Readonly<PlanRe
         </h4>
         <p className="mt-1 text-xs text-muted-foreground">{t(($) => $.researchTools.tasks.plan.description)}</p>
       </div>
-      {missing ? (
-        <p role="alert" className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-          {t(($) => $.researchTools.tasks.plan.missing)}
-        </p>
-      ) : original === null ? (
-        <LoadingState size="compact" label={t(($) => $.researchTools.tasks.plan.loading)} />
-      ) : (
-        <Textarea
-          aria-labelledby="research-task-plan"
-          className="min-h-64 font-mono text-xs"
-          disabled={busy}
-          value={draft}
-          maxLength={64 * 1024}
-          onChange={(event) => setDraft(event.target.value)}
-        />
-      )}
+      {body}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button variant="outline" disabled={busy} onClick={() => void onDiscard().catch(() => {})}>
           {t(($) => $.researchTools.tasks.plan.discard)}

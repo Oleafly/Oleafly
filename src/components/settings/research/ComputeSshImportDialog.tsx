@@ -111,7 +111,7 @@ export function ComputeSshImportDialog({
         {hosts === null ? (
           <LoadingState size="compact" className="justify-center py-4" label={t(($) => $.common.state.loading)} />
         ) : null}
-        {hosts && hosts.length === 0 && !failure ? (
+        {hosts?.length === 0 && !failure ? (
           <EmptyState
             size="compact"
             className="rounded-md border border-dashed p-4"

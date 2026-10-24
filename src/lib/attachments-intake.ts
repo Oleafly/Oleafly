@@ -154,6 +154,96 @@ async function store<T>(work: () => Promise<T>): Promise<T> {
   }
 }
 
+type Normalizer = typeof import("@/lib/attachments-normalize");
+type NormalizedAttachment = Awaited<ReturnType<Normalizer["normalizeAttachment"]>>;
+type StoredMeta = Awaited<ReturnType<typeof attachmentPut>>;
+
+function isDrafted(composerId: string, id: string): boolean {
+  return draftAttachments(composerId).some((item) => item.id === id);
+}
+
+/** Stores a PDF's text layer; whether it was stored. A failure is logged, not fatal. */
+async function storePdfText(
+  scope: string | null,
+  sha256: string,
+  normalized: NormalizedAttachment,
+): Promise<boolean> {
+  if (normalized.text === undefined) return false;
+  try {
+    await attachmentPutText(scope, sha256, normalized.text, normalized.pages);
+    return true;
+  } catch (error) {
+    void logError("store attachment text", error);
+    return false;
+  }
+}
+
+/** Stores the page images of a scanned PDF (at most a few), in page order. */
+function storePageImages(
+  scope: string | null,
+  normalized: NormalizedAttachment,
+): Promise<StoredAttachmentRef[]> {
+  return Promise.all(
+    (normalized.pageImages ?? []).map(async (image, index) => {
+      const stored = await store(() =>
+        attachmentPut(scope, `${normalized.name} page ${index + 1}.png`, image.mime, image.bytes),
+      );
+      return { sha256: stored.sha256, mime: stored.mime };
+    }),
+  );
+}
+
+function readyPatch(
+  meta: StoredMeta,
+  normalized: NormalizedAttachment,
+  hasText: boolean | undefined,
+  pageImages: StoredAttachmentRef[],
+): Partial<DraftAttachment> {
+  const patch: Partial<DraftAttachment> = {
+    status: "ready",
+    sha256: meta.sha256,
+    mime: meta.mime,
+    size: meta.size,
+    thumbnailUrl: normalized.thumbnailUrl,
+  };
+  if (normalized.pages !== undefined) patch.pages = normalized.pages;
+  if (hasText !== undefined) patch.hasText = hasText;
+  if (pageImages.length > 0) patch.pageImages = pageImages;
+  return patch;
+}
+
+/** Prepares and stores one file, then marks its chip ready, or error when that fails. */
+async function prepareAttachment(
+  { file, kind, draft }: { file: File; kind: AttachmentKind; draft: DraftAttachment },
+  ctx: { composerId: string; scope: string | null },
+  normalizer: Normalizer,
+): Promise<void> {
+  const drafts = useComposerDrafts.getState();
+  try {
+    const normalized = await normalizer.normalizeAttachment(file, kind, ATTACHMENT_LIMITS);
+    if (!isDrafted(ctx.composerId, draft.id)) return;
+    const meta = await store(() =>
+      attachmentPut(ctx.scope, normalized.name, normalized.mime, normalized.bytes),
+    );
+    const hasText = kind === "pdf" ? await storePdfText(ctx.scope, meta.sha256, normalized) : undefined;
+    const pageImages = await storePageImages(ctx.scope, normalized);
+    const duplicate = draftAttachments(ctx.composerId).some(
+      (item) => item.id !== draft.id && item.status === "ready" && item.sha256 === meta.sha256,
+    );
+    if (duplicate) {
+      drafts.removeAttachments(ctx.composerId, [draft.id]);
+      return;
+    }
+    drafts.updateAttachment(ctx.composerId, draft.id, readyPatch(meta, normalized, hasText, pageImages));
+  } catch (error) {
+    void logError("prepare attachment", error);
+    drafts.updateAttachment(ctx.composerId, draft.id, {
+      status: "error",
+      error: failureMessage(error, draft.name),
+    });
+  }
+}
+
 /**
  * Adds files to a composer's draft: rejected files are reported in one
  * toast; accepted ones show as "processing" chips and are prepared one at
@@ -184,10 +274,7 @@ export async function intakeFiles(
   }));
   drafts.addAttachments(ctx.composerId, pending.map((item) => item.draft));
 
-  const present = (id: string) =>
-    draftAttachments(ctx.composerId).some((item) => item.id === id);
-
-  let normalizer: typeof import("@/lib/attachments-normalize");
+  let normalizer: Normalizer;
   try {
     normalizer = await import("@/lib/attachments-normalize");
   } catch (error) {
@@ -201,58 +288,8 @@ export async function intakeFiles(
     return;
   }
 
-  for (const { file, kind, draft } of pending) {
-    if (!present(draft.id)) continue;
-    try {
-      const normalized = await normalizer.normalizeAttachment(file, kind, ATTACHMENT_LIMITS);
-      if (!present(draft.id)) continue;
-      const meta = await store(() =>
-        attachmentPut(ctx.scope, normalized.name, normalized.mime, normalized.bytes),
-      );
-      let hasText: boolean | undefined;
-      if (kind === "pdf") {
-        hasText = false;
-        if (normalized.text !== undefined) {
-          try {
-            await attachmentPutText(ctx.scope, meta.sha256, normalized.text, normalized.pages);
-            hasText = true;
-          } catch (error) {
-            void logError("store attachment text", error);
-          }
-        }
-      }
-      const pageImages: StoredAttachmentRef[] = [];
-      for (const [index, image] of (normalized.pageImages ?? []).entries()) {
-        const stored = await store(() =>
-          attachmentPut(ctx.scope, `${normalized.name} page ${index + 1}.png`, image.mime, image.bytes),
-        );
-        pageImages.push({ sha256: stored.sha256, mime: stored.mime });
-      }
-      const duplicate = draftAttachments(ctx.composerId).some(
-        (item) => item.id !== draft.id && item.status === "ready" && item.sha256 === meta.sha256,
-      );
-      if (duplicate) {
-        drafts.removeAttachments(ctx.composerId, [draft.id]);
-        continue;
-      }
-      const patch: Partial<DraftAttachment> = {
-        status: "ready",
-        sha256: meta.sha256,
-        mime: meta.mime,
-        size: meta.size,
-        thumbnailUrl: normalized.thumbnailUrl,
-      };
-      if (normalized.pages !== undefined) patch.pages = normalized.pages;
-      if (hasText !== undefined) patch.hasText = hasText;
-      if (pageImages.length > 0) patch.pageImages = pageImages;
-      drafts.updateAttachment(ctx.composerId, draft.id, patch);
-    } catch (error) {
-      void logError("prepare attachment", error);
-      drafts.updateAttachment(ctx.composerId, draft.id, {
-        status: "error",
-        error: failureMessage(error, draft.name),
-      });
-    }
+  for (const item of pending) {
+    if (isDrafted(ctx.composerId, item.draft.id)) await prepareAttachment(item, ctx, normalizer);
   }
 }
 

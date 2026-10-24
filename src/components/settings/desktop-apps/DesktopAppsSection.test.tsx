@@ -160,6 +160,7 @@ describe("DesktopAppsSection", () => {
     expect(mocks.sync).not.toHaveBeenCalled();
     // Saying no to the question is a note, not a failure.
     expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent(enErrors.desktop_apps.change_declined);
   });
 
   it("adds a site and marks it for the signed-in browser", async () => {

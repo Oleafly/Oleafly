@@ -141,6 +141,47 @@ describe("research task store", () => {
     await Promise.resolve();
   });
 
+  it("folds a refreshed list in: a newer run or timestamp wins, an older copy loses and a task deleted elsewhere goes", async () => {
+    const updated = task("updated", "paper", 10);
+    const rerun = task("rerun", "paper", 10);
+    const older = task("older", "paper", 10);
+    const tie = task("tie", "paper", 10);
+    const changedMeanwhile = task("changed", "paper", 10);
+    const deletedElsewhere = task("gone", "paper", 10);
+    useResearchTasksStore.setState({
+      projectId: "paper",
+      tasks: [updated, rerun, older, tie, changedMeanwhile, deletedElsewhere],
+    });
+    const listing = deferred<ResearchTask[]>();
+    vi.mocked(api.listResearchTasks).mockReturnValue(listing.promise);
+
+    const refreshing = useResearchTasksStore.getState().refresh();
+    // A live update replaces this row while the list is on its way.
+    const live = { ...changedMeanwhile, title: "changed (live)" };
+    useResearchTasksStore.setState({
+      tasks: useResearchTasksStore.getState().tasks.map((item) => (item.id === live.id ? live : item)),
+    });
+    listing.resolve([
+      { ...updated, updatedAt: 11, title: "updated (fetched)" },
+      { ...rerun, executionGeneration: 2, updatedAt: 5, title: "rerun (fetched)" },
+      { ...older, updatedAt: 3, title: "older (fetched)" },
+      { ...tie, title: "tie (fetched)" },
+      { ...changedMeanwhile, title: "changed (fetched)" },
+    ]);
+    await refreshing;
+
+    const titles = Object.fromEntries(
+      useResearchTasksStore.getState().tasks.map((item) => [item.id, item.title]),
+    );
+    expect(titles).toEqual({
+      updated: "updated (fetched)",
+      rerun: "rerun (fetched)",
+      older: "older",
+      tie: "tie (fetched)",
+      changed: "changed (live)",
+    });
+  });
+
   it("ignores a stale task list after the open project changes", async () => {
     const first = deferred<ResearchTask[]>();
     const second = deferred<ResearchTask[]>();

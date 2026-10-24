@@ -47,7 +47,7 @@ export class TerminalLaunchError extends Error {
   }
 }
 
-const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,127}$/;
+const ENV_NAME = /^[A-Za-z_]\w{0,127}$/;
 const MAX_ENV = 32;
 /** Bytes, as the shell's environment counts them. */
 const MAX_ENV_VALUE_BYTES = 8192;

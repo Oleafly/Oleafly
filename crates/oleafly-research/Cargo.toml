@@ -13,6 +13,7 @@ test-support = []
 
 [dependencies]
 oleafly-core = { path = "../oleafly-core" }
+oleafly-doctools = { path = "../oleafly-doctools" }
 oleafly-agent = { path = "../oleafly-agent" }
 oleafly-sandbox = { path = "../oleafly-sandbox" }
 serde = { version = "1", features = ["derive"] }

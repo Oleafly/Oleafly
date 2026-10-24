@@ -292,6 +292,68 @@ describe("research task tools", () => {
     expect(confirm).not.toHaveBeenCalled();
   });
 
+  it("passes the trimmed goal, criteria and skills to the host", async () => {
+    const createHost = host();
+    const confirm = vi.fn().mockResolvedValue(true);
+    await createResearchTaskTools(createHost, { confirm }).research_task_create.execute({
+      title: " Sweep ",
+      prompt: " Find papers. ",
+      goal: "  Map the field  ",
+      success_criteria: [" Ten sources ", "", "A summary"],
+      skills: ["literature-review"],
+      network: true,
+    });
+    expect(confirm.mock.calls[0][0].researchTask).toMatchObject({
+      title: "Sweep",
+      prompt: "Find papers.",
+      goal: "Map the field",
+      skills: ["literature-review"],
+      network: true,
+      timeBudgetMinutes: null,
+    });
+    expect(createHost.createResearchTask).toHaveBeenCalledWith({
+      title: "Sweep",
+      prompt: "Find papers.",
+      skillIds: ["literature-review"],
+      brief: { goal: "Map the field", successCriteria: ["Ten sources", "A summary"], network: true },
+      start: true,
+    });
+  });
+
+  it("shows a blank goal as none but still passes it on", async () => {
+    const createHost = host();
+    const confirm = vi.fn().mockResolvedValue(true);
+    await createResearchTaskTools(createHost, { confirm }).research_task_create.execute({
+      title: "Sweep",
+      prompt: "x",
+      goal: "   ",
+    });
+    expect(confirm.mock.calls[0][0].researchTask.goal).toBeNull();
+    expect(createHost.createResearchTask.mock.calls[0][0].brief).toEqual({ goal: "" });
+  });
+
+  it("rejects a bad prompt, skill list or criteria list before asking", async () => {
+    const confirm = vi.fn().mockResolvedValue(true);
+    const tools = createResearchTaskTools(host(), { confirm });
+    expect(await tools.research_task_create.execute({ title: "Sweep", prompt: "  " })).toEqual({
+      error: "prompt must be 1 to 32,000 characters",
+    });
+    expect(await tools.research_task_create.execute({ title: "Sweep", prompt: "x", skills: "a" })).toEqual({
+      error: "skills must be a list of strings",
+    });
+    expect(
+      await tools.research_task_create.execute({ title: "Sweep", prompt: "x", success_criteria: [1] }),
+    ).toEqual({ error: "success_criteria must be a list of strings" });
+    expect(
+      await tools.research_task_create.execute({
+        title: "Sweep",
+        prompt: "x",
+        success_criteria: Array.from({ length: 13 }, () => "c"),
+      }),
+    ).toEqual({ error: "success_criteria can hold at most 12 items" });
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
   it("reports status for one task or the latest ten", async () => {
     const statusHost = host();
     const tools = createResearchTaskTools(statusHost);

@@ -25,7 +25,7 @@ export const USAGE_TONE_BAR: Record<UsageTone, string> = {
 /** The share of the context window in use, 0..1, or null when unknown. */
 export function contextFraction(snapshot: UsageSnapshot): number | null {
   const context = snapshot.context;
-  if (!context || !(context.size > 0) || !Number.isFinite(context.used)) return null;
+  if (!context || Number.isNaN(context.size) || context.size <= 0 || !Number.isFinite(context.used)) return null;
   return Math.min(1, Math.max(0, context.used / context.size));
 }
 

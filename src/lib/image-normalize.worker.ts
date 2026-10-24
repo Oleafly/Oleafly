@@ -9,7 +9,7 @@ interface WorkerScope {
 
 // Workers have FileReaderSync; the DOM library this project compiles
 // against does not declare it.
-declare const FileReaderSync: { new (): { readAsDataURL(blob: Blob): string } };
+declare const FileReaderSync: new () => { readAsDataURL(blob: Blob): string };
 
 const workerScope = self as unknown as WorkerScope;
 

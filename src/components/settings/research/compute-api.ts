@@ -1,8 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { i18n } from "@/i18n";
-import type { ComputeResources, RunProfile } from "@/lib/research-tasks";
+import type { ComputeResources } from "@/lib/research-tasks";
 
-export type { ComputeResources, RunProfile };
+export type { ComputeResources, RunProfile } from "@/lib/research-tasks";
 
 export type GpuFlag = "gres" | "gpus";
 
@@ -162,16 +162,16 @@ function hasControl(text: string) {
   });
 }
 
-/** The same rules the Rust side applies; values are error keys under `compute.form.errors`. */
-export function validateTarget(target: ComputeTarget): Partial<Record<TargetField, TargetError>> {
-  const errors: Partial<Record<TargetField, TargetError>> = {};
-  const label = target.label.trim();
-  if (label.length === 0 || [...label].length > 80 || hasControl(target.label)) errors.label = "label";
-  if (target.kind === "cuaSpace") {
-    if (!target.perTask && !SPACE.test(target.space)) errors.space = "name";
-    if (present(target.image) && !IMAGE.test(target.image)) errors.image = "name";
-    return errors;
-  }
+type TargetErrors = Partial<Record<TargetField, TargetError>>;
+type CuaSpaceTarget = Extract<ComputeTarget, { kind: "cuaSpace" }>;
+type SlurmTarget = Extract<ComputeTarget, { kind: "slurm" }>;
+
+function validateCuaSpace(target: CuaSpaceTarget, errors: TargetErrors) {
+  if (!target.perTask && !SPACE.test(target.space)) errors.space = "name";
+  if (present(target.image) && !IMAGE.test(target.image)) errors.image = "name";
+}
+
+function validateRemoteHost(target: Exclude<ComputeTarget, CuaSpaceTarget>, errors: TargetErrors) {
   if (!HOST.test(target.host) || target.host.startsWith("-")) errors.host = "host";
   if (present(target.user) && !USER.test(target.user)) errors.user = "user";
   if (!wholeIn(target.port, 1, 65_535)) errors.port = "port";
@@ -183,17 +183,30 @@ export function validateTarget(target: ComputeTarget): Partial<Record<TargetFiel
   ) {
     errors.remoteRoot = "remoteRoot";
   }
-  if (target.kind === "slurm") {
-    const defaults = target.defaults;
-    if (!wholeIn(defaults.timeMinutes, 1, 43_200)) errors.time = "time";
-    for (const field of ["partition", "account", "qos"] as const) {
-      const value = defaults[field];
-      if (present(value) && !NAME.test(value)) errors[field] = "name";
-    }
-    if (!wholeIn(defaults.memoryGb, 1, 65_536)) errors.mem = "mem";
-    if (!wholeIn(defaults.gpus, 0, 64)) errors.gpus = "count";
-    if (!wholeIn(defaults.cpus, 1, 1024)) errors.cpus = "count";
+}
+
+function validateSlurmDefaults(defaults: SlurmTarget["defaults"], errors: TargetErrors) {
+  if (!wholeIn(defaults.timeMinutes, 1, 43_200)) errors.time = "time";
+  for (const field of ["partition", "account", "qos"] as const) {
+    const value = defaults[field];
+    if (present(value) && !NAME.test(value)) errors[field] = "name";
   }
+  if (!wholeIn(defaults.memoryGb, 1, 65_536)) errors.mem = "mem";
+  if (!wholeIn(defaults.gpus, 0, 64)) errors.gpus = "count";
+  if (!wholeIn(defaults.cpus, 1, 1024)) errors.cpus = "count";
+}
+
+/** The same rules the Rust side applies; values are error keys under `compute.form.errors`. */
+export function validateTarget(target: ComputeTarget): TargetErrors {
+  const errors: TargetErrors = {};
+  const label = target.label.trim();
+  if (label.length === 0 || [...label].length > 80 || hasControl(target.label)) errors.label = "label";
+  if (target.kind === "cuaSpace") {
+    validateCuaSpace(target, errors);
+    return errors;
+  }
+  validateRemoteHost(target, errors);
+  if (target.kind === "slurm") validateSlurmDefaults(target.defaults, errors);
   return errors;
 }
 

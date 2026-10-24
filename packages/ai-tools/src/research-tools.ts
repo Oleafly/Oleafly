@@ -232,6 +232,68 @@ function stringList(value: unknown, maxItems: number, maxLength: number): string
   return items.filter(Boolean);
 }
 
+function trimmedString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function validBudgetMinutes(minutes: unknown): boolean {
+  return typeof minutes === "number" && Number.isInteger(minutes) && minutes >= 5 && minutes <= 1_440;
+}
+
+interface ParsedResearchTask {
+  title: string;
+  prompt: string;
+  skills: string[];
+  criteria: string[];
+  minutes: number | null;
+  start: boolean;
+}
+
+/** Checks what the agent passed; returns the parsed task or a message for the agent. */
+function parseResearchTaskInput(input: Record<string, unknown>): ParsedResearchTask | { error: string } {
+  const title = trimmedString(input.title);
+  const prompt = trimmedString(input.prompt);
+  if (!title || title.length > 160) return { error: "title must be 1 to 160 characters" };
+  if (!prompt || prompt.length > 32_000) return { error: "prompt must be 1 to 32,000 characters" };
+  const skills = stringList(input.skills, 32, 120);
+  if (typeof skills === "string") return { error: `skills ${skills}` };
+  const criteria = stringList(input.success_criteria, 12, 500);
+  if (typeof criteria === "string") return { error: `success_criteria ${criteria}` };
+  const minutes = input.time_budget_minutes;
+  if (minutes !== undefined && !validBudgetMinutes(minutes)) {
+    return { error: "time_budget_minutes must be a whole number from 5 to 1440" };
+  }
+  return {
+    title,
+    prompt,
+    skills,
+    criteria,
+    minutes: typeof minutes === "number" ? minutes : null,
+    start: input.start !== false,
+  };
+}
+
+/** The goal as the approval card shows it; `null` when it is missing or blank. */
+function approvalGoal(goal: unknown): string | null {
+  const trimmed = trimmedString(goal);
+  return trimmed ? trimmed.slice(0, 2_000) : null;
+}
+
+/** The brief the agent set, leaving out what it did not pass. */
+function researchTaskBrief(
+  input: Record<string, unknown>,
+  criteria: string[],
+  minutes: number | null,
+): ResearchTaskRequest["brief"] {
+  return {
+    ...(typeof input.goal === "string" ? { goal: input.goal.trim().slice(0, 2_000) } : {}),
+    ...(criteria.length > 0 ? { successCriteria: criteria } : {}),
+    ...(typeof input.review_plan_first === "boolean" ? { reviewPlanFirst: input.review_plan_first } : {}),
+    ...(typeof input.network === "boolean" ? { network: input.network } : {}),
+    ...(minutes === null ? {} : { timeBudgetMinutes: minutes }),
+  };
+}
+
 /** Tools that let an agent queue and check research tasks in the open project. */
 export function createResearchTaskTools(
   host: ResearchTaskToolsHost,
@@ -266,34 +328,21 @@ export function createResearchTaskTools(
         additionalProperties: false,
       },
       execute: async (input) => {
-        const title = typeof input.title === "string" ? input.title.trim() : "";
-        const prompt = typeof input.prompt === "string" ? input.prompt.trim() : "";
-        if (!title || title.length > 160) return { error: "title must be 1 to 160 characters" };
-        if (!prompt || prompt.length > 32_000) return { error: "prompt must be 1 to 32,000 characters" };
-        const skills = stringList(input.skills, 32, 120);
-        if (typeof skills === "string") return { error: `skills ${skills}` };
-        const criteria = stringList(input.success_criteria, 12, 500);
-        if (typeof criteria === "string") return { error: `success_criteria ${criteria}` };
-        const minutes = input.time_budget_minutes;
-        if (
-          minutes !== undefined &&
-          (typeof minutes !== "number" || !Number.isInteger(minutes) || minutes < 5 || minutes > 1_440)
-        ) {
-          return { error: "time_budget_minutes must be a whole number from 5 to 1440" };
-        }
-        const start = input.start !== false;
+        const parsed = parseResearchTaskInput(input);
+        if ("error" in parsed) return parsed;
+        const { title, prompt, skills, criteria, minutes, start } = parsed;
         if (confirm) {
           // The user approves what the task may do, not only its name: the whole prompt,
           // that its commands ask first, and whether they reach the network.
           const details: ResearchTaskApprovalDetails = {
             title,
             prompt,
-            goal: typeof input.goal === "string" && input.goal.trim() ? input.goal.trim().slice(0, 2_000) : null,
+            goal: approvalGoal(input.goal),
             skills,
             commands: "ask",
             network: input.network === true,
             reviewPlanFirst: input.review_plan_first === true,
-            timeBudgetMinutes: typeof minutes === "number" ? minutes : null,
+            timeBudgetMinutes: minutes,
             start,
           };
           const request: ToolApprovalRequest & { researchTask: ResearchTaskApprovalDetails } = {
@@ -310,13 +359,7 @@ export function createResearchTaskTools(
             title,
             prompt,
             skillIds: skills,
-            brief: {
-              ...(typeof input.goal === "string" ? { goal: input.goal.trim().slice(0, 2_000) } : {}),
-              ...(criteria.length > 0 ? { successCriteria: criteria } : {}),
-              ...(typeof input.review_plan_first === "boolean" ? { reviewPlanFirst: input.review_plan_first } : {}),
-              ...(typeof input.network === "boolean" ? { network: input.network } : {}),
-              ...(typeof minutes === "number" ? { timeBudgetMinutes: minutes } : {}),
-            },
+            brief: researchTaskBrief(input, criteria, minutes),
             start,
           });
         } catch (e) {

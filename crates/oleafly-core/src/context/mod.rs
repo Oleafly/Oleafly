@@ -510,7 +510,7 @@ pub fn scan_sources(
     let unused_cites: Vec<String> = bib_keys
         .iter()
         .filter(|key| !cited.contains(**key))
-        .map(|key| key.to_string())
+        .map(ToString::to_string)
         .collect();
     let unused_labels: Vec<String> = defs
         .iter()

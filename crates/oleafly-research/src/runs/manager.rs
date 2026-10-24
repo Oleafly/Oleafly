@@ -338,8 +338,7 @@ impl RunManager {
             extra_read: &request.read_paths,
             runtimes: &runtimes,
             host_env: &host_env,
-        })
-        .map_err(String::from)?;
+        })?;
         // Runs start `uv`, `pixi`, `cargo` and the like, which spawn helpers;
         // Seatbelt refuses that unless the spec allows it. Short task
         // commands keep the stricter rule.

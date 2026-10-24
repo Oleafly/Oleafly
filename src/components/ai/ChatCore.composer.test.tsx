@@ -1102,7 +1102,8 @@ describe("ChatCore composer, drafts and attachments", () => {
 
     await attach(rendered, [imageFile("plot.png")]);
     const notice = rendered.getByTestId("ai-attachment-notice");
-    expect(notice).toHaveAttribute("role", "status");
+    // An <output> carries the status role itself.
+    expect(rendered.getAllByRole("status")).toContain(notice);
     expect(notice).toHaveTextContent(
       enAi.attachments.visionUnsupported.replace("{{model}}", "GPT Text"),
     );

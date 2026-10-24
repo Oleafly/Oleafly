@@ -1,4 +1,4 @@
-import { type DragEvent as ReactDragEvent, useMemo, useRef, useState } from "react";
+import { type ComponentProps, type DragEvent as ReactDragEvent, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { languageForPath } from "@oleafly/editor";
 import {
@@ -313,6 +313,130 @@ function ScanConfirmation({
   );
 }
 
+function toolStatusState(busy: boolean, error: ConverterFailure | null): "ready" | "busy" | "error" {
+  if (busy) return "busy";
+  return error && !error.scan ? "error" : "ready";
+}
+
+/** Where the input goes: the model, arXiv, or nowhere because it stays on the device. */
+function InputDestination({
+  usesModel,
+  downloadsFromArxiv,
+}: Readonly<{ usesModel: "always" | "scans" | undefined; downloadsFromArxiv: boolean }>) {
+  const { t } = useTranslation(["researchTools"]);
+  if (usesModel) return <ToolsModelNotice scope={usesModel === "scans" ? "scans" : "images"} />;
+  if (downloadsFromArxiv) {
+    return (
+      <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-amber-600 dark:text-amber-400">
+        <CloudDownload className="size-3.5" /> {t(($) => $.researchTools.converter.downloadsFromArxiv)}
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-emerald-600 dark:text-emerald-400">
+      <ShieldCheck className="size-3.5" /> {t(($) => $.researchTools.converter.runsOnDevice)}
+    </span>
+  );
+}
+
+/** A failed conversion: what went wrong and, when there is one, where to fix it. */
+function FailureNotice({ error }: Readonly<{ error: ConverterFailure }>) {
+  const { t } = useTranslation(["researchTools"]);
+  return (
+    <div className="flex min-h-72 flex-1 items-center justify-center p-8 text-center">
+      <div className="max-w-md">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+          <FileText className="size-5" />
+        </div>
+        <h2 className="mt-4 text-sm font-semibold">{t(($) => $.researchTools.converter.needsAttention)}</h2>
+        <p className="mt-2 select-text text-sm leading-relaxed text-muted-foreground">{error.message}</p>
+        {error.settings && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => {
+              if (error.settings) openToolsSettings(error.settings);
+            }}
+          >
+            <Settings />{" "}
+            {error.settings === "ai-tools"
+              ? t(($) => $.researchTools.converterModel.openToolsSettings)
+              : t(($) => $.researchTools.converter.openAiSettings)}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** A binary result has nothing to show as text, so the pane says it is ready to save. */
+function BinaryResultNotice({ fileName }: Readonly<{ fileName: string }>) {
+  const { t } = useTranslation(["researchTools"]);
+  return (
+    <div className="flex min-h-72 flex-1 items-center justify-center p-8 text-center">
+      <div>
+        <div className="mx-auto flex size-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <FileText className="size-6" />
+        </div>
+        <h2 className="mt-4 text-sm font-semibold">{t(($) => $.researchTools.converter.fileReady, { fileName })}</h2>
+        <p className="mt-2 text-xs text-muted-foreground">{t(($) => $.researchTools.converter.saveWordHint)}</p>
+      </div>
+    </div>
+  );
+}
+
+function ResultPlaceholder() {
+  const { t } = useTranslation(["researchTools"]);
+  return (
+    <div className="flex min-h-72 flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
+      <div className="max-w-xs">
+        <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-lg bg-muted">
+          <FileText className="size-4" />
+        </div>
+        {t(($) => $.researchTools.converter.resultPlaceholder)}
+      </div>
+    </div>
+  );
+}
+
+/** The output pane's content: a scan waiting for the go-ahead, the failure, the result, or the placeholder. */
+function OutputBody({
+  error,
+  output,
+  themeId,
+  language,
+  onOutputChange,
+  onRunScan,
+  onCancelScan,
+}: Readonly<{
+  error: ConverterFailure | null;
+  output: ConverterOutput | null;
+  themeId: string;
+  language: ComponentProps<typeof CodeField>["language"];
+  onOutputChange: (output: ConverterOutput) => void;
+  onRunScan: () => void;
+  onCancelScan: () => void;
+}>) {
+  if (error?.scan) return <ScanConfirmation sizes={error.scan.sizes} onRun={onRunScan} onCancel={onCancelScan} />;
+  if (error) return <FailureNotice error={error} />;
+  if (output?.kind === "binary") return <BinaryResultNotice fileName={output.fileName} />;
+  if (output && output.text !== null) {
+    return (
+      <CodeField
+        value={output.text}
+        onChange={(next) => onOutputChange({ ...output, text: next })}
+        language={language}
+        themeId={themeId}
+        readOnly={output.kind === "bundle"}
+        testId="converter-output"
+        className="min-h-72 flex-1 overflow-auto text-sm [&_.cm-editor]:h-full"
+      />
+    );
+  }
+  return <ResultPlaceholder />;
+}
+
 function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
   const { t } = useTranslation(["researchTools"]);
   const definition = AD_HOC_CONVERTERS[id];
@@ -426,9 +550,9 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
           (progress) => setStatus(progress),
           signal,
         );
-      } catch (caught) {
-        awaitsConfirmation = caught instanceof ScanConfirmationNeeded;
-        throw caught;
+      } catch (error_) {
+        awaitsConfirmation = error_ instanceof ScanConfirmationNeeded;
+        throw error_;
       }
     });
     if (outcome.status === "done") setStatus({ step: "converted" });
@@ -505,7 +629,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
       showTheme
       testId="converter-tool-view"
       status={
-        <ToolStatus state={busy ? "busy" : error && !error.scan ? "error" : "ready"}>
+        <ToolStatus state={toolStatusState(busy, error)}>
           {progressLabel}
         </ToolStatus>
       }
@@ -554,17 +678,10 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
           footer={
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
               <span>{labels.inputHint}</span>
-              {definition.usesModel ? (
-                <ToolsModelNotice scope={definition.usesModel === "scans" ? "scans" : "images"} />
-              ) : definition.inputKind === "arxiv" && !useFile ? (
-                <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-amber-600 dark:text-amber-400">
-                  <CloudDownload className="size-3.5" /> {t(($) => $.researchTools.converter.downloadsFromArxiv)}
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-emerald-600 dark:text-emerald-400">
-                  <ShieldCheck className="size-3.5" /> {t(($) => $.researchTools.converter.runsOnDevice)}
-                </span>
-              )}
+              <InputDestination
+                usesModel={definition.usesModel}
+                downloadsFromArxiv={definition.inputKind === "arxiv" && !useFile}
+              />
             </div>
           }
         >
@@ -686,67 +803,15 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
             output?.note ? <ConversionNote note={output.note} details={output.details ?? []} /> : undefined
           }
         >
-          {error?.scan ? (
-            <ScanConfirmation
-              sizes={error.scan.sizes}
-              onRun={() => void convert(true)}
-              onCancel={resetConversion}
-            />
-          ) : error ? (
-            <div className="flex min-h-72 flex-1 items-center justify-center p-8 text-center">
-              <div className="max-w-md">
-                <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
-                  <FileText className="size-5" />
-                </div>
-                <h2 className="mt-4 text-sm font-semibold">{t(($) => $.researchTools.converter.needsAttention)}</h2>
-                <p className="mt-2 select-text text-sm leading-relaxed text-muted-foreground">{error.message}</p>
-                {error.settings && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-4"
-                    onClick={() => {
-                      if (error.settings) openToolsSettings(error.settings);
-                    }}
-                  >
-                    <Settings />{" "}
-                    {error.settings === "ai-tools"
-                      ? t(($) => $.researchTools.converterModel.openToolsSettings)
-                      : t(($) => $.researchTools.converter.openAiSettings)}
-                  </Button>
-                )}
-              </div>
-            </div>
-          ) : output?.kind === "binary" ? (
-            <div className="flex min-h-72 flex-1 items-center justify-center p-8 text-center">
-              <div>
-                <div className="mx-auto flex size-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <FileText className="size-6" />
-                </div>
-                <h2 className="mt-4 text-sm font-semibold">{t(($) => $.researchTools.converter.fileReady, { fileName: output.fileName })}</h2>
-                <p className="mt-2 text-xs text-muted-foreground">{t(($) => $.researchTools.converter.saveWordHint)}</p>
-              </div>
-            </div>
-          ) : output?.text !== null && output ? (
-            <CodeField
-              value={output.text}
-              onChange={(next) => setOutput({ ...output, text: next })}
-              language={outputLanguage}
-              themeId={editorTheme}
-              readOnly={output.kind === "bundle"}
-              testId="converter-output"
-              className="min-h-72 flex-1 overflow-auto text-sm [&_.cm-editor]:h-full"
-            />
-          ) : (
-            <div className="flex min-h-72 flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
-              <div className="max-w-xs">
-                <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-lg bg-muted">
-                  <FileText className="size-4" />
-                </div>
-                {t(($) => $.researchTools.converter.resultPlaceholder)}
-              </div>
-            </div>
-          )}
+          <OutputBody
+            error={error}
+            output={output}
+            themeId={editorTheme}
+            language={outputLanguage}
+            onOutputChange={setOutput}
+            onRunScan={() => void convert(true)}
+            onCancelScan={resetConversion}
+          />
         </ToolPane>
       </ToolSplitView>
     </ToolPageShell>

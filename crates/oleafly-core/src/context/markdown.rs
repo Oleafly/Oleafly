@@ -79,7 +79,8 @@ fn mask_code_spans(line: &str) -> String {
     string_of(&out)
 }
 
-fn markdown_heading_text(title: &str) -> String {
+/// `title` without HTML tags.
+fn strip_html_tags(title: &str) -> String {
     let mut without_tags = String::new();
     let mut inside = false;
     for character in title.chars() {
@@ -91,8 +92,26 @@ fn markdown_heading_text(title: &str) -> String {
             without_tags.push(character);
         }
     }
-    // Links and images keep their text.
-    let chars: Vec<char> = without_tags.chars().collect();
+    without_tags
+}
+
+/// The `[text](target)` link that starts at `start`: where its text closes
+/// and where its target ends.
+fn link_bounds(chars: &[char], start: usize) -> Option<(usize, usize)> {
+    if chars[start] != '[' {
+        return None;
+    }
+    let close = (start + 1..chars.len()).find(|at| chars[*at] == ']' || chars[*at] == '[')?;
+    if chars[close] != ']' || chars.get(close + 1) != Some(&'(') {
+        return None;
+    }
+    let paren = (close + 2..chars.len()).find(|at| chars[*at] == ')')?;
+    Some((close, paren))
+}
+
+/// Links and images keep their text.
+fn keep_link_text(text: &str) -> String {
+    let chars: Vec<char> = text.chars().collect();
     let mut linked = String::new();
     let mut index = 0;
     while index < chars.len() {
@@ -101,24 +120,20 @@ fn markdown_heading_text(title: &str) -> String {
         } else {
             index
         };
-        if chars[start] == '[' {
-            if let Some(close) =
-                (start + 1..chars.len()).find(|at| chars[*at] == ']' || chars[*at] == '[')
-            {
-                if chars[close] == ']' && chars.get(close + 1) == Some(&'(') {
-                    if let Some(paren) = (close + 2..chars.len()).find(|at| chars[*at] == ')') {
-                        linked.extend(&chars[start + 1..close]);
-                        index = paren + 1;
-                        continue;
-                    }
-                }
-            }
+        if let Some((close, paren)) = link_bounds(&chars, start) {
+            linked.extend(&chars[start + 1..close]);
+            index = paren + 1;
+            continue;
         }
         linked.push(chars[index]);
         index += 1;
     }
-    // Underscores at word edges and markup characters go.
-    let chars: Vec<char> = linked.chars().collect();
+    linked
+}
+
+/// Underscores at word edges and markup characters go.
+fn strip_markup_characters(text: &str) -> String {
+    let chars: Vec<char> = text.chars().collect();
     let mut out = String::new();
     for (index, character) in chars.iter().enumerate() {
         if *character == '_' {
@@ -147,6 +162,10 @@ fn markdown_heading_text(title: &str) -> String {
         out.push(*character);
     }
     out
+}
+
+fn markdown_heading_text(title: &str) -> String {
+    strip_markup_characters(&keep_link_text(&strip_html_tags(title)))
 }
 
 /// Pandoc's automatic identifier for a heading.
@@ -291,33 +310,116 @@ fn url_ranges(visible: &[char]) -> Vec<(usize, usize)> {
     ranges
 }
 
-/// Everything the project map needs from one Markdown file.
-pub(crate) fn analyze(file: &str, text: &str) -> FileFacts {
-    let source = Source::new(text);
-    let mut facts = FileFacts::default();
-    let lines: Vec<&str> = text.split('\n').collect();
-    let def = |facts: &mut FileFacts,
-               kind: DefKind,
-               name: String,
-               from: usize,
-               level: Option<u32>,
-               explicit: bool| {
-        facts.defs.push(Def {
+/// A heading: its title, the offset of the title, its level (the first is
+/// 0) and its line.
+type Heading = (String, usize, u32, usize);
+
+/// A file's facts, as the scans below add them.
+struct Facts<'a> {
+    file: &'a str,
+    source: &'a Source,
+    facts: FileFacts,
+}
+
+impl Facts<'_> {
+    fn def(
+        &mut self,
+        kind: DefKind,
+        name: String,
+        from: usize,
+        level: Option<u32>,
+        explicit: bool,
+    ) {
+        let line = self.source.line_of(from);
+        self.facts.defs.push(Def {
             kind,
             name,
-            file: file.to_string(),
+            file: self.file.to_string(),
             from,
-            line: source.line_of(from),
+            line,
             level,
             explicit,
         });
-    };
+    }
 
-    // Legacy headings (ATX and setext), outside front matter and fences.
+    fn use_(&mut self, kind: UseKind, name: String, from: usize, target: Option<String>) {
+        let line = self.source.line_of(from);
+        self.facts.uses.push(Use {
+            kind,
+            name,
+            file: self.file.to_string(),
+            from,
+            line,
+            target,
+            typst_at: false,
+        });
+    }
+
+    /// A `bibliography:` entry in the front matter.
+    fn bibliography(&mut self, raw: String, from: usize) {
+        let target = resolve_project_path(self.file, &raw, None);
+        self.use_(UseKind::Bibliography, raw, from, target);
+    }
+}
+
+/// The fence a fence line opens or closes: a line of the same character, at
+/// least as long, closes the open one.
+fn toggle_fence(fence: Option<Fence>, character: char, run: usize) -> Option<Fence> {
+    match fence {
+        None => Some(Fence {
+            character,
+            length: run,
+        }),
+        Some(open) if character == open.character && run >= open.length => None,
+        Some(open) => Some(open),
+    }
+}
+
+/// `# Title`, from the line and its code-span-masked copy.
+fn atx_heading(line: &str, visible: &str, offset: usize, index: usize) -> Option<Heading> {
+    let hashes = visible
+        .chars()
+        .take_while(|character| *character == '#')
+        .count();
+    if !(1..=6).contains(&hashes) || !visible.chars().nth(hashes).is_some_and(char::is_whitespace) {
+        return None;
+    }
+    let title_start = hashes
+        + visible
+            .chars()
+            .skip(hashes)
+            .take_while(|character| character.is_whitespace())
+            .count();
+    let raw_title: String = line.chars().skip(title_start).collect();
+    let name = strip_trailing_attributes(&strip_closing_hashes(&raw_title))
+        .trim_end()
+        .to_string();
+    Some((name, offset + title_start, (hashes - 1) as u32, index))
+}
+
+/// A line underlined with `===` or `---`.
+fn setext_heading(lines: &[&str], index: usize, visible: &str, offset: usize) -> Option<Heading> {
+    let line = lines[index];
+    let underline = lines.get(index + 1)?.trim();
+    let setext = (underline.len() >= 2 && underline.chars().all(|character| character == '='))
+        || (underline.len() >= 2 && underline.chars().all(|character| character == '-'));
+    if !setext || visible.trim().is_empty() {
+        return None;
+    }
+    let leading = line.chars().count() - line.trim_start().chars().count();
+    let name = strip_trailing_attributes(line.trim())
+        .trim_end()
+        .to_string();
+    let level = if underline.starts_with('=') { 0 } else { 1 };
+    Some((name, offset + leading, level, index))
+}
+
+/// Legacy headings (ATX and setext), outside front matter and fences.
+fn legacy_headings(text: &str, lines: &[&str]) -> Vec<Heading> {
     let mut offset = 0;
     let mut fence: Option<Fence> = None;
     let mut yaml = text.starts_with("---\n");
-    let mut headings: Vec<(String, usize, u32, usize)> = Vec::new();
+    let mut headings = Vec::new();
     for (index, line) in lines.iter().enumerate() {
         let length = line.chars().count();
         let skip = if yaml {
@@ -326,221 +428,182 @@ pub(crate) fn analyze(file: &str, text: &str) -> FileFacts {
             }
             true
         } else if let Some((character, run)) = fence_marker(line) {
-            fence = match fence {
-                None => Some(Fence {
-                    character,
-                    length: run,
-                }),
-                Some(open) if character == open.character && run >= open.length => None,
-                Some(open) => Some(open),
-            };
+            fence = toggle_fence(fence, character, run);
             true
         } else {
             fence.is_some()
         };
         if !skip {
             let visible = mask_code_spans(line);
-            let hashes = visible
-                .chars()
-                .take_while(|character| *character == '#')
-                .count();
-            if (1..=6).contains(&hashes)
-                && visible.chars().nth(hashes).is_some_and(char::is_whitespace)
-            {
-                let title_start = hashes
-                    + visible
-                        .chars()
-                        .skip(hashes)
-                        .take_while(|character| character.is_whitespace())
-                        .count();
-                let raw_title: String = line.chars().skip(title_start).collect();
-                let name = strip_trailing_attributes(&strip_closing_hashes(&raw_title))
-                    .trim_end()
-                    .to_string();
-                headings.push((name, offset + title_start, (hashes - 1) as u32, index));
-            } else if let Some(next) = lines.get(index + 1) {
-                let underline = next.trim();
-                let setext = (underline.len() >= 2
-                    && underline.chars().all(|character| character == '='))
-                    || (underline.len() >= 2
-                        && underline.chars().all(|character| character == '-'));
-                if setext && !visible.trim().is_empty() {
-                    let leading = line.chars().count() - line.trim_start().chars().count();
-                    let name = strip_trailing_attributes(line.trim())
-                        .trim_end()
-                        .to_string();
-                    let level = if underline.starts_with('=') { 0 } else { 1 };
-                    headings.push((name, offset + leading, level, index));
-                }
-            }
+            let heading = atx_heading(line, &visible, offset, index)
+                .or_else(|| setext_heading(lines, index, &visible, offset));
+            headings.extend(heading);
         }
         offset += length + 1;
     }
-    for (name, from, level, _) in &headings {
-        def(
-            &mut facts,
-            DefKind::Section,
-            name.clone(),
-            *from,
-            Some(*level),
-            true,
-        );
-    }
+    headings
+}
 
-    // The visible text: front matter, fences and code spans masked; the
-    // front matter's `bibliography:` declarations noted.
-    let mut visible: Vec<char> = source.chars.clone();
+fn mask(visible: &mut [char], from: usize, count: usize) {
+    for cell in visible.iter_mut().skip(from).take(count) {
+        *cell = ' ';
+    }
+}
+
+/// Blanks the code spans of an ordinary line that starts at `offset`.
+fn mask_line_code_spans(visible: &mut [char], line: &str, offset: usize) {
+    let masked = mask_code_spans(line);
+    for (position, character) in masked.chars().enumerate() {
+        if character == ' '
+            && !line
+                .chars()
+                .nth(position)
+                .is_some_and(|original| original == ' ')
+        {
+            mask(visible, offset + position, 1);
+        }
+    }
+}
+
+/// `bibliography: refs.bib` or `bibliography: [a.bib, b.bib]` (the line,
+/// which starts at `offset`, and the declared value).
+fn bibliography_declaration(facts: &mut Facts<'_>, line: &str, offset: usize, value: &str) {
+    let values: Vec<String> = if value.starts_with('[') && value.ends_with(']') {
+        value[1..value.len() - 1]
+            .split(',')
+            .map(str::to_string)
+            .collect()
+    } else if value.is_empty() {
+        Vec::new()
+    } else {
+        vec![value.to_string()]
+    };
+    for item in values {
+        let raw = item.trim().trim_matches(['"', '\'']).to_string();
+        if raw.is_empty() {
+            continue;
+        }
+        let at = line
+            .find(raw.as_str())
+            .map_or(0, |byte| line[..byte].chars().count());
+        facts.bibliography(raw, offset + at);
+    }
+}
+
+/// An item (`- refs.bib`) of a `bibliography:` list.
+fn bibliography_list_item(facts: &mut Facts<'_>, line: &str, offset: usize, item: &str) {
+    let raw = item.trim().trim_matches(['"', '\'']).to_string();
+    if raw.is_empty() {
+        return;
+    }
+    let at = line
+        .rfind(raw.as_str())
+        .map_or(0, |byte| line[..byte].chars().count());
+    facts.bibliography(raw, offset + at);
+}
+
+/// Notes the `bibliography:` declarations of a front matter line.
+/// `in_list` is whether a list of them is open.
+fn note_front_matter_line(facts: &mut Facts<'_>, line: &str, offset: usize, in_list: &mut bool) {
+    let lower = line.to_ascii_lowercase();
+    if let Some(rest) = lower
+        .strip_prefix("bibliography")
+        .map(str::trim_start)
+        .filter(|rest| rest.starts_with(':'))
+    {
+        let value_start = line.len() - rest.len() + 1;
+        let value = trim_js(&line[value_start..]).to_string();
+        *in_list = value.is_empty();
+        bibliography_declaration(facts, line, offset, &value);
+    } else if *in_list {
+        match line.trim_start().strip_prefix('-') {
+            Some(item) => bibliography_list_item(facts, line, offset, item),
+            None if line.starts_with(|character: char| !character.is_whitespace()) => {
+                *in_list = false;
+            }
+            None => {}
+        }
+    }
+}
+
+/// The visible text: front matter, fences and code spans masked. The front
+/// matter's `bibliography:` declarations are noted on the way.
+fn visible_text(facts: &mut Facts<'_>, text: &str, lines: &[&str]) -> Vec<char> {
+    let mut visible: Vec<char> = facts.source.chars.clone();
     let mut offset = 0;
     let mut fence: Option<Fence> = None;
     let mut yaml = text.starts_with("---\n");
     let mut bibliography_list = false;
     for (index, line) in lines.iter().enumerate() {
         let length = line.chars().count();
-        let mut mask = |from: usize, count: usize| {
-            for cell in visible.iter_mut().skip(from).take(count) {
-                *cell = ' ';
-            }
-        };
         if yaml {
             if index > 0 && matches!(line.trim_end(), "---" | "...") {
                 yaml = false;
                 bibliography_list = false;
             } else {
-                let lower = line.to_ascii_lowercase();
-                if let Some(rest) = lower
-                    .strip_prefix("bibliography")
-                    .map(|rest| rest.trim_start())
-                    .filter(|rest| rest.starts_with(':'))
-                {
-                    let value_start = line.len() - rest.len() + 1;
-                    let value = trim_js(&line[value_start..]).to_string();
-                    bibliography_list = value.is_empty();
-                    let values: Vec<String> = if value.starts_with('[') && value.ends_with(']') {
-                        value[1..value.len() - 1]
-                            .split(',')
-                            .map(str::to_string)
-                            .collect()
-                    } else if value.is_empty() {
-                        Vec::new()
-                    } else {
-                        vec![value.clone()]
-                    };
-                    for item in values {
-                        let raw = item.trim().trim_matches(['"', '\'']).to_string();
-                        if raw.is_empty() {
-                            continue;
-                        }
-                        let at = line
-                            .find(raw.as_str())
-                            .map_or(0, |byte| line[..byte].chars().count());
-                        let target = resolve_project_path(file, &raw, None);
-                        let from = offset + at;
-                        facts.uses.push(Use {
-                            kind: UseKind::Bibliography,
-                            name: raw,
-                            file: file.to_string(),
-                            from,
-                            line: source.line_of(from),
-                            target,
-                            typst_at: false,
-                        });
-                    }
-                } else if bibliography_list {
-                    let trimmed = line.trim_start();
-                    if let Some(item) = trimmed.strip_prefix('-') {
-                        let raw = item.trim().trim_matches(['"', '\'']).to_string();
-                        if !raw.is_empty() {
-                            let at = line
-                                .rfind(raw.as_str())
-                                .map_or(0, |byte| line[..byte].chars().count());
-                            let target = resolve_project_path(file, &raw, None);
-                            let from = offset + at;
-                            facts.uses.push(Use {
-                                kind: UseKind::Bibliography,
-                                name: raw,
-                                file: file.to_string(),
-                                from,
-                                line: source.line_of(from),
-                                target,
-                                typst_at: false,
-                            });
-                        }
-                    } else if line.starts_with(|character: char| !character.is_whitespace()) {
-                        bibliography_list = false;
-                    }
-                }
-                mask(offset, length);
+                note_front_matter_line(facts, line, offset, &mut bibliography_list);
+                mask(&mut visible, offset, length);
             }
         } else if let Some((character, run)) = fence_marker(line) {
-            fence = match fence {
-                None => Some(Fence {
-                    character,
-                    length: run,
-                }),
-                Some(open) if character == open.character && run >= open.length => None,
-                Some(open) => Some(open),
-            };
-            mask(offset, length);
+            fence = toggle_fence(fence, character, run);
+            mask(&mut visible, offset, length);
         } else if fence.is_some() {
-            mask(offset, length);
+            mask(&mut visible, offset, length);
         } else {
-            let masked = mask_code_spans(line);
-            for (position, character) in masked.chars().enumerate() {
-                if character == ' '
-                    && !line
-                        .chars()
-                        .nth(position)
-                        .is_some_and(|original| original == ' ')
-                {
-                    mask(offset + position, 1);
-                }
-            }
+            mask_line_code_spans(&mut visible, line, offset);
         }
         offset += length + 1;
     }
-    let urls = url_ranges(&visible);
-    let in_url = |offset: usize| {
-        urls.iter()
-            .any(|(from, to)| offset >= *from && offset < *to)
-    };
+    visible
+}
 
-    // Citations: `@key` / `-@key` after a non-word character.
+fn in_url(urls: &[(usize, usize)], offset: usize) -> bool {
+    urls.iter()
+        .any(|(from, to)| offset >= *from && offset < *to)
+}
+
+/// Whether the `@` at `index` (with a `-` in front of it, when there is one)
+/// follows a non-word character.
+fn citation_boundary(visible: &[char], index: usize) -> bool {
+    let start = if index > 0 && visible[index - 1] == '-' {
+        index - 1
+    } else {
+        index
+    };
+    start == 0 || {
+        let before = visible[start - 1];
+        !(before.is_alphanumeric() || before == '_' || before == '\\')
+    }
+}
+
+/// Where the key of the citation at `index` ends.
+fn citation_key_end(visible: &[char], index: usize) -> usize {
+    let mut end = index + 1;
+    while end < visible.len()
+        && (visible[end].is_alphanumeric() || "_:.#$%&+?~/-".contains(visible[end]))
+    {
+        end += 1;
+    }
+    end
+}
+
+/// Citations: `@key` / `-@key` after a non-word character.
+fn citations(facts: &mut Facts<'_>, visible: &[char], urls: &[(usize, usize)]) {
     let mut index = 0;
     while index < visible.len() {
         if visible[index] == '@' {
-            let start = if index > 0 && visible[index - 1] == '-' {
-                index - 1
-            } else {
-                index
-            };
-            let boundary = start == 0 || {
-                let before = visible[start - 1];
-                !(before.is_alphanumeric() || before == '_' || before == '\\')
-            };
-            let mut end = index + 1;
-            while end < visible.len()
-                && (visible[end].is_alphanumeric() || "_:.#$%&+?~/-".contains(visible[end]))
-            {
-                end += 1;
-            }
+            let boundary = citation_boundary(visible, index);
+            let end = citation_key_end(visible, index);
             if boundary && end > index + 1 {
                 let raw = string_of(&visible[index + 1..end]);
                 let key = raw.trim_end_matches(['.', ',', ';', '!', '?']).to_string();
                 let previous = index.checked_sub(1).map(|at| visible[at]);
                 if !key.is_empty()
-                    && !in_url(index)
+                    && !in_url(urls, index)
                     && previous != Some('/')
                     && previous != Some('\\')
                 {
-                    facts.uses.push(Use {
-                        kind: UseKind::Cite,
-                        name: key,
-                        file: file.to_string(),
-                        from: index + 1,
-                        line: source.line_of(index + 1),
-                        target: None,
-                        typst_at: false,
-                    });
+                    facts.use_(UseKind::Cite, key, index + 1, None);
                 }
                 index = end;
                 continue;
@@ -548,22 +611,37 @@ pub(crate) fn analyze(file: &str, text: &str) -> FileFacts {
         }
         index += 1;
     }
+}
 
-    // Explicit `{#id}` anchors.
-    let mut used: Vec<String> = Vec::new();
-    let mut explicit: Vec<(String, u32)> = Vec::new();
-    for (attributes, from) in attribute_blocks(&visible) {
-        if in_url(from) {
+/// Explicit `{#id}` anchors, with the line each is on.
+fn explicit_anchors(
+    facts: &mut Facts<'_>,
+    visible: &[char],
+    urls: &[(usize, usize)],
+) -> Vec<(String, u32)> {
+    let mut explicit = Vec::new();
+    for (attributes, from) in attribute_blocks(visible) {
+        if in_url(urls, from) {
             continue;
         }
         if let Some((name, at)) = attribute_identifier(&attributes) {
             let position = from + at;
-            explicit.push((name.clone(), source.line_of(position)));
-            def(&mut facts, DefKind::Label, name, position, None, true);
+            explicit.push((name.clone(), facts.source.line_of(position)));
+            facts.def(DefKind::Label, name, position, None, true);
         }
     }
-    // Heading anchors: the explicit id, else Pandoc's automatic one.
-    for (name, from, _, line_index) in &headings {
+    explicit
+}
+
+/// Heading anchors: the explicit id, else Pandoc's automatic one.
+fn heading_anchors(
+    facts: &mut Facts<'_>,
+    lines: &[&str],
+    headings: &[Heading],
+    explicit: &[(String, u32)],
+) {
+    let mut used: Vec<String> = Vec::new();
+    for (name, from, _, line_index) in headings {
         let line = lines[*line_index];
         let explicit_id = attribute_blocks(&line.chars().collect::<Vec<_>>())
             .last()
@@ -573,59 +651,68 @@ pub(crate) fn analyze(file: &str, text: &str) -> FileFacts {
             .clone()
             .unwrap_or_else(|| unique_identifier(&markdown_slug(name), &used));
         used.push(anchor.clone());
-        let line_number = source.line_of(*from);
+        let line_number = facts.source.line_of(*from);
         if explicit
             .iter()
             .any(|(existing, line)| *existing == anchor && *line == line_number)
         {
             continue;
         }
-        def(
-            &mut facts,
-            DefKind::Label,
-            anchor,
-            *from,
-            None,
-            explicit_id.is_some(),
-        );
+        facts.def(DefKind::Label, anchor, *from, None, explicit_id.is_some());
     }
+}
 
-    // `!include file` lines.
+/// `!include file` lines.
+fn include_lines(facts: &mut Facts<'_>, lines: &[&str]) {
     for (index, line) in lines.iter().enumerate() {
         let trimmed = line.trim_start();
         let rest = trimmed
             .strip_prefix("!include")
             .filter(|rest| rest.starts_with(char::is_whitespace))
             .map(str::trim_start);
-        if let Some(rest) = rest {
-            let raw: String = rest
-                .trim_matches(['"', '\''])
-                .chars()
-                .take_while(|character| !is_js_space(*character) && !"\"'}%>".contains(*character))
-                .collect();
-            if !raw.is_empty() {
-                let line_offset: usize = lines[..index]
-                    .iter()
-                    .map(|line| line.chars().count() + 1)
-                    .sum();
-                let at = line
-                    .find(raw.as_str())
-                    .map_or(0, |byte| line[..byte].chars().count());
-                let from = line_offset + at;
-                let target = resolve_project_path(file, &raw, None);
-                facts.uses.push(Use {
-                    kind: UseKind::Include,
-                    name: raw,
-                    file: file.to_string(),
-                    from,
-                    line: source.line_of(from),
-                    target,
-                    typst_at: false,
-                });
-            }
+        let Some(rest) = rest else {
+            continue;
+        };
+        let raw: String = rest
+            .trim_matches(['"', '\''])
+            .chars()
+            .take_while(|character| !is_js_space(*character) && !"\"'}%>".contains(*character))
+            .collect();
+        if raw.is_empty() {
+            continue;
         }
+        let line_offset: usize = lines[..index]
+            .iter()
+            .map(|line| line.chars().count() + 1)
+            .sum();
+        let at = line
+            .find(raw.as_str())
+            .map_or(0, |byte| line[..byte].chars().count());
+        let target = resolve_project_path(facts.file, &raw, None);
+        facts.use_(UseKind::Include, raw, line_offset + at, target);
     }
-    facts
+}
+
+/// Everything the project map needs from one Markdown file.
+pub(crate) fn analyze(file: &str, text: &str) -> FileFacts {
+    let source = Source::new(text);
+    let lines: Vec<&str> = text.split('\n').collect();
+    let mut facts = Facts {
+        file,
+        source: &source,
+        facts: FileFacts::default(),
+    };
+    let headings = legacy_headings(text, &lines);
+    for (name, from, level, _) in &headings {
+        facts.def(DefKind::Section, name.clone(), *from, Some(*level), true);
+    }
+    let visible = visible_text(&mut facts, text, &lines);
+    let urls = url_ranges(&visible);
+    citations(&mut facts, &visible, &urls);
+    let explicit = explicit_anchors(&mut facts, &visible, &urls);
+    heading_anchors(&mut facts, &lines, &headings, &explicit);
+    include_lines(&mut facts, &lines);
+    facts.facts
 }
 
 #[cfg(test)]
@@ -674,6 +761,101 @@ mod tests {
             (bibliography.name.as_str(), bibliography.target.as_deref()),
             ("refs.bib", Some("refs.bib"))
         );
+    }
+
+    fn names(facts: &FileFacts, kind: DefKind) -> Vec<String> {
+        facts
+            .defs
+            .iter()
+            .filter(|def| def.kind == kind)
+            .map(|def| def.name.clone())
+            .collect()
+    }
+
+    fn uses(facts: &FileFacts, kind: UseKind) -> Vec<(String, Option<String>)> {
+        facts
+            .uses
+            .iter()
+            .filter(|use_| use_.kind == kind)
+            .map(|use_| (use_.name.clone(), use_.target.clone()))
+            .collect()
+    }
+
+    #[test]
+    fn setext_headings_closing_hashes_and_explicit_ids() {
+        let facts = analyze(
+            "notes.md",
+            "Title\n=====\n\nSub\n---\n\n## Closed ##\n\n# Attr {#custom .x}\n",
+        );
+        let sections: Vec<(String, Option<u32>)> = facts
+            .defs
+            .iter()
+            .filter(|def| def.kind == DefKind::Section)
+            .map(|def| (def.name.clone(), def.level))
+            .collect();
+        assert_eq!(
+            sections,
+            [
+                ("Title".to_string(), Some(0)),
+                ("Sub".to_string(), Some(1)),
+                ("Closed".to_string(), Some(1)),
+                ("Attr".to_string(), Some(0)),
+            ]
+        );
+        assert_eq!(
+            names(&facts, DefKind::Label),
+            ["custom", "title", "sub", "closed"]
+        );
+    }
+
+    #[test]
+    fn front_matter_bibliography_takes_inline_lists_and_block_lists() {
+        let facts = analyze(
+            "notes/main.md",
+            "---\nbibliography:\n  - one.bib\n  - \"two.bib\"\ntitle: t\nnote: @hidden\n---\nbody @k\n",
+        );
+        assert_eq!(
+            uses(&facts, UseKind::Bibliography),
+            [
+                ("one.bib".to_string(), Some("notes/one.bib".to_string())),
+                ("two.bib".to_string(), Some("notes/two.bib".to_string())),
+            ]
+        );
+        assert_eq!(uses(&facts, UseKind::Cite), [("k".to_string(), None)]);
+        let inline = analyze("main.md", "---\nbibliography: [a.bib, 'b.bib']\n---\n");
+        let names: Vec<String> = uses(&inline, UseKind::Bibliography)
+            .into_iter()
+            .map(|(name, _)| name)
+            .collect();
+        assert_eq!(names, ["a.bib", "b.bib"]);
+    }
+
+    #[test]
+    fn citations_skip_urls_and_includes_resolve_beside_the_file() {
+        let facts = analyze(
+            "notes/main.md",
+            "see http://x.org/@nope and @real and a/@no and me@x.org\n!include parts/a.md\n  !include \"b.md\" tail\n",
+        );
+        assert_eq!(uses(&facts, UseKind::Cite), [("real".to_string(), None)]);
+        assert_eq!(
+            uses(&facts, UseKind::Include),
+            [
+                (
+                    "parts/a.md".to_string(),
+                    Some("notes/parts/a.md".to_string())
+                ),
+                ("b.md".to_string(), Some("notes/b.md".to_string())),
+            ]
+        );
+    }
+
+    #[test]
+    fn slugs_drop_links_images_tags_and_markup() {
+        assert_eq!(
+            markdown_slug("A [link](u) and ![img](s) with _emph_ and snake_case"),
+            "a-link-and-img-with-emph-and-snake_case"
+        );
+        assert_eq!(markdown_slug("<b>Bold</b> `code` ~~x~~"), "bold-code-x");
     }
 
     #[test]

@@ -1,6 +1,10 @@
 import { convertPages } from "@oleafly/pdf-to-latex";
-import type { AdHocArtifact, AdHocCheck } from "@/lib/tauri";
-import { extractArxivSource, type AdHocConversionRequest } from "@/lib/tauri";
+import {
+  extractArxivSource,
+  type AdHocArtifact,
+  type AdHocCheck,
+  type AdHocConversionRequest,
+} from "@/lib/tauri";
 import { emitTable, readTableRowsFromBytes } from "@/features/table-import";
 import { mermaidToFletcher, mermaidToTikz } from "@/features/mermaid-to-tikz";
 import { CONVERTED_MAIN_FILE, flattenLatexInputs, typstSupportFiles } from "@/features/arxiv-typst";

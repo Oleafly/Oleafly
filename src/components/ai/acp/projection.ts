@@ -177,6 +177,17 @@ function applyChunk(state: ProjectionState, event: AcpEvent): boolean {
   return true;
 }
 
+/** A v2 agent streams tool output in pieces: an append goes on the end of what the call has. */
+function mergedToolOutput(previous: string | undefined, output: string | undefined, append: boolean): string | undefined {
+  if (output === undefined) return previous;
+  return append && previous ? `${previous}${output}` : output;
+}
+
+function mergedToolDiffs(data: Data, previous: ToolEntry | undefined): ToolDiff[] | undefined {
+  if (!data.content) return previous?.diffs;
+  return toolDiffs(data) ?? (data.append === true ? previous?.diffs : undefined);
+}
+
 function applyToolCall(state: ProjectionState, event: AcpEvent): boolean {
   const data = event.data;
   const toolId = text(data.toolCallId);
@@ -190,13 +201,8 @@ function applyToolCall(state: ProjectionState, event: AcpEvent): boolean {
     // Agents title tool calls with absolute paths ("Read /Users/…/main.tex").
     name: displayText(text(data.title)) || previous?.name || i18n.t(($) => $.ai.acp.agentToolFallback),
     status: toolStatus(data.status, previous?.status),
-    // A v2 agent streams tool output in pieces.
-    output: output === undefined
-      ? previous?.output
-      : data.append === true && previous?.output
-        ? `${previous.output}${output}`
-        : output,
-    diffs: data.content ? toolDiffs(data) ?? (data.append === true ? previous?.diffs : undefined) : previous?.diffs,
+    output: mergedToolOutput(previous?.output, output, data.append === true),
+    diffs: mergedToolDiffs(data, previous),
   };
   if (!tool.diffs) delete tool.diffs;
   if (index === undefined) {
@@ -298,10 +304,15 @@ function applyPlan(state: ProjectionState, event: AcpEvent, entries: readonly un
   appendRow(state, event, "plan", { role: "assistant", content });
 }
 
+function noticeText(title: string, description: string): string {
+  if (!description) return title;
+  return title ? `${title}: ${description}` : description;
+}
+
 function applyNotice(state: ProjectionState, event: AcpEvent) {
   const title = displayText(text(event.data.title));
   const description = displayText(text(event.data.description));
-  const notice = description ? (title ? `${title}: ${description}` : description) : title;
+  const notice = noticeText(title, description);
   if (!notice) return false;
   appendRow(state, event, "notice", { role: "assistant", content: "", notices: [notice] });
   return true;
@@ -311,6 +322,11 @@ function compactionName(status: string): string {
   if (status === "completed") return i18n.t(($) => $.ai.acp.compaction.done);
   if (status === "failed" || status === "cancelled") return i18n.t(($) => $.ai.acp.compaction.failed);
   return i18n.t(($) => $.ai.acp.compaction.running);
+}
+
+function compactionStatus(status: string): ToolEntry["status"] {
+  if (status === "completed") return "done";
+  return status === "failed" || status === "cancelled" ? "error" : "running";
 }
 
 /** A compaction shows as a step whose output is the summary. */
@@ -323,7 +339,7 @@ function applyCompaction(state: ProjectionState, event: AcpEvent) {
   const tool: ToolEntry = {
     id: key,
     name: compactionName(status),
-    status: status === "completed" ? "done" : status === "failed" || status === "cancelled" ? "error" : "running",
+    status: compactionStatus(status),
     output: text(event.data.summary) || text(event.data.error) || undefined,
   };
   if (index === undefined) {

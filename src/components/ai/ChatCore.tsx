@@ -122,7 +122,7 @@ import {
   type MentionItem,
   type SlashItem,
 } from "@/components/ai/composer/ChatComposer";
-import type { DraftAttachment } from "@/components/ai/composer/types";
+import type { DraftAttachment, StoredAttachmentRef } from "@/components/ai/composer/types";
 import { EffortSelector } from "@/components/ai/composer/EffortSelector";
 import { WebToggle } from "@/components/ai/composer/WebToggle";
 import { UsageMeter } from "@/components/ai/usage/UsageMeter";
@@ -825,6 +825,30 @@ export function modelNoticeText(
   return chatOnly ? chatOnlyModelHint() : "";
 }
 
+/** The notice a run raised, or `null` for a code the chat does not show. */
+function runNoticeText(code: string, detail: string | null): string | null {
+  const name = typeof detail === "string" ? detail : "";
+  if (code === "attachment_sent_as_text") return i18n.t(($) => $.ai.attachments.sentAsText, { name });
+  if (code === "attachment_skipped") return i18n.t(($) => $.ai.attachments.skipped, { name });
+  if (code === "web_search_unavailable") return i18n.t(($) => $.ai.web.searchUnavailable);
+  return null;
+}
+
+/** Swaps a tool call's inline screenshot for the reference it was stored under. */
+function withStoredToolImage(
+  message: ChatMessage,
+  toolId: string | undefined,
+  imageRef: StoredAttachmentRef,
+): ChatMessage {
+  const calls = message.toolCalls ?? [];
+  const index = calls.findIndex((call) => call.id !== undefined && call.id === toolId);
+  if (index < 0) return message;
+  const next = [...calls];
+  const { image: _inline, ...stored } = next[index];
+  next[index] = { ...stored, imageRef };
+  return { ...message, toolCalls: next };
+}
+
 const UsageReportDialog = lazy(() =>
   import("@/components/usage/UsageReport").then((module) => ({ default: module.UsageReportDialog })),
 );
@@ -1030,14 +1054,14 @@ export function ChatCore() {
   // The draft on show; it changes with the chat, in an effect further down.
   const shownDraftRef = useRef(composerId);
   const composerRef = useRef<ChatComposerHandle>(null);
-  const [input, setInputState] = useState(() => draftText(composerId));
-  const inputRef = useRef(input);
-  inputRef.current = input;
+  const [inputText, setInputText] = useState(() => draftText(composerId));
+  const inputRef = useRef(inputText);
+  inputRef.current = inputText;
   const inputRevisionRef = useRef(0);
   const setInput = useCallback((text: string) => {
     inputRef.current = text;
     inputRevisionRef.current += 1;
-    setInputState(text);
+    setInputText(text);
     useComposerDrafts.getState().setText(composerIdRef.current, text);
   }, []);
   const attachments = useComposerDrafts(
@@ -2178,15 +2202,7 @@ export function ChatCore() {
       // every screenshot in memory until the app restarts.
       void storeToolImage(runProjectId, dataUrl).then((ref) => {
         if (!ref) return;
-        updateRunLast((m) => {
-          const calls = m.toolCalls ?? [];
-          const index = calls.findIndex((call) => call.id !== undefined && call.id === toolId);
-          if (index < 0) return m;
-          const next = [...calls];
-          const { image: _inline, ...stored } = next[index];
-          next[index] = { ...stored, imageRef: ref };
-          return { ...m, toolCalls: next };
-        });
+        updateRunLast((m) => withStoredToolImage(m, toolId, ref));
       });
     };
     let runEndedCleanly = false;
@@ -3004,12 +3020,8 @@ ${sandboxedCustom}`;
               });
           },
           onNotice: (code, detail) => {
-            const name = detail ?? "";
-            let notice: string;
-            if (code === "attachment_sent_as_text") notice = i18n.t(($) => $.ai.attachments.sentAsText, { name });
-            else if (code === "attachment_skipped") notice = i18n.t(($) => $.ai.attachments.skipped, { name });
-            else if (code === "web_search_unavailable") notice = i18n.t(($) => $.ai.web.searchUnavailable);
-            else return;
+            const notice = runNoticeText(code, detail);
+            if (notice === null) return;
             updateRunLast((m) =>
               m.notices?.includes(notice) ? m : { ...m, notices: [...(m.notices ?? []), notice] },
             );
@@ -3662,7 +3674,7 @@ ${sandboxedCustom}`;
   useEffect(() => {
     if (shownDraftRef.current === composerId) return;
     shownDraftRef.current = composerId;
-    setInputState(draftText(composerId));
+    setInputText(draftText(composerId));
   }, [composerId]);
 
   useEffect(() => {
@@ -4317,9 +4329,8 @@ ${sandboxedCustom}`;
               </form>
             )}
             {editTarget && (
-              <div
+              <output
                 data-testid="ai-edit-banner"
-                role="status"
                 className="mb-2 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-xs text-foreground"
               >
                 <span className="min-w-0 flex-1">
@@ -4330,7 +4341,7 @@ ${sandboxedCustom}`;
                 <Button type="button" variant="ghost" size="xs" onClick={cancelEdit}>
                   {t(($) => $.ai.messageActions.cancelEdit)}
                 </Button>
-              </div>
+              </output>
             )}
             {activeChatId && saveProblems[activeChatId] === "tooLarge" && (
               <WorkspaceBanner
@@ -4348,7 +4359,7 @@ ${sandboxedCustom}`;
             <ChatComposer
               ref={composerRef}
               composerId={composerId}
-              value={input}
+              value={inputText}
               onChange={setInput}
               onSubmit={submitComposer}
               busy={streaming}
@@ -4396,13 +4407,12 @@ ${sandboxedCustom}`;
                     </p>
                   )}
                   {composerAttachmentNotice && (
-                    <p
+                    <output
                       data-testid="ai-attachment-notice"
-                      role="status"
-                      className="mt-1.5 px-0.5 text-[0.6875rem] text-muted-foreground"
+                      className="mt-1.5 block px-0.5 text-[0.6875rem] text-muted-foreground"
                     >
                       {composerAttachmentNotice}
-                    </p>
+                    </output>
                   )}
                 </>
               }

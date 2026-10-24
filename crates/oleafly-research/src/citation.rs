@@ -357,7 +357,7 @@ fn normalize_isbn(raw: &str) -> Result<String, String> {
         .trim()
         .trim_start_matches("isbn:")
         .chars()
-        .filter(|c| c.is_ascii_alphanumeric())
+        .filter(char::is_ascii_alphanumeric)
         .collect::<String>()
         .to_ascii_uppercase();
     let valid = if isbn.len() == 13 && isbn.chars().all(|c| c.is_ascii_digit()) {
@@ -420,7 +420,7 @@ fn bibtex_authors(names: &[String]) -> String {
                     if token.chars().all(|c| !c.is_ascii_lowercase()) && token.len() <= 3 {
                         token
                             .chars()
-                            .filter(|c| c.is_ascii_alphabetic())
+                            .filter(char::is_ascii_alphabetic)
                             .map(|c| format!("{c}."))
                             .collect::<Vec<_>>()
                     } else {

@@ -250,11 +250,11 @@ function pageRanges(pages: readonly number[]): string {
 function joinGenericPages(pages: readonly string[], target: OcrTarget): string {
   if (target === "LaTeX") {
     return [
-      "\\documentclass{article}",
-      "\\usepackage{amsmath,amssymb,booktabs,graphicx}",
-      "\\begin{document}",
+      String.raw`\documentclass{article}`,
+      String.raw`\usepackage{amsmath,amssymb,booktabs,graphicx}`,
+      String.raw`\begin{document}`,
       pages.join("\n\n\\newpage\n\n"),
-      "\\end{document}",
+      String.raw`\end{document}`,
     ].join("\n");
   }
   return pages.join(target === "Typst" ? "\n\n#pagebreak()\n\n" : "\n\n---\n\n");

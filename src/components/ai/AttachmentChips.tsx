@@ -11,6 +11,15 @@ import { cn } from "@/lib/utils";
 // intake module loads lazily, so the number is repeated here).
 const PDF_PAGE_LIMIT = 100;
 
+// The spinner while it processes, then the thumbnail, then a file icon.
+function AttachmentLeading({ item }: Readonly<{ item: ComposerAttachment }>) {
+  if (item.status === "processing") return <Spinner size="xs" aria-hidden="true" />;
+  if (item.thumbnailUrl && item.status === "ready") {
+    return <img src={item.thumbnailUrl} alt="" className="size-6 shrink-0 rounded object-cover" />;
+  }
+  return <FileText className="size-4 shrink-0 text-muted-foreground" />;
+}
+
 // Modeled on the AI SDK Elements "Attachments" inline variant.
 export function AttachmentChips({
   items,
@@ -44,13 +53,7 @@ export function AttachmentChips({
               item.status === "error" && "border-destructive/50 text-destructive",
             )}
           >
-            {item.status === "processing" ? (
-              <Spinner size="xs" aria-hidden="true" />
-            ) : item.thumbnailUrl && item.status === "ready" ? (
-              <img src={item.thumbnailUrl} alt="" className="size-6 shrink-0 rounded object-cover" />
-            ) : (
-              <FileText className="size-4 shrink-0 text-muted-foreground" />
-            )}
+            <AttachmentLeading item={item} />
             <span className="min-w-0">
               <span className="block max-w-[140px] truncate">
                 {item.status === "processing"

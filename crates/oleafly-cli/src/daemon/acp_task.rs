@@ -14,6 +14,7 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use oleafly_acp::capabilities::AgentCapabilities;
 use oleafly_acp::client::{
     AcpClient, ClientHost, ClientInfo, ClientOptions, IncomingRequest, TurnTiming,
 };
@@ -638,34 +639,13 @@ impl DaemonAcpAdapter {
             .map_err(|error| redactor.text(&error.to_string()))?;
         let capabilities = negotiated.capabilities.clone();
         if !capabilities.mcp_http {
-            for server in &mut servers {
-                if server["type"] == "http" {
-                    *server = oleafly_research::mcp::stdio_server(server)?;
-                }
-            }
+            bridge_http_servers(&mut servers)?;
         }
         let cwd = context.execution_root.clone();
-        // Resume the agent's own session when it can; a loaded session
-        // replays its history first, which is already in the transcript.
         let mut resumed = None;
         if let Some(handoff) = &handoff {
-            if capabilities.resume {
-                if client
-                    .resume_session(&handoff.agent_session_id, &cwd, &servers)
-                    .await
-                    .is_ok()
-                {
-                    resumed = Some(handoff.agent_session_id.clone());
-                }
-            } else if capabilities.load_session
-                && client
-                    .load_session(&handoff.agent_session_id, &cwd, &servers)
-                    .await
-                    .is_ok()
-            {
-                while receiver.try_recv().is_ok() {}
-                resumed = Some(handoff.agent_session_id.clone());
-            }
+            resumed =
+                restore_session(client, handoff, &capabilities, &cwd, &servers, receiver).await;
             if resumed.is_none() {
                 events(TaskRuntimeEvent::Status {
                     message: RESUME_FAILED.into(),
@@ -674,17 +654,7 @@ impl DaemonAcpAdapter {
         }
         let session_id = match resumed.clone() {
             Some(id) => id,
-            None => {
-                let value = client
-                    .new_session(&cwd, &servers)
-                    .await
-                    .map_err(|error| redactor.text(&error.to_string()))?;
-                let id = value["sessionId"]
-                    .as_str()
-                    .filter(|id| !id.is_empty() && id.len() <= 512)
-                    .ok_or("The agent returned no valid session ID.")?;
-                redactor.opaque_id(id)?
-            }
+            None => start_session(client, &cwd, &servers, redactor).await?,
         };
         events(TaskRuntimeEvent::SessionBound {
             native_session_id: session_id.clone(),
@@ -853,11 +823,7 @@ impl DaemonAcpAdapter {
         match end {
             TurnEnd::Finished(response) => {
                 record_usage(&response, &mut outcome, events);
-                let stop = response["stopReason"]
-                    .as_str()
-                    .unwrap_or_default()
-                    .to_string();
-                if stop != "end_turn" {
+                if let Some(reason) = unfinished_reason(&response) {
                     if suspending {
                         return self
                             .suspend(
@@ -871,11 +837,6 @@ impl DaemonAcpAdapter {
                             )
                             .await;
                     }
-                    let reason = if stop.is_empty() {
-                        "no completion event".to_string()
-                    } else {
-                        stop
-                    };
                     return Err(format!("The agent did not finish the task: {reason}."));
                 }
                 if capabilities.close {
@@ -934,6 +895,73 @@ impl DaemonAcpAdapter {
         );
         Ok(outcome)
     }
+}
+
+/// Turns an HTTP MCP server into a stdio one, for an agent that only
+/// speaks stdio.
+fn bridge_http_servers(servers: &mut [Value]) -> Result<(), String> {
+    for server in servers {
+        if server["type"] == "http" {
+            *server = oleafly_research::mcp::stdio_server(server)?;
+        }
+    }
+    Ok(())
+}
+
+/// Resumes the agent's own session when it can; a loaded session replays its
+/// history first, which is already in the transcript. The session's id when
+/// it came back.
+async fn restore_session(
+    client: &Arc<AcpClient>,
+    handoff: &AcpHandoff,
+    capabilities: &AgentCapabilities,
+    cwd: &str,
+    servers: &[Value],
+    receiver: &mut mpsc::UnboundedReceiver<FromAgent>,
+) -> Option<String> {
+    let session = &handoff.agent_session_id;
+    let restored = if capabilities.resume {
+        client.resume_session(session, cwd, servers).await.is_ok()
+    } else if capabilities.load_session && client.load_session(session, cwd, servers).await.is_ok()
+    {
+        while receiver.try_recv().is_ok() {}
+        true
+    } else {
+        false
+    };
+    restored.then(|| session.clone())
+}
+
+/// Starts a new session and returns its id, once the agent gave a usable one.
+async fn start_session(
+    client: &Arc<AcpClient>,
+    cwd: &str,
+    servers: &[Value],
+    redactor: &Redactor,
+) -> Result<String, String> {
+    let value = client
+        .new_session(cwd, servers)
+        .await
+        .map_err(|error| redactor.text(&error.to_string()))?;
+    let id = value["sessionId"]
+        .as_str()
+        .filter(|id| !id.is_empty() && id.len() <= 512)
+        .ok_or("The agent returned no valid session ID.")?;
+    redactor.opaque_id(id)
+}
+
+/// Why a finished turn is not a finished task: its stop reason, unless it
+/// ended normally.
+fn unfinished_reason(response: &Value) -> Option<String> {
+    let stop = response["stopReason"].as_str().unwrap_or_default();
+    if stop == "end_turn" {
+        return None;
+    }
+    Some(if stop.is_empty() {
+        "no completion event".to_string()
+    } else {
+        stop.to_string()
+    })
 }
 
 /// The turn's token counts from the prompt answer.

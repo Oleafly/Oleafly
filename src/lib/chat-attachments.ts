@@ -90,11 +90,17 @@ async function partsFor(
   ctx: AttachmentModelContext,
   textBudget: number,
 ): Promise<UserPart[]> {
+  // Text files are read side by side; the budget is spent in order below.
+  const loaded = await Promise.all(
+    files.map(async (file) => ({
+      file,
+      text: file.kind === "text" ? await ctx.readText(scope, file.sha256) : null,
+    })),
+  );
   const parts: UserPart[] = [];
   let remaining = textBudget;
-  for (const file of files) {
+  for (const { file, text } of loaded) {
     if (file.kind === "text") {
-      const text = await ctx.readText(scope, file.sha256);
       if (text === null) {
         parts.push({
           type: "text",
@@ -142,8 +148,7 @@ export async function userModelMessage(
   const scope = attachments.find((item) => item.sha256)?.scope ?? null;
   const parts: UserPart[] = [];
   if (text.trim()) parts.push({ type: "text", text });
-  parts.push(...(await partsFor(files, scope, ctx, ctx.textBudget)));
-  parts.push(...mentionParts(mentions));
+  parts.push(...(await partsFor(files, scope, ctx, ctx.textBudget)), ...mentionParts(mentions));
   return { role: "user", content: parts };
 }
 
@@ -159,6 +164,29 @@ function describe(meta: AttachmentMeta): string {
 /** A note in place of attachments that are not sent again. */
 export function skippedAttachmentNote(attachments: readonly AttachmentMeta[]): string {
   return `[Attachments from this message are not sent again: ${attachments.map(describe).join(", ")}.]`;
+}
+
+/** One prior turn as a model message; a user turn with stored attachments sends them again when `resend`. */
+async function historyMessage(
+  message: ChatMessage,
+  content: string,
+  resend: boolean,
+  scope: string | null,
+  ctx: AttachmentModelContext,
+): Promise<ModelMessage> {
+  if (message.role === "assistant") return { role: "assistant", content };
+  const attachments = message.attachments ?? [];
+  if (attachments.length === 0) return { role: "user", content };
+  const files = resend
+    ? attachments.map(fromSaved).filter((file): file is StoredFile => file !== null)
+    : [];
+  const left = resend ? attachments.filter((meta) => !meta.sha256) : attachments;
+  const text = left.length > 0 ? `${content}\n\n${skippedAttachmentNote(left)}` : content;
+  if (files.length === 0) return { role: "user", content: text };
+  const parts: UserPart[] = [];
+  if (text.trim()) parts.push({ type: "text", text });
+  parts.push(...(await partsFor(files, scope, ctx, Math.min(ctx.textBudget, HISTORY_MSG_MAX_CHARS))));
+  return { role: "user", content: parts };
 }
 
 /**
@@ -184,35 +212,11 @@ export async function historyModelMessages(
     }
     return 0;
   })();
-  const messages: ModelMessage[] = [];
-  for (const [index, message] of kept.entries()) {
-    const content = packed.messages[index].content;
-    if (message.role === "assistant") {
-      messages.push({ role: "assistant", content });
-      continue;
-    }
-    const attachments = message.attachments ?? [];
-    if (attachments.length === 0) {
-      messages.push({ role: "user", content });
-      continue;
-    }
-    const resend = index >= resendFrom;
-    const files = resend
-      ? attachments.map(fromSaved).filter((file): file is StoredFile => file !== null)
-      : [];
-    const left = resend ? attachments.filter((meta) => !meta.sha256) : attachments;
-    const text = left.length > 0 ? `${content}\n\n${skippedAttachmentNote(left)}` : content;
-    if (files.length === 0) {
-      messages.push({ role: "user", content: text });
-      continue;
-    }
-    const parts: UserPart[] = [];
-    if (text.trim()) parts.push({ type: "text", text });
-    parts.push(
-      ...(await partsFor(files, scope, ctx, Math.min(ctx.textBudget, HISTORY_MSG_MAX_CHARS))),
-    );
-    messages.push({ role: "user", content: parts });
-  }
+  // Only the last few user turns carry files, so few of these do any reading.
+  const messages = await Promise.all(
+    kept.map((message, index) =>
+      historyMessage(message, packed.messages[index].content, index >= resendFrom, scope, ctx),
+    ),
+  );
   return { messages, droppedTurns: packed.droppedTurns };
 }
-

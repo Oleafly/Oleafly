@@ -28,7 +28,7 @@ export function composerGrowMax(resting: number): number {
 
 export type ComposerKeyAction = "submit" | "queue" | "block" | "historyPrev" | "historyNext" | "default";
 
-export function composerKeyAction(state: {
+interface ComposerKeyState {
   key: string;
   shiftKey?: boolean;
   altKey?: boolean;
@@ -43,13 +43,18 @@ export function composerKeyAction(state: {
   caretOnFirstLine?: boolean;
   /** No line break after the selection end. Left out, the caret counts as on the last line. */
   caretOnLastLine?: boolean;
-}): ComposerKeyAction {
+}
+
+/** Enter sends, or queues while a run is busy; a send that cannot go out is blocked. */
+function enterAction(state: Pick<ComposerKeyState, "shiftKey" | "busy" | "canQueue" | "canSubmit">): ComposerKeyAction {
+  if (state.shiftKey) return "default";
+  if (state.busy) return state.canQueue ? "queue" : "block";
+  return state.canSubmit ? "submit" : "block";
+}
+
+export function composerKeyAction(state: ComposerKeyState): ComposerKeyAction {
+  if (state.key === "Enter") return enterAction(state);
   const modified = Boolean(state.shiftKey || state.altKey || state.ctrlKey || state.metaKey);
-  if (state.key === "Enter") {
-    if (state.shiftKey) return "default";
-    if (state.busy) return state.canQueue ? "queue" : "block";
-    return state.canSubmit ? "submit" : "block";
-  }
   // In a recalled prompt of several lines the arrows move the caret first, as
   // in a shell: history steps only from the top line (up) and the bottom line (down).
   if (state.key === "ArrowUp" && !modified && (state.empty || state.recalling)) {
@@ -138,8 +143,8 @@ export function composerDropKind(
   if (!transfer) return null;
   if (carriesTreePath(transfer)) return "tree";
   if (carriesFiles(transfer)) return "files";
-  const types = Array.from(transfer.types ?? []);
-  if (linux && types.includes("text/uri-list") && !types.includes("text/plain")) return "native";
+  const types = new Set(transfer.types ?? []);
+  if (linux && types.has("text/uri-list") && !types.has("text/plain")) return "native";
   return null;
 }
 

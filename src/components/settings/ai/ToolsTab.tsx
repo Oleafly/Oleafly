@@ -57,8 +57,8 @@ function MathpixCard() {
       setAppKey("");
       setAppId("");
       toast.success(t(($) => $.settings.ai.tools.mathpix.saved));
-    } catch (caught) {
-      setError(describeError(caught));
+    } catch (error_) {
+      setError(describeError(error_));
     } finally {
       setBusy(false);
     }
@@ -72,8 +72,8 @@ function MathpixCard() {
       await mathpixClearKeys();
       settle({ configured: false, appId: null });
       toast.success(t(($) => $.settings.ai.tools.mathpix.removed));
-    } catch (caught) {
-      setError(describeError(caught));
+    } catch (error_) {
+      setError(describeError(error_));
     } finally {
       setBusy(false);
     }

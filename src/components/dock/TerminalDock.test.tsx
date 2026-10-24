@@ -476,6 +476,7 @@ describe("TerminalDock", () => {
 
     act(() => pane?.onBell?.());
     expect(screen.getByTestId("dock-terminal-tab-bell")).toHaveAccessibleName(enWorkspace.terminal.activity);
+    expect(screen.getByRole("img", { name: enWorkspace.terminal.activity })).toBeInTheDocument();
 
     fireEvent.click(tabs()[0]);
     expect(screen.queryByTestId("dock-terminal-tab-bell")).toBeNull();

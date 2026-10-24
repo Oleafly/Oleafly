@@ -144,19 +144,42 @@ fn resolve_link(file: &str, target: &str) -> Option<String> {
     (!parts.is_empty()).then(|| parts.join("/"))
 }
 
-pub(super) fn analyze(file: &str, text: &str) -> FileSymbols {
-    let mut symbols = FileSymbols::default();
+/// The name of a heading: its explicit `{#id}`, or a slug of its title that
+/// no earlier heading uses.
+fn heading_name(title: &str, used: &HashSet<String>) -> String {
+    let explicit = HEADING_ATTRIBUTES
+        .first_str(title)
+        .and_then(|found| found.group(title, 1).map(str::to_string));
+    match explicit {
+        Some(explicit) => explicit,
+        None => {
+            let without_closing = match CLOSING_HASHES.first_str(title) {
+                Some(found) => &title[..found.start],
+                None => title,
+            };
+            unique_identifier(markdown_slug(without_closing), used)
+        }
+    }
+}
+
+/// Opens a code fence with `marker`, or closes the open one it matches.
+fn toggle_fence(fence: &mut Option<String>, marker: &str) {
+    match fence {
+        None => *fence = Some(marker.to_string()),
+        Some(open) if marker.starts_with(open.as_str()) => *fence = None,
+        Some(_) => {}
+    }
+}
+
+/// Adds a definition for each heading outside code fences and returns the
+/// lines outside code fences.
+fn heading_definitions<'a>(text: &'a str, symbols: &mut FileSymbols) -> Vec<(usize, &'a str)> {
     let mut used = HashSet::new();
     let mut fence: Option<String> = None;
     let mut visible_lines: Vec<(usize, &str)> = Vec::new();
     for (offset, line) in lines_with_offsets(text) {
         if let Some(found) = FENCE.first_str(line) {
-            let marker = found.group(line, 1).unwrap_or("");
-            match &fence {
-                None => fence = Some(marker.to_string()),
-                Some(open) if marker.starts_with(open.as_str()) => fence = None,
-                Some(_) => {}
-            }
+            toggle_fence(&mut fence, found.group(line, 1).unwrap_or(""));
             continue;
         }
         if fence.is_some() {
@@ -167,19 +190,7 @@ pub(super) fn analyze(file: &str, text: &str) -> FileSymbols {
             continue;
         };
         let title = heading.group(line, 1).unwrap_or("");
-        let explicit = HEADING_ATTRIBUTES
-            .first_str(title)
-            .and_then(|found| found.group(title, 1).map(str::to_string));
-        let name = match explicit {
-            Some(explicit) => explicit,
-            None => {
-                let without_closing = match CLOSING_HASHES.first_str(title) {
-                    Some(found) => &title[..found.start],
-                    None => title,
-                };
-                unique_identifier(markdown_slug(without_closing), &used)
-            }
-        };
+        let name = heading_name(title, &used);
         used.insert(name.clone());
         symbols.defs.push(Definition {
             kind: SymKind::Label,
@@ -188,51 +199,67 @@ pub(super) fn analyze(file: &str, text: &str) -> FileSymbols {
             to: offset + utf16_len(line),
         });
     }
+    visible_lines
+}
+
+/// Adds a definition for each `{#id}` attribute block in a line.
+fn attribute_definitions(offset: usize, line: &str, symbols: &mut FileSymbols) {
+    for found in ATTRIBUTE_BLOCK.captures_str(line).0 {
+        if let (Some(name), Some((start, _))) = (found.group(line, 1), found.groups[1]) {
+            symbols.defs.push(Definition {
+                kind: SymKind::Label,
+                name: name.to_string(),
+                from: offset + utf16_len(&line[..start]),
+                to: offset + utf16_len(&line[..start]) + utf16_len(name),
+            });
+        }
+    }
+}
+
+/// Adds a reference for each link to an anchor in a line.
+fn anchor_references(file: &str, offset: usize, line: &str, symbols: &mut FileSymbols) {
+    for found in LINK.captures_str(line).0 {
+        let target = found.group(line, 3).unwrap_or("");
+        let Some(hash) = target.find('#') else {
+            continue;
+        };
+        let anchor = &target[hash + 1..];
+        if anchor.is_empty() {
+            continue;
+        }
+        let path = &target[..hash];
+        let from =
+            offset + utf16_len(&line[..found.groups[3].map_or(found.start, |(start, _)| start)]);
+        if path.is_empty() {
+            symbols.uses.push(Reference {
+                name: anchor.to_string(),
+                from: from + 1,
+                to: from + utf16_len(target),
+                target: None,
+            });
+            continue;
+        }
+        if EXTERNAL.is_match(path) {
+            continue;
+        }
+        symbols.uses.push(Reference {
+            name: anchor.to_string(),
+            from: from + utf16_len(path) + 1,
+            to: from + utf16_len(target),
+            target: resolve_link(file, path).map(|resolved| format!("{resolved}#{anchor}")),
+        });
+    }
+}
+
+pub(super) fn analyze(file: &str, text: &str) -> FileSymbols {
+    let mut symbols = FileSymbols::default();
+    let visible_lines = heading_definitions(text, &mut symbols);
     for (offset, line) in visible_lines {
         let headings_done = ATX_HEADING.is_match(line);
         if !headings_done {
-            for found in ATTRIBUTE_BLOCK.captures_str(line).0 {
-                if let (Some(name), Some((start, _))) = (found.group(line, 1), found.groups[1]) {
-                    symbols.defs.push(Definition {
-                        kind: SymKind::Label,
-                        name: name.to_string(),
-                        from: offset + utf16_len(&line[..start]),
-                        to: offset + utf16_len(&line[..start]) + utf16_len(name),
-                    });
-                }
-            }
+            attribute_definitions(offset, line, &mut symbols);
         }
-        for found in LINK.captures_str(line).0 {
-            let target = found.group(line, 3).unwrap_or("");
-            let Some(hash) = target.find('#') else {
-                continue;
-            };
-            let anchor = &target[hash + 1..];
-            if anchor.is_empty() {
-                continue;
-            }
-            let path = &target[..hash];
-            let from = offset
-                + utf16_len(&line[..found.groups[3].map_or(found.start, |(start, _)| start)]);
-            if path.is_empty() {
-                symbols.uses.push(Reference {
-                    name: anchor.to_string(),
-                    from: from + 1,
-                    to: from + utf16_len(target),
-                    target: None,
-                });
-                continue;
-            }
-            if EXTERNAL.is_match(path) {
-                continue;
-            }
-            symbols.uses.push(Reference {
-                name: anchor.to_string(),
-                from: from + utf16_len(path) + 1,
-                to: from + utf16_len(target),
-                target: resolve_link(file, path).map(|resolved| format!("{resolved}#{anchor}")),
-            });
-        }
+        anchor_references(file, offset, line, &mut symbols);
     }
     symbols
 }

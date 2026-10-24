@@ -505,6 +505,99 @@ fn log(message: String) {
     let _ = crate::project::append_app_log(message);
 }
 
+/// Hands over the tasks that were running and have stopped at a step
+/// boundary. A task whose grant fails stays with the app.
+async fn hand_off_suspended(
+    tasks: &ResearchTaskState,
+    candidates: &[ResearchTask],
+    results: Vec<(String, SuspendResult)>,
+    to: OwnerKind,
+    reason: HandoffReason,
+    grants: &dyn GrantSource,
+    summary: &mut HandoffSummary,
+) {
+    for (id, result) in results {
+        let Some(task) = candidates.iter().find(|task| task.id == id) else {
+            continue;
+        };
+        let mut target = to;
+        let mut grant = None;
+        if to == OwnerKind::Daemon {
+            let state = match &result {
+                SuspendResult::Suspended { state, .. } => Some(state),
+                _ => None,
+            };
+            match grants.grant(task, state).await {
+                Ok(value) => grant = Some(value),
+                Err(error) => {
+                    // It continues at the next launch instead.
+                    log(format!(
+                        "Background helper: task {id} stays with Oleafly: {error}"
+                    ));
+                    summary.failed.push(id.clone());
+                    target = OwnerKind::App;
+                }
+            }
+        }
+        let Some((generation, mut record)) =
+            handoff_record_for(&result, OwnerKind::App, target, reason)
+        else {
+            continue;
+        };
+        record.grant = grant;
+        match tasks
+            .hand_off_suspended(&id, generation, target, record)
+            .await
+        {
+            Ok(true) if target == OwnerKind::Daemon => summary.to_helper.push(id),
+            Ok(true) => summary.to_next_launch.push(id),
+            _ => {
+                if !summary.failed.contains(&id) {
+                    summary.failed.push(id);
+                }
+            }
+        }
+    }
+}
+
+/// Hands the queued tasks to the helper. A task whose grant fails stays
+/// with the app.
+async fn hand_off_queued(
+    store: &TaskStore,
+    candidates: &[ResearchTask],
+    reason: HandoffReason,
+    grants: &dyn GrantSource,
+    summary: &mut HandoffSummary,
+) {
+    for task in candidates
+        .iter()
+        .filter(|task| task.status == ResearchTaskStatus::Queued)
+    {
+        let grant = match grants.grant(task, None).await {
+            Ok(grant) => grant,
+            Err(error) => {
+                log(format!(
+                    "Background helper: task {} stays with Oleafly: {error}",
+                    task.id
+                ));
+                summary.failed.push(task.id.clone());
+                continue;
+            }
+        };
+        let mut record = HandoffRecord::new(
+            OwnerKind::App,
+            OwnerKind::Daemon,
+            reason,
+            task.execution_generation,
+        );
+        record.grant = Some(grant);
+        match store.hand_off_queued(&task.id, OwnerKind::Daemon, &record) {
+            Ok(true) => summary.to_helper.push(task.id.clone()),
+            _ => summary.failed.push(task.id.clone()),
+        }
+    }
+}
+
 /// Moves the tasks marked to keep running: to the helper on a quit with
 /// background tasks on, else to the next launch. Running ones stop at a
 /// step boundary first (at most [`QUIT_SUSPEND_DEADLINE`]).
@@ -549,76 +642,18 @@ pub(crate) async fn hand_off(
             .suspend(&running, SuspendMode::Prompt, Some(QUIT_SUSPEND_DEADLINE))
             .await
     };
-    for (id, result) in results {
-        let Some(task) = candidates.iter().find(|task| task.id == id) else {
-            continue;
-        };
-        let mut target = to;
-        let mut grant = None;
-        if to == OwnerKind::Daemon {
-            let state = match &result {
-                SuspendResult::Suspended { state, .. } => Some(state),
-                _ => None,
-            };
-            match grants.grant(task, state).await {
-                Ok(value) => grant = Some(value),
-                Err(error) => {
-                    // It continues at the next launch instead.
-                    log(format!(
-                        "Background helper: task {id} stays with Oleafly: {error}"
-                    ));
-                    summary.failed.push(id.clone());
-                    target = OwnerKind::App;
-                }
-            }
-        }
-        let Some((generation, mut record)) =
-            handoff_record_for(&result, OwnerKind::App, target, reason)
-        else {
-            continue;
-        };
-        record.grant = grant;
-        match tasks
-            .hand_off_suspended(&id, generation, target, record)
-            .await
-        {
-            Ok(true) if target == OwnerKind::Daemon => summary.to_helper.push(id),
-            Ok(true) => summary.to_next_launch.push(id),
-            _ => {
-                if !summary.failed.contains(&id) {
-                    summary.failed.push(id);
-                }
-            }
-        }
-    }
+    hand_off_suspended(
+        tasks,
+        &candidates,
+        results,
+        to,
+        reason,
+        grants,
+        &mut summary,
+    )
+    .await;
     if to == OwnerKind::Daemon {
-        for task in candidates
-            .iter()
-            .filter(|task| task.status == ResearchTaskStatus::Queued)
-        {
-            let grant = match grants.grant(task, None).await {
-                Ok(grant) => grant,
-                Err(error) => {
-                    log(format!(
-                        "Background helper: task {} stays with Oleafly: {error}",
-                        task.id
-                    ));
-                    summary.failed.push(task.id.clone());
-                    continue;
-                }
-            };
-            let mut record = HandoffRecord::new(
-                OwnerKind::App,
-                OwnerKind::Daemon,
-                reason,
-                task.execution_generation,
-            );
-            record.grant = Some(grant);
-            match store.hand_off_queued(&task.id, OwnerKind::Daemon, &record) {
-                Ok(true) => summary.to_helper.push(task.id.clone()),
-                _ => summary.failed.push(task.id.clone()),
-            }
-        }
+        hand_off_queued(&store, &candidates, reason, grants, &mut summary).await;
     }
     if !summary.to_helper.is_empty() {
         match helper.ensure_running() {

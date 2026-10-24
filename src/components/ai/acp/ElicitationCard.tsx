@@ -7,7 +7,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import type { AcpElicitation, AcpElicitationField } from "@/lib/acp";
+import type { AcpElicitation, AcpElicitationField, AcpFieldKind } from "@/lib/acp";
 import { openInSystemBrowser } from "@/lib/system-browser";
 
 type Value = string | number | boolean | string[];
@@ -29,38 +29,55 @@ function initialValue(field: AcpElicitationField): Value | undefined {
   }
 }
 
+type StringKind = Extract<AcpFieldKind, { type: "string" }>;
+type NumberKind = Extract<AcpFieldKind, { type: "number" }>;
+type ChoiceKind = Extract<AcpFieldKind, { type: "choice" }>;
+
+function isUrl(value: string): boolean {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function stringProblem(kind: StringKind, value: Value): boolean {
+  if (typeof value !== "string") return true;
+  const length = [...value].length;
+  if (kind.minLength !== null && length < kind.minLength) return true;
+  if (kind.maxLength !== null && length > kind.maxLength) return true;
+  if (kind.format === "email") return !value.includes("@") || /\s/.test(value);
+  if (kind.format === "uri") return !isUrl(value);
+  return false;
+}
+
+function numberProblem(kind: NumberKind, value: Value): boolean {
+  if (typeof value !== "number" || !Number.isFinite(value)) return true;
+  if (kind.integer && !Number.isInteger(value)) return true;
+  if (kind.minimum !== null && value < kind.minimum) return true;
+  return kind.maximum !== null && value > kind.maximum;
+}
+
+function choiceProblem(kind: ChoiceKind, value: Value): boolean {
+  const known = new Set(kind.options.map(([id]) => id));
+  return Array.isArray(value) ? value.some((item) => !known.has(item)) : !known.has(String(value));
+}
+
 /** The client-side check, mirroring the one Oleafly runs before sending. */
 export function fieldProblem(field: AcpElicitationField, value: Value | undefined): boolean {
   const empty = value === undefined || value === "" || (Array.isArray(value) && value.length === 0);
   if (empty) return field.required;
-  switch (field.kind.type) {
-    case "string": {
-      if (typeof value !== "string") return true;
-      const length = [...value].length;
-      if (field.kind.minLength !== null && length < field.kind.minLength) return true;
-      if (field.kind.maxLength !== null && length > field.kind.maxLength) return true;
-      if (field.kind.format === "email") return !value.includes("@") || /\s/.test(value);
-      if (field.kind.format === "uri") {
-        try {
-          new URL(value);
-        } catch {
-          return true;
-        }
-      }
-      return false;
-    }
-    case "number": {
-      if (typeof value !== "number" || !Number.isFinite(value)) return true;
-      if (field.kind.integer && !Number.isInteger(value)) return true;
-      if (field.kind.minimum !== null && value < field.kind.minimum) return true;
-      return field.kind.maximum !== null && value > field.kind.maximum;
-    }
+  const { kind } = field;
+  switch (kind.type) {
+    case "string":
+      return stringProblem(kind, value);
+    case "number":
+      return numberProblem(kind, value);
     case "boolean":
       return typeof value !== "boolean";
-    case "choice": {
-      const known = new Set(field.kind.options.map(([id]) => id));
-      return Array.isArray(value) ? value.some((item) => !known.has(item)) : !known.has(String(value));
-    }
+    case "choice":
+      return choiceProblem(kind, value);
   }
 }
 
@@ -71,6 +88,127 @@ function hostOf(url: string | null): string {
   } catch {
     return url;
   }
+}
+
+function textInputType(secret: boolean, format: string | null): "password" | "email" | "text" {
+  if (secret) return "password";
+  return format === "email" ? "email" : "text";
+}
+
+/** One checkbox per option, for a choice the agent lets the user pick several of. */
+function MultiChoice({
+  id,
+  options,
+  value,
+  onChange,
+}: Readonly<{ id: string; options: [string, string][]; value: Value | undefined; onChange(next: string[]): void }>) {
+  const list = Array.isArray(value) ? value : [];
+  return (
+    <div className="flex flex-col gap-1">
+      {options.map(([option, title], index) => (
+        <label key={option} htmlFor={`${id}-${index}`} className="flex items-center gap-2">
+          <Checkbox
+            id={`${id}-${index}`}
+            checked={list.includes(option)}
+            onCheckedChange={(next) => onChange(next === true ? [...list, option] : list.filter((item) => item !== option))}
+          />
+          {title}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+/** The control that fits the field's kind: a switch, checkboxes, a select or an input. */
+function FieldControl({
+  field,
+  id,
+  value,
+  invalid,
+  onChange,
+}: Readonly<{
+  field: AcpElicitationField;
+  id: string;
+  value: Value | undefined;
+  invalid: boolean;
+  onChange(next: Value | undefined): void;
+}>) {
+  const { kind } = field;
+  if (kind.type === "boolean") {
+    return <Switch id={id} checked={value === true} onCheckedChange={onChange} />;
+  }
+  if (kind.type === "choice" && kind.multiple) {
+    return <MultiChoice id={id} options={kind.options} value={value} onChange={onChange} />;
+  }
+  if (kind.type === "choice") {
+    return (
+      <Select value={typeof value === "string" ? value : ""} onValueChange={onChange}>
+        <SelectTrigger id={id} aria-invalid={invalid} className="h-7 text-xs"><SelectValue /></SelectTrigger>
+        <SelectContent className="z-[110]">
+          {kind.options.map(([option, title]) => (
+            <SelectItem key={option} value={option}>{title}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+  if (kind.type === "number") {
+    return (
+      <Input
+        id={id}
+        type="number"
+        min={kind.minimum ?? undefined}
+        max={kind.maximum ?? undefined}
+        step={kind.integer ? 1 : "any"}
+        aria-invalid={invalid}
+        className="h-7 text-xs"
+        value={typeof value === "number" ? String(value) : ""}
+        onChange={(event) => onChange(event.target.value === "" ? undefined : Number(event.target.value))}
+      />
+    );
+  }
+  return (
+    <Input
+      id={id}
+      type={textInputType(field.secret, kind.format)}
+      autoComplete="off"
+      aria-invalid={invalid}
+      className="h-7 text-xs"
+      value={typeof value === "string" ? value : ""}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  );
+}
+
+/** A field of the form: its label, its description, its control and, once checked, what is wrong. */
+function FieldRow({
+  field,
+  requestId,
+  value,
+  checked,
+  onChange,
+}: Readonly<{
+  field: AcpElicitationField;
+  requestId: string;
+  value: Value | undefined;
+  /** Set once the user has tried to submit; only then are the fields marked. */
+  checked: boolean;
+  onChange(name: string, next: Value | undefined): void;
+}>) {
+  const { t } = useTranslation(["common", "ai"]);
+  const id = `acp-field-${requestId}-${field.name}`;
+  const invalid = checked && fieldProblem(field, value);
+  return (
+    <div className="space-y-1">
+      <label htmlFor={id} className="flex items-center gap-1 font-medium">
+        {field.title ?? field.name}
+        {field.required && <span className="text-muted-foreground">({t(($) => $.ai.acp.elicitation.required)})</span>}
+      </label>
+      {field.description && <p className="text-muted-foreground">{field.description}</p>}
+      <FieldControl field={field} id={id} value={value} invalid={invalid} onChange={(next) => onChange(field.name, next)} />
+      {invalid && <p role="alert" className="text-destructive">{t(($) => $.ai.acp.elicitation.invalid)}</p>}
+    </div>
+  );
 }
 
 /** A question from the agent: a form to fill in, or a site to finish a step on. */
@@ -155,74 +293,16 @@ export function ElicitationCard({
             submit();
           }}
         >
-          {request.fields.map((field) => {
-            const id = `acp-field-${request.id}-${field.name}`;
-            const invalid = checked && fieldProblem(field, values[field.name]);
-            const label = field.title ?? field.name;
-            const value = values[field.name];
-            return (
-              <div key={field.name} className="space-y-1">
-                <label htmlFor={id} className="flex items-center gap-1 font-medium">
-                  {label}
-                  {field.required && <span className="text-muted-foreground">({t(($) => $.ai.acp.elicitation.required)})</span>}
-                </label>
-                {field.description && <p className="text-muted-foreground">{field.description}</p>}
-                {field.kind.type === "boolean" ? (
-                  <Switch id={id} checked={value === true} onCheckedChange={(next) => set(field.name, next)} />
-                ) : field.kind.type === "choice" && field.kind.multiple ? (
-                  <div className="flex flex-col gap-1">
-                    {field.kind.options.map(([option, title], index) => {
-                      const list = Array.isArray(value) ? value : [];
-                      return (
-                        <label key={option} htmlFor={`${id}-${index}`} className="flex items-center gap-2">
-                          <Checkbox
-                            id={`${id}-${index}`}
-                            checked={list.includes(option)}
-                            onCheckedChange={(next) =>
-                              set(field.name, next === true ? [...list, option] : list.filter((item) => item !== option))
-                            }
-                          />
-                          {title}
-                        </label>
-                      );
-                    })}
-                  </div>
-                ) : field.kind.type === "choice" ? (
-                  <Select value={typeof value === "string" ? value : ""} onValueChange={(next) => set(field.name, next)}>
-                    <SelectTrigger id={id} aria-invalid={invalid} className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent className="z-[110]">
-                      {field.kind.options.map(([option, title]) => (
-                        <SelectItem key={option} value={option}>{title}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : field.kind.type === "number" ? (
-                  <Input
-                    id={id}
-                    type="number"
-                    min={field.kind.minimum ?? undefined}
-                    max={field.kind.maximum ?? undefined}
-                    step={field.kind.integer ? 1 : "any"}
-                    aria-invalid={invalid}
-                    className="h-7 text-xs"
-                    value={typeof value === "number" ? String(value) : ""}
-                    onChange={(event) => set(field.name, event.target.value === "" ? undefined : Number(event.target.value))}
-                  />
-                ) : (
-                  <Input
-                    id={id}
-                    type={field.secret ? "password" : field.kind.format === "email" ? "email" : "text"}
-                    autoComplete="off"
-                    aria-invalid={invalid}
-                    className="h-7 text-xs"
-                    value={typeof value === "string" ? value : ""}
-                    onChange={(event) => set(field.name, event.target.value)}
-                  />
-                )}
-                {invalid && <p role="alert" className="text-destructive">{t(($) => $.ai.acp.elicitation.invalid)}</p>}
-              </div>
-            );
-          })}
+          {request.fields.map((field) => (
+            <FieldRow
+              key={field.name}
+              field={field}
+              requestId={request.id}
+              value={values[field.name]}
+              checked={checked}
+              onChange={set}
+            />
+          ))}
           <div className="flex flex-wrap gap-2 pt-1">
             <Button type="submit" size="sm" disabled={sending}>{t(($) => $.ai.acp.elicitation.submit)}</Button>
             <Button type="button" variant="outline" size="sm" disabled={sending} onClick={() => respond("decline")}>

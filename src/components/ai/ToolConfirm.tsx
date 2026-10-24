@@ -45,6 +45,55 @@ function researchTaskDetails(req: ToolApprovalRequest): ResearchTaskApprovalDeta
   return details as ResearchTaskApprovalDetails;
 }
 
+/** What a research task an agent wants to create may do, as the approval card lists it. */
+function ResearchTaskDetails({ task }: Readonly<{ task: ResearchTaskApprovalDetails }>) {
+  const { t } = useTranslation(["common", "ai"]);
+  return (
+    <div className="select-text space-y-2 rounded-lg border border-border/80 bg-background p-2.5 shadow-inner">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1.5 text-xs">
+        <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.title)}</span>
+        <span className="min-w-0 break-words font-medium text-foreground">{task.title}</span>
+        {task.goal && (
+          <>
+            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.goal)}</span>
+            <span className="min-w-0 break-words text-foreground">{task.goal}</span>
+          </>
+        )}
+        {task.skills.length > 0 && (
+          <>
+            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.skills)}</span>
+            <span className="min-w-0 break-words text-foreground">{task.skills.join(", ")}</span>
+          </>
+        )}
+        <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.commands)}</span>
+        <span className="text-foreground">{t(($) => $.ai.approval.researchTask.commandsAsk)}</span>
+        <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.network)}</span>
+        <span className="text-foreground">{task.network ? t(($) => $.common.state.on) : t(($) => $.common.state.off)}</span>
+        <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.timeBudget)}</span>
+        <span className="text-foreground">
+          {task.timeBudgetMinutes == null
+            ? t(($) => $.ai.approval.researchTask.timeBudgetDefault)
+            : t(($) => $.ai.approval.researchTask.minutes, { count: task.timeBudgetMinutes })}
+        </span>
+        <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.planFirst)}</span>
+        <span className="text-foreground">{task.reviewPlanFirst ? t(($) => $.common.actions.yes) : t(($) => $.common.actions.no)}</span>
+        <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.startNow)}</span>
+        <span className="text-foreground">{task.start ? t(($) => $.common.actions.yes) : t(($) => $.common.actions.no)}</span>
+      </div>
+      <div className="space-y-1 border-t border-border/60 pt-2">
+        <p className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.prompt)}</p>
+        {/* Plain text on purpose: the user reads exactly what the task will be told. */}
+        <div
+          data-select-all-scope
+          className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 text-xs text-foreground"
+        >
+          {task.prompt}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Re-export so MCP shell and others keep a single import path.
 export { AI_GRADIENT, AiChrome, AiMark } from "@/components/ai/AiChrome";
 export { isAutoApprovable } from "@/store/mcp-approvals";
@@ -211,50 +260,7 @@ export function ToolConfirm({
         </div>
       )}
 
-      {researchTask && (
-        <div className="select-text space-y-2 rounded-lg border border-border/80 bg-background p-2.5 shadow-inner">
-          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1.5 text-xs">
-            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.title)}</span>
-            <span className="min-w-0 break-words font-medium text-foreground">{researchTask.title}</span>
-            {researchTask.goal && (
-              <>
-                <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.goal)}</span>
-                <span className="min-w-0 break-words text-foreground">{researchTask.goal}</span>
-              </>
-            )}
-            {researchTask.skills.length > 0 && (
-              <>
-                <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.skills)}</span>
-                <span className="min-w-0 break-words text-foreground">{researchTask.skills.join(", ")}</span>
-              </>
-            )}
-            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.commands)}</span>
-            <span className="text-foreground">{t(($) => $.ai.approval.researchTask.commandsAsk)}</span>
-            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.network)}</span>
-            <span className="text-foreground">{researchTask.network ? t(($) => $.common.state.on) : t(($) => $.common.state.off)}</span>
-            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.timeBudget)}</span>
-            <span className="text-foreground">
-              {researchTask.timeBudgetMinutes == null
-                ? t(($) => $.ai.approval.researchTask.timeBudgetDefault)
-                : t(($) => $.ai.approval.researchTask.minutes, { count: researchTask.timeBudgetMinutes })}
-            </span>
-            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.planFirst)}</span>
-            <span className="text-foreground">{researchTask.reviewPlanFirst ? t(($) => $.common.actions.yes) : t(($) => $.common.actions.no)}</span>
-            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.startNow)}</span>
-            <span className="text-foreground">{researchTask.start ? t(($) => $.common.actions.yes) : t(($) => $.common.actions.no)}</span>
-          </div>
-          <div className="space-y-1 border-t border-border/60 pt-2">
-            <p className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.prompt)}</p>
-            {/* Plain text on purpose: the user reads exactly what the task will be told. */}
-            <div
-              data-select-all-scope
-              className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 text-xs text-foreground"
-            >
-              {researchTask.prompt}
-            </div>
-          </div>
-        </div>
-      )}
+      {researchTask && <ResearchTaskDetails task={researchTask} />}
 
       {req.image && (
         <div className="flex justify-center overflow-hidden rounded-lg border bg-white p-2">

@@ -61,7 +61,7 @@ export function configuredModelGroups(
       models = models.filter((model) => include(provider.id, model));
     }
     const keep = options.keep;
-    if (keep && keep.providerId === provider.id && keep.modelId && !models.some((model) => model.id === keep.modelId)) {
+    if (keep?.providerId === provider.id && keep.modelId && !models.some((model) => model.id === keep.modelId)) {
       models = [...models, { id: keep.modelId, name: keep.modelId }];
     }
     if (models.length === 0 && options.dropEmpty !== false) continue;

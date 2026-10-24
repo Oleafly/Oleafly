@@ -542,7 +542,7 @@ impl Context {
         serde_json::to_writer(&mut stdout, &Value::Object(value)).map_err(|error| {
             CliError::internal(format!("Oleafly couldn't write the event: {error}"))
         })?;
-        writeln!(stdout).map_err(CliError::from)?;
+        writeln!(stdout)?;
         stdout.flush().map_err(CliError::from)
     }
 
@@ -563,9 +563,7 @@ impl Context {
         let _ = write!(stderr, "{question} [y/N] ");
         let _ = stderr.flush();
         let mut answer = String::new();
-        std::io::stdin()
-            .read_line(&mut answer)
-            .map_err(CliError::from)?;
+        std::io::stdin().read_line(&mut answer)?;
         let answer = answer.trim().to_ascii_lowercase();
         Ok(answer == "y" || answer == "yes")
     }

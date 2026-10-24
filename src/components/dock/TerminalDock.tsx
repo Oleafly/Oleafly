@@ -174,12 +174,15 @@ function TerminalTabItem({
             />
           )}
           {tab.bell && (
-            <span
+            <svg
               role="img"
+              viewBox="0 0 6 6"
               aria-label={t(($) => $.workspace.terminal.activity)}
               data-testid="dock-terminal-tab-bell"
-              className="mr-0.5 size-1.5 shrink-0 rounded-full bg-primary"
-            />
+              className="mr-0.5 size-1.5 shrink-0 text-primary"
+            >
+              <circle cx="3" cy="3" r="3" fill="currentColor" />
+            </svg>
           )}
           {editing ? (
             <Input

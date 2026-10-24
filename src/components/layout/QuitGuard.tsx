@@ -19,6 +19,10 @@ function holdQuitAfterFailedSave() {
   return cancelQuitFlush().catch((cancelError) => logError("hold quit after failed save", cancelError));
 }
 
+function stayForRunningTerminals() {
+  return cancelQuitFlush().catch((cancelError) => logError("stay for running terminals", cancelError));
+}
+
 /**
  * Whether the programs running in the project's terminals may stop. Asks
  * (once) when one runs; loaded on demand so the quit path stays light.
@@ -68,7 +72,7 @@ export function QuitGuard() {
         flushForQuitWithDeadline()
           .then(async () => {
             if (!(await terminalsMayStop(restart))) {
-              await cancelQuitFlush().catch((error) => logError("stay for running terminals", error));
+              await stayForRunningTerminals();
               return;
             }
             await confirmQuitFlush(restart);

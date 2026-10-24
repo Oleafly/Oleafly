@@ -1,5 +1,6 @@
 //! `remote diff --latexdiff`: the main document marked up with what
 //! changed since the online version, as LaTeX or (with `--pdf`) compiled.
+use std::ffi::OsStr;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -217,7 +218,7 @@ fn latexdiff_report_with(
     let main_path = Path::new(&main);
     let stem = main_path
         .file_stem()
-        .and_then(|stem| stem.to_str())
+        .and_then(OsStr::to_str)
         .unwrap_or("main");
     let diff_name = format!(".oleafly-diff-{stem}.tex");
     let diff_relative = match main_path

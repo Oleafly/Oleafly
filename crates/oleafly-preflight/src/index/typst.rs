@@ -135,18 +135,18 @@ fn blank_opaque(source: &[u16], masks: &mut Masks, from: usize, to: usize) -> us
 }
 
 #[derive(Clone, Copy)]
+struct CodeFrame {
+    line: bool,
+    started: bool,
+    parens: i64,
+    braces: i64,
+    quoted: bool,
+}
+
+#[derive(Clone, Copy)]
 enum Frame {
-    Markup {
-        close: bool,
-        brackets: i64,
-    },
-    Code {
-        line: bool,
-        started: bool,
-        parens: i64,
-        braces: i64,
-        quoted: bool,
-    },
+    Markup { close: bool, brackets: i64 },
+    Code(CodeFrame),
 }
 
 fn is_word_unit(unit: u16) -> bool {
@@ -167,175 +167,190 @@ fn opens_line_code(text: &[u16], hash: usize) -> bool {
     })
 }
 
+/// The state of `mask_typst_source`: the masks so far and the nesting of
+/// markup and code around the unit being read.
+struct Masker<'a> {
+    raw: &'a [u16],
+    masks: Masks,
+    frames: Vec<Frame>,
+}
+
+impl Masker<'_> {
+    /// Reads one unit of markup and returns the index to continue from.
+    fn markup_step(&mut self, i: usize, close: bool, brackets: i64) -> usize {
+        let raw = self.raw;
+        let unit = raw[i];
+        if unit == BACKSLASH {
+            return i + 2;
+        }
+        if let Some(link) = typst_autolink_end(raw, i) {
+            self.masks.code[i..link].fill(SPACE);
+            return link;
+        }
+        if let Some(opaque) = opaque_end(raw, i) {
+            return blank_opaque(raw, &mut self.masks, i, opaque);
+        }
+        let top = self.frames.len() - 1;
+        if close && unit == CLOSE_BRACKET && brackets == 0 {
+            self.frames.pop();
+        } else if close && unit == OPEN_BRACKET {
+            self.frames[top] = Frame::Markup {
+                close,
+                brackets: brackets + 1,
+            };
+        } else if close && unit == CLOSE_BRACKET {
+            self.frames[top] = Frame::Markup {
+                close,
+                brackets: brackets - 1,
+            };
+        } else if unit == HASH {
+            self.frames.push(Frame::Code(CodeFrame {
+                line: opens_line_code(raw, i),
+                started: false,
+                parens: 0,
+                braces: 0,
+                quoted: false,
+            }));
+        }
+        i + 1
+    }
+
+    /// Reads one unit inside a string in code and returns the index to
+    /// continue from.
+    fn string_step(&mut self, i: usize, frame: CodeFrame) -> usize {
+        let raw = self.raw;
+        let unit = raw[i];
+        let mut cursor = i;
+        let mut still_quoted = true;
+        if unit != NEWLINE {
+            self.masks.code[cursor] = SPACE;
+        }
+        if unit == BACKSLASH && cursor + 1 < raw.len() {
+            cursor += 1;
+            if raw[cursor] != NEWLINE {
+                self.masks.code[cursor] = SPACE;
+            }
+        } else if unit == QUOTE {
+            still_quoted = false;
+        }
+        let top = self.frames.len() - 1;
+        self.frames[top] = Frame::Code(CodeFrame {
+            quoted: still_quoted,
+            ..frame
+        });
+        cursor + 1
+    }
+
+    /// Reads one unit of code outside strings and returns the index to
+    /// continue from. Leaving the code ends it without moving on.
+    fn code_step(&mut self, i: usize, frame: CodeFrame) -> usize {
+        let raw = self.raw;
+        let unit = raw[i];
+        let top = self.frames.len() - 1;
+        if let Some(opaque) = opaque_end(raw, i) {
+            self.frames[top] = Frame::Code(CodeFrame {
+                started: true,
+                ..frame
+            });
+            return blank_opaque(raw, &mut self.masks, i, opaque);
+        }
+        let CodeFrame {
+            line,
+            started,
+            parens,
+            braces,
+            ..
+        } = frame;
+        match unit {
+            QUOTE => {
+                self.masks.code[i] = SPACE;
+                self.frames[top] = Frame::Code(CodeFrame {
+                    started: true,
+                    quoted: true,
+                    ..frame
+                });
+            }
+            OPEN_BRACKET => {
+                self.frames[top] = Frame::Code(CodeFrame {
+                    started: true,
+                    ..frame
+                });
+                self.frames.push(Frame::Markup {
+                    close: true,
+                    brackets: 0,
+                });
+            }
+            OPEN_PAREN => {
+                self.frames[top] = Frame::Code(CodeFrame {
+                    started: true,
+                    parens: parens + 1,
+                    ..frame
+                });
+            }
+            OPEN_BRACE => {
+                self.frames[top] = Frame::Code(CodeFrame {
+                    started: true,
+                    braces: braces + 1,
+                    ..frame
+                });
+            }
+            CLOSE_PAREN if parens > 0 => {
+                self.frames[top] = Frame::Code(CodeFrame {
+                    parens: parens - 1,
+                    ..frame
+                });
+            }
+            CLOSE_BRACE if braces > 0 => {
+                self.frames[top] = Frame::Code(CodeFrame {
+                    braces: braces - 1,
+                    ..frame
+                });
+            }
+            NEWLINE if line => {
+                self.frames.pop();
+                return i;
+            }
+            _ if started && !line && parens == 0 && braces == 0 && is_js_space_unit(unit) => {
+                self.frames.pop();
+                return i;
+            }
+            _ => {
+                if !is_js_space_unit(unit) {
+                    self.frames[top] = Frame::Code(CodeFrame {
+                        started: true,
+                        ..frame
+                    });
+                }
+            }
+        }
+        i + 1
+    }
+}
+
 /// `maskTypstSource`: `text` blanks comments and raw text; `code` also blanks
 /// string contents and bare URLs in markup. Both keep every newline.
 pub fn mask_typst_source(raw: &[u16]) -> (Vec<u16>, Vec<u16>) {
-    let mut masks = Masks {
-        text: raw.to_vec(),
-        code: raw.to_vec(),
+    let mut masker = Masker {
+        raw,
+        masks: Masks {
+            text: raw.to_vec(),
+            code: raw.to_vec(),
+        },
+        frames: vec![Frame::Markup {
+            close: false,
+            brackets: 0,
+        }],
     };
-    let mut frames = vec![Frame::Markup {
-        close: false,
-        brackets: 0,
-    }];
     let mut i = 0;
     while i < raw.len() {
-        let top = frames.len() - 1;
-        let unit = raw[i];
-        match frames[top] {
-            Frame::Markup { close, brackets } => {
-                if unit == BACKSLASH {
-                    i += 2;
-                    continue;
-                }
-                if let Some(link) = typst_autolink_end(raw, i) {
-                    for index in i..link {
-                        masks.code[index] = SPACE;
-                    }
-                    i = link;
-                    continue;
-                }
-                if let Some(opaque) = opaque_end(raw, i) {
-                    i = blank_opaque(raw, &mut masks, i, opaque);
-                    continue;
-                }
-                if close && unit == CLOSE_BRACKET && brackets == 0 {
-                    frames.pop();
-                    i += 1;
-                    continue;
-                }
-                if close && unit == OPEN_BRACKET {
-                    frames[top] = Frame::Markup {
-                        close,
-                        brackets: brackets + 1,
-                    };
-                    i += 1;
-                    continue;
-                }
-                if close && unit == CLOSE_BRACKET {
-                    frames[top] = Frame::Markup {
-                        close,
-                        brackets: brackets - 1,
-                    };
-                    i += 1;
-                    continue;
-                }
-                if unit == HASH {
-                    frames.push(Frame::Code {
-                        line: opens_line_code(raw, i),
-                        started: false,
-                        parens: 0,
-                        braces: 0,
-                        quoted: false,
-                    });
-                }
-                i += 1;
-            }
-            Frame::Code {
-                line,
-                started,
-                parens,
-                braces,
-                quoted: true,
-            } => {
-                let mut cursor = i;
-                let mut still_quoted = true;
-                if unit != NEWLINE {
-                    masks.code[cursor] = SPACE;
-                }
-                if unit == BACKSLASH && cursor + 1 < raw.len() {
-                    cursor += 1;
-                    if raw[cursor] != NEWLINE {
-                        masks.code[cursor] = SPACE;
-                    }
-                } else if unit == QUOTE {
-                    still_quoted = false;
-                }
-                frames[top] = Frame::Code {
-                    line,
-                    started,
-                    parens,
-                    braces,
-                    quoted: still_quoted,
-                };
-                i = cursor + 1;
-            }
-            Frame::Code {
-                line,
-                started,
-                parens,
-                braces,
-                quoted: false,
-            } => {
-                if let Some(opaque) = opaque_end(raw, i) {
-                    frames[top] = Frame::Code {
-                        line,
-                        started: true,
-                        parens,
-                        braces,
-                        quoted: false,
-                    };
-                    i = blank_opaque(raw, &mut masks, i, opaque);
-                    continue;
-                }
-                let set = |started: bool, parens: i64, braces: i64, quoted: bool| Frame::Code {
-                    line,
-                    started,
-                    parens,
-                    braces,
-                    quoted,
-                };
-                if unit == QUOTE {
-                    masks.code[i] = SPACE;
-                    frames[top] = set(true, parens, braces, true);
-                    i += 1;
-                    continue;
-                }
-                if unit == OPEN_BRACKET {
-                    frames[top] = set(true, parens, braces, false);
-                    frames.push(Frame::Markup {
-                        close: true,
-                        brackets: 0,
-                    });
-                    i += 1;
-                    continue;
-                }
-                if unit == OPEN_PAREN {
-                    frames[top] = set(true, parens + 1, braces, false);
-                    i += 1;
-                    continue;
-                }
-                if unit == OPEN_BRACE {
-                    frames[top] = set(true, parens, braces + 1, false);
-                    i += 1;
-                    continue;
-                }
-                if unit == CLOSE_PAREN && parens > 0 {
-                    frames[top] = set(started, parens - 1, braces, false);
-                    i += 1;
-                    continue;
-                }
-                if unit == CLOSE_BRACE && braces > 0 {
-                    frames[top] = set(started, parens, braces - 1, false);
-                    i += 1;
-                    continue;
-                }
-                if unit == NEWLINE && line {
-                    frames.pop();
-                    continue;
-                }
-                if started && !line && parens == 0 && braces == 0 && is_js_space_unit(unit) {
-                    frames.pop();
-                    continue;
-                }
-                if !is_js_space_unit(unit) {
-                    frames[top] = set(true, parens, braces, false);
-                }
-                i += 1;
-            }
-        }
+        let top = masker.frames.len() - 1;
+        i = match masker.frames[top] {
+            Frame::Markup { close, brackets } => masker.markup_step(i, close, brackets),
+            Frame::Code(frame) if frame.quoted => masker.string_step(i, frame),
+            Frame::Code(frame) => masker.code_step(i, frame),
+        };
     }
-    (masks.text, masks.code)
+    (masker.masks.text, masker.masks.code)
 }
 
 /// `isTypstEscaped`: an odd number of backslashes before `offset`.
@@ -465,6 +480,54 @@ mod tests {
             String::from_utf16_lossy(&code),
             format!("#let x ={}\n<c>", " ".repeat(13))
         );
+    }
+
+    fn masks(source: &str) -> (String, String) {
+        let (text, code) = mask_typst_source(&to_units(source));
+        (
+            String::from_utf16_lossy(&text),
+            String::from_utf16_lossy(&code),
+        )
+    }
+
+    #[test]
+    fn strings_in_nested_calls_are_masked_but_markup_quotes_are_not() {
+        let source = "#f[a \"x\" #g(\"y\") <l>] <m>";
+        let (text, code) = masks(source);
+        assert_eq!(text, source);
+        assert_eq!(code, "#f[a \"x\" #g(   ) <l>] <m>");
+    }
+
+    #[test]
+    fn urls_and_nested_block_comments_are_masked() {
+        let (text, code) =
+            masks("see http://a.org/p(q)). <c> // note <d>\n/* a /* b */ <e> */ <f>");
+        let tail = format!("). <c>{}\n{}<f>", " ".repeat(12), " ".repeat(20));
+        assert_eq!(text, format!("see http://a.org/p(q){tail}"));
+        assert_eq!(code, format!("see {}{tail}", " ".repeat(17)));
+    }
+
+    #[test]
+    fn escaped_quotes_and_raw_text_are_masked() {
+        let (text, code) = masks("#f(a, \"q\\\"<z>\") <g> `raw <r>` ```<s>``` <h>");
+        assert_eq!(
+            text,
+            format!("#f(a, \"q\\\"<z>\") <g>{}<h>", " ".repeat(21))
+        );
+        assert_eq!(
+            code,
+            format!("#f(a,{}) <g>{}<h>", " ".repeat(9), " ".repeat(21))
+        );
+    }
+
+    #[test]
+    fn comments_inside_code_blocks_are_masked() {
+        let (text, code) = masks("#{ let x = \"a\" // <b>\n <c> }  <d>");
+        assert_eq!(
+            text,
+            format!("#{{ let x = \"a\"{}\n <c> }}  <d>", " ".repeat(7))
+        );
+        assert_eq!(code, format!("#{{ let x ={}\n <c> }}  <d>", " ".repeat(11)));
     }
 
     #[test]

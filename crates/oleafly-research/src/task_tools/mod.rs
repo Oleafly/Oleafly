@@ -145,13 +145,7 @@ impl TaskFiles {
         let path = self.checked(value)?;
         let (directory, name) = match self.parent(&path, false) {
             Ok(found) => found,
-            Err(_)
-                if !self
-                    .root
-                    .join(&path)
-                    .parent()
-                    .is_some_and(|parent| parent.exists()) =>
-            {
+            Err(_) if !self.root.join(&path).parent().is_some_and(Path::exists) => {
                 return Ok(false)
             }
             Err(error) => return Err(error),

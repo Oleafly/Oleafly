@@ -173,9 +173,7 @@ where
     F: Fn(TypstInstallProgress) -> bool + Send + Sync + 'static,
 {
     let toolchain = blocking(|| TypstToolchain::load(SystemLookup::Lazy)).await?;
-    oleafly_downloads::typst::install_version(&toolchain, &version, send)
-        .await
-        .map_err(String::from)?;
+    oleafly_downloads::typst::install_version(&toolchain, &version, send).await?;
     blocking(|| current_status(SystemLookup::Cached)).await
 }
 

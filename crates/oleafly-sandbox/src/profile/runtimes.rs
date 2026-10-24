@@ -394,55 +394,78 @@ fn known_folders(
             .map(PathBuf::from)
     };
     if let Some(home) = home {
-        for name in [
-            "miniconda3",
-            "anaconda3",
-            "miniforge3",
-            "mambaforge",
-            "micromamba",
-        ] {
-            folders.push((RuntimeKind::Conda, home.join(name)));
+        folders.extend(home_folders(home));
+    }
+    if cfg!(windows) {
+        folders.extend(windows_folders(&var));
+    } else {
+        folders.extend(unix_folders(home, &var));
+    }
+    folders
+}
+
+/// Where package managers install under the home folder.
+fn home_folders(home: &Path) -> Vec<(RuntimeKind, PathBuf)> {
+    let mut folders = Vec::new();
+    for name in [
+        "miniconda3",
+        "anaconda3",
+        "miniforge3",
+        "mambaforge",
+        "micromamba",
+    ] {
+        folders.push((RuntimeKind::Conda, home.join(name)));
+    }
+    folders.push((RuntimeKind::Julia, home.join(".julia")));
+    folders.push((RuntimeKind::Julia, home.join(".juliaup")));
+    folders.push((RuntimeKind::Pixi, home.join(".pixi")));
+    folders.push((RuntimeKind::R, home.join("Library").join("R")));
+    if let Ok(entries) = std::fs::read_dir(home.join("R")) {
+        for entry in entries.flatten() {
+            if entry.file_name().to_string_lossy().ends_with("-library") {
+                folders.push((RuntimeKind::R, entry.path()));
+            }
         }
-        folders.push((RuntimeKind::Julia, home.join(".julia")));
-        folders.push((RuntimeKind::Julia, home.join(".juliaup")));
-        folders.push((RuntimeKind::Pixi, home.join(".pixi")));
-        folders.push((RuntimeKind::R, home.join("Library").join("R")));
-        if let Ok(entries) = std::fs::read_dir(home.join("R")) {
+    }
+    folders
+}
+
+/// Where package managers and installers put runtimes on Windows.
+fn windows_folders(var: &dyn Fn(&str) -> Option<PathBuf>) -> Vec<(RuntimeKind, PathBuf)> {
+    let mut folders = Vec::new();
+    if let Some(local) = var("LOCALAPPDATA") {
+        folders.push((RuntimeKind::Conda, local.join("miniconda3")));
+        folders.push((RuntimeKind::R, local.join("R").join("win-library")));
+        if let Ok(entries) = std::fs::read_dir(local.join("Programs").join("Python")) {
             for entry in entries.flatten() {
-                if entry.file_name().to_string_lossy().ends_with("-library") {
-                    folders.push((RuntimeKind::R, entry.path()));
+                if entry.file_name().to_string_lossy().starts_with("Python3") {
+                    folders.push((RuntimeKind::Python, entry.path()));
                 }
             }
         }
     }
-    if cfg!(windows) {
-        if let Some(local) = var("LOCALAPPDATA") {
-            folders.push((RuntimeKind::Conda, local.join("miniconda3")));
-            folders.push((RuntimeKind::R, local.join("R").join("win-library")));
-            if let Ok(entries) = std::fs::read_dir(local.join("Programs").join("Python")) {
-                for entry in entries.flatten() {
-                    if entry.file_name().to_string_lossy().starts_with("Python3") {
-                        folders.push((RuntimeKind::Python, entry.path()));
-                    }
-                }
-            }
-        }
-        if let Some(data) = var("ProgramData") {
-            folders.push((RuntimeKind::Conda, data.join("miniconda3")));
-            folders.push((RuntimeKind::Conda, data.join("anaconda3")));
-        }
-        if let Some(roaming) = var("APPDATA") {
-            folders.push((RuntimeKind::Uv, roaming.join("uv").join("python")));
-        }
-    } else {
-        for root in ["/opt/conda", "/opt/miniconda3"] {
-            folders.push((RuntimeKind::Conda, PathBuf::from(root)));
-        }
-        let data =
-            var("XDG_DATA_HOME").or_else(|| home.map(|home| home.join(".local").join("share")));
-        if let Some(data) = data {
-            folders.push((RuntimeKind::Uv, data.join("uv").join("python")));
-        }
+    if let Some(data) = var("ProgramData") {
+        folders.push((RuntimeKind::Conda, data.join("miniconda3")));
+        folders.push((RuntimeKind::Conda, data.join("anaconda3")));
+    }
+    if let Some(roaming) = var("APPDATA") {
+        folders.push((RuntimeKind::Uv, roaming.join("uv").join("python")));
+    }
+    folders
+}
+
+/// Where package managers put runtimes on macOS and Linux.
+fn unix_folders(
+    home: Option<&Path>,
+    var: &dyn Fn(&str) -> Option<PathBuf>,
+) -> Vec<(RuntimeKind, PathBuf)> {
+    let mut folders = Vec::new();
+    for root in ["/opt/conda", "/opt/miniconda3"] {
+        folders.push((RuntimeKind::Conda, PathBuf::from(root)));
+    }
+    let data = var("XDG_DATA_HOME").or_else(|| home.map(|home| home.join(".local").join("share")));
+    if let Some(data) = data {
+        folders.push((RuntimeKind::Uv, data.join("uv").join("python")));
     }
     folders
 }

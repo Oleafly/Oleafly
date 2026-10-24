@@ -18,7 +18,7 @@ vi.mock("@/lib/desktop-apps", () => ({
 }));
 
 import AppPickerDialog from "./AppPickerDialog";
-import { filterApps, MAX_PICKER_ROWS } from "./desktop-apps-queries";
+import { filterApps, MAX_PICKER_ROWS, sameApp } from "./desktop-apps-queries";
 
 const copy = enSettings.integrations.desktopApps.apps;
 
@@ -73,8 +73,8 @@ describe("AppPickerDialog", () => {
       expect(rows.length).toBeLessThanOrEqual(MAX_PICKER_ROWS);
       expect(rows.every((row) => row.textContent?.toLowerCase().includes("app 12"))).toBe(true);
     });
-    expect(filterApps(apps, "app 12").length).toBe(111);
-    expect(filterApps(apps, "").length).toBe(MAX_PICKER_ROWS);
+    expect(filterApps(apps, "app 12")).toHaveLength(111);
+    expect(filterApps(apps, "")).toHaveLength(MAX_PICKER_ROWS);
   });
 
   it("marks apps that are already allowed", async () => {
@@ -140,5 +140,25 @@ describe("AppPickerDialog", () => {
     renderPicker(vi.fn(), [{ name: "Zotero", bundleId: "org.zotero.zotero" }]);
     expect(await screen.findByText(copy.blocked.browser)).toBeVisible();
     expect(screen.getByText(copy.dialog.added)).toBeVisible();
+  });
+});
+
+describe("sameApp", () => {
+  it("matches bundle ids and program paths without regard to case", () => {
+    expect(sameApp({ bundleId: "org.zotero.zotero" }, { bundleId: "ORG.zotero.zotero" })).toBe(true);
+    expect(sameApp({ executable: "/opt/App/run" }, { executable: "/OPT/app/RUN" })).toBe(true);
+  });
+
+  it("compares the bundle id alone when either app has one", () => {
+    expect(sameApp({ bundleId: "a.b", executable: "/x" }, { executable: "/x" })).toBe(false);
+    expect(sameApp({ executable: "/x" }, { bundleId: "a.b", executable: "/x" })).toBe(false);
+    expect(sameApp({ bundleId: "a.b" }, { bundleId: "c.d" })).toBe(false);
+  });
+
+  it("never matches a missing or empty program path", () => {
+    expect(sameApp({}, {})).toBe(false);
+    expect(sameApp({ executable: "" }, { executable: "" })).toBe(false);
+    expect(sameApp({ executable: "/x" }, {})).toBe(false);
+    expect(sameApp({}, { executable: "/x" })).toBe(false);
   });
 });

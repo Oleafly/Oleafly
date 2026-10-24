@@ -109,7 +109,7 @@ impl<W: Write> Packer<W> {
             .map_err(|error| RunError::Io(format!("The workspace could not be read: {error}")))?
             .filter_map(Result::ok)
             .collect();
-        entries.sort_by_key(|entry| entry.file_name());
+        entries.sort_by_key(std::fs::DirEntry::file_name);
         for entry in entries {
             let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
                 note_skipped(

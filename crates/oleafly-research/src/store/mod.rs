@@ -2732,11 +2732,10 @@ fn migrate(connection: &mut Connection) -> Result<(), String> {
         let mut statement = transaction
             .prepare("PRAGMA table_info(research_tasks)")
             .map_err(store_error)?;
-        let names = statement
+        statement
             .query_map([], |row| row.get::<_, String>(1))
             .and_then(|rows| rows.collect::<Result<HashSet<_>, _>>())
-            .map_err(store_error)?;
-        names
+            .map_err(store_error)?
     };
     let add_columns = |added: &[(&str, &str)]| {
         added

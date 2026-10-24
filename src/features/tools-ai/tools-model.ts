@@ -155,6 +155,36 @@ async function resolveMathpix(task: ToolsTask, cfg: AppConfig): Promise<Resolved
   return { engine: "mathpix", label: "Mathpix", hosted: true, destination: toolsDestination(cfg) };
 }
 
+/** Throws when the Ollama model the user chose cannot run the task. */
+function assertLocalModelCanRun(
+  task: ToolsTask,
+  explicit: string,
+  models: readonly OllamaModelInfo[],
+  disabled: ReadonlySet<string>,
+): void {
+  const info = models.find((model) => model.name === explicit);
+  if (!info) {
+    throw new LocalModelError(
+      i18n.t(($) => $.researchTools.converterModel.errors.localModelGone, { model: explicit }),
+    );
+  }
+  if (disabled.has(explicit)) {
+    throw new ToolsModelError(
+      i18n.t(($) => $.researchTools.converterModel.errors.modelDisabled, { model: explicit }),
+    );
+  }
+  if (task === "equation-text" && ocrProfileFor(explicit)) {
+    throw new ToolsModelError(
+      i18n.t(($) => $.researchTools.converterModel.errors.imagesOnly, { model: explicit }),
+    );
+  }
+  if (task === "image" && !ollamaModelSeesImages(info)) {
+    throw new ToolsModelError(
+      i18n.t(($) => $.researchTools.converterModel.errors.cannotSeeImages, { model: explicit }),
+    );
+  }
+}
+
 async function resolveLocal(task: ToolsTask, cfg: AppConfig, explicit: string): Promise<ResolvedLlm> {
   let models: OllamaModelInfo[];
   try {
@@ -165,27 +195,7 @@ async function resolveLocal(task: ToolsTask, cfg: AppConfig, explicit: string): 
   const disabled = disabledModels(cfg, LOCAL_TOOLS_PROVIDER);
   let modelId: string;
   if (explicit) {
-    const info = models.find((model) => model.name === explicit);
-    if (!info) {
-      throw new LocalModelError(
-        i18n.t(($) => $.researchTools.converterModel.errors.localModelGone, { model: explicit }),
-      );
-    }
-    if (disabled.has(explicit)) {
-      throw new ToolsModelError(
-        i18n.t(($) => $.researchTools.converterModel.errors.modelDisabled, { model: explicit }),
-      );
-    }
-    if (task === "equation-text" && ocrProfileFor(explicit)) {
-      throw new ToolsModelError(
-        i18n.t(($) => $.researchTools.converterModel.errors.imagesOnly, { model: explicit }),
-      );
-    }
-    if (task === "image" && !ollamaModelSeesImages(info)) {
-      throw new ToolsModelError(
-        i18n.t(($) => $.researchTools.converterModel.errors.cannotSeeImages, { model: explicit }),
-      );
-    }
+    assertLocalModelCanRun(task, explicit, models, disabled);
     modelId = explicit;
   } else {
     const assistantModel = cfg.ai_provider === LOCAL_TOOLS_PROVIDER ? cfg.ai_model : "";

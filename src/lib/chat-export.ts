@@ -16,33 +16,38 @@ function markerLabels() {
   };
 }
 
+type StoredMessage = StoredChat["messages"][number];
+
+function messageLines(message: StoredMessage, labels: ReturnType<typeof markerLabels>): string[] {
+  const lines = [
+    message.role === "user"
+      ? `## ${i18n.t(($) => $.ai.conversation.exportYou)}`
+      : `## ${i18n.t(($) => $.ai.conversation.exportAssistant)}`,
+    "",
+    message.role === "assistant" ? localizeMarkers(message.content, labels) : message.content,
+    "",
+  ];
+  const attachments = message.attachments ?? [];
+  if (attachments.length > 0) {
+    lines.push(`**${i18n.t(($) => $.ai.conversation.exportAttachments)}**`, "");
+    for (const attachment of attachments) lines.push(`- ${attachment.name}`);
+    lines.push("");
+  }
+  const tools = [...new Set((message.toolCalls ?? []).map((tool) => tool.name))];
+  if (tools.length > 0) {
+    lines.push(`**${i18n.t(($) => $.ai.conversation.exportTools)}**`, "");
+    for (const tool of tools) lines.push(`- ${tool}`);
+    lines.push("");
+  }
+  return lines;
+}
+
 export function chatMarkdown(chat: StoredChat, opts: { projectName: string | null }): string {
   const labels = markerLabels();
   const lines: string[] = [`# ${chat.title || i18n.t(($) => $.ai.history.untitled)}`, ""];
   if (opts.projectName) lines.push(`- Project: ${opts.projectName}`);
   lines.push(`- Started: ${formatDateTime(chat.createdAt)}`, "");
-  for (const message of chat.messages) {
-    lines.push(
-      message.role === "user"
-        ? `## ${i18n.t(($) => $.ai.conversation.exportYou)}`
-        : `## ${i18n.t(($) => $.ai.conversation.exportAssistant)}`,
-      "",
-      message.role === "assistant" ? localizeMarkers(message.content, labels) : message.content,
-      "",
-    );
-    const attachments = message.attachments ?? [];
-    if (attachments.length > 0) {
-      lines.push(`**${i18n.t(($) => $.ai.conversation.exportAttachments)}**`, "");
-      for (const attachment of attachments) lines.push(`- ${attachment.name}`);
-      lines.push("");
-    }
-    const tools = [...new Set((message.toolCalls ?? []).map((tool) => tool.name))];
-    if (tools.length > 0) {
-      lines.push(`**${i18n.t(($) => $.ai.conversation.exportTools)}**`, "");
-      for (const tool of tools) lines.push(`- ${tool}`);
-      lines.push("");
-    }
-  }
+  for (const message of chat.messages) lines.push(...messageLines(message, labels));
   return `${lines.join("\n").trimEnd()}\n`;
 }
 

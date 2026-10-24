@@ -431,6 +431,59 @@ fn glob_match(pattern: &str, name: &str) -> bool {
     }
 }
 
+/// The files an `Include` pattern names, in order.
+fn included_files(pattern: &str, ssh_dir: &Path) -> Vec<PathBuf> {
+    let path = if Path::new(pattern).is_absolute() {
+        PathBuf::from(pattern)
+    } else if let Some(rest) = pattern.strip_prefix("~/") {
+        ssh_dir
+            .parent()
+            .map(|home| home.join(rest))
+            .unwrap_or_else(|| ssh_dir.join(rest))
+    } else {
+        ssh_dir.join(pattern)
+    };
+    let folder = path
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| ssh_dir.to_path_buf());
+    let name = path
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let Ok(entries) = std::fs::read_dir(&folder) else {
+        return Vec::new();
+    };
+    let mut files: Vec<PathBuf> = entries
+        .flatten()
+        .filter(|entry| glob_match(&name, &entry.file_name().to_string_lossy()))
+        .map(|entry| entry.path())
+        .collect();
+    files.sort();
+    files
+}
+
+/// Adds the plain aliases of a `Host` line, which become the hosts the
+/// following keywords apply to.
+fn add_hosts(aliases: &str, hosts: &mut Vec<SshConfigHost>, current: &mut Vec<usize>) {
+    current.clear();
+    for alias in aliases.split_whitespace() {
+        if alias.contains(['*', '?', '!']) || hosts.len() >= MAX_HOSTS {
+            continue;
+        }
+        if hosts.iter().any(|host| host.alias == alias) {
+            continue;
+        }
+        hosts.push(SshConfigHost {
+            alias: alias.to_string(),
+            host_name: None,
+            user: None,
+            port: None,
+        });
+        current.push(hosts.len() - 1);
+    }
+}
+
 fn read_config(file: &Path, ssh_dir: &Path, depth: usize, hosts: &mut Vec<SshConfigHost>) {
     if depth > 4 || hosts.len() >= MAX_HOSTS {
         return;
@@ -452,57 +505,13 @@ fn read_config(file: &Path, ssh_dir: &Path, depth: usize, hosts: &mut Vec<SshCon
         match keyword.as_str() {
             "include" => {
                 for pattern in value.split_whitespace() {
-                    let path = if Path::new(pattern).is_absolute() {
-                        PathBuf::from(pattern)
-                    } else if let Some(rest) = pattern.strip_prefix("~/") {
-                        ssh_dir
-                            .parent()
-                            .map(|home| home.join(rest))
-                            .unwrap_or_else(|| ssh_dir.join(rest))
-                    } else {
-                        ssh_dir.join(pattern)
-                    };
-                    let folder = path
-                        .parent()
-                        .map(Path::to_path_buf)
-                        .unwrap_or_else(|| ssh_dir.to_path_buf());
-                    let name = path
-                        .file_name()
-                        .map(|name| name.to_string_lossy().into_owned())
-                        .unwrap_or_default();
-                    let Ok(entries) = std::fs::read_dir(&folder) else {
-                        continue;
-                    };
-                    let mut files: Vec<PathBuf> = entries
-                        .flatten()
-                        .filter(|entry| glob_match(&name, &entry.file_name().to_string_lossy()))
-                        .map(|entry| entry.path())
-                        .collect();
-                    files.sort();
-                    for included in files {
+                    for included in included_files(pattern, ssh_dir) {
                         read_config(&included, ssh_dir, depth + 1, hosts);
                     }
                 }
                 current.clear();
             }
-            "host" => {
-                current.clear();
-                for alias in value.split_whitespace() {
-                    if alias.contains(['*', '?', '!']) || hosts.len() >= MAX_HOSTS {
-                        continue;
-                    }
-                    if hosts.iter().any(|host| host.alias == alias) {
-                        continue;
-                    }
-                    hosts.push(SshConfigHost {
-                        alias: alias.to_string(),
-                        host_name: None,
-                        user: None,
-                        port: None,
-                    });
-                    current.push(hosts.len() - 1);
-                }
-            }
+            "host" => add_hosts(&value, hosts, &mut current),
             "match" => current.clear(),
             "hostname" => current
                 .iter()

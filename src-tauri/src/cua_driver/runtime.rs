@@ -675,62 +675,10 @@ impl Launcher for ProcessLauncher {
                     }
                 }
                 let ready = match platform {
-                    Platform::Windows => {
-                        let binary = install.binary.clone();
-                        let endpoint = paths.endpoint.clone();
-                        tokio::task::spawn_blocking(move || {
-                            detect::run_driver(
-                                &binary,
-                                &["status", "--socket", endpoint.as_str()],
-                                STATUS_TIMEOUT,
-                            )
-                        })
-                        .await
-                        .ok()
-                        .flatten()
-                        .is_some_and(|(ok, _, _)| ok)
-                    }
+                    Platform::Windows => windows_ready(install, paths).await,
                     Platform::Macos => {
-                        // `open` returns before the daemon runs: learn its
-                        // process id as early as it shows (its pid file, or
-                        // its command line) and record it right away, so a
-                        // start that is given up on can still end it.
-                        if !matches!(handle, DaemonHandle::Detached { pid, .. } if *pid != 0) {
-                            let mut pid =
-                                read_pid(&paths.pid_file).filter(|pid| same_process(*pid, None));
-                            if pid.is_none()
-                                && last_scan.is_none_or(|at| at.elapsed() >= SCAN_EVERY)
-                            {
-                                last_scan = Some(Instant::now());
-                                let endpoint = paths.endpoint.clone();
-                                pid = tokio::task::spawn_blocking(move || serving_pids(&endpoint))
-                                    .await
-                                    .ok()
-                                    .and_then(|pids| pids.into_iter().next());
-                            }
-                            if let Some(pid) = pid {
-                                let started = match crate::process_identity::probe(pid) {
-                                    crate::process_identity::ProcessProbe::Running { started } => {
-                                        started
-                                    }
-                                    crate::process_identity::ProcessProbe::Gone => None,
-                                };
-                                *handle = DaemonHandle::Detached { pid, started };
-                                write_owner_file(paths, handle);
-                            }
-                        }
-                        match handle {
-                            DaemonHandle::Detached { pid, started } if *pid != 0 => {
-                                if !same_process(*pid, *started) {
-                                    return Err(start_failed(
-                                        &log_tail(&paths.log_file)
-                                            .unwrap_or_else(|| "it stopped.".to_string()),
-                                    ));
-                                }
-                                Path::new(&paths.endpoint).exists()
-                            }
-                            _ => false,
-                        }
+                        record_daemon_pid(paths, handle, &mut last_scan).await;
+                        macos_ready(paths, handle)?
                     }
                     Platform::Linux => Path::new(&paths.endpoint).exists(),
                 };
@@ -822,6 +770,69 @@ impl Launcher for ProcessLauncher {
             }
             remove_runtime_files(paths, platform);
         })
+    }
+}
+
+/// Whether the Windows daemon answers a status request.
+async fn windows_ready(install: &DriverInstall, paths: &RuntimePaths) -> bool {
+    let binary = install.binary.clone();
+    let endpoint = paths.endpoint.clone();
+    tokio::task::spawn_blocking(move || {
+        detect::run_driver(
+            &binary,
+            &["status", "--socket", endpoint.as_str()],
+            STATUS_TIMEOUT,
+        )
+    })
+    .await
+    .ok()
+    .flatten()
+    .is_some_and(|(ok, _, _)| ok)
+}
+
+/// `open` returns before the daemon runs: learn its process id as early as
+/// it shows (its pid file, or its command line) and record it right away, so
+/// a start that is given up on can still end it.
+async fn record_daemon_pid(
+    paths: &RuntimePaths,
+    handle: &mut DaemonHandle,
+    last_scan: &mut Option<Instant>,
+) {
+    if matches!(handle, DaemonHandle::Detached { pid, .. } if *pid != 0) {
+        return;
+    }
+    let mut pid = read_pid(&paths.pid_file).filter(|pid| same_process(*pid, None));
+    if pid.is_none() && last_scan.is_none_or(|at| at.elapsed() >= SCAN_EVERY) {
+        *last_scan = Some(Instant::now());
+        let endpoint = paths.endpoint.clone();
+        pid = tokio::task::spawn_blocking(move || serving_pids(&endpoint))
+            .await
+            .ok()
+            .and_then(|pids| pids.into_iter().next());
+    }
+    if let Some(pid) = pid {
+        let started = match crate::process_identity::probe(pid) {
+            crate::process_identity::ProcessProbe::Running { started } => started,
+            crate::process_identity::ProcessProbe::Gone => None,
+        };
+        *handle = DaemonHandle::Detached { pid, started };
+        write_owner_file(paths, handle);
+    }
+}
+
+/// Whether the macOS daemon the handle names runs and has its endpoint. A
+/// daemon that stopped is an error.
+fn macos_ready(paths: &RuntimePaths, handle: &DaemonHandle) -> Result<bool, String> {
+    match handle {
+        DaemonHandle::Detached { pid, started } if *pid != 0 => {
+            if !same_process(*pid, *started) {
+                return Err(start_failed(
+                    &log_tail(&paths.log_file).unwrap_or_else(|| "it stopped.".to_string()),
+                ));
+            }
+            Ok(Path::new(&paths.endpoint).exists())
+        }
+        _ => Ok(false),
     }
 }
 

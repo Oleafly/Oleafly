@@ -246,7 +246,7 @@ type RawTask = Partial<ResearchTask> & Pick<ResearchTask, "id" | "projectId" | "
  * webview can briefly talk to the previous backend).
  */
 export function normalizeTask(raw: RawTask): ResearchTask {
-  const brief = { ...defaultBrief(), ...(raw.brief ?? {}) };
+  const brief = { ...defaultBrief(), ...raw.brief };
   return {
     title: "",
     prompt: "",
@@ -286,9 +286,9 @@ export function normalizeTask(raw: RawTask): ResearchTask {
     ...raw,
     brief: {
       ...brief,
-      permissions: { ...defaultBrief().permissions, ...(raw.brief?.permissions ?? {}) },
-      budget: { ...defaultBrief().budget, ...(raw.brief?.budget ?? {}) },
-      compute: { ...defaultBrief().compute, ...(raw.brief?.compute ?? {}) },
+      permissions: { ...defaultBrief().permissions, ...raw.brief?.permissions },
+      budget: { ...defaultBrief().budget, ...raw.brief?.budget },
+      compute: { ...defaultBrief().compute, ...raw.brief?.compute },
     },
   };
 }

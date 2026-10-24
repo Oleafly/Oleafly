@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -106,19 +107,148 @@ function PlanWindow({ window, now }: Readonly<{ window: UsageWindow; now: number
   );
 }
 
-/** The usage popover's body; loaded the first time the meter opens. */
-export function UsagePopover({
-  snapshot,
-  loadExtras,
-  onRefreshPlan,
-  refreshing = false,
-}: Readonly<{
-  snapshot: UsageSnapshot;
-  loadExtras?: () => Promise<Partial<UsageSnapshot>>;
-  onRefreshPlan?: () => void;
-  refreshing?: boolean;
-}>) {
-  const { t } = useTranslation(["common", "ai"]);
+type Translate = TFunction<["common", "ai"]>;
+
+function contextSection(usage: UsageSnapshot, t: Translate): ReactNode {
+  const { context } = usage;
+  if (!context) return null;
+  const fraction = contextFraction(usage);
+  return (
+    <Section key="context" testId="usage-context" title={t(($) => $.ai.usage.context)}>
+      {fraction === null ? (
+        <p className="text-muted-foreground">{t(($) => $.ai.usage.contextUnknown)}</p>
+      ) : (
+        <>
+          <Bar fraction={fraction} tone={usageTone(fraction)} label={t(($) => $.ai.usage.context)} />
+          <p className="tabular-nums text-muted-foreground">
+            {t(($) => $.ai.usage.contextUsed, {
+              used: formatNumber(context.used),
+              size: formatNumber(context.size),
+            })}
+          </p>
+        </>
+      )}
+    </Section>
+  );
+}
+
+function lastRunSection(usage: UsageSnapshot, t: Translate): ReactNode {
+  const last = usage.lastTurn;
+  if (!last || !(last.inputTokens !== undefined || last.outputTokens !== undefined || last.steps)) return null;
+  const unknown = t(($) => $.common.state.unknown);
+  const count = (value: number | undefined) => (value === undefined ? unknown : formatNumber(value));
+  const rows: [string, ReactNode][] = [];
+  if (last.steps !== undefined) rows.push([t(($) => $.ai.usage.steps), formatNumber(last.steps)]);
+  rows.push([t(($) => $.ai.usage.input), count(last.inputTokens)], [t(($) => $.ai.usage.output), count(last.outputTokens)]);
+  if (last.thoughtTokens !== undefined) {
+    rows.push([t(($) => $.ai.usage.reasoning), formatNumber(last.thoughtTokens)]);
+  }
+  return (
+    <Section key="last" testId="ai-run-usage" title={t(($) => $.ai.usage.lastRun)}>
+      <Rows rows={rows} />
+    </Section>
+  );
+}
+
+type SessionUsage = NonNullable<UsageSnapshot["session"]>;
+
+function sessionTokenTotal(session: SessionUsage): number {
+  return (session.inputTokens ?? 0) + (session.outputTokens ?? 0);
+}
+
+/** The chat has run something, so its totals are worth showing. */
+function sessionHasUsage(session: SessionUsage): boolean {
+  return sessionTokenTotal(session) > 0 || (session.steps ?? 0) > 0 || (session.costUsd ?? 0) > 0;
+}
+
+function sessionRows(session: SessionUsage, t: Translate): [string, ReactNode][] {
+  const rows: [string, ReactNode][] = [];
+  if (session.turns !== undefined) rows.push([t(($) => $.ai.usage.runs), formatNumber(session.turns)]);
+  if (session.steps !== undefined) rows.push([t(($) => $.ai.usage.steps), formatNumber(session.steps)]);
+  rows.push([t(($) => $.ai.usage.tokens), formatNumber(sessionTokenTotal(session))]);
+  if (session.thoughtTokens !== undefined) {
+    rows.push([t(($) => $.ai.usage.reasoning), formatNumber(session.thoughtTokens)]);
+  }
+  if (session.cachedReadTokens !== undefined) {
+    rows.push([t(($) => $.ai.usage.cacheRead), formatNumber(session.cachedReadTokens)]);
+  }
+  if (session.cachedWriteTokens !== undefined) {
+    rows.push([t(($) => $.ai.usage.cacheWrite), formatNumber(session.cachedWriteTokens)]);
+  }
+  if ((session.costUsd ?? 0) > 0) rows.push([t(($) => $.ai.usage.cost), formatUsd(session.costUsd ?? 0)]);
+  return rows;
+}
+
+function sessionSection(usage: UsageSnapshot, t: Translate): ReactNode {
+  const { session } = usage;
+  if (!session || !sessionHasUsage(session)) return null;
+  return (
+    <Section key="session" testId="ai-chat-usage" title={t(($) => $.ai.usage.thisChat)}>
+      <Rows rows={sessionRows(session, t)} />
+    </Section>
+  );
+}
+
+function planSection(usage: UsageSnapshot, t: Translate, now: number): ReactNode {
+  const { plan } = usage;
+  if (!plan || plan.windows.length === 0) return null;
+  return (
+    <Section key="plan" testId="usage-plan" title={plan.label ?? t(($) => $.ai.usage.planLimits)}>
+      <div className="space-y-2">
+        {plan.windows.map((window) => (
+          <PlanWindow key={window.id} window={window} now={now} />
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+function creditSection(usage: UsageSnapshot, t: Translate): ReactNode {
+  const { credit } = usage;
+  if (credit?.remainingUsd === undefined) return null;
+  const currency = credit.currency ?? "USD";
+  return (
+    <Section key="credit" testId="usage-credit" title={t(($) => $.ai.usage.credit)}>
+      <p className="tabular-nums text-muted-foreground">
+        {credit.limitUsd !== undefined
+          ? t(($) => $.ai.usage.creditOf, {
+              remaining: money(credit.remainingUsd, currency),
+              limit: money(credit.limitUsd, currency),
+            })
+          : money(credit.remainingUsd, currency)}
+      </p>
+    </Section>
+  );
+}
+
+function budgetSection(usage: UsageSnapshot, t: Translate): ReactNode {
+  if (!usage.budget) return null;
+  const { spentUsd, limitUsd } = usage.budget;
+  return (
+    <Section key="budget" testId="usage-budget" title={t(($) => $.ai.usage.budget)}>
+      {limitUsd !== undefined && limitUsd > 0 && (
+        <Bar fraction={spentUsd / limitUsd} tone={usageTone(spentUsd / limitUsd)} label={t(($) => $.ai.usage.budget)} />
+      )}
+      <p className="tabular-nums text-muted-foreground">
+        {limitUsd !== undefined
+          ? t(($) => $.ai.usage.budgetUsed, { spent: money(spentUsd), limit: money(limitUsd) })
+          : money(spentUsd)}
+      </p>
+    </Section>
+  );
+}
+
+function planMarkdownSection(usage: UsageSnapshot): ReactNode {
+  if (!usage.planMarkdown) return null;
+  return (
+    <section key="markdown" data-testid="usage-plan-markdown" className="border-t pt-3 first:border-t-0 first:pt-0">
+      <Markdown className="text-xs">{usage.planMarkdown}</Markdown>
+    </section>
+  );
+}
+
+/** The extras `loadExtras` fetches once, when the popover opens. */
+function useUsageExtras(loadExtras: (() => Promise<Partial<UsageSnapshot>>) | undefined): Partial<UsageSnapshot> {
   const [extras, setExtras] = useState<Partial<UsageSnapshot>>({});
   const loadRef = useRef(loadExtras);
   loadRef.current = loadExtras;
@@ -136,125 +266,34 @@ export function UsagePopover({
       cancelled = true;
     };
   }, []);
+  return extras;
+}
 
+/** The usage popover's body; loaded the first time the meter opens. */
+export function UsagePopover({
+  snapshot,
+  loadExtras,
+  onRefreshPlan,
+  refreshing = false,
+}: Readonly<{
+  snapshot: UsageSnapshot;
+  loadExtras?: () => Promise<Partial<UsageSnapshot>>;
+  onRefreshPlan?: () => void;
+  refreshing?: boolean;
+}>) {
+  const { t } = useTranslation(["common", "ai"]);
+  const extras = useUsageExtras(loadExtras);
   const usage = merge(snapshot, extras);
   const now = Date.now();
-  const unknown = t(($) => $.common.state.unknown);
-  const count = (value: number | undefined) => (value === undefined ? unknown : formatNumber(value));
-  const sections: ReactNode[] = [];
-
-  if (usage.context) {
-    const fraction = contextFraction(usage);
-    sections.push(
-      <Section key="context" testId="usage-context" title={t(($) => $.ai.usage.context)}>
-        {fraction === null ? (
-          <p className="text-muted-foreground">{t(($) => $.ai.usage.contextUnknown)}</p>
-        ) : (
-          <>
-            <Bar fraction={fraction} tone={usageTone(fraction)} label={t(($) => $.ai.usage.context)} />
-            <p className="tabular-nums text-muted-foreground">
-              {t(($) => $.ai.usage.contextUsed, {
-                used: formatNumber(usage.context.used),
-                size: formatNumber(usage.context.size),
-              })}
-            </p>
-          </>
-        )}
-      </Section>,
-    );
-  }
-
-  const last = usage.lastTurn;
-  if (last && (last.inputTokens !== undefined || last.outputTokens !== undefined || last.steps)) {
-    const rows: [string, ReactNode][] = [];
-    if (last.steps !== undefined) rows.push([t(($) => $.ai.usage.steps), formatNumber(last.steps)]);
-    rows.push([t(($) => $.ai.usage.input), count(last.inputTokens)]);
-    rows.push([t(($) => $.ai.usage.output), count(last.outputTokens)]);
-    if (last.thoughtTokens !== undefined) {
-      rows.push([t(($) => $.ai.usage.reasoning), formatNumber(last.thoughtTokens)]);
-    }
-    sections.push(
-      <Section key="last" testId="ai-run-usage" title={t(($) => $.ai.usage.lastRun)}>
-        <Rows rows={rows} />
-      </Section>,
-    );
-  }
-
-  const session = usage.session;
-  const sessionTokens = (session?.inputTokens ?? 0) + (session?.outputTokens ?? 0);
-  if (session && (sessionTokens > 0 || (session.steps ?? 0) > 0 || (session.costUsd ?? 0) > 0)) {
-    const rows: [string, ReactNode][] = [];
-    if (session.turns !== undefined) rows.push([t(($) => $.ai.usage.runs), formatNumber(session.turns)]);
-    if (session.steps !== undefined) rows.push([t(($) => $.ai.usage.steps), formatNumber(session.steps)]);
-    rows.push([t(($) => $.ai.usage.tokens), formatNumber(sessionTokens)]);
-    if (session.thoughtTokens !== undefined) {
-      rows.push([t(($) => $.ai.usage.reasoning), formatNumber(session.thoughtTokens)]);
-    }
-    if (session.cachedReadTokens !== undefined) {
-      rows.push([t(($) => $.ai.usage.cacheRead), formatNumber(session.cachedReadTokens)]);
-    }
-    if (session.cachedWriteTokens !== undefined) {
-      rows.push([t(($) => $.ai.usage.cacheWrite), formatNumber(session.cachedWriteTokens)]);
-    }
-    if ((session.costUsd ?? 0) > 0) rows.push([t(($) => $.ai.usage.cost), formatUsd(session.costUsd ?? 0)]);
-    sections.push(
-      <Section key="session" testId="ai-chat-usage" title={t(($) => $.ai.usage.thisChat)}>
-        <Rows rows={rows} />
-      </Section>,
-    );
-  }
-
-  if (usage.plan && usage.plan.windows.length > 0) {
-    sections.push(
-      <Section key="plan" testId="usage-plan" title={usage.plan.label ?? t(($) => $.ai.usage.planLimits)}>
-        <div className="space-y-2">
-          {usage.plan.windows.map((window) => (
-            <PlanWindow key={window.id} window={window} now={now} />
-          ))}
-        </div>
-      </Section>,
-    );
-  }
-
-  if (usage.credit && usage.credit.remainingUsd !== undefined) {
-    const currency = usage.credit.currency ?? "USD";
-    sections.push(
-      <Section key="credit" testId="usage-credit" title={t(($) => $.ai.usage.credit)}>
-        <p className="tabular-nums text-muted-foreground">
-          {usage.credit.limitUsd !== undefined
-            ? t(($) => $.ai.usage.creditOf, {
-                remaining: money(usage.credit.remainingUsd, currency),
-                limit: money(usage.credit.limitUsd, currency),
-              })
-            : money(usage.credit.remainingUsd, currency)}
-        </p>
-      </Section>,
-    );
-  }
-
-  if (usage.budget) {
-    const { spentUsd, limitUsd } = usage.budget;
-    sections.push(
-      <Section key="budget" testId="usage-budget" title={t(($) => $.ai.usage.budget)}>
-        {limitUsd !== undefined && limitUsd > 0 && (
-          <Bar fraction={spentUsd / limitUsd} tone={usageTone(spentUsd / limitUsd)} label={t(($) => $.ai.usage.budget)} />
-        )}
-        <p className="tabular-nums text-muted-foreground">
-          {limitUsd !== undefined
-            ? t(($) => $.ai.usage.budgetUsed, { spent: money(spentUsd), limit: money(limitUsd) })
-            : money(spentUsd)}
-        </p>
-      </Section>,
-    );
-  }
-
-  if (usage.planMarkdown) {
-    sections.push(
-      <section key="markdown" data-testid="usage-plan-markdown" className="border-t pt-3 first:border-t-0 first:pt-0">
-        <Markdown className="text-xs">{usage.planMarkdown}</Markdown>
-      </section>,
-    );
-  }
+  const sections = [
+    contextSection(usage, t),
+    lastRunSection(usage, t),
+    sessionSection(usage, t),
+    planSection(usage, t, now),
+    creditSection(usage, t),
+    budgetSection(usage, t),
+    planMarkdownSection(usage),
+  ].filter((section) => section !== null);
 
   return (
     <div data-testid="ai-usage-popover" className="space-y-3 p-3 text-xs">

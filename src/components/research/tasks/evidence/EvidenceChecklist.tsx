@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, CheckCircle2, MinusCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, type LucideIcon, MinusCircle } from "lucide-react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { i18n } from "@/i18n";
@@ -79,8 +79,14 @@ const STATUS_VARIANT: Record<EvidenceStatus, BadgeVariant> = {
   skipped: "muted",
 };
 
+const STATUS_ICON: Record<EvidenceStatus, LucideIcon> = {
+  pass: CheckCircle2,
+  warn: AlertTriangle,
+  skipped: MinusCircle,
+};
+
 function StatusBadge({ status }: Readonly<{ status: EvidenceStatus }>) {
-  const Icon = status === "pass" ? CheckCircle2 : status === "warn" ? AlertTriangle : MinusCircle;
+  const Icon = STATUS_ICON[status];
   return (
     <Badge variant={STATUS_VARIANT[status]} className="shrink-0 gap-1">
       <Icon aria-hidden className="size-3" />
@@ -157,7 +163,8 @@ export function EvidenceChecklist({ report, checking, onRefresh }: Readonly<Evid
             </li>
           ))}
         </ul>
-      ) : busy ? (
+      ) : null}
+      {!report && busy ? (
         <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.evidence.running)}</p>
       ) : null}
     </section>

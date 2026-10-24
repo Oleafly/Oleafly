@@ -91,7 +91,7 @@ function startsWithAny(id: string, prefixes: readonly string[]): boolean {
 
 /** `o1`…`o9` and their variants (`o3-mini`, `o4-mini-high`). */
 function openAiOSeries(id: string): boolean {
-  return id.length >= 2 && id[0] === "o" && id[1] >= "1" && id[1] <= "9";
+  return id.length >= 2 && id.startsWith("o") && id[1] >= "1" && id[1] <= "9";
 }
 
 function openAiReasoningId(id: string): boolean {
@@ -128,6 +128,107 @@ function anthropicFallback(id: string, caps: ReasoningCaps): EffortLevel[] {
   return [];
 }
 
+/** What a provider's API accepts (`wire`) and what this model supports (`base`). */
+interface ProviderChoices {
+  wire: EffortLevel[];
+  base: EffortLevel[];
+}
+
+const LOW_TO_HIGH: readonly EffortLevel[] = ["low", "medium", "high"];
+
+function anthropicChoices(id: string, caps: ReasoningCaps): ProviderChoices {
+  const wire: EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
+  if (caps.toggle) wire.push("none");
+  if (caps.efforts === null) return { wire, base: anthropicFallback(id, caps) };
+  const base = [...caps.efforts];
+  if (caps.toggle) base.push("none");
+  return { wire, base };
+}
+
+function openAiChoices(id: string, caps: ReasoningCaps): ProviderChoices {
+  const wire = [...EFFORT_LEVELS];
+  if (caps.efforts !== null) return { wire, base: [...caps.efforts] };
+  if (caps.flag === false || !openAiReasoningId(id)) return { wire, base: [] };
+  return { wire, base: [...LOW_TO_HIGH] };
+}
+
+/** The levels a Gemini model supports when its metadata names none. */
+function googleBase(
+  id: string,
+  caps: ReasoningCaps,
+  budgetModel: boolean,
+  canTurnOff: boolean,
+): EffortLevel[] {
+  if (caps.efforts !== null) return [...caps.efforts];
+  if (budgetModel) {
+    const base = [...LOW_TO_HIGH];
+    const turnsOff = caps.budget === null ? id.startsWith("gemini-2.5-flash") : canTurnOff;
+    if (turnsOff) base.push("none");
+    return base;
+  }
+  if (startsWithAny(id, ["gemini-3", "gemini-4", "gemini-flash"])) return [...LOW_TO_HIGH];
+  return [];
+}
+
+function googleChoices(id: string, caps: ReasoningCaps): ProviderChoices {
+  const budgetModel = googleBudgetModel(id, caps);
+  const canTurnOff = caps.toggle || caps.budget?.min === 0;
+  const wire: EffortLevel[] = budgetModel ? [...LOW_TO_HIGH] : ["minimal", ...LOW_TO_HIGH];
+  if (budgetModel && canTurnOff) wire.push("none");
+  const base = googleBase(id, caps, budgetModel, canTurnOff);
+  // A budget model without metadata may still turn thinking off (Flash).
+  if (budgetModel && base.includes("none") && !wire.includes("none")) wire.push("none");
+  return { wire, base };
+}
+
+function xaiChoices(id: string, caps: ReasoningCaps): ProviderChoices {
+  const wire: EffortLevel[] = ["low", "medium", "high", "xhigh"];
+  if (caps.efforts !== null) return { wire, base: [...caps.efforts] };
+  if (id.startsWith("grok-4.5")) return { wire, base: [...LOW_TO_HIGH] };
+  if (startsWithAny(id, ["grok-4.6", "grok-4.7"])) return { wire, base: [...wire] };
+  return { wire, base: [] };
+}
+
+function groqChoices(id: string, caps: ReasoningCaps): ProviderChoices {
+  const wire = [...EFFORT_LEVELS];
+  if (caps.efforts !== null) return { wire, base: [...caps.efforts] };
+  if (id.startsWith("openai/gpt-oss-")) return { wire, base: [...LOW_TO_HIGH] };
+  return { wire, base: [] };
+}
+
+function openRouterChoices(caps: ReasoningCaps): ProviderChoices {
+  return { wire: [...EFFORT_LEVELS], base: [...(caps.efforts ?? [])] };
+}
+
+function ollamaChoices(id: string, caps: ReasoningCaps): ProviderChoices {
+  const wire = [...EFFORT_LEVELS];
+  if (caps.efforts !== null) return { wire, base: [...caps.efforts] };
+  if (id.includes("gpt-oss")) return { wire, base: [...LOW_TO_HIGH] };
+  if (caps.flag === true) return { wire, base: ["none"] };
+  return { wire, base: [] };
+}
+
+function providerChoices(providerId: string, id: string, caps: ReasoningCaps): ProviderChoices {
+  switch (providerId) {
+    case "anthropic":
+      return anthropicChoices(id, caps);
+    case "openai":
+      return openAiChoices(id, caps);
+    case "google":
+      return googleChoices(id, caps);
+    case "xai":
+      return xaiChoices(id, caps);
+    case "groq":
+      return groqChoices(id, caps);
+    case "openrouter":
+      return openRouterChoices(caps);
+    case "ollama":
+      return ollamaChoices(id, caps);
+    default:
+      return { wire: [], base: [] };
+  }
+}
+
 /**
  * The levels the selector offers for this model, ascending. An empty list
  * hides the selector, and the request then sends no effort.
@@ -137,82 +238,7 @@ export function effortChoicesFor(
   modelId: string,
   metadata?: ModelReasoningMetadata | null,
 ): EffortLevel[] {
-  const id = asciiLower(modelId);
-  const caps = reasoningCaps(metadata);
-  const all = [...EFFORT_LEVELS];
-  let wire: EffortLevel[] = [];
-  let base: EffortLevel[] = [];
-  switch (providerId) {
-    case "anthropic": {
-      wire = ["low", "medium", "high", "xhigh", "max"];
-      if (caps.toggle) wire.push("none");
-      if (caps.efforts !== null) {
-        base = [...caps.efforts];
-        if (caps.toggle) base.push("none");
-      } else {
-        base = anthropicFallback(id, caps);
-      }
-      break;
-    }
-    case "openai": {
-      wire = all;
-      if (caps.efforts !== null) base = [...caps.efforts];
-      else if (caps.flag === false) base = [];
-      else if (openAiReasoningId(id)) base = ["low", "medium", "high"];
-      break;
-    }
-    case "google": {
-      const budgetModel = googleBudgetModel(id, caps);
-      const canTurnOff = caps.toggle || caps.budget?.min === 0;
-      if (budgetModel) {
-        wire = ["low", "medium", "high"];
-        if (canTurnOff) wire.push("none");
-      } else {
-        wire = ["minimal", "low", "medium", "high"];
-      }
-      if (caps.efforts !== null) {
-        base = [...caps.efforts];
-      } else if (budgetModel && caps.budget !== null) {
-        base = ["low", "medium", "high"];
-        if (canTurnOff) base.push("none");
-      } else if (budgetModel) {
-        base = ["low", "medium", "high"];
-        if (id.startsWith("gemini-2.5-flash")) base.push("none");
-      } else if (startsWithAny(id, ["gemini-3", "gemini-4", "gemini-flash"])) {
-        base = ["low", "medium", "high"];
-      }
-      // A budget model without metadata may still turn thinking off (Flash).
-      if (budgetModel && base.includes("none") && !wire.includes("none")) wire.push("none");
-      break;
-    }
-    case "xai": {
-      wire = ["low", "medium", "high", "xhigh"];
-      if (caps.efforts !== null) base = [...caps.efforts];
-      else if (id.startsWith("grok-4.5")) base = ["low", "medium", "high"];
-      else if (startsWithAny(id, ["grok-4.6", "grok-4.7"])) base = ["low", "medium", "high", "xhigh"];
-      break;
-    }
-    case "groq": {
-      wire = all;
-      if (caps.efforts !== null) base = [...caps.efforts];
-      else if (id.startsWith("openai/gpt-oss-")) base = ["low", "medium", "high"];
-      break;
-    }
-    case "openrouter": {
-      wire = all;
-      base = [...(caps.efforts ?? [])];
-      break;
-    }
-    case "ollama": {
-      wire = all;
-      if (caps.efforts !== null) base = [...caps.efforts];
-      else if (id.includes("gpt-oss")) base = ["low", "medium", "high"];
-      else if (caps.flag === true) base = ["none"];
-      break;
-    }
-    default:
-      break;
-  }
+  const { wire, base } = providerChoices(providerId, asciiLower(modelId), reasoningCaps(metadata));
   return sortedUnique(base.filter((level) => wire.includes(level)));
 }
 

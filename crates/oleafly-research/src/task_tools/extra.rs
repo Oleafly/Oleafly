@@ -724,8 +724,7 @@ async fn literature(binding: &TaskBinding, args: &Value) -> Result<Value, String
         query,
         &binding.host.literature_sources(),
     )
-    .await
-    .map_err(String::from)?;
+    .await?;
     serde_json::to_value(results).map_err(|error| error.to_string())
 }
 

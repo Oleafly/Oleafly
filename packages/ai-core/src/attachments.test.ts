@@ -10,11 +10,11 @@ describe("encodeAttachmentUpload", () => {
     const json = new TextEncoder().encode(
       '{"projectId":"p1","name":"é.pdf","mime":"application/pdf"}',
     );
-    expect(json.length).toBe(59);
+    expect(json).toHaveLength(59);
     expect(Array.from(body.slice(0, 4))).toEqual([59, 0, 0, 0]);
     expect(Array.from(body.slice(4, 4 + json.length))).toEqual(Array.from(json));
     expect(Array.from(body.slice(-3))).toEqual([1, 2, 3]);
-    expect(body.length).toBe(4 + 59 + 3);
+    expect(body).toHaveLength(4 + 59 + 3);
   });
 
   it("writes a null project for chats outside a project", () => {

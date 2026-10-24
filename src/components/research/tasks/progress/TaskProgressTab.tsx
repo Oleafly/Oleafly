@@ -8,11 +8,13 @@ import { describeError } from "@/lib/app-error";
 import { formatNumber } from "@/lib/intl";
 import {
   cancelResearchTaskRun,
+  type PlanItem,
   progressResearchTask,
   researchTaskRunLog,
   type ResearchTask,
   type RunRecord,
   type TaskProgress,
+  type TodoItem,
 } from "@/lib/research-tasks";
 import { durationLabel } from "../brief/BriefFields";
 import { relativeTime, runStateLabel } from "../task-status";
@@ -54,6 +56,22 @@ function money(value: number): string {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
+}
+
+/** Plan lines have no id, so each is keyed by its text, numbered when the same line comes up again. */
+function keyedPlan(items: PlanItem[]): Array<PlanItem & { key: string }> {
+  const seen = new Map<string, number>();
+  return items.map((item) => {
+    const count = seen.get(item.text) ?? 0;
+    seen.set(item.text, count + 1);
+    return { ...item, key: `plan-${item.text}-${count}` };
+  });
+}
+
+function TodoIcon({ status }: Readonly<{ status: TodoItem["status"] }>) {
+  if (status === "completed") return <CheckCircle2 aria-hidden className="mt-0.5 size-3.5 shrink-0" />;
+  if (status === "in_progress") return <CircleDot aria-hidden className="mt-0.5 size-3.5 shrink-0 text-primary" />;
+  return <Circle aria-hidden className="mt-0.5 size-3.5 shrink-0" />;
 }
 
 /** The task's plan, ledger, runs, best result and budget, refreshed while it runs. */
@@ -152,6 +170,7 @@ export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
   const finishedRuns = progress.recentRuns
     .filter((run) => !progress.runsInFlight.some((live) => live.runId === run.runId))
     .slice(0, 8);
+  const planRows = keyedPlan(progress.plan);
   const costText = () => {
     if (budget.spentUsd === null) return t(($) => $.researchTools.tasks.progress.costUnknown);
     if (budget.usdCap !== null) {
@@ -282,8 +301,8 @@ export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
           <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.tasks.progress.noPlan)}</p>
         ) : (
           <ul className="space-y-1 text-sm">
-            {progress.plan.map((item, index) => (
-              <li key={`plan-${index}`} className="flex items-start gap-2">
+            {planRows.map((item) => (
+              <li key={item.key} className="flex items-start gap-2">
                 {item.done ? (
                   <CheckCircle2 aria-hidden className="mt-0.5 size-3.5 shrink-0 text-primary" />
                 ) : (
@@ -294,13 +313,7 @@ export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
             ))}
             {progress.todos.map((todo) => (
               <li key={`todo-${todo.id}`} className="flex items-start gap-2 text-muted-foreground">
-                {todo.status === "completed" ? (
-                  <CheckCircle2 aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-                ) : todo.status === "in_progress" ? (
-                  <CircleDot aria-hidden className="mt-0.5 size-3.5 shrink-0 text-primary" />
-                ) : (
-                  <Circle aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-                )}
+                <TodoIcon status={todo.status} />
                 <span className={todo.status === "cancelled" ? "line-through" : undefined}>{todo.content}</span>
               </li>
             ))}

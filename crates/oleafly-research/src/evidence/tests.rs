@@ -236,3 +236,16 @@ async fn a_clean_result_passes_every_check_it_can_run() {
         assert_eq!(find(&report, id).status, EvidenceStatus::Pass, "{id:?}");
     }
 }
+
+#[test]
+fn a_library_that_links_back_to_itself_yields_no_entries_instead_of_crashing() {
+    // biblatex follows crossref and xdata without a loop check; this used to
+    // overflow the stack and abort the app.
+    assert!(bib::new_entries(None, "@book{x, title={T}, crossref={x}}\n", "refs.bib").is_empty());
+    let entries = bib::new_entries(
+        None,
+        "@book{a, title={A}}\n@inbook{b, crossref={a}}\n",
+        "refs.bib",
+    );
+    assert_eq!(entries.len(), 2);
+}

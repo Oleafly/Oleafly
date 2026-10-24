@@ -28,9 +28,11 @@ export function quoteShellArg(kind: TerminalShellKind, value: string): string {
       // has no escape for it, so a value with a % pair can change there.
       if (value !== "" && !CMD_SPECIAL.test(value)) return value;
       return `"${value.replaceAll('"', '""')}"`;
-    case "fish":
+    case "fish": {
       if (POSIX_SAFE.test(value)) return value;
-      return `'${value.replaceAll("\\", "\\\\").replaceAll("'", "\\'")}'`;
+      const escaped = value.replaceAll("\\", String.raw`\\`).replaceAll("'", String.raw`\'`);
+      return `'${escaped}'`;
+    }
     default:
       if (POSIX_SAFE.test(value)) return value;
       return `'${value.replaceAll("'", POSIX_ESCAPED_QUOTE)}'`;

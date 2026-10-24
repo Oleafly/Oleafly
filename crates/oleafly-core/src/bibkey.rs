@@ -11,7 +11,7 @@ pub fn cite_key(author: &str, year: &str, title: &str) -> String {
     ];
     let ascii = |text: &str| -> String {
         text.chars()
-            .filter(|character| character.is_ascii_alphanumeric())
+            .filter(char::is_ascii_alphanumeric)
             .collect::<String>()
             .to_ascii_lowercase()
     };
@@ -38,7 +38,7 @@ pub fn cite_key(author: &str, year: &str, title: &str) -> String {
     let word = title
         .split_whitespace()
         .map(|word| word.trim_matches(|character: char| !character.is_ascii_alphanumeric()))
-        .map(|word| word.to_ascii_lowercase())
+        .map(str::to_ascii_lowercase)
         .find(|word| {
             word.chars()
                 .all(|character| character.is_ascii_alphabetic())

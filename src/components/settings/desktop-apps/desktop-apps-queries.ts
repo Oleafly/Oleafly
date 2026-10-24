@@ -83,12 +83,13 @@ export function appRowKey(app: InstalledApp): string {
   return `${app.name}\u0000${app.bundleId ?? app.executable ?? ""}`;
 }
 
+/** Whether two texts match ignoring case; an empty or missing text matches nothing. */
+function sameText(left: string | undefined, right: string | undefined): boolean {
+  return Boolean(left) && left?.toLowerCase() === right?.toLowerCase();
+}
+
 /** Whether `app` is already allowed (same bundle id or program path). */
 export function sameApp(left: { bundleId?: string; executable?: string }, right: { bundleId?: string; executable?: string }): boolean {
-  if (left.bundleId || right.bundleId) {
-    return Boolean(left.bundleId && right.bundleId && left.bundleId.toLowerCase() === right.bundleId.toLowerCase());
-  }
-  return Boolean(
-    left.executable && right.executable && left.executable.toLowerCase() === right.executable.toLowerCase(),
-  );
+  if (left.bundleId || right.bundleId) return sameText(left.bundleId, right.bundleId);
+  return sameText(left.executable, right.executable);
 }

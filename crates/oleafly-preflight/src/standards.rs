@@ -203,7 +203,7 @@ pub const STANDARD_IDS: &[&str] = &[
     "pdf-structure-extraction-failed",
 ];
 
-static TABLE: LazyLock<HashMap<&'static str, StandardEntry>> = LazyLock::new(|| {
+static TABLE: LazyLock<HashMap<&str, StandardEntry>> = LazyLock::new(|| {
     let mut table = HashMap::new();
     table.insert("pdf-untagged-output", machine(tagged_refs()));
     table.insert("pdf-structure-missing", machine(tagged_refs()));

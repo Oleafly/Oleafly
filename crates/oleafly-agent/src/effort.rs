@@ -4,7 +4,7 @@
 //! shared table in `tests/fixtures/effort-cases.json`.
 use serde::Serialize;
 
-use crate::caps::ModelCaps;
+use crate::caps::{ModelCaps, ReasoningCaps};
 use crate::provider::Resolved;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
@@ -139,102 +139,13 @@ pub fn effort_choices(provider_id: &str, model_id: &str, caps: &ModelCaps) -> Ve
     let reasoning = &caps.reasoning;
     let all = Effort::ALL.to_vec();
     let (wire_set, base): (Vec<Effort>, Vec<Effort>) = match provider_id {
-        "anthropic" => {
-            let mut wire = vec![Low, Medium, High, Xhigh, Max];
-            if reasoning.toggle {
-                wire.push(Off);
-            }
-            let base = match &reasoning.efforts {
-                Some(efforts) => {
-                    let mut base = efforts.clone();
-                    if reasoning.toggle {
-                        base.push(Off);
-                    }
-                    base
-                }
-                None => anthropic_fallback(&id, caps),
-            };
-            (wire, base)
-        }
-        "openai" => {
-            let base = match &reasoning.efforts {
-                Some(efforts) => efforts.clone(),
-                None if reasoning.flag == Some(false) => Vec::new(),
-                None if openai_reasoning_id(&id) => vec![Low, Medium, High],
-                None => Vec::new(),
-            };
-            (all, base)
-        }
-        "google" => {
-            let budget_model = google_budget_model(&id, caps);
-            let wire = if budget_model {
-                let mut wire = vec![Low, Medium, High];
-                if reasoning.toggle || reasoning.budget.and_then(|budget| budget.min) == Some(0) {
-                    wire.push(Off);
-                }
-                wire
-            } else {
-                vec![Minimal, Low, Medium, High]
-            };
-            let base = match &reasoning.efforts {
-                Some(efforts) => efforts.clone(),
-                None if budget_model && reasoning.budget.is_some() => {
-                    let mut base = vec![Low, Medium, High];
-                    if reasoning.toggle || reasoning.budget.and_then(|budget| budget.min) == Some(0)
-                    {
-                        base.push(Off);
-                    }
-                    base
-                }
-                None if budget_model => {
-                    let mut base = vec![Low, Medium, High];
-                    if id.starts_with("gemini-2.5-flash") {
-                        base.push(Off);
-                    }
-                    base
-                }
-                None if starts_with_any(&id, &["gemini-3", "gemini-4", "gemini-flash"]) => {
-                    vec![Low, Medium, High]
-                }
-                None => Vec::new(),
-            };
-            // A budget model without metadata may still turn thinking off
-            // (Flash); the wire allows it whenever the base offers it.
-            let mut wire = wire;
-            if budget_model && base.contains(&Off) && !wire.contains(&Off) {
-                wire.push(Off);
-            }
-            (wire, base)
-        }
-        "xai" => {
-            let base = match &reasoning.efforts {
-                Some(efforts) => efforts.clone(),
-                None if id.starts_with("grok-4.5") => vec![Low, Medium, High],
-                None if starts_with_any(&id, &["grok-4.6", "grok-4.7"]) => {
-                    vec![Low, Medium, High, Xhigh]
-                }
-                None => Vec::new(),
-            };
-            (vec![Low, Medium, High, Xhigh], base)
-        }
-        "groq" => {
-            let base = match &reasoning.efforts {
-                Some(efforts) => efforts.clone(),
-                None if id.starts_with("openai/gpt-oss-") => vec![Low, Medium, High],
-                None => Vec::new(),
-            };
-            (all, base)
-        }
+        "anthropic" => anthropic_levels(&id, caps),
+        "openai" => (all, openai_base(&id, reasoning)),
+        "google" => google_levels(&id, caps),
+        "xai" => (vec![Low, Medium, High, Xhigh], xai_base(&id, reasoning)),
+        "groq" => (all, groq_base(&id, reasoning)),
         "openrouter" => (all, reasoning.efforts.clone().unwrap_or_default()),
-        "ollama" => {
-            let base = match &reasoning.efforts {
-                Some(efforts) => efforts.clone(),
-                None if id.contains("gpt-oss") => vec![Low, Medium, High],
-                None if reasoning.flag == Some(true) => vec![Off],
-                None => Vec::new(),
-            };
-            (all, base)
-        }
+        "ollama" => (all, ollama_base(&id, reasoning)),
         _ => (Vec::new(), Vec::new()),
     };
     let mut choices: Vec<Effort> = base
@@ -244,6 +155,110 @@ pub fn effort_choices(provider_id: &str, model_id: &str, caps: &ModelCaps) -> Ve
     choices.sort();
     choices.dedup();
     choices
+}
+
+/// Anthropic's wire levels and the levels the model offers (`wire`, `base`).
+fn anthropic_levels(id: &str, caps: &ModelCaps) -> (Vec<Effort>, Vec<Effort>) {
+    let reasoning = &caps.reasoning;
+    let mut wire = vec![Low, Medium, High, Xhigh, Max];
+    if reasoning.toggle {
+        wire.push(Off);
+    }
+    let base = match &reasoning.efforts {
+        Some(efforts) => {
+            let mut base = efforts.clone();
+            if reasoning.toggle {
+                base.push(Off);
+            }
+            base
+        }
+        None => anthropic_fallback(id, caps),
+    };
+    (wire, base)
+}
+
+fn openai_base(id: &str, reasoning: &ReasoningCaps) -> Vec<Effort> {
+    match &reasoning.efforts {
+        Some(efforts) => efforts.clone(),
+        None if reasoning.flag == Some(false) => Vec::new(),
+        None if openai_reasoning_id(id) => vec![Low, Medium, High],
+        None => Vec::new(),
+    }
+}
+
+/// A budget model can turn thinking off when its budget starts at zero.
+fn budget_allows_off(reasoning: &ReasoningCaps) -> bool {
+    reasoning.toggle || reasoning.budget.and_then(|budget| budget.min) == Some(0)
+}
+
+/// Google's wire levels and the levels the model offers (`wire`, `base`).
+fn google_levels(id: &str, caps: &ModelCaps) -> (Vec<Effort>, Vec<Effort>) {
+    let reasoning = &caps.reasoning;
+    let budget_model = google_budget_model(id, caps);
+    let mut wire = if budget_model {
+        let mut wire = vec![Low, Medium, High];
+        if budget_allows_off(reasoning) {
+            wire.push(Off);
+        }
+        wire
+    } else {
+        vec![Minimal, Low, Medium, High]
+    };
+    let base = match &reasoning.efforts {
+        Some(efforts) => efforts.clone(),
+        None if budget_model && reasoning.budget.is_some() => {
+            let mut base = vec![Low, Medium, High];
+            if budget_allows_off(reasoning) {
+                base.push(Off);
+            }
+            base
+        }
+        None if budget_model => {
+            let mut base = vec![Low, Medium, High];
+            if id.starts_with("gemini-2.5-flash") {
+                base.push(Off);
+            }
+            base
+        }
+        None if starts_with_any(id, &["gemini-3", "gemini-4", "gemini-flash"]) => {
+            vec![Low, Medium, High]
+        }
+        None => Vec::new(),
+    };
+    // A budget model without metadata may still turn thinking off
+    // (Flash); the wire allows it whenever the base offers it.
+    if budget_model && base.contains(&Off) && !wire.contains(&Off) {
+        wire.push(Off);
+    }
+    (wire, base)
+}
+
+fn xai_base(id: &str, reasoning: &ReasoningCaps) -> Vec<Effort> {
+    match &reasoning.efforts {
+        Some(efforts) => efforts.clone(),
+        None if id.starts_with("grok-4.5") => vec![Low, Medium, High],
+        None if starts_with_any(id, &["grok-4.6", "grok-4.7"]) => {
+            vec![Low, Medium, High, Xhigh]
+        }
+        None => Vec::new(),
+    }
+}
+
+fn groq_base(id: &str, reasoning: &ReasoningCaps) -> Vec<Effort> {
+    match &reasoning.efforts {
+        Some(efforts) => efforts.clone(),
+        None if id.starts_with("openai/gpt-oss-") => vec![Low, Medium, High],
+        None => Vec::new(),
+    }
+}
+
+fn ollama_base(id: &str, reasoning: &ReasoningCaps) -> Vec<Effort> {
+    match &reasoning.efforts {
+        Some(efforts) => efforts.clone(),
+        None if id.contains("gpt-oss") => vec![Low, Medium, High],
+        None if reasoning.flag == Some(true) => vec![Off],
+        None => Vec::new(),
+    }
 }
 
 /// The accepted level nearest to `requested` (ties go up); `None` when the

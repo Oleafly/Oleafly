@@ -266,7 +266,7 @@ impl ProjectSnapshot {
         }
         fs::metadata(self.root.join(path))
             .ok()
-            .filter(|metadata| metadata.is_file())
+            .filter(fs::Metadata::is_file)
             .map(|metadata| metadata.len())
     }
 

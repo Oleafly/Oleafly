@@ -99,11 +99,11 @@ export function AddAccountPanel({
         setStep("server");
         setUnknownBase(info.base);
       }
-    } catch (failure) {
+    } catch (error_) {
       if (run !== generation.current) return;
       setStep("server");
-      if (decodeAppError(failure)?.code === "git.tls_failed") setNeedsCa(true);
-      setError(describeError(failure));
+      if (decodeAppError(error_)?.code === "git.tls_failed") setNeedsCa(true);
+      setError(describeError(error_));
     } finally {
       if (run === generation.current) setBusy(false);
     }
@@ -162,14 +162,14 @@ export function AddAccountPanel({
       }
       useForgeAccountsStore.getState().accountSignedIn(account);
       onDone(account);
-    } catch (failure) {
+    } catch (error_) {
       if (run !== generation.current) return;
       // Let the backend drop the flow and any grant it kept.
       const failed = deviceRef.current;
       deviceRef.current = null;
       if (failed) void forgeDeviceCancel(failed.flowId);
       setDevice(null);
-      setError(describeError(failure));
+      setError(describeError(error_));
     } finally {
       if (run === generation.current) setBusy(false);
     }
@@ -203,8 +203,8 @@ export function AddAccountPanel({
       if (run !== generation.current) return;
       setToken("");
       onDone(account);
-    } catch (failure) {
-      if (run === generation.current) setError(describeError(failure));
+    } catch (error_) {
+      if (run === generation.current) setError(describeError(error_));
     } finally {
       if (run === generation.current) setBusy(false);
     }

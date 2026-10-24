@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Pencil, Search, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -113,6 +113,75 @@ export function DeleteConversationDialog({
         </label>
       )}
     </ConfirmationDialog>
+  );
+}
+
+/** The agent's own conversations: a button to look them up, then a list to pick from. */
+function ImportPanel({
+  entries,
+  agentName,
+  idPrefix,
+  picked,
+  setPicked,
+  nextCursor,
+  onFind,
+  onImport,
+}: Readonly<{
+  /** Null until the agent has been asked. */
+  entries: AcpAgentSessionInfo[] | null;
+  agentName: string;
+  idPrefix: string;
+  picked: Set<string>;
+  setPicked: Dispatch<SetStateAction<Set<string>>>;
+  nextCursor: string | null;
+  onFind(cursor: string | null): Promise<void>;
+  onImport(): Promise<void>;
+}>) {
+  const { t } = useTranslation(["common", "ai"]);
+  if (entries === null) {
+    return (
+      <Button type="button" variant="outline" size="sm" onClick={() => void onFind(null)}>
+        {t(($) => $.ai.acp.history.importFind, { agent: agentName })}
+      </Button>
+    );
+  }
+  if (entries.length === 0) {
+    return <p className="text-xs text-muted-foreground">{t(($) => $.ai.acp.history.importEmpty, { agent: agentName })}</p>;
+  }
+  return (
+    <>
+      <ul className="max-h-48 space-y-1 overflow-y-auto">
+        {entries.map((entry, index) => (
+          <li key={entry.nativeSessionId}>
+            <label htmlFor={`${idPrefix}-${index}`} className="flex items-center gap-2 text-xs">
+              <Checkbox
+                id={`${idPrefix}-${index}`}
+                disabled={entry.imported}
+                checked={entry.imported || picked.has(entry.nativeSessionId)}
+                onCheckedChange={(checked) => setPicked((current) => {
+                  const next = new Set(current);
+                  if (checked === true) next.add(entry.nativeSessionId);
+                  else next.delete(entry.nativeSessionId);
+                  return next;
+                })}
+              />
+              <span className="min-w-0 flex-1 truncate">{entry.title ?? entry.nativeSessionId}</span>
+              {entry.imported && <span className="text-muted-foreground">{t(($) => $.ai.acp.history.imported)}</span>}
+            </label>
+          </li>
+        ))}
+      </ul>
+      <div className="flex gap-2">
+        {nextCursor && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => void onFind(nextCursor)}>
+            {t(($) => $.ai.acp.history.loadMore)}
+          </Button>
+        )}
+        <Button type="button" size="sm" disabled={picked.size === 0} onClick={() => void onImport()}>
+          {t(($) => $.ai.acp.history.importSelected)}
+        </Button>
+      </div>
+    </>
   );
 }
 
@@ -335,47 +404,16 @@ export function AcpHistoryDialog({
         )}
         {importAgent?.runtime?.sessionList && (
           <div className="space-y-2 border-t pt-3">
-            {importing === null ? (
-              <Button type="button" variant="outline" size="sm" onClick={() => void findImports(null)}>
-                {t(($) => $.ai.acp.history.importFind, { agent: importName })}
-              </Button>
-            ) : importing.length === 0 ? (
-              <p className="text-xs text-muted-foreground">{t(($) => $.ai.acp.history.importEmpty, { agent: importName })}</p>
-            ) : (
-              <>
-                <ul className="max-h-48 space-y-1 overflow-y-auto">
-                  {importing.map((entry, index) => (
-                    <li key={entry.nativeSessionId}>
-                      <label htmlFor={`${importId}-${index}`} className="flex items-center gap-2 text-xs">
-                        <Checkbox
-                          id={`${importId}-${index}`}
-                          disabled={entry.imported}
-                          checked={entry.imported || picked.has(entry.nativeSessionId)}
-                          onCheckedChange={(checked) => setPicked((current) => {
-                            const next = new Set(current);
-                            if (checked === true) next.add(entry.nativeSessionId);
-                            else next.delete(entry.nativeSessionId);
-                            return next;
-                          })}
-                        />
-                        <span className="min-w-0 flex-1 truncate">{entry.title ?? entry.nativeSessionId}</span>
-                        {entry.imported && <span className="text-muted-foreground">{t(($) => $.ai.acp.history.imported)}</span>}
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-                <div className="flex gap-2">
-                  {importCursor && (
-                    <Button type="button" variant="ghost" size="sm" onClick={() => void findImports(importCursor)}>
-                      {t(($) => $.ai.acp.history.loadMore)}
-                    </Button>
-                  )}
-                  <Button type="button" size="sm" disabled={picked.size === 0} onClick={() => void runImport()}>
-                    {t(($) => $.ai.acp.history.importSelected)}
-                  </Button>
-                </div>
-              </>
-            )}
+            <ImportPanel
+              entries={importing}
+              agentName={importName}
+              idPrefix={importId}
+              picked={picked}
+              setPicked={setPicked}
+              nextCursor={importCursor}
+              onFind={findImports}
+              onImport={runImport}
+            />
           </div>
         )}
       </div>

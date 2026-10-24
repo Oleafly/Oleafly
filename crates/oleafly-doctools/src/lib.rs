@@ -2,6 +2,7 @@
 //! depends on Tauri; errors carry the app's error codes so its translations
 //! keep working, with English text for the CLI.
 pub mod bib_clean;
+pub mod bib_parse;
 pub mod conversion;
 pub mod error;
 pub mod export;

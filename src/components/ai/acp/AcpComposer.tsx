@@ -163,7 +163,7 @@ export const AcpComposer = forwardRef<ChatComposerHandle, AcpComposerProps>(func
   }, [composerId, projectId, session]);
 
   const stop = useCallback(() => {
-    if (!session || session.status !== "running") return;
+    if (session?.status !== "running") return;
     void acpCancel(projectId, session.id)
       .then(() => useAcpSessionsStore.getState().resync(projectId, session.id))
       .catch((error: unknown) => onError(acpError(error)));

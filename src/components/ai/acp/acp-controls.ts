@@ -54,6 +54,71 @@ export function currentName(option: AcpConfigOption): string | null {
   return null;
 }
 
+export interface ModelChoice {
+  id: string;
+  name: string;
+  group: string | null;
+  blocked: boolean;
+}
+
+/** The models the agent offers, in its order; empty when it gives no list to pick from. */
+export function modelChoices(model: ModelControl | null): ModelChoice[] {
+  if (model?.kind === "config" && model.option.kind.type === "select") {
+    return model.option.kind.options.map((choice) => ({
+      id: choice.value,
+      name: choice.name,
+      group: choice.group,
+      blocked: choice.blocked,
+    }));
+  }
+  if (model?.kind === "legacy") {
+    return model.models.map((entry) => ({ id: entry.modelId, name: entry.name, group: null, blocked: false }));
+  }
+  return [];
+}
+
+/** The id of the model the agent runs now, when it reports one. */
+export function currentModelId(model: ModelControl | null): string | null {
+  if (model?.kind === "config" && model.option.kind.type === "select") return model.option.kind.currentValue;
+  return model?.kind === "legacy" ? model.current : null;
+}
+
+/** The group name to show above each choice: where a group starts, and null elsewhere. */
+export function groupHeadings(choices: readonly Pick<ModelChoice, "group">[]): (string | null)[] {
+  let lastGroup: string | null = null;
+  return choices.map((choice) => {
+    const heading = choice.group && choice.group !== lastGroup ? choice.group : null;
+    lastGroup = choice.group ?? lastGroup;
+    return heading;
+  });
+}
+
+/** The one choice in the tab order: the current model, else the first that can be chosen. */
+export function entryChoiceId(choices: readonly ModelChoice[], current: string | null): string | undefined {
+  const entry = choices.find((choice) => choice.id === current && !choice.blocked)
+    ?? choices.find((choice) => !choice.blocked);
+  return entry?.id;
+}
+
+export interface ModeChoice {
+  id: string;
+  name: string;
+  blocked: boolean;
+}
+
+/** The modes the agent offers, in its order. */
+export function modeChoices(mode: ModeControl): ModeChoice[] {
+  if (mode.kind === "legacy") return mode.modes;
+  if (mode.option.kind.type !== "select") return [];
+  return mode.option.kind.options.map((choice) => ({ id: choice.value, name: choice.name, blocked: choice.blocked }));
+}
+
+/** The id of the mode the agent is in, when it reports one. */
+export function currentModeId(mode: ModeControl): string | null {
+  if (mode.kind === "legacy") return mode.current;
+  return mode.option.kind.type === "select" ? mode.option.kind.currentValue : null;
+}
+
 /**
  * Which option takes focus after a key in a listbox: the arrows, Home and End,
  * or typing the start of a name. `labels` has null for an option that cannot
@@ -71,7 +136,7 @@ export function listboxFocusTarget(labels: readonly (string | null)[], active: n
     case "Home":
       return enabled[0];
     case "End":
-      return enabled[enabled.length - 1];
+      return enabled.at(-1) ?? null;
   }
   if (key.length !== 1 || key === " ") return null;
   const typed = key.toLowerCase();

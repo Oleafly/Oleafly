@@ -281,6 +281,106 @@ impl Shared {
         }
     }
 
+    /// Hands one agent notification to the host.
+    fn route_notification(&self, host: &dyn ClientHost, message: UntypedMessage) {
+        self.activity.send_replace(Instant::now());
+        let (method, params) = message.into_parts();
+        match method.as_str() {
+            "session/update" if self.protocol() == ProtocolVersion::V2 => {
+                self.route_v2_update(host, &params);
+            }
+            "session/update" => host.on_update(params),
+            DROPPED_UPDATE_METHOD => {
+                host.on_dropped_update(params["bytes"].as_u64().unwrap_or(0) as usize);
+            }
+            _ => host.on_notification(&method, params),
+        }
+    }
+
+    /// Translates a v2 `session/update` and hands the results to the host. A
+    /// turn's end also wakes the prompt waiting on it.
+    fn route_v2_update(&self, host: &dyn ClientHost, params: &Value) {
+        let translated = self
+            .translator
+            .lock()
+            .map(|mut translator| translator.translate(params))
+            .unwrap_or_default();
+        for item in translated {
+            match item {
+                Translated::Update(update) => host.on_update(update),
+                Translated::TurnEnd {
+                    session_id,
+                    outcome,
+                } => {
+                    host.on_turn_ended(&session_id);
+                    let waiter = self
+                        .turn_waiters
+                        .lock()
+                        .ok()
+                        .and_then(|mut waiters| waiters.remove(&session_id));
+                    if let Some(waiter) = waiter {
+                        let _ = waiter.send(outcome);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Hands one agent request to the host. A v2 permission request that
+    /// can't be translated is cancelled here.
+    fn route_request(
+        &self,
+        host: &dyn ClientHost,
+        message: UntypedMessage,
+        responder: Responder<Value>,
+    ) {
+        self.activity.send_replace(Instant::now());
+        let (method, params) = message.into_parts();
+        let params =
+            if method == "session/request_permission" && self.protocol() == ProtocolVersion::V2 {
+                match permission_params_to_v1(&params) {
+                    Some(params) => params,
+                    None => {
+                        let _ = responder.respond(json!({"outcome": {"outcome": "cancelled"}}));
+                        return;
+                    }
+                }
+            } else {
+                params
+            };
+        host.on_request(IncomingRequest {
+            method,
+            params,
+            responder,
+        });
+    }
+
+    /// Ends the turn a reply closes, then delivers the reply to its caller.
+    fn route_reply(
+        &self,
+        host: &dyn ClientHost,
+        token: u64,
+        result: Result<Value, agent_client_protocol::Error>,
+    ) {
+        let turn = self
+            .turn_replies
+            .lock()
+            .ok()
+            .and_then(|mut turns| turns.remove(&token));
+        if let Some(session_id) = turn {
+            host.on_turn_ended(&session_id);
+        }
+        let result = self.map_reply(result);
+        let sender = self
+            .pending
+            .lock()
+            .ok()
+            .and_then(|mut pending| pending.remove(&token));
+        if let Some(sender) = sender {
+            let _ = sender.send(result);
+        }
+    }
+
     /// Ends the connection: fails every pending request with `message` and
     /// tells the host once.
     fn close_with(&self, message: &str) {
@@ -482,81 +582,13 @@ impl AcpClient {
             while let Some(item) = route_rx.recv().await {
                 match item {
                     Routed::Notification(message) => {
-                        consumer.activity.send_replace(Instant::now());
-                        let (method, params) = message.into_parts();
-                        match method.as_str() {
-                            "session/update" if consumer.protocol() == ProtocolVersion::V2 => {
-                                let translated = consumer
-                                    .translator
-                                    .lock()
-                                    .map(|mut translator| translator.translate(&params))
-                                    .unwrap_or_default();
-                                for item in translated {
-                                    match item {
-                                        Translated::Update(update) => host.on_update(update),
-                                        Translated::TurnEnd {
-                                            session_id,
-                                            outcome,
-                                        } => {
-                                            host.on_turn_ended(&session_id);
-                                            let waiter =
-                                                consumer.turn_waiters.lock().ok().and_then(
-                                                    |mut waiters| waiters.remove(&session_id),
-                                                );
-                                            if let Some(waiter) = waiter {
-                                                let _ = waiter.send(outcome);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            "session/update" => host.on_update(params),
-                            DROPPED_UPDATE_METHOD => host
-                                .on_dropped_update(params["bytes"].as_u64().unwrap_or(0) as usize),
-                            _ => host.on_notification(&method, params),
-                        }
+                        consumer.route_notification(host.as_ref(), message);
                     }
                     Routed::Request(message, responder) => {
-                        consumer.activity.send_replace(Instant::now());
-                        let (method, params) = message.into_parts();
-                        let params = if method == "session/request_permission"
-                            && consumer.protocol() == ProtocolVersion::V2
-                        {
-                            match permission_params_to_v1(&params) {
-                                Some(params) => params,
-                                None => {
-                                    let _ = responder
-                                        .respond(json!({"outcome": {"outcome": "cancelled"}}));
-                                    continue;
-                                }
-                            }
-                        } else {
-                            params
-                        };
-                        host.on_request(IncomingRequest {
-                            method,
-                            params,
-                            responder,
-                        });
+                        consumer.route_request(host.as_ref(), message, responder);
                     }
                     Routed::Reply { token, result } => {
-                        let turn = consumer
-                            .turn_replies
-                            .lock()
-                            .ok()
-                            .and_then(|mut turns| turns.remove(&token));
-                        if let Some(session_id) = turn {
-                            host.on_turn_ended(&session_id);
-                        }
-                        let result = consumer.map_reply(result);
-                        let sender = consumer
-                            .pending
-                            .lock()
-                            .ok()
-                            .and_then(|mut pending| pending.remove(&token));
-                        if let Some(sender) = sender {
-                            let _ = sender.send(result);
-                        }
+                        consumer.route_reply(host.as_ref(), token, result);
                     }
                     Routed::Closed => {
                         host.on_disconnected();

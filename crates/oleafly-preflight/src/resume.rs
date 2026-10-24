@@ -52,12 +52,7 @@ const PROJECT_PREFIXES: &[&str] = &[
 ];
 
 fn section_aliases() -> Vec<(ResumeSectionId, Vec<String>)> {
-    let fixed = |names: &[&str]| {
-        names
-            .iter()
-            .map(|name| name.to_string())
-            .collect::<Vec<_>>()
-    };
+    let fixed = |names: &[&str]| names.iter().map(ToString::to_string).collect::<Vec<_>>();
     let mut projects = fixed(&["project", "projects"]);
     for prefix in PROJECT_PREFIXES {
         projects.push(format!("{prefix} project"));

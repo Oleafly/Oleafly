@@ -264,6 +264,34 @@ describe("TaskDetailDialog", () => {
     expect(page().queryByRole("button", { name: earlier })).not.toBeInTheDocument();
   });
 
+  it("drops the earlier activity it loaded when the task starts another run", async () => {
+    previewMocks.events.mockImplementation((taskId: string, generation: number) => Promise.resolve({
+      events: [
+        {
+          taskId,
+          executionGeneration: generation,
+          sequence: 1,
+          event: { kind: "status", message: `Generation ${generation} notes` },
+          createdAt: 1,
+        },
+      ],
+      nextSequence: null,
+    }));
+    const current: ResearchTask = { ...task("resumed"), status: "running", executionGeneration: 3, resumedFrom: 2 };
+    const view = render(<TaskDetailDialog {...props(current)} />);
+    const earlier = enResearchTools.backgroundHelper.earlierActivity;
+    fireEvent.click(page().getByRole("button", { name: earlier }));
+    expect(await page().findByText("Generation 2 notes")).toBeInTheDocument();
+
+    view.rerender(<TaskDetailDialog {...props({ ...current, executionGeneration: 4, resumedFrom: 3 })} />);
+
+    expect(page().queryByText("Generation 2 notes")).not.toBeInTheDocument();
+    expect(page().getByRole("button", { name: earlier })).toBeEnabled();
+    fireEvent.click(page().getByRole("button", { name: earlier }));
+    expect(await page().findByText("Generation 3 notes")).toBeInTheDocument();
+    expect(previewMocks.events).toHaveBeenLastCalledWith("resumed", 3, undefined, 200);
+  });
+
   it("keeps the keep-running choice fixed for finished tasks and while background tasks are off", async () => {
     const finished = render(<TaskDetailDialog {...props(task("finished"))} />);
     expect(page().getByRole("checkbox", { name: enResearchTools.brief.keepRunning })).toBeDisabled();

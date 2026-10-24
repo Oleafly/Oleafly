@@ -241,19 +241,32 @@ function mergedEvents(events: TaskTranscriptEvent[], task: ResearchTask): TaskTr
   return [...unique.values()].sort((left, right) => left.sequence - right.sequence);
 }
 
-function receiveTaskList(incoming: ResearchTask[], baseline: ResearchTask[]): void {
-  const state = useResearchTasksStore.getState();
-  const tasks = new Map(state.tasks.map((task) => [task.id, task]));
+/** Whether a task row from a fetched list replaces the one this window holds. */
+function replacesTask(
+  task: ResearchTask,
+  previous: ResearchTask | undefined,
+  initial: ResearchTask | undefined,
+): boolean {
+  if (!previous) return true;
+  if (task.executionGeneration !== previous.executionGeneration) {
+    return task.executionGeneration > previous.executionGeneration;
+  }
+  if (task.updatedAt !== previous.updatedAt) return task.updatedAt > previous.updatedAt;
+  return previous === initial;
+}
+
+/** The window's tasks with a fetched list folded in: newer rows win. */
+function mergeTaskList(
+  held: readonly ResearchTask[],
+  projectId: string | null,
+  incoming: readonly ResearchTask[],
+  baseline: readonly ResearchTask[],
+): Map<string, ResearchTask> {
+  const tasks = new Map(held.map((task) => [task.id, task]));
   const initial = new Map(baseline.map((task) => [task.id, task]));
   for (const task of incoming) {
-    if (task.projectId !== state.projectId) continue;
-    const previous = tasks.get(task.id);
-    if (!previous || task.executionGeneration > previous.executionGeneration ||
-      (task.executionGeneration === previous.executionGeneration &&
-        (task.updatedAt > previous.updatedAt ||
-          (task.updatedAt === previous.updatedAt && previous === initial.get(task.id))))) {
-      tasks.set(task.id, task);
-    }
+    if (task.projectId !== projectId) continue;
+    if (replacesTask(task, tasks.get(task.id), initial.get(task.id))) tasks.set(task.id, task);
   }
   // A task this window had when the list was asked for, still unchanged, and
   // missing from the list was deleted elsewhere.
@@ -261,6 +274,12 @@ function receiveTaskList(incoming: ResearchTask[], baseline: ResearchTask[]): vo
   for (const [id, current] of tasks) {
     if (!listed.has(id) && initial.get(id) === current) tasks.delete(id);
   }
+  return tasks;
+}
+
+function receiveTaskList(incoming: ResearchTask[], baseline: ResearchTask[]): void {
+  const state = useResearchTasksStore.getState();
+  const tasks = mergeTaskList(state.tasks, state.projectId, incoming, baseline);
   const previous = state.tasks.find((task) => task.id === state.selectedTaskId);
   const selected = state.selectedTaskId ? tasks.get(state.selectedTaskId) : undefined;
   const selectionGone = state.selectedTaskId !== null && !selected;

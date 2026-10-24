@@ -315,7 +315,7 @@ impl Drop for Fixture {
 }
 
 fn run_shell(spec: &SandboxSpec, text: &str) -> Result<(i32, String), String> {
-    let mut command = shell_command(spec, text).map_err(String::from)?;
+    let mut command = shell_command(spec, text)?;
     let output = command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

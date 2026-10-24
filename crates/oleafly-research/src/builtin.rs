@@ -5,6 +5,7 @@
 //! results.
 use std::collections::{BTreeSet, HashMap};
 use std::future::Future;
+use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, OnceLock};
@@ -783,165 +784,53 @@ impl BuiltinTaskAdapter {
         // runs again); without one the task starts from the record.
         let suspend = self.services.suspends.token(&context.task_id);
         let restored = self.restored_conversation(&context, &resolved, &events);
-        let mut summary = restored
+        let summary = restored
             .as_ref()
             .map(|snapshot| conversation::last_assistant_text(&snapshot.messages))
             .unwrap_or_default();
-        let (mut messages, mut wait_first) = match restored {
+        let (messages, mut wait_first) = match restored {
             Some(snapshot) => (snapshot.messages, snapshot.waiting_for_runs),
-            None => {
-                let first = match &context.resume {
-                    Some(resume) => {
-                        let message = resume_message(resume, &context.record_dir);
-                        if context
-                            .handoff
-                            .as_ref()
-                            .is_some_and(|handoff| handoff.turn_interrupted)
-                        {
-                            format!("Your previous turn was interrupted. {message}")
-                        } else {
-                            message
-                        }
-                    }
-                    None => context.prompt.clone(),
-                };
-                (vec![Message::user(first)], false)
-            }
+            None => (vec![Message::user(first_message(&context))], false),
         };
         events(TaskRuntimeEvent::SessionBound {
             native_session_id: context.session_id.clone(),
         });
         let observed_usage = Arc::new(Mutex::new(None));
-        let mut wake_ups = 0u32;
-        // Set when the time budget ended: the agent gets one more turn.
-        let mut wrap_up = false;
+        let mut turns = TurnLoop {
+            adapter: self,
+            context: &context,
+            cancel: &cancel,
+            suspend: &suspend,
+            events: &events,
+            client: &client,
+            resolved: &resolved,
+            template: &template,
+            registry: &tool_registry,
+            scope: &scope,
+            usage: &usage,
+            observed: &observed_usage,
+            messages,
+            summary,
+            wake_ups: 0,
+            // Set when the time budget ended: the agent gets one more turn.
+            wrap_up: false,
+        };
         // `Ok(Some(file))`: suspended, with the conversation saved in `file`.
         let result: Result<Option<String>, String> = loop {
             if !wait_first {
-                let turn = cancel.child();
-                let watcher = watch_time(&self.services, &context.task_id, turn.clone());
-                let runner = tool_runner(&scope, &turn);
-                let mut request = template.clone();
-                request.messages = messages.clone();
-                let outcome = self
-                    .agent_turn(
-                        &client,
-                        &resolved,
-                        request,
-                        RunConfig {
-                            max_steps: TASK_MAX_STEPS,
-                            allow_long_runs: true,
-                            max_duration_ms: Some(
-                                self.turn_limit(&context.task_id).as_millis() as u64
-                            ),
-                            ..RunConfig::default()
-                        },
-                        &tool_registry,
-                        &turn,
-                        Some(&suspend),
-                        runner,
-                        &events,
-                        &usage,
-                        &observed_usage,
-                    )
-                    .await;
-                watcher.abort();
-                if cancel.is_cancelled() {
-                    break Err("The task was cancelled.".into());
-                }
-                // 0.4.8 L: suspended at a step boundary: the next owner
-                // continues this conversation.
-                if let Ok(outcome) = &outcome {
-                    if outcome.suspended {
-                        break self
-                            .save_conversation(&context, &resolved, outcome.history.clone(), false)
-                            .map(Some);
-                    }
-                }
-                if self.time_ran_out(&context.task_id) {
-                    // The time budget ended: one short turn to leave a handoff.
-                    if let Ok(outcome) = &outcome {
-                        messages = outcome.history.clone();
-                    }
-                    wrap_up = true;
-                    break Ok(None);
-                }
-                let outcome = match outcome {
-                    Ok(outcome) if outcome.error.is_none() && !outcome.stopped_at_cap => outcome,
-                    Ok(outcome) => {
-                        break Err(outcome.error.unwrap_or_else(|| {
-                            "The task reached its step limit before finishing.".into()
-                        }))
-                    }
-                    Err(error) => break Err(error),
-                };
-                summary = outcome.text;
-                messages = outcome.history;
-                if context.plan_phase {
-                    break Ok(None);
+                if let ControlFlow::Break(result) = turns.working_turn().await {
+                    break result;
                 }
             }
             wait_first = false;
-            match self
-                .wait_for_runs(&context, &events, &cancel, &suspend)
-                .await
-            {
-                Ok(Waited::Nothing) => break Ok(None),
-                Ok(Waited::Suspended) => {
-                    break self
-                        .save_conversation(&context, &resolved, messages.clone(), true)
-                        .map(Some)
-                }
-                Ok(Waited::Finished(finished)) if finished.is_empty() => {
-                    // The budget ended while the task waited for its runs: the
-                    // agent still gets its turn to leave a handoff.
-                    wrap_up = self.time_ran_out(&context.task_id);
-                    break Ok(None);
-                }
-                Ok(Waited::Finished(finished)) => {
-                    if wake_ups >= MAX_WAKE_UPS {
-                        break Err("The task woke up 200 times. Retry it to continue.".into());
-                    }
-                    wake_ups += 1;
-                    messages.push(Message::user(wake_up_message(&finished)));
-                }
-                Err(error) => break Err(error),
+            if let ControlFlow::Break(result) = turns.wait_and_wake().await {
+                break result;
             }
         };
-        if wrap_up && matches!(result, Ok(None)) && !cancel.is_cancelled() {
-            events(TaskRuntimeEvent::Phase {
-                phase: TaskPhase::WrappingUp,
-            });
-            messages.push(Message::user(wrap_up_message(&context.record_dir)));
-            let mut request = template.clone();
-            request.messages = messages.clone();
-            // A turn of its own: the working turn's token is already cancelled
-            // and would refuse every tool call.
-            let wrap_token = cancel.child();
-            let wrapped = self
-                .agent_turn(
-                    &client,
-                    &resolved,
-                    request,
-                    RunConfig {
-                        max_steps: WRAP_UP_STEPS,
-                        allow_long_runs: true,
-                        max_duration_ms: Some(WRAP_UP_LIMIT.as_millis() as u64),
-                        ..RunConfig::default()
-                    },
-                    &tool_registry,
-                    &wrap_token,
-                    None,
-                    tool_runner(&scope, &wrap_token),
-                    &events,
-                    &usage,
-                    &observed_usage,
-                )
-                .await;
-            if let Ok(outcome) = wrapped {
-                summary = outcome.text;
-            }
+        if turns.wrap_up && matches!(result, Ok(None)) && !cancel.is_cancelled() {
+            turns.wrap_up_turn().await;
         }
+        let summary = turns.summary;
         let was_cancelled = cancel.is_cancelled();
         cancel.cancel();
         jobs.finish().await;
@@ -1022,6 +911,196 @@ impl BuiltinTaskAdapter {
         )
         .await
         .map_err(|error| error.to_string())
+    }
+}
+
+/// The message a task without a saved conversation starts with.
+fn first_message(context: &TaskRunContext) -> String {
+    match &context.resume {
+        Some(resume) => {
+            let message = resume_message(resume, &context.record_dir);
+            if context
+                .handoff
+                .as_ref()
+                .is_some_and(|handoff| handoff.turn_interrupted)
+            {
+                format!("Your previous turn was interrupted. {message}")
+            } else {
+                message
+            }
+        }
+        None => context.prompt.clone(),
+    }
+}
+
+/// How a step of the turn loop ended: `Break` ends the run with its result,
+/// `Ok(Some(file))` meaning it was suspended with the conversation in `file`.
+type LoopStep = ControlFlow<Result<Option<String>, String>>;
+
+/// The turn loop of one task run: what every turn needs, and the
+/// conversation so far.
+struct TurnLoop<'a> {
+    adapter: &'a BuiltinTaskAdapter,
+    context: &'a TaskRunContext,
+    cancel: &'a CancellationToken,
+    suspend: &'a CancellationToken,
+    events: &'a TaskEventSink,
+    client: &'a reqwest::Client,
+    resolved: &'a oleafly_agent::Resolved,
+    template: &'a CompletionRequest,
+    registry: &'a ToolRegistry,
+    scope: &'a Arc<ToolScope>,
+    usage: &'a Arc<dyn UsageSink>,
+    observed: &'a Arc<Mutex<Option<TokenCounts>>>,
+    messages: Vec<Message>,
+    summary: String,
+    wake_ups: u32,
+    wrap_up: bool,
+}
+
+impl TurnLoop<'_> {
+    /// One working turn of the agent.
+    async fn working_turn(&mut self) -> LoopStep {
+        let adapter = self.adapter;
+        let context = self.context;
+        let turn = self.cancel.child();
+        let watcher = watch_time(&adapter.services, &context.task_id, turn.clone());
+        let runner = tool_runner(self.scope, &turn);
+        let mut request = self.template.clone();
+        request.messages = self.messages.clone();
+        let outcome = adapter
+            .agent_turn(
+                self.client,
+                self.resolved,
+                request,
+                RunConfig {
+                    max_steps: TASK_MAX_STEPS,
+                    allow_long_runs: true,
+                    max_duration_ms: Some(adapter.turn_limit(&context.task_id).as_millis() as u64),
+                    ..RunConfig::default()
+                },
+                self.registry,
+                &turn,
+                Some(self.suspend),
+                runner,
+                self.events,
+                self.usage,
+                self.observed,
+            )
+            .await;
+        watcher.abort();
+        if self.cancel.is_cancelled() {
+            return ControlFlow::Break(Err("The task was cancelled.".into()));
+        }
+        // 0.4.8 L: suspended at a step boundary: the next owner
+        // continues this conversation.
+        if let Ok(outcome) = &outcome {
+            if outcome.suspended {
+                return ControlFlow::Break(
+                    adapter
+                        .save_conversation(context, self.resolved, outcome.history.clone(), false)
+                        .map(Some),
+                );
+            }
+        }
+        if adapter.time_ran_out(&context.task_id) {
+            // The time budget ended: one short turn to leave a handoff.
+            if let Ok(outcome) = &outcome {
+                self.messages = outcome.history.clone();
+            }
+            self.wrap_up = true;
+            return ControlFlow::Break(Ok(None));
+        }
+        let outcome = match outcome {
+            Ok(outcome) if outcome.error.is_none() && !outcome.stopped_at_cap => outcome,
+            Ok(outcome) => {
+                return ControlFlow::Break(Err(outcome.error.unwrap_or_else(|| {
+                    "The task reached its step limit before finishing.".into()
+                })))
+            }
+            Err(error) => return ControlFlow::Break(Err(error)),
+        };
+        self.summary = outcome.text;
+        self.messages = outcome.history;
+        if context.plan_phase {
+            return ControlFlow::Break(Ok(None));
+        }
+        ControlFlow::Continue(())
+    }
+
+    /// Waits for the task's runs and turns the ones that finished into the
+    /// next message.
+    async fn wait_and_wake(&mut self) -> LoopStep {
+        let adapter = self.adapter;
+        let context = self.context;
+        match adapter
+            .wait_for_runs(context, self.events, self.cancel, self.suspend)
+            .await
+        {
+            Ok(Waited::Nothing) => ControlFlow::Break(Ok(None)),
+            Ok(Waited::Suspended) => ControlFlow::Break(
+                adapter
+                    .save_conversation(context, self.resolved, self.messages.clone(), true)
+                    .map(Some),
+            ),
+            Ok(Waited::Finished(finished)) if finished.is_empty() => {
+                // The budget ended while the task waited for its runs: the
+                // agent still gets its turn to leave a handoff.
+                self.wrap_up = adapter.time_ran_out(&context.task_id);
+                ControlFlow::Break(Ok(None))
+            }
+            Ok(Waited::Finished(finished)) => {
+                if self.wake_ups >= MAX_WAKE_UPS {
+                    return ControlFlow::Break(Err(
+                        "The task woke up 200 times. Retry it to continue.".into(),
+                    ));
+                }
+                self.wake_ups += 1;
+                self.messages
+                    .push(Message::user(wake_up_message(&finished)));
+                ControlFlow::Continue(())
+            }
+            Err(error) => ControlFlow::Break(Err(error)),
+        }
+    }
+
+    /// The short turn after the time budget ended, where the agent leaves a
+    /// handoff.
+    async fn wrap_up_turn(&mut self) {
+        (self.events)(TaskRuntimeEvent::Phase {
+            phase: TaskPhase::WrappingUp,
+        });
+        self.messages
+            .push(Message::user(wrap_up_message(&self.context.record_dir)));
+        let mut request = self.template.clone();
+        request.messages = self.messages.clone();
+        // A turn of its own: the working turn's token is already cancelled
+        // and would refuse every tool call.
+        let wrap_token = self.cancel.child();
+        let wrapped = self
+            .adapter
+            .agent_turn(
+                self.client,
+                self.resolved,
+                request,
+                RunConfig {
+                    max_steps: WRAP_UP_STEPS,
+                    allow_long_runs: true,
+                    max_duration_ms: Some(WRAP_UP_LIMIT.as_millis() as u64),
+                    ..RunConfig::default()
+                },
+                self.registry,
+                &wrap_token,
+                None,
+                tool_runner(self.scope, &wrap_token),
+                self.events,
+                self.usage,
+                self.observed,
+            )
+            .await;
+        if let Ok(outcome) = wrapped {
+            self.summary = outcome.text;
+        }
     }
 }
 

@@ -4125,6 +4125,43 @@ impl SourceReader for FsReader<'_> {
     }
 }
 
+/// Loads the text of each path in `frontier` that isn't loaded yet: from
+/// `overrides` when a buffer has it, otherwise from the reader.
+fn load_frontier_texts(
+    frontier: &[String],
+    overrides: &BTreeMap<String, String>,
+    reader: &dyn SourceReader,
+    texts: &mut HashMap<String, String>,
+    unreadable: &mut HashSet<String>,
+) -> Result<(), DocError> {
+    let mut disk = Vec::new();
+    for path in frontier {
+        if texts.contains_key(path) || unreadable.contains(path) {
+            continue;
+        }
+        match overrides.get(path) {
+            Some(text) => {
+                texts.insert(path.clone(), text.clone());
+            }
+            None => disk.push(path.clone()),
+        }
+    }
+    if disk.is_empty() {
+        return Ok(());
+    }
+    for (path, text) in reader.read_batch(&disk)? {
+        match text {
+            Some(text) => {
+                texts.insert(path, normalize_newlines(text));
+            }
+            None => {
+                unreadable.insert(path);
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Counts the document rooted at `request.main_document`, following its
 /// includes like the app (buffers in `request.overrides` win over disk).
 pub fn document_stats_with(
@@ -4142,30 +4179,13 @@ pub fn document_stats_with(
         if frontier.is_empty() {
             break;
         }
-        let mut disk = Vec::new();
-        for path in &frontier {
-            if texts.contains_key(path) || unreadable.contains(path) {
-                continue;
-            }
-            match request.overrides.get(path) {
-                Some(text) => {
-                    texts.insert(path.clone(), text.clone());
-                }
-                None => disk.push(path.clone()),
-            }
-        }
-        if !disk.is_empty() {
-            for (path, text) in reader.read_batch(&disk)? {
-                match text {
-                    Some(text) => {
-                        texts.insert(path, normalize_newlines(text));
-                    }
-                    None => {
-                        unreadable.insert(path);
-                    }
-                }
-            }
-        }
+        load_frontier_texts(
+            &frontier,
+            &request.overrides,
+            reader,
+            &mut texts,
+            &mut unreadable,
+        )?;
         let mut next = Vec::new();
         for path in &frontier {
             let Some(text) = texts.get(path) else {

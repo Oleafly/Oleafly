@@ -270,11 +270,11 @@ function TaskComposerDraft({
 
   /** A starter replaces the title and instructions, so ask first when the user changed them. */
   const chooseStarter = (nextStarterId: string) => {
-    const chosen = RESEARCH_TASK_STARTERS.find((candidate) => candidate.id === nextStarterId);
+    const known = RESEARCH_TASK_STARTERS.some((candidate) => candidate.id === nextStarterId);
     const current = RESEARCH_TASK_STARTERS.find((candidate) => candidate.id === starterId);
     const typed = title.trim() !== "" || prompt.trim() !== "";
     const edited = current ? title !== current.title() || prompt !== current.prompt : typed;
-    if (chosen && typed && edited) {
+    if (known && typed && edited) {
       setPendingStarter(nextStarterId);
       return;
     }

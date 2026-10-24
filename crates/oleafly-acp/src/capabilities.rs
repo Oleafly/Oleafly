@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 
 use crate::client::{ClientOptions, InitializeError, Negotiated, ProtocolVersion};
 
@@ -204,77 +204,17 @@ fn auth_method(value: &Value, id_key: &str, env_shape: EnvShape) -> Option<AuthM
         .as_str()
         .filter(|kind| kind.len() <= 64)
         .map(str::to_owned);
-    let mut args = Vec::new();
-    if let Some(values) = value["args"].as_array() {
-        if values.len() > MAX_AUTH_ARGS {
-            return None;
-        }
-        for arg in values {
-            let arg = arg.as_str()?;
-            if !plain_text(arg) {
-                return None;
-            }
-            args.push(arg.to_owned());
-        }
-    }
-    let mut env = BTreeMap::new();
-    match env_shape {
-        EnvShape::Map => {
-            if let Some(entries) = value["env"].as_object() {
-                if entries.len() > MAX_AUTH_ARGS {
-                    return None;
-                }
-                for (name, value) in entries {
-                    let value = value.as_str()?;
-                    if !env_name(name) || !plain_text(value) {
-                        return None;
-                    }
-                    env.insert(name.clone(), value.to_owned());
-                }
-            }
-        }
-        EnvShape::Pairs => {
-            if let Some(entries) = value["env"].as_array() {
-                if entries.len() > MAX_AUTH_ARGS {
-                    return None;
-                }
-                for entry in entries {
-                    let name = entry["name"].as_str()?;
-                    let value = entry["value"].as_str()?;
-                    if !env_name(name) || !plain_text(value) {
-                        return None;
-                    }
-                    env.insert(name.to_owned(), value.to_owned());
-                }
-            }
-        }
-    }
+    let args = match value["args"].as_array() {
+        Some(values) => plain_args(values)?,
+        None => Vec::new(),
+    };
+    let env = match env_shape {
+        EnvShape::Map => env_from_map(value)?,
+        EnvShape::Pairs => env_from_pairs(value)?,
+    };
     let api_key_provider = text(&value["_meta"]["api-key"]["provider"]);
     let terminal_command = match &value["_meta"]["terminal-auth"] {
-        Value::Object(command) => {
-            let program = command.get("command").and_then(Value::as_str)?;
-            if !std::path::Path::new(program).is_absolute() || !plain_text(program) {
-                return None;
-            }
-            let mut args = Vec::new();
-            if let Some(values) = command.get("args").and_then(Value::as_array) {
-                if values.len() > MAX_AUTH_ARGS {
-                    return None;
-                }
-                for arg in values {
-                    let arg = arg.as_str()?;
-                    if !plain_text(arg) {
-                        return None;
-                    }
-                    args.push(arg.to_owned());
-                }
-            }
-            Some(TerminalAuthCommand {
-                command: program.to_owned(),
-                args,
-                label: command.get("label").and_then(text),
-            })
-        }
+        Value::Object(command) => Some(terminal_auth_command(command)?),
         _ => None,
     };
     Some(AuthMethod {
@@ -286,6 +226,77 @@ fn auth_method(value: &Value, id_key: &str, env_shape: EnvShape) -> Option<AuthM
         env,
         api_key_provider,
         terminal_command,
+    })
+}
+
+/// Plain-text arguments. `None` when there are too many or one isn't plain text.
+fn plain_args(values: &[Value]) -> Option<Vec<String>> {
+    if values.len() > MAX_AUTH_ARGS {
+        return None;
+    }
+    values
+        .iter()
+        .map(|arg| {
+            arg.as_str()
+                .filter(|arg| plain_text(arg))
+                .map(str::to_owned)
+        })
+        .collect()
+}
+
+/// The v1 environment, `{"NAME": "value"}`. `None` when an entry is invalid.
+fn env_from_map(value: &Value) -> Option<BTreeMap<String, String>> {
+    let mut env = BTreeMap::new();
+    if let Some(entries) = value["env"].as_object() {
+        if entries.len() > MAX_AUTH_ARGS {
+            return None;
+        }
+        for (name, value) in entries {
+            let value = value.as_str()?;
+            if !env_name(name) || !plain_text(value) {
+                return None;
+            }
+            env.insert(name.clone(), value.to_owned());
+        }
+    }
+    Some(env)
+}
+
+/// The v2 environment, `[{"name": "NAME", "value": "value"}]`. `None` when an
+/// entry is invalid.
+fn env_from_pairs(value: &Value) -> Option<BTreeMap<String, String>> {
+    let mut env = BTreeMap::new();
+    if let Some(entries) = value["env"].as_array() {
+        if entries.len() > MAX_AUTH_ARGS {
+            return None;
+        }
+        for entry in entries {
+            let name = entry["name"].as_str()?;
+            let value = entry["value"].as_str()?;
+            if !env_name(name) || !plain_text(value) {
+                return None;
+            }
+            env.insert(name.to_owned(), value.to_owned());
+        }
+    }
+    Some(env)
+}
+
+/// The `_meta.terminal-auth` command. `None` when it isn't an absolute,
+/// plain-text program with plain-text arguments.
+fn terminal_auth_command(command: &Map<String, Value>) -> Option<TerminalAuthCommand> {
+    let program = command.get("command").and_then(Value::as_str)?;
+    if !std::path::Path::new(program).is_absolute() || !plain_text(program) {
+        return None;
+    }
+    let args = match command.get("args").and_then(Value::as_array) {
+        Some(values) => plain_args(values)?,
+        None => Vec::new(),
+    };
+    Some(TerminalAuthCommand {
+        command: program.to_owned(),
+        args,
+        label: command.get("label").and_then(text),
     })
 }
 
@@ -432,6 +443,60 @@ mod tests {
                 .map(|method| method.id.as_str())
                 .collect::<Vec<_>>(),
             vec!["good"]
+        );
+    }
+
+    #[test]
+    fn v2_methods_list_their_environment_as_name_value_pairs() {
+        let methods = auth_methods(
+            &json!([
+                {"methodId": "ok", "name": "OK", "env": [{"name": "TOKEN_FILE", "value": "/tmp/t"}]},
+                {"methodId": "bad-name", "env": [{"name": "1BAD", "value": "v"}]},
+                {"methodId": "bad-value", "env": [{"name": "GOOD_NAME", "value": "a\r\nb"}]},
+                {"methodId": "no-value", "env": [{"name": "GOOD_NAME"}]},
+            ]),
+            "methodId",
+            EnvShape::Pairs,
+        );
+        assert_eq!(
+            methods
+                .iter()
+                .map(|method| method.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["ok"]
+        );
+        assert_eq!(methods[0].env["TOKEN_FILE"], "/tmp/t");
+    }
+
+    #[test]
+    fn methods_with_too_many_arguments_or_variables_are_dropped() {
+        let program = if cfg!(windows) {
+            r"C:\Program Files\Claude\claude.exe"
+        } else {
+            "/usr/local/bin/claude"
+        };
+        let args: Vec<String> = (0..=MAX_AUTH_ARGS)
+            .map(|index| format!("a{index}"))
+            .collect();
+        let env: serde_json::Map<String, Value> = (0..=MAX_AUTH_ARGS)
+            .map(|index| (format!("VAR_{index}"), json!("v")))
+            .collect();
+        let methods = auth_methods(
+            &json!([
+                {"id": "many-args", "args": args},
+                {"id": "many-variables", "env": env},
+                {"id": "many-terminal-args", "_meta": {"terminal-auth": {"command": program, "args": args}}},
+                {"id": "fine", "args": ["x"]},
+            ]),
+            "id",
+            EnvShape::Map,
+        );
+        assert_eq!(
+            methods
+                .iter()
+                .map(|method| method.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["fine"]
         );
     }
 

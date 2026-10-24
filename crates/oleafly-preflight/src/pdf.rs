@@ -539,10 +539,7 @@ fn container_streams_are_bounded(bytes: &[u8], limits: Limits) -> bool {
         while let Some(at) = find(bytes, name, from, bytes.len()) {
             from = at + name.len();
             // `/XRefStm` and the like are other names.
-            if bytes
-                .get(from)
-                .is_some_and(|next| next.is_ascii_alphanumeric())
-            {
+            if bytes.get(from).is_some_and(u8::is_ascii_alphanumeric) {
                 continue;
             }
             seen += 1;

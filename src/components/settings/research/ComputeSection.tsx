@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, Cpu, Laptop, MoreHorizontal, Plus, Server, ShieldCheck } from "lucide-react";
+import { Box, Cpu, Laptop, type LucideIcon, MoreHorizontal, Plus, Server, ShieldCheck } from "lucide-react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -60,8 +60,14 @@ export const STATUS_VARIANT: Record<CheckStatus, BadgeVariant> = {
   skipped: "muted",
 };
 
+const KIND_ICON: Record<ComputeKind, LucideIcon> = {
+  ssh: Server,
+  slurm: Cpu,
+  cuaSpace: Box,
+};
+
 function KindIcon({ kind }: Readonly<{ kind: ComputeKind }>) {
-  const Icon = kind === "ssh" ? Server : kind === "slurm" ? Cpu : Box;
+  const Icon = KIND_ICON[kind];
   return <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />;
 }
 

@@ -145,17 +145,52 @@ fn simple_braced_value(chars: &[char], at: usize) -> Option<(String, usize)> {
     Some((string_of(&chars[cursor + 1..close]), close + 1))
 }
 
+/// Blanks `from..to`, keeping line breaks.
+fn blank_span(chars: &mut [char], from: usize, to: usize) {
+    for character in chars.iter_mut().take(to).skip(from) {
+        if *character != '\n' {
+            *character = ' ';
+        }
+    }
+}
+
+/// The end of a `\verb` span whose command name ends at `command_end`, or
+/// `None` when no delimiter follows.
+fn verb_span_end(chars: &[char], command_end: usize) -> Option<usize> {
+    let mut delimiter_at = command_end;
+    if chars.get(delimiter_at) == Some(&'*') {
+        delimiter_at += 1;
+    }
+    let &delimiter = chars.get(delimiter_at)?;
+    if delimiter.is_alphabetic() || is_js_space(delimiter) {
+        return None;
+    }
+    Some(
+        (delimiter_at + 1..chars.len())
+            .find(|index| chars[*index] == delimiter || chars[*index] == '\n')
+            .map_or(chars.len(), |index| index + 1),
+    )
+}
+
+/// The end of the opaque environment a `\begin` opens (its name starts at
+/// `command_end`), or `None` when the environment is an ordinary one.
+fn opaque_environment_end(chars: &[char], command_end: usize) -> Option<usize> {
+    let (environment, after) = simple_braced_value(chars, command_end)?;
+    if !OPAQUE_ENVIRONMENTS.contains(&environment.as_str()) {
+        return None;
+    }
+    let closing: Vec<char> = format!("\\end{{{environment}}}").chars().collect();
+    Some(
+        (after..chars.len())
+            .find(|index| chars[*index..].starts_with(&closing))
+            .map_or(chars.len(), |index| index + closing.len()),
+    )
+}
+
 /// Comments, opaque environments (`verbatim`, `lstlisting`, ...) and
 /// `\verb` spans, blanked (line breaks kept).
 pub(crate) fn mask_ignored(chars: &[char]) -> Vec<char> {
     let mut out = chars.to_vec();
-    let blank = |out: &mut Vec<char>, from: usize, to: usize| {
-        for character in out.iter_mut().take(to).skip(from) {
-            if *character != '\n' {
-                *character = ' ';
-            }
-        }
-    };
     let mut cursor = 0;
     while cursor < chars.len() {
         let character = chars[cursor];
@@ -163,7 +198,7 @@ pub(crate) fn mask_ignored(chars: &[char]) -> Vec<char> {
             let end = (cursor..chars.len())
                 .find(|index| chars[*index] == '\n')
                 .unwrap_or(chars.len());
-            blank(&mut out, cursor, end);
+            blank_span(&mut out, cursor, end);
             cursor = end;
             continue;
         }
@@ -177,32 +212,17 @@ pub(crate) fn mask_ignored(chars: &[char]) -> Vec<char> {
         }
         let name = string_of(&chars[cursor + 1..command_end]);
         if name == "verb" {
-            let mut delimiter_at = command_end;
-            if chars.get(delimiter_at) == Some(&'*') {
-                delimiter_at += 1;
-            }
-            if let Some(&delimiter) = chars.get(delimiter_at) {
-                if !delimiter.is_alphabetic() && !is_js_space(delimiter) {
-                    let end = (delimiter_at + 1..chars.len())
-                        .find(|index| chars[*index] == delimiter || chars[*index] == '\n')
-                        .map_or(chars.len(), |index| index + 1);
-                    blank(&mut out, cursor, end);
-                    cursor = end.max(cursor + 1);
-                    continue;
-                }
+            if let Some(end) = verb_span_end(chars, command_end) {
+                blank_span(&mut out, cursor, end);
+                cursor = end.max(cursor + 1);
+                continue;
             }
         }
         if name == "begin" {
-            if let Some((environment, after)) = simple_braced_value(chars, command_end) {
-                if OPAQUE_ENVIRONMENTS.contains(&environment.as_str()) {
-                    let closing: Vec<char> = format!("\\end{{{environment}}}").chars().collect();
-                    let end = (after..chars.len())
-                        .find(|index| chars[*index..].starts_with(&closing))
-                        .map_or(chars.len(), |index| index + closing.len());
-                    blank(&mut out, cursor, end);
-                    cursor = end;
-                    continue;
-                }
+            if let Some(end) = opaque_environment_end(chars, command_end) {
+                blank_span(&mut out, cursor, end);
+                cursor = end;
+                continue;
             }
         }
         cursor = if command_end > cursor + 1 {
@@ -279,6 +299,54 @@ fn command_groups(masked: &[char], offset: usize, closing: &HashMap<usize, usize
     groups
 }
 
+/// Adds the trimmed text collected in `logical` to `result` as one token
+/// (nothing for a blank one or `*`), and empties `logical`.
+fn flush_token(logical: &mut Vec<(char, usize)>, result: &mut Vec<(String, usize)>) {
+    let start = logical
+        .iter()
+        .position(|(character, _)| !is_js_space(*character));
+    let end = logical
+        .iter()
+        .rposition(|(character, _)| !is_js_space(*character));
+    if let (Some(start), Some(end)) = (start, end) {
+        let name: String = logical[start..=end]
+            .iter()
+            .map(|(character, _)| character)
+            .collect();
+        if !name.is_empty() && name != "*" {
+            result.push((name, logical[start].1));
+        }
+    }
+    logical.clear();
+}
+
+/// Where scanning resumes after the `%` comment at `cursor` in `group`, or
+/// `None` when the `%` is escaped (an odd run of backslashes before it).
+fn comment_end(source: &[char], group: &Group, cursor: usize) -> Option<usize> {
+    let mut slashes = 0;
+    let mut back = cursor;
+    while back > group.content_from && source[back - 1] == '\\' {
+        slashes += 1;
+        back -= 1;
+    }
+    if slashes % 2 != 0 {
+        return None;
+    }
+    let mut next = cursor + 1;
+    while next < group.content_to && source[next] != '\n' && source[next] != '\r' {
+        next += 1;
+    }
+    Some(
+        if next < group.content_to && source[next] == '\r' && source.get(next + 1) == Some(&'\n') {
+            next + 2
+        } else if next < group.content_to {
+            next + 1
+        } else {
+            next
+        },
+    )
+}
+
 /// `latexLogicalGroupTokens`: the group's text with `%` comments removed,
 /// split on `,` and `;` when asked, each piece trimmed.
 fn logical_tokens(source: &[char], group: &Group, split: bool) -> Vec<(String, usize)> {
@@ -287,61 +355,24 @@ fn logical_tokens(source: &[char], group: &Group, split: bool) -> Vec<(String, u
     }
     let mut result = Vec::new();
     let mut logical: Vec<(char, usize)> = Vec::new();
-    let flush = |logical: &mut Vec<(char, usize)>, result: &mut Vec<(String, usize)>| {
-        let start = logical
-            .iter()
-            .position(|(character, _)| !is_js_space(*character));
-        let end = logical
-            .iter()
-            .rposition(|(character, _)| !is_js_space(*character));
-        if let (Some(start), Some(end)) = (start, end) {
-            let name: String = logical[start..=end]
-                .iter()
-                .map(|(character, _)| character)
-                .collect();
-            if !name.is_empty() && name != "*" {
-                result.push((name, logical[start].1));
-            }
-        }
-        logical.clear();
-    };
     let mut cursor = group.content_from;
     while cursor < group.content_to {
         let character = source[cursor];
         if character == '%' {
-            let mut slashes = 0;
-            let mut back = cursor;
-            while back > group.content_from && source[back - 1] == '\\' {
-                slashes += 1;
-                back -= 1;
-            }
-            if slashes % 2 == 0 {
-                let mut next = cursor + 1;
-                while next < group.content_to && source[next] != '\n' && source[next] != '\r' {
-                    next += 1;
-                }
-                if next < group.content_to
-                    && source[next] == '\r'
-                    && source.get(next + 1) == Some(&'\n')
-                {
-                    cursor = next + 2;
-                } else if next < group.content_to {
-                    cursor = next + 1;
-                } else {
-                    cursor = next;
-                }
+            if let Some(next) = comment_end(source, group, cursor) {
+                cursor = next;
                 continue;
             }
         }
         if split && (character == ',' || character == ';') {
-            flush(&mut logical, &mut result);
+            flush_token(&mut logical, &mut result);
             cursor += 1;
             continue;
         }
         logical.push((character, cursor));
         cursor += 1;
     }
-    flush(&mut logical, &mut result);
+    flush_token(&mut logical, &mut result);
     result
 }
 
@@ -610,7 +641,7 @@ fn legacy_inputs(facts: &mut Facts<'_>, legacy: &[char], raw_source: &[char]) {
 
 fn add_macro_definitions(facts: &mut Facts<'_>, masked: &[char]) {
     for (name, _, after) in commands(masked) {
-        match name.as_str() {
+        let defined = match name.as_str() {
             "newcommand"
             | "renewcommand"
             | "providecommand"
@@ -618,98 +649,108 @@ fn add_macro_definitions(facts: &mut Facts<'_>, masked: &[char]) {
             | "NewDocumentCommand"
             | "RenewDocumentCommand"
             | "ProvideDocumentCommand"
-            | "DeclareDocumentCommand" => {
-                let mut cursor = skip_spaces(masked, after);
-                let braced = masked.get(cursor) == Some(&'{');
-                if braced {
-                    cursor = skip_spaces(masked, cursor + 1);
-                }
-                let Some((macro_name, end)) = command_at(masked, cursor) else {
-                    continue;
-                };
-                let mut next = end;
-                if braced {
-                    next = skip_spaces(masked, next);
-                    if masked.get(next) != Some(&'}') {
-                        continue;
-                    }
-                    next += 1;
-                }
-                let xparse = name.ends_with("DocumentCommand");
-                if xparse {
-                    // `{arg spec}{body}`
-                    let Some(spec_close) = skip_group(masked, next) else {
-                        continue;
-                    };
-                    if skip_group(masked, spec_close).is_none() {
-                        continue;
-                    }
-                } else {
-                    // `[n][default]{body}`
-                    let mut cursor = skip_spaces(masked, next);
-                    let mut optional = 0;
-                    while masked.get(cursor) == Some(&'[') && optional < 2 {
-                        match (cursor..masked.len()).find(|index| masked[*index] == ']') {
-                            Some(close) => cursor = skip_spaces(masked, close + 1),
-                            None => break,
-                        }
-                        optional += 1;
-                    }
-                    if masked.get(cursor) != Some(&'{') {
-                        continue;
-                    }
-                }
-                facts.def(DefKind::Macro, macro_name, cursor + 1, None);
-            }
-            "def" | "gdef" | "edef" | "xdef" => {
-                let cursor = skip_spaces(masked, after);
-                if masked.get(cursor) != Some(&'\\') {
-                    continue;
-                }
-                let (macro_name, mut next) = match command_at(masked, cursor) {
-                    Some(found) => found,
-                    None => match masked.get(cursor + 1) {
-                        Some(symbol) => (symbol.to_string(), cursor + 2),
-                        None => continue,
-                    },
-                };
-                loop {
-                    let spaced = skip_spaces(masked, next);
-                    if masked.get(spaced) == Some(&'#')
-                        && masked
-                            .get(spaced + 1)
-                            .is_some_and(|digit| ('1'..='9').contains(digit))
-                    {
-                        next = spaced + 2;
-                    } else {
-                        break;
-                    }
-                }
-                let open = skip_spaces(masked, next);
-                if masked.get(open) == Some(&'{') && match_brace(masked, open).is_some() {
-                    facts.def(DefKind::Macro, macro_name, cursor + 1, None);
-                }
-            }
-            "DeclareMathOperator" => {
-                let cursor = skip_spaces(masked, after);
-                if masked.get(cursor) != Some(&'{') {
-                    continue;
-                }
-                let inner = skip_spaces(masked, cursor + 1);
-                let Some((operator, end)) = command_at(masked, inner) else {
-                    continue;
-                };
-                let close = skip_spaces(masked, end);
-                if masked.get(close) != Some(&'}') {
-                    continue;
-                }
-                if masked.get(skip_spaces(masked, close + 1)) == Some(&'{') {
-                    facts.def(DefKind::Macro, operator, inner + 1, None);
-                }
-            }
-            _ => {}
+            | "DeclareDocumentCommand" => command_definition(masked, &name, after),
+            "def" | "gdef" | "edef" | "xdef" => primitive_definition(masked, after),
+            "DeclareMathOperator" => math_operator_definition(masked, after),
+            _ => None,
+        };
+        if let Some((macro_name, from)) = defined {
+            facts.def(DefKind::Macro, macro_name, from, None);
         }
     }
+}
+
+/// `\newcommand{\name}...` and its relatives (`name` is the defining
+/// command, which ends at `after`): the macro's name and where it starts.
+/// `None` when the definition is incomplete.
+fn command_definition(masked: &[char], name: &str, after: usize) -> Option<(String, usize)> {
+    let mut cursor = skip_spaces(masked, after);
+    let braced = masked.get(cursor) == Some(&'{');
+    if braced {
+        cursor = skip_spaces(masked, cursor + 1);
+    }
+    let (macro_name, end) = command_at(masked, cursor)?;
+    let mut next = end;
+    if braced {
+        next = skip_spaces(masked, next);
+        if masked.get(next) != Some(&'}') {
+            return None;
+        }
+        next += 1;
+    }
+    let has_body = if name.ends_with("DocumentCommand") {
+        has_xparse_body(masked, next)
+    } else {
+        has_classic_body(masked, next)
+    };
+    has_body.then_some((macro_name, cursor + 1))
+}
+
+/// `{arg spec}{body}`
+fn has_xparse_body(masked: &[char], at: usize) -> bool {
+    skip_group(masked, at).is_some_and(|spec_close| skip_group(masked, spec_close).is_some())
+}
+
+/// `[n][default]{body}`
+fn has_classic_body(masked: &[char], at: usize) -> bool {
+    let mut cursor = skip_spaces(masked, at);
+    let mut optional = 0;
+    while masked.get(cursor) == Some(&'[') && optional < 2 {
+        match (cursor..masked.len()).find(|index| masked[*index] == ']') {
+            Some(close) => cursor = skip_spaces(masked, close + 1),
+            None => break,
+        }
+        optional += 1;
+    }
+    masked.get(cursor) == Some(&'{')
+}
+
+/// `\def\name#1#2{...}` and its relatives: the macro's name and where it
+/// starts. `None` when the definition is incomplete.
+fn primitive_definition(masked: &[char], after: usize) -> Option<(String, usize)> {
+    let cursor = skip_spaces(masked, after);
+    if masked.get(cursor) != Some(&'\\') {
+        return None;
+    }
+    let (macro_name, mut next) = match command_at(masked, cursor) {
+        Some(found) => found,
+        None => {
+            let symbol = masked.get(cursor + 1)?;
+            (symbol.to_string(), cursor + 2)
+        }
+    };
+    loop {
+        let spaced = skip_spaces(masked, next);
+        if masked.get(spaced) == Some(&'#')
+            && masked
+                .get(spaced + 1)
+                .is_some_and(|digit| ('1'..='9').contains(digit))
+        {
+            next = spaced + 2;
+        } else {
+            break;
+        }
+    }
+    let open = skip_spaces(masked, next);
+    let complete = masked.get(open) == Some(&'{') && match_brace(masked, open).is_some();
+    complete.then_some((macro_name, cursor + 1))
+}
+
+/// `\DeclareMathOperator{\name}{...}`: the operator's name and where it
+/// starts. `None` when the definition is incomplete.
+fn math_operator_definition(masked: &[char], after: usize) -> Option<(String, usize)> {
+    let cursor = skip_spaces(masked, after);
+    if masked.get(cursor) != Some(&'{') {
+        return None;
+    }
+    let inner = skip_spaces(masked, cursor + 1);
+    let (operator, end) = command_at(masked, inner)?;
+    let close = skip_spaces(masked, end);
+    if masked.get(close) != Some(&'}') {
+        return None;
+    }
+    let has_body = masked.get(skip_spaces(masked, close + 1)) == Some(&'{');
+    has_body.then_some((operator, inner + 1))
 }
 
 /// The end (exclusive) of a `{...}` group starting after spaces at `at`.
@@ -750,54 +791,68 @@ fn key_uses(
 ) {
     for (name, _, after) in commands(masked) {
         if name == "label" || name == "hypertarget" {
+            label_defs(facts, source, &command_groups(masked, after, closing));
+        } else if name == "hyperref" {
+            hyperref_uses(facts, source, &command_groups(masked, after, closing));
+        } else if REFERENCE_COMMANDS.contains(&name.as_str()) {
             let groups = command_groups(masked, after, closing);
-            if let Some(group) = groups.iter().find(|group| group.open == '{') {
-                for (token, from) in logical_tokens(source, group, false) {
-                    facts.def(DefKind::Label, token, from, None);
-                }
+            reference_uses(facts, source, &name, &groups);
+        } else {
+            let lower = name.to_lowercase();
+            if CITATION_COMMANDS.contains(&lower.as_str()) {
+                let groups = command_groups(masked, after, closing);
+                citation_uses(facts, source, &lower, groups);
             }
-            continue;
         }
-        if name == "hyperref" {
-            let groups = command_groups(masked, after, closing);
-            if let Some(group) = groups.iter().find(|group| group.open == '[') {
-                for (token, from) in logical_tokens(source, group, false) {
-                    facts.use_(UseKind::Ref, token, from, None);
-                }
-            }
-            continue;
+    }
+}
+
+/// `\label{...}` and `\hypertarget{...}`: the first braced group names a
+/// label.
+fn label_defs(facts: &mut Facts<'_>, source: &[char], groups: &[Group]) {
+    if let Some(group) = groups.iter().find(|group| group.open == '{') {
+        for (token, from) in logical_tokens(source, group, false) {
+            facts.def(DefKind::Label, token, from, None);
         }
-        if REFERENCE_COMMANDS.contains(&name.as_str()) {
-            let braced: Vec<Group> = command_groups(masked, after, closing)
-                .into_iter()
-                .filter(|group| group.open == '{')
-                .collect();
-            let take = if name.to_ascii_lowercase().ends_with("range") {
-                2
-            } else {
-                1
-            };
-            for group in braced.iter().take(take) {
-                for (token, from) in logical_tokens(source, group, true) {
-                    facts.use_(UseKind::Ref, token, from, None);
-                }
-            }
-            continue;
+    }
+}
+
+/// `\hyperref[...]{...}`: the optional group holds the reference.
+fn hyperref_uses(facts: &mut Facts<'_>, source: &[char], groups: &[Group]) {
+    if let Some(group) = groups.iter().find(|group| group.open == '[') {
+        for (token, from) in logical_tokens(source, group, false) {
+            facts.use_(UseKind::Ref, token, from, None);
         }
-        let lower = name.to_lowercase();
-        if CITATION_COMMANDS.contains(&lower.as_str()) {
-            let braced: Vec<Group> = command_groups(masked, after, closing)
-                .into_iter()
-                .filter(|group| group.open == '{')
-                .collect();
-            if braced.is_empty() {
-                continue;
-            }
-            for group in citation_key_groups(&lower, braced) {
-                for (token, from) in logical_tokens(source, &group, true) {
-                    facts.use_(UseKind::Cite, token, from, None);
-                }
-            }
+    }
+}
+
+/// `\ref` and its relatives: the first braced group, or two for a range.
+fn reference_uses(facts: &mut Facts<'_>, source: &[char], name: &str, groups: &[Group]) {
+    let take = if name.to_ascii_lowercase().ends_with("range") {
+        2
+    } else {
+        1
+    };
+    for group in groups.iter().filter(|group| group.open == '{').take(take) {
+        for (token, from) in logical_tokens(source, group, true) {
+            facts.use_(UseKind::Ref, token, from, None);
+        }
+    }
+}
+
+/// `\cite` and its relatives (`lower` is the lowercased name): the braced
+/// groups that hold keys depend on the command.
+fn citation_uses(facts: &mut Facts<'_>, source: &[char], lower: &str, groups: Vec<Group>) {
+    let braced: Vec<Group> = groups
+        .into_iter()
+        .filter(|group| group.open == '{')
+        .collect();
+    if braced.is_empty() {
+        return;
+    }
+    for group in citation_key_groups(lower, braced) {
+        for (token, from) in logical_tokens(source, &group, true) {
+            facts.use_(UseKind::Cite, token, from, None);
         }
     }
 }
@@ -987,6 +1042,51 @@ mod tests {
                 ("parts/x".to_string(), Some("chapters/parts/x".to_string())),
             ]
         );
+    }
+
+    #[test]
+    fn verb_spans_and_opaque_environments_are_blanked_but_keep_their_line_breaks() {
+        let source = "a\\verb*|x y|b\n\\begin{lstlisting}\nk\n\\end{lstlisting}c\\verb x";
+        let chars: Vec<char> = source.chars().collect();
+        let masked: String = mask_ignored(&chars).into_iter().collect();
+        assert_eq!(
+            masked,
+            format!(
+                "a{}b\n{}\n \n{}c\\verb x",
+                " ".repeat(11),
+                " ".repeat(18),
+                " ".repeat(16)
+            )
+        );
+    }
+
+    #[test]
+    fn key_groups_skip_comments_but_keep_escaped_percent_signs() {
+        let facts = analyze("main.tex", "\\cite{a % note\n, b\\%c}\n");
+        assert_eq!(uses(&facts, UseKind::Cite), ["a", "b\\%c"]);
+    }
+
+    #[test]
+    fn every_macro_definition_form_names_its_macro_once_it_has_a_body() {
+        let facts = analyze(
+            "main.tex",
+            "\\NewDocumentCommand{\\xa}{m}{b}\\DeclareDocumentCommand\\xb{O{x}m}{c}\\NewDocumentCommand{\\xc}{m}\n\\newcommand{\\ya}[2][d]{z}\\newcommand{\\yb}[1]\n\\def\\za#1#2{y}\\def\\!{z}\\def\\zb#1\n\\DeclareMathOperator{\\op}{x}\\DeclareMathOperator{\\opx}\n",
+        );
+        assert_eq!(
+            names(&facts, DefKind::Macro),
+            ["xa", "xb", "ya", "za", "!", "op"]
+        );
+    }
+
+    #[test]
+    fn reference_and_citation_commands_pick_their_groups() {
+        let facts = analyze(
+            "main.tex",
+            "\\label{l1}\\hypertarget{h1}{t}\\crefrange{a}{b}{c}\\ref{x,y}{z}\\hyperref[r1]{text}\\volcite{1}{k}\\volcites{1}{k}{2}{j}\n",
+        );
+        assert_eq!(names(&facts, DefKind::Label), ["l1", "h1"]);
+        assert_eq!(uses(&facts, UseKind::Ref), ["a", "b", "x", "y", "r1"]);
+        assert_eq!(uses(&facts, UseKind::Cite), ["k", "k", "j"]);
     }
 
     #[test]

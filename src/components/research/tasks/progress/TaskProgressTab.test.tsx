@@ -208,6 +208,29 @@ describe("TaskProgressTab", () => {
     expect(within(tab).queryAllByRole("button")).toHaveLength(0);
   });
 
+  it("lists plan lines that repeat without a duplicate key", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    api.progressResearchTask.mockResolvedValue(
+      progress({
+        plan: [
+          { text: "Re-run the baseline", done: true },
+          { text: "Tune the rate", done: false },
+          { text: "Re-run the baseline", done: false },
+        ],
+        todos: [],
+      }),
+    );
+    render(<TaskProgressTab task={running()} />);
+    const tab = await shown();
+
+    const lines = within(tab).getAllByText("Re-run the baseline");
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toHaveClass("line-through");
+    expect(lines[1]).not.toHaveClass("line-through");
+    expect(within(tab).getByText("Tune the rate")).toBeInTheDocument();
+    expect(errors.mock.calls.filter(([message]) => String(message).includes("same key"))).toHaveLength(0);
+  });
+
   it("shows spend without a limit and rounds larger amounts", async () => {
     api.progressResearchTask.mockResolvedValue(
       progress({
