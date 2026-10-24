@@ -15,6 +15,9 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
   loadResearchAttention: attention.load,
 }));
 
+// 0.4.8: research tasks are experimental; the badge counts only while they are on.
+vi.mock("@/store/research-tasks-flag", () => ({ useResearchTasksEnabled: () => true }));
+
 import { useFilesStore } from "@/store/files";
 import { registerRailTabs } from "./tabs";
 

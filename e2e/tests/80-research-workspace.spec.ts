@@ -10,6 +10,7 @@ import {
   listProjectEntries,
   openGallery,
   openRailTab,
+  openSettings,
   setNextImportPaths,
   waitLong,
   type Page,
@@ -44,7 +45,34 @@ async function connectAgent(page: Page) {
     `window.__aiConnect?.("ollama", ${JSON.stringify(server.url)}, "llama3.2") ?? false`,
   );
   expect(connected, "the provider connection fixture must be available").toBe(true);
+  // 0.4.8: research tasks are experimental and off by default.
+  const enabled = await page.evaluate<boolean>(`window.__researchTasksEnable?.() ?? false`);
+  expect(enabled, "the research tasks fixture must be available").toBe(true);
 }
+
+test("research tasks stay off until the experimental switch in Settings is turned on", async ({ tauriPage }) => {
+  test.setTimeout(90_000);
+  const run = Date.now().toString(36);
+  await createBlankProject(tauriPage, `Research switch ${run}`);
+  await openRailTab(tauriPage, "Research workspace");
+  const panel = tauriPage.getByTestId("research-workspace-panel");
+  await expect(panel).toBeVisible({ timeout: 20_000 });
+  await expect(panel.getByTestId("research-tasks-off")).toBeVisible();
+  await expect(panel.getByText("New task", { exact: true })).toHaveCount(0);
+
+  await openSettings(tauriPage, "research");
+  const toggle = tauriPage.getByTestId("research-tasks-switch");
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await expect(tauriPage.getByTestId("research-tasks-warning")).toContainText("Highly unstable");
+  await expect(tauriPage.getByRole("combobox", { name: "Default time budget" })).toHaveCount(0);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+  await expect(tauriPage.getByRole("combobox", { name: "Default time budget" })).toBeVisible();
+  await tauriPage.click('[data-testid="settings-close"]');
+
+  await expect(panel.getByTestId("research-tasks-off")).toHaveCount(0);
+  await expect(panel.getByText("New task", { exact: true })).toBeVisible({ timeout: 20_000 });
+});
 
 async function activeProjectId(page: Page) {
   const projectId = await page.evaluate<string>(

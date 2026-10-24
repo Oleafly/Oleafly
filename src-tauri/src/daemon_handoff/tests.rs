@@ -561,6 +561,17 @@ async fn with_background_tasks_off_nothing_starts_and_tasks_wait_for_the_app() {
     );
 }
 
+#[test]
+fn the_helper_takes_work_only_when_background_and_research_tasks_are_both_on() {
+    let mut config = crate::config::AppConfig::default();
+    assert!(config.research_background_enabled && !config.research_tasks_enabled);
+    assert!(!background_allowed(&config));
+    config.research_tasks_enabled = true;
+    assert!(background_allowed(&config));
+    config.research_background_enabled = false;
+    assert!(!background_allowed(&config));
+}
+
 #[tokio::test]
 async fn a_second_shutdown_pass_starts_no_helper() {
     let fixture = Fixture::new();

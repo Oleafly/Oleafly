@@ -6,7 +6,9 @@
     "configError": "Assistant settings could not be loaded.",
     "tabTasks": "Tasks",
     "tabFolders": "Linked folders",
-    "noProject": "Open a project to link its research folders."
+    "noProject": "Open a project to link its research folders.",
+    "tasksOff": "Research tasks are experimental and turned off.",
+    "turnOn": "Turn on in Settings"
   },
   "roots": {
     "title": "Research folders",
@@ -405,6 +407,13 @@
     },
     "settings": {
       "title": "Research tasks",
+      "experimental": {
+        "label": "Turn on research tasks",
+        "badge": "Experimental",
+        "description": "An agent works on its own in a copy of the project, within a time budget, and leaves its changes for you to review.",
+        "warning": "Highly unstable. Runs can stall, fail or leave changes you have to sort out by hand, and they use your provider's quota the whole time. Turn this on at your own risk. Turning it off stops every running task.",
+        "saveFailed": "The research tasks switch could not be saved. Try again."
+      },
       "keepAwake": "Keep the computer awake while tasks run",
       "keepAwakeHint": "Your screen can still turn off.",
       "notifications": "Notify me when a task needs attention",

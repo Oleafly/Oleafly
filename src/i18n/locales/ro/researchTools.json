@@ -6,7 +6,9 @@
     "configError": "Setările asistentului nu au putut fi încărcate.",
     "tabTasks": "Sarcini",
     "tabFolders": "Foldere asociate",
-    "noProject": "Deschide un proiect ca să îi asociezi folderele de cercetare."
+    "noProject": "Deschide un proiect ca să îi asociezi folderele de cercetare.",
+    "tasksOff": "Sarcinile de cercetare sunt experimentale și dezactivate.",
+    "turnOn": "Activează în Setări"
   },
   "roots": {
     "title": "Foldere de cercetare",
@@ -409,6 +411,13 @@
     },
     "settings": {
       "title": "Sarcini de cercetare",
+      "experimental": {
+        "label": "Activează sarcinile de cercetare",
+        "badge": "Experimental",
+        "description": "Un agent lucrează singur într-o copie a proiectului, în limita unui buget de timp, și lasă modificările ca să le revizuiești tu.",
+        "warning": "Foarte instabil. Rulările se pot bloca, pot eșua sau pot lăsa modificări pe care trebuie să le rezolvi manual, iar în tot acest timp consumă cota furnizorului tău. Activează pe propriul risc. Dacă îl dezactivezi, se oprește fiecare sarcină aflată în rulare.",
+        "saveFailed": "Comutatorul pentru sarcinile de cercetare nu a putut fi salvat. Încearcă din nou."
+      },
       "keepAwake": "Ține computerul treaz cât rulează sarcinile",
       "keepAwakeHint": "Ecranul se poate stinge în continuare.",
       "notifications": "Anunță-mă când o sarcină are nevoie de atenție",

@@ -47,7 +47,7 @@ Tout ici est gratuit, y compris ce que d'autres éditeurs réservent à leurs of
 - La commande `oleafly` compile, vérifie et synchronise vos projets depuis n'importe quel terminal ou job de CI, avec les mêmes compilateurs et réglages que l'application.
 - La synchronisation cloud garde vos projets sur chaque ordinateur que vous utilisez, et vous pouvez continuer à écrire hors ligne.
 - Claude Code, Codex et 12 autres agents travaillent dans votre projet, ou connectez n'importe quel modèle, y compris les modèles locaux. L'IA est facultative, et chaque modification qu'elle apporte est un diff que vous pouvez examiner et annuler.
-- Les tâches de recherche mènent une revue de littérature, un audit des preuves ou une passe de révision dans une copie séparée du projet pendant que vous continuez à écrire, et vous choisissez les fichiers modifiés à conserver.
+- Les tâches de recherche mènent une revue de littérature, un audit des preuves ou une passe de révision dans une copie séparée du projet pendant que vous continuez à écrire, et vous choisissez les fichiers modifiés à conserver. Elles sont expérimentales et désactivées par défaut. Paramètres > Recherche permet de les activer.
 
 ## Écrivez ensemble, en direct
 

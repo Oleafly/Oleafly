@@ -6,7 +6,9 @@
     "configError": "Assistentens indstillinger kunne ikke indlæses.",
     "tabTasks": "Opgaver",
     "tabFolders": "Tilknyttede mapper",
-    "noProject": "Åbn et projekt for at tilknytte dets forskningsmapper."
+    "noProject": "Åbn et projekt for at tilknytte dets forskningsmapper.",
+    "tasksOff": "Forskningsopgaver er eksperimentelle og slået fra.",
+    "turnOn": "Slå til under Indstillinger"
   },
   "roots": {
     "title": "Forskningsmapper",
@@ -405,6 +407,13 @@
     },
     "settings": {
       "title": "Forskningsopgaver",
+      "experimental": {
+        "label": "Slå forskningsopgaver til",
+        "badge": "Eksperimentel",
+        "description": "En agent arbejder på egen hånd i en kopi af projektet inden for et tidsbudget og efterlader sine ændringer, så du kan gennemgå dem.",
+        "warning": "Meget ustabilt. Kørsler kan gå i stå, mislykkes eller efterlade ændringer, som du selv må rydde op i manuelt, og de bruger hele tiden din udbyders kvote. Slå det til på eget ansvar. Når du slår det fra, stopper alle kørende opgaver.",
+        "saveFailed": "Til/fra-valget for forskningsopgaver kunne ikke gemmes. Prøv igen."
+      },
       "keepAwake": "Hold computeren vågen, mens opgaver kører",
       "keepAwakeHint": "Skærmen kan stadig slukke.",
       "notifications": "Giv mig besked, når en opgave kræver opmærksomhed",

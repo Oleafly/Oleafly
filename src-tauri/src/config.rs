@@ -222,6 +222,11 @@ pub struct AppConfig {
     /// Names of MCP servers research tasks may use (each call is approved).
     #[serde(default)]
     pub research_task_mcp_servers: Vec<String>,
+    // 0.4.8: research tasks are experimental and off until the user turns
+    // them on in Settings, Research. Changed only by
+    // `research_tasks_set_enabled`, which also tells the queue.
+    #[serde(default)]
+    pub research_tasks_enabled: bool,
     // 0.4.8 L: background tasks. Changed only through their own commands
     // (`background_tasks_set_enabled`, `background_helper_set_login_item`).
     /// Tasks marked to keep running move to the background helper when
@@ -299,6 +304,7 @@ impl Default for AppConfig {
             research_command_network: false,
             research_time_budget_minutes: default_research_minutes(),
             research_task_mcp_servers: Vec::new(),
+            research_tasks_enabled: false,
             // 0.4.8 L:
             research_background_enabled: true,
             research_background_at_login: false,
@@ -1122,6 +1128,8 @@ fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     config.live_collaboration = stored.live_collaboration;
     // 0.4.8 I: only cua_driver_settings_set changes what agents may control.
     config.cua_driver = stored.cua_driver;
+    // 0.4.8: only research_tasks_set_enabled turns research tasks on or off.
+    config.research_tasks_enabled = stored.research_tasks_enabled;
     // 0.4.8 L: only the background commands change these.
     config.research_background_enabled = stored.research_background_enabled;
     config.research_background_at_login = stored.research_background_at_login;
@@ -1188,6 +1196,36 @@ mod tests {
             ),
             (true, 120)
         );
+    }
+
+    // 0.4.8: research tasks are experimental and start off for everyone.
+    #[test]
+    fn research_tasks_start_off_and_only_their_own_command_turns_them_on() {
+        let config: AppConfig = serde_json::from_str("{}").unwrap();
+        assert!(!config.research_tasks_enabled);
+        assert!(!AppConfig::default().research_tasks_enabled);
+
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        write_config(&AppConfig::default()).unwrap();
+        // A whole-config save from a settings view that loaded before the
+        // switch was flipped must not flip it back.
+        let mut incoming = get_config_blocking().unwrap();
+        incoming.research_tasks_enabled = true;
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
+        assert!(!read_config().unwrap().research_tasks_enabled);
+        update_config(|config| {
+            config.research_tasks_enabled = true;
+            Ok(())
+        })
+        .unwrap();
+        let mut incoming = get_config_blocking().unwrap();
+        incoming.research_tasks_enabled = false;
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
+        assert!(read_config().unwrap().research_tasks_enabled);
+        std::fs::remove_dir_all(dir).ok();
     }
 
     // 0.4.8 L:

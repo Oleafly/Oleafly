@@ -3,6 +3,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// 0.4.8: research tasks are experimental; the tasks tab shows only while they are on.
+vi.mock("@/store/research-tasks-flag", () => ({ useResearchTasksEnabled: () => true }));
+
 vi.mock("@/components/ai/provider-config", () => ({
   knownProviderConfig: null,
   loadProviderConfig: vi.fn(async () => null),

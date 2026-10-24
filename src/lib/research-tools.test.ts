@@ -22,10 +22,13 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
   listResearchTasks: mocks.listResearchTasks,
 }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => ({ projectId: files.projectId }) } }));
+// 0.4.8: research tasks are experimental; the task tools exist only while they are on.
+const flag = vi.hoisted(() => ({ enabled: true }));
+vi.mock("@/store/research-tasks-flag", () => ({ researchTasksEnabled: () => flag.enabled }));
 
 import { defaultBrief, normalizeTask, type ResearchTask } from "@/lib/research-tasks";
 import { defaultModel } from "@/lib/ai-providers";
-import { builtinTaskAgent, createResearchAiTools, createResearchTaskAiTools, defaultGoal } from "./research-tools";
+import { builtinTaskAgent, createResearchAiTools, createResearchTaskAiTools, defaultGoal, TASKS_OFF } from "./research-tools";
 
 function task(id: string, overrides: Partial<ResearchTask> = {}): ResearchTask {
   return normalizeTask({
@@ -47,6 +50,7 @@ function changed(path: string) {
 beforeEach(() => {
   for (const f of Object.values(mocks)) f.mockReset();
   files.projectId = "paper";
+  flag.enabled = true;
 });
 
 describe("app-level research tools wiring", () => {
@@ -119,6 +123,21 @@ describe("app-level research tools wiring", () => {
       "verify_citation",
     ]);
     expect(Object.keys(createResearchTaskAiTools()).sort()).toEqual(["research_task_create", "research_task_status"]);
+  });
+
+  it("offers no task tools while research tasks are off, and refuses a task from tools built earlier", async () => {
+    const built = createResearchAiTools();
+    flag.enabled = false;
+    expect(Object.keys(createResearchAiTools()).sort()).toEqual([
+      "literature_search",
+      "project_library_search",
+      "verify_citation",
+    ]);
+    expect(createResearchTaskAiTools()).toEqual({});
+
+    const res = await built.research_task_create.execute({ title: "Survey", prompt: "Find papers" });
+    expect(res).toEqual({ error: TASKS_OFF });
+    expect(mocks.createResearchTask).not.toHaveBeenCalled();
   });
 });
 

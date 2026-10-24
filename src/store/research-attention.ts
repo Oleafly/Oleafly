@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 import { useFilesStore } from "@/store/files";
+import { useResearchTasksEnabled } from "@/store/research-tasks-flag";
 
 interface ResearchAttentionState {
   /** Tasks needing the user per project: a result, a plan or a request. */
@@ -34,11 +35,13 @@ export function startResearchAttention(): Promise<void> {
   return started;
 }
 
-/** How many research tasks of the open project need the user. */
+/** How many research tasks of the open project need the user; none while tasks are off. */
 export function useResearchAttentionBadge(): number {
+  const enabled = useResearchTasksEnabled();
   useEffect(() => {
-    void startResearchAttention();
-  }, []);
+    if (enabled) void startResearchAttention();
+  }, [enabled]);
   const projectId = useFilesStore((state) => state.projectId);
-  return useResearchAttentionStore((state) => (projectId ? (state.byProject[projectId] ?? 0) : 0));
+  const count = useResearchAttentionStore((state) => (projectId ? (state.byProject[projectId] ?? 0) : 0));
+  return enabled ? count : 0;
 }

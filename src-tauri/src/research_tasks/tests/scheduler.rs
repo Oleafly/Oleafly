@@ -163,6 +163,61 @@ async fn stop(state: &ResearchTaskState) {
         .expect("the scheduler did not finish shutdown");
 }
 
+// 0.4.8: research tasks are experimental and off until the user turns them on.
+#[tokio::test]
+async fn the_switch_refuses_new_work_while_off_and_stops_running_work_when_turned_off() {
+    let data = DataRoot::new();
+    data.project("paper");
+    crate::config::write_config(&crate::config::AppConfig::default()).unwrap();
+    let state = data.state(1);
+    let (runtime, mut starts) = ControlledRuntime::new();
+    state.register_runtime("fixture", runtime).unwrap();
+    state.set_enabled(false);
+    assert_eq!(ensure_enabled(&state).unwrap_err(), TASKS_OFF);
+    let store = state.store().unwrap();
+    let task = requested(&store, draft("paper", "Waits for the switch"));
+    state.launch_ready().await.unwrap();
+    assert!(starts.try_recv().is_err());
+
+    set_enabled(&state, true).await.unwrap();
+    assert!(crate::config::read_config().unwrap().research_tasks_enabled);
+    assert!(ensure_enabled(&state).is_ok());
+    let run = next_run(&mut starts).await;
+    assert_eq!(run.context.task_id, task.id);
+
+    // Turning tasks off cancels the run; the fixture runtime ends its run
+    // once it has been asked to stop, as a real one does.
+    let turning_off = {
+        let state = state.clone();
+        tokio::spawn(async move { set_enabled(&state, false).await })
+    };
+    let mut asked = false;
+    for _ in 0..500 {
+        if store.require(&task.id).unwrap().cancel_requested {
+            asked = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert!(
+        asked,
+        "turning tasks off did not ask the running task to stop"
+    );
+    run.complete.send(Err("stopped".into())).unwrap();
+    tokio::time::timeout(Duration::from_secs(5), turning_off)
+        .await
+        .expect("turning tasks off did not finish")
+        .unwrap()
+        .unwrap();
+    assert!(!crate::config::read_config().unwrap().research_tasks_enabled);
+    assert_eq!(
+        store.require(&task.id).unwrap().status,
+        ResearchTaskStatus::Cancelled
+    );
+    assert_eq!(ensure_enabled(&state).unwrap_err(), TASKS_OFF);
+    stop(&state).await;
+}
+
 #[test]
 fn nonblocking_read_admission_preserves_shared_access_and_restore_recovery() {
     let data = DataRoot::new();

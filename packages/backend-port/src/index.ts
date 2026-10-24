@@ -860,6 +860,10 @@ export interface AppConfig {
     research_command_network?: boolean;
     research_time_budget_minutes?: number;
     research_task_mcp_servers?: string[];
+    /** 0.4.8: research tasks are experimental and off until the user turns
+     * them on. Absent = off. Only `research_tasks_set_enabled` changes it;
+     * `set_config` keeps the stored value. */
+    research_tasks_enabled?: boolean;
     /** 0.4.8 L: tasks marked to keep running move to the background helper
      * when Oleafly quits. Absent = on. `set_config` keeps the stored value;
      * `background_tasks_set_enabled` changes it. */

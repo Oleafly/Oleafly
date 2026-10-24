@@ -561,6 +561,7 @@ pub fn run() {
             typst_query::typst_document_insights,
             typst_slide_notes::typst_slide_notes,
             arxiv_import::extract_arxiv_source,
+            research_tasks::research_tasks_set_enabled,
             research_tasks::research_task_list,
             research_tasks::research_task_create,
             research_tasks::research_task_edit,

@@ -247,6 +247,9 @@ pub(crate) struct ResearchTaskStateInner {
     stopping: AtomicBool,
     /// Set while the host recovers before queued work may start.
     launch_hold: AtomicBool,
+    /// Cleared when the host has research tasks turned off: queued work
+    /// stays queued until it is turned on again.
+    enabled: AtomicBool,
     pub(crate) active: Mutex<HashMap<String, ActiveTask>>,
     pub(crate) runtimes: Mutex<HashMap<String, Arc<dyn TaskRuntimeAdapter>>>,
     host: Mutex<Option<Arc<dyn ResearchHost>>>,
@@ -355,6 +358,7 @@ impl ResearchTaskState {
                 scheduling: tokio::sync::Mutex::new(()),
                 stopping: AtomicBool::new(false),
                 launch_hold: AtomicBool::new(false),
+                enabled: AtomicBool::new(true),
                 active: Mutex::new(HashMap::new()),
                 runtimes: Mutex::new(HashMap::new()),
                 host: Mutex::new(None),
@@ -883,6 +887,7 @@ impl ResearchTaskState {
     pub async fn launch_ready(&self) -> Result<(), String> {
         if self.inner.stopping.load(Ordering::Acquire)
             || self.inner.launch_hold.load(Ordering::Acquire)
+            || !self.inner.enabled.load(Ordering::Acquire)
         {
             return Ok(());
         }
@@ -1030,6 +1035,23 @@ impl ResearchTaskState {
 
     pub fn release_launches(&self) {
         self.inner.launch_hold.store(false, Ordering::Release);
+    }
+
+    /// Whether the host has research tasks turned on. Off, queued work
+    /// stays queued (a scheduled start included) until it is turned on.
+    pub fn enabled(&self) -> bool {
+        self.inner.enabled.load(Ordering::Acquire)
+    }
+
+    /// Turns research tasks on or off for the queue. Turning them on starts
+    /// nothing by itself; call [`Self::launch_ready`] after it.
+    pub fn set_enabled(&self, enabled: bool) {
+        self.inner.enabled.store(enabled, Ordering::Release);
+    }
+
+    /// The ids of the tasks with a running generation here.
+    pub fn active_task_ids(&self) -> Vec<String> {
+        lock(&self.inner.active).keys().cloned().collect()
     }
 
     /// Ends the running generations of `ids` so their tasks can move to

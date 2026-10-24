@@ -690,6 +690,13 @@ pub(crate) async fn hand_off(
     summary
 }
 
+/// Whether work may move to the background helper at exit: background
+/// tasks are on, and research tasks themselves are on (0.4.8: experimental,
+/// off by default; off, nothing runs anywhere once the app closes).
+pub(crate) fn background_allowed(config: &crate::config::AppConfig) -> bool {
+    config.research_background_enabled && config.research_tasks_enabled
+}
+
 /// [`hand_off`] with the app's grants and helper, at exit.
 pub(crate) async fn hand_off_on_exit<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
@@ -710,7 +717,7 @@ pub(crate) async fn hand_off_on_exit<R: tauri::Runtime>(
         let tasks = tasks.clone();
         tauri::async_runtime::spawn_blocking(move || {
             let enabled = crate::config::read_config()
-                .map(|config| config.research_background_enabled)
+                .map(|config| background_allowed(&config))
                 .unwrap_or(true);
             let has_work = tasks
                 .store()

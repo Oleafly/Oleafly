@@ -6,7 +6,9 @@
     "configError": "Les paramètres de l'assistant n'ont pas pu être chargés.",
     "tabTasks": "Tâches",
     "tabFolders": "Dossiers liés",
-    "noProject": "Ouvrez un projet pour lier ses dossiers de recherche."
+    "noProject": "Ouvrez un projet pour lier ses dossiers de recherche.",
+    "tasksOff": "Les tâches de recherche sont expérimentales et désactivées.",
+    "turnOn": "Activer dans les Paramètres"
   },
   "roots": {
     "title": "Dossiers de recherche",
@@ -409,6 +411,13 @@
     },
     "settings": {
       "title": "Tâches de recherche",
+      "experimental": {
+        "label": "Activer les tâches de recherche",
+        "badge": "Expérimental",
+        "description": "Un agent travaille seul dans une copie du projet, dans la limite d'un budget de temps, puis vous laisse relire ses modifications.",
+        "warning": "Très instable. Les exécutions peuvent se bloquer, échouer ou laisser des modifications que vous devrez régler à la main, et elles consomment en continu le quota de votre fournisseur d'IA. Activez cette option à vos risques et périls. La désactiver arrête toutes les tâches en cours.",
+        "saveFailed": "Le réglage des tâches de recherche n'a pas pu être enregistré. Réessayez."
+      },
       "keepAwake": "Empêcher la mise en veille de l'ordinateur pendant les tâches",
       "keepAwakeHint": "L'écran peut quand même s'éteindre.",
       "notifications": "Me prévenir quand une tâche demande mon attention",

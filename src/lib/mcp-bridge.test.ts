@@ -3,6 +3,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 
+// 0.4.8: research tasks are experimental; the bridge offers their tools only while they are on.
+const flag = vi.hoisted(() => ({ enabled: true }));
+vi.mock("@/store/research-tasks-flag", () => ({
+  researchTasksEnabled: () => flag.enabled,
+  primeResearchTasksFlag: () => {},
+  useResearchTasksFlagStore: { subscribe: () => () => {}, getState: () => ({ enabled: flag.enabled }) },
+}));
+
 // The bridge imports the app tool registry, which pulls stores + tauri; mock
 // the heavy edges the same way src/lib/ai-tools.test.ts does.
 const mocks = vi.hoisted(() => ({
@@ -341,9 +349,19 @@ describe("mcp tool registry", () => {
     expect(ro.compile).toBeDefined();
   });
 
-  it("is exposed through the MCP bridge and blocked in read-only mode", async () => {
+  it("is exposed through the MCP bridge while research tasks are on, and blocked in read-only mode", async () => {
     expect(registry.research_task_create).toBeDefined();
     expect(registry.research_task_status).toBeDefined();
+    // 0.4.8: research tasks are experimental and off by default; outside agents get no task tools then.
+    flag.enabled = false;
+    try {
+      const off = buildMcpToolRegistry({ confirm: async () => true, readOnly: false, onImage: () => {} });
+      expect(off.research_task_create).toBeUndefined();
+      expect(off.research_task_status).toBeUndefined();
+      expect(off.read_file).toBeDefined();
+    } finally {
+      flag.enabled = true;
+    }
     const ro = buildMcpToolRegistry({ confirm: async () => true, readOnly: true, onImage: () => {} });
     expect(ro.research_task_create).toBeUndefined();
     expect(ro.research_task_status).toBeDefined();

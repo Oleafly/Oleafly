@@ -6,7 +6,9 @@
     "configError": "Innstillingene for assistenten kunne ikke lastes.",
     "tabTasks": "Oppgaver",
     "tabFolders": "Lenkede mapper",
-    "noProject": "Åpne et prosjekt for å lenke forskningsmappene til det."
+    "noProject": "Åpne et prosjekt for å lenke forskningsmappene til det.",
+    "tasksOff": "Forskningsoppgaver er eksperimentelle og slått av.",
+    "turnOn": "Slå på i Innstillinger"
   },
   "roots": {
     "title": "Forskningsmapper",
@@ -405,6 +407,13 @@
     },
     "settings": {
       "title": "Forskningsoppgaver",
+      "experimental": {
+        "label": "Slå på forskningsoppgaver",
+        "badge": "Eksperimentell",
+        "description": "En agent jobber på egen hånd i en kopi av prosjektet, innenfor et tidsbudsjett, og lar endringene ligge klare til du kan gå gjennom dem.",
+        "warning": "Svært ustabilt. Kjøringer kan stoppe opp, mislykkes eller etterlate endringer du må rydde opp i for hånd, og de bruker kvoten hos leverandøren din hele tiden. Slå dette på for egen risiko. Når du slår det av, stoppes alle oppgaver som kjører.",
+        "saveFailed": "Bryteren for forskningsoppgaver kunne ikke lagres. Prøv igjen."
+      },
       "keepAwake": "Hold maskinen våken mens oppgaver kjører",
       "keepAwakeHint": "Skjermen kan fortsatt slå seg av.",
       "notifications": "Varsle meg når en oppgave trenger oppfølging",

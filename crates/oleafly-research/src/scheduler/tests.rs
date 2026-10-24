@@ -2604,6 +2604,48 @@ async fn scheduled_tasks_start_on_time() {
 }
 
 #[tokio::test]
+async fn with_research_tasks_off_queued_and_scheduled_work_waits_until_they_are_on() {
+    let data = DataRoot::new();
+    data.project("paper");
+    let state = data.state(1);
+    let (runtime, mut starts) = ControlledRuntime::new();
+    state.register_runtime("fixture", runtime).unwrap();
+    let store = state.store().unwrap();
+    state.set_enabled(false);
+    assert!(!state.enabled());
+    let queued = requested(&store, draft("paper", "Now"));
+    let due = requested(
+        &store,
+        ResearchTaskDraft {
+            run_after: Some(crate::model::now_ms() + 50),
+            ..draft("paper", "Soon")
+        },
+    );
+    state.launch_ready().await.unwrap();
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(
+        starts.try_recv().is_err(),
+        "nothing starts while tasks are off"
+    );
+    for id in [&queued.id, &due.id] {
+        assert_eq!(
+            store.require(id).unwrap().status,
+            ResearchTaskStatus::Queued
+        );
+    }
+    assert!(state.active_task_ids().is_empty());
+
+    state.set_enabled(true);
+    state.launch_ready().await.unwrap();
+    let run = next_run(&mut starts).await;
+    assert_eq!(state.active_task_ids(), vec![run.context.task_id.clone()]);
+    finish_run(&state, run, Ok(outcome("ran once allowed"))).await;
+    let run = next_run(&mut starts).await;
+    finish_run(&state, run, Ok(outcome("ran once allowed"))).await;
+    stop(&state).await;
+}
+
+#[tokio::test]
 async fn a_brief_whose_compute_target_was_removed_is_refused() {
     let data = DataRoot::new();
     data.project("paper");

@@ -27,6 +27,9 @@ async function createProject(page: Page, run: string) {
     `window.__aiConnect?.("ollama", ${scriptValue(server.url)}, "llama3.2") ?? false`,
   );
   expect(connected).toBe(true);
+  // 0.4.8: research tasks are experimental and off by default.
+  const enabled = await page.evaluate<boolean>(`window.__researchTasksEnable?.() ?? false`);
+  expect(enabled).toBe(true);
   const projectId = await page.evaluate<string>(
     `document.querySelector('[data-e2e-project-id]')?.getAttribute('data-e2e-project-id') ?? ''`,
   );

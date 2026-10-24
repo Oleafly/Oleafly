@@ -23,6 +23,10 @@ vi.mock("@/lib/research-tasks", () => ({
   watchResearchTask: vi.fn(async () => {}),
 }));
 
+// 0.4.8: research tasks are experimental; the section shows only while they are on.
+const flag = vi.hoisted(() => ({ enabled: true }));
+vi.mock("@/store/research-tasks-flag", () => ({ useResearchTasksEnabled: () => flag.enabled }));
+
 vi.mock("@/store/files", () => {
   let state: { projectId: string | null } = { projectId: null };
   const store = (selector: (value: typeof state) => unknown) => selector(state);
@@ -161,6 +165,17 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe("TaskOutputsSection", () => {
+  it("stays out of the tree while research tasks are off, whatever the tasks hold", () => {
+    flag.enabled = false;
+    try {
+      seed([task("review")]);
+      render(<TaskOutputsSection />);
+      expect(page().queryByTestId("task-outputs-section")).not.toBeInTheDocument();
+    } finally {
+      flag.enabled = true;
+    }
+  });
+
   it("stays out of the tree when no task has reviewable output", () => {
     seed([
       { ...task("empty"), result: null },

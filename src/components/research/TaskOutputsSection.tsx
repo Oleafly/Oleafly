@@ -25,6 +25,7 @@ import {
   useResearchTasksStore,
 } from "@/store/research-tasks";
 import { useFilesStore } from "@/store/files";
+import { useResearchTasksEnabled } from "@/store/research-tasks-flag";
 import { useSettingsStore } from "@/store/settings";
 import { readSidebarView } from "@/store/sidebar-view-state";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
@@ -70,7 +71,13 @@ function awaitsAttention(task: ResearchTask): boolean {
   return task.status === "running" || task.status === "awaiting_review" || task.status === "failed";
 }
 
+/** The Files rail's task outputs; nothing while research tasks are off (0.4.8: experimental). */
 export function TaskOutputsSection() {
+  const enabled = useResearchTasksEnabled();
+  return enabled ? <TaskOutputs /> : null;
+}
+
+function TaskOutputs() {
   const { t } = useTranslation(["common", "researchTools"]);
   const projectId = useFilesStore((state) => state.projectId);
   const tasks = useResearchTasksStore((state) => state.tasks);

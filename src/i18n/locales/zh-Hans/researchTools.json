@@ -6,7 +6,9 @@
     "configError": "无法加载助手设置。",
     "tabTasks": "任务",
     "tabFolders": "已链接文件夹",
-    "noProject": "打开项目后即可链接其研究文件夹。"
+    "noProject": "打开项目后即可链接其研究文件夹。",
+    "tasksOff": "研究任务为实验性功能，目前已关闭。",
+    "turnOn": "在设置中开启"
   },
   "roots": {
     "title": "研究文件夹",
@@ -401,7 +403,14 @@
     },
     "settings": {
       "title": "研究任务",
-      "keepAwake": "任务运行时保持计算机唤醒",
+      "experimental": {
+        "label": "开启研究任务",
+        "badge": "实验性",
+        "description": "代理会在项目的副本中自行工作，受时间预算限制，并把更改留给你审阅。",
+        "warning": "极不稳定。运行可能卡住、失败，或留下需要你手动处理的更改，而且全程都会占用你的提供商配额。开启时风险自负。关闭会停止所有正在运行的任务。",
+        "saveFailed": "无法保存研究任务开关。请重试。"
+      },
+      "keepAwake":"任务运行时保持计算机唤醒",
       "keepAwakeHint": "屏幕仍可能关闭。",
       "notifications": "任务需要处理时通知我",
       "notificationsHint": "在 Oleafly 处于后台时显示。",

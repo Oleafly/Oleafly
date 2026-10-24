@@ -17,8 +17,12 @@ import {
   type ResearchTask,
 } from "@/lib/research-tasks";
 import { useFilesStore } from "@/store/files";
+import { researchTasksEnabled } from "@/store/research-tasks-flag";
 
 const MAX_SUMMARY = 2_000;
+/** What an agent reads when it asks for a task while the switch is off (0.4.8: experimental). */
+export const TASKS_OFF =
+  "Research tasks are turned off. They are experimental in this version; the user can turn them on under Settings, Research, at their own risk.";
 /** The longest goal the composer takes; the task store refuses one over 4,000 characters. */
 const MAX_DEFAULT_GOAL = 2_000;
 
@@ -84,6 +88,7 @@ const HOST: ResearchToolsHost & ResearchTaskToolsHost = {
   verifyCitation,
   retrieveProjectChunks,
   createResearchTask: async (input) => {
+    if (!researchTasksEnabled()) throw new Error(TASKS_OFF);
     const projectId = openProject();
     const config = await getConfig();
     const agent = await builtinTaskAgent(config);
@@ -121,11 +126,12 @@ const HOST: ResearchToolsHost & ResearchTaskToolsHost = {
   },
 };
 
+/** The literature tools, and the task tools while research tasks are on. */
 export function createResearchAiTools(opts?: { confirm?: ConfirmFn }) {
-  return { ...createResearchTools(HOST, opts), ...createResearchTaskTools(HOST, opts) };
+  return { ...createResearchTools(HOST, opts), ...createResearchTaskAiTools(opts) };
 }
 
-/** The research task tools alone (the app's MCP server offers these). */
+/** The research task tools alone (the app's MCP server offers these); none while tasks are off. */
 export function createResearchTaskAiTools(opts?: { confirm?: ConfirmFn }) {
-  return createResearchTaskTools(HOST, opts);
+  return researchTasksEnabled() ? createResearchTaskTools(HOST, opts) : {};
 }

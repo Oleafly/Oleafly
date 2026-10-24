@@ -37,6 +37,7 @@ import {
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { createResearchTaskAiTools } from "@/lib/research-tools";
+import { primeResearchTasksFlag, useResearchTasksFlagStore } from "@/store/research-tasks-flag";
 import { useCompileStore } from "@/store/compile";
 import { supportsFigureTools } from "@/lib/document-engine";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
@@ -634,6 +635,8 @@ function bridgeSessionIsCurrent(generation: number, session: number | null): ses
 async function buildRegistry(generation: number, session: number | null): Promise<void> {
   if (!bridgeSessionIsCurrent(generation, session)) return;
   const cfg = await getConfig();
+  // 0.4.8: the task tools follow the research tasks switch as stored.
+  primeResearchTasksFlag(cfg);
   if (!bridgeSessionIsCurrent(generation, session)) return;
   const nextRegistry = buildMcpToolRegistry({
     confirm: confirmForPolicy(cfg.mcp_approval_policy, confirm),
@@ -668,6 +671,14 @@ export async function refreshMcpRegistry(): Promise<void> {
   revokeMcpBridgeCalls();
   await rebuildRegistry();
 }
+
+// 0.4.8: the task tools come and go with the research tasks switch. A
+// session that is already serving tools registers the new list; one that
+// has not started yet builds the right list when it does.
+useResearchTasksFlagStore.subscribe((state, previous) => {
+  if (state.enabled === previous.enabled || rendererSession === null) return;
+  void rebuildRegistry().catch(() => {});
+});
 
 
 // The MCP client gets the English sentence, like every other tool error it

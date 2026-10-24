@@ -25,6 +25,10 @@ vi.mock("@/lib/research-tasks", () => ({
   watchResearchTask: vi.fn(async () => {}),
 }));
 
+// 0.4.8: research tasks are experimental; the section shows only while they are on.
+const flag = vi.hoisted(() => ({ enabled: true }));
+vi.mock("@/store/research-tasks-flag", () => ({ useResearchTasksEnabled: () => flag.enabled }));
+
 vi.mock("@/store/files", () => {
   let state: { projectId: string | null } = { projectId: null };
   const store = (selector: (value: typeof state) => unknown) => selector(state);

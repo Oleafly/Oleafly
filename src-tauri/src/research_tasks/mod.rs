@@ -48,10 +48,71 @@ pub fn new_state() -> ResearchTaskState {
 /// must not start a task over a project an interrupted apply left half done.
 pub fn attach(state: &ResearchTaskState, app: &tauri::AppHandle) {
     state.hold_launches();
+    // 0.4.8: experimental and off until the user turns tasks on; a config
+    // that cannot be read keeps them off.
+    state.set_enabled(
+        crate::config::read_config()
+            .map(|config| config.research_tasks_enabled)
+            .unwrap_or(false),
+    );
     state.attach(
         Arc::new(host::AppResearchHost::new(app.clone())),
         tauri::async_runtime::handle().inner().clone(),
     );
+}
+
+/// What a caller gets while research tasks are off (the CLI, an agent over
+/// MCP, or a window that loaded before the switch was flipped).
+pub(crate) const TASKS_OFF: &str = "Research tasks are turned off. They are experimental in this version: turn them on under Settings, Research, at your own risk.";
+
+fn ensure_enabled(state: &ResearchTaskState) -> Result<(), String> {
+    if state.enabled() {
+        Ok(())
+    } else {
+        Err(TASKS_OFF.to_string())
+    }
+}
+
+/// Turns research tasks on or off: the setting, the queue, and the work
+/// under way. Turning them on starts queued work; turning them off cancels
+/// every running task, so nothing keeps working behind a hidden panel.
+pub(crate) async fn set_enabled(state: &ResearchTaskState, enabled: bool) -> Result<(), String> {
+    let stored = tauri::async_runtime::spawn_blocking(move || {
+        crate::config::update_config(|config| {
+            config.research_tasks_enabled = enabled;
+            Ok(())
+        })
+    })
+    .await
+    .map_err(|error| format!("configuration worker failed: {error}"))?;
+    stored?;
+    state.set_enabled(enabled);
+    if enabled {
+        state.launch_ready().await?;
+        return Ok(());
+    }
+    let mut failures = Vec::new();
+    for id in state.active_task_ids() {
+        if let Err(error) = state.cancel(id.clone()).await {
+            failures.push(format!("{id}: {error}"));
+        }
+    }
+    if failures.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "Research tasks are off, but some running tasks could not be stopped: {}",
+            failures.join("; ")
+        ))
+    }
+}
+
+#[tauri::command]
+pub async fn research_tasks_set_enabled(
+    state: tauri::State<'_, ResearchTaskState>,
+    enabled: bool,
+) -> Result<(), String> {
+    set_enabled(&state, enabled).await
 }
 
 /// Finish applies a previous run left half done, recover interrupted runs,
@@ -223,6 +284,7 @@ pub async fn research_task_create(
     state: tauri::State<'_, ResearchTaskState>,
     draft: ResearchTaskDraft,
 ) -> Result<ResearchTaskView, String> {
+    ensure_enabled(&state)?;
     blocking_task_command(&state, move |state| {
         state.create(draft).map(|task| (&task).into())
     })
@@ -246,6 +308,7 @@ pub async fn research_task_start(
     state: tauri::State<'_, ResearchTaskState>,
     task_id: String,
 ) -> Result<ResearchTaskView, String> {
+    ensure_enabled(&state)?;
     let requested_id = task_id.clone();
     blocking_task_command(&state, move |state| state.request_start(&requested_id)).await?;
     state.launch_ready().await?;
@@ -270,6 +333,7 @@ pub async fn research_task_retry(
     task_id: String,
     mode: Option<RetryMode>,
 ) -> Result<ResearchTaskView, String> {
+    ensure_enabled(&state)?;
     blocking_task_command(&state, move |state| {
         state
             .retry(&task_id, mode.unwrap_or_default())
@@ -455,6 +519,7 @@ pub async fn research_task_approve_plan(
     task_id: String,
     edited_plan: Option<String>,
 ) -> Result<ResearchTaskView, String> {
+    ensure_enabled(&state)?;
     state
         .approve_plan(task_id, edited_plan)
         .await

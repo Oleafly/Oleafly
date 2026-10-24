@@ -6,7 +6,9 @@
     "configError": "Asistan ayarları yüklenemedi.",
     "tabTasks": "Görevler",
     "tabFolders": "Bağlı klasörler",
-    "noProject": "Araştırma klasörlerini bağlamak için bir proje açın."
+    "noProject": "Araştırma klasörlerini bağlamak için bir proje açın.",
+    "tasksOff": "Araştırma görevleri deneyseldir ve kapalıdır.",
+    "turnOn": "Ayarlar'dan aç"
   },
   "roots": {
     "title": "Araştırma klasörleri",
@@ -405,7 +407,14 @@
     },
     "settings": {
       "title": "Araştırma görevleri",
-      "keepAwake": "Görevler çalışırken bilgisayarı uyanık tut",
+      "experimental": {
+        "label": "Araştırma görevlerini aç",
+        "badge": "Deneysel",
+        "description": "Bir ajan, projenin bir kopyası üzerinde zaman bütçesi içinde kendi başına çalışır ve değişikliklerini sizin incelemeniz için bırakır.",
+        "warning": "Son derece kararsız. Çalıştırmalar takılabilir, başarısız olabilir veya elle ayıklamanız gereken değişiklikler bırakabilir ve bu süre boyunca sağlayıcınızın kotasını kullanır. Kendi sorumluluğunuzda açın. Kapatmak çalışan her görevi durdurur.",
+        "saveFailed": "Araştırma görevleri anahtarı kaydedilemedi. Yeniden deneyin."
+      },
+      "keepAwake":"Görevler çalışırken bilgisayarı uyanık tut",
       "keepAwakeHint": "Ekranınız yine de kapanabilir.",
       "notifications": "Bir görev ilgi beklediğinde bana bildir",
       "notificationsHint": "Oleafly arka plandayken gösterilir.",

@@ -336,10 +336,21 @@ function installAiConnectHook() {
   };
 }
 
+// 0.4.8: research tasks are experimental and off by default; the task specs
+// turn them on the way the Settings switch does.
+function installResearchTasksHook() {
+  (window as unknown as { __researchTasksEnable?: () => Promise<boolean> }).__researchTasksEnable = async () => {
+    const { setResearchTasksEnabled } = await import("@/store/research-tasks-flag");
+    await setResearchTasksEnabled(true);
+    return true;
+  };
+}
+
 export function installE2ePdfProbe() {
   if (!E2E_HOOKS) return;
   const target = window as unknown as E2eProbeWindow;
   installAiConnectHook();
+  installResearchTasksHook();
   target.__e2ePdfProbe = readCompiledPdfProbe;
   target.__e2ePdfText = async () => (await readCompiledPdfProbe()).text;
   target.__e2eHasProofreadingDiagnostic = (text) =>

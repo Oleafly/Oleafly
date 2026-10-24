@@ -50,6 +50,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without opening the app. The agent can always read; `--allow` adds writing,
   commands or network access. Changes go to a review folder first, and
   `oleafly agent apply` writes them into the project.
+- Research tasks are experimental in this release and off for everyone.
+  Settings > Research has the switch, with a warning next to it: runs can
+  stall, fail or leave changes you have to sort out by hand, so turn them on
+  at your own risk. While they are off, the Research tab shows only your
+  linked folders, Files has no Task outputs, the assistant and outside agents
+  get no task tools, nothing moves to the background helper, and turning
+  them off again stops every running task. The literature tools, the
+  assistant, the `oleafly` command and CLI agents do not depend on the
+  switch.
 - Research tasks that keep going after you quit. Mark a task Keep running
   when Oleafly is closed, and a small helper takes it over when you quit,
   experiment runs included. Approvals wait for you with a notification, and

@@ -19,6 +19,9 @@ const files = await vi.hoisted(async () => {
   return create<{ projectId: string | null }>(() => ({ projectId: null }));
 });
 vi.mock("@/store/files", () => ({ useFilesStore: files }));
+// 0.4.8: the badge shows nothing while research tasks (experimental) are off.
+const flag = vi.hoisted(() => ({ enabled: true }));
+vi.mock("@/store/research-tasks-flag", () => ({ useResearchTasksEnabled: () => flag.enabled }));
 
 import { useFilesStore } from "@/store/files";
 import { startResearchAttention, useResearchAttentionBadge, useResearchAttentionStore } from "./research-attention";
@@ -26,6 +29,18 @@ import { startResearchAttention, useResearchAttentionBadge, useResearchAttention
 describe("research attention badge", () => {
   beforeEach(() => {
     useResearchAttentionStore.setState({ byProject: {} });
+    flag.enabled = true;
+  });
+
+  it("shows nothing and listens for nothing while research tasks are off", async () => {
+    flag.enabled = false;
+    useFilesStore.setState({ projectId: "p1" });
+    useResearchAttentionStore.setState({ byProject: { p1: 2 } });
+    const calls = listenForResearchAttention.mock.calls.length;
+    const { result } = renderHook(() => useResearchAttentionBadge());
+    await act(async () => {});
+    expect(result.current).toBe(0);
+    expect(listenForResearchAttention).toHaveBeenCalledTimes(calls);
   });
 
   it("counts attention for the open project only", async () => {

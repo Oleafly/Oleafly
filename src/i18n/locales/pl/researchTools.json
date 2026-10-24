@@ -6,7 +6,9 @@
     "configError": "Nie udało się wczytać ustawień asystenta.",
     "tabTasks": "Zadania",
     "tabFolders": "Powiązane foldery",
-    "noProject": "Otwórz projekt, aby powiązać z nim foldery badawcze."
+    "noProject": "Otwórz projekt, aby powiązać z nim foldery badawcze.",
+    "tasksOff": "Zadania badawcze są eksperymentalne i wyłączone.",
+    "turnOn": "Włącz w Ustawieniach"
   },
   "roots": {
     "title": "Foldery badawcze",
@@ -413,6 +415,13 @@
     },
     "settings": {
       "title": "Zadania badawcze",
+      "experimental": {
+        "label": "Włącz zadania badawcze",
+        "badge": "Eksperymentalne",
+        "description": "Agent pracuje samodzielnie na kopii projektu, w ramach budżetu czasu, i zostawia swoje zmiany do przejrzenia.",
+        "warning": "Bardzo niestabilne. Uruchomienia mogą się zawiesić, zakończyć niepowodzeniem albo zostawić zmiany, które trzeba uporządkować ręcznie, a przez cały czas zużywają limit u Twojego dostawcy. Włącz to na własne ryzyko. Wyłączenie zatrzymuje wszystkie trwające zadania.",
+        "saveFailed": "Nie udało się zapisać przełącznika zadań badawczych. Spróbuj ponownie."
+      },
       "keepAwake": "Nie usypiaj komputera, gdy działają zadania",
       "keepAwakeHint": "Ekran nadal może się wyłączyć.",
       "notifications": "Powiadamiaj mnie, gdy zadanie wymaga uwagi",

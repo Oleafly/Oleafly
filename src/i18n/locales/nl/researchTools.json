@@ -6,7 +6,9 @@
     "configError": "De instellingen van de assistent konden niet worden geladen.",
     "tabTasks": "Taken",
     "tabFolders": "Gekoppelde mappen",
-    "noProject": "Open een project om de onderzoeksmappen ervan te koppelen."
+    "noProject": "Open een project om de onderzoeksmappen ervan te koppelen.",
+    "tasksOff": "Onderzoekstaken zijn experimenteel en staan uit.",
+    "turnOn": "Aanzetten in Instellingen"
   },
   "roots": {
     "title": "Onderzoeksmappen",
@@ -405,6 +407,13 @@
     },
     "settings": {
       "title": "Onderzoekstaken",
+      "experimental": {
+        "label": "Onderzoekstaken aanzetten",
+        "badge": "Experimenteel",
+        "description": "Een agent werkt zelfstandig in een kopie van het project, binnen een tijdbudget, en laat zijn wijzigingen voor jou klaarstaan om te beoordelen.",
+        "warning": "Zeer onstabiel. Runs kunnen vastlopen, mislukken of wijzigingen achterlaten die je met de hand moet opruimen, en ze gebruiken de hele tijd het quotum van je provider. Zet dit op eigen risico aan. Als je het uitzet, worden alle lopende taken gestopt.",
+        "saveFailed": "De schakelaar voor onderzoekstaken kon niet worden opgeslagen. Probeer het opnieuw."
+      },
       "keepAwake": "De computer wakker houden terwijl taken draaien",
       "keepAwakeHint": "Je scherm kan nog steeds uitgaan.",
       "notifications": "Een melding geven als een taak aandacht nodig heeft",

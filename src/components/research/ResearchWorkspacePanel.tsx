@@ -19,12 +19,15 @@ import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useAssistantRuntimeStore } from "@/store/assistant-runtime";
 import { useFilesStore } from "@/store/files";
 import { useResearchTasksStore } from "@/store/research-tasks";
+import { useResearchTasksEnabled } from "@/store/research-tasks-flag";
 import { useSettingsStore } from "@/store/settings";
 import { i18n } from "@/i18n";
 
 export function ResearchWorkspacePanel() {
   const { t } = useTranslation(["common", "researchTools"]);
   const projectId = useFilesStore((state) => state.projectId);
+  // 0.4.8: research tasks are experimental and off until turned on in Settings.
+  const tasksEnabled = useResearchTasksEnabled();
   const [tab, setTab] = useState<"tasks" | "folders">(
     () => readSidebarView(projectId, "researchWorkspace")?.tab ?? "tasks",
   );
@@ -112,24 +115,22 @@ export function ResearchWorkspacePanel() {
           <Settings2 className="size-3.5" />
         </Button>
       </SidebarPanelHeader>
-      {configError && <output className="block px-3 pt-2 text-xs text-destructive">{configError}</output>}
-      <Tabs
-        value={tab}
-        onValueChange={(next) => setTab(next === "folders" ? "folders" : "tasks")}
-        className="flex min-h-0 flex-1 flex-col"
-      >
-        <TabsList fill className="mx-3 mt-2 shrink-0">
-          <TabsTrigger value="tasks" data-tour="research-tasks" className="px-2">
-            <span className="truncate">{t(($) => $.researchTools.workspace.tabTasks)}</span>
-          </TabsTrigger>
-          <TabsTrigger value="folders" data-tour="research-folders" className="px-2">
-            <span className="truncate">{t(($) => $.researchTools.workspace.tabFolders)}</span>
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="tasks" className="min-h-0 flex-1 overflow-auto">
-          <ResearchTasksPanel projectId={projectId} agents={agents} onOpenSession={openSession} />
-        </TabsContent>
-        <TabsContent value="folders" ref={foldersRef} className="min-h-0 flex-1 overflow-auto">
+      {configError && tasksEnabled && (
+        <output className="block px-3 pt-2 text-xs text-destructive">{configError}</output>
+      )}
+      {!tasksEnabled && (
+        <div
+          className="mx-3 mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2 text-xs"
+          data-testid="research-tasks-off"
+        >
+          <span className="text-muted-foreground">{t(($) => $.researchTools.workspace.tasksOff)}</span>
+          <Button size="xs" variant="outline" onClick={openSettings}>
+            {t(($) => $.researchTools.workspace.turnOn)}
+          </Button>
+        </div>
+      )}
+      {!tasksEnabled && (
+        <div ref={foldersRef} data-tour="research-folders" className="min-h-0 flex-1 overflow-auto">
           {projectId ? (
             <ResearchRootsPanel key={projectId} projectId={projectId} />
           ) : (
@@ -137,8 +138,36 @@ export function ResearchWorkspacePanel() {
               {t(($) => $.researchTools.workspace.noProject)}
             </p>
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
+      {tasksEnabled && (
+        <Tabs
+          value={tab}
+          onValueChange={(next) => setTab(next === "folders" ? "folders" : "tasks")}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <TabsList fill className="mx-3 mt-2 shrink-0">
+            <TabsTrigger value="tasks" data-tour="research-tasks" className="px-2">
+              <span className="truncate">{t(($) => $.researchTools.workspace.tabTasks)}</span>
+            </TabsTrigger>
+            <TabsTrigger value="folders" data-tour="research-folders" className="px-2">
+              <span className="truncate">{t(($) => $.researchTools.workspace.tabFolders)}</span>
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="tasks" className="min-h-0 flex-1 overflow-auto">
+            <ResearchTasksPanel projectId={projectId} agents={agents} onOpenSession={openSession} />
+          </TabsContent>
+          <TabsContent value="folders" ref={foldersRef} className="min-h-0 flex-1 overflow-auto">
+            {projectId ? (
+              <ResearchRootsPanel key={projectId} projectId={projectId} />
+            ) : (
+              <p className="p-4 text-sm text-muted-foreground">
+                {t(($) => $.researchTools.workspace.noProject)}
+              </p>
+            )}
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }
