@@ -1240,13 +1240,16 @@ async fn install_lock(dir: &Path) -> Result<std::fs::File, String> {
     {
         return Err(format!("{} isn't a regular file", path.display()));
     }
-    let file = std::fs::OpenOptions::new()
+    let file = tokio::fs::OpenOptions::new()
         .read(true)
         .write(true)
         .create(true)
         .truncate(false)
         .open(&path)
-        .map_err(|e| e.to_string())?;
+        .await
+        .map_err(|e| e.to_string())?
+        .into_std()
+        .await;
     let deadline = Instant::now() + INSTALL_LOCK_WAIT;
     loop {
         match fs4::FileExt::try_lock(&file) {
