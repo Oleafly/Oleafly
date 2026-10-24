@@ -17,18 +17,24 @@ const THEME = {
   setPreference: (preference: ThemePreference) => requestThemePreference(preference),
 };
 
-const LOCAL_ONLY_EXPERIMENTS: ReadonlySet<string> = new Set(["webBrowser"]);
+// Settings each computer keeps for itself. The default LaTeX engine is one this
+// computer has: latexmk needs a TeX installation another computer may lack.
+const LOCAL_ONLY: ReadonlyArray<readonly [section: string, key: string]> = [
+  ["experimentation", "webBrowser"],
+  ["engine", "defaultLatexEngine"],
+];
 
 export function withoutLocalOnlySettings(document: Record<string, unknown>): Record<string, unknown> {
-  const experimentation = document.experimentation;
-  if (!isRecord(experimentation) || !Object.keys(experimentation).some((key) => LOCAL_ONLY_EXPERIMENTS.has(key))) {
-    return document;
+  let copy: Record<string, unknown> | null = null;
+  for (const [section, key] of LOCAL_ONLY) {
+    const group = (copy ?? document)[section];
+    if (!isRecord(group) || !(key in group)) continue;
+    copy ??= { ...document };
+    const kept = Object.fromEntries(Object.entries(group).filter(([name]) => name !== key));
+    if (Object.keys(kept).length > 0) copy[section] = kept;
+    else delete copy[section];
   }
-  const kept = Object.fromEntries(
-    Object.entries(experimentation).filter(([key]) => !LOCAL_ONLY_EXPERIMENTS.has(key)),
-  );
-  const copy = Object.fromEntries(Object.entries(document).filter(([key]) => key !== "experimentation"));
-  return Object.keys(kept).length > 0 ? { ...copy, experimentation: kept } : copy;
+  return copy ?? document;
 }
 
 export async function gatherCloudSettings(): Promise<Record<string, unknown>> {

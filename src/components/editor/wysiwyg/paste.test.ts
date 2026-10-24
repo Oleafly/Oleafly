@@ -184,6 +184,48 @@ describe("createVisualPasteHandlers", () => {
     expectNoNotice();
   });
 
+  it("links a note dropped from the Files panel relative to the open note", async () => {
+    const { useFilesStore } = await import("@/store/files");
+    useFilesStore.setState({ activePath: "notes/index.md" });
+    const editor = mount("<p>See it</p><p>Hello</p>");
+    const view = editor.view;
+    vi.spyOn(view, "posAtCoords").mockReturnValue({ pos: 5, inside: 0 });
+    const files = transfer({ "text/plain": "notes/a b.md", "application/x-oleafly-tree-path": "notes/a b.md" });
+    const event = { dataTransfer: files, clientX: 0, clientY: 0, preventDefault: vi.fn() } as unknown as DragEvent;
+    expect(handlers.handleDrop(view, event, null, false)).toBe(true);
+    expect(editor.storage.markdown.getMarkdown()).toBe("See [a b](<a b.md>)it\n\nHello");
+    const picture = transfer({ "text/plain": "img/map.png", "application/x-oleafly-tree-path": "img/map.png" });
+    expect(handlers.handleDrop(view, { ...event, dataTransfer: picture } as unknown as DragEvent, null, false)).toBe(true);
+    expect(editor.getJSON().content?.map((node) => node.type)).toContain("image");
+    useFilesStore.setState({ activePath: null });
+  });
+
+  it("pastes a link copied from the preview as a link to the file, named after it", async () => {
+    const { useFilesStore } = await import("@/store/files");
+    useFilesStore.setState({ activePath: "notes/index.md", mainDoc: "main.tex" });
+    const editor = mount("<p>See it</p>");
+    editor.commands.setTextSelection(5);
+    const copied = pasteEvent(transfer({ "text/plain": "tauri://localhost/notes/%D0%A1%D0%B2%20%D0%BE.md" }));
+    expect(handlers.handlePaste(editor.view, copied)).toBe(true);
+    expect(copied.preventDefault).toHaveBeenCalled();
+    expect(editor.storage.markdown.getMarkdown()).toBe("See [Св о](<Св о.md>)it");
+    editor.commands.setTextSelection({ from: 1, to: 4 });
+    expect(handlers.handlePaste(editor.view, pasteEvent(transfer({ "text/plain": "http://tauri.localhost/plan.md#Goals" })))).toBe(true);
+    expect(editor.storage.markdown.getMarkdown()).toBe("[See](../plan.md#Goals) [Св о](<Св о.md>)it");
+    expect(handlers.handlePaste(editor.view, pasteEvent(transfer({ "text/plain": "https://example.com/a.md" })))).toBe(false);
+    useFilesStore.setState({ activePath: null });
+  });
+
+  it("measures a pasted link in LaTeX from the main document", async () => {
+    const { useFilesStore } = await import("@/store/files");
+    useFilesStore.setState({ activePath: "chapters/one.tex", mainDoc: "main.tex" });
+    const editor = mount("<p>See it</p>");
+    editor.commands.setTextSelection(5);
+    expect(handlers.handlePaste(editor.view, pasteEvent(transfer({ "text/plain": "http://tauri.localhost/data/table.csv" })))).toBe(true);
+    expect(serializeLatexBody(editor.getJSON())).toContain(String.raw`\href{data/table.csv}{table}`);
+    useFilesStore.setState({ activePath: null });
+  });
+
   it("skips files the importer rejects", async () => {
     mocks.image = null;
     const editor = mount();

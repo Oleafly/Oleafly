@@ -10,6 +10,12 @@ const mocks = vi.hoisted(() => ({
   selectWordNearLine: vi.fn(),
   getCurrentLine: vi.fn(),
   gotoRect: vi.fn(),
+  pdfPageText: vi.fn(async () => null as unknown),
+  wordAtCursor: vi.fn(() => null as unknown),
+  pickForwardLine: vi.fn(() => null as unknown),
+  findWordOnPages: vi.fn(() => null as unknown),
+  linesFromAnchor: vi.fn(() => [] as unknown[]),
+  selectWordAt: vi.fn(() => false),
   getEditorView: vi.fn(),
   typstForward: vi.fn(),
   typstInverse: vi.fn(),
@@ -59,13 +65,18 @@ vi.mock("@/components/editor/cm/controller", () => ({
   selectWordNearLine: mocks.selectWordNearLine,
   getCurrentLine: mocks.getCurrentLine,
   getEditorView: mocks.getEditorView,
+  wordAtCursor: mocks.wordAtCursor,
+  pickForwardLine: mocks.pickForwardLine,
+  findWordOnPages: mocks.findWordOnPages,
+  linesFromAnchor: mocks.linesFromAnchor,
+  selectWordAt: mocks.selectWordAt,
 }));
 vi.mock("@/features/typst-sync", () => ({
   typstForward: mocks.typstForward,
   typstInverse: mocks.typstInverse,
   watchTypstSyncProject: mocks.watchTypstSyncProject,
 }));
-vi.mock("@/components/pdf/pdfController", () => ({ gotoRect: mocks.gotoRect }));
+vi.mock("@/components/pdf/pdfController", () => ({ gotoRect: mocks.gotoRect, pdfPageText: mocks.pdfPageText }));
 vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => ({ ...mocks.state, openFile: mocks.openFile }) },
 }));
@@ -115,6 +126,12 @@ beforeEach(() => {
     mocks[k].mockReset();
   mocks.openProjectLocation.mockClear();
   mocks.synctexForward.mockReset();
+  mocks.pdfPageText.mockReset().mockResolvedValue(null);
+  mocks.wordAtCursor.mockReset().mockReturnValue(null);
+  mocks.pickForwardLine.mockReset().mockReturnValue(null);
+  mocks.findWordOnPages.mockReset().mockReturnValue(null);
+  mocks.linesFromAnchor.mockReset().mockReturnValue([]);
+  mocks.selectWordAt.mockReset().mockReturnValue(false);
   mocks.typstForward.mockReset().mockResolvedValue(null);
   mocks.typstInverse.mockReset().mockResolvedValue(null);
   mocks.watchTypstSyncProject.mockReset();
@@ -172,7 +189,7 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
 
     await inverseFromClick(1, 10, 10, "Introduction");
 
-    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(3, "Introduction");
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(3, "Introduction", undefined);
     expect(mocks.gotoLine).not.toHaveBeenCalled();
   });
 
@@ -187,7 +204,7 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
 
     const inverse = inverseFromClick(1, 10, 10, "Introduction");
 
-    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(3, "Introduction");
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(3, "Introduction", undefined);
     resolveHit(null);
     await inverse;
   });
@@ -198,7 +215,7 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
 
     await inverseFromClick(1, 10, 10, "Introduction");
 
-    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(3, "Introduction");
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(3, "Introduction", undefined);
   });
 
   it("no-ops with no project open (never calls into the backend)", async () => {
@@ -218,7 +235,20 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
     mocks.synctexInverse.mockResolvedValue({ file: "main.tex", line: 7 });
     mocks.selectWordNearLine.mockReturnValue(true);
     await inverseFromClick(1, 10, 10, "If");
-    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(7, "If");
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(7, "If", undefined);
+    expect(mocks.gotoLine).not.toHaveBeenCalled();
+  });
+
+  it("hands the text around the clicked word to both word lookups", async () => {
+    const context = { before: "Cats and dogs ", after: " birds and fish." };
+    mocks.synctexInverse.mockResolvedValue({ file: "main.tex", line: 7 });
+    mocks.getCurrentLine.mockReturnValue(2);
+    mocks.selectWordNearLine.mockReturnValue(true);
+    await inverseFromClick(1, 10, 10, "and", null, context);
+    expect(mocks.selectWordNearLine.mock.calls).toEqual([
+      [2, "and", context],
+      [7, "and", context],
+    ]);
     expect(mocks.gotoLine).not.toHaveBeenCalled();
   });
 
@@ -226,7 +256,7 @@ describe("inverseFromClick (multi-file, 0.1.1 fix)", () => {
     mocks.synctexInverse.mockResolvedValue({ file: "main.tex", line: 7 });
     mocks.selectWordNearLine.mockReturnValue(false);
     await inverseFromClick(1, 10, 10, "If");
-    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(7, "If");
+    expect(mocks.selectWordNearLine).toHaveBeenCalledWith(7, "If", undefined);
     expect(mocks.gotoLine).toHaveBeenCalledWith(7);
   });
 });
@@ -470,8 +500,9 @@ describe("Typst sync through the Tinymist preview server", () => {
     expect(mocks.gotoRect).toHaveBeenCalledWith(rect);
   });
 
-  it("puts the cursor on the exact character clicked in the PDF", async () => {
+  it("selects the word at the exact character clicked in the PDF", async () => {
     mocks.typstInverse.mockResolvedValue({ file: "chapters/intro.typ", line: 3, column: 4 });
+    mocks.selectWordAt.mockReturnValue(true);
 
     await inverseFromClick(2, 120, 340, "three");
 
@@ -484,8 +515,29 @@ describe("Typst sync through the Tinymist preview server", () => {
     });
     expect(mocks.synctexInverse).not.toHaveBeenCalled();
     expect(mocks.openFile).toHaveBeenCalledWith("chapters/intro.typ");
+    expect(mocks.selectWordAt).toHaveBeenCalledWith(3, 4, "three");
+    expect(mocks.selectWordNearLine).not.toHaveBeenCalledWith(3, "three", undefined);
+    expect(mocks.gotoLine).not.toHaveBeenCalled();
+  });
+
+  it("looks for the clicked word around the line when the server points elsewhere, as for link text", async () => {
+    const context = { before: "see the ", after: " page for" };
+    mocks.typstInverse.mockResolvedValue({ file: "main.typ", line: 2, column: 1 });
+    mocks.selectWordNearLine.mockImplementation((line: number) => line === 2);
+
+    await inverseFromClick(1, 10, 10, "field", null, context);
+
+    expect(mocks.selectWordAt).toHaveBeenCalledWith(2, 1, "field");
+    expect(mocks.selectWordNearLine).toHaveBeenLastCalledWith(2, "field", context);
+    expect(mocks.gotoLine).not.toHaveBeenCalled();
+  });
+
+  it("puts the cursor on the exact character when the clicked word is not found", async () => {
+    mocks.typstInverse.mockResolvedValue({ file: "chapters/intro.typ", line: 3, column: 4 });
+
+    await inverseFromClick(2, 120, 340, "three");
+
     expect(mocks.gotoLine).toHaveBeenCalledWith(3, 5);
-    expect(mocks.selectWordNearLine).not.toHaveBeenCalledWith(3, "three");
   });
 
   it("falls back to the clicked word when the PDF is older than the editor", async () => {
@@ -501,7 +553,7 @@ describe("Typst sync through the Tinymist preview server", () => {
 
     await inverseFromClick(1, 10, 10, "More", mocks.compileCheckpoint);
 
-    expect(mocks.selectWordNearLine).toHaveBeenLastCalledWith(3, "More");
+    expect(mocks.selectWordNearLine).toHaveBeenLastCalledWith(3, "More", undefined);
     expect(mocks.gotoLine).not.toHaveBeenCalled();
   });
 
@@ -585,5 +637,119 @@ describe("forward SyncTeX from the editor", () => {
     await forwardFromCursor();
 
     expect(mocks.gotoRect).not.toHaveBeenCalled();
+  });
+
+  describe("with the cursor on a word", () => {
+    const spot = { word: "model", before: "and the ", after: " of the data" };
+    const first = { page: 1, x: 72, y: 100, width: 400, height: 10, from: 72, to: 472 };
+    const third = { page: 2, x: 72, y: 124, width: 400, height: 10, from: 72, to: 300 };
+    const runs = [{ str: "the model of the data", x: 72, top: 124, width: 120, height: 10 }];
+
+    beforeEach(() => {
+      mocks.wordAtCursor.mockReturnValue(spot);
+      mocks.pdfPageText.mockResolvedValue(runs);
+    });
+
+    it("jumps to the typeset line the word is on, not the first one of its source line", async () => {
+      mocks.synctexForward.mockResolvedValue({ ...rect, lines: [first, third] });
+      mocks.pickForwardLine.mockReturnValue(third);
+
+      await forwardFromCursor();
+
+      expect(mocks.pdfPageText.mock.calls).toEqual([[1], [2]]);
+      expect(mocks.pickForwardLine).toHaveBeenCalledWith(
+        [first, third],
+        new Map([
+          [1, runs],
+          [2, runs],
+        ]),
+        spot,
+      );
+      expect(mocks.gotoRect).toHaveBeenCalledWith(third);
+    });
+
+    it("keeps SyncTeX's box when the word is on none of the lines", async () => {
+      const hit = { ...rect, lines: [first] };
+      mocks.synctexForward.mockResolvedValue(hit);
+
+      await forwardFromCursor();
+
+      expect(mocks.gotoRect).toHaveBeenCalledWith(hit);
+    });
+
+    it("looks on SyncTeX's page when the source line has no typeset line", async () => {
+      const found = { page: 1, x: 200, y: 80, width: 150, height: 14 };
+      mocks.synctexForward.mockResolvedValue({ ...rect, lines: [] });
+      mocks.findWordOnPages.mockReturnValue(found);
+
+      await forwardFromCursor();
+
+      expect(mocks.findWordOnPages).toHaveBeenCalledWith([1], new Map([[1, runs]]), spot);
+      expect(mocks.pickForwardLine).not.toHaveBeenCalled();
+      expect(mocks.gotoRect).toHaveBeenCalledWith(found);
+    });
+
+    it("reads the word before waiting on SyncTeX, while the cursor is still there", async () => {
+      mocks.synctexForward.mockImplementation(async () => {
+        expect(mocks.wordAtCursor).toHaveBeenCalledTimes(1);
+        return { ...rect, lines: [first] };
+      });
+
+      await forwardFromCursor();
+
+      expect(mocks.wordAtCursor).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps SyncTeX's box when the page text cannot be read", async () => {
+      const failure = new Error("text layer timed out");
+      const hit = { ...rect, lines: [first] };
+      mocks.synctexForward.mockResolvedValue(hit);
+      mocks.pdfPageText.mockRejectedValue(failure);
+
+      await forwardFromCursor();
+
+      expect(mocks.logError).toHaveBeenCalledWith("synctex forward", failure);
+      expect(mocks.gotoRect).toHaveBeenCalledWith(hit);
+    });
+
+    it("finds the cursor's word in Typst from the paragraph start the server jumps to", async () => {
+      mocks.state.engine.id = "typst";
+      mocks.state.engine.source_extensions = ["typ"];
+      mocks.state.activePath = "main.typ";
+      mocks.state.mainDoc = "main.typ";
+      mocks.compileCheckpoint.mainDocument = "main.typ";
+      const jump = { page: 2, x: 72, y: 88, width: 96, height: 12 };
+      mocks.typstForward.mockResolvedValue(jump);
+      mocks.linesFromAnchor.mockReturnValue([first, third]);
+      mocks.pickForwardLine.mockReturnValue(third);
+
+      try {
+        await forwardFromCursor();
+      } finally {
+        mocks.compileCheckpoint.mainDocument = "main.tex";
+      }
+
+      expect(mocks.pdfPageText.mock.calls).toEqual([[1], [2], [3]]);
+      expect(mocks.linesFromAnchor).toHaveBeenCalledWith(jump, expect.any(Map));
+      expect(mocks.pickForwardLine).toHaveBeenCalledWith([first, third], expect.any(Map), spot);
+      expect(mocks.gotoRect).toHaveBeenCalledWith(third);
+    });
+
+    it("keeps the Typst server's point when the word is not around it", async () => {
+      mocks.state.engine.id = "typst";
+      mocks.state.engine.source_extensions = ["typ"];
+      mocks.state.activePath = "main.typ";
+      mocks.state.mainDoc = "main.typ";
+      mocks.compileCheckpoint.mainDocument = "main.typ";
+      mocks.typstForward.mockResolvedValue(rect);
+
+      try {
+        await forwardFromCursor();
+      } finally {
+        mocks.compileCheckpoint.mainDocument = "main.tex";
+      }
+
+      expect(mocks.gotoRect).toHaveBeenCalledWith(rect);
+    });
   });
 });

@@ -232,6 +232,33 @@ describe("markdown visual-mode commands", () => {
     expect(controller.insertTemplate).not.toHaveBeenCalled();
   });
 
+  it("stores a typed path encoded, without Markdown's angle brackets", () => {
+    const editor = visualEditor();
+    editor.state.selection.empty = false;
+    insertMarkdownLink("<notes/my plan.md>");
+    expect(editor.setLink).toHaveBeenLastCalledWith({ href: "notes/my%20plan.md" });
+    insertMarkdownLink("notes/plan.md#Goals");
+    expect(editor.setLink).toHaveBeenLastCalledWith({ href: "notes/plan.md#Goals" });
+  });
+
+  it("turns a link copied from the preview into a path relative to the note", async () => {
+    const { useFilesStore } = await import("@/store/files");
+    useFilesStore.setState({ activePath: "notes/index.md", mainDoc: "main.tex" });
+    const editor = visualEditor();
+    editor.state.selection.empty = false;
+    insertMarkdownLink("tauri://localhost/notes/%D0%A1%D0%B2.md");
+    expect(editor.setLink).toHaveBeenLastCalledWith({ href: "%D0%A1%D0%B2.md" });
+    insertMarkdownLink("<http://tauri.localhost/plan.md>");
+    expect(editor.setLink).toHaveBeenLastCalledWith({ href: "../plan.md" });
+    useFilesStore.setState({ activePath: null });
+  });
+
+  it("encodes a typed image path like the images it reads from Markdown", () => {
+    const editor = visualEditor();
+    insertMarkdownImage(" figures/my plot.png ");
+    expect(editor.setImage).toHaveBeenCalledWith({ src: "figures/my%20plot.png", alt: "" });
+  });
+
   it("falls back to source syntax when the visual editor is not mounted", () => {
     setWysiwygVisible(true);
     insertMarkdownBold();

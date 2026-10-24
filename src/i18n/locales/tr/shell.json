@@ -360,6 +360,10 @@
     "zoteroSync": {
       "label": "Zotero kitaplığını eşitle",
       "keywords": "zotero eşitle yenile kitaplık sync refresh library"
+    },
+    "insertFileLink": {
+      "label": "Dosyaya bağlantı ekle",
+      "keywords": "bağlantı dosya yol not kaynak"
     }
   },
   "community": {

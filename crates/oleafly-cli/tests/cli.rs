@@ -952,10 +952,20 @@ fn open_refuses_missing_folders_files_and_a_missing_app() {
     assert!(stderr.contains("that's this command"), "{stderr}");
 }
 
+/// Runs a freshly written fake Typst once, untimed. macOS checks every new
+/// executable on its first launch, which under load (or with a security tool
+/// scanning new files) outlasts the version probe's timeout, so the probe
+/// would report no version. The call log that run leaves is cleared.
+fn warm_typst(binary: &std::path::Path) {
+    let _ = std::process::Command::new(binary).arg("--version").output();
+    let _ = std::fs::remove_file(binary.with_file_name("fixture-typst-calls"));
+}
+
 fn typst_fixture(directory: &std::path::Path, version: &str) -> PathBuf {
     std::fs::create_dir_all(directory).unwrap();
     let binary = support::rust_fixture(directory, "typst.rs", "typst", None);
     std::fs::write(directory.join("fixture-typst-version"), version).unwrap();
+    warm_typst(&binary);
     binary
 }
 
@@ -964,6 +974,7 @@ fn place_typst(fixture: &std::path::Path, directory: &std::path::Path, version: 
     let binary = directory.join(oleafly_cli::executable_name("typst"));
     std::fs::copy(fixture, &binary).unwrap();
     std::fs::write(directory.join("fixture-typst-version"), version).unwrap();
+    warm_typst(&binary);
     binary.canonicalize().unwrap()
 }
 

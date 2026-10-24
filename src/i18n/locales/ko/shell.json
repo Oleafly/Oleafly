@@ -358,6 +358,10 @@
     "zoteroSync": {
       "label": "Zotero 라이브러리 동기화",
       "keywords": "zotero 동기화 새로 고침 라이브러리"
+    },
+    "insertFileLink": {
+      "label": "파일 링크 삽입",
+      "keywords": "링크 파일 경로 노트 참조"
     }
   },
   "community": {

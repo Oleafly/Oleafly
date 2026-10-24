@@ -360,6 +360,10 @@
     "zoteroSync": {
       "label": "Synkroniser Zotero-bibliotek",
       "keywords": "zotero synkroniser opdater bibliotek sync refresh library"
+    },
+    "insertFileLink": {
+      "label": "Indsæt link til fil",
+      "keywords": "link fil sti note reference"
     }
   },
   "community": {

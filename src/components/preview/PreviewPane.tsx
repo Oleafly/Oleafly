@@ -1426,13 +1426,14 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
           onOutlineStateChange={setOutlineState}
           onInverse={
             syncTexAvailable
-              ? (pageNumber, clickX, clickY, word) =>
+              ? (pageNumber, clickX, clickY, word, wordContext) =>
                   void inverseFromClick(
                     pageNumber,
                     clickX,
                     clickY,
                     word,
                     displayedCheckpoint,
+                    wordContext,
                   )
               : undefined
           }

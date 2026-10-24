@@ -3,7 +3,7 @@ import { foldLatinDiacritics } from "@oleafly/latex";
 import { i18n } from "@/i18n";
 import { notifyProjectFilesChanged } from "@/lib/cross-window";
 import { isEditorMutationLocked } from "@/lib/editor-mutation-lease";
-import { dirname } from "@/lib/path-utils";
+import { dirname, relativeFilePath } from "@/lib/path-utils";
 import { insertableImageExtension, isInsertableImagePath } from "@/lib/image-mime";
 import { logError } from "@/lib/log";
 import { takeNativeDrop } from "@/lib/native-drop";
@@ -105,12 +105,7 @@ export function pastedImagePath(file: File, tree: readonly FileEntry[], mainDoc:
 }
 
 export function latexGraphicsPath(projectPath: string, mainDoc: string): string {
-  const base = dirname(mainDoc).split("/").filter((part) => part !== "");
-  const target = projectPath.split("/").filter((part) => part !== "");
-  let shared = 0;
-  while (shared < base.length && shared < target.length - 1 && base[shared] === target[shared]) shared++;
-  const climb = Array.from({ length: base.length - shared }, () => "..");
-  return [...climb, ...target.slice(shared)].join("/");
+  return relativeFilePath(mainDoc, projectPath);
 }
 
 export function suggestedFigureLabel(path: string): string {

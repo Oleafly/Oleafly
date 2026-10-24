@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
     cloudConnectWait: vi.fn(),
     cloudConnectPaste: vi.fn(),
     cloudConnectCancel: vi.fn(async () => undefined),
-    cloudDisconnect: vi.fn(async () => undefined),
+    cloudDisconnect: vi.fn(async () => ({ remoteRevoked: true })),
     cloudSetEnabled: vi.fn(async () => undefined),
     cloudSetDeviceName: vi.fn(async () => undefined),
     cloudSyncNow: vi.fn(),
@@ -437,6 +437,35 @@ describe("cloud store", () => {
     const problem = await store.useCloudStore.getState().setDeviceName("   ");
     expect(problem).toContain("device_name_empty");
     expect(store.useCloudStore.getState().state?.deviceName).toBe("Desk");
+  });
+
+  it("says how to end Oleafly's access when Dropbox couldn't be reached to disconnect", async () => {
+    await connected();
+    mocks.cloud.cloudDisconnect.mockResolvedValueOnce({ remoteRevoked: false });
+    mocks.cloud.cloudState.mockResolvedValue(cloudState({ status: "disconnected" }));
+    expect(await store.useCloudStore.getState().disconnect()).toBe(true);
+    expect(mocks.toast.infoUnique).toHaveBeenCalledWith(
+      "cloud-action",
+      expect.stringContaining("under Connected apps in your Dropbox settings"),
+    );
+    mocks.toast.infoUnique.mockClear();
+    await connected();
+    await store.useCloudStore.getState().disconnect();
+    expect(mocks.toast.infoUnique).not.toHaveBeenCalled();
+  });
+
+  it("names what putting back or deleting did for files missing from Dropbox", async () => {
+    await connected(
+      cloudState({ projects: [project({ mode: "held", hold: { kind: "remoteDelete", count: 2, total: 5 } })] }),
+    );
+    mocks.cloud.cloudProjectResolveHold.mockResolvedValue(projectReport({}));
+    await store.useCloudStore.getState().resolveHold("thesis", "restore");
+    expect(mocks.toast.successUnique).toHaveBeenLastCalledWith("cloud-action", "The files from Thesis are back in your Dropbox.");
+    await connected(
+      cloudState({ projects: [project({ mode: "held", hold: { kind: "remoteDelete", count: 2, total: 5 } })] }),
+    );
+    await store.useCloudStore.getState().resolveHold("thesis", "delete");
+    expect(mocks.toast.successUnique).toHaveBeenLastCalledWith("cloud-action", "The files were moved to this computer's trash.");
   });
 
   it("ignores a round that finishes after disconnecting", async () => {

@@ -10,7 +10,8 @@ export type CloudStatus = "connected" | "disconnected" | "revoked";
 export type CloudProjectMode = "sync" | "pause" | "download" | "held" | "removed";
 
 export interface CloudHold {
-  kind: "massDelete";
+  /** `massDelete`: files deleted here; `remoteDelete`: files no longer in Dropbox. */
+  kind: "massDelete" | "remoteDelete";
   count: number;
   total: number;
 }
@@ -142,8 +143,13 @@ export function cloudConnectCancel(flowId: string): Promise<void> {
   return invoke<void>("cloud_connect_cancel", { flowId });
 }
 
-export function cloudDisconnect(): Promise<void> {
-  return invoke<void>("cloud_disconnect");
+export interface CloudDisconnectDone {
+  /** False when Dropbox couldn't be reached to end Oleafly's access. */
+  remoteRevoked: boolean;
+}
+
+export function cloudDisconnect(): Promise<CloudDisconnectDone> {
+  return invoke<CloudDisconnectDone>("cloud_disconnect");
 }
 
 export function cloudSetEnabled(on: boolean): Promise<void> {

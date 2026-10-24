@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly kon {{path}} niet naar de Prullenmand verplaatsen. In plaats daarvan definitief verwijderen? Dit kan niet ongedaan worden gemaakt.",
     "confirmPermanentDeleteWindows": "Oleafly kon {{path}} niet naar de Prullenbak verplaatsen. In plaats daarvan definitief verwijderen? Dit kan niet ongedaan worden gemaakt.",
     "linkedReadOnly": "Verwijst naar een bestand buiten deze map en is daarom alleen-lezen.",
-    "partialFolder": "Niet alle items in deze map staan in de lijst."
+    "partialFolder": "Niet alle items in deze map staan in de lijst.",
+    "insertLink": "Link invoegen",
+    "copyLink": "Link kopiëren",
+    "linkCopied": "Link gekopieerd",
+    "copyLinkFailed": "De link is niet gekopieerd. Controleer de toegang tot het klembord en probeer het opnieuw."
   },
   "explorer": {
     "resizeSections": "Formaat van {{first}} en {{second}} wijzigen"

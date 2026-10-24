@@ -1,3 +1,4 @@
+import { isUrlWithScheme, linkHrefForPath, readableLinkHref } from "@oleafly/wysiwyg/link-destination";
 import {
   insertTemplate,
   wrapSelectionOrPlaceholder,
@@ -6,6 +7,7 @@ import {
   getWysiwygEditor,
   isWysiwygActive,
 } from "@/components/editor/wysiwyg/controller";
+import { localizedVisualHref } from "@/features/file-links";
 import { i18n } from "@/i18n";
 
 /**
@@ -146,7 +148,23 @@ export function currentMarkdownLinkHref(): string | null {
   const editor = getWysiwygEditor();
   if (!editor) return null;
   const href = editor.getAttributes("link").href;
-  return typeof href === "string" ? href : null;
+  return typeof href === "string" ? readableLinkHref(href) : null;
+}
+
+/**
+ * The href Visual mode stores for what was typed in its link or image field:
+ * a URL as typed, a project path URL-encoded like every href it reads from
+ * Markdown. Angle brackets around a path are Markdown syntax, not part of it,
+ * and a link with the app's own address (copied from the preview) becomes a
+ * path relative to the open file.
+ */
+function visualLinkHref(typed: string): string {
+  const path = /^<(.*)>$/su.exec(typed)?.[1].trim() ?? typed;
+  const local = localizedVisualHref(path);
+  if (local !== null) return local;
+  if (isUrlWithScheme(path)) return path;
+  const hash = path.indexOf("#");
+  return hash < 0 ? linkHrefForPath(path) : linkHrefForPath(path.slice(0, hash), path.slice(hash));
 }
 
 /**
@@ -158,7 +176,7 @@ export function insertMarkdownLink(href?: string) {
   if (isWysiwygActive()) {
     const editor = getWysiwygEditor();
     if (!editor) return;
-    const url = (href ?? "").trim();
+    const url = visualLinkHref((href ?? "").trim());
     if (!url) {
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
       return;
@@ -185,7 +203,7 @@ export function insertMarkdownImage(src?: string) {
     const editor = getWysiwygEditor();
     const path = (src ?? "").trim();
     if (!editor || !path) return;
-    editor.chain().focus().setImage({ src: path, alt: "" }).run();
+    editor.chain().focus().setImage({ src: visualLinkHref(path), alt: "" }).run();
     return;
   }
   const template = "![caption](image-filename)";

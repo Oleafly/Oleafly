@@ -117,6 +117,10 @@
     "heldMessage_other": "Täällä poistettiin {{count}}/{{total}} tiedostoa, joten synkronointi on tauolla, jotta Dropboxisi kopio pysyy turvassa.",
     "putBack": "Palauta ne",
     "deleteToo": "Poista myös Dropboxista",
+    "heldRemoteMessage_one": "Dropboxistasi puuttuu {{count}}/{{total}} tiedostoa, joten synkronointi on tauolla, jotta se pysyy turvassa tällä tietokoneella.",
+    "heldRemoteMessage_other": "Dropboxistasi puuttuu {{count}}/{{total}} tiedostoa, joten synkronointi on tauolla, jotta ne pysyvät turvassa tällä tietokoneella.",
+    "putBackInDropbox": "Palauta ne Dropboxiin",
+    "deleteHere": "Poista myös täältä",
     "skipReason": {
       "unsupportedName": "Nimi, joka ei toimi kaikilla tietokoneilla",
       "duplicateName": "Sama nimi kuin toisella tiedostolla, isoja ja pieniä kirjaimia lukuun ottamatta",
@@ -132,9 +136,9 @@
   },
   "confirm": {
     "removeTitle": "Poistetaanko projekti {{name}} Dropboxista?",
-    "removeDescription": "Tämä poistaa kopion Dropboxistasi, jotta tilaa vapautuu. Projekti pysyy tällä tietokoneella, mutta sitä ei enää synkronoida täällä. Muut tietokoneesi säilyttävät omat kopionsa.",
+    "removeDescription": "Tämä poistaa kopion Dropboxistasi, jotta tilaa vapautuu. Projekti pysyy tällä tietokoneella, mutta sitä ei enää synkronoida täällä. Muut tietokoneesi säilyttävät omat kopionsa, mutta eivät myöskään synkronoi projektia enää.",
     "removeAction": "Poista Dropboxista",
-    "removeRemoteDescription": "Tämä poistaa projektin Dropboxistasi, jotta tilaa vapautuu. Se ei ole tällä tietokoneella, joten et voi ladata sitä tänne jälkeenpäin. Tietokoneet, joilla se jo on, säilyttävät omat kopionsa.",
+    "removeRemoteDescription": "Tämä poistaa projektin Dropboxistasi, jotta tilaa vapautuu. Se ei ole tällä tietokoneella, joten et voi ladata sitä tänne jälkeenpäin. Tietokoneet, joilla se jo on, säilyttävät omat kopionsa, mutta eivät enää synkronoi sitä.",
     "replaceTitle": "Korvataanko projektin {{name}} kopio Dropboxissa?",
     "replaceDescription": "Oleafly ei pysty lukemaan Dropboxisi kopiota. Se korvataan tämän tietokoneen kopiolla, ja kaikki, mikä on vain Dropboxissa, menetetään.",
     "replaceAction": "Korvaa",
@@ -142,6 +146,10 @@
     "deleteDescription_one": "Tiedosto, jonka poistit projektista {{name}} tällä tietokoneella, poistetaan myös Dropboxistasi. Se katoaa myös muilta tietokoneilta, jotka synkronoivat tätä projektia.",
     "deleteDescription_other": "{{count}} tiedostoa, jotka poistit projektista {{name}} tällä tietokoneella, poistetaan myös Dropboxistasi. Ne katoavat myös muilta tietokoneilta, jotka synkronoivat tätä projektia.",
     "deleteAction": "Poista Dropboxista",
+    "deleteHereTitle": "Poistetaanko nämä tiedostot myös tältä tietokoneelta?",
+    "deleteHereDescription_one": "Dropboxistasi puuttuva tiedosto siirretään tämän tietokoneen roskakoriin, jotta projekti {{name}} vastaa muita tietokoneitasi.",
+    "deleteHereDescription_other": "{{count}} Dropboxistasi puuttuvaa tiedostoa siirretään tämän tietokoneen roskakoriin, jotta projekti {{name}} vastaa muita tietokoneitasi.",
+    "deleteHereAction": "Poista täältä",
     "disconnectTitle": "Katkaistaanko yhteys Dropboxiin?",
     "disconnectDescription": "Synkronointi pysähtyy tällä tietokoneella. Projektisi pysyvät tällä tietokoneella ja Dropboxissasi.",
     "disconnectAction": "Katkaise yhteys"
@@ -167,7 +175,10 @@
     "removedRemote": "Projekti {{name}} poistettiin Dropboxistasi.",
     "replaced": "Projekti {{name}} Dropboxissasi vastaa nyt tätä tietokonetta.",
     "filesRestored": "Poistetut tiedostot palautettiin projektiin {{name}}.",
-    "filesDeleted": "Poistetut tiedostot poistettiin myös Dropboxistasi."
+    "filesDeleted": "Poistetut tiedostot poistettiin myös Dropboxistasi.",
+    "filesUploadedAgain": "Projektin {{name}} tiedostot ovat taas Dropboxissasi.",
+    "filesDeletedHere": "Tiedostot siirrettiin tämän tietokoneen roskakoriin.",
+    "accessNotRevoked": "Yhteys katkaistu. Oleafly ei saanut yhteyttä Dropboxiin, joten sen käyttöoikeus ei päättynyt. Voit päättää sen itse poistamalla Oleaflyn Dropboxin asetusten kohdasta Yhdistetyt sovellukset."
   },
   "errors": {
     "code_invalid": "Koodi ei toiminut. Yritä uudelleen.",
@@ -191,6 +202,7 @@
     "sign_in_cancelled": "Dropbox-kirjautuminen peruutettiin.",
     "sign_in_timeout": "Kirjautuminen kesti liian kauan. Yritä uudelleen.",
     "too_many_files": "Tässä projektissa on yli 100 000 tiedostoa. Niitä on liian monta synkronoitavaksi.",
+    "traffic_limit": "Dropboxisi on saavuttanut tämän kuun lähetysrajan. Uudet muutokset pysyvät tällä tietokoneella, kunnes Dropbox sallii lähetykset taas.",
     "verify_failed": "Dropboxista tullut tiedosto ei vastannut sitä, mitä Oleafly odotti, joten siihen ei koskettu. Synkronointi yrittää uudelleen."
   }
 }

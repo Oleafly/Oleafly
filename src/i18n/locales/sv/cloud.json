@@ -117,6 +117,10 @@
     "heldMessage_other": "{{count}} av {{total}} filer raderades här, så synkroniseringen har pausats för att skydda kopian i din Dropbox.",
     "putBack": "Lägg tillbaka dem",
     "deleteToo": "Radera från Dropbox också",
+    "heldRemoteMessage_one": "{{count}} av {{total}} filer saknas i din Dropbox, så synkroniseringen har pausats för att hålla den säker på den här datorn.",
+    "heldRemoteMessage_other": "{{count}} av {{total}} filer saknas i din Dropbox, så synkroniseringen har pausats för att hålla dem säkra på den här datorn.",
+    "putBackInDropbox": "Lägg tillbaka dem i Dropbox",
+    "deleteHere": "Radera här också",
     "skipReason": {
       "unsupportedName": "Namn som inte fungerar på alla datorer",
       "duplicateName": "Samma namn som en annan fil, bortsett från stora och små bokstäver",
@@ -132,9 +136,9 @@
   },
   "confirm": {
     "removeTitle": "Vill du ta bort {{name}} från Dropbox?",
-    "removeDescription": "Det här raderar kopian i din Dropbox för att frigöra utrymme. Projektet finns kvar på den här datorn och slutar synkroniseras här. Dina andra datorer behåller sina kopior.",
+    "removeDescription": "Det här raderar kopian i din Dropbox för att frigöra utrymme. Projektet finns kvar på den här datorn och slutar synkroniseras här. Dina andra datorer behåller sina kopior och slutar också synkronisera det.",
     "removeAction": "Ta bort från Dropbox",
-    "removeRemoteDescription": "Det här raderar projektet från din Dropbox för att frigöra utrymme. Det finns inte på den här datorn, så du kan inte ladda ned det hit efteråt. Datorer som redan har det behåller sina kopior.",
+    "removeRemoteDescription": "Det här raderar projektet från din Dropbox för att frigöra utrymme. Det finns inte på den här datorn, så du kan inte ladda ned det hit efteråt. Datorer som redan har det behåller sina kopior och slutar synkronisera det.",
     "replaceTitle": "Vill du ersätta kopian av {{name}} i Dropbox?",
     "replaceDescription": "Oleafly kan inte läsa kopian i din Dropbox. Den ersätts med kopian på den här datorn, och allt som bara finns i Dropbox går förlorat.",
     "replaceAction": "Ersätt",
@@ -142,6 +146,10 @@
     "deleteDescription_one": "Filen som du raderade från {{name}} på den här datorn raderas också från din Dropbox. Andra datorer som synkroniserar projektet förlorar den också.",
     "deleteDescription_other": "De {{count}} filerna som du raderade från {{name}} på den här datorn raderas också från din Dropbox. Andra datorer som synkroniserar projektet förlorar dem också.",
     "deleteAction": "Radera från Dropbox",
+    "deleteHereTitle": "Vill du radera filerna på den här datorn också?",
+    "deleteHereDescription_one": "Filen som saknas i din Dropbox flyttas till papperskorgen på den här datorn, så att {{name}} stämmer överens med dina andra datorer.",
+    "deleteHereDescription_other": "De {{count}} filerna som saknas i din Dropbox flyttas till papperskorgen på den här datorn, så att {{name}} stämmer överens med dina andra datorer.",
+    "deleteHereAction": "Radera här",
     "disconnectTitle": "Vill du koppla från Dropbox?",
     "disconnectDescription": "Synkroniseringen stoppas på den här datorn. Dina projekt finns kvar på den här datorn och i din Dropbox.",
     "disconnectAction": "Koppla från"
@@ -167,7 +175,10 @@
     "removedRemote": "{{name}} har tagits bort från din Dropbox.",
     "replaced": "{{name}} i din Dropbox stämmer nu överens med den här datorn.",
     "filesRestored": "De raderade filerna är tillbaka i {{name}}.",
-    "filesDeleted": "De raderade filerna togs också bort från din Dropbox."
+    "filesDeleted": "De raderade filerna togs också bort från din Dropbox.",
+    "filesUploadedAgain": "Filerna från {{name}} är tillbaka i din Dropbox.",
+    "filesDeletedHere": "Filerna flyttades till papperskorgen på den här datorn.",
+    "accessNotRevoked": "Frånkopplad. Oleafly kunde inte nå Dropbox för att avsluta sin åtkomst. Om du vill avsluta den själv tar du bort Oleafly under Anslutna appar i dina Dropbox-inställningar."
   },
   "errors": {
     "code_invalid": "Den koden fungerade inte. Försök igen.",
@@ -191,6 +202,7 @@
     "sign_in_cancelled": "Inloggningen till Dropbox avbröts.",
     "sign_in_timeout": "Inloggningen tog för lång tid. Försök igen.",
     "too_many_files": "Det här projektet har mer än 100 000 filer. Det är för många för att kunna synkroniseras.",
+    "traffic_limit": "Din Dropbox har nått sin uppladdningsgräns för den här månaden. Nya ändringar stannar på den här datorn tills Dropbox tillåter uppladdningar igen.",
     "verify_failed": "En fil från Dropbox stämde inte med det som Oleafly förväntade sig, så den lämnades orörd. Synkroniseringen försöker igen."
   }
 }

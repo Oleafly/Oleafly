@@ -133,6 +133,12 @@
     "heldMessage_other": "Tady bylo smazáno {{count}} z {{total}} souborů, proto je synchronizace pozastavená, aby kopie ve vašem Dropboxu zůstala v bezpečí.",
     "putBack": "Vrátit je zpět",
     "deleteToo": "Smazat i z Dropboxu",
+    "heldRemoteMessage_one": "V Dropboxu chybí {{count}} z {{total}} souborů, proto je synchronizace pozastavená, aby tento soubor zůstal v bezpečí na tomto počítači.",
+    "heldRemoteMessage_few": "V Dropboxu chybí {{count}} z {{total}} souborů, proto je synchronizace pozastavená, aby tyto soubory zůstaly v bezpečí na tomto počítači.",
+    "heldRemoteMessage_many": "V Dropboxu chybí {{count}} z {{total}} souborů, proto je synchronizace pozastavená, aby tyto soubory zůstaly v bezpečí na tomto počítači.",
+    "heldRemoteMessage_other": "V Dropboxu chybí {{count}} z {{total}} souborů, proto je synchronizace pozastavená, aby tyto soubory zůstaly v bezpečí na tomto počítači.",
+    "putBackInDropbox": "Vrátit je zpět do Dropboxu",
+    "deleteHere": "Smazat i tady",
     "skipReason": {
       "unsupportedName": "Název, který nefunguje na všech počítačích",
       "duplicateName": "Název se od jiného souboru liší jen velikostí písmen",
@@ -148,9 +154,9 @@
   },
   "confirm": {
     "removeTitle": "Odebrat {{name}} z Dropboxu?",
-    "removeDescription": "Tím smažete kopii ve vašem Dropboxu a uvolníte místo. Projekt zůstane na tomto počítači a přestane se tady synchronizovat. Vaše ostatní počítače si své kopie ponechají.",
+    "removeDescription": "Tím smažete kopii ve vašem Dropboxu a uvolníte místo. Projekt zůstane na tomto počítači a přestane se tady synchronizovat. Vaše ostatní počítače si své kopie ponechají a také ho přestanou synchronizovat.",
     "removeAction": "Odebrat z Dropboxu",
-    "removeRemoteDescription": "Tím smažete projekt z vašeho Dropboxu a uvolníte místo. Na tomto počítači není, takže ho sem potom nebudete moci stáhnout. Počítače, které ho už mají, si své kopie ponechají.",
+    "removeRemoteDescription": "Tím smažete projekt z vašeho Dropboxu a uvolníte místo. Na tomto počítači není, takže ho sem potom nebudete moci stáhnout. Počítače, které ho už mají, si své kopie ponechají a přestanou ho synchronizovat.",
     "replaceTitle": "Nahradit kopii projektu {{name}} v Dropboxu?",
     "replaceDescription": "Oleafly nedokáže přečíst kopii ve vašem Dropboxu. Nahradí se kopií z tohoto počítače a vše, co je jen v Dropboxu, se ztratí.",
     "replaceAction": "Nahradit",
@@ -160,6 +166,12 @@
     "deleteDescription_many": "{{count}} souboru, které jste na tomto počítači smazali z projektu {{name}}, se smaže i z vašeho Dropboxu. Ostatní počítače, které tento projekt synchronizují, o ně také přijdou.",
     "deleteDescription_other": "{{count}} souborů, které jste na tomto počítači smazali z projektu {{name}}, se smaže i z vašeho Dropboxu. Ostatní počítače, které tento projekt synchronizují, o ně také přijdou.",
     "deleteAction": "Smazat z Dropboxu",
+    "deleteHereTitle": "Smazat tyto soubory i na tomto počítači?",
+    "deleteHereDescription_one": "Soubor, který chybí ve vašem Dropboxu, se přesune do koše na tomto počítači, aby projekt {{name}} odpovídal vašim ostatním počítačům.",
+    "deleteHereDescription_few": "{{count}} soubory, které chybí ve vašem Dropboxu, se přesunou do koše na tomto počítači, aby projekt {{name}} odpovídal vašim ostatním počítačům.",
+    "deleteHereDescription_many": "{{count}} souboru, které chybí ve vašem Dropboxu, se přesune do koše na tomto počítači, aby projekt {{name}} odpovídal vašim ostatním počítačům.",
+    "deleteHereDescription_other": "{{count}} souborů, které chybí ve vašem Dropboxu, se přesune do koše na tomto počítači, aby projekt {{name}} odpovídal vašim ostatním počítačům.",
+    "deleteHereAction": "Smazat tady",
     "disconnectTitle": "Odpojit Dropbox?",
     "disconnectDescription": "Synchronizace se na tomto počítači zastaví. Vaše projekty zůstanou na tomto počítači i ve vašem Dropboxu.",
     "disconnectAction": "Odpojit"
@@ -191,7 +203,10 @@
     "removedRemote": "Projekt {{name}} byl odebrán z vašeho Dropboxu.",
     "replaced": "Projekt {{name}} ve vašem Dropboxu nyní odpovídá tomuto počítači.",
     "filesRestored": "Smazané soubory jsou zpět v projektu {{name}}.",
-    "filesDeleted": "Smazané soubory byly odebrány i z vašeho Dropboxu."
+    "filesDeleted": "Smazané soubory byly odebrány i z vašeho Dropboxu.",
+    "filesUploadedAgain": "Soubory z projektu {{name}} jsou zpět ve vašem Dropboxu.",
+    "filesDeletedHere": "Soubory byly přesunuty do koše na tomto počítači.",
+    "accessNotRevoked": "Odpojeno. Dropbox se nepodařilo kontaktovat, takže přístup Oleafly neskončil. Chcete-li ho ukončit sami, odeberte Oleafly v nastavení Dropboxu v části Připojené aplikace."
   },
   "errors": {
     "code_invalid": "Tento kód nefungoval. Zkuste to znovu.",
@@ -215,6 +230,7 @@
     "sign_in_cancelled": "Přihlášení do Dropboxu bylo zrušeno.",
     "sign_in_timeout": "Přihlášení trvalo příliš dlouho. Zkuste to znovu.",
     "too_many_files": "Tento projekt má více než 100 000 souborů. To je na synchronizaci příliš mnoho.",
+    "traffic_limit": "Váš Dropbox dosáhl pro tento měsíc limitu nahrávání. Nové změny zůstanou na tomto počítači, dokud Dropbox nahrávání zase nepovolí.",
     "verify_failed": "Soubor z Dropboxu neodpovídal tomu, co Oleafly očekával, proto zůstal beze změny. Synchronizace to zkusí znovu."
   }
 }

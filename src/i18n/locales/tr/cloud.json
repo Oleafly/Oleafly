@@ -117,6 +117,10 @@
     "heldMessage_other": "Burada {{total}} dosyadan {{count}} tanesi silindi, bu yüzden Dropbox'ınızdaki kopyayı korumak için eşitleme duraklatıldı.",
     "putBack": "Geri getir",
     "deleteToo": "Dropbox'tan da sil",
+    "heldRemoteMessage_one": "{{total}} dosyadan {{count}} tanesi Dropbox'ınızda eksik, bu yüzden dosyaları bu bilgisayarda güvende tutmak için eşitleme duraklatıldı.",
+    "heldRemoteMessage_other": "{{total}} dosyadan {{count}} tanesi Dropbox'ınızda eksik, bu yüzden dosyaları bu bilgisayarda güvende tutmak için eşitleme duraklatıldı.",
+    "putBackInDropbox": "Dropbox'a geri koy",
+    "deleteHere": "Burada da sil",
     "skipReason": {
       "unsupportedName": "Her bilgisayarda çalışmayan bir ad",
       "duplicateName": "Büyük ve küçük harfler dışında başka bir dosyayla aynı ad",
@@ -132,9 +136,9 @@
   },
   "confirm": {
     "removeTitle": "{{name}} Dropbox'tan kaldırılsın mı?",
-    "removeDescription": "Bu işlem, yer açmak için Dropbox'ınızdaki kopyayı siler. Proje bu bilgisayarda kalır ve burada eşitlenmeyi bırakır. Diğer bilgisayarlarınız kendi kopyalarını korur.",
+    "removeDescription": "Bu işlem, yer açmak için Dropbox'ınızdaki kopyayı siler. Proje bu bilgisayarda kalır ve burada eşitlenmeyi bırakır. Diğer bilgisayarlarınız kendi kopyalarını korur, ancak projeyi eşitlemeyi onlar da bırakır.",
     "removeAction": "Dropbox'tan kaldır",
-    "removeRemoteDescription": "Bu işlem, yer açmak için projeyi Dropbox'ınızdan siler. Proje bu bilgisayarda olmadığından daha sonra buraya indiremezsiniz. Projenin zaten bulunduğu bilgisayarlar kendi kopyalarını korur.",
+    "removeRemoteDescription": "Bu işlem, yer açmak için projeyi Dropbox'ınızdan siler. Proje bu bilgisayarda olmadığından daha sonra buraya indiremezsiniz. Projenin zaten bulunduğu bilgisayarlar kendi kopyalarını korur, ancak projeyi eşitlemeyi bırakır.",
     "replaceTitle": "{{name}} projesinin Dropbox'taki kopyası değiştirilsin mi?",
     "replaceDescription": "Oleafly, Dropbox'ınızdaki kopyayı okuyamıyor. Kopya, bu bilgisayardakiyle değiştirilecek ve yalnızca Dropbox'ta bulunan her şey kaybolacak.",
     "replaceAction": "Değiştir",
@@ -142,6 +146,10 @@
     "deleteDescription_one": "Bu bilgisayarda {{name}} projesinden sildiğiniz dosya Dropbox'ınızdan da silinecek. Bu projeyi eşitleyen diğer bilgisayarlar da bu dosyayı kaybedecek.",
     "deleteDescription_other": "Bu bilgisayarda {{name}} projesinden sildiğiniz {{count}} dosya Dropbox'ınızdan da silinecek. Bu projeyi eşitleyen diğer bilgisayarlar da bu dosyaları kaybedecek.",
     "deleteAction": "Dropbox'tan sil",
+    "deleteHereTitle": "Bu dosyalar bu bilgisayardan da silinsin mi?",
+    "deleteHereDescription_one": "Dropbox'ınızda eksik olan dosya bu bilgisayarın Geri Dönüşüm Kutusu'na taşınacak, böylece {{name}} projesi diğer bilgisayarlarınızla aynı olacak.",
+    "deleteHereDescription_other": "Dropbox'ınızda eksik olan {{count}} dosya bu bilgisayarın Geri Dönüşüm Kutusu'na taşınacak, böylece {{name}} projesi diğer bilgisayarlarınızla aynı olacak.",
+    "deleteHereAction": "Burada sil",
     "disconnectTitle": "Dropbox bağlantısı kesilsin mi?",
     "disconnectDescription": "Bu bilgisayarda eşitleme durur. Projeleriniz bu bilgisayarda ve Dropbox'ınızda kalır.",
     "disconnectAction": "Bağlantıyı kes"
@@ -167,7 +175,10 @@
     "removedRemote": "{{name}} Dropbox'ınızdan kaldırıldı.",
     "replaced": "Dropbox'ınızdaki {{name}} projesi artık bu bilgisayardakiyle aynı.",
     "filesRestored": "Silinen dosyalar {{name}} projesine geri getirildi.",
-    "filesDeleted": "Silinen dosyalar Dropbox'ınızdan da kaldırıldı."
+    "filesDeleted": "Silinen dosyalar Dropbox'ınızdan da kaldırıldı.",
+    "filesUploadedAgain": "{{name}} projesindeki dosyalar yeniden Dropbox'ınızda.",
+    "filesDeletedHere": "Dosyalar bu bilgisayarın Geri Dönüşüm Kutusu'na taşındı.",
+    "accessNotRevoked": "Bağlantı kesildi. Oleafly, erişimini sona erdirmek için Dropbox'a ulaşamadı. Bunu kendiniz yapmak için Dropbox ayarlarınızda Bağlı uygulamalar bölümünden Oleafly'yi kaldırın."
   },
   "errors": {
     "code_invalid": "O kod çalışmadı. Tekrar deneyin.",
@@ -191,6 +202,7 @@
     "sign_in_cancelled": "Dropbox oturum açma iptal edildi.",
     "sign_in_timeout": "Oturum açma çok uzun sürdü. Tekrar deneyin.",
     "too_many_files": "Bu projede 100.000'den fazla dosya var. Bu, eşitlenemeyecek kadar çok.",
+    "traffic_limit": "Dropbox'ınız bu ayki yükleme sınırına ulaştı. Dropbox yüklemelere yeniden izin verene kadar yeni değişiklikler bu bilgisayarda kalır.",
     "verify_failed": "Dropbox'tan gelen bir dosya Oleafly'nin beklediğiyle eşleşmediği için olduğu gibi bırakıldı. Eşitleme yeniden denenecek."
   }
 }

@@ -24,6 +24,7 @@
       "@/*": ["./src/*"],
       "@oleafly/latex": ["./packages/latex/src/index.ts"],
       "@oleafly/wysiwyg": ["./packages/wysiwyg/src/index.ts"],
+      "@oleafly/wysiwyg/link-destination": ["./packages/wysiwyg/src/link-destination.ts"],
       "@oleafly/ai-core": ["./packages/ai-core/src/index.ts"],
       "@oleafly/backend-port": ["./packages/backend-port/src/index.ts"],
       "@oleafly/diagram": ["./packages/diagram/src/index.ts"],

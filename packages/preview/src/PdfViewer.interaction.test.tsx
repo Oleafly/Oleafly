@@ -181,7 +181,7 @@ vi.mock("pdfjs-dist", () => {
   return {
     GlobalWorkerOptions: { workerSrc: "" },
     PasswordResponses: { NEED_PASSWORD: 1, INCORRECT_PASSWORD: 2 },
-    normalizeUnicode: (value: string) => value,
+    normalizeUnicode: (value: string) => value.replaceAll(String.fromCodePoint(0xfb00), "ff"),
     PDFWorker: class {
       promise = Promise.resolve();
       destroy() {}
@@ -233,6 +233,7 @@ vi.mock("pdfjs-dist", () => {
           span.textContent = item.str;
           this.textDivs.push(span);
           this.options.container.append(span);
+          if (item.hasEOL) this.options.container.append(document.createElement("br"));
         }
       }
       cancel() {
@@ -986,7 +987,7 @@ describe("PdfViewer inverse search clicks", () => {
     click(span, 250, 15);
 
     expect(harness.pageClickToBp).toHaveBeenCalledWith(pageWrap(1), 1, { clientX: 250, clientY: 15 });
-    expect(onInverse).toHaveBeenCalledWith(1, 72, 700, "gamma");
+    expect(onInverse).toHaveBeenCalledWith(1, 72, 700, "gamma", { before: "alpha beta ", after: "" });
   });
 
   it("uses the centre of the clicked span when the event has no coordinates", async () => {
@@ -995,7 +996,7 @@ describe("PdfViewer inverse search clicks", () => {
     click(span, 0, 0);
 
     expect(harness.pageClickToBp).toHaveBeenCalledWith(pageWrap(1), 1, { clientX: 180, clientY: 16 });
-    expect(onInverse).toHaveBeenCalledWith(1, 72, 700, "beta");
+    expect(onInverse).toHaveBeenCalledWith(1, 72, 700, "beta", { before: "alpha ", after: " gamma" });
   });
 
   it("resolves the word under the caret when the click misses every span", async () => {
@@ -1012,7 +1013,7 @@ describe("PdfViewer inverse search clicks", () => {
 
     click(pageWrap(1), 500, 500);
 
-    expect(onInverse).toHaveBeenCalledWith(1, 72, 700, "beta");
+    expect(onInverse).toHaveBeenCalledWith(1, 72, 700, "beta", { before: "alpha ", after: " gamma" });
   });
 
   it("falls back to the standard caret position API", async () => {
@@ -1025,7 +1026,7 @@ describe("PdfViewer inverse search clicks", () => {
 
     click(pageWrap(1), 500, 500);
 
-    expect(onInverse).toHaveBeenCalledWith(1, 72, 700, "alpha");
+    expect(onInverse).toHaveBeenCalledWith(1, 72, 700, "alpha", { before: "", after: " beta gamma" });
   });
 
   it("falls back to the text span under the point, or no word at all", async () => {
@@ -1037,11 +1038,11 @@ describe("PdfViewer inverse search clicks", () => {
     });
 
     click(pageWrap(1), 500, 500);
-    expect(onInverse).toHaveBeenLastCalledWith(1, 72, 700, "alpha beta gamma");
+    expect(onInverse).toHaveBeenLastCalledWith(1, 72, 700, "alpha beta gamma", undefined);
 
     elementFromPoint.mockReturnValue(null);
     click(pageWrap(1), 500, 500);
-    expect(onInverse).toHaveBeenLastCalledWith(1, 72, 700, undefined);
+    expect(onInverse).toHaveBeenLastCalledWith(1, 72, 700, undefined, undefined);
   });
 
   it("finds the span under the pointer when the click lands on its text node", async () => {
@@ -1051,7 +1052,7 @@ describe("PdfViewer inverse search clicks", () => {
       new MouseEvent("click", { bubbles: true, cancelable: true, clientX: 110, clientY: 15, detail: 1 }),
     );
 
-    expect(onInverse).toHaveBeenCalledWith(1, 72, 700, "alpha");
+    expect(onInverse).toHaveBeenCalledWith(1, 72, 700, "alpha", { before: "", after: " beta gamma" });
   });
 
   it("keeps working while text elsewhere is selected and the click has no coordinates", async () => {
@@ -1068,8 +1069,43 @@ describe("PdfViewer inverse search clicks", () => {
     click(pageWrap(1), 0, 0);
 
     expect(harness.pageClickToBp).toHaveBeenCalledWith(pageWrap(1), 1, { clientX: 0, clientY: 0 });
-    expect(onInverse).toHaveBeenCalledWith(1, 72, 700, undefined);
+    expect(onInverse).toHaveBeenCalledWith(1, 72, 700, undefined, undefined);
     document.getSelection()?.removeAllRanges();
+  });
+
+  it("sends the text around the word across spans and line ends", async () => {
+    harness.pages = [
+      {
+        width: 612,
+        height: 792,
+        items: [
+          { ...text("1 Introduction"), hasEOL: true },
+          text("Cats and dogs and birds and fish."),
+          text(" "),
+          { ...text("We find that the"), hasEOL: true },
+          text("effect is di" + String.fromCodePoint(0xfb00) + "icult to define"),
+        ],
+      },
+    ];
+    harness.pageClickToBp.mockReturnValue({ page: 1, x: 72, y: 700 });
+    const onInverse = vi.fn();
+    renderViewer({ onInverse });
+    await pageTextRendered(1);
+    const [, sentence, , , last] = pageWrap(1).querySelectorAll<HTMLElement>(".textLayer span");
+    sentence.getBoundingClientRect = () => rect(100, 10, 330, 12);
+    last.getBoundingClientRect = () => rect(100, 30, 280, 12);
+
+    click(sentence, 255, 15);
+    expect(onInverse).toHaveBeenLastCalledWith(1, 72, 700, "and", {
+      before: "1 Introduction Cats and dogs ",
+      after: " birds and fish. We find that the effect is difficult to define",
+    });
+
+    click(last, 235, 35);
+    expect(onInverse).toHaveBeenLastCalledWith(1, 72, 700, "difficult", {
+      before: "1 Introduction Cats and dogs and birds and fish. We find that the effect is ",
+      after: " to define",
+    });
   });
 
   it("ignores clicks that miss the source map", async () => {

@@ -190,12 +190,21 @@ function confirmCopy(
         description: t(($) => $.cloud.confirm.replaceDescription),
         confirmLabel: t(($) => $.cloud.confirm.replaceAction),
       };
-    case "deleteHeld":
+    case "deleteHeld": {
+      const count = pending.project.hold?.count ?? 0;
+      if (pending.project.hold?.kind === "remoteDelete") {
+        return {
+          title: t(($) => $.cloud.confirm.deleteHereTitle),
+          description: t(($) => $.cloud.confirm.deleteHereDescription, { count, name }),
+          confirmLabel: t(($) => $.cloud.confirm.deleteHereAction),
+        };
+      }
       return {
         title: t(($) => $.cloud.confirm.deleteTitle),
-        description: t(($) => $.cloud.confirm.deleteDescription, { count: pending.project.hold?.count ?? 0, name }),
+        description: t(($) => $.cloud.confirm.deleteDescription, { count, name }),
         confirmLabel: t(($) => $.cloud.confirm.deleteAction),
       };
+    }
   }
 }
 
@@ -290,6 +299,7 @@ function HeldNotice({ project, onDelete }: Readonly<{ project: CloudProject; onD
   const resolveHold = useCloudStore((s) => s.resolveHold);
   const hold = project.hold;
   if (!hold) return null;
+  const remote = hold.kind === "remoteDelete";
   return (
     <CloudNotice
       tone="warning"
@@ -300,7 +310,7 @@ function HeldNotice({ project, onDelete }: Readonly<{ project: CloudProject; onD
         <>
           <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void resolveHold(localId, "restore")}>
             {busy ? <Spinner /> : null}
-            {t(($) => $.cloud.row.putBack)}
+            {remote ? t(($) => $.cloud.row.putBackInDropbox) : t(($) => $.cloud.row.putBack)}
           </Button>
           <Button
             type="button"
@@ -310,12 +320,14 @@ function HeldNotice({ project, onDelete }: Readonly<{ project: CloudProject; onD
             onClick={onDelete}
             className="text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive"
           >
-            {t(($) => $.cloud.row.deleteToo)}
+            {remote ? t(($) => $.cloud.row.deleteHere) : t(($) => $.cloud.row.deleteToo)}
           </Button>
         </>
       }
     >
-      {t(($) => $.cloud.row.heldMessage, { count: hold.count, total: hold.total })}
+      {remote
+        ? t(($) => $.cloud.row.heldRemoteMessage, { count: hold.count, total: hold.total })
+        : t(($) => $.cloud.row.heldMessage, { count: hold.count, total: hold.total })}
     </CloudNotice>
   );
 }

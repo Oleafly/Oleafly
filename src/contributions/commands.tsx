@@ -57,6 +57,8 @@ import {
 } from "lucide-react";
 import { ClockCheck } from "@/components/icons/ClockCheck";
 import { registerCommand, type AppContext } from "@oleafly/registry";
+import { isWysiwygActive } from "@/components/editor/wysiwyg/controller";
+import { linkLanguageFor } from "@/lib/file-links";
 import { i18n } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
 import { useCompileStore } from "@/store/compile";
@@ -194,6 +196,7 @@ const ENGLISH_KEYWORDS = {
   appearance: "theme appearance mode",
   saveSettingsToFolder: "save project settings folder project.json share main document engine",
   openFolder: "open folder directory existing local files disk",
+  insertFileLink: "link file path note reference href markdown typst latex",
   formatDocument: "format tidy indent typstyle typst",
   formatSelection: "format selection tidy indent typstyle typst",
   typstPackages: "typst universe packages import library browse vendor",
@@ -814,6 +817,20 @@ export function registerPaletteCommands() {
     order: 420,
     when: engineFormattingAvailable,
     run: () => runEngineFormatting("section"),
+  });
+  palette({
+    id: "palette.insert-file-link",
+    group: () => i18n.t(($) => $.shell.commandGroups.insert),
+    label: () => i18n.t(($) => $.shell.commands.insertFileLink.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.insertFileLink.keywords)} ${ENGLISH_KEYWORDS.insertFileLink}`,
+    icon: () => <Link className="size-4" />,
+    order: 425,
+    when: (ctx) => {
+      const language = linkLanguageFor(ctx.activeDocumentPath);
+      return language !== null && !(language === "markdown" && isWysiwygActive());
+    },
+    run: () => void import("@/features/file-links").then((links) => links.startFileLinkInsertion()),
   });
   palette({
     id: "palette.list",

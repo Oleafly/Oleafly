@@ -364,12 +364,15 @@ fn read_connection_at(path: &Path) -> Result<Option<ConnectionFile>, String> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(plain_error(error.to_string())),
     };
-    if bytes.len() > 1024 * 1024 {
-        return Err(plain_error("cloud connection record is too large"));
+    // A record that can't be read is set aside, which leaves this computer
+    // disconnected, so connecting again works.
+    let parsed = (bytes.len() <= 1024 * 1024)
+        .then(|| serde_json::from_slice(&bytes).ok())
+        .flatten();
+    if parsed.is_none() {
+        state::set_aside(path);
     }
-    serde_json::from_slice(&bytes)
-        .map(Some)
-        .map_err(|error| plain_error(error.to_string()))
+    Ok(parsed)
 }
 
 fn write_connection_at(path: &Path, file: &ConnectionFile) -> Result<(), String> {
@@ -579,38 +582,57 @@ async fn refresh_access_token(expected: Option<&str>) -> Result<String, String> 
     Ok(tokens.access_token)
 }
 
+fn cached_token() -> Option<String> {
+    token_cache()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .as_ref()
+        .filter(|cached| cached.expires_at_ms > now_ms().saturating_add(60_000))
+        .map(|cached| cached.access_token.clone())
+}
+
 async fn access_token() -> Result<String, String> {
     let _gate = refresh_gate().lock().await;
-    {
-        let cache = token_cache()
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        if let Some(cached) = cache.as_ref() {
-            if cached.expires_at_ms > now_ms().saturating_add(60_000) {
-                return Ok(cached.access_token.clone());
-            }
-        }
+    if let Some(token) = cached_token() {
+        return Ok(token);
     }
     refresh_access_token(None).await
 }
 
-async fn forced_refresh(expected: Option<String>) -> Result<String, StoreError> {
+fn connected_to(account_id: &str) -> bool {
+    read_connection()
+        .ok()
+        .flatten()
+        .and_then(|file| file.account)
+        .is_some_and(|account| account.account_id == account_id && !account.revoked)
+}
+
+async fn forced_refresh(expected: String, stale: String) -> Result<String, StoreError> {
     let _gate = refresh_gate().lock().await;
+    // Requests refused together each ask for a new token. The first one gets
+    // it, and the others find it in the cache.
+    if let Some(token) = cached_token().filter(|token| *token != stale) {
+        if connected_to(&expected) {
+            return Ok(token);
+        }
+    }
     clear_token_cache();
-    refresh_access_token(expected.as_deref())
+    refresh_access_token(Some(&expected))
         .await
         .map_err(|error| {
             if error.contains("cloud.revoked") {
                 StoreError::Revoked
             } else {
-                StoreError::Network(error)
+                // `error` is already a serialized app error; the round wraps
+                // this one again, so keep only a plain description here.
+                StoreError::Network("the dropbox sign-in could not be renewed".into())
             }
         })
 }
 
 pub(crate) fn refresher(account_id: &str) -> TokenRefresher {
     let account_id = account_id.to_string();
-    Arc::new(move || Box::pin(forced_refresh(Some(account_id.clone()))))
+    Arc::new(move |stale| Box::pin(forced_refresh(account_id.clone(), stale)))
 }
 
 async fn dropbox_store(account_id: &str) -> Result<DropboxStore, String> {
@@ -712,9 +734,11 @@ pub async fn cloud_connect_wait(flow_id: String) -> Result<ConnectDone, String> 
             .take()
             .ok_or_else(|| AppError::new("cloud.sign_in_cancelled").to_string())?
     };
+    let mut listener = listener;
     let code = match listener.wait(CONNECT_TIMEOUT).await {
         Ok(code) => code,
         Err(error) => {
+            listener.finish(false).await;
             flows()
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -722,21 +746,26 @@ pub async fn cloud_connect_wait(flow_id: String) -> Result<ConnectDone, String> 
             return Err(app_error(&error));
         }
     };
-    let flow = flows()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .remove(&flow_id)
-        .ok_or_else(|| AppError::new("cloud.sign_in_cancelled").to_string())?;
-    let tokens = auth_client()
-        .exchange_code(
-            dropbox_app_key(),
-            &code,
-            flow.pkce.verifier(),
-            flow.redirect.as_deref(),
-        )
-        .await
-        .map_err(|error| app_error(&error))?;
-    finish_connect(tokens).await
+    let connected = async {
+        let flow = flows()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .remove(&flow_id)
+            .ok_or_else(|| AppError::new("cloud.sign_in_cancelled").to_string())?;
+        let tokens = auth_client()
+            .exchange_code(
+                dropbox_app_key(),
+                &code,
+                flow.pkce.verifier(),
+                flow.redirect.as_deref(),
+            )
+            .await
+            .map_err(|error| app_error(&error))?;
+        finish_connect(tokens).await
+    }
+    .await;
+    listener.finish(connected.is_ok()).await;
+    connected
 }
 
 #[tauri::command]
@@ -1037,7 +1066,7 @@ pub async fn cloud_details() -> Result<CloudDetailsView, String> {
     };
     let mut usage = auth_client().space_usage(&token).await;
     if matches!(usage, Err(OAuthError::Revoked)) {
-        if let Ok(fresh) = forced_refresh(Some(account.account_id.clone())).await {
+        if let Ok(fresh) = forced_refresh(account.account_id.clone(), token.clone()).await {
             usage = auth_client().space_usage(&fresh).await;
             token = fresh;
         }
@@ -1073,19 +1102,31 @@ pub async fn cloud_details() -> Result<CloudDetailsView, String> {
     })
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DisconnectDone {
+    /// Whether Dropbox confirmed that Oleafly's access ended. When it couldn't
+    /// be reached, this computer forgets the sign-in all the same.
+    remote_revoked: bool,
+}
+
 #[tauri::command]
-pub async fn cloud_disconnect() -> Result<(), String> {
+pub async fn cloud_disconnect() -> Result<DisconnectDone, String> {
     let _gate = tokio::time::timeout(Duration::from_secs(30), action_gate())
         .await
         .ok();
     let Some(file) = read_connection()? else {
-        return Ok(());
+        return Ok(DisconnectDone {
+            remote_revoked: true,
+        });
     };
+    let mut remote_revoked = true;
     if let Some(account) = file.account.clone() {
         if !account.revoked {
-            if let Ok(token) = access_token().await {
-                let _ = auth_client().revoke(&token).await;
-            }
+            remote_revoked = match access_token().await {
+                Ok(token) => auth_client().revoke(&token).await.is_ok(),
+                Err(_) => false,
+            };
         }
         let current = crate::secrets::cloud_secret_backend().backend;
         let _ = crate::secrets::delete_cloud_secret(REFRESH_SECRET_ACCOUNT, account.backend);
@@ -1099,11 +1140,23 @@ pub async fn cloud_disconnect() -> Result<(), String> {
             file.last_email = Some(account.email);
         }
         Ok(())
-    })
+    })?;
+    Ok(DisconnectDone { remote_revoked })
+}
+
+/// Stops a sweep that is running, waiting a bounded time for it to reach a
+/// point where it can stop.
+async fn stop_sweep() -> Option<tokio::sync::MutexGuard<'static, ()>> {
+    tokio::time::timeout(Duration::from_secs(30), action_gate())
+        .await
+        .ok()
 }
 
 #[tauri::command]
-pub fn cloud_set_enabled(on: bool) -> Result<(), String> {
+pub async fn cloud_set_enabled(on: bool) -> Result<(), String> {
+    // Turning sync off here stops a round that is running, so the other
+    // projects don't still sync after the switch says off.
+    let _gate = if on { None } else { stop_sweep().await };
     update_connection(|file| {
         let account = file.account.as_mut().ok_or_else(not_connected)?;
         account.enabled = on;
@@ -1187,6 +1240,28 @@ fn pending_hook(account_id: &str, local_id: &str) -> engine::PendingHook {
     })
 }
 
+fn base_hook(account_id: &str, local_id: &str) -> engine::BaseHook {
+    let account_id = account_id.to_string();
+    let local_id = local_id.to_string();
+    Arc::new(move |changes: &[(String, Option<state::BaseEntry>)]| {
+        let _ = state::update(|state| {
+            if !same_account(state, &account_id) {
+                return;
+            }
+            let entry = state.projects.entry(local_id.clone()).or_default();
+            for (path, agreed) in changes {
+                let folded = oleafly_core::portable::fold(path);
+                entry
+                    .base
+                    .retain(|known, _| oleafly_core::portable::fold(known) != folded);
+                if let Some(agreed) = agreed {
+                    entry.base.insert(path.clone(), agreed.clone());
+                }
+            }
+        });
+    })
+}
+
 fn store_round(
     target: &RunTarget<'_>,
     result: &engine::RoundResult,
@@ -1223,6 +1298,7 @@ async fn run_project<S: CloudStore>(
         trash,
         lock_id: Some(target.local_id.to_string()),
         persist_pending: Some(pending_hook(target.account_id, target.local_id)),
+        persist_base: Some(base_hook(target.account_id, target.local_id)),
     };
     for attempt in 1..=ROUND_ATTEMPTS {
         let (previous, hlc) = state::read(|state| {
@@ -1409,7 +1485,8 @@ async fn sweep_library(
         quota_hit: !allow_uploads,
     };
     for project in library {
-        if preempted() {
+        // Turning sync off, or disconnecting, ends the sweep at the next project.
+        if preempted() || require_usable().is_err() {
             break;
         }
         let skip = state::read(|state| {
@@ -1499,8 +1576,12 @@ pub async fn cloud_sync_now(dirty: Option<Vec<DirtyFile>>) -> Result<SyncReport,
             });
         }
     };
-    if let Ok((staging, _)) = cloud_dirs() {
-        let _ = tauri::async_runtime::spawn_blocking(move || engine::sweep_staging(&staging)).await;
+    if let Ok((staging, trash)) = cloud_dirs() {
+        let _ = tauri::async_runtime::spawn_blocking(move || {
+            engine::sweep_staging(&staging);
+            engine::sweep_trash(&trash);
+        })
+        .await;
     }
     let (cursor, quota_full) = state::read(|state| (state.cursor.clone(), state.quota_full))?;
     if let Err(error) = mark_remote_changes(&store, &account.account_id, cursor).await {
@@ -1580,6 +1661,7 @@ pub async fn cloud_project_set_mode(local_id: String, mode: String) -> Result<()
             .get(&local_id)
             .is_some_and(|entry| entry.removed_by.is_some())
     })?;
+    let _stopped = if paused { stop_sweep().await } else { None };
     if !paused && removed {
         let _gate = action_gate().await;
         let (_, account) = require_usable()?;
@@ -1863,7 +1945,9 @@ pub async fn cloud_download_project(
     let meta_base = engine::read_meta_value(&projects_root.join(&local_id))
         .map(|value| super::merge::portable_meta(&value));
     state::update(|state| {
-        state.hlc = state.hlc.max(downloaded.version.stamp.hlc.raw());
+        state.hlc = state
+            .hlc
+            .max(engine::plausible_hlc(downloaded.version.stamp.hlc.raw()));
         let entry = state.projects.entry(local_id.clone()).or_default();
         *entry = ProjectState {
             cloud: Some(cloud),
@@ -1974,7 +2058,7 @@ pub fn cloud_settings_applied(stamp: String, values: serde_json::Value) -> Resul
     let stamp = parse_stamp(&stamp)?;
     state::update(|state| {
         settings::applied(&mut state.settings, stamp, values);
-        state.hlc = state.hlc.max(state.settings.stamp);
+        state.hlc = state.hlc.max(engine::plausible_hlc(state.settings.stamp));
     })
 }
 

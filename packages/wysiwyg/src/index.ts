@@ -61,6 +61,8 @@ export type {
   MathRenderPort,
   MathRenderResult,
   AssetUrlResolver,
+  LinkHrefLocalizer,
+  LinkHrefOpener,
 } from "./options";
 export {
   OPEN_SOURCE_EDITOR_EVENT,
@@ -74,6 +76,7 @@ export {
   type PreservedMarkdownInlineRange,
 } from "./markdown/parse";
 export { serializeMarkdownBody } from "./markdown/serialize";
+export { markdownLinkDestination } from "./link-destination";
 export {
   createMarkdownSourceSnapshot,
   type MarkdownSourceLayout,

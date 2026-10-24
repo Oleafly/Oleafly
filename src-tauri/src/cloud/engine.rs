@@ -33,12 +33,15 @@ const FILE_DOWNLOAD_MS: u64 = 50;
 const ZIP_MAX_BYTES: u64 = 16 * 1024 * 1024 * 1024;
 const STALE_TEMP_AGE: Duration = Duration::from_secs(60 * 60);
 pub(crate) const RETRY_FAILED_MS: u64 = 60 * 60 * 1000;
+pub(crate) const RETRY_APPLY_MS: u64 = 5 * 60 * 1000;
+const GIT_LOCK_STALE: Duration = Duration::from_secs(10 * 60);
 const DISK_HEADROOM_BYTES: u64 = 64 * 1024 * 1024;
 pub(crate) const MAX_LISTED_SKIPS: usize = 50;
 pub(crate) const MAX_CONFLICT_COPIES: usize = 100;
 const MAX_TREE_DEPTH: usize = 32;
 const APPLY_BATCH: usize = 32;
 const COPY_MIN_BYTES: u64 = 512 * 1024;
+const AUTHOR_FIELD: &str = "by";
 
 pub(crate) fn now_ms() -> u64 {
     SystemTime::now()
@@ -132,7 +135,9 @@ pub(crate) struct VersionManifest {
 
 impl VersionManifest {
     pub(crate) fn total_size(&self) -> u64 {
-        self.files.iter().map(|file| file.size).sum()
+        self.files
+            .iter()
+            .fold(0, |total: u64, file| total.saturating_add(file.size))
     }
 }
 
@@ -194,6 +199,9 @@ pub(crate) struct SyncOutcome {
 }
 
 pub(crate) type PendingHook = Arc<dyn Fn(&[PendingDelete]) + Send + Sync>;
+/// Saves agreed versions as soon as files are in place: a path with its new
+/// entry, or None once it is deleted.
+pub(crate) type BaseHook = Arc<dyn Fn(&[(String, Option<BaseEntry>)]) + Send + Sync>;
 
 pub(crate) struct RoundEnv {
     pub(crate) root: PathBuf,
@@ -201,6 +209,7 @@ pub(crate) struct RoundEnv {
     pub(crate) trash: PathBuf,
     pub(crate) lock_id: Option<String>,
     pub(crate) persist_pending: Option<PendingHook>,
+    pub(crate) persist_base: Option<BaseHook>,
 }
 
 pub(crate) struct RoundResult {
@@ -292,7 +301,7 @@ fn apply_exec(path: &Path, portable: &str, exec: bool) {
 #[cfg(not(unix))]
 fn apply_exec(_path: &Path, _portable: &str, _exec: bool) {}
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct OwnedPolicy {
     main_doc: String,
     include: Vec<String>,
@@ -313,16 +322,16 @@ pub(crate) fn read_meta_value(root: &Path) -> Option<serde_json::Value> {
     read_json(&root.join(PROJECT_META))
 }
 
-fn policy_for(meta: Option<&serde_json::Value>) -> OwnedPolicy {
-    let manifest = meta
-        .and_then(|value| serde_json::to_vec(value).ok())
-        .and_then(|bytes| oleafly_core::sniff_oleafly_manifest(&bytes))
-        .unwrap_or_default();
-    OwnedPolicy {
+/// The sync rules `project.json` sets, or None when there is none or it is
+/// not a manifest this version can read.
+fn policy_for(meta: Option<&serde_json::Value>) -> Option<OwnedPolicy> {
+    let bytes = serde_json::to_vec(meta?).ok()?;
+    let manifest = oleafly_core::sniff_oleafly_manifest(&bytes)?;
+    Some(OwnedPolicy {
         main_doc: manifest.main_doc,
         include: manifest.sync_include,
         exclude: manifest.sync_exclude,
-    }
+    })
 }
 
 #[derive(Clone, Debug)]
@@ -340,7 +349,11 @@ pub(crate) struct Capture {
     pub(crate) unobserved: BTreeSet<String>,
     pub(crate) skipped: Vec<SkippedFile>,
     policy: OwnedPolicy,
+    /// Whether `policy` was read from `project.json` this time.
+    policy_read: bool,
     meta: Option<serde_json::Value>,
+    /// Keys of build-output-shaped files kept because Git tracks them.
+    tracked: BTreeSet<String>,
 }
 
 impl Capture {
@@ -454,10 +467,75 @@ enum Seen {
     },
 }
 
+/// Folders the cloud leaves out on top of the project's sync policy: a Python
+/// environment, which can hold more files than a project may sync and is
+/// reinstalled from its requirements, and Python's bytecode cache.
+fn cloud_skip(relative: &Path) -> Option<SkipReason> {
+    relative.components().find_map(|component| {
+        let std::path::Component::Normal(part) = component else {
+            return None;
+        };
+        let part = part.to_string_lossy();
+        if part.eq_ignore_ascii_case(".venv") {
+            Some(SkipReason::Reinstallable)
+        } else if part == "__pycache__" {
+            Some(SkipReason::BuildOutput)
+        } else {
+            None
+        }
+    })
+}
+
+/// Per project root: the stamp of Git's index, and the files it listed.
+type TrackedCache = BTreeMap<PathBuf, ((u64, Option<SystemTime>), BTreeSet<String>)>;
+
+/// The files Git tracks in `root`, read again only when its index changes.
+fn tracked_files(root: &Path) -> BTreeSet<String> {
+    static CACHE: std::sync::OnceLock<std::sync::Mutex<TrackedCache>> = std::sync::OnceLock::new();
+    let Some(stamp) = git_dir(root)
+        .and_then(|git_dir| std::fs::metadata(git_dir.join("index")).ok())
+        .map(|metadata| (metadata.len(), metadata.modified().ok()))
+    else {
+        return BTreeSet::new();
+    };
+    let cache = CACHE.get_or_init(Default::default);
+    if let Some((known, paths)) = cache
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .get(root)
+    {
+        if *known == stamp {
+            return paths.clone();
+        }
+    }
+    let paths = crate::git::tracked_paths(root).unwrap_or_default();
+    cache
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .insert(root.to_path_buf(), (stamp, paths.clone()));
+    paths
+}
+
+/// Git's list of tracked files, read the first time a walk needs it.
+struct Tracked<'a> {
+    root: &'a Path,
+    paths: Option<BTreeSet<String>>,
+}
+
+impl Tracked<'_> {
+    fn contains(&mut self, portable: &str) -> bool {
+        let root = self.root;
+        self.paths
+            .get_or_insert_with(|| tracked_files(root))
+            .contains(portable)
+    }
+}
+
 fn classify_entry(
     out: &mut Capture,
     root: &Path,
     fields: &PolicyFields<'_>,
+    tracked: &mut Tracked<'_>,
     entry: &std::fs::DirEntry,
 ) -> Seen {
     let path = entry.path();
@@ -478,7 +556,35 @@ fn classify_entry(
         git_tracked: false,
         git_pointer_inside: None,
     };
-    match decide(relative, &info, fields) {
+    let mut decision = decide(relative, &info, fields);
+    // A build-output-shaped file Git tracks, such as a committed log of
+    // results, is the user's to keep, so it backs up. The main PDF and helper
+    // folders stay out: they come back with the next compile.
+    if decision == Decision::Skip(SkipReason::BuildOutput) && kind == EntryKind::File {
+        if let Some(portable) = portable_path(relative) {
+            if oleafly_core::exclude::is_build_artifact(&portable, |_| false)
+                && tracked.contains(&portable)
+            {
+                decision = decide(
+                    relative,
+                    &EntryInfo {
+                        git_tracked: true,
+                        ..info
+                    },
+                    fields,
+                );
+                if decision == Decision::Include {
+                    out.tracked.insert(key(&portable));
+                }
+            }
+        }
+    }
+    if decision == Decision::Include {
+        if let Some(reason) = cloud_skip(relative) {
+            decision = Decision::Skip(reason);
+        }
+    }
+    match decision {
         Decision::Ignore => {
             if let Some(name) = entry.file_name().to_str() {
                 sweep_stale_temp(&path, name);
@@ -532,8 +638,62 @@ fn hash_local(
         .map(|hash| hash.to_hex())
 }
 
+struct Unhashed {
+    file_key: String,
+    portable: String,
+    path: PathBuf,
+    metadata: std::fs::Metadata,
+}
+
+/// A walk of the project, with the files whose hash it couldn't reuse still
+/// to be read.
+struct Walked {
+    capture: Capture,
+    unhashed: Vec<Unhashed>,
+}
+
+impl Walked {
+    /// Reads the files the walk couldn't vouch for. This needs no lock on the
+    /// project, so saves aren't held up while a large project is read for the
+    /// first time; a file that changes while it is read waits for next round.
+    fn finish(mut self) -> Capture {
+        for item in self.unhashed {
+            let Some(stamp) = self
+                .capture
+                .files
+                .get(&item.file_key)
+                .filter(|file| file.path == item.portable)
+                .map(|file| file.stamp)
+            else {
+                continue;
+            };
+            let hashed = hash_local(&item.portable, &item.path, &item.metadata);
+            let settled =
+                std::fs::symlink_metadata(&item.path).is_ok_and(|now| FileStamp::of(&now) == stamp);
+            match hashed {
+                Ok(hash) if settled => {
+                    if let Some(file) = self.capture.files.get_mut(&item.file_key) {
+                        file.hash = hash;
+                    }
+                }
+                Ok(_) => {
+                    self.capture.files.remove(&item.file_key);
+                    self.capture.unobserved.insert(item.file_key);
+                }
+                Err(_) => {
+                    self.capture.files.remove(&item.file_key);
+                    self.capture.unobserved.insert(item.file_key);
+                    self.capture.skip(item.portable, "unreadable");
+                }
+            }
+        }
+        self.capture
+    }
+}
+
 fn record_file(
     out: &mut Capture,
+    unhashed: &mut Vec<Unhashed>,
     prior: &Prior<'_>,
     portable: String,
     path: &Path,
@@ -551,42 +711,56 @@ fn record_file(
         out.skip(displaced, "duplicateName");
     }
     let stamp = FileStamp::of(metadata);
-    let hash = match prior.reusable_hash(&file_key, &portable, &stamp) {
-        Some(hash) => Ok(hash),
-        None => hash_local(&portable, path, metadata),
-    };
-    match hash {
-        Ok(hash) => {
-            out.files.insert(
-                file_key,
-                LocalFile {
-                    path: portable,
-                    hash,
-                    size: metadata.len(),
-                    signature: stamp.settled_signature(SystemTime::now()),
-                    stamp,
-                },
-            );
-        }
-        Err(_) => {
-            out.unobserved.insert(file_key);
-            out.skip(portable, "unreadable");
-        }
+    let hash = prior.reusable_hash(&file_key, &portable, &stamp);
+    if hash.is_none() {
+        unhashed.push(Unhashed {
+            file_key: file_key.clone(),
+            portable: portable.clone(),
+            path: path.to_path_buf(),
+            metadata: metadata.clone(),
+        });
     }
+    out.files.insert(
+        file_key,
+        LocalFile {
+            path: portable,
+            hash: hash.unwrap_or_default(),
+            size: metadata.len(),
+            signature: stamp.settled_signature(SystemTime::now()),
+            stamp,
+        },
+    );
 }
 
+#[cfg(test)]
 pub(crate) fn capture_with(
     root: &Path,
     base: &BTreeMap<String, BaseEntry>,
+    known: Option<&OwnedPolicy>,
 ) -> Result<Capture, RoundError> {
+    walk(root, base, known).map(Walked::finish)
+}
+
+fn walk(
+    root: &Path,
+    base: &BTreeMap<String, BaseEntry>,
+    known: Option<&OwnedPolicy>,
+) -> Result<Walked, RoundError> {
     let meta = read_meta_value(root);
-    let policy = policy_for(meta.as_ref());
+    // A project.json this version can't read, say one a newer version wrote,
+    // keeps the rules last read from it, so folders it leaves out stay out.
+    let (policy, policy_read) = match policy_for(meta.as_ref()) {
+        Some(policy) => (policy, true),
+        None => (known.cloned().unwrap_or_default(), false),
+    };
     let prior = Prior::new(base);
     let mut out = Capture {
         meta,
         ..Capture::default()
     };
     let fields = policy.fields();
+    let mut tracked = Tracked { root, paths: None };
+    let mut unhashed = Vec::new();
     std::fs::read_dir(root).map_err(|error| RoundError::Local(error.to_string()))?;
     let mut pending = vec![root.to_path_buf()];
     while let Some(directory) = pending.pop() {
@@ -599,7 +773,7 @@ pub(crate) fn capture_with(
         let mut children: Vec<_> = read.flatten().collect();
         children.sort_by_key(std::fs::DirEntry::file_name);
         for entry in children {
-            match classify_entry(&mut out, root, &fields, &entry) {
+            match classify_entry(&mut out, root, &fields, &mut tracked, &entry) {
                 Seen::Skip => {}
                 Seen::Directory(path) => pending.push(path),
                 Seen::File {
@@ -607,7 +781,7 @@ pub(crate) fn capture_with(
                     path,
                     metadata,
                 } => {
-                    record_file(&mut out, &prior, portable, &path, &metadata);
+                    record_file(&mut out, &mut unhashed, &prior, portable, &path, &metadata);
                     if out.files.len() > MAX_FILES {
                         return Err(RoundError::TooManyFiles);
                     }
@@ -616,7 +790,11 @@ pub(crate) fn capture_with(
         }
     }
     out.policy = policy;
-    Ok(out)
+    out.policy_read = policy_read;
+    Ok(Walked {
+        capture: out,
+        unhashed,
+    })
 }
 
 fn portable_path(relative: &Path) -> Option<String> {
@@ -677,15 +855,22 @@ pub(crate) async fn fetch_version<S: CloudStore>(
         return Ok(None);
     };
     let unreadable = || RoundError::Unreadable("the remote version record is unreadable".into());
-    let probe: serde_json::Value = serde_json::from_slice(&bytes).map_err(|_| unreadable())?;
+    // Read the format first without building the whole record in memory, so a
+    // newer format is told apart from a broken one.
+    #[derive(Deserialize)]
+    struct Probe {
+        #[serde(default)]
+        v: serde_json::Value,
+    }
+    let probe: Probe = serde_json::from_slice(&bytes).map_err(|_| unreadable())?;
     if probe
-        .get("v")
-        .and_then(serde_json::Value::as_u64)
+        .v
+        .as_u64()
         .is_some_and(|v| v > u64::from(FORMAT_VERSION))
     {
         return Err(RoundError::NewerVersion);
     }
-    let version: VersionManifest = serde_json::from_value(probe).map_err(|_| unreadable())?;
+    let version: VersionManifest = serde_json::from_slice(&bytes).map_err(|_| unreadable())?;
     if version.project != cloud {
         return Err(RoundError::Unreadable(
             "the remote version record names another project".into(),
@@ -717,7 +902,15 @@ fn tidy_label(name: &str) -> Option<String> {
 }
 
 pub(crate) fn sanitize_label(name: &str) -> String {
-    tidy_label(name).unwrap_or_else(|| "conflict".into())
+    // A name like "conflicted copy" would turn the copy into a file sync
+    // ignores as another program's leftover, so it would never spread.
+    tidy_label(name)
+        .filter(|label| {
+            !oleafly_core::exclude::is_quietly_ignored_name(&format!(
+                "file ({label} 2000-01-01).tex"
+            ))
+        })
+        .unwrap_or_else(|| "conflict".into())
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -790,6 +983,8 @@ struct Planned {
     action: Action,
     settled: bool,
     backed_off: bool,
+    /// Left for a later round with its base and cloud record kept as they are.
+    deferred: bool,
 }
 
 struct RemoteView {
@@ -798,7 +993,11 @@ struct RemoteView {
     foreign_keys: BTreeSet<String>,
 }
 
-fn split_remote(remote: Option<&Remote>, policy: &OwnedPolicy) -> RemoteView {
+fn split_remote(
+    remote: Option<&Remote>,
+    policy: &OwnedPolicy,
+    tracked: &BTreeSet<String>,
+) -> RemoteView {
     let mut view = RemoteView {
         usable: BTreeMap::new(),
         foreign: Vec::new(),
@@ -813,11 +1012,16 @@ fn split_remote(remote: Option<&Remote>, policy: &OwnedPolicy) -> RemoteView {
             && valid_hash(&record.hash)
             && record.size <= oleafly_core::exclude::MAX_SYNC_FILE_BYTES
             && record.rev.as_deref().is_none_or(super::store::valid_rev)
-            && decide(
+            && cloud_skip(Path::new(&record.path)).is_none()
+            && match decide(
                 Path::new(&record.path),
                 &EntryInfo::file(record.size),
                 &fields,
-            ) == Decision::Include;
+            ) {
+                Decision::Include => true,
+                Decision::Skip(SkipReason::BuildOutput) => tracked.contains(&key(&record.path)),
+                _ => false,
+            };
         let record_key = key(&record.path);
         if usable && !view.usable.contains_key(&record_key) {
             view.usable.insert(record_key, record.clone());
@@ -864,6 +1068,9 @@ fn decide_action(
         (true, false, false, true) if restore_deleted => Action::Download,
         (true, false, false, _) => Action::RemoteDelete,
         (false, true, _, true) | (true, true, false, true) => Action::Download,
+        // project.json missing from the cloud's record is never a reason to
+        // delete it here, and keeping files deleted elsewhere uploads them.
+        (false, true, true, false) if is_meta || restore_deleted => Action::Upload,
         (false, true, _, false) => Action::LocalDelete,
         (true, true, true, true) if is_meta => Action::MetaMerge,
         (true, true, true, true) => Action::Conflict,
@@ -871,10 +1078,19 @@ fn decide_action(
     }
 }
 
-fn backed_off(input: &PlanInput<'_>, entry_key: &str, remote: Option<&FileRecord>) -> bool {
+fn backed_off(
+    input: &PlanInput<'_>,
+    entry_key: &str,
+    remote: Option<&FileRecord>,
+    action: &Action,
+) -> bool {
     remote.is_some_and(|record| {
         input.failed.get(entry_key).is_some_and(|failure| {
-            failure.hash == record.hash && input.now.saturating_sub(failure.at_ms) < RETRY_FAILED_MS
+            failure.hash == record.hash
+                // A conflict copy goes under a new name, so a file that could
+                // not be replaced doesn't hold back the edit made here.
+                && !(failure.applying && *action == Action::Conflict)
+                && failure.waiting(input.now)
         })
     })
 }
@@ -921,7 +1137,7 @@ fn plan(input: &PlanInput<'_>) -> Vec<Planned> {
         let waiting = matches!(
             action,
             Action::Download | Action::Conflict | Action::MetaMerge
-        ) && backed_off(input, entry_key, remote_record);
+        ) && backed_off(input, entry_key, remote_record, &action);
         if waiting {
             action = Action::Carry;
         }
@@ -933,25 +1149,30 @@ fn plan(input: &PlanInput<'_>) -> Vec<Planned> {
             action,
             settled: foreign || waiting,
             backed_off: waiting,
+            deferred: false,
         });
     }
     planned
 }
 
-fn mass_delete(planned: &[Planned], base_len: usize) -> Option<Hold> {
+/// How many `deleted` items are not one half of a move: a file that turns up
+/// under a new name, with the same content, in an `added` item with no base.
+fn deletions_beyond_moves<'a>(
+    planned: &'a [Planned],
+    deleted: &Action,
+    added: &Action,
+    content: fn(&'a Planned) -> Option<&'a str>,
+) -> usize {
     let mut moved: BTreeMap<&str, usize> = BTreeMap::new();
     for item in planned {
-        if item.action == Action::Upload && item.base.is_none() {
-            if let Some(local) = &item.local {
-                *moved.entry(local.hash.as_str()).or_default() += 1;
+        if item.action == *added && item.base.is_none() {
+            if let Some(hash) = content(item) {
+                *moved.entry(hash).or_default() += 1;
             }
         }
     }
     let mut count = 0;
-    for item in planned {
-        if item.action != Action::RemoteDelete {
-            continue;
-        }
+    for item in planned.iter().filter(|item| item.action == *deleted) {
         let reappeared = item
             .base
             .as_ref()
@@ -962,15 +1183,58 @@ fn mass_delete(planned: &[Planned], base_len: usize) -> Option<Hold> {
             None => count += 1,
         }
     }
-    let all = count > 0 && count == base_len;
-    (all || (count > MASS_DELETE_MIN && count * 2 > base_len)).then_some(Hold::MassDelete {
-        count,
-        total: base_len,
+    count
+}
+
+fn mass_delete(planned: &[Planned], base: &BTreeMap<String, BaseEntry>) -> Option<Hold> {
+    let too_many = |count: usize, total: usize| {
+        (count > 0 && count >= total) || (count > MASS_DELETE_MIN && count * 2 > total)
+    };
+    let total = base.len();
+    let here = deletions_beyond_moves(planned, &Action::RemoteDelete, &Action::Upload, |item| {
+        item.local.as_ref().map(|local| local.hash.as_str())
+    });
+    if too_many(here, total) {
+        return Some(Hold::MassDelete { count: here, total });
+    }
+    // Files that left the cloud's record, from a rollback, a broken record or
+    // a mass delete on another computer. project.json never counts: a record
+    // without it uploads it again.
+    let files = base.keys().filter(|path| key(path) != PROJECT_META).count();
+    let there = deletions_beyond_moves(planned, &Action::LocalDelete, &Action::Download, |item| {
+        item.remote.as_ref().map(|record| record.hash.as_str())
+    });
+    too_many(there, files).then_some(Hold::RemoteDelete {
+        count: there,
+        total: files,
     })
 }
 
 fn staging_name(staging: &Path) -> PathBuf {
     staging.join(format!("{:032x}.part", rand::random::<u128>()))
+}
+
+const TRASH_KEEP: Duration = Duration::from_secs(30 * 24 * 60 * 60);
+
+/// Empties folders in Oleafly's own trash, used only when the system trash
+/// refused a file, once they are a month old.
+pub(crate) fn sweep_trash(trash: &Path) {
+    let Ok(entries) = std::fs::read_dir(trash) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let Ok(metadata) = entry.metadata() else {
+            continue;
+        };
+        let old = metadata
+            .modified()
+            .ok()
+            .and_then(|modified| modified.elapsed().ok())
+            .is_some_and(|age| age > TRASH_KEEP);
+        if old && metadata.is_dir() {
+            let _ = std::fs::remove_dir_all(entry.path());
+        }
+    }
 }
 
 pub(crate) fn sweep_staging(staging: &Path) {
@@ -994,14 +1258,17 @@ fn move_into(staged: &Path, target: &Path) -> std::io::Result<()> {
     if let Some(parent) = target.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    if std::fs::rename(staged, target).is_ok() {
+    // On Windows an indexer or a compile can hold the old file open for a few
+    // seconds; replace_file waits that out instead of failing at once.
+    if crate::sandbox::replace_file(staged, target).is_ok() {
         return Ok(());
     }
     let parent = target
         .parent()
         .ok_or_else(|| std::io::Error::other("target has no parent"))?;
     let temp = parent.join(format!(".{:016x}.oleafly-cloud.tmp", rand::random::<u64>()));
-    let copied = std::fs::copy(staged, &temp).and_then(|_| std::fs::rename(&temp, target));
+    let copied =
+        std::fs::copy(staged, &temp).and_then(|_| crate::sandbox::replace_file(&temp, target));
     if copied.is_err() {
         let _ = std::fs::remove_file(&temp);
     }
@@ -1063,7 +1330,9 @@ async fn stage_one<S: CloudStore>(
     let mut limit = if pinned {
         record.size
     } else {
-        oleafly_core::exclude::MAX_SYNC_FILE_BYTES
+        // Without a revision any size can come back, so the disk bounds it.
+        let free = free_space(staging).await.unwrap_or(u64::MAX);
+        oleafly_core::exclude::MAX_SYNC_FILE_BYTES.min(free.saturating_sub(DISK_HEADROOM_BYTES))
     };
     if job_key == PROJECT_META {
         limit = limit.min(oleafly_core::MAX_MANIFEST_BYTES);
@@ -1330,14 +1599,18 @@ fn copy_verified(source: &mut impl std::io::Read, target: &Path, record: &FileRe
     size == record.size && hasher.finish().to_hex() == record.hash && file.sync_all().is_ok()
 }
 
-async fn room_for(staging: &Path, needed: u64) -> bool {
+async fn free_space(staging: &Path) -> Option<u64> {
     let staging = staging.to_path_buf();
-    let available =
-        tauri::async_runtime::spawn_blocking(move || fs4::available_space(&staging).ok())
-            .await
-            .ok()
-            .flatten();
-    available.is_none_or(|free| needed.saturating_add(DISK_HEADROOM_BYTES) <= free)
+    tauri::async_runtime::spawn_blocking(move || fs4::available_space(&staging).ok())
+        .await
+        .ok()
+        .flatten()
+}
+
+async fn room_for(staging: &Path, needed: u64) -> bool {
+    free_space(staging)
+        .await
+        .is_none_or(|free| needed.saturating_add(DISK_HEADROOM_BYTES) <= free)
 }
 
 fn corrections(staged: &[Staged], view: &RemoteView) -> BTreeMap<String, FileRecord> {
@@ -1364,6 +1637,9 @@ struct Applied {
     deleted: BTreeSet<String>,
     conflict_copies: BTreeMap<String, String>,
     merged_meta: Option<(String, Vec<u8>)>,
+    /// The cloud's project.json a merge started from, which is the agreed one
+    /// until the merged file uploads.
+    meta_base: Option<serde_json::Value>,
     changed: BTreeSet<String>,
     failed: BTreeSet<String>,
 }
@@ -1499,8 +1775,13 @@ fn apply_meta_merge(job: &ApplyJob, item: &ApplyItem, temp: &Path, applied: &mut
     let Ok(bytes) = merge::pretty(&written) else {
         return;
     };
+    if crate::project::parse_project_meta(&bytes).is_err() {
+        applied.failed.insert(item.key.clone());
+        return;
+    }
     if write_meta(job.lock_id.as_deref(), &target, &bytes).is_ok() {
         applied.merged_meta = Some((merge::meta_digest(&bytes).to_hex(), bytes));
+        applied.meta_base = Some(merge::portable_meta(&incoming));
         applied.changed.insert(PROJECT_META.to_string());
     }
 }
@@ -1566,6 +1847,9 @@ fn place_meta(
     let incoming = read_json(temp).ok_or("the incoming project.json is unreadable")?;
     let merged = merge::with_device_fields(&incoming, local);
     let bytes = merge::pretty(&merged)?;
+    // A project.json this version can't open would leave the project
+    // unusable here, so the one on disk stays.
+    crate::project::parse_project_meta(&bytes)?;
     write_meta(lock_id, target, &bytes)
 }
 
@@ -1578,6 +1862,9 @@ struct UploadJob {
     exec: bool,
     local_hash: Option<String>,
     signature: Option<String>,
+    /// A conflict copy that has to reach the cloud before this file replaces
+    /// the version it holds there.
+    after: Option<String>,
 }
 
 impl UploadJob {
@@ -1591,8 +1878,20 @@ impl UploadJob {
             exec: remote.is_some_and(|record| record.exec),
             local_hash: Some(local.hash.clone()),
             signature: local.signature.clone(),
+            after: None,
         }
     }
+}
+
+/// The record fields naming the computer that wrote this version of a file,
+/// for the name of a conflict copy made from it elsewhere.
+fn authored(author: &str) -> serde_json::Map<String, serde_json::Value> {
+    let mut extra = serde_json::Map::new();
+    extra.insert(
+        AUTHOR_FIELD.into(),
+        serde_json::Value::String(author.chars().take(64).collect()),
+    );
+    extra
 }
 
 async fn upload_meta<S: CloudStore>(
@@ -1600,6 +1899,7 @@ async fn upload_meta<S: CloudStore>(
     cloud: ProjectId,
     root: &Path,
     job: &UploadJob,
+    author: &str,
 ) -> Result<FileRecord, StoreError> {
     let bytes = match &job.meta {
         Some(bytes) => bytes.clone(),
@@ -1618,7 +1918,7 @@ async fn upload_meta<S: CloudStore>(
         size,
         exec: false,
         rev: Some(rev),
-        extra: serde_json::Map::new(),
+        extra: authored(author),
     })
 }
 
@@ -1715,6 +2015,16 @@ impl<S: CloudStore> Publisher<'_, S> {
     }
 }
 
+/// `raw` as a clock reading this computer may adopt, or 0 when it is more than
+/// a day ahead of the local clock.
+pub(crate) fn plausible_hlc(raw: u64) -> u64 {
+    if Hlc::from_raw(raw).wall_ms() <= now_ms().saturating_add(MAX_FUTURE_SKEW_MS) {
+        raw
+    } else {
+        0
+    }
+}
+
 fn observe_remote(clock: &mut HlcClock, remote: &Remote) {
     let wall = remote.version.stamp.hlc.wall_ms();
     if wall <= now_ms().saturating_add(MAX_FUTURE_SKEW_MS) {
@@ -1754,13 +2064,55 @@ pub(crate) fn local_date() -> String {
     }
 }
 
+fn git_dir(root: &Path) -> Option<PathBuf> {
+    let dot_git = root.join(".git");
+    let metadata = std::fs::symlink_metadata(&dot_git).ok()?;
+    if metadata.is_dir() {
+        return Some(dot_git);
+    }
+    if !metadata.is_file() || metadata.len() > 4096 {
+        return None;
+    }
+    let text = std::fs::read_to_string(&dot_git).ok()?;
+    let pointed = Path::new(
+        text.lines()
+            .find_map(|line| line.strip_prefix("gitdir:"))?
+            .trim(),
+    );
+    Some(if pointed.is_absolute() {
+        pointed.to_path_buf()
+    } else {
+        root.join(pointed)
+    })
+}
+
+/// Whether a Git command is changing the working tree right now, such as a
+/// checkout or pull run in a terminal. Oleafly's own Git actions take the
+/// project lock; these lock files are how Git itself says it is busy. One left
+/// behind by a crash stops counting after a while.
+fn git_busy(root: &Path) -> bool {
+    let Some(git_dir) = git_dir(root) else {
+        return false;
+    };
+    ["index.lock", "HEAD.lock", "shallow.lock"]
+        .iter()
+        .any(|name| {
+            std::fs::symlink_metadata(git_dir.join(name))
+                .ok()
+                .and_then(|metadata| metadata.modified().ok())
+                .and_then(|modified| modified.elapsed().ok())
+                .is_some_and(|age| age < GIT_LOCK_STALE)
+        })
+}
+
 async fn capture_locked(
     env: &RoundEnv,
-    base: &BTreeMap<String, BaseEntry>,
+    previous: &ProjectState,
 ) -> Result<Option<Capture>, RoundError> {
     let root = env.root.clone();
     let lock_id = env.lock_id.clone();
-    let base = base.clone();
+    let base = previous.base.clone();
+    let known = previous.policy.clone();
     tauri::async_runtime::spawn_blocking(move || {
         let _lock = match &lock_id {
             Some(id) => match crate::worktree_lock::ProjectWorktreeLock::try_shared(id) {
@@ -1770,10 +2122,12 @@ async fn capture_locked(
             },
             None => None,
         };
-        if !root.is_dir() {
+        if !root.is_dir() || git_busy(&root) {
             return Ok(None);
         }
-        capture_with(&root, &base).map(Some)
+        let walked = walk(&root, &base, known.as_ref());
+        drop(_lock);
+        walked.map(|walked| Some(walked.finish()))
     })
     .await
     .map_err(|error| RoundError::Local(error.to_string()))?
@@ -1800,10 +2154,7 @@ fn quiet_round(capture: &Capture, project: &ProjectState, options: &RoundOptions
         && capture.matches_base(&project.base)
         && project.pending_deletes.is_empty()
         && project.hold.is_none()
-        && !project
-            .failed
-            .values()
-            .any(|failure| now.saturating_sub(failure.at_ms) >= RETRY_FAILED_MS)
+        && project.failed.values().all(|failure| failure.waiting(now))
 }
 
 struct Settled {
@@ -1838,6 +2189,10 @@ fn settle_keep(item: &Planned, out: &mut Settled) {
 }
 
 fn settle_carry(input: &SettleInput<'_>, item: &Planned, out: &mut Settled) {
+    if item.deferred {
+        out.incomplete = true;
+        return;
+    }
     let excluded = item.local.is_none()
         && !input.captured.unobserved.contains(&item.key)
         && !input.options.dirty.contains(&item.key);
@@ -1885,7 +2240,7 @@ fn settle_conflict(input: &SettleInput<'_>, item: &Planned, out: &mut Settled) {
     let copy_key = key(copy);
     if !input.captured.files.contains_key(&copy_key) {
         out.uploads.push(UploadJob {
-            key: copy_key,
+            key: copy_key.clone(),
             path: copy.clone(),
             meta: None,
             size: record.size,
@@ -1893,10 +2248,13 @@ fn settle_conflict(input: &SettleInput<'_>, item: &Planned, out: &mut Settled) {
             exec: record.exec,
             local_hash: None,
             signature: None,
+            after: None,
         });
     }
-    out.uploads
-        .push(UploadJob::from_local(&item.key, local, Some(record)));
+    out.uploads.push(UploadJob {
+        after: Some(copy_key),
+        ..UploadJob::from_local(&item.key, local, Some(record))
+    });
 }
 
 fn settle_meta(input: &SettleInput<'_>, item: &Planned, out: &mut Settled) {
@@ -1917,7 +2275,37 @@ fn settle_meta(input: &SettleInput<'_>, item: &Planned, out: &mut Settled) {
         exec: false,
         local_hash: None,
         signature: None,
+        after: None,
     });
+}
+
+/// What `settle` will agree on for files this round put in place or deleted,
+/// for saving before the rest of the round runs.
+fn applied_base(
+    planned: &[Planned],
+    applied: &Applied,
+    fixes: &BTreeMap<String, FileRecord>,
+) -> Vec<(String, Option<BaseEntry>)> {
+    planned
+        .iter()
+        .filter_map(|item| match item.action {
+            Action::Download if applied.downloaded.contains(&item.key) => {
+                let record = item.remote.as_ref()?;
+                let path = item
+                    .local
+                    .as_ref()
+                    .map_or_else(|| record.path.clone(), |file| file.path.clone());
+                Some((
+                    path,
+                    Some(base_entry(fixes.get(&item.key).unwrap_or(record))),
+                ))
+            }
+            Action::LocalDelete if applied.deleted.contains(&item.key) => {
+                item.local.as_ref().map(|file| (file.path.clone(), None))
+            }
+            _ => None,
+        })
+        .collect()
 }
 
 fn settle(
@@ -1962,6 +2350,8 @@ fn settle(
     }
     let mut seen = BTreeSet::new();
     out.uploads.retain(|job| seen.insert(job.key.clone()));
+    // Files that wait on a conflict copy go last, after the copies.
+    out.uploads.sort_by_key(|job| job.after.is_some());
     out
 }
 
@@ -1979,6 +2369,10 @@ struct UploadRun {
     published: BTreeSet<String>,
     skipped: Vec<SkippedFile>,
     error: Option<RoundError>,
+    /// Uploads a stopped round left for the next one.
+    remaining: u64,
+    /// Files taken back because their conflict copy didn't upload.
+    held_back: BTreeSet<String>,
 }
 
 enum Loaded {
@@ -1994,11 +2388,14 @@ struct Round<'a, S: CloudStore> {
     project: ProjectState,
     outcome: SyncOutcome,
     skipped: Vec<SkippedFile>,
-    failures: BTreeMap<String, String>,
+    /// Files that failed to download, or to be put in place (`true`), by hash.
+    failures: BTreeMap<String, (String, bool)>,
     error: Option<RoundError>,
     late_error: Option<RoundError>,
     incomplete: bool,
     moved: BTreeMap<String, String>,
+    merged_base: Option<serde_json::Value>,
+    author: String,
 }
 
 impl<S: CloudStore> Round<'_, S> {
@@ -2068,14 +2465,37 @@ impl<S: CloudStore> Round<'_, S> {
         if self.options.allow_uploads {
             return;
         }
-        for item in planned {
+        let mut new_names: BTreeMap<String, usize> = BTreeMap::new();
+        for item in planned.iter_mut() {
             if matches!(
                 item.action,
                 Action::Upload | Action::Conflict | Action::MetaMerge
             ) {
+                if let (Action::Upload, None, Some(local)) = (&item.action, &item.base, &item.local)
+                {
+                    *new_names.entry(local.hash.clone()).or_default() += 1;
+                }
                 item.action = Action::Carry;
                 self.outcome.quota_hit = true;
             }
+        }
+        // A file renamed here keeps its old name in the cloud until the new
+        // one can upload, so other computers don't lose it in between.
+        for item in planned.iter_mut() {
+            if item.action != Action::RemoteDelete {
+                continue;
+            }
+            let Some(left) = item
+                .base
+                .as_ref()
+                .and_then(|entry| new_names.get_mut(&entry.hash))
+                .filter(|left| **left > 0)
+            else {
+                continue;
+            };
+            *left -= 1;
+            item.action = Action::Carry;
+            item.deferred = true;
         }
     }
 
@@ -2116,6 +2536,14 @@ impl<S: CloudStore> Round<'_, S> {
                     Slot::Free
                 }
             };
+            // Named after the computer that wrote the other version, when its
+            // record says; older records only name the last one to publish.
+            let author = record
+                .extra
+                .get(AUTHOR_FIELD)
+                .and_then(serde_json::Value::as_str)
+                .map(sanitize_label);
+            let label = author.as_deref().unwrap_or(label);
             let (name, reuse) = conflict_path(&local.path, label, &date, &slot);
             reserved.insert(key(&name));
             names.insert(item.key.clone(), (name, reuse));
@@ -2136,6 +2564,20 @@ impl<S: CloudStore> Round<'_, S> {
             .collect();
         if downloads.is_empty() {
             return Vec::new();
+        }
+        // Files only go in with the project to themselves, so while something
+        // else works in it, downloading them now would only be thrown away.
+        if let Some(id) = self.env.lock_id.clone() {
+            let free = tauri::async_runtime::spawn_blocking(move || {
+                crate::worktree_lock::ProjectWorktreeLock::try_exclusive(&id)
+                    .is_ok_and(|lock| lock.is_some())
+            })
+            .await
+            .unwrap_or(false);
+            if !free {
+                self.incomplete = true;
+                return Vec::new();
+            }
         }
         if let Err(error) = tokio::fs::create_dir_all(&self.env.staging).await {
             self.incomplete = true;
@@ -2184,7 +2626,8 @@ impl<S: CloudStore> Round<'_, S> {
             }
             if let Some(record) = records.get(&job_key) {
                 if !matches!(error, StoreError::Io(_)) {
-                    self.failures.insert(job_key.clone(), record.hash.clone());
+                    self.failures
+                        .insert(job_key.clone(), (record.hash.clone(), false));
                 }
                 self.skipped.push(SkippedFile {
                     path: record.path.clone(),
@@ -2300,7 +2743,8 @@ impl<S: CloudStore> Round<'_, S> {
                 .find(|item| &item.key == item_key)
                 .and_then(|item| item.remote.as_ref())
             {
-                self.failures.insert(item_key.clone(), record.hash.clone());
+                self.failures
+                    .insert(item_key.clone(), (record.hash.clone(), true));
                 self.skipped.push(SkippedFile {
                     path: record.path.clone(),
                     reason: "downloadFailed".into(),
@@ -2313,11 +2757,20 @@ impl<S: CloudStore> Round<'_, S> {
     fn within_budget<'j>(&mut self, uploads: &'j [UploadJob]) -> Vec<&'j UploadJob> {
         let mut free = self.options.free_bytes;
         let mut queue = Vec::new();
+        let mut left_out: BTreeSet<&str> = BTreeSet::new();
         for job in uploads {
+            if job
+                .after
+                .as_deref()
+                .is_some_and(|copy| left_out.contains(copy))
+            {
+                continue;
+            }
             if let Some(left) = free {
                 let cost = job.size.saturating_sub(job.replaces);
                 if cost > left {
                     self.outcome.quota_hit = true;
+                    left_out.insert(&job.key);
                     continue;
                 }
                 free = Some(left - cost);
@@ -2325,6 +2778,25 @@ impl<S: CloudStore> Round<'_, S> {
             queue.push(job);
         }
         queue
+    }
+
+    /// Takes back uploads of files whose conflict copy didn't reach the cloud:
+    /// the version they replace there would then be on no other computer.
+    /// They upload again next round, after the copy.
+    fn hold_without_copies(&mut self, done: &[&UploadJob], run: &mut UploadRun) {
+        let tried: BTreeSet<&str> = done.iter().map(|job| job.key.as_str()).collect();
+        for job in done {
+            let Some(copy) = job.after.as_deref() else {
+                continue;
+            };
+            if tried.contains(copy)
+                && !run.uploaded.contains_key(copy)
+                && run.uploaded.remove(&job.key).is_some()
+            {
+                run.held_back.insert(job.key.clone());
+                self.incomplete = true;
+            }
+        }
     }
 
     fn take_result(
@@ -2387,7 +2859,7 @@ impl<S: CloudStore> Round<'_, S> {
                         size: job.size,
                         exec,
                         rev: Some(copied.rev),
-                        extra: serde_json::Map::new(),
+                        extra: authored(&self.author),
                     };
                     self.take_result(job, Ok(record), run);
                     self.outcome.copied += 1;
@@ -2414,7 +2886,8 @@ impl<S: CloudStore> Round<'_, S> {
         let mut batch: Vec<(&UploadJob, bool)> = Vec::new();
         for job in chunk {
             if job.path == PROJECT_META {
-                let result = upload_meta(self.store, self.cloud, &self.env.root, job).await;
+                let result =
+                    upload_meta(self.store, self.cloud, &self.env.root, job, &self.author).await;
                 tick();
                 stop |= self.take_result(job, result, run);
                 continue;
@@ -2466,7 +2939,7 @@ impl<S: CloudStore> Round<'_, S> {
                 size: uploaded.size,
                 exec: *exec,
                 rev: Some(uploaded.rev),
-                extra: serde_json::Map::new(),
+                extra: authored(&self.author),
             });
             stop |= self.take_result(job, record, run);
         }
@@ -2501,6 +2974,7 @@ impl<S: CloudStore> Round<'_, S> {
         let mut next = 0;
         while next < queue.len() {
             if self.options.cancelled() {
+                run.remaining = (queue.len() - next) as u64;
                 break;
             }
             let interval = PUBLISH_EVERY_FILES.max((view.usable.len() + run.uploaded.len()) / 4);
@@ -2513,6 +2987,7 @@ impl<S: CloudStore> Round<'_, S> {
             let stop = self
                 .upload_chunk(&queue[next..end], &mut run, meter.as_ref(), &sources)
                 .await;
+            self.hold_without_copies(&queue[..end], &mut run);
             next = end;
             if stop || next >= queue.len() {
                 break;
@@ -2578,8 +3053,15 @@ impl<S: CloudStore> Round<'_, S> {
                         .is_some_and(|record| record.hash == failure.hash)
             })
         });
-        for (item_key, hash) in std::mem::take(&mut self.failures) {
-            failed.insert(item_key, Failure { hash, at_ms: now });
+        for (item_key, (hash, applying)) in std::mem::take(&mut self.failures) {
+            failed.insert(
+                item_key,
+                Failure {
+                    hash,
+                    at_ms: now,
+                    applying,
+                },
+            );
         }
         self.project.failed = failed;
     }
@@ -2771,7 +3253,7 @@ impl<S: CloudStore> Round<'_, S> {
             pending.extend(pending_from(deletions));
             persist(&pending);
         }
-        publisher.pending = None;
+        publisher.pending = (run.remaining > 0).then_some(run.remaining);
         match publisher.publish(final_files.to_vec()).await {
             Ok(_) => {
                 run.published.extend(run.uploaded.keys().cloned());
@@ -2802,11 +3284,55 @@ impl<S: CloudStore> Round<'_, S> {
         if let Some(error) = run.error.take() {
             self.error.get_or_insert(error);
         }
+        // A file held back for its conflict copy keeps the version agreed
+        // before, so the next round sees the conflict again and waits for the
+        // copy, instead of an edit to upload on its own.
+        for held in &run.held_back {
+            let Some(item) = planned.iter().find(|item| &item.key == held) else {
+                continue;
+            };
+            match (&item.base, &item.local) {
+                (Some(entry), Some(local)) => {
+                    base.insert(held.clone(), (local.path.clone(), entry.clone()));
+                }
+                _ => {
+                    base.remove(held);
+                }
+            }
+        }
         self.incomplete |= keep_unfinished(&mut records, &run, &uploads, view);
-        let deletions: Vec<&Planned> = planned
+        // A file renamed here whose new name didn't upload keeps its old name
+        // in the cloud, so other computers don't lose it in between.
+        let mut new_names: BTreeMap<&str, usize> = BTreeMap::new();
+        for job in uploads
+            .iter()
+            .filter(|job| !run.uploaded.contains_key(&job.key))
+        {
+            let renamed = planned.iter().any(|item| {
+                item.key == job.key && item.action == Action::Upload && item.base.is_none()
+            });
+            if let (true, Some(hash)) = (renamed, job.local_hash.as_deref()) {
+                *new_names.entry(hash).or_default() += 1;
+            }
+        }
+        let mut deletions: Vec<&Planned> = Vec::new();
+        for item in planned
             .iter()
             .filter(|item| item.action == Action::RemoteDelete)
-            .collect();
+        {
+            let kept = item
+                .base
+                .as_ref()
+                .and_then(|entry| new_names.get_mut(entry.hash.as_str()))
+                .filter(|left| **left > 0);
+            match kept {
+                Some(left) => {
+                    *left -= 1;
+                    self.incomplete = true;
+                }
+                None => deletions.push(item),
+            }
+        }
         for item in &deletions {
             records.remove(&item.key);
         }
@@ -2831,7 +3357,10 @@ impl<S: CloudStore> Round<'_, S> {
         self.project.base = base.into_values().collect();
         self.project.meta_base = match agreed_meta(&self.env.root, &self.project).await {
             Some(meta) => Some(meta),
-            None => self.project.meta_base.take(),
+            None => self
+                .merged_base
+                .take()
+                .or_else(|| self.project.meta_base.take()),
         };
         (run, publisher.clock.last().raw())
     }
@@ -2846,11 +3375,14 @@ pub(crate) async fn sync_project<S: CloudStore>(
     hlc: u64,
     options: &RoundOptions,
 ) -> Result<RoundResult, RoundError> {
-    let Some(captured) = capture_locked(env, &previous.base).await? else {
+    let Some(captured) = capture_locked(env, previous).await? else {
         return Err(RoundError::Busy);
     };
     let mut project = previous.clone();
     project.cloud = Some(cloud);
+    if captured.policy_read {
+        project.policy = Some(captured.policy.clone());
+    }
     let mut clock = HlcClock::restore(Hlc::from_raw(hlc));
     let mut round = Round {
         store,
@@ -2865,6 +3397,8 @@ pub(crate) async fn sync_project<S: CloudStore>(
         late_error: None,
         incomplete: false,
         moved: BTreeMap::new(),
+        merged_base: None,
+        author: context.device_name.clone(),
     };
     if round.quiet(&captured).await? {
         round.outcome.unchanged = true;
@@ -2879,7 +3413,7 @@ pub(crate) async fn sync_project<S: CloudStore>(
     if let Some(remote) = &remote {
         observe_remote(&mut clock, remote);
     }
-    let view = split_remote(remote.as_ref(), &captured.policy);
+    let view = split_remote(remote.as_ref(), &captured.policy, &captured.tracked);
     let mut planned = plan(&PlanInput {
         capture: &captured,
         remote: &view,
@@ -2891,7 +3425,7 @@ pub(crate) async fn sync_project<S: CloudStore>(
     });
     round.limit_uploads(&mut planned);
     if !options.allow_mass_delete && !options.restore_deleted {
-        if let Some(hold) = mass_delete(&planned, round.project.base.len()) {
+        if let Some(hold) = mass_delete(&planned, &round.project.base) {
             round.project.hold = Some(hold);
             round.project.remote_dirty = true;
             round.outcome.held = true;
@@ -2912,6 +3446,23 @@ pub(crate) async fn sync_project<S: CloudStore>(
     let staged = round.stage(&planned, folder).await;
     let fixes = corrections(&staged, &view);
     let applied = round.apply(&planned, staged, names).await?;
+    round.merged_base = applied.meta_base.clone();
+    if let Some(persist) = &env.persist_base {
+        let changes = applied_base(&planned, &applied, &fixes);
+        if !changes.is_empty() {
+            persist(&changes);
+        }
+    }
+    // Content from the cloud is checked like a pull: a project trusted to run
+    // shell commands while compiling asks again before the next compile.
+    let arrived = applied
+        .downloaded
+        .iter()
+        .any(|item_key| item_key != PROJECT_META)
+        || !applied.conflict_copies.is_empty();
+    if let (true, Some(id)) = (arrived, env.lock_id.as_deref()) {
+        let _ = crate::project::revoke_shell_escape_trust(id);
+    }
     round.outcome.downloaded = applied.downloaded.len();
     round.outcome.deleted_local = applied.deleted.len();
     round.outcome.changed = applied.changed.iter().cloned().collect();
@@ -3091,7 +3642,11 @@ fn place_download(
     let mut skipped = 0;
     for staged in placement.staged {
         let record = &placement.records[&staged.key];
-        let Some(target) = resolve_target(&placement.root, &record.path) else {
+        // The folder starts empty, so anything already at the target is
+        // another record this disk treats as the same name.
+        let target = resolve_target(&placement.root, &record.path)
+            .filter(|target| std::fs::symlink_metadata(target).is_err());
+        let Some(target) = target else {
             skipped += 1;
             let _ = std::fs::remove_file(&staged.path);
             continue;
@@ -3139,8 +3694,8 @@ pub(crate) async fn download_into<S: CloudStore>(
         return Ok(None);
     };
     let meta = remote.version.manifest.clone();
-    let policy = policy_for(meta.is_object().then_some(&meta));
-    let view = split_remote(Some(&remote), &policy);
+    let policy = policy_for(meta.is_object().then_some(&meta)).unwrap_or_default();
+    let view = split_remote(Some(&remote), &policy, &BTreeSet::new());
     let mut skipped = view.foreign.len();
     tokio::fs::create_dir_all(staging)
         .await
@@ -3173,10 +3728,11 @@ pub(crate) async fn download_into<S: CloudStore>(
         .await
         .map_err(|error| RoundError::Local(error.to_string()))??;
     skipped += unplaced;
-    let stale = remote.version.files.iter().any(|record| {
-        base.get(&record.path)
-            .is_some_and(|entry| entry.hash != record.hash)
-    });
+    let stale = unplaced > 0
+        || remote.version.files.iter().any(|record| {
+            base.get(&record.path)
+                .is_some_and(|entry| entry.hash != record.hash)
+        });
     Ok(Some(Downloaded {
         version: remote.version,
         rev: remote.rev,

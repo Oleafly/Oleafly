@@ -364,6 +364,10 @@
     "zoteroSync": {
       "label": "Синхронизировать библиотеку Zotero",
       "keywords": "zotero синхронизация обновить библиотека sync refresh library"
+    },
+    "insertFileLink": {
+      "label": "Вставить ссылку на файл",
+      "keywords": "ссылка файл путь заметка"
     }
   },
   "community": {

@@ -462,7 +462,23 @@ fn default_shell() -> CommandBuilder {
     // The same search path agents get, so a CLI Oleafly found (for example
     // one installed after Oleafly started) also runs by name here.
     cmd.env("PATH", crate::program_locator::child_search_path(&[], &[]));
+    clear_appimage_env(&mut cmd);
     cmd
+}
+
+fn clear_appimage_env(cmd: &mut CommandBuilder) {
+    let Some(program) = cmd.get_argv().first().cloned() else {
+        return;
+    };
+    let changes = crate::proc::appimage_env_changes(&program, |name| {
+        cmd.get_env(name).map(std::ffi::OsStr::to_os_string)
+    });
+    for (name, value) in changes {
+        match value {
+            Some(value) => cmd.env(name, value),
+            None => cmd.env_remove(name),
+        }
+    }
 }
 
 fn project_shell(project_id: &str, root: &Path, autostart: bool) -> Result<CommandBuilder, String> {
