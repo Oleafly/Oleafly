@@ -1405,7 +1405,10 @@ export function TaskDetailDialog({
         task={task}
         busy={busy}
         onApprove={onApprovePlan}
-        onDiscard={() => Promise.resolve(askToStop("cancel"))}
+        onDiscard={() => {
+          askToStop("cancel");
+          return Promise.resolve();
+        }}
       />
     ) : (
       <>
