@@ -135,6 +135,12 @@ describe("isSessionIgnoredWord", () => {
     expect(isSessionIgnoredWord("Qwertzuiopz")).toBe(false);
   });
 
+  it("passes over the abbreviations papers put before a reference", () => {
+    for (const word of ["Eq", "Fig", "Sec", "selectable"]) {
+      expect(isSessionIgnoredWord(word)).toBe(true);
+    }
+  });
+
   it("passes over Typst tooling names", () => {
     for (const word of [
       "Typst",

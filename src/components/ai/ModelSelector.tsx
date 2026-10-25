@@ -243,6 +243,7 @@ export function ModelSelector({
           <Command
             label={t(($) => $.ai.models.searchLabel)}
             shouldFilter={false}
+            defaultValue={selectedModel ? JSON.stringify([providerId, selectedModel.id]) : undefined}
             className="bg-transparent"
           >
             <div className="flex h-10 items-center gap-2 border-b px-3">

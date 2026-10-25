@@ -2093,14 +2093,18 @@
       "installed": "Installato in {{path}}.",
       "moveApp": "Sposta prima Oleafly nella cartella Applicazioni, poi installa il comando qui.",
       "notInstalled": "Aggiunge oleafly a {{directory}}.",
-      "occupied": "{{path}} esiste già e non è stato creato da Oleafly, quindi resta com'è.",
+      "occupied": "{{path}} esiste già e non è stato creato da Oleafly.",
       "outdated": "{{path}} punta ancora a una copia precedente di Oleafly. Aggiornalo per usare questa copia.",
       "packaged": "Installato in {{path}} dal tuo pacchetto Oleafly.",
       "unavailable": "Questa copia di Oleafly non include il comando."
     },
     "title": "Comando del terminale",
     "update": "Aggiorna",
-    "newTerminal": "Apri un nuovo terminale per usare oleafly. I terminali già aperti non vedono la modifica."
+    "newTerminal": "Apri un nuovo terminale per usare oleafly. I terminali già aperti non vedono la modifica.",
+    "replace": "Sostituiscilo",
+    "replaceTitle": "Sostituire il comando oleafly?",
+    "replaceDescription": "Dopo, il comando oleafly nel terminale avvierà questa copia di Oleafly. Il file che c'è ora verrà sostituito.",
+    "replaceConfirm": "Sostituisci"
   },
   "shortcuts": {
     "actions": {

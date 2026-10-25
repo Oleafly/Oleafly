@@ -19,7 +19,6 @@ import { useCollabRail } from "@/components/collab/collab-rail";
 import { useCommentsRail } from "@/components/collab/comments-rail";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useTheme } from "@/lib/theme";
-import { BetaBadge } from "@/components/ui/beta-badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ThemeMenu, THEME_PREFERENCES, themePreferenceLabel, themeMenuLabel } from "@/components/layout/ThemeControls";
@@ -67,9 +66,8 @@ function ViewButton({
   const hotkey = RAIL_TAB_SHORTCUT[tab.id];
   const label = railTabLabel(tab, ctx);
   const name = hotkey ? t(($) => $.shell.rail.withShortcut, { label, shortcut: hotkey }) : label;
-  const tooltip = tab.beta ? t(($) => $.shell.rail.betaTab, { label: name }) : name;
   return (
-    <Tooltip label={tooltip} side="bottom">
+    <Tooltip label={name} side="bottom">
       <button
         type="button"
         data-tour={`rail-${tab.id}`}
@@ -79,16 +77,10 @@ function ViewButton({
         className={cn("relative", ctrlBtn(active))}
       >
         <Icon className="size-4" aria-hidden />
-        {tab.beta ? (
-          <BetaBadge className="pointer-events-none absolute -right-5 -top-1 border-background bg-primary px-1 text-[0.5rem] leading-[0.8125rem] text-primary-foreground" />
-        ) : null}
         {badge > 0 && (
           <output
             aria-label={t(($) => $.shell.rail.pendingBadge, { count: badge })}
-            className={cn(
-              "absolute flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-1 text-[0.5625rem] font-bold text-white border border-background",
-              tab.beta ? "-bottom-1 -right-1" : "-right-0.5 -top-0.5",
-            )}
+            className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-1 text-[0.5625rem] font-bold text-white border border-background"
           >
             {badge > 99 ? "99+" : badge}
           </output>

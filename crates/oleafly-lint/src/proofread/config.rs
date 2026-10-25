@@ -53,6 +53,8 @@ pub const BUILTIN_PROOFREADING_WORDS: &[&str] = &[
     "config",
     "end",
     "enum",
+    "eq",
+    "fig",
     "filename",
     "frontend",
     "hayagriva",
@@ -64,6 +66,8 @@ pub const BUILTIN_PROOFREADING_WORDS: &[&str] = &[
     "luatex",
     "pdf",
     "pdflatex",
+    "sec",
+    "selectable",
     "stdin",
     "stdout",
     "string",
@@ -168,7 +172,7 @@ mod tests {
     #[test]
     fn the_profile_tables_have_their_sizes() {
         assert_eq!(ACADEMIC_PROFILE_RULES.len(), 26);
-        assert_eq!(BUILTIN_PROOFREADING_WORDS.len(), 33);
+        assert_eq!(BUILTIN_PROOFREADING_WORDS.len(), 37);
     }
 
     #[test]

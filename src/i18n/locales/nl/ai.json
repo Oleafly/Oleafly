@@ -1082,7 +1082,9 @@
     "on": "Zoeken op het web en pagina's lezen staan aan voor deze chat",
     "off": "Zoeken op het web en pagina's lezen aanzetten voor deze chat",
     "ariaLabel": "Webtoegang",
-    "searchUnavailable": "Dit model kan niet op het web zoeken. Voeg een zoeksleutel toe bij Instellingen om het aan te zetten."
+    "searchUnavailable": "Dit model kan zonder zoeksleutel niet op het web zoeken.",
+    "addSearchKey": "Zoeksleutel toevoegen",
+    "needsKey": "Dit model heeft een zoeksleutel nodig om op het web te zoeken. Pagina's waarnaar je linkt kan het wel lezen."
   },
   "messageActions": {
     "edit": "Bericht bewerken",

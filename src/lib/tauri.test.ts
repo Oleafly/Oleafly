@@ -10,6 +10,7 @@ import {
   agentListModels,
   agentModelMetadataStatus,
   agentProbeModel,
+  agentWebSearchReady,
   agentRefreshModelMetadata,
   copyFile,
   createFile,
@@ -94,6 +95,18 @@ describe("model probe bridge", () => {
       modelId: "acme-1",
       key: "secret",
       baseUrl: "http://localhost:1234/v1",
+    });
+  });
+
+  it("asks whether the model can search the web for this project", async () => {
+    mocks.invoke.mockResolvedValue(false);
+
+    await expect(agentWebSearchReady("zai", "glm-5.3", "p1")).resolves.toBe(false);
+
+    expect(mocks.invoke).toHaveBeenCalledWith("agent_web_search_ready", {
+      providerId: "zai",
+      modelId: "glm-5.3",
+      projectId: "p1",
     });
   });
 });

@@ -42,6 +42,7 @@ import { useDismiss } from "@/components/ui/use-dismiss";
 import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { ChangeList } from "@/components/ai/acp/ChangeList";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
+import { RunNotice } from "@/components/ai/RunNotice";
 import { ResearchToolCard } from "@/components/ai/activity/ResearchToolCard";
 import { lastFinishedPicture, ToolPicture } from "@/components/ai/activity/ToolPicture";
 import { usePersistentExpansion } from "@/components/ai/activity/expansion-state";
@@ -1551,13 +1552,7 @@ export const MessageItem = memo(function MessageItem({
         </span>
       ) : null}
       {msg.notices?.map((notice) => (
-        <p
-          key={notice}
-          data-testid="agent-notice"
-          className="max-w-[85%] select-text rounded-md border border-border/70 bg-muted/40 px-2.5 py-1.5 text-[0.6875rem] leading-snug text-muted-foreground"
-        >
-          {notice}
-        </p>
+        <RunNotice key={notice} text={notice} />
       ))}
       {msg.content
         ? messageBubble({

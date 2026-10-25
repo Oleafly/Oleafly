@@ -1082,7 +1082,9 @@
     "on": "Nettsøk og lesing av sider er på for denne samtalen",
     "off": "Slå på nettsøk og lesing av sider for denne samtalen",
     "ariaLabel": "Nettilgang",
-    "searchUnavailable": "Denne modellen kan ikke søke på nettet. Legg til en søkenøkkel i Innstillinger for å slå det på."
+    "searchUnavailable": "Denne modellen kan ikke søke på nettet uten en søkenøkkel.",
+    "addSearchKey": "Legg til en søkenøkkel",
+    "needsKey": "Denne modellen trenger en søkenøkkel for å søke på nettet. Den kan fortsatt lese sider du lenker til."
   },
   "messageActions": {
     "edit": "Rediger meldingen",

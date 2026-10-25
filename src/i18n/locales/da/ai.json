@@ -1082,7 +1082,9 @@
     "on": "Websøgning og læsning af sider er slået til for denne chat",
     "off": "Slå websøgning og læsning af sider til for denne chat",
     "ariaLabel": "Webadgang",
-    "searchUnavailable": "Denne model kan ikke søge på nettet. Tilføj en søgenøgle under Indstillinger for at slå det til."
+    "searchUnavailable": "Denne model kan ikke søge på nettet uden en søgenøgle.",
+    "addSearchKey": "Tilføj en søgenøgle",
+    "needsKey": "Denne model skal bruge en søgenøgle for at søge på nettet. Den kan stadig læse sider, du linker til."
   },
   "messageActions": {
     "edit": "Rediger beskeden",

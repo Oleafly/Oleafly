@@ -691,7 +691,6 @@
     }
   },
   "rail": {
-    "betaTab": "{{label}} (beta)",
     "files": "Filer",
     "mcp": "MCP-aktivitet",
     "pendingBadge_one": "{{count}} afventer",

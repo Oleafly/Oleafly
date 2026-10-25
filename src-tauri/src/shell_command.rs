@@ -42,12 +42,18 @@ pub async fn shell_command_status() -> Result<unix::ShellCommandStatus, String> 
 
 #[cfg(unix)]
 #[tauri::command]
-pub async fn shell_command_install() -> Result<unix::ShellCommandChange, String> {
-    blocking(|environment| {
+pub async fn shell_command_install(
+    replace: Option<bool>,
+) -> Result<unix::ShellCommandChange, String> {
+    blocking(move |environment| {
         let _change = CHANGES
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        unix::install(environment, &shell_path(environment))
+        if replace.unwrap_or(false) {
+            unix::replace(environment, &shell_path(environment))
+        } else {
+            unix::install(environment, &shell_path(environment))
+        }
     })
     .await
 }

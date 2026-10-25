@@ -1062,7 +1062,9 @@
     "on": "這個聊天已開啟網頁搜尋與網頁讀取",
     "off": "為這個聊天開啟網頁搜尋與網頁讀取",
     "ariaLabel": "網路存取",
-    "searchUnavailable": "這個模型無法搜尋網頁。在設定中新增搜尋金鑰即可開啟。"
+    "searchUnavailable": "沒有搜尋金鑰，這個模型無法搜尋網頁。",
+    "addSearchKey": "新增搜尋金鑰",
+    "needsKey": "這個模型需要搜尋金鑰才能搜尋網頁。你提供連結的頁面仍可讀取。"
   },
   "messageActions": {
     "edit": "編輯訊息",

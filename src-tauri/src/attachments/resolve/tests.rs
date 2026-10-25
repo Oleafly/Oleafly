@@ -121,6 +121,46 @@ fn images_resolve_to_data_urls_for_vision_models() {
 }
 
 #[test]
+fn transparent_pngs_go_to_the_model_on_white_and_stay_stored_as_they_were() {
+    let root = tempfile::tempdir().unwrap();
+    let mut source = Vec::new();
+    let mut encoder = png::Encoder::new(&mut source, 2, 1);
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut writer = encoder.write_header().unwrap();
+    writer
+        .write_image_data(&[0, 0, 0, 0, 0, 0, 0, 255])
+        .unwrap();
+    writer.finish().unwrap();
+    let stored = store_bytes(root.path(), "p1", "page1.png", "image/png", &source, 100).unwrap();
+    let mut req = request(vec![user(vec![attachment(
+        &stored.sha256,
+        "page1.png",
+        "image/png",
+    )])]);
+    context(root.path(), &claude(vision()))
+        .resolve_request(&mut req)
+        .unwrap();
+    let ContentPart::Image { image } = &req.messages[0].content[0] else {
+        panic!("expected an image");
+    };
+    let sent = base64::engine::general_purpose::STANDARD
+        .decode(image.trim_start_matches("data:image/png;base64,"))
+        .unwrap();
+    let mut reader = png::Decoder::new(std::io::Cursor::new(sent))
+        .read_info()
+        .unwrap();
+    let mut pixels = vec![0; reader.output_buffer_size().unwrap()];
+    let frame = reader.next_frame(&mut pixels).unwrap();
+    assert_eq!(frame.color_type, png::ColorType::Rgb);
+    assert_eq!(&pixels[..frame.buffer_size()], &[255, 255, 255, 0, 0, 0]);
+    assert_eq!(
+        crate::attachments::read_bytes(root.path(), "p1", &stored.sha256).unwrap(),
+        source
+    );
+}
+
+#[test]
 fn images_become_a_note_for_text_only_models() {
     let root = tempfile::tempdir().unwrap();
     let png = store_bytes(root.path(), "p1", "fig.png", "image/png", PNG, 100).unwrap();

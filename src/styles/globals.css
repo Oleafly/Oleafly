@@ -1520,8 +1520,15 @@ body[data-tour-active] [data-tour-hide] {
   }
 
   .ai-composer-plan-value,
-  .ai-composer-web-value {
+  .ai-composer-web-value,
+  .ai-composer-approval-value {
     display: none;
+  }
+
+  .ai-composer-approval .ai-composer-approval-trigger {
+    gap: 0.25rem;
+    padding-left: 0.5rem;
+    padding-right: 0.375rem;
   }
 }
 

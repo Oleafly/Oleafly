@@ -1082,7 +1082,9 @@
     "on": "Bu sohbette web araması ve sayfa okuma açık",
     "off": "Bu sohbette web aramasını ve sayfa okumayı aç",
     "ariaLabel": "Web erişimi",
-    "searchUnavailable": "Bu model web'de arama yapamıyor. Açmak için Ayarlar'da bir arama anahtarı ekleyin."
+    "searchUnavailable": "Bu model arama anahtarı olmadan web'de arama yapamıyor.",
+    "addSearchKey": "Arama anahtarı ekle",
+    "needsKey": "Bu modelin web'de arama yapması için bir arama anahtarı gerekiyor. Bağlantısını verdiğiniz sayfaları yine de okuyabilir."
   },
   "messageActions": {
     "edit": "İletiyi düzenle",

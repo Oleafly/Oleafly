@@ -28,8 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   citations and bibliography cleanup, Typst versions, templates, the app's
   checkpoints and settings. Turn it on under Settings > General > Terminal
   command. On Windows, Install copies it into your user folder and adds it to
-  your PATH. Oleafly's own terminal and the agents it starts have it on their
-  PATH.
+  your PATH. If an `oleafly` that Oleafly didn't make is already there,
+  Replace it puts this copy in its place once you confirm. Oleafly's own
+  terminal and the agents it starts have it on their PATH.
 - `oleafly mcp`, an MCP server for Claude Code, Claude Desktop, Codex, Cursor
   and Gemini CLI. It needs no URL, token or Node.js. With the app open it
   passes calls to the app, with your approval rules; on its own it offers
@@ -200,6 +201,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Forks that use their own GitHub OAuth app set its client ID with
   `OLEAFLY_DESKTOP_GITHUB_CLIENT_ID` at build time. The old
   `VITE_GITHUB_CLIENT_ID` still works.
+- The model picker opens at the model you're using. Each provider's current
+  models come first, under their proper names: GLM-5.3 rather than glm-5.3.
+- In a narrow assistant panel, the approval mode shows as its icon, with the
+  mode's name in the tooltip, instead of a label cut off after a few letters.
+- The Web button gets a dot when the model can't search the web without a
+  search key, and the notice under the reply has an Add a search key button
+  that opens Settings.
 
 ### Removed
 
@@ -263,6 +271,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A citation added by its DOI went into the bibliography as one long line,
   and its page range used a dash that LaTeX fonts can't print. It's now one
   field per line, with `--` between the pages.
+- A PNG with a transparent background, like an equation or a page exported
+  as an image, reached the model with that background turned black, and the
+  model made up what it couldn't read. Images in the chat and in Image to
+  LaTeX now go to the model on white. The file you attached isn't changed.
+- Spelling flagged Eq, Fig and Sec before a reference, and the word
+  selectable. The app and `oleafly lint` accept them now.
 - On macOS and Linux, each Show in folder left a finished process behind
   until you quit Oleafly. It now goes away as soon as it finishes.
 - Review in Files > Task outputs did nothing. It now opens the task in the

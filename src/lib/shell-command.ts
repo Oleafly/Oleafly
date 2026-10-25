@@ -46,4 +46,7 @@ export const shellCommandStatus = () => invoke<ShellCommandStatus>("shell_comman
 
 export const installShellCommand = () => invoke<ShellCommandChange>("shell_command_install");
 
+export const replaceShellCommand = () =>
+  invoke<ShellCommandChange>("shell_command_install", { replace: true });
+
 export const removeShellCommand = () => invoke<ShellCommandChange>("shell_command_uninstall");

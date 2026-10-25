@@ -1082,7 +1082,9 @@
     "on": "Verkkohaku ja sivujen lukeminen ovat käytössä tässä keskustelussa",
     "off": "Ota verkkohaku ja sivujen lukeminen käyttöön tässä keskustelussa",
     "ariaLabel": "Verkkokäyttö",
-    "searchUnavailable": "Tämä malli ei osaa hakea verkosta. Lisää hakuavain asetuksissa, niin voit ottaa sen käyttöön."
+    "searchUnavailable": "Tämä malli ei osaa hakea verkosta ilman hakuavainta.",
+    "addSearchKey": "Lisää hakuavain",
+    "needsKey": "Tämä malli tarvitsee hakuavaimen verkkohakuun. Se voi silti lukea sivuja, joihin linkität."
   },
   "messageActions": {
     "edit": "Muokkaa viestiä",

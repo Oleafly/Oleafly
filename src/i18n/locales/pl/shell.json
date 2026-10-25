@@ -697,7 +697,6 @@
     }
   },
   "rail": {
-    "betaTab": "{{label}} (beta)",
     "files": "Eksplorator",
     "mcp": "Aktywność MCP",
     "pendingBadge_one": "{{count}} w kolejce",

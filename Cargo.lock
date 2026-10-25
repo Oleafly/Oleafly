@@ -6064,6 +6064,7 @@ dependencies = [
  "oleafly-server",
  "open",
  "plist",
+ "png 0.18.1",
  "portable-pty",
  "rand 0.8.7",
  "rapidfuzz",

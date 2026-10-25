@@ -20,6 +20,15 @@ describe("the file link under a Cmd+click", () => {
     expect(linkTargetAt(...at('See [the p|lan](notes/plan.md "Plan").'))).toBe("notes/plan.md");
   });
 
+  it("reads links next to other brackets, images and later links on the line", () => {
+    expect(linkTargetAt(...at("See [1] and [the p|lan](notes/plan.md)."))).toBe("notes/plan.md");
+    expect(linkTargetAt(...at("![a fig|ure](figs/a.png)"))).toBe("figs/a.png");
+    expect(linkTargetAt(...at("[a](one.md) then [b|](two.md)"))).toBe("two.md");
+    expect(linkTargetAt(...at("[a](one.md) th|en [b](two.md)"))).toBeNull();
+    expect(linkTargetAt(...at("first line [x](one.md)\nsecond [y|](two.md)"))).toBe("two.md");
+    expect(linkTargetAt(...at("[broken](<no close [b|](two.md)"))).toBe("two.md");
+  });
+
   it("answers quickly for a long line with no closing parenthesis", () => {
     const line = `[a](${"x".repeat(50_000)}`;
     const started = performance.now();

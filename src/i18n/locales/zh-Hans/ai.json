@@ -1062,7 +1062,9 @@
     "on": "此聊天已开启网页搜索和网页读取",
     "off": "为此聊天开启网页搜索和网页读取",
     "ariaLabel": "网络访问",
-    "searchUnavailable": "此模型无法搜索网页。在设置中添加搜索密钥即可开启。"
+    "searchUnavailable": "没有搜索密钥，此模型无法搜索网页。",
+    "addSearchKey": "添加搜索密钥",
+    "needsKey": "此模型需要搜索密钥才能搜索网页。你提供链接的页面仍可读取。"
   },
   "messageActions": {
     "edit": "编辑消息",

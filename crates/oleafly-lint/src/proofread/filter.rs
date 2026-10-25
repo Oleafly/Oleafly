@@ -127,6 +127,13 @@ mod tests {
     }
 
     #[test]
+    fn reference_abbreviations_are_ignored_like_the_app() {
+        for word in ["Eq", "Fig", "Sec", "selectable"] {
+            assert!(is_session_ignored_word(word), "{word}");
+        }
+    }
+
+    #[test]
     fn ignored_words_are_normalised() {
         let words = IgnoredWords::from_lines("Oleafly\u{00AD}\n\n  Zotero  \r\n");
         assert!(words.contains("oleafly"));
