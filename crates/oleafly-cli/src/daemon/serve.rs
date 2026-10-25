@@ -457,21 +457,29 @@ fn reap_orphans(acp_root: &Path) {
     );
 }
 
-async fn run(
+/// What the main loop keeps once the tasks are recovered.
+struct Started {
+    store: TaskStore,
+    notifier: Arc<Notifier>,
+    tasks: ResearchTaskState,
+    research_host: Arc<DaemonResearchHost>,
+}
+
+/// Opens the task store, registers the runtimes, recovers interrupted
+/// tasks and announces `ready`. `None` once it has logged why it couldn't.
+async fn start_tasks(
     options: &ServeOptions,
-    paths: &HelperPaths,
     prefs: Prefs,
     log: &Arc<HelperLog>,
-    state: &Arc<StateWriter>,
-    started_ms: i64,
-) -> i32 {
+    state: &StateWriter,
+) -> Option<Started> {
     let data_root = &options.data_root;
     let tasks_root = data_root.join("research-tasks");
     let store = match store(&tasks_root) {
         Ok(store) => store,
         Err(error) => {
             log.event("error", "store_unavailable", &[("message", &error)]);
-            return 1;
+            return None;
         }
     };
     let notifier = Arc::new(Notifier::new(
@@ -498,7 +506,7 @@ async fn run(
         Ok(services) => services,
         Err(error) => {
             log.event("error", "services_unavailable", &[("message", &error)]);
-            return 1;
+            return None;
         }
     };
     let task_host = Arc::new(DaemonTaskHost::new(
@@ -540,6 +548,85 @@ async fn run(
     }
     let _ = state.set_phase(Phase::Ready);
     log.event("info", "ready", &[]);
+    Some(Started {
+        store,
+        notifier,
+        tasks,
+        research_host,
+    })
+}
+
+/// Reads the notification and keep-awake settings again; settings that
+/// can't be read leave the earlier ones in place.
+async fn reload_prefs(data_root: &Path, research_host: &DaemonResearchHost) {
+    let root = data_root.to_path_buf();
+    if let Ok(Ok(prefs)) =
+        tokio::task::spawn_blocking(move || desktop_config::load_prefs(&root)).await
+    {
+        research_host.set_prefs(prefs);
+    }
+}
+
+/// A reclaim or cancel is done once its task isn't running here.
+fn forget_finished_requests(store: &TaskStore, in_flight: &mut std::collections::HashSet<String>) {
+    if in_flight.is_empty() {
+        return;
+    }
+    let running: std::collections::HashSet<String> = store
+        .daemon_tasks()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(status_of)
+        .map(|task| task.id)
+        .collect();
+    in_flight.retain(|id| running.contains(id));
+}
+
+/// Tells the user the helper took up work, unless the app is open and
+/// already shows it.
+fn announce_started(app_open: &Path, notifier: &Notifier) {
+    // A user who reopened the app already sees the tasks.
+    if !super::control::app_is_open(app_open) {
+        notifier.started();
+    }
+}
+
+/// Runs the hook a test registered for this data folder, if there is one.
+#[cfg(test)]
+fn run_before_final_check_hook(data_root: &Path) {
+    let hook = BEFORE_FINAL_CHECK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take();
+    match hook {
+        Some((root, hook)) if root == data_root => hook(),
+        Some(other) => {
+            *BEFORE_FINAL_CHECK
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(other)
+        }
+        None => {}
+    }
+}
+
+async fn run(
+    options: &ServeOptions,
+    paths: &HelperPaths,
+    prefs: Prefs,
+    log: &Arc<HelperLog>,
+    state: &Arc<StateWriter>,
+    started_ms: i64,
+) -> i32 {
+    let data_root = &options.data_root;
+    let Some(Started {
+        store,
+        notifier,
+        tasks,
+        research_host,
+    }) = start_tasks(options, prefs, log, state).await
+    else {
+        return 1;
+    };
 
     let signal = termination();
     tokio::pin!(signal);
@@ -551,12 +638,7 @@ async fn run(
     loop {
         if prefs_read.elapsed() >= PREFS_REFRESH {
             prefs_read = Instant::now();
-            let root = data_root.clone();
-            if let Ok(Ok(prefs)) =
-                tokio::task::spawn_blocking(move || desktop_config::load_prefs(&root)).await
-            {
-                research_host.set_prefs(prefs);
-            }
+            reload_prefs(data_root, &research_host).await;
         }
         tokio::select! {
             _ = tokio::time::sleep(TICK) => {}
@@ -590,24 +672,11 @@ async fn run(
             Ok(started) => in_flight.extend(started),
             Err(error) => log.event("error", "requests_failed", &[("message", &error)]),
         }
-        // A reclaim or cancel is done once its task isn't running here.
-        if !in_flight.is_empty() {
-            let running: std::collections::HashSet<String> = store
-                .daemon_tasks()
-                .unwrap_or_default()
-                .into_iter()
-                .filter(status_of)
-                .map(|task| task.id)
-                .collect();
-            in_flight.retain(|id| running.contains(id));
-        }
+        forget_finished_requests(&store, &mut in_flight);
         let work = store.owned_work().unwrap_or_default();
         if options.mode == ServeMode::App && !announced && work.running > 0 {
             announced = true;
-            // A user who reopened the app already sees the tasks.
-            if !super::control::app_is_open(&paths.app_open) {
-                notifier.started();
-            }
+            announce_started(&paths.app_open, &notifier);
         }
         if work.running + work.queued > 0 || options.stay {
             idle_since = Instant::now();
@@ -618,21 +687,7 @@ async fn run(
         }
         let _ = state.set_phase(Phase::Exiting);
         #[cfg(test)]
-        {
-            let hook = BEFORE_FINAL_CHECK
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .take();
-            match hook {
-                Some((root, hook)) if root == *data_root => hook(),
-                Some(other) => {
-                    *BEFORE_FINAL_CHECK
-                        .lock()
-                        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(other)
-                }
-                None => {}
-            }
-        }
+        run_before_final_check_hook(data_root);
         let last_look = store.owned_work().unwrap_or_default();
         if last_look.running + last_look.queued > 0 {
             let _ = state.set_phase(Phase::Ready);

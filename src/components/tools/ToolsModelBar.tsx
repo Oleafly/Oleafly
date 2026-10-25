@@ -152,11 +152,7 @@ export function ToolsModelNotice({
   if (!config) return null;
   const summary = describeToolsChoice(config, ollama.data);
   const destination = summary.destination;
-  let fallback: ToolsDestination | null = null;
-  if (checksFallback && (ollama.isError || ollama.isSuccess)) {
-    fallback = editorImageFallback(config, ollama.isError ? null : (ollama.data ?? null));
-  }
-  const fallbackName = fallback ? destinationName(fallback) : null;
+  const fallbackName = checksFallback ? editorFallbackName(config, ollama) : null;
   if (fallbackName) {
     return (
       <span
@@ -182,20 +178,7 @@ export function ToolsModelNotice({
       </span>
     );
   }
-  let text: string;
-  if (destination.kind === "host") {
-    text =
-      scope === "scans"
-        ? t(($) => $.researchTools.converterModel.scansSentToHost, { host: destination.host })
-        : t(($) => $.researchTools.converterModel.sentToHost, { host: destination.host });
-  } else if (summary.engine === "mathpix" && scope === "scans") {
-    text = t(($) => $.researchTools.converterModel.pdfSentToMathpix);
-  } else {
-    text =
-      scope === "scans"
-        ? t(($) => $.researchTools.converterModel.scansSentTo, { provider: destination.name })
-        : t(($) => $.researchTools.converterModel.sentTo, { provider: destination.name });
-  }
+  const text = sentToText(t, scope, summary.engine, destination);
   return (
     <span
       data-testid="tools-model-notice"
@@ -208,6 +191,35 @@ export function ToolsModelNotice({
 }
 
 type Translate = ReturnType<typeof useTranslation<["researchTools"]>>["t"];
+
+/** The assistant's model that editor images fall back to, once the Ollama
+ * listing has answered or failed, or null when there is no such fallback. */
+function editorFallbackName(config: AppConfig, ollama: ReturnType<typeof useOllamaModels>): string | null {
+  if (!ollama.isError && !ollama.isSuccess) return null;
+  const fallback = editorImageFallback(config, ollama.isError ? null : (ollama.data ?? null));
+  return fallback ? destinationName(fallback) : null;
+}
+
+/** The notice for a destination that is neither this computer nor the
+ * assistant's model: the Ollama host, Mathpix or a hosted provider. */
+function sentToText(
+  t: Translate,
+  scope: "images" | "scans",
+  engine: ToolsChoiceSummary["engine"],
+  destination: Exclude<ToolsDestination, { kind: "device" }>,
+): string {
+  if (destination.kind === "host") {
+    return scope === "scans"
+      ? t(($) => $.researchTools.converterModel.scansSentToHost, { host: destination.host })
+      : t(($) => $.researchTools.converterModel.sentToHost, { host: destination.host });
+  }
+  if (engine === "mathpix" && scope === "scans") {
+    return t(($) => $.researchTools.converterModel.pdfSentToMathpix);
+  }
+  return scope === "scans"
+    ? t(($) => $.researchTools.converterModel.scansSentTo, { provider: destination.name })
+    : t(($) => $.researchTools.converterModel.sentTo, { provider: destination.name });
+}
 
 function estimateText(t: Translate, sizes: readonly PageSize[], summary: ToolsChoiceSummary): string {
   const estimate = estimateScan(sizes, summary);

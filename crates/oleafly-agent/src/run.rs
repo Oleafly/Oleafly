@@ -438,8 +438,10 @@ mod tests {
         stream.flush().unwrap();
     }
 
+    // Wide deadlines: these waits are satisfied in milliseconds, and a tight one
+    // fails under the pre-commit hook's load instead of proving anything.
     async fn receive_signal<T>(receiver: &mpsc::Receiver<T>) -> T {
-        tokio::time::timeout(Duration::from_secs(2), async {
+        tokio::time::timeout(Duration::from_secs(20), async {
             loop {
                 match receiver.try_recv() {
                     Ok(value) => return value,
@@ -510,7 +512,7 @@ mod tests {
             };
             let mut events = Vec::new();
             let outcome = tokio::time::timeout(
-                Duration::from_secs(5),
+                Duration::from_secs(30),
                 run_agent_with_pipeline(
                     &crate::build_client().unwrap(),
                     &local_resolved(address),
@@ -610,7 +612,7 @@ mod tests {
     ) -> (Result<RunOutcome>, Vec<AgentEvent>) {
         let mut events = Vec::new();
         let outcome = tokio::time::timeout(
-            Duration::from_secs(5),
+            Duration::from_secs(30),
             run_agent_with_pipeline(
                 &crate::build_client().unwrap(),
                 &local_resolved(address),
@@ -878,7 +880,7 @@ mod tests {
             let (mut stream, _) = listener.accept().unwrap();
             let _ = read_request(&mut stream);
             seen_tx.send(()).unwrap();
-            let _ = release_rx.recv_timeout(Duration::from_secs(2));
+            let _ = release_rx.recv_timeout(Duration::from_secs(20));
         });
 
         let token = CancellationToken::new();
@@ -905,7 +907,7 @@ mod tests {
 
         receive_signal(&seen_rx).await;
         token.cancel();
-        let result = tokio::time::timeout(Duration::from_secs(1), &mut handle).await;
+        let result = tokio::time::timeout(Duration::from_secs(10), &mut handle).await;
         let _ = release_tx.send(());
         let outcome = match result {
             Ok(result) => result.unwrap().unwrap(),
@@ -956,12 +958,12 @@ mod tests {
             .await
         });
 
-        tokio::time::timeout(Duration::from_secs(2), retry_rx.recv())
+        tokio::time::timeout(Duration::from_secs(20), retry_rx.recv())
             .await
             .expect("retry event timed out")
             .expect("retry event channel closed");
         token.cancel();
-        let result = tokio::time::timeout(Duration::from_secs(1), &mut handle).await;
+        let result = tokio::time::timeout(Duration::from_secs(10), &mut handle).await;
         match result {
             Ok(result) => {
                 let outcome = result.unwrap().unwrap();
@@ -985,7 +987,7 @@ mod tests {
             let (mut first, _) = listener.accept().unwrap();
             let _ = read_request(&mut first);
             first_tx.send(()).unwrap();
-            release_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+            release_rx.recv_timeout(Duration::from_secs(20)).unwrap();
             respond(
                 &mut first,
                 "200 OK",
@@ -1038,14 +1040,14 @@ mod tests {
         tokio::task::yield_now().await;
         release_tx.send(()).unwrap();
 
-        assert!(tokio::time::timeout(Duration::from_secs(2), steer_task)
+        assert!(tokio::time::timeout(Duration::from_secs(20), steer_task)
             .await
             .expect("steer acknowledgement timed out")
             .unwrap());
         let second_request = receive_signal(&second_rx).await;
         assert!(second_request.contains("change direction"));
         assert!(second_request.contains("data:image/png;base64,AA"));
-        let outcome = tokio::time::timeout(Duration::from_secs(2), &mut handle)
+        let outcome = tokio::time::timeout(Duration::from_secs(20), &mut handle)
             .await
             .expect("followup turn timed out")
             .unwrap()

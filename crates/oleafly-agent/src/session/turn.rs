@@ -119,11 +119,7 @@ where
             request.anthropic_container = Some(container.clone());
         }
         let has_next_step = step.saturating_add(1) < step_limit;
-        if outcome.tool_calls.is_empty()
-            && outcome.stop_reason.as_deref() == Some("pause_turn")
-            && has_next_step
-            && pauses < MAX_PAUSE_CONTINUATIONS
-        {
+        if should_continue_paused_turn(&outcome, has_next_step, pauses) {
             // The provider paused a long server-tool turn; send it back as
             // is and let the model carry on, with no new user message.
             pauses += 1;
@@ -144,28 +140,26 @@ where
         }
         pauses = 0;
         if outcome.tool_calls.is_empty() {
-            // A run being cancelled takes no steer: the next request would
-            // never send it, so it must not be acknowledged as delivered.
-            if has_next_step && !pipeline.token.is_cancelled() {
-                if let Some(rx) = steer_rx.as_mut() {
-                    let steers = drain_steer(rx);
-                    if !steers.is_empty() {
-                        append_final_response(resolved, &mut request, &outcome)?;
-                        let acknowledgements = append_steered_messages(&mut request, steers)?;
-                        ensure_budget(
-                            client,
-                            resolved,
-                            &mut request,
-                            config,
-                            pipeline,
-                            &mut ledger,
-                            &mut on_event,
-                        )
-                        .await?;
-                        acknowledge_steers(acknowledgements, &mut on_event);
-                        continue;
-                    }
-                }
+            if let Some(acknowledgements) = queue_steers_after_final_reply(
+                steer_rx.as_mut(),
+                pipeline,
+                has_next_step,
+                resolved,
+                &mut request,
+                &outcome,
+            )? {
+                ensure_budget(
+                    client,
+                    resolved,
+                    &mut request,
+                    config,
+                    pipeline,
+                    &mut ledger,
+                    &mut on_event,
+                )
+                .await?;
+                acknowledge_steers(acknowledgements, &mut on_event);
+                continue;
             }
             let mut result = finish_without_tools(result, &outcome);
             result.history = request.messages;
@@ -844,6 +838,47 @@ fn finish_without_tools(mut result: RunOutcome, outcome: &StreamOutcome) -> RunO
     result
 }
 
+/// Steer acknowledgements wait until the steered messages are in a request
+/// that fits the context window, then go out as `Steered` events.
+type SteerAcknowledgements = Vec<(String, tokio::sync::oneshot::Sender<()>)>;
+
+/// The provider paused a long server-tool turn with no tool call to run, and
+/// the run has a step and a pause allowance left to carry on.
+fn should_continue_paused_turn(outcome: &StreamOutcome, has_next_step: bool, pauses: u32) -> bool {
+    outcome.tool_calls.is_empty()
+        && outcome.stop_reason.as_deref() == Some("pause_turn")
+        && has_next_step
+        && pauses < MAX_PAUSE_CONTINUATIONS
+}
+
+/// A reply with no tool calls normally ends the run. When steers are waiting
+/// instead, the reply and the steers join the history so the run takes
+/// another step, and the acknowledgements come back for the caller to send
+/// once the context fits. `None` means nothing was delivered and the run ends.
+/// A run being cancelled takes no steer: the next request would never send
+/// it, so it must not be acknowledged as delivered.
+fn queue_steers_after_final_reply(
+    steer_rx: Option<&mut tokio::sync::mpsc::UnboundedReceiver<SteeredInput>>,
+    pipeline: &ToolPipeline,
+    has_next_step: bool,
+    resolved: &Resolved,
+    request: &mut CompletionRequest,
+    outcome: &StreamOutcome,
+) -> Result<Option<SteerAcknowledgements>> {
+    if !has_next_step || pipeline.token.is_cancelled() {
+        return Ok(None);
+    }
+    let Some(rx) = steer_rx else {
+        return Ok(None);
+    };
+    let steers = drain_steer(rx);
+    if steers.is_empty() {
+        return Ok(None);
+    }
+    append_final_response(resolved, request, outcome)?;
+    append_steered_messages(request, steers).map(Some)
+}
+
 /// Take every pending steer message without waiting (delivery happens at
 /// the next message boundary, never mid-sampling).
 pub(crate) fn drain_steer(
@@ -896,7 +931,7 @@ fn message_text(message: &Message) -> String {
 fn append_steered_messages(
     request: &mut CompletionRequest,
     steers: Vec<SteeredInput>,
-) -> Result<Vec<(String, tokio::sync::oneshot::Sender<()>)>> {
+) -> Result<SteerAcknowledgements> {
     let mut acknowledgements = Vec::with_capacity(steers.len());
     for steer in steers {
         if !steer.try_claim() {
@@ -909,10 +944,8 @@ fn append_steered_messages(
     Ok(acknowledgements)
 }
 
-fn acknowledge_steers<F>(
-    acknowledgements: Vec<(String, tokio::sync::oneshot::Sender<()>)>,
-    on_event: &mut F,
-) where
+fn acknowledge_steers<F>(acknowledgements: SteerAcknowledgements, on_event: &mut F)
+where
     F: FnMut(AgentEvent),
 {
     for (text, delivered) in acknowledgements {

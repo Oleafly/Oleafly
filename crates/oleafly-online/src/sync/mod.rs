@@ -905,8 +905,7 @@ pub fn project_files(root: &Path) -> Result<BTreeMap<String, PathBuf>, OnlineErr
 /// Every file of `root` that `scope` syncs, by relative path. A folder's
 /// skipped folders are never entered.
 fn files_in(root: &Path, scope: Scope) -> Result<BTreeMap<String, PathBuf>, OnlineError> {
-    let mut files = BTreeMap::new();
-    let mut total: u64 = 0;
+    let mut found = FoundFiles::default();
     let mut stack = vec![(root.to_path_buf(), String::new())];
     while let Some((dir, prefix)) = stack.pop() {
         let entries = std::fs::read_dir(&dir).map_err(|error| {
@@ -917,11 +916,7 @@ fn files_in(root: &Path, scope: Scope) -> Result<BTreeMap<String, PathBuf>, Onli
             let Some(name) = entry.file_name().to_str().map(str::to_string) else {
                 continue;
             };
-            let rel = if prefix.is_empty() {
-                name.clone()
-            } else {
-                format!("{prefix}/{name}")
-            };
+            let rel = child_rel(&prefix, &name);
             if excluded(&rel) {
                 continue;
             }
@@ -934,23 +929,54 @@ fn files_in(root: &Path, scope: Scope) -> Result<BTreeMap<String, PathBuf>, Onli
                 }
                 stack.push((entry.path(), rel));
             } else if metadata.is_file() {
-                if scope.skips(root, &rel) {
-                    continue;
-                }
-                if metadata.len() > MAX_FILE_BYTES {
-                    return Err(
-                        OnlineError::new(OnlineErrorKind::SyncFileTooLarge).param("file", &rel)
-                    );
-                }
-                total = total.saturating_add(metadata.len());
-                files.insert(rel, entry.path());
-                if files.len() > MAX_FILES || total > MAX_TOTAL_BYTES {
-                    return Err(OnlineError::new(OnlineErrorKind::SyncTooLarge));
-                }
+                found.add(scope, root, rel, entry.path(), metadata.len())?;
             }
         }
     }
-    Ok(files)
+    Ok(found.files)
+}
+
+/// The path of `name` inside the folder at relative path `prefix` (empty for
+/// the root).
+fn child_rel(prefix: &str, name: &str) -> String {
+    if prefix.is_empty() {
+        name.to_string()
+    } else {
+        format!("{prefix}/{name}")
+    }
+}
+
+/// The files a walk has found so far, held to the size and count limits.
+#[derive(Default)]
+struct FoundFiles {
+    files: BTreeMap<String, PathBuf>,
+    total: u64,
+}
+
+impl FoundFiles {
+    /// Takes in the file at relative path `rel`, unless `scope` keeps it out
+    /// of the sync; fails when it, or the files so far, are over a limit.
+    fn add(
+        &mut self,
+        scope: Scope,
+        root: &Path,
+        rel: String,
+        path: PathBuf,
+        len: u64,
+    ) -> Result<(), OnlineError> {
+        if scope.skips(root, &rel) {
+            return Ok(());
+        }
+        if len > MAX_FILE_BYTES {
+            return Err(OnlineError::new(OnlineErrorKind::SyncFileTooLarge).param("file", &rel));
+        }
+        self.total = self.total.saturating_add(len);
+        self.files.insert(rel, path);
+        if self.files.len() > MAX_FILES || self.total > MAX_TOTAL_BYTES {
+            return Err(OnlineError::new(OnlineErrorKind::SyncTooLarge));
+        }
+        Ok(())
+    }
 }
 
 fn tracked_files(git: &dyn MirrorGit, repo: &Path) -> Result<BTreeSet<String>, OnlineError> {
@@ -1823,15 +1849,7 @@ pub fn export_link_backups(
                 &reference,
             ],
         )?;
-        // Only files the link overwrote; files that were only here were never
-        // at risk.
-        let mut replaced = Vec::new();
-        let mut entries = entries.into_iter();
-        while let (Some(status), Some(path)) = (entries.next(), entries.next()) {
-            if status.starts_with('M') && safe_relative(&path) && !excluded(&path) {
-                replaced.push(path);
-            }
-        }
+        let replaced = overwritten_files(entries);
         if replaced.is_empty() {
             continue;
         }
@@ -1842,33 +1860,7 @@ pub fn export_link_backups(
         }
         if std::fs::symlink_metadata(&folder).is_err() {
             let partial = destination.join(format!(".{name}.oleafly-export.tmp"));
-            let _ = std::fs::remove_dir_all(&partial);
-            let written = (|| {
-                for path in &replaced {
-                    let blob = mirror_run(
-                        git,
-                        repo,
-                        &["cat-file", "blob", &format!("{reference}:{path}")],
-                    )?;
-                    if !blob.status.success() {
-                        return Err(OnlineError::io(git.failure_text(&blob)));
-                    }
-                    let target = partial.join(path);
-                    if let Some(parent) = target.parent() {
-                        std::fs::create_dir_all(parent)?;
-                    }
-                    std::fs::write(&target, &blob.stdout).map_err(|error| {
-                        OnlineError::io(format!("could not write {}: {error}", target.display()))
-                    })?;
-                }
-                std::fs::rename(&partial, &folder).map_err(|error| {
-                    OnlineError::io(format!("could not write {}: {error}", folder.display()))
-                })
-            })();
-            if let Err(error) = written {
-                let _ = std::fs::remove_dir_all(&partial);
-                return Err(error);
-            }
+            export_backup_folder(git, repo, &reference, &replaced, &partial, &folder)?;
         }
         exported.push(LinkBackup {
             name,
@@ -1876,6 +1868,70 @@ pub fn export_link_backups(
         });
     }
     Ok(exported)
+}
+
+/// The files a saved link copy holds that the link overwrote, from the
+/// `-z` pairs (status, path) of its diff against its parent. Files that were
+/// only here were never at risk.
+fn overwritten_files(entries: Vec<String>) -> Vec<String> {
+    let mut replaced = Vec::new();
+    let mut entries = entries.into_iter();
+    while let (Some(status), Some(path)) = (entries.next(), entries.next()) {
+        if status.starts_with('M') && safe_relative(&path) && !excluded(&path) {
+            replaced.push(path);
+        }
+    }
+    replaced
+}
+
+/// Writes `files` of the saved copy `reference` into the new folder
+/// `folder`, through `partial` beside it, so a failed export leaves no
+/// half-written folder behind.
+fn export_backup_folder(
+    git: &dyn MirrorGit,
+    repo: &Path,
+    reference: &str,
+    files: &[String],
+    partial: &Path,
+    folder: &Path,
+) -> Result<(), OnlineError> {
+    let _ = std::fs::remove_dir_all(partial);
+    let written = write_backup_files(git, repo, reference, files, partial, folder);
+    if written.is_err() {
+        let _ = std::fs::remove_dir_all(partial);
+    }
+    written
+}
+
+/// Writes each of `files` as it is in `reference` under `partial`, then
+/// moves `partial` to `folder`.
+fn write_backup_files(
+    git: &dyn MirrorGit,
+    repo: &Path,
+    reference: &str,
+    files: &[String],
+    partial: &Path,
+    folder: &Path,
+) -> Result<(), OnlineError> {
+    for path in files {
+        let blob = mirror_run(
+            git,
+            repo,
+            &["cat-file", "blob", &format!("{reference}:{path}")],
+        )?;
+        if !blob.status.success() {
+            return Err(OnlineError::io(git.failure_text(&blob)));
+        }
+        let target = partial.join(path);
+        if let Some(parent) = target.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&target, &blob.stdout).map_err(|error| {
+            OnlineError::io(format!("could not write {}: {error}", target.display()))
+        })?;
+    }
+    std::fs::rename(partial, folder)
+        .map_err(|error| OnlineError::io(format!("could not write {}: {error}", folder.display())))
 }
 
 // CLI-level operations. The caller holds the sync claim.

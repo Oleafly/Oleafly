@@ -698,9 +698,20 @@ fn open_terminal_with_ticket(
     let containment = match crate::proc::contain_process_tree(pid) {
         Ok(containment) => containment,
         Err(error) => {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err(format!("failed to contain shell process: {error}"));
+            // A shell that is gone before it can be put in a job (a `cmd /C`
+            // one-liner, a shell path that fails at once) leaves nothing to
+            // contain, and the window is still owed the output it produced
+            // and its exit, so the session opens without a job. Windows
+            // signals the process a moment after its last thread goes, and
+            // that moment is given to it.
+            if exited_within(&mut *child, CONTAINMENT_EXIT_GRACE) {
+                eprintln!("term: shell {pid} exited before it could be contained ({error})");
+                crate::proc::ProcessTreeGuard::for_exited_child()
+            } else {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!("failed to contain shell process: {error}"));
+            }
         }
     };
     let contained = started.elapsed();
@@ -746,6 +757,25 @@ fn open_terminal_with_ticket(
     }
 
     Ok(id)
+}
+
+/// How long an open waits for a shell that could not be contained to turn out
+/// to have exited, before the failure counts as real.
+const CONTAINMENT_EXIT_GRACE: Duration = Duration::from_millis(250);
+
+/// Whether `child` exits within `patience`. The pty child has no timed wait,
+/// so this polls it.
+fn exited_within(child: &mut (dyn portable_pty::Child + Send + Sync), patience: Duration) -> bool {
+    let deadline = Instant::now() + patience;
+    loop {
+        if matches!(child.try_wait(), Ok(Some(_))) {
+            return true;
+        }
+        if Instant::now() >= deadline {
+            return false;
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
 }
 
 /// Open the pair of handles the session reads from and writes to. Unix needs a

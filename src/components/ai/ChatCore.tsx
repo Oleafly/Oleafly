@@ -329,6 +329,23 @@ function steerQueuedFollowUp(
   });
 }
 
+/** Keeps what a run streamed since its last save, marked as stopped, in the
+ * project the run belongs to (its chats are still the ones loaded). */
+function saveStoppedReply(
+  runProjectId: string | null,
+  runChatId: string | null,
+  pending: { chatId: string; msgs: ChatMessage[] } | null,
+): void {
+  let latest: ChatMessage[] | undefined;
+  if (pending?.chatId === runChatId) latest = pending.msgs;
+  else if (runChatId) latest = useChatsStore.getState().byId(runChatId)?.messages;
+  const reply = latest?.at(-1);
+  if (!runProjectId || !runChatId || !latest || reply?.role !== "assistant") return;
+  const content = reply.content ?? "";
+  const stopped = content.endsWith(STOPPED_MARKER) ? reply : { ...reply, content: appendMarker(content, STOPPED_MARKER) };
+  useChatsStore.getState().saveMessages(runChatId, [...latest.slice(0, -1), stopped], { projectId: runProjectId });
+}
+
 function figureCodeOf(args: unknown): string | undefined {
   if (!args || typeof args !== "object") return undefined;
   const code = (args as { code?: unknown }).code;
@@ -1619,7 +1636,7 @@ export function ChatCore() {
       // seconds, so little is lost when the window closes or the project changes.
       const now = Date.now();
       const pending = persistPendingRef.current;
-      if (!pending || pending.chatId !== chatId) persistSinceRef.current = now;
+      if (pending?.chatId !== chatId) persistSinceRef.current = now;
       else if (chatId && now - persistSinceRef.current >= PERSIST_MAX_WAIT_MS) {
         if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
         persistTimerRef.current = null;
@@ -3719,16 +3736,7 @@ ${sandboxedCustom}`;
       // project the run belongs to (its chats are still the ones loaded).
       const pending = persistPendingRef.current;
       dropPendingPersist();
-      const runChatId = run.chatId;
-      let latest: ChatMessage[] | undefined;
-      if (pending && pending.chatId === runChatId) latest = pending.msgs;
-      else if (runChatId) latest = useChatsStore.getState().byId(runChatId)?.messages;
-      const reply = latest?.at(-1);
-      if (prev && runChatId && latest && reply?.role === "assistant") {
-        const content = reply.content ?? "";
-        const stopped = content.endsWith(STOPPED_MARKER) ? reply : { ...reply, content: appendMarker(content, STOPPED_MARKER) };
-        useChatsStore.getState().saveMessages(runChatId, [...latest.slice(0, -1), stopped], { projectId: prev });
-      }
+      saveStoppedReply(prev, run.chatId, pending);
       trackRunRequestId(null);
       runOwnerRef.current = false;
       endChatRun(run);

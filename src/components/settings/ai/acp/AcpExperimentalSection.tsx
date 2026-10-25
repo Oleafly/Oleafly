@@ -35,16 +35,23 @@ export function AcpExperimentalSection() {
       setPrefs(stored);
       announceAcpPreferences(stored);
     };
-    setPrefs(next);
-    setError(null);
-    acpSetPreferences(next)
-      .then(show)
-      .catch((error_: unknown) => {
+    const saveAndShow = async () => {
+      try {
+        show(await acpSetPreferences(next));
+      } catch (error_: unknown) {
         setError(acpError(error_));
         // A newer save brings the stored values back with it.
         if (request !== latest.current) return;
-        acpPreferences().then(show).catch(() => {});
-      });
+        try {
+          show(await acpPreferences());
+        } catch {
+          // The error above already says the save failed.
+        }
+      }
+    };
+    setPrefs(next);
+    setError(null);
+    saveAndShow().catch(() => {});
   };
 
   const minutes = prefs?.inactivityMinutes ?? 20;

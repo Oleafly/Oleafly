@@ -128,10 +128,7 @@ fn trailer_dictionaries(bytes: &[u8]) -> Vec<&[u8]> {
     let mut from = 0;
     while let Some(at) = find_from(bytes, b"/XRef", from) {
         from = at + 1;
-        if bytes
-            .get(at + 5)
-            .is_some_and(|next| next.is_ascii_alphanumeric())
-        {
+        if bytes.get(at + 5).is_some_and(u8::is_ascii_alphanumeric) {
             continue;
         }
         let floor = at.saturating_sub(TRAILER_WINDOW);

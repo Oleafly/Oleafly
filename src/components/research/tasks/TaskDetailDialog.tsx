@@ -1,4 +1,4 @@
-import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   AlertCircle,
@@ -183,6 +183,56 @@ function changedSinceStart(preview: TaskFilePreview | undefined): boolean {
 
 function blocksApply(preview: TaskFilePreview | undefined): boolean {
   return changedSinceStart(preview) && preview?.mergesWithShared !== true;
+}
+
+/** The sizes of the two sides of a preview a text diff can't show, and why there is no diff. */
+function PreviewSizes({ preview }: Readonly<{ preview: TaskFilePreview }>) {
+  const { t } = useTranslation(["common", "researchTools"]);
+  return (
+    <>
+      {preview.before.truncated || preview.after.truncated ? (
+        <p className="border-b px-3 py-2 text-xs text-muted-foreground" data-testid="research-task-preview-too-large">
+          {t(($) => $.researchTools.tasks.detail.tooLargeToDiff)}
+        </p>
+      ) : null}
+      <div className="grid grid-cols-2 divide-x text-xs text-muted-foreground">
+        <div className="p-3">
+          {preview.before.exists
+            ? t(($) => $.researchTools.tasks.detail.beforeBytes, {
+                size: preview.before.size,
+              })
+            : t(($) => $.researchTools.tasks.detail.beforeAbsent)}
+        </div>
+        <div className="p-3">
+          {preview.after.exists
+            ? t(($) => $.researchTools.tasks.detail.afterBytes, {
+                size: preview.after.size,
+              })
+            : t(($) => $.researchTools.tasks.detail.afterAbsent)}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** A changed file's preview: the text diff, or the sizes of both sides when a side has no text to diff. */
+function FilePreviewBody({ preview }: Readonly<{ preview: TaskFilePreview }>) {
+  return (
+    <div className="mt-3 overflow-hidden rounded-md border">
+      {/* A side too large to read, or not text, has no text: diffing it against "" would read as every line removed. */}
+      {(preview.before.text !== null || preview.after.text !== null) &&
+      !undiffable(preview.before) &&
+      !undiffable(preview.after) ? (
+        <InlineDiffPreview
+          path={preview.path}
+          oldText={preview.before.text ?? ""}
+          newText={preview.after.text ?? ""}
+        />
+      ) : (
+        <PreviewSizes preview={preview} />
+      )}
+    </div>
+  );
 }
 
 function isErrorMilestone(text: string, error: string | null): boolean {
@@ -728,6 +778,33 @@ function StopConfirmation({ action, title, dependents, runs, onConfirm, onCancel
   );
 }
 
+/**
+ * Keeps the Activity tab scrolled to its end while a task runs, unless the
+ * reader scrolled up. The dialog gives it a new key each time the timeline
+ * gains an item or its newest item grows, which mounts it again and scrolls again.
+ */
+function FollowNewestItem({
+  open,
+  tab,
+  running,
+  scroller,
+  nearBottom,
+}: Readonly<{
+  open: boolean;
+  tab: string;
+  running: boolean;
+  scroller: RefObject<HTMLDivElement | null>;
+  nearBottom: RefObject<boolean>;
+}>) {
+  useEffect(() => {
+    if (!open || tab !== "activity" || !running) return;
+    const container = scroller.current;
+    if (!container || !nearBottom.current) return;
+    container.scrollTop = container.scrollHeight;
+  }, [open, tab, running, scroller, nearBottom]);
+  return null;
+}
+
 export function TaskDetailDialog({
   open,
   onOpenChange,
@@ -811,16 +888,6 @@ export function TaskDetailDialog({
   const timelineCount = timeline.items.length;
   const lastItemSize = itemSize(timeline.items.at(-1));
   const [shownItems, setShownItems] = useState(SHOWN_ITEMS);
-
-  // Follows the newest item, also while its text grows, unless the reader scrolled up.
-  useEffect(() => {
-    void timelineCount;
-    void lastItemSize;
-    if (!open || tab !== "activity" || !running) return;
-    const container = activityRef.current;
-    if (!container || !nearBottom.current) return;
-    container.scrollTop = container.scrollHeight;
-  }, [open, tab, running, timelineCount, lastItemSize]);
 
   const showOlderActivity = () => {
     if (timeline.items.length > shownItems) {
@@ -1230,44 +1297,7 @@ export function TaskDetailDialog({
             </span>
           </p>
         ) : null}
-        {preview ? (
-          <div className="mt-3 overflow-hidden rounded-md border">
-            {/* A side too large to read, or not text, has no text: diffing it against "" would read as every line removed. */}
-            {(preview.before.text !== null || preview.after.text !== null) &&
-            !undiffable(preview.before) &&
-            !undiffable(preview.after) ? (
-              <InlineDiffPreview
-                path={preview.path}
-                oldText={preview.before.text ?? ""}
-                newText={preview.after.text ?? ""}
-              />
-            ) : (
-              <>
-              {preview.before.truncated || preview.after.truncated ? (
-                <p className="border-b px-3 py-2 text-xs text-muted-foreground" data-testid="research-task-preview-too-large">
-                  {t(($) => $.researchTools.tasks.detail.tooLargeToDiff)}
-                </p>
-              ) : null}
-              <div className="grid grid-cols-2 divide-x text-xs text-muted-foreground">
-                <div className="p-3">
-                  {preview.before.exists
-                    ? t(($) => $.researchTools.tasks.detail.beforeBytes, {
-                        size: preview.before.size,
-                      })
-                    : t(($) => $.researchTools.tasks.detail.beforeAbsent)}
-                </div>
-                <div className="p-3">
-                  {preview.after.exists
-                    ? t(($) => $.researchTools.tasks.detail.afterBytes, {
-                        size: preview.after.size,
-                      })
-                    : t(($) => $.researchTools.tasks.detail.afterAbsent)}
-                </div>
-              </div>
-              </>
-            )}
-          </div>
-        ) : null}
+        {preview ? <FilePreviewBody preview={preview} /> : null}
       </div>
     );
   };
@@ -1375,7 +1405,7 @@ export function TaskDetailDialog({
         task={task}
         busy={busy}
         onApprove={onApprovePlan}
-        onDiscard={async () => askToStop("cancel")}
+        onDiscard={() => Promise.resolve(askToStop("cancel"))}
       />
     ) : (
       <>
@@ -1540,6 +1570,14 @@ export function TaskDetailDialog({
               </TabsTrigger>
             </TabsList>
 
+            <FollowNewestItem
+              key={`${timelineCount}:${lastItemSize}`}
+              open={open}
+              tab={tab}
+              running={running}
+              scroller={activityRef}
+              nearBottom={nearBottom}
+            />
             <TabsContent
               value="activity"
               ref={activityRef}

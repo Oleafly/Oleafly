@@ -715,23 +715,28 @@ export async function attachAcpListeners(): Promise<() => void> {
     // Collected as they register: when a later registration fails, the ones
     // already made must not stay behind to double every event.
     const stops: (() => void)[] = [];
+    // One push per registration, once it has completed: a single push of all
+    // four would lose the earlier ones when a later registration fails.
+    const collectStop = async (registration: Promise<() => void>) => {
+      stops.push(await registration);
+    };
     try {
-      stops.push(await onAcpEvent((event) => {
+      await collectStop(onAcpEvent((event) => {
         queued.push(event);
         if (flushTimer) return;
         flushTimer = setTimeout(flushEventBatch, 32);
       }));
-      stops.push(await onAcpResync(() => {
+      await collectStop(onAcpResync(() => {
         const state = useAcpSessionsStore.getState();
         for (const [project, id] of Object.entries(state.activeByProject)) if (id) void state.resync(project, id).catch(() => {});
       }));
       // A summary is sent with each stored event: the event goes first, or the
       // summary's sequence would make the store skip what only the event carries.
-      stops.push(await onAcpSession((summary) => {
+      await collectStop(onAcpSession((summary) => {
         flushEventBatch();
         useAcpSessionsStore.getState().applySummary(summary);
       }));
-      stops.push(await onAcpBufferRequest((request) => void answerBufferRequest(request)));
+      await collectStop(onAcpBufferRequest((request) => void answerBufferRequest(request)));
     } catch (error) {
       for (const stop of stops) stop();
       throw error;

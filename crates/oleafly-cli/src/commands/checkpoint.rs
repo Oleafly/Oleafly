@@ -323,7 +323,6 @@ fn walk_tree(
     linked: bool,
     captured: &BTreeMap<String, ContentHash>,
 ) -> Result<BTreeMap<String, ContentHash>, CliError> {
-    use oleafly_core::linked_capture;
     let mut files = BTreeMap::new();
     let mut pending = vec![root.to_path_buf()];
     while let Some(folder) = pending.pop() {
@@ -331,50 +330,60 @@ fn walk_tree(
             continue;
         };
         for entry in entries.flatten() {
-            let name = entry.file_name();
-            let name = name.to_string_lossy();
-            if oleafly_core::exclude::is_capture_excluded_component(&name)
-                || (linked && linked_capture::is_left_out_quietly(&name))
-            {
-                continue;
-            }
-            let Ok(metadata) = std::fs::symlink_metadata(entry.path()) else {
-                continue;
-            };
-            if metadata.file_type().is_symlink()
-                || (linked && linked_capture::is_never_read(&metadata))
-            {
-                continue;
-            }
-            let path = entry.path();
-            if metadata.is_dir() {
-                if linked && linked_capture::is_skipped_directory(&name) {
-                    continue;
-                }
-                pending.push(path);
-            } else if metadata.is_file() {
-                if files.len() >= MAX_TREE_FILES {
-                    return Err(CliError::new(
-                        ErrorKind::InvalidInput,
-                        "checkpoint.too_many_files",
-                        format!("The project has more than {MAX_TREE_FILES} files, so Oleafly won't compare it."),
-                    ));
-                }
-                let Some(relative) = path.strip_prefix(root).ok().and_then(portable) else {
-                    continue;
-                };
-                if linked
-                    && linked_capture::is_large(metadata.len())
-                    && !captured.contains_key(&relative)
-                {
-                    continue;
-                }
-                let hash = ContentHash::digest_file(&path).map_err(CliError::from)?;
-                files.insert(relative, hash);
-            }
+            capture_entry(&entry, root, linked, captured, &mut pending, &mut files)?;
         }
     }
     Ok(files)
+}
+
+/// Takes one entry of a folder into the capture: a folder is queued to be
+/// walked, a file is hashed into `files`, and whatever the capture rules
+/// leave out is passed over.
+fn capture_entry(
+    entry: &std::fs::DirEntry,
+    root: &Path,
+    linked: bool,
+    captured: &BTreeMap<String, ContentHash>,
+    pending: &mut Vec<PathBuf>,
+    files: &mut BTreeMap<String, ContentHash>,
+) -> Result<(), CliError> {
+    use oleafly_core::linked_capture;
+    let name = entry.file_name();
+    let name = name.to_string_lossy();
+    if oleafly_core::exclude::is_capture_excluded_component(&name)
+        || (linked && linked_capture::is_left_out_quietly(&name))
+    {
+        return Ok(());
+    }
+    let Ok(metadata) = std::fs::symlink_metadata(entry.path()) else {
+        return Ok(());
+    };
+    if metadata.file_type().is_symlink() || (linked && linked_capture::is_never_read(&metadata)) {
+        return Ok(());
+    }
+    let path = entry.path();
+    if metadata.is_dir() {
+        if !(linked && linked_capture::is_skipped_directory(&name)) {
+            pending.push(path);
+        }
+    } else if metadata.is_file() {
+        if files.len() >= MAX_TREE_FILES {
+            return Err(CliError::new(
+                ErrorKind::InvalidInput,
+                "checkpoint.too_many_files",
+                format!("The project has more than {MAX_TREE_FILES} files, so Oleafly won't compare it."),
+            ));
+        }
+        let Some(relative) = path.strip_prefix(root).ok().and_then(portable) else {
+            return Ok(());
+        };
+        if linked && linked_capture::is_large(metadata.len()) && !captured.contains_key(&relative) {
+            return Ok(());
+        }
+        let hash = ContentHash::digest_file(&path).map_err(CliError::from)?;
+        files.insert(relative, hash);
+    }
+    Ok(())
 }
 
 #[derive(Default)]

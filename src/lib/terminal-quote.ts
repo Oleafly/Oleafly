@@ -59,6 +59,17 @@ export function terminalPathArg(kind: TerminalShellKind, platform: TerminalPlatf
 }
 
 /**
+ * `path` without the run of `/` and `\` at its end. A loop rather than a
+ * regex like `/[\\/]+$/`, which backtracks quadratically on a long run of
+ * separators that is followed by something else.
+ */
+function trimTrailingSeparators(path: string): string {
+  let end = path.length;
+  while (end > 0 && (path[end - 1] === "/" || path[end - 1] === "\\")) end -= 1;
+  return path.slice(0, end);
+}
+
+/**
  * A project path as an absolute path for the shell, from the project
  * folder's path on this computer: `C:/…` for Git Bash (terminalPathArg turns
  * it into backslashes for cmd and PowerShell) and `/mnt/c/…` under WSL.
@@ -70,7 +81,7 @@ export function absoluteTerminalPath(
   platform: TerminalPlatform,
   wsl: boolean,
 ): string | null {
-  const joined = `${root.replace(/[\\/]+$/, "")}/${path}`;
+  const joined = `${trimTrailingSeparators(root)}/${path}`;
   if (platform !== "windows") return joined;
   const forward = joined.replaceAll("\\", "/");
   if (!wsl) return forward;

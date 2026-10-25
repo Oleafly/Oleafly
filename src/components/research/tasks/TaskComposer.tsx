@@ -227,7 +227,7 @@ function TaskComposerDraft({
   const briefTouched = useRef(Boolean(restored?.brief || editingTask));
   const [error, setError] = useState<string | null>(null);
   // The "Run on" fields found something that can't be saved (a removed target, bad Slurm text).
-  const [computeFieldProblem, setComputeProblem] = useState(false);
+  const [computeFieldProblem, setComputeFieldProblem] = useState(false);
   // Those fields sit in the collapsed part of the brief, so the composer checks
   // the target itself: a task saved with a removed target fails every run.
   const targetMissing = useComputeTargetMissing(brief.compute.target);
@@ -518,7 +518,7 @@ function TaskComposerDraft({
                   value={brief.compute}
                   disabled={busy}
                   onChange={(compute) => changeBrief({ ...brief, compute })}
-                  onProblemChange={setComputeProblem}
+                  onProblemChange={setComputeFieldProblem}
                   onOpenSettings={openSettingsFromBrief}
                 />
               </Suspense>

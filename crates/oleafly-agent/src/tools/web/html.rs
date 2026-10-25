@@ -132,6 +132,80 @@ struct Tag<'a> {
     self_closing: bool,
 }
 
+/// What the `<` at some offset starts.
+enum Markup<'a> {
+    /// A comment, doctype or processing instruction; `end` is the offset
+    /// just past it.
+    Skipped { end: usize },
+    /// A `<` that starts no markup.
+    Stray,
+    /// A tag; `end` is the offset of its closing `>` (or the end of the
+    /// input when it never closes).
+    Tag { tag: Tag<'a>, end: usize },
+}
+
+/// Reads the markup that starts at the `<` at offset `start` of `html`.
+fn markup_at(html: &str, start: usize) -> Markup<'_> {
+    let bytes = html.as_bytes();
+    if bytes[start + 1..].starts_with(b"!--") {
+        let end = html[start + 4..]
+            .find("-->")
+            .map_or(bytes.len(), |end| start + 4 + end + 3);
+        return Markup::Skipped { end };
+    }
+    let closing = bytes.get(start + 1) == Some(&b'/');
+    let name_start = start + 1 + usize::from(closing);
+    let name_end = bytes[name_start..]
+        .iter()
+        .position(|byte| !byte.is_ascii_alphanumeric())
+        .map_or(bytes.len(), |end| name_start + end);
+    if name_end == name_start || !bytes[name_start].is_ascii_alphabetic() {
+        if bytes
+            .get(name_start)
+            .is_some_and(|byte| matches!(byte, b'!' | b'?'))
+        {
+            // A doctype or processing instruction.
+            let end = bytes[start..]
+                .iter()
+                .position(|byte| *byte == b'>')
+                .map_or(bytes.len(), |end| start + end + 1);
+            return Markup::Skipped { end };
+        }
+        return Markup::Stray;
+    }
+    let end = bytes[name_end..]
+        .iter()
+        .position(|byte| *byte == b'>')
+        .map_or(bytes.len(), |end| name_end + end);
+    let tag = Tag {
+        name: &bytes[name_start..name_end],
+        closing,
+        self_closing: end > name_end && bytes[end - 1] == b'/',
+    };
+    Markup::Tag { tag, end }
+}
+
+/// Where the content of the raw-text element `name` ends: the start of its
+/// end tag at or after `from`, or the end of `html` when it never closes.
+fn raw_text_end(html: &str, from: usize, name: &[u8]) -> usize {
+    let bytes = html.as_bytes();
+    let mut search = from;
+    loop {
+        let Some(found) = html[search..].find("</") else {
+            return bytes.len();
+        };
+        let close = search + found;
+        let after = close + 2;
+        if bytes
+            .get(after..after + name.len())
+            .is_some_and(|candidate| candidate.eq_ignore_ascii_case(name))
+        {
+            return close;
+        }
+        search = after;
+    }
+}
+
 /// Walks the tags of `html` in order without building anything: comments,
 /// doctypes and stray `<` are skipped, and the content of raw-text elements
 /// (scripts, styles) is passed over in one step. `visit` gets each tag and
@@ -142,80 +216,32 @@ fn scan_tags<'a>(html: &'a str, mut visit: impl FnMut(&'a str, Option<Tag<'a>>) 
     let mut at = 0usize;
     while let Some(offset) = bytes[at..].iter().position(|byte| *byte == b'<') {
         let start = at + offset;
-        if bytes[start + 1..].starts_with(b"!--") {
-            let end = html[start + 4..]
-                .find("-->")
-                .map_or(bytes.len(), |end| start + 4 + end + 3);
-            if !visit(&html[text_from..start], None) {
-                return;
-            }
-            text_from = end;
-            at = end;
-            continue;
-        }
-        let closing = bytes.get(start + 1) == Some(&b'/');
-        let name_start = start + 1 + usize::from(closing);
-        let name_end = bytes[name_start..]
-            .iter()
-            .position(|byte| !byte.is_ascii_alphanumeric())
-            .map_or(bytes.len(), |end| name_start + end);
-        if name_end == name_start || !bytes[name_start].is_ascii_alphabetic() {
-            if bytes
-                .get(name_start)
-                .is_some_and(|byte| matches!(byte, b'!' | b'?'))
-            {
-                // A doctype or processing instruction.
-                let end = bytes[start..]
-                    .iter()
-                    .position(|byte| *byte == b'>')
-                    .map_or(bytes.len(), |end| start + end + 1);
+        match markup_at(html, start) {
+            Markup::Stray => at = start + 1,
+            Markup::Skipped { end } => {
                 if !visit(&html[text_from..start], None) {
                     return;
                 }
                 text_from = end;
                 at = end;
-            } else {
-                at = start + 1;
             }
-            continue;
-        }
-        let tag_end = bytes[name_end..]
-            .iter()
-            .position(|byte| *byte == b'>')
-            .map_or(bytes.len(), |end| name_end + end);
-        let name = &bytes[name_start..name_end];
-        let tag = Tag {
-            name,
-            closing,
-            self_closing: tag_end > name_end && bytes[tag_end - 1] == b'/',
-        };
-        if !visit(&html[text_from..start], Some(tag)) {
-            return;
-        }
-        at = (tag_end + 1).min(bytes.len());
-        text_from = at;
-        if !closing && named(RAW_TEXT, name) {
-            // Skip to the element's end tag; its content is never markup.
-            let mut search = at;
-            let end = loop {
-                let Some(found) = html[search..].find("</") else {
-                    break bytes.len();
-                };
-                let close = search + found;
-                let after = close + 2;
-                if bytes
-                    .get(after..after + name.len())
-                    .is_some_and(|candidate| candidate.eq_ignore_ascii_case(name))
-                {
-                    break close;
+            Markup::Tag { tag, end } => {
+                let (name, closing) = (tag.name, tag.closing);
+                if !visit(&html[text_from..start], Some(tag)) {
+                    return;
                 }
-                search = after;
-            };
-            if !visit(&html[at..end], None) {
-                return;
+                at = (end + 1).min(bytes.len());
+                text_from = at;
+                if !closing && named(RAW_TEXT, name) {
+                    // Skip to the element's end tag; its content is never markup.
+                    let content_end = raw_text_end(html, at, name);
+                    if !visit(&html[at..content_end], None) {
+                        return;
+                    }
+                    at = content_end;
+                    text_from = content_end;
+                }
             }
-            at = end;
-            text_from = end;
         }
     }
     visit(&html[text_from..], None);

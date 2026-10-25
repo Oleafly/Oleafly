@@ -196,13 +196,18 @@ impl Shared {
         let expected = self.expected_project.as_deref()?;
         let fresh =
             |at: &Option<std::time::Instant>| at.is_some_and(|at| at.elapsed() < PROJECT_CHECK_TTL);
-        if fresh(&self.confirmed_at.lock().unwrap_or_else(|e| e.into_inner())) {
+        if fresh(
+            &self
+                .confirmed_at
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner),
+        ) {
             return None;
         }
         let target = self.target().await;
         match open_project_id(&self.client, &target).await {
             Some(open) if open == expected => {
-                *self.confirmed_at.lock().unwrap_or_else(|e| e.into_inner()) =
+                *self.confirmed_at.lock().unwrap_or_else(std::sync::PoisonError::into_inner) =
                     Some(std::time::Instant::now());
                 None
             }
@@ -214,6 +219,90 @@ impl Shared {
             ),
         }
     }
+}
+
+/// How one attempt to forward a message ended.
+enum Attempt {
+    /// The reply, if any, is written; nothing more to do.
+    Delivered,
+    /// The app rejected the token and a fresh one was read; try again.
+    RetryWithFreshToken,
+    /// The app didn't answer usefully.
+    Failed,
+}
+
+/// Writes each message of a reply to stdout, remembering the protocol
+/// version an `initialize` reply names.
+async fn relay_messages(shared: &Shared, messages: Vec<String>, is_initialize: bool) {
+    for text in messages {
+        let Ok(value) = serde_json::from_str::<Value>(&text) else {
+            continue;
+        };
+        if is_initialize {
+            if let Some(version) = value
+                .pointer("/result/protocolVersion")
+                .and_then(Value::as_str)
+            {
+                *shared.protocol.lock().await = Some(version.to_string());
+            }
+        }
+        write_line(&shared.stdout, &value.to_string()).await;
+    }
+}
+
+/// Sends `message` to the app once and relays what it answers.
+async fn forward_once(
+    shared: &Shared,
+    message: &Value,
+    is_initialize: bool,
+    first_attempt: bool,
+) -> Attempt {
+    let protocol = shared.protocol.lock().await.clone();
+    let target = shared.target().await;
+    let Ok(response) = post(
+        &shared.client,
+        &target,
+        message,
+        protocol.as_deref(),
+        REQUEST_TIMEOUT,
+    )
+    .await
+    else {
+        return Attempt::Failed;
+    };
+    let status = response.status();
+    if status == reqwest::StatusCode::UNAUTHORIZED && first_attempt {
+        // The app may have restarted with a new token.
+        let Some(fresh) = discover(&shared.data_root) else {
+            return Attempt::Failed;
+        };
+        *shared.target.lock().await = fresh;
+        return Attempt::RetryWithFreshToken;
+    }
+    if status == reqwest::StatusCode::ACCEPTED {
+        return Attempt::Delivered;
+    }
+    if !status.is_success() {
+        return Attempt::Failed;
+    }
+    let event_stream = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.starts_with("text/event-stream"));
+    let Ok(body) = response.text().await else {
+        return Attempt::Failed;
+    };
+    if body.trim().is_empty() {
+        return Attempt::Delivered;
+    }
+    let messages = if event_stream {
+        sse_messages(&body)
+    } else {
+        vec![body]
+    };
+    relay_messages(shared, messages, is_initialize).await;
+    Attempt::Delivered
 }
 
 /// Forwards one message; writes the reply (if any) to stdout.
@@ -230,66 +319,11 @@ async fn forward(shared: Arc<Shared>, message: Value) {
         }
     }
     for attempt in 0..2 {
-        let protocol = shared.protocol.lock().await.clone();
-        let target = shared.target().await;
-        let result = post(
-            &shared.client,
-            &target,
-            &message,
-            protocol.as_deref(),
-            REQUEST_TIMEOUT,
-        )
-        .await;
-        let response = match result {
-            Ok(response) => response,
-            Err(()) => break,
-        };
-        let status = response.status();
-        if status == reqwest::StatusCode::UNAUTHORIZED && attempt == 0 {
-            // The app may have restarted with a new token.
-            if let Some(fresh) = discover(&shared.data_root) {
-                *shared.target.lock().await = fresh;
-                continue;
-            }
-            break;
+        match forward_once(&shared, &message, is_initialize, attempt == 0).await {
+            Attempt::Delivered => return,
+            Attempt::RetryWithFreshToken => continue,
+            Attempt::Failed => break,
         }
-        if status == reqwest::StatusCode::ACCEPTED {
-            return;
-        }
-        if !status.is_success() {
-            break;
-        }
-        let event_stream = response
-            .headers()
-            .get(reqwest::header::CONTENT_TYPE)
-            .and_then(|value| value.to_str().ok())
-            .is_some_and(|value| value.starts_with("text/event-stream"));
-        let Ok(body) = response.text().await else {
-            break;
-        };
-        if body.trim().is_empty() {
-            return;
-        }
-        let messages = if event_stream {
-            sse_messages(&body)
-        } else {
-            vec![body]
-        };
-        for text in messages {
-            let Ok(value) = serde_json::from_str::<Value>(&text) else {
-                continue;
-            };
-            if is_initialize {
-                if let Some(version) = value
-                    .pointer("/result/protocolVersion")
-                    .and_then(Value::as_str)
-                {
-                    *shared.protocol.lock().await = Some(version.to_string());
-                }
-            }
-            write_line(&shared.stdout, &value.to_string()).await;
-        }
-        return;
     }
     if let Some(id) = id {
         write_line(&shared.stdout, &stopped_answering(&id)).await;

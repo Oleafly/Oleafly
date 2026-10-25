@@ -38,7 +38,7 @@ export function defaultGoal(prompt: string): string {
   if (trimmed.length <= MAX_DEFAULT_GOAL) return trimmed;
   const cut = trimmed.slice(0, MAX_DEFAULT_GOAL);
   // A lone high surrogate is not text the backend can read.
-  const last = cut.charCodeAt(cut.length - 1);
+  const last = cut.codePointAt(cut.length - 1) ?? 0;
   return (last >= 0xd800 && last <= 0xdbff ? cut.slice(0, -1) : cut).trimEnd();
 }
 

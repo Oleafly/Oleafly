@@ -717,6 +717,42 @@ fn a_flooding_child_pauses_until_output_is_acknowledged() {
 }
 
 #[test]
+fn a_gone_shell_is_seen_within_the_grace_and_a_live_one_is_not() {
+    let size = PtySize {
+        rows: 24,
+        cols: 80,
+        pixel_width: 0,
+        pixel_height: 0,
+    };
+    #[cfg(unix)]
+    let (quick, slow) = {
+        let mut quick = CommandBuilder::new("/bin/sh");
+        quick.args(["-c", "exit 0"]);
+        let mut slow = CommandBuilder::new("sleep");
+        slow.arg("30");
+        (quick, slow)
+    };
+    #[cfg(windows)]
+    let (quick, slow) = {
+        let mut quick = CommandBuilder::new("cmd.exe");
+        quick.args(["/D", "/C", "exit 0"]);
+        let mut slow = CommandBuilder::new("cmd.exe");
+        slow.args(["/D", "/K", "ping", "-n", "30", "127.0.0.1"]);
+        (quick, slow)
+    };
+
+    let pty = portable_pty::native_pty_system().openpty(size).unwrap();
+    let mut gone = pty.slave.spawn_command(quick).unwrap();
+    assert!(exited_within(&mut *gone, test_wait::CHILD_PATIENCE));
+
+    let pty = portable_pty::native_pty_system().openpty(size).unwrap();
+    let mut live = pty.slave.spawn_command(slow).unwrap();
+    assert!(!exited_within(&mut *live, Duration::from_millis(50)));
+    let _ = live.kill();
+    let _ = live.wait();
+}
+
+#[test]
 fn output_events_carry_their_utf8_byte_count() {
     let project = tempfile::tempdir().unwrap();
     let (events_tx, events_rx) = std::sync::mpsc::channel();

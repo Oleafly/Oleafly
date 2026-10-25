@@ -92,6 +92,24 @@ impl Drop for ProcessTreeGuard {
     }
 }
 
+impl ProcessTreeGuard {
+    /// The guard for a child that had already exited before it could be
+    /// contained. Nothing is left to kill, so it owns no process group or
+    /// job, lists no processes, and dropping it does nothing.
+    pub fn for_exited_child() -> Self {
+        #[cfg(not(windows))]
+        {
+            ProcessTreeGuard { process_group: 0 }
+        }
+        #[cfg(windows)]
+        {
+            ProcessTreeGuard {
+                job: std::ptr::null_mut(),
+            }
+        }
+    }
+}
+
 #[cfg(not(windows))]
 pub fn contain_process_tree(pid: u32) -> std::io::Result<ProcessTreeGuard> {
     let process_group = i32::try_from(pid).map_err(|_| {
@@ -247,6 +265,21 @@ fn resume_thread(thread_id: u32) -> std::io::Result<()> {
         let error = (previous_suspend_count == u32::MAX).then(std::io::Error::last_os_error);
         CloseHandle(thread);
         error.map_or(Ok(()), Err)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_guard_for_an_exited_child_owns_nothing() {
+        let guard = ProcessTreeGuard::for_exited_child();
+        #[cfg(unix)]
+        assert_eq!(guard.process_group(), 0);
+        #[cfg(windows)]
+        assert!(guard.process_ids().expect("list the job").is_empty());
+        drop(guard);
     }
 }
 

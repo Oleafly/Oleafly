@@ -50,6 +50,13 @@ async function connectAgent(page: Page) {
   expect(enabled, "the research tasks fixture must be available").toBe(true);
 }
 
+/** Opens the sidebar if it is collapsed; the rail with its tabs is inside it. */
+async function showSidebar(page: Page) {
+  await page.evaluate(
+    `(() => { const show = document.querySelector('[aria-label^="Show sidebar"]'); if (show) show.click(); })()`,
+  );
+}
+
 test("research tasks stay off until the Experimentation switch is turned on", async ({ tauriPage }) => {
   test.setTimeout(90_000);
   const run = Date.now().toString(36);
@@ -57,6 +64,10 @@ test("research tasks stay off until the Experimentation switch is turned on", as
   const reset = await tauriPage.evaluate<boolean>(`window.__researchTasksSet?.(false) ?? false`);
   expect(reset, "the research tasks fixture must be available").toBe(true);
   await createBlankProject(tauriPage, `Research switch ${run}`);
+  // The rail lives in the sidebar, which a fresh project may open collapsed:
+  // show it and check the Files tab is there before reading the Research tab.
+  await showSidebar(tauriPage);
+  await expect(tauriPage.locator('[data-tour="rail-files"]')).toHaveCount(1, { timeout: 10_000 });
   // No Research tab in the rail, no Research section in Settings.
   await expect(tauriPage.locator('[data-tour="rail-research"]')).toHaveCount(0);
   await openSettings(tauriPage, "experimentation");
@@ -70,12 +81,26 @@ test("research tasks stay off until the Experimentation switch is turned on", as
   await expect(tauriPage.locator('[data-testid="settings-section-research"]')).toHaveCount(1, { timeout: 10_000 });
   await tauriPage.click('[data-testid="settings-close"]');
 
+  await showSidebar(tauriPage);
+  await expect(tauriPage.locator('[data-tour="rail-files"]')).toHaveCount(1, { timeout: 10_000 });
   await expect(tauriPage.locator('[data-tour="rail-research"]')).toHaveCount(1, { timeout: 10_000 });
   await openRailTab(tauriPage, "Research workspace");
   const panel = tauriPage.getByTestId("research-workspace-panel");
   await expect(panel).toBeVisible({ timeout: 20_000 });
   await expect(panel.getByText("New task", { exact: true })).toBeVisible({ timeout: 20_000 });
 });
+
+async function activeProjectId(page: Page) {
+  const projectId = await page.evaluate<string>(
+    `document.querySelector('[data-e2e-project-id]')?.getAttribute('data-e2e-project-id') ?? ''`,
+  );
+  expect(projectId, "an open project must expose its native identity").not.toBe("");
+  return projectId;
+}
+
+async function chooseSelectOption(page: Page, trigger: string, option: string) {
+  await chooseAppSelectOption(page, trigger, { attribute: "data-label", value: option });
+}
 
 test("a research task runs in Rust, reaches review, and records the same native turn", async ({
   tauriPage,

@@ -489,135 +489,35 @@ pub(crate) async fn call_desktop_apps(
         _ => {}
     }
 
-    let kind = match tool.family {
-        Family::Desktop => RuntimeKind::Desktop,
-        Family::Browser if browser == "signed_in" => {
-            if !config.sites.iter().any(|site| site.signed_in) {
-                return DesktopAppsOutcome::error(NO_SIGNED_IN_TEXT);
-            }
-            RuntimeKind::SignedInBrowser
-        }
-        Family::Browser | Family::Session => RuntimeKind::Browser,
+    let kind = match runtime_kind(tool, browser, &config) {
+        Ok(kind) => kind,
+        Err(text) => return DesktopAppsOutcome::error(text),
     };
-    let mut steps = if tool.name == "run_steps" {
-        match policy::parse_steps(&Value::Object(args.clone())) {
-            Ok(steps) => Some(steps),
-            Err(error) => {
-                log_outcome(tool.name, "error");
-                return DesktopAppsOutcome::error(error);
-            }
+    let mut steps = match batch_steps(tool, &args) {
+        Ok(steps) => steps,
+        Err(error) => {
+            log_outcome(tool.name, "error");
+            return DesktopAppsOutcome::error(error);
         }
-    } else {
-        None
     };
-    // What the dialog lists and what the driver gets: only the arguments the
-    // driver's own schema names (once a start has listed them).
-    let mut args = args;
-    if tool.class == policy::ToolClass::Act {
-        let known = state.runtimes.known_tools(kind);
-        let schema = |name: &str| {
-            known
-                .iter()
-                .find(|known| known.name == name)
-                .map(|known| known.input_schema.clone())
-        };
-        match steps.as_mut() {
-            Some(steps) => {
-                for step in steps.iter_mut() {
-                    if let (Some(schema), Value::Object(map)) = (schema(&step.tool), &step.args) {
-                        step.args = Value::Object(policy::schema_args(&schema, map.clone()));
-                    }
-                }
-            }
-            None => {
-                if let Some(schema) = schema(tool.name) {
-                    args = policy::schema_args(&schema, args);
-                }
-            }
-        }
-    }
+    let args = schema_known_args(state, kind, tool, args, &mut steps);
 
     let signed_in = kind == RuntimeKind::SignedInBrowser;
     let granted = !signed_in && already_allowed(state, scope, kind, tool, steps.as_deref());
     // Steps the dialog had no room for; they don't run.
-    let mut skipped_steps = 0;
-    match gate::decide(tool, denied, granted, signed_in) {
-        GateDecision::Run => {}
+    let skipped_steps = match gate::decide(tool, denied, granted, signed_in) {
+        GateDecision::Run => 0,
         GateDecision::Refuse(text) => {
             log_outcome(tool.name, "refused:approval_rules");
             return DesktopAppsOutcome::error(text);
         }
         GateDecision::Ask { session_option } => {
-            let context = dialog_context(state, scope, &args, steps.as_deref());
-            let approval = gate::approval_message(
-                &scope.agent_label,
-                tool,
-                &Value::Object(args.clone()),
-                steps.as_deref(),
-                signed_in,
-                &context,
-                &|key, params| crate::i18n::t_with(key, params),
-            );
-            if steps.is_some() && approval.shown_steps == 0 {
-                log_outcome(tool.name, "error");
-                return DesktopAppsOutcome::error(BATCH_TOO_LONG_TEXT);
-            }
-            // The dialog stays up until answered; the turn it belongs to may
-            // end first (Stop, a timeout), and then nothing runs.
-            let mut ended = state.turn_signal(&scope.session_key);
-            let answer = tokio::select! {
-                biased;
-                _ = ended.wait_for(|ended| *ended) => None,
-                answer = state.approver.ask(
-                    scope,
-                    approval.message,
-                    session_option,
-                    gate::approval_wait(scope.surface),
-                ) => Some(answer),
-            };
-            let Some(answer) = answer else {
-                log_outcome(tool.name, "refused:turn_ended");
-                return DesktopAppsOutcome::error(TURN_ENDED_TEXT);
-            };
-            match answer {
-                Answer::Deny => {
-                    log_outcome(tool.name, "refused:user");
-                    return DesktopAppsOutcome::error(DECLINED_TEXT);
-                }
-                Answer::Unanswered => {
-                    log_outcome(tool.name, "refused:no_answer");
-                    return DesktopAppsOutcome::error(NO_ANSWER_TEXT);
-                }
-                _ if *ended.borrow() => {
-                    log_outcome(tool.name, "refused:turn_ended");
-                    return DesktopAppsOutcome::error(TURN_ENDED_TEXT);
-                }
-                // Turned off while the dialog was open.
-                _ if !ready(&state.settings()) => {
-                    log_outcome(tool.name, "refused:off");
-                    return DesktopAppsOutcome::error(OFF_TEXT);
-                }
-                Answer::Session if session_option => {
-                    let mut grants = lock(&state.grants);
-                    match steps.as_deref() {
-                        // Only the steps the dialog listed were seen.
-                        Some(steps) => {
-                            for step in steps.iter().take(approval.shown_steps) {
-                                grants.grant(&scope.grant_key, &gate::grant_name(kind, &step.tool));
-                            }
-                        }
-                        None => grants.grant(&scope.grant_key, &gate::grant_name(kind, tool.name)),
-                    }
-                }
-                Answer::Session | Answer::Once => {}
-            }
-            // Only the steps the dialog listed run.
-            if let Some(steps) = steps.as_mut() {
-                skipped_steps = steps.len().saturating_sub(approval.shown_steps);
-                steps.truncate(approval.shown_steps);
+            match ask_approval(state, scope, kind, tool, &args, &mut steps, session_option).await {
+                Ok(skipped) => skipped,
+                Err(text) => return DesktopAppsOutcome::error(text),
             }
         }
-    }
+    };
 
     let timeout = if matches!(tool.name, "run_steps" | "run_script") {
         BATCH_TIMEOUT
@@ -626,30 +526,12 @@ pub(crate) async fn call_desktop_apps(
     };
     // A batch runs exactly the steps that were checked and shown.
     let observed_args = Value::Object(args.clone());
-    let mut forwarded = match &steps {
-        Some(steps) => match policy::steps_payload(&Value::Object(args), steps) {
-            Value::Object(map) => map,
-            _ => Map::new(),
-        },
-        None => args,
-    };
+    let mut forwarded = forwarded_args(args, steps.as_deref());
     forwarded.insert("session".into(), Value::String(label.clone()));
     let call = state
         .runtimes
         .call(kind, &label, tool.name, Value::Object(forwarded), timeout);
-    // A CLI agent's or a task's turn can end (Stop) while the call waits for
-    // the runtime or runs; then it stops too. A chat's own Stop drops it.
-    let called = if scope.surface == Surface::Chat {
-        Some(call.await)
-    } else {
-        let mut ended = state.turn_signal(&scope.session_key);
-        tokio::select! {
-            biased;
-            _ = ended.wait_for(|ended| *ended) => None,
-            result = call => Some(result),
-        }
-    };
-    let Some(called) = called else {
+    let Some(called) = call_until_turn_ends(state, scope, call).await else {
         log_outcome(tool.name, "refused:turn_ended");
         return DesktopAppsOutcome::error(STOPPED_AT_TURN_END_TEXT);
     };
@@ -671,6 +553,207 @@ pub(crate) async fn call_desktop_apps(
             log_outcome(tool.name, "error");
             DesktopAppsOutcome::error(readable(&error))
         }
+    }
+}
+
+/// The runtime a tool runs on. A call for the user's signed-in browser needs
+/// a site marked for it; otherwise the text says why it can't run.
+fn runtime_kind(
+    tool: &policy::CuratedTool,
+    browser: &str,
+    config: &CuaDriverConfig,
+) -> Result<RuntimeKind, &'static str> {
+    match tool.family {
+        Family::Desktop => Ok(RuntimeKind::Desktop),
+        Family::Browser if browser == "signed_in" => {
+            if config.sites.iter().any(|site| site.signed_in) {
+                Ok(RuntimeKind::SignedInBrowser)
+            } else {
+                Err(NO_SIGNED_IN_TEXT)
+            }
+        }
+        Family::Browser | Family::Session => Ok(RuntimeKind::Browser),
+    }
+}
+
+/// The steps of a `run_steps` call; every other tool has none.
+fn batch_steps(
+    tool: &policy::CuratedTool,
+    args: &Map<String, Value>,
+) -> Result<Option<Vec<policy::Step>>, String> {
+    if tool.name != "run_steps" {
+        return Ok(None);
+    }
+    policy::parse_steps(&Value::Object(args.clone())).map(Some)
+}
+
+/// What the dialog lists and what the driver gets: only the arguments the
+/// driver's own schema names (once a start has listed them). The steps of a
+/// batch are narrowed in place; a single call's arguments are returned.
+fn schema_known_args(
+    state: &CuaDriverState,
+    kind: RuntimeKind,
+    tool: &policy::CuratedTool,
+    args: Map<String, Value>,
+    steps: &mut Option<Vec<policy::Step>>,
+) -> Map<String, Value> {
+    if tool.class != policy::ToolClass::Act {
+        return args;
+    }
+    let known = state.runtimes.known_tools(kind);
+    let schema = |name: &str| {
+        known
+            .iter()
+            .find(|known| known.name == name)
+            .map(|known| known.input_schema.clone())
+    };
+    match steps.as_mut() {
+        Some(steps) => {
+            for step in steps.iter_mut() {
+                if let (Some(schema), Value::Object(map)) = (schema(&step.tool), &step.args) {
+                    step.args = Value::Object(policy::schema_args(&schema, map.clone()));
+                }
+            }
+            args
+        }
+        None => match schema(tool.name) {
+            Some(schema) => policy::schema_args(&schema, args),
+            None => args,
+        },
+    }
+}
+
+/// Asks the user about an action and waits for the answer. `Ok` holds how
+/// many steps of a batch the dialog had no room for: the batch is cut to the
+/// steps shown, and the rest don't run. `Err` is the text for a call that
+/// must not run.
+async fn ask_approval(
+    state: &CuaDriverState,
+    scope: &CuaScope,
+    kind: RuntimeKind,
+    tool: &policy::CuratedTool,
+    args: &Map<String, Value>,
+    steps: &mut Option<Vec<policy::Step>>,
+    session_option: bool,
+) -> Result<usize, &'static str> {
+    let context = dialog_context(state, scope, args, steps.as_deref());
+    let approval = gate::approval_message(
+        &scope.agent_label,
+        tool,
+        &Value::Object(args.clone()),
+        steps.as_deref(),
+        kind == RuntimeKind::SignedInBrowser,
+        &context,
+        &|key, params| crate::i18n::t_with(key, params),
+    );
+    if steps.is_some() && approval.shown_steps == 0 {
+        log_outcome(tool.name, "error");
+        return Err(BATCH_TOO_LONG_TEXT);
+    }
+    // The dialog stays up until answered; the turn it belongs to may
+    // end first (Stop, a timeout), and then nothing runs.
+    let mut ended = state.turn_signal(&scope.session_key);
+    let answer = tokio::select! {
+        biased;
+        _ = ended.wait_for(|ended| *ended) => None,
+        answer = state.approver.ask(
+            scope,
+            approval.message,
+            session_option,
+            gate::approval_wait(scope.surface),
+        ) => Some(answer),
+    };
+    let Some(answer) = answer else {
+        log_outcome(tool.name, "refused:turn_ended");
+        return Err(TURN_ENDED_TEXT);
+    };
+    match answer {
+        Answer::Deny => {
+            log_outcome(tool.name, "refused:user");
+            return Err(DECLINED_TEXT);
+        }
+        Answer::Unanswered => {
+            log_outcome(tool.name, "refused:no_answer");
+            return Err(NO_ANSWER_TEXT);
+        }
+        _ if *ended.borrow() => {
+            log_outcome(tool.name, "refused:turn_ended");
+            return Err(TURN_ENDED_TEXT);
+        }
+        // Turned off while the dialog was open.
+        _ if !ready(&state.settings()) => {
+            log_outcome(tool.name, "refused:off");
+            return Err(OFF_TEXT);
+        }
+        Answer::Session if session_option => grant_for_session(
+            state,
+            scope,
+            kind,
+            tool,
+            steps.as_deref(),
+            approval.shown_steps,
+        ),
+        Answer::Session | Answer::Once => {}
+    }
+    // Only the steps the dialog listed run.
+    let Some(steps) = steps.as_mut() else {
+        return Ok(0);
+    };
+    let skipped = steps.len().saturating_sub(approval.shown_steps);
+    steps.truncate(approval.shown_steps);
+    Ok(skipped)
+}
+
+/// Remembers that the user allowed this tool, or the tools of a batch's
+/// listed steps, for the rest of the chat, session or task.
+fn grant_for_session(
+    state: &CuaDriverState,
+    scope: &CuaScope,
+    kind: RuntimeKind,
+    tool: &policy::CuratedTool,
+    steps: Option<&[policy::Step]>,
+    shown_steps: usize,
+) {
+    let mut grants = lock(&state.grants);
+    match steps {
+        // Only the steps the dialog listed were seen.
+        Some(steps) => {
+            for step in steps.iter().take(shown_steps) {
+                grants.grant(&scope.grant_key, &gate::grant_name(kind, &step.tool));
+            }
+        }
+        None => grants.grant(&scope.grant_key, &gate::grant_name(kind, tool.name)),
+    }
+}
+
+/// The arguments the driver gets. A batch sends exactly the steps that were
+/// checked and shown.
+fn forwarded_args(args: Map<String, Value>, steps: Option<&[policy::Step]>) -> Map<String, Value> {
+    match steps {
+        Some(steps) => match policy::steps_payload(&Value::Object(args), steps) {
+            Value::Object(map) => map,
+            _ => Map::new(),
+        },
+        None => args,
+    }
+}
+
+/// Waits for the driver's answer. A CLI agent's or a task's turn can end
+/// (Stop) while the call waits for the runtime or runs; then it stops too
+/// (`None`). A chat's own Stop drops it.
+async fn call_until_turn_ends(
+    state: &CuaDriverState,
+    scope: &CuaScope,
+    call: impl std::future::Future<Output = Result<Value, String>>,
+) -> Option<Result<Value, String>> {
+    if scope.surface == Surface::Chat {
+        return Some(call.await);
+    }
+    let mut ended = state.turn_signal(&scope.session_key);
+    tokio::select! {
+        biased;
+        _ = ended.wait_for(|ended| *ended) => None,
+        result = call => Some(result),
     }
 }
 

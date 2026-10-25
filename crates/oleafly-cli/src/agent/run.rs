@@ -15,7 +15,7 @@ use aho_corasick::{AhoCorasick, AhoCorasickBuilder, MatchKind};
 use oleafly_agent::tools::web::{web_tool_runner, WebToolContext, WEB_FETCH_TOOL, WEB_SEARCH_TOOL};
 use oleafly_agent::{
     AgentError, AgentEvent, CancellationToken, CompletionRequest, Effort, Message, RunConfig,
-    RunOutcome, ToolPipeline, Usage, WebTools,
+    RunOutcome, ToolPipeline, ToolRunner, Usage, WebTools,
 };
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -379,6 +379,38 @@ impl Tracker {
             self.last_text.clone()
         } else {
             self.current_text.clone()
+        }
+    }
+
+    /// Notes what an agent event said and returns the event to show, if
+    /// it is one a reader sees.
+    fn record(&mut self, event: AgentEvent) -> Option<RunEvent> {
+        match event {
+            AgentEvent::StepStart { step } => {
+                self.steps = step.saturating_add(1);
+                if !self.current_text.trim().is_empty() {
+                    self.last_text = std::mem::take(&mut self.current_text);
+                } else {
+                    self.current_text.clear();
+                }
+                Some(RunEvent::Step {
+                    step: step.saturating_add(1),
+                })
+            }
+            AgentEvent::TextDelta { text } => {
+                self.current_text.push_str(&text);
+                Some(RunEvent::Text { text })
+            }
+            AgentEvent::ReasoningDelta { text } => Some(RunEvent::Reasoning { text }),
+            AgentEvent::Usage { usage, .. } => {
+                self.usage = usage;
+                self.usage_seen = true;
+                Some(RunEvent::Usage {
+                    input_tokens: (usage.input_known != Some(false)).then_some(usage.input),
+                    output_tokens: (usage.output_known != Some(false)).then_some(usage.output),
+                })
+            }
+            _ => None,
         }
     }
 }
@@ -1029,6 +1061,82 @@ struct RunEnd {
     price: Option<super::provider::Price>,
 }
 
+/// Connects the MCP servers this run may use. A server that fails is a
+/// warning; `None` when the run uses no server.
+async fn connect_mcp_hub(
+    ctx: &Context,
+    request: &AgentRunRequest,
+    run_policy: &RunPolicy,
+    config: &DesktopConfig,
+    workspace: &AgentWorkspace,
+    redactor: &Redactor,
+    cancel: &CancellationToken,
+) -> Option<Arc<McpHub>> {
+    if request.mcp == McpSelection::None || config.mcp_servers.is_empty() {
+        return None;
+    }
+    let secrets = secret_values(config);
+    let (hub, warnings) = McpHub::connect_for_run(
+        &config.mcp_servers,
+        run_policy,
+        &request.mcp,
+        &secrets,
+        workspace.work_root(),
+        cancel,
+    )
+    .await;
+    for warning in warnings {
+        ctx.warn("agent.mcp", redactor.text(&warning));
+    }
+    if !run_policy.question && !hub.server_names().is_empty() {
+        ctx.warn(
+            "agent.mcp_outside_copy",
+            if run_policy.mode == WriteMode::Apply {
+                "MCP tools act on whatever their server reaches, so changes they make aren't listed in this run's changes."
+            } else {
+                "Only MCP tools that say they only read are offered: a server works on the real files, not on this run's copy."
+            },
+        );
+    }
+    Some(Arc::new(hub))
+}
+
+/// Gives a run that may use the network its web tools and returns the
+/// runner that serves them. Without a search key the run only reads pages;
+/// if the web client can't be built it gets no web tools.
+fn with_web_tools(
+    ctx: &Context,
+    completion: &mut CompletionRequest,
+    resolved: &oleafly_agent::Resolved,
+    config: &DesktopConfig,
+    run_tools: ToolRunner,
+) -> ToolRunner {
+    let key = search_key_from(&config.connector);
+    let has_key = key.is_some();
+    if add_local_web_tools(completion, resolved, has_key) {
+        ctx.warn(
+            "agent.web_search_unavailable",
+            "Web search needs a Brave, Tavily or Serper key in Oleafly's settings, so this run only reads pages.",
+        );
+    }
+    match WebToolContext::new(key, &web_user_agent()) {
+        Ok(web) => {
+            web.observe_messages(&completion.messages);
+            web_tool_runner(Arc::new(web), run_tools)
+        }
+        Err(_) => {
+            completion
+                .tools
+                .retain(|tool| tool.name != WEB_FETCH_TOOL && tool.name != WEB_SEARCH_TOOL);
+            ctx.warn(
+                "agent.web_unavailable",
+                "Web pages can't be read in this run.",
+            );
+            run_tools
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn run_with(
     ctx: &Context,
@@ -1078,34 +1186,10 @@ async fn run_with(
     let workspace = Arc::new(workspace);
 
     // The user's MCP servers. A server that fails is a warning.
-    let hub = if request.mcp != McpSelection::None && !config.mcp_servers.is_empty() {
-        let secrets = secret_values(&config);
-        let (hub, warnings) = McpHub::connect_for_run(
-            &config.mcp_servers,
-            run_policy,
-            &request.mcp,
-            &secrets,
-            workspace.work_root(),
-            cancel,
-        )
-        .await;
-        for warning in warnings {
-            ctx.warn("agent.mcp", redactor.text(&warning));
-        }
-        if !run_policy.question && !hub.server_names().is_empty() {
-            ctx.warn(
-                "agent.mcp_outside_copy",
-                if run_policy.mode == WriteMode::Apply {
-                    "MCP tools act on whatever their server reaches, so changes they make aren't listed in this run's changes."
-                } else {
-                    "Only MCP tools that say they only read are offered: a server works on the real files, not on this run's copy."
-                },
-            );
-        }
-        Some(Arc::new(hub))
-    } else {
-        None
-    };
+    let hub = connect_mcp_hub(
+        ctx, request, run_policy, &config, &workspace, redactor, cancel,
+    )
+    .await;
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel::<RunEvent>();
     let sink: EventSink = {
@@ -1169,29 +1253,7 @@ async fn run_with(
         .extend(mcp_tools.iter().map(|tool| tool.schema.clone()));
     let mut run_tools = runner(tool_ctx.clone(), tools, mcp_tools);
     if run_policy.allow.network {
-        let key = search_key_from(&config.connector);
-        let has_key = key.is_some();
-        if add_local_web_tools(&mut completion, &resolved.resolved, has_key) {
-            ctx.warn(
-                "agent.web_search_unavailable",
-                "Web search needs a Brave, Tavily or Serper key in Oleafly's settings, so this run only reads pages.",
-            );
-        }
-        match WebToolContext::new(key, &web_user_agent()) {
-            Ok(web) => {
-                web.observe_messages(&completion.messages);
-                run_tools = web_tool_runner(Arc::new(web), run_tools);
-            }
-            Err(_) => {
-                completion
-                    .tools
-                    .retain(|tool| tool.name != WEB_FETCH_TOOL && tool.name != WEB_SEARCH_TOOL);
-                ctx.warn(
-                    "agent.web_unavailable",
-                    "Web pages can't be read in this run.",
-                );
-            }
-        }
+        run_tools = with_web_tools(ctx, &mut completion, &resolved.resolved, &config, run_tools);
     }
 
     let config_run = RunConfig {
@@ -1212,33 +1274,7 @@ async fn run_with(
             let mut state = tracker
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
-            let forwarded = match event {
-                AgentEvent::StepStart { step } => {
-                    state.steps = step.saturating_add(1);
-                    if !state.current_text.trim().is_empty() {
-                        state.last_text = std::mem::take(&mut state.current_text);
-                    } else {
-                        state.current_text.clear();
-                    }
-                    Some(RunEvent::Step {
-                        step: step.saturating_add(1),
-                    })
-                }
-                AgentEvent::TextDelta { text } => {
-                    state.current_text.push_str(&text);
-                    Some(RunEvent::Text { text })
-                }
-                AgentEvent::ReasoningDelta { text } => Some(RunEvent::Reasoning { text }),
-                AgentEvent::Usage { usage, .. } => {
-                    state.usage = usage;
-                    state.usage_seen = true;
-                    Some(RunEvent::Usage {
-                        input_tokens: (usage.input_known != Some(false)).then_some(usage.input),
-                        output_tokens: (usage.output_known != Some(false)).then_some(usage.output),
-                    })
-                }
-                _ => None,
-            };
+            let forwarded = state.record(event);
             drop(state);
             if let Some(event) = forwarded {
                 let _ = sender.send(event);

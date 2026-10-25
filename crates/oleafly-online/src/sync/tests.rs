@@ -2226,7 +2226,7 @@ impl MirrorGit for RecordingGit {
         self.calls
             .lock()
             .unwrap()
-            .push(args.iter().map(|arg| arg.to_string()).collect());
+            .push(args.iter().map(ToString::to_string).collect());
         self.inner.run(repo, args)
     }
 

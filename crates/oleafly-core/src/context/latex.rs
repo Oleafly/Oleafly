@@ -960,88 +960,154 @@ fn edge_uses(
     for (name, start, after) in commands(masked) {
         match name.as_str() {
             "subfile" | "InputIfFileExists" => {
-                if let Some((from, to)) =
-                    simple_group_after(masked, start + 1 + name.chars().count())
-                {
-                    let raw = trim_js(&string_of(&masked[from..to])).to_string();
-                    let target = resolve_project_path(facts.file, &raw, None);
-                    facts.use_(UseKind::Include, raw, from, target);
-                }
+                include_use(facts, masked, start + 1 + name.chars().count());
             }
             _ if IMPORT_COMMANDS
                 .iter()
                 .any(|command| command.eq_ignore_ascii_case(&name)) =>
             {
-                let Some((dir_from, dir_to)) = simple_group_after(masked, after) else {
-                    continue;
-                };
-                let Some((file_from, file_to)) = simple_group_after(masked, dir_to + 1) else {
-                    continue;
-                };
-                let directory = trim_js(&string_of(&masked[dir_from..dir_to]))
-                    .trim_end_matches('/')
-                    .to_string();
-                let raw = format!(
-                    "{directory}/{}",
-                    trim_js(&string_of(&masked[file_from..file_to]))
-                );
-                let target = resolve_project_path(facts.file, &raw, None);
-                facts.use_(UseKind::Import, raw, file_from, target);
+                import_use(facts, masked, after);
             }
             // `\graphicspath{{figures/}{img/}}`: folders figures are also
             // looked for in.
-            "graphicspath" | "svgpath" => {
-                let groups = command_groups(masked, after, closing);
-                if let Some(outer) = groups.iter().find(|group| group.open == '{') {
-                    let inner = command_groups(masked, outer.content_from, closing);
-                    for group in inner
-                        .iter()
-                        .filter(|group| group.open == '{' && group.complete)
-                    {
-                        let folder =
-                            trim_js(&string_of(&masked[group.content_from..group.content_to]))
-                                .replace('"', "");
-                        if !folder.is_empty() && !facts.facts.search_paths.contains(&folder) {
-                            facts.facts.search_paths.push(folder);
-                        }
-                    }
-                }
-            }
+            "graphicspath" | "svgpath" => graphics_search_paths(facts, masked, after, closing),
             "includegraphics" | "includesvg" => {
-                let groups = command_groups(masked, after, closing);
-                if let Some(group) = groups.iter().find(|group| group.open == '{') {
-                    for (token, from) in logical_tokens(source, group, false) {
-                        let target = resolve_project_path(facts.file, &token, None);
-                        facts.use_(UseKind::Asset, token, from, target);
-                    }
-                }
+                graphic_uses(facts, source, masked, after, closing);
             }
             "bibliography" | "addbibresource" | "addglobalbib" | "addsectionbib" => {
-                let groups = command_groups(masked, after, closing);
-                if let Some(group) = groups.iter().find(|group| group.open == '{') {
-                    let split = name == "bibliography";
-                    for (token, from) in logical_tokens(source, group, split) {
-                        let extension = (name == "bibliography").then_some(".bib");
-                        let target = resolve_project_path(facts.file, &token, extension);
-                        facts.use_(UseKind::Bibliography, token, from, target);
-                    }
-                }
+                bibliography_uses(facts, source, masked, &name, after, closing);
             }
             "usepackage" | "RequirePackage" => {
-                let groups = command_groups(masked, after, closing);
-                if let Some(group) = groups.iter().find(|group| group.open == '{') {
-                    for (token, from) in logical_tokens(source, group, true) {
-                        let line = facts.source.line_of(from);
-                        facts.facts.packages.push(PackageUse {
-                            name: token,
-                            file: facts.file.to_string(),
-                            line,
-                        });
-                    }
-                }
+                package_uses(facts, source, masked, after, closing);
             }
             _ => {}
         }
+    }
+}
+
+/// The first `{...}` group among the arguments that follow a command.
+fn first_braced_group(
+    masked: &[char],
+    after: usize,
+    closing: &HashMap<usize, usize>,
+) -> Option<Group> {
+    command_groups(masked, after, closing)
+        .into_iter()
+        .find(|group| group.open == '{')
+}
+
+/// `\subfile{path}` and `\InputIfFileExists{path}`: the path starts at
+/// `from`, just past the command name.
+fn include_use(facts: &mut Facts<'_>, masked: &[char], from: usize) {
+    let Some((group_from, group_to)) = simple_group_after(masked, from) else {
+        return;
+    };
+    let raw = trim_js(&string_of(&masked[group_from..group_to])).to_string();
+    let target = resolve_project_path(facts.file, &raw, None);
+    facts.use_(UseKind::Include, raw, group_from, target);
+}
+
+/// `\import{dir}{file}` and its relatives: the file is joined to its folder.
+fn import_use(facts: &mut Facts<'_>, masked: &[char], after: usize) {
+    let Some((dir_from, dir_to)) = simple_group_after(masked, after) else {
+        return;
+    };
+    let Some((file_from, file_to)) = simple_group_after(masked, dir_to + 1) else {
+        return;
+    };
+    let directory = trim_js(&string_of(&masked[dir_from..dir_to]))
+        .trim_end_matches('/')
+        .to_string();
+    let raw = format!(
+        "{directory}/{}",
+        trim_js(&string_of(&masked[file_from..file_to]))
+    );
+    let target = resolve_project_path(facts.file, &raw, None);
+    facts.use_(UseKind::Import, raw, file_from, target);
+}
+
+/// `\graphicspath{{figures/}{img/}}`: each complete inner group names a
+/// folder that figures are also looked for in.
+fn graphics_search_paths(
+    facts: &mut Facts<'_>,
+    masked: &[char],
+    after: usize,
+    closing: &HashMap<usize, usize>,
+) {
+    let Some(outer) = first_braced_group(masked, after, closing) else {
+        return;
+    };
+    let inner = command_groups(masked, outer.content_from, closing);
+    for group in inner
+        .iter()
+        .filter(|group| group.open == '{' && group.complete)
+    {
+        let folder =
+            trim_js(&string_of(&masked[group.content_from..group.content_to])).replace('"', "");
+        if !folder.is_empty() && !facts.facts.search_paths.contains(&folder) {
+            facts.facts.search_paths.push(folder);
+        }
+    }
+}
+
+/// `\includegraphics{a,b}` and `\includesvg{a}`: every file named is an asset.
+fn graphic_uses(
+    facts: &mut Facts<'_>,
+    source: &[char],
+    masked: &[char],
+    after: usize,
+    closing: &HashMap<usize, usize>,
+) {
+    let Some(group) = first_braced_group(masked, after, closing) else {
+        return;
+    };
+    for (token, from) in logical_tokens(source, &group, false) {
+        let target = resolve_project_path(facts.file, &token, None);
+        facts.use_(UseKind::Asset, token, from, target);
+    }
+}
+
+/// `\bibliography{a,b}` and the biblatex resource commands, where `name` is
+/// the command and `after` the offset just past it. Only `\bibliography`
+/// splits its argument on commas and defaults to the `.bib` extension.
+fn bibliography_uses(
+    facts: &mut Facts<'_>,
+    source: &[char],
+    masked: &[char],
+    name: &str,
+    after: usize,
+    closing: &HashMap<usize, usize>,
+) {
+    let Some(group) = first_braced_group(masked, after, closing) else {
+        return;
+    };
+    let split = name == "bibliography";
+    for (token, from) in logical_tokens(source, &group, split) {
+        let extension = (name == "bibliography").then_some(".bib");
+        let target = resolve_project_path(facts.file, &token, extension);
+        facts.use_(UseKind::Bibliography, token, from, target);
+    }
+}
+
+/// `\usepackage{a,b}` and `\RequirePackage{a}`: every package named is
+/// recorded with its line.
+fn package_uses(
+    facts: &mut Facts<'_>,
+    source: &[char],
+    masked: &[char],
+    after: usize,
+    closing: &HashMap<usize, usize>,
+) {
+    let Some(group) = first_braced_group(masked, after, closing) else {
+        return;
+    };
+    for (token, from) in logical_tokens(source, &group, true) {
+        let line = facts.source.line_of(from);
+        facts.facts.packages.push(PackageUse {
+            name: token,
+            file: facts.file.to_string(),
+            line,
+        });
     }
 }
 

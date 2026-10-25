@@ -665,37 +665,65 @@ fn quoted_after_space(text: &[char], from: usize) -> Option<(usize, usize)> {
 /// `#include "x"` and `#import "x"`, and `include "x"` and `import "x"`
 /// inside code (`#let ch = include "ch.typ"`, `#{ include "a.typ" }`).
 fn includes(facts: &mut Facts<'_>, text: &[char], in_code: &[bool]) {
-    for keyword in ["include", "import"] {
-        let pattern = format!("#{keyword}");
-        let kind = if keyword == "import" {
-            UseKind::Import
-        } else {
-            UseKind::Include
-        };
-        let mut index = 0;
-        while index < text.len() {
-            let hashed = starts_with_at(text, index, &pattern);
-            let bare = !hashed
-                && in_code.get(index) == Some(&true)
-                && starts_with_at(text, index, keyword)
-                && index.checked_sub(1).is_none_or(|before| {
-                    !(is_identifier_continue(text[before]) || matches!(text[before], '#' | '.'))
-                });
-            let keyword_end = index + if hashed { pattern.len() } else { keyword.len() };
-            if hashed || bare {
-                if let Some((open, close)) = quoted_after_space(text, keyword_end) {
-                    let raw_target = string_of(&text[open + 1..close]);
-                    if !raw_target.is_empty() {
-                        if let Some(target) = resolve_import(facts.file, &raw_target) {
-                            facts.use_(kind, raw_target, open + 1, Some(target), false);
-                        }
-                    }
-                    index = close + 1;
-                    continue;
-                }
-            }
+    for (keyword, kind) in [("include", UseKind::Include), ("import", UseKind::Import)] {
+        includes_of_keyword(facts, text, in_code, keyword, kind);
+    }
+}
+
+/// Every include or import written with `keyword`, recorded as a `kind` use.
+fn includes_of_keyword(
+    facts: &mut Facts<'_>,
+    text: &[char],
+    in_code: &[bool],
+    keyword: &str,
+    kind: UseKind,
+) {
+    let pattern = format!("#{keyword}");
+    let mut index = 0;
+    while index < text.len() {
+        let Some(keyword_end) = keyword_end_at(text, in_code, index, keyword, &pattern) else {
             index += 1;
-        }
+            continue;
+        };
+        let Some((open, close)) = quoted_after_space(text, keyword_end) else {
+            index += 1;
+            continue;
+        };
+        record_include(facts, kind, text, open, close);
+        index = close + 1;
+    }
+}
+
+/// Where the keyword at `index` ends: `#keyword` anywhere, or a bare
+/// `keyword` inside code that is not the tail of a longer name, a `#` escape
+/// or a field access.
+fn keyword_end_at(
+    text: &[char],
+    in_code: &[bool],
+    index: usize,
+    keyword: &str,
+    hashed_pattern: &str,
+) -> Option<usize> {
+    if starts_with_at(text, index, hashed_pattern) {
+        return Some(index + hashed_pattern.len());
+    }
+    let bare = in_code.get(index) == Some(&true)
+        && starts_with_at(text, index, keyword)
+        && index.checked_sub(1).is_none_or(|before| {
+            !(is_identifier_continue(text[before]) || matches!(text[before], '#' | '.'))
+        });
+    bare.then_some(index + keyword.len())
+}
+
+/// Records the include or import whose path string spans `open..close` (the
+/// quotes), when the path is not empty and resolves to a file.
+fn record_include(facts: &mut Facts<'_>, kind: UseKind, text: &[char], open: usize, close: usize) {
+    let raw_target = string_of(&text[open + 1..close]);
+    if raw_target.is_empty() {
+        return;
+    }
+    if let Some(target) = resolve_import(facts.file, &raw_target) {
+        facts.use_(kind, raw_target, open + 1, Some(target), false);
     }
 }
 

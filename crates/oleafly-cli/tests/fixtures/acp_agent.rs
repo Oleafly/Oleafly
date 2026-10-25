@@ -90,124 +90,199 @@ fn update(stdout: &mut std::io::Stdout, session: &str, text: &str) {
     );
 }
 
+/// The agent: the switches the test set in the environment, and what it
+/// keeps between messages.
+struct Agent {
+    caps: String,
+    ask: bool,
+    ask_tool: String,
+    announce: Option<String>,
+    modes: String,
+    no_init: bool,
+    slow: bool,
+    stdout: std::io::Stdout,
+    session: String,
+    pending_prompt: Option<String>,
+}
+
+impl Agent {
+    fn from_env() -> Self {
+        let ask_tool = std::env::var("FIXTURE_ASK_TOOL").ok();
+        let ask = std::env::var("FIXTURE_ASK").is_ok() || ask_tool.is_some();
+        let ask_tool = ask_tool.unwrap_or_else(|| {
+            "{\"toolCallId\":\"tool-1\",\"title\":\"Run tests\",\"kind\":\"execute\",\"rawInput\":{\"command\":\"make test\"}}".to_string()
+        });
+        let modes = std::env::var("FIXTURE_MODE").ok().map(|mode| {
+            format!(",\"modes\":{{\"currentModeId\":\"{mode}\",\"availableModes\":[{{\"id\":\"default\",\"name\":\"Default\"}},{{\"id\":\"bypassPermissions\",\"name\":\"Bypass permissions\"}}]}}")
+        }).unwrap_or_default();
+        Self {
+            caps: std::env::var("FIXTURE_CAPS").unwrap_or_default(),
+            ask,
+            ask_tool,
+            announce: std::env::var("FIXTURE_ANNOUNCE").ok(),
+            modes,
+            no_init: std::env::var("FIXTURE_NO_INIT").is_ok(),
+            slow: std::env::var("FIXTURE_SLOW").is_ok(),
+            stdout: std::io::stdout(),
+            session: String::from("agent-session-1"),
+            pending_prompt: None,
+        }
+    }
+
+    fn has(&self, name: &str) -> bool {
+        self.caps.split(',').any(|cap| cap.trim() == name)
+    }
+
+    fn handle_line(&mut self, line: &str) {
+        let method = string_after(line, "\"method\":");
+        let id = raw_after(line, "\"id\":");
+        let Some(method) = method else {
+            self.answer_permission(line, id.as_deref());
+            return;
+        };
+        if method == "session/cancel" {
+            self.cancel();
+            return;
+        }
+        let Some(id) = id else {
+            return;
+        };
+        log(&format!("method {method}"));
+        if self.no_init && method == "initialize" {
+            return;
+        }
+        let Some(result) = self.result_for(line, &method, &id) else {
+            return;
+        };
+        send(
+            &mut self.stdout,
+            &format!("{{\"jsonrpc\":\"2.0\",\"id\":{id},\"result\":{result}}}"),
+        );
+    }
+
+    /// An answer to the permission request ends the prompt that waits for it.
+    fn answer_permission(&mut self, line: &str, id: Option<&str>) {
+        if id != Some(PERMISSION_ID.to_string().as_str()) {
+            return;
+        }
+        log(&format!("permission {line}"));
+        if let Some(prompt) = self.pending_prompt.take() {
+            update(&mut self.stdout, &self.session, "done");
+            send(&mut self.stdout, &format!("{{\"jsonrpc\":\"2.0\",\"id\":{prompt},\"result\":{{\"stopReason\":\"end_turn\"}}}}"));
+        }
+    }
+
+    fn cancel(&mut self) {
+        log("method session/cancel");
+        if let Some(prompt) = self.pending_prompt.take() {
+            send(&mut self.stdout, &format!("{{\"jsonrpc\":\"2.0\",\"id\":{prompt},\"result\":{{\"stopReason\":\"cancelled\"}}}}"));
+        }
+    }
+
+    /// The `result` to answer request `id` with, or `None` when the reply
+    /// was already sent or comes later.
+    fn result_for(&mut self, line: &str, method: &str, id: &str) -> Option<String> {
+        match method {
+            "initialize" => Some(self.initialize_result()),
+            "session/new" => {
+                keep_session(&self.session);
+                Some(format!(
+                    "{{\"sessionId\":\"{session}\"{modes}}}",
+                    session = self.session,
+                    modes = self.modes
+                ))
+            }
+            "session/resume" | "session/load" => Some(self.reopen_session(line, method)),
+            "session/set_mode" => {
+                log(&format!(
+                    "set_mode {}",
+                    string_after(line, "\"modeId\":").unwrap_or_default()
+                ));
+                Some("{}".to_string())
+            }
+            "session/close" => Some("{}".to_string()),
+            "session/prompt" => self.prompt_result(line, id),
+            _ => {
+                send(
+                    &mut self.stdout,
+                    &format!("{{\"jsonrpc\":\"2.0\",\"id\":{id},\"error\":{{\"code\":-32601,\"message\":\"unknown method\"}}}}"),
+                );
+                None
+            }
+        }
+    }
+
+    fn initialize_result(&self) -> String {
+        format!(
+            "{{\"protocolVersion\":1,\"agentCapabilities\":{{\"loadSession\":{},\"sessionCapabilities\":{{{}}},\"mcpCapabilities\":{{\"http\":true}}}}}}",
+            self.has("load"),
+            [("resume", self.has("resume")), ("close", self.has("close"))]
+                .iter()
+                .filter(|(_, on)| *on)
+                .map(|(name, _)| format!("\"{name}\":{{}}"))
+                .collect::<Vec<_>>()
+                .join(",")
+        )
+    }
+
+    /// Takes up the session the request names; `session/load` replays its history.
+    fn reopen_session(&mut self, line: &str, method: &str) -> String {
+        if let Some(session) = string_after(line, "\"sessionId\":") {
+            self.session = session;
+        }
+        keep_session(&self.session);
+        if method == "session/load" {
+            update(&mut self.stdout, &self.session, "replayed history");
+        }
+        format!("{{{}}}", self.modes.trim_start_matches(','))
+    }
+
+    /// The `result` for a prompt, or `None` when the turn is held open
+    /// (waiting for a permission answer or a cancel).
+    fn prompt_result(&mut self, line: &str, id: &str) -> Option<String> {
+        let text = string_after(line, "\"text\":").unwrap_or_default();
+        log(&format!("prompt {}", text.replace('\n', " ")));
+        if self.ask {
+            self.pending_prompt = Some(id.to_string());
+            self.ask_permission();
+            return None;
+        }
+        if self.slow {
+            self.pending_prompt = Some(id.to_string());
+            return None;
+        }
+        update(&mut self.stdout, &self.session, "done");
+        Some("{\"stopReason\":\"end_turn\",\"usage\":{\"inputTokens\":3,\"outputTokens\":2,\"totalTokens\":5}}".to_string())
+    }
+
+    /// Asks permission to run the tool, after announcing it when asked to.
+    fn ask_permission(&mut self) {
+        let session = &self.session;
+        let ask_tool = &self.ask_tool;
+        if let Some(fields) = &self.announce {
+            send(
+                &mut self.stdout,
+                &format!(
+                    "{{\"jsonrpc\":\"2.0\",\"method\":\"session/update\",\"params\":{{\"sessionId\":\"{session}\",\"update\":{{\"sessionUpdate\":\"tool_call\",\"title\":\"Tool\",{fields}}}}}}}"
+                ),
+            );
+        }
+        send(
+            &mut self.stdout,
+            &format!(
+                "{{\"jsonrpc\":\"2.0\",\"id\":{PERMISSION_ID},\"method\":\"session/request_permission\",\"params\":{{\"sessionId\":\"{session}\",\"toolCall\":{ask_tool},\"options\":[{{\"optionId\":\"allow\",\"name\":\"Allow\",\"kind\":\"allow_once\"}},{{\"optionId\":\"reject\",\"name\":\"Reject\",\"kind\":\"reject_once\"}}]}}}}"
+            ),
+        );
+    }
+}
+
 fn main() {
-    let caps = std::env::var("FIXTURE_CAPS").unwrap_or_default();
-    let has = |name: &str| caps.split(',').any(|cap| cap.trim() == name);
-    let ask_tool = std::env::var("FIXTURE_ASK_TOOL").ok();
-    let ask = std::env::var("FIXTURE_ASK").is_ok() || ask_tool.is_some();
-    let ask_tool = ask_tool.unwrap_or_else(|| {
-        "{\"toolCallId\":\"tool-1\",\"title\":\"Run tests\",\"kind\":\"execute\",\"rawInput\":{\"command\":\"make test\"}}".to_string()
-    });
-    let announce = std::env::var("FIXTURE_ANNOUNCE").ok();
-    let mode = std::env::var("FIXTURE_MODE").ok();
-    let modes = mode.as_ref().map(|mode| {
-        format!(",\"modes\":{{\"currentModeId\":\"{mode}\",\"availableModes\":[{{\"id\":\"default\",\"name\":\"Default\"}},{{\"id\":\"bypassPermissions\",\"name\":\"Bypass permissions\"}}]}}")
-    }).unwrap_or_default();
-    let no_init = std::env::var("FIXTURE_NO_INIT").is_ok();
-    let slow = std::env::var("FIXTURE_SLOW").is_ok();
+    let mut agent = Agent::from_env();
     let stdin = std::io::stdin();
-    let mut stdout = std::io::stdout();
-    let mut session = String::from("agent-session-1");
-    let mut pending_prompt: Option<String> = None;
     for line in stdin.lock().lines() {
         let Ok(line) = line else {
             return;
         };
-        let method = string_after(&line, "\"method\":");
-        let id = raw_after(&line, "\"id\":");
-        if method.is_none() {
-            // An answer to the permission request.
-            if id.as_deref() == Some(PERMISSION_ID.to_string().as_str()) {
-                log(&format!("permission {line}"));
-                if let Some(prompt) = pending_prompt.take() {
-                    update(&mut stdout, &session, "done");
-                    send(&mut stdout, &format!("{{\"jsonrpc\":\"2.0\",\"id\":{prompt},\"result\":{{\"stopReason\":\"end_turn\"}}}}"));
-                }
-            }
-            continue;
-        }
-        let method = method.unwrap_or_default();
-        if method == "session/cancel" {
-            log("method session/cancel");
-            if let Some(prompt) = pending_prompt.take() {
-                send(&mut stdout, &format!("{{\"jsonrpc\":\"2.0\",\"id\":{prompt},\"result\":{{\"stopReason\":\"cancelled\"}}}}"));
-            }
-            continue;
-        }
-        let Some(id) = id else {
-            continue;
-        };
-        log(&format!("method {method}"));
-        if no_init && method == "initialize" {
-            continue;
-        }
-        let result = match method.as_str() {
-            "initialize" => format!(
-                "{{\"protocolVersion\":1,\"agentCapabilities\":{{\"loadSession\":{},\"sessionCapabilities\":{{{}}},\"mcpCapabilities\":{{\"http\":true}}}}}}",
-                has("load"),
-                [("resume", has("resume")), ("close", has("close"))]
-                    .iter()
-                    .filter(|(_, on)| *on)
-                    .map(|(name, _)| format!("\"{name}\":{{}}"))
-                    .collect::<Vec<_>>()
-                    .join(",")
-            ),
-            "session/new" => {
-                keep_session(&session);
-                format!("{{\"sessionId\":\"{session}\"{modes}}}")
-            }
-            "session/resume" | "session/load" => {
-                session = string_after(&line, "\"sessionId\":").unwrap_or(session);
-                keep_session(&session);
-                if method == "session/load" {
-                    update(&mut stdout, &session, "replayed history");
-                }
-                format!("{{{}}}", modes.trim_start_matches(','))
-            }
-            "session/set_mode" => {
-                log(&format!("set_mode {}", string_after(&line, "\"modeId\":").unwrap_or_default()));
-                "{}".to_string()
-            }
-            "session/close" => "{}".to_string(),
-            "session/prompt" => {
-                let text = string_after(&line, "\"text\":").unwrap_or_default();
-                log(&format!("prompt {}", text.replace('\n', " ")));
-                if ask {
-                    pending_prompt = Some(id);
-                    if let Some(fields) = &announce {
-                        send(
-                            &mut stdout,
-                            &format!(
-                                "{{\"jsonrpc\":\"2.0\",\"method\":\"session/update\",\"params\":{{\"sessionId\":\"{session}\",\"update\":{{\"sessionUpdate\":\"tool_call\",\"title\":\"Tool\",{fields}}}}}}}"
-                            ),
-                        );
-                    }
-                    send(
-                        &mut stdout,
-                        &format!(
-                            "{{\"jsonrpc\":\"2.0\",\"id\":{PERMISSION_ID},\"method\":\"session/request_permission\",\"params\":{{\"sessionId\":\"{session}\",\"toolCall\":{ask_tool},\"options\":[{{\"optionId\":\"allow\",\"name\":\"Allow\",\"kind\":\"allow_once\"}},{{\"optionId\":\"reject\",\"name\":\"Reject\",\"kind\":\"reject_once\"}}]}}}}"
-                        ),
-                    );
-                    continue;
-                }
-                if slow {
-                    pending_prompt = Some(id);
-                    continue;
-                }
-                update(&mut stdout, &session, "done");
-                "{\"stopReason\":\"end_turn\",\"usage\":{\"inputTokens\":3,\"outputTokens\":2,\"totalTokens\":5}}".to_string()
-            }
-            _ => {
-                send(
-                    &mut stdout,
-                    &format!("{{\"jsonrpc\":\"2.0\",\"id\":{id},\"error\":{{\"code\":-32601,\"message\":\"unknown method\"}}}}"),
-                );
-                continue;
-            }
-        };
-        send(
-            &mut stdout,
-            &format!("{{\"jsonrpc\":\"2.0\",\"id\":{id},\"result\":{result}}}"),
-        );
+        agent.handle_line(&line);
     }
 }

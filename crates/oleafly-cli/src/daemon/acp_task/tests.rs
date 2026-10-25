@@ -795,8 +795,11 @@ async fn run_to_end(setup: &Setup, env: Vec<(&'static str, String)>) -> Vec<Task
     .await
     .expect("the run must end")
     .unwrap();
-    let recorded = recorded.lock().unwrap().clone();
-    recorded
+    recorded_events(&recorded)
+}
+
+fn recorded_events(recorded: &Mutex<Vec<TaskRuntimeEvent>>) -> Vec<TaskRuntimeEvent> {
+    recorded.lock().unwrap().clone()
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

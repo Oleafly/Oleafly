@@ -645,7 +645,7 @@ impl ResearchTaskState {
             runs_in_flight,
             recent_runs,
             budget: crate::progress::BudgetUsage {
-                active_minutes: active_ms as f64 / 60_000.0,
+                active_minutes: active_minutes(active_ms),
                 limit_minutes: task.brief.budget.wall_clock_minutes,
                 spent_usd,
                 usd_cap: task.brief.budget.usd_cap,
@@ -2140,6 +2140,11 @@ impl ResearchTaskState {
 /// sleeps, so one long sleep would start a scheduled task late by however
 /// long the computer slept.
 const WAKE_CHECK_EVERY: Duration = Duration::from_secs(60);
+
+/// Active time in minutes, from the milliseconds the task clock counts.
+fn active_minutes(active_ms: u64) -> f64 {
+    active_ms as f64 / 60_000.0
+}
 
 /// How long the wake timer sleeps now, and whether the start at `at` is due
 /// once it wakes (both in epoch ms).

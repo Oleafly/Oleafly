@@ -276,7 +276,7 @@ function usePdfPageCount(file: File | null, enabled: boolean): number | null {
       active = false;
     };
   }, [enabled, file]);
-  return enabled && count && count.file === file ? count.pages : null;
+  return enabled && count?.file === file ? count.pages : null;
 }
 
 function ConversionNote({ note, details }: Readonly<{ note: string; details: readonly string[] }>) {

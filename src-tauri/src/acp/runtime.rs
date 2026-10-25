@@ -3607,7 +3607,7 @@ fn take_adopted_home(record_id: &str) -> Option<PathBuf> {
 fn handoff_home_allowed(is_folder: bool, home: &Path, root: &Path) -> bool {
     let named = home
         .file_name()
-        .and_then(|name| name.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .is_some_and(|name| name.starts_with("acp-home-"));
     named && is_folder && home.parent().is_some() && home.parent() == root.parent()
 }
