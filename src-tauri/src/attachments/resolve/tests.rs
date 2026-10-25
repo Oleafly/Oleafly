@@ -236,6 +236,46 @@ fn the_newest_attachments_win_the_request_budget() {
 }
 
 #[test]
+fn only_the_newest_message_raises_notices_on_later_turns() {
+    let root = tempfile::tempdir().unwrap();
+    let png = store_bytes(root.path(), "p1", "fig.png", "image/png", PNG, 100).unwrap();
+    let mut req = request(vec![
+        user(vec![
+            attachment(&png.sha256, "fig.png", "image/png"),
+            ContentPart::Text {
+                text: "What is in this figure?".into(),
+            },
+        ]),
+        Message {
+            role: Role::Assistant,
+            content: vec![ContentPart::Text {
+                text: "I can't read images.".into(),
+            }],
+        },
+        user(vec![ContentPart::Text {
+            text: "Then search the web.".into(),
+        }]),
+    ]);
+    let events = context(root.path(), &groq())
+        .resolve_request(&mut req)
+        .unwrap();
+    assert!(events.is_empty(), "{events:?}");
+    assert!(texts(&req.messages[0])[0].contains("does not accept images"));
+
+    let mut req = request(vec![
+        user(vec![attachment(&png.sha256, "fig.png", "image/png")]),
+        user(vec![attachment(&png.sha256, "again.png", "image/png")]),
+    ]);
+    let events = context(root.path(), &groq())
+        .resolve_request(&mut req)
+        .unwrap();
+    assert!(matches!(
+        &events[..],
+        [AgentEvent::Notice { detail, .. }] if detail.as_deref() == Some("again.png")
+    ));
+}
+
+#[test]
 fn missing_attachments_become_a_note() {
     let root = tempfile::tempdir().unwrap();
     let mut req = request(vec![user(vec![attachment(

@@ -1,3 +1,4 @@
+import type { Text } from "@codemirror/state";
 import type { DraftAttachment } from "@/components/ai/composer/types";
 import { i18n } from "@/i18n";
 import type { AcpImage, AcpPromptFile, AcpPromptInput, AcpSession } from "@/lib/acp";
@@ -124,6 +125,14 @@ function basename(path: string): string {
   return path.slice(path.lastIndexOf("/") + 1);
 }
 
+export function selectionLabel(doc: Text, from: number, to: number, name: string): string {
+  const fromLine = doc.lineAt(from).number;
+  const end = doc.lineAt(to);
+  const toLine = to > from && to === end.from && end.number > fromLine ? end.number - 1 : end.number;
+  const lines = fromLine === toLine ? `${fromLine}` : `${fromLine}-${toLine}`;
+  return name ? `${name}:${lines}` : lines;
+}
+
 /** The editor selection as a quote, or null when nothing is selected. */
 export async function quoteSelection(): Promise<AcpSelection | null> {
   const [{ getEditorView }, { useFilesStore }] = await Promise.all([
@@ -136,11 +145,8 @@ export async function quoteSelection(): Promise<AcpSelection | null> {
   if (range.empty) return null;
   const text = view.state.sliceDoc(range.from, range.to).slice(0, MAX_SELECTION_CHARS);
   if (!text.trim()) return null;
-  const fromLine = view.state.doc.lineAt(range.from).number;
-  const toLine = view.state.doc.lineAt(range.to).number;
   const path = useFilesStore.getState().activePath;
-  const name = path ? basename(path) : "";
-  const label = name ? `${name}:${fromLine}-${toLine}` : `${fromLine}-${toLine}`;
+  const label = selectionLabel(view.state.doc, range.from, range.to, path ? basename(path) : "");
   return {
     id: `selection-${Date.now()}-${range.from}`,
     path,

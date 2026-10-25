@@ -138,6 +138,22 @@ fn streamed_tool_calls_record_the_name_first_and_the_arguments_when_they_finish(
 }
 
 #[test]
+fn steps_are_counted_from_one_as_a_reader_counts_them() {
+    assert_eq!(
+        builtin_event(AgentEvent::StepStart { step: 0 }),
+        Some(TaskRuntimeEvent::Status {
+            message: "Working on step 1.".into(),
+        })
+    );
+    assert_eq!(
+        builtin_event(AgentEvent::StepStart { step: 4 }),
+        Some(TaskRuntimeEvent::Status {
+            message: "Working on step 5.".into(),
+        })
+    );
+}
+
+#[test]
 fn legacy_tool_rows_still_parse_without_the_pairing_fields() {
     let legacy: TaskRuntimeEvent =
         serde_json::from_str(r#"{"kind":"tool","name":"read_file","detail":"main.tex"}"#).unwrap();

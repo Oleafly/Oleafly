@@ -12,6 +12,7 @@ import { scrollEditorPositionLocally } from "@oleafly/editor";
 import { ChevronDown, ChevronUp, Columns2, GitCompare, Lock, Rows3 } from "lucide-react";
 import { editorTheme } from "../cm/theme";
 import { languageForPath } from "../cm/languages";
+import { MERGE_DIFF_CONFIG } from "./diff-config";
 import { gitShow, readFileContent } from "@/lib/tauri";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { isReadOnlyProjectPath } from "@/lib/project-paths";
@@ -258,6 +259,7 @@ export function DiffView() {
             highlightChanges: true,
             gutter: true,
             collapseUnchanged: { margin: 3, minSize: 4 },
+            diffConfig: MERGE_DIFF_CONFIG,
           });
           view = mv;
           navViewRef.current = mv.b;
@@ -266,7 +268,7 @@ export function DiffView() {
           const ev = new EditorView({
             doc: newText,
             extensions: [
-              unifiedMergeView({ original: oldText, mergeControls: false }),
+              unifiedMergeView({ original: oldText, mergeControls: false, diffConfig: MERGE_DIFF_CONFIG }),
               ...newExt,
             ],
             parent: host,

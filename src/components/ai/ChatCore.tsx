@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 import type { AssistantContent, ModelMessage, ToolSet } from "@/lib/chat-types";
-import { runAgentHarness, toAgentMessages } from "./agent-turn";
+import { appendStepText, runAgentHarness, toAgentMessages } from "./agent-turn";
+import { toolCallInput } from "@/lib/chat-activity";
 import { PlanNote } from "./PlanNote";
 import {
   DeltaQueues,
@@ -1406,7 +1407,9 @@ export function ChatCore() {
   useEffect(() => {
     if (!streaming) return;
     const id = window.setInterval(() => {
-      const quietMs = Date.now() - (activeChatRun()?.lastPartAt ?? lastPartAtRef.current);
+      const run = activeChatRun();
+      if (run?.pendingApproval) return;
+      const quietMs = Date.now() - (run?.lastPartAt ?? lastPartAtRef.current);
       if (quietMs > 20000) {
         const seconds = Math.round(quietMs / 1000);
         setThinkingText(i18n.t(($) => $.ai.conversation.stillWorking, { seconds }));
@@ -2400,7 +2403,8 @@ export function ChatCore() {
         const finish = (ok: boolean) => {
           ac.signal.removeEventListener("abort", onAbort);
           recordApproval(req, ok);
-          updateChatRun(runHandle, { pendingApproval: null });
+          lastPartAtRef.current = Date.now();
+          updateChatRun(runHandle, { pendingApproval: null, lastPartAt: lastPartAtRef.current });
           if (runIsCurrent()) setPendingApproval(null);
           resolve(ok);
         };
@@ -3016,7 +3020,7 @@ ${sandboxedCustom}`;
             }));
           },
           onText: (chunk) =>
-            updateRunLastText((m) => ({ ...m, content: (m.content ?? "") + chunk })),
+            updateRunLastText((m) => ({ ...m, content: appendStepText(m.content ?? "", chunk, stepContent) })),
           onReasoningStart: () => {
             if (reasoningStartedAt !== null) return;
             reasoningStartedAt = Date.now();
@@ -3056,6 +3060,7 @@ ${sandboxedCustom}`;
               IMAGE_TOOLS.has(call.name) || call.name === "insert_figure"
                 ? figureCodeOf(call.args)
                 : undefined;
+            const input = toolCallInput(call.args);
             updateRunLast((m) => ({
               ...m,
               toolCalls: [
@@ -3065,6 +3070,7 @@ ${sandboxedCustom}`;
                   name: call.name,
                   status: "running" as const,
                   ...(figureCode ? { code: figureCode } : {}),
+                  ...(input ? { input } : {}),
                 },
               ],
             }));

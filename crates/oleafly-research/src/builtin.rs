@@ -1219,7 +1219,7 @@ pub fn builtin_event(event: AgentEvent) -> Option<TaskRuntimeEvent> {
         }),
         AgentEvent::Error { message, .. } => Some(TaskRuntimeEvent::Status { message }),
         AgentEvent::StepStart { step } => Some(TaskRuntimeEvent::Status {
-            message: format!("Working on step {step}."),
+            message: format!("Working on step {}.", step.saturating_add(1)),
         }),
         _ => None,
     }

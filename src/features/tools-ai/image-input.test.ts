@@ -100,6 +100,15 @@ describe("Tools image input", () => {
     expect(prepared.mime).toBe("image/png");
   });
 
+  it("draws a PNG with an alpha channel onto white for a local model too", async () => {
+    const rgba = new Uint8Array(33);
+    rgba.set(PNG);
+    rgba.set([0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6], 8);
+    const downscale = vi.fn(async (input: ImageInput) => input);
+    await prepareImage({ bytes: rgba, mime: "image/png" }, IMAGE_BUDGETS.local, downscale);
+    expect(downscale).toHaveBeenCalledWith({ bytes: rgba, mime: "image/png" }, IMAGE_BUDGETS.local);
+  });
+
   it("sends every hosted image through the downscaler with the hosted budget", async () => {
     const smaller: ImageInput = { bytes: JPEG, mime: "image/jpeg" };
     const downscale = vi.fn(async () => smaller);

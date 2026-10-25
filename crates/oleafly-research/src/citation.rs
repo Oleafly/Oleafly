@@ -82,7 +82,110 @@ pub async fn fetch_doi_bibtex(doi: &str) -> Result<String, String> {
         .map_err(|e| format!("lookup failed: {e}"))?
         .error_for_status()
         .map_err(|_| "No entry found for that DOI.".to_string())?;
-    response_text(resp).await
+    response_text(resp).await.map(|text| tidy_doi_bibtex(&text))
+}
+
+pub fn tidy_doi_bibtex(text: &str) -> String {
+    let trimmed = text.trim();
+    let laid_out = if trimmed.contains('\n') {
+        None
+    } else {
+        one_field_per_line(trimmed)
+    };
+    ascii_page_ranges(laid_out.as_deref().unwrap_or(trimmed))
+}
+
+fn split_top_level(body: &str) -> Option<Vec<&str>> {
+    let mut parts = Vec::new();
+    let mut depth = 0i32;
+    let mut quoted = false;
+    let mut start = 0;
+    for (index, character) in body.char_indices() {
+        match character {
+            '{' => depth += 1,
+            '}' => depth -= 1,
+            '"' if depth == 0 => quoted = !quoted,
+            ',' if depth == 0 && !quoted => {
+                parts.push(&body[start..index]);
+                start = index + 1;
+            }
+            _ => {}
+        }
+        if depth < 0 {
+            return None;
+        }
+    }
+    if depth != 0 || quoted {
+        return None;
+    }
+    parts.push(&body[start..]);
+    Some(parts)
+}
+
+fn one_field_per_line(entry: &str) -> Option<String> {
+    let rest = entry.strip_prefix('@')?;
+    let open = rest.find('{')?;
+    let kind = rest[..open].trim();
+    let body = rest[open + 1..].trim_end().strip_suffix('}')?;
+    let mut parts = split_top_level(body)?.into_iter();
+    let key = parts.next()?.trim();
+    if kind.is_empty() || key.is_empty() || key.contains('=') {
+        return None;
+    }
+    let mut fields = Vec::new();
+    for part in parts {
+        let part = part.trim();
+        if part.is_empty() {
+            continue;
+        }
+        let (name, value) = part.split_once('=')?;
+        let (name, value) = (name.trim(), value.trim());
+        if name.is_empty() || value.is_empty() {
+            return None;
+        }
+        fields.push(format!("  {name} = {value}"));
+    }
+    if fields.is_empty() {
+        return None;
+    }
+    Some(format!("@{kind}{{{key},\n{}\n}}", fields.join(",\n")))
+}
+
+fn ascii_page_ranges(entry: &str) -> String {
+    let lower = entry.to_ascii_lowercase();
+    let mut out = String::with_capacity(entry.len());
+    let mut copied = 0;
+    let mut search = 0;
+    while let Some(found) = lower[search..].find("pages") {
+        let name_start = search + found;
+        search = name_start + "pages".len();
+        let before_ok =
+            name_start == 0 || !lower.as_bytes()[name_start - 1].is_ascii_alphanumeric();
+        if !before_ok {
+            continue;
+        }
+        let after_name = &entry[search..];
+        let Some(equals) = after_name.trim_start().strip_prefix('=') else {
+            continue;
+        };
+        let value = equals.trim_start();
+        let Some(inner) = value.strip_prefix('{') else {
+            continue;
+        };
+        let Some(close) = inner.find('}') else {
+            continue;
+        };
+        let value_start = entry.len() - inner.len();
+        let value_end = value_start + close;
+        out.push_str(&entry[copied..value_start]);
+        out.push_str(
+            &entry[value_start..value_end].replace(['\u{2013}', '\u{2014}', '\u{2212}'], "--"),
+        );
+        copied = value_end;
+        search = value_end;
+    }
+    out.push_str(&entry[copied..]);
+    out
 }
 
 /// The arXiv Atom entry for an id (parsed to BibTeX in the frontend).
@@ -753,6 +856,33 @@ mod tests {
 
     fn url(text: &str) -> reqwest::Url {
         reqwest::Url::parse(text).unwrap()
+    }
+
+    #[test]
+    fn a_doi_entry_gets_one_field_per_line_and_ascii_page_ranges() {
+        let crossref = " @article{LeCun_2015, title={Deep learning}, volume={521}, url={http://dx.doi.org/10.1038/nature14539}, author={LeCun, Yann and Bengio, Yoshua and Hinton, Geoffrey}, year={2015}, month=May, pages={436\u{2013}444} }\n";
+        assert_eq!(
+            tidy_doi_bibtex(crossref),
+            "@article{LeCun_2015,\n  title = {Deep learning},\n  volume = {521},\n  url = {http://dx.doi.org/10.1038/nature14539},\n  author = {LeCun, Yann and Bengio, Yoshua and Hinton, Geoffrey},\n  year = {2015},\n  month = May,\n  pages = {436--444}\n}"
+        );
+    }
+
+    #[test]
+    fn a_doi_entry_keeps_its_own_layout_and_other_fields_when_it_cannot_be_split() {
+        let lines = "@article{k,\n  pages = {1\u{2014}9},\n  numpages = {9\u{2013}}\n}";
+        assert_eq!(
+            tidy_doi_bibtex(lines),
+            "@article{k,\n  pages = {1--9},\n  numpages = {9\u{2013}}\n}"
+        );
+        assert_eq!(
+            tidy_doi_bibtex("@article{k, title={Unbalanced {brace}, pages={2\u{2013}3}"),
+            "@article{k, title={Unbalanced {brace}, pages={2--3}"
+        );
+        assert_eq!(tidy_doi_bibtex("not bibtex"), "not bibtex");
+        assert_eq!(
+            tidy_doi_bibtex("@misc{k, title={A, B and C}, PAGES = {5\u{2212}7}}"),
+            "@misc{k,\n  title = {A, B and C},\n  PAGES = {5--7}\n}"
+        );
     }
 
     #[test]

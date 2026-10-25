@@ -156,7 +156,9 @@ const limits = {
   // tasks and their runs, Desktop apps, Git hosting, the terminal settings and
   // the entry growth above. The combined graph measures 20.91 MB.
   // With both, the combined graph measures 20,950,195 bytes on macOS.
-  totalJavaScript: 21_000_000,
+  // +20 KB for the 0.4.8-rc fixes: 21,001,072 bytes on macOS, of which
+  // following file links on Cmd+click in the source editor is 586 bytes.
+  totalJavaScript: 21_020_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
   // 851 KB with 0.4.8's strings; keep narrow headroom so a namespace

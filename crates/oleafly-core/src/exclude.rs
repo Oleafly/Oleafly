@@ -26,6 +26,19 @@ pub const BUILD_ARTIFACT_PATTERNS: &[&str] = &[
     "*.xdv",
 ];
 
+pub fn new_repository_exclude_lines() -> impl Iterator<Item = &'static str> {
+    [
+        ".oleafly/",
+        ".DS_Store",
+        "Thumbs.db",
+        "desktop.ini",
+        "_minted-*/",
+        "pythontex-files-*/",
+    ]
+    .into_iter()
+    .chain(BUILD_ARTIFACT_PATTERNS.iter().copied())
+}
+
 const OS_METADATA_FILES: [&str; 5] = [
     ".DS_Store",
     "Thumbs.db",

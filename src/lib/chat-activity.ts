@@ -186,8 +186,23 @@ export interface ToolActivityEntry {
   name: string;
   status: "running" | "done" | "error";
   output?: string;
+  input?: string;
   approval?: "approved" | "rejected";
   interrupted?: boolean;
+}
+
+const TOOL_INPUT_FIELDS = ["path", "file", "command", "cmd"] as const;
+const TOOL_INPUT_MAX = 2_000;
+
+export function toolCallInput(args: unknown): string | undefined {
+  const fields = record(args);
+  if (!fields) return undefined;
+  const kept: Record<string, string> = {};
+  for (const field of TOOL_INPUT_FIELDS) {
+    const value = fields[field];
+    if (typeof value === "string" && value.trim()) kept[field] = value.slice(0, TOOL_INPUT_MAX);
+  }
+  return Object.keys(kept).length > 0 ? JSON.stringify(kept) : undefined;
 }
 
 /** A literature search that found nothing because indexes did not answer. */
@@ -571,6 +586,7 @@ export function projectToolEntry(entry: ToolActivityEntry): ResearchToolView {
 function buildToolView(entry: ToolActivityEntry): ResearchToolView {
   const value = parseOutput(entry.output);
   const data = record(value);
+  const args = record(parseOutput(entry.input));
   const status = explicitStatus(entry, value);
   const name = normalizedToolName(entry.name);
   const kind = kindFor(name);
@@ -579,10 +595,11 @@ function buildToolView(entry: ToolActivityEntry): ResearchToolView {
     .filter((result): result is LiteratureResultView => result !== null);
   const failures = kind === "literature" ? sourceFailures(data?.failures) : [];
   const path = stringValue(data?.path) ?? stringValue(data?.file) ??
-    stringValue(data?.relativePath) ?? stringValue(data?.relative_path);
+    stringValue(data?.relativePath) ?? stringValue(data?.relative_path) ??
+    stringValue(args?.path) ?? stringValue(args?.file);
   const line = numberValue(data?.line) ?? numberValue(data?.offset);
   const page = numberValue(data?.page);
-  const command = stringValue(data?.command);
+  const command = stringValue(data?.command) ?? stringValue(args?.command) ?? stringValue(args?.cmd);
   const doi = stringValue(data?.doi)?.replace(/^https?:\/\/doi\.org\//i, "");
   const url = safeWebUrl(stringValue(data?.url) ?? stringValue(data?.source_url));
   const verified = typeof data?.verified === "boolean" ? data.verified : undefined;

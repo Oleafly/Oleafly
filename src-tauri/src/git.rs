@@ -579,20 +579,7 @@ const STATE_FOLDER_EXCLUDE: &str = ".oleafly/";
 /// `.bbl` stays visible because arXiv sources ship it as their bibliography.
 /// A repository the user made only ever gets [`STATE_FOLDER_EXCLUDE`].
 fn private_exclude_lines() -> impl Iterator<Item = &'static str> {
-    [
-        STATE_FOLDER_EXCLUDE,
-        ".DS_Store",
-        "Thumbs.db",
-        "desktop.ini",
-        "_minted-*/",
-        "pythontex-files-*/",
-    ]
-    .into_iter()
-    .chain(
-        crate::build_hygiene::BUILD_ARTIFACT_PATTERNS
-            .iter()
-            .copied(),
-    )
+    oleafly_core::exclude::new_repository_exclude_lines()
 }
 
 /// Message of the first commit in a repository Oleafly creates for a new
@@ -4621,7 +4608,7 @@ mod tests {
         assert!(text.starts_with("# mine\n*.bak\n.oleafly/\n"), "{text}");
         for line in PRIVATE_EXCLUDES
             .iter()
-            .chain(crate::build_hygiene::BUILD_ARTIFACT_PATTERNS)
+            .chain(oleafly_core::exclude::BUILD_ARTIFACT_PATTERNS)
         {
             assert_eq!(
                 text.lines().filter(|entry| entry.trim() == *line).count(),
@@ -5895,7 +5882,7 @@ mod tests {
             let text = std::fs::read_to_string(root.join(".git/info/exclude")).unwrap();
             for line in PRIVATE_EXCLUDES
                 .iter()
-                .chain(crate::build_hygiene::BUILD_ARTIFACT_PATTERNS)
+                .chain(oleafly_core::exclude::BUILD_ARTIFACT_PATTERNS)
             {
                 assert!(
                     text.lines().any(|entry| entry.trim() == *line),

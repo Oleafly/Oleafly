@@ -241,7 +241,14 @@ describe("quoting the editor selection", () => {
   it("labels a quote by lines when no file is active", async () => {
     mocks.activePath = null;
     mocks.view = { state: EditorState.create({ doc, selection: EditorSelection.single(at(2), at(2) + 4) }) };
-    expect(await quoteSelection()).toMatchObject({ path: null, text: "line", label: "2-2" });
+    expect(await quoteSelection()).toMatchObject({ path: null, text: "line", label: "2" });
+  });
+
+  it("does not count the next line when a triple-click selects a whole line", async () => {
+    mocks.view = { state: EditorState.create({ doc, selection: EditorSelection.single(at(3), at(4)) }) };
+    expect(await quoteSelection()).toMatchObject({ text: "selected start\n", label: "main.tex:3" });
+    mocks.view = { state: EditorState.create({ doc, selection: EditorSelection.single(at(3), at(5)) }) };
+    expect(await quoteSelection()).toMatchObject({ label: "main.tex:3-4" });
   });
 
   it("quotes nothing without an editor, a selection or visible text", async () => {

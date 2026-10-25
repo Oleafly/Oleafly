@@ -153,9 +153,14 @@ impl RunMediaContext {
             }
         }
         let mut events = Vec::new();
+        let mut newest = true;
         for message in request.messages.iter_mut().rev() {
             if message.role == Role::User {
-                events.extend(self.resolve_message(message)?);
+                let raised = self.resolve_message(message)?;
+                if newest {
+                    events.extend(raised);
+                    newest = false;
+                }
             }
         }
         Ok(events)

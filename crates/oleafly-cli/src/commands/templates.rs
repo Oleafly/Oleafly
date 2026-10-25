@@ -471,6 +471,60 @@ fn inside_git_repository(dir: &Path) -> bool {
 
 /// `git init` the way the app does for new projects (unless turned off, or
 /// already inside a repository); a failure is a warning.
+fn git_stdout(dir: &Path, args: &[&str]) -> Option<String> {
+    let mut command = std::process::Command::new("git");
+    crate::process::clear_inherited_git_env(&mut command);
+    let output = command
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()?;
+    output
+        .status
+        .success()
+        .then(|| String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+fn default_branch(dir: &Path) -> String {
+    git_stdout(dir, &["config", "--get", "init.defaultBranch"])
+        .filter(|branch| !branch.is_empty())
+        .filter(|branch| git_stdout(dir, &["check-ref-format", "--branch", branch]).is_some())
+        .unwrap_or_else(|| "main".to_string())
+}
+
+fn write_new_repository_excludes(dir: &Path) -> std::io::Result<()> {
+    let exclude = dir.join(".git").join("info").join("exclude");
+    if let Some(parent) = exclude.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let current = std::fs::read_to_string(&exclude).unwrap_or_default();
+    let present: std::collections::HashSet<&str> = current.lines().map(str::trim).collect();
+    let mut missing = String::new();
+    if !current.is_empty() && !current.ends_with('\n') {
+        missing.push('\n');
+    }
+    let mut added = false;
+    for line in oleafly_core::exclude::new_repository_exclude_lines() {
+        if !present.contains(line) {
+            missing.push_str(line);
+            missing.push('\n');
+            added = true;
+        }
+    }
+    if !added {
+        return Ok(());
+    }
+    use std::io::Write;
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&exclude)?
+        .write_all(missing.as_bytes())
+}
+
 fn initialize_git(ctx: &Context, dir: &Path, no_git: bool) -> bool {
     let auto_init = ctx
         .data_root()
@@ -480,16 +534,25 @@ fn initialize_git(ctx: &Context, dir: &Path, no_git: bool) -> bool {
     if no_git || !auto_init || inside_git_repository(dir) {
         return false;
     }
+    let branch = default_branch(dir);
     let mut command = std::process::Command::new("git");
     crate::process::clear_inherited_git_env(&mut command);
     let result = command
         .arg("-C")
         .arg(dir)
-        .args(["init", "-q"])
+        .args(["init", "-q", "--initial-branch", &branch])
         .stdin(std::process::Stdio::null())
         .output();
     match result {
-        Ok(output) if output.status.success() => true,
+        Ok(output) if output.status.success() => {
+            if let Err(error) = write_new_repository_excludes(dir) {
+                ctx.warn(
+                    "new.git_exclude_failed",
+                    format!("Oleafly couldn't keep its build files out of Git: {error}"),
+                );
+            }
+            true
+        }
         Ok(output) => {
             ctx.warn(
                 "new.git_failed",
@@ -822,6 +885,55 @@ mod tests {
             std::fs::create_dir_all(path.parent().unwrap()).unwrap();
             std::fs::write(path, text).unwrap();
         }
+    }
+
+    #[tokio::test]
+    async fn new_keeps_build_output_out_of_the_repository_it_creates() {
+        let data = tempfile::tempdir().unwrap();
+        let place = tempfile::tempdir().unwrap();
+        custom_template(
+            data.path(),
+            "plain",
+            json!({"id": "plain", "name": "Plain", "files_dir": "files"}),
+            &[(
+                "files/main.tex",
+                "\\documentclass{article}\\begin{document}x\\end{document}",
+            )],
+        );
+        let dir = place.path().join("paper");
+        let ctx = context(place.path(), data.path());
+        let args = NewArgs {
+            dir: Some(dir.clone()),
+            template: Some("plain".into()),
+            name: None,
+            engine: None,
+            no_git: false,
+        };
+        assert!(run_new(&ctx, args).await.unwrap().ok);
+        let exclude = std::fs::read_to_string(dir.join(".git/info/exclude")).unwrap();
+        for line in [
+            ".oleafly/",
+            ".DS_Store",
+            "_minted-*/",
+            "*.aux",
+            "*.synctex.gz",
+        ] {
+            assert_eq!(
+                exclude.lines().filter(|entry| entry.trim() == line).count(),
+                1,
+                "{line} in:\n{exclude}"
+            );
+        }
+        assert_eq!(
+            git_stdout(&dir, &["symbolic-ref", "--short", "HEAD"]),
+            Some(default_branch(&dir))
+        );
+
+        write_new_repository_excludes(&dir).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(dir.join(".git/info/exclude")).unwrap(),
+            exclude
+        );
     }
 
     #[tokio::test]

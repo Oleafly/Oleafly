@@ -174,6 +174,14 @@ export function packToolOutputText(output: unknown): string {
 
 const TOOL_REPLY_ID_PREFIX = /^tool-\d+-\d+-/;
 
+export function appendStepText(content: string, chunk: string, stepStart: string): string {
+  const firstChunkOfStep = content === stepStart;
+  if (firstChunkOfStep && content.length > 0 && !/\s$/u.test(content) && !/^\s/u.test(chunk)) {
+    return `${content}\n\n${chunk}`;
+  }
+  return content + chunk;
+}
+
 export function providerCallIdFromToolReplyId(id: string): string {
   return id.replace(TOOL_REPLY_ID_PREFIX, "");
 }

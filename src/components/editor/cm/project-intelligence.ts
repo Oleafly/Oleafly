@@ -425,14 +425,19 @@ function completionResult(
   from: number,
   options: Completion[],
   query = "",
+  validFor?: RegExp,
 ): CompletionResult | null {
   if (options.length === 0) return null;
   return {
     from,
     options,
     filter: isNfc(query) && options.every((option) => isNfc(option.label)),
+    ...(validFor ? { validFor } : {}),
   };
 }
+
+const PATH_QUERY_RE = /^[^\s"(){}<>]*$/u;
+const ANGLE_PATH_QUERY_RE = /^[^<>\n]*$/u;
 
 const CITATION_ARGUMENT_RE =
   /\\([A-Za-z]+)\*?(?:\[[^\]]*\])*\{(?:[^{}]*,)?([^,{}]*)$/u;
@@ -1146,7 +1151,7 @@ function typstPathCompletion(
         : requestGuardedApply(request, label),
     ),
   );
-  return completionResult(context.pos - query.length, options, query);
+  return completionResult(context.pos - query.length, options, query, PATH_QUERY_RE);
 }
 
 const URL_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/iu;
@@ -1176,7 +1181,7 @@ function markdownPathCompletion(
       ),
     ),
   );
-  return completionResult(context.pos - query.length, options, query);
+  return completionResult(context.pos - query.length, options, query, angle ? ANGLE_PATH_QUERY_RE : PATH_QUERY_RE);
 }
 
 function latexHrefCompletion(
@@ -1200,7 +1205,7 @@ function latexHrefCompletion(
       ),
     ),
   );
-  return completionResult(context.pos - query.length, options, query);
+  return completionResult(context.pos - query.length, options, query, PATH_QUERY_RE);
 }
 
 function closingQuoteIndex(text: string, from: number, limit: number): number {

@@ -125,9 +125,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Prompt, Git Bash, WSL or a custom path on Windows), scrollback, copy on
   select, what Shift+Enter sends and Option as Meta on macOS. Find in the
   terminal (Ctrl+Shift+F on Windows and Linux, so Ctrl+F still reaches the
-  shell), activity dots on busy tabs, tab titles from programs, Open in
-  terminal from the file tree, dragging files in to type their paths, and
-  shortcuts for new, close, next and previous terminal.
+  shell), a dot on a hidden tab when its program rings the bell, tab titles
+  from programs, Open in terminal from the file tree, dragging files in to
+  type their paths, and shortcuts for new, close, next and previous terminal.
 - Dropping a file from the Files panel into a document now inserts a link to
   it, written the way that language writes links: `[name](<path>)` in
   Markdown, `#link("path")[name]` in Typst and `\href{path}{name}` in LaTeX,
@@ -136,8 +136,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ctrl+Space completes project files inside Markdown and Typst links and in
   LaTeX `\href{`. The Files panel has **Copy link** and **Insert link**, and
   the command palette has **Insert link to file**. (#315)
-- In Visual mode, Cmd+click (Ctrl+click on Windows and Linux) on a link to a
-  project file opens that file in Oleafly. (#316)
+- Cmd+click (Ctrl+click on Windows and Linux) on a link to a project file
+  opens that file in Oleafly, in Visual mode and in LaTeX, Typst and Markdown
+  source. (#316)
 
 ### Changed
 
@@ -254,6 +255,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on disk and in chat search. They're now deleted with it.
 - Switching to another project while the assistant was replying could lose
   the part of the reply it had already written. Oleafly now keeps it.
+- The assistant's reply ran its sentences together where it stopped to use a
+  tool, as in "first.Got it". Each step now starts a new paragraph.
+- A diff of a file that gained a lot of text, such as a section a task or an
+  agent wrote, showed the whole file as removed and then added. Diffs now
+  show only the lines that changed.
+- A citation added by its DOI went into the bibliography as one long line,
+  and its page range used a dash that LaTeX fonts can't print. It's now one
+  field per line, with `--` between the pages.
 - On macOS and Linux, each Show in folder left a finished process behind
   until you quit Oleafly. It now goes away as soon as it finishes.
 - Review in Files > Task outputs did nothing. It now opens the task in the

@@ -272,7 +272,7 @@ fn idle(record: &crate::linked_registry::LinkRecord, caches: &[PathBuf], now: Sy
         .is_ok_and(|elapsed| elapsed >= LINKED_BUILD_IDLE_LIMIT)
 }
 
-pub(crate) use oleafly_core::exclude::{is_build_artifact, BUILD_ARTIFACT_PATTERNS};
+pub(crate) use oleafly_core::exclude::is_build_artifact;
 
 #[cfg(test)]
 mod tests {
