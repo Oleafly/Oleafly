@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://cdn.oleafly.com/brand/logo/png/oleafly-app-icon-256.png" alt="Oleafly 로고" width="112" height="112" />
+<img src="https://cdn.oleafly.com/brand/logo/png/oleafly-app-icon-pastel-256.png" alt="Oleafly 로고" width="112" height="112" />
 
 # Oleafly <sup><em>beta</em></sup>
 
