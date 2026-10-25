@@ -1,6 +1,6 @@
 const LATEX_HREF = /\\href\s*(?:\[[^\]]*\]\s*)?\{([^{}]*)\}(?:\s*\{[^{}]*\})?/gu;
 const TYPST_LINK = /#?link\(\s*"((?:[^"\\]|\\.)*)"\s*\)(?:\[[^\]]*\])?/gu;
-const MARKDOWN_LINK = /!?\[[^\]\n]*\]\(\s*(<[^<>\n]*>|[^()\s]+)[^)\n]*\)/gu;
+const MARKDOWN_LINK = /!?\[[^\]\n]*\]\(\s*(<[^<>\n]*>|[^()\s]+)(?:\s[^)\n]*)?\)/gu;
 
 function targetAt(pattern: RegExp, text: string, offset: number, clean: (raw: string) => string): string | null {
   for (const match of text.matchAll(pattern)) {

@@ -17,6 +17,14 @@ describe("the file link under a Cmd+click", () => {
     expect(linkTargetAt(...at('See #link("notes/plan.md")[the p|lan].'))).toBe("notes/plan.md");
     expect(linkTargetAt(...at("See [the p|lan](notes/plan.md)."))).toBe("notes/plan.md");
     expect(linkTargetAt(...at("See [land](<Сведения о у|частке.md>)."))).toBe("Сведения о участке.md");
+    expect(linkTargetAt(...at('See [the p|lan](notes/plan.md "Plan").'))).toBe("notes/plan.md");
+  });
+
+  it("answers quickly for a long line with no closing parenthesis", () => {
+    const line = `[a](${"x".repeat(50_000)}`;
+    const started = performance.now();
+    expect(linkTargetAt(line, 2)).toBeNull();
+    expect(performance.now() - started).toBeLessThan(500);
   });
 
   it("finds nothing outside a link", () => {
