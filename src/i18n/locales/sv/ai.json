@@ -1082,7 +1082,9 @@
     "on": "Webbsökning och sidläsning är på för den här chatten",
     "off": "Slå på webbsökning och sidläsning för den här chatten",
     "ariaLabel": "Webbåtkomst",
-    "searchUnavailable": "Den här modellen kan inte söka på webben. Lägg till en söknyckel i Inställningar för att slå på det."
+    "searchUnavailable": "Den här modellen kan inte söka på webben utan en söknyckel.",
+    "addSearchKey": "Lägg till en söknyckel",
+    "needsKey": "Den här modellen behöver en söknyckel för att söka på webben. Den kan fortfarande läsa sidor du länkar till."
   },
   "messageActions": {
     "edit": "Redigera meddelandet",

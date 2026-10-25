@@ -7,6 +7,7 @@ import {
   encodeAttempts,
   fitWithin,
   MAX_SHRINKS,
+  pngMayHaveAlpha,
   runDownscale,
   SHRINK_FACTOR,
   type DownscaleCanvas,
@@ -64,6 +65,33 @@ function fakeEnv(
   };
 }
 
+function chunk(type: string, data: number[] = []): number[] {
+  const length = data.length;
+  return [
+    (length >>> 24) & 0xff,
+    (length >>> 16) & 0xff,
+    (length >>> 8) & 0xff,
+    length & 0xff,
+    ...Array.from(type, (character) => character.codePointAt(0) ?? 0),
+    ...data,
+    0,
+    0,
+    0,
+    0,
+  ];
+}
+
+function pngBytes(colorType: number, before: number[][] = []): Uint8Array {
+  return new Uint8Array([
+    ...PNG_MAGIC,
+    ...chunk("IHDR", [0, 0, 2, 0x53, 0, 0, 3, 0x4a, 8, colorType, 0, 0, 0]),
+    ...before.flat(),
+    ...chunk("IDAT", [0x78, 0x9c]),
+    ...chunk("tRNS", [0]),
+    ...chunk("IEND"),
+  ]);
+}
+
 function request(overrides: Partial<DownscaleRequest> = {}): DownscaleRequest {
   return {
     bytes: new Uint8Array(PNG_MAGIC).buffer,
@@ -112,6 +140,28 @@ describe("downscale rules", () => {
     );
     expect(reply).toMatchObject({ unchanged: false, mime: "image/jpeg" });
     expect(env.canvases[0]).toMatchObject({ width: 800, height: 600 });
+  });
+
+  it("knows which PNGs can hold transparent pixels", () => {
+    expect(pngMayHaveAlpha(pngBytes(6))).toBe(true);
+    expect(pngMayHaveAlpha(pngBytes(4))).toBe(true);
+    expect(pngMayHaveAlpha(pngBytes(3, [chunk("PLTE", [0, 0, 0]), chunk("tRNS", [0])]))).toBe(true);
+    expect(pngMayHaveAlpha(pngBytes(2))).toBe(false);
+    expect(pngMayHaveAlpha(pngBytes(3, [chunk("PLTE", [0, 0, 0])]))).toBe(false);
+    expect(pngMayHaveAlpha(new Uint8Array(PNG_MAGIC))).toBe(false);
+    expect(pngMayHaveAlpha(new Uint8Array([...JPEG_MAGIC, ...new Array(40).fill(0)]))).toBe(false);
+  });
+
+  it("draws a PNG that fits but can be transparent onto white instead of sending it as it is", async () => {
+    const env = fakeEnv({ width: 595, height: 842 }, () => 500);
+    const reply = await runDownscale(request({ bytes: pngBytes(6).buffer as ArrayBuffer }), env);
+    expect(reply).toMatchObject({ unchanged: false, mime: "image/png" });
+    expect(env.canvases[0]).toMatchObject({ width: 595, height: 842 });
+    expect(env.canvases[0].calls).toEqual(["fillStyle #ffffff", "fillRect", "drawImage"]);
+
+    await expect(runDownscale(request({ bytes: pngBytes(2).buffer as ArrayBuffer }), env)).resolves.toEqual({
+      unchanged: true,
+    });
   });
 
   it("re-encodes a PNG that is too large in bytes or pixels", async () => {

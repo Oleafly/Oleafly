@@ -43,6 +43,30 @@ describe("configured model groups", () => {
     );
   });
 
+  it("lists the catalog's models first, under their catalog names", () => {
+    const zai = getProvider("zai");
+    const [first, second] = zai?.models ?? [];
+    const groups = configuredModelGroups(
+      source({
+        keys: { zai: "sk" },
+        providerModels: {
+          zai: [
+            stored("glm-4.5"),
+            stored(second.id, true, { name: second.id }),
+            stored("my-tune", true, { source: "custom", name: "My tune" }),
+            stored(first.id, true, { name: first.id }),
+          ],
+        },
+      }),
+    );
+    expect(groups[0].models).toEqual([
+      { id: first.id, name: first.name },
+      { id: second.id, name: second.name },
+      { id: "glm-4.5", name: "GLM-4.5" },
+      { id: "my-tune", name: "My tune" },
+    ]);
+  });
+
   it("an empty stored list leaves a provider without models; dropEmpty false keeps the group", () => {
     const empty = source({ keys: { openai: "sk" }, providerModels: { openai: [] } });
     expect(configuredModelGroups(empty).find((group) => group.id === "openai")).toBeUndefined();
@@ -61,7 +85,7 @@ describe("configured model groups", () => {
       { id: "llava", name: "llava" },
     ]);
     expect(configuredModelGroups(withOllama, { liveOllama: [] })[0].models).toEqual([
-      { id: "llama3.2", name: "LLAMA3.2" },
+      { id: "llama3.2", name: "Llama 3.2" },
     ]);
   });
 

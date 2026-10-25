@@ -1627,6 +1627,39 @@ pub async fn agent_probe_model(
     Ok(probe)
 }
 
+#[tauri::command]
+pub async fn agent_web_search_ready(
+    provider_id: String,
+    model_id: String,
+    project_id: Option<String>,
+) -> Result<bool, String> {
+    let model_id = model_id.trim().to_string();
+    let (projected, _) = projected_provider_config(&provider_id, None, None).await?;
+    let native = oleafly_agent::provider::resolve_for_probe(&projected, &provider_id, &model_id)
+        .map(|resolved| {
+            oleafly_agent::native_web(
+                &resolved.provider_id,
+                &resolved.wire,
+                &resolved.model_id,
+                Some(oleafly_agent::WebTools {
+                    search: true,
+                    fetch: false,
+                }),
+            )
+            .search
+        })
+        .unwrap_or(true);
+    tauri::async_runtime::spawn_blocking(move || {
+        let hosted = project_id
+            .as_deref()
+            .filter(|id| crate::paths::validate_project_id(id).is_ok())
+            .is_none_or(crate::trust::is_trusted);
+        (native && hosted) || web::configured_search_key().is_some()
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
 fn probe_request(timeout: Duration) -> CompletionRequest {
     let timeout_ms = u64::try_from(timeout.as_millis()).unwrap_or(u64::MAX);
     CompletionRequest {

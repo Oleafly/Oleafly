@@ -2072,14 +2072,18 @@
       "installed": "Installeret i {{path}}.",
       "moveApp": "Flyt først Oleafly til mappen Programmer, og installer så kommandoen her.",
       "notInstalled": "Tilføjer oleafly til {{directory}}.",
-      "occupied": "{{path}} findes allerede og er ikke lavet af Oleafly, så den bliver ikke ændret.",
+      "occupied": "{{path}} findes allerede og er ikke lavet af Oleafly.",
       "outdated": "{{path}} peger stadig på en ældre kopi af Oleafly. Opdater den, så den bruger denne kopi.",
       "packaged": "Installeret i {{path}} af din Oleafly-pakke.",
       "unavailable": "Denne kopi af Oleafly indeholder ikke kommandoen."
     },
     "title": "Terminalkommando",
     "update": "Opdater",
-    "newTerminal": "Åbn en ny terminal for at bruge oleafly. Terminaler, der allerede er åbne, ser ikke ændringen."
+    "newTerminal": "Åbn en ny terminal for at bruge oleafly. Terminaler, der allerede er åbne, ser ikke ændringen.",
+    "replace": "Erstat den",
+    "replaceTitle": "Erstat oleafly-kommandoen?",
+    "replaceDescription": "Derefter kører oleafly-kommandoen i en terminal denne kopi af Oleafly. Filen, der ligger der nu, bliver erstattet.",
+    "replaceConfirm": "Erstat"
   },
   "shortcuts": {
     "actions": {

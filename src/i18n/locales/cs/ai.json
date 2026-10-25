@@ -1122,7 +1122,9 @@
     "on": "Vyhledávání na webu a čtení stránek jsou pro tento chat zapnuté",
     "off": "Zapnout pro tento chat vyhledávání na webu a čtení stránek",
     "ariaLabel": "Přístup na web",
-    "searchUnavailable": "Tento model neumí vyhledávat na webu. Chcete-li to zapnout, přidejte v Nastavení klíč pro vyhledávání."
+    "searchUnavailable": "Tento model bez klíče pro vyhledávání neumí vyhledávat na webu.",
+    "addSearchKey": "Přidat klíč pro vyhledávání",
+    "needsKey": "Tento model potřebuje k vyhledávání na webu klíč pro vyhledávání. Stránky, na které odkážete, přečíst umí."
   },
   "messageActions": {
     "edit": "Upravit zprávu",

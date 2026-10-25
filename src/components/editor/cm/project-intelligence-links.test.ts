@@ -52,6 +52,11 @@ function complete(view: EditorView, explicit: boolean): CompletionResult | null 
   return value as CompletionResult | null;
 }
 
+function validForOf(result: CompletionResult | null): RegExp {
+  if (!(result?.validFor instanceof RegExp)) throw new Error("expected a validFor pattern");
+  return result.validFor;
+}
+
 function labels(result: CompletionResult | null): string[] {
   return (result?.options ?? []).map((option) => String(option.label));
 }
@@ -140,5 +145,23 @@ describe("Ctrl+Space in a LaTeX \\href", () => {
   it("fills the empty link text with the escaped file name", () => {
     const view = viewFor("chapters/one.tex", String.raw`\href{|}{}`);
     expect(accept(view, complete(view, true), "notes/plan.md")).toBe(String.raw`\href{notes/plan.md}{plan}|`);
+  });
+
+  it("keeps the list open and filtering while the path is typed after Ctrl+Space", () => {
+    const validFor = validForOf(complete(viewFor("chapters/one.tex", String.raw`\href{no|}{}`), true));
+    expect(validFor.test("notes/pl")).toBe(true);
+    expect(validFor.test("notes/plan.md")).toBe(true);
+    expect(validFor.test("notes}")).toBe(false);
+    expect(validFor.test("notes plan")).toBe(false);
+  });
+});
+
+describe("Ctrl+Space in a Markdown link", () => {
+  it("keeps the list open while the path is typed, spaces included inside angle brackets", () => {
+    const plain = validForOf(complete(viewFor("notes/index.md", "[plan](pl|)"), true));
+    expect(plain.test("plan.md")).toBe(true);
+    expect(plain.test("plan md")).toBe(false);
+    const angle = validForOf(complete(viewFor("notes/index.md", "[land](<Св|>)"), true));
+    expect(angle.test("Сведения о")).toBe(true);
   });
 });

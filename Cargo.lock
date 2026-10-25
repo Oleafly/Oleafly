@@ -6017,7 +6017,7 @@ dependencies = [
 
 [[package]]
 name = "oleafly"
-version = "0.4.7"
+version = "0.4.8"
 dependencies = [
  "aes 0.9.3",
  "aho-corasick",
@@ -6064,6 +6064,7 @@ dependencies = [
  "oleafly-server",
  "open",
  "plist",
+ "png 0.18.1",
  "portable-pty",
  "rand 0.8.7",
  "rapidfuzz",

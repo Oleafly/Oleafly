@@ -315,6 +315,21 @@ pub(crate) fn install(
     environment: &Environment,
     shell_path: &dyn Fn(ShellStart) -> Vec<PathBuf>,
 ) -> Result<ShellCommandChange, AppError> {
+    put_in_place(environment, shell_path, false)
+}
+
+pub(crate) fn replace(
+    environment: &Environment,
+    shell_path: &dyn Fn(ShellStart) -> Vec<PathBuf>,
+) -> Result<ShellCommandChange, AppError> {
+    put_in_place(environment, shell_path, true)
+}
+
+fn put_in_place(
+    environment: &Environment,
+    shell_path: &dyn Fn(ShellStart) -> Vec<PathBuf>,
+    replace: bool,
+) -> Result<ShellCommandChange, AppError> {
     let bundled = environment
         .bundled
         .as_deref()
@@ -324,7 +339,8 @@ pub(crate) fn install(
     }
     let record = read_record(&environment.data_root);
     let (path, existing) = locate(environment, record.as_ref());
-    if existing == Existing::Foreign {
+    let replaceable = std::fs::symlink_metadata(&path).is_ok_and(|metadata| !metadata.is_dir());
+    if existing == Existing::Foreign && !(replace && replaceable) {
         return Err(
             AppError::new("shell_command.occupied").param("path", tilde(&path, &environment.home))
         );

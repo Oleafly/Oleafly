@@ -180,12 +180,12 @@ impl McpToolSet for CoreTools {
             tool(
                 "compile",
                 "Build the PDF",
-                "Build the project's PDF with the same compiler the app uses. Returns success, errors with file and line, diagnostics and the end of the log. Edit files with your own tools first; this server only reads and builds.",
+                "Build the project's PDF with the same compiler the app uses. Returns success, errors with file and line, warnings and typesetting diagnostics (info_omitted counts the informational log lines left out; get_log has them all) and the end of the log. Edit files with your own tools first; this server only reads and builds.",
                 none.clone(),
                 &[],
                 object(
                     &["success", "errors", "diagnostics", "has_pdf", "log_tail", "compile_time_ms"],
-                    json!({"success": {"type": "boolean"}, "errors": {"type": "array"}, "diagnostics": {"type": "array"}, "has_pdf": {"type": "boolean"}, "pdf": {"type": ["string", "null"]}, "log_tail": {"type": "string"}, "compile_time_ms": {"type": "integer"}}),
+                    json!({"success": {"type": "boolean"}, "errors": {"type": "array"}, "diagnostics": {"type": "array"}, "info_omitted": {"type": "integer"}, "has_pdf": {"type": "boolean"}, "pdf": {"type": ["string", "null"]}, "log_tail": {"type": "string"}, "compile_time_ms": {"type": "integer"}}),
                 ),
                 Hints {
                     read_only: false,
@@ -357,6 +357,17 @@ fn bounded_context(mut value: Value, scan: &oleafly_core::context::ContextScan) 
     )
 }
 
+fn without_info(
+    diagnostics: &[oleafly_core::LogDiagnostic],
+) -> (Vec<&oleafly_core::LogDiagnostic>, usize) {
+    let kept: Vec<_> = diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.severity != oleafly_core::LogSeverity::Info)
+        .collect();
+    let omitted = diagnostics.len() - kept.len();
+    (kept, omitted)
+}
+
 async fn compile(ctx: &ToolContext) -> Result<Value, ToolError> {
     let request = crate::engine::BuildRequest {
         timeout: ctx.build_timeout,
@@ -364,10 +375,12 @@ async fn compile(ctx: &ToolContext) -> Result<Value, ToolError> {
     };
     let result = crate::engine::build_project(&ctx.root, &request).await?;
     let (log_tail, _) = crate::record::tail_chars(&result.log, 4_000);
+    let (diagnostics, info_omitted) = without_info(&result.diagnostics);
     Ok(json!({
         "success": result.ok,
         "errors": result.errors,
-        "diagnostics": result.diagnostics,
+        "diagnostics": diagnostics,
+        "info_omitted": info_omitted,
         "has_pdf": result.output.is_some() || result.previous_output.is_some(),
         "pdf": result.output.as_ref().or(result.previous_output.as_ref()),
         "log_tail": log_tail,
@@ -616,6 +629,41 @@ mod tests {
             build_timeout: Duration::from_secs(60),
             limits: ToolLimits::default(),
         }
+    }
+
+    #[test]
+    fn compile_leaves_informational_log_lines_out_and_counts_them() {
+        let diagnostic = |severity, message: &str| oleafly_core::LogDiagnostic {
+            severity,
+            message: message.into(),
+            file: None,
+            line: None,
+            category: oleafly_core::LogCategory::Info,
+            error_context: None,
+        };
+        let all = vec![
+            diagnostic(
+                oleafly_core::LogSeverity::Info,
+                "LaTeX Font: Trying to load font information",
+            ),
+            diagnostic(oleafly_core::LogSeverity::Warning, "Citation undefined"),
+            diagnostic(oleafly_core::LogSeverity::Info, "Redefining \\frac"),
+            diagnostic(oleafly_core::LogSeverity::Typesetting, "Overfull \\hbox"),
+            diagnostic(
+                oleafly_core::LogSeverity::Error,
+                "Undefined control sequence",
+            ),
+        ];
+        let (kept, omitted) = without_info(&all);
+        assert_eq!(omitted, 2);
+        assert_eq!(
+            kept.iter().map(|d| d.message.as_str()).collect::<Vec<_>>(),
+            [
+                "Citation undefined",
+                "Overfull \\hbox",
+                "Undefined control sequence"
+            ]
+        );
     }
 
     #[test]

@@ -697,7 +697,6 @@
     }
   },
   "rail": {
-    "betaTab": "{{label}} (beta)",
     "files": "Провідник",
     "mcp": "Активність MCP",
     "pendingBadge_one": "{{count}} в очікуванні",

@@ -11,6 +11,7 @@ import type { ShellCommandChange, ShellCommandStatus } from "@/lib/shell-command
 const mocks = vi.hoisted(() => ({
   shellCommandStatus: vi.fn(),
   installShellCommand: vi.fn(),
+  replaceShellCommand: vi.fn(),
   removeShellCommand: vi.fn(),
 }));
 
@@ -18,6 +19,7 @@ vi.mock("@/lib/shell-command", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/shell-command")>()),
   shellCommandStatus: mocks.shellCommandStatus,
   installShellCommand: mocks.installShellCommand,
+  replaceShellCommand: mocks.replaceShellCommand,
   removeShellCommand: mocks.removeShellCommand,
 }));
 
@@ -184,11 +186,31 @@ describe("ShellCommandRow", () => {
     );
   });
 
-  it("leaves someone else's command alone and offers no action", async () => {
+  it("replaces someone else's command only after asking", async () => {
+    const user = userEvent.setup();
     mocks.shellCommandStatus.mockResolvedValue({ ...notInstalled, state: "occupied" });
+    mocks.replaceShellCommand.mockResolvedValue({ action: "linked", status: installed });
     render(<ShellCommandRow />);
     await expectState(fill(copy.state.occupied, { path: "~/.local/bin/oleafly" }));
-    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("button", { name: copy.install })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: copy.replace }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(copy.replaceTitle);
+    expect(dialog).toHaveTextContent(copy.replaceDescription);
+    await user.click(within(dialog).getByRole("button", { name: new RegExp(`^${enCommon.actions.cancel}`) }));
+    expect(mocks.replaceShellCommand).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: copy.replace }));
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", { name: copy.replaceConfirm }),
+    );
+    expect(mocks.replaceShellCommand).toHaveBeenCalledTimes(1);
+    expect(mocks.installShellCommand).not.toHaveBeenCalled();
+    expect((await screen.findByRole("status")).textContent).toBe(
+      fill(copy.result.linked, { path: "~/.local/bin/oleafly" }),
+    );
+    await expectState(fill(copy.state.installed, { path: "~/.local/bin/oleafly" }));
   });
 
   it("says when the Linux package already installed the command", async () => {

@@ -103,6 +103,29 @@ function encodedMime(bytes: Uint8Array): string | null {
   return null;
 }
 
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] as const;
+
+function chunkType(bytes: Uint8Array, offset: number): string {
+  return String.fromCodePoint(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]);
+}
+
+export function pngMayHaveAlpha(bytes: Uint8Array): boolean {
+  if (bytes.length < 33 || PNG_SIGNATURE.some((value, index) => bytes[index] !== value)) return false;
+  if (chunkType(bytes, 12) !== "IHDR") return false;
+  const colorType = bytes[25];
+  if (colorType === 4 || colorType === 6) return true;
+  let offset = 8;
+  while (offset + 8 <= bytes.length) {
+    const length =
+      ((bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
+    const type = chunkType(bytes, offset + 4);
+    if (type === "tRNS") return true;
+    if (type === "IDAT" || type === "IEND") return false;
+    offset += 12 + length;
+  }
+  return false;
+}
+
 function shrink(size: FitSize): FitSize {
   return {
     width: Math.max(1, Math.round(size.width * SHRINK_FACTOR)),
@@ -125,6 +148,7 @@ export async function runDownscale(request: DownscaleRequest, env: DownscaleEnv)
       && request.accept.includes("image/png")
       && fits
       && request.bytes.byteLength <= request.maxBytes
+      && !pngMayHaveAlpha(new Uint8Array(request.bytes))
     ) {
       return { unchanged: true };
     }

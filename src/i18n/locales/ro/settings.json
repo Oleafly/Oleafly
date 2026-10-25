@@ -2093,14 +2093,18 @@
       "installed": "Instalată în {{path}}.",
       "moveApp": "Mută mai întâi Oleafly în folderul Aplicații, apoi instalează comanda aici.",
       "notInstalled": "Adaugă oleafly în {{directory}}.",
-      "occupied": "{{path}} există deja și nu a fost creat de Oleafly, așa că rămâne cum este.",
+      "occupied": "{{path}} există deja și nu a fost creat de Oleafly.",
       "outdated": "{{path}} indică încă o copie mai veche a Oleafly. Actualizeaz-o ca să folosească această copie.",
       "packaged": "Instalată în {{path}} de pachetul Oleafly.",
       "unavailable": "Această copie a Oleafly nu include comanda."
     },
     "title": "Comandă de terminal",
     "update": "Actualizează",
-    "newTerminal": "Deschide un terminal nou ca să folosești oleafly. Terminalele deja deschise nu văd schimbarea."
+    "newTerminal": "Deschide un terminal nou ca să folosești oleafly. Terminalele deja deschise nu văd schimbarea.",
+    "replace": "Înlocuiește",
+    "replaceTitle": "Înlocuiești comanda oleafly?",
+    "replaceDescription": "După aceea, comanda oleafly dintr-un terminal pornește această copie Oleafly. Fișierul care e acolo acum va fi înlocuit.",
+    "replaceConfirm": "Înlocuiește"
   },
   "shortcuts": {
     "actions": {

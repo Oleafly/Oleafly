@@ -2,6 +2,7 @@
 
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
+import { getChunks } from "@codemirror/merge";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
 
@@ -46,6 +47,44 @@ describe("InlineDiffPreview", () => {
     expect(container.querySelector(".cm-deletedChunk")?.textContent).toContain("b");
     await waitFor(() => expect(mocks.scroll).toHaveBeenCalledWith(view, 2));
     expect(view.scrollDOM.getAttribute("aria-label")).toBeNull();
+  });
+
+  it("keeps unchanged lines out of the change when a large section is written into the file", () => {
+    const paragraph = (seed: string) =>
+      Array.from({ length: 60 }, (_, index) => `${seed} sentence ${index} reports a number from the run.`).join("\n");
+    const oldText = [
+      "\\documentclass{article}",
+      "\\usepackage{hyperref}",
+      "\\begin{document}",
+      "\\section{Analysis}",
+      "",
+      "\\section{Results}",
+      "",
+      "\\end{document}",
+      "",
+    ].join("\n");
+    const newText = [
+      "\\documentclass{article}",
+      "\\usepackage{graphicx}",
+      "\\usepackage{hyperref}",
+      "\\begin{document}",
+      "\\section{Analysis}",
+      paragraph("Analysis"),
+      "",
+      "\\section{Results}",
+      paragraph("Results"),
+      "",
+      "\\end{document}",
+      "",
+    ].join("\n");
+    expect(newText.length - oldText.length).toBeGreaterThan(5_000);
+    const { container } = render(<InlineDiffPreview path="main.tex" oldText={oldText} newText={newText} />);
+    const view = previewView(container);
+    const chunks = getChunks(view.state)?.chunks ?? [];
+    for (const kept of ["\\usepackage{hyperref}", "\\section{Results}", "\\end{document}"]) {
+      const at = newText.indexOf(kept);
+      expect(chunks.some((chunk) => chunk.fromB <= at && at < chunk.toB)).toBe(false);
+    }
   });
 
   it("makes the scroller focusable under a name when asked", () => {

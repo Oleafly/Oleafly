@@ -36,7 +36,7 @@ describe("assistant mascot motion", () => {
 });
 
 describe("assistant composer container queries", () => {
-  it("shows labels by default and collapses them right-to-left as space narrows", () => {
+  it("shows labels by default and collapses them as space narrows, the approval label with Plan and Web", () => {
     const personaBreakpoint = styles.indexOf(
       "@container ai-composer (max-width: 38rem)",
     );
@@ -60,7 +60,13 @@ describe("assistant composer container queries", () => {
     expect(promptsRules).toMatch(/\.ai-composer-prompts-trigger\s*\{[^}]*width: 2\.5rem;/su);
     expect(styles.match(/\.ai-composer-persona-value\s*\{[^}]*display:\s*none;/gsu)).toHaveLength(1);
     expect(styles.match(/\.ai-composer-prompts-value\s*\{[^}]*display:\s*none;/gsu)).toHaveLength(1);
-    expect(styles).not.toMatch(/\.ai-composer-approval-value\s*\{[^}]*display:\s*none;/su);
+    const planBreakpoint = styles.indexOf("@container ai-composer (max-width: 43rem)");
+    expect(planBreakpoint).toBeGreaterThan(-1);
+    expect(personaBreakpoint).toBeGreaterThan(planBreakpoint);
+    expect(styles.slice(planBreakpoint, personaBreakpoint)).toMatch(
+      /\.ai-composer-web-value,\s*\.ai-composer-approval-value\s*\{\s*display: none;/u,
+    );
+    expect(styles.match(/\.ai-composer-approval-value\s*\{[^}]*display:\s*none;/gsu)).toHaveLength(1);
     expect(styles).not.toContain(
       ".ai-composer-persona .ai-composer-persona-trigger > svg:last-child",
     );

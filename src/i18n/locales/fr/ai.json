@@ -1102,7 +1102,9 @@
     "on": "La recherche web et la lecture de pages sont activées pour cette discussion",
     "off": "Activer la recherche web et la lecture de pages pour cette discussion",
     "ariaLabel": "Accès au web",
-    "searchUnavailable": "Ce modèle ne peut pas faire de recherche sur le web. Ajoutez une clé de recherche dans les Paramètres pour l'activer."
+    "searchUnavailable": "Ce modèle ne peut pas faire de recherche sur le web sans clé de recherche.",
+    "addSearchKey": "Ajouter une clé de recherche",
+    "needsKey": "Ce modèle a besoin d'une clé de recherche pour chercher sur le web. Il peut quand même lire les pages dont vous donnez le lien."
   },
   "messageActions": {
     "edit": "Modifier le message",

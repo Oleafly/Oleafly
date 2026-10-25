@@ -62,7 +62,7 @@ describe("Tools model picker groups", () => {
     expect(groups.map((group) => group.id)).toEqual(["ollama", "anthropic"]);
     expect(groups.filter((group) => group.id === "ollama")).toHaveLength(1);
     expect(groups[1].models).toEqual([
-      { id: "claude-opus-5-5", name: "claude-opus-5-5", metadata: visionMetadata },
+      { id: "claude-opus-5-5", name: "Claude Opus 5.5", metadata: visionMetadata },
     ]);
   });
 

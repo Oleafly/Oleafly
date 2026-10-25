@@ -1564,6 +1564,9 @@ export const agentProbeModel = (args: {
     baseUrl: args.baseURL ?? null,
   });
 
+export const agentWebSearchReady = (providerId: string, modelId: string, projectId: string | null) =>
+  invoke<boolean>("agent_web_search_ready", { providerId, modelId, projectId });
+
 export const agentServerInitialize = (
   clientInfo: AgentClientInfo,
   capabilities: AgentClientCapabilities,

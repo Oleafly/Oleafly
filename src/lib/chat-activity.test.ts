@@ -8,6 +8,7 @@ import {
   skillsBudgetNotice,
   splitAgentNotices,
   stripAnsi,
+  toolCallInput,
 } from "./chat-activity";
 
 describe("splitAgentNotices", () => {
@@ -299,6 +300,32 @@ describe("research chat activity", () => {
 
     expect(quiet.status).toBe("completed");
     expect(quiet.output).toBe("");
+  });
+
+  it("names the file a read was for and the command a call ran from the call's input", () => {
+    const read = projectToolEntry({
+      name: "read_file",
+      status: "done",
+      input: JSON.stringify({ path: "analysis/data/sleep_memory.csv" }),
+      output: JSON.stringify({ content: "participant,condition", offset: 0 }),
+    });
+    expect(read.summary).toBe("analysis/data/sleep_memory.csv");
+
+    const command = projectToolEntry({
+      name: "run_command",
+      status: "done",
+      input: JSON.stringify({ command: "python3 analysis/run.py" }),
+      output: JSON.stringify({ stdout: "ok" }),
+    });
+    expect(command.command).toBe("python3 analysis/run.py");
+  });
+
+  it("keeps only the path and command of a tool call's input", () => {
+    expect(toolCallInput({ path: "main.tex", content: "long text" })).toBe(JSON.stringify({ path: "main.tex" }));
+    expect(toolCallInput({ command: "ls" })).toBe(JSON.stringify({ command: "ls" }));
+    expect(toolCallInput({ content: "only content" })).toBeUndefined();
+    expect(toolCallInput("not an object")).toBeUndefined();
+    expect(JSON.parse(toolCallInput({ command: "y".repeat(5000) }) ?? "{}").command).toHaveLength(2000);
   });
 
   it("accepts only web links and strips terminal control sequences", () => {

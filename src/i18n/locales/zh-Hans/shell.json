@@ -688,7 +688,6 @@
     }
   },
   "rail": {
-    "betaTab": "{{label}}（beta）",
     "files": "资源管理器",
     "mcp": "MCP 活动",
     "pendingBadge_other": "{{count}} 项待处理",

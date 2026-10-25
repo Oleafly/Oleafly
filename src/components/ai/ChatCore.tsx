@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 import type { AssistantContent, ModelMessage, ToolSet } from "@/lib/chat-types";
-import { runAgentHarness, toAgentMessages } from "./agent-turn";
+import { appendStepText, runAgentHarness, toAgentMessages } from "./agent-turn";
+import { toolCallInput } from "@/lib/chat-activity";
 import { PlanNote } from "./PlanNote";
 import {
   DeltaQueues,
@@ -80,7 +81,7 @@ import {
 } from "@/components/ai/turns/open-built-in-turns";
 import { presetPrompt, RESEARCH_PRESET_PROMPTS } from "@/lib/research-presets";
 import { TurnChangesCard } from "@/components/ai/turns/TurnChangesCard";
-import { agentProbeModel, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, type AppConfig, type CustomProvider, type GitFileChange, type McpAgentServer, type ModelProbe, type Persona, type EngineFeature, type StoredModel, type ToolDecision } from "@/lib/tauri";
+import { agentProbeModel, agentWebSearchReady, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, type AppConfig, type CustomProvider, type GitFileChange, type McpAgentServer, type ModelProbe, type Persona, type EngineFeature, type StoredModel, type ToolDecision } from "@/lib/tauri";
 import { checkProjectBudget } from "@/lib/ai-budget";
 import { listOllamaModels } from "@/lib/ollama";
 import { registry, type AiToolsetContribution } from "@oleafly/registry";
@@ -912,6 +913,7 @@ export function ChatCore() {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const setSettingsScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
+  const settingsOpen = useSettingsStore((s) => s.settingsOpen);
   const approvalModes = useApprovalModeStore((s) => s.modes);
   const loadApprovalMode = useApprovalModeStore((s) => s.load);
   const setApprovalMode = useApprovalModeStore((s) => s.setMode);
@@ -1406,7 +1408,9 @@ export function ChatCore() {
   useEffect(() => {
     if (!streaming) return;
     const id = window.setInterval(() => {
-      const quietMs = Date.now() - (activeChatRun()?.lastPartAt ?? lastPartAtRef.current);
+      const run = activeChatRun();
+      if (run?.pendingApproval) return;
+      const quietMs = Date.now() - (run?.lastPartAt ?? lastPartAtRef.current);
       if (quietMs > 20000) {
         const seconds = Math.round(quietMs / 1000);
         setThinkingText(i18n.t(($) => $.ai.conversation.stillWorking, { seconds }));
@@ -2400,7 +2404,8 @@ export function ChatCore() {
         const finish = (ok: boolean) => {
           ac.signal.removeEventListener("abort", onAbort);
           recordApproval(req, ok);
-          updateChatRun(runHandle, { pendingApproval: null });
+          lastPartAtRef.current = Date.now();
+          updateChatRun(runHandle, { pendingApproval: null, lastPartAt: lastPartAtRef.current });
           if (runIsCurrent()) setPendingApproval(null);
           resolve(ok);
         };
@@ -3016,7 +3021,7 @@ ${sandboxedCustom}`;
             }));
           },
           onText: (chunk) =>
-            updateRunLastText((m) => ({ ...m, content: (m.content ?? "") + chunk })),
+            updateRunLastText((m) => ({ ...m, content: appendStepText(m.content ?? "", chunk, stepContent) })),
           onReasoningStart: () => {
             if (reasoningStartedAt !== null) return;
             reasoningStartedAt = Date.now();
@@ -3056,6 +3061,7 @@ ${sandboxedCustom}`;
               IMAGE_TOOLS.has(call.name) || call.name === "insert_figure"
                 ? figureCodeOf(call.args)
                 : undefined;
+            const input = toolCallInput(call.args);
             updateRunLast((m) => ({
               ...m,
               toolCalls: [
@@ -3065,6 +3071,7 @@ ${sandboxedCustom}`;
                   name: call.name,
                   status: "running" as const,
                   ...(figureCode ? { code: figureCode } : {}),
+                  ...(input ? { input } : {}),
                 },
               ],
             }));
@@ -3885,6 +3892,23 @@ ${sandboxedCustom}`;
     if (activeChat) useChatsStore.getState().setChatSettings(activeChat.id, { web: next ?? null });
     else setNewChatSettings((current) => ({ ...current, web: next }));
   };
+  const webOn = isWebOn(selectedWeb);
+  const [webSearchReady, setWebSearchReady] = useState(true);
+  useEffect(() => {
+    if (!webOn || !model || settingsOpen) return;
+    let current = true;
+    void Promise.resolve()
+      .then(() => agentWebSearchReady(provider, model, projectId))
+      .then((ready) => {
+        if (current) setWebSearchReady(ready);
+      })
+      .catch(() => {
+        if (current) setWebSearchReady(true);
+      });
+    return () => {
+      current = false;
+    };
+  }, [webOn, provider, model, projectId, settingsOpen]);
   const activeModelVision = modelSupportsVision(
     provider,
     model,
@@ -4715,7 +4739,8 @@ ${sandboxedCustom}`;
                     </Tooltip>
                   )}
                   <WebToggle
-                    on={isWebOn(selectedWeb)}
+                    on={webOn}
+                    needsKey={!webSearchReady}
                     onChange={changeWeb}
                     disabled={approvalModeLocked}
                   />

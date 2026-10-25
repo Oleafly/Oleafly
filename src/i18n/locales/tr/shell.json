@@ -691,7 +691,6 @@
     }
   },
   "rail": {
-    "betaTab": "{{label}} (beta)",
     "files": "Gezgin",
     "mcp": "MCP etkinliği",
     "pendingBadge_one": "{{count}} bekliyor",

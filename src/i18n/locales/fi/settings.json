@@ -2072,14 +2072,18 @@
       "installed": "Asennettu: {{path}}.",
       "moveApp": "Siirrä Oleafly ensin Ohjelmat-kansioon ja asenna komento sitten täällä.",
       "notInstalled": "Lisää oleafly-komennon kansioon {{directory}}.",
-      "occupied": "{{path}} on jo olemassa, eikä Oleafly luonut sitä, joten sitä ei muuteta.",
+      "occupied": "{{path}} on jo olemassa, eikä Oleafly luonut sitä.",
       "outdated": "{{path}} osoittaa yhä Oleaflyn vanhempaan kopioon. Päivitä se käyttämään tätä kopiota.",
       "packaged": "Asennettu Oleafly-paketin mukana: {{path}}.",
       "unavailable": "Tässä Oleaflyn kopiossa ei ole komentoa."
     },
     "title": "Päätekomento",
     "update": "Päivitä",
-    "newTerminal": "Avaa uusi pääte, niin voit käyttää oleafly-komentoa. Jo avoinna olevat päätteet eivät näe muutosta."
+    "newTerminal": "Avaa uusi pääte, niin voit käyttää oleafly-komentoa. Jo avoinna olevat päätteet eivät näe muutosta.",
+    "replace": "Korvaa",
+    "replaceTitle": "Korvataanko oleafly-komento?",
+    "replaceDescription": "Sen jälkeen päätteen oleafly-komento käynnistää tämän Oleafly-kopion. Nykyinen tiedosto korvataan.",
+    "replaceConfirm": "Korvaa"
   },
   "shortcuts": {
     "actions": {

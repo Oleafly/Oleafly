@@ -7,6 +7,7 @@ import { editorTheme } from "../cm/theme";
 import { languageForPath } from "../cm/languages";
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { MERGE_DIFF_CONFIG } from "./diff-config";
 
 const MAX = 400_000;
 
@@ -46,7 +47,7 @@ export function InlineDiffPreview({
     const view = new EditorView({
       doc: newText,
       extensions: [
-        unifiedMergeView({ original: oldText, mergeControls: false }),
+        unifiedMergeView({ original: oldText, mergeControls: false, diffConfig: MERGE_DIFF_CONFIG }),
         lineNumbers(),
         editorTheme(),
         ...(lang ? [lang] : []),

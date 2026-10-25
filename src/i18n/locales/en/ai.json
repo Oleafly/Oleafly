@@ -1082,7 +1082,9 @@
     "on": "Web search and page reading are on for this chat",
     "off": "Turn on web search and page reading for this chat",
     "ariaLabel": "Web access",
-    "searchUnavailable": "This model can't search the web. Add a search key in Settings to turn it on."
+    "searchUnavailable": "This model can't search the web without a search key.",
+    "addSearchKey": "Add a search key",
+    "needsKey": "This model needs a search key to search the web. It can still read pages you link to."
   },
   "messageActions": {
     "edit": "Edit message",
