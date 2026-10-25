@@ -44,7 +44,8 @@
     "folder_holds_templates": "Ten folder zawiera wbudowane szablony Oleafly. Zamiast niego wybierz folder szablonu."
   },
   "settings": {
-    "locale_unsupported": "Język {{locale}} nie jest dostępny."
+    "locale_unsupported": "Język {{locale}} nie jest dostępny.",
+    "app_icon_unsupported": "Ikona aplikacji {{icon}} nie jest dostępna."
   },
   "literature": {
     "query_empty": "Zapytanie wyszukiwania nie może być puste.",

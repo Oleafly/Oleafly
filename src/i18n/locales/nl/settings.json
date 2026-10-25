@@ -521,6 +521,13 @@
         "label": "Accentkleur",
         "swatchAriaLabel": "Accent {{name}}"
       },
+      "appIcon": {
+        "blue": "Blauw",
+        "description": "Kies het pictogram dat Oleafly in het Dock of de taakbalk toont zolang het open is.",
+        "label": "App-pictogram",
+        "light": "Licht",
+        "note": "Finder, het Startmenu en app-starters blijven het standaardpictogram tonen."
+      },
       "bgPattern": {
         "description": "Kies het patroon achter de projectplank.",
         "dots": "Stippen",

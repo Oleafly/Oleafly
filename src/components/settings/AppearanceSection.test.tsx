@@ -266,6 +266,32 @@ describe("Appearance settings tabs", () => {
     expect(useSettingsStore.getState().editorLineHeight).toBe("wide");
   }, 15_000);
 
+  it("picks the app icon from previews of both icons and says where it shows", async () => {
+    const user = userEvent.setup();
+    act(() => useSettingsStore.getState().setAppIcon("blue"));
+    render(<AppearanceSection />);
+
+    const row = screen.getByTestId("settings-row-app-icon");
+    expect(within(row).getByText(appearance.app.appIcon.label)).toBeInTheDocument();
+    expect(within(row).getByText(appearance.app.appIcon.description)).toBeInTheDocument();
+    expect(within(row).getByText(appearance.app.appIcon.note)).toBeInTheDocument();
+    const blue = within(row).getByRole("button", { name: appearance.app.appIcon.blue });
+    const light = within(row).getByRole("button", { name: appearance.app.appIcon.light });
+    expect(blue.querySelector("img")).toHaveAttribute("src", "/app-icon/blue.png");
+    expect(light.querySelector("img")).toHaveAttribute("src", "/app-icon/light.png");
+    expect(blue).toHaveAttribute("aria-pressed", "true");
+    expect(light).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(light);
+    expect(useSettingsStore.getState().appIcon).toBe("light");
+    expect(localStorage.getItem("oleafly.appIcon")).toBe("light");
+    expect(light).toHaveAttribute("aria-pressed", "true");
+    expect(blue).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(blue);
+    expect(useSettingsStore.getState().appIcon).toBe("blue");
+  });
+
   it("sets the app zoom from its list", async () => {
     const user = userEvent.setup();
     useSettingsStore.setState({ appZoom: 100 });

@@ -44,7 +44,8 @@
     "folder_holds_templates": "Questa cartella contiene i modelli di Oleafly. Scegli invece la cartella del modello."
   },
   "settings": {
-    "locale_unsupported": "La lingua {{locale}} non è disponibile."
+    "locale_unsupported": "La lingua {{locale}} non è disponibile.",
+    "app_icon_unsupported": "L'icona dell'app {{icon}} non è disponibile."
   },
   "literature": {
     "query_empty": "Il testo da cercare non può essere vuoto.",

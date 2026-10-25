@@ -44,7 +44,8 @@
     "folder_holds_templates": "Dieser Ordner enthält die Vorlagen von Oleafly selbst. Wählen Sie stattdessen den Ordner der Vorlage."
   },
   "settings": {
-    "locale_unsupported": "Die Sprache {{locale}} ist nicht verfügbar."
+    "locale_unsupported": "Die Sprache {{locale}} ist nicht verfügbar.",
+    "app_icon_unsupported": "Das App-Symbol {{icon}} ist nicht verfügbar."
   },
   "literature": {
     "query_empty": "Die Suchanfrage darf nicht leer sein.",

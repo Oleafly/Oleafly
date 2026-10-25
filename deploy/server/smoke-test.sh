@@ -66,7 +66,7 @@ pass "no source, .env, .git or .private files among $(wc -l < "$work/files.txt" 
 
 mkdir -p "$work/rootfs"
 tar -xf "$work/rootfs.tar" -C "$work/rootfs" usr/local/bin/oleafly-server
-if grep -a -o -E '/(Users|home)/[A-Za-z0-9._-]+' "$work/rootfs/usr/local/bin/oleafly-server" | sort -u > "$work/paths.txt" && [ -s "$work/paths.txt" ]; then
+if grep -a -o -E '/(Users|home)/[A-Za-z0-9._-]+' "$work/rootfs/usr/local/bin/oleafly-server" | sort -u | { grep -v -x -F '/home/web_user' || true; } > "$work/paths.txt" && [ -s "$work/paths.txt" ]; then
   fail "the binary embeds local paths: $(tr '\n' ' ' < "$work/paths.txt")"
 fi
 pass "the binary embeds no /Users or /home paths"

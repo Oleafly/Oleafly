@@ -44,7 +44,8 @@
     "folder_holds_templates": "This folder holds Oleafly's own templates. Choose the template's folder instead."
   },
   "settings": {
-    "locale_unsupported": "The language {{locale}} is not available."
+    "locale_unsupported": "The language {{locale}} is not available.",
+    "app_icon_unsupported": "The app icon {{icon}} is not available."
   },
   "literature": {
     "query_empty": "Search query cannot be empty.",

@@ -521,6 +521,13 @@
         "label": "Korostusväri",
         "swatchAriaLabel": "Korostusväri {{name}}"
       },
+      "appIcon": {
+        "blue": "Sininen",
+        "description": "Valitse kuvake, jonka Oleafly näyttää Dockissa tai tehtäväpalkissa, kun se on auki.",
+        "label": "Sovelluksen kuvake",
+        "light": "Vaalea",
+        "note": "Finder, Käynnistä-valikko ja sovellusten käynnistimet näyttävät edelleen oletuskuvakkeen."
+      },
       "bgPattern": {
         "description": "Valitse projektihyllyn takana oleva kuvio.",
         "dots": "Pisteet",

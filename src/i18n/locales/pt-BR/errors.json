@@ -44,7 +44,8 @@
     "folder_holds_templates": "Esta pasta guarda os modelos do próprio Oleafly. Em vez disso, escolha a pasta do modelo."
   },
   "settings": {
-    "locale_unsupported": "O idioma {{locale}} não está disponível."
+    "locale_unsupported": "O idioma {{locale}} não está disponível.",
+    "app_icon_unsupported": "O ícone do aplicativo {{icon}} não está disponível."
   },
   "literature": {
     "query_empty": "O termo de busca não pode ficar vazio.",

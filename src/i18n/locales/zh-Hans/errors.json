@@ -44,7 +44,8 @@
     "folder_holds_templates": "此文件夹存放的是 Oleafly 自带的模板。请改为选择模板本身所在的文件夹。"
   },
   "settings": {
-    "locale_unsupported": "语言 {{locale}} 不可用。"
+    "locale_unsupported": "语言 {{locale}} 不可用。",
+    "app_icon_unsupported": "应用图标 {{icon}} 不可用。"
   },
   "literature": {
     "query_empty": "搜索内容不能为空。",

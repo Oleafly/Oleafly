@@ -518,6 +518,13 @@
         "label": "アクセントカラー",
         "swatchAriaLabel": "{{name}} のアクセント"
       },
+      "appIcon": {
+        "blue": "ブルー",
+        "description": "Oleafly を開いている間に Dock やタスクバーに表示するアイコンを選びます。",
+        "label": "アプリアイコン",
+        "light": "ライト",
+        "note": "Finder、スタート メニュー、アプリランチャーでは既定のアイコンのままです。"
+      },
       "bgPattern": {
         "description": "プロジェクトの棚の背景の模様を選びます。",
         "dots": "ドット",

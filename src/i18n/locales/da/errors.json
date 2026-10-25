@@ -44,7 +44,8 @@
     "folder_holds_templates": "I denne mappe gemmer Oleafly sine egne skabeloner. Vælg skabelonens mappe i stedet."
   },
   "settings": {
-    "locale_unsupported": "Sproget {{locale}} er ikke tilgængeligt."
+    "locale_unsupported": "Sproget {{locale}} er ikke tilgængeligt.",
+    "app_icon_unsupported": "Appikonet {{icon}} er ikke tilgængeligt."
   },
   "literature": {
     "query_empty": "Søgeteksten må ikke være tom.",

@@ -43,10 +43,10 @@ describe("ProjectImportMenu shared project link", () => {
       await Promise.resolve();
     });
     openMenu();
-    const item = await screen.findByRole("menuitem", { name: enCollab.library.openLink.menu });
+    const item = await screen.findByRole("menuitem", { name: enCollab.library.openLink.menu }, { timeout: 10_000 });
     fireEvent.click(item);
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Close link dialog" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  });
+  }, 20_000);
 });

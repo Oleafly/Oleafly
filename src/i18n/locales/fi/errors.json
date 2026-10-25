@@ -44,7 +44,8 @@
     "folder_holds_templates": "Oleafly säilyttää tässä kansiossa omia mallipohjiaan. Valitse sen sijaan mallipohjan kansio."
   },
   "settings": {
-    "locale_unsupported": "Kieli {{locale}} ei ole saatavilla."
+    "locale_unsupported": "Kieli {{locale}} ei ole saatavilla.",
+    "app_icon_unsupported": "Sovelluksen kuvake {{icon}} ei ole saatavilla."
   },
   "literature": {
     "query_empty": "Hakulauseke ei voi olla tyhjä.",

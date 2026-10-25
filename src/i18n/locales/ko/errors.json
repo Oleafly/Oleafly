@@ -44,7 +44,8 @@
     "folder_holds_templates": "이 폴더에는 Oleafly 자체 템플릿이 들어 있습니다. 대신 템플릿 폴더를 선택하세요."
   },
   "settings": {
-    "locale_unsupported": "{{locale}} 언어는 사용할 수 없습니다."
+    "locale_unsupported": "{{locale}} 언어는 사용할 수 없습니다.",
+    "app_icon_unsupported": "{{icon}} 앱 아이콘은 사용할 수 없습니다."
   },
   "literature": {
     "query_empty": "검색어는 비워 둘 수 없습니다.",

@@ -44,7 +44,8 @@
     "folder_holds_templates": "У цій теці зберігаються вбудовані шаблони Oleafly. Виберіть натомість теку шаблону."
   },
   "settings": {
-    "locale_unsupported": "Мова {{locale}} недоступна."
+    "locale_unsupported": "Мова {{locale}} недоступна.",
+    "app_icon_unsupported": "Піктограма застосунку {{icon}} недоступна."
   },
   "literature": {
     "query_empty": "Пошуковий запит не може бути порожнім.",

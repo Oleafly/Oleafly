@@ -150,6 +150,27 @@ describe("Library collaboration", () => {
     expect(screen.queryByRole("button", { name: "Open Grant" })).toBeNull();
   });
 
+  it("names the library location plainly while no project is shared", async () => {
+    const thesis = project("thesis", "Thesis", {
+      location: { kind: "linked", display_path: "~/Desktop/thesis", availability: "unknown" },
+    });
+    useFilesStore.setState({ projects: [GRANT, PAPER, thesis] });
+    await renderLibrary();
+    await waitFor(() => expect(within(card("Open Grant")).getByText(enCollab.library.kind)).toBeInTheDocument());
+    act(() => useFilesStore.setState({ projects: [PAPER, thesis] }));
+    openFilters();
+    fireEvent.pointerDown(locationSelect() as HTMLElement, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual([
+      enLibrary.home.filters.locationAll,
+      enLibrary.home.filters.locationLibrary,
+      enLibrary.home.filters.locationExternal,
+    ]);
+    fireEvent.click(screen.getByRole("option", { name: enLibrary.home.filters.locationLibrary }));
+    expect(locationSelect()).toHaveTextContent(enLibrary.home.filters.locationLibrary);
+    expect(screen.getByRole("button", { name: "Open Paper" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open Thesis" })).toBeNull();
+  });
+
   it("offers Share in the project menu", async () => {
     await renderLibrary();
     await waitFor(() => expect(within(card("Open Grant")).getByText(enCollab.library.kind)).toBeInTheDocument());

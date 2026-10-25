@@ -524,6 +524,13 @@
         "label": "Colore d'accento",
         "swatchAriaLabel": "Accento {{name}}"
       },
+      "appIcon": {
+        "blue": "Blu",
+        "description": "Scegli l'icona che Oleafly mostra nel Dock o nella barra delle applicazioni mentre è aperto.",
+        "label": "Icona dell'app",
+        "light": "Chiara",
+        "note": "Il Finder, il menu Start e i launcher delle app continuano a mostrare l'icona predefinita."
+      },
       "bgPattern": {
         "description": "Scegli la trama dietro lo scaffale dei progetti.",
         "dots": "Punti",

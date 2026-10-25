@@ -11,6 +11,7 @@ mod agent_turns;
 mod ai_model_metadata;
 mod ai_model_registry;
 mod app_error;
+mod app_icon;
 mod approvals;
 mod arxiv_import;
 mod assets;
@@ -408,14 +409,17 @@ pub fn run() {
     }
     #[cfg(windows)]
     {
-        builder = builder.plugin(webview_focus::plugin());
+        builder = builder
+            .plugin(webview_focus::plugin())
+            .plugin(app_icon::plugin());
     }
     #[cfg(target_os = "linux")]
     {
         builder = builder
             .plugin(native_drop::plugin())
             .plugin(window_frame::plugin())
-            .plugin(web_process::plugin());
+            .plugin(web_process::plugin())
+            .plugin(app_icon::plugin());
     }
 
     #[cfg(target_os = "macos")]
@@ -675,6 +679,7 @@ pub fn run() {
             menu::set_recent_projects,
             i18n::set_ui_locale,
             i18n::get_ui_locale,
+            app_icon::app_icon_set,
             cua_policy::cua_action_confirm,
             agent_exec::agent_exec_cwd,
             agent_exec::agent_exec_authorize,

@@ -28,6 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   ACCENTS,
+  APP_ICONS,
   APP_ZOOM_LEVELS,
   BROWSER_SEARCH_ENGINES,
   EDITOR_CURSOR_BLINKING,
@@ -56,6 +57,7 @@ import {
   clampEditorLetterSpacing,
   clampEditorLineHeight,
   sectionDiffersFromDefaults,
+  type AppIconId,
   type BrowserSearchEngineId,
   type EditorLetterSpacing,
   type EditorSurface,
@@ -128,6 +130,12 @@ function AppAppearanceTab() {
   const setDockPlacement = useSettingsStore((state) => state.setDockPlacement);
   const bgPattern = useSettingsStore((state) => state.bgPattern);
   const setBgPattern = useSettingsStore((state) => state.setBgPattern);
+  const appIcon = useSettingsStore((state) => state.appIcon);
+  const setAppIcon = useSettingsStore((state) => state.setAppIcon);
+  const appIconLabels: Readonly<Record<AppIconId, string>> = {
+    blue: t(($) => $.settings.appearance.app.appIcon.blue),
+    light: t(($) => $.settings.appearance.app.appIcon.light),
+  };
   const accentColor = useSettingsStore((state) => state.accentColor);
   const setAccentColor = useSettingsStore((state) => state.setAccentColor);
   const appFontSize = useSettingsStore((state) => state.appFontSize);
@@ -226,6 +234,43 @@ function AppAppearanceTab() {
             );
           })}
         </div>
+      </div>
+
+      <div data-testid="settings-row-app-icon" className="rounded-lg border bg-card p-3">
+        <div className="text-sm font-medium">
+          {t(($) => $.settings.appearance.app.appIcon.label)}
+        </div>
+        <div className="mb-2 text-xs text-muted-foreground">
+          {t(($) => $.settings.appearance.app.appIcon.description)}
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {APP_ICONS.map((option) => {
+            const active = appIcon === option.id;
+            return (
+              <button
+                type="button"
+                key={option.id}
+                data-testid={`settings-app-icon-${option.id}`}
+                aria-pressed={active}
+                onClick={() => setAppIcon(option.id)}
+                className={cn(
+                  "flex flex-col items-center gap-2 rounded-md border p-3 text-xs font-medium transition-colors",
+                  active
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:bg-accent",
+                )}
+              >
+                <div className="flex h-14 w-full items-center justify-center rounded bg-muted">
+                  <img src={option.src} alt="" draggable={false} className="size-10" />
+                </div>
+                {appIconLabels[option.id]}
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {t(($) => $.settings.appearance.app.appIcon.note)}
+        </p>
       </div>
 
       <SettingsRow

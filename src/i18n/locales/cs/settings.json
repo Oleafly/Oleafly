@@ -527,6 +527,13 @@
         "label": "Barva zvýraznění",
         "swatchAriaLabel": "Zvýraznění {{name}}"
       },
+      "appIcon": {
+        "blue": "Modrá",
+        "description": "Vyberte ikonu, kterou Oleafly ukazuje v Docku nebo na hlavním panelu, když je otevřený.",
+        "label": "Ikona aplikace",
+        "light": "Světlá",
+        "note": "Finder, nabídka Start a spouštěče aplikací dál ukazují výchozí ikonu."
+      },
       "bgPattern": {
         "description": "Vyberte vzor za policí projektů.",
         "dots": "Puntíky",

@@ -642,6 +642,8 @@ export const importDocument = (path: string, target?: ImportTarget) =>
 export const appendAppLog = (message: string) =>
   invoke<void>("append_app_log", { message });
 
+export const appIconSet = (variant: string) => invoke<void>("app_icon_set", { variant });
+
 export const readAppLog = (maxBytes: number) =>
   invoke<string>("read_app_log", { maxBytes });
 

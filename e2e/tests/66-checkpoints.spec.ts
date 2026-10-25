@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, expect } from "../fixtures";
-import { compileAndWait, createProjectFromTemplate, setNextImportPaths, setNextSavePath, typeInEditorAfter } from "../helpers";
+import { compileAndWait, createProjectFromTemplate, openVersioning, setNextImportPaths, setNextSavePath, typeInEditorAfter } from "../helpers";
 
 const RUN = Date.now().toString(36);
 const EDIT = `chkedit${RUN}`;
@@ -18,7 +18,7 @@ async function compileOk(page: Page) {
 }
 
 async function openCheckpoints(page: Page) {
-  await page.click('[aria-label="Versioning"]');
+  await openVersioning(page);
   await expect(page.locator('[role="dialog"][aria-labelledby="versioning-title"]')).toBeVisible({
     timeout: 10_000,
   });

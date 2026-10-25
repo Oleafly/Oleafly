@@ -521,6 +521,13 @@
         "label": "Vurgu rengi",
         "swatchAriaLabel": "{{name}} vurgusu"
       },
+      "appIcon": {
+        "blue": "Mavi",
+        "description": "Oleafly açıkken Dock'ta veya görev çubuğunda gösterilecek simgeyi seçin.",
+        "label": "Uygulama simgesi",
+        "light": "Açık",
+        "note": "Finder, Başlat menüsü ve uygulama başlatıcılar varsayılan simgeyi göstermeye devam eder."
+      },
       "bgPattern": {
         "description": "Proje rafının arkasındaki deseni seçin.",
         "dots": "Noktalar",

@@ -839,6 +839,23 @@ export function appZoomLevel(value: unknown): number {
   return APP_ZOOM_LEVELS.includes(level) ? level : 100;
 }
 
+export const APP_ICONS = [
+  { id: "blue", src: "/app-icon/blue.png" },
+  { id: "light", src: "/app-icon/light.png" },
+] as const;
+
+export type AppIconId = (typeof APP_ICONS)[number]["id"];
+
+export const APP_ICON_IDS: readonly AppIconId[] = APP_ICONS.map((icon) => icon.id);
+
+export function readAppIcon(value: unknown): AppIconId {
+  return APP_ICON_IDS.find((id) => id === value) ?? "blue";
+}
+
+export function appIconSource(id: AppIconId): string {
+  return (APP_ICONS.find((icon) => icon.id === id) ?? APP_ICONS[0]).src;
+}
+
 export const EDITOR_FONT_SIZES: readonly number[] = [11, 12, 13, 14, 15, 16, 18, 20, 24];
 
 export const EDITOR_FONT_SIZE_RANGE = { min: 6, max: 100, step: 1 } as const;
@@ -1073,6 +1090,8 @@ interface SettingsState {
   setDockPlacement: (v: DockPlacement) => void;
   bgPattern: BackgroundPattern;
   setBgPattern: (v: BackgroundPattern) => void;
+  appIcon: AppIconId;
+  setAppIcon: (v: AppIconId) => void;
   homeProjectLayout: HomeProjectLayout;
   setHomeProjectLayout: (v: HomeProjectLayout) => void;
   latexTools: boolean;
@@ -1249,6 +1268,7 @@ const PREF_DEFAULTS = {
   accentColor: "#2563eb",
   dockPlacement: "left" as DockPlacement,
   bgPattern: "dots" as BackgroundPattern,
+  appIcon: "blue" as AppIconId,
   homeProjectLayout: "grid" as HomeProjectLayout,
   latexTools: false,
   webBrowser: false,
@@ -1337,6 +1357,7 @@ export const SECTION_SETTINGS = {
     accentColor: "oleafly.accent",
     dockPlacement: "oleafly.dockPlacement",
     bgPattern: "oleafly.bgPattern",
+    appIcon: "oleafly.appIcon",
     homeProjectLayout: "oleafly.library.projectLayout",
   },
   experimentation: {
@@ -1997,6 +2018,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setBgPattern: (v) => {
     saveLs("oleafly.bgPattern", v);
     set({ bgPattern: v });
+  },
+  appIcon: readAppIcon(ls("oleafly.appIcon", "blue")),
+  setAppIcon: (v) => {
+    const icon = readAppIcon(v);
+    saveLs("oleafly.appIcon", icon);
+    set({ appIcon: icon });
   },
   homeProjectLayout:
     ls("oleafly.library.projectLayout", "grid") === "list" ? "list" : "grid",

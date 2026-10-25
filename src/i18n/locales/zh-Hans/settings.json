@@ -518,6 +518,13 @@
         "label": "强调色",
         "swatchAriaLabel": "{{name}} 强调色"
       },
+      "appIcon": {
+        "blue": "蓝色",
+        "description": "选择 Oleafly 打开时在程序坞或任务栏中显示的图标。",
+        "label": "应用图标",
+        "light": "浅色",
+        "note": "Finder、“开始”菜单和应用启动器仍显示默认图标。"
+      },
       "bgPattern": {
         "description": "选择项目架背后的图案。",
         "dots": "圆点",

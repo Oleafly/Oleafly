@@ -518,6 +518,13 @@
         "label": "強調色",
         "swatchAriaLabel": "{{name}} 強調色"
       },
+      "appIcon": {
+        "blue": "藍色",
+        "description": "選擇 Oleafly 開啟時在 Dock 或工作列中顯示的圖示。",
+        "label": "應用程式圖示",
+        "light": "淺色",
+        "note": "Finder、[開始] 功能表和應用程式啟動器仍會顯示預設圖示。"
+      },
       "bgPattern": {
         "description": "選擇專案架背後的圖樣。",
         "dots": "點狀",

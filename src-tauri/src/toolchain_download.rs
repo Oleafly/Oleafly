@@ -886,19 +886,7 @@ where
         let archive = staging.archive();
         let payload = staging.payload();
         let stop = stop.clone();
-        move || {
-            extract_tree(&plan, &archive, &payload, &stop)?;
-            let executable = tree_executable(&payload, &executables)
-                .ok_or_else(|| integrity("The archive does not contain the expected program."))?;
-            let relative = executable
-                .strip_prefix(&payload)
-                .map(Path::to_path_buf)
-                .map_err(|_| install_failed("The extracted program is outside the install."))?;
-            let receipt = payload.join(TREE_RECEIPT);
-            std::fs::write(&receipt, &plan.archive_sha256)
-                .map_err(|error| filesystem_error("write", &receipt, error))?;
-            Ok(relative)
-        }
+        move || unpack_tree(&plan, &archive, &payload, &stop, &executables)
     })
     .await?;
     if stop.stopped() {
@@ -912,6 +900,26 @@ where
     Ok(ToolchainInstallOutcome::Installed(
         layout.destination.join(relative),
     ))
+}
+
+fn unpack_tree(
+    plan: &InstallPlan,
+    archive: &Path,
+    payload: &Path,
+    stop: &StopSignal,
+    executables: &[Vec<String>],
+) -> Result<PathBuf, ToolchainInstallError> {
+    extract_tree(plan, archive, payload, stop)?;
+    let executable = tree_executable(payload, executables)
+        .ok_or_else(|| integrity("The archive does not contain the expected program."))?;
+    let relative = executable
+        .strip_prefix(payload)
+        .map(Path::to_path_buf)
+        .map_err(|_| install_failed("The extracted program is outside the install."))?;
+    let receipt = payload.join(TREE_RECEIPT);
+    std::fs::write(&receipt, &plan.archive_sha256)
+        .map_err(|error| filesystem_error("write", &receipt, error))?;
+    Ok(relative)
 }
 
 pub(crate) fn installed_tree(
@@ -2829,6 +2837,7 @@ mod tests {
         }
     }
 
+    #[cfg(unix)]
     fn tar_with_link(link: &str, target: &str) -> Vec<u8> {
         let program = binary_bytes();
         let mut builder = tar::Builder::new(Vec::new());

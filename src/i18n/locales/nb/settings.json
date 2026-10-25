@@ -521,6 +521,13 @@
         "label": "Aksentfarge",
         "swatchAriaLabel": "Aksenten {{name}}"
       },
+      "appIcon": {
+        "blue": "Blå",
+        "description": "Velg ikonet Oleafly viser i Dock eller på oppgavelinjen mens appen er åpen.",
+        "label": "Appikon",
+        "light": "Lys",
+        "note": "Finder, Start-menyen og appstartere viser fortsatt standardikonet."
+      },
       "bgPattern": {
         "description": "Velg mønsteret bak prosjekthyllen.",
         "dots": "Prikker",

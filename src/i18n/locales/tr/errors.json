@@ -44,7 +44,8 @@
     "folder_holds_templates": "Bu klasör Oleafly'nin kendi şablonlarını içeriyor. Bunun yerine şablonun klasörünü seçin."
   },
   "settings": {
-    "locale_unsupported": "{{locale}} dili kullanılamıyor."
+    "locale_unsupported": "{{locale}} dili kullanılamıyor.",
+    "app_icon_unsupported": "{{icon}} uygulama simgesi kullanılamıyor."
   },
   "literature": {
     "query_empty": "Arama sorgusu boş olamaz.",

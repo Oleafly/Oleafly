@@ -44,7 +44,8 @@
     "folder_holds_templates": "В этой папке хранятся встроенные шаблоны Oleafly. Выберите вместо неё папку шаблона."
   },
   "settings": {
-    "locale_unsupported": "Язык {{locale}} недоступен."
+    "locale_unsupported": "Язык {{locale}} недоступен.",
+    "app_icon_unsupported": "Значок приложения {{icon}} недоступен."
   },
   "literature": {
     "query_empty": "Поисковый запрос не может быть пустым.",

@@ -44,7 +44,8 @@
     "folder_holds_templates": "V této složce jsou vestavěné šablony Oleafly. Vyberte místo ní složku se šablonou."
   },
   "settings": {
-    "locale_unsupported": "Jazyk {{locale}} není k dispozici."
+    "locale_unsupported": "Jazyk {{locale}} není k dispozici.",
+    "app_icon_unsupported": "Ikona aplikace {{icon}} není k dispozici."
   },
   "literature": {
     "query_empty": "Vyhledávací dotaz nesmí být prázdný.",

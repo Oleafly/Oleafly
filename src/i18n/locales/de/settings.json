@@ -521,6 +521,13 @@
         "label": "Akzentfarbe",
         "swatchAriaLabel": "Akzent {{name}}"
       },
+      "appIcon": {
+        "blue": "Blau",
+        "description": "Wählen Sie das Symbol, das Oleafly im Dock oder in der Taskleiste zeigt, solange es geöffnet ist.",
+        "label": "App-Symbol",
+        "light": "Hell",
+        "note": "Der Finder, das Startmenü und App-Starter zeigen weiterhin das Standardsymbol."
+      },
       "bgPattern": {
         "description": "Wählen Sie das Muster hinter dem Projektregal.",
         "dots": "Punkte",

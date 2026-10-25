@@ -44,7 +44,8 @@
     "folder_holds_templates": "這個資料夾存放的是 Oleafly 內建的範本。請改選範本本身的資料夾。"
   },
   "settings": {
-    "locale_unsupported": "語言 {{locale}} 無法使用。"
+    "locale_unsupported": "語言 {{locale}} 無法使用。",
+    "app_icon_unsupported": "應用程式圖示 {{icon}} 無法使用。"
   },
   "literature": {
     "query_empty": "搜尋內容不可為空白。",

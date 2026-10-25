@@ -521,6 +521,13 @@
         "label": "Accent color",
         "swatchAriaLabel": "{{name}} accent"
       },
+      "appIcon": {
+        "blue": "Blue",
+        "description": "Choose the icon Oleafly shows in the Dock or taskbar while it's open.",
+        "label": "App icon",
+        "light": "Light",
+        "note": "Finder, the Start menu and app launchers still show the default icon."
+      },
       "bgPattern": {
         "description": "Pick the pattern behind the project shelf.",
         "dots": "Dots",

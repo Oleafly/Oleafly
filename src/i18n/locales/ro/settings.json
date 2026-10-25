@@ -524,6 +524,13 @@
         "label": "Culoare de accent",
         "swatchAriaLabel": "Accent {{name}}"
       },
+      "appIcon": {
+        "blue": "Albastră",
+        "description": "Alege pictograma pe care Oleafly o arată în Dock sau în bara de activități cât timp este deschis.",
+        "label": "Pictograma aplicației",
+        "light": "Deschisă",
+        "note": "Finder, meniul Start și lansatoarele de aplicații arată în continuare pictograma implicită."
+      },
       "bgPattern": {
         "description": "Alege modelul din spatele raftului de proiecte.",
         "dots": "Puncte",

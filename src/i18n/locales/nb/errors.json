@@ -44,7 +44,8 @@
     "folder_holds_templates": "I denne mappen lagrer Oleafly sine egne maler. Velg mappen til malen i stedet."
   },
   "settings": {
-    "locale_unsupported": "Språket {{locale}} er ikke tilgjengelig."
+    "locale_unsupported": "Språket {{locale}} er ikke tilgjengelig.",
+    "app_icon_unsupported": "Appikonet {{icon}} er ikke tilgjengelig."
   },
   "literature": {
     "query_empty": "Søket kan ikke være tomt.",

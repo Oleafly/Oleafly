@@ -74,6 +74,7 @@ import {
 import {
   useSettingsStore,
   GRAMMAR_DIALECTS,
+  appIconSource,
   sectionDiffersFromDefaults,
   type GrammarDialect,
 } from "@/store/settings";
@@ -1517,6 +1518,7 @@ function HelpSection() {
   const discordOnline = useDiscordOnlineCount();
 
   const setOpen = useSettingsStore((s) => s.setSettingsOpen);
+  const appIcon = useSettingsStore((s) => s.appIcon);
   const projectId = useFilesStore((s) => s.projectId);
   const beginTour = () => {
     setOpen(false);
@@ -1650,7 +1652,7 @@ function HelpSection() {
         </div>
         <img
           data-testid="about-oleafly-logo"
-          src="/oleafly-tile-gradient.png"
+          src={appIconSource(appIcon)}
           alt={t(($) => $.shell.settings.help.logoAlt)}
           className="size-14 shrink-0 rounded-xl"
         />

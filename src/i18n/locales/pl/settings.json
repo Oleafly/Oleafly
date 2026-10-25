@@ -527,6 +527,13 @@
         "label": "Kolor akcentu",
         "swatchAriaLabel": "Akcent {{name}}"
       },
+      "appIcon": {
+        "blue": "Niebieska",
+        "description": "Wybierz ikonę, którą Oleafly pokazuje w Docku lub na pasku zadań, gdy jest otwarty.",
+        "label": "Ikona aplikacji",
+        "light": "Jasna",
+        "note": "Finder, menu Start i programy uruchamiające nadal pokazują domyślną ikonę."
+      },
       "bgPattern": {
         "description": "Wybierz wzór za półką z projektami.",
         "dots": "Kropki",

@@ -1360,7 +1360,7 @@ export async function ensureAiConnected(page: Page) {
 
 const SETTINGS_BUTTON = '[data-testid="open-settings"]';
 
-async function clickWorkspaceAction(page: Page, selector: string) {
+async function clickWorkspaceAction(page: Page, selector: string, menuItem?: string) {
   // Window chrome and zoom can move an action into the workspace menu.
   // Probe and click together so a resize cannot replace the target in between.
   await page.waitForFunction(`(() => {
@@ -1368,12 +1368,18 @@ async function clickWorkspaceAction(page: Page, selector: string) {
       element.getBoundingClientRect().width > 0 &&
       element.getBoundingClientRect().height > 0 &&
       getComputedStyle(element).visibility !== "hidden";
-    const action = Array.from(document.querySelectorAll(${scriptValue(selector)})).find(visible);
+    const action = Array.from(document.querySelectorAll(${scriptValue(selector)})).find(visible)
+      ?? Array.from(document.querySelectorAll('[role="menuitem"]'))
+        .find((item) => item.textContent.trim() === ${scriptValue(menuItem ?? null)} && visible(item));
     if (action) { action.click(); return true; }
     const menu = document.querySelector('[data-testid="workspace-menu"]');
     if (visible(menu) && menu.getAttribute("aria-expanded") !== "true") menu.click();
     return false;
   })()`, 15_000);
+}
+
+export async function openVersioning(page: Page) {
+  await clickWorkspaceAction(page, 'button[aria-label="Versioning"]', "Versioning");
 }
 
 export async function openSettings(page: Page, section?: string) {

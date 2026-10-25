@@ -518,6 +518,13 @@
         "label": "강조 색상",
         "swatchAriaLabel": "{{name}} 강조색"
       },
+      "appIcon": {
+        "blue": "파란색",
+        "description": "Oleafly가 열려 있는 동안 Dock이나 작업 표시줄에 보일 아이콘을 고르세요.",
+        "label": "앱 아이콘",
+        "light": "밝은색",
+        "note": "Finder, 시작 메뉴, 앱 실행기에는 기본 아이콘이 그대로 표시됩니다."
+      },
       "bgPattern": {
         "description": "프로젝트 책장 뒤에 깔릴 무늬를 고르세요.",
         "dots": "점",

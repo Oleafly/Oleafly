@@ -44,7 +44,8 @@
     "folder_holds_templates": "Acest folder conține șabloanele incluse în Oleafly. Alege în schimb folderul șablonului."
   },
   "settings": {
-    "locale_unsupported": "Limba {{locale}} nu este disponibilă."
+    "locale_unsupported": "Limba {{locale}} nu este disponibilă.",
+    "app_icon_unsupported": "Pictograma aplicației {{icon}} nu este disponibilă."
   },
   "literature": {
     "query_empty": "Interogarea de căutare nu poate fi goală.",

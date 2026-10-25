@@ -44,7 +44,8 @@
     "folder_holds_templates": "I den här mappen lagrar Oleafly sina egna mallar. Välj mallens mapp i stället."
   },
   "settings": {
-    "locale_unsupported": "Språket {{locale}} är inte tillgängligt."
+    "locale_unsupported": "Språket {{locale}} är inte tillgängligt.",
+    "app_icon_unsupported": "Appikonen {{icon}} är inte tillgänglig."
   },
   "literature": {
     "query_empty": "Sökfrågan får inte vara tom.",

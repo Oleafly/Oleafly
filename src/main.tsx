@@ -32,6 +32,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { isMac } from "@/lib/utils";
 import { StoredAppTypography } from "@/lib/app-typography";
 import { AppZoom } from "@/lib/app-zoom";
+import { AppIcon } from "@/lib/app-icon";
 import { registerE2EImports } from "@/lib/e2e-import-registry";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { AdminConsoleSlot } from "@/components/collab/CollabSlots";
@@ -224,6 +225,7 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
   return (
     <QueryClientProvider client={queryClient}>
       <AppZoom />
+      <AppIcon />
       <App />
       <Toaster />
       <DevContextMenu />
