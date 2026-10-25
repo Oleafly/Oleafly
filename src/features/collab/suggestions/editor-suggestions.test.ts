@@ -1,16 +1,24 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { EditorState } from "@codemirror/state";
+import { EditorState, StateEffect } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import {
   editorSuggestions,
+  revealSuggestion,
   SUGGESTION_STYLES,
   suggestionSpansIn,
   type EditorSuggestionsSource,
   type SuggestionSnapshot,
   type SuggestionSpan,
 } from "./editor-suggestions";
+
+const mocks = vi.hoisted(() => ({ scroll: vi.fn() }));
+
+vi.mock("@oleafly/editor", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@oleafly/editor")>()),
+  scrollEditorPositionLocally: mocks.scroll,
+}));
 
 const DOC = "The quick brown fox jumps.";
 
@@ -76,6 +84,7 @@ const lazy: SuggestionSpan = {
 
 afterEach(() => {
   for (const view of views.splice(0)) view.destroy();
+  mocks.scroll.mockClear();
 });
 
 describe("suggestions in the editor", () => {
@@ -171,5 +180,116 @@ describe("suggestions in the editor", () => {
     expect(source.open).toHaveBeenLastCalledWith("s-lazy");
     inserted?.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0, metaKey: true }));
     expect(source.open).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("reported places and pointer edge cases", () => {
+  it("puts places the server reports outside the text at the nearest edge and draws nothing for empty ones", async () => {
+    const source = new Source();
+    source.state = {
+      ...source.state,
+      spans: [
+        { ...quick, id: "nan", from: Number.NaN, to: 3 },
+        { ...quick, id: "empty", from: 5, to: 5 },
+        { ...lazy, id: "blank", text: "" },
+        { ...quick, id: "far", from: 20, to: 99 },
+      ],
+    };
+    const view = editor(source);
+    await tick();
+    expect(suggestionSpansIn(view.state).map(({ id, from, to }) => ({ id, from, to }))).toEqual([
+      { id: "nan", from: 0, to: 3 },
+      { id: "empty", from: 5, to: 5 },
+      { id: "blank", from: 16, to: 16 },
+      { id: "far", from: 20, to: DOC.length },
+    ]);
+    const drawn = [...view.contentDOM.querySelectorAll<HTMLElement>("[data-suggestion-id]")].map(
+      (node) => node.dataset.suggestionId,
+    );
+    expect(drawn).toEqual(["nan", "far"]);
+  });
+
+  it("leaves its marks alone when only the selection moves or another feature updates the editor", async () => {
+    const source = new Source();
+    source.state = { ...source.state, spans: [quick] };
+    const view = editor(source);
+    await tick();
+    const before = suggestionSpansIn(view.state);
+    view.dispatch({ selection: { anchor: 2 } });
+    expect(suggestionSpansIn(view.state)).toBe(before);
+    const unrelated = StateEffect.define<number>();
+    view.dispatch({ effects: unrelated.of(1) });
+    expect(suggestionSpansIn(view.state)).toBe(before);
+  });
+
+  it("redraws once for a burst of updates and not at all after the editor closes", async () => {
+    const source = new Source();
+    const view = new EditorView({
+      state: EditorState.create({ doc: DOC, extensions: editorSuggestions(source) }),
+      parent: document.body,
+    });
+    await tick();
+    const dispatch = vi.spyOn(view, "dispatch");
+    source.set({});
+    await tick();
+    expect(dispatch).not.toHaveBeenCalled();
+    source.set({ spans: [quick] });
+    source.set({ spans: [quick, lazy] });
+    await tick();
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(suggestionSpansIn(view.state).map((span) => span.id)).toEqual(["s-quick", "s-lazy"]);
+    source.set({ active: "s-quick" });
+    view.destroy();
+    await tick();
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(source.listeners.size).toBe(0);
+  });
+
+  it("reports each hover once and clears it when the pointer leaves the editor or moves onto plain text", async () => {
+    const source = new Source();
+    source.state = { ...source.state, spans: [quick] };
+    const view = editor(source);
+    await tick();
+    const inserted = view.contentDOM.querySelector(".cm-suggestion-insert");
+    inserted?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    inserted?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    expect(source.hover).toHaveBeenCalledTimes(1);
+    view.contentDOM.dispatchEvent(new MouseEvent("mouseleave"));
+    expect(source.hover).toHaveBeenLastCalledWith(null);
+    view.contentDOM.dispatchEvent(new MouseEvent("mouseleave"));
+    expect(source.hover).toHaveBeenCalledTimes(2);
+    inserted?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    expect(source.hover).toHaveBeenLastCalledWith("s-quick");
+    const text = view.contentDOM.querySelector(".cm-line")?.firstChild;
+    expect(text?.nodeType).toBe(Node.TEXT_NODE);
+    text?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    expect(source.hover).toHaveBeenLastCalledWith(null);
+    expect(source.hover).toHaveBeenCalledTimes(4);
+  });
+
+  it("opens nothing for a click on plain text, one that ends a text selection, or one with a modifier or another button", async () => {
+    const source = new Source();
+    source.state = { ...source.state, spans: [quick] };
+    const view = editor(source);
+    await tick();
+    const marked = () => view.contentDOM.querySelector(".cm-suggestion-insert");
+    marked()?.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 2 }));
+    marked()?.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0, shiftKey: true }));
+    view.contentDOM.querySelector(".cm-line")?.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
+    view.dispatch({ selection: { anchor: 4, head: 10 } });
+    marked()?.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
+    expect(source.open).not.toHaveBeenCalled();
+  });
+
+  it("finds nothing in an editor without suggestions and reveals only a suggestion it shows", async () => {
+    expect(suggestionSpansIn(EditorState.create({ doc: DOC }))).toEqual([]);
+    const source = new Source();
+    source.state = { ...source.state, spans: [quick] };
+    const view = editor(source);
+    await tick();
+    expect(revealSuggestion(view, "s-missing")).toBe(false);
+    expect(mocks.scroll).not.toHaveBeenCalled();
+    expect(revealSuggestion(view, "s-quick")).toBe(true);
+    expect(mocks.scroll).toHaveBeenCalledWith(view, 4);
   });
 });

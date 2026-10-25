@@ -10,7 +10,7 @@ import { loadNamespace } from "@/i18n";
 import type { CollabChatMessage, CollabProjectRole } from "@/lib/tauri";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabLiveStore } from "../live/live-store";
-import { ALICE_ID, BOB, BOB_ID, person, projectMember, shareInfo } from "../tests/fixtures";
+import { ALICE_ID, BOB, BOB_ID, CAROL_ID, collabError, person, projectMember, shareInfo } from "../tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
   collabChatList: vi.fn(),
@@ -173,5 +173,116 @@ describe("project chat", () => {
     expect(mocks.collabChatList).toHaveBeenLastCalledWith("paper", "p0", CHAT_PAGE);
     expect(useChat.getState().messages[0].id).toBe("old");
     expect(screen.queryByRole("button", { name: copy.loadOlder })).toBeNull();
+  });
+});
+
+describe("project chat when things go wrong", () => {
+  function begin(role: CollabProjectRole = "editor") {
+    live(role);
+    stop = startChat();
+    render(<ChatPane />);
+  }
+
+  it("says why the chat couldn't load and loads it again on Retry", async () => {
+    mocks.collabChatList.mockRejectedValueOnce(collabError("unreachable"));
+    begin();
+    expect(await screen.findByText(copy.loadFailed)).toBeInTheDocument();
+    expect(screen.getByText(enCollab.errors.unreachable)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: enCommon.actions.retry }));
+    expect(await screen.findByText("Reading it now")).toBeInTheDocument();
+    expect(screen.queryByText(copy.loadFailed)).toBeNull();
+  });
+
+  it("says when nobody has written yet", async () => {
+    mocks.collabChatList.mockResolvedValueOnce([]);
+    begin();
+    expect(await screen.findByText(copy.empty)).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: copy.list })).toBeNull();
+  });
+
+  it("calls people who left Someone and flags messages it couldn't verify", async () => {
+    mocks.collabChatList.mockResolvedValueOnce([
+      message("c5", CAROL_ID, "Left the project", AT),
+      message("c6", ALICE_ID, "Not really Alice", AT + 1_000, { verified: false }),
+    ]);
+    begin();
+    const list = await screen.findByRole("list", { name: copy.list });
+    const rows = within(list).getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent(enCollab.toolbar.unknownPerson);
+    expect(rows[0]).toHaveTextContent("Left the project");
+    expect(rows[1]).toHaveTextContent(enCollab.comments.unverifiedAuthor);
+    expect(rows[1]).not.toHaveTextContent("Alice Chen");
+    expect(within(rows[1]).queryByRole("button", { name: copy.delete })).toBeNull();
+  });
+
+  it("keeps a message when the deletion is cancelled", async () => {
+    await open();
+    const rows = within(screen.getByRole("list", { name: copy.list })).getAllByRole("listitem");
+    fireEvent.click(within(rows[1]).getByRole("button", { name: copy.delete }));
+    const dialog = await screen.findByRole("alertdialog", { name: copy.deleteConfirm.title });
+    fireEvent.click(within(dialog).getByRole("button", { name: new RegExp(`^${enCommon.actions.cancel}`) }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(mocks.collabChatDelete).not.toHaveBeenCalled();
+    expect(rows[1]).toHaveTextContent("Reading it now");
+  });
+
+  it("keeps the message and says why when deleting it fails", async () => {
+    mocks.collabChatDelete.mockRejectedValueOnce({ code: "comment_not_live", message: "" });
+    await open();
+    const rows = within(screen.getByRole("list", { name: copy.list })).getAllByRole("listitem");
+    fireEvent.click(within(rows[1]).getByRole("button", { name: copy.delete }));
+    const dialog = await screen.findByRole("alertdialog", { name: copy.deleteConfirm.title });
+    fireEvent.click(within(dialog).getByRole("button", { name: enCommon.actions.delete }));
+    expect(await within(rows[1]).findByRole("alert")).toHaveTextContent(enCollab.comments.refusals.notLive);
+    expect(rows[1]).toHaveTextContent("Reading it now");
+    expect(screen.queryByText(copy.deleted)).toBeNull();
+  });
+
+  it("keeps the chat when clearing is cancelled", async () => {
+    await open("owner");
+    fireEvent.click(screen.getByRole("button", { name: copy.clear }));
+    const dialog = await screen.findByRole("alertdialog", { name: copy.clearConfirm.title });
+    fireEvent.click(within(dialog).getByRole("button", { name: new RegExp(`^${enCommon.actions.cancel}`) }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(mocks.collabChatClear).not.toHaveBeenCalled();
+    expect(screen.getByText("Draft is ready")).toBeInTheDocument();
+  });
+
+  it("says why clearing the chat failed and keeps the messages", async () => {
+    mocks.collabChatClear.mockRejectedValueOnce(collabError("chat_role"));
+    await open("owner");
+    fireEvent.click(screen.getByRole("button", { name: copy.clear }));
+    const dialog = await screen.findByRole("alertdialog", { name: copy.clearConfirm.title });
+    fireEvent.click(within(dialog).getByRole("button", { name: copy.clearConfirm.confirm }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.chat_role);
+    expect(screen.getByText("Draft is ready")).toBeInTheDocument();
+    expect(screen.queryByText(copy.deleted)).toBeNull();
+  });
+
+  it("says why older messages couldn't load and lets you ask again", async () => {
+    const page = Array.from({ length: CHAT_PAGE }, (_, index) =>
+      message(`p${index}`, BOB_ID, `Message ${index}`, AT + index * 1_000),
+    );
+    mocks.collabChatList.mockResolvedValueOnce(page).mockRejectedValueOnce(collabError("unreachable"));
+    begin();
+    fireEvent.click(await screen.findByRole("button", { name: copy.loadOlder }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
+    await waitFor(() => expect(screen.getByRole("button", { name: copy.loadOlder })).toBeEnabled());
+    mocks.collabChatList.mockResolvedValueOnce([message("old", BOB_ID, "First ever", AT - 5_000)]);
+    fireEvent.click(screen.getByRole("button", { name: copy.loadOlder }));
+    expect(await screen.findByText("First ever")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("says posting waits for the connection once the live session has ended", async () => {
+    live("owner");
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "server_removed" } });
+    stop = startChat();
+    render(<ChatPane />);
+    await screen.findByText("Reading it now");
+    expect(screen.getByText(copy.offline)).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: copy.label })).toBeNull();
+    expect(screen.queryByRole("button", { name: copy.delete })).toBeNull();
+    expect(screen.queryByRole("button", { name: copy.clear })).toBeNull();
   });
 });
