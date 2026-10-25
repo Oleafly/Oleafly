@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://cdn.oleafly.com/brand/logo/png/oleafly-tile-gradient-256.png?v=2" alt="Logo Oleafly" width="112" height="112" />
+<img src="https://cdn.oleafly.com/brand/logo/png/oleafly-app-icon-256.png" alt="Logo Oleafly" width="112" height="112" />
 
 # Oleafly <sup><em>beta</em></sup>
 
