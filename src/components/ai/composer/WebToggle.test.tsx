@@ -20,4 +20,15 @@ describe("WebToggle", () => {
     rerender(<WebToggle on onChange={onChange} />);
     expect(screen.getByRole("button", { name: en.web.ariaLabel })).toHaveAttribute("data-state", "on");
   });
+
+  it("marks the button and says why when the model needs a search key", async () => {
+    const { rerender } = render(<WebToggle on={false} needsKey onChange={vi.fn()} />);
+    expect(screen.queryByTestId("ai-web-needs-key")).toBeNull();
+    rerender(<WebToggle on needsKey onChange={vi.fn()} />);
+    const button = screen.getByRole("button", { name: en.web.ariaLabel });
+    expect(button).toHaveAttribute("data-needs-key", "true");
+    expect(screen.getByTestId("ai-web-needs-key")).toBeInTheDocument();
+    fireEvent.mouseEnter(button.parentElement as HTMLElement);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(en.web.needsKey);
+  });
 });

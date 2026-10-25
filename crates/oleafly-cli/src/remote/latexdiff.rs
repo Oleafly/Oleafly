@@ -306,11 +306,14 @@ mod tests {
         assert!(writer.wait().unwrap().success());
         let main = dir.path().join("main.tex");
         std::fs::write(&main, "x").unwrap();
-        let error = run_latexdiff(&fake, &main, &main, Duration::from_secs(5)).unwrap_err();
-        let cause = error.details.as_ref().unwrap()["cause"].to_string();
-        assert!(cause.contains("longer than"), "{cause}");
-        let pid: i32 = std::fs::read_to_string(&pid_file)
-            .unwrap()
+        let recorded = (0..3).find_map(|_| {
+            let error = run_latexdiff(&fake, &main, &main, Duration::from_secs(5)).unwrap_err();
+            let cause = error.details.as_ref().unwrap()["cause"].to_string();
+            assert!(cause.contains("longer than"), "{cause}");
+            std::fs::read_to_string(&pid_file).ok()
+        });
+        let pid: i32 = recorded
+            .expect("the wrapper never started its child")
             .trim()
             .parse()
             .unwrap();

@@ -714,7 +714,6 @@
     }
   },
   "rail": {
-    "betaTab": "{{label}}（ベータ）",
     "files": "エクスプローラー",
     "mcp": "MCP の動作状況",
     "pendingBadge_other": "保留中 {{count}} 件",

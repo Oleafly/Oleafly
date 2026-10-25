@@ -720,7 +720,6 @@
     }
   },
   "rail": {
-    "betaTab": "{{label}} (beta)",
     "files": "Esplora file",
     "mcp": "Attività MCP",
     "pendingBadge_one": "{{count}} in attesa",

@@ -15,6 +15,7 @@ vi.mock("@/lib/log", () => log);
 
 import type { AgentEvent } from "@/lib/agent-backend";
 import {
+  appendStepText,
   fileAttachmentText,
   packToolOutputText,
   providerCallIdFromToolReplyId,
@@ -119,6 +120,26 @@ describe("message conversion", () => {
       },
     ] as unknown as ModelMessage[];
     expect(toAgentMessages(messages)[0].content).toHaveLength(2);
+  });
+});
+
+describe("text across agent steps", () => {
+  it("starts a new paragraph when a later step starts writing after the earlier text", () => {
+    const first = "I'll take a look at the file first.";
+    expect(appendStepText(first, "Got it, 60 rows total.", first)).toBe(
+      "I'll take a look at the file first.\n\nGot it, 60 rows total.",
+    );
+  });
+
+  it("joins chunks of one step as they come", () => {
+    expect(appendStepText("Got it", ", 60 rows", "")).toBe("Got it, 60 rows");
+    expect(appendStepText("Done.\n\nGot", " it", "Done.")).toBe("Done.\n\nGot it");
+  });
+
+  it("adds nothing at the very start, or when either side already has the break", () => {
+    expect(appendStepText("", "Hello", "")).toBe("Hello");
+    expect(appendStepText("First.\n", "Second.", "First.\n")).toBe("First.\nSecond.");
+    expect(appendStepText("First.", "\n\nSecond.", "First.")).toBe("First.\n\nSecond.");
   });
 });
 

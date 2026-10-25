@@ -24,7 +24,6 @@ export interface RailTabContribution {
   section: "explore" | "review" | "assist";
   order: number;
   hidden?: boolean;
-  beta?: boolean;
   when?: (ctx: AppContext) => boolean;
   // Called on every render of the tab's button, so it must follow the rules
   // of hooks and the contribution must never change between renders.

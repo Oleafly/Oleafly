@@ -11,6 +11,7 @@ use sha2::{Digest, Sha256};
 
 use crate::app_error::AppError;
 
+pub(crate) mod flatten;
 pub(crate) mod resolve;
 
 pub(crate) const MAX_ATTACHMENT_BYTES: usize = 32 * 1024 * 1024;

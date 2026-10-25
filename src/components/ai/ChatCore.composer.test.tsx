@@ -64,6 +64,7 @@ const mocks = vi.hoisted(() => ({
   runs: [] as PendingRun[],
   runAgentHarness: vi.fn(),
   agentProbeModel: vi.fn(),
+  agentWebSearchReady: vi.fn(),
   agentSteer: vi.fn(),
   agentThreadRead: vi.fn(),
   agentThreadArchive: vi.fn(),
@@ -197,6 +198,7 @@ vi.mock("@/lib/attachments-normalize", () => ({
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   agentProbeModel: (...args: unknown[]) => mocks.agentProbeModel(...args),
+  agentWebSearchReady: (...args: unknown[]) => mocks.agentWebSearchReady(...args),
   approvalsList: (...args: unknown[]) => mocks.approvalsList(...args),
   approvalsSet: (...args: unknown[]) => mocks.approvalsSet(...args),
   approvalsModeGet: (...args: unknown[]) => mocks.approvalsModeGet(...args),
@@ -517,6 +519,7 @@ beforeEach(() => {
   mocks.agentProbeModel
     .mockReset()
     .mockResolvedValue({ verdict: "verified", reason: "", probedAt: 1 });
+  mocks.agentWebSearchReady.mockReset().mockResolvedValue(true);
   mocks.agentSteer.mockReset().mockResolvedValue({ status: "delivered" });
   mocks.agentThreadRead.mockReset().mockResolvedValue([]);
   mocks.agentThreadArchive.mockReset().mockResolvedValue(true);
@@ -1290,6 +1293,22 @@ describe("ChatCore composer, drafts and attachments", () => {
     expect(rendered.container.querySelector('[data-tour="ai-assistant"]')).toHaveAttribute(
       "data-tour-has-usage",
       "false",
+    );
+  });
+
+  it("marks the web button when the model needs a search key to search", async () => {
+    mocks.agentWebSearchReady.mockResolvedValue(false);
+    const rendered = await renderChat();
+    const web = rendered.getByTestId("ai-web-toggle");
+    expect(web).not.toHaveAttribute("data-needs-key");
+
+    fireEvent.click(web);
+
+    await waitFor(() => expect(web).toHaveAttribute("data-needs-key", "true"));
+    expect(mocks.agentWebSearchReady).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.anything(),
     );
   });
 

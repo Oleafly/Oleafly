@@ -617,6 +617,7 @@ pub fn run() {
             agent::agent_tool_result,
             agent::agent_list_models,
             agent::agent_probe_model,
+            agent::agent_web_search_ready,
             ai_model_metadata::agent_model_metadata_status,
             ai_model_metadata::agent_refresh_model_metadata,
             agent_server::agent_server_initialize,

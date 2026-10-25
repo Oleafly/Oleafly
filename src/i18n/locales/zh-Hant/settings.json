@@ -2120,14 +2120,18 @@
       "installed": "已安裝於 {{path}}。",
       "moveApp": "請先將 Oleafly 移到「應用程式」檔案夾，再於此處安裝指令。",
       "notInstalled": "會將 oleafly 加入 {{directory}}。",
-      "occupied": "{{path}} 已存在，且不是由 Oleafly 建立，因此會保持原狀。",
+      "occupied": "{{path}} 已存在，且不是由 Oleafly 建立。",
       "outdated": "{{path}} 仍指向較舊的 Oleafly 副本。請更新，讓它使用目前的副本。",
       "packaged": "已由你的 Oleafly 套件安裝於 {{path}}。",
       "unavailable": "此 Oleafly 副本不包含該指令。"
     },
     "title": "終端機指令",
     "update": "更新",
-    "newTerminal": "請開啟新的終端機來使用 oleafly。已開啟的終端機看不到這項變更。"
+    "newTerminal": "請開啟新的終端機來使用 oleafly。已開啟的終端機看不到這項變更。",
+    "replace": "取代",
+    "replaceTitle": "要取代 oleafly 指令嗎？",
+    "replaceDescription": "取代後，在終端機執行 oleafly 指令會開啟這個 Oleafly。現有的檔案將被取代。",
+    "replaceConfirm": "取代"
   },
   "shortcuts": {
     "actions": {

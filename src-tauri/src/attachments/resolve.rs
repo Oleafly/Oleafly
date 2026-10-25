@@ -153,9 +153,14 @@ impl RunMediaContext {
             }
         }
         let mut events = Vec::new();
+        let mut newest = true;
         for message in request.messages.iter_mut().rev() {
             if message.role == Role::User {
-                events.extend(self.resolve_message(message)?);
+                let raised = self.resolve_message(message)?;
+                if newest {
+                    events.extend(raised);
+                    newest = false;
+                }
             }
         }
         Ok(events)
@@ -266,7 +271,23 @@ impl RunMediaContext {
         let Ok(bytes) = read_bytes(&self.root, scope, &meta.sha256) else {
             return skipped(name, "it is no longer stored on this computer.");
         };
+        let flattened = if mime == "image/png" {
+            super::flatten::png_on_white(&bytes)
+        } else {
+            None
+        };
         let mut budget = self.budget();
+        let encoded = |bytes: &[u8]| prefix.len().saturating_add(base64_len(bytes.len() as u64));
+        let (bytes, size) = match flattened {
+            Some(flat) if encoded(&flat) <= budget.bytes => {
+                let size = encoded(&flat);
+                (flat, size)
+            }
+            _ => (bytes, size),
+        };
+        if budget.images_left == 0 || size > budget.bytes {
+            return skipped(name, "there was no room for it in this request.");
+        }
         budget.images_left = budget.images_left.saturating_sub(1);
         budget.bytes = budget.bytes.saturating_sub(size);
         Outcome::Image(ContentPart::Image {

@@ -2183,14 +2183,18 @@
       "installed": "Nainstalováno v {{path}}.",
       "moveApp": "Nejprve přesuňte Oleafly do složky Aplikace a pak zde příkaz nainstalujte.",
       "notInstalled": "Přidá oleafly do {{directory}}.",
-      "occupied": "{{path}} už existuje a nevytvořil ho Oleafly, proto zůstane beze změny.",
+      "occupied": "{{path}} už existuje a nevytvořil ho Oleafly.",
       "outdated": "{{path}} stále odkazuje na starší kopii Oleafly. Aktualizujte ho, aby používal tuto kopii.",
       "packaged": "Nainstalováno v {{path}} balíčkem Oleafly.",
       "unavailable": "Tato kopie Oleafly příkaz neobsahuje."
     },
     "title": "Příkaz pro terminál",
     "update": "Aktualizovat",
-    "newTerminal": "Chcete-li používat oleafly, otevřete nový terminál. Už otevřené terminály změnu nevidí."
+    "newTerminal": "Chcete-li používat oleafly, otevřete nový terminál. Už otevřené terminály změnu nevidí.",
+    "replace": "Nahradit",
+    "replaceTitle": "Nahradit příkaz oleafly?",
+    "replaceDescription": "Příkaz oleafly v terminálu pak spustí tuto kopii Oleafly. Soubor, který tam je teď, bude nahrazen.",
+    "replaceConfirm": "Nahradit"
   },
   "shortcuts": {
     "actions": {

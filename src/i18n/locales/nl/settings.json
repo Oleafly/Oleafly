@@ -2141,14 +2141,18 @@
       "installed": "Geïnstalleerd in {{path}}.",
       "moveApp": "Verplaats Oleafly eerst naar de map Programma's en installeer de opdracht daarna hier.",
       "notInstalled": "Voegt oleafly toe aan {{directory}}.",
-      "occupied": "{{path}} bestaat al en is niet door Oleafly gemaakt, dus het blijft zoals het is.",
+      "occupied": "{{path}} bestaat al en is niet door Oleafly gemaakt.",
       "outdated": "{{path}} verwijst nog naar een oudere kopie van Oleafly. Werk het bij om deze kopie te gebruiken.",
       "packaged": "Geïnstalleerd in {{path}} door je Oleafly-pakket.",
       "unavailable": "Deze kopie van Oleafly bevat de opdracht niet."
     },
     "title": "Terminalopdracht",
     "update": "Bijwerken",
-    "newTerminal": "Open een nieuwe terminal om oleafly te gebruiken. Terminals die al open zijn, zien de wijziging niet."
+    "newTerminal": "Open een nieuwe terminal om oleafly te gebruiken. Terminals die al open zijn, zien de wijziging niet.",
+    "replace": "Vervangen",
+    "replaceTitle": "De opdracht oleafly vervangen?",
+    "replaceDescription": "Daarna start de opdracht oleafly in een terminal deze kopie van Oleafly. Het bestand dat er nu staat, wordt vervangen.",
+    "replaceConfirm": "Vervangen"
   },
   "shortcuts": {
     "actions": {

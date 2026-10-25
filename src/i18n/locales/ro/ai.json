@@ -1102,7 +1102,9 @@
     "on": "Căutarea pe web și citirea paginilor sunt active pentru această conversație",
     "off": "Activează căutarea pe web și citirea paginilor pentru această conversație",
     "ariaLabel": "Acces la web",
-    "searchUnavailable": "Acest model nu poate căuta pe web. Adaugă o cheie de căutare în Setări ca să activezi căutarea."
+    "searchUnavailable": "Acest model nu poate căuta pe web fără o cheie de căutare.",
+    "addSearchKey": "Adaugă o cheie de căutare",
+    "needsKey": "Acest model are nevoie de o cheie de căutare ca să caute pe web. Poate citi totuși paginile spre care trimiți un link."
   },
   "messageActions": {
     "edit": "Editează mesajul",

@@ -723,7 +723,6 @@
     }
   },
   "rail": {
-    "betaTab": "{{label}} (beta)",
     "files": "Průzkumník",
     "mcp": "Aktivita MCP",
     "pendingBadge_one": "{{count}} čeká",

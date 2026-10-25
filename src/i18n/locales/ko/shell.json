@@ -714,7 +714,6 @@
     }
   },
   "rail": {
-    "betaTab": "{{label}}(베타)",
     "files": "탐색기",
     "mcp": "MCP 활동",
     "pendingBadge_other": "{{count}}건 대기 중",

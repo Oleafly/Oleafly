@@ -326,6 +326,41 @@ fn someone_elses_oleafly_is_never_replaced() {
 }
 
 #[test]
+fn replace_puts_this_copy_in_place_of_someone_elses_oleafly() {
+    let fixture = fixture(Platform::Linux);
+    let environment = &fixture.environment;
+    std::fs::create_dir_all(local_bin(environment)).unwrap();
+    let command = local_bin(environment).join("oleafly");
+    let other = environment.home.join("dev/oleafly");
+    std::fs::create_dir_all(other.parent().unwrap()).unwrap();
+    std::fs::write(&other, b"dev build").unwrap();
+    std::os::unix::fs::symlink(&other, &command).unwrap();
+    assert_eq!(status(environment, &no_shell_path).state, State::Occupied);
+
+    let change = replace(environment, &no_shell_path).unwrap();
+
+    assert_eq!(change.status.state, State::Installed);
+    assert_eq!(
+        std::fs::read_link(&command).unwrap(),
+        environment.bundled.clone().unwrap()
+    );
+    assert_eq!(std::fs::read(&other).unwrap(), b"dev build");
+}
+
+#[test]
+fn replace_never_removes_a_folder() {
+    let fixture = fixture(Platform::Linux);
+    let environment = &fixture.environment;
+    let command = local_bin(environment).join("oleafly");
+    std::fs::create_dir_all(command.join("inside")).unwrap();
+
+    let error = replace(environment, &no_shell_path).unwrap_err();
+
+    assert_eq!(error.code, "shell_command.occupied");
+    assert!(command.join("inside").is_dir());
+}
+
+#[test]
 fn remove_deletes_only_what_oleafly_installed() {
     let fixture = fixture(Platform::MacOs);
     let environment = &fixture.environment;

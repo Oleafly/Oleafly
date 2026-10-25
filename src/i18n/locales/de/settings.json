@@ -2141,14 +2141,18 @@
       "installed": "Installiert in {{path}}.",
       "moveApp": "Verschieben Sie Oleafly zuerst in den Ordner „Programme“ und installieren Sie den Befehl dann hier.",
       "notInstalled": "Fügt oleafly zu {{directory}} hinzu.",
-      "occupied": "{{path}} existiert bereits und stammt nicht von Oleafly, deshalb bleibt es unverändert.",
+      "occupied": "{{path}} existiert bereits und stammt nicht von Oleafly.",
       "outdated": "{{path}} verweist noch auf eine ältere Kopie von Oleafly. Aktualisieren Sie den Befehl, damit er diese Kopie verwendet.",
       "packaged": "Von Ihrem Oleafly-Paket unter {{path}} installiert.",
       "unavailable": "Diese Kopie von Oleafly enthält den Befehl nicht."
     },
     "title": "Terminalbefehl",
     "update": "Aktualisieren",
-    "newTerminal": "Öffnen Sie ein neues Terminal, um oleafly zu verwenden. Bereits geöffnete Terminals sehen die Änderung nicht."
+    "newTerminal": "Öffnen Sie ein neues Terminal, um oleafly zu verwenden. Bereits geöffnete Terminals sehen die Änderung nicht.",
+    "replace": "Ersetzen",
+    "replaceTitle": "Befehl oleafly ersetzen?",
+    "replaceDescription": "Danach startet der Befehl oleafly im Terminal diese Kopie von Oleafly. Die Datei, die jetzt dort liegt, wird ersetzt.",
+    "replaceConfirm": "Ersetzen"
   },
   "shortcuts": {
     "actions": {

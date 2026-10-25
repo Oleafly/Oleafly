@@ -1102,7 +1102,9 @@
     "on": "A pesquisa na web e a leitura de páginas estão ligadas nesta conversa",
     "off": "Ligar a pesquisa na web e a leitura de páginas nesta conversa",
     "ariaLabel": "Acesso à web",
-    "searchUnavailable": "Este modelo não pesquisa na web. Adicione uma chave de pesquisa em Configurações para ligar."
+    "searchUnavailable": "Este modelo não pesquisa na web sem uma chave de pesquisa.",
+    "addSearchKey": "Adicionar uma chave de pesquisa",
+    "needsKey": "Este modelo precisa de uma chave de pesquisa para pesquisar na web. Ele ainda consegue ler páginas que você linkar."
   },
   "messageActions": {
     "edit": "Editar a mensagem",

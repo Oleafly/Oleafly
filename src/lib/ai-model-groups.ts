@@ -38,6 +38,17 @@ function plainModel(_providerId: string, stored: StoredModel): ModelSelectorMode
   return { id: stored.id, name: stored.name };
 }
 
+export function catalogFirst(provider: AIProvider, stored: StoredModel[]): StoredModel[] {
+  const rank = new Map(provider.models.map((model, index) => [model.id, index]));
+  const last = provider.models.length;
+  return stored
+    .map((model) => {
+      const catalog = provider.models[rank.get(model.id) ?? last];
+      return catalog && model.source !== "custom" ? { ...model, name: catalog.name } : model;
+    })
+    .sort((left, right) => (rank.get(left.id) ?? last) - (rank.get(right.id) ?? last));
+}
+
 /** Each configured provider with the models it offers: its enabled stored
  * models, or the catalog when nothing is stored. An empty stored list means
  * no models. */
@@ -51,7 +62,7 @@ export function configuredModelGroups(
     const stored = source.providerModels[provider.id];
     let models: ModelSelectorModel[] =
       stored !== undefined
-        ? enabledModels(stored).map((model) => toModel(provider.id, model))
+        ? catalogFirst(provider, enabledModels(stored)).map((model) => toModel(provider.id, model))
         : provider.models.map((model) => ({ id: model.id, name: model.name }));
     if (provider.id === "ollama" && options.liveOllama && options.liveOllama.length > 0) {
       models = options.liveOllama.map((id) => ({ id, name: id }));

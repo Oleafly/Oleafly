@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { useState } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ModelSelector, ModelTrustBadge } from "./ModelSelector";
@@ -91,6 +91,26 @@ describe("ModelSelector", () => {
       "py-0",
       "leading-none",
     );
+  });
+
+  it("opens on the model in use and brings it into view", async () => {
+    const scroll = vi.mocked(Element.prototype.scrollIntoView);
+    scroll.mockClear();
+    render(
+      <ModelSelector
+        providerId="anthropic"
+        modelId="claude-sonnet"
+        groups={groups}
+        onChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("combobox", { name: "AI model" }));
+    const current = screen.getByTestId("ai-model-option-anthropic-claude-sonnet");
+
+    await waitFor(() => expect(current).toHaveAttribute("aria-selected", "true"));
+    expect(screen.getByTestId("ai-model-option-openai-gpt-5.6-luna")).toHaveAttribute("aria-selected", "false");
+    await waitFor(() => expect(scroll.mock.contexts).toContain(current));
   });
 
   it("filters by model name or provider and handles an empty result", () => {

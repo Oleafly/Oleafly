@@ -1102,7 +1102,9 @@
     "on": "Ricerca web e lettura delle pagine attive per questa chat",
     "off": "Attiva la ricerca web e la lettura delle pagine per questa chat",
     "ariaLabel": "Accesso al web",
-    "searchUnavailable": "Questo modello non può cercare sul web. Aggiungi una chiave di ricerca nelle Impostazioni per attivarla."
+    "searchUnavailable": "Questo modello non può cercare sul web senza una chiave di ricerca.",
+    "addSearchKey": "Aggiungi una chiave di ricerca",
+    "needsKey": "Questo modello ha bisogno di una chiave di ricerca per cercare sul web. Può comunque leggere le pagine che colleghi."
   },
   "messageActions": {
     "edit": "Modifica il messaggio",

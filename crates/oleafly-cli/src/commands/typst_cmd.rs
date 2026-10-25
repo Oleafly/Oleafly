@@ -30,6 +30,7 @@ pub enum Commands {
 #[derive(Debug, Subcommand)]
 pub enum TypstCommand {
     /// List the Typst versions Oleafly offers and where each is installed
+    #[command(visible_alias = "list")]
     Versions,
     /// Download and install a Typst version
     Install(VersionArgs),

@@ -1122,7 +1122,9 @@
     "on": "Wyszukiwanie w sieci i czytanie stron są włączone w tym czacie",
     "off": "Włącz wyszukiwanie w sieci i czytanie stron w tym czacie",
     "ariaLabel": "Dostęp do sieci",
-    "searchUnavailable": "Ten model nie potrafi szukać w sieci. Dodaj klucz wyszukiwania w Ustawieniach, aby to włączyć."
+    "searchUnavailable": "Ten model nie potrafi szukać w sieci bez klucza wyszukiwania.",
+    "addSearchKey": "Dodaj klucz wyszukiwania",
+    "needsKey": "Ten model potrzebuje klucza wyszukiwania, aby szukać w sieci. Strony, do których podasz link, nadal może czytać."
   },
   "messageActions": {
     "edit": "Edytuj wiadomość",

@@ -714,7 +714,6 @@
     }
   },
   "rail": {
-    "betaTab": "{{label}}（beta）",
     "files": "檔案總管",
     "mcp": "MCP 活動",
     "pendingBadge_other": "{{count}} 項待處理",

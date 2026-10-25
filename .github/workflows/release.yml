@@ -328,6 +328,20 @@ jobs:
             echo 'CHANGELOG_EOF'
           } >> "$GITHUB_OUTPUT"
 
+      - name: Leave the RPM out of pre-release Linux builds
+        if: startsWith(matrix.os, 'ubuntu-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(jq -r .version src-tauri/tauri.conf.json)"
+          case "$version" in
+            *-*)
+              echo 'TAURI_BUNDLE_ARGS=--bundles appimage,deb' >> "$GITHUB_ENV"
+              echo "RPM: skipped for pre-release $version"
+              ;;
+            *) echo "RPM: built for $version" ;;
+          esac
+
       - name: Build & release
         id: tauri
         uses: tauri-apps/tauri-action@v1
@@ -356,7 +370,7 @@ jobs:
           # Retries handle transient delete/upload conflicts; the finalize job
           # below performs a deterministic target-owned merge before release.
           retryAttempts: 3
-          args: ${{ matrix.args }} ${{ env.TAURI_SIGN_ARGS }}
+          args: ${{ matrix.args }} ${{ env.TAURI_SIGN_ARGS }} ${{ env.TAURI_BUNDLE_ARGS }}
 
       # Work with byte-for-byte copies of the files tauri-action uploaded to
       # the draft release. This keeps provenance and SBOM subjects aligned with
@@ -591,11 +605,17 @@ jobs:
                 )
               }
             ' > latest.json
-          for platform in \
-            darwin-aarch64 darwin-aarch64-app \
-            windows-x86_64 windows-x86_64-msi windows-x86_64-nsis \
-            linux-x86_64 linux-x86_64-appimage linux-x86_64-deb linux-x86_64-rpm \
-            linux-aarch64 linux-aarch64-appimage linux-aarch64-deb linux-aarch64-rpm; do
+          required=(
+            darwin-aarch64 darwin-aarch64-app
+            windows-x86_64 windows-x86_64-msi windows-x86_64-nsis
+            linux-x86_64 linux-x86_64-appimage linux-x86_64-deb
+            linux-aarch64 linux-aarch64-appimage linux-aarch64-deb
+          )
+          case "$(jq -r .version latest.json)" in
+            *-*) ;;
+            *) required+=(linux-x86_64-rpm linux-aarch64-rpm) ;;
+          esac
+          for platform in "${required[@]}"; do
             jq -e --arg p "$platform" '.platforms | has($p)' latest.json >/dev/null \
               || { echo "merged latest.json is missing platform: $platform" >&2; exit 1; }
           done

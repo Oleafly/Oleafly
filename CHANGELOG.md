@@ -7,16 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Thanks
+### Added
 
-- Saran Bodda ([@ssbodda-powern](https://github.com/ssbodda-powern)): a
-  composer that grows with your message (#304), files and PDFs in the
-  assistant (#305) and any AI provider in Tools (#306).
-- [@domiden](https://github.com/domiden): Git hosting beyond GitHub (#296).
-- Wahid Mounir ([@wahidmounir](https://github.com/wahidmounir)): pluggable
-  research agents (#84), with saved agent sessions (#142), Hermes (#140),
-  scheduled and resumable tasks (#141) and a Windows sandbox for tasks, in
-  beta (#143).
+- Suggesting mode for shared projects. Switch the editor from Editing to
+  Suggesting and your edits become tracked changes: added text is
+  highlighted, and deleted text stays visible, struck through. Owners and
+  editors accept or reject each suggestion, or every suggestion in a file at
+  once, and whoever suggested a change can withdraw it. The Comments pane
+  lists suggestions next to the comments, and you can reply to one like a
+  comment.
+  AI edits and inserted citations made while suggesting become suggestions
+  too. A compile or export with suggestions waiting tells you how many.
+- Reviewer and Commenter roles for shared projects. A reviewer comments and
+  suggests changes, and every edit they make is a suggestion. A commenter
+  reads and comments. Both can use the chat. You can give these roles to
+  people you add, to guests and to the project's link. The server checks
+  every change a reviewer or commenter sends, so an edit their role doesn't
+  allow never reaches anyone.
+- A chat for each shared project, in a Chat tab next to Comments. Everyone
+  but viewers can post, people can delete their own messages, and the owner can
+  clear the chat.
+- History for shared projects, in the collaboration pane. It lists changes by
+  time and person. Open any version to read it, compare two versions, restore
+  one file or the whole project, or give a version a name such as "Sent to
+  the reviewers". Owners and editors restore and name versions. A restore is
+  a new change, so the text it replaces stays in the history.
+- Add server now offers the Oleafly server as a one-click choice above the
+  address field. Any other server's address still works as before.
+- Co-authors can open a shared project in their browser when the
+  collaboration server has browser access turned on. Without installing
+  Oleafly, they can edit as their role allows, comment, handle suggestions,
+  chat and read the latest PDF, and the project's web page gets an **Open in
+  browser** button. Whoever runs the server turns it on with
+  `OLEAFLY_WEB=true`, and the published server image already includes the
+  browser app.
+- After a successful compile of a shared project, an owner's or editor's app
+  uploads the PDF and its SyncTeX file to the server, at most once a minute,
+  so people reading the project in a browser see the newest PDF and who
+  compiled it.
+- Oleafly Server can let anyone sign up. With `OLEAFLY_OPEN_SIGNUP=true`,
+  anyone who signs in with one of the server's sign-in options gets an
+  account, and each account gets 100 MB of storage, 50 shared projects and
+  300 uploads an hour. `OLEAFLY_ACCOUNT_STORAGE_MB`,
+  `OLEAFLY_MAX_PROJECTS_PER_ACCOUNT` and `OLEAFLY_UPLOADS_PER_HOUR` change
+  those limits, and also work without open sign-up. Compiled PDFs count
+  toward storage but not toward uploads.
+- Quarto and Calepin engines. Quarto turns `.qmd` and `.Rmd` documents into a
+  PDF, a web page or slides, and Calepin runs the code in a Typst document
+  and puts the results in the PDF. Oleafly uses the copy on your computer, or
+  downloads a pinned, checksum-verified one from Settings > Engines when you
+  ask. Code runs with your own R, Python or Julia, and only after you allow
+  code for that project in the Compile menu. Until then Quarto shows the code
+  without running it, and Calepin shows the results from its last run. New
+  templates: Quarto article, Quarto slides and Calepin report. Quarto's
+  working folders (`.quarto` and a document's `_files` folder) stay out of
+  cloud sync, shared projects and checkpoints. Calepin's `.calepin` folder is
+  shared and synced like any other, so co-authors who haven't allowed code
+  still see its stored results.
+- When a Typst document has Chinese, Japanese or Korean text that no font on
+  this computer can show, Oleafly says so and offers to download the free
+  font pack that covers it.
+- **Add custom provider** in Settings > AI has presets for Qwen (DashScope),
+  Kimi (Moonshot), Zhipu GLM, SiliconFlow and Volcengine Ark. Pick one and it
+  fills in the name and base URL, so you only add your API key.
+- **App icon** in Settings > Appearance offers ten icons for the Dock or
+  taskbar while Oleafly is open: pastel, blue, light, prism, iridescent, ocean,
+  mint, aurora, sunset and coral.
+
+### Changed
+
+- Live collaboration is no longer an experiment and is always on. Settings >
+  Collaboration is there from the start, and the switch under Settings >
+  Experimentation is gone.
+- With Oleafly in Chinese, DeepSeek is the suggested AI provider. It comes
+  first in the provider list and is preselected until you set up a provider.
+- New app icon: a quill in a pastel gradient, cyan to amber, on a light
+  tile. The quill inside the app is blue.
+
+## [0.4.8] - 2026-10-25
 
 ### Added
 
@@ -28,8 +96,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   citations and bibliography cleanup, Typst versions, templates, the app's
   checkpoints and settings. Turn it on under Settings > General > Terminal
   command. On Windows, Install copies it into your user folder and adds it to
-  your PATH. Oleafly's own terminal and the agents it starts have it on their
-  PATH.
+  your PATH. If an `oleafly` that Oleafly didn't make is already there,
+  Replace it puts this copy in its place once you confirm. Oleafly's own
+  terminal and the agents it starts have it on their PATH.
 - `oleafly mcp`, an MCP server for Claude Code, Claude Desktop, Codex, Cursor
   and Gemini CLI. It needs no URL, token or Node.js. With the app open it
   passes calls to the app, with your approval rules; on its own it offers
@@ -125,9 +194,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Prompt, Git Bash, WSL or a custom path on Windows), scrollback, copy on
   select, what Shift+Enter sends and Option as Meta on macOS. Find in the
   terminal (Ctrl+Shift+F on Windows and Linux, so Ctrl+F still reaches the
-  shell), activity dots on busy tabs, tab titles from programs, Open in
-  terminal from the file tree, dragging files in to type their paths, and
-  shortcuts for new, close, next and previous terminal.
+  shell), a dot on a hidden tab when its program rings the bell, tab titles
+  from programs, Open in terminal from the file tree, dragging files in to
+  type their paths, and shortcuts for new, close, next and previous terminal.
 - Dropping a file from the Files panel into a document now inserts a link to
   it, written the way that language writes links: `[name](<path>)` in
   Markdown, `#link("path")[name]` in Typst and `\href{path}{name}` in LaTeX,
@@ -136,80 +205,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ctrl+Space completes project files inside Markdown and Typst links and in
   LaTeX `\href{`. The Files panel has **Copy link** and **Insert link**, and
   the command palette has **Insert link to file**. (#315)
-- In Visual mode, Cmd+click (Ctrl+click on Windows and Linux) on a link to a
-  project file opens that file in Oleafly. (#316)
-- Suggesting mode for shared projects. Switch the editor from Editing to
-  Suggesting and your edits become tracked changes: added text is
-  highlighted, and deleted text stays visible, struck through. Owners and
-  editors accept or reject each suggestion, or every suggestion in a file at
-  once, and whoever suggested a change can withdraw it. The Comments pane
-  lists suggestions next to the comments, and you can reply to one like a
-  comment.
-  AI edits and inserted citations made while suggesting become suggestions
-  too. A compile or export with suggestions waiting tells you how many.
-- Reviewer and Commenter roles for shared projects. A reviewer comments and
-  suggests changes, and every edit they make is a suggestion. A commenter
-  reads and comments. Both can use the chat. You can give these roles to
-  people you add, to guests and to the project's link. The server checks
-  every change a reviewer or commenter sends, so an edit their role doesn't
-  allow never reaches anyone.
-- A chat for each shared project, in a Chat tab next to Comments. Everyone
-  but viewers can post, people can delete their own messages, and the owner can
-  clear the chat.
-- History for shared projects, in the collaboration pane. It lists changes by
-  time and person. Open any version to read it, compare two versions, restore
-  one file or the whole project, or give a version a name such as "Sent to
-  the reviewers". Owners and editors restore and name versions. A restore is
-  a new change, so the text it replaces stays in the history.
-- Add server now offers the Oleafly server as a one-click choice above the
-  address field. Any other server's address still works as before.
-- Co-authors can open a shared project in their browser when the
-  collaboration server has browser access turned on. Without installing
-  Oleafly, they can edit as their role allows, comment, handle suggestions,
-  chat and read the latest PDF, and the project's web page gets an **Open in
-  browser** button. Whoever runs the server turns it on with
-  `OLEAFLY_WEB=true`, and the published server image already includes the
-  browser app.
-- After a successful compile of a shared project, an owner's or editor's app
-  uploads the PDF and its SyncTeX file to the server, at most once a minute,
-  so people reading the project in a browser see the newest PDF and who
-  compiled it.
-- Oleafly Server can let anyone sign up. With `OLEAFLY_OPEN_SIGNUP=true`,
-  anyone who signs in with one of the server's sign-in options gets an
-  account, and each account gets 100 MB of storage, 50 shared projects and
-  300 uploads an hour. `OLEAFLY_ACCOUNT_STORAGE_MB`,
-  `OLEAFLY_MAX_PROJECTS_PER_ACCOUNT` and `OLEAFLY_UPLOADS_PER_HOUR` change
-  those limits, and also work without open sign-up. Compiled PDFs count
-  toward storage but not toward uploads.
-- Quarto and Calepin engines. Quarto turns `.qmd` and `.Rmd` documents into a
-  PDF, a web page or slides, and Calepin runs the code in a Typst document
-  and puts the results in the PDF. Oleafly uses the copy on your computer, or
-  downloads a pinned, checksum-verified one from Settings > Engines when you
-  ask. Code runs with your own R, Python or Julia, and only after you allow
-  code for that project in the Compile menu. Until then Quarto shows the code
-  without running it, and Calepin shows the results from its last run. New
-  templates: Quarto article, Quarto slides and Calepin report. Quarto's
-  working folders (`.quarto` and a document's `_files` folder) stay out of
-  cloud sync, shared projects and checkpoints. Calepin's `.calepin` folder is
-  shared and synced like any other, so co-authors who haven't allowed code
-  still see its stored results.
-- When a Typst document has Chinese, Japanese or Korean text that no font on
-  this computer can show, Oleafly says so and offers to download the free
-  font pack that covers it.
-- **Add custom provider** in Settings > AI has presets for Qwen (DashScope),
-  Kimi (Moonshot), Zhipu GLM, SiliconFlow and Volcengine Ark. Pick one and it
-  fills in the name and base URL, so you only add your API key.
-- **App icon** in Settings > Appearance offers ten icons for the Dock or
-  taskbar while Oleafly is open: pastel, blue, light, prism, iridescent, ocean,
-  mint, aurora, sunset and coral.
+- Cmd+click (Ctrl+click on Windows and Linux) on a link to a project file
+  opens that file in Oleafly, in Visual mode and in LaTeX, Typst and Markdown
+  source. (#316)
 
 ### Changed
 
-- Live collaboration is no longer an experiment and is always on. Settings >
-  Collaboration is there from the start, and the switch under Settings >
-  Experimentation is gone.
-- With Oleafly in Chinese, DeepSeek is the suggested AI provider. It comes
-  first in the provider list and is preselected until you set up a provider.
 - The handles between the sidebar, the editor and the preview show their
   grip only while you point at them or drag them.
 
@@ -236,8 +237,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a computer without a TeX installation keeps Tectonic. (#317)
 - Cloud sync leaves out `.venv` and `__pycache__` folders. A build file you
   track in Git, such as a log of results, is now backed up. (#317)
-- New app icon: a quill in a pastel gradient, cyan to amber, on a light
-  tile. The quill inside the app is blue.
 
 - The assistant's composer grows with your message and keeps a draft per
   chat, with your earlier messages a key press away (#304). Editing an
@@ -270,6 +269,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Forks that use their own GitHub OAuth app set its client ID with
   `OLEAFLY_DESKTOP_GITHUB_CLIENT_ID` at build time. The old
   `VITE_GITHUB_CLIENT_ID` still works.
+- The model picker opens at the model you're using. Each provider's current
+  models come first, under their proper names: GLM-5.3 rather than glm-5.3.
+- In a narrow assistant panel, the approval mode shows as its icon, with the
+  mode's name in the tooltip, instead of a label cut off after a few letters.
+- The Web button gets a dot when the model can't search the web without a
+  search key, and the notice under the reply has an Add a search key button
+  that opens Settings.
 
 ### Removed
 
@@ -325,6 +331,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on disk and in chat search. They're now deleted with it.
 - Switching to another project while the assistant was replying could lose
   the part of the reply it had already written. Oleafly now keeps it.
+- The assistant's reply ran its sentences together where it stopped to use a
+  tool, as in "first.Got it". Each step now starts a new paragraph.
+- A diff of a file that gained a lot of text, such as a section a task or an
+  agent wrote, showed the whole file as removed and then added. Diffs now
+  show only the lines that changed.
+- A citation added by its DOI went into the bibliography as one long line,
+  and its page range used a dash that LaTeX fonts can't print. It's now one
+  field per line, with `--` between the pages.
+- A PNG with a transparent background, like an equation or a page exported
+  as an image, reached the model with that background turned black, and the
+  model made up what it couldn't read. Images in the chat and in Image to
+  LaTeX now go to the model on white. The file you attached isn't changed.
+- Spelling flagged Eq, Fig and Sec before a reference, and the word
+  selectable. The app and `oleafly lint` accept them now.
 - On macOS and Linux, each Show in folder left a finished process behind
   until you quit Oleafly. It now goes away as soon as it finishes.
 - Review in Files > Task outputs did nothing. It now opens the task in the
@@ -3907,7 +3927,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.7...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.8...HEAD
+[0.4.8]: https://github.com/Oleafly/Oleafly/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/Oleafly/Oleafly/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/Oleafly/Oleafly/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/Oleafly/Oleafly/compare/v0.4.4...v0.4.5

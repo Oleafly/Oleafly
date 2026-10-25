@@ -6027,7 +6027,7 @@ dependencies = [
 
 [[package]]
 name = "oleafly"
-version = "0.4.7"
+version = "0.4.8"
 dependencies = [
  "aes 0.9.3",
  "aho-corasick",

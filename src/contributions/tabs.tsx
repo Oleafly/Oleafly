@@ -42,7 +42,6 @@ export function registerRailTabs() {
     icon: FlaskConical,
     section: "assist",
     order: 60,
-    beta: true,
     // 0.4.8: research tasks are experimental and off by default; the rail
     // entry comes and goes with the switch (WorkspaceControls re-renders on it).
     when: () => researchTasksEnabled(),

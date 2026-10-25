@@ -723,7 +723,6 @@
     }
   },
   "rail": {
-    "betaTab": "{{label}} (бета)",
     "files": "Проводник",
     "mcp": "Активность MCP",
     "pendingBadge_one": "{{count}} в ожидании",

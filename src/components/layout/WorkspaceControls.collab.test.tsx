@@ -53,7 +53,7 @@ describe("Live collaboration rail tab", () => {
     expect(screen.getByRole("button", { name: enCollab.pane.title })).toBeInTheDocument();
   });
 
-  it("sits right before the beta research tab and shows the radio tower icon", () => {
+  it("sits right before the research tab and shows the radio tower icon", () => {
     useCollabRail.setState({ visible: true });
     const { container } = renderRail();
     const order = railOrder(container);

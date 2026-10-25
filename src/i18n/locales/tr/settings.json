@@ -2141,14 +2141,18 @@
       "installed": "{{path}} konumunda kurulu.",
       "moveApp": "Önce Oleafly'yi Uygulamalar klasörüne taşıyın, ardından komutu buradan kurun.",
       "notInstalled": "oleafly komutunu {{directory}} konumuna ekler.",
-      "occupied": "{{path}} zaten var ve Oleafly tarafından oluşturulmadı, bu yüzden olduğu gibi kalacak.",
+      "occupied": "{{path}} zaten var ve Oleafly tarafından oluşturulmadı.",
       "outdated": "{{path}} hâlâ Oleafly'nin eski bir kopyasını gösteriyor. Bu kopyayı kullanması için güncelleyin.",
       "packaged": "Oleafly paketiniz tarafından {{path}} konumuna kuruldu.",
       "unavailable": "Oleafly'nin bu kopyası komutu içermiyor."
     },
     "title": "Terminal komutu",
     "update": "Güncelle",
-    "newTerminal": "oleafly kullanmak için yeni bir terminal açın. Zaten açık olan terminaller değişikliği görmez."
+    "newTerminal": "oleafly kullanmak için yeni bir terminal açın. Zaten açık olan terminaller değişikliği görmez.",
+    "replace": "Değiştir",
+    "replaceTitle": "oleafly komutu değiştirilsin mi?",
+    "replaceDescription": "Bundan sonra terminaldeki oleafly komutu Oleafly'nin bu kopyasını çalıştırır. Şu anda orada olan dosya değiştirilir.",
+    "replaceConfirm": "Değiştir"
   },
   "shortcuts": {
     "actions": {

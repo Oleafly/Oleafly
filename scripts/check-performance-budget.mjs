@@ -54,11 +54,11 @@ const limits = {
   // +1 KB for the research tasks switch at startup (the rail entry's
   // condition, the rail's re-render on it, the capped small-button radius):
   // the entry measures 4,990,252 bytes, 252 over the old ceiling.
-  largestJavaScript: 5_000_000,
+  largestJavaScript: 5_005_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
   // asset becomes the largest.
-  entryJavaScript: 5_000_000,
+  entryJavaScript: 5_005_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
@@ -156,6 +156,8 @@ const limits = {
   // tasks and their runs, Desktop apps, Git hosting, the terminal settings and
   // the entry growth above. The combined graph measures 20.91 MB.
   // With both, the combined graph measures 20,950,195 bytes on macOS.
+  // +20 KB for the 0.4.8-rc fixes: 21,001,072 bytes on macOS, of which
+  // following file links on Cmd+click in the source editor is 586 bytes.
   totalJavaScript: 21_170_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about

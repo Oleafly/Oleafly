@@ -328,6 +328,7 @@ mod tests {
             vec!["oleaflyc", "project", "info"],
             vec!["oleaflyc", "version"],
             vec!["oleaflyc", "help", "build"],
+            vec!["oleaflyc", "typst", "list"],
         ] {
             Cli::try_parse_from(command).unwrap();
         }

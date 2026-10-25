@@ -1082,7 +1082,9 @@
     "on": "Websuche und Seitenlesen sind für diesen Chat an",
     "off": "Websuche und Seitenlesen für diesen Chat einschalten",
     "ariaLabel": "Webzugriff",
-    "searchUnavailable": "Dieses Modell kann nicht im Web suchen. Fügen Sie in den Einstellungen einen Suchschlüssel hinzu, um es einzuschalten."
+    "searchUnavailable": "Dieses Modell kann ohne Suchschlüssel nicht im Web suchen.",
+    "addSearchKey": "Suchschlüssel hinzufügen",
+    "needsKey": "Dieses Modell braucht einen Suchschlüssel, um im Web zu suchen. Seiten, die Sie verlinken, kann es trotzdem lesen."
   },
   "messageActions": {
     "edit": "Nachricht bearbeiten",

@@ -1088,6 +1088,7 @@ async fn run_cite(ctx: &Context, args: CiteArgs) -> Result<Outcome, CliError> {
     if !args.add {
         if !ctx.json() {
             ctx.say(&bibtex);
+            ctx.note("Add it to the bibliography with `--add`.");
         }
         return Ok(Outcome::success(
             json!({"bibtex": bibtex, "source": source}),

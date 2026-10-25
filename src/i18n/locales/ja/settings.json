@@ -2120,14 +2120,18 @@
       "installed": "{{path}} にインストール済みです。",
       "moveApp": "先に Oleafly を「アプリケーション」フォルダに移動してから、ここでコマンドをインストールしてください。",
       "notInstalled": "oleafly を {{directory}} に追加します。",
-      "occupied": "{{path}} はすでに存在し、Oleafly が作成したものではないため、そのままにします。",
+      "occupied": "{{path}} はすでに存在し、Oleafly が作成したものではありません。",
       "outdated": "{{path}} はまだ古い Oleafly を指しています。このコピーを使うよう更新してください。",
       "packaged": "Oleafly のパッケージにより {{path}} にインストール済みです。",
       "unavailable": "この Oleafly にはコマンドが含まれていません。"
     },
     "title": "ターミナルコマンド",
     "update": "更新",
-    "newTerminal": "oleafly を使うには、新しいターミナルを開いてください。すでに開いているターミナルには変更が反映されません。"
+    "newTerminal": "oleafly を使うには、新しいターミナルを開いてください。すでに開いているターミナルには変更が反映されません。",
+    "replace": "置き換える",
+    "replaceTitle": "oleafly コマンドを置き換えますか？",
+    "replaceDescription": "置き換えると、ターミナルの oleafly コマンドでこの Oleafly が起動します。今あるファイルは置き換えられます。",
+    "replaceConfirm": "置き換える"
   },
   "shortcuts": {
     "actions": {

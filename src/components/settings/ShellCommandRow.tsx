@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { Trans, useTranslation } from "react-i18next";
 import { Check, Copy, SquareTerminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { SettingsPathText } from "@/components/settings/SettingsPath";
 import { describeError } from "@/lib/app-error";
@@ -9,13 +10,14 @@ import {
   installShellCommand,
   isShellCommandStatus,
   removeShellCommand,
+  replaceShellCommand,
   shellCommandStatus,
   type ShellCommandPathHint,
   type ShellCommandState,
   type ShellCommandStatus,
 } from "@/lib/shell-command";
 
-type Busy = "install" | "remove" | null;
+type Busy = "install" | "remove" | "replace" | null;
 
 type Change = Exclude<Busy, null>;
 
@@ -103,6 +105,7 @@ function ShellCommandActions({
   installRef,
   removeRef,
   onChange,
+  onReplace,
 }: Readonly<{
   state: ShellCommandState | undefined;
   installable: boolean;
@@ -111,8 +114,27 @@ function ShellCommandActions({
   installRef: RefObject<HTMLButtonElement | null>;
   removeRef: RefObject<HTMLButtonElement | null>;
   onChange: (kind: Change) => void;
+  onReplace: () => void;
 }>) {
   const { t } = useTranslation(["common", "settings"]);
+  if (state === "occupied") {
+    return (
+      <div className="flex shrink-0 items-center gap-1.5">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={FOCUS_TINT}
+          disabled={busy !== null}
+          onClick={onReplace}
+        >
+          {busy === "replace"
+            ? t(($) => $.settings.shellCommand.installing)
+            : t(($) => $.settings.shellCommand.replace)}
+        </Button>
+      </div>
+    );
+  }
   if (!installable && !installed) return null;
 
   let installLabel = t(($) => $.settings.shellCommand.install);
@@ -257,6 +279,7 @@ export function ShellCommandRow() {
   const [error, setError] = useState<string | null>(null);
   const { copied, copy: copyLine } = useCopyStatus();
   const [focusNext, setFocusNext] = useState<Change | null>(null);
+  const [confirmReplace, setConfirmReplace] = useState(false);
   const row = useRef<HTMLDivElement>(null);
   const installButton = useRef<HTMLButtonElement>(null);
   const removeButton = useRef<HTMLButtonElement>(null);
@@ -306,11 +329,12 @@ export function ShellCommandRow() {
     setError(null);
     setResult(null);
     try {
-      const outcome = kind === "install" ? await installShellCommand() : await removeShellCommand();
+      const run = { install: installShellCommand, replace: replaceShellCommand, remove: removeShellCommand }[kind];
+      const outcome = await run();
       if (!alive.current) return;
       setStatus(outcome.status);
       setLoadFailed(false);
-      setFocusNext(kind === "install" ? "remove" : "install");
+      setFocusNext(kind === "remove" ? "install" : "remove");
       const path = outcome.status.path ?? previousPath;
       if (outcome.action === "linked") {
         setResult(t(($) => $.settings.shellCommand.result.linked, { path }));
@@ -362,6 +386,7 @@ export function ShellCommandRow() {
           installRef={installButton}
           removeRef={removeButton}
           onChange={(kind) => void change(kind)}
+          onReplace={() => setConfirmReplace(true)}
         />
       </div>
       {view.afterSignIn ? (
@@ -392,6 +417,18 @@ export function ShellCommandRow() {
         error={error}
         loadFailed={loadFailed}
         onRetry={refresh}
+      />
+      <ConfirmationDialog
+        open={confirmReplace}
+        destructive
+        title={t(($) => $.settings.shellCommand.replaceTitle)}
+        description={t(($) => $.settings.shellCommand.replaceDescription)}
+        confirmLabel={t(($) => $.settings.shellCommand.replaceConfirm)}
+        onConfirm={() => {
+          setConfirmReplace(false);
+          void change("replace");
+        }}
+        onCancel={() => setConfirmReplace(false)}
       />
     </div>
   );

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FlaskConical, Settings2 } from "lucide-react";
-import { BetaBadge } from "@/components/ui/beta-badge";
 import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -100,7 +99,6 @@ export function ResearchWorkspacePanel() {
       <SidebarPanelHeader
         icon={FlaskConical}
         title={t(($) => $.researchTools.workspace.title)}
-        adornment={<BetaBadge />}
       >
         <Button
           variant="ghost"

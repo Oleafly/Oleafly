@@ -717,7 +717,6 @@
     }
   },
   "rail": {
-    "betaTab": "{{label}} (beta)",
     "files": "Resurssienhallinta",
     "mcp": "MCP-toiminta",
     "pendingBadge_one": "{{count}} odottaa",

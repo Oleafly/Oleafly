@@ -17,6 +17,7 @@ export interface ToolEntry {
   name: string;
   status: "running" | "done" | "error";
   output?: string;
+  input?: string;
   // A screenshot as a data URL. Chats saved since 0.4.8 keep `imageRef`
   // (a stored attachment) on disk instead; `image` stays in memory.
   image?: string;
