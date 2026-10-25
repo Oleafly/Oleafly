@@ -7,16 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Thanks
-
-- Saran Bodda ([@ssbodda-powern](https://github.com/ssbodda-powern)): a
-  composer that grows with your message (#304), files and PDFs in the
-  assistant (#305) and any AI provider in Tools (#306).
-- [@domiden](https://github.com/domiden): Git hosting beyond GitHub (#296).
-- Wahid Mounir ([@wahidmounir](https://github.com/wahidmounir)): pluggable
-  research agents (#84), with saved agent sessions (#142), Hermes (#140),
-  scheduled and resumable tasks (#141) and a Windows sandbox for tasks, in
-  beta (#143).
+## [0.4.8] - 2026-10-25
 
 ### Added
 
@@ -3859,7 +3850,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.7...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.8...HEAD
+[0.4.8]: https://github.com/Oleafly/Oleafly/compare/v0.4.7...v0.4.8
 [0.4.7]: https://github.com/Oleafly/Oleafly/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/Oleafly/Oleafly/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/Oleafly/Oleafly/compare/v0.4.4...v0.4.5
