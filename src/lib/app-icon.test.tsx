@@ -20,7 +20,7 @@ beforeEach(() => {
   bridge.tauri = false;
   bridge.appIconSet.mockReset().mockResolvedValue(undefined);
   bridge.logError.mockClear();
-  useSettingsStore.getState().setAppIcon("blue");
+  useSettingsStore.getState().setAppIcon("pastel");
 });
 
 describe("applying the app icon", () => {
@@ -47,7 +47,13 @@ describe("applying the app icon", () => {
     await act(async () => {
       useSettingsStore.getState().resetAppearancePreferences();
     });
-    expect(bridge.appIconSet).toHaveBeenCalledTimes(2);
+    expect(bridge.appIconSet).toHaveBeenLastCalledWith("pastel");
+    expect(bridge.appIconSet).toHaveBeenCalledTimes(3);
+
+    await act(async () => {
+      useSettingsStore.getState().resetAppearancePreferences();
+    });
+    expect(bridge.appIconSet).toHaveBeenCalledTimes(3);
   });
 
   it("logs a failure instead of throwing", async () => {

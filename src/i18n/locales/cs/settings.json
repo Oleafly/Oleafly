@@ -528,11 +528,19 @@
         "swatchAriaLabel": "Zvýraznění {{name}}"
       },
       "appIcon": {
+        "aurora": "Polární záře",
         "blue": "Modrá",
+        "coral": "Korál",
         "description": "Vyberte ikonu, kterou Oleafly ukazuje v Docku nebo na hlavním panelu, když je otevřený.",
+        "iridescent": "Opalizující",
         "label": "Ikona aplikace",
         "light": "Světlá",
-        "note": "Finder, nabídka Start a spouštěče aplikací dál ukazují výchozí ikonu."
+        "mint": "Máta",
+        "note": "Finder, nabídka Start a spouštěče aplikací dál ukazují výchozí ikonu.",
+        "ocean": "Oceán",
+        "pastel": "Pastel",
+        "prism": "Hranol",
+        "sunset": "Západ slunce"
       },
       "bgPattern": {
         "description": "Vyberte vzor za policí projektů.",

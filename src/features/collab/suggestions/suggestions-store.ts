@@ -190,7 +190,7 @@ export function openSuggestionIn(path: string, id: string): void {
 
 function applyReveal(path: string, suggestions: readonly CollabSuggestion[]): void {
   const wanted = revealAfterLoad;
-  if (!wanted || wanted.path !== path) return;
+  if (wanted?.path !== path) return;
   revealAfterLoad = null;
   if (suggestions.some((suggestion) => suggestion.id === wanted.id)) {
     selectSuggestion(wanted.id, { reveal: true, focus: true });

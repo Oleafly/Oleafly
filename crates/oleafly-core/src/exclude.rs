@@ -280,29 +280,90 @@ pub fn decide(relative: &Path, entry: &EntryInfo, fields: &PolicyFields<'_>) -> 
     decide_with_siblings(relative, entry, fields, |_| false)
 }
 
+fn utf8_components(relative: &Path) -> Result<Vec<&str>, Decision> {
+    let mut components: Vec<&str> = Vec::new();
+    for component in relative.components() {
+        let Component::Normal(part) = component else {
+            return Err(Decision::Skip(SkipReason::NonUtf8Name));
+        };
+        let Some(part) = part.to_str() else {
+            return Err(
+                if components
+                    .first()
+                    .is_some_and(|first| first.eq_ignore_ascii_case(".git"))
+                {
+                    Decision::Git
+                } else {
+                    Decision::Skip(SkipReason::NonUtf8Name)
+                },
+            );
+        };
+        components.push(part);
+    }
+    Ok(components)
+}
+
+fn is_build_output(
+    components: &[&str],
+    portable: &str,
+    entry: &EntryInfo,
+    fields: &PolicyFields<'_>,
+    has_sibling: impl Fn(&str) -> bool,
+) -> bool {
+    let folders = if entry.kind == EntryKind::Directory {
+        components.len()
+    } else {
+        components.len() - 1
+    };
+    components
+        .iter()
+        .any(|part| is_helper_output_component(part))
+        || (1..=folders).any(|end| {
+            components[end - 1].ends_with(NOTEBOOK_FIGURES_SUFFIX)
+                && is_notebook_figures_folder(&components[..end].join("/"), &has_sibling)
+        })
+        || (entry.kind == EntryKind::File
+            && (is_build_artifact(portable, |_| false) || is_main_pdf(portable, fields.main_doc)))
+}
+
+fn skipped_by_default(
+    components: &[&str],
+    portable: &str,
+    entry: &EntryInfo,
+    fields: &PolicyFields<'_>,
+    has_sibling: impl Fn(&str) -> bool,
+) -> Option<SkipReason> {
+    if entry.git_tracked || listed(fields.sync_include, portable) {
+        return None;
+    }
+    if is_build_output(components, portable, entry, fields, has_sibling) {
+        return Some(SkipReason::BuildOutput);
+    }
+    if components
+        .iter()
+        .any(|part| part.eq_ignore_ascii_case("node_modules"))
+    {
+        return Some(SkipReason::Reinstallable);
+    }
+    if components
+        .iter()
+        .any(|part| part.eq_ignore_ascii_case("__MACOSX"))
+    {
+        return Some(SkipReason::ZipLeftovers);
+    }
+    None
+}
+
 pub fn decide_with_siblings(
     relative: &Path,
     entry: &EntryInfo,
     fields: &PolicyFields<'_>,
     has_sibling: impl Fn(&str) -> bool,
 ) -> Decision {
-    let mut components: Vec<&str> = Vec::new();
-    for component in relative.components() {
-        let Component::Normal(part) = component else {
-            return Decision::Skip(SkipReason::NonUtf8Name);
-        };
-        let Some(part) = part.to_str() else {
-            return if components
-                .first()
-                .is_some_and(|first| first.eq_ignore_ascii_case(".git"))
-            {
-                Decision::Git
-            } else {
-                Decision::Skip(SkipReason::NonUtf8Name)
-            };
-        };
-        components.push(part);
-    }
+    let components = match utf8_components(relative) {
+        Ok(components) => components,
+        Err(decision) => return decision,
+    };
     if components.is_empty() {
         return Decision::Include;
     }
@@ -325,38 +386,8 @@ pub fn decide_with_siblings(
         return Decision::Ignore;
     }
 
-    let overridden = entry.git_tracked || listed(fields.sync_include, &portable);
-    if !overridden {
-        let folders = if entry.kind == EntryKind::Directory {
-            components.len()
-        } else {
-            components.len() - 1
-        };
-        let build_output = components
-            .iter()
-            .any(|part| is_helper_output_component(part))
-            || (1..=folders).any(|end| {
-                components[end - 1].ends_with(NOTEBOOK_FIGURES_SUFFIX)
-                    && is_notebook_figures_folder(&components[..end].join("/"), &has_sibling)
-            })
-            || (entry.kind == EntryKind::File
-                && (is_build_artifact(&portable, |_| false)
-                    || is_main_pdf(&portable, fields.main_doc)));
-        if build_output {
-            return Decision::Skip(SkipReason::BuildOutput);
-        }
-        if components
-            .iter()
-            .any(|part| part.eq_ignore_ascii_case("node_modules"))
-        {
-            return Decision::Skip(SkipReason::Reinstallable);
-        }
-        if components
-            .iter()
-            .any(|part| part.eq_ignore_ascii_case("__MACOSX"))
-        {
-            return Decision::Skip(SkipReason::ZipLeftovers);
-        }
+    if let Some(reason) = skipped_by_default(&components, &portable, entry, fields, has_sibling) {
+        return Decision::Skip(reason);
     }
 
     match entry.kind {

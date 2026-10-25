@@ -150,6 +150,91 @@ function NameForm({
   );
 }
 
+function EntryTime({ entry }: Readonly<{ entry: CollabHistoryEntry }>) {
+  const { t } = useTranslation(["collab"]);
+  if (entry.at <= 0) return <span className="font-medium">{t(($) => $.collab.history.earlier)}</span>;
+  const from = formatTime(entry.at);
+  const to = formatTime(entry.until);
+  const when = entry.until > entry.at && from !== to ? t(($) => $.collab.history.timeRange, { from, to }) : from;
+  return (
+    <Tooltip label={formatDateTime(entry.at)}>
+      <time dateTime={new Date(entry.at).toISOString()} className="font-medium tabular-nums">
+        {when}
+      </time>
+    </Tooltip>
+  );
+}
+
+function EntryFiles({ files }: Readonly<{ files: readonly string[] }>) {
+  const { t } = useTranslation(["collab"]);
+  if (files.length === 1) {
+    return (
+      <Tooltip label={files[0]} wide className="block">
+        <p className="truncate font-mono text-muted-foreground">{middleEllipsisPath(files[0], PATH_CHARS)}</p>
+      </Tooltip>
+    );
+  }
+  if (files.length === 0) return null;
+  return (
+    <p className="text-muted-foreground">
+      {t(($) => $.collab.history.filesChanged, { number: formatNumber(files.length) })}
+    </p>
+  );
+}
+
+function EntryActions({
+  entry,
+  canEdit,
+  picking,
+  pickedHere,
+  onOpen,
+  onCompare,
+  onPick,
+  onRename,
+  onUnname,
+}: Readonly<{
+  entry: CollabHistoryEntry;
+  canEdit: boolean;
+  picking: boolean;
+  pickedHere: boolean;
+  onOpen: (entry: CollabHistoryEntry) => void;
+  onCompare: (entry: CollabHistoryEntry) => void;
+  onPick: (entry: CollabHistoryEntry) => void;
+  onRename: () => void;
+  onUnname: () => void;
+}>) {
+  const { t } = useTranslation(["collab"]);
+  if (picking && pickedHere) return null;
+  if (picking) {
+    return (
+      <Button type="button" variant="outline" size="xs" onClick={() => onPick(entry)}>
+        {t(($) => $.collab.history.compareWith)}
+      </Button>
+    );
+  }
+  const nameLabel = entry.name ? t(($) => $.collab.history.rename) : t(($) => $.collab.history.name);
+  return (
+    <>
+      <Button type="button" variant="ghost" size="xs" onClick={() => onOpen(entry)}>
+        {t(($) => $.collab.history.open)}
+      </Button>
+      <Button type="button" variant="ghost" size="xs" onClick={() => onCompare(entry)}>
+        {t(($) => $.collab.history.compare)}
+      </Button>
+      {canEdit ? (
+        <Button type="button" variant="ghost" size="xs" onClick={onRename}>
+          {nameLabel}
+        </Button>
+      ) : null}
+      {canEdit && entry.name && entry.versionId ? (
+        <Button type="button" variant="ghost" size="xs" onClick={onUnname}>
+          {t(($) => $.collab.history.unname)}
+        </Button>
+      ) : null}
+    </>
+  );
+}
+
 const EntryRow = memo(function EntryRow({
   entry,
   names,
@@ -181,13 +266,6 @@ const EntryRow = memo(function EntryRow({
     (shown, rest) => t(($) => $.collab.history.authorsMore, { names: shown, number: formatNumber(rest) }),
     3,
   );
-  const single = entry.files.length === 1 ? entry.files[0] : null;
-  let when = t(($) => $.collab.history.earlier);
-  if (entry.at > 0) {
-    const from = formatTime(entry.at);
-    const to = formatTime(entry.until);
-    when = entry.until > entry.at && from !== to ? t(($) => $.collab.history.timeRange, { from, to }) : from;
-  }
   const save = async (name: string) => {
     if (!projectId) return;
     await collabVersionName(projectId, entry.versionId ?? entry.id, name);
@@ -212,15 +290,7 @@ const EntryRow = memo(function EntryRow({
     >
       <div className="min-w-0 space-y-0.5">
         <p className="flex min-w-0 flex-wrap items-center gap-1.5">
-          {entry.at > 0 ? (
-            <Tooltip label={formatDateTime(entry.at)}>
-              <time dateTime={new Date(entry.at).toISOString()} className="font-medium tabular-nums">
-                {when}
-              </time>
-            </Tooltip>
-          ) : (
-            <span className="font-medium">{when}</span>
-          )}
+          <EntryTime entry={entry} />
           {entry.name ? (
             <Badge variant="primaryGhost" size="sm" className="max-w-full truncate">
               {entry.name}
@@ -228,47 +298,23 @@ const EntryRow = memo(function EntryRow({
           ) : null}
         </p>
         {entry.authors.length > 0 ? <p className="truncate text-muted-foreground">{authors}</p> : null}
-        {single ? (
-          <Tooltip label={single} wide className="block">
-            <p className="truncate font-mono text-muted-foreground">{middleEllipsisPath(single, PATH_CHARS)}</p>
-          </Tooltip>
-        ) : null}
-        {entry.files.length > 1 ? (
-          <p className="text-muted-foreground">
-            {t(($) => $.collab.history.filesChanged, { number: formatNumber(entry.files.length) })}
-          </p>
-        ) : null}
+        <EntryFiles files={entry.files} />
       </div>
       {naming ? (
         <NameForm initial={entry.name ?? ""} onSave={save} onCancel={() => setNaming(false)} />
       ) : (
         <div className="mt-1 flex flex-wrap items-center gap-1">
-          {picking ? (
-            pickedHere ? null : (
-              <Button type="button" variant="outline" size="xs" onClick={() => onPick(entry)}>
-                {t(($) => $.collab.history.compareWith)}
-              </Button>
-            )
-          ) : (
-            <>
-              <Button type="button" variant="ghost" size="xs" onClick={() => onOpen(entry)}>
-                {t(($) => $.collab.history.open)}
-              </Button>
-              <Button type="button" variant="ghost" size="xs" onClick={() => onCompare(entry)}>
-                {t(($) => $.collab.history.compare)}
-              </Button>
-              {canEdit ? (
-                <Button type="button" variant="ghost" size="xs" onClick={() => setNaming(true)}>
-                  {entry.name ? t(($) => $.collab.history.rename) : t(($) => $.collab.history.name)}
-                </Button>
-              ) : null}
-              {canEdit && entry.name && entry.versionId ? (
-                <Button type="button" variant="ghost" size="xs" onClick={unname}>
-                  {t(($) => $.collab.history.unname)}
-                </Button>
-              ) : null}
-            </>
-          )}
+          <EntryActions
+            entry={entry}
+            canEdit={canEdit}
+            picking={picking}
+            pickedHere={pickedHere}
+            onOpen={onOpen}
+            onCompare={onCompare}
+            onPick={onPick}
+            onRename={() => setNaming(true)}
+            onUnname={unname}
+          />
         </div>
       )}
       {error ? <InlineAlert>{error}</InlineAlert> : null}

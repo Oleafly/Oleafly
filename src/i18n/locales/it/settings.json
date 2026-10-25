@@ -525,11 +525,19 @@
         "swatchAriaLabel": "Accento {{name}}"
       },
       "appIcon": {
+        "aurora": "Aurora",
         "blue": "Blu",
+        "coral": "Corallo",
         "description": "Scegli l'icona che Oleafly mostra nel Dock o nella barra delle applicazioni mentre è aperto.",
+        "iridescent": "Iridescente",
         "label": "Icona dell'app",
         "light": "Chiara",
-        "note": "Il Finder, il menu Start e i launcher delle app continuano a mostrare l'icona predefinita."
+        "mint": "Menta",
+        "note": "Il Finder, il menu Start e i launcher delle app continuano a mostrare l'icona predefinita.",
+        "ocean": "Oceano",
+        "pastel": "Pastello",
+        "prism": "Prisma",
+        "sunset": "Tramonto"
       },
       "bgPattern": {
         "description": "Scegli la trama dietro lo scaffale dei progetti.",

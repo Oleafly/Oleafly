@@ -15,7 +15,7 @@ export function historyDays(entries: readonly CollabHistoryEntry[]): HistoryDay[
   const days: HistoryDay[] = [];
   const earlier: CollabHistoryEntry[] = [];
   for (const entry of entries) {
-    if (!(entry.at > 0)) {
+    if (entry.at <= 0) {
       earlier.push(entry);
       continue;
     }

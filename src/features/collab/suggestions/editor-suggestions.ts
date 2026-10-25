@@ -166,7 +166,7 @@ function placed(
   return incoming.map((span) => {
     const before = reported.get(span.id);
     const mine = kept.get(span.id);
-    if (mine && mine.kind === span.kind && before?.from === span.from && before.to === span.to) {
+    if (mine?.kind === span.kind && before?.from === span.from && before.to === span.to) {
       return { ...span, from: mine.from, to: mine.to };
     }
     return clampSpan(doc, span);
@@ -198,8 +198,8 @@ const suggestionField = StateField.define<SuggestionField>({
 });
 
 function idAt(target: EventTarget | null): string | null {
-  const element = target instanceof Element ? target.closest("[data-suggestion-id]") : null;
-  return element?.getAttribute("data-suggestion-id") || null;
+  const element = target instanceof Element ? target.closest<HTMLElement>("[data-suggestion-id]") : null;
+  return element?.dataset.suggestionId || null;
 }
 
 interface Pushed {

@@ -519,11 +519,19 @@
         "swatchAriaLabel": "{{name}} のアクセント"
       },
       "appIcon": {
+        "aurora": "オーロラ",
         "blue": "ブルー",
+        "coral": "コーラル",
         "description": "Oleafly を開いている間に Dock やタスクバーに表示するアイコンを選びます。",
+        "iridescent": "玉虫色",
         "label": "アプリアイコン",
         "light": "ライト",
-        "note": "Finder、スタート メニュー、アプリランチャーでは既定のアイコンのままです。"
+        "mint": "ミント",
+        "note": "Finder、スタート メニュー、アプリランチャーでは既定のアイコンのままです。",
+        "ocean": "オーシャン",
+        "pastel": "パステル",
+        "prism": "プリズム",
+        "sunset": "サンセット"
       },
       "bgPattern": {
         "description": "プロジェクトの棚の背景の模様を選びます。",

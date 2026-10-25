@@ -2118,7 +2118,7 @@ const MARKDOWN_LINK =
 const QUARTO_SOURCE = /\.(?:qmd|rmd)$/i;
 const QUARTO_CROSS_REFERENCE =
   /^(?:fig|tbl|lst|tip|nte|wrn|imp|cau|thm|lem|cor|prp|cnj|def|exm|exr|sol|rem|eq|sec)-/u;
-const QUARTO_FENCE = /^\s*(`{3,}|~{3,})(.*)$/u;
+const QUARTO_FENCE = /^\s*(`{3,}(?!`)|~{3,}(?!~))(.*)$/u;
 const QUARTO_CHUNK_INFO = /^\s*\{\s*[A-Za-z]/u;
 const QUARTO_CHUNK_OPTION = /^\s*#\|/u;
 const QUARTO_CHUNK_LABEL =
@@ -2659,12 +2659,52 @@ function addMarkdownIncludes(
 
 function quartoChunkFenceCloses(fence: string, line: string): boolean {
   const marker = QUARTO_FENCE.exec(line);
-  return (
-    marker !== null &&
-    marker[1][0] === fence[0] &&
-    marker[1].length >= fence.length &&
-    marker[2].trim() === ""
-  );
+  if (!marker?.[1].startsWith(fence[0])) return false;
+  return marker[1].length >= fence.length && marker[2].trim() === "";
+}
+
+interface QuartoChunkScan {
+  fence: string | null;
+  options: boolean;
+}
+
+function scanQuartoChunkLine(
+  scan: QuartoChunkScan,
+  line: string,
+  offset: number,
+  addLabel: (name: string, from: number) => void,
+): void {
+  if (!scan.fence) {
+    openQuartoChunk(scan, line, offset, addLabel);
+    return;
+  }
+  if (quartoChunkFenceCloses(scan.fence, line)) {
+    scan.fence = null;
+    return;
+  }
+  if (!scan.options || !QUARTO_CHUNK_OPTION.test(line)) {
+    scan.options = false;
+    return;
+  }
+  const label = QUARTO_CHUNK_LABEL.exec(line);
+  if (label) addLabel(label[3], offset + label[1].length + label[2].length);
+}
+
+function openQuartoChunk(
+  scan: QuartoChunkScan,
+  line: string,
+  offset: number,
+  addLabel: (name: string, from: number) => void,
+): void {
+  const marker = QUARTO_FENCE.exec(line);
+  if (!marker) return;
+  scan.fence = marker[1];
+  const info = marker[2];
+  scan.options = QUARTO_CHUNK_INFO.test(info);
+  const header = scan.options ? KNITR_HEADER_LABEL.exec(info) : null;
+  if (!header) return;
+  const infoOffset = offset + line.length - info.length;
+  addLabel(header[1], infoOffset + header.index + header[0].lastIndexOf(header[1]));
 }
 
 function addQuartoChunkLabels(
@@ -2675,32 +2715,10 @@ function addQuartoChunkLabels(
   const addLabel = (name: string, from: number) => {
     addDefinition(definitions, "markdown", file, starts, "anchor", name, from, from + name.length);
   };
-  let fence: string | null = null;
-  let options = false;
+  const scan: QuartoChunkScan = { fence: null, options: false };
   let offset = 0;
   for (const line of lines) {
-    if (fence) {
-      if (quartoChunkFenceCloses(fence, line)) {
-        fence = null;
-      } else if (options && QUARTO_CHUNK_OPTION.test(line)) {
-        const label = QUARTO_CHUNK_LABEL.exec(line);
-        if (label) addLabel(label[3], offset + label[1].length + label[2].length);
-      } else {
-        options = false;
-      }
-    } else {
-      const marker = QUARTO_FENCE.exec(line);
-      if (marker) {
-        fence = marker[1];
-        const info = marker[2];
-        options = QUARTO_CHUNK_INFO.test(info);
-        const header = options ? KNITR_HEADER_LABEL.exec(info) : null;
-        if (header) {
-          const infoOffset = offset + line.length - info.length;
-          addLabel(header[1], infoOffset + header.index + header[0].lastIndexOf(header[1]));
-        }
-      }
-    }
+    scanQuartoChunkLine(scan, line, offset, addLabel);
     offset += line.length + 1;
   }
 }

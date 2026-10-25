@@ -80,8 +80,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Add custom provider** in Settings > AI has presets for Qwen (DashScope),
   Kimi (Moonshot), Zhipu GLM, SiliconFlow and Volcengine Ark. Pick one and it
   fills in the name and base URL, so you only add your API key.
-- **App icon** in Settings > Appearance switches between the blue icon and a
-  light one, in the Dock or taskbar while Oleafly is open.
+- **App icon** in Settings > Appearance offers ten icons for the Dock or
+  taskbar while Oleafly is open: pastel, blue, light, prism, iridescent, ocean,
+  mint, aurora, sunset and coral.
 
 ### Changed
 
@@ -113,8 +114,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a computer without a TeX installation keeps Tectonic. (#317)
 - Cloud sync leaves out `.venv` and `__pycache__` folders. A build file you
   track in Git, such as a log of results, is now backed up. (#317)
-- New app icon: a white quill on a blue tile. The quill inside the app is
-  blue too.
+- New app icon: a quill in a pastel gradient, cyan to amber, on a light
+  tile. The quill inside the app is blue.
 
 ### Fixed
 

@@ -48,6 +48,79 @@ function SuggestedText({ suggestion, hue }: Readonly<{ suggestion: CollabSuggest
   );
 }
 
+function SuggestionHeader({
+  suggestion,
+  name,
+  imageUrl,
+  hue,
+  now,
+}: Readonly<{
+  suggestion: CollabSuggestion;
+  name: string;
+  imageUrl: string | null | undefined;
+  hue: number;
+  now: number;
+}>) {
+  const unverified = !suggestion.verified;
+  return (
+    <div className="flex min-w-0 items-center gap-1.5 text-xs">
+      <Avatar
+        person={{ id: suggestion.author, name, imageUrl, hue }}
+        size="sm"
+        fallbackIcon={unverified ? <ShieldQuestion /> : undefined}
+        className={cn(unverified && "bg-muted text-muted-foreground")}
+      />
+      <span className={cn("truncate font-medium", unverified && "italic text-muted-foreground")}>{name}</span>
+      <Tooltip label={formatDateTime(suggestion.createdAt)} className="shrink-0">
+        <time
+          dateTime={new Date(suggestion.createdAt).toISOString()}
+          className="text-[0.6875rem] text-muted-foreground"
+        >
+          {formatRelativeTimeFrom(suggestion.createdAt, now)}
+        </time>
+      </Tooltip>
+    </div>
+  );
+}
+
+function SuggestionActions({
+  canResolve,
+  canWithdraw,
+  busy,
+  onAccept,
+  onReject,
+  onWithdraw,
+}: Readonly<{
+  canResolve: boolean;
+  canWithdraw: boolean;
+  busy: boolean;
+  onAccept: () => void;
+  onReject: () => void;
+  onWithdraw: () => void;
+}>) {
+  const { t } = useTranslation(["collab"]);
+  if (canResolve) {
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Button type="button" size="xs" disabled={busy} onClick={onAccept}>
+          {t(($) => $.collab.suggestions.accept)}
+        </Button>
+        <Button type="button" variant="outline" size="xs" disabled={busy} onClick={onReject}>
+          {t(($) => $.collab.suggestions.reject)}
+        </Button>
+      </div>
+    );
+  }
+  if (!canWithdraw) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Button type="button" variant="outline" size="xs" disabled={busy} onClick={onWithdraw}>
+        {t(($) => $.collab.suggestions.withdraw)}
+      </Button>
+    </div>
+  );
+}
+
 export const SuggestionCard = memo(function SuggestionCard({
   suggestion,
   thread,
@@ -109,25 +182,13 @@ export const SuggestionCard = memo(function SuggestionCard({
           selected ? "border-primary/30 bg-primary/5" : "border-transparent hover:bg-sidebar-accent/60",
         )}
       >
-        <div className="flex min-w-0 items-center gap-1.5 text-xs">
-          <Avatar
-            person={{ id: suggestion.author, name, imageUrl: person?.avatar_url, hue }}
-            size="sm"
-            fallbackIcon={suggestion.verified ? undefined : <ShieldQuestion />}
-            className={cn(!suggestion.verified && "bg-muted text-muted-foreground")}
-          />
-          <span className={cn("truncate font-medium", !suggestion.verified && "italic text-muted-foreground")}>
-            {name}
-          </span>
-          <Tooltip label={formatDateTime(suggestion.createdAt)} className="shrink-0">
-            <time
-              dateTime={new Date(suggestion.createdAt).toISOString()}
-              className="text-[0.6875rem] text-muted-foreground"
-            >
-              {formatRelativeTimeFrom(suggestion.createdAt, context.now)}
-            </time>
-          </Tooltip>
-        </div>
+        <SuggestionHeader
+          suggestion={suggestion}
+          name={name}
+          imageUrl={person?.avatar_url}
+          hue={hue}
+          now={context.now}
+        />
         <Tooltip label={t(($) => $.collab.comments.showInEditor)} className="flex w-full">
           <button
             type="button"
@@ -139,35 +200,14 @@ export const SuggestionCard = memo(function SuggestionCard({
             <SuggestedText suggestion={suggestion} hue={hue} />
           </button>
         </Tooltip>
-        {context.canResolve || (own && context.canSuggest) ? (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {context.canResolve ? (
-              <>
-                <Button
-                  type="button"
-                  size="xs"
-                  disabled={busy}
-                  onClick={() => run(() => acceptSuggestions([suggestion.id]))}
-                >
-                  {t(($) => $.collab.suggestions.accept)}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="xs"
-                  disabled={busy}
-                  onClick={() => run(() => rejectSuggestions([suggestion.id]))}
-                >
-                  {t(($) => $.collab.suggestions.reject)}
-                </Button>
-              </>
-            ) : (
-              <Button type="button" variant="outline" size="xs" disabled={busy} onClick={() => setWithdrawing(true)}>
-                {t(($) => $.collab.suggestions.withdraw)}
-              </Button>
-            )}
-          </div>
-        ) : null}
+        <SuggestionActions
+          canResolve={context.canResolve}
+          canWithdraw={own && context.canSuggest}
+          busy={busy}
+          onAccept={() => run(() => acceptSuggestions([suggestion.id]))}
+          onReject={() => run(() => rejectSuggestions([suggestion.id]))}
+          onWithdraw={() => setWithdrawing(true)}
+        />
         {error ? <InlineAlert>{error}</InlineAlert> : null}
         {messages.length > 0 && thread ? (
           <ol className="space-y-2">

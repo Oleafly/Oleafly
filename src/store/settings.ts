@@ -840,8 +840,16 @@ export function appZoomLevel(value: unknown): number {
 }
 
 export const APP_ICONS = [
+  { id: "pastel", src: "/app-icon/pastel.png" },
   { id: "blue", src: "/app-icon/blue.png" },
   { id: "light", src: "/app-icon/light.png" },
+  { id: "prism", src: "/app-icon/prism.png" },
+  { id: "iridescent", src: "/app-icon/iridescent.png" },
+  { id: "ocean", src: "/app-icon/ocean.png" },
+  { id: "mint", src: "/app-icon/mint.png" },
+  { id: "aurora", src: "/app-icon/aurora.png" },
+  { id: "sunset", src: "/app-icon/sunset.png" },
+  { id: "coral", src: "/app-icon/coral.png" },
 ] as const;
 
 export type AppIconId = (typeof APP_ICONS)[number]["id"];
@@ -849,7 +857,7 @@ export type AppIconId = (typeof APP_ICONS)[number]["id"];
 export const APP_ICON_IDS: readonly AppIconId[] = APP_ICONS.map((icon) => icon.id);
 
 export function readAppIcon(value: unknown): AppIconId {
-  return APP_ICON_IDS.find((id) => id === value) ?? "blue";
+  return APP_ICON_IDS.find((id) => id === value) ?? "pastel";
 }
 
 export function appIconSource(id: AppIconId): string {
@@ -1268,7 +1276,7 @@ const PREF_DEFAULTS = {
   accentColor: "#2563eb",
   dockPlacement: "left" as DockPlacement,
   bgPattern: "dots" as BackgroundPattern,
-  appIcon: "blue" as AppIconId,
+  appIcon: "pastel" as AppIconId,
   homeProjectLayout: "grid" as HomeProjectLayout,
   latexTools: false,
   webBrowser: false,
@@ -2019,7 +2027,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.bgPattern", v);
     set({ bgPattern: v });
   },
-  appIcon: readAppIcon(ls("oleafly.appIcon", "blue")),
+  appIcon: readAppIcon(ls("oleafly.appIcon", "pastel")),
   setAppIcon: (v) => {
     const icon = readAppIcon(v);
     saveLs("oleafly.appIcon", icon);

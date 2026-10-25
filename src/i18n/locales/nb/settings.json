@@ -522,11 +522,19 @@
         "swatchAriaLabel": "Aksenten {{name}}"
       },
       "appIcon": {
+        "aurora": "Nordlys",
         "blue": "Blå",
+        "coral": "Korall",
         "description": "Velg ikonet Oleafly viser i Dock eller på oppgavelinjen mens appen er åpen.",
+        "iridescent": "Iriserende",
         "label": "Appikon",
         "light": "Lys",
-        "note": "Finder, Start-menyen og appstartere viser fortsatt standardikonet."
+        "mint": "Mynte",
+        "note": "Finder, Start-menyen og appstartere viser fortsatt standardikonet.",
+        "ocean": "Hav",
+        "pastel": "Pastell",
+        "prism": "Prisme",
+        "sunset": "Solnedgang"
       },
       "bgPattern": {
         "description": "Velg mønsteret bak prosjekthyllen.",

@@ -522,11 +522,19 @@
         "swatchAriaLabel": "{{name}} vurgusu"
       },
       "appIcon": {
+        "aurora": "Aurora",
         "blue": "Mavi",
+        "coral": "Mercan",
         "description": "Oleafly açıkken Dock'ta veya görev çubuğunda gösterilecek simgeyi seçin.",
+        "iridescent": "Yanardöner",
         "label": "Uygulama simgesi",
         "light": "Açık",
-        "note": "Finder, Başlat menüsü ve uygulama başlatıcılar varsayılan simgeyi göstermeye devam eder."
+        "mint": "Nane",
+        "note": "Finder, Başlat menüsü ve uygulama başlatıcılar varsayılan simgeyi göstermeye devam eder.",
+        "ocean": "Okyanus",
+        "pastel": "Pastel",
+        "prism": "Prizma",
+        "sunset": "Gün batımı"
       },
       "bgPattern": {
         "description": "Proje rafının arkasındaki deseni seçin.",

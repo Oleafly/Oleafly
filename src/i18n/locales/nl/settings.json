@@ -522,11 +522,19 @@
         "swatchAriaLabel": "Accent {{name}}"
       },
       "appIcon": {
+        "aurora": "Noorderlicht",
         "blue": "Blauw",
+        "coral": "Koraal",
         "description": "Kies het pictogram dat Oleafly in het Dock of de taakbalk toont zolang het open is.",
+        "iridescent": "Iriserend",
         "label": "App-pictogram",
         "light": "Licht",
-        "note": "Finder, het Startmenu en app-starters blijven het standaardpictogram tonen."
+        "mint": "Mint",
+        "note": "Finder, het Startmenu en app-starters blijven het standaardpictogram tonen.",
+        "ocean": "Oceaan",
+        "pastel": "Pastel",
+        "prism": "Prisma",
+        "sunset": "Zonsondergang"
       },
       "bgPattern": {
         "description": "Kies het patroon achter de projectplank.",

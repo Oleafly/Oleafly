@@ -522,11 +522,19 @@
         "swatchAriaLabel": "{{name}} accent"
       },
       "appIcon": {
+        "aurora": "Aurora",
         "blue": "Blue",
+        "coral": "Coral",
         "description": "Choose the icon Oleafly shows in the Dock or taskbar while it's open.",
+        "iridescent": "Iridescent",
         "label": "App icon",
         "light": "Light",
-        "note": "Finder, the Start menu and app launchers still show the default icon."
+        "mint": "Mint",
+        "note": "Finder, the Start menu and app launchers still show the default icon.",
+        "ocean": "Ocean",
+        "pastel": "Pastel",
+        "prism": "Prism",
+        "sunset": "Sunset"
       },
       "bgPattern": {
         "description": "Pick the pattern behind the project shelf.",

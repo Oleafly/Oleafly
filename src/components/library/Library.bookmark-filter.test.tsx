@@ -92,7 +92,7 @@ describe("Library bookmark filters", () => {
 
     expect(screen.getByRole("img", { name: "Oleafly app icon" })).toHaveAttribute(
       "src",
-      "/app-icon/blue.png",
+      "/app-icon/pastel.png",
     );
     expect(
       screen.getByText(/Write, compile, and proofread LaTeX, Typst, and Markdown/),

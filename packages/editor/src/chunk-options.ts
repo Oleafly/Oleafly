@@ -91,7 +91,7 @@ const CALEPIN_OPTIONS: ChunkOptionSet = {
   syntax: "typst",
   names: CALEPIN_CHUNK_OPTIONS,
   detail: "calepin.completion.chunkOption",
-  opener: /`{3,}[A-Za-z][\w+-]*[ \t]*$/u,
+  opener: /(?<!`)`{3,}[A-Za-z][\w+-]*[ \t]*$/u,
 };
 
 function optionBlockStart(state: EditorState, lineNumber: number): number {

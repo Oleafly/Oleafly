@@ -25,6 +25,7 @@ import {
   reloadSuggestions,
   useSuggestions,
   type FileSuggestions,
+  type SuggestionsState,
 } from "../suggestions/suggestions-store";
 import { CommentComposer } from "./CommentComposer";
 import { CommentQuote } from "./CommentQuote";
@@ -40,6 +41,7 @@ import {
   reloadThreads,
   setShowResolved,
   useComments,
+  type CommentsState,
   type FileThreads,
 } from "./comments-store";
 import { ThreadCard } from "./ThreadCard";
@@ -265,13 +267,14 @@ function FileSection({
       </>
     );
   };
+  const shownCount = showResolved ? tally.open + tally.resolved : tally.open;
   return (
     <SidebarSection
       id={`comments-file-${encodeURIComponent(tally.path)}`}
       title={title}
       titleHint={tally.path}
       icon={<FileText aria-hidden className="size-3.5" />}
-      count={commentsOn ? tally.open + (showResolved ? tally.resolved : 0) : undefined}
+      count={commentsOn ? shownCount : undefined}
       titleAdornment={<PendingBadge pending={tally.pending} />}
       open={open}
       onOpenChange={(next) => (next ? expand() : collapse())}
@@ -279,6 +282,209 @@ function FileSection({
     >
       {content()}
     </SidebarSection>
+  );
+}
+
+type PaneComments = Pick<
+  CommentsState,
+  | "status"
+  | "path"
+  | "threads"
+  | "phase"
+  | "error"
+  | "selectedId"
+  | "focus"
+  | "showResolved"
+  | "draft"
+  | "emptied"
+  | "counts"
+  | "elsewhere"
+>;
+
+type PaneSuggestions = Pick<
+  SuggestionsState,
+  | "projectId"
+  | "path"
+  | "suggestions"
+  | "phase"
+  | "error"
+  | "counts"
+  | "elsewhere"
+  | "selectedId"
+  | "hoveredId"
+  | "focus"
+>;
+
+function phaseFailed(path: string | null, phase: string): boolean {
+  return path !== null && phase === "failed";
+}
+
+function stillLoading(
+  counts: readonly unknown[] | null,
+  path: string | null,
+  phase: string,
+  loaded: number,
+): boolean {
+  return counts === null || (path !== null && phase === "loading" && loaded === 0);
+}
+
+function otherFileTallies(
+  commentsOn: boolean,
+  state: PaneComments,
+  review: PaneSuggestions,
+  activePath: string | null,
+): Tally[] {
+  const pendingCounts = review.counts ?? [];
+  const commentCounts = commentsOn ? (state.counts ?? []) : [];
+  const listed = new Set(commentCounts.map((count) => count.path));
+  const extra = pendingCounts
+    .filter((count) => count.pending > 0 && !listed.has(count.path))
+    .map((count) => ({ path: count.path, open: 0, resolved: 0 }))
+    .sort((left, right) => left.path.localeCompare(right.path));
+  return [...commentCounts, ...extra]
+    .filter((count) => count.path !== activePath)
+    .map((count) =>
+      tallyOf(count, state.elsewhere[count.path], review.elsewhere[count.path], pendingIn(review, count.path)),
+    );
+}
+
+interface PaneBodyProps {
+  state: PaneComments;
+  review: PaneSuggestions;
+  context: SuggestionContext;
+  nothing: boolean;
+  loading: boolean;
+  hiddenResolved: number;
+  commentsFailed: boolean;
+  suggestionsFailed: boolean;
+  activePath: string | null;
+  activeItems: readonly ReviewItem[];
+  activeSuggestions: readonly CollabSuggestion[];
+  anchoredCount: number;
+  detached: readonly CollabCommentThread[];
+  others: readonly Tally[];
+}
+
+function EmptyPane({ hiddenResolved, canWrite }: Readonly<{ hiddenResolved: number; canWrite: boolean }>) {
+  const { t } = useTranslation(["collab"]);
+  let message = t(($) => $.collab.comments.empty);
+  if (hiddenResolved > 0) message = t(($) => $.collab.comments.allResolved);
+  else if (canWrite) message = t(($) => $.collab.comments.emptyCanWrite);
+  return <p className="px-3 py-2 text-xs text-muted-foreground">{message}</p>;
+}
+
+function PaneBody({
+  state,
+  review,
+  context,
+  nothing,
+  loading,
+  hiddenResolved,
+  commentsFailed,
+  suggestionsFailed,
+  activePath,
+  activeItems,
+  activeSuggestions,
+  anchoredCount,
+  detached,
+  others,
+}: Readonly<PaneBodyProps>) {
+  const { t } = useTranslation(["collab"]);
+  const [foldedPath, setFoldedPath] = useState<string | null>(null);
+  const [detachedOpen, setDetachedOpen] = useState(true);
+  const { commentsOn, canResolve } = context;
+  const detachedTitle = t(($) => $.collab.comments.detached);
+  const fileTitle = activePath ? basename(activePath) : "";
+  if (nothing && loading) {
+    return (
+      <div className="flex justify-center py-6">
+        <Spinner className="text-muted-foreground" />
+      </div>
+    );
+  }
+  if (nothing) return <EmptyPane hiddenResolved={hiddenResolved} canWrite={context.canWrite} />;
+  return (
+    <>
+      {commentsFailed ? (
+        <div className="px-3 py-4">
+          <LoadFailed
+            message={t(($) => $.collab.comments.loadFailed)}
+            reason={collabErrorMessage(state.error ?? "internal")}
+            onRetry={reloadThreads}
+          />
+        </div>
+      ) : null}
+      {suggestionsFailed ? (
+        <div className="px-3 py-4">
+          <LoadFailed
+            message={t(($) => $.collab.suggestions.loadFailed)}
+            reason={collabErrorMessage(review.error ?? "internal")}
+            onRetry={reloadSuggestions}
+          />
+        </div>
+      ) : null}
+      {activePath !== null && activeItems.length > 0 ? (
+        <SidebarSection
+          id="comments-threads"
+          title={fileTitle}
+          titleHint={activePath}
+          icon={<FileText aria-hidden className="size-3.5" />}
+          count={commentsOn ? anchoredCount : undefined}
+          titleAdornment={<PendingBadge pending={activeSuggestions.length} />}
+          open={foldedPath !== activePath}
+          onOpenChange={(open) => setFoldedPath(open ? null : activePath)}
+          contentClassName="px-2 py-1"
+        >
+          {canResolve ? <FileSuggestionActions path={activePath} pending={activeSuggestions.length} /> : null}
+          <ReviewList
+            label={fileTitle}
+            items={activeItems}
+            threads={state.threads}
+            selectedId={state.selectedId}
+            suggestionId={review.hoveredId ?? review.selectedId}
+            focus={state.focus}
+            suggestionFocus={review.focus}
+            context={context}
+          />
+        </SidebarSection>
+      ) : null}
+      {detached.length > 0 ? (
+        <SidebarSection
+          id="comments-detached"
+          title={detachedTitle}
+          icon={<Unlink aria-hidden className="size-3.5" />}
+          count={detached.length}
+          open={detachedOpen}
+          onOpenChange={setDetachedOpen}
+          contentClassName="space-y-1 px-2 py-1"
+        >
+          <p className="px-1 text-xs text-muted-foreground">{t(($) => $.collab.comments.detachedHint)}</p>
+          <ul aria-label={detachedTitle} className="space-y-1">
+            {detached.map((thread) => (
+              <ThreadCard
+                key={thread.id}
+                thread={thread}
+                selected={thread.id === state.selectedId}
+                focus={state.focus}
+                context={context}
+              />
+            ))}
+          </ul>
+        </SidebarSection>
+      ) : null}
+      {others.map((tally) => (
+        <FileSection
+          key={tally.path}
+          tally={tally}
+          loaded={state.elsewhere[tally.path]}
+          suggested={review.elsewhere[tally.path]}
+          commentsOn={commentsOn}
+          showResolved={state.showResolved}
+          focus={state.focus}
+          context={context}
+        />
+      ))}
+    </>
   );
 }
 
@@ -322,8 +528,6 @@ export function CommentsPane() {
       self: store.share?.account_id ?? null,
     })),
   );
-  const [foldedPath, setFoldedPath] = useState<string | null>(null);
-  const [detachedOpen, setDetachedOpen] = useState(true);
   const now = useNow();
   const commentsOn = commentsShown(state.status);
   const canWrite = canWriteComments(state.status, live.role, live.liveState);
@@ -349,25 +553,10 @@ export function CommentsPane() {
   const anchored = shown.filter((thread) => !isDetached(thread));
   const detached = shown.filter(isDetached);
   const activeItems = useMemo(() => reviewItems(anchored, activeSuggestions), [anchored, activeSuggestions]);
-  const tallies = useMemo(() => {
-    const pendingCounts = review.counts ?? [];
-    const commentCounts = commentsOn ? (state.counts ?? []) : [];
-    const listed = new Set(commentCounts.map((count) => count.path));
-    const extra = pendingCounts
-      .filter((count) => count.pending > 0 && !listed.has(count.path))
-      .map((count) => ({ path: count.path, open: 0, resolved: 0 }))
-      .sort((left, right) => left.path.localeCompare(right.path));
-    return [...commentCounts, ...extra]
-      .filter((count) => count.path !== activePath)
-      .map((count) =>
-        tallyOf(
-          count,
-          state.elsewhere[count.path],
-          review.elsewhere[count.path],
-          pendingIn(review, count.path),
-        ),
-      );
-  }, [commentsOn, state.counts, state.elsewhere, review, activePath]);
+  const tallies = useMemo(
+    () => otherFileTallies(commentsOn, state, review, activePath),
+    [commentsOn, state, review, activePath],
+  );
   const others = tallies.filter(
     (tally) => tally.open + (state.showResolved ? tally.resolved : 0) + tally.pending > 0,
   );
@@ -378,120 +567,18 @@ export function CommentsPane() {
     ? t(($) => $.collab.comments.hideResolved)
     : t(($) => $.collab.comments.showResolved);
   const newLabel = t(($) => $.collab.comments.newLabel);
-  const detachedTitle = t(($) => $.collab.comments.detached);
-  const fileTitle = activePath ? basename(activePath) : "";
-  const commentsFailed = commentsOn && state.path !== null && state.phase === "failed";
-  const suggestionsFailed = review.path !== null && review.phase === "failed";
-  const failed = commentsFailed || suggestionsFailed;
-  const commentsLoading =
-    commentsOn && (state.counts === null || (state.path !== null && state.phase === "loading" && state.threads.length === 0));
-  const suggestionsLoading =
-    review.projectId !== null &&
-    (review.counts === null || (review.path !== null && review.phase === "loading" && review.suggestions.length === 0));
-  const loading = commentsLoading || suggestionsLoading;
+  const commentsFailed = commentsOn && phaseFailed(state.path, state.phase);
+  const suggestionsFailed = phaseFailed(review.path, review.phase);
+  const loading =
+    (commentsOn && stillLoading(state.counts, state.path, state.phase, state.threads.length)) ||
+    (review.projectId !== null && stillLoading(review.counts, review.path, review.phase, review.suggestions.length));
   const nothing =
-    !failed && anchored.length === 0 && detached.length === 0 && others.length === 0 && activeSuggestions.length === 0;
-  const activeShown = activePath !== null && activeItems.length > 0;
-
-  const body = () => {
-    if (nothing && loading) {
-      return (
-        <div className="flex justify-center py-6">
-          <Spinner className="text-muted-foreground" />
-        </div>
-      );
-    }
-    if (nothing) {
-      const message = (() => {
-        if (hiddenResolved > 0) return t(($) => $.collab.comments.allResolved);
-        return canWrite ? t(($) => $.collab.comments.emptyCanWrite) : t(($) => $.collab.comments.empty);
-      })();
-      return <p className="px-3 py-2 text-xs text-muted-foreground">{message}</p>;
-    }
-    return (
-      <>
-        {commentsFailed ? (
-          <div className="px-3 py-4">
-            <LoadFailed
-              message={t(($) => $.collab.comments.loadFailed)}
-              reason={collabErrorMessage(state.error ?? "internal")}
-              onRetry={reloadThreads}
-            />
-          </div>
-        ) : null}
-        {suggestionsFailed ? (
-          <div className="px-3 py-4">
-            <LoadFailed
-              message={t(($) => $.collab.suggestions.loadFailed)}
-              reason={collabErrorMessage(review.error ?? "internal")}
-              onRetry={reloadSuggestions}
-            />
-          </div>
-        ) : null}
-        {activeShown ? (
-          <SidebarSection
-            id="comments-threads"
-            title={fileTitle}
-            titleHint={activePath}
-            icon={<FileText aria-hidden className="size-3.5" />}
-            count={commentsOn ? anchored.length : undefined}
-            titleAdornment={<PendingBadge pending={activeSuggestions.length} />}
-            open={foldedPath !== activePath}
-            onOpenChange={(open) => setFoldedPath(open ? null : activePath)}
-            contentClassName="px-2 py-1"
-          >
-            {canResolve ? <FileSuggestionActions path={activePath} pending={activeSuggestions.length} /> : null}
-            <ReviewList
-              label={fileTitle}
-              items={activeItems}
-              threads={state.threads}
-              selectedId={state.selectedId}
-              suggestionId={review.hoveredId ?? review.selectedId}
-              focus={state.focus}
-              suggestionFocus={review.focus}
-              context={context}
-            />
-          </SidebarSection>
-        ) : null}
-        {detached.length > 0 ? (
-          <SidebarSection
-            id="comments-detached"
-            title={detachedTitle}
-            icon={<Unlink aria-hidden className="size-3.5" />}
-            count={detached.length}
-            open={detachedOpen}
-            onOpenChange={setDetachedOpen}
-            contentClassName="space-y-1 px-2 py-1"
-          >
-            <p className="px-1 text-xs text-muted-foreground">{t(($) => $.collab.comments.detachedHint)}</p>
-            <ul aria-label={detachedTitle} className="space-y-1">
-              {detached.map((thread) => (
-                <ThreadCard
-                  key={thread.id}
-                  thread={thread}
-                  selected={thread.id === state.selectedId}
-                  focus={state.focus}
-                  context={context}
-                />
-              ))}
-            </ul>
-          </SidebarSection>
-        ) : null}
-        {others.map((tally) => (
-          <FileSection
-            key={tally.path}
-            tally={tally}
-            loaded={state.elsewhere[tally.path]}
-            suggested={review.elsewhere[tally.path]}
-            commentsOn={commentsOn}
-            showResolved={state.showResolved}
-            focus={state.focus}
-            context={context}
-          />
-        ))}
-      </>
-    );
-  };
+    !commentsFailed &&
+    !suggestionsFailed &&
+    anchored.length === 0 &&
+    detached.length === 0 &&
+    others.length === 0 &&
+    activeSuggestions.length === 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="comments-pane" data-comments-pane>
@@ -537,7 +624,22 @@ export function CommentsPane() {
             />
           </section>
         ) : null}
-        {body()}
+        <PaneBody
+          state={state}
+          review={review}
+          context={context}
+          nothing={nothing}
+          loading={loading}
+          hiddenResolved={hiddenResolved}
+          commentsFailed={commentsFailed}
+          suggestionsFailed={suggestionsFailed}
+          activePath={activePath}
+          activeItems={activeItems}
+          activeSuggestions={activeSuggestions}
+          anchoredCount={anchored.length}
+          detached={detached}
+          others={others}
+        />
       </div>
     </div>
   );

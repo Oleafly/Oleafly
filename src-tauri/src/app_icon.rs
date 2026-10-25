@@ -2,39 +2,103 @@ use std::sync::{PoisonError, RwLock};
 
 use tauri::{AppHandle, Runtime};
 
-const BLUE_PNG: &[u8] = include_bytes!("../../public/app-icon/blue.png");
-const LIGHT_PNG: &[u8] = include_bytes!("../../public/app-icon/light.png");
-
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) enum AppIconVariant {
     #[default]
+    Pastel,
     Blue,
     Light,
+    Prism,
+    Iridescent,
+    Ocean,
+    Mint,
+    Aurora,
+    Sunset,
+    Coral,
 }
 
+const ICONS: [(AppIconVariant, &str, &[u8]); 10] = [
+    (
+        AppIconVariant::Pastel,
+        "pastel",
+        include_bytes!("../../public/app-icon/pastel.png"),
+    ),
+    (
+        AppIconVariant::Blue,
+        "blue",
+        include_bytes!("../../public/app-icon/blue.png"),
+    ),
+    (
+        AppIconVariant::Light,
+        "light",
+        include_bytes!("../../public/app-icon/light.png"),
+    ),
+    (
+        AppIconVariant::Prism,
+        "prism",
+        include_bytes!("../../public/app-icon/prism.png"),
+    ),
+    (
+        AppIconVariant::Iridescent,
+        "iridescent",
+        include_bytes!("../../public/app-icon/iridescent.png"),
+    ),
+    (
+        AppIconVariant::Ocean,
+        "ocean",
+        include_bytes!("../../public/app-icon/ocean.png"),
+    ),
+    (
+        AppIconVariant::Mint,
+        "mint",
+        include_bytes!("../../public/app-icon/mint.png"),
+    ),
+    (
+        AppIconVariant::Aurora,
+        "aurora",
+        include_bytes!("../../public/app-icon/aurora.png"),
+    ),
+    (
+        AppIconVariant::Sunset,
+        "sunset",
+        include_bytes!("../../public/app-icon/sunset.png"),
+    ),
+    (
+        AppIconVariant::Coral,
+        "coral",
+        include_bytes!("../../public/app-icon/coral.png"),
+    ),
+];
+
 impl AppIconVariant {
-    pub(crate) const ALL: [Self; 2] = [Self::Blue, Self::Light];
+    pub(crate) const ALL: [Self; ICONS.len()] = {
+        let mut all = [Self::Pastel; ICONS.len()];
+        let mut index = 0;
+        while index < ICONS.len() {
+            all[index] = ICONS[index].0;
+            index += 1;
+        }
+        all
+    };
 
     pub(crate) fn parse(value: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|variant| variant.id() == value)
     }
 
+    fn index(self) -> usize {
+        self as usize
+    }
+
     pub(crate) fn id(self) -> &'static str {
-        match self {
-            Self::Blue => "blue",
-            Self::Light => "light",
-        }
+        ICONS[self.index()].1
     }
 
     pub(crate) fn png(self) -> &'static [u8] {
-        match self {
-            Self::Blue => BLUE_PNG,
-            Self::Light => LIGHT_PNG,
-        }
+        ICONS[self.index()].2
     }
 }
 
-static CURRENT: RwLock<AppIconVariant> = RwLock::new(AppIconVariant::Blue);
+static CURRENT: RwLock<AppIconVariant> = RwLock::new(AppIconVariant::Pastel);
 
 #[cfg(any(not(target_os = "macos"), test))]
 pub(crate) fn current() -> AppIconVariant {
@@ -164,9 +228,10 @@ mod windowed {
     }
 
     fn set_window_icon<R: Runtime>(window: &Window<R>, variant: AppIconVariant) {
-        let default_icon = match variant {
-            AppIconVariant::Blue => window.app_handle().default_window_icon().cloned(),
-            AppIconVariant::Light => None,
+        let default_icon = if variant == AppIconVariant::default() {
+            window.app_handle().default_window_icon().cloned()
+        } else {
+            None
         };
         if let Some(icon) = default_icon.or_else(|| window_image(variant)) {
             let _ = window.set_icon(icon);
@@ -174,13 +239,9 @@ mod windowed {
     }
 
     fn window_image(variant: AppIconVariant) -> Option<Image<'static>> {
-        static BLUE: OnceLock<Option<Rgba>> = OnceLock::new();
-        static LIGHT: OnceLock<Option<Rgba>> = OnceLock::new();
-        let cell = match variant {
-            AppIconVariant::Blue => &BLUE,
-            AppIconVariant::Light => &LIGHT,
-        };
-        let rgba = cell
+        static IMAGES: [OnceLock<Option<Rgba>>; AppIconVariant::ALL.len()] =
+            [const { OnceLock::new() }; AppIconVariant::ALL.len()];
+        let rgba = IMAGES[variant.index()]
             .get_or_init(|| decode_png(variant.png()).map(window_sized))
             .as_ref()?;
         Some(Image::new(&rgba.pixels, rgba.width, rgba.height))
@@ -243,16 +304,42 @@ mod tests {
     }
 
     #[test]
-    fn parses_the_two_icon_names_and_nothing_else() {
+    fn parses_every_icon_name_and_nothing_else() {
         assert_eq!(AppIconVariant::parse("blue"), Some(AppIconVariant::Blue));
         assert_eq!(AppIconVariant::parse("light"), Some(AppIconVariant::Light));
-        for refused in ["", "Blue", "LIGHT", " blue", "green", "default", "dark"] {
+        assert_eq!(
+            AppIconVariant::parse("iridescent"),
+            Some(AppIconVariant::Iridescent)
+        );
+        for refused in [
+            "",
+            "Blue",
+            "LIGHT",
+            " blue",
+            "green",
+            "default",
+            "dark",
+            "violet",
+            "deep-space",
+        ] {
             assert_eq!(AppIconVariant::parse(refused), None, "{refused:?}");
         }
         for variant in AppIconVariant::ALL {
             assert_eq!(AppIconVariant::parse(variant.id()), Some(variant));
         }
-        assert_eq!(AppIconVariant::default(), AppIconVariant::Blue);
+        assert_eq!(AppIconVariant::default(), AppIconVariant::Pastel);
+    }
+
+    #[test]
+    fn the_table_lists_each_icon_once_in_declaration_order() {
+        assert_eq!(AppIconVariant::ALL.len(), 10);
+        for (index, (variant, _, _)) in ICONS.iter().enumerate() {
+            assert_eq!(variant.index(), index, "{variant:?}");
+        }
+        let mut ids: Vec<_> = AppIconVariant::ALL.iter().map(|v| v.id()).collect();
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(ids.len(), AppIconVariant::ALL.len());
     }
 
     #[test]
@@ -270,26 +357,38 @@ mod tests {
                 "{variant:?} is opaque inside"
             );
         }
-        assert_ne!(BLUE_PNG, LIGHT_PNG);
+        for (index, first) in AppIconVariant::ALL.iter().enumerate() {
+            for second in &AppIconVariant::ALL[index + 1..] {
+                assert_ne!(first.png(), second.png(), "{first:?} and {second:?}");
+            }
+        }
     }
 
     #[test]
-    fn the_blue_icon_has_a_blue_tile_and_the_light_icon_a_light_one() {
+    fn the_blue_icon_has_a_blue_tile_and_every_other_icon_a_light_one() {
         let blue = decode_png(AppIconVariant::Blue.png()).unwrap();
-        let light = decode_png(AppIconVariant::Light.png()).unwrap();
         let [red, green, blue_channel, _] = pixel(&blue, 256, 480);
         assert!(
             red.abs_diff(47) <= 2 && green.abs_diff(111) <= 2 && blue_channel.abs_diff(219) <= 2
         );
-        let [red, green, blue_channel, _] = pixel(&light, 256, 480);
-        assert!(red >= 225 && green >= 235 && blue_channel >= 245);
+        for variant in AppIconVariant::ALL
+            .iter()
+            .filter(|variant| **variant != AppIconVariant::Blue)
+        {
+            let image = decode_png(variant.png()).unwrap();
+            let [red, green, blue_channel, _] = pixel(&image, 256, 480);
+            assert!(
+                red >= 225 && green >= 225 && blue_channel >= 225,
+                "{variant:?} tile is {red},{green},{blue_channel}"
+            );
+        }
     }
 
     #[test]
     fn refuses_bytes_that_are_not_a_png() {
         assert_eq!(decode_png(b""), None);
         assert_eq!(decode_png(b"not a png at all"), None);
-        assert_eq!(decode_png(&BLUE_PNG[..64]), None);
+        assert_eq!(decode_png(&AppIconVariant::Blue.png()[..64]), None);
     }
 
     #[test]
@@ -331,12 +430,32 @@ mod tests {
 
     #[test]
     fn remembers_the_chosen_icon_and_reports_only_changes() {
-        assert_eq!(current(), AppIconVariant::Blue);
-        assert!(!replace_current(AppIconVariant::Blue));
-        assert!(replace_current(AppIconVariant::Light));
-        assert_eq!(current(), AppIconVariant::Light);
-        assert!(!replace_current(AppIconVariant::Light));
+        assert_eq!(current(), AppIconVariant::Pastel);
+        assert!(!replace_current(AppIconVariant::Pastel));
         assert!(replace_current(AppIconVariant::Blue));
         assert_eq!(current(), AppIconVariant::Blue);
+        assert!(!replace_current(AppIconVariant::Blue));
+        assert!(replace_current(AppIconVariant::Pastel));
+        assert_eq!(current(), AppIconVariant::Pastel);
+    }
+
+    #[test]
+    fn the_bundled_icon_is_the_default_choice() {
+        let bundled = decode_png(include_bytes!("../icons/icon.png")).unwrap();
+        let chosen = decode_png(AppIconVariant::default().png()).unwrap();
+        assert_eq!(
+            (bundled.width, bundled.height),
+            (chosen.width, chosen.height)
+        );
+        for (x, y) in [(256, 480), (256, 256), (140, 400), (380, 120), (60, 60)] {
+            let expected = pixel(&chosen, x, y);
+            let actual = pixel(&bundled, x, y);
+            for (want, got) in expected.iter().zip(actual) {
+                assert!(
+                    want.abs_diff(got) <= 6,
+                    "({x}, {y}) {expected:?} vs {actual:?}"
+                );
+            }
+        }
     }
 }

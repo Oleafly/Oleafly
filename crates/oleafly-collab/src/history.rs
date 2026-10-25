@@ -118,6 +118,31 @@ fn same_version(left: &VersionVector, right: &VersionVector) -> bool {
     left.includes_vv(right) && right.includes_vv(left)
 }
 
+fn starts_new_entry(open: Option<&(HistoryEntry, bool)>, step: &Step) -> bool {
+    match open {
+        None => true,
+        Some((entry, restore)) => {
+            (entry.at == 0) != (step.at == 0)
+                || *restore != step.restore
+                || (step.at > 0 && (step.at - entry.until > GAP_MS || step.at - entry.at > SPAN_MS))
+        }
+    }
+}
+
+fn absorb_step(entry: &mut HistoryEntry, step: Step) {
+    entry.until = entry.until.max(step.at);
+    if let Some(author) = step.author {
+        if !entry.authors.contains(&author) {
+            entry.authors.push(author);
+        }
+    }
+    for file in step.files {
+        if !entry.files.contains(&file) {
+            entry.files.push(file);
+        }
+    }
+}
+
 impl ProjectDoc {
     pub fn version_of(&self, version: &str) -> Result<VersionVector, CollabError> {
         let frontiers = decode_frontiers(version)?;
@@ -287,39 +312,35 @@ impl ProjectDoc {
         steps
     }
 
+    fn close_entry(
+        &self,
+        named: &[Named],
+        open: &mut Option<(HistoryEntry, bool)>,
+        entries: &mut Vec<HistoryEntry>,
+        reached: &VersionVector,
+    ) {
+        if let Some((mut entry, _)) = open.take() {
+            entry.id = encode_frontiers(&self.loro().vv_to_frontiers(reached));
+            if let Some(found) = named
+                .iter()
+                .find(|named| same_version(&named.version, reached))
+            {
+                entry.name = Some(found.name.clone());
+                entry.version_id = Some(found.id);
+            }
+            entries.push(entry);
+        }
+    }
+
     fn entries(&self) -> Vec<HistoryEntry> {
         let loro = self.loro();
         let named = self.named_versions();
         let mut entries: Vec<HistoryEntry> = Vec::new();
         let mut reached = VersionVector::new();
         let mut open: Option<(HistoryEntry, bool)> = None;
-        let close = |open: &mut Option<(HistoryEntry, bool)>,
-                     entries: &mut Vec<HistoryEntry>,
-                     reached: &VersionVector| {
-            if let Some((mut entry, _)) = open.take() {
-                entry.id = encode_frontiers(&loro.vv_to_frontiers(reached));
-                if let Some(found) = named
-                    .iter()
-                    .find(|named| same_version(&named.version, reached))
-                {
-                    entry.name = Some(found.name.clone());
-                    entry.version_id = Some(found.id);
-                }
-                entries.push(entry);
-            }
-        };
         for step in self.steps(&named) {
-            let starts_new = match &open {
-                None => true,
-                Some((entry, restore)) => {
-                    (entry.at == 0) != (step.at == 0)
-                        || *restore != step.restore
-                        || (step.at > 0
-                            && (step.at - entry.until > GAP_MS || step.at - entry.at > SPAN_MS))
-                }
-            };
-            if starts_new {
-                close(&mut open, &mut entries, &reached);
+            if starts_new_entry(open.as_ref(), &step) {
+                self.close_entry(&named, &mut open, &mut entries, &reached);
                 open = Some((
                     HistoryEntry {
                         id: String::new(),
@@ -337,26 +358,16 @@ impl ProjectDoc {
                 reached.merge(&past);
             }
             if let Some((entry, _)) = open.as_mut() {
-                entry.until = entry.until.max(step.at);
-                if let Some(author) = step.author {
-                    if !entry.authors.contains(&author) {
-                        entry.authors.push(author);
-                    }
-                }
-                for file in step.files {
-                    if !entry.files.contains(&file) {
-                        entry.files.push(file);
-                    }
-                }
+                absorb_step(entry, step);
             }
             if named
                 .iter()
                 .any(|named| same_version(&named.version, &reached))
             {
-                close(&mut open, &mut entries, &reached);
+                self.close_entry(&named, &mut open, &mut entries, &reached);
             }
         }
-        close(&mut open, &mut entries, &reached);
+        self.close_entry(&named, &mut open, &mut entries, &reached);
         entries.reverse();
         entries
     }

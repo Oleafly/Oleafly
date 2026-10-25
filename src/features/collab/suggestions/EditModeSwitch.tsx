@@ -23,14 +23,13 @@ export function EditModeSwitch({ projectId }: Readonly<{ projectId: string }>) {
     return (
       <div data-toolbar-item="suggesting" className="flex w-max shrink-0 items-center">
         <Tooltip label={hint} side="bottom" wide>
-          <span
-            role="status"
+          <output
             aria-label={hint}
             className="flex h-7 items-center gap-1 rounded-md border border-border bg-primary/10 px-2 text-xs font-medium text-foreground"
           >
             <MessageSquareDiff aria-hidden className="size-3.5" />
             {t(($) => $.collab.suggestions.mode.suggesting)}
-          </span>
+          </output>
         </Tooltip>
       </div>
     );

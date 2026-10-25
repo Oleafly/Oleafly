@@ -198,6 +198,39 @@ fn write_range(map: &LoroMap, text: &LoroText, from: usize, to: usize) -> Result
     Ok(())
 }
 
+fn delete_segments(own: &[Shrunk], from: usize, to: usize) -> Vec<(usize, usize, Option<usize>)> {
+    let mut points: BTreeSet<usize> = BTreeSet::from([from, to]);
+    for range in own {
+        for point in [range.from, range.to] {
+            if from < point && point < to {
+                points.insert(point);
+            }
+        }
+    }
+    let points: Vec<usize> = points.into_iter().collect();
+    points
+        .windows(2)
+        .map(|pair| {
+            let (start, end) = (pair[0], pair[1]);
+            let inside = own
+                .iter()
+                .enumerate()
+                .filter(|(_, range)| range.from <= start && end <= range.to)
+                .min_by_key(|(_, range)| range.to - range.from)
+                .map(|(index, _)| index);
+            (start, end, inside)
+        })
+        .collect()
+}
+
+fn shift_groups(groups: &mut [DeleteGroup], end: usize, length: usize) {
+    for group in groups {
+        if group.at >= end {
+            group.at -= length;
+        }
+    }
+}
+
 fn unicode_of(text: &LoroText, utf16: usize) -> Result<usize, CollabError> {
     text.convert_pos(utf16, PosType::Utf16, PosType::Unicode)
         .ok_or_else(|| CollabError::Corrupt("a change splits a character".to_owned()))
@@ -387,6 +420,82 @@ impl ProjectDoc {
         }
     }
 
+    fn joined_delete_group(
+        &self,
+        text: &LoroText,
+        deletes: &[Record],
+        used: &mut BTreeSet<String>,
+        removed: String,
+        start: usize,
+        end: usize,
+    ) -> DeleteGroup {
+        let spot = |record: &Record| {
+            self.live_spot(text, record.anchor.as_deref())
+                .unwrap_or(usize::MAX)
+        };
+        let fresh = |record: &&Record| !used.contains(&record.id.to_string());
+        let before = deletes
+            .iter()
+            .filter(fresh)
+            .find(|record| spot(record) == end);
+        let after = deletes
+            .iter()
+            .filter(fresh)
+            .find(|record| spot(record) == start);
+        let group = match (before, after) {
+            (Some(record), _) => DeleteGroup {
+                map: Some(record.map.clone()),
+                text: format!("{removed}{}", record.text),
+                at: start,
+            },
+            (None, Some(record)) => DeleteGroup {
+                map: Some(record.map.clone()),
+                text: format!("{}{removed}", record.text),
+                at: start,
+            },
+            (None, None) => DeleteGroup {
+                map: None,
+                text: removed,
+                at: start,
+            },
+        };
+        if let Some(record) = before.or(after) {
+            used.insert(record.id.to_string());
+        }
+        group
+    }
+
+    fn fit_own_inserts(
+        &self,
+        text: &LoroText,
+        own: &[Shrunk],
+        deleted_before: &[(usize, usize)],
+    ) -> Result<(), CollabError> {
+        let shift = |point: usize| -> usize {
+            point
+                - deleted_before
+                    .iter()
+                    .filter(|(_, end)| *end <= point)
+                    .map(|(start, end)| end - start)
+                    .sum::<usize>()
+        };
+        for range in own {
+            let touched = deleted_before
+                .iter()
+                .any(|(start, end)| range.from <= *start && *end <= range.to);
+            if !touched {
+                continue;
+            }
+            let (left, right) = (shift(range.from), shift(range.to));
+            if left >= right {
+                self.drop_record_map(&range.map)?;
+            } else {
+                write_range(&range.map, text, left, right)?;
+            }
+        }
+        Ok(())
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn suggest_delete(
         &self,
@@ -402,28 +511,7 @@ impl ProjectDoc {
             return Ok(());
         }
         let own = self.own_inserts(text, file_id, author);
-        let mut points: BTreeSet<usize> = BTreeSet::from([from, to]);
-        for range in &own {
-            for point in [range.from, range.to] {
-                if from < point && point < to {
-                    points.insert(point);
-                }
-            }
-        }
-        let points: Vec<usize> = points.into_iter().collect();
-        let segments: Vec<(usize, usize, Option<usize>)> = points
-            .windows(2)
-            .map(|pair| {
-                let (start, end) = (pair[0], pair[1]);
-                let inside = own
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, range)| range.from <= start && end <= range.to)
-                    .min_by_key(|(_, range)| range.to - range.from)
-                    .map(|(index, _)| index);
-                (start, end, inside)
-            })
-            .collect();
+        let segments = delete_segments(&own, from, to);
         let outside: usize = segments
             .iter()
             .filter(|(_, _, inside)| inside.is_none())
@@ -457,44 +545,9 @@ impl ProjectDoc {
                     }
                     None => {
                         let deletes = self.own_deletes(text, file_id, author);
-                        let spot = |record: &Record| {
-                            self.live_spot(text, record.anchor.as_deref())
-                                .unwrap_or(usize::MAX)
-                        };
-                        let fresh = |record: &&Record| !used.contains(&record.id.to_string());
-                        let before = deletes
-                            .iter()
-                            .filter(fresh)
-                            .find(|record| spot(record) == end);
-                        let after = deletes
-                            .iter()
-                            .filter(fresh)
-                            .find(|record| spot(record) == start);
-                        let group = match (before, after) {
-                            (Some(record), _) => DeleteGroup {
-                                map: Some(record.map.clone()),
-                                text: format!("{removed}{}", record.text),
-                                at: start,
-                            },
-                            (None, Some(record)) => DeleteGroup {
-                                map: Some(record.map.clone()),
-                                text: format!("{}{removed}", record.text),
-                                at: start,
-                            },
-                            (None, None) => DeleteGroup {
-                                map: None,
-                                text: removed,
-                                at: start,
-                            },
-                        };
-                        if let Some(record) = before.or(after) {
-                            used.insert(record.id.to_string());
-                        }
-                        for other in &mut groups {
-                            if other.at >= end {
-                                other.at -= length;
-                            }
-                        }
+                        let group = self
+                            .joined_delete_group(text, &deletes, &mut used, removed, start, end);
+                        shift_groups(&mut groups, end, length);
                         groups.push(group);
                         text.delete(start, length).map_err(loro_error)?;
                         deleted_before.push((start, end));
@@ -502,36 +555,11 @@ impl ProjectDoc {
                     }
                 }
             }
-            for group in &mut groups {
-                if group.at >= end {
-                    group.at -= length;
-                }
-            }
+            shift_groups(&mut groups, end, length);
             text.delete(start, length).map_err(loro_error)?;
             deleted_before.push((start, end));
         }
-        let shift = |point: usize| -> usize {
-            point
-                - deleted_before
-                    .iter()
-                    .filter(|(_, end)| *end <= point)
-                    .map(|(start, end)| end - start)
-                    .sum::<usize>()
-        };
-        for range in &own {
-            let touched = deleted_before
-                .iter()
-                .any(|(start, end)| range.from <= *start && *end <= range.to);
-            if !touched {
-                continue;
-            }
-            let (left, right) = (shift(range.from), shift(range.to));
-            if left >= right {
-                self.drop_record_map(&range.map)?;
-            } else {
-                write_range(&range.map, text, left, right)?;
-            }
-        }
+        self.fit_own_inserts(text, &own, &deleted_before)?;
         for group in groups {
             let map = match group.map {
                 Some(map) => map,

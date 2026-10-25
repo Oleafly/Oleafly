@@ -215,7 +215,7 @@ function rawBlockLanguage(node: SyntaxNodeRef, input: Input) {
   const raw = node.node;
   const lang = raw.getChild("RawLang");
   const close = raw.lastChild;
-  if (!lang || !close || close.name !== "RawDelim" || close.from <= lang.to) return null;
+  if (!lang || close?.name !== "RawDelim" || close.from <= lang.to) return null;
   const parser = codeChunkParser(input.read(lang.from, lang.to));
   return parser ? { parser, overlay: [{ from: lang.to, to: close.from }] } : null;
 }

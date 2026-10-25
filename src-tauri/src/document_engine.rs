@@ -1549,7 +1549,7 @@ pub fn descriptor_for(
 fn notebook_engine(metadata_name: &str, main_document: &str) -> Option<DocumentEngineId> {
     engine_for(metadata_name, main_document)
         .ok()
-        .map(|engine| engine.id())
+        .map(DocumentEngine::id)
         .filter(|id| matches!(id, DocumentEngineId::Quarto | DocumentEngineId::Calepin))
 }
 

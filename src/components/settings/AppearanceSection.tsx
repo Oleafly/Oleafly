@@ -133,8 +133,16 @@ function AppAppearanceTab() {
   const appIcon = useSettingsStore((state) => state.appIcon);
   const setAppIcon = useSettingsStore((state) => state.setAppIcon);
   const appIconLabels: Readonly<Record<AppIconId, string>> = {
+    pastel: t(($) => $.settings.appearance.app.appIcon.pastel),
     blue: t(($) => $.settings.appearance.app.appIcon.blue),
     light: t(($) => $.settings.appearance.app.appIcon.light),
+    prism: t(($) => $.settings.appearance.app.appIcon.prism),
+    iridescent: t(($) => $.settings.appearance.app.appIcon.iridescent),
+    ocean: t(($) => $.settings.appearance.app.appIcon.ocean),
+    mint: t(($) => $.settings.appearance.app.appIcon.mint),
+    aurora: t(($) => $.settings.appearance.app.appIcon.aurora),
+    sunset: t(($) => $.settings.appearance.app.appIcon.sunset),
+    coral: t(($) => $.settings.appearance.app.appIcon.coral),
   };
   const accentColor = useSettingsStore((state) => state.accentColor);
   const setAccentColor = useSettingsStore((state) => state.setAccentColor);
@@ -243,7 +251,7 @@ function AppAppearanceTab() {
         <div className="mb-2 text-xs text-muted-foreground">
           {t(($) => $.settings.appearance.app.appIcon.description)}
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {APP_ICONS.map((option) => {
             const active = appIcon === option.id;
             return (
@@ -254,7 +262,7 @@ function AppAppearanceTab() {
                 aria-pressed={active}
                 onClick={() => setAppIcon(option.id)}
                 className={cn(
-                  "flex flex-col items-center gap-2 rounded-md border p-3 text-xs font-medium transition-colors",
+                  "flex min-w-0 flex-col items-center gap-2 rounded-md border p-3 text-center text-xs font-medium break-words transition-colors",
                   active
                     ? "border-primary bg-primary/5"
                     : "border-border hover:bg-accent",

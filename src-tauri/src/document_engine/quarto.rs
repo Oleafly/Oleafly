@@ -700,6 +700,120 @@ fn warning(message: impl Into<String>) -> CompileError {
     }
 }
 
+fn located_error(message: &str) -> CompileError {
+    match trailing_location(message) {
+        Some((text, file, line, column)) => CompileError {
+            file: Some(file),
+            line: Some(line),
+            column,
+            ..error(text)
+        },
+        None => error(message),
+    }
+}
+
+fn yaml_error(rest: &str, file: Option<String>) -> CompileError {
+    let number = rest
+        .split(|character: char| !character.is_ascii_digit())
+        .next()
+        .and_then(|number| number.parse::<u32>().ok());
+    let column = rest
+        .split_once("columns ")
+        .or_else(|| rest.split_once("column "))
+        .and_then(|(_, tail)| {
+            tail.split(|character: char| !character.is_ascii_digit())
+                .next()
+                .and_then(|number| number.parse::<u32>().ok())
+        });
+    let message = rest.split_once(')').map_or(rest, |(_, text)| text).trim();
+    CompileError {
+        file,
+        line: number,
+        column,
+        ..error(message)
+    }
+}
+
+fn warning_line(line: &str) -> Option<CompileError> {
+    if let Some(message) = line.strip_prefix("WARN:") {
+        return Some(warning(message.trim()));
+    }
+    if let Some(rest) = line.strip_prefix("WARNING ") {
+        let message = rest
+            .strip_prefix('(')
+            .and_then(|tail| tail.split_once(')'))
+            .map_or(rest, |(_, text)| text)
+            .trim();
+        return Some(warning(message));
+    }
+    line.strip_prefix("[WARNING]")
+        .map(|message| warning(message.trim()))
+}
+
+fn knitr_error(
+    lines: &[String],
+    index: &mut usize,
+    file: Option<&str>,
+    start: u32,
+) -> CompileError {
+    let mut message = String::new();
+    while *index < lines.len() {
+        let next = lines[*index].trim();
+        if next.is_empty() || next.starts_with("Execution halted") {
+            break;
+        }
+        if !message.is_empty() {
+            message.push(' ');
+        }
+        message.push_str(next.trim_start_matches("! "));
+        *index += 1;
+    }
+    if message.is_empty() {
+        message = "R code failed here.".to_owned();
+    }
+    CompileError {
+        file: file.and_then(source_file),
+        line: Some(start),
+        ..error(message)
+    }
+}
+
+fn cell_error(lines: &[String], index: &mut usize) -> CompileError {
+    let mut code = Vec::new();
+    let mut separators = 0;
+    let mut exception = None;
+    while *index < lines.len() {
+        let next = lines[*index].trim_end();
+        *index += 1;
+        if separators < 2 {
+            if next.trim().starts_with("------------------") {
+                separators += 1;
+            } else if separators == 1 && !next.trim().is_empty() {
+                code.push(next.to_owned());
+            }
+            continue;
+        }
+        if next.trim().starts_with("ERROR:") {
+            *index -= 1;
+            break;
+        }
+        if python_exception(next.trim()) {
+            exception = Some(next.trim().to_owned());
+        }
+    }
+    CompileError {
+        hints: code.into_iter().take(3).collect(),
+        ..error(exception.unwrap_or_else(|| "A code cell failed while running.".to_owned()))
+    }
+}
+
+fn failure_line(line: &str) -> Option<CompileError> {
+    if let Some(message) = line.strip_prefix("! ") {
+        return Some(error(message.trim()));
+    }
+    (line.starts_with("Error in ") || line.starts_with("Error: ")).then(|| error(line))
+}
+
 pub(crate) fn parse_quarto_log(log: &str) -> Vec<CompileError> {
     let lines: Vec<String> = log.lines().map(strip_ansi).collect();
     let mut errors: Vec<CompileError> = Vec::new();
@@ -713,120 +827,29 @@ pub(crate) fn parse_quarto_log(log: &str) -> Vec<CompileError> {
         }
         if let Some(message) = line.strip_prefix("ERROR:") {
             let message = message.trim();
-            if let Some(file) = message.strip_prefix("In file ") {
-                yaml_file = Some(file.trim().to_owned());
-                continue;
+            match message.strip_prefix("In file ") {
+                Some(file) => yaml_file = Some(file.trim().to_owned()),
+                None => errors.push(located_error(message)),
             }
-            if let Some((text, file, line, column)) = trailing_location(message) {
-                errors.push(CompileError {
-                    file: Some(file),
-                    line: Some(line),
-                    column,
-                    ..error(text)
-                });
-                continue;
-            }
-            errors.push(error(message));
             continue;
         }
         if let Some(rest) = line.strip_prefix("(line ") {
-            let number = rest
-                .split(|character: char| !character.is_ascii_digit())
-                .next()
-                .and_then(|number| number.parse::<u32>().ok());
-            let column = rest
-                .split_once("columns ")
-                .or_else(|| rest.split_once("column "))
-                .and_then(|(_, tail)| {
-                    tail.split(|character: char| !character.is_ascii_digit())
-                        .next()
-                        .and_then(|number| number.parse::<u32>().ok())
-                });
-            let message = rest.split_once(')').map_or(rest, |(_, text)| text).trim();
-            errors.push(CompileError {
-                file: yaml_file.clone(),
-                line: number,
-                column,
-                ..error(message)
-            });
+            errors.push(yaml_error(rest, yaml_file.clone()));
             continue;
         }
-        if let Some(message) = line.strip_prefix("WARN:") {
-            errors.push(warning(message.trim()));
-            continue;
-        }
-        if let Some(rest) = line.strip_prefix("WARNING ") {
-            let message = rest
-                .strip_prefix('(')
-                .and_then(|tail| tail.split_once(')'))
-                .map_or(rest, |(_, text)| text)
-                .trim();
-            errors.push(warning(message));
-            continue;
-        }
-        if let Some(message) = line.strip_prefix("[WARNING]") {
-            errors.push(warning(message.trim()));
+        if let Some(found) = warning_line(line) {
+            errors.push(found);
             continue;
         }
         if let Some((file, start)) = knitr_location(line) {
-            let mut message = String::new();
-            while index < lines.len() {
-                let next = lines[index].trim();
-                if next.is_empty() || next.starts_with("Execution halted") {
-                    break;
-                }
-                if !message.is_empty() {
-                    message.push(' ');
-                }
-                message.push_str(next.trim_start_matches("! "));
-                index += 1;
-            }
-            if message.is_empty() {
-                message = "R code failed here.".to_owned();
-            }
-            errors.push(CompileError {
-                file: file.as_deref().and_then(source_file),
-                line: Some(start),
-                ..error(message)
-            });
+            errors.push(knitr_error(&lines, &mut index, file.as_deref(), start));
             continue;
         }
         if line.starts_with("An error occurred while executing the following cell") {
-            let mut code = Vec::new();
-            let mut separators = 0;
-            let mut exception = None;
-            while index < lines.len() {
-                let next = lines[index].trim_end();
-                index += 1;
-                if separators < 2 {
-                    if next.trim().starts_with("------------------") {
-                        separators += 1;
-                    } else if separators == 1 && !next.trim().is_empty() {
-                        code.push(next.to_owned());
-                    }
-                    continue;
-                }
-                if next.trim().starts_with("ERROR:") {
-                    index -= 1;
-                    break;
-                }
-                if python_exception(next.trim()) {
-                    exception = Some(next.trim().to_owned());
-                }
-            }
-            errors.push(CompileError {
-                hints: code.into_iter().take(3).collect(),
-                ..error(exception.unwrap_or_else(|| "A code cell failed while running.".to_owned()))
-            });
+            errors.push(cell_error(&lines, &mut index));
             continue;
         }
-        if let Some(message) = line.strip_prefix("! ") {
-            errors.push(error(message.trim()));
-            continue;
-        }
-        if line.starts_with("Error in ") || line.starts_with("Error: ") {
-            errors.push(error(line));
-        }
+        errors.extend(failure_line(line));
     }
     let mut seen = std::collections::HashSet::new();
     errors.retain(|error| seen.insert((error.kind.clone(), error.message.clone(), error.line)));
