@@ -13,6 +13,7 @@ export {
   type FigurePreview,
 } from "./tools";
 export type { TypstFigureDiagnostic, TypstFigureRender } from "./typst-figure";
+export { projectMapFromIndex, type ProjectMap } from "./project-map";
 export { pickPagesToVerify } from "./pick-pages";
 export {
   registerConnector,
@@ -22,7 +23,15 @@ export {
   type ConnectorCapability,
   type ConnectorAuthMode,
 } from "./connectors";
-export { createResearchTools, type ResearchToolsHost } from "./research-tools";
+export {
+  createResearchTaskTools,
+  createResearchTools,
+  LITERATURE_SOURCES,
+  type ResearchTaskRequest,
+  type ResearchTaskToolsHost,
+  type ResearchToolsHost,
+} from "./research-tools";
+export type { ResearchTaskApprovalDetails } from "./research-tools";
 export {
   createOverleafTools,
   type OverleafToolOutcome,
@@ -42,13 +51,3 @@ export {
   type ApprovalRuleDecision,
   type ToolRisk,
 } from "./approval-risk";
-export {
-  cuaActionRisk,
-  observe,
-  runCuaAction,
-  type CuaAction,
-  type CuaActionType,
-  type CuaObservation,
-  type CuaResult,
-  type CuaSurface,
-} from "./cua";

@@ -5,6 +5,7 @@ const api = vi.hoisted(() => ({
   overleafStatus: vi.fn(),
   overleafListProjects: vi.fn(),
   overleafSignIn: vi.fn(),
+  overleafSignInWithAppCookies: vi.fn(),
   overleafSignOut: vi.fn(),
   overleafImportProjects: vi.fn(),
 }));
@@ -108,6 +109,19 @@ describe("overleaf import store", () => {
     api.overleafSignIn.mockRejectedValueOnce(new Error("blocked"));
     await useOverleafImportStore.getState().signIn("t");
     expect(useOverleafImportStore.getState().error).toEqual(new Error("blocked"));
+  });
+
+  it("signs in with copied browser cookies and loads the list", async () => {
+    api.overleafSignInWithAppCookies.mockResolvedValue(signedIn);
+    api.overleafListProjects.mockResolvedValue({ status: signedIn, projects: [project("a")] });
+    await expect(useOverleafImportStore.getState().signInWithAppCookies()).resolves.toBe(true);
+    expect(api.overleafSignInWithAppCookies).toHaveBeenCalledWith(SERVER);
+    expect(useOverleafImportStore.getState()).toMatchObject({ phase: "ready", status: signedIn });
+
+    const failed = '@oleafly/error:{"code":"overleaf.browser_sign_in_failed","params":{}}';
+    api.overleafSignInWithAppCookies.mockRejectedValue(failed);
+    await expect(useOverleafImportStore.getState().signInWithAppCookies()).resolves.toBe(false);
+    expect(useOverleafImportStore.getState()).toMatchObject({ phase: "signed-out", error: failed });
   });
 
   it("ignores a second sign-in while one is running", async () => {

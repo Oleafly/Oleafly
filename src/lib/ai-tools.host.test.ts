@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AiToolsHost } from "@oleafly/ai-tools";
 
 const mocks = vi.hoisted(() => ({
@@ -83,7 +83,6 @@ import { usePdfViewStore } from "@/store/pdf-view";
 import { useSettingsStore } from "@/store/settings";
 
 type CoreOptions = {
-  cuaSurface?: unknown;
   resolveExecCwd: (projectId: string) => Promise<string>;
   authorizeExec: (projectId: string, command: string, runId?: string) => Promise<{ approvalToken: string; runId: string }>;
   execCommand: (projectId: string, command: string, authorization: { approvalToken: string; runId: string }) => Promise<unknown>;
@@ -118,10 +117,6 @@ beforeEach(() => {
   useFolderAccessStore.setState({ projectId: null, status: null });
   localStorage.clear();
   invalidateConfigCache();
-});
-
-afterEach(() => {
-  useSettingsStore.getState().setWebBrowser(false);
 });
 
 describe("editing the open document without a mounted editor", () => {
@@ -317,13 +312,9 @@ describe("agent state", () => {
 });
 
 describe("tool factories", () => {
-  it("passes the browser surface only when the web browser is enabled", () => {
-    useSettingsStore.getState().setWebBrowser(false);
+  it("passes no browser surface to the core tools", () => {
     createOleaflyTools();
-    expect((mocks.coreOptions as CoreOptions).cuaSurface).toBeUndefined();
-    useSettingsStore.getState().setWebBrowser(true);
-    createOleaflyTools();
-    expect((mocks.coreOptions as CoreOptions).cuaSurface).toBeTypeOf("function");
+    expect(mocks.coreOptions as Record<string, unknown>).not.toHaveProperty("cuaSurface");
   });
 
   it("authorizes commands under the run's own id without registering it", async () => {

@@ -162,7 +162,14 @@ pub(crate) fn evict_idle_linked_builds(now: SystemTime) -> Result<EvictionOutcom
             Ok(Some(_lock)) if build_in_use(&record.id) => {
                 outcome.skipped_busy.push(record.id.clone());
             }
-            Ok(Some(_lock)) => evict_if_still_idle(&state_dir, &record, now, &mut outcome),
+            // A CLI build of this folder holds the lock beside its build folder.
+            Ok(Some(_lock)) => {
+                match oleafly_core::build_output::BuildLock::try_acquire(&state_dir.join("build")) {
+                    Ok(Some(_build)) => evict_if_still_idle(&state_dir, &record, now, &mut outcome),
+                    Ok(None) => outcome.skipped_busy.push(record.id.clone()),
+                    Err(error) => outcome.failures.push(format!("{}: {error}", record.id)),
+                }
+            }
             Ok(None) => outcome.skipped_busy.push(record.id.clone()),
             Err(error) => outcome.failures.push(format!("{}: {error}", record.id)),
         }
@@ -447,6 +454,20 @@ mod tests {
         let outcome = evict_idle_linked_builds(std::time::SystemTime::now() + 91 * DAY).unwrap();
         assert_eq!(outcome.skipped_busy, vec![record.id.clone()]);
         assert!(build.is_dir());
+    }
+
+    #[test]
+    fn a_build_locked_by_another_process_is_not_evicted() {
+        let fixture = Fixture::new();
+        let (record, _) = fixture.linked();
+        let build = crate::paths::build_dir(&record.id).unwrap();
+        std::fs::write(build.join("_oleafly_entry.log"), b"building").unwrap();
+        let _held = oleafly_core::build_output::BuildLock::try_acquire(&build)
+            .unwrap()
+            .unwrap();
+        let outcome = evict_idle_linked_builds(std::time::SystemTime::now() + 91 * DAY).unwrap();
+        assert_eq!(outcome.skipped_busy, vec![record.id.clone()]);
+        assert!(build.join("_oleafly_entry.log").is_file());
     }
 
     #[test]

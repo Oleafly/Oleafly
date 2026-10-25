@@ -52,14 +52,15 @@ describe("Collaboration section", () => {
     expect(screen.getByTestId("settings-section-collaboration")).toHaveAttribute("aria-current", "page");
   });
 
-  it("leaves only the LaTeX tools and web browser switches in Experimentation", () => {
+  it("leaves only the LaTeX tools and research tasks switches in Experimentation", () => {
     useSettingsStore.getState().setSettingsInitialSection("experimentation");
     render(<SettingsModal />);
     const body = within(screen.getByTestId("settings-body"));
     expect(body.getAllByRole("switch")).toEqual([
       body.getByRole("switch", { name: experimentation.latexTools.label }),
-      body.getByRole("switch", { name: experimentation.webBrowser.label }),
+      body.getByTestId("settings-research-tasks"),
     ]);
+    expect(body.queryByText(/collaboration/i)).toBeNull();
   });
 });
 

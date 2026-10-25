@@ -5,6 +5,7 @@ import {
   overleafImportProjects,
   overleafListProjects,
   overleafSignIn,
+  overleafSignInWithAppCookies,
   overleafSignOut,
   overleafStatus,
   type OverleafImportEvent,
@@ -40,6 +41,8 @@ interface OverleafImportState {
   open(): Promise<void>;
   load(): Promise<void>;
   signIn(title: string): Promise<boolean>;
+  /** Signs in with the cookies the browser sign-in copy brought in. */
+  signInWithAppCookies(): Promise<boolean>;
   signOut(): Promise<void>;
   toggle(id: string): void;
   setSelected(ids: readonly string[]): void;
@@ -165,6 +168,21 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
       } else {
         set({ phase: "signed-out" });
       }
+      return false;
+    }
+  },
+
+  async signInWithAppCookies() {
+    if (get().phase === "signing-in") return false;
+    set({ phase: "signing-in", error: null });
+    try {
+      const status = await overleafSignInWithAppCookies(get().server);
+      set({ status, server: status.server });
+      await get().load();
+      return true;
+    } catch (error) {
+      void logError("overleaf sign in with browser cookies", error);
+      set({ phase: "signed-out", error });
       return false;
     }
   },

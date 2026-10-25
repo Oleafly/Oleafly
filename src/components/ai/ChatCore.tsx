@@ -3,10 +3,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
-import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
+import type { AssistantContent, ModelMessage, ToolSet } from "@/lib/chat-types";
 import { runAgentHarness, toAgentMessages } from "./agent-turn";
 import { PlanNote } from "./PlanNote";
-import { DeltaQueues, MAX_BATCH, normalizeAgentUsage } from "@oleafly/ai-core";
+import {
+  DeltaQueues,
+  effortChoicesFor,
+  isOutputLimitStop,
+  MAX_BATCH,
+  normalizeAgentUsage,
+  type EffortLevel,
+} from "@oleafly/ai-core";
 import {
   DEFAULT_APPROVAL_MODE,
   PLAN_MODE_TOOL_ERROR,
@@ -34,12 +41,11 @@ import {
   agentThreadArchive,
   agentThreadClaimPrewarmed,
   agentThreadFork,
+  agentThreadRead,
+  agentThreadRollback,
   type AgentMessage,
 } from "@/lib/agent-backend";
-import { launchBrowser } from "@/lib/browser-window";
 import {
-  ArrowUp,
-  BadgeDollarSign,
   BarChart3,
   BookOpen,
   Brain,
@@ -57,7 +63,6 @@ import {
   Send,
   Settings2,
   Sparkles,
-  Square,
   Target,
   Trash2,
   type LucideIcon,
@@ -89,72 +94,124 @@ import { getEditorView } from "@/components/editor/cm/controller";
 import { ToolConfirm } from "@/components/ai/ToolConfirm";
 import { DelegatedPermissions } from "@/components/ai/DelegatedPermissions";
 import { ApprovalModeSelector } from "@/components/ai/ApprovalModeSelector";
-import { AttachmentChips, type PendingAttachment } from "@/components/ai/AttachmentChips";
 import { AiToolManager } from "@/components/ai/AiToolManager";
 import { McpBrandIcon } from "@/components/ai/McpBrandIcon";
 import {
   ModelSelector,
   type ModelSelectorGroup,
-  type ModelSelectorModel,
 } from "@/components/ai/ModelSelector";
 import { ComposerAttachMenu } from "@/components/ai/ComposerAttachMenu";
 import {
-  filterSlashCommands,
-  isSlashCommandInput,
-  slashCommandQuery,
-  SlashCommandMenu,
-  type SlashCommandMenuHandle,
-} from "@/components/ai/SlashCommandMenu";
-import { ComposerHighlight } from "@/components/ai/ComposerHighlight";
-import {
   buildMentionEntries,
   filterMentionEntries,
-  MentionMenu,
   filterAgentTargets,
-  type MentionMenuHandle,
 } from "@/components/ai/MentionMenu";
 import {
-  activeMentionQuery,
   composerMentionPaths,
-  mentionTokenEnd,
+  mentionInsertText,
   normalizeMentionPath,
 } from "@/lib/composer-tokens";
 import {
   createAttachCommands,
   createSkillCommands,
   createSlashCommands,
-  type ComposerCommand,
 } from "@/components/ai/composer-command-registry";
+import {
+  ChatComposer,
+  type ChatComposerHandle,
+  type MentionItem,
+  type SlashItem,
+} from "@/components/ai/composer/ChatComposer";
+import type { DraftAttachment, StoredAttachmentRef } from "@/components/ai/composer/types";
+import { EffortSelector } from "@/components/ai/composer/EffortSelector";
+import { WebToggle } from "@/components/ai/composer/WebToggle";
+import { UsageMeter } from "@/components/ai/usage/UsageMeter";
+import {
+  builtinUsageExtras,
+  builtinUsageSnapshot,
+  ledgerChatCost,
+  type RunUsageView,
+} from "@/components/ai/usage/builtin-usage";
+import { contextFraction } from "@/components/ai/usage/usage-tone";
+import {
+  changedFileCount,
+  messageActionState,
+  replayMode,
+  turnStartIndex,
+  turnsToDrop,
+  userTurnsFrom,
+} from "@/components/ai/chat-replay";
+import type { MessageAction } from "@/components/ai/chat-parts";
+import {
+  attachmentNotice,
+  attachmentText,
+  chatToDraftAttachment,
+  draftToChatAttachment,
+  readyAttachments,
+  storeToolImage,
+} from "@/lib/attachments";
+import type { AttachmentModelContext, MentionAttachment } from "@/lib/chat-attachments";
+import {
+  appendMarker,
+  OUTPUT_LIMIT_MARKER,
+  STEP_LIMIT_MARKER,
+  STOPPED_MARKER,
+} from "@/lib/chat-markers";
+import {
+  resolveRunEffort,
+  runWebTools,
+  WEB_DEFAULT_SUGGESTIONS,
+  WEB_ON,
+  isWebOn,
+  type WebSetting,
+} from "@/lib/chat-settings";
+import {
+  builtinComposerId,
+  draftAttachments,
+  draftText,
+  EMPTY_ATTACHMENTS,
+  holdDraftAttachments,
+  registerAttachmentHolder,
+  useComposerDrafts,
+} from "@/store/composer-drafts";
 import {
   activeChatRun,
   beginChatRun,
   endChatRun,
-  saveDraft,
-  savedDraft,
   subscribeChatRun,
   updateChatRun,
   type RegisteredApproval,
 } from "@/components/ai/chat-run-registry";
 import { personaGradient } from "@/lib/persona-colors";
 import { toast } from "@/lib/toast";
+import { WorkspaceBanner } from "@/components/ui/workspace-banner";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
 import {
-  enabledModels,
+  configuredModelGroups,
+  configuredProviders as listConfiguredProviders,
+} from "@/lib/ai-model-groups";
+import {
   mergeModelProbes,
   modelIsChatOnly,
   probeKey,
   resolveModelTrust,
 } from "@/lib/ai-model-state";
 import { useSettingsStore } from "@/store/settings";
-import { useChatsStore, type ChatMessage, type ChatTurnChanges, type ReasoningBlockData, type StoredChat } from "@/store/chats";
+import {
+  messageAttachmentRefs,
+  useChatsStore,
+  type ChatMessage,
+  type ChatTurnChanges,
+  type ReasoningBlockData,
+  type StoredChat,
+} from "@/store/chats";
 import { objectKey } from "@/lib/react-key";
 import { registerAiToolsets } from "@/contributions/ai-toolsets";
 import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
 import { AssistantHome } from "@/components/ai/home/AssistantHome";
 import { RecentChats } from "@/components/ai/home/RecentChats";
-import { useAutoSizeTextarea } from "@/components/ai/use-auto-size-textarea";
 import {
   approvalModeForProject,
   useApprovalModeStore,
@@ -181,6 +238,7 @@ import {
   createMcpRuntimeToolsets,
   useMcpAgentTools,
 } from "@/lib/mcp-agent-tools";
+import { resolveResearchToolAliases } from "@/lib/research-tool-aliases";
 
 registerAiToolsets();
 import { useAgentTodoStore, type AgentTodo } from "@/store/agent-todos";
@@ -191,8 +249,8 @@ import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { SessionTranscriptDialog } from "@/components/ai/activity/SessionTranscriptDialog";
 import { isToolEnabled, useAiToolSettingsStore } from "@/store/ai-tool-settings";
 import { buildWorkspaceContext } from "@/lib/ai-context";
-import { packChatHistory } from "@/lib/ai-context-pack";
 import { formatRagContext, retrieveProjectChunks } from "@/lib/ai-rag";
+import { packChatHistory } from "@/lib/ai-context-pack";
 import { ChatHistoryModal } from "@/components/ai/ChatHistoryModal";
 import { promptCategories } from "@/components/ai/prompt-shortcuts";
 import {
@@ -215,7 +273,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { prefetchMarkdownRenderer } from "@/components/ui/markdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Popover } from "@/components/ui/popover";
 import {
   cancelChatRun,
@@ -247,7 +305,10 @@ import { Spinner } from "@/components/ui/spinner";
 const MAX_AGENT_TOOL_DEFINITIONS = 128;
 const IMAGE_TOOLS = new Set(["preview_figure", "load_image", "verify_pdf_pages"]);
 const FULL_ACCESS_DECLINED = "approvals.full_access_declined";
-const ATTACHMENT_REJECTED_TOAST = "ai-attach";
+/** When the chat's cost is read back from the usage ledger after a run. */
+const CHAT_COST_REFRESH_MS = 1_000;
+/** The longest a streaming reply goes unsaved. */
+const PERSIST_MAX_WAIT_MS = 2_000;
 
 export function steerRunAlreadyEnded(error: unknown): boolean {
   let text = "";
@@ -266,6 +327,23 @@ function steerQueuedFollowUp(
     if (result?.status === "run_finished") return;
     useAgentTurnsStore.getState().markSteered(chatId, followUpId);
   });
+}
+
+/** Keeps what a run streamed since its last save, marked as stopped, in the
+ * project the run belongs to (its chats are still the ones loaded). */
+function saveStoppedReply(
+  runProjectId: string | null,
+  runChatId: string | null,
+  pending: { chatId: string; msgs: ChatMessage[] } | null,
+): void {
+  let latest: ChatMessage[] | undefined;
+  if (pending?.chatId === runChatId) latest = pending.msgs;
+  else if (runChatId) latest = useChatsStore.getState().byId(runChatId)?.messages;
+  const reply = latest?.at(-1);
+  if (!runProjectId || !runChatId || !latest || reply?.role !== "assistant") return;
+  const content = reply.content ?? "";
+  const stopped = content.endsWith(STOPPED_MARKER) ? reply : { ...reply, content: appendMarker(content, STOPPED_MARKER) };
+  useChatsStore.getState().saveMessages(runChatId, [...latest.slice(0, -1), stopped], { projectId: runProjectId });
 }
 
 function figureCodeOf(args: unknown): string | undefined {
@@ -585,27 +663,6 @@ export function buildToolContinuation(
   ];
 }
 
-function inputModelMessage(
-  text: string,
-  attachments: readonly PendingAttachment[],
-): ModelMessage {
-  if (attachments.length === 0) return { role: "user", content: text };
-  const content: UserContent = [
-    ...(text.trim() ? [{ type: "text" as const, text }] : []),
-    ...attachments.map((attachment) =>
-      attachment.mediaType.startsWith("image/")
-        ? { type: "image" as const, image: attachment.dataUrl }
-        : {
-            type: "file" as const,
-            data: attachment.dataUrl,
-            mediaType: attachment.mediaType,
-            name: attachment.name,
-          },
-    ),
-  ];
-  return { role: "user", content };
-}
-
 const MENTION_FILE_MAX_BYTES = 200 * 1024;
 const MENTION_LISTING_MAX_ENTRIES = 400;
 
@@ -641,14 +698,14 @@ export async function mentionAttachments(
   projectId: string | null,
   text: string,
   tree: readonly { path: string; is_dir: boolean }[],
-): Promise<PendingAttachment[]> {
+): Promise<MentionAttachment[]> {
   if (!projectId || !text.includes("@")) return [];
   const byPath = new Map<string, boolean>();
   for (const entry of tree) {
     const path = normalizeMentionPath(entry.path);
     if (path) byPath.set(path, entry.is_dir);
   }
-  const attachments: PendingAttachment[] = [];
+  const attachments: MentionAttachment[] = [];
   for (const path of composerMentionPaths(text, byPath.keys())) {
     const isDir = byPath.get(path);
     if (isDir === undefined) continue;
@@ -780,23 +837,6 @@ function sourceVocabularyFor(profile: string): string {
   return "engine-neutral prose";
 }
 
-function composerControlsId(mentionOpen: boolean, slashOpen: boolean): string | undefined {
-  if (mentionOpen) return "ai-mention-menu";
-  if (slashOpen) return "ai-slash-command-menu";
-  return undefined;
-}
-
-function composerActiveDescendant(
-  mentionOpen: boolean,
-  mentionPath: string | null,
-  slashOpen: boolean,
-  slashCommandId: string | null,
-): string | undefined {
-  if (mentionOpen && mentionPath) return `ai-mention-${mentionPath}`;
-  if (slashOpen && slashCommandId) return `ai-slash-command-${slashCommandId}`;
-  return undefined;
-}
-
 export function modelNoticeRole(notice: ModelNotice | null): "alert" | "status" {
   return notice?.kind === "blocked" || notice?.kind === "error" ? "alert" : "status";
 }
@@ -809,6 +849,30 @@ export function modelNoticeText(
   if (notice?.kind === "blocked") return blockedModelMessage(notice.reason);
   if (notice?.kind === "error") return notice.message;
   return chatOnly ? chatOnlyModelHint() : "";
+}
+
+/** The notice a run raised, or `null` for a code the chat does not show. */
+function runNoticeText(code: string, detail: string | null): string | null {
+  const name = typeof detail === "string" ? detail : "";
+  if (code === "attachment_sent_as_text") return i18n.t(($) => $.ai.attachments.sentAsText, { name });
+  if (code === "attachment_skipped") return i18n.t(($) => $.ai.attachments.skipped, { name });
+  if (code === "web_search_unavailable") return i18n.t(($) => $.ai.web.searchUnavailable);
+  return null;
+}
+
+/** Swaps a tool call's inline screenshot for the reference it was stored under. */
+function withStoredToolImage(
+  message: ChatMessage,
+  toolId: string | undefined,
+  imageRef: StoredAttachmentRef,
+): ChatMessage {
+  const calls = message.toolCalls ?? [];
+  const index = calls.findIndex((call) => call.id !== undefined && call.id === toolId);
+  if (index < 0) return message;
+  const next = [...calls];
+  const { image: _inline, ...stored } = next[index];
+  next[index] = { ...stored, imageRef };
+  return { ...message, toolCalls: next };
 }
 
 const UsageReportDialog = lazy(() =>
@@ -1000,6 +1064,9 @@ export function ChatCore() {
   const commitLiveMessages = useCallback(() => {
     if (committedMessagesRef.current !== messagesRef.current) setMessages(messagesRef.current);
   }, [setMessages]);
+  // The transcript on show can hold files the saved chat does not list yet
+  // (a reply streaming); deleting another chat collects only what nothing uses.
+  useEffect(() => registerAttachmentHolder(() => messageAttachmentRefs(messagesRef.current)), []);
   const delegatedSubagents = useMemo(
     () => messages.flatMap((message) => message.subagents ?? []),
     [messages],
@@ -1007,15 +1074,30 @@ export function ChatCore() {
   const agentThreadId = useAgentTurnsStore((s) =>
     activeChatId ? s.threadByChat[activeChatId] : undefined,
   );
-  const [input, setInputState] = useState(() => savedDraft(useFilesStore.getState().projectId));
-  const inputRef = useRef(input);
-  inputRef.current = input;
+  // The composer's draft (text and attachments) lives in the drafts store,
+  // so it survives switching panels. Each chat has its own, and so has the
+  // next new chat: text typed for one chat is never sent into another.
+  const composerId = builtinComposerId(projectId, chatsProjectId === projectId ? activeChatId : null);
+  const composerIdRef = useRef(composerId);
+  composerIdRef.current = composerId;
+  // The draft on show; it changes with the chat, in an effect further down.
+  const shownDraftRef = useRef(composerId);
+  const composerRef = useRef<ChatComposerHandle>(null);
+  const [inputText, setInputText] = useState(() => draftText(composerId));
+  const inputRef = useRef(inputText);
+  inputRef.current = inputText;
   const inputRevisionRef = useRef(0);
   const setInput = useCallback((text: string) => {
     inputRef.current = text;
     inputRevisionRef.current += 1;
-    setInputState(text);
-    saveDraft(useFilesStore.getState().projectId, text);
+    setInputText(text);
+    useComposerDrafts.getState().setText(composerIdRef.current, text);
+  }, []);
+  const attachments = useComposerDrafts(
+    (state) => state.drafts[composerId]?.attachments ?? EMPTY_ATTACHMENTS,
+  );
+  const removeAttachments = useCallback((ids: readonly string[]) => {
+    useComposerDrafts.getState().removeAttachments(composerIdRef.current, ids);
   }, []);
   const sendSequenceRef = useRef(0);
   const sendPreparingRef = useRef(false);
@@ -1056,17 +1138,46 @@ export function ChatCore() {
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
   const [goalEditorProjectId, setGoalEditorProjectId] = useState<string | null>(null);
   const [goalDraft, setGoalDraft] = useState("");
-  const [slashMenuDismissedInput, setSlashMenuDismissedInput] = useState<string | null>(null);
-  const [activeSlashCommandId, setActiveSlashCommandId] = useState<string | null>(null);
-  const [composerCaret, setComposerCaret] = useState(0);
-  const [mentionMenuDismissedInput, setMentionMenuDismissedInput] = useState<string | null>(
-    null,
-  );
-  const [activeMentionPath, setActiveMentionPath] = useState<string | null>(null);
   const [currentHead, setCurrentHead] = useState<string | null>(null);
   const [quotaWarning, setQuotaWarning] = useState(false);
+  const [saveFailedWarning, setSaveFailedWarning] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<RegisteredApproval | null>(null);
-  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+  // Effort and web for a chat not created yet; a chat keeps its own.
+  const [newChatSettings, setNewChatSettings] = useState<{
+    effort?: EffortLevel;
+    web?: WebSetting;
+  }>({});
+  const newChatSettingsRef = useRef(newChatSettings);
+  newChatSettingsRef.current = newChatSettings;
+  const [droppedTurns, setDroppedTurns] = useState(0);
+  const saveProblems = useChatsStore((s) => s.saveProblems);
+  const skippedOnLoad = useChatsStore((s) => s.skippedOnLoad);
+  // Editing a sent message: what to replay, and the draft to restore on cancel.
+  const [editTarget, setEditTarget] = useState<{
+    messageId: string;
+    userIndex: number;
+    mode: "inPlace" | "fork";
+    stash: { text: string; attachments: readonly DraftAttachment[] };
+  } | null>(null);
+  const editTargetRef = useRef(editTarget);
+  editTargetRef.current = editTarget;
+  // The draft set aside by an edit is not in the drafts store; its files must
+  // survive an attachment collection (deleting a chat runs one).
+  const editStash = editTarget?.stash.attachments;
+  useEffect(() => (editStash && editStash.length > 0 ? holdDraftAttachments(editStash) : undefined), [editStash]);
+  // Leaving an edit, by cancelling it or by opening another chat, puts back
+  // the draft the composer held before it.
+  const cancelEdit = useCallback(() => {
+    const target = editTargetRef.current;
+    if (!target) return;
+    setInput(target.stash.text);
+    useComposerDrafts.getState().setAttachments(composerIdRef.current, target.stash.attachments);
+    setEditTarget(null);
+  }, [setInput]);
+  const [replaceConfirm, setReplaceConfirm] = useState<{
+    files: number;
+    proceed: () => void;
+  } | null>(null);
   const goalEditorOpen = goalEditorProjectId !== null && goalEditorProjectId === projectId;
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [steeringFollowUpIds, setSteeringFollowUpIds] = useState<ReadonlySet<string>>(
@@ -1084,11 +1195,9 @@ export function ChatCore() {
     setGoalEditorProjectId(null);
   }, [goalDraft, projectId, setGoal]);
   const agentTodos = useAgentTodoStore((s) => s.todos);
-  const [runUsage, setRunUsage] = useState<{
-    input: number | null;
-    output: number | null;
-    steps: number;
-  } | null>(null);
+  const [runUsage, setRunUsage] = useState<
+    (RunUsageView & { context?: { used: number; size: number } }) | null
+  >(null);
   const [restoringCheckpoint, setRestoringCheckpoint] = useState<string | null>(null);
   const handoffPending = useAgentHandoffStore((s) => s.pendingPrompt);
   const handoffAutoSend = useAgentHandoffStore((s) => s.autoSend);
@@ -1106,10 +1215,6 @@ export function ChatCore() {
   const activePersona = activePersonaId
     ? personas.find((persona) => persona.id === activePersonaId) ?? null
     : null;
-  // Always-current snapshot so `send` (a useCallback) reads the latest list
-  // without depending on it.
-  const attachmentsRef = useRef<PendingAttachment[]>(attachments);
-  attachmentsRef.current = attachments;
   const customPromptRef = useRef(customPrompt);
   customPromptRef.current = customPrompt;
   const personasRef = useRef<Persona[]>(personas);
@@ -1119,13 +1224,7 @@ export function ChatCore() {
   // Last-loaded config, so newChat can reset the session model to the saved
   // default without an extra async round trip.
   const cfgRef = useRef<AppConfig | null>(initialProvider?.cfg ?? null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const goalInputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const slashCommandMenuRef = useRef<SlashCommandMenuHandle>(null);
-  const mentionMenuRef = useRef<MentionMenuHandle>(null);
-  const highlightRef = useRef<HTMLDivElement>(null);
-  const inputShellRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!goalEditorOpen) return;
     const frame = requestAnimationFrame(() => goalInputRef.current?.focus());
@@ -1136,47 +1235,6 @@ export function ChatCore() {
   else if (planApprovalStatus === "awaiting")
     inputPlaceholder = t(($) => $.ai.composer.planRevisionPlaceholder);
   else inputPlaceholder = t(($) => $.ai.composer.placeholderDefault);
-  useAutoSizeTextarea(
-    textareaRef,
-    inputShellRef,
-    input,
-    inputPlaceholder,
-    224,
-  );
-
-  const MAX_ATTACH = 6;
-  const MAX_ATTACH_BYTES = 10 * 1024 * 1024;
-
-  const addFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    const picked: PendingAttachment[] = [];
-    const rejected: string[] = [];
-    for (const f of Array.from(files)) {
-      if (f.size > MAX_ATTACH_BYTES) {
-        rejected.push(i18n.t(($) => $.ai.toasts.attachmentTooLarge, { name: f.name }));
-        continue;
-      }
-      try {
-        const dataUrl = await new Promise<string>((res, rej) => {
-          const r = new FileReader();
-          r.onload = () => res(r.result as string);
-          r.onerror = () => rej(r.error);
-          r.readAsDataURL(f);
-        });
-        picked.push({
-          id: `${f.name}-${f.size}-${f.lastModified}`,
-          name: f.name,
-          mediaType: f.type || "application/octet-stream",
-          dataUrl,
-        });
-      } catch (error) {
-        void logError("read attachment", error);
-        rejected.push(i18n.t(($) => $.ai.toasts.attachmentReadFailed, { name: f.name }));
-      }
-    }
-    if (rejected.length) toast.errorUnique(ATTACHMENT_REJECTED_TOAST, rejected.join(" "));
-    if (picked.length) setAttachments((cur) => [...cur, ...picked].slice(0, MAX_ATTACH));
-  };
   const scrollRef = useRef<HTMLDivElement>(null);
   // Whether the user is pinned near the bottom. Only then do we auto-scroll on
   // new tokens, so a user who has scrolled up to read isn't yanked back down.
@@ -1198,9 +1256,13 @@ export function ChatCore() {
   const mcpAgentToolsQueryRef = useRef(mcpAgentToolsQuery);
   mcpAgentToolsQueryRef.current = mcpAgentToolsQuery;
   const availableSkills = useMemo(() => enabledSkills(skills), [skills]);
+  const researchAliases = useMemo(
+    () => resolveResearchToolAliases(mcpAgentToolsQuery.data ?? []),
+    [mcpAgentToolsQuery.data],
+  );
   const availableSkillTools = useMemo(
-    () => createLoadSkillTools(availableSkills),
-    [availableSkills],
+    () => createLoadSkillTools(availableSkills, [], researchAliases),
+    [availableSkills, researchAliases],
   );
   const availableMcpToolsets = useMemo(
     () =>
@@ -1252,20 +1314,6 @@ export function ChatCore() {
     () => new Set(mentionEntries.map((entry) => entry.path)),
     [mentionEntries],
   );
-  const mentionToken = activeMentionQuery(input, composerCaret);
-  const mentionQuery = mentionToken?.query ?? null;
-  const mentionMatches = useMemo(
-    () =>
-      mentionQuery === null ? [] : filterMentionEntries(mentionEntries, mentionQuery),
-    [mentionEntries, mentionQuery],
-  );
-  const composerSkillToken = parseSkillCommand(input, invocableSkills);
-  const composerSkillTokenClosed =
-    composerSkillToken !== null && input.length > composerSkillToken.skill.id.length + 1;
-  const slashCommandTriggered =
-    isSlashCommandInput(input) &&
-    slashMenuDismissedInput !== input &&
-    !composerSkillTokenClosed;
   const skillPromptCategories =
     availableSkills.length > 0
       ? [
@@ -1312,6 +1360,8 @@ export function ChatCore() {
   // Trailing-debounce timer for persisting the streaming conversation.
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persistPendingRef = useRef<{ chatId: string; msgs: ChatMessage[] } | null>(null);
+  // When the save now waiting was first put off.
+  const persistSinceRef = useRef(0);
   // Two-tier stream flushing: text deltas ride the frame cadence (rAF while
   // visible, a timer otherwise), structural output rides a 50 ms interval,
   // and terminal events drain both before applying. Patches batch into one
@@ -1336,11 +1386,17 @@ export function ChatCore() {
   }, []);
   const runIsolationRef = useRef(new ChatRunIsolation());
 
-  // Surface a one-time warning if chat history can no longer be saved (quota).
+  // Surface a one-time warning if chat history can no longer be saved (quota
+  // in the browser build, a failed disk write on the desktop).
   useEffect(() => {
     const onQuota = () => setQuotaWarning(true);
+    const onSaveFailed = () => setSaveFailedWarning(true);
     window.addEventListener("oleafly:chats-quota-exceeded", onQuota);
-    return () => window.removeEventListener("oleafly:chats-quota-exceeded", onQuota);
+    window.addEventListener("oleafly:chat-save-failed", onSaveFailed);
+    return () => {
+      window.removeEventListener("oleafly:chats-quota-exceeded", onQuota);
+      window.removeEventListener("oleafly:chat-save-failed", onSaveFailed);
+    };
   }, []);
 
   // Stall notice: if the provider goes quiet mid-run, tell the user it is
@@ -1352,10 +1408,8 @@ export function ChatCore() {
     const id = window.setInterval(() => {
       const quietMs = Date.now() - (activeChatRun()?.lastPartAt ?? lastPartAtRef.current);
       if (quietMs > 20000) {
-        const secs = Math.round(quietMs / 1000);
-        setThinkingText(
-          `Still working (${secs}s). Reasoning models and local prompt processing can be slow. Click stop to cancel.`,
-        );
+        const seconds = Math.round(quietMs / 1000);
+        setThinkingText(i18n.t(($) => $.ai.conversation.stillWorking, { seconds }));
       }
     }, 5000);
     return () => window.clearInterval(id);
@@ -1429,10 +1483,12 @@ export function ChatCore() {
   // provider with an optional key), in catalog order.
   const allProviders = mergeCustomProviders(customProviders);
   const activeProviderName = allProviders.find((item) => item.id === provider)?.name;
-  const configuredProviders = allProviders.filter((p) => {
-    if ((keysMap[p.id] ?? "").trim().length > 0) return true;
-    return Boolean(customProviders.find((c) => c.id === p.id)?.keyOptional);
-  });
+  const modelGroupSource = {
+    keys: keysMap,
+    customProviders,
+    providerModels: providerModelsMap,
+  };
+  const configuredProviders = listConfiguredProviders(modelGroupSource);
   const activeStoredModel = providerModelsMap[provider]?.find((m) => m.id === model);
   const activeModelChatOnly = modelIsChatOnly(activeStoredModel);
   const activeModelTrust = resolveModelTrust(
@@ -1470,55 +1526,49 @@ export function ChatCore() {
         : null,
     );
   }, [provider, model]);
-  const modelGroups: ModelSelectorGroup[] = configuredProviders.map((configuredProvider) => {
-    const storedModels = providerModelsMap[configuredProvider.id];
-    const catalogModels: ModelSelectorModel[] = storedModels
-      ? enabledModels(storedModels).map((m) => {
-          const resolved = resolveModelTrust(
-            m,
-            modelProbes[probeKey(configuredProvider.id, m.id)],
-          );
-          return {
-            id: m.id,
-            name: m.name,
-            trust: resolved.trust,
-            blockedReason: resolved.reason,
-            metadata: m.metadata,
-          };
-        })
-      : [...configuredProvider.models];
-    const available: ModelSelectorModel[] =
-      configuredProvider.id === "ollama" && ollamaModels.length > 0
-        ? ollamaModels.map((id) => ({ id, name: id }))
-        : catalogModels;
-    if (
-      configuredProvider.id === provider &&
-      model &&
-      !available.some((availableModel) => availableModel.id === model)
-    ) {
-      available.push({ id: model, name: model });
-    }
-    return {
-      id: configuredProvider.id,
-      name: configuredProvider.name,
-      models: available,
-    };
+  const modelGroups: ModelSelectorGroup[] = configuredModelGroups(modelGroupSource, {
+    liveOllama: ollamaModels,
+    keep: { providerId: provider, modelId: model },
+    dropEmpty: false,
+    toModel: (providerId, stored) => {
+      const resolved = resolveModelTrust(stored, modelProbes[probeKey(providerId, stored.id)]);
+      return {
+        id: stored.id,
+        name: stored.name,
+        trust: resolved.trust,
+        blockedReason: resolved.reason,
+        metadata: stored.metadata,
+      };
+    },
   });
   const delegationTargets = useAgentTargets(projectId, modelGroups);
   const delegationTargetsRef = useRef<DelegationTarget[]>(delegationTargets);
   delegationTargetsRef.current = delegationTargets;
-  const agentMatches = useMemo(
-    () => (mentionQuery === null ? [] : filterAgentTargets(delegationTargets, mentionQuery)),
-    [delegationTargets, mentionQuery],
-  );
   const composerMentionTargets = useMemo(
     () => new Set([...mentionPaths, ...delegationTargets.map((target) => target.id)]),
     [mentionPaths, delegationTargets],
   );
-  const mentionMenuOpen =
-    mentionToken !== null &&
-    mentionMatches.length + agentMatches.length > 0 &&
-    mentionMenuDismissedInput !== input;
+  const mentionItems = useCallback(
+    (query: string): MentionItem[] => [
+      ...filterAgentTargets(delegationTargets, query).map((target) => ({
+        id: target.id,
+        label: target.label,
+        kind: "agent" as const,
+        detail: target.detail,
+      })),
+      ...filterMentionEntries(mentionEntries, query).map((entry) => ({
+        id: entry.path,
+        label: entry.path,
+        kind: entry.isDir ? ("folder" as const) : ("file" as const),
+        path: entry.path,
+      })),
+    ],
+    [delegationTargets, mentionEntries],
+  );
+  const composerHighlight = useMemo(
+    () => ({ skillIds: invocableSkillIds, paths: composerMentionTargets }),
+    [composerMentionTargets, invocableSkillIds],
+  );
 
   // Load sticky agent memory when the project changes. Also drop the in-run
   // checklist, which is not project-scoped, so project A's plan does not
@@ -1571,8 +1621,10 @@ export function ChatCore() {
   }, [projectId, loadChats, setActiveChat, setMessages]);
 
   // Immediate write (see persistDebounced below for the streaming path).
+  // Streaming saves skip the search index; the save at the end of a run
+  // indexes the finished reply.
   const persist = useCallback((chatId: string | null, msgs: ChatMessage[]) => {
-    if (chatId) useChatsStore.getState().saveMessages(chatId, msgs);
+    if (chatId) useChatsStore.getState().saveMessages(chatId, msgs, { index: false });
   }, []);
 
   // Trailing-debounced persist: during streaming, `updateLast` fires often;
@@ -1580,6 +1632,18 @@ export function ChatCore() {
   // Coalesce to ~1 write/400ms (disk via Tauri, or localStorage in browser).
   const persistDebounced = useCallback(
     (chatId: string | null, msgs: ChatMessage[]) => {
+      // A reply that streams without a pause is still saved every couple of
+      // seconds, so little is lost when the window closes or the project changes.
+      const now = Date.now();
+      const pending = persistPendingRef.current;
+      if (pending?.chatId !== chatId) persistSinceRef.current = now;
+      else if (chatId && now - persistSinceRef.current >= PERSIST_MAX_WAIT_MS) {
+        if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+        persistPendingRef.current = null;
+        persist(chatId, msgs);
+        return;
+      }
       persistPendingRef.current = chatId ? { chatId, msgs } : null;
       persistTimerRef.current = scheduleChatPersistence(
         persistTimerRef.current,
@@ -1593,6 +1657,25 @@ export function ChatCore() {
       );
     },
     [persist]
+  );
+
+  // Reads the chat's cost (subagents included) from the usage ledger.
+  const refreshChatCost = useCallback(
+    async (costProjectId: string, chatId: string, threadId: string | null) => {
+      if (!threadId) return;
+      const chat = useChatsStore.getState().byId(chatId);
+      if (!chat) return;
+      try {
+        const cost = await ledgerChatCost(threadId, chat.createdAt);
+        if (cost === undefined) return;
+        const chats = useChatsStore.getState();
+        if (chats.projectId !== costProjectId) return;
+        chats.setChatCost(chatId, cost);
+      } catch (error) {
+        void logError("chat cost", error);
+      }
+    },
+    [],
   );
 
   const dropPendingPersist = useCallback(() => {
@@ -1622,22 +1705,51 @@ export function ChatCore() {
   // so switching chats mid-stream can't splice the in-flight run's tokens into
   // a different conversation. Covers the recent-chats list and the history modal.
   const openChat = useCallback(
-    (chat: StoredChat) => {
-      if (streaming) return;
-      setActiveChat(chat.id);
-      setMessages(chat.messages);
-      useAgentTodoStore.getState().selectChat(chat.id);
+    async (chat: StoredChat) => {
+      // A send that is still preparing has not set `streaming` yet, but it will
+      // take the chat on show: switching now would send into the other chat.
+      if (streaming || sendPreparingRef.current || runOwnerRef.current) return;
+      let body = chat;
+      if (chat.stub) {
+        const openingProject = useFilesStore.getState().projectId;
+        // Older chats load as stubs; read the messages before showing them.
+        try {
+          body = (await useChatsStore.getState().loadChatBody(chat.id)) ?? chat;
+        } catch (error) {
+          void logError("open chat", error);
+          toast.error(i18n.t(($) => $.ai.history.openFailed));
+          return;
+        }
+        if (body.stub) {
+          toast.error(i18n.t(($) => $.ai.history.openFailed));
+          return;
+        }
+        if (sendPreparingRef.current || runOwnerRef.current) return;
+        // The project changed while the chat was read: it is not one of the open project's chats.
+        if (useFilesStore.getState().projectId !== openingProject) return;
+      }
+      setActiveChat(body.id);
+      setMessages(body.messages);
+      useAgentTodoStore.getState().selectChat(body.id);
       setHistoryOpen(false);
+      // The usage of the last run and a trimmed-history note belong to the chat they ran in.
+      setRunUsage(null);
+      setDroppedTurns(0);
+      cancelEdit();
     },
-    [streaming, setActiveChat, setMessages]
+    [streaming, setActiveChat, setMessages, cancelEdit]
   );
 
-  const newChat = useCallback(() => {
-    if (streaming) return;
+  // Clears the transcript for a new chat, whatever is running.
+  const startNewChat = useCallback(() => {
     setActiveChat(null);
     setMessages([]);
     useAgentTodoStore.getState().selectChat(null);
     setActivePersonaId(null);
+    setNewChatSettings({});
+    setDroppedTurns(0);
+    setRunUsage(null);
+    cancelEdit();
     // Drop any mid-chat model switch too: a fresh chat starts on the
     // configured default, not whatever the last conversation was left on.
     const cfg = cfgRef.current;
@@ -1647,7 +1759,44 @@ export function ChatCore() {
       setModel(modelId);
       setApiKey(keysMap[providerId] || "");
     }
-  }, [streaming, setActiveChat, keysMap, setMessages]);
+  }, [setActiveChat, keysMap, setMessages, cancelEdit]);
+
+  const newChat = useCallback(() => {
+    if (streaming || sendPreparingRef.current || runOwnerRef.current) return;
+    startNewChat();
+  }, [streaming, startNewChat]);
+
+  // Deleting the chat a run is writing into stops that run first, then clears
+  // the transcript: left alone, the run would write into a chat that is gone
+  // and the next message would bring the whole conversation back as a new chat.
+  const deleteChat = useCallback(
+    (id: string) => {
+      const run = activeChatRun();
+      const running = run?.chatId === id;
+      if (running) {
+        pendingImagesRef.current = [];
+        run.controller.abort();
+      }
+      const wasShown = useChatsStore.getState().activeId === id;
+      const drafts = useComposerDrafts.getState();
+      const deletedDraft = builtinComposerId(projectId, id);
+      const editing = editTargetRef.current;
+      if (editing && wasShown) {
+        // What was typed before the edit goes to the new chat; the edit goes with the chat.
+        drafts.setText(deletedDraft, editing.stash.text);
+        drafts.setAttachments(deletedDraft, editing.stash.attachments);
+        drafts.moveDraft(deletedDraft, builtinComposerId(projectId));
+        editTargetRef.current = null;
+        setEditTarget(null);
+      }
+      // The chat's own draft goes too, so its files can be collected.
+      drafts.setText(deletedDraft, "");
+      drafts.setAttachments(deletedDraft, []);
+      removeChat(id);
+      if (wasShown || running) startNewChat();
+    },
+    [projectId, removeChat, startNewChat],
+  );
 
   const archiveCurrentChat = useCallback(async () => {
     if (!activeChatId || !activeThreadId) return;
@@ -1706,9 +1855,8 @@ export function ChatCore() {
   );
   const commandActions = {
     archiveChat: canMutateCurrentChat ? () => void archiveCurrentChat() : undefined,
-    attachFiles: projectId ? () => fileInputRef.current?.click() : undefined,
+    attachFiles: projectId ? () => composerRef.current?.openFilePicker() : undefined,
     forkChat: canMutateCurrentChat ? () => void forkCurrentChat() : undefined,
-    openBrowser: () => launchBrowser(),
     openGoalEditor: projectId ? openGoalEditor : undefined,
     openMcpSettings,
     openModelPicker:
@@ -1721,54 +1869,73 @@ export function ChatCore() {
     ...createSlashCommands(commandActions),
     ...createSkillCommands(invocableSkills),
   ];
+  const slashItems: SlashItem[] = slashCommands.map((command) => ({
+    id: command.id,
+    label: command.label,
+    description: command.description,
+    icon: command.icon,
+    group: command.group,
+    keywords: command.keywords,
+    insertText: command.kind === "insert" ? (command.insertText ?? "") : undefined,
+    command:
+      command.kind === "insert" && command.insertText?.startsWith("/")
+        ? command.insertText.slice(1).trim()
+        : undefined,
+  }));
+  const slashCommandsRef = useRef(slashCommands);
+  slashCommandsRef.current = slashCommands;
+  const onSlashSelect = useCallback((item: SlashItem) => {
+    if (item.insertText !== undefined) return;
+    slashCommandsRef.current.find((command) => command.id === item.id)?.action();
+  }, []);
   const attachCommands = createAttachCommands(commandActions);
-  const slashMenuOpen =
-    slashCommandTriggered &&
-    filterSlashCommands(slashCommands, slashCommandQuery(input)).length > 0;
+
+  // Places the caret at the end of text the composer just received.
+  const focusComposerAt = useCallback((position: number) => {
+    requestAnimationFrame(() => {
+      composerRef.current?.setCaret(position);
+      composerRef.current?.focus();
+    });
+  }, []);
 
   const pickHomeSkill = useCallback(
     (skill: SkillEntry) => {
-      const next = `/${skill.id} `;
-      setInput(next);
-      setComposerCaret(next.length);
-      setSlashMenuDismissedInput(next);
-      setActiveSlashCommandId(null);
-      requestAnimationFrame(() => {
-        const textarea = textareaRef.current;
-        if (!textarea) return;
-        textarea.focus({ preventScroll: true });
-        textarea.setSelectionRange(next.length, next.length);
-      });
+      // The command goes before what the user typed, which stays.
+      const command = `/${skill.id} `;
+      const typed = inputRef.current.trimStart();
+      setInput(typed.startsWith(command) ? typed : `${command}${typed}`);
+      focusComposerAt(command.length);
     },
-    [setInput],
+    [focusComposerAt, setInput],
   );
 
-  const insertMention = useCallback(
-    (start: number, text: string) => {
-      const current = inputRef.current;
-      const end = mentionTokenEnd(current, start);
-      const next = `${current.slice(0, start)}${text}${current.slice(end)}`;
-      const caret = start + text.length;
-      setInput(next);
-      setComposerCaret(caret);
-      setMentionMenuDismissedInput(null);
-      setActiveMentionPath(null);
-      requestAnimationFrame(() => {
-        const textarea = textareaRef.current;
-        if (!textarea) return;
-        textarea.focus({ preventScroll: true });
-        textarea.setSelectionRange(caret, caret);
-      });
+  const addComposerFiles = useCallback(
+    (files: File[]) => {
+      if (!projectId) return;
+      void import("@/lib/attachments-intake")
+        .then((intake) =>
+          intake.intakeFiles(files, { composerId: composerIdRef.current, scope: projectId }),
+        )
+        .catch((error: unknown) => logError("attach files", error));
     },
-    [setInput],
+    [projectId],
   );
 
-  const syncComposerCaret = useCallback((textarea: HTMLTextAreaElement | null) => {
-    const caret = textarea?.selectionStart;
-    setComposerCaret(
-      typeof caret === "number" ? caret : (textarea?.value ?? "").length,
-    );
-  }, []);
+  const dropProjectPaths = useCallback(
+    (paths: string[]) => {
+      const tree = useFilesStore.getState().tree;
+      const text = paths
+        .map((path) =>
+          mentionInsertText(
+            path,
+            tree.some((entry) => normalizeMentionPath(entry.path) === path && entry.is_dir),
+          ),
+        )
+        .join("");
+      composerRef.current?.insertText(text);
+    },
+    [],
+  );
 
   const scrollAnchorRef = useRef<ChatMessage | null | undefined>(undefined);
   useEffect(() => {
@@ -1805,16 +1972,22 @@ export function ChatCore() {
     chatId: string | null;
     apply: (message: ChatMessage) => ChatMessage;
   }>) => {
-    if (!patches.length) return;
+    // A patch is for the chat on show; one that lands after another chat
+    // opened (a screenshot stored late) must not change or save that chat.
+    const shownChatId = useChatsStore.getState().activeId;
+    const applicable = patches.filter((patch) => patch.chatId === shownChatId);
+    if (!applicable.length) return;
     const prev = messagesRef.current;
     if (!prev.length) return;
     const copy = [...prev];
     let last = copy.at(-1);
     if (last === undefined) return;
-    for (const patch of patches) last = patch.apply(last);
+    const before = last;
+    for (const patch of applicable) last = patch.apply(last);
+    if (last === before) return;
     copy[copy.length - 1] = last;
     publishMessages(copy);
-    const chatId = patches.at(-1)?.chatId ?? null;
+    const chatId = shownChatId;
     if (chatId) useChatsStore.getState().setLive(chatId, copy);
     persistDebounced(chatId, copy);
   }, [persistDebounced, publishMessages]);
@@ -1865,14 +2038,36 @@ export function ChatCore() {
     [queueStreamDrain],
   );
 
+  // What the model picker holds now. The follow-up queued during a run is sent
+  // from that run's own `send`, a closure from when the run started, so `send`
+  // reads the picked model here and not from its closure.
+  const pickedModelRef = useRef({ provider, model, providerModelsMap, apiKey, activeProviderName });
+  pickedModelRef.current = { provider, model, providerModelsMap, apiKey, activeProviderName };
+
   const send = useCallback(async (
     text: string,
     queued?: QueuedFollowUp,
-    options?: { approvedPlan?: boolean },
+    options?: {
+      approvedPlan?: boolean;
+      /**
+       * Regenerate or edit: send these attachments, not the draft's. `commit`
+       * puts the new turn in place of the old one; it runs once every check
+       * has passed, so a run that cannot start leaves the transcript as it was.
+       */
+      replay?: { attachments: readonly DraftAttachment[]; commit?: () => Promise<void> | void };
+      /** Start a new chat with web access on (literature quick starts). */
+      web?: boolean;
+    },
   ) => {
-    const outgoing = (queued?.attachments ?? attachmentsRef.current).map((attachment) => ({
-      ...attachment,
-    }));
+    const { provider, model, providerModelsMap, apiKey, activeProviderName } = pickedModelRef.current;
+    const sendComposerId = composerIdRef.current;
+    const draft = draftAttachments(sendComposerId);
+    // Attachments still being prepared hold the message back.
+    if (!options?.replay && !queued && draft.some((item) => item.status === "processing")) return;
+    const outgoing: DraftAttachment[] = (
+      options?.replay?.attachments ?? queued?.attachments ?? readyAttachments(draft)
+    ).map((attachment) => ({ ...attachment }));
+    const fromDraft = !options?.replay && !queued;
     if ((!text.trim() && outgoing.length === 0)) return;
     const sendSequence = sendSequenceRef.current + 1;
     sendSequenceRef.current = sendSequence;
@@ -1880,10 +2075,13 @@ export function ChatCore() {
     // Steer-vs-queue: while a turn runs, Enter queues the message for the
     // next turn; an explicit Steer injects it mid-run at a message boundary.
     if (streaming || activeChatRun()) {
-      if (!queued && activeChatId) {
+      if (!queued && !options?.replay && activeChatId) {
         useAgentTurnsStore.getState().queueFollowUp(activeChatId, text, outgoing);
         setInput("");
-        setAttachments([]);
+        useComposerDrafts.getState().removeAttachments(
+          sendComposerId,
+          outgoing.map((item) => item.id),
+        );
       }
       return;
     }
@@ -1938,10 +2136,7 @@ export function ChatCore() {
       ...runTree.map((entry) => normalizeMentionPath(entry.path)),
       ...delegationTargetsRef.current.map((target) => target.id),
     ]);
-    const runAttachments = [
-      ...outgoing,
-      ...(await mentionAttachments(projectId, text, runTree)),
-    ];
+    const mentioned = await mentionAttachments(projectId, text, runTree);
     let runMcpServers: McpAgentServer[] = [];
     try {
       const result = await mcpAgentToolsQueryRef.current.refetch();
@@ -1956,7 +2151,11 @@ export function ChatCore() {
     const enabledToolsForRun = {
       ...useAiToolSettingsStore.getState().enabledByName,
     };
-    const capacitySkillTools = createLoadSkillTools(runSkills, requestedSkillIds);
+    const capacitySkillTools = createLoadSkillTools(
+      runSkills,
+      requestedSkillIds,
+      resolveResearchToolAliases(runMcpServers),
+    );
     const capacityAdditions: RuntimeToolset[] = [
       ...createMcpRuntimeToolsets(runMcpServers, {
         confirm: () => Promise.resolve(false),
@@ -2056,18 +2255,47 @@ export function ChatCore() {
     const updateRunLastText = (fn: (message: ChatMessage) => ChatMessage) => {
       if (runIsCurrent()) updateLast(runChatId, fn, "text");
     };
+    // Screenshots this run stored, kept out of an attachment collection until
+    // the chat lists them; and the stores still under way.
+    const runImageRefs: string[] = [];
+    const runImageStores: Promise<unknown>[] = [];
+    let releaseRunImages: (() => void) | null = null;
+    // Set once the run's last save is made: later patches go to the saved chat.
+    let runSaved = false;
     const collectRunImage = (dataUrl: string) => {
       runPendingImages.push(dataUrl);
+      let toolId: string | undefined;
       updateRunLast((m) => {
         const calls = [...(m.toolCalls || [])];
         for (let i = calls.length - 1; i >= 0; i--) {
           if (calls[i].status === "running" && IMAGE_TOOLS.has(calls[i].name)) {
+            toolId = calls[i].id;
             calls[i] = { ...calls[i], image: dataUrl };
             return { ...m, toolCalls: calls };
           }
         }
         return m;
       });
+      releaseRunImages ??= registerAttachmentHolder(() => runImageRefs);
+      // The chat keeps the screenshot by reference. The data URL shows it until
+      // the reference is stored, then goes: a long run would otherwise hold
+      // every screenshot in memory until the app restarts.
+      const stored = storeToolImage(runProjectId, dataUrl).then((ref) => {
+        if (!ref) return;
+        runImageRefs.push(ref.sha256);
+        if (!runSaved) {
+          updateRunLast((m) => withStoredToolImage(m, toolId, ref));
+          return;
+        }
+        // The run is over: the saved chat takes the reference, whatever chat is on show now.
+        const chats = useChatsStore.getState();
+        const saved = runChatId && chats.projectId === runProjectId ? chats.byId(runChatId)?.messages : undefined;
+        const next = saved?.map((m) => withStoredToolImage(m, toolId, ref));
+        if (runChatId && saved && next?.some((m, index) => m !== saved[index])) {
+          chats.saveMessages(runChatId, next);
+        }
+      });
+      runImageStores.push(stored);
     };
     let runEndedCleanly = false;
     const setRunThinking = (value: string | null) => {
@@ -2190,6 +2418,9 @@ export function ChatCore() {
     let usageOut = 0;
     let displayedUsageIn: number | null = null;
     let displayedUsageOut: number | null = null;
+    let usageCacheRead: number | null = null;
+    let usageCacheWrite: number | null = null;
+    let usageContext: { used: number; size: number } | null = null;
     let usageSteps = 0;
     let runRequestId: string | null = null;
 
@@ -2197,20 +2428,31 @@ export function ChatCore() {
       releaseRunReservation();
       return;
     }
+    if (options?.replay?.commit) {
+      try {
+        await options.replay.commit();
+      } catch (error) {
+        releaseRunReservation();
+        throw error;
+      }
+    }
     runPendingImages.push(...pendingImagesRef.current.splice(0));
 
     const priorMessages = messagesRef.current;
     const createdAt = Date.now();
+    // Optimistic turn + thread scoping: the record exists before any
+    // request, and the chat keeps one rollout thread across sends. The user
+    // message keeps the turn id, so a later edit can drop exactly this turn.
+    const clientTurnId = crypto.randomUUID();
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
       content: text,
       createdAt,
+      turnId: clientTurnId,
       ...(skillCommand ? { skillId: skillCommand.skill.id } : {}),
       ...(mentionedPaths.length > 0 ? { mentions: mentionedPaths } : {}),
-      ...(outgoing.length
-        ? { attachments: outgoing.map((a) => ({ name: a.name, mediaType: a.mediaType })) }
-        : {}),
+      ...(outgoing.length ? { attachments: outgoing.map(draftToChatAttachment) } : {}),
     };
     const assistantMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -2225,23 +2467,26 @@ export function ChatCore() {
       assistantMsg,
     ];
     setMessages(nextMessages);
-    if (!queued) {
+    if (fromDraft) {
       if (
         sendSequenceRef.current === sendSequence &&
         inputRevisionRef.current === inputRevision
       ) {
         setInput("");
       }
-      if (
-        sendSequenceRef.current === sendSequence &&
-        attachmentsRef.current.length === outgoing.length &&
-        attachmentsRef.current.every((attachment, index) => attachment.id === outgoing[index]?.id)
-      ) {
-        setAttachments([]);
+      if (sendSequenceRef.current === sendSequence) {
+        const sent = new Set(outgoing.map((item) => item.id));
+        const held = draftAttachments(sendComposerId).filter((item) => sent.has(item.id));
+        if (held.length > 0) {
+          useComposerDrafts.getState().removeAttachments(
+            sendComposerId,
+            held.map((item) => item.id),
+          );
+        }
       }
     }
     setStreaming(true);
-    setRunThinking("Thinking…");
+    setRunThinking(i18n.t(($) => $.ai.chat.reasoning.thinking));
     lastPartAtRef.current = Date.now();
     runHandle.lastPartAt = Date.now();
 
@@ -2250,8 +2495,18 @@ export function ChatCore() {
       const cs = useChatsStore.getState();
       let chatId = cs.projectId === projectId ? cs.activeId : null;
       if (!chatId && projectId) {
-        const created = cs.create(projectId, currentHead);
+        const created = cs.create(projectId, currentHead, {
+          effort: newChatSettingsRef.current.effort,
+          web: options?.web ? WEB_ON : newChatSettingsRef.current.web,
+        });
         chatId = created.id;
+        // What was typed for the next message since pressing send belongs to the chat that now exists.
+        if (sendComposerId === builtinComposerId(projectId)) {
+          useComposerDrafts.getState().moveDraft(sendComposerId, builtinComposerId(projectId, created.id));
+        }
+      } else if (chatId && options?.web) {
+        // A quick start that needs the web turns it on in the chat it starts in too.
+        cs.setChatSettings(chatId, { web: WEB_ON });
       }
       runChatId = chatId;
       updateChatRun(runHandle, { chatId });
@@ -2266,9 +2521,6 @@ export function ChatCore() {
     }
     const planGated = planTurn === "planning" || planTurn === "revision";
 
-    // Optimistic turn + thread scoping: the record exists before any
-    // request, and the chat keeps one rollout thread across sends.
-    const clientTurnId = crypto.randomUUID();
     let turnThreadId: string | null = null;
     let turnSetupError: unknown = null;
     let planTodosAtStart: readonly AgentTodo[] | null = null;
@@ -2333,7 +2585,11 @@ USER_CUSTOM_INSTRUCTIONS`
 
     const mainDocument = useFilesStore.getState().mainDoc || documentEngine.main_document || "main.tex";
     const activeGoalLine = goalPromptLine(useChatGoalStore.getState().goal(projectId));
-    const runSkillTools = createLoadSkillTools(runSkills, requestedSkillIds);
+    const runSkillTools = createLoadSkillTools(
+      runSkills,
+      requestedSkillIds,
+      resolveResearchToolAliases(runMcpServers),
+    );
     const runToolAdditions: RuntimeToolset[] = [
       { id: "research-workspace", source: { kind: "project" }, tools: createResearchWorkspaceTools(runProjectId) },
       ...createMcpRuntimeToolsets(runMcpServers, {
@@ -2443,15 +2699,48 @@ ${sandboxedCustom}`;
       : "";
     const effectiveSystem = `${systemPrompt}${agentDelegationPrompt(runText, delegationTargetsRef.current)}${skillCatalogBlock}${requestedSkillSuffix}\n\n${approvalPostureLine(runApprovalMode)}${planTurnBlock}`;
 
-    // Conversation history: packed (recent + truncated) so long chats fit context.
-    const packedPrior = packChatHistory(priorMessages);
-    const apiMessages: ModelMessage[] = [
-      ...packedPrior.map((m): ModelMessage => ({
-        role: m.role === "assistant" ? "assistant" : "user",
-        content: m.content,
-      })),
-      inputModelMessage(runText, runAttachments),
-    ];
+    // Conversation history: packed (recent + truncated) so long chats fit
+    // context. Recent turns send their stored attachments again.
+    const runMetadata = runStoredModel?.metadata;
+    const runVision = modelSupportsVision(provider, model, runMetadata?.inputModalities);
+    const runNativePdf = runMetadata?.inputModalities?.includes("pdf") === true;
+    let apiMessages: ModelMessage[];
+    let runDroppedTurns = 0;
+    try {
+      const chatAttachments = await import("@/lib/chat-attachments");
+      const attachmentContext: AttachmentModelContext = {
+        readText: attachmentText,
+        textBudget: chatAttachments.attachmentTextBudget(runMetadata?.contextWindow),
+        pageImages: runVision && !runNativePdf,
+      };
+      const history = await chatAttachments.historyModelMessages(
+        priorMessages,
+        runProjectId,
+        attachmentContext,
+      );
+      runDroppedTurns = history.droppedTurns;
+      apiMessages = [
+        ...history.messages,
+        await chatAttachments.userModelMessage(runText, outgoing, mentioned, attachmentContext),
+      ];
+    } catch (error) {
+      // The attachment module did not load: send the text alone.
+      void logError("prepare chat messages", error);
+      apiMessages = [
+        ...packChatHistory(priorMessages).map((m): ModelMessage => ({
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: m.content,
+        })),
+        { role: "user", content: runText },
+      ];
+    }
+    if (runIsCurrent()) setDroppedTurns(runDroppedTurns);
+    const runChat = runChatId ? useChatsStore.getState().byId(runChatId) : undefined;
+    const runEffort = resolveRunEffort(
+      runChat ? runChat.effort : newChatSettingsRef.current.effort,
+      effortChoicesFor(provider, model, runMetadata),
+    );
+    const runWeb = runWebTools(runChat ? runChat.web : newChatSettingsRef.current.web);
     let queuedAccepted = false;
     const acknowledgeQueued = () => {
       if (queuedAccepted || !queued || !runChatId) return;
@@ -2694,6 +2983,8 @@ ${sandboxedCustom}`;
           return `The open project changed while this run was active. The tool was not executed to protect the newly opened project. Ask the user to re-run the request in the project it applies to.`;
         },
         providerOverride: { provider_id: provider, model_id: model },
+        effort: runEffort,
+        web: runWeb,
         takePendingImages: () =>
           drainPendingImages(
             runPendingImages,
@@ -2717,7 +3008,7 @@ ${sandboxedCustom}`;
             });
           },
           onRetry: (attempt, max) => {
-            setRunThinking(`Connection issue, retrying (${attempt}/${max})…`);
+            setRunThinking(i18n.t(($) => $.ai.conversation.retrying, { attempt, max }));
             updateRunLastText((m) => ({
               ...m,
               content: stepContent,
@@ -2797,18 +3088,35 @@ ${sandboxedCustom}`;
               return { ...m, toolCalls: calls };
             });
           },
-          onUsage: (usage) => {
+          onUsage: (usage, extras) => {
             usageIn = usage.input;
             usageOut = usage.output;
             const normalized = normalizeAgentUsage(usage);
             displayedUsageIn = normalized.inputTotal;
             displayedUsageOut = normalized.outputTotal;
+            usageCacheRead = normalized.cacheRead;
+            usageCacheWrite = normalized.cacheWrite;
+            const lastStep = extras?.lastStep ? normalizeAgentUsage(extras.lastStep) : null;
+            const windowSize = extras?.contextWindow ?? runMetadata?.contextWindow;
+            if (lastStep?.inputTotal !== null && lastStep?.inputTotal !== undefined && windowSize) {
+              usageContext = { used: lastStep.inputTotal, size: windowSize };
+            }
             if (runIsCurrent())
               setRunUsage({
                 input: displayedUsageIn,
                 output: displayedUsageOut,
                 steps: usageSteps,
+                cacheRead: usageCacheRead,
+                cacheWrite: usageCacheWrite,
+                context: usageContext ?? undefined,
               });
+          },
+          onNotice: (code, detail) => {
+            const notice = runNoticeText(code, detail);
+            if (notice === null) return;
+            updateRunLast((m) =>
+              m.notices?.includes(notice) ? m : { ...m, notices: [...(m.notices ?? []), notice] },
+            );
           },
           onSteered: (steeredText) => appendSteeredTurn(steeredText),
           onSubagentUpdate: (update) => {
@@ -2847,15 +3155,13 @@ ${sandboxedCustom}`;
         updateRunLast((m) => ({
           ...m,
           content: (m.content ? `${m.content}\n\n` : "") + displayError,
+          failed: true,
         }));
       }
       if (outcome.stopped_at_cap) {
-        updateRunLast((m) => ({
-          ...m,
-          content:
-            (m.content ? `${m.content}\n\n` : "") +
-            "_Reached the step safety limit. You can continue by sending another message._",
-        }));
+        updateRunLast((m) => ({ ...m, content: appendMarker(m.content ?? "", STEP_LIMIT_MARKER) }));
+      } else if (!outcome.error && isOutputLimitStop(outcome.stop_reason)) {
+        updateRunLast((m) => ({ ...m, content: appendMarker(m.content ?? "", OUTPUT_LIMIT_MARKER) }));
       }
     } catch (e) {
       const aborted =
@@ -2871,12 +3177,8 @@ ${sandboxedCustom}`;
           );
         }
       } else if (aborted) {
-        const note = "_Stopped._";
         if (runChatId) useAgentTurnsStore.getState().interruptTurn(runChatId);
-        updateRunLast((m) => ({
-          ...m,
-          content: (m.content ? `${m.content}\n\n` : "") + note,
-        }));
+        updateRunLast((m) => ({ ...m, content: appendMarker(m.content ?? "", STOPPED_MARKER) }));
       } else {
         const errMsg = formatError(e, activeProviderName);
         updateRunLast((m) => ({
@@ -2884,6 +3186,7 @@ ${sandboxedCustom}`;
           content: errMsg.includes("NoOutputGenerated")
             ? i18n.t(($) => $.ai.conversation.noOutput)
             : errMsg,
+          failed: true,
         }));
       }
     } finally {
@@ -2948,8 +3251,27 @@ ${sandboxedCustom}`;
           inputTokens: usageIn,
           outputTokens: usageOut,
           steps: usageSteps,
+          ...(usageCacheRead !== null ? { cacheReadTokens: usageCacheRead } : {}),
+          ...(usageCacheWrite !== null ? { cacheWriteTokens: usageCacheWrite } : {}),
+          ...(usageContext ? { context: usageContext } : {}),
         });
-        if (runIsCurrent()) setRunUsage({ input: displayedUsageIn, output: displayedUsageOut, steps: usageSteps });
+        if (runIsCurrent()) {
+          setRunUsage({
+            input: displayedUsageIn,
+            output: displayedUsageOut,
+            steps: usageSteps,
+            cacheRead: usageCacheRead,
+            cacheWrite: usageCacheWrite,
+            context: usageContext ?? undefined,
+          });
+        }
+        // The usage ledger prices the run (subagents included) shortly after.
+        const costChatId = runChatId;
+        const costThreadId = turnThreadId;
+        const costProjectId = projectId;
+        window.setTimeout(() => {
+          void refreshChatCost(costProjectId, costChatId, costThreadId);
+        }, CHAT_COST_REFRESH_MS);
       }
       if (runIsCurrent()) {
         const completedAt = Date.now();
@@ -2965,6 +3287,11 @@ ${sandboxedCustom}`;
             useChatsStore.getState().saveMessages(runChatId, messagesRef.current);
           }
         }
+      }
+      runSaved = true;
+      if (releaseRunImages) {
+        const release = releaseRunImages;
+        void Promise.allSettled(runImageStores).then(release);
       }
       if (runChatId) useChatsStore.getState().clearLive(runChatId);
       runPendingImages.length = 0;
@@ -2994,7 +3321,7 @@ ${sandboxedCustom}`;
         }
       }
     }
-  }, [streaming, apiKey, provider, model, providerModelsMap, projectId, projectName, currentHead, figureToolsAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId, trackRunRequestId, markRunSteerable, persistDebounced, dropPendingPersist]);
+  }, [streaming, projectId, projectName, currentHead, figureToolsAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeChatId, trackRunRequestId, markRunSteerable, persistDebounced, dropPendingPersist, refreshChatCost]);
 
   const stop = useCallback(() => {
     pendingImagesRef.current = [];
@@ -3006,19 +3333,236 @@ ${sandboxedCustom}`;
     void send(PLAN_APPROVED_MESSAGE, undefined, { approvedPlan: true });
   }, [activeChatId, send, streaming]);
 
+  // ---- Message actions: regenerate, retry, edit and resend ----
+  const actionsEnabled = Boolean(
+    projectId &&
+      activeChatId &&
+      apiKey &&
+      engineLoaded &&
+      !streaming &&
+      !approvalModeLocked &&
+      !activeChatRun(),
+  );
+  const savedAttachmentsAsDrafts = useCallback(
+    (message: ChatMessage): DraftAttachment[] => {
+      const restored: DraftAttachment[] = [];
+      const left: string[] = [];
+      for (const meta of message.attachments ?? []) {
+        const draft = chatToDraftAttachment(meta, projectId);
+        if (draft) restored.push(draft);
+        else left.push(meta.name);
+      }
+      // A message saved before 0.4.8 kept only the names of its files.
+      if (left.length > 0) {
+        toast.info(i18n.t(($) => $.ai.attachments.notReplayed, { names: left.join(", ") }));
+      }
+      return restored;
+    },
+    [projectId],
+  );
+
+  const replay = useCallback(
+    async (args: {
+      userIndex: number;
+      mode: "inPlace" | "fork";
+      text: string;
+      attachments: readonly DraftAttachment[];
+      approvedPlan?: boolean;
+      /** The replay is going ahead: the run passed every check. */
+      onCommit?: () => void;
+    }) => {
+      const chatsState = useChatsStore.getState();
+      const chatId = chatsState.activeId;
+      if (!projectId || !chatId || streaming || activeChatRun()) return;
+      const chat = chatsState.byId(chatId);
+      const current = messagesRef.current;
+      const userMessage = current[args.userIndex];
+      if (!chat || !userMessage) return;
+      try {
+        const threadId =
+          useAgentTurnsStore.getState().threadByChat[chatId] ?? chat.threadId ?? null;
+        const turnIds = threadId
+          ? (await agentThreadRead(threadId)).map((turn) => turn.clientTurnId)
+          : [];
+        const drop = turnsToDrop(
+          turnIds,
+          userMessage.turnId,
+          args.mode === "fork" ? userTurnsFrom(current, args.userIndex) : 0,
+        );
+        const kept = current.slice(0, args.userIndex);
+        // Nothing changes until the run is about to start: when the budget,
+        // a blocked model or a tool limit stops it, the turn is still there.
+        if (args.mode === "inPlace") {
+          await send(args.text, undefined, {
+            replay: {
+              attachments: args.attachments,
+              commit: async () => {
+                args.onCommit?.();
+                setMessages(kept);
+                useChatsStore.getState().saveMessages(chatId, kept);
+                if (threadId && drop > 0) {
+                  await agentThreadRollback(threadId, drop).catch((error: unknown) =>
+                    logError("roll back thread", error),
+                  );
+                }
+                for (const message of current.slice(args.userIndex)) {
+                  if (message.role === "user" && message.turnId) {
+                    useAgentTurnsStore.getState().rollbackTurn(chatId, message.turnId);
+                  }
+                }
+              },
+            },
+            approvedPlan: args.approvedPlan,
+          });
+          return;
+        }
+        await send(args.text, undefined, {
+          replay: {
+            attachments: args.attachments,
+            commit: async () => {
+              const newThread = threadId ? await agentThreadFork(threadId, projectId, drop) : null;
+              // The edit leaves the composer only once the fork exists: a fork
+              // that fails keeps the edited text to send again.
+              args.onCommit?.();
+              const fork = useChatsStore
+                .getState()
+                .create(projectId, chat.headOid ?? currentHead, { effort: chat.effort, web: chat.web });
+              useChatsStore.getState().saveMessages(fork.id, kept);
+              if (newThread) {
+                useAgentTurnsStore.setState((state) => ({
+                  threadByChat: { ...state.threadByChat, [fork.id]: newThread },
+                }));
+                useChatsStore.getState().setThreadId(fork.id, newThread);
+              }
+              setMessages(kept);
+              useAgentTodoStore.getState().selectChat(fork.id);
+              toast.success(i18n.t(($) => $.ai.messageActions.forked));
+            },
+          },
+        });
+      } catch (error) {
+        void logError("replay message", error);
+        toast.error(i18n.t(($) => $.ai.messageActions.failed));
+      }
+    },
+    [currentHead, projectId, send, setMessages, streaming],
+  );
+
+  // Replacing replies that changed files asks first: their undo card goes away.
+  const confirmReplace = useCallback((from: number, proceed: () => void) => {
+    const files = changedFileCount(messagesRef.current, from);
+    if (files > 0) setReplaceConfirm({ files, proceed });
+    else proceed();
+  }, []);
+
+  const submitComposer = useCallback(() => {
+    const target = editTargetRef.current;
+    if (!target) {
+      void send(inputRef.current);
+      return;
+    }
+    const draftItems = draftAttachments(composerIdRef.current);
+    if (draftItems.some((item) => item.status === "processing")) return;
+    const text = inputRef.current;
+    const attachments = readyAttachments(draftItems);
+    if (!text.trim() && attachments.length === 0) return;
+    const run = () => {
+      // The draft the user had before editing comes back once the replay is
+      // going ahead; when it cannot start, the edit stays as it is.
+      const draftId = composerIdRef.current;
+      void replay({
+        userIndex: target.userIndex,
+        mode: target.mode,
+        text,
+        attachments,
+        onCommit: () => {
+          setInput(target.stash.text);
+          useComposerDrafts.getState().setAttachments(draftId, target.stash.attachments);
+          setEditTarget(null);
+        },
+      });
+    };
+    if (target.mode === "inPlace") confirmReplace(target.userIndex, run);
+    else run();
+  }, [confirmReplace, replay, send, setInput]);
+
+  const handleMessageAction = (action: MessageAction, messageId: string) => {
+    if (!actionsEnabled) return;
+    const current = messagesRef.current;
+    const index = current.findIndex((message) => message.id === messageId);
+    if (index < 0) return;
+    if (action === "regenerate") {
+      const userIndex = turnStartIndex(current, index);
+      if (userIndex < 0) return;
+      const userMessage = current[userIndex];
+      confirmReplace(userIndex, () =>
+        void replay({
+          userIndex,
+          mode: "inPlace",
+          text: userMessage.content,
+          attachments: savedAttachmentsAsDrafts(userMessage),
+          approvedPlan: userMessage.content === PLAN_APPROVED_MESSAGE,
+        }),
+      );
+      return;
+    }
+    const userMessage = current[index];
+    if (userMessage.role !== "user") return;
+    const stash = {
+      text: editTargetRef.current ? editTargetRef.current.stash.text : inputRef.current,
+      attachments: editTargetRef.current
+        ? editTargetRef.current.stash.attachments
+        : draftAttachments(composerIdRef.current),
+    };
+    const attachments = savedAttachmentsAsDrafts(userMessage);
+    setInput(userMessage.content);
+    // An image chip reads its stored file while it is shown (a cached URL
+    // kept in the draft could be revoked under it).
+    useComposerDrafts.getState().setAttachments(composerIdRef.current, attachments);
+    setEditTarget({ messageId, userIndex: index, mode: replayMode(current, index), stash });
+    focusComposerAt(userMessage.content.length);
+  };
+  const handleMessageActionRef = useRef(handleMessageAction);
+  handleMessageActionRef.current = handleMessageAction;
+  // Stable, so message rows keep their memo.
+  const onMessageAction = useCallback((action: MessageAction, messageId: string) => {
+    handleMessageActionRef.current(action, messageId);
+  }, []);
+
+  const exportActiveChat = useCallback(async () => {
+    const chat = activeChatId ? useChatsStore.getState().byId(activeChatId) : undefined;
+    if (!chat) return;
+    try {
+      const { exportChatMarkdown } = await import("@/lib/chat-export");
+      const result = await exportChatMarkdown(
+        { ...chat, messages: messagesRef.current },
+        projectName ?? null,
+      );
+      if (result === "saved") toast.success(i18n.t(($) => $.ai.conversation.exported));
+    } catch (error) {
+      void logError("export chat", error);
+      toast.error(i18n.t(($) => $.ai.conversation.exportFailed));
+    }
+  }, [activeChatId, projectName]);
+
   const homeQuickStarts = useMemo(
     () =>
       availableSuggestions(chatSuggestions(), skillsQuery.data).map((suggestion) => ({
         id: suggestion.id,
         label: suggestion.label,
         icon: suggestion.icon,
-        onSelect: () => void send(suggestion.send),
+        onSelect: () =>
+          void send(
+            suggestion.send,
+            undefined,
+            WEB_DEFAULT_SUGGESTIONS.has(suggestion.id) ? { web: true } : undefined,
+          ),
       })),
     [skillsQuery.data, send],
   );
 
   const revisePlan = useCallback(() => {
-    requestAnimationFrame(() => textareaRef.current?.focus({ preventScroll: true }));
+    requestAnimationFrame(() => composerRef.current?.focus());
   }, []);
 
   let lastAssistantIndex = -1;
@@ -3034,6 +3578,10 @@ ${sandboxedCustom}`;
     live: streaming && index === messages.length - 1,
     isLatestAssistant: index === lastAssistantIndex,
     msg,
+    actions: messageActionState(messages, index, {
+      enabled: actionsEnabled,
+      excludeContent: PLAN_APPROVED_MESSAGE,
+    }),
   }));
   // The conversation minimap only earns its space in the full-width AI-only
   // layout, and only once there is more than one prompt to navigate between.
@@ -3184,7 +3732,11 @@ ${sandboxedCustom}`;
         streamPatchesRef.current = { text: [], output: [] };
         streamDrainQueuedRef.current = { text: false, output: false };
       });
+      // What streamed since the last save is kept, marked as stopped, in the
+      // project the run belongs to (its chats are still the ones loaded).
+      const pending = persistPendingRef.current;
       dropPendingPersist();
+      saveStoppedReply(prev, run.chatId, pending);
       trackRunRequestId(null);
       runOwnerRef.current = false;
       endChatRun(run);
@@ -3198,8 +3750,27 @@ ${sandboxedCustom}`;
     pendingImagesRef.current = [];
     setGoalEditorProjectId(null);
     setGoalDraft("");
-    setInputState(savedDraft(projectId));
+    setNewChatSettings({});
+    setDroppedTurns(0);
+    const leaving = shownDraftRef.current;
+    const editing = editTargetRef.current;
+    if (editing) {
+      // The draft from before the edit goes back to the chat it was typed in.
+      useComposerDrafts.getState().setText(leaving, editing.stash.text);
+      useComposerDrafts.getState().setAttachments(leaving, editing.stash.attachments);
+    }
+    // The chat on show is not open when the project comes back, so what was
+    // typed for it waits in that project's next chat.
+    useComposerDrafts.getState().moveDraft(leaving, builtinComposerId(prev));
+    setEditTarget(null);
   }, [projectId, trackRunRequestId, dropPendingPersist]);
+
+  // Another chat, or another project, brings its own draft into the box.
+  useEffect(() => {
+    if (shownDraftRef.current === composerId) return;
+    shownDraftRef.current = composerId;
+    setInputText(draftText(composerId));
+  }, [composerId]);
 
   useEffect(() => {
     type ChatsState = ReturnType<typeof useChatsStore.getState>;
@@ -3259,6 +3830,25 @@ ${sandboxedCustom}`;
           chatUsage.outputTokens > 0 ||
           chatUsage.steps > 0)),
   );
+  // The composer's context ring and usage popover.
+  const activeContextWindow = activeStoredModel?.metadata?.contextWindow;
+  const usageContext = (() => {
+    const context = runUsage?.context ?? chatUsage?.context ?? null;
+    if (!context) return null;
+    return activeContextWindow ? { used: context.used, size: activeContextWindow } : context;
+  })();
+  const usageSnapshot = builtinUsageSnapshot({
+    chatUsage,
+    runUsage,
+    context: usageContext,
+    droppedTurns,
+  });
+  const loadUsageExtras = builtinUsageExtras({
+    projectId,
+    providerId: provider,
+    threadId: activeThreadId ?? activeChat?.threadId ?? null,
+    chatCreatedAt: activeChat?.createdAt ?? null,
+  });
   let usageSummary: string;
   if (runUsage) {
     usageSummary =
@@ -3276,6 +3866,35 @@ ${sandboxedCustom}`;
   } else {
     usageSummary = t(($) => $.ai.usage.summaryFallback);
   }
+  const usageShare = contextFraction(usageSnapshot);
+  const usageTooltip =
+    usageShare === null
+      ? usageSummary
+      : `${usageSummary}. ${t(($) => $.ai.usage.contextShare, {
+          percent: formatNumber(usageShare, { style: "percent", maximumFractionDigits: 0 }),
+        })}`;
+  const effortChoices = effortChoicesFor(provider, model, activeStoredModel?.metadata);
+  const selectedEffort = activeChat ? activeChat.effort : newChatSettings.effort;
+  const selectedWeb = activeChat ? activeChat.web : newChatSettings.web;
+  const changeEffort = (next: EffortLevel | undefined) => {
+    if (activeChat) useChatsStore.getState().setChatSettings(activeChat.id, { effort: next ?? null });
+    else setNewChatSettings((current) => ({ ...current, effort: next }));
+  };
+  const changeWeb = (on: boolean) => {
+    const next = on ? WEB_ON : undefined;
+    if (activeChat) useChatsStore.getState().setChatSettings(activeChat.id, { web: next ?? null });
+    else setNewChatSettings((current) => ({ ...current, web: next }));
+  };
+  const activeModelVision = modelSupportsVision(
+    provider,
+    model,
+    activeStoredModel?.metadata?.inputModalities,
+  );
+  const composerAttachmentNotice = attachmentNotice(readyAttachments(attachments), {
+    name: activeStoredModel?.name ?? model,
+    vision: activeModelVision,
+    nativePdf: activeStoredModel?.metadata?.inputModalities?.includes("pdf") === true,
+  });
 
   return (
     <div
@@ -3293,6 +3912,7 @@ ${sandboxedCustom}`;
           ? "true"
           : "false"
       }
+      data-composer-panel
       className="ai-chat-shell flex h-full flex-col bg-sidebar"
     >
       <AssistantShellHeader
@@ -3329,68 +3949,6 @@ ${sandboxedCustom}`;
                 <Settings2 className="size-4" />
               </Button>
             </Tooltip>
-            {configuredProviders.length > 0 && hasUsage && (
-              <div data-tour="ai-usage">
-                <Tooltip label={usageSummary}>
-                  <Popover
-                    align="right"
-                    ariaLabel={t(($) => $.ai.header.usageAriaLabel)}
-                    className="w-64 p-0"
-                    trigger={<BadgeDollarSign className="size-4" />}
-                  >
-                    <div
-                      className="space-y-3 p-3 text-xs"
-                      data-testid="ai-usage-popover"
-                    >
-                      {runUsage && (
-                        <section data-testid="ai-run-usage">
-                          <div className="mb-1.5 flex items-center justify-between">
-                            <span className="font-medium text-foreground">{t(($) => $.ai.usage.lastRun)}</span>
-                          </div>
-                          <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
-                            <dt>{t(($) => $.ai.usage.steps)}</dt>
-                            <dd className="text-right tabular-nums">{runUsage.steps}</dd>
-                            <dt>{t(($) => $.ai.usage.input)}</dt>
-                            <dd className="text-right tabular-nums">
-                              {runUsage.input === null
-                                ? t(($) => $.common.state.unknown)
-                                : formatNumber(runUsage.input)}
-                            </dd>
-                            <dt>{t(($) => $.ai.usage.output)}</dt>
-                            <dd className="text-right tabular-nums">
-                              {runUsage.output === null
-                                ? t(($) => $.common.state.unknown)
-                                : formatNumber(runUsage.output)}
-                            </dd>
-                          </dl>
-                        </section>
-                      )}
-                      {chatUsage && chatTotal + chatUsage.steps > 0 && (
-                        <section
-                          className={cn(runUsage && "border-t pt-3")}
-                          data-testid="ai-chat-usage"
-                        >
-                          <div className="mb-1.5 flex items-center justify-between">
-                            <span className="font-medium text-foreground">{t(($) => $.ai.usage.thisChat)}</span>
-                          </div>
-                          <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
-                            <dt>{t(($) => $.ai.usage.runs)}</dt>
-                            <dd className="text-right tabular-nums">{chatUsage.runs}</dd>
-                            <dt>{t(($) => $.ai.usage.steps)}</dt>
-                            <dd className="text-right tabular-nums">{chatUsage.steps}</dd>
-                            <dt>{t(($) => $.ai.usage.tokens)}</dt>
-                            <dd className="text-right tabular-nums">{formatNumber(chatTotal)}</dd>
-                          </dl>
-                        </section>
-                      )}
-                      <p className="border-t pt-2 text-[0.625rem] leading-relaxed text-muted-foreground">
-                        {t(($) => $.ai.usage.cacheNote)}
-                      </p>
-                    </div>
-                  </Popover>
-                </Tooltip>
-              </div>
-            )}
             <Suspense fallback={null}>
               <Tooltip label={t(($) => $.ai.header.usageReport)}>
                 <UsageReportDialog
@@ -3441,10 +3999,11 @@ ${sandboxedCustom}`;
         )}
       </AssistantShellHeader>
 
-      {quotaWarning && (
-        <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[0.6875rem] text-amber-600 dark:text-amber-400">
-          {t(($) => $.ai.provider.quotaWarning)}
-        </div>
+      {quotaWarning && <WorkspaceBanner tone="warning">{t(($) => $.ai.provider.quotaWarning)}</WorkspaceBanner>}
+      {saveFailedWarning && (
+        <WorkspaceBanner tone="warning" data-testid="ai-chat-save-failed" role="status">
+          {t(($) => $.ai.conversation.saveFailed)}
+        </WorkspaceBanner>
       )}
 
       {!providerConfigReady && !apiKey && (
@@ -3504,7 +4063,7 @@ ${sandboxedCustom}`;
                   <RecentChats
                     chats={chats}
                     currentHead={currentHead}
-                    onOpen={openChat}
+                    onOpen={(chat) => void openChat(chat)}
                     onShowAll={() => setHistoryOpen(true)}
                   />
                 </AssistantHome>
@@ -3522,6 +4081,7 @@ ${sandboxedCustom}`;
                     messages={renderedMessages}
                     live={liveMessage}
                     actions={chatActions}
+                    onMessageAction={onMessageAction}
                     chatId={activeChatId}
                     scrollRef={scrollRef}
                     nearBottomRef={nearBottomRef}
@@ -3698,16 +4258,34 @@ ${sandboxedCustom}`;
                               ) return;
                               steeringFollowUpIdsRef.current.add(item.id);
                               setSteeringFollowUpIds(new Set(steeringFollowUpIdsRef.current));
-                              mentionAttachments(
-                                projectId,
-                                item.text,
-                                useFilesStore.getState().tree,
-                              )
-                                .then((mentioned) => {
+                              Promise.all([
+                                mentionAttachments(
+                                  projectId,
+                                  item.text,
+                                  useFilesStore.getState().tree,
+                                ),
+                                import("@/lib/chat-attachments"),
+                              ])
+                                .then(async ([mentioned, chatAttachments]) => {
+                                  const metadata = activeStoredModel?.metadata;
+                                  const vision = modelSupportsVision(
+                                    provider,
+                                    model,
+                                    metadata?.inputModalities,
+                                  );
                                   const message = toAgentMessages([
-                                    inputModelMessage(
+                                    await chatAttachments.userModelMessage(
                                       steeredSkillText(item.text, skillsRef.current),
-                                      [...item.attachments, ...mentioned],
+                                      item.attachments,
+                                      mentioned,
+                                      {
+                                        readText: attachmentText,
+                                        textBudget: chatAttachments.attachmentTextBudget(
+                                          metadata?.contextWindow,
+                                        ),
+                                        pageImages:
+                                          vision && metadata?.inputModalities?.includes("pdf") !== true,
+                                      },
                                     ),
                                   ])[0];
                                   if (!message) return;
@@ -3845,151 +4423,98 @@ ${sandboxedCustom}`;
                 </div>
               </form>
             )}
-            <AttachmentChips
-              items={attachments}
-              onRemove={(id) => setAttachments((a) => a.filter((x) => x.id !== id))}
-            />
-            <div
-              ref={inputShellRef}
-              className="relative rounded-[1.375rem] border bg-card px-3 pb-2 pt-2.5 shadow-sm transition-colors focus-within:border-ring"
-            >
-              <Input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="image/*,.pdf,.txt,.tex,.typ,.bib,.md"
-                className="hidden"
-                onChange={(e) => { void addFiles(e.target.files); e.target.value = ""; }}
-              />
-              {slashMenuOpen && (
-                <SlashCommandMenu
-                  ref={slashCommandMenuRef}
-                  commands={slashCommands}
-                  query={slashCommandQuery(input)}
-                  onActiveCommandChange={setActiveSlashCommandId}
-                  onClose={() => {
-                    setSlashMenuDismissedInput(input);
-                    setActiveSlashCommandId(null);
-                  }}
-                  onSelect={(command: ComposerCommand) => {
-                    const inserted =
-                      command.kind === "insert" ? (command.insertText ?? "") : "";
-                    setInput(inserted);
-                    setComposerCaret(inserted.length);
-                    setSlashMenuDismissedInput(inserted || null);
-                    setActiveSlashCommandId(null);
-                    if (inserted) {
-                      requestAnimationFrame(() =>
-                        textareaRef.current?.focus({ preventScroll: true }),
-                      );
-                    }
-                  }}
-                />
-              )}
-              {mentionMenuOpen && (
-                <MentionMenu
-                  ref={mentionMenuRef}
-                  entries={mentionMatches}
-                  agents={agentMatches}
-                  onActiveEntryChange={setActiveMentionPath}
-                  onClose={() => {
-                    setMentionMenuDismissedInput(input);
-                    setActiveMentionPath(null);
-                  }}
-                  onSelect={(selection) => {
-                    if (mentionToken) insertMention(mentionToken.start, selection.text);
-                  }}
-                />
-              )}
-              <div className="relative">
-              <ComposerHighlight
-                ref={highlightRef}
-                text={input}
-                skillIds={invocableSkillIds}
-                paths={composerMentionTargets}
-                className="max-h-56 rounded-md px-0.5 py-2 text-sm"
-              />
-              <Textarea
-                ref={textareaRef}
-                data-tour="ai-input"
-                role="combobox"
-                aria-autocomplete="list"
-                aria-controls={composerControlsId(mentionMenuOpen, slashMenuOpen)}
-                aria-expanded={mentionMenuOpen || slashMenuOpen}
-                aria-haspopup="listbox"
-                aria-activedescendant={composerActiveDescendant(
-                  mentionMenuOpen,
-                  activeMentionPath,
-                  slashMenuOpen,
-                  activeSlashCommandId,
-                )}
-                value={input}
-                onChange={(e) => {
-                  setSlashMenuDismissedInput(null);
-                  setActiveSlashCommandId(null);
-                  setMentionMenuDismissedInput(null);
-                  setActiveMentionPath(null);
-                  setInput(e.target.value);
-                  syncComposerCaret(e.target);
-                }}
-                onScroll={(e) => {
-                  const layer = highlightRef.current;
-                  if (layer) layer.scrollTop = e.currentTarget.scrollTop;
-                }}
-                onSelect={(e) => syncComposerCaret(e.currentTarget)}
-                onClick={(e) => syncComposerCaret(e.currentTarget)}
-                onKeyUp={(e) => syncComposerCaret(e.currentTarget)}
-                onKeyDown={(e) => {
-                  if (e.nativeEvent.isComposing) return;
-                  if (mentionMenuOpen && mentionMenuRef.current?.handleKeyDown(e)) return;
-                  if (slashMenuOpen && slashCommandMenuRef.current?.handleKeyDown(e)) return;
-                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                    e.preventDefault();
-                    void send(input);
-                  }
-                }}
-                placeholder={inputPlaceholder}
-                disabled={!engineLoaded}
-                rows={1}
-                className="relative max-h-56 min-h-[32px] w-full resize-none overflow-y-auto rounded-md border-0 bg-transparent px-0.5 text-sm text-transparent caret-foreground shadow-none placeholder:text-muted-foreground/70"
-              />
-              </div>
-              {modelNoticeLine && (
-                <p
-                  data-testid="ai-model-notice"
-                  data-kind={visibleModelNotice?.kind ?? "chat-only"}
-                  role={modelNoticeRole(visibleModelNotice)}
-                  className={cn(
-                    "mt-1.5 flex items-center gap-1.5 px-0.5 text-[0.6875rem]",
-                    visibleModelNotice?.kind === "blocked" || visibleModelNotice?.kind === "error"
-                      ? "text-destructive"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {visibleModelNotice?.kind === "checking" && (
-                    <Spinner size="xs" />
-                  )}
-                  <span className="min-w-0">{modelNoticeLine}</span>
-                  {canRecheckModel && (
-                    <button
-                      type="button"
-                      data-testid="ai-model-recheck"
-                      onClick={() => void recheckModel()}
-                      className="shrink-0 rounded px-1 font-medium text-foreground underline-offset-2 hover:underline"
-                    >
-                      {t(($) => $.ai.composer.checkAgain)}
-                    </button>
-                  )}
-                </p>
-              )}
-              <div
-                data-testid="ai-composer-controls"
-                className="ai-composer-controls mt-2 flex min-h-7 min-w-0 flex-nowrap items-center justify-between gap-0.5 [container-name:ai-composer] [container-type:inline-size]"
+            {editTarget && (
+              <output
+                data-testid="ai-edit-banner"
+                className="mb-2 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-xs text-foreground"
               >
-                <div
-                  data-testid="ai-composer-controls-left"
-                  className="ai-composer-controls-left no-scrollbar flex min-w-0 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden"
-                >
+                <span className="min-w-0 flex-1">
+                  {editTarget.mode === "inPlace"
+                    ? t(($) => $.ai.messageActions.editingLatest)
+                    : t(($) => $.ai.messageActions.editingEarlier)}
+                </span>
+                <Button type="button" variant="ghost" size="xs" onClick={cancelEdit}>
+                  {t(($) => $.ai.messageActions.cancelEdit)}
+                </Button>
+              </output>
+            )}
+            {activeChatId && saveProblems[activeChatId] === "tooLarge" && (
+              <WorkspaceBanner
+                tone="warning"
+                data-testid="ai-chat-too-large"
+                role="status"
+                className="mb-2 flex-nowrap rounded-md border px-2.5"
+              >
+                <span className="min-w-0 flex-1">{t(($) => $.ai.conversation.tooLargeToSave)}</span>
+                <Button type="button" size="xs" variant="outline" onClick={() => void exportActiveChat()}>
+                  {t(($) => $.ai.conversation.exportChat)}
+                </Button>
+              </WorkspaceBanner>
+            )}
+            <ChatComposer
+              ref={composerRef}
+              composerId={composerId}
+              value={inputText}
+              onChange={setInput}
+              onSubmit={submitComposer}
+              busy={streaming}
+              onQueue={submitComposer}
+              onStop={stop}
+              disabled={!engineLoaded}
+              placeholder={inputPlaceholder}
+              attachments={attachments}
+              onAddFiles={projectId ? addComposerFiles : undefined}
+              onRemoveAttachment={(id) => removeAttachments([id])}
+              onDropProjectPaths={projectId ? dropProjectPaths : undefined}
+              slashItems={slashItems}
+              onSlashSelect={onSlashSelect}
+              mentionItems={mentionItems}
+              highlight={composerHighlight}
+              dataTour="ai-input"
+              notice={
+                <>
+                  {modelNoticeLine && (
+                    <p
+                      data-testid="ai-model-notice"
+                      data-kind={visibleModelNotice?.kind ?? "chat-only"}
+                      role={modelNoticeRole(visibleModelNotice)}
+                      className={cn(
+                        "mt-1.5 flex items-center gap-1.5 px-0.5 text-[0.6875rem]",
+                        visibleModelNotice?.kind === "blocked" || visibleModelNotice?.kind === "error"
+                          ? "text-destructive"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {visibleModelNotice?.kind === "checking" && (
+                        <Spinner size="xs" />
+                      )}
+                      <span className="min-w-0">{modelNoticeLine}</span>
+                      {canRecheckModel && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          data-testid="ai-model-recheck"
+                          onClick={() => void recheckModel()}
+                          className="h-5 shrink-0 px-1 text-foreground"
+                        >
+                          {t(($) => $.ai.composer.checkAgain)}
+                        </Button>
+                      )}
+                    </p>
+                  )}
+                  {composerAttachmentNotice && (
+                    <output
+                      data-testid="ai-attachment-notice"
+                      className="mt-1.5 block px-0.5 text-[0.6875rem] text-muted-foreground"
+                    >
+                      {composerAttachmentNotice}
+                    </output>
+                  )}
+                </>
+              }
+              controls={
+                <>
                   <ComposerAttachMenu commands={attachCommands} />
                   <ApprovalModeSelector
                     mode={approvalMode}
@@ -4030,12 +4555,7 @@ ${sandboxedCustom}`;
                                   key={item.id}
                                   onClick={() => {
                                     setInput(item.prompt);
-                                    setComposerCaret(item.prompt.length);
-                                    requestAnimationFrame(() =>
-                                      textareaRef.current?.focus({
-                                        preventScroll: true,
-                                      }),
-                                    );
+                                    focusComposerAt(item.prompt.length);
                                   }}
                                   className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2.5 text-left transition-colors hover:bg-accent"
                                 >
@@ -4194,11 +4714,29 @@ ${sandboxedCustom}`;
                       </button>
                     </Tooltip>
                   )}
-                </div>
-                <div
-                  data-testid="ai-composer-controls-right"
-                  className="ai-composer-controls-right ml-auto flex shrink-0 flex-nowrap items-center gap-1"
-                >
+                  <WebToggle
+                    on={isWebOn(selectedWeb)}
+                    onChange={changeWeb}
+                    disabled={approvalModeLocked}
+                  />
+                </>
+              }
+              trailingControls={
+                <>
+                  {configuredProviders.length > 0 && (
+                    <UsageMeter
+                      snapshot={usageSnapshot}
+                      tooltip={usageTooltip}
+                      loadExtras={loadUsageExtras}
+                      dataTour="ai-usage"
+                    />
+                  )}
+                  <EffortSelector
+                    choices={effortChoices}
+                    value={selectedEffort}
+                    onChange={changeEffort}
+                    disabled={approvalModeLocked}
+                  />
                   {configuredProviders.length > 0 && (
                     <div
                       data-tour="ai-provider-model"
@@ -4218,28 +4756,9 @@ ${sandboxedCustom}`;
                       />
                     </div>
                   )}
-                  {streaming ? (
-                    <button type="button"
-                      onClick={stop}
-                      aria-label={t(($) => $.ai.composer.stop)}
-                      title={t(($) => $.ai.composer.stopTitle)}
-                      className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:opacity-90"
-                    >
-                      <Square className="size-3.5 fill-current" />
-                    </button>
-                  ) : (
-                    <button type="button"
-                      onClick={() => void send(input)}
-                      disabled={!engineLoaded || (!input.trim() && attachments.length === 0)}
-                      aria-label={t(($) => $.ai.composer.send)}
-                      className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary disabled:opacity-40"
-                    >
-                      <ArrowUp className="size-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
+                </>
+              }
+            />
           </div>
           </div>
         </>
@@ -4251,11 +4770,23 @@ ${sandboxedCustom}`;
         activeId={activeChatId}
         currentHead={currentHead}
         onClose={() => setHistoryOpen(false)}
-        onOpen={openChat}
-        onDelete={(id) => {
-          removeChat(id);
-          if (id === activeChatId) newChat();
+        onOpen={(chat) => void openChat(chat)}
+        onDelete={deleteChat}
+        skipped={skippedOnLoad}
+      />
+      <ConfirmationDialog
+        open={replaceConfirm !== null}
+        title={t(($) => $.ai.messageActions.replaceTitle)}
+        description={t(($) => $.ai.messageActions.replaceDescription, {
+          count: replaceConfirm?.files ?? 0,
+        })}
+        confirmLabel={t(($) => $.ai.messageActions.replaceConfirm)}
+        onConfirm={() => {
+          const pending = replaceConfirm;
+          setReplaceConfirm(null);
+          pending?.proceed();
         }}
+        onCancel={() => setReplaceConfirm(null)}
       />
     </div>
   );

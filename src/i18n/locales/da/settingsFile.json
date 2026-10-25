@@ -48,7 +48,6 @@
     "hexColor": "skal være en farve som #2563eb",
     "hexColorOrEmpty": "skal være en farve som #2563eb, eller \"\" for at bruge temaets farve",
     "text": "skal være tekst på højst {{max}} tegn",
-    "webAddress": "skal være en webadresse, der starter med http:// eller https://",
     "list": "skal være en liste med højst {{max}} elementer",
     "listItem": "er ikke et tilladt element",
     "duplicate": "står der to gange",

@@ -1,4 +1,5 @@
 mod client;
+mod errors;
 mod html;
 mod import;
 mod session;
@@ -80,6 +81,108 @@ pub async fn overleaf_sign_in<R: Runtime>(
     Ok(status_for(&base, Some(&signed_in)))
 }
 
+// 0.4.8 I: sign in with copied browser cookies
+/// One cookie from the main webview's store: name, value, domain, path and
+/// whether it is secure.
+pub(crate) type AppCookie = (String, String, Option<String>, Option<String>, bool);
+
+/// The errors a cookie sign-in keeps as they are, because they say what is
+/// wrong better than "the sign-in didn't work".
+const KEPT_SIGN_IN_ERRORS: &[&str] = &[
+    "\"overleaf.unreachable\"",
+    "\"overleaf.rate_limited\"",
+    "\"overleaf.invalid_server\"",
+];
+
+/// Signs in to the online LaTeX service with the cookies the browser sign-in
+/// copy put in the main webview's cookie store, without opening a window.
+/// Async because reading cookies deadlocks in sync commands on Windows.
+#[tauri::command]
+pub async fn overleaf_sign_in_with_app_cookies<R: Runtime>(
+    webview: tauri::Webview<R>,
+    server: Option<String>,
+) -> Result<OverleafStatus, String> {
+    if crate::caller::own_window_label(&webview).as_deref() != Some("main") {
+        return Err(AppError::new("overleaf.sign_in_failed").into());
+    }
+    let base = session::normalize_server(server.as_deref())?;
+    let stored = webview
+        .cookies()
+        .map_err(|_| String::from(AppError::new("overleaf.sign_in_failed")))?;
+    let cookies: Vec<AppCookie> = stored
+        .iter()
+        .map(|cookie| {
+            (
+                cookie.name().to_string(),
+                cookie.value().to_string(),
+                cookie.domain().map(str::to_string),
+                cookie.path().map(str::to_string),
+                cookie.secure().unwrap_or(false),
+            )
+        })
+        .collect();
+    let header = app_cookie_header(&cookies, &base);
+    // The copied cookies were only a way in. The session is saved encrypted
+    // below, nothing else in the app reads the webview's copy, and WebKit
+    // would keep it on disk unencrypted until it expires.
+    for at in copied_cookies(&cookies, &base) {
+        let _ = webview.delete_cookie(stored[at].clone());
+    }
+    let header = header?;
+    let signed_in = signin::session_from_cookie(&base, header)
+        .await
+        .map_err(|error| {
+            if KEPT_SIGN_IN_ERRORS.iter().any(|code| error.contains(code)) {
+                error
+            } else {
+                String::from(AppError::new("overleaf.browser_sign_in_failed"))
+            }
+        })?;
+    let saved = signed_in.clone();
+    let save_base = base.clone();
+    blocking(move || session::save(&save_base, &saved)).await?;
+    Ok(status_for(&base, Some(&signed_in)))
+}
+
+/// The positions of the cookies that would go to `base`: the ones the
+/// browser sign-in copy brought in for it.
+fn copied_cookies(cookies: &[AppCookie], base: &str) -> Vec<usize> {
+    let Ok(url) = tauri::Url::parse(base) else {
+        return Vec::new();
+    };
+    cookies
+        .iter()
+        .enumerate()
+        .filter(|(_, (_, _, domain, path, secure))| {
+            session::cookie_applies(domain.as_deref(), path.as_deref(), *secure, &url)
+        })
+        .map(|(at, _)| at)
+        .collect()
+}
+
+/// Cookie header for `base` from the main webview's cookies (name, value,
+/// domain, path, secure). Only cookies that would go to `base` are used.
+fn app_cookie_header(cookies: &[AppCookie], base: &str) -> Result<String, String> {
+    let url = tauri::Url::parse(base).map_err(|_| {
+        String::from(AppError::new("overleaf.invalid_server").param("server", base))
+    })?;
+    let header = session::cookie_header(
+        cookies
+            .iter()
+            .filter(|(_, _, domain, path, secure)| {
+                session::cookie_applies(domain.as_deref(), path.as_deref(), *secure, &url)
+            })
+            .map(|(name, value, _, _, _)| (name.clone(), value.clone())),
+    );
+    if header.is_empty() {
+        let host = url.host_str().unwrap_or(base).to_string();
+        return Err(AppError::new("overleaf.browser_sign_in_missing")
+            .param("server", host)
+            .into());
+    }
+    Ok(header)
+}
+
 #[tauri::command]
 pub async fn overleaf_sign_out(server: Option<String>) -> Result<OverleafStatus, String> {
     let base = session::normalize_server(server.as_deref())?;
@@ -136,6 +239,10 @@ pub struct SyncStatus {
     pub last_sync_at: Option<u64>,
     pub token_saved: bool,
     pub imported_from: Option<ImportedFrom>,
+    /// Set when stopping the sync kept local files that linking with
+    /// Overleaf's versions had replaced: the folder they are in.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub backups_folder: Option<String>,
 }
 
 #[derive(Serialize, Clone)]
@@ -150,19 +257,10 @@ pub struct SyncReport {
 
 fn imported_from(project_id: &str) -> Option<ImportedFrom> {
     let meta = crate::project::read_meta(project_id).ok()?;
-    let origin = meta.extra.get("importedFrom")?;
-    let text = |key: &str| {
-        origin
-            .get(key)
-            .and_then(serde_json::Value::as_str)
-            .map(str::to_string)
-    };
-    if text("service").as_deref() != Some("overleaf") {
-        return None;
-    }
+    let origin = oleafly_online::projects::imported_from(meta.extra.get("importedFrom")?)?;
     Some(ImportedFrom {
-        server: text("server")?,
-        project_id: text("projectId")?,
+        server: origin.server,
+        project_id: origin.project_id,
     })
 }
 
@@ -198,6 +296,7 @@ fn sync_status(project_id: &str) -> Result<SyncStatus, String> {
         last_sync_at: link.as_ref().and_then(|link| link.last_sync_at),
         imported_from: imported,
         server,
+        backups_folder: None,
     })
 }
 
@@ -263,8 +362,10 @@ pub async fn overleaf_sync_set_auto(project_id: String, auto: bool) -> Result<Sy
 pub async fn overleaf_sync_unlink(project_id: String) -> Result<SyncStatus, String> {
     let _guard = sync::claim(&project_id)?;
     blocking(move || {
-        sync::remove_link(&project_id)?;
-        sync_status(&project_id)
+        let kept = sync::retire_mirror(&project_id)?;
+        let mut status = sync_status(&project_id)?;
+        status.backups_folder = kept.map(|folder| folder.display().to_string());
+        Ok(status)
     })
     .await
 }
@@ -287,7 +388,7 @@ pub async fn overleaf_sync_link<R: Runtime>(
     let existing = blocking(move || {
         let current = current_link(&stale_id)?;
         if current.is_none() && sync::read_link(&stale_id)?.is_some() {
-            sync::remove_link(&stale_id)?;
+            sync::retire_mirror(&stale_id)?;
         }
         Ok(current)
     })
@@ -316,11 +417,23 @@ pub async fn overleaf_sync_link<R: Runtime>(
     .await?;
     let generation = mutation.generation;
     let project = mutation.project;
-    let outcome = mutation.value?;
+    let outcome = match mutation.value {
+        Ok(outcome) => outcome,
+        Err(error) => {
+            // Some files may be in their new state: the editor reloads them.
+            if errors::files_may_have_changed(&error) {
+                let _ = publish(&app, &state, &project_id, project, true, generation);
+            }
+            return Err(error);
+        }
+    };
     let (label, files, changed) = match &outcome {
         sync::LinkOutcome::Linked { written } => ("linked", written.clone(), !written.is_empty()),
         sync::LinkOutcome::NeedsChoice(files) => ("needs-choice", files.clone(), false),
     };
+    // The files are written: the editor hears of them even when saving the
+    // link record fails.
+    let event = publish(&app, &state, &project_id, project, changed, generation)?;
     if label == "linked" {
         let now = sync::now_seconds();
         sync::write_link(
@@ -334,7 +447,6 @@ pub async fn overleaf_sync_link<R: Runtime>(
             },
         )?;
     }
-    let event = publish(&app, &state, &project_id, project, changed, generation)?;
     Ok(SyncReport {
         outcome: label.to_string(),
         pulled: if changed { files.len() } else { 0 },
@@ -435,31 +547,45 @@ pub async fn overleaf_sync_check(project_id: String) -> Result<SyncReport, Strin
         }
     };
     record_sync(&project_id, target.link).await?;
+    maintain(target.repo).await;
     Ok(quiet_report(
         if pushed { "synced" } else { "up-to-date" },
         pushed,
     ))
 }
 
-#[tauri::command]
-pub async fn overleaf_sync_now<R: Runtime>(
-    app: AppHandle<R>,
-    state: tauri::State<'_, crate::state::AppState>,
-    project_id: String,
-    expected_generation: Option<u64>,
-    resolutions: Option<BTreeMap<String, Side>>,
-    fetched: Option<bool>,
-) -> Result<SyncReport, String> {
-    let _guard = sync::claim(&project_id)?;
-    let target = sync_target(&project_id).await?;
-    let resolutions = resolutions.unwrap_or_default();
+/// Tidies the mirror after a sync that worked, at most once a day.
+async fn maintain(repo: std::path::PathBuf) {
+    let _ = blocking(move || {
+        sync::maintain(&repo);
+        Ok(())
+    })
+    .await;
+}
+
+/// What a sync has done here so far, so a step that fails after files were
+/// written still tells the editor about them.
+struct Progress {
+    generation: Option<u64>,
+    project: Option<crate::project::ProjectMeta>,
+    changed: bool,
+    pulled: usize,
+}
+
+/// How a sync ended: its outcome, the files it names and whether it pushed.
+type Finished = (String, Vec<String>, bool);
+
+/// Fetches, merges and pushes, at most three rounds when Overleaf moves on
+/// during the push. `None` when it kept moving.
+async fn merge_rounds(
+    state: &crate::state::AppState,
+    project_id: &str,
+    target: &SyncTarget,
+    resolutions: BTreeMap<String, Side>,
+    mut reuse_fetch: bool,
+    progress: &mut Progress,
+) -> Result<Option<Finished>, String> {
     let mut work_base = target.base.clone();
-    let mut reuse_fetch = fetched.unwrap_or(false);
-    let mut generation = expected_generation;
-    let mut pulled = 0;
-    let mut changed = false;
-    let mut project = None;
-    let mut finished: Option<(String, Vec<String>, bool)> = None;
     for _ in 0..3 {
         let known = if reuse_fetch {
             let known_repo = target.repo.clone();
@@ -470,15 +596,15 @@ pub async fn overleaf_sync_now<R: Runtime>(
         reuse_fetch = false;
         let remote = match known {
             Some(remote) => remote,
-            None => fetch_remote(&target).await?,
+            None => fetch_remote(target).await?,
         };
         let work_repo = target.repo.clone();
         let merge_base = work_base.clone();
         let work_resolutions = resolutions.clone();
         let mutation = crate::project::mutate_project_worktree(
-            &state,
-            project_id.clone(),
-            generation,
+            state,
+            project_id.to_string(),
+            progress.generation,
             move |root| {
                 let integration =
                     sync::integrate(root, &work_repo, &merge_base, &remote, &work_resolutions)?;
@@ -490,17 +616,15 @@ pub async fn overleaf_sync_now<R: Runtime>(
             },
         )
         .await?;
-        generation = Some(mutation.generation);
-        project = Some(mutation.project);
+        progress.generation = Some(mutation.generation);
+        progress.project = Some(mutation.project);
         let (integration, remote) = mutation.value?;
         match integration {
             sync::Integration::UpToDate => {
-                finished = Some(("up-to-date".to_string(), Vec::new(), false));
-                break;
+                return Ok(Some(("up-to-date".to_string(), Vec::new(), false)));
             }
             sync::Integration::Conflicts(files) => {
-                finished = Some(("conflicts".to_string(), files, false));
-                break;
+                return Ok(Some(("conflicts".to_string(), files, false)));
             }
             sync::Integration::Merged {
                 merged,
@@ -509,12 +633,12 @@ pub async fn overleaf_sync_now<R: Runtime>(
                 removed,
             } => {
                 if !written.is_empty() || !removed.is_empty() {
-                    changed = true;
-                    pulled += written.len() + removed.len();
+                    progress.changed = true;
+                    progress.pulled += written.len() + removed.len();
                 }
                 let pushes = push && merged != remote;
                 let result = if pushes {
-                    push_commit(&target, &merged).await?
+                    push_commit(target, &merged).await?
                 } else {
                     sync::PushResult::Pushed
                 };
@@ -528,24 +652,76 @@ pub async fn overleaf_sync_now<R: Runtime>(
                 blocking(move || sync::set_base(&base_repo, &next_base)).await?;
                 work_base = agreed;
                 if result == sync::PushResult::Pushed {
-                    finished = Some(("synced".to_string(), Vec::new(), pushes));
-                    break;
+                    return Ok(Some(("synced".to_string(), Vec::new(), pushes)));
                 }
             }
         }
     }
-    let project = project.ok_or_else(|| String::from(AppError::new("overleaf.sync_failed")))?;
-    let generation = generation.unwrap_or_default();
-    let event = publish(&app, &state, &project_id, project, changed, generation)?;
+    Ok(None)
+}
+
+#[tauri::command]
+pub async fn overleaf_sync_now<R: Runtime>(
+    app: AppHandle<R>,
+    state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+    expected_generation: Option<u64>,
+    resolutions: Option<BTreeMap<String, Side>>,
+    fetched: Option<bool>,
+) -> Result<SyncReport, String> {
+    let _guard = sync::claim(&project_id)?;
+    let target = sync_target(&project_id).await?;
+    let mut progress = Progress {
+        generation: expected_generation,
+        project: None,
+        changed: false,
+        pulled: 0,
+    };
+    let rounds = merge_rounds(
+        &state,
+        &project_id,
+        &target,
+        resolutions.unwrap_or_default(),
+        fetched.unwrap_or(false),
+        &mut progress,
+    )
+    .await;
+    let finished = match rounds {
+        Ok(finished) => finished,
+        Err(error) => {
+            if !progress.changed && !errors::files_may_have_changed(&error) {
+                return Err(error);
+            }
+            // The merge already wrote files here: the editor reloads them
+            // before the failure is reported.
+            if let (Some(project), Some(generation)) = (progress.project, progress.generation) {
+                let _ = publish(&app, &state, &project_id, project, true, generation);
+            }
+            return Err(errors::after_files_changed(error));
+        }
+    };
+    let project = progress
+        .project
+        .ok_or_else(|| String::from(AppError::new("overleaf.sync_failed")))?;
+    let generation = progress.generation.unwrap_or_default();
+    let event = publish(
+        &app,
+        &state,
+        &project_id,
+        project,
+        progress.changed,
+        generation,
+    )?;
     let (outcome, files, pushed) =
         finished.ok_or_else(|| String::from(AppError::new("overleaf.sync_kept_changing")))?;
     if outcome != "conflicts" {
         record_sync(&project_id, target.link).await?;
+        maintain(target.repo).await;
     }
     Ok(SyncReport {
         outcome,
         files,
-        pulled,
+        pulled: progress.pulled,
         pushed,
         state: Some(event),
     })

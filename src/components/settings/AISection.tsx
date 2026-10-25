@@ -62,6 +62,7 @@ import {
 } from "./ai-settings-navigation";
 
 const AcpAgentsTab = lazy(() => import("./ai/AcpAgentsTab").then((module) => ({ default: module.AcpAgentsTab })));
+const ToolsTab = lazy(() => import("./ai/ToolsTab").then((module) => ({ default: module.ToolsTab })));
 
 type DiscoveryResult =
   | { ok: true; models: ProviderModel[] }
@@ -239,6 +240,10 @@ export function AISection() {
         void setConfig(next);
       }
       setConfigLoaded(true);
+    }).catch((error: unknown) => {
+      // The switches stay off: the defaults shown are not the stored settings.
+      void logError("read the AI settings", error);
+      setMsg({ ok: false, text: describeError(error) });
     });
   }, []);
 
@@ -261,6 +266,7 @@ export function AISection() {
     configLoaded &&
     (Boolean(cfg.ai_system_prompt) ||
       cfg.ai_pdf_capture === false ||
+      cfg.ai_reasoning_summaries === true ||
       Object.values(cfg.ai_provider_models).some((models) =>
         models.some((model) => !model.enabled),
       ) ||
@@ -624,6 +630,7 @@ export function AISection() {
       ...resetConfig,
       ai_system_prompt: "",
       ai_pdf_capture: true,
+      ai_reasoning_summaries: false,
     };
     try {
       await persist(next);
@@ -733,6 +740,9 @@ export function AISection() {
           >
             {t(($) => $.settings.ai.section.tabs.mcp)}
           </TabsTrigger>
+          <TabsTrigger value="tools" data-testid="ai-settings-tab-tools">
+            {t(($) => $.settings.ai.tools.tabLabel)}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="providers">
@@ -787,7 +797,7 @@ export function AISection() {
         <TabsContent value="instructions">
           <InstructionsTab
             cfg={cfg}
-            setCfg={setCfg}
+            configLoaded={configLoaded}
             savedKeys={savedKeys}
             persist={persist}
             sysPrompt={sysPrompt}
@@ -816,6 +826,18 @@ export function AISection() {
             <McpServersManager />
           </TabsContent>
         ) : null}
+
+        <TabsContent value="tools">
+          <Suspense
+            fallback={
+              <p className="text-sm text-muted-foreground">
+                {t(($) => $.settings.ai.tools.loading)}
+              </p>
+            }
+          >
+            <ToolsTab />
+          </Suspense>
+        </TabsContent>
       </Tabs>
 
       <AddCustomProviderDialog

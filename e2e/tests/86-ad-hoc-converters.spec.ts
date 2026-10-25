@@ -236,6 +236,18 @@ test("file, archive, PDF, and local-vision converters complete without a project
   const image = fixture("decay.png");
   server.setReply("\\begin{equation}VISIONLATEX=x^2\\end{equation}");
   await openCard(tauriPage, "image-to-latex");
+  // The Tools model starts on Automatic, which stays on this computer, and
+  // its menu offers only the Ollama models that read images.
+  await expect(tauriPage.getByTestId("tools-model-picker")).toBeVisible({ timeout: 30_000 });
+  await expect(tauriPage.getByTestId("tools-model-notice")).toHaveAttribute("data-destination", "device");
+  await tauriPage.locator('[data-testid="tools-model-picker"] [role="combobox"]').click();
+  await expect(tauriPage.locator('[data-testid="ai-model-option-ollama-llava"]')).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(tauriPage.locator('[data-testid="ai-model-option-ollama-llama3.2"]')).toHaveCount(0);
+  await tauriPage.locator('[data-testid="ai-model-option-ollama-llava"]').click();
+  await expect(tauriPage.getByTestId("tools-model-picker")).toContainText("llava", { timeout: 30_000 });
+  await expect(tauriPage.getByTestId("tools-model-notice")).toHaveAttribute("data-destination", "device");
   await attachFile(tauriPage, '[data-testid="converter-file-input"]', "notes.png", "image/png", image);
   await tauriPage.getByTestId("converter-run").click();
   await expect(tauriPage.getByTestId("converter-output")).toContainText("VISIONLATEX", {
@@ -338,6 +350,38 @@ test("file, archive, PDF, and local-vision converters complete without a project
   await expect(
     tauriPage.getByTestId("converter-output").locator(".cm-line span").first(),
   ).toBeVisible();
+
+  // Leave the Tools model on Automatic for the specs that follow.
+  await tauriPage.evaluate(`(async () => {
+    const { setAiToolsModel, getConfig } = await import("/src/lib/tauri.ts");
+    await setAiToolsModel(null);
+    window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: await getConfig() }));
+    return true;
+  })()`);
+});
+
+test("Settings, AI, Tools offers the Tools model and the Mathpix keys", async ({ tauriPage }) => {
+  test.setTimeout(120_000);
+  await atTools(tauriPage);
+  await tauriPage.evaluate(`(async () => {
+    const { useSettingsStore } = await import("/src/store/settings.ts");
+    const settings = useSettingsStore.getState();
+    settings.setSettingsInitialSection("ai");
+    settings.setSettingsScrollTarget("ai-tools");
+    settings.setSettingsOpen(true);
+    return true;
+  })()`);
+  await expect(tauriPage.getByTestId("ai-settings-tab-tools")).toBeVisible({ timeout: 30_000 });
+  await waitLong(
+    tauriPage,
+    `document.querySelector('[data-testid="ai-settings-tab-tools"]')?.getAttribute("data-state") === "active"`,
+    30_000,
+  );
+  await expect(tauriPage.getByTestId("tools-model-picker")).toBeVisible({ timeout: 30_000 });
+  await expect(tauriPage.getByTestId("tools-model-notice")).toBeVisible();
+  await expect(tauriPage.getByTestId("mathpix-app-id")).toBeVisible();
+  await expect(tauriPage.getByTestId("mathpix-app-key")).toHaveAttribute("type", "password");
+  await tauriPage.keyboard.press("Escape");
 });
 
 test("the five specialized converter cards open and run their production workflows", async ({

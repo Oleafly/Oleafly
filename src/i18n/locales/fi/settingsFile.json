@@ -48,7 +48,6 @@
     "hexColor": "saa olla vain väri, esimerkiksi #2563eb",
     "hexColorOrEmpty": "saa olla vain väri, esimerkiksi #2563eb, tai \"\", jolloin käytetään teeman väriä",
     "text": "saa olla vain tekstiä, enintään {{max}} merkkiä",
-    "webAddress": "saa olla vain verkko-osoite, jonka alussa on http:// tai https://",
     "list": "saa olla vain luettelo, jossa on enintään {{max}} kohdetta",
     "listItem": "ei ole sallittu kohde",
     "duplicate": "on luettelossa kahdesti",

@@ -1,0 +1,231 @@
+[
+  {
+    "name": "no-context"
+  },
+  {
+    "name": "idle-empty",
+    "compile": {
+      "status": "idle",
+      "log": ""
+    }
+  },
+  {
+    "name": "failed-build",
+    "compile": {
+      "status": "error",
+      "log": "! Undefined control sequence."
+    }
+  },
+  {
+    "name": "overfull-warning",
+    "compile": {
+      "status": "success",
+      "log": "Overfull \\hbox (9.9pt too wide) in paragraph"
+    }
+  },
+  {
+    "name": "overfull-error",
+    "compile": {
+      "status": "success",
+      "log": "Overfull \\hbox (10.0pt too wide) in paragraph\nOverfull \\hbox (2.5pt too wide)"
+    }
+  },
+  {
+    "name": "overfull-tie",
+    "compile": {
+      "status": "success",
+      "log": "Overfull \\hbox (10.25pt too wide)"
+    }
+  },
+  {
+    "name": "overfull-malformed-width",
+    "compile": {
+      "status": "success",
+      "log": "Overfull \\hbox (1.2.3pt too wide)\nOverfull \\hbox (4pt too wide)"
+    }
+  },
+  {
+    "name": "missing-glyph",
+    "compile": {
+      "status": "success",
+      "log": "Missing character: There is no ü in font cmr10!\nMissing character: There is no ß in font cmr10!"
+    }
+  },
+  {
+    "name": "undefined-references-summary",
+    "compile": {
+      "status": "success",
+      "log": "LaTeX Warning: There were undefined references."
+    }
+  },
+  {
+    "name": "undefined-reference-line",
+    "compile": {
+      "status": "success",
+      "log": "LaTeX Warning: Reference `x' on page 1 undefined on input line 3."
+    }
+  },
+  {
+    "name": "undefined-citation",
+    "compile": {
+      "status": "success",
+      "log": "Package natbib Warning: Citation `a' on page 2 undefined"
+    }
+  },
+  {
+    "name": "rerun-labels",
+    "compile": {
+      "status": "success",
+      "log": "LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right."
+    }
+  },
+  {
+    "name": "rerun-biber",
+    "compile": {
+      "status": "success",
+      "log": "Please (re)run Biber on the file:"
+    }
+  },
+  {
+    "name": "duplicate-destination",
+    "compile": {
+      "status": "success",
+      "log": "pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has been already used, duplicate ignored"
+    }
+  },
+  {
+    "name": "tagpdf-warnings",
+    "compile": {
+      "status": "success",
+      "log": "Package tagpdf Warning: Parent-Child 'Sect' --> 'Span'.\nPackage tagpdf Warning: Parent-Child 'Sect' --> 'Span'.\nPackage tagpdf Warning: struct stack not empty"
+    }
+  },
+  {
+    "name": "tagging-status-report",
+    "compile": {
+      "status": "success",
+      "log": "Status report of the tagging support\n memoir.cls is currently-incompatible\n1. Unsupported packages:\n pgfplots.sty\n2. Incompatible:\n fancyhdr.sty\n3. Partially compatible:\n hyperref.sty\n4. Compatible:\n amsmath.sty\n5. Unknown:\n custom.sty\n6. Unclassified:\n local.def\nEnd of status report\n after.sty"
+    }
+  },
+  {
+    "name": "tagging-status-clean",
+    "compile": {
+      "status": "success",
+      "log": "Status report of the tagging support\n article.cls is compatible\n4. Compatible:\n amsmath.sty\nEnd of status report"
+    }
+  },
+  {
+    "name": "tagging-status-empty-section",
+    "compile": {
+      "status": "success",
+      "log": "Status report of the tagging support\n1. \n x.sty\n2. Incompatible:\n y.sty\nEnd of status report"
+    }
+  },
+  {
+    "name": "mixed-page-sizes",
+    "compile": {
+      "status": "success",
+      "log": ""
+    },
+    "pdf": {
+      "version": "1.7",
+      "pageCount": 2,
+      "pages": [
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        },
+        {
+          "width": 595.276,
+          "height": 841.89,
+          "rotation": 0
+        }
+      ],
+      "outlineCount": 0,
+      "linkCount": 0,
+      "attachmentCount": 0,
+      "formFieldCount": 0,
+      "restricted": false,
+      "author": null,
+      "creator": "LaTeX",
+      "producer": "pdfTeX",
+      "fonts": [
+        {
+          "name": "CMR10",
+          "embedded": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "same-page-sizes",
+    "pdf": {
+      "version": "1.7",
+      "pageCount": 2,
+      "pages": [
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        },
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        }
+      ],
+      "outlineCount": 0,
+      "linkCount": 0,
+      "attachmentCount": 0,
+      "formFieldCount": 0,
+      "restricted": false,
+      "author": null,
+      "creator": "LaTeX",
+      "producer": "pdfTeX",
+      "fonts": [
+        {
+          "name": "CMR10",
+          "embedded": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "everything",
+    "compile": {
+      "status": "error",
+      "log": "Overfull \\hbox (12.7pt too wide)\nMissing character: There is no x in font y!\nThere were undefined references.\nRerun to get cross-references right."
+    },
+    "pdf": {
+      "version": "1.7",
+      "pageCount": 2,
+      "pages": [
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        },
+        {
+          "width": 792,
+          "height": 612,
+          "rotation": 90
+        }
+      ],
+      "outlineCount": 0,
+      "linkCount": 0,
+      "attachmentCount": 0,
+      "formFieldCount": 0,
+      "restricted": false,
+      "author": null,
+      "creator": "LaTeX",
+      "producer": "pdfTeX",
+      "fonts": [
+        {
+          "name": "CMR10",
+          "embedded": true
+        }
+      ]
+    }
+  }
+]

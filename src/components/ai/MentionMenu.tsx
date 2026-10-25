@@ -24,9 +24,16 @@ export interface FileMentionSelection extends MentionEntry {
   text: string;
 }
 
+/** An agent the menu can mention; DelegationTarget fits. */
+export interface MentionAgent {
+  id: string;
+  label: string;
+  detail: string;
+}
+
 export interface AgentMentionSelection {
   kind: "agent";
-  target: DelegationTarget;
+  target: MentionAgent;
   text: string;
 }
 
@@ -34,9 +41,9 @@ export type MentionSelection = FileMentionSelection | AgentMentionSelection;
 
 type MentionItem =
   | { kind: "file"; key: string; entry: MentionEntry }
-  | { kind: "agent"; key: string; target: DelegationTarget };
+  | { kind: "agent"; key: string; target: MentionAgent };
 
-export function agentMentionKey(target: DelegationTarget): string {
+export function agentMentionKey(target: MentionAgent): string {
   return `agent:${target.id}`;
 }
 
@@ -53,7 +60,7 @@ export interface MentionMenuHandle {
 
 interface MentionMenuProps {
   entries: readonly MentionEntry[];
-  agents?: readonly DelegationTarget[];
+  agents?: readonly MentionAgent[];
   onSelect: (selection: MentionSelection) => void;
   onClose: () => void;
   onActiveEntryChange?: (key: string | null) => void;
@@ -117,11 +124,11 @@ export function filterMentionEntries(
   return ranked.slice(0, limit).map((item) => item.entry);
 }
 
-export function filterAgentTargets(
-  targets: readonly DelegationTarget[],
+export function filterAgentTargets<T extends MentionAgent = DelegationTarget>(
+  targets: readonly T[],
   query: string,
   limit = AGENT_MENTION_LIMIT,
-): DelegationTarget[] {
+): T[] {
   const needle = query.trim().toLocaleLowerCase();
   const matches = needle
     ? targets.filter((target) =>

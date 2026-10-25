@@ -190,16 +190,36 @@
     "terminal": "Caricamento del terminale"
   },
   "terminal": {
+    "activity": "Nuova attività",
+    "clipboard": {
+      "blocked": "Un programma nel terminale vuole copiare del testo."
+    },
     "closeCurrent": "Chiudi il corrente",
     "closeLeft": "Chiudi tutti a sinistra",
     "closeOthers": "Chiudi gli altri",
     "closeRight": "Chiudi tutti a destra",
     "closeTab": "Chiudi {{title}}",
     "color": "Colore",
+    "dropRefused_one": "Il nome di questo file contiene un carattere di controllo, quindi il terminale non lo digiterà.",
+    "dropRefused_many": "{{count}} nomi di file contengono caratteri di controllo, quindi il terminale non li digiterà.",
+    "dropRefused_other": "{{count}} nomi di file contengono caratteri di controllo, quindi il terminale non li digiterà.",
     "errors": {
       "input": "La shell non ha potuto accettare l'input",
       "resize": "Non è stato possibile ridimensionare il terminale",
       "start": "Impossibile avviare la shell"
+    },
+    "find": {
+      "count": "{{current}} di {{total}}",
+      "label": "Trova nel terminale",
+      "next": "Corrispondenza successiva",
+      "none": "Nessuna corrispondenza",
+      "previous": "Corrispondenza precedente"
+    },
+    "launch": {
+      "invalid": "Questo comando non può essere eseguito nel terminale.",
+      "noProject": "Apri un progetto per usare il terminale.",
+      "run": "Esegui",
+      "title": "Eseguire questo comando nel terminale?"
     },
     "limitReached": "Chiudi un terminale per aprirne un altro",
     "links": {
@@ -208,8 +228,27 @@
       "openUrlFailed": "Impossibile aprire il collegamento."
     },
     "newTerminal": "Nuovo terminale",
+    "openInTerminal": "Apri nel terminale",
     "settings": "Impostazioni del terminale",
     "starting": "Avvio della shell del progetto…",
+    "stop": {
+      "closeMany": "Chiudi i terminali",
+      "closeOne": "Chiudi il terminale",
+      "closeProject": "Chiudi il progetto",
+      "dontAsk": "Non chiedere più",
+      "dontAskHint": "Per riattivarla, vai in Impostazioni, Aspetto, Terminale, Chiedi prima di chiudere un terminale occupato.",
+      "many_one": "Un programma è ancora in esecuzione in {{count}} terminale.",
+      "many_many": "Ci sono ancora programmi in esecuzione in {{count}} terminali.",
+      "many_other": "Ci sono ancora programmi in esecuzione in {{count}} terminali.",
+      "named": "{{process}} è ancora in esecuzione in {{title}}.",
+      "quit": "Esci",
+      "reload": "Ricarica",
+      "restart": "Riavvia",
+      "switchProject": "Cambia progetto",
+      "titleMany": "Fermare i programmi in esecuzione?",
+      "titleOne": "Fermare il programma in esecuzione?",
+      "unnamed": "Un programma è ancora in esecuzione in {{title}}."
+    },
     "tabs": "Terminali",
     "titleInput": "Titolo del terminale"
   },

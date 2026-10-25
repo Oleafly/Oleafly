@@ -25,11 +25,14 @@ import {
   useResearchTasksStore,
 } from "@/store/research-tasks";
 import { useFilesStore } from "@/store/files";
+import { useResearchTasksEnabled } from "@/store/research-tasks-flag";
+import { useSettingsStore } from "@/store/settings";
 import { readSidebarView } from "@/store/sidebar-view-state";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { SIDEBAR_TITLE_CLASS } from "@/components/layout/SidebarSection";
 import { useTauriSubscription } from "@/hooks/use-tauri-event";
 import { cn } from "@/lib/utils";
+import { describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
 import { LoadingState } from "@/components/ui/empty";
 
@@ -68,7 +71,13 @@ function awaitsAttention(task: ResearchTask): boolean {
   return task.status === "running" || task.status === "awaiting_review" || task.status === "failed";
 }
 
+/** The Files rail's task outputs; nothing while research tasks are off (0.4.8: experimental). */
 export function TaskOutputsSection() {
+  const enabled = useResearchTasksEnabled();
+  return enabled ? <TaskOutputs /> : null;
+}
+
+function TaskOutputs() {
   const { t } = useTranslation(["common", "researchTools"]);
   const projectId = useFilesStore((state) => state.projectId);
   const tasks = useResearchTasksStore((state) => state.tasks);
@@ -128,7 +137,7 @@ export function TaskOutputsSection() {
     setPreview((current) => (current ? { ...current, loading: false, ...values } : current));
   };
 
-  const failure = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
+  const failure = (cause: unknown) => describeError(cause);
 
   const openFile = async (task: ResearchTask, change: TaskFileChange) => {
     const request = start(task, change.path, change.path);
@@ -225,7 +234,11 @@ export function TaskOutputsSection() {
                   size="xs"
                   variant="ghost"
                   className="shrink-0"
-                  onClick={() => openTaskDetail(task.id, "review")}
+                  onClick={() => {
+                    // The review dialog belongs to the Research panel, so open that panel with it.
+                    openTaskDetail(task.id, "review");
+                    useSettingsStore.getState().setRailTab("research");
+                  }}
                 >
                   {t(($) => $.researchTools.outputs.review)}
                 </Button>
@@ -271,7 +284,7 @@ export function TaskOutputsSection() {
           }
         }}
       >
-        <DialogContent className="max-h-[80vh] max-w-3xl overflow-hidden">
+        <DialogContent className="flex max-h-[80vh] max-w-3xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="truncate">{preview?.label ?? ""}</DialogTitle>
             <DialogDescription>

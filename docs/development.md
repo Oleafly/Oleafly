@@ -196,8 +196,24 @@ To move to a newer Rust:
 3. Fix what the newer clippy reports in the same pull request, so the bump
    lands green.
 
-The 1.87 minimum for `oleafly-core` and `oleaflyc` is a separate promise. CI
-checks it with an explicit `cargo +1.87.0`, which takes priority over the pin.
+The minimum Rust versions are separate promises. The shared crates
+(`oleafly-core`, `oleafly-secrets`, `oleafly-doctools`, `oleafly-downloads`,
+`oleafly-sandbox`, `oleafly-forge`) and the agent crate `oleafly-agent` build
+on Rust 1.87. `oleafly-preflight` and
+`oleafly-research` need 1.88 because they read PDFs with lopdf 0.42, which uses
+let chains (it declares 1.85, which is too low); research gets it through
+pdf-extract. `oleafly-acp` needs 1.88 for the official Agent Client Protocol
+crates. `oleafly-lint` builds on 1.88 without its `proofread` feature.
+`oleafly-online` needs 1.89 for the `aes` crate that decrypts copied browser
+cookies, and `oleaflyc` needs 1.89 because it links the collaboration client.
+CI checks each group with explicit `cargo +1.87.0`, `cargo +1.88.0` and
+`cargo +1.89.0` runs, which take priority over the pin.
+
+Spelling and grammar in `oleafly lint` use harper-core behind the CLI's
+`proofread` feature, which release builds and the app turn on. harper-core's
+dependencies need Rust 1.90, so those builds do too. After changing a preflight
+rule, a linter or a prose mask, regenerate the CLI golden files with
+`OLEAFLY_WRITE_GOLDENS=1 pnpm vitest run src/lib/cli-goldens`.
 
 For user-facing changes, also run the end-to-end suite (real app and real
 compiles, see [e2e/README.md](../e2e/README.md)):
@@ -282,9 +298,9 @@ intentionally omitted from public documentation.
 - Add a tool for the AI → `packages/ai-tools/src/tools.ts`. App services it needs go through `AiToolsHost` (adapter in `src/lib/ai-tools.ts`).
 - Add a rail tab / palette or omnibar command / AI toolset → register it in `src/contributions/` (see [Architecture](architecture.md#extension-model)).
 
-## Sync and GitHub internals
+## Git hosting internals
 
-OAuth device flow runs server-side in Rust (`src-tauri/src/github.rs`) because the OAuth endpoints aren't CORS-enabled. Authenticated API calls (api.github.com) also run in Rust, so the token never reaches the webview.
+Sign-in and every Git hosting API call run in Rust (`src-tauri/src/forge/` and `crates/oleafly-forge/`). The OAuth endpoints aren't CORS-enabled, and tokens never reach the webview. Git gets a token only through environment variables read by a credential helper scoped to that account's server address.
 
 ## Live collaboration load tests
 

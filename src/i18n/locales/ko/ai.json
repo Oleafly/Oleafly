@@ -43,13 +43,15 @@
       "command": "명령 확인",
       "externalTool": "외부 도구 작업 확인",
       "internet": "인터넷 접속 확인",
-      "edit": "AI 편집 확인"
+      "edit": "AI 편집 확인",
+      "researchTask": "연구 작업 확인"
     },
     "headline": {
       "command": "어시스턴트가 이 명령을 실행하려고 합니다",
       "externalTool": "어시스턴트가 외부 도구를 쓰려고 합니다",
       "internet": "어시스턴트가 인터넷에 접속하려고 합니다",
-      "edit": "어시스턴트가 파일을 바꾸려고 합니다"
+      "edit": "어시스턴트가 파일을 바꾸려고 합니다",
+      "researchTask": "어시스턴트가 연구 작업을 만들려고 합니다"
     },
     "mcpNote": "아래 인자를 설정된 MCP 서버로 보냅니다.",
     "line": "{{line}}번째 줄",
@@ -69,10 +71,48 @@
     "external": {
       "title": "외부 에이전트 요청(MCP)",
       "moreWaiting_other": "{{count}}건 더 대기 중"
+    },
+    "researchTask": {
+      "note": "작업은 프로젝트 사본에서 자체적으로 진행됩니다. 변경 사항은 나중에 검토합니다.",
+      "title": "제목",
+      "goal": "목표",
+      "skills": "스킬",
+      "prompt": "지시 사항",
+      "commands": "명령",
+      "commandsAsk": "실행할 때마다 묻기",
+      "network": "네트워크",
+      "timeBudget": "시간 예산",
+      "timeBudgetDefault": "기본값",
+      "minutes_other": "{{count}}분",
+      "planFirst": "계획 먼저",
+      "startNow": "즉시 시작"
     }
   },
   "attachments": {
-    "remove": "{{name}} 제거"
+    "remove": "{{name}} 제거",
+    "processing": "{{name}} 준비하는 중…",
+    "failed": "{{name}}을(를) 첨부하지 못했습니다.",
+    "pages_other": "{{count}}페이지",
+    "pagesLimited": "{{count}}페이지 중 처음 {{limit}}페이지만 사용합니다.",
+    "tooMany": "메시지 하나에 파일을 {{max}}개까지 첨부할 수 있습니다.",
+    "tooLarge": "{{name}}이(가) {{limit}}보다 큽니다.",
+    "unsupported": "{{name}}은(는) 첨부할 수 없습니다. 이미지, PDF, 텍스트 파일을 첨부하세요.",
+    "unreadableImage": "Oleafly가 {{name}}의 이미지 형식을 읽을 수 없습니다. PNG나 JPEG로 저장한 뒤 다시 첨부하세요.",
+    "unreadablePdf": "{{name}}을(를) PDF로 열지 못했습니다.",
+    "storeFailed": "이 채팅에 {{name}}을(를) 저장하지 못했습니다.",
+    "visionUnsupported": "{{model}}은(는) 이미지를 읽을 수 없어 이 메시지의 이미지는 전송되지 않습니다.",
+    "scannedPdf": "{{name}}에는 텍스트 레이어가 없고 {{model}}은(는) 이미지를 읽을 수 없습니다.",
+    "dropFiles": "파일을 놓아 첨부",
+    "dropProjectFile": "놓아서 이 파일 언급",
+    "open": "{{name}} 열기",
+    "saveCopy": "{{name}} 사본 저장",
+    "saved": "{{name}} 사본을 저장했습니다.",
+    "saveFailed": "{{name}}을(를) 저장하지 못했습니다.",
+    "missing": "{{name}}을(를) 더 이상 사용할 수 없습니다.",
+    "sentAsText": "이 모델이 {{name}}을(를) 파일로 읽을 수 없어 텍스트로 보냈습니다.",
+    "skipped": "{{name}}을(를) 보내지 않았습니다.",
+    "dropUnreadable": "{{names}}을(를) 읽지 못했습니다.",
+    "notReplayed": "이전 버전에서 저장한 파일은 다시 보낼 수 없습니다: {{names}}."
   },
   "chat": {
     "pill": {
@@ -176,7 +216,9 @@
     "stop": "중지",
     "stopTitle": "생성 중지",
     "send": "보내기",
-    "checkAgain": "다시 확인"
+    "checkAgain": "다시 확인",
+    "resizeHandle": "메시지 입력란 크기 조절",
+    "resizeHint": "끌어서 크기를 조절하고, 두 번 클릭하면 원래대로 돌아갑니다."
   },
   "commands": {
     "groups": {
@@ -214,10 +256,6 @@
     "files": {
       "label": "파일",
       "description": "다음 메시지에 파일을 첨부합니다"
-    },
-    "browser": {
-      "label": "브라우저 붙이기",
-      "description": "문서 옆에 브라우저를 엽니다"
     }
   },
   "models": {
@@ -265,7 +303,9 @@
       "minutes": "{{count}}분 전",
       "hours": "{{count}}시간 전",
       "days": "{{count}}일 전"
-    }
+    },
+    "skipped_other": "채팅 {{count}}개를 불러오지 못했습니다. 디스크에는 그대로 남아 있습니다.",
+    "openFailed": "이 채팅을 열지 못했습니다."
   },
   "tools": {
     "approval": {
@@ -311,7 +351,6 @@
       "listAgents": "도우미 에이전트와 그 상태를 나열합니다.",
       "closeAgent": "도우미 에이전트를 닫습니다.",
       "runCommand": "프로젝트 폴더에서 shell 명령을 2분 제한으로 실행합니다.",
-      "computerUse": "어시스턴트의 브라우저 창에서 웹 페이지를 엽니다.",
       "toggleTheme": "밝은 모드와 어두운 모드를 전환합니다.",
       "listOverleafProjects": "Overleaf 프로젝트 목록을 보여 주며, 필요하면 먼저 로그인합니다.",
       "importOverleafProjects": "Overleaf 프로젝트를 컴파일러와 주 파일 설정과 함께 라이브러리로 가져옵니다."
@@ -340,8 +379,7 @@
       "latexOnly": "LaTeX 프로젝트에서만",
       "latexAndTypstOnly": "LaTeX와 Typst 프로젝트에서만",
       "pdfCaptureSetting": "PDF 페이지 캡처 설정이 필요합니다",
-      "chatApproval": "채팅에서 명령을 하나씩 승인합니다",
-      "browserSetting": "웹 브라우저 설정이 필요합니다"
+      "chatApproval": "채팅에서 명령을 하나씩 승인합니다"
     },
     "sourceGroups": {
       "figure": "그림",
@@ -464,18 +502,20 @@
     "resumeTask": "이 작업을 이어가려면 연구 작업을 여세요.",
     "delegatedConversation": "이 대화는 위임된 에이전트 실행에 속합니다.",
     "noResume": "이 에이전트는 저장된 대화를 이어갈 수 없습니다. 준비되면 새 대화를 시작하세요.",
-    "imageTooLarge": "480 KiB보다 작은 이미지를 고르세요. 이미지는 최대 네 개까지 첨부할 수 있습니다.",
     "imageReadFailed": "이미지를 읽지 못했습니다.",
-    "removeImage": "{{name}} 제거",
     "composerAriaLabel": "CLI 에이전트에게 메시지",
     "composerPlaceholderReady": "이 프로젝트에 대해 에이전트에게 작업을 요청하세요",
     "composerPlaceholderIdle": "메시지를 보내려면 대화를 시작하거나 다시 연결하세요",
-    "attachImage": "이미지 첨부",
     "startConversation": "{{agent}}와(과) 대화 시작",
     "startConversationFallback": "에이전트",
     "agentModel": "에이전트 모델",
     "modelManaged": "에이전트가 모델을 관리합니다",
     "stop": "중지",
+    "stopReason": {
+      "refusal": "에이전트가 이 요청을 계속하기를 거절했습니다.",
+      "maxTokens": "에이전트가 출력 한도에 도달해 멈췄습니다.",
+      "maxTurnRequests": "에이전트가 이번 차례의 요청 한도에 도달해 멈췄습니다."
+    },
     "stopTitle": "에이전트 중지",
     "send": "보내기",
     "connecting": "연결하는 중",
@@ -493,8 +533,7 @@
     "roster": {
       "bridgeMissing": "에이전트 설정에서 브리지를 설치하세요",
       "cliMissing": "이 컴퓨터에서 CLI를 찾을 수 없음",
-      "unavailable": "이 컴퓨터에서는 쓸 수 없음",
-      "comingSoon": "준비 중"
+      "unavailable": "이 컴퓨터에서는 쓸 수 없음"
     },
     "messageTooLarge": "이 메시지와 이미지가 너무 큽니다. 메시지를 줄이거나 이미지를 하나 빼세요.",
     "terminalCommand": "에이전트가 터미널 명령을 실행하고 있습니다.",
@@ -541,7 +580,131 @@
       "skill": "스킬: {{name}}",
       "tool": "도구: {{name}}",
       "changedFiles": "변경된 파일",
-      "moreFiles_other": "외 파일 {{count}}개"
+      "moreFiles_other": "외 파일 {{count}}개",
+      "mode": "모드",
+      "effort": "추론 강도",
+      "permissionProfile": "승인 모드",
+      "commits": "커밋"
+    },
+    "composerPlaceholderStart": "{{agent}}에게 메시지를 보내 대화를 시작하세요",
+    "composerPlaceholderConnecting": "지금 입력하세요. 에이전트가 준비되면 전송됩니다.",
+    "composerPlaceholderRunning": "다음 메시지를 입력하세요. 에이전트가 끝나면 전송됩니다.",
+    "attachFile": "파일 첨부",
+    "composer": {
+      "tooManyAttachments": "메시지 하나에 파일을 10개까지 첨부할 수 있습니다.",
+      "imagesUnsupported": "이 에이전트는 이미지를 받지 않습니다. 이미지를 빼고 다시 시도하세요.",
+      "attachmentsNotReady": "첨부 파일 준비가 끝날 때까지 기다리세요.",
+      "removeSelection": "인용 {{label}} 빼기"
+    },
+    "queue": {
+      "queued": "대기 중: 에이전트가 끝나면 전송",
+      "remove": "대기 중인 메시지 삭제",
+      "sendNow": "지금 보내기",
+      "sendFailed": "이 메시지를 보내지 못했습니다. 다시 보내거나 삭제하세요.",
+      "queuedConnecting": "대기 중: 에이전트가 준비되면 전송",
+      "queuedSignIn": "대기 중: 로그인하면 전송",
+      "retry": "다시 보내기",
+      "edit": "편집"
+    },
+    "slash": {
+      "commands": "에이전트 명령",
+      "skills": "스킬"
+    },
+    "controls": {
+      "effort": "추론 강도",
+      "mode": "모드",
+      "more": "에이전트 옵션 더 보기",
+      "blockedMode": "Oleafly에서 꺼짐",
+      "blockedModeHint": "Oleafly는 권한 확인을 항상 켜 두므로 이 모드를 쓸 수 없습니다."
+    },
+    "usage": {
+      "ariaLabel": "에이전트 사용량 보기",
+      "tooltip": "이 대화의 사용량",
+      "contextShare": "컨텍스트 창의 {{percent}}% 사용",
+      "window": {
+        "fiveHour": "5시간 세션",
+        "weekly": "주간, 모든 모델",
+        "weeklyOpus": "주간, Opus",
+        "weeklySonnet": "주간, Sonnet",
+        "overage": "추가 사용량",
+        "other": "사용량 한도 {{id}}"
+      },
+      "costIn": "에이전트가 보고한 비용은 {{amount}} {{currency}}입니다.",
+      "modelTokens": "{{model}}: 토큰 {{tokens}}개"
+    },
+    "compaction": {
+      "running": "이전 컨텍스트를 요약하는 중",
+      "done": "이전 컨텍스트를 요약했습니다",
+      "failed": "이전 컨텍스트를 요약하지 못했습니다"
+    },
+    "signIn": {
+      "inTerminal": "터미널에서 {{name}}",
+      "afterTerminal": "터미널에서 로그인을 마친 다음 다시 연결하세요.",
+      "apiKeyLabel": "{{provider}} API 키",
+      "apiKeyPlaceholder": "API 키를 붙여 넣으세요",
+      "geminiGoogle": "개인 요금제에서는 더 이상 Google로 로그인할 수 없습니다. Gemini API 키나 Vertex AI를 사용하세요.",
+      "noProject": "터미널에서 로그인하려면 프로젝트를 여세요.",
+      "signOut": "로그아웃",
+      "confirmTerminal": "{{agent}}은(는) 아래 명령으로 로그인하며, 이 명령은 터미널 탭에서 실행됩니다. 동의하기 전에 확인하세요.",
+      "remote": "이 대화는 다른 컴퓨터에서 실행됩니다. 그 컴퓨터에서 에이전트에 로그인하세요."
+    },
+    "elicitation": {
+      "ariaLabel": "에이전트 요청",
+      "from": "{{agent}}의 질문:",
+      "submit": "보내기",
+      "decline": "거절",
+      "cancel": "취소",
+      "required": "필수",
+      "invalid": "이 항목을 확인하세요.",
+      "openUrl": "브라우저에서 열기",
+      "confirmTitle": "{{host}}을(를) 열까요?",
+      "confirmDescription": "에이전트가 이 사이트에서 단계를 하나 마쳐 달라고 요청했습니다. 사이트는 브라우저에서 열립니다.",
+      "waiting": "사이트에서 완료되기를 기다리는 중입니다.",
+      "openFailed": "브라우저에서 링크를 열지 못했습니다."
+    },
+    "remote": {
+      "banner": "Hermes는 SSH를 통해 {{host}}에서 실행됩니다. 변경 사항은 그 컴퓨터에 남습니다."
+    },
+    "history": {
+      "all": "모든 대화",
+      "title": "대화",
+      "search": "대화 검색",
+      "empty": "일치하는 대화가 없습니다.",
+      "loadMore": "더 불러오기",
+      "rename": "이름 바꾸기",
+      "renameLabel": "대화 이름",
+      "delete": "삭제",
+      "deleteTitle": "이 대화를 삭제할까요?",
+      "deleteDescription": "Oleafly가 이 프로젝트에서 대화 기록과 첨부 파일을 삭제합니다.",
+      "deleteFromAgent": "{{agent}}에서도 삭제",
+      "deleteAgentFailed": "Oleafly에서는 삭제했습니다. {{agent}}이(가) 자체 사본을 삭제하지 못했습니다: {{error}}",
+      "deleteRunning": "이 대화를 삭제하기 전에 에이전트를 중지하세요.",
+      "importFind": "이 프로젝트의 {{agent}} 대화 찾기",
+      "imported": "이미 Oleafly에 있음",
+      "importSelected": "선택한 대화 가져오기",
+      "importEmpty": "{{agent}}에 이 프로젝트의 다른 대화가 없습니다."
+    },
+    "header": {
+      "startedAt": "{{revision}}에서 시작",
+      "startedDirty": "커밋하지 않은 변경 사항이 있는 {{revision}}에서 시작",
+      "menu": "대화 작업",
+      "fork": "대화 포크",
+      "forkUnsupported": "이 에이전트는 대화를 포크할 수 없습니다.",
+      "forkBusy": "포크하기 전에 에이전트가 끝날 때까지 기다리세요.",
+      "v2": "프로토콜 미리보기",
+      "remote": "원격",
+      "signOutTitle": "{{agent}}에서 로그아웃할까요?",
+      "signOutDescription": "{{agent}} 로그인 자체를 끊습니다. 같은 로그인을 쓰는 터미널도 함께 로그아웃되며, 다시 로그인할 때까지 이 대화는 멈춥니다.",
+      "signOutAccount": "{{account}}(으)로 로그인되어 있습니다"
+    },
+    "commit": {
+      "button": "커밋",
+      "title": "이번 차례 커밋",
+      "message": "커밋 메시지",
+      "files": "커밋할 파일",
+      "defaultMessage": "{{agent}}의 변경 사항",
+      "submit": "파일 커밋",
+      "cancel": "취소"
     }
   },
   "agents": {
@@ -712,8 +875,6 @@
     "restoreFailed": "복원하지 못했습니다: {{error}}",
     "steerFailed": "실행 중인 차례의 방향을 조정하지 못했습니다.",
     "approvalRuleSaveFailed": "프로젝트 승인 규칙을 저장하지 못했습니다.",
-    "attachmentTooLarge": "{{name}}이(가) 너무 큽니다(최대 10 MB).",
-    "attachmentReadFailed": "{{name}}을(를) 읽지 못했습니다.",
     "tooManyTools": "도구 {{enabled}}개가 켜져 있지만 한 번 실행에는 최대 {{max}}개까지 지원합니다. 도구에서 최소 {{excess}}개를 끄고 다시 시도하세요."
   },
   "header": {
@@ -738,7 +899,28 @@
     "summaryRunWithTokens_other": "마지막 실행: {{count}}단계, 보고된 토큰 {{tokens}}개",
     "summaryRunNoTokens_other": "마지막 실행: {{count}}단계, 토큰 합계를 알 수 없음",
     "summaryChat": "이 채팅: {{steps}}단계, 토큰 {{tokens}}개",
-    "summaryFallback": "AI 사용량"
+    "summaryFallback": "AI 사용량",
+    "context": "컨텍스트",
+    "contextUsed": "토큰 {{size}}개 중 {{used}}개",
+    "contextShare": "컨텍스트 창의 {{percent}} 사용",
+    "contextUnknown": "이 모델의 컨텍스트 창 크기를 알 수 없습니다.",
+    "reasoning": "추론",
+    "cacheRead": "캐시 읽기",
+    "cacheWrite": "캐시 쓰기",
+    "cost": "예상 비용",
+    "budget": "프로젝트 예산",
+    "budgetUsed": "{{limit}} 중 {{spent}}",
+    "credit": "남은 크레딧",
+    "creditOf": "{{limit}} 중 {{remaining}}",
+    "planLimits": "요금제 한도",
+    "resetsAt": "{{time}} 초기화",
+    "windowWarning": "한도에 가까움",
+    "windowBlocked": "한도 도달",
+    "refreshPlan": "요금제 사용량 새로 고침",
+    "refreshing": "새로 고치는 중…",
+    "historyTrimmed_other": "이 채팅의 마지막 {{count}}차례만 모델에 보냈습니다.",
+    "empty": "이 채팅에는 아직 사용량이 없습니다.",
+    "loading": "사용량을 불러오는 중…"
   },
   "provider": {
     "connectTitle": "계속하려면 AI 제공자를 연결하세요",
@@ -758,7 +940,21 @@
     "projectSubtitle": "\"{{project}}\" 작업 중",
     "noOutput": "모델이 아무 출력도 내놓지 않았습니다. 설정 → AI 어시스턴트를 확인하세요.",
     "planMissing": "아직 승인할 계획이 없습니다. 어시스턴트에게 계획을 요청하거나 계획 모드를 끄세요.",
-    "planUnchanged": "계획이 바뀌지 않았습니다."
+    "planUnchanged": "계획이 바뀌지 않았습니다.",
+    "stillWorking": "아직 작업 중입니다({{seconds}}초). 추론 모델과 로컬 모델은 느릴 수 있습니다. 취소하려면 중지를 클릭하세요.",
+    "retrying": "연결에 문제가 있습니다. 다시 시도하는 중({{max}}번 중 {{attempt}}번째)…",
+    "stopped": "중지했습니다.",
+    "stepLimit": "단계 한도에 도달했습니다. 계속하려면 메시지를 하나 더 보내세요.",
+    "outputLimit": "답변이 모델의 출력 한도에 도달했습니다. 계속하려면 메시지를 하나 더 보내세요.",
+    "tooLargeToSave": "이 채팅은 너무 길어 저장할 수 없습니다. 새 메시지는 Oleafly를 닫을 때까지 유지됩니다. 사본을 남기려면 채팅을 내보내세요.",
+    "exportChat": "채팅 내보내기",
+    "exported": "채팅을 내보냈습니다.",
+    "exportFailed": "채팅을 내보내지 못했습니다.",
+    "saveFailed": "이 채팅의 새 메시지를 저장하지 못했습니다. 디스크에 여유 공간이 있는지 확인하세요.",
+    "exportYou": "나",
+    "exportAssistant": "어시스턴트",
+    "exportAttachments": "첨부 파일",
+    "exportTools": "사용한 도구"
   },
   "followUps": {
     "steered": "실행 중인 차례에 반영했습니다: {{summary}}",
@@ -840,6 +1036,45 @@
     "figureAudit": "그림 점검",
     "gitReview": "Git 검토",
     "referenceCleanup": "참고 문헌 정리",
-    "removeSkill": "스킬 {{name}} 제거"
+    "removeSkill": "스킬 {{name}} 제거",
+    "compilationRepair": "컴파일 수정",
+    "submissionPrep": "투고 준비",
+    "reviewerResponse": "심사 의견 답변"
+  },
+  "effort": {
+    "label": "추론 강도",
+    "tooltip": "모델이 답하기 전에 얼마나 추론하는지",
+    "ariaLabel": "추론 강도: {{level}}",
+    "auto": "자동",
+    "autoDescription": "모델의 기본값 사용",
+    "levels": {
+      "none": "없음",
+      "minimal": "최소",
+      "low": "낮음",
+      "medium": "보통",
+      "high": "높음",
+      "xhigh": "매우 높음",
+      "max": "최대"
+    }
+  },
+  "web": {
+    "label": "웹",
+    "on": "이 채팅에서 웹 검색과 페이지 읽기가 켜져 있습니다",
+    "off": "이 채팅에서 웹 검색과 페이지 읽기 켜기",
+    "ariaLabel": "웹 접근",
+    "searchUnavailable": "이 모델은 웹을 검색할 수 없습니다. 켜려면 설정에서 검색 키를 추가하세요."
+  },
+  "messageActions": {
+    "edit": "메시지 편집",
+    "regenerate": "답변 다시 생성",
+    "retry": "다시 시도",
+    "editingLatest": "마지막 메시지를 편집하고 있습니다. 보내면 답변이 바뀝니다.",
+    "editingEarlier": "이전 메시지를 편집하고 있습니다. 보내면 그 지점부터 새 채팅이 시작되고, 이 채팅은 기록에 남습니다.",
+    "cancelEdit": "편집 취소",
+    "replaceTitle": "이 답변을 바꿀까요?",
+    "replaceDescription_other": "이 답변은 파일 {{count}}개를 변경했습니다. 변경 사항은 프로젝트에 남지만, 실행 취소 카드는 답변과 함께 사라집니다.",
+    "replaceConfirm": "답변 바꾸기",
+    "forked": "편집한 메시지에서 새 채팅을 시작했습니다.",
+    "failed": "메시지를 다시 보내지 못했습니다."
   }
 }

@@ -21,7 +21,9 @@ describe("ReleaseNotes before its renderer loads", () => {
     render(<ReleaseNotes source={"### Fixed\n\n- One fix."} onOpenLink={vi.fn()} />);
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
     expect(screen.getByTestId("release-notes")).toHaveTextContent("### Fixed - One fix.");
-    expect(await screen.findByRole("heading", { level: 3, name: "Fixed" })).toBeInTheDocument();
+    // The renderer is a dynamic import: about 0.25 s alone, but past findBy's
+    // 1 s default once in a busy full run.
+    expect(await screen.findByRole("heading", { level: 3, name: "Fixed" }, { timeout: 5_000 })).toBeInTheDocument();
     expect(screen.getByText("One fix.")).toBeInTheDocument();
   });
 });

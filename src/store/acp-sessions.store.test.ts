@@ -19,6 +19,7 @@ vi.mock("@/lib/acp", async (original) => ({
   acpEvents: mocks.acpEvents,
   onAcpEvent: mocks.onAcpEvent,
   onAcpResync: mocks.onAcpResync,
+  onAcpSession: vi.fn(async () => () => {}), onAcpBufferRequest: vi.fn(async () => () => {}),
 }));
 vi.mock("@/lib/external-file-changes", () => ({
   refreshOpenFilesFromDisk: mocks.refreshOpenFilesFromDisk,
@@ -116,6 +117,19 @@ describe("ACP session actions", () => {
     expect(mocks.acpDisconnect).not.toHaveBeenCalled();
   });
 
+  it("keeps what the agent sent while the conversation started", async () => {
+    mocks.acpStart.mockResolvedValue({ session: session("fresh", "ready", 2), permissions: [] });
+    mocks.acpEvents.mockResolvedValue({
+      events: [event(1, "usage", {}, "fresh"), event(2, "status", { status: "ready" }, "fresh")],
+      hasMore: false,
+    });
+
+    await useAcpSessionsStore.getState().start("p", "agent");
+
+    expect(mocks.acpEvents).toHaveBeenCalledWith("p", "fresh", 0);
+    expect(useAcpSessionsStore.getState().events.fresh.map((e) => e.sequence)).toEqual([1, 2]);
+  });
+
   it("clears the starting flag when a start fails", async () => {
     mocks.acpStart.mockRejectedValue(new Error("agent not installed"));
 
@@ -155,7 +169,8 @@ describe("ACP session actions", () => {
   });
 
   it("catches up page by page after the last event it has", async () => {
-    useAcpSessionsStore.setState({ sessions: { s: session("s", "running", 2) }, events: { s: [event(2)] } });
+    // Since 0.4.8 the store keeps the transcript of a shown conversation only.
+    useAcpSessionsStore.setState({ sessions: { s: session("s", "running", 2) }, events: { s: [event(2)] }, activeByProject: { p: "s" } });
     mocks.acpSnapshot.mockResolvedValue({ session: session("s", "running", 2), permissions: [] });
     mocks.acpEvents
       .mockResolvedValueOnce({ events: [event(3), event(4)], hasMore: true })
@@ -179,10 +194,11 @@ describe("ACP session actions", () => {
   });
 
   it("keeps a composer's other fields when one is patched", () => {
-    useAcpSessionsStore.getState().setComposer("p", { draft: "hello" });
+    const selections = [{ id: "q1", path: "main.tex", text: "hello", label: "main.tex:1-1" }];
+    useAcpSessionsStore.getState().setComposer("p", { selections });
     useAcpSessionsStore.getState().setComposer("p", { agentId: "agent" });
 
-    expect(useAcpSessionsStore.getState().composers.p).toEqual({ ...EMPTY_COMPOSER, draft: "hello", agentId: "agent" });
+    expect(useAcpSessionsStore.getState().composers.p).toEqual({ ...EMPTY_COMPOSER, selections, agentId: "agent" });
   });
 });
 
@@ -240,7 +256,8 @@ describe("ACP live listeners", () => {
     });
     mocks.onAcpResync.mockResolvedValue(stopResync);
     mocks.acpSnapshot.mockResolvedValue({ session: session("s", "ready", 3), permissions: [] });
-    useAcpSessionsStore.setState({ sessions: { s: session("s", "running", 0) } });
+    // Since 0.4.8 the store keeps the transcript of a shown conversation only.
+    useAcpSessionsStore.setState({ sessions: { s: session("s", "running", 0) }, activeByProject: { p: "s" } });
 
     const detach = await attachAcpListeners();
     const detachSecond = await attachAcpListeners();
@@ -263,6 +280,28 @@ describe("ACP live listeners", () => {
     detachSecond();
     expect(stopEvent).toHaveBeenCalledTimes(1);
     expect(stopResync).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends a message that waited once the session turns ready without a turn ending", async () => {
+    mocks.onAcpEvent.mockResolvedValue(() => {});
+    mocks.onAcpResync.mockResolvedValue(() => {});
+    const dispatchQueued = vi.fn(async () => {});
+    const waiting = { id: "q1", text: "?", attachments: [], mentions: [], selections: [], skill: null };
+    useAcpSessionsStore.setState({
+      sessions: { s: session("s", "connecting"), t: session("t", "connecting") },
+      queues: { s: [waiting], t: [{ ...waiting, id: "q2", sending: true }] },
+      dispatchQueued,
+    });
+    const detach = await attachAcpListeners();
+
+    // A reconnect after signing in: the snapshot says ready, no turn ended.
+    useAcpSessionsStore.setState((state) => ({
+      sessions: { ...state.sessions, s: session("s", "ready"), t: session("t", "ready") },
+    }));
+    await Promise.resolve();
+
+    expect(dispatchQueued).toHaveBeenCalledExactlyOnceWith("p", "s");
+    detach();
   });
 
   it("drops queued events when the last listener detaches", async () => {

@@ -43,13 +43,15 @@
       "command": "Bekräfta kommandot",
       "externalTool": "Bekräfta åtgärden i det externa verktyget",
       "internet": "Bekräfta internetåtkomst",
-      "edit": "Bekräfta AI-ändringen"
+      "edit": "Bekräfta AI-ändringen",
+      "researchTask": "Bekräfta forskningsuppgiften"
     },
     "headline": {
       "command": "Assistenten vill köra det här kommandot",
       "externalTool": "Assistenten vill använda ett externt verktyg",
       "internet": "Assistenten vill komma åt internet",
-      "edit": "Assistenten vill ändra dina filer"
+      "edit": "Assistenten vill ändra dina filer",
+      "researchTask": "Assistenten vill skapa en forskningsuppgift"
     },
     "mcpNote": "Det här skickar argumenten nedan till den konfigurerade MCP-servern.",
     "line": "rad {{line}}",
@@ -70,10 +72,50 @@
       "title": "Begäran från extern agent (MCP)",
       "moreWaiting_one": "{{count}} till väntar",
       "moreWaiting_other": "{{count}} till väntar"
+    },
+    "researchTask": {
+      "note": "Uppgiften arbetar på egen hand i en kopia av projektet. Du granskar dess ändringar efteråt.",
+      "title": "Titel",
+      "goal": "Mål",
+      "skills": "Färdigheter",
+      "prompt": "Prompt",
+      "commands": "Kommandon",
+      "commandsAsk": "Fråga före varje",
+      "network": "Nätverk",
+      "timeBudget": "Tidsbudget",
+      "timeBudgetDefault": "Standard",
+      "minutes_one": "{{count}} minut",
+      "minutes_other": "{{count}} minuter",
+      "planFirst": "Planera först",
+      "startNow": "Starta nu"
     }
   },
   "attachments": {
-    "remove": "Ta bort {{name}}"
+    "remove": "Ta bort {{name}}",
+    "processing": "Förbereder {{name}}…",
+    "failed": "{{name}} kunde inte bifogas.",
+    "pages_one": "{{count}} sida",
+    "pages_other": "{{count}} sidor",
+    "pagesLimited": "Bara de första {{limit}} av {{count}} sidor används.",
+    "tooMany": "Du kan bifoga upp till {{max}} filer i ett meddelande.",
+    "tooLarge": "{{name}} är större än {{limit}}.",
+    "unsupported": "{{name}} kan inte bifogas. Bifoga bilder, PDF-filer eller textfiler.",
+    "unreadableImage": "Oleafly kan inte läsa bildformatet i {{name}}. Spara bilden som PNG eller JPEG och bifoga den igen.",
+    "unreadablePdf": "{{name}} kunde inte öppnas som PDF.",
+    "storeFailed": "{{name}} kunde inte sparas för den här chatten.",
+    "visionUnsupported": "{{model}} kan inte läsa bilder, så bilderna i det här meddelandet skickas inte.",
+    "scannedPdf": "{{name}} har inget textlager, och {{model}} kan inte läsa bilder.",
+    "dropFiles": "Släpp filer för att bifoga dem",
+    "dropProjectFile": "Släpp för att nämna den här filen",
+    "open": "Öppna {{name}}",
+    "saveCopy": "Spara en kopia av {{name}}",
+    "saved": "Sparade en kopia av {{name}}.",
+    "saveFailed": "Det gick inte att spara {{name}}.",
+    "missing": "{{name}} är inte längre tillgänglig.",
+    "sentAsText": "{{name}} skickades som text eftersom den här modellen inte kan läsa den som fil.",
+    "skipped": "{{name}} skickades inte.",
+    "dropUnreadable": "{{names}} kunde inte läsas.",
+    "notReplayed": "Filer från en äldre version kan inte skickas igen: {{names}}."
   },
   "chat": {
     "pill": {
@@ -182,7 +224,9 @@
     "stop": "Stoppa",
     "stopTitle": "Sluta generera",
     "send": "Skicka",
-    "checkAgain": "Kontrollera igen"
+    "checkAgain": "Kontrollera igen",
+    "resizeHandle": "Ändra storlek på meddelanderutan",
+    "resizeHint": "Dra för att ändra storlek. Dubbelklicka för att återställa."
   },
   "commands": {
     "groups": {
@@ -220,10 +264,6 @@
     "files": {
       "label": "Filer",
       "description": "Bifoga filer till ditt nästa meddelande"
-    },
-    "browser": {
-      "label": "Bifoga webbläsare",
-      "description": "Öppna webbläsaren bredvid ditt dokument"
     }
   },
   "models": {
@@ -272,7 +312,10 @@
       "minutes": "för {{count}} min sedan",
       "hours": "för {{count}} tim sedan",
       "days": "för {{count}} dgr sedan"
-    }
+    },
+    "skipped_one": "{{count}} chatt kunde inte läsas in. Den finns kvar på disken.",
+    "skipped_other": "{{count}} chattar kunde inte läsas in. De finns kvar på disken.",
+    "openFailed": "Det gick inte att öppna den här chatten."
   },
   "tools": {
     "approval": {
@@ -318,7 +361,6 @@
       "listAgents": "Listar hjälpagenterna och deras tillstånd.",
       "closeAgent": "Stänger en hjälpagent.",
       "runCommand": "Kör ett shell-kommando i projektmappen, med en gräns på två minuter.",
-      "computerUse": "Öppnar en webbsida i assistentens webbläsarfönster.",
       "toggleTheme": "Växlar mellan ljust och mörkt läge.",
       "listOverleafProjects": "Listar dina Overleaf-projekt och loggar in först vid behov.",
       "importOverleafProjects": "Importerar Overleaf-projekt till ditt bibliotek, med kompilator och huvudfil."
@@ -347,8 +389,7 @@
       "latexOnly": "Bara LaTeX-projekt",
       "latexAndTypstOnly": "Bara LaTeX- och Typst-projekt",
       "pdfCaptureSetting": "Kräver inställningen för att fånga PDF-sidor",
-      "chatApproval": "Godkänns i chatten, ett kommando i taget",
-      "browserSetting": "Kräver inställningen för webbläsare"
+      "chatApproval": "Godkänns i chatten, ett kommando i taget"
     },
     "sourceGroups": {
       "figure": "Figur",
@@ -471,18 +512,20 @@
     "resumeTask": "Öppna forskningsuppgiften för att återuppta arbetet.",
     "delegatedConversation": "Den här konversationen hör till en delegerad agentkörning.",
     "noResume": "Den här agenten kan inte återuppta sparade konversationer. Starta en ny konversation när du är redo.",
-    "imageTooLarge": "Välj en bild som är mindre än 480 KiB. Du kan bifoga upp till fyra bilder.",
     "imageReadFailed": "Bilden kunde inte läsas.",
-    "removeImage": "Ta bort {{name}}",
     "composerAriaLabel": "Meddelande till CLI-agenten",
     "composerPlaceholderReady": "Be agenten arbeta med det här projektet",
     "composerPlaceholderIdle": "Starta eller återanslut en konversation för att skicka ett meddelande",
-    "attachImage": "Bifoga bild",
     "startConversation": "Starta en konversation med {{agent}}",
     "startConversationFallback": "en agent",
     "agentModel": "Agentens modell",
     "modelManaged": "Modellen hanteras av agenten",
     "stop": "Stoppa",
+    "stopReason": {
+      "refusal": "Agenten avböjde att fortsätta med den här begäran.",
+      "maxTokens": "Agenten nådde sin gräns för utdata och stoppade.",
+      "maxTurnRequests": "Agenten nådde sin gräns för förfrågningar under den här turen och stoppade."
+    },
     "stopTitle": "Stoppa agenten",
     "send": "Skicka",
     "connecting": "Ansluter",
@@ -500,8 +543,7 @@
     "roster": {
       "bridgeMissing": "installera bryggan under Agentkonfiguration",
       "cliMissing": "CLI hittades inte på den här datorn",
-      "unavailable": "inte tillgänglig på den här datorn",
-      "comingSoon": "kommer snart"
+      "unavailable": "inte tillgänglig på den här datorn"
     },
     "messageTooLarge": "Det här meddelandet och dess bilder är för stora. Korta ner meddelandet eller ta bort en bild.",
     "terminalCommand": "Agenten kör ett terminalkommando.",
@@ -549,7 +591,131 @@
       "tool": "Verktyg: {{name}}",
       "changedFiles": "Ändrade filer",
       "moreFiles_one": "och {{count}} fil till",
-      "moreFiles_other": "och {{count}} filer till"
+      "moreFiles_other": "och {{count}} filer till",
+      "mode": "Läge",
+      "effort": "Ansträngning",
+      "permissionProfile": "Godkännandeläge",
+      "commits": "Incheckningar"
+    },
+    "composerPlaceholderStart": "Skriv till {{agent}} för att starta en konversation",
+    "composerPlaceholderConnecting": "Skriv nu. Meddelandet skickas när agenten är redo.",
+    "composerPlaceholderRunning": "Skriv ditt nästa meddelande. Det skickas när agenten är klar.",
+    "attachFile": "Bifoga filer",
+    "composer": {
+      "tooManyAttachments": "Bifoga upp till 10 filer i ett meddelande.",
+      "imagesUnsupported": "Den här agenten tar inte emot bilder. Ta bort dem och försök igen.",
+      "attachmentsNotReady": "Vänta tills bilagorna är förberedda.",
+      "removeSelection": "Ta bort citatet {{label}}"
+    },
+    "queue": {
+      "queued": "I kö: skickas när agenten är klar",
+      "remove": "Ta bort meddelandet i kön",
+      "sendNow": "Skicka nu",
+      "sendFailed": "Meddelandet skickades inte. Skicka det igen eller ta bort det.",
+      "queuedConnecting": "I kö: skickas när agenten är redo",
+      "queuedSignIn": "I kö: skickas när du har loggat in",
+      "retry": "Skicka igen",
+      "edit": "Redigera"
+    },
+    "slash": {
+      "commands": "Agentkommandon",
+      "skills": "Färdigheter"
+    },
+    "controls": {
+      "effort": "Ansträngning",
+      "mode": "Läge",
+      "more": "Fler agentalternativ",
+      "blockedMode": "Av i Oleafly",
+      "blockedModeHint": "Oleafly håller behörighetskontrollerna på, så det här läget är inte tillgängligt."
+    },
+    "usage": {
+      "ariaLabel": "Visa agentens användning",
+      "tooltip": "Användning för den här konversationen",
+      "contextShare": "{{percent}} % av kontextfönstret används",
+      "window": {
+        "fiveHour": "5-timmarssession",
+        "weekly": "Veckovis, alla modeller",
+        "weeklyOpus": "Veckovis, Opus",
+        "weeklySonnet": "Veckovis, Sonnet",
+        "overage": "Extra användning",
+        "other": "Användningsgräns {{id}}"
+      },
+      "costIn": "Agenten rapporterade en kostnad på {{amount}} {{currency}}.",
+      "modelTokens": "{{model}}: {{tokens}} tokens"
+    },
+    "compaction": {
+      "running": "Sammanfattar tidigare kontext",
+      "done": "Sammanfattade tidigare kontext",
+      "failed": "Det gick inte att sammanfatta tidigare kontext"
+    },
+    "signIn": {
+      "inTerminal": "{{name}} i terminalen",
+      "afterTerminal": "Slutför inloggningen i terminalen och anslut sedan igen.",
+      "apiKeyLabel": "API-nyckel för {{provider}}",
+      "apiKeyPlaceholder": "Klistra in din API-nyckel",
+      "geminiGoogle": "Inloggning med Google fungerar inte längre för individuella abonnemang. Använd en Gemini-API-nyckel eller Vertex AI.",
+      "noProject": "Öppna ett projekt för att logga in från terminalen.",
+      "signOut": "Logga ut",
+      "confirmTerminal": "{{agent}} loggar in via kommandot nedan, som körs i en terminalflik. Kontrollera det innan du godkänner.",
+      "remote": "Den här konversationen körs på en annan dator. Logga in på agenten där."
+    },
+    "elicitation": {
+      "ariaLabel": "Begäran från agenten",
+      "from": "{{agent}} frågar:",
+      "submit": "Skicka",
+      "decline": "Avböj",
+      "cancel": "Avbryt",
+      "required": "Obligatoriskt",
+      "invalid": "Kontrollera det här fältet.",
+      "openUrl": "Öppna i webbläsaren",
+      "confirmTitle": "Vill du öppna {{host}}?",
+      "confirmDescription": "Agenten bad dig slutföra ett steg på den här webbplatsen. Den öppnas i din webbläsare.",
+      "waiting": "Väntar på att webbplatsen ska bli klar.",
+      "openFailed": "Länken kunde inte öppnas i din webbläsare."
+    },
+    "remote": {
+      "banner": "Hermes körs på {{host}} via SSH. Dess ändringar stannar på den datorn."
+    },
+    "history": {
+      "all": "Alla konversationer",
+      "title": "Konversationer",
+      "search": "Sök i konversationer",
+      "empty": "Inga konversationer matchar.",
+      "loadMore": "Läs in fler",
+      "rename": "Byt namn",
+      "renameLabel": "Konversationens namn",
+      "delete": "Radera",
+      "deleteTitle": "Vill du radera den här konversationen?",
+      "deleteDescription": "Oleafly tar bort dess transkript och bilagor från det här projektet.",
+      "deleteFromAgent": "Radera den även från {{agent}}",
+      "deleteAgentFailed": "Raderad i Oleafly. {{agent}} kunde inte radera sin kopia: {{error}}",
+      "deleteRunning": "Stoppa agenten innan du raderar den här konversationen.",
+      "importFind": "Hitta konversationer från {{agent}} för det här projektet",
+      "imported": "Redan i Oleafly",
+      "importSelected": "Importera markerade",
+      "importEmpty": "{{agent}} har inga andra konversationer för det här projektet."
+    },
+    "header": {
+      "startedAt": "Startade vid {{revision}}",
+      "startedDirty": "Startade vid {{revision}} med ändringar som inte har checkats in",
+      "menu": "Åtgärder för konversationen",
+      "fork": "Förgrena konversationen",
+      "forkUnsupported": "Den här agenten kan inte förgrena konversationer.",
+      "forkBusy": "Vänta tills agenten är klar innan du förgrenar.",
+      "v2": "Förhandsvisning av protokollet",
+      "remote": "Fjärr",
+      "signOutTitle": "Logga ut från {{agent}}?",
+      "signOutDescription": "Det här avslutar själva inloggningen för {{agent}}. En terminal som använder samma inloggning loggas också ut, och den här konversationen stannar tills du loggar in igen.",
+      "signOutAccount": "Inloggad med {{account}}"
+    },
+    "commit": {
+      "button": "Checka in",
+      "title": "Checka in den här turen",
+      "message": "Incheckningsmeddelande",
+      "files": "Filer att checka in",
+      "defaultMessage": "Ändringar från {{agent}}",
+      "submit": "Checka in filerna",
+      "cancel": "Avbryt"
     }
   },
   "agents": {
@@ -721,8 +887,6 @@
     "restoreFailed": "Det gick inte att återställa: {{error}}",
     "steerFailed": "Den pågående turen kunde inte styras.",
     "approvalRuleSaveFailed": "Det gick inte att spara projektets godkännanderegel.",
-    "attachmentTooLarge": "{{name}} är för stor (högst 10 MB).",
-    "attachmentReadFailed": "Det gick inte att läsa {{name}}.",
     "tooManyTools": "{{enabled}} verktyg är aktiverade, men en körning stöder högst {{max}}. Stäng av minst {{excess}} under Verktyg och försök igen."
   },
   "header": {
@@ -749,7 +913,29 @@
     "summaryRunNoTokens_one": "Senaste körningen: {{count}} steg, totalt antal tokens saknas",
     "summaryRunNoTokens_other": "Senaste körningen: {{count}} steg, totalt antal tokens saknas",
     "summaryChat": "Den här chatten: {{steps}} steg, {{tokens}} tokens",
-    "summaryFallback": "AI-användning"
+    "summaryFallback": "AI-användning",
+    "context": "Kontext",
+    "contextUsed": "{{used}} av {{size}} tokens",
+    "contextShare": "{{percent}} av kontextfönstret används",
+    "contextUnknown": "Den här modellens kontextfönster är okänt.",
+    "reasoning": "Resonemang",
+    "cacheRead": "Cacheläsningar",
+    "cacheWrite": "Cacheskrivningar",
+    "cost": "Uppskattad kostnad",
+    "budget": "Projektbudget",
+    "budgetUsed": "{{spent}} av {{limit}}",
+    "credit": "Återstående kredit",
+    "creditOf": "{{remaining}} av {{limit}}",
+    "planLimits": "Abonnemangsgränser",
+    "resetsAt": "Återställs {{time}}",
+    "windowWarning": "Nära gränsen",
+    "windowBlocked": "Gränsen är nådd",
+    "refreshPlan": "Uppdatera abonnemangsanvändningen",
+    "refreshing": "Uppdaterar…",
+    "historyTrimmed_one": "Bara den senaste {{count}} turen i den här chatten skickades till modellen.",
+    "historyTrimmed_other": "Bara de senaste {{count}} turerna i den här chatten skickades till modellen.",
+    "empty": "Ingen användning i den här chatten än.",
+    "loading": "Läser in användning…"
   },
   "provider": {
     "connectTitle": "Anslut en AI-leverantör för att fortsätta",
@@ -769,7 +955,21 @@
     "projectSubtitle": "Arbetar med \"{{project}}\"",
     "noOutput": "Modellen gav ingen utdata. Kontrollera Inställningar → AI-assistent.",
     "planMissing": "Det finns ingen plan att godkänna än. Be assistenten om en, eller stäng av Plan.",
-    "planUnchanged": "Planen är oförändrad."
+    "planUnchanged": "Planen är oförändrad.",
+    "stillWorking": "Arbetar fortfarande ({{seconds}} s). Modeller som resonerar och lokala modeller kan vara långsamma. Klicka på Stoppa för att avbryta.",
+    "retrying": "Anslutningsproblem. Försöker igen ({{attempt}} av {{max}})…",
+    "stopped": "Stoppad.",
+    "stepLimit": "Stegränsen nåddes. Skicka ett nytt meddelande för att fortsätta.",
+    "outputLimit": "Svaret nådde modellens gräns för utdata. Skicka ett nytt meddelande för att fortsätta.",
+    "tooLargeToSave": "Den här chatten är för lång för att sparas. Nya meddelanden finns kvar tills du stänger Oleafly. Exportera chatten för att behålla en kopia.",
+    "exportChat": "Exportera chatten",
+    "exported": "Chatten har exporterats.",
+    "exportFailed": "Det gick inte att exportera chatten.",
+    "saveFailed": "Nya meddelanden i den här chatten kunde inte sparas. Kontrollera att det finns ledigt utrymme på disken.",
+    "exportYou": "Du",
+    "exportAssistant": "Assistent",
+    "exportAttachments": "Bilagor",
+    "exportTools": "Använda verktyg"
   },
   "followUps": {
     "steered": "Styrd in i den pågående turen: {{summary}}",
@@ -856,6 +1056,46 @@
     "figureAudit": "Figurgranskning",
     "gitReview": "Git-granskning",
     "referenceCleanup": "Rensning av referenser",
-    "removeSkill": "Ta bort färdigheten {{name}}"
+    "removeSkill": "Ta bort färdigheten {{name}}",
+    "compilationRepair": "Reparera kompileringen",
+    "submissionPrep": "Förbered inlämningen",
+    "reviewerResponse": "Svar till granskarna"
+  },
+  "effort": {
+    "label": "Ansträngning",
+    "tooltip": "Hur mycket modellen resonerar innan den svarar",
+    "ariaLabel": "Ansträngning för resonemang: {{level}}",
+    "auto": "Auto",
+    "autoDescription": "Använd modellens standard",
+    "levels": {
+      "none": "Ingen",
+      "minimal": "Minimal",
+      "low": "Låg",
+      "medium": "Medel",
+      "high": "Hög",
+      "xhigh": "Extra hög",
+      "max": "Max"
+    }
+  },
+  "web": {
+    "label": "Webb",
+    "on": "Webbsökning och sidläsning är på för den här chatten",
+    "off": "Slå på webbsökning och sidläsning för den här chatten",
+    "ariaLabel": "Webbåtkomst",
+    "searchUnavailable": "Den här modellen kan inte söka på webben. Lägg till en söknyckel i Inställningar för att slå på det."
+  },
+  "messageActions": {
+    "edit": "Redigera meddelandet",
+    "regenerate": "Generera om svaret",
+    "retry": "Försök igen",
+    "editingLatest": "Du redigerar ditt senaste meddelande. När du skickar det ersätts svaret.",
+    "editingEarlier": "Du redigerar ett tidigare meddelande. När du skickar det startar en ny chatt därifrån, och den här chatten finns kvar i Historik.",
+    "cancelEdit": "Avbryt redigeringen",
+    "replaceTitle": "Vill du ersätta det här svaret?",
+    "replaceDescription_one": "Svaret ändrade {{count}} fil. Ändringen finns kvar i ditt projekt, men dess ångra-kort försvinner med svaret.",
+    "replaceDescription_other": "Svaret ändrade {{count}} filer. Ändringarna finns kvar i ditt projekt, men deras ångra-kort försvinner med svaret.",
+    "replaceConfirm": "Ersätt svaret",
+    "forked": "Startade en ny chatt från det redigerade meddelandet.",
+    "failed": "Det gick inte att skicka meddelandet igen."
   }
 }

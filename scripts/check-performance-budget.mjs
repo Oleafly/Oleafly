@@ -43,11 +43,22 @@ const limits = {
   // 4.82 MB after the collaboration review fixes. Moving
   // the wrappers into a module that only src/features/collab imports would
   // take most of it back out.
-  largestJavaScript: 4_850_000,
+  // +100 KB for 0.4.8's startup surfaces: the shared chat composer (drafts,
+  // attachments, effort, the usage meter and the resize handle), Git hosting
+  // accounts, the Preflight context, the terminal key map and the Tools model
+  // choice, about 105 KB of new modules before minification. The entry
+  // measures 4.93 MB.
+  // +40 KB for main's links between project files and SyncTeX accuracy
+  // (about 21 KB of it lands in the entry with the source editor) on top of
+  // 0.4.8's audit fixes: the entry measures 4,969,172 bytes on macOS.
+  // +1 KB for the research tasks switch at startup (the rail entry's
+  // condition, the rail's re-render on it, the capped small-button radius):
+  // the entry measures 4,990,252 bytes, 252 over the old ceiling.
+  largestJavaScript: 5_000_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
   // asset becomes the largest.
-  entryJavaScript: 4_850_000,
+  entryJavaScript: 5_000_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
@@ -141,12 +152,16 @@ const limits = {
   // Links that open project files in Visual mode, word-level Typst sync and
   // the cloud sync fixes bring it to 20,439,121 bytes. The DOMPurify 3.4.17
   // and markdown-it 14.3.3 security updates then take it to 20,414,055.
-  totalJavaScript: 20_635_000,
+  // +500 KB for 0.4.8: CLI agent conversations, history and controls, research
+  // tasks and their runs, Desktop apps, Git hosting, the terminal settings and
+  // the entry growth above. The combined graph measures 20.91 MB.
+  // With both, the combined graph measures 20,950,195 bytes on macOS.
+  totalJavaScript: 21_170_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
-  // 620 KB; keep narrow headroom so a namespace accidentally bundled twice
-  // fails loudly.
-  largestLocaleChunk: 800_000,
+  // 851 KB with 0.4.8's strings; keep narrow headroom so a namespace
+  // accidentally bundled twice fails loudly.
+  largestLocaleChunk: 900_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each

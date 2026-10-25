@@ -184,7 +184,8 @@
   },
   "imageToLatex": {
     "failed": "Conversione da immagine a LaTeX non riuscita: {{detail}}",
-    "transcribing": "Trascrizione dell'immagine…"
+    "transcribing": "Trascrizione dell'immagine…",
+    "notInserted": "Il file attivo è cambiato, quindi il codice LaTeX non è stato inserito. Copialo, poi incollalo dove vuoi."
   },
   "import": {
     "chooseOfferedProjectType": "Scegli uno dei tipi di progetto proposti per questo file.",
@@ -599,7 +600,10 @@
       "diagnostics_other": "{{count}} diagnostiche",
       "papers_one": "{{count}} articolo",
       "papers_many": "{{count}} articoli",
-      "papers_other": "{{count}} articoli"
+      "papers_other": "{{count}} articoli",
+      "sourcesFailed_one": "{{count}} fonte non riuscita",
+      "sourcesFailed_many": "{{count}} fonti non riuscite",
+      "sourcesFailed_other": "{{count}} fonti non riuscite"
     }
   },
   "ui": {
@@ -617,6 +621,8 @@
     "saveReason": "la cartella del progetto non è disponibile"
   },
   "imageToTypst": {
-    "failed": "Conversione da immagine a Typst non riuscita: {{detail}}"
+    "failed": "Conversione da immagine a Typst non riuscita: {{detail}}",
+    "copied": "Sorgente Typst copiato",
+    "notInserted": "Il file attivo è cambiato, quindi il codice Typst non è stato inserito. Copialo, poi incollalo dove vuoi."
   }
 }

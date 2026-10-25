@@ -20,7 +20,6 @@ import {
 import {
   APP_ICON_IDS,
   APP_ZOOM_LEVELS,
-  BROWSER_SEARCH_ENGINES,
   EDITOR_CURSOR_WIDTHS,
   EDITOR_CUSTOM_LETTER_SPACING,
   EDITOR_CUSTOM_LINE_HEIGHT,
@@ -34,6 +33,10 @@ import {
   GRAMMAR_DIALECTS,
   LAYOUT_PRESETS,
   TERMINAL_COLOR_THEMES,
+  TERMINAL_SCROLLBACK_OPTIONS,
+  TERMINAL_SHELL_IDS,
+  TERMINAL_SHELL_PATH_MAX_LENGTH,
+  TERMINAL_SHIFT_ENTER_OPTIONS,
   TYPST_FORMATTER_INDENT_SIZES,
   TYPST_FORMATTER_LINE_WIDTHS,
   clampEditorFontSize,
@@ -64,7 +67,6 @@ import {
   oneOf,
   text,
   textList,
-  webAddress,
   wholeNumber,
   type Parsed,
   type ValueType,
@@ -81,7 +83,13 @@ export interface CompilePreferences {
 export type ConfigPreferences = Pick<
   AppConfig,
   "ai_system_prompt" | "ai_pdf_capture" | "ai_personas" | "checkpoints_enabled" | "checkpoint_notifications"
->;
+> & {
+  ai_reasoning_summaries: boolean;
+  research_keep_awake: boolean;
+  research_notifications: boolean;
+  research_command_network: boolean;
+  research_time_budget_minutes: number;
+};
 
 export interface SettingsSnapshot {
   preferences: PreferenceValues;
@@ -465,12 +473,16 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("appearance.terminal.background", "terminalBackground", hexColor),
   pref("appearance.terminal.foreground", "terminalForeground", hexColor),
   pref("appearance.terminal.cursorColor", "terminalCursorColor", hexColor),
+  pref("appearance.terminal.shell", "terminalShell", oneOf(TERMINAL_SHELL_IDS)),
+  pref("appearance.terminal.shellPath", "terminalShellPath", text(TERMINAL_SHELL_PATH_MAX_LENGTH)),
+  pref("appearance.terminal.shiftEnter", "terminalShiftEnter", oneOf(TERMINAL_SHIFT_ENTER_OPTIONS)),
+  pref("appearance.terminal.copyOnSelect", "terminalCopyOnSelect", bool),
+  pref("appearance.terminal.optionIsMeta", "terminalOptionIsMeta", bool),
+  pref("appearance.terminal.scrollback", "terminalScrollback", numberOf(TERMINAL_SCROLLBACK_OPTIONS)),
+  pref("appearance.terminal.confirmClose", "terminalConfirmClose", bool),
 
   pref("appearance.pdf.darkMode", "pdfDarkMode", bool),
   pref("appearance.pdf.hoverPreview", "hoverPreview", bool),
-
-  pref("appearance.browser.searchEngine", "browserSearchEngine", oneOf(BROWSER_SEARCH_ENGINES.map((engine) => engine.id))),
-  pref("appearance.browser.homePage", "browserHomePage", webAddress),
 
   pref("appearance.files.projectLayout", "homeProjectLayout", oneOf(["grid", "list"] as const)),
   pref("appearance.files.defaultLayout", "defaultView", oneOf(LAYOUT_PRESETS)),
@@ -490,7 +502,14 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
 
   config("ai.customInstructions", "ai_system_prompt", text(200_000, { multiline: true })),
   config("ai.includePdfPreview", "ai_pdf_capture", bool),
+  config("ai.reasoningSummaries", "ai_reasoning_summaries", bool),
   config("ai.personas", "ai_personas", personas),
+
+  // The MCP servers tasks may use are device-specific and not exported.
+  config("research.keepAwake", "research_keep_awake", bool),
+  config("research.notifications", "research_notifications", bool),
+  config("research.commandNetwork", "research_command_network", bool),
+  config("research.timeBudgetMinutes", "research_time_budget_minutes", numberOf([30, 60, 120, 240, 480, 720, 1440])),
 
   pref("engine.defaultLatexEngine", "defaultLatexEngine", oneOf(["tectonic", "latexmk"] as const)),
   compile("engine.compile.autoCompile", "autoCompile", bool),
@@ -502,5 +521,4 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   ...EDITOR_KEY_DEFINITIONS.map(editorKeyField),
 
   pref("experimentation.latexTools", "latexTools", bool),
-  pref("experimentation.webBrowser", "webBrowser", bool),
 ];

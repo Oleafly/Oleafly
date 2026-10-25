@@ -1,8 +1,9 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, vi } from "vitest";
-import { cleanup } from "@testing-library/react";
+import { getQueriesForElement, queries, screen } from "@testing-library/dom";
 import { resetSidebarViewState } from "./src/store/sidebar-view-state";
 import { provideTestCatalogs } from "@oleafly/i18n-contract/testing";
+import { setCorpusTransport } from "@oleafly/latex-intelligence";
 import diagram from "./src/i18n/locales/en/diagram.json" with { type: "json" };
 import editor from "./src/i18n/locales/en/editor.json" with { type: "json" };
 import preflight from "./src/i18n/locales/en/preflight.json" with { type: "json" };
@@ -18,6 +19,16 @@ provideTestCatalogs({
   templates: templates.package,
   wysiwyg,
 });
+
+// The editor's LaTeX corpus is fetched lazily from the page origin, which no
+// unit test serves. With the default transport that fetch fails only after a
+// connection attempt, and the loader's debug log then lands after the test
+// file is done, sometimes while Vitest is already closing the worker ("Closing
+// rpc while onUserConsoleLog was pending" fails the whole run). Answer every
+// corpus request with "nothing there" at once instead. Tests that need a
+// catalog set their own transport, and `setCorpusTransport(null)` still
+// restores the fetch-based default for the tests that exercise it.
+setCorpusTransport(async () => null);
 
 vi.mock("@lobehub/icons", () => {
   const stub = () => {
@@ -45,8 +56,25 @@ vi.mock("@lobehub/icons", () => {
   };
 });
 
-afterEach(() => {
-  cleanup();
+// Testing Library and React DOM check for a DOM once, when they load. A test
+// file in the node environment that sets up its own JSDOM (installUiDom, or a
+// JSDOM in beforeAll) does so after this file runs, so:
+// - `screen` would stay bound to no document (jest-dom above loads it). Its
+//   queries look up the current document.body on each call instead.
+// - React DOM loaded without a DOM reads text fields from key events, and
+//   fireEvent.change alone never reaches onChange. So Testing Library, which
+//   loads React DOM, is loaded here only when a DOM already exists (the jsdom
+//   environment). Otherwise the test file loads it once its JSDOM exists.
+const currentBodyScreen = screen as unknown as Record<string, unknown>;
+for (const name of Object.keys(queries)) {
+  currentBodyScreen[name] = (...args: unknown[]) =>
+    (getQueriesForElement(document.body) as unknown as Record<string, (...rest: unknown[]) => unknown>)[name](...args);
+}
+let testingLibrary = typeof document === "undefined" ? undefined : await import("@testing-library/react");
+
+afterEach(async () => {
+  if (!testingLibrary && typeof document !== "undefined") testingLibrary = await import("@testing-library/react");
+  testingLibrary?.cleanup();
   resetSidebarViewState();
 });
 

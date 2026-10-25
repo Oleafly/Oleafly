@@ -41,6 +41,81 @@ describe("ResearchToolCard literature rows", () => {
     expect(screen.getByRole("button", { name: "Open source: With DOI" })).toBeInTheDocument();
     expect(screen.getByText("Bare title")).toBeInTheDocument();
   });
+
+  it("lists the records of a merged search with their venue and opens one", () => {
+    const openSource = vi.fn();
+    render(
+      <ResearchToolCard
+        actions={{ openSource }}
+        tc={{
+          name: "literature_search",
+          status: "done",
+          output: JSON.stringify({
+            records: [
+              {
+                id: "openalex:W7",
+                title: "Measured diffusion",
+                authors: ["R. Chen"],
+                year: 2024,
+                venue: "Physical Review E",
+                doi: "10.1103/example",
+                url: "https://doi.org/10.1103/example",
+                abstract: "We measure diffusion.",
+                sources: ["openalex"],
+              },
+            ],
+            failures: [{ source: "crossref", message: "Crossref returned HTTP 503." }],
+            cached: [],
+          }),
+        }}
+      />,
+    );
+
+    expect(header()).toHaveTextContent(enCore.toolActivity.summary.papers_one.replace("{{count}}", "1"));
+    fireEvent.click(header());
+
+    expect(screen.getByText("Measured diffusion")).toBeInTheDocument();
+    expect(screen.getByText("R. Chen · 2024")).toBeInTheDocument();
+    expect(
+      screen.getByText(`Physical Review E · ${enAi.toolCard.doi.replace("{{doi}}", "10.1103/example")}`),
+    ).toBeInTheDocument();
+    expect(screen.getByText("We measure diffusion.")).toBeInTheDocument();
+    expect(screen.getByText("Crossref returned HTTP 503.").closest("ul")).toHaveClass("text-destructive");
+    fireEvent.click(screen.getByRole("button", { name: "Open source: Measured diffusion" }));
+    expect(openSource).toHaveBeenCalledWith({
+      sourceId: "openalex:W7",
+      url: "https://doi.org/10.1103/example",
+      doi: "10.1103/example",
+    });
+  });
+
+  it("marks a search no index answered as failed and says why", () => {
+    const { container } = render(
+      <ResearchToolCard
+        tc={{
+          name: "literature_search",
+          status: "done",
+          output: JSON.stringify({
+            records: [],
+            failures: [
+              { source: "openalex", message: "openalex took longer than 25 seconds." },
+              { source: "semantic-scholar", message: "error sending request" },
+            ],
+            cached: [],
+          }),
+        }}
+      />,
+    );
+
+    const card = container.querySelector("[data-research-status]");
+    expect(card).toHaveAttribute("data-research-status", "failed");
+    expect(header()).toHaveTextContent(enCore.toolActivity.summary.sourcesFailed_other.replace("{{count}}", "2"));
+    expect(header()).toHaveTextContent(enCore.toolActivity.status.failed);
+    fireEvent.click(header());
+
+    const reasons = [...document.querySelectorAll("ul li")].map((node) => node.textContent);
+    expect(reasons).toEqual(["openalex took longer than 25 seconds.", "Semantic Scholar: error sending request"]);
+  });
 });
 
 describe("ResearchToolCard header", () => {

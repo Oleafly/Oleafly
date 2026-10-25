@@ -144,6 +144,7 @@ fn renderer_run_budgets_are_clamped_to_backend_limits() {
         max_retries: u32::MAX,
         retry_base_ms: u64::MAX,
         auto_compact: true,
+        ..Default::default()
     }));
 
     assert_eq!(config.max_steps, MAX_RUN_STEPS);
@@ -153,12 +154,25 @@ fn renderer_run_budgets_are_clamped_to_backend_limits() {
 }
 
 #[test]
+fn renderer_runs_cannot_ask_for_long_runs() {
+    let config = sanitized_run_config(Some(RunConfig {
+        max_duration_ms: Some(u64::MAX),
+        allow_long_runs: true,
+        ..Default::default()
+    }));
+
+    assert!(!config.allow_long_runs);
+    assert_eq!(config.max_duration_ms, None);
+}
+
+#[test]
 fn renderer_run_budgets_have_safe_minimums() {
     let config = sanitized_run_config(Some(RunConfig {
         max_steps: 0,
         max_retries: 0,
         retry_base_ms: 0,
         auto_compact: false,
+        ..Default::default()
     }));
 
     assert_eq!(config.max_steps, 1);
@@ -767,7 +781,7 @@ fn initiating_user_message_survives_rollout_persistence_and_thread_search() {
     let mut recorder = crate::agent::turn_recorder_for_request(
         "turn-search".into(),
         Some("client-search".into()),
-        &request,
+        crate::agent::initiating_user_text(&request),
     );
     recorder.record(&oleafly_agent::AgentEvent::TextDelta {
         text: "I repaired it.".into(),
@@ -795,7 +809,11 @@ fn dropping_run_resources_cleans_every_registry() {
         &state,
         "run-1",
         7,
-        handle,
+        crate::agent::RunSteer {
+            handle,
+            media: None,
+            web: None,
+        },
         token,
         manager,
         Some("project-1".into()),
@@ -821,7 +839,11 @@ fn stale_run_cleanup_preserves_replacement_resources() {
         &state,
         "same",
         1,
-        first_handle,
+        crate::agent::RunSteer {
+            handle: first_handle,
+            media: None,
+            web: None,
+        },
         oleafly_agent::CancellationToken::new(),
         std::sync::Arc::new(crate::agent::SubagentManager::default()),
         Some("old-project".into()),
@@ -833,7 +855,11 @@ fn stale_run_cleanup_preserves_replacement_resources() {
         &state,
         "same",
         2,
-        second_handle,
+        crate::agent::RunSteer {
+            handle: second_handle,
+            media: None,
+            web: None,
+        },
         replacement,
         std::sync::Arc::new(crate::agent::SubagentManager::default()),
         Some("new-project".into()),
@@ -988,7 +1014,10 @@ async fn restricted_folders_confirm_executable_config_writes_and_network_tools()
         *asked.lock().unwrap(),
         vec![
             crate::trust::AiConfirm::Write(".husky/pre-commit".into()),
-            crate::trust::AiConfirm::Network("literature_search".into()),
+            crate::trust::AiConfirm::Network {
+                tool: "literature_search".into(),
+                target: Some("\u{201c}x\u{201d}".into()),
+            },
         ]
     );
 }
@@ -1016,4 +1045,213 @@ async fn trusted_projects_run_tools_without_the_restricted_prompt() {
     .await;
     assert_eq!(output.output, "executed");
     assert_eq!(*executed.lock().unwrap(), vec!["run_command".to_string()]);
+}
+
+// 0.4.8 C: run integration.
+
+#[test]
+fn resolve_with_attaches_model_caps_from_the_snapshot() {
+    let mut cfg = config_with("anthropic", &[("anthropic", "sk-ant-test")]);
+    cfg.ai_model = "claude-opus-5-5".into();
+    let resolved = crate::agent::resolve_with(
+        &cfg,
+        Some(crate::agent::ProviderOverride {
+            provider_id: "anthropic".into(),
+            model_id: "claude-opus-5-5".into(),
+        }),
+    )
+    .unwrap();
+    assert_eq!(resolved.caps.output_limit, Some(128_000));
+    assert_eq!(resolved.caps.context_window, Some(1_000_000));
+    assert_eq!(resolved.caps.images, Some(true));
+}
+
+#[test]
+fn stored_metadata_fills_caps_for_models_the_snapshot_lacks() {
+    let mut cfg = config_with("ollama", &[]);
+    cfg.ai_provider_models.insert(
+        "ollama".into(),
+        vec![crate::config::StoredModel {
+            id: "qwen3:8b".into(),
+            name: "Qwen3 8B".into(),
+            enabled: true,
+            source: "fetched".into(),
+            trust: None,
+            blocked_reason: None,
+            metadata: Some(serde_json::json!({
+                "contextWindow": 32_768,
+                "inputModalities": ["text"]
+            })),
+        }],
+    );
+    let resolved = crate::agent::resolve_with(
+        &cfg,
+        Some(crate::agent::ProviderOverride {
+            provider_id: "ollama".into(),
+            model_id: "qwen3:8b".into(),
+        }),
+    )
+    .unwrap();
+    assert_eq!(resolved.caps.context_window, Some(32_768));
+    assert_eq!(resolved.caps.images, Some(false));
+}
+
+#[test]
+fn web_tools_are_read_class_and_run_in_parallel() {
+    assert_eq!(tool_risk("web_search"), oleafly_agent::ToolRisk::Read);
+    assert_eq!(tool_risk("web_fetch"), oleafly_agent::ToolRisk::Read);
+    let pipeline = tool_pipeline();
+    assert_eq!(
+        pipeline.registry.parallel_policy("web_fetch"),
+        oleafly_agent::ParallelPolicy::Parallel
+    );
+}
+
+#[test]
+fn untrusted_folders_ask_before_web_tools() {
+    for tool in ["web_search", "web_fetch"] {
+        assert!(matches!(
+            crate::trust::ai_tool_gate(tool, &serde_json::json!({"url": "https://example.org"})),
+            crate::trust::AiToolGate::Confirm(_)
+        ));
+    }
+}
+
+fn media_steer(root: &std::path::Path) -> crate::agent::RunSteer {
+    let resolved = oleafly_agent::Resolved {
+        provider_id: "anthropic".into(),
+        model_id: "claude-opus-5-5".into(),
+        credential: String::new(),
+        auth: None,
+        wire: oleafly_agent::Wire::Anthropic {
+            base_url: "https://api.anthropic.com/v1".into(),
+        },
+        caps: oleafly_agent::ModelCaps {
+            images: Some(true),
+            ..oleafly_agent::ModelCaps::default()
+        },
+    };
+    let (handle, _receiver) = oleafly_agent::SteerHandle::channel();
+    crate::agent::RunSteer {
+        handle,
+        media: Some(std::sync::Arc::new(
+            crate::attachments::resolve::RunMediaContext::new(
+                root.to_path_buf(),
+                Some("p1".into()),
+                &resolved,
+            ),
+        )),
+        web: None,
+    }
+}
+
+#[tokio::test]
+async fn steering_with_an_attachment_resolves_it_against_the_run() {
+    let root = tempfile::tempdir().unwrap();
+    let png = crate::attachments::store_bytes(
+        root.path(),
+        "p1",
+        "fig.png",
+        "image/png",
+        &[0x89, b'P', b'N', b'G', 1],
+        100,
+    )
+    .unwrap();
+    let steer = media_steer(root.path());
+    let message = oleafly_agent::Message {
+        role: oleafly_agent::Role::User,
+        content: vec![
+            oleafly_agent::ContentPart::text("look at this"),
+            oleafly_agent::ContentPart::Attachment {
+                sha256: png.sha256,
+                name: "fig.png".into(),
+                mime: "image/png".into(),
+            },
+        ],
+    };
+    let prepared = crate::agent::prepare_steer(&steer, message).await.unwrap();
+    assert!(matches!(
+        prepared.content.as_slice(),
+        [oleafly_agent::ContentPart::Image { image }, oleafly_agent::ContentPart::Text { .. }]
+            if image.starts_with("data:image/png;base64,")
+    ));
+}
+
+#[tokio::test]
+async fn steering_with_an_attachment_but_no_media_context_is_refused() {
+    let state = crate::agent::AgentState::default();
+    let (handle, _receiver) = oleafly_agent::SteerHandle::channel();
+    crate::agent::register_steer_for_test(&state, "run-1", handle);
+    let error = crate::agent::steer_run(
+        &state,
+        "run-1",
+        oleafly_agent::Message {
+            role: oleafly_agent::Role::User,
+            content: vec![oleafly_agent::ContentPart::Attachment {
+                sha256: "a".repeat(64),
+                name: "a.pdf".into(),
+                mime: "application/pdf".into(),
+            }],
+        },
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(error, "This run cannot take attachments.");
+}
+
+#[test]
+fn the_rollout_seed_ignores_extracted_attachment_text() {
+    let root = tempfile::tempdir().unwrap();
+    let meta = crate::attachments::store_bytes(
+        root.path(),
+        "p1",
+        "paper.pdf",
+        "application/pdf",
+        b"%PDF-1.7",
+        100,
+    )
+    .unwrap();
+    crate::attachments::store_text(
+        root.path(),
+        "p1",
+        &meta.sha256,
+        "extracted body text",
+        Some(2),
+    )
+    .unwrap();
+    let mut request = oleafly_agent::CompletionRequest {
+        messages: vec![oleafly_agent::Message {
+            role: oleafly_agent::Role::User,
+            content: vec![
+                oleafly_agent::ContentPart::text("summarize the paper"),
+                oleafly_agent::ContentPart::Attachment {
+                    sha256: meta.sha256,
+                    name: "paper.pdf".into(),
+                    mime: "application/pdf".into(),
+                },
+            ],
+        }],
+        ..Default::default()
+    };
+    let seed = crate::agent::initiating_user_text(&request);
+    let groq = oleafly_agent::Resolved {
+        provider_id: "groq".into(),
+        model_id: "openai/gpt-oss-120b".into(),
+        credential: String::new(),
+        auth: None,
+        wire: oleafly_agent::Wire::OpenAiChat {
+            base_url: "https://api.groq.com/openai/v1".into(),
+            reasoning_content: false,
+        },
+        caps: oleafly_agent::ModelCaps::default(),
+    };
+    crate::attachments::resolve::RunMediaContext::new(
+        root.path().to_path_buf(),
+        Some("p1".into()),
+        &groq,
+    )
+    .resolve_request(&mut request)
+    .unwrap();
+    assert!(crate::agent::initiating_user_text(&request).contains("extracted body text"));
+    assert_eq!(seed, "summarize the paper");
 }

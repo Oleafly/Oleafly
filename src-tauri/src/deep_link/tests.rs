@@ -333,8 +333,8 @@ fn the_page_gets_no_deep_link_plugin_commands() {
             include_str!("../../capabilities/default.json"),
         ),
         (
-            "browser.json",
-            include_str!("../../capabilities/browser.json"),
+            "admin-console.json",
+            include_str!("../../capabilities/admin-console.json"),
         ),
     ] {
         assert!(!text.contains("deep-link"), "{name}");

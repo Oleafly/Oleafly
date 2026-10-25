@@ -1,9 +1,17 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
-import type { AgentEvent, AgentUsage } from "@oleafly/ai-core";
+import type {
+  AgentEvent,
+  AgentUsage,
+  EffortLevel,
+  ProviderCredit,
+  WebSupport,
+  WebToggle,
+} from "@oleafly/ai-core";
 
 export type AgentContentPart =
   | { type: "text"; text: string }
   | { type: "image"; image: string }
+  | { type: "attachment"; sha256: string; name: string; mime: string }
   | { type: "toolUse"; id: string; name: string; arguments: string; thoughtSignature?: string }
   | { type: "toolResult"; id: string; name: string; output: string };
 
@@ -37,6 +45,11 @@ export interface AgentCompletionRequest {
   timeout_ms?: number;
   idle_timeout_ms?: number;
   tools?: AgentToolSchema[];
+  /** How hard the model thinks; omitted for the model's default. */
+  effort?: EffortLevel;
+  /** Web search and page reading for this run; omitted when off. */
+  web?: WebToggle;
+  reasoning_summary?: boolean;
 }
 
 export interface AgentCompletionResponse {
@@ -44,6 +57,8 @@ export interface AgentCompletionResponse {
   usage: AgentUsage;
   provider_id: string;
   model_id: string;
+  /** Why the model stopped, as the provider named it (`max_tokens`, `length`, ...). */
+  stop_reason?: string | null;
 }
 
 let counter = 0;
@@ -218,6 +233,10 @@ export interface AgentRunOutcome {
   steps: number;
   stopped_at_cap: boolean;
   error: string | null;
+  /** Why the last step ended, as the provider said it. */
+  stop_reason?: string | null;
+  /** The run's cost with its subagents', when prices are known. */
+  cost_usd?: number | null;
 }
 
 export interface AgentRunConfig {
@@ -347,11 +366,32 @@ export const agentThreadArchive = (threadId: string) =>
 export const agentThreadDelete = (threadId: string) =>
   invoke<void>("agent_thread_delete", { threadId });
 
-export const agentThreadFork = (threadId: string, projectId: string) =>
+/** A copy of a thread, without its last `excludeTurns` turns when given. */
+export const agentThreadFork = (threadId: string, projectId: string, excludeTurns?: number) =>
   invoke<string>("agent_thread_fork", {
     threadId,
-    excludeTurns: null,
+    excludeTurns: excludeTurns ?? null,
     projectId,
+  });
+
+/** Drops the last `numTurns` turns of a thread. */
+export const agentThreadRollback = (threadId: string, numTurns: number) =>
+  invoke<unknown[]>("agent_thread_rollback", { threadId, numTurns });
+
+/** The provider account's remaining credit, or null when it cannot be read. */
+export async function providerCredit(providerId: string): Promise<ProviderCredit | null> {
+  try {
+    return (await invoke<ProviderCredit | null>("agent_provider_credit", { providerId })) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** How web search and fetch work for a model (the active one when no ids). */
+export const agentWebSupport = (providerId?: string, modelId?: string) =>
+  invoke<WebSupport>("agent_web_support", {
+    providerId: providerId ?? null,
+    modelId: modelId ?? null,
   });
 
 /** Claim a prewarmed thread for a project (null means: create a fresh one). */

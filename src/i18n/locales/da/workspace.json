@@ -186,16 +186,35 @@
     "terminal": "Indlæser terminalen"
   },
   "terminal": {
+    "activity": "Ny aktivitet",
+    "clipboard": {
+      "blocked": "Et program i terminalen vil kopiere tekst."
+    },
     "closeCurrent": "Luk den aktuelle",
     "closeLeft": "Luk alle til venstre",
     "closeOthers": "Luk de øvrige",
     "closeRight": "Luk alle til højre",
     "closeTab": "Luk {{title}}",
     "color": "Farve",
+    "dropRefused_one": "Filens navn indeholder et kontroltegn, så terminalen skriver det ikke.",
+    "dropRefused_other": "{{count}} filnavne indeholder kontroltegn, så terminalen skriver dem ikke.",
     "errors": {
       "input": "Din shell kunne ikke tage imod input",
       "resize": "Terminalen kunne ikke skifte størrelse",
       "start": "Din shell kunne ikke starte"
+    },
+    "find": {
+      "count": "{{current}} af {{total}}",
+      "label": "Find i terminalen",
+      "next": "Næste resultat",
+      "none": "Ingen resultater",
+      "previous": "Forrige resultat"
+    },
+    "launch": {
+      "invalid": "Denne kommando kan ikke køre i terminalen.",
+      "noProject": "Åbn et projekt for at bruge terminalen.",
+      "run": "Kør",
+      "title": "Vil du køre denne kommando i terminalen?"
     },
     "limitReached": "Luk en terminal for at åbne en ny",
     "links": {
@@ -204,8 +223,26 @@
       "openUrlFailed": "Linket kunne ikke åbnes."
     },
     "newTerminal": "Ny terminal",
+    "openInTerminal": "Åbn i terminalen",
     "settings": "Terminalindstillinger",
     "starting": "Starter projektets shell…",
+    "stop": {
+      "closeMany": "Luk terminalerne",
+      "closeOne": "Luk terminalen",
+      "closeProject": "Luk projektet",
+      "dontAsk": "Spørg ikke igen",
+      "dontAskHint": "Slå den til igen under Indstillinger, Udseende, Terminal, Spørg, før en optaget terminal lukkes.",
+      "many_one": "Et program kører stadig i {{count}} terminal.",
+      "many_other": "Programmer kører stadig i {{count}} terminaler.",
+      "named": "{{process}} kører stadig i {{title}}.",
+      "quit": "Afslut",
+      "reload": "Genindlæs",
+      "restart": "Genstart",
+      "switchProject": "Skift projekt",
+      "titleMany": "Vil du stoppe de programmer, der kører?",
+      "titleOne": "Vil du stoppe det program, der kører?",
+      "unnamed": "Et program kører stadig i {{title}}."
+    },
     "tabs": "Terminaler",
     "titleInput": "Terminalens titel"
   },

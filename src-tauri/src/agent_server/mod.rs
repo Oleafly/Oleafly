@@ -294,10 +294,17 @@ pub async fn agent_thread_import_chat(
     chat_id: String,
 ) -> Result<String, String> {
     crate::paths::validate_project_id(&project_id)?;
-    let json = crate::chats::load_project_chats(project_id.clone()).await?;
     let thread_id = new_thread_id();
     off_thread(move |root| {
-        import_chat_into_thread(&root, &json, &project_id, &chat_id, &thread_id)?;
+        let _ = crate::chats::migrate_legacy_chats(&root, &project_id);
+        let chat = crate::chats::read_chat(&root, &project_id, &chat_id)?;
+        import_chat_into_thread(
+            &root,
+            &format!("[{chat}]"),
+            &project_id,
+            &chat_id,
+            &thread_id,
+        )?;
         Ok(thread_id)
     })
     .await

@@ -1,28 +1,48 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
-import { act, cleanup, fireEvent, render as renderWithoutProviders, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as renderWithoutProviders, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-const { dom, restore } = await vi.hoisted(async () => {
+const { restore } = await vi.hoisted(async () => {
   vi.resetModules();
   const { installUiDom } = await import("@/components/ai/acp/tests/ui-fixtures");
   return installUiDom();
 });
 vi.mock("@/lib/acp", async (original) => ({
   ...await original<typeof import("@/lib/acp")>(),
-  acpCatalog: vi.fn(), acpEvents: vi.fn(), acpSessions: vi.fn(), acpSnapshot: vi.fn(), onAcpEvent: vi.fn(), onAcpResync: vi.fn(), acpDisconnect: vi.fn(), acpSetModel: vi.fn(), acpPrompt: vi.fn(), acpError: (error: unknown) => String(error),
+  acpCatalog: vi.fn(), acpEvents: vi.fn(), acpSessions: vi.fn(), acpSnapshot: vi.fn(), onAcpEvent: vi.fn(), onAcpResync: vi.fn(), onAcpSession: vi.fn(async () => () => {}), onAcpBufferRequest: vi.fn(async () => () => {}), acpDisconnect: vi.fn(), acpSetModel: vi.fn(), acpPrompt: vi.fn(), acpError: (error: unknown) => String(error),
 }));
 vi.mock("@/components/ai/MessageList", () => ({ MessageList: () => null }));
+vi.mock("@/lib/attachments", async (original) => ({
+  ...await original<typeof import("@/lib/attachments")>(),
+  attachmentRead: vi.fn(),
+}));
+vi.mock("@/lib/image-normalize", () => ({ normalizeImage: vi.fn() }));
 vi.mock("@/components/ai/use-research-chat-actions", () => ({ useResearchChatActions: () => ({}) }));
 vi.mock("@/components/usage/UsageReport", () => ({ UsageReportDialog: () => null }));
 vi.mock("@/lib/skills", async (original) => ({
   ...await original<typeof import("@/lib/skills")>(),
   useSkills: () => ({ data: [], isPending: false, isFetching: false }),
 }));
-import { isDelegatedSession, mergeAcpEvents, sameSessionView, useAcpSessionView, useAcpSessionsStore } from "./acp-sessions";
+import { isDelegatedSession, MAX_VISIBLE_EVENTS, mergeAcpEvents, sameSessionView, useAcpSessionView, useAcpSessionsStore } from "./acp-sessions";
 import { acpCatalog, acpDisconnect, acpEvents, acpPrompt, acpSessions, acpSetModel, acpSnapshot, onAcpEvent, onAcpResync, type AcpAgentStatus, type AcpEvent, type AcpSession } from "@/lib/acp";
 import { AssistantShellAcpActions } from "@/components/ai/AssistantShellAcpActions";
 import { AcpWorkspaceAssistant } from "@/components/ai/acp/AcpWorkspaceAssistant";
-import { agent, chooseMenuItem, chooseOption, deferred } from "@/components/ai/acp/tests/ui-fixtures";
+import { agent, chooseMenuItem, deferred } from "@/components/ai/acp/tests/ui-fixtures";
+import type { DraftAttachment } from "@/components/ai/composer/types";
+import { attachmentRead } from "@/lib/attachments";
+import { normalizeImage } from "@/lib/image-normalize";
+import { useComposerDrafts } from "@/store/composer-drafts";
+
+function storedImage(name: string): DraftAttachment {
+  return { id: name, name, mime: "image/png", size: 1024, status: "ready", kind: "image", scope: "p", sha256: `sha-${name}` };
+}
+
+/** The drafts-store key of the composer on screen. */
+function shownComposerId(): string {
+  const id = Object.keys(useComposerDrafts.getState().drafts).find((key) => key.startsWith("p:acp:"));
+  if (!id) throw new Error("Type in the composer first.");
+  return id;
+}
 
 function render(ui: Parameters<typeof renderWithoutProviders>[0]) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -49,14 +69,17 @@ describe("ACP session event recovery", () => {
     expect(merged[0]).toBe(first);
   });
   it("appends newer events to a long history without sorting it again", () => {
-    const history = Array.from({ length: 2_000 }, (_, index) => event(index + 1));
+    // Since 0.4.8 a transcript keeps at most MAX_VISIBLE_EVENTS events (tested
+    // in acp-sessions.queue.test.ts), so the history here fills it exactly.
+    const length = MAX_VISIBLE_EVENTS - 2;
+    const history = Array.from({ length }, (_, index) => event(index + 1));
     const sort = vi.spyOn(Array.prototype, "sort");
     try {
-      const merged = mergeAcpEvents(history, [event(2_001), event(2_002)]);
+      const merged = mergeAcpEvents(history, [event(length + 1), event(length + 2)]);
       expect(sort).not.toHaveBeenCalled();
-      expect(merged.map((value) => value.sequence).slice(-3)).toEqual([2_000, 2_001, 2_002]);
+      expect(merged.map((value) => value.sequence).slice(-3)).toEqual([length, length + 1, length + 2]);
       expect(merged[0]).toBe(history[0]);
-      expect(merged).toHaveLength(2_002);
+      expect(merged).toHaveLength(length + 2);
     } finally {
       sort.mockRestore();
     }
@@ -81,11 +104,13 @@ describe("ACP session event recovery", () => {
   });
   it("keeps each project's composer separate", () => {
     useAcpSessionsStore.setState({ composers: {} });
-    useAcpSessionsStore.getState().setComposer("p", { draft: "First draft" });
+    // 0.4.8: the text and files live in the shared drafts store; the composer keeps the skill and quotes.
+    const skill = { id: "oleafly-literature-sweep", name: "Literature sweep" };
+    useAcpSessionsStore.getState().setComposer("p", { skill });
     useAcpSessionsStore.getState().setComposer("q", { agentId: "claude" });
     useAcpSessionsStore.getState().setComposer("p", { agentId: "codex" });
-    expect(useAcpSessionsStore.getState().composers.p).toEqual({ agentId: "codex", draft: "First draft", images: [] });
-    expect(useAcpSessionsStore.getState().composers.q).toEqual({ agentId: "claude", draft: "", images: [] });
+    expect(useAcpSessionsStore.getState().composers.p).toEqual({ agentId: "codex", skill });
+    expect(useAcpSessionsStore.getState().composers.q).toEqual({ agentId: "claude" });
   });
   it("keeps the permissions map when a batch changes no permission", () => {
     useAcpSessionsStore.setState({ permissions: { other: [] } });
@@ -198,7 +223,8 @@ describe("ACP catalog and session-list request ordering", () => {
 
   it("does not replace live session progress with an older pending saved-conversation list", async () => {
     const original = { ...savedSession("s"), lastSequence: 2 };
-    useAcpSessionsStore.setState({ sessions: { s: original } });
+    // Since 0.4.8 the store keeps the transcript of a shown conversation only.
+    useAcpSessionsStore.setState({ sessions: { s: original }, activeByProject: { p: "s" } });
     const pending = deferred<AcpSession[]>();
     vi.mocked(acpSessions).mockReturnValue(pending.promise);
     const loading = useAcpSessionsStore.getState().loadProject("p");
@@ -242,6 +268,9 @@ describe("ACP controlled conversation selectors", () => {
     const first = savedSession("first");
     const second = savedSession("second", "disconnected");
     useAcpSessionsStore.setState({ catalog: [], sessions: { first, second }, events: {}, permissions: {}, activeByProject: { p: "first" }, composers: {}, errors: {} });
+    // Since 0.4.8 the composer's text and files live in the drafts store, so a
+    // draft an earlier test left behind (an image the agent can't read) is cleared too.
+    useComposerDrafts.setState({ drafts: {} });
     vi.mocked(acpCatalog).mockResolvedValue([]);
     vi.mocked(acpSessions).mockResolvedValue([first, second]);
     vi.mocked(acpSnapshot).mockImplementation(async (_project, id) => ({ session: id === "first" ? first : second, permissions: [] }));
@@ -274,35 +303,45 @@ describe("ACP controlled conversation selectors", () => {
     }));
     const ui = render(createElement(AcpWorkspaceAssistant, { projectId: "p" }));
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("p", "first", 0));
-    await chooseOption(ui.getByRole("combobox", { name: "Agent model" }), "Second model");
+    const picker = () => ui.getByTestId("acp-model-picker");
+    const trigger = () => picker().closest("button") as HTMLButtonElement;
+    fireEvent.click(trigger());
+    const listbox = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>('[role="listbox"][aria-label="Agent model"]');
+      if (!found) throw new Error("The model picker did not open.");
+      return found;
+    });
+    fireEvent.click(within(listbox).getByRole("option", { name: "Second model" }));
     expect(acpSetModel).toHaveBeenCalledWith("p", "first", "second-model");
-    await waitFor(() => expect(ui.getByRole("combobox", { name: "Agent model" })).toBeDisabled());
-    expect(ui.getByRole("combobox", { name: "Agent model" })).toHaveTextContent("First model");
+    await waitFor(() => expect(trigger()).toBeDisabled());
+    expect(picker()).toHaveTextContent("First model");
     await act(async () => { finishModel?.(); });
-    await waitFor(() => expect(ui.getByRole("combobox", { name: "Agent model" })).toHaveTextContent("Second model"));
+    await waitFor(() => expect(picker()).toHaveTextContent("Second model"));
+    await waitFor(() => expect(trigger()).toBeEnabled());
   });
 
   it("keeps unsent text and images when native validation rejects the prompt", async () => {
     const session = savedSession("first");
     session.capabilities.image = true;
+    useComposerDrafts.setState({ drafts: {} });
     vi.mocked(acpSessions).mockResolvedValue([session]);
     vi.mocked(acpSnapshot).mockResolvedValue({ session, permissions: [] });
     vi.mocked(acpPrompt).mockRejectedValue("The image data is invalid.");
+    vi.mocked(attachmentRead).mockResolvedValue(new Uint8Array([1, 2, 3]).buffer);
     const ui = render(createElement(AcpWorkspaceAssistant, { projectId: "p" }));
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("p", "first", 0));
     const message = ui.getByLabelText("Message CLI agent") as HTMLTextAreaElement;
     typeMessage(message, "Keep this unsent question");
-    const input = ui.container.querySelector<HTMLInputElement>('input[type="file"]');
-    if (!input) throw new Error("The image picker is missing.");
-    fireEvent.change(input, { target: { files: [new dom.window.File(["image data"], "figure.png", { type: "image/png" })] } });
+    act(() => useComposerDrafts.getState().setAttachments(shownComposerId(), [storedImage("figure.png")]));
     await waitFor(() => expect(ui.getByRole("button", { name: "Remove figure.png" })).toBeInTheDocument());
-    const form = message.closest("form");
-    if (!form) throw new Error("The message form is missing.");
-    fireEvent.submit(form);
+    fireEvent.keyDown(message, { key: "Enter" });
     await waitFor(() => expect(ui.getByRole("alert")).toHaveTextContent("The image data is invalid."));
     await waitFor(() => expect(acpEvents).toHaveBeenCalledTimes(2));
-    expect(acpPrompt).toHaveBeenCalledWith("p", "first", "Keep this unsent question", [expect.objectContaining({ mimeType: "image/png" })], null);
-    expect(message.value).toBe("Keep this unsent question");
+    expect(acpPrompt).toHaveBeenCalledWith("p", "first", expect.objectContaining({
+      text: "Keep this unsent question",
+      images: [expect.objectContaining({ mimeType: "image/png" })],
+    }));
+    await waitFor(() => expect(message.value).toBe("Keep this unsent question"));
     expect(ui.getByRole("button", { name: "Remove figure.png" })).toBeInTheDocument();
   });
 
@@ -317,35 +356,32 @@ describe("ACP controlled conversation selectors", () => {
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("p", "first", 0));
     const message = ui.getByLabelText("Message CLI agent") as HTMLTextAreaElement;
     typeMessage(message, "Already sent");
-    const form = message.closest("form");
-    if (!form) throw new Error("The message form is missing.");
-    fireEvent.submit(form);
-    await waitFor(() => expect(acpPrompt).toHaveBeenCalledWith("p", "first", "Already sent", [], null));
+    fireEvent.keyDown(message, { key: "Enter" });
+    await waitFor(() => expect(acpPrompt).toHaveBeenCalledWith("p", "first", {
+      text: "Already sent", images: [], files: [], selections: [], skillId: null,
+    }));
     await waitFor(() => expect(message.value).toBe(""));
     expect(useAcpSessionsStore.getState().events.first).toContainEqual(expect.objectContaining({ kind: "user_message" }));
   });
 
-  it("rejects the combined image size before sending and keeps the composer intact", async () => {
+  it("refuses images too large to send even when shrunk, and keeps the composer intact", async () => {
     const session = savedSession("first");
     session.capabilities.image = true;
+    useComposerDrafts.setState({ drafts: {} });
     vi.mocked(acpSessions).mockResolvedValue([session]);
     vi.mocked(acpSnapshot).mockResolvedValue({ session, permissions: [] });
+    vi.mocked(attachmentRead).mockResolvedValue(new Uint8Array(3 * 1024 * 1024).buffer);
+    vi.mocked(normalizeImage).mockResolvedValue({ bytes: new Uint8Array(900 * 1024), mime: "image/jpeg", width: 512, height: 512, thumbnailUrl: "" });
     const ui = render(createElement(AcpWorkspaceAssistant, { projectId: "p" }));
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("p", "first", 0));
     const message = ui.getByLabelText("Message CLI agent") as HTMLTextAreaElement;
     typeMessage(message, "Compare these figures");
-    const input = ui.container.querySelector<HTMLInputElement>('input[type="file"]');
-    if (!input) throw new Error("The image picker is missing.");
-    for (const name of ["first.png", "second.png"]) {
-      fireEvent.change(input, { target: { files: [new dom.window.File([new Uint8Array(470 * 1024)], name, { type: "image/png" })] } });
-      await waitFor(() => expect(ui.getByRole("button", { name: `Remove ${name}` })).toBeInTheDocument());
-    }
-    const form = message.closest("form");
-    if (!form) throw new Error("The message form is missing.");
-    fireEvent.submit(form);
-    expect(ui.getByRole("alert")).toHaveTextContent("This message and its images are too large.");
+    act(() => useComposerDrafts.getState().setAttachments(shownComposerId(), [storedImage("first.png"), storedImage("second.png")]));
+    await waitFor(() => expect(ui.getByRole("button", { name: "Remove second.png" })).toBeInTheDocument());
+    fireEvent.keyDown(message, { key: "Enter" });
+    await waitFor(() => expect(ui.getByRole("alert")).toHaveTextContent("This message and its images are too large."));
     expect(acpPrompt).not.toHaveBeenCalled();
-    expect(message.value).toBe("Compare these figures");
+    await waitFor(() => expect(message.value).toBe("Compare these figures"));
     expect(ui.getByRole("button", { name: "Remove first.png" })).toBeInTheDocument();
     expect(ui.getByRole("button", { name: "Remove second.png" })).toBeInTheDocument();
   });

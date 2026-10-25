@@ -124,11 +124,9 @@ fn unreadable_configuration_disables_every_mutating_tool() {
 }
 
 #[test]
-fn read_only_server_rejects_shell_and_computer_control() {
-    for name in ["run_command", "computer_use"] {
-        assert!(tool_disabled_by_read_only(true, name));
-        assert!(!tool_disabled_by_read_only(false, name));
-    }
+fn read_only_server_rejects_shell_commands() {
+    assert!(tool_disabled_by_read_only(true, "run_command"));
+    assert!(!tool_disabled_by_read_only(false, "run_command"));
 }
 
 #[test]
@@ -177,11 +175,11 @@ fn readiness_waits_for_both_start_and_nonempty_registration_in_either_order() {
 async fn clearing_renderer_registry_closes_restart_readiness() {
     let state = McpState::default();
     state.registry_initialized.store(true, Ordering::Release);
-    state.registry.lock().await.push(ToolMeta {
-        name: "test".into(),
-        description: "test tool".into(),
-        input_schema: json!({ "type": "object" }),
-    });
+    state.registry.lock().await.push(ToolMeta::new(
+        "test",
+        "test tool",
+        json!({ "type": "object" }),
+    ));
 
     clear_renderer_registry(&state).await;
 

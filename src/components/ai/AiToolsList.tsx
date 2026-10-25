@@ -125,10 +125,10 @@ export const AI_TOOLS: AiToolInfo[] = [
     note: () => i18n.t(($) => $.ai.tools.notes.chatApproval),
   },
   {
-    name: "computer_use",
+    name: "desktop_apps",
     group: "System",
-    desc: () => i18n.t(($) => $.ai.tools.catalog.computerUse),
-    note: () => i18n.t(($) => $.ai.tools.notes.browserSetting),
+    desc: () => i18n.t(($) => $.settings.integrations.desktopApps.tool.description),
+    note: () => i18n.t(($) => $.settings.integrations.desktopApps.tool.note),
   },
   { name: "toggle_theme", group: "System", desc: () => i18n.t(($) => $.ai.tools.catalog.toggleTheme) },
 ];

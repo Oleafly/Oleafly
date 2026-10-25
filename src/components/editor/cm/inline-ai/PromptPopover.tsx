@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowUp, Square, X } from "lucide-react";
 import { PRESETS } from "@/lib/ai-inline";
 import { AiChrome, AiMark } from "@/components/ai/AiChrome";
+import { isImeEnter } from "@/components/ai/composer/ime";
 import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -57,7 +58,13 @@ export function PromptPopover({
           value={instruction}
           onChange={(e) => onInstruction(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !streaming && instruction.trim()) {
+            if (
+              e.key === "Enter" &&
+              !e.shiftKey &&
+              !isImeEnter(e) &&
+              !streaming &&
+              instruction.trim()
+            ) {
               e.preventDefault();
               onSubmit();
             }

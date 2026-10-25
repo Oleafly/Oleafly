@@ -1,0 +1,981 @@
+[
+  {
+    "name": "cite-missing-key",
+    "source": "\\cite{smith21}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "cite-known-key",
+    "source": "\\cite{smith21}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [
+        "smith21"
+      ],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "cite-multi-key",
+    "source": "\\cite{a,b}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [
+        "a"
+      ],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "cite-two-missing",
+    "source": "\\cite{a,b}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "cite-blank-keys",
+    "source": "\\cite{a, ,*}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "cite-not-loaded",
+    "source": "\\cite{smith21}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "nocite-star",
+    "source": "\\nocite{*}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "cite-optional-arguments",
+    "source": "\\parencite[see][p. 4]{a} \\textcite*{b}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [
+        "b"
+      ],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "ref-missing",
+    "source": "\\ref{fig:2}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "ref-defined-in-corpus",
+    "source": "\\ref{fig:2}",
+    "ctx": {
+      "definedLabels": [
+        "fig:2"
+      ],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "ref-defined-in-source",
+    "source": "\\label{fig:1}\\ref{fig:1}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "cref-multiple",
+    "source": "\\cref{a,b}",
+    "ctx": {
+      "definedLabels": [
+        "a"
+      ],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "ref-trimmed-label",
+    "source": "\\label{ x }\\eqref{x}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "duplicate-label",
+    "source": "\\label{x}\\label{x}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "distinct-labels",
+    "source": "\\label{a}\\label{b}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "commented-cite",
+    "source": "% \\cite{gone}\n\\cite{kept}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "project-duplicate-labels",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [],
+      "duplicateLabels": [
+        {
+          "label": "fig:result",
+          "files": [
+            "a.tex",
+            "b.tex"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "unreferenced-floats",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [],
+      "unreferencedLabels": [
+        {
+          "label": "fig:unused",
+          "file": "main.tex"
+        }
+      ]
+    }
+  },
+  {
+    "name": "unreferenced-floats-truncated",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [],
+      "unreferencedLabels": [
+        {
+          "label": "fig:0",
+          "file": "main.tex"
+        },
+        {
+          "label": "fig:1",
+          "file": "main.tex"
+        },
+        {
+          "label": "fig:2",
+          "file": "main.tex"
+        },
+        {
+          "label": "fig:3",
+          "file": "main.tex"
+        },
+        {
+          "label": "fig:4",
+          "file": "main.tex"
+        },
+        {
+          "label": "fig:5",
+          "file": "main.tex"
+        },
+        {
+          "label": "fig:6",
+          "file": "main.tex"
+        },
+        {
+          "label": "fig:7",
+          "file": "main.tex"
+        },
+        {
+          "label": "fig:8",
+          "file": "main.tex"
+        },
+        {
+          "label": "fig:9",
+          "file": "main.tex"
+        }
+      ]
+    }
+  },
+  {
+    "name": "duplicate-doi",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [
+        {
+          "doi": "10.1/x",
+          "keys": [
+            "smith21",
+            "smithdup"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "duplicate-doi-same-key",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [
+        {
+          "doi": "10.1/x",
+          "keys": [
+            "same",
+            "same"
+          ]
+        }
+      ],
+      "bibKeyDefinitions": [
+        {
+          "key": "same",
+          "file": "refs.bib",
+          "line": 1,
+          "from": 0,
+          "to": 14
+        },
+        {
+          "key": "same",
+          "file": "extra.bib",
+          "line": 1,
+          "from": 0,
+          "to": 14
+        }
+      ]
+    }
+  },
+  {
+    "name": "duplicate-doi-case-only",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [
+        {
+          "doi": "10.1/x",
+          "keys": [
+            "smith2020",
+            "Smith2020"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "duplicate-doi-case-biber",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [
+        {
+          "doi": "10.1/x",
+          "keys": [
+            "smith2020",
+            "Smith2020"
+          ]
+        }
+      ],
+      "bibKeyDialect": "biber"
+    }
+  },
+  {
+    "name": "duplicate-doi-repeated-and-other",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [
+        {
+          "doi": "10.1/x",
+          "keys": [
+            "same",
+            "same",
+            "other"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "duplicate-bib-key-bibtex",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [],
+      "bibKeyDefinitions": [
+        {
+          "key": "Smith2020",
+          "file": "refs.bib",
+          "line": 1,
+          "from": 0,
+          "to": 19
+        },
+        {
+          "key": "smith2020",
+          "file": "refs.bib",
+          "line": 9,
+          "from": 120,
+          "to": 139
+        }
+      ]
+    }
+  },
+  {
+    "name": "duplicate-bib-key-biber",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [],
+      "bibKeyDialect": "biber",
+      "bibKeyDefinitions": [
+        {
+          "key": "Smith2020",
+          "file": "refs.bib",
+          "line": 1,
+          "from": 0,
+          "to": 19
+        },
+        {
+          "key": "smith2020",
+          "file": "refs.bib",
+          "line": 9,
+          "from": 120,
+          "to": 139
+        },
+        {
+          "key": "same",
+          "file": "a.bib",
+          "line": 2,
+          "from": 5,
+          "to": 19
+        },
+        {
+          "key": "same",
+          "file": "b.bib",
+          "line": 3,
+          "from": 9,
+          "to": 23
+        }
+      ]
+    }
+  },
+  {
+    "name": "graphics-missing",
+    "source": "\\includegraphics{figs/missing}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [
+        "main.tex",
+        "figs/plot.png"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "graphics-by-base-name",
+    "source": "\\includegraphics[width=1cm]{./plot}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [
+        "figs/plot.png"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "graphics-nested-path",
+    "source": "\\includegraphics{figs/plot.png}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [
+        "paper/figs/plot.png"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "input-resolves-tex",
+    "source": "\\input{chap}\\include{missing}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [
+        "chap.tex"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "bibliography-missing",
+    "source": "\\bibliography{refs,missing}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [
+        "main.tex",
+        "refs.bib"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "bibliography-no-project-files",
+    "source": "\\bibliography{refs}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "addbibresource-exact-name",
+    "source": "\\addbibresource{refs}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [
+        "refs.bib"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "bibliography-unresolved-from-file",
+    "source": "\\bibliography{refs}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [
+        "refs.bib"
+      ],
+      "duplicateDois": [],
+      "unresolvedBibliographies": [
+        {
+          "file": "chapters/a.tex",
+          "name": "refs"
+        }
+      ]
+    },
+    "options": {
+      "file": "chapters/a.tex"
+    }
+  },
+  {
+    "name": "bibliography-unresolved-any-directory",
+    "source": "\\bibliography{refs}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [
+        "other/refs.bib"
+      ],
+      "duplicateDois": [],
+      "unresolvedBibliographies": [
+        {
+          "file": "main.tex",
+          "name": "refs"
+        }
+      ]
+    }
+  },
+  {
+    "name": "incomplete-metadata",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [],
+      "bibEntries": [
+        {
+          "key": "a",
+          "type": "article",
+          "fields": {
+            "title": "T"
+          }
+        },
+        {
+          "key": "b",
+          "type": "misc",
+          "fields": {
+            "title": "x",
+            "year": "2020"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "incomplete-metadata-truncated",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [],
+      "bibEntries": [
+        {
+          "key": "k0",
+          "type": "article",
+          "fields": {
+            "title": "T"
+          }
+        },
+        {
+          "key": "k1",
+          "type": "article",
+          "fields": {
+            "title": "T"
+          }
+        },
+        {
+          "key": "k2",
+          "type": "article",
+          "fields": {
+            "title": "T"
+          }
+        },
+        {
+          "key": "k3",
+          "type": "article",
+          "fields": {
+            "title": "T"
+          }
+        },
+        {
+          "key": "k4",
+          "type": "article",
+          "fields": {
+            "title": "T"
+          }
+        },
+        {
+          "key": "k5",
+          "type": "article",
+          "fields": {
+            "title": "T"
+          }
+        },
+        {
+          "key": "k6",
+          "type": "article",
+          "fields": {
+            "title": "T"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "incomplete-unknown-type",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [],
+      "bibEntries": [
+        {
+          "key": "x",
+          "type": "weird",
+          "fields": {}
+        },
+        {
+          "key": "y",
+          "type": "online",
+          "fields": {
+            "title": "T",
+            "url": "u"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "malformed-doi",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [],
+      "bibEntries": [
+        {
+          "key": "a",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "2020",
+            "doi": "doi:10.1/x"
+          }
+        },
+        {
+          "key": "b",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "2020",
+            "doi": "https://doi.org/10.1234/abc"
+          }
+        },
+        {
+          "key": "c",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "2020",
+            "doi": "10.12/short"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "duplicate-titles",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [],
+      "bibEntries": [
+        {
+          "key": "a",
+          "type": "misc",
+          "fields": {
+            "title": "A {Long} Title About Things",
+            "year": "2020"
+          }
+        },
+        {
+          "key": "b",
+          "type": "misc",
+          "fields": {
+            "title": "a long title about things!",
+            "year": "2021"
+          }
+        },
+        {
+          "key": "c",
+          "type": "misc",
+          "fields": {
+            "title": "Short",
+            "year": "2020"
+          }
+        },
+        {
+          "key": "d",
+          "type": "misc",
+          "fields": {
+            "title": "Short",
+            "year": "2021"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "uncited-entries",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [],
+      "allCitedKeys": [
+        "a"
+      ],
+      "bibEntries": [
+        {
+          "key": "a",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "1"
+          }
+        },
+        {
+          "key": "b",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "1"
+          }
+        },
+        {
+          "key": "s",
+          "type": "string",
+          "fields": {}
+        }
+      ]
+    }
+  },
+  {
+    "name": "uncited-truncated",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [],
+      "allCitedKeys": [],
+      "bibEntries": [
+        {
+          "key": "u0",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "1"
+          }
+        },
+        {
+          "key": "u1",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "1"
+          }
+        },
+        {
+          "key": "u2",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "1"
+          }
+        },
+        {
+          "key": "u3",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "1"
+          }
+        },
+        {
+          "key": "u4",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "1"
+          }
+        },
+        {
+          "key": "u5",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "1"
+          }
+        },
+        {
+          "key": "u6",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "1"
+          }
+        },
+        {
+          "key": "u7",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "1"
+          }
+        },
+        {
+          "key": "u8",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "1"
+          }
+        },
+        {
+          "key": "u9",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "1"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "uncited-disabled-by-star",
+    "source": "",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [],
+      "allCitedKeys": [
+        "*"
+      ],
+      "bibEntries": [
+        {
+          "key": "b",
+          "type": "misc",
+          "fields": {
+            "title": "T",
+            "year": "1"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "project-quality-off",
+    "source": "\\cite{x}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": [
+        {
+          "doi": "10.1/x",
+          "keys": [
+            "a",
+            "b"
+          ]
+        }
+      ]
+    },
+    "options": {
+      "includeProjectQuality": false
+    }
+  },
+  {
+    "name": "emoji-before-cite",
+    "source": "😀 \\cite{nope} and \\ref{gone}",
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": true,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  }
+]

@@ -8,6 +8,8 @@ export type AgentUsage = {
   cacheRead?: number | null;
   cacheWrite?: number | null;
   inputSemantics?: InputTokenSemantics;
+  /** Reasoning tokens, when the provider reports them; part of `output` too. */
+  reasoning?: number | null;
 };
 
 export type NormalizedAgentUsage = {

@@ -1,0 +1,19 @@
+{
+  "mainDocument": "main.tex",
+  "cases": [
+    {
+      "name": "bundled",
+      "sourceProfile": "latex",
+      "engine": "bundled",
+      "profile": null,
+      "anonymousReview": false
+    },
+    {
+      "name": "lualatex",
+      "sourceProfile": "latex",
+      "engine": "lualatex",
+      "profile": null,
+      "anonymousReview": false
+    }
+  ]
+}

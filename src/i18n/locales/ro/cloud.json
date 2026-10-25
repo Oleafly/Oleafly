@@ -78,11 +78,11 @@
     "linkedNote_other": "{{count}} de proiecte deschise din foldere nu se sincronizează. Doar proiectele din Bibliotecă au copii de rezervă."
   },
   "transfer": {
-    "uploading_few": "Se încarcă fișierele: {{done}} din {{total}}",
     "uploading_one": "Se încarcă fișierele: {{done}} din {{total}}",
+    "uploading_few": "Se încarcă fișierele: {{done}} din {{total}}",
     "uploading_other": "Se încarcă fișierele: {{done}} din {{total}}",
-    "downloading_few": "Se descarcă fișierele: {{done}} din {{total}}",
     "downloading_one": "Se descarcă fișierele: {{done}} din {{total}}",
+    "downloading_few": "Se descarcă fișierele: {{done}} din {{total}}",
     "downloading_other": "Se descarcă fișierele: {{done}} din {{total}}",
     "fetching": "Se descarcă: {{done}} din {{total}}"
   },

@@ -1,25 +1,29 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 import { scriptValue } from "../../e2e/script-value";
 
+/** Specs the packaged app runs, plus the helpers they share. The *-browser specs
+ *  run against the Vite dev server, which serves any module without the registry. */
+function packagedSources(): string[] {
+  const specs = readdirSync(resolve("e2e/tests"))
+    .filter((name) => name.endsWith(".spec.ts") && !name.endsWith("-browser.spec.ts"))
+    .map((name) => join("e2e/tests", name));
+  const helpers = readdirSync(resolve("e2e"))
+    .filter((name) => name.endsWith(".ts"))
+    .map((name) => join("e2e", name));
+  return [...specs, ...helpers];
+}
+
 describe("packaged evaluated imports", () => {
-  it("registers every module loaded by the covered specs", () => {
+  it("registers every module the packaged specs and their helpers load", () => {
     const registry = readFileSync(resolve("src/lib/e2e-import-registry.ts"), "utf8");
     const registered = new Set([...registry.matchAll(/"(\/(?:src|packages)\/[^"\n]+)":/g)].map((match) => match[1]));
-    for (const name of [
-      "00-tours.spec.ts",
-      "07-settings.spec.ts",
-      "74-conversion-matrix.spec.ts",
-      "75-conversion-matrix-ui.spec.ts",
-      "75-skills.spec.ts",
-      "86-ad-hoc-converters.spec.ts",
-      "100-workspace-layout.spec.ts",
-      "109-live-collaboration-peer.spec.ts",
-      "110-custom-templates.spec.ts",
-    ]) {
-      const source = readFileSync(resolve("e2e/tests", name), "utf8");
+    const sources = packagedSources();
+    expect(sources.length).toBeGreaterThan(100);
+    for (const name of sources) {
+      const source = readFileSync(resolve(name), "utf8");
       expect(source).not.toMatch(/import\(\s*'\/(?:src|packages)\//g);
       expect(source).not.toContain("/node_modules/.vite/");
       for (const match of source.matchAll(/import\(\s*"(\/(?:src|packages)\/[^"\n]+)"/g)) {

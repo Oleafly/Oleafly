@@ -6,7 +6,7 @@
 //! content of each tool call in memory and joins it here.
 
 use super::{redact::Redactor, types::PermissionDiff};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::{
     collections::HashMap,
     path::{Component, Path, PathBuf},
@@ -16,6 +16,12 @@ use std::{
 pub(super) const MAX_DIFF_BYTES: usize = 96 * 1024;
 const MAX_LOCATIONS: usize = 16;
 const MAX_DIFFS: usize = 16;
+/// Paths kept per tool call for the path policy, which sees more than a
+/// card shows.
+const MAX_TRACKED_PATHS: usize = 256;
+/// A path no project contains, for a tool call that names more paths than
+/// are kept: it is judged as outside.
+const UNTRACKED_PATH: &str = "../untracked";
 const MAX_KIND_CHARS: usize = 32;
 /// Tool calls remembered per session; older ones are forgotten.
 const MAX_TRACKED_CALLS: usize = 64;
@@ -25,6 +31,10 @@ pub(super) struct ToolCallView {
     pub kind: Option<String>,
     pub locations: Vec<String>,
     pub diffs: Vec<ProposedDiff>,
+    /// The paths in the call's raw input (file, notebook, destination ...).
+    pub input_paths: Vec<String>,
+    /// More paths came than are kept.
+    pub overflowed: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -44,16 +54,42 @@ impl ToolCallView {
             self.kind = Some(kind.chars().take(MAX_KIND_CHARS).collect());
         }
         if let Some(locations) = update["locations"].as_array() {
-            self.locations = locations
+            let paths = locations
                 .iter()
-                .filter_map(|location| location["path"].as_str())
-                .take(MAX_LOCATIONS)
-                .map(str::to_owned)
-                .collect();
+                .filter_map(|location| location["path"].as_str());
+            self.overflowed |= paths.clone().nth(MAX_TRACKED_PATHS).is_some();
+            self.locations = paths.take(MAX_TRACKED_PATHS).map(str::to_owned).collect();
+        }
+        if update["rawInput"].is_object() {
+            let paths = oleafly_acp::paths::raw_input_paths(update);
+            let mut kept = Vec::new();
+            for path in paths {
+                if kept.len() == MAX_TRACKED_PATHS {
+                    self.overflowed = true;
+                    break;
+                }
+                kept.push(path.to_owned());
+            }
+            self.input_paths = kept;
         }
         if let Some(content) = update["content"].as_array() {
+            self.overflowed |= content
+                .iter()
+                .filter(|item| item["type"] == "diff")
+                .nth(MAX_TRACKED_PATHS)
+                .is_some();
             self.diffs = proposed_diffs(content);
         }
+    }
+
+    /// Every path the call names, for the path policy.
+    fn policy_paths(&self) -> impl Iterator<Item = &str> {
+        self.locations
+            .iter()
+            .chain(self.input_paths.iter())
+            .map(String::as_str)
+            .chain(self.diffs.iter().map(|diff| diff.path.as_str()))
+            .chain(self.overflowed.then_some(UNTRACKED_PATH))
     }
 }
 
@@ -78,7 +114,7 @@ fn proposed_diffs(content: &[Value]) -> Vec<ProposedDiff> {
                 oversized,
             })
         })
-        .take(MAX_DIFFS)
+        .take(MAX_TRACKED_PATHS)
         .collect()
 }
 
@@ -111,12 +147,14 @@ pub(super) fn permission_view(
     let locations = view
         .locations
         .iter()
+        .take(MAX_LOCATIONS)
         .map(|path| redactor.text(&display_path(root, path)))
         .collect();
     let mut remaining = MAX_DIFF_BYTES;
     let diffs = view
         .diffs
         .iter()
+        .take(MAX_DIFFS)
         .map(|diff| {
             let path = redactor.text(&display_path(root, &diff.path));
             let old_text = diff.old_text.as_deref().map(|text| redactor.text(text));
@@ -141,6 +179,36 @@ pub(super) fn permission_view(
         })
         .collect();
     (kind, locations, diffs)
+}
+
+/// The tool call as the path policy judges it: its kind, and as locations
+/// every path the request names plus every path of the earlier `tool_call`
+/// updates it refers to (locations, raw input and diffs). Adapters often
+/// announce a call with its paths and then ask for permission with only its
+/// id, so the request alone shows nothing to judge.
+pub(super) fn policy_view(remembered: Option<&ToolCallView>, tool_call: &Value) -> Value {
+    // Both are judged: the request may name other paths than the call it
+    // refers to.
+    let mut request = ToolCallView::default();
+    request.apply(tool_call);
+    let kind = request
+        .kind
+        .as_deref()
+        .or_else(|| remembered.and_then(|call| call.kind.as_deref()));
+    let paths = remembered
+        .into_iter()
+        .flat_map(ToolCallView::policy_paths)
+        .chain(request.policy_paths())
+        .map(|path| json!({"path": path}))
+        .collect::<Vec<_>>();
+    json!({"kind": kind, "locations": paths})
+}
+
+/// Whether a policy view names any path.
+pub(super) fn names_paths(policy: &Value) -> bool {
+    policy["locations"]
+        .as_array()
+        .is_some_and(|paths| !paths.is_empty())
 }
 
 /// `raw` relative to the project root with `/` separators when it is inside
@@ -359,6 +427,69 @@ mod tests {
             display_path(&root, &plain.to_string_lossy()),
             "chapters/one.tex"
         );
+    }
+
+    #[test]
+    fn the_policy_sees_the_paths_of_the_announced_call_and_of_the_request() {
+        let mut calls = HashMap::new();
+        track(
+            &mut calls,
+            &json!({"toolCallId": "t", "kind": "edit",
+                "locations": [{"path": "/project/a.tex"}],
+                "rawInput": {"notebook_path": "/elsewhere/n.ipynb"},
+                "content": [{"type": "diff", "path": "/project/b.tex", "oldText": "1", "newText": "2"}]}),
+        );
+        let policy = policy_view(
+            calls.get("t"),
+            &json!({"toolCallId": "t", "locations": [{"path": "/project/c.tex"}]}),
+        );
+        assert_eq!(policy["kind"], "edit");
+        let paths: Vec<&str> = policy["locations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|location| location["path"].as_str())
+            .collect();
+        assert_eq!(
+            paths,
+            [
+                "/project/a.tex",
+                "/elsewhere/n.ipynb",
+                "/project/b.tex",
+                "/project/c.tex"
+            ]
+        );
+        assert!(names_paths(&policy));
+        assert!(!names_paths(&policy_view(
+            None,
+            &json!({"toolCallId": "t"})
+        )));
+    }
+
+    #[test]
+    fn a_call_with_more_paths_than_are_kept_is_judged_as_outside() {
+        let root = tempfile::tempdir().unwrap();
+        let root = root.path().canonicalize().unwrap();
+        let mut calls = HashMap::new();
+        let locations: Vec<_> = (0..MAX_TRACKED_PATHS + 1)
+            .map(|index| json!({"path": format!("a{index}.tex")}))
+            .collect();
+        track(
+            &mut calls,
+            &json!({"toolCallId": "many", "kind": "edit", "locations": locations}),
+        );
+        let policy = policy_view(calls.get("many"), &json!({"toolCallId": "many"}));
+        assert!(!oleafly_acp::paths::permission_paths_allowed(
+            &root, &root, &policy
+        ));
+        // A card still shows only the first few.
+        let (_, shown, _) = permission_view(
+            &root,
+            calls.get("many"),
+            &json!({"toolCallId": "many"}),
+            &redactor(),
+        );
+        assert_eq!(shown.len(), MAX_LOCATIONS);
     }
 
     #[test]

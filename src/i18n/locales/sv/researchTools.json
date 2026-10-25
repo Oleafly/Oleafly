@@ -2,6 +2,7 @@
   "workspace": {
     "title": "Forskningsyta",
     "configureAgents": "Konfigurera forskningsagenter",
+    "openSettings": "Forskningsinställningar",
     "configError": "Assistentens inställningar kunde inte läsas in.",
     "tabTasks": "Uppgifter",
     "tabFolders": "Länkade mappar",
@@ -135,7 +136,8 @@
       "awaitingReview": "Granskning krävs",
       "completed": "Slutförd",
       "failed": "Misslyckades",
-      "cancelled": "Avbruten"
+      "cancelled": "Avbruten",
+      "planReady": "Planen är klar"
     },
     "relative": {
       "justNow": "just nu",
@@ -145,7 +147,11 @@
     },
     "timeline": {
       "sessionConnected": "Sessionen är ansluten.",
-      "toolCall": "Verktygsanrop"
+      "toolCall": "Verktygsanrop",
+      "runStarted": "Startade körningen {{name}}",
+      "runFinished": "Körning {{name}}: {{status}}",
+      "approvalRequested": "Bad om godkännande: {{summary}}",
+      "approvalDecided": "Godkännande: {{status}}"
     },
     "panel": {
       "noProjectTitle": "Öppna ett projekt för att använda forskningsuppgifter",
@@ -172,7 +178,9 @@
       "viewTask": "Visa uppgiften",
       "deleteTitle": "Vill du radera den här uppgiften?",
       "deleteDescription": "\"{{title}}\" och dess isolerade arbetsyta tas bort. Filer som redan tillämpats på ditt projekt ligger kvar.",
-      "deleteConfirm": "Radera uppgiften"
+      "deleteConfirm": "Radera uppgiften",
+      "pendingApprovals_one": "{{count}} förfrågan väntar",
+      "pendingApprovals_other": "{{count}} förfrågningar väntar"
     },
     "composer": {
       "editTitle": "Redigera uppgiften",
@@ -193,7 +201,11 @@
       "unavailable": "Inte tillgänglig",
       "saving": "Sparar...",
       "saveTask": "Spara uppgiften",
-      "createTask": "Skapa uppgift"
+      "createTask": "Skapa uppgift",
+      "replaceText": "Vill du ersätta titeln och instruktionerna du skrev med det här upplägget?",
+      "keepText": "Behåll mina",
+      "replaceConfirm": "Ersätt",
+      "cannotSave": "Rätta alternativen som är markerade ovan och försök igen."
     },
     "starter": {
       "literatureReview": {
@@ -215,6 +227,10 @@
       "reviewerResponse": {
         "label": "Svar till granskarna",
         "title": "Skriv svaret till granskarna"
+      },
+      "experimentLoop": {
+        "label": "Kör experiment",
+        "title": "Kör experiment mot ett mål"
       }
     },
     "detail": {
@@ -233,6 +249,10 @@
       "dependencies": "Beroenden",
       "dependencyUnavailable": "Inte tillgänglig",
       "noActivity": "Ingen aktivitet registrerades för den här körningen.",
+      "activityGap_one": "{{count}} objekt däremellan visas inte.",
+      "activityGap_other": "{{count}} objekt däremellan visas inte.",
+      "activityMore": "Mer aktivitet visas inte än.",
+      "keepRunningDesktopApps": "Den här uppgiften använder skrivbordsappar, som kräver att du är vid datorn.",
       "startToRecord": "Starta uppgiften för att registrera dess aktivitet.",
       "reasoning": "Rapporterat resonemang",
       "savedArtifact": "Sparade {{label}}",
@@ -245,6 +265,8 @@
       "clearSelection": "Rensa markeringen",
       "selectAll": "Markera alla",
       "previewBeforeApply": "Förhandsvisa varje markerad fil innan du tillämpar den.",
+      "researchRecord": "Forskningsprotokoll",
+      "researchRecordHint": "Uppgiftens egna anteckningar. Du behöver inte förhandsvisa dem innan du tillämpar dem.",
       "driftedOne": "{{path}} ändrades i ditt projekt efter att uppgiften startade. Dess jämförelse gäller den äldre versionen, så den går inte att tillämpa.",
       "driftedMany": "{{fileCount}} filer ändrades i ditt projekt efter att uppgiften startade. Deras jämförelser gäller de äldre versionerna, så de går inte att tillämpa.",
       "applyAria": "Tillämpa {{path}}",
@@ -274,7 +296,131 @@
       "loadMore": "Läs in mer aktivitet",
       "changeAdded": "tillagd",
       "changeModified": "ändrad",
-      "changeDeleted": "borttagen"
+      "changeDeleted": "borttagen",
+      "tabProgress": "Förlopp",
+      "resume": "Återuppta",
+      "resumeHint": "Fortsätt i samma arbetsyta från den sparade överlämningen.",
+      "startOver": "Börja om",
+      "startOverHint": "Börja från det aktuella projektet. Forskningsprotokollet följer med.",
+      "stopReason": {
+        "budgetTime": "Stoppades när tidsbudgeten tog slut.",
+        "budgetCost": "Stoppades vid kostnadsgränsen.",
+        "budgetRuns": "Stoppades vid gränsen för körningar."
+      },
+      "startsAt": "Startar {{time}}",
+      "olderActivity": "Tidigare aktivitet från den här körningen visas inte.",
+      "tooLargeToDiff": "Filen är för stor för att jämföras här, så bara storlekarna visas."
+    },
+    "confirm": {
+      "stopTitle": "Vill du stoppa den här uppgiften?",
+      "stopDescription": "\"{{title}}\" stoppas efter sitt nuvarande steg. Med Återuppta kan du fortsätta senare från dess arbetsyta.",
+      "cancelTitle": "Vill du avbryta den här uppgiften?",
+      "cancelDescription": "\"{{title}}\" körs inte. Du kan försöka igen senare.",
+      "cancelTask": "Avbryt uppgiften",
+      "discardTitle": "Vill du slänga de här ändringarna?",
+      "discardDescription": "Inga av ändringarna från \"{{title}}\" når ditt projekt, och uppgiften markeras som avbruten. Med Återuppta körs agenten igen.",
+      "keepTask": "Behåll uppgiften",
+      "keepChanges": "Behåll ändringarna",
+      "dependents_one": "Den här uppgiften väntar på den och misslyckas också:",
+      "dependents_other": "De här {{count}} uppgifterna väntar på den och misslyckas också:",
+      "runs_one": "Den här körningen stoppas också:",
+      "runs_other": "De här {{count}} körningarna stoppas också:"
+    },
+    "plan": {
+      "title": "Plan",
+      "description": "Läs planen och redigera den om du vill. Godkänn den så att uppgiften kan fortsätta.",
+      "approve": "Godkänn planen",
+      "approveEdited": "Godkänn den redigerade planen",
+      "discard": "Avbryt uppgiften",
+      "loading": "Läser in planen…",
+      "missing": "Planfilen saknas. Kör uppgiften igen.",
+      "loadFailed": "Oleafly kunde inte läsa in planen.",
+      "truncated": "Den här planen är längre än 64 KiB, så bara början visas. Korta ned den till de steg du vill ha och godkänn den sedan.",
+      "tooLong": "En plan kan vara högst 64 KiB. Korta ned den innan du godkänner den."
+    },
+    "approvals": {
+      "title": "Väntar på ditt godkännande",
+      "approve": "Godkänn",
+      "deny": "Neka",
+      "kindCommand": "Kör ett kommando",
+      "kindRun": "Starta en körning",
+      "kindMcp": "Använd ett verktyg",
+      "expires": "Väntar till {{time}}",
+      "detailCommand": "Fullständigt kommando",
+      "detailRun": "Körningsdetaljer",
+      "detailMcp": "Verktygsargument",
+      "loadFailed": "Väntande förfrågningar kunde inte läsas in.",
+      "status": {
+        "approved": "Godkänd",
+        "denied": "Nekad",
+        "expired": "Utgången",
+        "withdrawn": "Återkallad"
+      }
+    },
+    "phase": {
+      "preparing": "Förbereder arbetsytan",
+      "planning": "Skriver planen",
+      "working": "Arbetar",
+      "waitingRuns": "Väntar på körningar",
+      "waitingApproval": "Väntar på godkännande",
+      "wrappingUp": "Avslutar",
+      "checkingEvidence": "Kontrollerar underlaget"
+    },
+    "progress": {
+      "loading": "Läser in förloppet…",
+      "plan": "Plan",
+      "noPlan": "Ingen plan än.",
+      "ledger": "Resultatlogg",
+      "noLedger": "Inga resultat har registrerats än.",
+      "best": "Bästa {{metric}}",
+      "bestValue": "{{value}} i körning {{run}}",
+      "runsInFlight": "Pågående körningar",
+      "noRuns": "Inga pågående körningar.",
+      "budget": "Budget",
+      "timeUsed": "{{used}} av {{total}}",
+      "costUsed": "{{used}} av {{limit}}",
+      "costSpent": "{{used}} förbrukat",
+      "ledgerCapped": "Visar de senaste {{limit}} resultaten.",
+      "costUnknown": "Kostnaden är okänd för den här modellen.",
+      "runsUsed": "{{used}} av {{limit}} körningar",
+      "runsUsedNoLimit": "{{used}} körningar",
+      "stopRun": "Stoppa körningen",
+      "stopRunTitle": "Vill du stoppa den här körningen?",
+      "stopRunDescription": "\"{{name}}\" ({{run}}) stoppas nu. Ett jobb som den kör på en annan maskin eller i ett kluster avbryts också där.",
+      "keepRun": "Fortsätt köra",
+      "viewLog": "Visa loggen",
+      "columns": {
+        "run": "Körning",
+        "time": "Tid",
+        "hypothesis": "Hypotes",
+        "change": "Ändring",
+        "metrics": "Mätvärden",
+        "verdict": "Bedömning"
+      },
+      "verdict": {
+        "keep": "Behållen",
+        "discard": "Kasserad",
+        "crash": "Kraschade"
+      }
+    },
+    "settings": {
+      "title": "Forskningsuppgifter",
+      "keepAwake": "Håll datorn vaken medan uppgifter körs",
+      "keepAwakeHint": "Skärmen kan fortfarande stängas av.",
+      "notifications": "Meddela mig när en uppgift behöver uppmärksamhet",
+      "notificationsHint": "Visas när Oleafly är i bakgrunden.",
+      "notificationsBlocked": "Aviseringar är avstängda för Oleafly i systeminställningarna.",
+      "allowNotifications": "Tillåt aviseringar",
+      "network": "Tillåt nätverk för uppgiftskommandon som standard",
+      "timeBudget": "Standardtidsbudget",
+      "mcpServers": "MCP-servrar som uppgifter kan använda",
+      "mcpServersHint": "Uppgifter anropar de här verktygen enligt varje uppgifts kommandoregler.",
+      "noMcpServers": "Inga MCP-servrar är konfigurerade.",
+      "networkHint": "Kommandon i uppgifter kan nå internet. Varje uppgift kan fortfarande stänga av det.",
+      "loadFailed": "Dina forskningsinställningar kunde inte läsas in.",
+      "sectionName": "Forskning",
+      "resetConfirm": "Återställ standardinställningarna för forskning: håll vaken, aviseringar, nätverksåtkomst, tidsbudgeten och de MCP-servrar som uppgifter kan använda. Körningsmål och bakgrundsuppgifter lämnas oförändrade.",
+      "saveFailed": "Dina forskningsinställningar kunde inte sparas. Försök igen."
     }
   },
   "tools": {
@@ -354,7 +500,7 @@
       "name": "Bild till LaTeX",
       "description": "Gör en bild av anteckningar, ekvationer eller en tabell till redigerbar LaTeX.",
       "tag1": "Bilder",
-      "tag2": "Modell på enheten",
+      "tag2": "Lokal eller molnbaserad modell",
       "tag3": "Inget projekt behövs"
     },
     "visualTypstEditor": {
@@ -376,7 +522,7 @@
       "description": "Konvertera en skriven ekvation eller en bild av en ekvation till ren LaTeX-matematik.",
       "tag1": "Text eller bild",
       "tag2": "Matematik",
-      "tag3": "Modell på enheten"
+      "tag3": "Lokal eller molnbaserad modell"
     },
     "excelToLatex": {
       "name": "Excel till LaTeX",
@@ -396,7 +542,7 @@
       "name": "Bild till Typst",
       "description": "Gör en bild av anteckningar, ekvationer eller en tabell till redigerbar Typst.",
       "tag1": "Bilder",
-      "tag2": "Modell på enheten",
+      "tag2": "Lokal eller molnbaserad modell",
       "tag3": "Inget projekt behövs"
     },
     "latexToHtml": {
@@ -744,13 +890,14 @@
     "progressNeedsAttention": "Kräver åtgärd",
     "progressCancelled": "Avbruten",
     "progressReadingPages": "Läser sidor",
-    "progressTranscribingPage": "Transkriberar sida {{page}} av {{total}}",
+    "progressTranscribingPage": "Transkriberar sida {{page}} av {{total}} med {{model}}",
+    "progressTranscribingPdfPage": "Transkriberar sida {{pdfPage}} ({{page}} av {{total}}) med {{model}}",
     "progressDocumentStructure": "Konverterar dokumentets struktur",
     "progressMermaid": "Renderar Mermaid-diagrammet",
     "progressFirstSheet": "Läser det första bladet",
-    "progressVisionModel": "Kör den lokala bildmodellen",
-    "progressReadingEquation": "Läser ekvationen med den lokala bildmodellen",
-    "progressConvertingEquation": "Konverterar ekvationen med den lokala modellen",
+    "progressVisionModel": "Läser bilden med {{model}}",
+    "progressReadingEquation": "Läser ekvationen med {{model}}",
+    "progressConvertingEquation": "Konverterar ekvationen med {{model}}",
     "progressUnpackingSource": "Packar upp den sparade källan",
     "progressDownloadingSource": "Laddar ner e-printkällan",
     "copied": "Kopierade {{label}}",
@@ -785,14 +932,19 @@
     "fileReady": "{{fileName}} är klar",
     "saveWordHint": "Spara Word-dokumentet när du är redo.",
     "resultPlaceholder": "Ditt konverterade resultat visas här.",
-    "progressConvertingSource": "Konverterar källkoden till Typst"
+    "progressConvertingSource": "Konverterar källkoden till Typst",
+    "pageRange": "Sidor",
+    "pageRangePlaceholder": "Alla sidor, eller ett intervall som 1-50",
+    "pageRangeInvalid": "Ange ett sidnummer eller ett intervall som 1-50.",
+    "pageCount_one": "Den här PDF:en har {{count}} sida.",
+    "pageCount_other": "Den här PDF:en har {{count}} sidor."
   },
   "converters": {
     "imageToLatex": {
       "title": "Bild till LaTeX",
-      "subtitle": "Transkribera anteckningar, ekvationer eller tabeller med en bildmodell på enheten",
+      "subtitle": "Transkribera anteckningar, ekvationer eller tabeller med en bildmodell",
       "inputLabel": "Bild",
-      "inputHint": "PNG, JPEG eller WebP. Bilden stannar på den här enheten.",
+      "inputHint": "PNG, JPEG eller WebP, upp till 20 MB.",
       "outputLabel": "LaTeX"
     },
     "arxivToLatex": {
@@ -825,9 +977,9 @@
     },
     "imageToTypst": {
       "title": "Bild till Typst",
-      "subtitle": "Transkribera anteckningar, ekvationer eller tabeller med en bildmodell på enheten",
+      "subtitle": "Transkribera anteckningar, ekvationer eller tabeller med en bildmodell",
       "inputLabel": "Bild",
-      "inputHint": "PNG, JPEG eller WebP. Bilden stannar på den här enheten.",
+      "inputHint": "PNG, JPEG eller WebP, upp till 20 MB.",
       "outputLabel": "Typst"
     },
     "latexToHtml": {
@@ -883,14 +1035,14 @@
       "title": "PDF till Markdown",
       "subtitle": "Extrahera text, ekvationer och figurer lokalt",
       "inputLabel": "PDF",
-      "inputHint": "PDF-filer med text använder deterministisk extraktion. Skanningar använder en lokal bildmodell.",
+      "inputHint": "PDF-filer med text använder deterministisk extraktion. Skanningar använder modellen du väljer.",
       "outputLabel": "Markdown"
     },
     "pdfToTypst": {
       "title": "PDF till Typst",
       "subtitle": "Extrahera text, ekvationer och figurer lokalt",
       "inputLabel": "PDF",
-      "inputHint": "PDF-filer med text använder deterministisk extraktion. Skanningar använder en lokal bildmodell.",
+      "inputHint": "PDF-filer med text använder deterministisk extraktion. Skanningar använder modellen du väljer.",
       "outputLabel": "Typst"
     },
     "typstToLatex": {
@@ -981,10 +1133,10 @@
   "converterErrors": {
     "chooseSmallerImage": "Välj en bild som är mindre än 20 MB.",
     "imageFormat": "Välj en bild i formatet PNG, JPEG eller WebP.",
-    "ollamaUnavailable": "Starta Ollama i Inställningar och installera sedan en lokal modell för den här konverteringen.",
-    "visionModelMissing": "Installera en bildmodell i Ollama, till exempel Llama 3.2 Vision, och försök igen.",
-    "localModelMissing": "Installera en lokal Ollama-modell och försök igen.",
-    "emptyTranscription": "Den lokala modellen gav en tom transkription.",
+    "ollamaUnavailable": "Starta Ollama, eller välj en annan modell för Verktyg.",
+    "visionModelMissing": "Hämta en bildmodell i Ollama, till exempel glm-ocr, eller välj en annan modell för Verktyg.",
+    "localModelMissing": "Hämta en modell i Ollama, eller välj en annan modell för Verktyg.",
+    "emptyTranscription": "Modellen returnerade en tom transkription.",
     "pdfNoPages": "Den här PDF:en innehåller inga sidor att transkribera.",
     "pdfPageLimit": "Transkribering av inskannade PDF-filer är begränsad till 50 sidor i taget.",
     "pandocNotReady": "Pandoc är inte klart än.",
@@ -992,10 +1144,16 @@
     "fileTooLarge": "Välj en fil som är mindre än 128 MB.",
     "emptySheet": "Det valda bladet är tomt.",
     "arxivInputRequired": "Ange ett arXiv-ID eller välj ett källarkiv.",
-    "equationToTypst": "Pandoc kunde inte konvertera ekvationen till Typst. Kontrollera LaTeX-matematiken och försök igen."
+    "equationToTypst": "Pandoc kunde inte konvertera ekvationen till Typst. Kontrollera LaTeX-matematiken och försök igen.",
+    "pdfTooManyPages": "Den här skanningen har {{pages}} sidor, och Oleafly transkriberar upp till {{limit}} åt gången. Ange ett sidintervall som 1-{{limit}} under filen.",
+    "outputLimit": "Modellen fick slut på utrymme innan den blev klar, så transkriptionen skulle bli ofullständig. Välj en modell med högre gräns för utdata under Inställningar, AI-assistent, Verktyg, eller transkribera en mindre del.",
+    "refused": "Modellen vägrade transkribera det här, så inget lades till. Välj en annan modell under Inställningar, AI-assistent, Verktyg.",
+    "pageRangePastEnd_one": "Den här PDF:en har {{count}} sida. Ange 1 eller lämna Sidor tomt.",
+    "pageRangePastEnd_other": "Den här PDF:en har {{count}} sidor. Ange ett intervall från 1 till {{count}}."
   },
   "converterNotes": {
-    "scannedPages": "Transkriberade {{pages}} inskannade sidor med en lokal modell. Granska ekvationer och tabeller innan du använder resultatet.",
+    "scannedPages_one": "Transkriberade {{count}} inskannad sida med {{model}}. Granska ekvationer och tabeller innan du använder resultatet.",
+    "scannedPages_other": "Transkriberade {{count}} inskannade sidor med {{model}}. Granska ekvationer och tabeller innan du använder resultatet.",
     "extracted": "Extraherade {{pages}} sidor och {{figures}} figurer lokalt.",
     "mermaidTikz": "Konverterade det här flödesschemat till redigerbar TikZ.",
     "mermaidRendered": "Renderade det här diagrammet lokalt eftersom dess Mermaid-syntax inte går att översätta rent till redigerbar TikZ.",
@@ -1010,6 +1168,53 @@
     "notConverted_one": "{{count}} element konverterades inte.",
     "notConverted_other": "{{count}} element konverterades inte.",
     "checkLine": "Rad {{line}}: {{message}}"
+  },
+  "converterModel": {
+    "label": "Modell för Verktyg",
+    "automatic": "Automatisk (bästa lokala modellen)",
+    "localGroup": "Lokalt (Ollama)",
+    "mathpixModel": "Mathpix OCR",
+    "sentTo": "Bilder skickas till {{provider}}",
+    "sentToHost": "Bilder skickas till Ollama på {{host}}",
+    "scansSentTo": "Inskannade sidor skickas till {{provider}}",
+    "scansSentToHost": "Inskannade sidor skickas till Ollama på {{host}}",
+    "pdfSentToMathpix": "Hela PDF:en skickas till Mathpix",
+    "transcribingHosted": "Skickar bilden till {{provider}}…",
+    "transcribingFallback": "Skickar bilden till {{provider}} (assistentmodell)…",
+    "sentFallback": "Skickad till {{provider}} (assistentmodell)",
+    "editorFallback": "Bild till LaTeX i redigeraren skickar bilder till {{provider}} tills Ollama har en bildmodell",
+    "progressUploading": "Skickar PDF:en till Mathpix",
+    "progressFormatting": "Konverterar transkriptionen med Pandoc",
+    "scannedTitle": "Den här PDF:en ser inskannad ut",
+    "estimateOllama_one": "{{count}} sida. Det kan ta en stund för Ollama att läsa den.",
+    "estimateOllama_other": "{{count}} sidor. Ollama läser dem en i taget, vilket kan ta en stund.",
+    "estimateCost_one": "{{count}} sida. Cirka {{cost}} med {{model}}.",
+    "estimateCost_other": "{{count}} sidor. Cirka {{cost}} med {{model}}.",
+    "estimateUnknown_one": "{{count}} sida. {{provider}} debiterar den efter användning.",
+    "estimateUnknown_other": "{{count}} sidor. {{provider}} debiterar dem efter användning.",
+    "estimatePlan_one": "{{count}} sida. Den ingår i ditt abonnemang hos {{provider}}.",
+    "estimatePlan_other": "{{count}} sidor. De ingår i ditt abonnemang hos {{provider}}.",
+    "estimateLocal_one": "{{count}} sida. Modellen körs på den här datorn utan kostnad.",
+    "estimateLocal_other": "{{count}} sidor. Modellen körs på den här datorn utan kostnad.",
+    "estimateFree_one": "{{count}} sida. Gratis med {{model}}.",
+    "estimateFree_other": "{{count}} sidor. Gratis med {{model}}.",
+    "transcribePages_one": "Transkribera {{count}} sida",
+    "transcribePages_other": "Transkribera {{count}} sidor",
+    "transcribedWith": "Transkriberad med {{model}}. Granska ekvationer och tabeller.",
+    "sentBadge": "Skickad till {{provider}}",
+    "openToolsSettings": "Inställningar för Verktyg",
+    "openProviderSettings": "Leverantörsinställningar",
+    "errors": {
+      "offline": "Oleafly är i offlineläge. Välj en lokal modell, eller stäng av offlineläget.",
+      "providerNotConfigured": "{{provider}} har ingen API-nyckel. Lägg till en i Inställningar, eller välj en annan modell.",
+      "modelDisabled": "{{model}} är avstängd i Inställningar. Slå på den, eller välj en annan modell.",
+      "modelUnavailable": "{{model}} är inte längre tillgänglig hos {{provider}}. Välj en annan modell.",
+      "cannotSeeImages": "{{model}} kan inte läsa bilder. Välj en bildmodell.",
+      "localModelGone": "{{model}} finns inte längre i Ollama. Hämta den igen, eller välj en annan modell.",
+      "imagesOnly": "{{model}} läser bara bilder. Välj en språkmodell för att konvertera inskrivna ekvationer.",
+      "mathpixNotSetUp": "Lägg till dina Mathpix-nycklar under Inställningar, AI-assistent, Verktyg, eller välj en annan modell.",
+      "imageTooLarge": "Bilden är fortfarande för stor efter förminskningen. Beskär den och försök igen."
+    }
   },
   "mermaidErrors": {
     "tooLarge": "Det här Mermaid-diagrammet är större än gränsen på 50 000 tecken.",
@@ -1557,5 +1762,263 @@
     "citeAdded": "Lade till {{citation}}",
     "addFailed": "Det gick inte att lägga till citeringen.",
     "toastCopyFailed": "Det gick inte att kopiera BibTeX."
+  },
+  "brief": {
+    "title": "Uppdragsbeskrivning",
+    "goalLabel": "Mål",
+    "goalPlaceholder": "Vad ska den här uppgiften ta reda på eller ta fram?",
+    "criteriaLabel": "Framgångskriterier",
+    "criteriaHint": "Ett per rad. Vart och ett ska vara något du kan kontrollera.",
+    "scopeLabel": "Omfattning",
+    "constraintsLabel": "Begränsningar",
+    "metricLabel": "Huvudmått",
+    "metricPlaceholder": "Till exempel val_loss",
+    "metricMaximize": "Högre är bättre",
+    "metricMinimize": "Lägre är bättre",
+    "reviewPlan": "Granska planen först",
+    "reviewPlanHint": "Agenten skriver plan.md och väntar på ditt godkännande innan den börjar.",
+    "commandsLabel": "Kommandon",
+    "commandsAllow": "Kör utan att fråga",
+    "commandsAsk": "Fråga innan körning",
+    "commandsOff": "Kör inga kommandon",
+    "network": "Tillåt nätverksåtkomst för kommandon",
+    "networkHint": "Behövs för att installera paket eller ladda ner data.",
+    "budgetLabel": "Budget",
+    "timeLabel": "Tid",
+    "minutes_one": "{{count}} minut",
+    "minutes_other": "{{count}} minuter",
+    "hours_one": "{{count}} timme",
+    "hours_other": "{{count}} timmar",
+    "costLabel": "Kostnadsgräns (USD)",
+    "noLimit": "Ingen gräns",
+    "runsLabel": "Gräns för körningar",
+    "runTimeoutLabel": "Varje körning stoppas efter",
+    "profileLabel": "Körprofil",
+    "profileAnalysis": "Analys",
+    "profileAnalysisHint": "Dina Python- och R-miljöer, skrivskyddade datamappar, ingen GPU.",
+    "profileTraining": "Träning",
+    "profileTrainingHint": "Lägger till GPU-åtkomst och längre körningar.",
+    "computeLabel": "Var körningarna sker",
+    "computeLocal": "Den här datorn",
+    "startAtLabel": "Starttid",
+    "startNow": "När jag startar den",
+    "keepRunning": "Fortsätt köra när Oleafly är stängt",
+    "keepRunningHint": "Slå först på Bakgrundsuppgifter under Inställningar, Forskning.",
+    "invalidMetric": "Använd bokstäver, siffror, punkter, bindestreck eller understreck.",
+    "invalidCost": "Ange ett belopp större än noll.",
+    "invalidCostMax": "Ange ett belopp på högst {{max}}.",
+    "invalidCostNumber": "Ange beloppet som ett tal, till exempel {{example}}.",
+    "invalidRuns": "Ange ett heltal från 1 till 1 000.",
+    "invalidStart": "Välj en starttid inom de kommande 30 dagarna.",
+    "invalidStartFormat": "Använd formatet {{example}}.",
+    "startAtFormat": "Skriv tiden som {{example}}.",
+    "problemHidden": "Ett alternativ i Uppdragsbeskrivningen behöver åtgärdas. Öppna Uppdragsbeskrivningen för att se vilket."
+  },
+  "runs": {
+    "status": {
+      "starting": "Startar",
+      "running": "Körs",
+      "succeeded": "Klar",
+      "failed": "Misslyckades",
+      "timedOut": "Tidsgränsen nåddes",
+      "cancelled": "Stoppad",
+      "lost": "Förlorad"
+    }
+  },
+  "evidence": {
+    "title": "Kontroller av underlaget",
+    "hint": "De här kontrollerna varnar bara. De hindrar dig inte från att tillämpa.",
+    "running": "Kontrollerar…",
+    "refresh": "Kontrollera igen",
+    "empty": "Inga kontroller har körts på det här resultatet än.",
+    "more_one": "{{count}} till visas inte i listan.",
+    "more_other": "{{count}} till visas inte i listan.",
+    "status": {
+      "pass": "Godkänd",
+      "warn": "Kontrollera detta",
+      "skipped": "Inte kontrollerad"
+    },
+    "checks": {
+      "build": "Projektet går att bygga",
+      "references": "Inga nya olösta referenser eller citeringar",
+      "bibliography": "Nya bibliografiposter är verifierade",
+      "numbers": "Siffrorna stämmer med sina körningar",
+      "figures": "Nya figurer finns och används"
+    },
+    "items": {
+      "buildFailed": "Bygget misslyckades med {{errors}} fel.",
+      "buildSkipped": "Bygget kontrollerades inte: {{reason}}",
+      "referencesUnresolved": "{{key}} går inte att lösa upp.",
+      "referencesNotChecked": "Referenser kontrolleras inte i det här bygget än.",
+      "bibUnverified": "{{key}} kunde inte verifieras.",
+      "bibTitleMismatch": "{{key}} pekar på en annan titel: {{found}}",
+      "bibLookupFailed": "{{key}} kunde inte slås upp. Försök igen senare.",
+      "numbersMismatch": "{{value}} stämmer inte med körning {{run}} ({{recorded}}).",
+      "numbersUnknownRun": "Körning {{run}} finns inte.",
+      "numbersNoLedgerRow": "Körning {{run}} har ingen rad i resultatloggen.",
+      "figuresMissing": "{{path}} refereras men saknas.",
+      "figuresUnused": "{{path}} används inte i dokumentet."
+    }
+  },
+  "compute": {
+    "title": "Beräkningsresurser",
+    "description": "Välj var experimentkörningar utförs. Varje uppgift väljer ett mål i sin uppdragsbeskrivning.",
+    "targets": {
+      "heading": "Mål för körningar",
+      "local": "Den här datorn",
+      "localDescription": "Körningar använder sandlådan på den här datorn.",
+      "add": "Lägg till mål",
+      "addSsh": "SSH-värd",
+      "addSlurm": "Slurm-kluster",
+      "addCua": "Cua Space",
+      "import": "Importera från SSH-konfigurationen",
+      "test": "Testa",
+      "testing": "Testar…",
+      "more": "Fler åtgärder för {{label}}",
+      "edit": "Redigera",
+      "remove": "Ta bort",
+      "removeTitle": "Vill du ta bort {{label}}?",
+      "removeConfirm": "Körningar som redan har startat där fortsätter. Uppgifter som väntar på att starta på den kommer att misslyckas.",
+      "forgetHostKey": "Glöm värdnyckeln",
+      "reviewHostKey": "Kontrollera värdnyckeln",
+      "notTested": "Inte testad",
+      "tested": "Testad {{time}}",
+      "testFailed": "Testet misslyckades",
+      "perTaskSpace": "Ny Space för varje uppgift",
+      "saveFailed": "Målet kunde inte sparas: {{message}}"
+    },
+    "kind": {
+      "ssh": "SSH",
+      "slurm": "Slurm",
+      "cuaSpace": "Cua Space"
+    },
+    "notes": {
+      "keys": "Oleafly ansluter med dina SSH-nycklar eller din agent. Oleafly ber aldrig om lösenord eller nycklar och sparar dem aldrig.",
+      "windowsRsync": "Windows har inget rsync, så Oleafly kopierar filer med tar via SSH.",
+      "sshMissingWindows": "OpenSSH-klienten är inte installerad. Lägg till den i Windows-inställningarna under System, Valfria funktioner.",
+      "sshMissing": "OpenSSH är inte installerat. Installera det med din pakethanterare.",
+      "cuaMissing": "Cua är inte installerat. Installera det från cua.ai och testa sedan igen.",
+      "relay": "Den här Space körs på en riktig dator. Körningar där är inte isolerade.",
+      "outputs": "Filer som en körning skapar kommer tillbaka till runs/<run>/outputs i uppgiftens kopia."
+    },
+    "form": {
+      "addTitle": "Lägg till {{kind}}",
+      "editTitle": "Redigera {{label}}",
+      "label": "Namn",
+      "host": "Värd",
+      "hostHint": "En värd från din SSH-konfiguration, eller ett värdnamn",
+      "user": "Användare",
+      "userHint": "Lämna tomt för att använda din SSH-konfiguration.",
+      "port": "Port",
+      "remoteRoot": "Fjärrmapp",
+      "remoteRootHint": "Körningar hamnar i .oleafly-runs i din hemmapp om du inte väljer en annan mapp.",
+      "prelude": "Förberedande kommandon",
+      "preludeHint": "Körs före varje kommando, till exempel module load python.",
+      "partition": "Partition",
+      "account": "Konto",
+      "qos": "QOS",
+      "time": "Tidsgräns",
+      "timeHint": "Till exempel 2:00:00 eller 1-00:00:00",
+      "gpus": "GPU:er",
+      "cpus": "CPU:er",
+      "mem": "Minne (GB)",
+      "memHint": "Till exempel 16",
+      "gpuFlag": "GPU-alternativ",
+      "spaceMode": "Space",
+      "spaceNamed": "Använd en namngiven Space",
+      "spacePerTask": "Skapa en ny Space för varje uppgift",
+      "space": "Namn på Space",
+      "image": "Avbild",
+      "save": "Spara",
+      "cancel": "Avbryt",
+      "errors": {
+        "label": "Ange ett namn på högst 80 tecken.",
+        "host": "Ange ett värdnamn utan mellanslag.",
+        "user": "Använd bokstäver, siffror, punkter, bindestreck eller understreck.",
+        "port": "Använd en port från 1 till 65535.",
+        "remoteRoot": "Använd en mappsökväg utan mellanslag, citattecken eller \"..\".",
+        "time": "Använd en Slurm-tid som 2:00:00.",
+        "name": "Använd bokstäver, siffror, punkter, kommatecken, bindestreck eller understreck.",
+        "mem": "Använd ett helt antal gigabyte, till exempel 16.",
+        "count": "Använd ett heltal inom det tillåtna intervallet.",
+        "prelude": "Håll de förberedande kommandona på 4 KB eller mindre. Bokstäver med accenter och icke-latinska skriftsystem tar mer plats."
+      }
+    },
+    "test": {
+      "connect": "Anslut",
+      "echo": "Kör ett kommando",
+      "disk": "Ledigt utrymme",
+      "python": "Python",
+      "gpu": "GPU",
+      "rsync": "rsync",
+      "slurm": "Slurm",
+      "cua": "Cua",
+      "space": "Space",
+      "pass": "Godkänd",
+      "warn": "Kontrollera detta",
+      "fail": "Misslyckades",
+      "skipped": "Inte kontrollerad"
+    },
+    "hostKey": {
+      "title": "Vill du lita på den här värden?",
+      "body": "Oleafly har inte anslutit till {{host}} tidigare. Jämför de här fingeravtrycken med dem som din administratör ger dig.",
+      "trust": "Lita på och anslut",
+      "changedTitle": "Värdnyckeln har ändrats",
+      "changed": "Värdnyckeln för {{host}} har ändrats. Någon kan avlyssna anslutningen. Om din administratör har bytt nyckeln glömmer du den gamla nyckeln och testar igen."
+    },
+    "import": {
+      "title": "Importera SSH-värdar",
+      "body": "Välj värdarna som ska läggas till. Oleafly läser din SSH-konfiguration och ändrar den aldrig.",
+      "none": "Inga värdar hittades i din SSH-konfiguration.",
+      "added": "Redan tillagd",
+      "add_one": "Lägg till {{count}} värd",
+      "add_other": "Lägg till {{count}} värdar",
+      "skipped": "Lades inte till: {{hosts}}. {{reason}}"
+    },
+    "sandbox": {
+      "heading": "Sandlåda på den här datorn",
+      "description": "Körningar på den här datorn kan läsa dina tolkar och länkade mappar. De skriver bara till uppgiftens kopia.",
+      "ready": "Klar",
+      "unavailable": "Inte tillgänglig",
+      "macos": "Använder macOS-sandlådan.",
+      "linux": "Använder bubblewrap.",
+      "linuxMissing": "Installera bubblewrap (bwrap) för att köra uppgiftskommandon.",
+      "windowsLabel": "Kör uppgiftskommandon i Windows-sandlådan",
+      "windowsDescription": "Kommandon körs i en Windows AppContainer som bara når uppgiftens filer och mapparna nedan. Av som standard under betaperioden.",
+      "gpuWindows": "GPU-åtkomst i Windows-sandlådan är inte verifierad än. Använd ett SSH- eller Slurm-mål för GPU-arbete.",
+      "limitsWindows": "I Windows-sandlådan fungerar multiprocessing i Python och Node.js-program som startar andra program inte än.",
+      "check": "Kontrollera sandlådan",
+      "checking": "Kontrollerar…",
+      "checkPassed": "Sandlådan fungerar.",
+      "checkFailed": "Kontrollen av sandlådan misslyckades: {{reason}}",
+      "runtimes": "Tolkar",
+      "runtimesEmpty": "Ingen Python, R eller Julia hittades.",
+      "refresh": "Uppdatera",
+      "access": "Mappar som sandlådan kan läsa",
+      "accessNote": "För att uppgifter ska kunna läsa de här mapparna lägger Oleafly till en behörighetspost i var och en.",
+      "removeAccess": "Ta bort åtkomst",
+      "removeAccessTitle": "Vill du ta bort sandlådans åtkomst?",
+      "removeAccessConfirm": "Vill du ta bort sandlådans åtkomst till de här mapparna? Oleafly lägger till den igen nästa gång en uppgift behöver den."
+    },
+    "brief": {
+      "runsOn": "Körs på {{target}}",
+      "runsLocal": "Körs på den här datorn.",
+      "missing": "Målet som den här uppgiften använde har tagits bort. Välj ett annat.",
+      "loadFailed": "Dina mål för körningar kunde inte läsas in.",
+      "windowsOff": "Slå på Windows-sandlådan i Inställningar för att köra kommandon på den här datorn.",
+      "openSettings": "Öppna Inställningar",
+      "resources": "Slurm-resurser"
+    }
+  },
+  "backgroundHelper": {
+    "badge": {
+      "background": "I bakgrunden",
+      "backgroundHint": "Oleaflys hjälpprocess i bakgrunden kör den här uppgiften. Uppgiften flyttas tillbaka hit efter sitt nuvarande steg.",
+      "movingBack": "Flyttas tillbaka",
+      "movingBackHint": "Uppgiften återvänder till Oleafly när det nuvarande steget är klart."
+    },
+    "earlierActivity": "Visa tidigare aktivitet",
+    "earlierTruncated": "Bara de sista {{limit}} objekten från den tidigare körningen visas.",
+    "keepRunningFailed": "Det gick inte att ändra den här inställningen. Försök igen."
   }
 }

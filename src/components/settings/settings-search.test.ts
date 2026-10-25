@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import enSettingsFile from "@/i18n/locales/en/settingsFile.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
@@ -22,10 +23,19 @@ import {
 
 const BUNDLES: Record<string, unknown> = {
   core: enCore,
+  // Settings › Research takes its task defaults from the research tools catalog.
+  researchTools: enResearchTools,
   settings: enSettings,
   settingsFile: enSettingsFile,
   shell: enShell,
 };
+
+/**
+ * Catalogs whose subtrees are split between settings sections. The research
+ * tools catalog lends one subtree to Settings › Research; its other strings
+ * belong to the research panel, not to a settings section.
+ */
+const SETTINGS_CATALOGS: ReadonlySet<string> = new Set(["core", "settings", "settingsFile", "shell"]);
 
 function lookup(path: CatalogPath): unknown {
   const [namespace, ...keys] = path;
@@ -74,6 +84,29 @@ describe("settings search index", () => {
 
   it("returns every section with no rows when the query is blank", () => {
     expect(searchSettings(index, SECTIONS, "   ")).toEqual(SECTIONS.map(({ id }) => ({ id, rows: [] })));
+  });
+
+  it("finds the background task settings in Research", () => {
+    const research = searchSettings(index, SECTIONS, "sign in").find((hit) => hit.id === "research");
+    expect(research?.rows.map((row) => row.path.join("."))).toContain("research.background.atLogin");
+    expect(matchSettingsSections(index, SECTIONS, "background helper")).toContain("research");
+  });
+
+  it("finds the research section from settings search", () => {
+    const tasks = enResearchTools.tasks.settings;
+    expect(rowLabels(index, "research")).toContain(tasks.title);
+    expect(bestSettingsHit(searchSettings(index, SECTIONS, "research"))).toBe("research");
+    for (const query of ["keep awake", "notifications", "keep the computer awake"]) {
+      expect(matchSettingsSections(index, SECTIONS, query), query).toEqual(["research"]);
+    }
+    const [research] = searchSettings(index, SECTIONS, "keep the computer awake");
+    expect(research).toEqual({
+      id: "research",
+      rows: [{ label: tasks.title, path: ["tasks", "settings"] }],
+      match: "text",
+    });
+    expect(matchSettingsSections(index, SECTIONS, "default time budget")).toContain("research");
+    expect(matchSettingsSections(index, SECTIONS, "mcp servers tasks")).toContain("research");
   });
 
   it("gives each matching row the catalog path it came from", () => {
@@ -147,7 +180,8 @@ describe("settings search index", () => {
       enSettings.proofreading.clear.title,
       enSettings.ai.providers.removeDialog.title,
       enSettings.ai.models.deleteDialog.title,
-      enSettings.github.device.title,
+      enSettings.gitHosting.device.title,
+      enSettings.gitHosting.add.title,
       enSettings.mcp.servers.remove.title,
       enSettings.mcp.servers.empty.title,
       enSettings.mcp.import.title,
@@ -173,9 +207,24 @@ describe("settings search index", () => {
     expect(rowLabels(index, "integrations")).toContain(enSettings.mcp.section.title);
   });
 
-  it("files cookie import under Appearance, where the in-app browser settings are", () => {
-    expect(rowLabels(index, "appearance")).toContain(enSettings.integrations.cookies.title);
-    expect(rowLabels(index, "integrations")).not.toContain(enSettings.integrations.cookies.title);
+  it("files the browser sign-in copy under Integrations, with the online LaTeX account", () => {
+    expect(rowLabels(index, "integrations")).toContain(enSettings.integrations.cookies.label);
+    expect(rowLabels(index, "appearance")).not.toContain(enSettings.integrations.cookies.label);
+    expect(settingsTabFor(["integrations", "cookies"])).toBe("overleaf");
+  });
+
+  it("files Desktop apps under Integrations on its own tab", () => {
+    expect(rowLabels(index, "integrations")).toContain(enSettings.integrations.desktopApps.title);
+    expect(rowLabels(index, "integrations")).toContain(enSettings.integrations.desktopApps.enable.label);
+    expect(rowLabels(index, "integrations")).not.toContain(enSettings.integrations.desktopApps.apps.dialog.title);
+    expect(bestSettingsHit(searchSettings(index, SECTIONS, "desktop apps"))).toBe("integrations");
+    expect(settingsTabFor(["integrations", "desktopApps", "sites"])).toBe("desktop-apps");
+    const permissions = enSettings.integrations.desktopApps.permissions.heading;
+    expect(rowLabels(buildSettingsIndex(lookup, "en", "macos"), "integrations")).toContain(permissions);
+    expect(rowLabels(buildSettingsIndex(lookup, "en", "windows"), "integrations")).not.toContain(permissions);
+    expect(rowLabels(buildSettingsIndex(lookup, "en", "windows"), "integrations")).not.toContain(
+      enSettings.integrations.desktopApps.gnome.heading,
+    );
   });
 
   it("indexes only the file manager rows this platform shows", () => {
@@ -194,6 +243,27 @@ describe("settings search index", () => {
     const macIndex = buildSettingsIndex(lookup, "en", "macos");
     expect(matchSettingsSections(macIndex, SECTIONS, "dolphin")).toEqual([]);
     expect(matchSettingsSections(index, SECTIONS, "dolphin")).toEqual(["general"]);
+  });
+
+  it("finds Shift+Enter and the shell picker in Appearance", () => {
+    expect(bestSettingsHit(searchSettings(index, SECTIONS, "shift enter"))).toBe("appearance");
+    expect(rowLabels(index, "appearance")).toEqual(
+      expect.arrayContaining([
+        enSettings.appearance.terminal.shell.label,
+        enSettings.appearance.terminal.shiftEnter.label,
+        enSettings.appearance.terminal.scrollback.label,
+        enSettings.appearance.terminal.confirmClose.label,
+      ]),
+    );
+  });
+
+  it("hides the Option-as-Meta row off macOS", () => {
+    const label = enSettings.appearance.terminal.optionIsMeta.label;
+    const mac = rowLabels(buildSettingsIndex(lookup, "en", "macos"), "appearance");
+    const windows = rowLabels(buildSettingsIndex(lookup, "en", "windows"), "appearance");
+    expect(mac).toContain(label);
+    expect(windows).not.toContain(label);
+    expect(rowLabels(index, "appearance")).not.toContain(label);
   });
 
   it("leaves error and toast text out of the index", () => {
@@ -228,6 +298,7 @@ describe("settings search sources", () => {
       listed.some((entry) => samePrefix(entry, path) || samePrefix(path, entry));
     const missing = new Set<string>();
     for (const entry of listed) {
+      if (!SETTINGS_CATALOGS.has(entry[0])) continue;
       for (let length = entry[0] === "shell" ? 3 : 2; length < entry.length; length += 1) {
         const parent = entry.slice(0, length) as unknown as CatalogPath;
         const node = lookup(parent);
@@ -250,7 +321,7 @@ describe("settings search sources", () => {
 describe("settings search tabs", () => {
   it("names the sub-tab of rows whose keys do not name it", () => {
     expect(settingsTabFor(["appearance", "preview", "darkMode"])).toBe("pdf");
-    expect(settingsTabFor(["integrations", "cookies"])).toBe("browser");
+    expect(settingsTabFor(["integrations", "cookies"])).toBe("overleaf");
     expect(settingsTabFor(["shortcuts", "editorKeys"])).toBe("editor");
     expect(settingsTabFor(["downloads", "fontPacks", "lato"])).toBe("fonts");
     expect(settingsTabFor(["mcp", "servers"])).toBe("mcp");

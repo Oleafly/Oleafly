@@ -79,13 +79,13 @@
     "linkedNote_other": "{{count}} проекта, открытого из папки, не синхронизируются. Резервные копии создаются только для проектов из библиотеки."
   },
   "transfer": {
+    "uploading_one": "Отправка файлов: {{done}} из {{total}}",
     "uploading_few": "Отправка файлов: {{done}} из {{total}}",
     "uploading_many": "Отправка файлов: {{done}} из {{total}}",
-    "uploading_one": "Отправка файлов: {{done}} из {{total}}",
     "uploading_other": "Отправка файлов: {{done}} из {{total}}",
+    "downloading_one": "Скачивание файлов: {{done}} из {{total}}",
     "downloading_few": "Скачивание файлов: {{done}} из {{total}}",
     "downloading_many": "Скачивание файлов: {{done}} из {{total}}",
-    "downloading_one": "Скачивание файлов: {{done}} из {{total}}",
     "downloading_other": "Скачивание файлов: {{done}} из {{total}}",
     "fetching": "Скачивание: {{done}} из {{total}}"
   },

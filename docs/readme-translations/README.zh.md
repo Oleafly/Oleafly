@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://cdn.oleafly.com/brand/logo/png/oleafly-tile-gradient-256.png" alt="Oleafly 标志" width="112" height="112" />
+<img src="https://cdn.oleafly.com/brand/logo/png/oleafly-app-icon-pastel-256.png" alt="Oleafly 标志" width="112" height="112" />
 
 # Oleafly <sup><em>beta</em></sup>
 
@@ -38,15 +38,16 @@ Oleafly 是一款功能强大的编辑器，用于以 LaTeX、Typst 和 Markdown
 - 专为长文档打造的编辑器：标签、引文和命令补全，实时错误检查，整个项目的大纲，Vim 和 Emacs 键位，可视化模式，以及包含 236 个 LaTeX 符号的可搜索面板。
 - 在你自己的电脑上编译。Tectonic、Typst 和 Pandoc 已经内置，项目需要完整发行版时，由 TeX Live、MacTeX、MiKTeX 或 TinyTeX 接手。
 - 在 PDF 中点击即可跳到源文件，也可以再跳回来。修复错误时，最后一次成功的 PDF 会一直留在屏幕上。
-- 每个项目都是可以推送到 GitHub 的 Git 仓库，每次成功编译后，检查点都会保存一份快照。
+- 每个项目都是可以推送到 GitHub、GitLab、Gitea、Forgejo、Codeberg 或你自己的 Git 服务器的 Git 仓库，每次成功编译后，检查点都会保存一份快照。
 - 输入时即可从 Zotero 文献库引用，不离开编辑器就能搜索 arXiv、Semantic Scholar、Crossref、PubMed 和 OpenAlex。
 - 针对学术写作调校的拼写和语法检查在你的电脑上运行。
 - 投稿之前，Preflight 会找出断裂的引用、缺失的图形、未嵌入的字体、无障碍缺陷，以及任何会破坏匿名评审的内容。
 - 绘制的图形会保留为 TikZ、Typst 或 Mermaid 代码，你还可以从 1,700 多个论文、学位论文、幻灯片、海报和简历模板开始。
-- 可从 Word、PDF、arXiv 源码、GitHub 仓库或在线 LaTeX 账户导入。
+- 可从 Word、PDF、arXiv 源码、Git 仓库或在线 LaTeX 账户导入。
+- `oleafly` 命令可以在任何终端或 CI 任务中构建、检查和同步你的项目，使用与应用相同的编译器和设置。
 - 云同步让你的项目出现在你使用的每台电脑上，离线时也可以继续写作。
 - Claude Code、Codex 和另外 12 个代理可以在你的项目中工作，你也可以连接任何模型，包括本地模型。AI 是可选的，它做出的每项更改都是可以审阅和撤销的 diff。
-- 研究任务会在项目的独立副本中进行文献综述、证据审计或一轮修订，同时你可以继续写作，并自行选择保留哪些更改过的文件。
+- 研究任务会在项目的独立副本中进行文献综述、证据审计或一轮修订，同时你可以继续写作，并自行选择保留哪些更改过的文件。它们是实验性功能，默认关闭；可在“设置 > 实验功能”中开启。
 
 ## 实时共同写作
 
@@ -145,8 +146,9 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 - 每次文件更改都是一个 diff。你可以逐个批准，让助手自主工作，或按工具设置规则，也可以撤销单个文件或整轮更改。
 - Plan 模式会在写入任何内容之前先绘制项目地图。
 - 文献综述或修订可以在独立的 Git worktree 中运行，你可以继续写作。由你选择保留哪些更改过的文件。
-- 应用随附 36 个研究技能，包括文献检索、相关工作、主张核查和审稿回复信。
+- 应用随附 39 个研究技能，包括文献检索、相关工作、主张核查和审稿回复信。
 - 本地 MCP 服务器让外部 AI 客户端可以使用相同的项目工具。它只监听 127.0.0.1。
+- `oleafly mcp` 通过 stdio 为 Claude Code、Codex、Cursor 和 Gemini CLI 提供项目工具，无论应用是否打开。
 
 AI 是可选的。关闭 AI 时，编辑器、编译器、PDF、引文、校对和检查都照常工作。
 
@@ -197,13 +199,15 @@ Tectonic、Typst 和 Pandoc 随应用提供，因此新项目无需安装任何�
 
 ## Git、历史和终端
 
-每个项目都是一个普通文件夹，里面是一个普通的 Git 仓库。在 Source Control 面板中暂存、查看 diff、提交、推送、拉取并发布到 GitHub，也可以使用你自己的终端，因为没有任何内容对它隐藏。每次成功编译后，检查点会保存一份本地快照，因此你无需提交也能回滚。
+每个项目都是一个普通文件夹，里面是一个普通的 Git 仓库。在 Source Control 面板中暂存、查看 diff、提交、推送、拉取并发布到 GitHub、GitLab、Gitea、Forgejo、Codeberg 或你自己的服务器，也可以使用你自己的终端，因为没有任何内容对它隐藏。每次成功编译后，检查点会保存一份本地快照，因此你无需提交也能回滚。
 
 <p align="center">
   <img src="../assets/readme/git-history.png" alt="Oleafly Source Control 面板，显示 diff、分支图和提交控件" width="100%" />
 </p>
 
 编辑器下方有一个终端停靠栏，每个项目最多可以打开十个标签页。按住 Cmd 点击（Ctrl 点击）输出中的文件路径，即可在对应行打开该文件。
+
+`oleafly` 命令可以在任何终端中处理同样的项目：构建、每次更改后重新构建、提交前检查、与在线 LaTeX 服务同步，或者不打开应用就运行 Oleafly 代理。每个命令都可以输出 JSON，并为脚本和 CI 提供稳定的退出码。详见[命令行指南](../cli.md)。
 
 ## 还有更多
 
@@ -277,21 +281,21 @@ Tectonic、Typst 和 Pandoc 随应用提供，因此新项目无需安装任何�
 </details>
 
 <details>
-<summary>Oleafly 随附的 36 个研究技能</summary>
+<summary>Oleafly 随附的 39 个研究技能</summary>
 
 技能是遵循 Agent Skills 结构的普通 `SKILL.md` 文件夹。你可以用斜杠命令运行技能，添加自己的技能，或与同一台电脑上兼容的 CLI 代理共享。
 
-内置的 `research-core` 软件包包含 36 个技能。下面的名称是目录和项目设置中使用的 ID。
+内置的 `research-core` 软件包包含 39 个技能。下面的名称是目录和项目设置中使用的 ID。
 
 | 类别 | 技能 |
 | --- | --- |
-| 研究和文献 | `citation-management`, `exploratory-data-analysis`, `hypothesis-generation`, `literature-review`, `oleafly-literature-sweep`, `oleafly-research-loop`, `openresearch`, `paper-lookup`, `research-lookup`, `scientific-brainstorming`, `scientific-critical-thinking` |
+| 研究和文献 | `citation-management`, `exploratory-data-analysis`, `hypothesis-generation`, `literature-review`, `oleafly-experiment-loop`, `oleafly-literature-sweep`, `oleafly-research-loop`, `openresearch`, `paper-lookup`, `research-lookup`, `scientific-brainstorming`, `scientific-critical-thinking` |
 | 手稿写作和分析 | `experimental-design`, `oleafly-data-analysis`, `oleafly-manuscript-scaffold`, `oleafly-related-work`, `scientific-writing`, `statistical-analysis`, `statistical-power`, `venue-templates` |
 | 图形和可视化 | `oleafly-figure-prep`, `scientific-schematics`, `scientific-visualization` |
 | 审阅和证据 | `oleafly-response-letter`, `oleafly-review-manuscript`, `oleafly-verify-claims`, `peer-review`, `scholar-evaluation` |
 | 投稿 | `oleafly-pre-submission` |
 | 交流 | `oleafly-slides-and-posters`, `pptx-posters`, `research-grants`, `scientific-slides` |
-| 导入和构建工具 | `import-refine`, `oleafly-latex-build`, `pdf-to-latex`, `template-generate` |
+| 工具和自动化 | `desktop-apps`, `import-refine`, `oleafly-cli`, `oleafly-latex-build`, `pdf-to-latex`, `template-generate` |
 
 </details>
 
@@ -370,6 +374,7 @@ Tectonic、Typst 和 Pandoc 随应用提供，因此新项目无需安装任何�
 - [AI Copilot](../AICopilot.md)
 - [技能](../Skills.md)
 - [MCP 集成](../mcp.md)
+- [命令行工具](../cli.md)
 - [开发设置](../development.md)
 - [更新日志](../../CHANGELOG.md)
 

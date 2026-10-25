@@ -344,6 +344,8 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          # Public GitLab OAuth application id; empty keeps GitLab on access tokens.
+          OLEAFLY_DESKTOP_GITLAB_CLIENT_ID: ${{ vars.OLEAFLY_DESKTOP_GITLAB_CLIENT_ID }}
         with:
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: "Oleafly ${{ github.event.inputs.tag || github.ref_name }}"

@@ -5,7 +5,7 @@ license: MIT
 compatibility: Needs an open Oleafly project on any of the four engines (Tectonic, latexmk, Typst, Markdown). No external tools are required.
 allowed-tools: read_file replace_in_file write_file create_file list_files search_project project_map compile get_log get_pdf_text verify_pdf_pages set_main_doc run_command update_todos load_skill read_skill_file
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
   skill-author: Oleafly
   oleafly:
     tier: native
@@ -125,3 +125,15 @@ A compiled PDF, a clean compile log, and a short written list of what was wrong 
 - [ ] The output was checked with `get_pdf_text`, and with `verify_pdf_pages` when it was available
 - [ ] No absolute host font path appears in the log
 - [ ] Every change is named in one line, with the error it fixed
+
+## From a terminal
+
+Outside the app (a terminal, or a coding agent with a shell), the `oleafly` command does the same work. Always pass `--json` and check `ok`.
+
+| In Oleafly | From a terminal |
+|---|---|
+| `compile` | `oleafly build --json` |
+| `get_log` | `oleafly log --diagnostics --json` |
+| `project_map` | `oleafly context --json` |
+| `list_files`, `read_file`, `search_project` | Your own file tools; `oleafly context --json` for the outline |
+| `set_main_doc` | `oleafly config set main <file>` |

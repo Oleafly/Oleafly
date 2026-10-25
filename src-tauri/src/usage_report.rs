@@ -89,6 +89,10 @@ pub struct UsageReportFilter {
     pub model_ids: Vec<String>,
     #[serde(default)]
     pub session_ids: Vec<String>,
+    /// With `session_ids`, also the sessions started under them (a chat's
+    /// subagents, and theirs), whose rows name their parent instead.
+    #[serde(default)]
+    pub include_child_sessions: bool,
     #[serde(default)]
     pub page: Option<u32>,
     #[serde(default)]
@@ -220,6 +224,7 @@ struct NormalizedFilter {
     provider_ids: Vec<String>,
     model_ids: Vec<String>,
     session_ids: Vec<String>,
+    include_child_sessions: bool,
     page: u32,
     page_size: u32,
 }
@@ -699,6 +704,7 @@ fn normalize_filter(filter: UsageReportFilter) -> Result<NormalizedFilter, Strin
         provider_ids: validated_values(filter.provider_ids, "providerIds")?,
         model_ids: validated_values(filter.model_ids, "modelIds")?,
         session_ids: validated_values(filter.session_ids, "sessionIds")?,
+        include_child_sessions: filter.include_child_sessions,
         page,
         page_size,
     })
@@ -747,6 +753,27 @@ fn add_runtime_filter(sql: &mut String, params: &mut Vec<SqlValue>, values: &[St
     sql.push(')');
 }
 
+/// Rows of the given sessions and of every session started under them, at
+/// any depth: a subagent's rows carry its own session id and name its
+/// parent's in `parent_session_id`.
+fn add_session_tree_filter(sql: &mut String, params: &mut Vec<SqlValue>, values: &[String]) {
+    if values.is_empty() {
+        return;
+    }
+    sql.push_str(" AND u.session_id IN (WITH RECURSIVE tree(id) AS (VALUES ");
+    for (index, value) in values.iter().enumerate() {
+        if index > 0 {
+            sql.push(',');
+        }
+        sql.push_str("(?)");
+        params.push(SqlValue::Text(value.clone()));
+    }
+    sql.push_str(
+        " UNION SELECT child.session_id FROM usage_records child \
+         JOIN tree ON child.parent_session_id = tree.id) SELECT id FROM tree)",
+    );
+}
+
 fn filter_clause(filter: &NormalizedFilter, exclude_children: bool) -> (String, Vec<SqlValue>) {
     let mut sql = "u.occurred_at_ms >= ? AND u.occurred_at_ms < ?".to_string();
     let mut params = vec![
@@ -757,7 +784,11 @@ fn filter_clause(filter: &NormalizedFilter, exclude_children: bool) -> (String, 
     add_runtime_filter(&mut sql, &mut params, &filter.runtime_ids);
     add_values_filter(&mut sql, &mut params, "u.provider_id", &filter.provider_ids);
     add_values_filter(&mut sql, &mut params, "u.model_id", &filter.model_ids);
-    add_values_filter(&mut sql, &mut params, "u.session_id", &filter.session_ids);
+    if filter.include_child_sessions {
+        add_session_tree_filter(&mut sql, &mut params, &filter.session_ids);
+    } else {
+        add_values_filter(&mut sql, &mut params, "u.session_id", &filter.session_ids);
+    }
     if exclude_children {
         sql.push_str(
             " AND NOT EXISTS (
@@ -1382,6 +1413,43 @@ mod tests {
         assert_eq!(result.totals.record_count, 1);
         assert_eq!(result.totals.input_total, 150);
         assert_eq!(result.totals.excluded_child_records, 1);
+    }
+
+    #[test]
+    fn a_chats_cost_can_include_its_subagents_at_every_depth() {
+        let root = TempDir::new().unwrap();
+        let mut chat = event("chat", "chat", Some(100));
+        chat.session_id = "thread-chat".into();
+        chat.estimated_cost_usd = Some(0.10);
+        record_usage_observation(root.path(), &chat).unwrap();
+        let mut child = event("child", "child", Some(100));
+        child.session_id = "thread-agent-1".into();
+        child.parent_session_id = Some("thread-chat".into());
+        child.estimated_cost_usd = Some(1.00);
+        record_usage_observation(root.path(), &child).unwrap();
+        let mut grandchild = event("grandchild", "grandchild", Some(100));
+        grandchild.session_id = "thread-agent-2".into();
+        grandchild.parent_session_id = Some("thread-agent-1".into());
+        grandchild.estimated_cost_usd = Some(0.20);
+        record_usage_observation(root.path(), &grandchild).unwrap();
+        let mut other = event("other", "other", Some(100));
+        other.session_id = "thread-other".into();
+        other.estimated_cost_usd = Some(5.00);
+        record_usage_observation(root.path(), &other).unwrap();
+
+        let filter = |include_child_sessions| UsageReportFilter {
+            start_ms: Some(0),
+            end_ms: Some(DAY_MS),
+            session_ids: vec!["thread-chat".into()],
+            include_child_sessions,
+            ..UsageReportFilter::default()
+        };
+        let alone = query_report(root.path(), filter(false)).unwrap();
+        assert_eq!(alone.totals.record_count, 1);
+        assert!((alone.totals.estimated_cost_usd - 0.10).abs() < 1e-9);
+        let whole = query_report(root.path(), filter(true)).unwrap();
+        assert_eq!(whole.totals.record_count, 3);
+        assert!((whole.totals.estimated_cost_usd - 1.30).abs() < 1e-9);
     }
 
     #[test]

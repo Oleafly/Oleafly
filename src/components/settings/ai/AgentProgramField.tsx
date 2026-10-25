@@ -1,21 +1,25 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Copy, Download, ExternalLink, FolderOpen, Play, RotateCcw, Terminal } from "lucide-react";
+import { Check, Copy, Download, ExternalLink, FolderOpen, KeyRound, Play, RotateCcw, Terminal } from "lucide-react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { Input } from "@/components/ui/input";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { SettingsPath, SettingsPathText } from "@/components/settings/SettingsPath";
 import { fileName, isPowerShellScript } from "@/components/ai/acp/agent-copy";
+import { signInInTerminal } from "@/components/ai/acp/AcpSignIn";
 import { i18n } from "@/i18n";
 import {
   acpCheckAgent,
   acpError,
   acpPickAgentProgram,
   acpSetAgentProgram,
+  acpSignInCommand,
   type AcpAgentCheck,
   type AcpAgentStatus,
+  type AcpAuthMethod,
   type AcpCheckCode,
   type AcpRejectReason,
 } from "@/lib/acp";
@@ -47,7 +51,7 @@ const INSPECT_CODES = new Set<AcpCheckCode>([
   "not_found", "is_directory", "unsupported_script", "not_executable", "gui_program", "interpreter", "network_path",
 ]);
 const NODE_CODES = new Set<AcpCheckCode>(["node_missing", "node_too_old"]);
-const RUN_CODES = new Set<AcpCheckCode>(["start_failed", "timeout", "exited", "not_acp"]);
+const RUN_CODES = new Set<AcpCheckCode>(["start_failed", "timeout", "exited", "not_acp", "session_failed"]);
 
 /** `acp.program.<reason>` error codes from saving a program, mapped to check codes. */
 const PROGRAM_ERROR_CODES: Record<string, AcpCheckCode> = {
@@ -115,6 +119,10 @@ export function checkMessage(agent: AcpAgentStatus, check: AcpAgentCheck, candid
       return i18n.t(($) => $.settings.ai.agents.program.check.exited, { name });
     case "not_acp":
       return i18n.t(($) => $.settings.ai.agents.program.check.notAcp, { name });
+    case "needs_sign_in":
+      return i18n.t(($) => $.settings.ai.agents.program.check.needsSignIn, { name });
+    case "session_failed":
+      return i18n.t(($) => $.settings.ai.agents.program.check.sessionFailed, { name });
     default:
       return i18n.t(($) => $.settings.ai.agents.program.check.startFailed, { name });
   }
@@ -161,6 +169,40 @@ function programSource(t: Translate, agent: AcpAgentStatus, override: string | n
   return null;
 }
 
+/** An icon button that copies one value, with the label as its tooltip. */
+export function CopyValue({ value, label }: Readonly<{ value: string; label: string }>) {
+  const { t } = useTranslation(["common"]);
+  const { copied, copy } = useCopyStatus();
+  const copiedLabel = t(($) => $.common.actions.copied);
+
+  return (
+    <Tooltip label={copied ? copiedLabel : label}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className={
+          copied
+            ? "size-8 shrink-0 text-emerald-600 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400"
+            : "size-8 shrink-0"
+        }
+        aria-label={copied ? copiedLabel : label}
+        data-copied={copied ? "true" : undefined}
+        onClick={() => void copy(value)}
+      >
+        {copied ? (
+          <Check aria-hidden="true" className="size-3.5" />
+        ) : (
+          <Copy aria-hidden="true" className="size-3.5" />
+        )}
+        <span aria-live="polite" className="sr-only">
+          {copied ? copiedLabel : ""}
+        </span>
+      </Button>
+    </Tooltip>
+  );
+}
+
 export function CopyDetailsButton({ text, className }: Readonly<{ text: string; className?: string }>) {
   const { t } = useTranslation(["common", "settings"]);
   const { copied, copy } = useCopyStatus();
@@ -191,6 +233,8 @@ type Phase =
 export interface AgentProgramFieldProps {
   agent: AcpAgentStatus;
   placement: ProgramPlacement;
+  /** The open project; sign-in opens a terminal there. Without one the command is shown to copy. */
+  projectId?: string | null;
   /** Another action on the card is running. */
   disabled?: boolean;
   /** Changes after the bridge install that a failed check asked for, to test again. */
@@ -208,6 +252,7 @@ export interface AgentProgramFieldProps {
 export function AgentProgramField({
   agent,
   placement,
+  projectId = null,
   disabled = false,
   retestToken = 0,
   onStatus,
@@ -228,7 +273,8 @@ export function AgentProgramField({
   const override = agent.programOverride ?? null;
   const path = programPath(agent, placement, override);
   const source = programSource(t, agent, override, path);
-  const showInput = placement === "main" && !path;
+  // The typed path stays available after a program is found, to point at another one.
+  const showInput = placement === "main";
   const command = commandName(agent, path);
   const example = isWindows ? `C:\\Tools\\${command}.exe` : `/usr/local/bin/${command}`;
   const rejected = cli?.rejected ?? [];
@@ -265,7 +311,8 @@ export function AgentProgramField({
     setPhase({ kind: "checking", candidate });
     try {
       const check = await acpCheckAgent(id, candidate);
-      if (check.ok && candidate) {
+      // A program that only needs a sign-in works, so it is kept.
+      if ((check.ok || check.code === "needs_sign_in") && candidate) {
         await save(candidate, check);
         return;
       }
@@ -400,6 +447,7 @@ export function AgentProgramField({
       </div>
       <ProgramResult
         agent={agent}
+        projectId={projectId}
         phase={phase}
         locked={locked}
         onChoose={() => void choose()}
@@ -437,8 +485,129 @@ export function AgentProgramField({
   );
 }
 
+function isTerminalMethod(method: AcpAuthMethod): boolean {
+  return method.kind === "terminal" || !!method.terminalCommand;
+}
+
+/** The sign-in command for one method, to copy when no project is open for a terminal. */
+function SignInCommandLine({ agentId, method }: Readonly<{ agentId: string; method: AcpAuthMethod }>) {
+  const { t } = useTranslation(["settings"]);
+  const [line, setLine] = useState<string | null>(null);
+  useEffect(() => {
+    let current = true;
+    Promise.all([acpSignInCommand(null, agentId, null, method.id), import("@/lib/terminal-launch")])
+      .then(([launch, { launchLine }]) => {
+        if (current) setLine(launchLine({ title: launch.title, command: launch.program, args: launch.args, env: launch.env }));
+      })
+      .catch(() => {
+        if (current) setLine(null);
+      });
+    return () => {
+      current = false;
+    };
+  }, [agentId, method.id]);
+  if (!line) return null;
+  return (
+    <div
+      data-testid={`acp-agent-sign-in-line-${agentId}-${method.id}`}
+      className="flex items-center gap-2 rounded-md border bg-background px-3 py-2"
+    >
+      <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs leading-relaxed text-foreground">
+        {line}
+      </code>
+      <CopyValue value={line} label={t(($) => $.settings.ai.agents.copySignInCommand)} />
+    </div>
+  );
+}
+
+/** "Works, but sign in first": a Sign in button per terminal method, or the commands to copy. */
+function SignInResult({
+  agent,
+  projectId,
+  check,
+  message,
+  testId,
+}: Readonly<{
+  agent: AcpAgentStatus;
+  projectId: string | null;
+  check: AcpAgentCheck;
+  message: string;
+  testId: string;
+}>) {
+  const { t } = useTranslation(["common", "settings", "ai"]);
+  const displayText = useDisplayText();
+  const [opened, setOpened] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const methods = (check.authMethods ?? []).filter(isTerminalMethod);
+  const id = agent.definition.id;
+
+  const signIn = (method: AcpAuthMethod) => {
+    setError(null);
+    // The terminal shows the whole command line first and runs it only if the person agrees.
+    const confirmText = t(($) => $.ai.acp.signIn.confirmTerminal, { agent: agent.definition.name });
+    signInInTerminal(projectId, id, null, method.id, confirmText)
+      .then(() => setOpened(true))
+      .catch(async (error_: unknown) => {
+        const { TerminalLaunchError } = await import("@/lib/terminal-launch");
+        // The launcher already explained a full tab bar; a cancelled launch needs nothing.
+        if (error_ instanceof TerminalLaunchError && error_.reason !== "invalid" && error_.reason !== "no-project") return;
+        setError(acpError(error_));
+      });
+  };
+
+  return (
+    <div data-testid={testId} className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-2">
+      <output aria-live="polite" className="flex items-start gap-1.5 text-xs leading-relaxed text-foreground/85">
+        <KeyRound aria-hidden className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+        <span>
+          <SettingsPathText text={displayText(message)} />
+        </span>
+      </output>
+      {methods.length > 0 && projectId && (
+        <div className="flex flex-wrap gap-2">
+          {methods.map((method) => (
+            <Button
+              key={method.id}
+              type="button"
+              size="sm"
+              data-testid={`acp-agent-sign-in-${id}-${method.id}`}
+              onClick={() => signIn(method)}
+            >
+              <Terminal className="size-3.5" />
+              {methods.length === 1
+                ? t(($) => $.settings.ai.agents.program.signIn)
+                : method.terminalCommand?.label ?? method.name}
+            </Button>
+          ))}
+        </div>
+      )}
+      {methods.length > 0 && !projectId && (
+        <div className="space-y-1.5">
+          {methods.map((method) => (
+            <SignInCommandLine key={method.id} agentId={id} method={method} />
+          ))}
+        </div>
+      )}
+      {methods.length === 0 && agent.signInHint && (
+        <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">{agent.signInHint}</p>
+      )}
+      {opened && (
+        <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
+          {t(($) => $.settings.ai.agents.program.afterSignIn)}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="break-words text-xs text-destructive">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ProgramResult({
   agent,
+  projectId,
   phase,
   locked,
   onChoose,
@@ -447,6 +616,7 @@ function ProgramResult({
   onOpenTerminal,
 }: Readonly<{
   agent: AcpAgentStatus;
+  projectId: string | null;
   phase: Phase;
   locked: boolean;
   onChoose: () => void;
@@ -475,6 +645,9 @@ function ProgramResult({
   if (phase.kind !== "result") return null;
   const { check, candidate } = phase;
   const message = checkMessage(agent, check, candidate);
+  if (check.code === "needs_sign_in") {
+    return <SignInResult agent={agent} projectId={projectId} check={check} message={message} testId={testId} />;
+  }
   if (check.ok) {
     return (
       <div data-testid={testId} className="space-y-1">

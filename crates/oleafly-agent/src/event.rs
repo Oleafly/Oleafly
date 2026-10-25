@@ -45,6 +45,18 @@ pub enum AgentEvent {
     },
     Usage {
         usage: Usage,
+        /// The latest step alone (the context the model just saw).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        last_step: Option<Usage>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        context_window: Option<u32>,
+    },
+    /// Something the user should know about the run that is not an error:
+    /// an attachment sent as text or skipped, web search unavailable.
+    Notice {
+        code: String,
+        #[serde(default)]
+        detail: Option<String>,
     },
     /// Lifecycle of a delegated child run: started, thinking, the tool it is
     /// on, done (detail carries a preview of its answer), or error.
@@ -85,9 +97,55 @@ pub enum AgentEvent {
     RunEnd,
 }
 
+impl AgentEvent {
+    /// A usage event without step or window details.
+    pub fn usage(usage: Usage) -> Self {
+        AgentEvent::Usage {
+            usage,
+            last_step: None,
+            context_window: None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn usage_events_carry_the_last_step_and_window_in_camel_case() {
+        let event = AgentEvent::Usage {
+            usage: Usage::default(),
+            last_step: Some(Usage {
+                input: 9,
+                input_known: Some(true),
+                ..Usage::default()
+            }),
+            context_window: Some(200_000),
+        };
+        let json = serde_json::to_value(event).unwrap();
+        assert_eq!(json["lastStep"]["input"], 9);
+        assert_eq!(json["contextWindow"], 200_000);
+        let plain = serde_json::to_value(AgentEvent::usage(Usage::default())).unwrap();
+        assert!(plain.get("lastStep").is_none() && plain.get("contextWindow").is_none());
+    }
+
+    #[test]
+    fn notices_serialize_with_kind_notice() {
+        let json = serde_json::to_value(AgentEvent::Notice {
+            code: "attachment_skipped".into(),
+            detail: Some("a.heic".into()),
+        })
+        .unwrap();
+        assert_eq!(
+            (
+                json["kind"].as_str(),
+                json["code"].as_str(),
+                json["detail"].as_str()
+            ),
+            (Some("notice"), Some("attachment_skipped"), Some("a.heic"))
+        );
+    }
 
     #[test]
     fn events_serialize_with_a_discriminant_the_frontend_can_switch_on() {

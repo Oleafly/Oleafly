@@ -1,0 +1,390 @@
+{
+  "bare-year": [],
+  "biblatex-alternatives": [],
+  "closing-brace-in-quoted-value": [],
+  "complete-article": [],
+  "crlf-line-endings": [
+    {
+      "from": 18,
+      "key": "bibtex.lint.invalidYear",
+      "params": {
+        "year": "19x9"
+      },
+      "severity": "warning",
+      "to": 24
+    }
+  ],
+  "damaged-entry-recovers": [
+    {
+      "from": 176,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{second}",
+        "fields": "author"
+      },
+      "severity": "error",
+      "to": 182
+    },
+    {
+      "from": 176,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{second}",
+        "fields": "journal or journaltitle"
+      },
+      "severity": "error",
+      "to": 182
+    },
+    {
+      "from": 176,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{second}",
+        "fields": "year or date"
+      },
+      "severity": "error",
+      "to": 182
+    }
+  ],
+  "directives-are-skipped": [],
+  "emoji-before-key": [
+    {
+      "from": 18,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{k😀}",
+        "fields": "author"
+      },
+      "severity": "error",
+      "to": 21
+    },
+    {
+      "from": 18,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{k😀}",
+        "fields": "journal or journaltitle"
+      },
+      "severity": "error",
+      "to": 21
+    },
+    {
+      "from": 18,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{k😀}",
+        "fields": "year or date"
+      },
+      "severity": "error",
+      "to": 21
+    }
+  ],
+  "empty-key": [],
+  "entry-still-being-typed": [],
+  "escaped-brace-in-value": [
+    {
+      "from": 37,
+      "key": "bibtex.lint.invalidYear",
+      "params": {
+        "year": "20x"
+      },
+      "severity": "warning",
+      "to": 42
+    }
+  ],
+  "field-without-equals": [
+    {
+      "from": 26,
+      "key": "bibtex.lint.invalidYear",
+      "params": {
+        "year": "20x"
+      },
+      "severity": "warning",
+      "to": 31
+    }
+  ],
+  "indented-entry": [
+    {
+      "from": 8,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@book{b}",
+        "fields": "author or editor"
+      },
+      "severity": "error",
+      "to": 9
+    },
+    {
+      "from": 8,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@book{b}",
+        "fields": "publisher"
+      },
+      "severity": "error",
+      "to": 9
+    },
+    {
+      "from": 8,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@book{b}",
+        "fields": "year or date"
+      },
+      "severity": "error",
+      "to": 9
+    }
+  ],
+  "misc-requires-nothing": [],
+  "missing-fields-mark-the-key": [
+    {
+      "from": 9,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{a}",
+        "fields": "author"
+      },
+      "severity": "error",
+      "to": 10
+    },
+    {
+      "from": 9,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{a}",
+        "fields": "journal or journaltitle"
+      },
+      "severity": "error",
+      "to": 10
+    },
+    {
+      "from": 9,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{a}",
+        "fields": "year or date"
+      },
+      "severity": "error",
+      "to": 10
+    }
+  ],
+  "missing-year": [
+    {
+      "from": 9,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{a}",
+        "fields": "year or date"
+      },
+      "severity": "error",
+      "to": 10
+    }
+  ],
+  "nested-braces-in-value": [],
+  "novalidate-baseline": [
+    {
+      "from": 9,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{a}",
+        "fields": "author"
+      },
+      "severity": "error",
+      "to": 10
+    },
+    {
+      "from": 9,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{a}",
+        "fields": "journal or journaltitle"
+      },
+      "severity": "error",
+      "to": 10
+    },
+    {
+      "from": 9,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{a}",
+        "fields": "year or date"
+      },
+      "severity": "error",
+      "to": 10
+    }
+  ],
+  "novalidate-file-first-line": [],
+  "novalidate-file-last-line": [],
+  "novalidate-file-spaced": [],
+  "novalidate-region": [
+    {
+      "from": 74,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{b}",
+        "fields": "author"
+      },
+      "severity": "error",
+      "to": 75
+    },
+    {
+      "from": 74,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{b}",
+        "fields": "journal or journaltitle"
+      },
+      "severity": "error",
+      "to": 75
+    },
+    {
+      "from": 74,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{b}",
+        "fields": "year or date"
+      },
+      "severity": "error",
+      "to": 75
+    }
+  ],
+  "novalidate-region-unclosed": [],
+  "ordinary-comment": [
+    {
+      "from": 37,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{a}",
+        "fields": "author"
+      },
+      "severity": "error",
+      "to": 38
+    },
+    {
+      "from": 37,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{a}",
+        "fields": "journal or journaltitle"
+      },
+      "severity": "error",
+      "to": 38
+    },
+    {
+      "from": 37,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{a}",
+        "fields": "year or date"
+      },
+      "severity": "error",
+      "to": 38
+    }
+  ],
+  "parenthesised-one-line": [
+    {
+      "from": 9,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{key}",
+        "fields": "journal or journaltitle"
+      },
+      "severity": "error",
+      "to": 12
+    },
+    {
+      "from": 9,
+      "key": "bibtex.lint.missingRequiredField",
+      "params": {
+        "entry": "@article{key}",
+        "fields": "year or date"
+      },
+      "severity": "error",
+      "to": 12
+    }
+  ],
+  "quoted-and-parenthesised": [],
+  "repeated-field": [
+    {
+      "from": 26,
+      "key": "bibtex.lint.fieldRepeated",
+      "params": {
+        "key": "m",
+        "name": "title"
+      },
+      "severity": "warning",
+      "to": 31
+    }
+  ],
+  "text-before-entries": [
+    {
+      "from": 49,
+      "key": "bibtex.lint.invalidYear",
+      "params": {
+        "year": "x"
+      },
+      "severity": "warning",
+      "to": 52
+    }
+  ],
+  "type-longer-than-lookahead": [
+    {
+      "from": 150,
+      "key": "bibtex.lint.invalidYear",
+      "params": {
+        "year": "1x"
+      },
+      "severity": "warning",
+      "to": 154
+    }
+  ],
+  "unknown-entry-type": [
+    {
+      "from": 1,
+      "key": "bibtex.lint.unknownEntryType",
+      "params": {
+        "type": "nope"
+      },
+      "severity": "warning",
+      "to": 5
+    }
+  ],
+  "unterminated-before-book": [],
+  "uppercase-type-and-fields": [],
+  "year-2020a": [],
+  "year-20xx": [
+    {
+      "from": 16,
+      "key": "bibtex.lint.invalidYear",
+      "params": {
+        "year": "20xx"
+      },
+      "severity": "warning",
+      "to": 22
+    }
+  ],
+  "year-double-braced": [
+    {
+      "from": 16,
+      "key": "bibtex.lint.invalidYear",
+      "params": {
+        "year": "{2020}"
+      },
+      "severity": "warning",
+      "to": 24
+    }
+  ],
+  "year-quoted": [],
+  "year-with-letter-inside": [
+    {
+      "from": 18,
+      "key": "bibtex.lint.invalidYear",
+      "params": {
+        "year": "19x9"
+      },
+      "severity": "warning",
+      "to": 24
+    }
+  ],
+  "year-with-suffix": []
+}

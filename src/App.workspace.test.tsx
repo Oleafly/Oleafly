@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   stopOutdatedAutomaticCompile: vi.fn(),
   typstLivePreviewWanted: vi.fn(() => false),
   startMcpBridge: vi.fn(async () => () => {}),
+  mountResearchPdfBridge: vi.fn(async () => () => {}),
   initAiPdfCaptureFlag: vi.fn(),
   sidebarThrows: false,
   previewRenders: 0,
@@ -122,7 +123,6 @@ vi.mock("@/store/git-status", () => {
   store.getState = () => state;
   return { useGitStatusStore: store };
 });
-vi.mock("@/store/github", () => ({ useGithubStore: { getState: () => ({ refresh: vi.fn(async () => {}) }) } }));
 
 vi.mock("@/lib/theme", () => ({
   ThemeProvider: ({ children }: { children?: unknown }) => children,
@@ -152,12 +152,8 @@ vi.mock("@/lib/native-dock-shortcuts", () => ({
   startNativeDockShortcutBridge: vi.fn(async () => () => {}),
   usesNativeDockMenu: () => mocks.nativeDockMenu,
 }));
-vi.mock("@/lib/browser-window", () => ({
-  registerBrowserCuaSurface: () => () => {},
-  toggleBrowser: vi.fn(),
-  launchBrowser: vi.fn(),
-}));
 vi.mock("@/lib/mcp-bridge", () => ({ startMcpBridge: mocks.startMcpBridge }));
+vi.mock("@/lib/research-pdf-bridge", () => ({ mountResearchPdfBridge: mocks.mountResearchPdfBridge }));
 vi.mock("@/lib/ai-tools", () => ({ initAiPdfCaptureFlag: mocks.initAiPdfCaptureFlag }));
 vi.mock("@/lib/open-compile", () => ({
   automaticCompileAllowed: () => true,
@@ -666,6 +662,11 @@ describe("native events", () => {
     await renderApp();
     await waitFor(() => expect(mocks.startMcpBridge).toHaveBeenCalled());
     await waitFor(() => expect(mocks.initAiPdfCaptureFlag).toHaveBeenCalled());
+  });
+
+  it("answers research PDF requests from the app shell, whichever panel is open", async () => {
+    await renderApp();
+    await waitFor(() => expect(mocks.mountResearchPdfBridge).toHaveBeenCalledOnce());
   });
 
   it("opens the about dialog and the update window from the app menu", async () => {

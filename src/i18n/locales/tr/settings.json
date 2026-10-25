@@ -11,12 +11,12 @@
       "checkingAction": "Denetleniyor",
       "checkingDescription": "Oleafly bu bilgisayardaki komut satırı araçlarını denetlerken bu biraz sürebilir.",
       "checkingInstalled": "Kurulu ajanlar denetleniyor",
-      "checkingTitle": "Komut satırı ajanları aranıyor",
+      "checkingTitle": "CLI ajanları aranıyor",
       "cliPathLabel": "Bulunduğu yer",
       "cliTitle": "Komut satırı aracı",
       "copySignInCommand": "Oturum açma komutunu kopyala",
-      "emptyDescription": "Desteklenen bir komut satırı ajanı kurun, sonra yeniden denetleyin.",
-      "emptyTitle": "Komut satırı ajanı bulunamadı",
+      "emptyDescription": "Desteklenen bir CLI ajanı kurun, sonra yeniden denetleyin.",
+      "emptyTitle": "CLI ajanı bulunamadı",
       "custom": {
         "description": "Oleafly ile gelmeyen bir ajanı kaydetmek için bir ajan tanımı yapıştırın.",
         "hint": "Sabitlenmiş bir npm veya uv paketi, doğrulanmış bir ikili dosya ya da kurulu bir çalıştırılabilir içeren bir ajan tanımı yapıştırın. Parolaları ve API anahtarlarını bu JSON'un dışında tutun.",
@@ -36,7 +36,7 @@
       },
       "installBridge": "Köprüyü kur",
       "installBridgeNextStep": "ACP köprüsünü kurun, sonra komut satırı aracından oturum açın.",
-      "intro": "Yerel bir ajanı ACP üzerinden bağlayın. Her ajan kendi modellerini, araçlarını ve oturum açma işlemini yönetir, API sağlayıcı ayarları ise ayrı kalır. Oturum açmak için resmi CLI hesabını kullanın: Oleafly hesap belirteçlerini içe aktarmaz ve abonelik kotalarını kestirmez.",
+      "intro": "Claude Code, Codex ve Gemini CLI gibi CLI ajanları Agent Client Protocol (ACP) üzerinden bağlanır. Bazıları bir köprüye ihtiyaç duyar: Oleafly'nin onlarla konuşabilmesi için kurduğu küçük bir bağdaştırıcı. Her ajan kendi modellerini, araçlarını ve oturum açma işlemini yönetir, API sağlayıcı ayarları ise ayrı kalır. Oturum açmak için resmi CLI hesabını kullanın: Oleafly hesap belirteçlerini içe aktarmaz ve abonelik kotalarını kestirmez.",
       "nextStepTitle": "Sonraki adım",
       "notReported": "Bildirilmedi",
       "notice": {
@@ -50,19 +50,19 @@
       "platformLabel": "Platform",
       "refreshingStatus": "Ajan durumu yenileniyor. Geçerli liste yerinde kalır.",
       "registry": {
-        "description": "Başka ekiplerin yayımladığı ajanlar için ACP kayıt defterinde arayın.",
+        "description": "Başka ekiplerin yayımladığı CLI ajanları için ACP kayıt defterinde arayın.",
         "hideDistribution": "Dağıtımı gizle",
         "register": "Ajanı kaydet",
         "registered": "Kaydedildi",
         "reviewHint": "Kayıt defteri girdileri yazılımı yayıncılarının anlatımıyla tanıtır. Kaydetmeden veya kurmadan önce dağıtımı inceleyin.",
         "search": "Ara",
-        "searchLabel": "Bir ACP ajanı bul",
-        "searchPlaceholder": "ACP kayıt defterinde ara",
+        "searchLabel": "Bir CLI ajanı bul",
+        "searchPlaceholder": "CLI ajanı ara",
         "searching": "Aranıyor",
         "showDistribution": "Dağıtımı göster",
         "title": "Daha fazla ajan bul"
       },
-      "sectionLabel": "ACP ajanları",
+      "sectionLabel": "CLI ajanları",
       "signInCommandLabel": "Oturum açma komutu",
       "versionLabel": "Sürüm",
       "updateBridge": "Köprüyü güncelle",
@@ -113,10 +113,83 @@
           "startFailed": "{{name}} başlatılamadı.",
           "timeout": "{{name}} başladı, ancak zamanında yanıt vermedi.",
           "exited": "{{name}} yanıt vermeden durdu.",
-          "notAcp": "{{name}} başladı, ancak Oleafly yanıtını anlayamadı."
+          "notAcp": "{{name}} başladı, ancak Oleafly yanıtını anlayamadı.",
+          "needsSignIn": "{{name}} çalışıyor. Bir konuşma başlatmadan önce oturum açın.",
+          "sessionFailed": "{{name}} başladı ama bir konuşma açamadı."
         },
         "getNode": "Node.js'i indir",
-        "copyDetails": "Ayrıntıları kopyala"
+        "copyDetails": "Ayrıntıları kopyala",
+        "signIn": "Oturum aç",
+        "afterSignIn": "Terminalde oturum açmayı tamamlayın, sonra programı yeniden test edin."
+      },
+      "experimental": {
+        "title": "Deneysel",
+        "description": "Bunlar Agent Client Protocol'ün taslak bölümlerini kullanır. Değişebilir veya çalışmayı bırakabilir.",
+        "v2": "Kullanılabildiğinde ACP v2 kullan",
+        "v2Description": "Taslak sürüm 2'yi destekleyen ajanlar onu kullanır. Diğer ajanlar sürüm 1'de kalır.",
+        "providers": "Ajanların Oleafly API anahtarlarımı kullanmasına izin ver",
+        "providersDescription": "Model çağrılarını yönlendirebilen bir ajan, kartında seçtiğiniz anahtarı kullanır. Anahtar yalnızca o ajanın işlemine gider."
+      },
+      "inactivity": {
+        "label": "Sessiz bir ajanı şu süreden sonra durdur",
+        "description": "Bir ajan bu süre boyunca hiçbir şey göndermezse Oleafly onu durdurur. Yeniden bağlanabilirsiniz.",
+        "minutes_one": "{{count}} dakika",
+        "minutes_other": "{{count}} dakika"
+      },
+      "protocolLabel": "Protokol",
+      "remembered": {
+        "title": "Hatırlanan seçimler",
+        "effort": "Çaba: {{name}}",
+        "mode": "Mod: {{name}}",
+        "forget": "Unut",
+        "none": "Yeni konuşmalar ajanın varsayılanlarını kullanır."
+      },
+      "providers": {
+        "label": "Oleafly API anahtarımı kullan",
+        "off": "Kapalı (ajan kendi oturumunu açar)",
+        "note": "Oleafly, bir konuşma başladığında anahtarı bu ajana gönderir ve konuşma dökümlerinin dışında tutar.",
+        "unavailable": "Burada kullanmak için Ayarlar, Yapay zeka asistanı, Sağlayıcılar ve anahtarlar bölümünden bir API anahtarı ekleyin."
+      },
+      "hermes": {
+        "title": "Bu proje için Hermes profili",
+        "default": "Varsayılan profil (paylaşılan)",
+        "project": "Proje profili",
+        "remote": "SSH üzerinden uzak",
+        "profileName": "{{name}} profili",
+        "memory": "Proje belleği",
+        "memoryDescription": "Hermes bu projedeki konuşmalar arasında bilgileri hatırlar.",
+        "toolGateway": "Tool Gateway",
+        "toolGatewayDescription": "Nous aboneliğinizdeki barındırılan web araması, görsel, ses ve tarayıcı araçlarını kullanın.",
+        "status": {
+          "ready": "Ağ geçidi çalışıyor",
+          "starting": "Ağ geçidi başlıyor",
+          "stopped": "Ağ geçidi durdu",
+          "unknown": "Ağ geçidi durumu bilinmiyor"
+        },
+        "refresh": "Yeniden denetle",
+        "keepsRunning": "Oleafly bağlantısını kesmek ağ geçidini hiçbir zaman durdurmaz.",
+        "host": "Ana bilgisayar",
+        "port": "Bağlantı noktası",
+        "folder": "O makinedeki proje klasörü",
+        "command": "Hermes komutu",
+        "remoteProfile": "Profil (isteğe bağlı)",
+        "test": "Bağlantıyı test et",
+        "testOk": "Bağlandı: {{version}}",
+        "save": "Kaydet",
+        "sshNote": "Oleafly yalnızca SSH anahtarlarınızla oturum açar.",
+        "folderHint": "O makinedeki tam yol, örneğin /home/ada/paper.",
+        "needsValid": "Bağlantıyı test et ve Kaydet, şu alanlarda geçerli değer gerektirir: {{fields}}.",
+        "unsavedEdit": "Henüz kaydedilmedi. Bu değişiklikleri kullanmak için kaydedin.",
+        "unsavedMode": "Henüz kaydedilmedi. Siz kaydedene kadar bu proje şunu kullanmaya devam eder: {{mode}}.",
+        "errors": {
+          "hostRequired": "Ana bilgisayar adını ya da kullanıcı@anabilgisayar biçimini girin.",
+          "hostInvalid": "Yalnızca harf, rakam, nokta, kısa çizgi ve @ kullanın ve kısa çizgiyle başlamayın.",
+          "port": "1 ile 65535 arasında bir bağlantı noktası kullanın.",
+          "folderRequired": "O makinedeki proje klasörünün tam yolunu girin.",
+          "folderInvalid": "/ ile başlayan tam yolu kullanın.",
+          "command": "hermes'i ya da / ile başlayan tam yolunu kullanın.",
+          "profile": "Küçük harf, rakam, kısa çizgi ve alt çizgi kullanın."
+        }
       }
     },
     "approvals": {
@@ -196,6 +269,8 @@
       "defaultModelTitle": "Varsayılan sohbet modeli",
       "pdfCaptureDescription": "Ajanın, görü tabanlı düzen denetimleri için derlenmiş sayfaları görsele çevirmesine (verify_pdf_pages) izin verir. Sayfa görsellerini sağlayıcınıza göndermek istemiyorsanız kapatın.",
       "pdfCaptureLabel": "Yapay zeka için PDF sayfa yakalamaya izin ver",
+      "reasoningSummariesDescription": "Yanıt vermeden önce düşünen modeller, akıl yürütmelerinin kısa bir özetini gönderir. Anthropic ve OpenAI modelleri için geçerlidir.",
+      "reasoningSummariesLabel": "Akıl yürütme özetlerini göster",
       "save": "Yönergeleri kaydet",
       "saved": "Kaydedildi",
       "toolsHint": "Ona \"LaTeX hatalarını düzelt\", \"Yayınlar bölümü ekle\" veya \"yeniden derle ve PDF'i denetle\" gibi şeyler söyleyin.",
@@ -511,7 +586,32 @@
       },
       "useInAllProjectsAria": "{{name}} becerisini tüm projelerde kullan",
       "useInProjectAria": "{{name}} becerisini bu projede kullan",
-      "validateAria": "{{name}} becerisini doğrula"
+      "validateAria": "{{name}} becerisini doğrula",
+      "shadowNote": "Bu becerinin daha yeni bir Oleafly sürümü var.",
+      "replaceAction": "Oleafly sürümünü kullan",
+      "replaceTitle": "{{name}} kopyanız değiştirilsin mi?",
+      "replaceBody": "Kopyanız bir yedek klasörüne taşınır. Hiçbir şey silinmez.",
+      "replaced": "Kopyanız şurada: {{path}}"
+    },
+    "tools": {
+      "tabLabel": "Araçlar",
+      "loading": "Araçlar ayarları yükleniyor…",
+      "modelTitle": "Araçlar için model",
+      "modelDescription": "Görselden LaTeX'e, denklem görselleri ve taranmış PDF'ler bu modeli kullanır. Otomatik seçim Ollama'yı kullanır, bu yüzden görseller bu bilgisayarda kalır. Ollama çalışmıyorsa veya görselleri okuyabilen bir modeli yoksa, düzenleyicideki Görselden LaTeX'e ve Görselden Typst'e görseli bunun yerine asistanın modeline gönderir.",
+      "ocrHint": "En iyi yerel sonuçlar için Ollama'ya bir OCR modeli indirin:",
+      "mathpix": {
+        "title": "Mathpix",
+        "description": "İsteğe bağlı. Mathpix denklemleri, tabloları ve taranmış PDF'leri okur, her görsel ve sayfa için kendi Mathpix hesabınızdan ücret alır.",
+        "docs": "Mathpix anahtarlarını al",
+        "appIdLabel": "Uygulama kimliği",
+        "appKeyLabel": "Uygulama anahtarı",
+        "save": "Anahtarları kaydet",
+        "remove": "Anahtarları kaldır",
+        "connected": "{{appId}} olarak bağlandı",
+        "saved": "Mathpix anahtarları kaydedildi.",
+        "removed": "Mathpix anahtarları kaldırıldı.",
+        "privacy": "Oleafly, Mathpix'ten görsellerinizi saklamamasını ister ve sonucu okuduktan sonra her PDF'i Mathpix'ten siler."
+      }
     }
   },
   "appearance": {
@@ -565,17 +665,6 @@
       "theme": {
         "description": "Sistem, işletim sistemini izler ve o değiştiğinde değişir.",
         "label": "Görünüm"
-      }
-    },
-    "browser": {
-      "homePage": {
-        "ariaLabel": "Tarayıcı ana sayfası",
-        "description": "Tarayıcı yuvasıyla birlikte açılacak sayfayı seçin.",
-        "label": "Ana sayfa"
-      },
-      "searchEngine": {
-        "description": "Metin aramaları için kullanılacak arama motorunu seçin.",
-        "label": "Varsayılan arama motoru"
       }
     },
     "customTheme": {
@@ -873,7 +962,6 @@
     "sectionName": "Görünüm",
     "tabs": {
       "app": "Uygulama",
-      "browser": "Tarayıcı",
       "editor": "Düzenleyici",
       "files": "Proje",
       "pdf": "PDF Önizleme",
@@ -897,6 +985,14 @@
         "foreground": "Metin",
         "foregroundAriaLabel": "Terminal metin rengi",
         "label": "Terminal renkleri"
+      },
+      "confirmClose": {
+        "description": "Kapattığınız bir terminalde hâlâ program çalışıyorsa önce sorar. Projeyi kapatırken veya çıkarken de geçerlidir.",
+        "label": "Meşgul bir terminali kapatmadan önce sor"
+      },
+      "copyOnSelect": {
+        "description": "Terminal metnini seçer seçmez kopyalar.",
+        "label": "Seçince kopyala"
       },
       "cursorBlink": {
         "description": "Terminal imlecini yanıp söndürür.",
@@ -926,6 +1022,50 @@
       "fontWeightBold": {
         "description": "Kalın terminal metninin kalınlığını belirleyin.",
         "label": "Kalın yazı kalınlığı"
+      },
+      "optionIsMeta": {
+        "description": "Option tuşu birleşimlerini shell'e Meta olarak gönderir. Option artık özel karakter yazmaz.",
+        "label": "Option'ı Meta olarak kullan"
+      },
+      "scrollback": {
+        "ariaLabel": "Terminal geri kaydırma arabelleği",
+        "description": "Her terminalin tuttuğu satır sayısı. Daha fazla satır daha fazla bellek kullanır.",
+        "label": "Geri kaydırma",
+        "lines_one": "{{value}} satır",
+        "lines_other": "{{value}} satır"
+      },
+      "shell": {
+        "ariaLabel": "Terminal shell'i",
+        "description": "Yeni terminaller bu shell'i başlatır. Açık terminaller kendi shell'lerini korur.",
+        "label": "Shell",
+        "notFound": "{{name}} (bulunamadı)",
+        "notFoundNote": "{{name}} bu bilgisayarda kullanılamadığı için yeni terminaller başlatılamıyor. Başka bir shell seçin.",
+        "options": {
+          "auto": "Varsayılan ({{name}})",
+          "cmd": "Komut İstemi",
+          "custom": "Özel yol",
+          "defaultShell": "Varsayılan shell",
+          "gitBash": "Git Bash",
+          "powershell": "Windows PowerShell",
+          "pwsh": "PowerShell 7",
+          "wsl": "WSL"
+        },
+        "path": {
+          "ariaLabel": "Özel shell yolu",
+          "description": "Yeni terminallerin çalıştırdığı program.",
+          "label": "Shell yolu",
+          "missing": "Bir shell'in tam yolunu girin. Siz girene kadar yeni terminaller başlayamaz."
+        },
+        "windowsOnly": "{{name}} (yalnızca Windows)",
+        "windowsOnlyNote": "{{name}} yalnızca Windows'ta çalışır. Buradaki yeni terminaller bunun yerine {{fallback}} başlatır.",
+        "windowsOnlyNoteDefault": "{{name}} yalnızca Windows'ta çalışır. Buradaki yeni terminaller bunun yerine varsayılan shell'i başlatır."
+      },
+      "shiftEnter": {
+        "ariaLabel": "Terminalde Shift+Enter",
+        "description": "Shift+Enter'ın terminaldeki programa gönderdiği şey. Yeni satır, Claude Code gibi sohbet tarzı araçların istemlerine satır eklemesini sağlar. Enter ise tıpkı Enter tuşu gibi gönderir.",
+        "enter": "Enter gönder",
+        "label": "Shift+Enter",
+        "newline": "Yeni satır ekle"
       },
       "startWithProject": {
         "description": "shell'i, terminali ilk gösterdiğinizde değil, bir proje açıldığında başlatır.",
@@ -969,6 +1109,15 @@
       "saveEmail": "E-postayı kaydet",
       "saveKey": "Anahtarı kaydet"
     },
+    "braveSearch": {
+      "docsLink": "Brave Search API",
+      "hint": "İsteğe bağlı. Sağlayıcısının kendi araması olmadığında asistanın web'de arama yapmasını sağlar.",
+      "keyLabel": "Brave Search API anahtarı",
+      "keyRemoveFailed": "Brave Search API anahtarı kaldırılamadı.",
+      "keyRemoved": "Brave Search API anahtarı kaldırıldı",
+      "keySaveFailed": "Brave Search API anahtarı kaydedilemedi.",
+      "keySaved": "Brave Search API anahtarı kaydedildi"
+    },
     "connected": "Bağlı",
     "description": "Bilimsel arama kaynaklarının kullandığı kimlik bilgilerini yönetin.",
     "keyFree": {
@@ -1008,7 +1157,17 @@
       "keySaveFailed": "Serper API anahtarı kaydedilemedi.",
       "keySaved": "Serper API anahtarı kaydedildi"
     },
-    "title": "Atıf Arama"
+    "tavily": {
+      "docsLink": "Tavily API",
+      "hint": "İsteğe bağlı. Sağlayıcısının kendi araması olmadığında asistanın web'de arama yapmasını sağlar.",
+      "keyLabel": "Tavily API anahtarı",
+      "keyRemoveFailed": "Tavily API anahtarı kaldırılamadı.",
+      "keyRemoved": "Tavily API anahtarı kaldırıldı",
+      "keySaveFailed": "Tavily API anahtarı kaydedilemedi.",
+      "keySaved": "Tavily API anahtarı kaydedildi"
+    },
+    "title": "Atıf Arama",
+    "webSearchOrder": "Web araması için asistan önce Brave'i, sonra Tavily'yi, sonra Serper'ı kullanır."
   },
   "cite": {
     "apa": "Aynı kaynağın APA biçimi GitHub'daki Cite this repository bölümünde",
@@ -1354,17 +1513,64 @@
       "typstNote": "Calepin, Oleafly'deki yerleşik Typst ile çıktı oluşturur. Typst 0.15 veya daha yenisi gerekir."
     }
   },
-  "github": {
+  "gitHosting": {
     "account": {
-      "connected": "Bağlı",
-      "disconnect": "Bağlantıyı kes",
-      "handle": "@{{login}}"
+      "ariaLabel": "{{host}} üzerinde {{login}}",
+      "caAdd": "Sertifika dosyası ekle",
+      "caChange": "Sertifika dosyasını değiştir",
+      "caFile": "Sertifika dosyası: {{file}}",
+      "checking": "Denetleniyor…",
+      "signInAgain": "Yeniden oturum aç",
+      "signOut": "Oturumu kapat",
+      "signedInAs": "{{login}} olarak oturum açıldı",
+      "signedOut": "Oturum kapatıldı",
+      "unreachable": "Sunucuya ulaşılamıyor"
     },
-    "advanced": {
-      "connect": "Bağlan",
-      "toggle": "Gelişmiş: kişisel erişim belirteci kullan",
-      "tokenPlaceholder": "ghp_…"
+    "add": {
+      "browserHint": "Tarayıcınızda tek kullanımlık bir kodla oturum açar.",
+      "caChoose": "Dosya seç…",
+      "caFilter": "Sertifika dosyaları",
+      "caHint": "Yalnızca sunucunun sertifikası kuruluşunuzun kendi yetkilisinden geliyorsa gerekir.",
+      "caLabel": "Sertifika yetkilisi dosyası",
+      "caPickerTitle": "Bir sertifika dosyası seçin",
+      "caRemove": "Kaldır",
+      "chooseKind": "Sunucu türü",
+      "connect": "Bağla",
+      "continue": "Devam",
+      "createToken": "{{host}} üzerinde belirteç oluştur",
+      "detecting": "Sunucu denetleniyor…",
+      "found": "Bu bir {{kind}} sunucusu.",
+      "kindGitea": "Gitea veya Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
+      "otherServer": "Başka bir sunucu",
+      "replaces": "Oturum açma, {{host}} üzerindeki {{login}} hesabının yerine geçer.",
+      "scopesGitea": "repository ve user için okuma ve yazma erişimi verin.",
+      "scopesGithub": "repo ve read:user kapsamlarını verin.",
+      "scopesGitlab": "api ve write_repository kapsamlarını verin.",
+      "serverLabel": "Sunucu adresi",
+      "serverPlaceholder": "https://git.example.org",
+      "signInBrowser": "{{host}} ile oturum aç",
+      "title": "Git barındırma hesabı ekle",
+      "tokenLabel": "Erişim belirteci",
+      "useToken": "Bunun yerine erişim belirteci kullan"
     },
+    "addAccount": "Hesap ekle",
+    "description": "Gönderim ve çekme yapmak, proje yayımlamak ve depo içe aktarmak için oturum açın. GitHub, GitLab, Gitea, Forgejo ve Codeberg ile, ayrıca kendi çalıştırdığınız sunucularla çalışır.",
+    "device": {
+      "open": "{{host}} aç",
+      "opened": "Oleafly tarayıcınızda <verificationLink>{{url}}</verificationLink> adresini açtı. Oturum açmayı tamamlamak için kodu orada girin.",
+      "timedOut": "Oturum açma zaman aşımına uğradı. Yeniden deneyin.",
+      "title": "Bu kodu {{host}} üzerinde girin",
+      "waiting": "Tarayıcıda işlemi bitirmeniz bekleniyor…"
+    },
+    "empty": "Henüz hesap yok. Adresle bağladığınız projeler, gönderim ve çekmeyi yine kendi Git oturum bilgilerinizle veya SSH anahtarınızla yapar.",
+    "notice": {
+      "signedIn": "{{host}} üzerinde {{login}} olarak oturum açıldı.",
+      "signedOut": "{{host}} oturumu kapatıldı."
+    },
+    "title": "Git barındırma"
+  },
+  "github": {
     "autoInit": {
       "description": "Yeni ve açılan projelere, Git panelinin değişiklikleri izleyebilmesi için bir Git deposu eklenir. Yeni bir proje genellikle dosyalarını içeren tek bir işlemeyle başlar. Bundan sonra Oleafly yalnızca siz istediğinizde işleme yapar.",
       "label": "Her proje için Git'i başlat"
@@ -1372,23 +1578,6 @@
     "config": {
       "loadFailed": "Git ayarları yüklenemedi.",
       "saveFailed": "Git ayarları kaydedilemedi."
-    },
-    "connect": "GitHub'ı bağla",
-    "description": "Projeleri yedekleyin, cihazlar arasında eşitleyin ve Git panelinden gönderip çekin.",
-    "device": {
-      "openGithub": "GitHub'ı aç",
-      "opened": "Tarayıcınızda <verificationLink>{{url}}</verificationLink> adresini açtık. Oleafly'ye yetki vermek için kodu oraya yapıştırın.",
-      "timedOut": "GitHub oturum açma işlemi zaman aşımına uğradı. Yeniden deneyin.",
-      "title": "Bu kodu GitHub'a girin",
-      "waiting": "Yetkilendirme bekleniyor…"
-    },
-    "hint": {
-      "oauth": "Tarayıcınızda tek kullanımlık bir kodla oturum açmanızı sağlar.",
-      "token": "Bu derlemede OAuth ile oturum açma henüz yapılandırılmadı, bu yüzden onun yerine bir belirteç yapıştırın."
-    },
-    "notice": {
-      "connected": "@{{login}} olarak bağlandı",
-      "disconnected": "Bağlantı kesildi."
     }
   },
   "integrations": {
@@ -1405,31 +1594,14 @@
       "disconnectFailed": "alphaXiv bağlantısı kesilemedi. Yeniden deneyin."
     },
     "cookies": {
-      "action": "Cookie'leri içe aktar",
-      "confirmAllDomains": "{{browser}} tarayıcısının {{profile}} profilindeki tüm alan adlarına ait cookie'leri içe aktarmak üzeresiniz. Cookie değerleri uygulama içi tarayıcıda saklanır ve yalnızca eşleştikleri web sitelerine gönderilir. Oleafly, profili okumadan önce yerel bir pencerede bir kez daha onay isteyecek.",
-      "confirmDomain": "{{browser}} tarayıcısının {{profile}} profilinden {{domain}} için cookie'leri içe aktarmak üzeresiniz. Cookie değerleri uygulama içi tarayıcıda saklanır ve yalnızca eşleştikleri web sitelerine gönderilir. Oleafly, profili okumadan önce yerel bir pencerede bir kez daha onay isteyecek.",
       "confirmTitle": "Cookie içe aktarmayı onaylayın",
-      "description": "Var olan bir tarayıcı oturumunu Oleafly'nin uygulama içi tarayıcısında kullanın.",
       "detecting": "Kurulu tarayıcı profilleri aranıyor...",
       "dialogDescription": "Kurulu bir tarayıcı profili seçin. Oleafly onu yalnızca siz içe aktarmayı inceleyip onayladıktan sonra okur. Chromium cookie'lerinin kilidi macOS Anahtar Zinciri üzerinden yerel olarak açılır. Oleafly cookie değerlerini bir Oleafly hizmetine göndermez.",
       "dialogTitle": "Tarayıcı cookie'lerini içe aktar",
       "empty": "Desteklenen tarayıcı profili bulunamadı.",
       "errors": {
-        "chooseProfile": "Kullanılabilir bir tarayıcı profili seçin.",
-        "hostname": "example.com gibi bir ana makine adı girin."
+        "chooseProfile": "Kullanılabilir bir tarayıcı profili seçin."
       },
-      "hostnameHint": "Yalnızca o sitenin kullanabileceği cookie'leri aktarmak için bir site ana makine adı girin. Bu profildeki uygun tüm cookie'leri aktarmak için boş bırakın.",
-      "hostnameLabel": "Hedef ana makine adı (isteğe bağlı)",
-      "hostnamePlaceholder": "example.com",
-      "importedDomain_one": "{{domain}} için {{browser}} tarayıcısından {{count}} cookie içe aktarıldı.",
-      "importedDomain_other": "{{domain}} için {{browser}} tarayıcısından {{count}} cookie içe aktarıldı.",
-      "importedProfileDomain_one": "{{domain}} için {{browser}}, {{profile}} profilinden {{count}} cookie içe aktarıldı.",
-      "importedProfileDomain_other": "{{domain}} için {{browser}}, {{profile}} profilinden {{count}} cookie içe aktarıldı.",
-      "importedProfile_one": "{{browser}}, {{profile}} profilinden {{count}} cookie içe aktarıldı.",
-      "importedProfile_other": "{{browser}}, {{profile}} profilinden {{count}} cookie içe aktarıldı.",
-      "imported_one": "{{browser}} tarayıcısından {{count}} cookie içe aktarıldı.",
-      "imported_other": "{{browser}} tarayıcısından {{count}} cookie içe aktarıldı.",
-      "importing": "Cookie'ler içe aktarılıyor...",
       "profileGroupLabel": "Tarayıcı profilleri",
       "profileLegend": "Tarayıcı profili",
       "review": "İçe aktarmayı incele",
@@ -1439,8 +1611,16 @@
         "noCookieStore": "Cookie deposu yok",
         "notInstalled": "Kurulu değil"
       },
-      "title": "Cookie'leri içe aktar",
-      "tryAgain": "Yeniden deneyin"
+      "tryAgain": "Yeniden deneyin",
+      "label": "Tarayıcı oturumu",
+      "useBrowserSignIn": "Tarayıcımdaki oturumu kullan",
+      "signInDescription": "Yeniden oturum açmak zorunda kalmamak için {{server}} oturumunuzu bu bilgisayardaki bir tarayıcıdan kopyalayın.",
+      "site": "Site: {{domain}}",
+      "confirmCopy": "Oleafly, {{domain}} çerezlerini {{browser}} tarayıcısındaki {{profile}} profilinden okuyacak. Çerezler Oleafly içinde kalır ve yalnızca {{domain}} adresine gönderilir. Bir sistem iletişim kutusunda bir kez daha onaylayacaksınız.",
+      "copyAction": "Oturumu kopyala",
+      "copying": "Kopyalanıyor…",
+      "notSignedIn_one": "{{browser}} tarayıcısından {{count}} çerez kopyalandı ama oturum açılmadı. Doğrudan oturum açın.",
+      "notSignedIn_other": "{{browser}} tarayıcısından {{count}} çerez kopyalandı ama oturum açılmadı. Doğrudan oturum açın."
     },
     "zotero": {
       "apiKeyHint": "Anahtar almak için: <siteLink>zotero.org</siteLink> adresinde oturum açın, anahtar oluşturmak için <keyLink>API anahtarı sayfanızı</keyLink> açın ve aynı sayfadaki sayısal kullanıcı kimliğinizi kopyalayın.",
@@ -1509,6 +1689,132 @@
       "gitSave": "Kaydet",
       "gitRemove": "Kaldır",
       "gitFailed": "Oleafly Git belirtecini kaydedemedi. Belirtecin tamamını yapıştırdığınızdan emin olun."
+    },
+    "desktopApps": {
+      "tab": "Masaüstü uygulamaları",
+      "title": "Masaüstü uygulamaları",
+      "description": "Ajanların bu bilgisayardaki uygulamaları ve web sitelerini Cua Driver aracılığıyla kullanmasına izin verin. Oleafly, o tür bir işleme sohbet, oturum veya görev için izin vermediğiniz sürece her işlemden önce sorar. Oturum açtığınız tarayıcınız ve betikler için her zaman sorulur.",
+      "docsLink": "Cua Driver belgeleri",
+      "status": {
+        "installed": "Cua Driver {{version}} kurulu.",
+        "installedNoVersion": "Cua Driver kurulu.",
+        "notInstalled": "Cua Driver kurulu değil.",
+        "tooOld": "Cua Driver {{version}} çok eski. Oleafly için {{minimum}} veya daha yeni bir sürüm gerekir.",
+        "noAppBundle": "macOS izinlerini tutabilmesi için Cua Driver'ı resmi yükleyiciyle kurun.",
+        "unreadableVersion": "Oleafly, Cua Driver'ın sürümünü okuyamadı. Çalıştığından emin olup yeniden denetleyin.",
+        "path": "Konum: {{path}}"
+      },
+      "install": {
+        "heading": "Cua Driver'ı kur",
+        "hint": "Bu komutu bir terminalde çalıştırın ya da \"Terminalde çalıştır\" düğmesini kullanın. Komut, Cua'nın resmi yükleyicisini başlatır. Oleafly, Cua Driver'ı kendisi indirmez.",
+        "run": "Terminalde çalıştır",
+        "needsProject": "Bunu Oleafly terminalinde çalıştırmak için bir proje açın veya komutu kopyalayın.",
+        "confirm": "Bu işlem Cua Driver yükleyicisini cua.ai adresinden indirir ve terminalinizde çalıştırır. Devam edilsin mi?",
+        "terminalTitle": "Cua Driver kurulumu",
+        "checkAgain": "Yeniden denetle"
+      },
+      "permissions": {
+        "heading": "macOS izinleri",
+        "granted": "Cua Driver, Erişilebilirlik ve Ekran Kaydı izinlerini kullanabiliyor.",
+        "needed": "Cua Driver için Erişilebilirlik ve Ekran Kaydı izinleri gerekir. İzin verme adımını çalıştırıp yönergeleri izleyin.",
+        "unknown": "Oleafly, Cua Driver'ın izinlerini okuyamadı.",
+        "grant": "İzin ver",
+        "terminalTitle": "Cua Driver izinleri"
+      },
+      "gnome": {
+        "heading": "GNOME yardımcısı",
+        "needed": "GNOME'da Cua pencere yardımcısını bir kez çalıştırın, sonra oturumu kapatıp yeniden açın.",
+        "active": "GNOME pencere yardımcısı açık."
+      },
+      "enable": {
+        "label": "Ajanların masaüstü uygulamalarını kullanmasına izin ver",
+        "description": "Ajanlar aşağıdaki uygulamaları ve web sitelerini görebilir. Tıklama, yazma ve sayfa değişiklikleri için, bunlara sohbet, oturum veya görev için izin vermediğiniz sürece, önce size sorulur. Bir uygulama veya web sitesi eklemek bu seçimleri temizler."
+      },
+      "apps": {
+        "heading": "İzin verilen uygulamalar",
+        "empty": "Henüz uygulama yok. Ajanlar yalnızca buraya eklediğiniz uygulamaları kullanabilir.",
+        "add": "Uygulama ekle",
+        "remove": "{{name}} kaldır",
+        "missing": "Bu program bu bilgisayarda bulunamadı. Kaldırın ya da uygulamayı yeniden kurun.",
+        "dialog": {
+          "title": "Uygulama ekle",
+          "description": "Ajanların kullanabileceği bir uygulama seçin. Onayladıktan sonra ajanlar uygulamayı açabilir, pencerelerini okuyabilir ve içinde işlem yapabilir.",
+          "search": "Uygulama ara",
+          "loading": "Uygulamalar aranıyor…",
+          "none": "Eşleşen uygulama yok.",
+          "choose": "Başka bir uygulama seç…",
+          "add": "Ekle",
+          "added": "Zaten eklendi.",
+          "more": "{{total}} içinden {{shown}} tanesi gösteriliyor. Listeyi daraltmak için arayın.",
+          "refresh": "Yenile"
+        },
+        "blocked": {
+          "oleafly": "Oleafly kendini denetleyemez.",
+          "driver": "Cua Driver kendini denetleyemez.",
+          "terminal": "Terminaller ve kod düzenleyiciler, komutları Oleafly'nin komut onayı olmadan çalıştırır.",
+          "system_settings": "Sistem ayarları izinleri değiştirebilir.",
+          "passwords": "Parola uygulamaları kapsam dışında kalır.",
+          "scripting": "Betik çalıştırıcılar bu bilgisayarda her şeyi yapabilir.",
+          "wrapper": "Bu girdi başka bir program başlatır. Bunun yerine o programı seçin.",
+          "sandboxed": "Flatpak ve Snap uygulamaları henüz desteklenmiyor.",
+          "browser": "Bir tarayıcının web sitelerini bunun yerine İzin verilen web siteleri altına ekleyin."
+        }
+      },
+      "sites": {
+        "heading": "İzin verilen web siteleri",
+        "empty": "Henüz web sitesi yok.",
+        "add": "Web sitesi ekle",
+        "placeholder": "https://www.example.org",
+        "remove": "{{origin}} kaldır",
+        "signedIn": {
+          "label": "Oturum açılmış tarayıcımı kullan",
+          "labelFor": "{{origin}} için oturum açılmış tarayıcımı kullan",
+          "description": "Ajanlar bu sitede kendi Chrome veya Edge tarayıcınızda çalışır. Ayrı bir tarayıcı profili kullanmak için kapalı bırakın."
+        }
+      },
+      "scripted": {
+        "label": "Betikli denetim",
+        "description": "Ajanların birçok adımı tek seferde yapan Cua betiklerini çalıştırmasına izin verin. Oleafly her betikten önce sorar."
+      },
+      "test": {
+        "action": "Bağlantıyı test et",
+        "running": "Test ediliyor…",
+        "ok": "Cua Driver sınırlarınızla çalışıyor.",
+        "problems": "Cua Driver'ın kendi denetimi de şunları bildirdi:",
+        "failed": "Test başarısız oldu: {{detail}}"
+      },
+      "tool": {
+        "description": "Ayarlar'da izin verdiğiniz masaüstü uygulamalarını ve web sitelerini kullanın.",
+        "note": "Bakma hemen yapılır. Tıklama, yazma ve sayfa değişiklikleri için, sohbet için izin vermediğiniz sürece önce sorulur."
+      },
+      "task": {
+        "label": "Masaüstü uygulamaları",
+        "description": "Bu görevin izin verdiğiniz masaüstü uygulamalarını kullanmasına izin verin. İşlemleri onaylamak için bilgisayarın başında olmanız gerekir.",
+        "off": "Önce Ayarlar'dan Masaüstü uygulamalarını açın.",
+        "unattended": "Bir zamanlamaya göre veya Oleafly kapandıktan sonra çalışan görevler masaüstü uygulamalarını kullanamaz."
+      },
+      "spaces": {
+        "title": "Cua Spaces",
+        "description": "Cua Spaces'teki yalıtılmış masaüstlerini ve kapsayıcıları bir MCP sunucusu olarak bağlayın.",
+        "notInstalled": "cua komutu kurulu değil.",
+        "connect": {
+          "label": "Cua Spaces'i bağla",
+          "description": "Ajanlar Space'lerinizi listeleyebilir ve orada çalışan ajanların durumuna bakabilir."
+        },
+        "fullAccess": {
+          "label": "Değişikliklere izin ver",
+          "description": "Ajanlar ayrıca Space oluşturup silebilir ve içlerinde komut çalıştırabilir."
+        },
+        "credentials": {
+          "label": "Ajan oturumlarımı paylaş",
+          "description": "Bir Space içinde başlayan ajanların Claude Code veya Codex oturumunuzu kullanmasına izin verin."
+        },
+        "failed": "Oleafly, Cua Spaces bağlantısını güncelleyemedi.",
+        "install": {
+          "terminalTitle": "Cua kurulumu",
+          "confirm": "Bu işlem Cua yükleyicisini cua.ai adresinden indirir ve terminalinizde çalıştırır. Devam edilsin mi?"
+        }
+      }
     }
   },
   "language": {
@@ -1589,7 +1895,7 @@
         },
         "legend": "Onay ilkesi",
         "trust": {
-          "description": "Dosya değişiklikleri sormaz. Shell komutları ve bilgisayar denetimi her zaman onay gerektirir. MCP istemciniz ek bir kapı olarak kalır.",
+          "description": "Dosya değişiklikleri sormadan uygulanır. Shell komutları ve yeni araştırma görevleri her zaman önce sorar. MCP istemciniz yine de kendi başına sorabilir.",
           "label": "Bu bağlantıya güven"
         }
       },
@@ -1841,7 +2147,8 @@
       "unavailable": "Oleafly'nin bu kopyası komutu içermiyor."
     },
     "title": "Terminal komutu",
-    "update": "Güncelle"
+    "update": "Güncelle",
+    "newTerminal": "oleafly kullanmak için yeni bir terminal açın. Zaten açık olan terminaller değişikliği görmez."
   },
   "shortcuts": {
     "actions": {
@@ -1865,10 +2172,6 @@
         "description": "Proje kısayol başvurusunu açın.",
         "label": "Kısayol başvurusu"
       },
-      "toggleBrowser": {
-        "description": "Proje tarayıcısını gösterin veya gizleyin.",
-        "label": "Tarayıcıyı aç/kapat"
-      },
       "toggleSidebar": {
         "description": "Proje kenar çubuğunu gösterin veya gizleyin.",
         "label": "Kenar çubuğunu aç/kapat"
@@ -1880,6 +2183,22 @@
       "toggleTerminal": {
         "description": "Proje terminalini gösterin veya gizleyin.",
         "label": "Terminali aç/kapat"
+      },
+      "newTerminal": {
+        "description": "Başka bir terminal sekmesi açar.",
+        "label": "Yeni terminal"
+      },
+      "closeTerminal": {
+        "description": "Yazdığınız terminal sekmesini kapatır.",
+        "label": "Terminali kapat"
+      },
+      "nextTerminal": {
+        "description": "Sonraki terminal sekmesine geçer.",
+        "label": "Sonraki terminal"
+      },
+      "previousTerminal": {
+        "description": "Önceki terminal sekmesine geçer.",
+        "label": "Önceki terminal"
       },
       "openFolder": {
         "label": "Klasör aç",
@@ -2034,6 +2353,44 @@
       "elsewhere": "Menü başka bir Oleafly kopyasını açıyor. Bu kopyayı kullanmak için onarın.",
       "moved": "Taşınmış bir Oleafly kopyasını gösteriyor. Bu kopyayı kullanmak için onarın.",
       "noDefaultFileManager": "Sisteminizde klasörler için varsayılan bir dosya yöneticisi yok, bu yüzden bu kayıt her klasörü Oleafly'de açabilir. Kaldırın."
+    }
+  },
+  "research": {
+    "background": {
+      "title": "Arka plan görevleri",
+      "enabled": {
+        "label": "Oleafly kapandıktan sonra görevleri çalıştırmaya devam et",
+        "description": "Çalışmaya devam etmesi için işaretlediğiniz görevler, çıktığınızda küçük bir arka plan yardımcısına geçer. Oleafly'yi açtığınızda görevleri geri alır."
+      },
+      "atLogin": {
+        "label": "Oturum açtığınızda yardımcıyı başlat",
+        "description": "Yeniden başlatmadan sonra arka plan görevlerini sürdürür. Yardımcı, yapacak işi kalmayınca kapanır.",
+        "moveApp": "Önce Oleafly'yi Uygulamalar klasörünüze taşıyın.",
+        "needsBackground": "Önce arka plan görevlerini açın."
+      },
+      "status": {
+        "label": "Arka plan yardımcısı",
+        "running": "Çalışıyor",
+        "stopped": "Çalışmıyor",
+        "notResponding": "Yanıt vermiyor",
+        "tasks_one": "{{count}} görev üzerinde çalışıyor",
+        "tasks_other": "{{count}} görev üzerinde çalışıyor"
+      },
+      "stop": "Yardımcıyı durdur",
+      "stopHint": "Görevleri Oleafly'ye geri taşınır ve burada çalışmaya devam eder.",
+      "stopConfirm": {
+        "title": "Arka plan yardımcısı durdurulsun mu?",
+        "description_one": "Arka plan yardımcısının {{count}} görevi Oleafly'ye geri taşınır ve burada çalışmaya devam eder.",
+        "description_other": "Arka plan yardımcısının {{count}} görevi Oleafly'ye geri taşınır ve burada çalışmaya devam eder."
+      },
+      "stopFailed": "Yardımcı durmadı. Yeniden deneyin.",
+      "openLog": "Günlüğü göster",
+      "statusFailed": "Arka plan yardımcısının durumu okunamadı.",
+      "toggleFailed": "Bu ayar değiştirilemedi. Yeniden deneyin."
+    },
+    "mcpServers": {
+      "loadFailed": "MCP sunucu listesi okunamadı.",
+      "missing": "{{name}} (bulunamadı)"
     }
   }
 }

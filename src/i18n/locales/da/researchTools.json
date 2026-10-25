@@ -2,6 +2,7 @@
   "workspace": {
     "title": "Forskningsarbejdsområde",
     "configureAgents": "Konfigurer forskningsagenter",
+    "openSettings": "Forskningsindstillinger",
     "configError": "Assistentens indstillinger kunne ikke indlæses.",
     "tabTasks": "Opgaver",
     "tabFolders": "Tilknyttede mapper",
@@ -135,7 +136,8 @@
       "awaitingReview": "Skal gennemgås",
       "completed": "Fuldført",
       "failed": "Mislykkedes",
-      "cancelled": "Annulleret"
+      "cancelled": "Annulleret",
+      "planReady": "Planen er klar"
     },
     "relative": {
       "justNow": "lige nu",
@@ -145,7 +147,11 @@
     },
     "timeline": {
       "sessionConnected": "Sessionen er forbundet.",
-      "toolCall": "Værktøjskald"
+      "toolCall": "Værktøjskald",
+      "runStarted": "Startede kørslen {{name}}",
+      "runFinished": "Kørsel {{name}}: {{status}}",
+      "approvalRequested": "Bad om godkendelse: {{summary}}",
+      "approvalDecided": "Godkendelse: {{status}}"
     },
     "panel": {
       "noProjectTitle": "Åbn et projekt for at bruge forskningsopgaver",
@@ -172,7 +178,9 @@
       "viewTask": "Se opgaven",
       "deleteTitle": "Vil du slette denne opgave?",
       "deleteDescription": "»{{title}}« og dens isolerede arbejdsområde fjernes. Filer, der allerede er anvendt i dit projekt, bliver liggende.",
-      "deleteConfirm": "Slet opgaven"
+      "deleteConfirm": "Slet opgaven",
+      "pendingApprovals_one": "{{count}} forespørgsel venter",
+      "pendingApprovals_other": "{{count}} forespørgsler venter"
     },
     "composer": {
       "editTitle": "Rediger opgaven",
@@ -193,7 +201,11 @@
       "unavailable": "Ikke tilgængelig",
       "saving": "Gemmer...",
       "saveTask": "Gem opgaven",
-      "createTask": "Opret opgaven"
+      "createTask": "Opret opgaven",
+      "replaceText": "Vil du erstatte den titel og de instruktioner, du skrev, med denne starter?",
+      "keepText": "Behold mine",
+      "replaceConfirm": "Erstat",
+      "cannotSave": "Ret de felter, der er markeret ovenfor, og prøv igen."
     },
     "starter": {
       "literatureReview": {
@@ -215,6 +227,10 @@
       "reviewerResponse": {
         "label": "Svar til bedømmerne",
         "title": "Skriv svaret til bedømmerne"
+      },
+      "experimentLoop": {
+        "label": "Kør eksperimenter",
+        "title": "Kør eksperimenter mod et mål"
       }
     },
     "detail": {
@@ -233,6 +249,10 @@
       "dependencies": "Afhængigheder",
       "dependencyUnavailable": "Ikke tilgængelig",
       "noActivity": "Der blev ikke registreret nogen aktivitet for denne kørsel.",
+      "activityGap_one": "{{count}} element imellem er ikke vist.",
+      "activityGap_other": "{{count}} elementer imellem er ikke vist.",
+      "activityMore": "Mere aktivitet vises endnu ikke.",
+      "keepRunningDesktopApps": "Denne opgave bruger skrivebordsapps, som kræver, at du er ved computeren.",
       "startToRecord": "Start denne opgave for at registrere dens aktivitet.",
       "reasoning": "Rapporteret ræsonnement",
       "savedArtifact": "Gemte {{label}}",
@@ -245,6 +265,8 @@
       "clearSelection": "Ryd markeringen",
       "selectAll": "Vælg alle",
       "previewBeforeApply": "Se hver valgt fil igennem, før du anvender den.",
+      "researchRecord": "Forskningslog",
+      "researchRecordHint": "Opgavens egne noter. Du behøver ikke se dem igennem, før du anvender dem.",
       "driftedOne": "{{path}} blev ændret i dit projekt, efter at denne opgave startede. Forskellen er mod den ældre version, så den kan ikke anvendes.",
       "driftedMany": "{{fileCount}} filer blev ændret i dit projekt, efter at denne opgave startede. Deres forskelle er mod de ældre versioner, så de kan ikke anvendes.",
       "applyAria": "Anvend {{path}}",
@@ -274,7 +296,131 @@
       "loadMore": "Indlæs mere aktivitet",
       "changeAdded": "tilføjet",
       "changeModified": "ændret",
-      "changeDeleted": "slettet"
+      "changeDeleted": "slettet",
+      "tabProgress": "Fremgang",
+      "resume": "Genoptag",
+      "resumeHint": "Fortsæt i det samme arbejdsområde fra den gemte overdragelse.",
+      "startOver": "Start forfra",
+      "startOverHint": "Start fra det aktuelle projekt. Forskningsloggen kommer med.",
+      "stopReason": {
+        "budgetTime": "Stoppede, da tidsbudgettet var brugt op.",
+        "budgetCost": "Stoppede ved prisgrænsen.",
+        "budgetRuns": "Stoppede ved grænsen for kørsler."
+      },
+      "startsAt": "Starter {{time}}",
+      "olderActivity": "Tidligere aktivitet fra denne kørsel vises ikke.",
+      "tooLargeToDiff": "Filen er for stor til at sammenligne her, så kun størrelserne vises."
+    },
+    "confirm": {
+      "stopTitle": "Vil du stoppe denne opgave?",
+      "stopDescription": "»{{title}}« stopper efter det nuværende trin. Med Genoptag kan du fortsætte senere fra dens arbejdsområde.",
+      "cancelTitle": "Vil du annullere denne opgave?",
+      "cancelDescription": "»{{title}}« bliver ikke kørt. Du kan prøve igen senere.",
+      "cancelTask": "Annuller opgaven",
+      "discardTitle": "Vil du kassere disse ændringer?",
+      "discardDescription": "Ingen af ændringerne fra »{{title}}« kommer ind i dit projekt, og opgaven markeres som annulleret. Med Genoptag kører agenten igen.",
+      "keepTask": "Behold opgaven",
+      "keepChanges": "Behold ændringerne",
+      "dependents_one": "Denne opgave venter på den og fejler også:",
+      "dependents_other": "Disse {{count}} opgaver venter på den og fejler også:",
+      "runs_one": "Denne kørsel stopper også:",
+      "runs_other": "Disse {{count}} kørsler stopper også:"
+    },
+    "plan": {
+      "title": "Plan",
+      "description": "Læs planen, og rediger den, hvis du vil. Godkend den for at lade opgaven fortsætte.",
+      "approve": "Godkend planen",
+      "approveEdited": "Godkend den redigerede plan",
+      "discard": "Annuller opgaven",
+      "loading": "Indlæser planen…",
+      "missing": "Planfilen mangler. Kør opgaven igen.",
+      "loadFailed": "Oleafly kunne ikke indlæse planen.",
+      "truncated": "Denne plan er længere end 64 KiB, så kun begyndelsen vises. Rediger den ned til de trin, du vil have, og godkend den derefter.",
+      "tooLong": "En plan kan være op til 64 KiB. Gør den kortere, før du godkender den."
+    },
+    "approvals": {
+      "title": "Venter på din godkendelse",
+      "approve": "Godkend",
+      "deny": "Afvis",
+      "kindCommand": "Kør en kommando",
+      "kindRun": "Start en kørsel",
+      "kindMcp": "Brug et værktøj",
+      "expires": "Venter til {{time}}",
+      "detailCommand": "Hele kommandoen",
+      "detailRun": "Kørselsdetaljer",
+      "detailMcp": "Værktøjsargumenter",
+      "loadFailed": "Forespørgsler, der venter, kunne ikke indlæses.",
+      "status": {
+        "approved": "Godkendt",
+        "denied": "Afvist",
+        "expired": "Udløbet",
+        "withdrawn": "Trukket tilbage"
+      }
+    },
+    "phase": {
+      "preparing": "Forbereder arbejdsområdet",
+      "planning": "Skriver planen",
+      "working": "Arbejder",
+      "waitingRuns": "Venter på kørsler",
+      "waitingApproval": "Venter på godkendelse",
+      "wrappingUp": "Afslutter",
+      "checkingEvidence": "Tjekker evidensen"
+    },
+    "progress": {
+      "loading": "Indlæser fremgangen…",
+      "plan": "Plan",
+      "noPlan": "Ingen plan endnu.",
+      "ledger": "Resultatlog",
+      "noLedger": "Der er ikke registreret nogen resultater endnu.",
+      "best": "Bedste {{metric}}",
+      "bestValue": "{{value}} i kørsel {{run}}",
+      "runsInFlight": "Igangværende kørsler",
+      "noRuns": "Ingen igangværende kørsler.",
+      "budget": "Budget",
+      "timeUsed": "{{used}} af {{total}}",
+      "costUsed": "{{used}} af {{limit}}",
+      "costSpent": "{{used}} brugt",
+      "ledgerCapped": "Viser de seneste {{limit}} resultater.",
+      "costUnknown": "Prisen kendes ikke for denne model.",
+      "runsUsed": "{{used}} af {{limit}} kørsler",
+      "runsUsedNoLimit": "{{used}} kørsler",
+      "stopRun": "Stop kørslen",
+      "stopRunTitle": "Vil du stoppe denne kørsel?",
+      "stopRunDescription": "»{{name}}« ({{run}}) stopper nu. Et job, den kører på en anden maskine eller en klynge, annulleres også dér.",
+      "keepRun": "Lad den køre",
+      "viewLog": "Se loggen",
+      "columns": {
+        "run": "Kørsel",
+        "time": "Tid",
+        "hypothesis": "Hypotese",
+        "change": "Ændring",
+        "metrics": "Måltal",
+        "verdict": "Vurdering"
+      },
+      "verdict": {
+        "keep": "Beholdt",
+        "discard": "Kasseret",
+        "crash": "Gik ned"
+      }
+    },
+    "settings": {
+      "title": "Forskningsopgaver",
+      "keepAwake": "Hold computeren vågen, mens opgaver kører",
+      "keepAwakeHint": "Skærmen kan stadig slukke.",
+      "notifications": "Giv mig besked, når en opgave kræver opmærksomhed",
+      "notificationsHint": "Vises, når Oleafly er i baggrunden.",
+      "notificationsBlocked": "Notifikationer er slået fra for Oleafly i systemindstillingerne.",
+      "allowNotifications": "Tillad notifikationer",
+      "network": "Tillad netværk for opgavekommandoer som standard",
+      "timeBudget": "Standardtidsbudget",
+      "mcpServers": "MCP-servere, som opgaver kan bruge",
+      "mcpServersHint": "Opgaver kalder disse værktøjer efter hver opgaves kommandoregler.",
+      "noMcpServers": "Der er ikke sat nogen MCP-servere op.",
+      "networkHint": "Kommandoer i opgaver kan nå internettet. Hver opgave kan stadig slå det fra.",
+      "loadFailed": "Dine forskningsindstillinger kunne ikke indlæses.",
+      "sectionName": "Forskning",
+      "resetConfirm": "Gendan forskningsstandarderne: hold vågen, notifikationer, netværksadgang, tidsbudgettet og de MCP-servere, som opgaver kan bruge. Kørselsmål og baggrundsopgaver ændres ikke.",
+      "saveFailed": "Dine forskningsindstillinger kunne ikke gemmes. Prøv igen."
     }
   },
   "tools": {
@@ -354,7 +500,7 @@
       "name": "Billede til LaTeX",
       "description": "Lav et billede af noter, ligninger eller en tabel om til redigerbar LaTeX.",
       "tag1": "Billeder",
-      "tag2": "Model på enheden",
+      "tag2": "Lokal eller hostet model",
       "tag3": "Intet projekt nødvendigt"
     },
     "visualTypstEditor": {
@@ -376,7 +522,7 @@
       "description": "Konverter en indtastet ligning eller et billede af en ligning til ren LaTeX-matematik.",
       "tag1": "Tekst eller billede",
       "tag2": "Matematik",
-      "tag3": "Model på enheden"
+      "tag3": "Lokal eller hostet model"
     },
     "excelToLatex": {
       "name": "Excel til LaTeX",
@@ -396,7 +542,7 @@
       "name": "Billede til Typst",
       "description": "Lav et billede af noter, ligninger eller en tabel om til redigerbar Typst.",
       "tag1": "Billeder",
-      "tag2": "Model på enheden",
+      "tag2": "Lokal eller hostet model",
       "tag3": "Intet projekt nødvendigt"
     },
     "latexToHtml": {
@@ -744,13 +890,14 @@
     "progressNeedsAttention": "Kræver opmærksomhed",
     "progressCancelled": "Annulleret",
     "progressReadingPages": "Læser sider",
-    "progressTranscribingPage": "Transskriberer side {{page}} af {{total}}",
+    "progressTranscribingPage": "Transskriberer side {{page}} af {{total}} med {{model}}",
+    "progressTranscribingPdfPage": "Transskriberer side {{pdfPage}} ({{page}} af {{total}}) med {{model}}",
     "progressDocumentStructure": "Konverterer dokumentets struktur",
     "progressMermaid": "Gengiver Mermaid-diagrammet",
     "progressFirstSheet": "Læser det første ark",
-    "progressVisionModel": "Kører den lokale visionsmodel",
-    "progressReadingEquation": "Læser ligningen med den lokale visionsmodel",
-    "progressConvertingEquation": "Konverterer ligningen med den lokale model",
+    "progressVisionModel": "Læser billedet med {{model}}",
+    "progressReadingEquation": "Læser ligningen med {{model}}",
+    "progressConvertingEquation": "Konverterer ligningen med {{model}}",
     "progressUnpackingSource": "Pakker den gemte kilde ud",
     "progressDownloadingSource": "Henter e-print-kilden",
     "copied": "Kopierede {{label}}",
@@ -785,14 +932,19 @@
     "fileReady": "{{fileName}} er klar",
     "saveWordHint": "Gem Word-dokumentet, når du er klar.",
     "resultPlaceholder": "Dit konverterede resultat dukker op her.",
-    "progressConvertingSource": "Konverterer kilden til Typst"
+    "progressConvertingSource": "Konverterer kilden til Typst",
+    "pageRange": "Sider",
+    "pageRangePlaceholder": "Alle sider eller et interval som 1-50",
+    "pageRangeInvalid": "Indtast ét sidetal eller et interval som 1-50.",
+    "pageCount_one": "Denne PDF har {{count}} side.",
+    "pageCount_other": "Denne PDF har {{count}} sider."
   },
   "converters": {
     "imageToLatex": {
       "title": "Billede til LaTeX",
-      "subtitle": "Transskriber noter, ligninger eller tabeller med en visionsmodel på enheden",
+      "subtitle": "Transskriber noter, ligninger eller tabeller med en visionsmodel",
       "inputLabel": "Billede",
-      "inputHint": "PNG, JPEG eller WebP. Billedet bliver på denne enhed.",
+      "inputHint": "PNG, JPEG eller WebP, op til 20 MB.",
       "outputLabel": "LaTeX"
     },
     "arxivToLatex": {
@@ -825,9 +977,9 @@
     },
     "imageToTypst": {
       "title": "Billede til Typst",
-      "subtitle": "Transskriber noter, ligninger eller tabeller med en visionsmodel på enheden",
+      "subtitle": "Transskriber noter, ligninger eller tabeller med en visionsmodel",
       "inputLabel": "Billede",
-      "inputHint": "PNG, JPEG eller WebP. Billedet bliver på denne enhed.",
+      "inputHint": "PNG, JPEG eller WebP, op til 20 MB.",
       "outputLabel": "Typst"
     },
     "latexToHtml": {
@@ -883,14 +1035,14 @@
       "title": "PDF til Markdown",
       "subtitle": "Træk tekst, ligninger og figurer ud lokalt",
       "inputLabel": "PDF",
-      "inputHint": "PDF-filer med tekst bruger deterministisk udtræk. Skanninger bruger en lokal visionsmodel.",
+      "inputHint": "PDF'er med tekst bruger deterministisk udtrækning. Skanninger bruger den model, du vælger.",
       "outputLabel": "Markdown"
     },
     "pdfToTypst": {
       "title": "PDF til Typst",
       "subtitle": "Træk tekst, ligninger og figurer ud lokalt",
       "inputLabel": "PDF",
-      "inputHint": "PDF-filer med tekst bruger deterministisk udtræk. Skanninger bruger en lokal visionsmodel.",
+      "inputHint": "PDF'er med tekst bruger deterministisk udtrækning. Skanninger bruger den model, du vælger.",
       "outputLabel": "Typst"
     },
     "typstToLatex": {
@@ -981,10 +1133,10 @@
   "converterErrors": {
     "chooseSmallerImage": "Vælg et billede, der fylder mindre end 20 MB.",
     "imageFormat": "Vælg et billede i PNG, JPEG eller WebP.",
-    "ollamaUnavailable": "Start Ollama under Indstillinger, og installer så en lokal model til denne konvertering.",
-    "visionModelMissing": "Installer en visionsmodel i Ollama, for eksempel Llama 3.2 Vision, og prøv igen.",
-    "localModelMissing": "Installer en lokal Ollama-model, og prøv igen.",
-    "emptyTranscription": "Den lokale model returnerede en tom transskription.",
+    "ollamaUnavailable": "Start Ollama, eller vælg en anden model til Værktøjer.",
+    "visionModelMissing": "Hent en visionsmodel i Ollama, for eksempel glm-ocr, eller vælg en anden model til Værktøjer.",
+    "localModelMissing": "Hent en model i Ollama, eller vælg en anden model til Værktøjer.",
+    "emptyTranscription": "Modellen returnerede en tom transskription.",
     "pdfNoPages": "Denne PDF indeholder ingen sider at transskribere.",
     "pdfPageLimit": "Transskription af skannede PDF-filer er begrænset til 50 sider ad gangen.",
     "pandocNotReady": "Pandoc er ikke klar endnu.",
@@ -992,10 +1144,16 @@
     "fileTooLarge": "Vælg en fil, der fylder mindre end 128 MB.",
     "emptySheet": "Det valgte ark er tomt.",
     "arxivInputRequired": "Indtast et arXiv-id, eller vælg et kildearkiv.",
-    "equationToTypst": "Pandoc kunne ikke konvertere denne ligning til Typst. Tjek LaTeX-matematikken, og prøv igen."
+    "equationToTypst": "Pandoc kunne ikke konvertere denne ligning til Typst. Tjek LaTeX-matematikken, og prøv igen.",
+    "pdfTooManyPages": "Denne skanning har {{pages}} sider, og Oleafly transskriberer op til {{limit}} ad gangen. Angiv et sideinterval som 1-{{limit}} under filen.",
+    "outputLimit": "Modellen løb tør for plads, inden den blev færdig, så transskriptionen ville blive ufuldstændig. Vælg en model med en større outputgrænse under Indstillinger, AI-assistent, Værktøjer, eller transskriber en mindre del.",
+    "refused": "Modellen afviste at transskribere dette, så der blev ikke tilføjet noget. Vælg en anden model under Indstillinger, AI-assistent, Værktøjer.",
+    "pageRangePastEnd_one": "Denne PDF har {{count}} side. Indtast 1, eller lad Sider stå tom.",
+    "pageRangePastEnd_other": "Denne PDF har {{count}} sider. Indtast et interval fra 1 til {{count}}."
   },
   "converterNotes": {
-    "scannedPages": "Transskriberede {{pages}} skannede sider med en lokal model. Gennemgå ligninger og tabeller, før du bruger resultatet.",
+    "scannedPages_one": "Transskriberede {{count}} skannet side med {{model}}. Gennemgå ligninger og tabeller, før du bruger resultatet.",
+    "scannedPages_other": "Transskriberede {{count}} skannede sider med {{model}}. Gennemgå ligninger og tabeller, før du bruger resultatet.",
     "extracted": "Trak {{pages}} sider og {{figures}} figurer ud lokalt.",
     "mermaidTikz": "Konverterede dette flowdiagram til redigerbar TikZ.",
     "mermaidRendered": "Gengav dette diagram lokalt, fordi dets Mermaid-syntaks ikke kan oversættes rent til redigerbar TikZ.",
@@ -1010,6 +1168,53 @@
     "notConverted_one": "{{count}} element blev ikke konverteret.",
     "notConverted_other": "{{count}} elementer blev ikke konverteret.",
     "checkLine": "Linje {{line}}: {{message}}"
+  },
+  "converterModel": {
+    "label": "Model til Værktøjer",
+    "automatic": "Automatisk (bedste lokale model)",
+    "localGroup": "Lokal (Ollama)",
+    "mathpixModel": "Mathpix OCR",
+    "sentTo": "Billeder sendes til {{provider}}",
+    "sentToHost": "Billeder sendes til Ollama på {{host}}",
+    "scansSentTo": "Skannede sider sendes til {{provider}}",
+    "scansSentToHost": "Skannede sider sendes til Ollama på {{host}}",
+    "pdfSentToMathpix": "Hele PDF'en sendes til Mathpix",
+    "transcribingHosted": "Sender billedet til {{provider}}…",
+    "transcribingFallback": "Sender billedet til {{provider}} (assistentmodel)…",
+    "sentFallback": "Sendt til {{provider}} (assistentmodel)",
+    "editorFallback": "Billede til LaTeX i editoren sender billeder til {{provider}}, indtil Ollama har en visionsmodel",
+    "progressUploading": "Sender PDF'en til Mathpix",
+    "progressFormatting": "Konverterer transskriptionen med Pandoc",
+    "scannedTitle": "Denne PDF ser skannet ud",
+    "estimateOllama_one": "{{count}} side. Det kan tage et stykke tid for Ollama at læse den.",
+    "estimateOllama_other": "{{count}} sider. Ollama læser dem én ad gangen, hvilket kan tage et stykke tid.",
+    "estimateCost_one": "{{count}} side. Cirka {{cost}} med {{model}}.",
+    "estimateCost_other": "{{count}} sider. Cirka {{cost}} med {{model}}.",
+    "estimateUnknown_one": "{{count}} side. {{provider}} afregner den efter forbrug.",
+    "estimateUnknown_other": "{{count}} sider. {{provider}} afregner dem efter forbrug.",
+    "estimatePlan_one": "{{count}} side. Den er inkluderet i dit abonnement hos {{provider}}.",
+    "estimatePlan_other": "{{count}} sider. De er inkluderet i dit abonnement hos {{provider}}.",
+    "estimateLocal_one": "{{count}} side. Modellen kører på denne computer uden omkostninger.",
+    "estimateLocal_other": "{{count}} sider. Modellen kører på denne computer uden omkostninger.",
+    "estimateFree_one": "{{count}} side. Gratis med {{model}}.",
+    "estimateFree_other": "{{count}} sider. Gratis med {{model}}.",
+    "transcribePages_one": "Transskriber {{count}} side",
+    "transcribePages_other": "Transskriber {{count}} sider",
+    "transcribedWith": "Transskriberet med {{model}}. Gennemgå ligninger og tabeller.",
+    "sentBadge": "Sendt til {{provider}}",
+    "openToolsSettings": "Indstillinger for Værktøjer",
+    "openProviderSettings": "Udbyderindstillinger",
+    "errors": {
+      "offline": "Oleafly er i offlinetilstand. Vælg en lokal model, eller slå offlinetilstand fra.",
+      "providerNotConfigured": "{{provider}} har ingen API-nøgle. Tilføj en under Indstillinger, eller vælg en anden model.",
+      "modelDisabled": "{{model}} er slået fra under Indstillinger. Slå den til, eller vælg en anden model.",
+      "modelUnavailable": "{{model}} er ikke længere tilgængelig hos {{provider}}. Vælg en anden model.",
+      "cannotSeeImages": "{{model}} kan ikke læse billeder. Vælg en visionsmodel.",
+      "localModelGone": "{{model}} findes ikke længere i Ollama. Hent den igen, eller vælg en anden model.",
+      "imagesOnly": "{{model}} læser kun billeder. Vælg en sprogmodel for at konvertere skrevne ligninger.",
+      "mathpixNotSetUp": "Tilføj dine Mathpix-nøgler under Indstillinger, AI-assistent, Værktøjer, eller vælg en anden model.",
+      "imageTooLarge": "Billedet er stadig for stort, efter at det er gjort mindre. Beskær det, og prøv igen."
+    }
   },
   "mermaidErrors": {
     "tooLarge": "Dette Mermaid-diagram er større end grænsen på 50.000 tegn.",
@@ -1557,5 +1762,263 @@
     "citeAdded": "Tilføjede {{citation}}",
     "addFailed": "Citationen kunne ikke tilføjes.",
     "toastCopyFailed": "BibTeX kunne ikke kopieres."
+  },
+  "brief": {
+    "title": "Opgavebeskrivelse",
+    "goalLabel": "Mål",
+    "goalPlaceholder": "Hvad skal denne opgave finde ud af eller lave?",
+    "criteriaLabel": "Succeskriterier",
+    "criteriaHint": "Ét pr. linje. Hvert af dem skal være noget, du kan tjekke.",
+    "scopeLabel": "Afgrænsning",
+    "constraintsLabel": "Begrænsninger",
+    "metricLabel": "Hovedmåltal",
+    "metricPlaceholder": "For eksempel val_loss",
+    "metricMaximize": "Højere er bedre",
+    "metricMinimize": "Lavere er bedre",
+    "reviewPlan": "Gennemgå planen først",
+    "reviewPlanHint": "Agenten skriver plan.md og venter på din godkendelse, før den starter.",
+    "commandsLabel": "Kommandoer",
+    "commandsAllow": "Kør uden at spørge",
+    "commandsAsk": "Spørg før kørsel",
+    "commandsOff": "Kør ikke kommandoer",
+    "network": "Tillad netværksadgang for kommandoer",
+    "networkHint": "Kræves for at installere pakker eller hente data.",
+    "budgetLabel": "Budget",
+    "timeLabel": "Tid",
+    "minutes_one": "{{count}} minut",
+    "minutes_other": "{{count}} minutter",
+    "hours_one": "{{count}} time",
+    "hours_other": "{{count}} timer",
+    "costLabel": "Prisgrænse (USD)",
+    "noLimit": "Ingen grænse",
+    "runsLabel": "Grænse for kørsler",
+    "runTimeoutLabel": "Hver kørsel stopper efter",
+    "profileLabel": "Kørselsprofil",
+    "profileAnalysis": "Analyse",
+    "profileAnalysisHint": "Dine Python- og R-miljøer, skrivebeskyttede datamapper, ingen GPU.",
+    "profileTraining": "Træning",
+    "profileTrainingHint": "Tilføjer GPU-adgang og længere kørsler.",
+    "computeLabel": "Hvor kørslerne foregår",
+    "computeLocal": "Denne computer",
+    "startAtLabel": "Starttidspunkt",
+    "startNow": "Når jeg starter den",
+    "keepRunning": "Bliv ved med at køre, når Oleafly er lukket",
+    "keepRunningHint": "Slå først Baggrundsopgaver til under Indstillinger, Forskning.",
+    "invalidMetric": "Brug bogstaver, tal, punktummer, bindestreger eller understregninger.",
+    "invalidCost": "Indtast et beløb over nul.",
+    "invalidCostMax": "Indtast et beløb på op til {{max}}.",
+    "invalidCostNumber": "Indtast beløbet som et tal, for eksempel {{example}}.",
+    "invalidRuns": "Indtast et helt tal fra 1 til 1.000.",
+    "invalidStart": "Vælg et starttidspunkt inden for de næste 30 dage.",
+    "invalidStartFormat": "Brug formatet {{example}}.",
+    "startAtFormat": "Skriv tidspunktet som {{example}}.",
+    "problemHidden": "En indstilling i Opgavebeskrivelsen skal rettes. Åbn Opgavebeskrivelsen for at se hvilken."
+  },
+  "runs": {
+    "status": {
+      "starting": "Starter",
+      "running": "Kører",
+      "succeeded": "Færdig",
+      "failed": "Mislykkedes",
+      "timedOut": "Tiden løb ud",
+      "cancelled": "Stoppet",
+      "lost": "Mistet"
+    }
+  },
+  "evidence": {
+    "title": "Tjek af evidens",
+    "hint": "Disse tjek giver kun advarsler. De forhindrer dig ikke i at anvende.",
+    "running": "Tjekker…",
+    "refresh": "Tjek igen",
+    "empty": "Der er endnu ikke kørt nogen tjek på dette resultat.",
+    "more_one": "{{count}} mere vises ikke på listen.",
+    "more_other": "{{count}} flere vises ikke på listen.",
+    "status": {
+      "pass": "Bestået",
+      "warn": "Tjek dette",
+      "skipped": "Ikke tjekket"
+    },
+    "checks": {
+      "build": "Projektet kan bygges",
+      "references": "Ingen nye uløste referencer eller citationer",
+      "bibliography": "Nye litteraturposter er bekræftet",
+      "numbers": "Tallene passer til deres kørsler",
+      "figures": "Nye figurer findes og bruges"
+    },
+    "items": {
+      "buildFailed": "Bygningen mislykkedes med {{errors}} fejl.",
+      "buildSkipped": "Bygningen blev ikke tjekket: {{reason}}",
+      "referencesUnresolved": "{{key}} peger ikke på noget.",
+      "referencesNotChecked": "Referencer tjekkes ikke i denne bygning endnu.",
+      "bibUnverified": "{{key}} kunne ikke bekræftes.",
+      "bibTitleMismatch": "{{key}} peger på en anden titel: {{found}}",
+      "bibLookupFailed": "{{key}} kunne ikke slås op. Prøv igen senere.",
+      "numbersMismatch": "{{value}} passer ikke til kørsel {{run}} ({{recorded}}).",
+      "numbersUnknownRun": "Kørsel {{run}} findes ikke.",
+      "numbersNoLedgerRow": "Kørsel {{run}} har ingen række i resultatloggen.",
+      "figuresMissing": "Der henvises til {{path}}, men den mangler.",
+      "figuresUnused": "{{path}} bruges ikke i dokumentet."
+    }
+  },
+  "compute": {
+    "title": "Beregningsressourcer",
+    "description": "Vælg, hvor eksperimentkørsler udføres. Hver opgave vælger et mål i sin opgavebeskrivelse.",
+    "targets": {
+      "heading": "Mål for kørsler",
+      "local": "Denne computer",
+      "localDescription": "Kørsler bruger sandkassen på denne computer.",
+      "add": "Tilføj mål",
+      "addSsh": "SSH-vært",
+      "addSlurm": "Slurm-klynge",
+      "addCua": "Cua Space",
+      "import": "Importer fra SSH-konfigurationen",
+      "test": "Test",
+      "testing": "Tester…",
+      "more": "Flere handlinger for {{label}}",
+      "edit": "Rediger",
+      "remove": "Fjern",
+      "removeTitle": "Vil du fjerne {{label}}?",
+      "removeConfirm": "Kørsler, der allerede er startet der, fortsætter. Opgaver, der venter på at starte på det, vil mislykkes.",
+      "forgetHostKey": "Glem værtsnøglen",
+      "reviewHostKey": "Tjek værtsnøglen",
+      "notTested": "Ikke testet",
+      "tested": "Testet {{time}}",
+      "testFailed": "Testen mislykkedes",
+      "perTaskSpace": "Ny Space til hver opgave",
+      "saveFailed": "Målet kunne ikke gemmes: {{message}}"
+    },
+    "kind": {
+      "ssh": "SSH",
+      "slurm": "Slurm",
+      "cuaSpace": "Cua Space"
+    },
+    "notes": {
+      "keys": "Oleafly opretter forbindelse med dine SSH-nøgler eller din agent. Oleafly beder aldrig om adgangskoder eller nøgler og gemmer dem aldrig.",
+      "windowsRsync": "Windows har ikke rsync, så Oleafly kopierer filer med tar over SSH.",
+      "sshMissingWindows": "OpenSSH-klienten er ikke installeret. Tilføj den i Windows-indstillingerne under System, Valgfrie funktioner.",
+      "sshMissing": "OpenSSH er ikke installeret. Installer det med din pakkehåndtering.",
+      "cuaMissing": "Cua er ikke installeret. Installer det fra cua.ai, og test så igen.",
+      "relay": "Denne Space kører på en rigtig computer. Kørsler der er ikke isolerede.",
+      "outputs": "Filer, som en kørsel opretter, kommer tilbage til runs/<run>/outputs i opgavens kopi."
+    },
+    "form": {
+      "addTitle": "Tilføj {{kind}}",
+      "editTitle": "Rediger {{label}}",
+      "label": "Navn",
+      "host": "Vært",
+      "hostHint": "En vært fra din SSH-konfiguration eller et værtsnavn",
+      "user": "Bruger",
+      "userHint": "Lad feltet stå tomt for at bruge din SSH-konfiguration.",
+      "port": "Port",
+      "remoteRoot": "Fjernmappe",
+      "remoteRootHint": "Kørsler havner i .oleafly-runs i din hjemmemappe, medmindre du vælger en anden mappe.",
+      "prelude": "Opsætningskommandoer",
+      "preludeHint": "Køres før hver kommando, for eksempel module load python.",
+      "partition": "Partition",
+      "account": "Konto",
+      "qos": "QOS",
+      "time": "Tidsgrænse",
+      "timeHint": "For eksempel 2:00:00 eller 1-00:00:00",
+      "gpus": "GPU'er",
+      "cpus": "CPU'er",
+      "mem": "Hukommelse (GB)",
+      "memHint": "For eksempel 16",
+      "gpuFlag": "GPU-indstilling",
+      "spaceMode": "Space",
+      "spaceNamed": "Brug en navngiven Space",
+      "spacePerTask": "Opret en ny Space til hver opgave",
+      "space": "Navn på Space",
+      "image": "Image",
+      "save": "Gem",
+      "cancel": "Annuller",
+      "errors": {
+        "label": "Indtast et navn på op til 80 tegn.",
+        "host": "Indtast et værtsnavn uden mellemrum.",
+        "user": "Brug bogstaver, tal, punktummer, bindestreger eller understregninger.",
+        "port": "Brug en port fra 1 til 65535.",
+        "remoteRoot": "Brug en mappesti uden mellemrum, anførselstegn eller \"..\".",
+        "time": "Brug en Slurm-tid som 2:00:00.",
+        "name": "Brug bogstaver, tal, punktummer, kommaer, bindestreger eller understregninger.",
+        "mem": "Brug et helt antal gigabyte, for eksempel 16.",
+        "count": "Brug et helt tal inden for det tilladte interval.",
+        "prelude": "Hold opsætningskommandoerne på 4 KB eller derunder. Bogstaver med accenter og ikke-latinske skrifttyper fylder mere."
+      }
+    },
+    "test": {
+      "connect": "Forbind",
+      "echo": "Kør en kommando",
+      "disk": "Ledig plads",
+      "python": "Python",
+      "gpu": "GPU",
+      "rsync": "rsync",
+      "slurm": "Slurm",
+      "cua": "Cua",
+      "space": "Space",
+      "pass": "Bestået",
+      "warn": "Tjek dette",
+      "fail": "Mislykkedes",
+      "skipped": "Ikke tjekket"
+    },
+    "hostKey": {
+      "title": "Vil du stole på denne vært?",
+      "body": "Oleafly har ikke haft forbindelse til {{host}} før. Sammenlign disse fingeraftryk med dem, din administrator giver dig.",
+      "trust": "Stol på og forbind",
+      "changedTitle": "Værtsnøglen er ændret",
+      "changed": "Værtsnøglen for {{host}} er ændret. Nogen opsnapper måske forbindelsen. Hvis din administrator har udskiftet nøglen, skal du glemme den gamle nøgle og teste igen."
+    },
+    "import": {
+      "title": "Importer SSH-værter",
+      "body": "Vælg de værter, der skal tilføjes. Oleafly læser din SSH-konfiguration og ændrer den aldrig.",
+      "none": "Der blev ikke fundet nogen værter i din SSH-konfiguration.",
+      "added": "Allerede tilføjet",
+      "add_one": "Tilføj {{count}} vært",
+      "add_other": "Tilføj {{count}} værter",
+      "skipped": "Ikke tilføjet: {{hosts}}. {{reason}}"
+    },
+    "sandbox": {
+      "heading": "Sandkasse på denne computer",
+      "description": "Kørsler på denne computer kan læse dine fortolkere og tilknyttede mapper. De skriver kun til opgavens kopi.",
+      "ready": "Klar",
+      "unavailable": "Ikke tilgængelig",
+      "macos": "Bruger macOS-sandkassen.",
+      "linux": "Bruger bubblewrap.",
+      "linuxMissing": "Installer bubblewrap (bwrap) for at køre opgavekommandoer.",
+      "windowsLabel": "Kør opgavekommandoer i Windows-sandkassen",
+      "windowsDescription": "Kommandoer kører i en Windows AppContainer, der kun kan nå opgavens filer og mapperne nedenfor. Slået fra som standard, mens den er i beta.",
+      "gpuWindows": "GPU-adgang i Windows-sandkassen er ikke bekræftet endnu. Brug et SSH- eller Slurm-mål til GPU-arbejde.",
+      "limitsWindows": "I Windows-sandkassen virker multiprocessing i Python og Node.js-programmer, der starter andre programmer, ikke endnu.",
+      "check": "Tjek sandkassen",
+      "checking": "Tjekker…",
+      "checkPassed": "Sandkassen virker.",
+      "checkFailed": "Tjekket af sandkassen mislykkedes: {{reason}}",
+      "runtimes": "Fortolkere",
+      "runtimesEmpty": "Der blev ikke fundet nogen Python, R eller Julia.",
+      "refresh": "Opdater",
+      "access": "Mapper, som sandkassen kan læse",
+      "accessNote": "For at lade opgaver læse disse mapper tilføjer Oleafly en tilladelse til hver af dem.",
+      "removeAccess": "Fjern adgang",
+      "removeAccessTitle": "Vil du fjerne sandkassens adgang?",
+      "removeAccessConfirm": "Vil du fjerne sandkassens adgang til disse mapper? Oleafly tilføjer den igen, næste gang en opgave har brug for den."
+    },
+    "brief": {
+      "runsOn": "Kører på {{target}}",
+      "runsLocal": "Kører på denne computer.",
+      "missing": "Det mål, som denne opgave brugte, er fjernet. Vælg et andet.",
+      "loadFailed": "Dine kørselsmål kunne ikke indlæses.",
+      "windowsOff": "Slå Windows-sandkassen til under Indstillinger for at køre kommandoer på denne computer.",
+      "openSettings": "Åbn Indstillinger",
+      "resources": "Slurm-ressourcer"
+    }
+  },
+  "backgroundHelper": {
+    "badge": {
+      "background": "I baggrunden",
+      "backgroundHint": "Oleaflys hjælpeproces i baggrunden kører denne opgave. Opgaven flytter tilbage hertil efter sit nuværende trin.",
+      "movingBack": "Flytter tilbage",
+      "movingBackHint": "Opgaven vender tilbage til Oleafly, når det nuværende trin er færdigt."
+    },
+    "earlierActivity": "Vis tidligere aktivitet",
+    "earlierTruncated": "Kun de sidste {{limit}} elementer fra denne tidligere kørsel vises.",
+    "keepRunningFailed": "Indstillingen kunne ikke ændres. Prøv igen."
   }
 }

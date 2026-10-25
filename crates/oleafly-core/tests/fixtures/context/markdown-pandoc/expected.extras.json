@@ -1,0 +1,12 @@
+{
+  "missing_files": [],
+  "packages": [],
+  "roles": {
+    "main.md": "main",
+    "refs.bib": "bibliography"
+  },
+  "unused_cites": [],
+  "unused_labels": [
+    "sec:intro"
+  ]
+}

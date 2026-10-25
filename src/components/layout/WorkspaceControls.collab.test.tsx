@@ -1,9 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@/lib/browser-window", () => ({ toggleBrowser: vi.fn(), launchBrowser: vi.fn() }));
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
@@ -13,6 +11,7 @@ import { useCollabRail } from "@/components/collab/collab-rail";
 import { registerRailTabs } from "@/contributions/tabs";
 import { ThemeProvider } from "@/lib/theme";
 import { useFilesStore } from "@/store/files";
+import { useResearchTasksFlagStore } from "@/store/research-tasks-flag";
 import { useSettingsStore } from "@/store/settings";
 
 registerRailTabs();
@@ -34,6 +33,8 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  // 0.4.8: the Research tab exists only while research tasks (experimental) are on.
+  useResearchTasksFlagStore.setState({ enabled: true });
   useSettingsStore.setState({ showTree: false, railTab: "files" });
   useFilesStore.setState({ projectId: "grant" });
   useCollabRail.setState({ visible: false, unread: false });

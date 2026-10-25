@@ -2,18 +2,27 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/store/github", () => ({
-  useGithubStore: (selector: (state: unknown) => unknown) =>
-    selector({ status: "disconnected", refresh: vi.fn() }),
+const forgeState = vi.hoisted(() => ({
+  status: "ready",
+  accounts: [] as unknown[],
+  ensureLoaded: vi.fn(async () => [] as unknown[]),
 }));
 
-vi.mock("@/lib/github", () => ({
-  githubListRepos: vi.fn(async () => []),
+vi.mock("@/store/forge-accounts", () => ({
+  useForgeAccountsStore: Object.assign(
+    (selector: (state: typeof forgeState) => unknown) => selector(forgeState),
+    { getState: () => forgeState },
+  ),
+}));
+
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+  forgeListRepos: vi.fn(async () => ({ repos: [], nextPage: null, searched: false })),
 }));
 
 vi.mock("@/features/project-import", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/features/project-import")>(),
-  importGitHubRepository: vi.fn(),
+  importForgeRepository: vi.fn(),
   importSelectedFile: vi.fn(),
   importTargetsForKind: vi.fn((kind: string) => {
     switch (kind) {
@@ -77,7 +86,7 @@ describe("ProjectImportMenu", () => {
     );
     expect(screen.getByTestId("import-kind-html")).toHaveTextContent("HTML page");
     expect(screen.getByTestId("import-kind-typst")).toHaveTextContent("Typst document");
-    expect(screen.getByText("GitHub")).toBeInTheDocument();
+    expect(screen.getByTestId("import-git")).toHaveTextContent("Git repository");
   });
 
   it("shows a tooltip when the trigger requests one", () => {

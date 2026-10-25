@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://cdn.oleafly.com/brand/logo/png/oleafly-tile-gradient-256.png" alt="Oleaflyのロゴ" width="112" height="112" />
+<img src="https://cdn.oleafly.com/brand/logo/png/oleafly-app-icon-pastel-256.png" alt="Oleaflyのロゴ" width="112" height="112" />
 
 # Oleafly <sup><em>beta</em></sup>
 
@@ -38,15 +38,16 @@ Oleaflyは、LaTeX、Typst、Markdownで研究論文や学位論文を書くた�
 - 長い文書のために作られたエディタです。ラベル、引用、コマンドの補完、リアルタイムのエラーチェック、プロジェクト全体のアウトライン、VimとEmacsのキーバインド、ビジュアルモード、検索できる236個のLaTeX記号パレットを備えています。
 - 自分のコンピューターでコンパイルできます。Tectonic、Typst、Pandocを内蔵し、プロジェクトに完全なディストリビューションが必要なときはTeX Live、MacTeX、MiKTeX、TinyTeXが引き継ぎます。
 - PDFをクリックするとソースへ移動でき、ソースからPDFへ戻ることもできます。エラーを直している間も、最後に正常にコンパイルできたPDFが画面に残ります。
-- すべてのプロジェクトはGitHubにpushできるGitリポジトリで、Checkpointsはコンパイルが成功するたびにスナップショットを保存します。
+- すべてのプロジェクトはGitHub、GitLab、Gitea、Forgejo、Codeberg、または自分のGitサーバーにpushできるGitリポジトリで、Checkpointsはコンパイルが成功するたびにスナップショットを保存します。
 - 入力しながらZoteroライブラリから引用でき、エディタを離れずにarXiv、Semantic Scholar、Crossref、PubMed、OpenAlexを検索できます。
 - 学術的な文章向けに調整されたスペルチェックと文法チェックが、自分のコンピューター上で動作します。
 - Preflightは、投稿前に壊れた参照、欠落した図、埋め込まれていないフォント、アクセシビリティの不備、匿名査読で著者が分かってしまう箇所を見つけます。
 - TikZ、Typst、Mermaidのコードのまま残る図を描けます。論文、学位論文、スライド、ポスター、履歴書向けの1,700以上のテンプレートから始めることもできます。
-- Word、PDF、arXivソース、GitHubリポジトリ、オンラインのLaTeXエディタのアカウントからインポートできます。
+- Word、PDF、arXivソース、Gitリポジトリ、オンラインのLaTeXエディタのアカウントからインポートできます。
+- `oleafly`コマンドを使うと、どのターミナルやCIジョブからでも、アプリと同じコンパイラーと設定でプロジェクトのビルド、チェック、同期ができます。
 - クラウド同期で、使っているすべてのコンピューターにプロジェクトが揃い、オフラインでも執筆を続けられます。
 - Claude Code、Codex、ほか12のエージェントがプロジェクト内で動作します。ローカルモデルを含む任意のモデルを接続することもできます。AIは任意で、AIによる変更はすべて確認して元に戻せる差分になります。
-- リサーチタスクでは、執筆を続けている間に文献レビュー、根拠の監査、改訂作業をプロジェクトの別のコピーで実行し、残す変更ファイルを自分で選べます。
+- リサーチタスクでは、執筆を続けている間に文献レビュー、根拠の監査、改訂作業をプロジェクトの別のコピーで実行し、残す変更ファイルを自分で選べます。試験的な機能で、デフォルトではオフです。「設定」>「実験的な機能」でオンにできます。
 
 ## リアルタイムで一緒に書く
 
@@ -145,8 +146,9 @@ SQLiteを使う単一のRustバイナリで、ファイルはディスクまた�
 - ファイルの変更はすべて差分になります。1つずつ承認するか、アシスタントに任せて作業させるか、ツールごとにルールを設定でき、1ファイル単位でもターン全体でも元に戻せます。
 - Planモードでは、何かを書き込む前にプロジェクトの全体像を把握します。
 - 執筆を続けている間に、文献レビューや改訂作業を専用のGit worktreeで実行できます。残す変更ファイルは自分で選びます。
-- 文献調査、関連研究、主張の検証、査読者への回答書など、36個のリサーチskillがアプリに同梱されています。
+- 文献調査、関連研究、主張の検証、査読者への回答書など、39個のリサーチskillがアプリに同梱されています。
 - ローカルMCPサーバーを使うと、外部のAIクライアントも同じプロジェクトツールを使えます。待ち受けるのは127.0.0.1だけです。
+- `oleafly mcp`は、アプリを開いていてもいなくても、Claude Code、Codex、Cursor、Gemini CLIにstdio経由でプロジェクトツールを提供します。
 
 AIは任意です。エディタ、コンパイラ、PDF、引用、校正、チェックは、AIをオフにしてもすべて動作します。
 
@@ -197,13 +199,15 @@ Tectonic、Typst、Pandocはアプリに同梱されているので、新しい�
 
 ## Git、履歴、ターミナル
 
-すべてのプロジェクトは、普通のGitリポジトリを持つ普通のフォルダーです。Source Controlパネルから、ステージ、差分表示、コミット、push、pull、GitHubへの公開ができます。ターミナルから隠しているものは何もないので、自分のターミナルを使うこともできます。Checkpointsはコンパイルが成功するたびにローカルスナップショットを保存するので、コミットを作らずに以前の状態に戻せます。
+すべてのプロジェクトは、普通のGitリポジトリを持つ普通のフォルダーです。Source Controlパネルから、ステージ、差分表示、コミット、push、pull、GitHub、GitLab、Gitea、Forgejo、Codeberg、または自分のサーバーへの公開ができます。ターミナルから隠しているものは何もないので、自分のターミナルを使うこともできます。Checkpointsはコンパイルが成功するたびにローカルスナップショットを保存するので、コミットを作らずに以前の状態に戻せます。
 
 <p align="center">
   <img src="../assets/readme/git-history.png" alt="差分、ブランチグラフ、コミット操作を表示するOleaflyのSource Controlパネル" width="100%" />
 </p>
 
 エディタの下にはターミナルドックがあり、1プロジェクトにつき最大10個のタブを開けます。出力内のファイルパスをCmd+クリック（Ctrl+クリック）すると、そのファイルを該当する行で開けます。
+
+`oleafly`コマンドを使えば、どのターミナルからでも同じプロジェクトを扱えます。ビルド、変更のたびの再ビルド、投稿前のチェック、オンラインのLaTeXサービスとの同期に加えて、アプリを開かずにOleaflyのエージェントを実行することもできます。どのコマンドも、スクリプトやCI向けに安定した終了コード付きのJSONを出力できます。詳しくは[コマンドラインガイド](../cli.md)をご覧ください。
 
 ## ほかにもたくさん
 
@@ -277,21 +281,21 @@ Toolsギャラリーはbetaで、デフォルトではオフです。Settingsの
 </details>
 
 <details>
-<summary>Oleaflyに同梱される36個のリサーチskill</summary>
+<summary>Oleaflyに同梱される39個のリサーチskill</summary>
 
 skillはAgent Skillsの形式に従う通常の`SKILL.md`フォルダーです。スラッシュコマンドで実行したり、自分のskillを追加したり、同じコンピューター上の対応するCLIエージェントと共有したりできます。
 
-同梱の`research-core`パックには36個のskillがあります。以下の名前は、カタログとプロジェクト設定で使われるIDです。
+同梱の`research-core`パックには39個のskillがあります。以下の名前は、カタログとプロジェクト設定で使われるIDです。
 
 | カテゴリ | Skills |
 | --- | --- |
-| リサーチと文献 | `citation-management`、`exploratory-data-analysis`、`hypothesis-generation`、`literature-review`、`oleafly-literature-sweep`、`oleafly-research-loop`、`openresearch`、`paper-lookup`、`research-lookup`、`scientific-brainstorming`、`scientific-critical-thinking` |
+| リサーチと文献 | `citation-management`、`exploratory-data-analysis`、`hypothesis-generation`、`literature-review`、`oleafly-experiment-loop`、`oleafly-literature-sweep`、`oleafly-research-loop`、`openresearch`、`paper-lookup`、`research-lookup`、`scientific-brainstorming`、`scientific-critical-thinking` |
 | 原稿作成と分析 | `experimental-design`、`oleafly-data-analysis`、`oleafly-manuscript-scaffold`、`oleafly-related-work`、`scientific-writing`、`statistical-analysis`、`statistical-power`、`venue-templates` |
 | 図と可視化 | `oleafly-figure-prep`、`scientific-schematics`、`scientific-visualization` |
 | レビューと根拠 | `oleafly-response-letter`、`oleafly-review-manuscript`、`oleafly-verify-claims`、`peer-review`、`scholar-evaluation` |
 | 投稿 | `oleafly-pre-submission` |
 | コミュニケーション | `oleafly-slides-and-posters`、`pptx-posters`、`research-grants`、`scientific-slides` |
-| インポートとビルドツール | `import-refine`、`oleafly-latex-build`、`pdf-to-latex`、`template-generate` |
+| ツールと自動化 | `desktop-apps`、`import-refine`、`oleafly-cli`、`oleafly-latex-build`、`pdf-to-latex`、`template-generate` |
 
 </details>
 
@@ -370,6 +374,7 @@ Oleaflyのアカウントは必要ありません。何にもサインインせ�
 - [AI Copilot](../AICopilot.md)
 - [Skills](../Skills.md)
 - [MCP統合](../mcp.md)
+- [コマンドラインツール](../cli.md)
 - [開発環境のセットアップ](../development.md)
 - [変更履歴](../../CHANGELOG.md)
 

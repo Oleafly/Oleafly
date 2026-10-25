@@ -1,0 +1,46 @@
+{
+  "files": [
+    "main.tex",
+    "refs.bib"
+  ],
+  "sections": [
+    {
+      "title": "Introduction",
+      "level": 2,
+      "file": "main.tex",
+      "line": 6
+    },
+    {
+      "title": "Scope",
+      "level": 3,
+      "file": "main.tex",
+      "line": 10
+    },
+    {
+      "title": "Unnumbered",
+      "level": 2,
+      "file": "main.tex",
+      "line": 15
+    }
+  ],
+  "labels": [
+    "sec:intro",
+    "sec:scope",
+    "eq:main"
+  ],
+  "bibKeys": [
+    "knuth1984",
+    "lamport1994",
+    "goossens",
+    "unused2020"
+  ],
+  "macros": [],
+  "theorems": [],
+  "glossary": [],
+  "inputGraph": [],
+  "unresolvedRefs": [
+    "sec:results"
+  ],
+  "unresolvedCites": [],
+  "ambiguousTypstAtUses": []
+}

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://cdn.oleafly.com/brand/logo/png/oleafly-tile-gradient-256.png" alt="Oleafly-Logo" width="112" height="112" />
+<img src="https://cdn.oleafly.com/brand/logo/png/oleafly-app-icon-pastel-256.png" alt="Oleafly-Logo" width="112" height="112" />
 
 # Oleafly <sup><em>beta</em></sup>
 
@@ -38,15 +38,16 @@ Alles hier ist kostenlos, auch das, wofür andere Editoren einen Bezahltarif ver
 - Ein Editor für lange Dokumente: Vervollständigung für Labels, Zitate und Befehle, Fehlerprüfung während des Schreibens, eine Gliederung des ganzen Projekts, Vim- und Emacs-Tastenbelegung, ein visueller Modus und eine durchsuchbare Palette mit 236 LaTeX-Symbolen.
 - Kompiliere auf deinem eigenen Computer. Tectonic, Typst und Pandoc sind eingebaut, und TeX Live, MacTeX, MiKTeX oder TinyTeX übernehmen, wenn ein Projekt eine vollständige Distribution braucht.
 - Ein Klick ins PDF springt zum Quelltext und wieder zurück, und das letzte fehlerfreie PDF bleibt sichtbar, während du einen Fehler behebst.
-- Jedes Projekt ist ein Git-Repository, das du zu GitHub pushen kannst, und Checkpoints speichern nach jeder erfolgreichen Kompilierung einen Snapshot.
+- Jedes Projekt ist ein Git-Repository, das du zu GitHub, GitLab, Gitea, Forgejo, Codeberg oder deinem eigenen Git-Server pushen kannst, und Checkpoints speichern nach jeder erfolgreichen Kompilierung einen Snapshot.
 - Zitiere beim Schreiben aus deiner Zotero-Bibliothek und durchsuche arXiv, Semantic Scholar, Crossref, PubMed und OpenAlex, ohne den Editor zu verlassen.
 - Rechtschreib- und Grammatikprüfung, abgestimmt auf wissenschaftliches Schreiben, laufen auf deinem Computer.
 - Preflight findet vor der Einreichung defekte Referenzen, fehlende Abbildungen, nicht eingebettete Schriften, Lücken bei der Barrierefreiheit und alles, was in einer Blindbegutachtung die Anonymität aufheben würde.
 - Zeichne Abbildungen, die als TikZ-, Typst- oder Mermaid-Code erhalten bleiben, und beginne mit einer von mehr als 1.700 Vorlagen für Paper, Dissertationen, Folien, Poster und Lebensläufe.
-- Importiere aus Word, einem PDF, einer arXiv-Quelle, einem GitHub-Repository oder einem Online-LaTeX-Konto.
+- Importiere aus Word, einem PDF, einer arXiv-Quelle, einem Git-Repository oder einem Online-LaTeX-Konto.
+- Der Befehl `oleafly` kompiliert, prüft und synchronisiert deine Projekte aus jedem Terminal oder CI-Job heraus, mit denselben Compilern und Einstellungen wie die App.
 - Die Cloud-Synchronisierung hält deine Projekte auf jedem Computer bereit, den du nutzt, und du kannst offline weiterschreiben.
 - Claude Code, Codex und 12 weitere Agenten arbeiten direkt in deinem Projekt, oder du verbindest ein beliebiges Modell, auch lokale. KI ist optional, und jede Änderung, die sie vornimmt, ist ein Diff, den du prüfen und rückgängig machen kannst.
-- Rechercheaufgaben führen eine Literaturübersicht, einen Evidenz-Audit oder eine Überarbeitung in einer separaten Kopie des Projekts aus, während du weiterschreibst, und du wählst, welche geänderten Dateien du behältst.
+- Rechercheaufgaben führen eine Literaturübersicht, einen Evidenz-Audit oder eine Überarbeitung in einer separaten Kopie des Projekts aus, während du weiterschreibst, und du wählst, welche geänderten Dateien du behältst. Sie sind experimentell und standardmäßig ausgeschaltet; unter „Einstellungen > Experimente“ schaltest du sie ein.
 
 ## Gemeinsam live schreiben
 
@@ -145,8 +146,9 @@ Lieber ein Chat-Assistent? Verbinde einen gehosteten Anbieter, einen beliebigen 
 - Jede Dateiänderung ist ein Diff. Gib jede einzeln frei, lass den Assistenten selbstständig arbeiten oder lege Regeln pro Werkzeug fest, und mache eine einzelne Datei oder einen ganzen Durchlauf rückgängig.
 - Im Plan mode erfasst der Assistent das Projekt, bevor irgendetwas geschrieben wird.
 - Eine Literaturübersicht oder eine Überarbeitung kann in einem eigenen Git-Worktree laufen, während du weiterschreibst. Du entscheidest, welche geänderten Dateien du behältst.
-- 36 Skills für die Forschung werden mit der App ausgeliefert, darunter Literatursichtung, verwandte Arbeiten, Prüfung von Behauptungen und Antwortschreiben an Gutachter:innen.
+- 39 Skills für die Forschung werden mit der App ausgeliefert, darunter Literatursichtung, verwandte Arbeiten, Prüfung von Behauptungen und Antwortschreiben an Gutachter:innen.
 - Ein lokaler MCP-Server lässt einen externen KI-Client dieselben Projektwerkzeuge nutzen. Er lauscht nur auf 127.0.0.1.
+- `oleafly mcp` stellt Claude Code, Codex, Cursor und Gemini CLI die Projektwerkzeuge über stdio bereit, ob die App offen ist oder nicht.
 
 KI ist optional. Editor, Compiler, PDF, Zitate, Korrektur und Prüfungen funktionieren alle auch mit ausgeschalteter KI.
 
@@ -197,13 +199,15 @@ Tectonic, Typst und Pandoc werden mit der App ausgeliefert, sodass ein neues Pro
 
 ## Git, Historie und ein Terminal
 
-Jedes Projekt ist ein normaler Ordner mit einem normalen Git-Repository. Über das Source-Control-Panel kannst du Änderungen stagen, Diffs ansehen, committen, pushen, pullen und auf GitHub veröffentlichen, oder du nutzt dein eigenes Terminal, denn vor ihm ist nichts verborgen. Checkpoints speichern nach jeder erfolgreichen Kompilierung einen lokalen Snapshot, sodass du zu einem früheren Stand zurückkehren kannst, ohne einen Commit zu machen.
+Jedes Projekt ist ein normaler Ordner mit einem normalen Git-Repository. Über das Source-Control-Panel kannst du Änderungen stagen, Diffs ansehen, committen, pushen, pullen und auf GitHub, GitLab, Gitea, Forgejo, Codeberg oder deinem eigenen Server veröffentlichen, oder du nutzt dein eigenes Terminal, denn vor ihm ist nichts verborgen. Checkpoints speichern nach jeder erfolgreichen Kompilierung einen lokalen Snapshot, sodass du zu einem früheren Stand zurückkehren kannst, ohne einen Commit zu machen.
 
 <p align="center">
   <img src="../assets/readme/git-history.png" alt="Oleafly-Source-Control-Panel mit einem Diff, einem Branch-Diagramm und Commit-Steuerelementen" width="100%" />
 </p>
 
 Unter dem Editor sitzt ein Terminal-Dock mit bis zu zehn Tabs pro Projekt. Ein Cmd-Klick (Ctrl-Klick) auf einen Dateipfad in der Ausgabe öffnet die Datei an dieser Zeile.
+
+Der Befehl `oleafly` arbeitet aus jedem Terminal mit denselben Projekten: kompilieren, bei jeder Änderung neu kompilieren, vor dem Einreichen prüfen, mit einem Online-LaTeX-Dienst synchronisieren oder den Oleafly-Agenten ausführen, ohne die App zu öffnen. Jeder Befehl kann JSON mit festen Exit-Codes für Skripte und CI ausgeben. Mehr dazu im [Leitfaden zur Kommandozeile](../cli.md).
 
 ## Und noch viel mehr
 
@@ -277,21 +281,21 @@ Die Tools-Galerie befindet sich in der Beta und ist standardmäßig ausgeschalte
 </details>
 
 <details>
-<summary>Die 36 Skills für die Forschung, die mit Oleafly ausgeliefert werden</summary>
+<summary>Die 39 Skills für die Forschung, die mit Oleafly ausgeliefert werden</summary>
 
 Skills sind gewöhnliche `SKILL.md`-Ordner, die dem Agent-Skills-Format folgen. Führe einen mit einem Slash-Befehl aus, füge eigene hinzu oder teile sie mit kompatiblen CLI-Agenten auf demselben Computer.
 
-Das gebündelte `research-core`-Paket enthält 36 Skills. Die folgenden Namen sind die IDs, die der Katalog und die Projekteinstellungen verwenden.
+Das gebündelte `research-core`-Paket enthält 39 Skills. Die folgenden Namen sind die IDs, die der Katalog und die Projekteinstellungen verwenden.
 
 | Kategorie | Skills |
 | --- | --- |
-| Recherche und Literatur | `citation-management`, `exploratory-data-analysis`, `hypothesis-generation`, `literature-review`, `oleafly-literature-sweep`, `oleafly-research-loop`, `openresearch`, `paper-lookup`, `research-lookup`, `scientific-brainstorming`, `scientific-critical-thinking` |
+| Recherche und Literatur | `citation-management`, `exploratory-data-analysis`, `hypothesis-generation`, `literature-review`, `oleafly-experiment-loop`, `oleafly-literature-sweep`, `oleafly-research-loop`, `openresearch`, `paper-lookup`, `research-lookup`, `scientific-brainstorming`, `scientific-critical-thinking` |
 | Manuskripterstellung und Analyse | `experimental-design`, `oleafly-data-analysis`, `oleafly-manuscript-scaffold`, `oleafly-related-work`, `scientific-writing`, `statistical-analysis`, `statistical-power`, `venue-templates` |
 | Abbildungen und Visualisierung | `oleafly-figure-prep`, `scientific-schematics`, `scientific-visualization` |
 | Review und Evidenz | `oleafly-response-letter`, `oleafly-review-manuscript`, `oleafly-verify-claims`, `peer-review`, `scholar-evaluation` |
 | Einreichung | `oleafly-pre-submission` |
 | Kommunikation | `oleafly-slides-and-posters`, `pptx-posters`, `research-grants`, `scientific-slides` |
-| Import- und Build-Werkzeuge | `import-refine`, `oleafly-latex-build`, `pdf-to-latex`, `template-generate` |
+| Werkzeuge und Automatisierung | `desktop-apps`, `import-refine`, `oleafly-cli`, `oleafly-latex-build`, `pdf-to-latex`, `template-generate` |
 
 </details>
 
@@ -370,6 +374,7 @@ Ja, genau dafür ist er gedacht. Oleafly Server läuft auf deinem eigenen Rechne
 - [KI-Copilot](../AICopilot.md)
 - [Skills](../Skills.md)
 - [MCP-Integration](../mcp.md)
+- [Kommandozeilen-Tool](../cli.md)
 - [Entwicklungsumgebung](../development.md)
 - [Changelog](../../CHANGELOG.md)
 

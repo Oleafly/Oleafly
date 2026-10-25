@@ -332,6 +332,7 @@ mod tests {
                 model_id: "fixture".into(),
                 skill_ids: Vec::new(),
                 dependency_ids: Vec::new(),
+                ..Default::default()
             })
             .unwrap();
         store.request_start(&task.id).unwrap();
@@ -346,9 +347,11 @@ mod tests {
                 path: "main.tex".into(),
                 sha256: before_hash.clone(),
                 size: before_size,
+                resolved_link: false,
             }],
             allowed_paths: vec!["main.tex".into()],
             created_at: now_ms(),
+            skipped: Vec::new(),
         };
         store
             .set_isolation(&task.id, running.execution_generation, &isolation)

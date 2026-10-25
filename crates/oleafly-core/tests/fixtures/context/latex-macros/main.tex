@@ -1,0 +1,19 @@
+\documentclass{article}
+\usepackage{amsmath,amsthm}
+\usepackage[acronym]{glossaries}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\norm}[1]{\lVert #1 \rVert}
+\renewcommand{\vec}[1]{\mathbf{#1}}
+\DeclareMathOperator{\argmax}{arg\,max}
+\def\eps{\varepsilon}
+\newtheorem{lemma}{Lemma}
+\newacronym{gpu}{GPU}{graphics processing unit}
+\begin{document}
+\section{Notation}
+\label{sec:notation}
+Let $x \in \R$ and $\norm{x} < \eps$. The \gls{gpu} computes $\argmax$.
+\begin{lemma}\label{lem:bound}
+A bound.
+\end{lemma}
+By Lemma~\ref{lem:bound}.
+\end{document}

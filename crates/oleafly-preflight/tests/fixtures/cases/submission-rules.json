@@ -1,0 +1,887 @@
+[
+  {
+    "name": "clean-generic",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A complete abstract.\\end{abstract}\n\\begin{figure}\\includegraphics{fig.pdf}\\caption{Result}\\label{fig:result}\\end{figure}\n\\end{document}"
+        },
+        {
+          "path": "fig.pdf"
+        }
+      ]
+    },
+    "profileId": "generic",
+    "pdf": {
+      "version": "1.7",
+      "pageCount": 2,
+      "pages": [
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        },
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        }
+      ],
+      "outlineCount": 0,
+      "linkCount": 0,
+      "attachmentCount": 0,
+      "formFieldCount": 0,
+      "restricted": false,
+      "author": null,
+      "creator": "LaTeX",
+      "producer": "pdfTeX",
+      "fonts": [
+        {
+          "name": "CMR10",
+          "embedded": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "clean-generic-profile",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A complete abstract.\\end{abstract}\n\\begin{figure}\\includegraphics{fig.pdf}\\caption{Result}\\label{fig:result}\\end{figure}\n\\end{document}"
+        },
+        {
+          "path": "fig.pdf"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "clean-arxiv-profile",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A complete abstract.\\end{abstract}\n\\begin{figure}\\includegraphics{fig.pdf}\\caption{Result}\\label{fig:result}\\end{figure}\n\\end{document}"
+        },
+        {
+          "path": "fig.pdf"
+        }
+      ]
+    },
+    "profileId": "arxiv"
+  },
+  {
+    "name": "clean-ieee-profile",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A complete abstract.\\end{abstract}\n\\begin{figure}\\includegraphics{fig.pdf}\\caption{Result}\\label{fig:result}\\end{figure}\n\\end{document}"
+        },
+        {
+          "path": "fig.pdf"
+        }
+      ]
+    },
+    "profileId": "ieee"
+  },
+  {
+    "name": "clean-acm-profile",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A complete abstract.\\end{abstract}\n\\begin{figure}\\includegraphics{fig.pdf}\\caption{Result}\\label{fig:result}\\end{figure}\n\\end{document}"
+        },
+        {
+          "path": "fig.pdf"
+        }
+      ]
+    },
+    "profileId": "acm"
+  },
+  {
+    "name": "clean-journal-profile",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A complete abstract.\\end{abstract}\n\\begin{figure}\\includegraphics{fig.pdf}\\caption{Result}\\label{fig:result}\\end{figure}\n\\end{document}"
+        },
+        {
+          "path": "fig.pdf"
+        }
+      ]
+    },
+    "profileId": "journal"
+  },
+  {
+    "name": "clean-thesis-profile",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A complete abstract.\\end{abstract}\n\\begin{figure}\\includegraphics{fig.pdf}\\caption{Result}\\label{fig:result}\\end{figure}\n\\end{document}"
+        },
+        {
+          "path": "fig.pdf"
+        }
+      ]
+    },
+    "profileId": "thesis"
+  },
+  {
+    "name": "arxiv-filenames-and-case",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass{article}\n\\begin{abstract}Abstract\\end{abstract}\n\\includegraphics{Figures/Plot.PNG}"
+        },
+        {
+          "path": "Figures/My Plot.png"
+        },
+        {
+          "path": "Figures/plot.PNG"
+        }
+      ]
+    },
+    "profileId": "arxiv"
+  },
+  {
+    "name": "absolute-paths-and-shell-escape",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass{article}\n\\begin{abstract}Abstract\\end{abstract}\n\\input{/Users/alex/private/macros.tex}\n\\usepackage{minted}\n\\immediate\\write18{ls}"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "windows-absolute-path",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass{article}\n\\includegraphics{C:\\Users\\x.png}"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "home-figure-path",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\includegraphics{/home/u/figs/x.png}"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "ieee-pdf-constraints",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass[conference]{IEEEtran}\n\\begin{abstract}Abstract\\end{abstract}\n\\begin{IEEEkeywords}a, b\\end{IEEEkeywords}"
+        }
+      ]
+    },
+    "profileId": "ieee",
+    "pdf": {
+      "version": "1.3",
+      "pageCount": 2,
+      "pages": [
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        },
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        }
+      ],
+      "outlineCount": 2,
+      "linkCount": 3,
+      "attachmentCount": 1,
+      "formFieldCount": 0,
+      "restricted": true,
+      "author": null,
+      "creator": "LaTeX",
+      "producer": "pdfTeX",
+      "fonts": [
+        {
+          "name": "Helvetica",
+          "embedded": false
+        },
+        {
+          "name": "CMR10",
+          "embedded": true
+        },
+        {
+          "name": "Mystery",
+          "embedded": null
+        }
+      ]
+    }
+  },
+  {
+    "name": "ieee-wrong-class",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass{article}\n\\begin{abstract}x\\end{abstract}"
+        }
+      ]
+    },
+    "profileId": "ieee"
+  },
+  {
+    "name": "ieee-unknown-fonts-only",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass[conference]{IEEEtran}\n\\begin{abstract}Abstract\\end{abstract}\n\\begin{IEEEkeywords}a, b\\end{IEEEkeywords}"
+        }
+      ]
+    },
+    "profileId": "ieee",
+    "pdf": {
+      "version": "1.7",
+      "pageCount": 2,
+      "pages": [
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        },
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        }
+      ],
+      "outlineCount": 0,
+      "linkCount": 0,
+      "attachmentCount": 0,
+      "formFieldCount": 0,
+      "restricted": false,
+      "author": null,
+      "creator": "LaTeX",
+      "producer": "pdfTeX",
+      "fonts": [
+        {
+          "name": "Mystery",
+          "embedded": null
+        }
+      ]
+    }
+  },
+  {
+    "name": "ieee-clean-pdf",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass[conference]{IEEEtran}\n\\begin{abstract}Abstract\\end{abstract}\n\\begin{IEEEkeywords}a, b\\end{IEEEkeywords}"
+        }
+      ]
+    },
+    "profileId": "ieee",
+    "pdf": {
+      "version": "1.5",
+      "pageCount": 2,
+      "pages": [
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        },
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        }
+      ],
+      "outlineCount": 0,
+      "linkCount": 0,
+      "attachmentCount": 0,
+      "formFieldCount": 0,
+      "restricted": false,
+      "author": null,
+      "creator": "LaTeX",
+      "producer": "pdfTeX",
+      "fonts": [
+        {
+          "name": "CMR10",
+          "embedded": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "acm-keywords",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass[sigconf]{acmart}\n\\begin{abstract}x\\end{abstract}\n\\keywords{a, b}"
+        }
+      ]
+    },
+    "profileId": "acm",
+    "pdf": {
+      "version": "1.7",
+      "pageCount": 2,
+      "pages": [
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        },
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        }
+      ],
+      "outlineCount": 0,
+      "linkCount": 0,
+      "attachmentCount": 0,
+      "formFieldCount": 0,
+      "restricted": false,
+      "author": null,
+      "creator": "LaTeX",
+      "producer": "pdfTeX",
+      "fonts": [
+        {
+          "name": "Times",
+          "embedded": false
+        }
+      ]
+    }
+  },
+  {
+    "name": "sensitive-files",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "x"
+        },
+        {
+          "path": ".env",
+          "content": "KEY=1"
+        },
+        {
+          "path": "config/.env.local"
+        },
+        {
+          "path": "id_ed25519"
+        },
+        {
+          "path": "certs/x.p12"
+        },
+        {
+          "path": "server.KEY"
+        },
+        {
+          "path": ".envrc"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "secrets-in-sources",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "token sk-proj-abcdefghijklmnopqrstuvwxyz123456"
+        },
+        {
+          "path": "notes.md",
+          "content": "ghp_abcdefghijklmnopqrstuvwxyz1234"
+        },
+        {
+          "path": "aws.txt",
+          "content": "AKIAABCDEFGHIJKLMNOP"
+        },
+        {
+          "path": "key.tex",
+          "content": "-----BEGIN OPENSSH PRIVATE KEY-----"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "internal-comments",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "% TODO: fix before submission\nText % TODO inline\n"
+        },
+        {
+          "path": "b.tex",
+          "content": "  % CONFIDENTIAL draft\n"
+        },
+        {
+          "path": "c.tex",
+          "content": "text\n%do not distribute\r\n"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "blind-review",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass{article}\n\\author{Jane Doe}\n\\section*{Acknowledgments}\nThanks."
+        }
+      ]
+    },
+    "profileId": "generic",
+    "pdf": {
+      "version": "1.7",
+      "pageCount": 2,
+      "pages": [
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        },
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        }
+      ],
+      "outlineCount": 0,
+      "linkCount": 0,
+      "attachmentCount": 0,
+      "formFieldCount": 0,
+      "restricted": false,
+      "author": "Jane Doe",
+      "creator": "LaTeX",
+      "producer": "pdfTeX",
+      "fonts": [
+        {
+          "name": "CMR10",
+          "embedded": true
+        }
+      ]
+    },
+    "anonymousReview": true
+  },
+  {
+    "name": "blind-review-anonymous-author",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\author{Anonymous}\n\\begin{acknowledgements}x\\end{acknowledgements}"
+        }
+      ]
+    },
+    "profileId": "generic",
+    "pdf": {
+      "version": "1.7",
+      "pageCount": 2,
+      "pages": [
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        },
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        }
+      ],
+      "outlineCount": 0,
+      "linkCount": 0,
+      "attachmentCount": 0,
+      "formFieldCount": 0,
+      "restricted": false,
+      "author": "Anonymous Authors",
+      "creator": "LaTeX",
+      "producer": "pdfTeX",
+      "fonts": [
+        {
+          "name": "CMR10",
+          "embedded": true
+        }
+      ]
+    },
+    "anonymousReview": true
+  },
+  {
+    "name": "blind-review-off",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\author{Jane Doe}"
+        }
+      ]
+    },
+    "profileId": "generic",
+    "pdf": {
+      "version": "1.7",
+      "pageCount": 2,
+      "pages": [
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        },
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        }
+      ],
+      "outlineCount": 0,
+      "linkCount": 0,
+      "attachmentCount": 0,
+      "formFieldCount": 0,
+      "restricted": false,
+      "author": "Jane Doe",
+      "creator": "LaTeX",
+      "producer": "pdfTeX",
+      "fonts": [
+        {
+          "name": "CMR10",
+          "embedded": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing-captions",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\begin{figure}\\includegraphics{a}\\end{figure}\n\\begin{table*}x\\end{table*}\n\\begin{figure*}\\caption[s]{Long}\\end{figure*}"
+        },
+        {
+          "path": "a.png"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "label-before-caption",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\begin{figure}\\label{fig:a}\\caption{A}\\end{figure}"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "figure-without-end",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\begin{figure}x"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "missing-include-and-figure",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\input{chapters/one}\n\\includegraphics{figs/none}"
+        },
+        {
+          "path": "chapters/one.tex",
+          "content": "\\includegraphics{../figs/a}"
+        },
+        {
+          "path": "figs/a.png"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "references-relative-to-including-file",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\input{sections/intro}"
+        },
+        {
+          "path": "sections/intro.tex",
+          "content": "\\includegraphics{plot}\\input{./sub/part}"
+        },
+        {
+          "path": "sections/plot.png"
+        },
+        {
+          "path": "sections/sub/part.tex",
+          "content": "x"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "case-mismatched-include",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\input{Chapters/One}\n\\includegraphics{{figs/Diagram}}"
+        },
+        {
+          "path": "chapters/one.tex",
+          "content": ""
+        },
+        {
+          "path": "figs/diagram.PDF"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "external-figure-urls",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\includegraphics{https://example.com/a.png}\\includegraphics{data:image/png;base64,xx}"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "arxiv-figure-formats",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\begin{abstract}x\\end{abstract}\\includegraphics{a.svg}\\includegraphics{b.PNG}\\includegraphics{c}\\includegraphics{d.tiff}"
+        },
+        {
+          "path": "a.svg"
+        },
+        {
+          "path": "b.PNG"
+        },
+        {
+          "path": "c.pdf"
+        },
+        {
+          "path": "d.tiff"
+        }
+      ]
+    },
+    "profileId": "arxiv"
+  },
+  {
+    "name": "placeholders",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\begin{abstract}TBD\\end{abstract} Results ?? and Lorem ipsum"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "build-leftovers",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "x"
+        },
+        {
+          "path": "main.aux"
+        },
+        {
+          "path": "main.synctex.gz"
+        },
+        {
+          "path": "build/main.log"
+        },
+        {
+          "path": "main.fdb_latexmk"
+        },
+        {
+          "path": "notes.out.txt"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "pdf-version-too-old",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass[conference]{IEEEtran}\n\\begin{abstract}Abstract\\end{abstract}\n\\begin{IEEEkeywords}a, b\\end{IEEEkeywords}"
+        }
+      ]
+    },
+    "profileId": "ieee",
+    "pdf": {
+      "version": "1.2",
+      "pageCount": 2,
+      "pages": [
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        },
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        }
+      ],
+      "outlineCount": 0,
+      "linkCount": 0,
+      "attachmentCount": 0,
+      "formFieldCount": 0,
+      "restricted": false,
+      "author": null,
+      "creator": "LaTeX",
+      "producer": "pdfTeX",
+      "fonts": [
+        {
+          "name": "CMR10",
+          "embedded": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "draft-option",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass[draft,11pt]{article}"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "draft-packages",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\usepackage{todonotes}\n\\todo{fix}"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "thesis-without-abstract",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex",
+          "content": "\\documentclass{memoir}\\chapter{One}"
+        }
+      ]
+    },
+    "profileId": "thesis"
+  },
+  {
+    "name": "content-less-files",
+    "project": {
+      "mainFile": "main.tex",
+      "files": [
+        {
+          "path": "main.tex"
+        },
+        {
+          "path": "refs.bib",
+          "content": "@misc{a,}"
+        }
+      ]
+    },
+    "profileId": "generic"
+  }
+]

@@ -1216,25 +1216,32 @@ export async function fillTextarea(page: Page, selector: string, text: string) {
   );
 }
 
-export async function ensureGithubConnected(page: Page) {
+export async function ensureGitHostingAccount(page: Page) {
   const token = process.env.E2E_GITHUB_TOKEN;
-  if (!token) throw new Error("ensureGithubConnected: E2E_GITHUB_TOKEN not set");
-  // The Git panel itself has no connection gate (it works fully locally);
-  // connection state and the PAT input both live on the GitHub tab of
-  // Settings -> Integrations, which is the tab's default.
+  if (!token) throw new Error("ensureGitHostingAccount: E2E_GITHUB_TOKEN not set");
+  // The Git panel itself needs no account (it works fully locally). Accounts
+  // and the token field live on the Git hosting tab of Settings ->
+  // Integrations, which is the tab's default.
   await openSettings(page, "integrations");
-  const connected = await page.evaluate<boolean>(
-    `document.body.innerText.includes('Disconnect')`,
+  const account = `[data-testid="git-hosting-account-github.com"]`;
+  // The account list loads on demand: wait until it shows either rows or
+  // the empty note before deciding whether to sign in.
+  await page.waitForFunction(
+    `!!document.querySelector('[data-testid="git-hosting-empty"], [data-testid^="git-hosting-account-"]')`,
+    15_000,
   );
+  const connected = await page.evaluate<boolean>(`!!document.querySelector('${account}')`);
   if (!connected) {
-    await page.getByText("Advanced: use a personal access token").click();
-    await page.fill('input[placeholder="ghp_…"]', token);
-    await page.getByText("Connect", { exact: true }).click();
-    // Connected: the account card renders with a Disconnect button.
+    await page.click('[data-testid="git-hosting-add"]');
+    await page.click('[data-testid="git-hosting-preset-github"]');
     await page.waitForFunction(
-      `document.body.innerText.includes('Disconnect')`,
-      20_000,
+      `!!document.querySelector('[data-testid="git-hosting-use-token"]')`,
+      15_000,
     );
+    await page.click('[data-testid="git-hosting-use-token"]');
+    await page.fill('[data-testid="git-hosting-token"]', token);
+    await page.click('[data-testid="git-hosting-token-connect"]');
+    await page.waitForFunction(`!!document.querySelector('${account}')`, 20_000);
   }
   await page.click('[data-testid="settings-close"]');
   await page.waitForFunction(`!document.querySelector('[data-testid="settings-close"]')`, 10_000);

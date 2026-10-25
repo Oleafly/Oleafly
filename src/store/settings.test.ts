@@ -1,6 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  BROWSER_SEARCH_ENGINES,
   DEFAULT_HIDDEN_FILE_PATTERNS,
   DEFAULT_TERMINAL_FONT_FAMILY,
   EDITOR_LETTER_SPACINGS,
@@ -25,48 +24,6 @@ import {
 } from "@/lib/proofreading/ignored";
 
 const lsValues = new Map<string, string>();
-
-describe("browser search engine catalog", () => {
-  it("maps every supported engine to its search URL", () => {
-    expect(BROWSER_SEARCH_ENGINES).toEqual([
-      {
-        id: "google",
-        name: "Google",
-        searchUrl: "https://www.google.com/search?q=",
-      },
-      {
-        id: "bing",
-        name: "Bing",
-        searchUrl: "https://www.bing.com/search?q=",
-      },
-      {
-        id: "duckduckgo",
-        name: "DuckDuckGo",
-        searchUrl: "https://duckduckgo.com/?q=",
-      },
-      {
-        id: "brave",
-        name: "Brave",
-        searchUrl: "https://search.brave.com/search?q=",
-      },
-      {
-        id: "perplexity",
-        name: "Perplexity",
-        searchUrl: "https://www.perplexity.ai/search?s=o&q=",
-      },
-      {
-        id: "startpage",
-        name: "Startpage",
-        searchUrl: "https://www.startpage.com/sp/search?query=",
-      },
-      {
-        id: "ecosia",
-        name: "Ecosia",
-        searchUrl: "https://www.ecosia.org/search?q=",
-      },
-    ]);
-  });
-});
 
 describe("useSettingsStore dock appearance settings", () => {
   beforeAll(() => {
@@ -107,41 +64,42 @@ describe("useSettingsStore dock appearance settings", () => {
     useSettingsStore.getState().setDockPlacement("left");
   });
 
-  it("keeps docks closed by default and does not persist their open state", () => {
-    expect(useSettingsStore.getState()).toMatchObject({
-      terminalOpen: false,
-      browserOpen: false,
-    });
+  it("keeps the terminal dock closed by default and does not persist its open state", () => {
+    expect(useSettingsStore.getState().terminalOpen).toBe(false);
 
-    // The browser only opens when its experimental flag is on.
-    useSettingsStore.getState().setWebBrowser(true);
     useSettingsStore.getState().setTerminalOpen(true);
-    useSettingsStore.getState().setBrowserOpen(true);
 
-    expect(useSettingsStore.getState()).toMatchObject({
-      terminalOpen: true,
-      browserOpen: true,
-    });
+    expect(useSettingsStore.getState().terminalOpen).toBe(true);
     expect(localStorage.getItem("oleafly.dock.terminalOpen")).toBeNull();
-    expect(localStorage.getItem("oleafly.dock.browserOpen")).toBeNull();
 
     useSettingsStore.getState().closeDocks();
-    expect(useSettingsStore.getState()).toMatchObject({
-      terminalOpen: false,
-      browserOpen: false,
-    });
+    expect(useSettingsStore.getState().terminalOpen).toBe(false);
 
     useSettingsStore.getState().resetToDefaults();
 
-    expect(useSettingsStore.getState()).toMatchObject({
-      terminalOpen: false,
-      browserOpen: false,
-    });
+    expect(useSettingsStore.getState().terminalOpen).toBe(false);
     expect(localStorage.getItem("oleafly.dock.terminalOpen")).toBeNull();
-    expect(localStorage.getItem("oleafly.dock.browserOpen")).toBeNull();
   });
 
-  it("defaults terminal appearance and browser preferences", () => {
+  it("has no browser settings", () => {
+    const state = useSettingsStore.getState() as unknown as Record<string, unknown>;
+    for (const key of ["webBrowser", "browserOpen", "browserHomePage", "browserSearchEngine", "setWebBrowser", "setBrowserOpen"]) {
+      expect(state, key).not.toHaveProperty(key);
+    }
+  });
+
+  it("removes the browser keys 0.4.7 left in localStorage", async () => {
+    localStorage.setItem("oleafly.webBrowser", "1");
+    localStorage.setItem("oleafly.browser.homePage", "https://x.org/");
+    localStorage.setItem("oleafly.browser.searchEngine", "bing");
+    vi.resetModules();
+    await import("./settings");
+    expect(localStorage.getItem("oleafly.webBrowser")).toBeNull();
+    expect(localStorage.getItem("oleafly.browser.homePage")).toBeNull();
+    expect(localStorage.getItem("oleafly.browser.searchEngine")).toBeNull();
+  });
+
+  it("defaults terminal appearance preferences", () => {
     useSettingsStore.getState().resetToDefaults();
 
     expect(useSettingsStore.getState()).toMatchObject({
@@ -155,15 +113,12 @@ describe("useSettingsStore dock appearance settings", () => {
       terminalBackground: "#1e1e1e",
       terminalForeground: "#f2f2f2",
       terminalCursorColor: "#ffffff",
-      browserSearchEngine: "google",
-      browserHomePage: "https://www.google.com/",
     });
   });
 
-  it("persists terminal appearance and browser preferences", () => {
+  it("persists terminal appearance preferences", () => {
     const settings = useSettingsStore.getState();
     expect(typeof settings.setTerminalFontSize).toBe("function");
-    expect(typeof settings.setBrowserSearchEngine).toBe("function");
 
     settings.setTerminalFontSize(16);
     settings.setTerminalFontFamily("JetBrains Mono");
@@ -175,8 +130,6 @@ describe("useSettingsStore dock appearance settings", () => {
     settings.setTerminalBackground("#f8f8f8");
     settings.setTerminalForeground("#202124");
     settings.setTerminalCursorColor("#111111");
-    settings.setBrowserSearchEngine("duckduckgo");
-    settings.setBrowserHomePage("https://example.com/");
 
     expect(useSettingsStore.getState()).toMatchObject({
       terminalFontSize: 16,
@@ -189,8 +142,6 @@ describe("useSettingsStore dock appearance settings", () => {
       terminalBackground: "#f8f8f8",
       terminalForeground: "#202124",
       terminalCursorColor: "#111111",
-      browserSearchEngine: "duckduckgo",
-      browserHomePage: "https://example.com/",
     });
     expect(localStorage.getItem("oleafly.terminal.fontSize")).toBe("16");
     expect(localStorage.getItem("oleafly.terminal.fontFamily")).toBe(
@@ -204,15 +155,9 @@ describe("useSettingsStore dock appearance settings", () => {
     expect(localStorage.getItem("oleafly.terminal.background")).toBe("#f8f8f8");
     expect(localStorage.getItem("oleafly.terminal.foreground")).toBe("#202124");
     expect(localStorage.getItem("oleafly.terminal.cursorColor")).toBe("#111111");
-    expect(localStorage.getItem("oleafly.browser.searchEngine")).toBe(
-      "duckduckgo",
-    );
-    expect(localStorage.getItem("oleafly.browser.homePage")).toBe(
-      "https://example.com/",
-    );
   });
 
-  it("loads safe defaults for malformed terminal and browser preferences", async () => {
+  it("loads safe defaults for malformed terminal preferences", async () => {
     localStorage.setItem("oleafly.terminal.fontSize", "huge");
     localStorage.setItem("oleafly.terminal.fontWeight", "950");
     localStorage.setItem("oleafly.terminal.fontWeightBold", "0");
@@ -221,8 +166,6 @@ describe("useSettingsStore dock appearance settings", () => {
     localStorage.setItem("oleafly.terminal.background", "black");
     localStorage.setItem("oleafly.terminal.foreground", "#12");
     localStorage.setItem("oleafly.terminal.cursorColor", "#12345g");
-    localStorage.setItem("oleafly.browser.searchEngine", "unknown");
-    localStorage.setItem("oleafly.browser.homePage", "file:///etc/passwd");
     vi.resetModules();
 
     const { useSettingsStore: loadedStore } = await import("./settings");
@@ -236,8 +179,6 @@ describe("useSettingsStore dock appearance settings", () => {
       terminalBackground: "#1e1e1e",
       terminalForeground: "#f2f2f2",
       terminalCursorColor: "#ffffff",
-      browserSearchEngine: "google",
-      browserHomePage: "https://www.google.com/",
     });
   });
 
@@ -423,6 +364,16 @@ describe("useSettingsStore reset", () => {
     settings.resetToDefaults();
     expect(useSettingsStore.getState().editorCursorWidth).toBe(1);
     expect(localStorage.getItem("oleafly.editor.cursorWidth")).toBe("1");
+  });
+
+  it("keeps the dragged message box height out of Appearance's changed mark and reset", () => {
+    const settings = useSettingsStore.getState();
+    settings.setAiComposerHeight(300);
+    expect(useSettingsStore.getState().aiComposerHeight).toBe(300);
+    expect(localStorage.getItem("oleafly.ai.composerHeight")).toBe("300");
+    expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(false);
+    settings.resetAppearancePreferences();
+    expect(useSettingsStore.getState().aiComposerHeight).toBe(300);
   });
 
   it("offers VS Code's cursor blinking styles and falls back to Blink", () => {
@@ -929,7 +880,6 @@ describe("section reset checks", () => {
     ["general", { harperDisabledRules: ["AnA"] }, "resetGeneralPreferences"],
     ["appearance", { editorMathPreview: false }, "resetAppearancePreferences"],
     ["appearance", { hiddenFilePatterns: [] }, "resetAppearancePreferences"],
-    ["experimentation", { webBrowser: true }, "resetExperimentationPreferences"],
     ["experimentation", { latexTools: true }, "resetExperimentationPreferences"],
     ["engine", { defaultLatexEngine: "latexmk" }, "resetEnginePreferences"],
   ];
@@ -947,7 +897,7 @@ describe("section reset checks", () => {
   it("reads what a reset saved back as the defaults after a restart", async () => {
     const settings = useSettingsStore.getState();
     settings.setEditorMathPreview(false);
-    settings.setWebBrowser(true);
+    settings.setLatexTools(true);
     settings.setDefaultLatexEngine("latexmk");
     settings.resetToDefaults();
     vi.resetModules();

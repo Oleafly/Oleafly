@@ -77,13 +77,31 @@ const GROUP_PATHS: ReadonlySet<string> = new Set(
   }),
 );
 
+/**
+ * Paths 0.4.7 wrote that 0.4.8 dropped. Reading a file skips them silently.
+ * `appearance.browser` is listed as a whole because nothing under it is a
+ * setting any more, so the reader never walks into it.
+ */
+export const RETIRED_SETTING_PATHS: ReadonlySet<string> = new Set([
+  "experimentation.webBrowser",
+  "appearance.browser",
+  "appearance.browser.homePage",
+  "appearance.browser.searchEngine",
+  "shortcuts.app.toggleBrowser",
+]);
+
 function pickConfig(config: AppConfig): ConfigPreferences {
   return {
     ai_system_prompt: config.ai_system_prompt ?? "",
     ai_pdf_capture: config.ai_pdf_capture !== false,
+    ai_reasoning_summaries: config.ai_reasoning_summaries === true,
     ai_personas: config.ai_personas ?? [],
     checkpoints_enabled: config.checkpoints_enabled !== false,
     checkpoint_notifications: config.checkpoint_notifications !== false,
+    research_keep_awake: config.research_keep_awake !== false,
+    research_notifications: config.research_notifications !== false,
+    research_command_network: config.research_command_network === true,
+    research_time_budget_minutes: config.research_time_budget_minutes ?? 120,
   };
 }
 
@@ -198,7 +216,7 @@ function walk(
     } else if (GROUP_PATHS.has(path)) {
       if (isRecord(raw)) walk(raw, path, found, problems, ignored);
       else problems.push({ path, issue: { kind: "object" } });
-    } else {
+    } else if (!RETIRED_SETTING_PATHS.has(path)) {
       ignored.push(path);
     }
   }

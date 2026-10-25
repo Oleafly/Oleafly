@@ -2,6 +2,7 @@ import { registerAiToolset } from "@oleafly/registry";
 import { createFigureTools, createOleaflyTools, type ConfirmFn } from "@/lib/ai-tools";
 import { createResearchAiTools } from "@/lib/research-tools";
 import { createOverleafAiTools } from "@/lib/overleaf-ai-tools";
+import { createDesktopAppsTools } from "@/lib/desktop-apps";
 
 let registered = false;
 
@@ -37,5 +38,12 @@ export function registerAiToolsets() {
     mode: "chat",
     source: { kind: "project" },
     create: (opts: { confirm?: ConfirmFn }) => createOverleafAiTools(opts),
+  });
+  // 0.4.8 I: present only once Desktop apps are on; Rust runs the calls.
+  registerAiToolset({
+    id: "desktop-apps",
+    mode: "chat",
+    source: { kind: "project" },
+    create: () => createDesktopAppsTools(),
   });
 }

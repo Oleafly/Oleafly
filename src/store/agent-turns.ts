@@ -7,14 +7,11 @@ import {
   type StoreItem,
   type TurnRecord,
 } from "@oleafly/ai-core";
+import type { DraftAttachment } from "@/components/ai/composer/types";
 import { windowFlushScheduler } from "@/lib/agent-stream-scheduler";
 
-export interface QueuedAttachment {
-  id: string;
-  name: string;
-  mediaType: string;
-  dataUrl: string;
-}
+/** A queued follow-up's attachment: a stored file, sent by reference. */
+export type QueuedAttachment = DraftAttachment;
 
 export interface QueuedFollowUp {
   id: string;
@@ -340,3 +337,17 @@ export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
     set({ recordsByChat: {}, addedItemsByChat: {}, threadByChat: {}, queuedByChat: {} });
   },
 }));
+
+/** Stored attachments (page images included) that queued follow-ups still use. */
+export function queuedAttachmentRefs(): string[] {
+  const refs = new Set<string>();
+  for (const queue of Object.values(useAgentTurnsStore.getState().queuedByChat)) {
+    for (const followUp of queue) {
+      for (const attachment of followUp.attachments) {
+        if (attachment.sha256) refs.add(attachment.sha256);
+        for (const page of attachment.pageImages ?? []) refs.add(page.sha256);
+      }
+    }
+  }
+  return [...refs];
+}

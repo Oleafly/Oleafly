@@ -54,19 +54,6 @@
   "branding": {
     "assistantMascot": "Mascota asistentului AI Oleafly"
   },
-  "browser": {
-    "address": "Caută sau introdu un URL",
-    "back": "Înapoi",
-    "closeTab": "Închide fila",
-    "copyUrl": "Copiază URL-ul",
-    "forward": "Înainte",
-    "moreOptions": "Mai multe opțiuni",
-    "newTab": "Filă nouă",
-    "openExternal": "Deschide în browserul tău",
-    "openTabs": "File deschise",
-    "reload": "Reîncarcă",
-    "setHomePage": "Setează ca pagină de start"
-  },
   "changelog": {
     "installed": "Ai această versiune",
     "sectionItems_one": "{{count}} modificare",
@@ -478,10 +465,6 @@
       "hide": "Ascunde asistentul AI",
       "show": "Arată asistentul AI"
     },
-    "browser": {
-      "close": "Închide browserul ({{shortcut}})",
-      "open": "Deschide browserul ({{shortcut}})"
-    },
     "settings": "Setări",
     "sidebar": {
       "hide": "Ascunde bara laterală ({{shortcut}})",
@@ -598,22 +581,14 @@
     "tryAgain": "Încearcă din nou",
     "savedCopy": "Fișierele deschise au fost salvate în {{folder}}."
   },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub: {{login}}",
-    "actions": "Acțiuni GitHub",
-    "connect": "Conectează GitHub…",
-    "connectedAs": "Conectat ca @{{login}}",
-    "copyRepositoryLink": "Copiază legătura către depozit",
-    "openInGithub": "Deschide în GitHub",
-    "pushHint": "Trimite pe GitHub ca să activezi aceste acțiuni",
-    "settings": "Setări GitHub",
-    "tooltip": "GitHub"
-  },
   "home": {
     "ariaLabel": "Acasă",
     "label": "Acasă",
     "title": "Înapoi la bibliotecă",
     "tooltip": "Revino la biblioteca de proiecte"
+  },
+  "importDestination": {
+    "scansGoTo": "Scanările sunt trimise la {{provider}}"
   },
   "keys": {
     "enter": "Enter",
@@ -730,8 +705,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Modificările tale nesalvate rămân deschise. Rămâi ca să rezolvi problema sau ieși oricum și le pierzi.",
+      "descriptionReload": "{{reason}} Modificările tale nesalvate rămân deschise. Rămâi ca să rezolvi problema sau reîncarcă oricum și le pierzi.",
       "descriptionRestart": "{{reason}} Modificările tale nesalvate rămân deschise. Rămâi ca să rezolvi problema sau repornește oricum și le pierzi.",
       "quitAnyway": "Ieși oricum",
+      "reloadAnyway": "Reîncarcă oricum",
       "restartAnyway": "Repornește oricum",
       "stay": "Rămâi",
       "title": "Unele fișiere nu au putut fi salvate"
@@ -755,6 +732,14 @@
     "search": "Caută în proiect",
     "sourceControl": "Control al versiunilor",
     "withShortcut": "{{label}} ({{shortcut}})"
+  },
+  "remoteMenu": {
+    "accountLabel": "{{login}} pe {{host}}",
+    "actions": "Acțiuni pentru depozit",
+    "copyRepositoryLink": "Copiază linkul depozitului",
+    "openOnHost": "Deschide pe {{host}}",
+    "settings": "Setări de găzduire Git",
+    "signedInAs": "Autentificat pe {{host}} ca {{login}}"
   },
   "renameDialog": {
     "close": "Închide fereastra de redenumire",
@@ -808,9 +793,9 @@
         "movedCount_other": "{{count}} de proiecte au fost mutate în Coșul de reciclare.",
         "title": "Zonă periculoasă"
       },
-      "githubHint": "Fă o copie de siguranță sau sincronizează un proiect între dispozitive: conectează GitHub, apoi folosește <push>Trimite</push> / <pull>Adu</pull> în Controlul versiunilor. <setup>Configurează GitHub →</setup>",
+      "gitHostingHint": "Ca să faci copii de rezervă sau să sincronizezi un proiect între dispozitive, leagă-l de un depozit Git, apoi folosește <push>Trimite</push> / <pull>Adu</pull> din Controlul versiunilor. <setup>Configurează găzduirea Git →</setup>",
       "localFirst": "Oleafly funcționează întâi local. Toate proiectele stau pe discul tău:",
-      "plainFolders": "Fiecare proiect este un folder obișnuit. Istoricul Git este opțional, iar nimic nu îți părăsește computerul dacă nu trimiți pe GitHub.",
+      "plainFolders": "Fiecare proiect este un folder obișnuit. Istoricul Git este opțional și nimic nu părăsește computerul tău până nu îl trimiți pe un server Git.",
       "recycleBin": {
         "clearAll": "Golește tot",
         "clearFailed": "Coșul de reciclare nu a putut fi golit.",
@@ -885,11 +870,12 @@
         "description": "Arată galeria Instrumente Oleafly și instrumentele individuale (import PDF, ecuații, tabele, BibTeX, căutare de laboratoare și de literatură, termene limită), împreună cu comenzile lor cu bară oblică. Dezactivată implicit, cât timp este în beta.",
         "label": "Instrumente LaTeX"
       },
-      "warning": "Aceste funcții sunt experimentale și încă în beta. Nu sunt testate complet și se pot schimba, strica sau dispărea într-o versiune viitoare. Activează-le doar dacă vrei să încerci lucruri în lucru.",
-      "webBrowser": {
-        "description": "Arată browserul web integrat (butonul și scurtătura lui) și îi permite AI-ului să îl folosească. Dezactivat implicit, cât timp este în beta. Când este oprit, nu există buton de browser, iar AI-ul nu are instrument de browser.",
-        "label": "Browser web"
-      }
+      "researchTasks": {
+        "description": "Un agent lucrează singur într-o copie a proiectului și îți lasă modificările spre revizuire. Foarte instabilă: rulările se pot bloca, pot eșua sau pot lăsa modificări de rezolvat manual și folosesc cota furnizorului tău pe toată durata lor. Adaugă secțiunea Cercetare în Setări. Dezactivarea oprește toate sarcinile în curs. Dezactivată implicit. Activeaz-o pe propria răspundere.",
+        "label": "Sarcini de cercetare",
+        "saveFailed": "Comutatorul sarcinilor de cercetare nu a putut fi salvat. Încearcă din nou."
+      },
+      "warning": "Aceste funcții sunt experimentale și încă în beta. Nu sunt testate complet și se pot schimba, strica sau dispărea într-o versiune viitoare. Activează-le doar dacă vrei să încerci lucruri în lucru."
     },
     "footer": {
       "followOnX": "Urmărește pe X",
@@ -975,7 +961,8 @@
       "general": "General",
       "help": "Ajutor și Despre",
       "integrations": "Integrări",
-      "shortcuts": "Scurtături de tastatură"
+      "shortcuts": "Scurtături de tastatură",
+      "research": "Cercetare"
     },
     "search": {
       "empty": "Nicio setare nu se potrivește",
@@ -990,8 +977,9 @@
         "experimentation": "laborator, beta, funcții timpurii, experimental",
         "general": "preferințe, limbă, regiune, verificare ortografică, ortografie, greșeli de scriere, offline, tururi, comandă terminal",
         "help": "despre, versiune, actualizări, jurnal de modificări, noutăți, documentație, asistență, ajutor, comunitate, Discord, licență, raport de eroare",
-        "integrations": "Zotero, GitHub, MCP, citări, conturi, conexiuni",
-        "shortcuts": "scurtături de tastatură, scurtături, combinații de taste, taste, tastatură"
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, găzduire Git, aplicații desktop, Cua, MCP, citări, conturi, conexiuni",
+        "shortcuts": "scurtături de tastatură, scurtături, combinații de taste, taste, tastatură",
+        "research": "cercetare sarcini buget notificări treaz experimente rulări research tasks"
       },
       "label": "Caută în setări",
       "results_one": "{{count}} secțiune se potrivește",
@@ -1075,7 +1063,6 @@
     "commitCount_other": "{{count}} de comiteri",
     "initialize": "Inițializează depozitul",
     "initialized": "Git a fost inițializat pe {{branch}}.",
-    "linkCopied": "Legătura GitHub a fost copiată",
     "markResolved": "Marchează ca rezolvat",
     "mergeNeedsAttention": "Rezolvă conflictele de îmbinare",
     "moreActions": "Mai multe acțiuni de control al versiunilor",
@@ -1089,18 +1076,19 @@
     "openFile": "Deschide fișierul",
     "openFileFor": "Deschide {{path}}",
     "popStash": "Aplică ultima stivuire",
-    "publish": "Publică pe GitHub",
+    "publishRepository": "Publică…",
+    "publishTo": "Publică pe {{host}}",
     "published": "Publicat la {{url}}",
     "pull": "Adu de la origin",
     "pullShort": "Adu",
     "push": "Comite și trimite către origin",
     "pushShort": "Trimite",
     "pushSkippedNoRemote": "⚠ Trimiterea a fost sărită - nu este setat niciun depozit origin mai jos.",
-    "pushSkippedNoToken": "⚠ Trimiterea a fost sărită - niciun token GitHub (Setări → GitHub).",
     "refresh": "Reîmprospătează",
     "remote": "Depozit la distanță",
     "remoteHint": "Creează un depozit nou sau leagă unul existent ca depozit la distanță al acestui proiect, apoi trimite.",
     "removeCredential": "Elimină credențiala salvată",
+    "repositoryLinkCopied": "Linkul depozitului a fost copiat",
     "restoreCommit": "Restabilește versiunea",
     "restoreCommitDescription": "Aceasta înlocuiește fiecare fișier urmărit din proiect cu această versiune și elimină fișierele adăugate ulterior. Ramura ta rămâne pe comiterea ei curentă.",
     "restoreCommitTitle": "Restabilești această versiune?",
@@ -1131,7 +1119,7 @@
     "titleRequired": "Titlul comiterii este obligatoriu.",
     "titleRequiredStatus": "Introdu un titlu de comitere înainte să comiți.",
     "unlink": "Dezleagă",
-    "unlinked": "Dezlegat de GitHub.",
+    "unlinkedFrom": "Legătura cu {{host}} a fost eliminată.",
     "unstage": "Scoate din pregătire",
     "unstageFor": "Scoate {{path}} din pregătire",
     "unstageAll": "Scoate tot din pregătire",

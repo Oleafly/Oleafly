@@ -5,7 +5,7 @@ license: MIT
 compatibility: Needs an open Oleafly project with a LaTeX or Typst engine. Nothing else is required. Verification with verify_pdf_pages needs PDF page capture enabled in Settings.
 allowed-tools: read_file write_file create_file replace_in_file rename_file list_files search_project project_map set_main_doc compile get_log get_pdf_text verify_pdf_pages update_todos remember_note load_skill read_skill_file
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   skill-author: Oleafly
   oleafly:
     tier: native
@@ -177,3 +177,15 @@ Create `research/sources/` and `research/notes/` so literature work has somewher
 - [ ] The PDF was checked with `get_pdf_text`, and with `verify_pdf_pages` when it was available
 - [ ] `research/sources/` and `research/notes/` exist
 - [ ] The next skill is named for the user
+
+## From a terminal
+
+Outside the app (a terminal, or a coding agent with a shell), the `oleafly` command does the same work. Always pass `--json` and check `ok`.
+
+| In Oleafly | From a terminal |
+|---|---|
+| `compile` | `oleafly build --json` |
+| `get_log` | `oleafly log --diagnostics --json` |
+| `project_map` | `oleafly context --json` |
+| `list_files`, `read_file`, `search_project` | Your own file tools; `oleafly context --json` for the outline |
+| `set_main_doc` | `oleafly config set main <file>` |

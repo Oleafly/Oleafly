@@ -573,7 +573,7 @@ impl TurnRecorder {
                     true,
                 );
             }
-            AgentEvent::Usage { usage } => {
+            AgentEvent::Usage { usage, .. } => {
                 self.record.usage = *usage;
             }
             AgentEvent::Retry { attempt, max } => {
@@ -607,7 +607,7 @@ impl TurnRecorder {
                 self.push(ThreadItem::Steered, true);
                 self.push(ThreadItem::UserMessage { text: text.clone() }, true);
             }
-            AgentEvent::StepStart { .. } | AgentEvent::RunEnd => {}
+            AgentEvent::StepStart { .. } | AgentEvent::RunEnd | AgentEvent::Notice { .. } => {}
         }
     }
 
@@ -1246,13 +1246,11 @@ mod tests {
         recorder.record(&AgentEvent::TextDelta {
             text: " on it".into(),
         });
-        recorder.record(&AgentEvent::Usage {
-            usage: Usage {
-                input: 10,
-                output: 5,
-                ..Usage::default()
-            },
-        });
+        recorder.record(&AgentEvent::usage(Usage {
+            input: 10,
+            output: 5,
+            ..Usage::default()
+        }));
         recorder.finish(false);
 
         let record = recorder.into_record();

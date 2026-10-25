@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -43,7 +43,8 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { editorFind, editorRedo, editorUndo, getEditorView } from "./cm/controller";
 import { useEditorHistory } from "./history-signal";
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
-import { imageToLatex, imageToLatexAvailable } from "@/features/image-to-latex";
+import { imageToLatex } from "@/features/image-to-latex";
+import { useToolsImageReady } from "@/hooks/use-tools-image-ready";
 import { goToSyncTex } from "@/features/synctex";
 import { engineSyncsPath } from "@/lib/document-engine";
 import { openDiagramComposer } from "@/features/open-tool";
@@ -352,7 +353,7 @@ export function EditorToolbar({
   onToggleWysiwyg: () => void;
 }>) {
   const { t } = useTranslation(["common", "editor"]);
-  const [visionReady, setVisionReady] = useState(false);
+  const visionReady = useToolsImageReady();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const projectKind = useFilesStore((s) => s.projectKind);
   const activePath = useFilesStore((s) => s.activePath);
@@ -363,9 +364,6 @@ export function EditorToolbar({
     projectKind !== "image" && projectKind !== "diagram" && engineLoaded && engineSyncsPath(engine, activePath);
   const latexProject = engineLoaded && engine.source_format === "latex";
   const latexDocument = latexProject && projectKind !== "diagram" && projectKind !== "image";
-  useEffect(() => {
-    void imageToLatexAvailable().then(setVisionReady);
-  }, []);
 
   const controls = useMemo<ToolbarControl[]>(() => {
     const list: ToolbarControl[] = [

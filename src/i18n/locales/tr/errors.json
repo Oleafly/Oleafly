@@ -81,17 +81,52 @@
   "export": {
     "bibliography_unreadable": "Oleafly {{name}} kaynakçasını okuyamadı. Bozuk bir girdi olup olmadığını denetleyin, ardından yeniden dışa aktarın."
   },
-  "github": {
-    "sign_in_expired": "Oturum açma kodunun süresi doldu. Yeniden deneyin.",
-    "sign_in_cancelled": "GitHub yetkilendirmesi iptal edildi.",
-    "sign_in_failed": "GitHub ile oturum açılamadı.",
-    "repositories_unavailable": "Depolar yüklenemedi.",
-    "create_repo_failed": "Depo oluşturulamadı ({{status}})."
-  },
   "git": {
-    "remote_exists": "Bu proje zaten {{remote}} ile bağlantılı.",
+    "access_denied": "{{host}} bu depoya erişimi reddetti. Hesabınızın bu depoya erişimi olduğunu kontrol edin. Kuruluş çoklu oturum açma (SSO) kullanıyorsa önce oturumunuzu bu kuruluş için yetkilendirin.",
+    "access_denied_account": "{{host}}, bu depoya {{account}} hesabının erişimini reddetti. Bu hesabın depoyu kullanabildiğini kontrol edin. Kuruluş çoklu oturum açma (SSO) kullanıyorsa önce oturumunuzu bu kuruluş için yetkilendirin.",
+    "account_missing": "{{host}} için Git barındırma hesabı yok. Ayarlar'dan bir hesap ekleyin.",
+    "archive_too_large": "Depo dosyaları {{limit}} MB sınırını aşıyor, bu yüzden Oleafly bunları içe aktaramıyor. Depoyu kendiniz klonlayıp klasörünü açın.",
+    "auth_rejected": "{{host}}, {{account}} için kayıtlı oturum bilgisini reddetti. Ayarlar'dan {{host}} hizmetinde yeniden oturum açın.",
+    "credentials_missing": "{{host}} bir kullanıcı adı ve parola istedi. Ayarlar'dan {{host}} hizmetinde oturum açın ya da bir SSH anahtarı veya Git kimlik bilgisi yardımcısı ayarlayın.",
+    "credentials_rejected": "{{host}}, Git'in sunduğu kullanıcı adını ve parolayı reddetti. Ayarlar'dan {{host}} hizmetinde oturum açın ya da Git'inizin kullandığı kimlik bilgilerini güncelleyin.",
+    "credentials_missing_helper": "{{host}} bir kullanıcı adı ve parola istedi. {{host}} için bir SSH anahtarı veya Git kimlik bilgisi yardımcısı ayarlayın, sonra yeniden deneyin.",
+    "credentials_rejected_helper": "{{host}}, Git'in sunduğu kullanıcı adını ve parolayı reddetti. Git'inizin {{host}} için kullandığı kimlik bilgilerini güncelleyin veya bir SSH anahtarı kullanın.",
+    "device_flow_unavailable": "Bu sürümde {{host}} için tarayıcıyla oturum açma kullanılamıyor. Bunun yerine bir erişim belirteci kullanın.",
+    "forge_bad_response": "{{host}}, Oleafly'nin okuyamadığı bir yanıt gönderdi.",
+    "forge_ca_file_invalid": "Oleafly bu dosyadan sertifika okuyamadı. 1 MB'tan küçük bir PEM veya DER sertifika dosyası seçin.",
+    "forge_forbidden": "{{host}} bu işlemi reddetti. Belirteçte {{scopes}} kapsamları eksik olabilir.",
+    "forge_https_required": "Bir https:// adresi kullanın. Düz http yalnızca kendi ağınızdaki sunucularla çalışır.",
+    "forge_invalid_repository": "Bu, Oleafly'nin kullanabileceği bir depo yolu değil.",
+    "forge_invalid_repository_name": "Depo adında yalnızca harf, rakam, nokta, kısa çizgi ve alt çizgi kullanın.",
+    "forge_invalid_server": "{{server}}, Oleafly'nin kullanabileceği bir sunucu adresi değil.",
+    "forge_missing_scopes": "Bu belirteç {{host}} hizmetine gönderim yapamıyor. {{scopes}} kapsamlarına sahip bir belirteç oluşturun.",
+    "forge_not_found": "{{host}} bu depoyu bulamadı.",
+    "forge_rate_limited": "{{host}} şu anda istekleri sınırlıyor. Bir dakika sonra yeniden deneyin.",
+    "forge_redirect_refused": "{{host}}, Oleafly'yi {{target}} adresine yönlendirmeye çalıştı, bu yüzden Oleafly oturum bilgilerinizi korumak için durdu.",
+    "forge_repository_exists": "{{host}} üzerinde bu adla bir depo zaten var.",
+    "forge_server_error": "{{host}} bir hata döndürdü ({{status}}).",
+    "forge_signed_out": "{{host}} oturumunuzun süresi doldu veya oturumunuz iptal edildi. Ayarlar'dan yeniden oturum açın.",
+    "forge_sso_required": "{{host}}, bu oturumun kuruluşun çoklu oturum açması için yetkilendirilmesini istiyor. {{host}} üzerinde yetkilendirin, sonra yeniden deneyin.",
+    "forge_store": "Oleafly Git barındırma hesaplarınızı okuyamadı veya kaydedemedi.",
+    "forge_token_invalid": "Bu bir erişim belirtecine benzemiyor. Belirtecin tamamını yapıştırın.",
+    "forge_token_rejected": "{{host}} bu belirteci kabul etmedi. Belirtecin tamamını kopyaladığınızı ve süresinin dolmadığını kontrol edin.",
+    "forge_unknown_server": "Oleafly, {{host}} sunucusunun türünü anlayamadı. Sunucu türünü seçin.",
+    "host_key_unknown": "SSH henüz {{host}} sunucusunu tanımıyor. Ana bilgisayar anahtarını kabul etmek için bir terminalden bir kez bağlanın, sonra yeniden deneyin.",
+    "host_unreachable": "Oleafly {{host}} sunucusuna ulaşamadı. Adresi ve bağlantınızı denetleyin.",
+    "import_cancelled": "İçe aktarma iptal edildi.",
+    "invalid_remote_url": "Bir Git deposunun HTTPS veya SSH adresini girin.",
     "nested_repository": "Bu proje başka bir Git deposunun içinde olduğu için Oleafly burada ayrı bir depo oluşturmaz.",
     "not_installed": "Bu bilgisayarda Git kurulu değil. Git'i kurun, sonra yeniden deneyin.",
+    "push_rejected": "Uzak dalda bu projede henüz olmayan işlemeler var. Önce çekin, sonra yeniden gönderin.",
+    "remote_exists": "Bu proje zaten {{remote}} ile bağlantılı.",
+    "remote_has_password": "Parolayı veya erişim belirtecini adresten çıkarın. Oleafly bunun yerine Git barındırma hesabınızla veya kendi Git kimlik bilgilerinizle oturum açar.",
+    "repository_empty": "Bu depoda henüz işleme yok, bu yüzden içe aktarılacak bir şey yok.",
+    "repository_not_found": "{{host}} üzerinde bu adreste bir depo yok veya hesabınız onu göremiyor.",
+    "sign_in_cancelled": "Oturum açma tarayıcıda iptal edildi.",
+    "sign_in_expired": "Oturum açma kodunun süresi doldu. Yeniden deneyin.",
+    "sign_in_failed": "Oturum açılamadı.",
+    "ssh_key_rejected": "{{host}} SSH anahtarınızı reddetti. Ortak anahtarınızı {{host}} üzerindeki hesabınıza ekleyin veya anahtarı SSH ajanınıza yükleyin.",
+    "tls_failed": "Oleafly, {{host}} sertifikasını doğrulayamadı. Kuruluşunuz kendi sertifika yetkilisini çalıştırıyorsa, onun sertifika dosyasını Ayarlar'dan hesaba ekleyin.",
     "tracked_secret_files": "Bu projenin Git geçmişindeki dosyalar anahtar veya parola içerebileceği için yayımlama durduruldu: {{files}}"
   },
   "approvals": {
@@ -101,7 +136,7 @@
     "git": "Kaynak Denetimi'ni kullanmak için bu klasöre güvenin.",
     "repository": "Burada Kaynak Denetimi'ni kullanmak için {{name}} deposuna güvenin.",
     "terminal": "Bu klasörde kullanmak için terminali kendiniz açın.",
-    "agents": "Dış ajanları kullanmak için bu klasöre güvenin.",
+    "agents": "CLI ajanlarını kullanmak için bu klasöre güvenin.",
     "mcp": "MCP istemcileri kullanabilmeden önce bu klasöre güvenin.",
     "research_tasks": "Araştırma görevlerini çalıştırmak için bu klasöre güvenin.",
     "run_command": "Asistanın komut çalıştırabilmesi için bu klasöre güvenin.",
@@ -136,6 +171,8 @@
     "changed": "{{path}}, Oleafly kurduktan sonra değişti, bu yüzden olduğu gibi bırakıldı.",
     "failed": "Oleafly terminal komutunu kuramadı.",
     "remove_failed": "Oleafly terminal komutunu kaldıramadı.",
+    "path_failed": "Oleafly komutu kurdu, ancak {{directory}} klasörünü PATH değişkeninize ekleyemedi.",
+    "in_use": "{{path}} kullanımda. oleafly çalıştıran terminalleri kapatıp yeniden deneyin.",
     "unsupported": "Terminal komutu bu sistemde henüz kullanılamıyor."
   },
   "research": {
@@ -212,6 +249,8 @@
     "sync_already_linked": "Bu proje zaten başka bir Overleaf projesine bağlı. Önce eşitlemeyi durdurun.",
     "sync_offline": "Oleafly Overleaf'e ulaşamadı. Değişiklikleriniz burada güvende ve bir dahaki sefere eşitlenecek.",
     "sync_failed": "Overleaf ile eşitleme tamamlanmadı. Buradaki dosyalarınız değişmedi.",
+    "sync_incomplete": "Overleaf ile eşitleme tamamlanmadı ama buradaki bazı dosyalar zaten güncellendi. Bitirmek için yeniden eşitleyin.",
+    "sync_backups_saved": "Eşitleme durdu. Overleaf sürümleriyle değiştirilen dosyaların sizdeki sürümleri {{folder}} içine kaydedildi.",
     "sync_kept_changing": "Eşitleme sırasında proje Overleaf'te değişmeye devam etti. Biraz sonra yeniden deneyin.",
     "sync_case_clash": "Overleaf'te adları yalnızca büyük/küçük harf bakımından farklı olan dosyalar var ({{files}}). Bunlardan birini Overleaf'te yeniden adlandırın, ardından yeniden eşitleyin.",
     "sync_invalid_names": "Overleaf'teki bazı dosya adları bu bilgisayara kaydedilemiyor ({{files}}). Bu dosyaları Overleaf'te yeniden adlandırın, ardından yeniden eşitleyin.",
@@ -223,7 +262,9 @@
     "git_token_rejected": "Overleaf Git belirtecini kabul etmedi. Süresi dolmuş olabilir. Overleaf hesap ayarlarınızda yeni bir belirteç oluşturun.",
     "git_unavailable": "Overleaf'in Git entegrasyonu bu proje için kullanılamıyor. Projenin sahibinin ücretli ya da üniversite planına sahip olması gerekir.",
     "template_link_invalid": "Bu bağlantı bir Overleaf şablon sayfası değil. overleaf.com/latex/templates altındaki bir sayfanın adresini kopyalayıp yeniden deneyin.",
-    "template_unavailable": "Oleafly bu şablonu açamadı. Overleaf'in galerisinden kaldırılmış olabilir."
+    "template_unavailable": "Oleafly bu şablonu açamadı. Overleaf'in galerisinden kaldırılmış olabilir.",
+    "browser_sign_in_missing": "Oleafly bu tarayıcı profilinde {{server}} için oturum bilgisi bulamadı. Doğrudan oturum açın.",
+    "browser_sign_in_failed": "Tarayıcınızdan alınan oturum bilgisi işe yaramadı. Süresi dolmuş olabilir. Doğrudan oturum açın."
   },
   "collab": {
     "suggestion_role": "Bu projedeki rolünüz öneri yapmaya izin vermiyor."
@@ -238,5 +279,53 @@
     "unknown_tool": "Oleafly, {{tool}} adlı bir aracı tanımıyor.",
     "not_managed": "Oleafly yalnızca kendi indirdiği {{tool}} kopyasını kaldırabilir.",
     "no_html_output": "Henüz HTML çıktısı yok. Önce belgeyi derleyin."
+  },
+  "attachments": {
+    "too_large": "Bu dosya {{max}} MB sınırını aşıyor. Daha küçük bir dosya ekleyin.",
+    "invalid_request": "Oleafly bu eki okuyamadı.",
+    "not_found": "Bu ek artık bu bilgisayarda saklanmıyor.",
+    "storage_failed": "Oleafly bu eki kaydedemedi."
+  },
+  "provider_credit": {
+    "failed": "Oleafly {{provider}} bakiyenizi denetleyemedi."
+  },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 kurulu değil.",
+    "git_bash_missing": "Git Bash kurulu değil. Git for Windows'u kurun ya da başka bir shell seçin.",
+    "wsl_missing": "WSL kurulu değil.",
+    "wsl_no_distro": "WSL'de henüz bir Linux dağıtımı yok.",
+    "shell_path_empty": "Ayarlar'dan bir shell yolu girin ya da başka bir shell seçin.",
+    "shell_path_missing": "{{path}} konumunda bir program yok."
+  },
+  "mathpix": {
+    "keys_missing": "Önce Ayarlar, Yapay zeka asistanı, Araçlar bölümünden Mathpix uygulama kimliğinizi ve anahtarınızı ekleyin.",
+    "invalid_keys": "Bu uygulama kimliği veya anahtar, Mathpix anahtarlarında hiç bulunmayan karakterler içeriyor. Bunları Mathpix konsolundan yeniden kopyalayın.",
+    "key_rejected": "Mathpix bu anahtarları kabul etmedi. Mathpix konsolunda uygulama kimliğini ve anahtarı denetleyin.",
+    "rate_limited": "Mathpix şu anda istekleri sınırlıyor. Bir dakika bekleyip yeniden deneyin.",
+    "unreachable": "Oleafly Mathpix hizmetine ulaşamadı. İnternet bağlantınızı denetleyip yeniden deneyin.",
+    "http_error": "Mathpix bir hata döndürdü (HTTP {{status}}). Daha sonra yeniden deneyin.",
+    "invalid_response": "Mathpix, Oleafly'nin okuyamadığı bir yanıt gönderdi. Daha sonra yeniden deneyin.",
+    "rejected": "Mathpix bu dosyayı okuyamadı: {{reason}}",
+    "image_too_large": "Bu görsel Mathpix için çok büyük. Kırpıp yeniden deneyin.",
+    "pdf_too_large": "Bu PDF, Mathpix'in 256 MB sınırını aşıyor.",
+    "timed_out": "Mathpix bu PDF'i 30 dakika içinde bitiremedi. Daha az sayfayla deneyin.",
+    "cancelled": "Mathpix dönüştürmesi durduruldu.",
+    "wrong_window": "Mathpix yalnızca Oleafly'nin ana penceresinden kullanılabilir.",
+    "pdf_too_large_ipc": "Bu bilgisayar Mathpix'e en fazla 16 MB PDF gönderebilir. PDF'i bölüp yeniden deneyin."
+  },
+  "desktop_apps": {
+    "not_installed": "Cua Driver kurulu değil. Ayarlar, Tümleştirmeler, Masaüstü uygulamaları bölümünden kurun.",
+    "too_old": "Cua Driver {{version}} çok eski. {{minimum}} veya daha yeni bir sürüme güncelleyin.",
+    "no_app_bundle": "macOS izinlerini tutabilmesi için Cua Driver'ı resmi yükleyiciyle kurun.",
+    "change_declined": "Önceki Masaüstü uygulamaları ayarlarınızı korudunuz.",
+    "app_blocked": "Ajanlar {{name}} uygulamasını kullanamaz.",
+    "app_invalid": "Oleafly, {{name}} öğesini uygulama olarak kullanamaz.",
+    "site_invalid": "\"{{site}}\", Oleafly'nin kullanabileceği bir web sitesi adresi değil. https:// kullanın, bu bilgisayar için http:// kullanabilirsiniz.",
+    "too_many_apps": "En fazla {{limit}} uygulamaya izin verebilirsiniz.",
+    "too_many_sites": "En fazla {{limit}} web sitesine izin verebilirsiniz.",
+    "start_failed": "Cua Driver başlatılamadı: {{detail}}",
+    "not_bounded": "Cua Driver, Oleafly'nin sınırlarıyla başlamadığı için Oleafly onu durdurdu.",
+    "task_unattended": "Bir zamanlamaya göre veya Oleafly kapandıktan sonra çalışan görevler masaüstü uygulamalarını kullanamaz.",
+    "main_window": "Masaüstü uygulamaları ayarlarını ana pencereden değiştirin."
   }
 }

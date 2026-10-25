@@ -186,16 +186,35 @@
     "terminal": "Ladataan päätettä"
   },
   "terminal": {
+    "activity": "Uutta toimintaa",
+    "clipboard": {
+      "blocked": "Päätteessä oleva ohjelma haluaa kopioida tekstiä."
+    },
     "closeCurrent": "Sulje nykyinen",
     "closeLeft": "Sulje kaikki vasemmalta",
     "closeOthers": "Sulje muut",
     "closeRight": "Sulje kaikki oikealta",
     "closeTab": "Sulje {{title}}",
     "color": "Väri",
+    "dropRefused_one": "Tämän tiedoston nimessä on ohjausmerkki, joten pääte ei kirjoita sitä.",
+    "dropRefused_other": "{{count}} tiedostonimessä on ohjausmerkkejä, joten pääte ei kirjoita niitä.",
     "errors": {
       "input": "Syötettä ei voitu välittää shell-prosessille",
       "resize": "Päätteen kokoa ei voitu muuttaa",
       "start": "Päätteen shell-prosessia ei voitu käynnistää"
+    },
+    "find": {
+      "count": "{{current}}/{{total}}",
+      "label": "Etsi päätteestä",
+      "next": "Seuraava osuma",
+      "none": "Ei osumia",
+      "previous": "Edellinen osuma"
+    },
+    "launch": {
+      "invalid": "Tätä komentoa ei voi suorittaa päätteessä.",
+      "noProject": "Avaa projekti, niin voit käyttää päätettä.",
+      "run": "Suorita",
+      "title": "Suoritetaanko tämä komento päätteessä?"
     },
     "limitReached": "Sulje jokin pääte, niin voit avata uuden",
     "links": {
@@ -204,8 +223,26 @@
       "openUrlFailed": "Linkkiä ei voitu avata."
     },
     "newTerminal": "Uusi pääte",
+    "openInTerminal": "Avaa päätteessä",
     "settings": "Päätteen asetukset",
     "starting": "Käynnistetään projektin shell-prosessia…",
+    "stop": {
+      "closeMany": "Sulje päätteet",
+      "closeOne": "Sulje pääte",
+      "closeProject": "Sulje projekti",
+      "dontAsk": "Älä kysy uudelleen",
+      "dontAskHint": "Ota se takaisin käyttöön kohdasta Asetukset, Ulkoasu, Pääte, Kysy ennen varatun päätteen sulkemista.",
+      "many_one": "Ohjelma on yhä käynnissä {{count}} päätteessä.",
+      "many_other": "Ohjelmia on yhä käynnissä {{count}} päätteessä.",
+      "named": "{{process}} on yhä käynnissä päätteessä {{title}}.",
+      "quit": "Lopeta",
+      "reload": "Lataa uudelleen",
+      "restart": "Käynnistä uudelleen",
+      "switchProject": "Vaihda projektia",
+      "titleMany": "Pysäytetäänkö käynnissä olevat ohjelmat?",
+      "titleOne": "Pysäytetäänkö käynnissä oleva ohjelma?",
+      "unnamed": "Päätteessä {{title}} on yhä käynnissä ohjelma."
+    },
     "tabs": "Päätteet",
     "titleInput": "Päätteen otsikko"
   },

@@ -3,16 +3,16 @@
 
 use super::{
     catalog::{self, Plan, ProgramRole, VendorCli},
-    protocol::{Connection, Incoming},
-    AgentCheck, AgentDefinition, Capabilities,
+    AgentCheck, AgentDefinition,
 };
 use crate::app_error::AppError;
 use crate::program_locator::{self as locator, Located, ProgramKind, RejectReason};
-use serde_json::{json, Value};
+use oleafly_acp::{AcpClient, InitializeError, NullHost};
+use serde_json::Value;
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
-    sync::Mutex,
+    sync::{Arc, Mutex},
     time::Duration,
 };
 
@@ -154,10 +154,12 @@ fn failed(code: &str, detail: Option<String>, program: Option<&Path>) -> AgentCh
         code: code.into(),
         detail,
         program: program.map(|path| path.to_string_lossy().into_owned()),
-        version: None,
-        agent_name: None,
+        ..AgentCheck::default()
     }
 }
+
+/// How long the check waits for `session/new`.
+const SESSION_CHECK_LIMIT: Duration = Duration::from_secs(20);
 
 fn plain_text(value: &Value) -> Option<String> {
     let text: String = value
@@ -382,14 +384,6 @@ fn shown_program(role: ProgramRole, program: Option<&Path>, plan: &Plan) -> Opti
     })
 }
 
-fn initialize_request() -> Value {
-    json!({
-        "protocolVersion": 1,
-        "clientInfo": {"name": "oleafly", "title": "Oleafly", "version": env!("CARGO_PKG_VERSION")},
-        "clientCapabilities": {"fs": {"readTextFile": false, "writeTextFile": false}, "terminal": false}
-    })
-}
-
 async fn start_and_initialize(
     root: &Path,
     launch: &catalog::Launch,
@@ -411,36 +405,16 @@ async fn start_and_initialize(
         .args(&launch.args)
         .current_dir(probe.path())
         .envs(launch.env.iter().map(|(name, value)| (name, value)));
-    let (connection, mut incoming) = match Connection::spawn(command).await {
-        Ok(started) => started,
+    let client = match AcpClient::spawn(command, Arc::new(NullHost)).await {
+        Ok(client) => client,
         Err(error) => return failed("start_failed", Some(error), shown),
     };
-    // Responses wait until earlier messages were handled; nothing else is
-    // expected before `initialize` answers.
-    let drain = tokio::spawn(async move {
-        while let Some(message) = incoming.recv().await {
-            match message {
-                Incoming::Barrier(done) => {
-                    let _ = done.send(());
-                }
-                Incoming::Disconnected => break,
-                Incoming::Message(_) | Incoming::DroppedUpdate { .. } => {}
-            }
-        }
-    });
-    let reply = tokio::time::timeout(
-        limit,
-        connection.request(
-            "initialize",
-            initialize_request(),
-            limit + Duration::from_secs(5),
-        ),
-    )
-    .await;
+    let options = super::runtime::client_options(false, false);
+    let reply = tokio::time::timeout(limit, client.initialize(&options)).await;
     let result = match reply {
         Err(_) => failed("timeout", None, shown),
-        Ok(Err(error)) => {
-            let exited = connection.is_closed()
+        Ok(Err(InitializeError::Rpc(error))) => {
+            let exited = client.is_closed()
                 || error.message.starts_with("The agent disconnected")
                 || error.message.starts_with("The agent is disconnected");
             failed(
@@ -449,9 +423,16 @@ async fn start_and_initialize(
                 shown,
             )
         }
-        Ok(Ok(value)) => match Capabilities::from_initialize(&value) {
-            Err(error) => failed("not_acp", Some(error), shown),
-            Ok(_) => AgentCheck {
+        Ok(Err(error)) => failed("not_acp", Some(error.to_string()), shown),
+        Ok(Ok(negotiated)) => {
+            let value = &negotiated.raw;
+            let redactor = oleafly_acp::redact::Redactor::new(&[]);
+            let auth_methods: Vec<_> = negotiated
+                .auth_methods
+                .iter()
+                .map(|method| super::runtime::redacted_auth_method(&redactor, method))
+                .collect();
+            let mut check = AgentCheck {
                 ok: true,
                 code: "ready".into(),
                 detail: None,
@@ -459,11 +440,45 @@ async fn start_and_initialize(
                 version: cli_version.or_else(|| plain_text(&value["agentInfo"]["version"])),
                 agent_name: plain_text(&value["agentInfo"]["title"])
                     .or_else(|| plain_text(&value["agentInfo"]["name"])),
-            },
-        },
+                auth_methods: Vec::new(),
+                runtime: Some(super::preferences::AgentRuntimeInfo::from_negotiated(
+                    &negotiated,
+                    auth_methods.clone(),
+                    super::types::now_ms(),
+                )),
+            };
+            // A real session in the probe folder shows whether the agent is
+            // signed in and can work.
+            let cwd = probe.path().to_string_lossy().into_owned();
+            match tokio::time::timeout(SESSION_CHECK_LIMIT, client.new_session(&cwd, &[])).await {
+                Ok(Ok(session)) => {
+                    if negotiated.capabilities.close {
+                        if let Some(id) = session["sessionId"].as_str() {
+                            let _ = client.close_session(id).await;
+                        }
+                    }
+                }
+                Ok(Err(error)) if error.auth_required() => {
+                    check.ok = false;
+                    check.code = "needs_sign_in".into();
+                    check.auth_methods = auth_methods;
+                }
+                Ok(Err(error)) => {
+                    check.ok = false;
+                    check.code = "session_failed".into();
+                    check.detail = Some(redactor.text(&error.message));
+                }
+                Err(_) => {
+                    check.ok = false;
+                    check.code = "session_failed".into();
+                    check.detail =
+                        Some("The agent did not open a session within 20 seconds.".into());
+                }
+            }
+            check
+        }
     };
-    connection.shutdown().await;
-    drain.abort();
+    client.shutdown().await;
     drop(probe);
     result
 }

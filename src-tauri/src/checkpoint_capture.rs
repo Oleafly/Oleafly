@@ -1,4 +1,8 @@
 use crate::project_location::{ProjectKind, ProjectLocation};
+// The leave-out rules `oleafly checkpoint diff`/`restore` use too.
+use oleafly_core::linked_capture::{
+    self, is_left_out_quietly, is_reparse_point, is_skipped_directory,
+};
 use oleafly_history::{CaptureInput, CheckpointFile, ContentHash, DETACHED_MANIFEST_PATH};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -264,7 +268,7 @@ fn capture_hash(path: &Path, relative: &str) -> std::io::Result<ContentHash> {
 
 pub(crate) const LINKED_FILE_LIMIT: u64 = 5_000;
 pub(crate) const LINKED_BYTE_LIMIT: u64 = 512 * 1024 * 1024;
-pub(crate) const LINKED_LARGE_FILE_BYTES: u64 = 25 * 1024 * 1024;
+pub(crate) const LINKED_LARGE_FILE_BYTES: u64 = linked_capture::LARGE_FILE_BYTES;
 pub(crate) const CAPTURE_NOTICE_FILE: &str = "checkpoint-capture.json";
 const MAX_RECORDER_BYTES: u64 = 8 * 1024 * 1024;
 const MAX_NOTICE_BYTES: u64 = 64 * 1024;
@@ -396,16 +400,6 @@ pub(crate) fn is_oleafly_owned(name: &str) -> bool {
     oleafly_core::exclude::is_oleafly_owned_name(name)
 }
 
-fn is_left_out_quietly(name: &str) -> bool {
-    is_oleafly_owned(name)
-        || oleafly_core::exclude::is_os_metadata_name(name)
-        || name.eq_ignore_ascii_case(".git")
-}
-
-fn is_skipped_directory(name: &str) -> bool {
-    oleafly_core::exclude::is_linked_skipped_directory(name)
-}
-
 fn probe_entry(_path: &Path, metadata: &std::fs::Metadata) -> EntryProbe {
     if oleafly_core::is_cloud_placeholder(metadata) {
         EntryProbe::Placeholder
@@ -452,9 +446,7 @@ fn decide_entry(
     if metadata.file_type().is_symlink() {
         return EntryDecision::Skip(SkipKind::Link);
     }
-    if crate::paths::is_reparse_point(&metadata)
-        || probe(&path, &metadata) == EntryProbe::Placeholder
-    {
+    if is_reparse_point(&metadata) || probe(&path, &metadata) == EntryProbe::Placeholder {
         return EntryDecision::Skip(SkipKind::Cloud);
     }
     if metadata.is_dir() {
@@ -504,7 +496,7 @@ fn forced_entry(
         current.push(part);
         let metadata = std::fs::symlink_metadata(&current).ok()?;
         if metadata.file_type().is_symlink()
-            || crate::paths::is_reparse_point(&metadata)
+            || is_reparse_point(&metadata)
             || probe(&current, &metadata) == EntryProbe::Placeholder
         {
             return None;
@@ -851,6 +843,41 @@ mod tests {
         );
         assert!(capture.notice.is_quiet(), "{:?}", capture.notice);
         assert_eq!(capture.detached_manifest, None);
+    }
+
+    #[test]
+    fn linked_capture_leaves_out_what_checkpoint_diff_leaves_out() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        let paths = [
+            "main.tex",
+            "sections/intro.tex",
+            "sections/.DS_Store",
+            "._main.tex",
+            "Thumbs.db",
+            ".git",
+            "build/main.pdf",
+            ".cache/x",
+            ".main.tex.oleafly-12-3-00ff.tmp",
+        ];
+        for relative in paths {
+            write(root, relative, b"x");
+        }
+        let mut kept: Vec<&str> = paths
+            .into_iter()
+            .filter(|relative| {
+                let parts: Vec<&str> = relative.split('/').collect();
+                let (name, folders) = parts.split_last().unwrap();
+                !linked_capture::is_left_out_quietly(name)
+                    && folders.iter().all(|folder| {
+                        !linked_capture::is_left_out_quietly(folder)
+                            && !linked_capture::is_skipped_directory(folder)
+                    })
+            })
+            .collect();
+        kept.sort_unstable();
+        assert_eq!(kept, ["main.tex", "sections/intro.tex"]);
+        assert_eq!(captured_paths(&linked_walk(root, None).walk), kept);
     }
 
     #[cfg(unix)]

@@ -1,11 +1,13 @@
 {
   "doNotTranslate": [
     "Oleafly", "LaTeX", "Typst", "Markdown", "Pandoc", "Tectonic", "TinyTeX", "TeX", "TeX Live",
-    "BibTeX", "biber", "SyncTeX", "TikZ", "PDF", "DOI", "arXiv", "Git", "GitHub", "Ollama", "MCP",
+    "BibTeX", "biber", "SyncTeX", "TikZ", "PDF", "DOI", "arXiv", "Git", "GitHub", "GitLab", "Gitea",
+    "Forgejo", "Codeberg", "Ollama", "MCP",
     "ACP", "Vim", "URL", "JSON", "YAML", "CSV", "PNG", "SVG", "API", "GPU", "CPU", "Harper",
     "Hunspell", "Mermaid", "Excalidraw", "Zotero", "OpenAI", "Anthropic", "Claude", "Gemini",
     "Codex", "Semantic Scholar", "Crossref", "OpenAlex", "Cookie", "shell", "Discord", "Dropbox",
-    "Quarto", "Calepin", "Python", "Julia", "Jupyter", "knitr", "reveal.js"
+    "Quarto", "Calepin", "Python", "Julia", "Jupyter", "knitr", "reveal.js",
+    "Mathpix"
   ],
   "terms": {
     "zh-Hans": {

@@ -1,5 +1,7 @@
 import {
+  lazy,
   memo,
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -27,7 +29,6 @@ import {
   Diff,
   FileSymlink,
   Files,
-  Github,
   GitBranch,
   GitCommitHorizontal,
   GitMerge,
@@ -65,18 +66,19 @@ import { useGitStatusStore } from "@/store/git-status";
 import { sameGitChanges } from "@/lib/git-changes";
 import { projectFolderAvailable, reportLocationError } from "@/store/project-availability";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
-import { PublishToGitHubDialog } from "@/components/integrations/PublishToGitHubDialog";
-import { GithubMenu } from "@/components/layout/GithubMenu";
+import { RemoteMenu } from "@/components/layout/RemoteMenu";
+import { GitHubBrandIcon } from "@/components/settings/IntegrationBrandIcons";
+import { useForgeAccountsStore } from "@/store/forge-accounts";
 import { SidebarPanelHeader, SidebarSection } from "@/components/layout/SidebarSection";
 import {
   consumeSourceControlGraphRequest,
   SOURCE_CONTROL_SHOW_GRAPH_EVENT,
 } from "@/lib/source-control-events";
-import { toGithubWebUrl } from "@/lib/github-url";
+import { hostLabel, matchAccount, remoteWebUrl } from "@/lib/forge";
 import { describeError } from "@/lib/app-error";
 import { dirname } from "@/lib/path-utils";
 import { cn, isMac, isWindows } from "@/lib/utils";
-import { open } from "@tauri-apps/plugin-shell";
+import { openInSystemBrowser } from "@/lib/system-browser";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { useRowWindow } from "@/hooks/use-row-window";
@@ -90,6 +92,13 @@ import {
 } from "@/hooks/use-scroll-memory";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { readSidebarView } from "@/store/sidebar-view-state";
+
+// The dialog loads with its first use, so it stays out of the entry chunk.
+const PublishDialog = lazy(() =>
+  import("@/components/integrations/PublishDialog").then((module) => ({
+    default: module.PublishDialog,
+  })),
+);
 
 type GitGraphCommit = GitCommit;
 type Translate = ReturnType<typeof useTranslation<["shell"]>>["t"];
@@ -146,6 +155,14 @@ export function SourceControl() {
     null,
   );
   const [publishOpen, setPublishOpen] = useState(false);
+  const [publishRequested, setPublishRequested] = useState(false);
+  const openPublish = useCallback(() => {
+    setPublishRequested(true);
+    setPublishOpen(true);
+  }, []);
+  useEffect(() => {
+    void useForgeAccountsStore.getState().ensureLoaded();
+  }, []);
   const [credentialCleanupRequired, setCredentialCleanupRequired] =
     useState(false);
   const [discardConfirmation, setDiscardConfirmation] =
@@ -488,7 +505,7 @@ export function SourceControl() {
               kind === "sync"
                 ? t(($) => $.shell.sourceControl.sync).toLocaleLowerCase()
                 : t(($) => $.shell.sourceControl.pushShort).toLocaleLowerCase(),
-            reason: String(result.remoteError),
+            reason: describeError(result.remoteError),
           }),
         });
       } else if (result.conflicts) {
@@ -541,19 +558,21 @@ export function SourceControl() {
       await navigator.clipboard.writeText(link);
       setNotice({
         ok: true,
-        text: t(($) => $.shell.sourceControl.linkCopied),
+        text: t(($) => $.shell.sourceControl.repositoryLinkCopied),
       });
     } catch (error) {
       setNotice({ ok: false, text: describeError(error) });
     }
   };
-  const unlinkRemote = () =>
+  const unlinkRemote = () => {
+    const host = hostLabel(remote ?? "");
     action(async (token) => {
       await tauri.gitRemoveRemote(token.projectId);
       if (current(token)) {
-        setNotice({ ok: true, text: t(($) => $.shell.sourceControl.unlinked) });
+        setNotice({ ok: true, text: t(($) => $.shell.sourceControl.unlinkedFrom, { host }) });
       }
     });
+  };
   const cleanSavedCredential = () =>
     action(async (token) => {
       await tauri.gitCleanRemoteCredentials(token.projectId);
@@ -751,7 +770,7 @@ export function SourceControl() {
           remote={null}
           busy={busy}
           onRefresh={refresh}
-          onPublish={() => setPublishOpen(true)}
+          onPublish={openPublish}
         />
         <EmptyState
           size="compact"
@@ -772,9 +791,10 @@ export function SourceControl() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPublishOpen(true)}
+            data-testid="source-control-publish"
+            onClick={openPublish}
           >
-            {t(($) => $.shell.sourceControl.publish)}
+            <PublishLabel />
           </Button>
           {notice ? (
             <p
@@ -788,15 +808,19 @@ export function SourceControl() {
             </p>
           ) : null}
         </EmptyState>
-        <PublishToGitHubDialog
-          open={publishOpen}
-          onClose={() => setPublishOpen(false)}
-          projectId={projectId}
-          projectName={projectName}
-          onPublished={() => {
-            void refresh();
-          }}
-        />
+        {publishRequested ? (
+          <Suspense fallback={null}>
+            <PublishDialog
+              open={publishOpen}
+              onClose={() => setPublishOpen(false)}
+              projectId={projectId}
+              projectName={projectName}
+              onPublished={() => {
+                void refresh();
+              }}
+            />
+          </Suspense>
+        ) : null}
       </div>
     );
   return (
@@ -844,7 +868,7 @@ export function SourceControl() {
         branchDraft={branchDraft}
         onBranchDraft={setBranchDraft}
         onCreateBranch={() => void createBranch()}
-        onPublish={() => setPublishOpen(true)}
+        onPublish={openPublish}
         onUnlink={unlinkRemote}
       />
       {credentialCleanupRequired ? (
@@ -1251,18 +1275,41 @@ export function SourceControl() {
         }}
         onCancel={() => setAbortMergeOpen(false)}
       />
-      <PublishToGitHubDialog
-        open={publishOpen}
-        onClose={() => setPublishOpen(false)}
-        projectId={projectId}
-        projectName={projectName}
-        currentRemote={remote}
-        onPublished={() => {
-          void refresh();
-        }}
-      />
+      {publishRequested ? (
+        <Suspense fallback={null}>
+          <PublishDialog
+            open={publishOpen}
+            onClose={() => setPublishOpen(false)}
+            projectId={projectId}
+            projectName={projectName}
+            currentRemote={remote}
+            onPublished={() => {
+              void refresh();
+            }}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
+}
+
+/** "Publish to GitLab" when exactly one account is connected, else a
+ * neutral "Publish…": the dialog then asks where. */
+function usePublishLabel(): { label: string; namesGitHub: boolean } {
+  const { t } = useTranslation(["shell"]);
+  const accounts = useForgeAccountsStore((s) => s.accounts);
+  if (accounts.length === 1) {
+    const host = hostLabel(accounts[0].base);
+    return {
+      label: t(($) => $.shell.sourceControl.publishTo, { host }),
+      namesGitHub: accounts[0].kind === "github",
+    };
+  }
+  return { label: t(($) => $.shell.sourceControl.publishRepository), namesGitHub: false };
+}
+
+function PublishLabel() {
+  return <>{usePublishLabel().label}</>;
 }
 
 type HostOs = "windows" | "mac" | "linux";
@@ -1299,7 +1346,7 @@ export function GitMissingGuide({ os = HOST_OS }: Readonly<{ os?: HostOs }>) {
           <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
             {t(($) => $.shell.sourceControl.gitMissing.windows)}
           </p>
-          <Button size="sm" onClick={() => void open(GIT_FOR_WINDOWS_URL)}>
+          <Button size="sm" onClick={() => void openInSystemBrowser(GIT_FOR_WINDOWS_URL)}>
             {t(($) => $.shell.sourceControl.gitMissing.download)}
           </Button>
         </>
@@ -1540,7 +1587,11 @@ function Header({
   onCopyLink?: (url: string) => void;
 }>) {
   const { t } = useTranslation(["common", "shell"]);
-  const url = remote ? toGithubWebUrl(remote) : null;
+  const accounts = useForgeAccountsStore((s) => s.accounts);
+  const publish = usePublishLabel();
+  const url = remoteWebUrl(remote, accounts);
+  const host = hostLabel(remote ?? "");
+  const remoteAccount = matchAccount(remote, accounts);
   const aheadBehindLabel = aheadBehind
     ? t(($) => $.shell.sourceControl.aheadBehind, {
         ahead: aheadBehind.ahead,
@@ -1659,15 +1710,16 @@ function Header({
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
+              data-testid="source-control-publish"
               disabled={busy || !onPublish}
               onSelect={onPublish}
             >
-              <Github className="size-3.5 shrink-0" />
-              {t(($) =>
-                remote
-                  ? $.shell.sourceControl.changeRepo
-                  : $.shell.sourceControl.publish,
+              {publish.namesGitHub && !remote ? (
+                <GitHubBrandIcon className="size-3.5 shrink-0" />
+              ) : (
+                <GitBranch className="size-3.5 shrink-0" />
               )}
+              {remote ? t(($) => $.shell.sourceControl.changeRepo) : publish.label}
             </DropdownMenuItem>
             {remote ? (
               <DropdownMenuItem
@@ -1681,9 +1733,11 @@ function Header({
           </DropdownMenuContent>
         </DropdownMenu>
         {url ? (
-          <GithubMenu
-            githubUrl={url}
-            onOpenInGithub={() => void open(url)}
+          <RemoteMenu
+            webUrl={url}
+            host={host}
+            account={remoteAccount}
+            onOpen={() => void openInSystemBrowser(url)}
             onCopyLink={() => onCopyLink?.(url)}
           />
         ) : null}

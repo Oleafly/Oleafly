@@ -1,0 +1,12 @@
+Package tagpdf Warning: Parent-Child 'Sect' --> 'Span'.
+Package tagpdf Warning: Parent-Child 'Sect' --> 'Span'.
+Package tagpdf Warning: struct stack not empty
+Status report of the tagging support
+ article.cls is compatible
+1. Unsupported:
+ pgfplots.sty
+3. Partially compatible:
+ hyperref.sty
+5. Unknown:
+ custom.sty
+End of status report

@@ -81,17 +81,52 @@
   "export": {
     "bibliography_unreadable": "Oleafly で参考文献ファイル {{name}} を読み込めませんでした。壊れた項目がないか確認してから、もう一度エクスポートしてください。"
   },
-  "github": {
-    "sign_in_expired": "サインインコードの有効期限が切れました。もう一度お試しください。",
-    "sign_in_cancelled": "GitHub の認可がキャンセルされました。",
-    "sign_in_failed": "GitHub へのサインインに失敗しました。",
-    "repositories_unavailable": "リポジトリを読み込めませんでした。",
-    "create_repo_failed": "リポジトリを作成できませんでした（{{status}}）。"
-  },
   "git": {
-    "remote_exists": "このプロジェクトはすでに {{remote}} にリンクされています。",
+    "access_denied": "{{host}} がこのリポジトリへのアクセスを拒否しました。アカウントにアクセス権があるか確認してください。組織がシングルサインオン (SSO) を使っている場合は、先にその組織に対してサインインを承認してください。",
+    "access_denied_account": "{{host}} が {{account}} に対してこのリポジトリへのアクセスを拒否しました。このアカウントがアクセスできるか確認してください。組織がシングルサインオン (SSO) を使っている場合は、先にその組織に対してサインインを承認してください。",
+    "account_missing": "{{host}} の Git ホスティングのアカウントがありません。設定で追加してください。",
+    "archive_too_large": "リポジトリのファイルが {{limit}} MB を超えているため、Oleafly では取り込めません。ご自身でリポジトリをクローンし、そのフォルダを開いてください。",
+    "auth_rejected": "{{host}} が {{account}} の保存済みのサインイン情報を受け付けませんでした。設定で {{host}} にサインインし直してください。",
+    "credentials_missing": "{{host}} からユーザー名とパスワードを求められました。設定で {{host}} にサインインするか、SSH キーまたは Git の認証情報ヘルパーを設定してください。",
+    "credentials_rejected": "{{host}} が Git から渡されたユーザー名とパスワードを受け付けませんでした。設定で {{host}} にサインインするか、Git が使う認証情報を更新してください。",
+    "credentials_missing_helper": "{{host}} からユーザー名とパスワードを求められました。{{host}} 用の SSH キーまたは Git の認証情報ヘルパーを設定してから、もう一度お試しください。",
+    "credentials_rejected_helper": "{{host}} が Git から渡されたユーザー名とパスワードを受け付けませんでした。Git が {{host}} に使う認証情報を更新するか、SSH キーを使ってください。",
+    "device_flow_unavailable": "このビルドでは {{host}} へのブラウザでのサインインを使えません。代わりにアクセストークンを使ってください。",
+    "forge_bad_response": "{{host}} から Oleafly が読み取れない応答が返されました。",
+    "forge_ca_file_invalid": "Oleafly はこのファイルから証明書を読み取れませんでした。1 MB 未満の PEM または DER の証明書ファイルを選んでください。",
+    "forge_forbidden": "{{host}} に拒否されました。トークンに {{scopes}} のスコープがない可能性があります。",
+    "forge_https_required": "https:// のアドレスを使ってください。暗号化しない http は、ご自身のネットワーク内のサーバーでのみ使えます。",
+    "forge_invalid_repository": "Oleafly で使えるリポジトリのパスではありません。",
+    "forge_invalid_repository_name": "リポジトリ名には英字、数字、ドット、ハイフン、アンダースコアだけを使ってください。",
+    "forge_invalid_server": "{{server}} は Oleafly で使えるサーバーのアドレスではありません。",
+    "forge_missing_scopes": "このトークンでは {{host}} にプッシュできません。{{scopes}} のスコープを持つトークンを作成してください。",
+    "forge_not_found": "{{host}} にそのリポジトリが見つかりませんでした。",
+    "forge_rate_limited": "{{host}} は現在リクエストを制限しています。1 分ほどしてから、もう一度お試しください。",
+    "forge_redirect_refused": "{{host}} が Oleafly を {{target}} に転送しようとしたため、サインイン情報を守るために Oleafly は処理を止めました。",
+    "forge_repository_exists": "この名前のリポジトリは {{host}} にすでにあります。",
+    "forge_server_error": "{{host}} からエラーが返されました（{{status}}）。",
+    "forge_signed_out": "{{host}} のサインインが期限切れになったか、取り消されました。設定でサインインし直してください。",
+    "forge_sso_required": "{{host}} では、このサインインを組織のシングルサインオンに対して承認する必要があります。{{host}} で承認してから、もう一度お試しください。",
+    "forge_store": "Oleafly は Git ホスティングのアカウントを読み込みも保存もできませんでした。",
+    "forge_token_invalid": "アクセストークンではないようです。トークン全体を貼り付けてください。",
+    "forge_token_rejected": "{{host}} がこのトークンを受け付けませんでした。トークン全体をコピーしたか、期限が切れていないかを確認してください。",
+    "forge_unknown_server": "Oleafly は {{host}} がどの種類のサーバーか判別できませんでした。サーバーの種類を選んでください。",
+    "host_key_unknown": "SSH はまだ {{host}} を知りません。一度ターミナルから接続してホスト鍵を受け入れてから、もう一度お試しください。",
+    "host_unreachable": "Oleafly は {{host}} に接続できませんでした。アドレスと接続を確認してください。",
+    "import_cancelled": "読み込みをキャンセルしました。",
+    "invalid_remote_url": "Git リポジトリの HTTPS または SSH のアドレスを入力してください。",
     "nested_repository": "このプロジェクトは別の Git リポジトリの中にあるため、Oleafly はここに別のリポジトリを作成しません。",
     "not_installed": "このコンピュータには Git がインストールされていません。Git をインストールしてから、もう一度お試しください。",
+    "push_rejected": "リモートのブランチに、このプロジェクトにまだないコミットがあります。先にプルしてから、もう一度プッシュしてください。",
+    "remote_exists": "このプロジェクトはすでに {{remote}} にリンクされています。",
+    "remote_has_password": "アドレスからパスワードまたはアクセストークンを取り除いてください。Oleafly は代わりに Git ホスティングのアカウントか、ご自身の Git の認証情報でサインインします。",
+    "repository_empty": "このリポジトリにはまだコミットがないため、取り込むものがありません。",
+    "repository_not_found": "{{host}} のこのアドレスにはリポジトリがないか、あなたのアカウントからは見えません。",
+    "sign_in_cancelled": "ブラウザでサインインがキャンセルされました。",
+    "sign_in_expired": "サインインのコードの期限が切れました。もう一度お試しください。",
+    "sign_in_failed": "サインインに失敗しました。",
+    "ssh_key_rejected": "{{host}} に SSH キーを拒否されました。{{host}} のアカウントに公開鍵を追加するか、SSH エージェントにキーを読み込んでください。",
+    "tls_failed": "Oleafly は {{host}} の証明書を検証できませんでした。組織で独自の認証局を運用している場合は、設定でその証明書ファイルをアカウントに追加してください。",
     "tracked_secret_files": "このプロジェクトの Git 履歴にあるファイルに鍵やパスワードが含まれている可能性があるため、公開を中止しました: {{files}}"
   },
   "approvals": {
@@ -101,7 +136,7 @@
     "git": "ソース管理を使うには、このフォルダを信頼してください。",
     "repository": "ここでソース管理を使うには、リポジトリ {{name}} を信頼してください。",
     "terminal": "このフォルダでターミナルを使うには、ご自身でターミナルを開いてください。",
-    "agents": "外部エージェントを使うには、このフォルダを信頼してください。",
+    "agents": "CLI エージェントを使うには、このフォルダを信頼してください。",
     "mcp": "MCP クライアントがこのフォルダを使えるようにするには、先に信頼してください。",
     "research_tasks": "調査タスクを実行するには、このフォルダを信頼してください。",
     "run_command": "アシスタントにコマンドを実行させるには、このフォルダを信頼してください。",
@@ -136,6 +171,8 @@
     "changed": "{{path}} は Oleafly がインストールした後に変更されたため、そのままにしました。",
     "failed": "Oleafly はターミナルコマンドをインストールできませんでした。",
     "remove_failed": "Oleafly はターミナルコマンドを削除できませんでした。",
+    "path_failed": "Oleafly はコマンドをインストールしましたが、{{directory}} を PATH に追加できませんでした。",
+    "in_use": "{{path}} は使用中です。oleafly を実行しているターミナルを閉じてから、もう一度お試しください。",
     "unsupported": "このシステムではターミナルコマンドをまだ利用できません。"
   },
   "research": {
@@ -212,6 +249,8 @@
     "sync_already_linked": "このプロジェクトは、すでに別の Overleaf プロジェクトにリンクされています。先に同期を停止してください。",
     "sync_offline": "Oleafly は Overleaf に接続できませんでした。変更はここに安全に残っており、次回同期されます。",
     "sync_failed": "Overleaf との同期が完了しませんでした。ここにあるファイルは変更されていません。",
+    "sync_incomplete": "Overleaf との同期が完了しませんでしたが、ここにあるファイルの一部はすでに更新されています。もう一度同期して完了させてください。",
+    "sync_backups_saved": "同期を停止しました。Overleaf の版で置き換えられたファイルについては、置き換え前のあなたの版を {{folder}} に保存しました。",
     "sync_kept_changing": "同期中に Overleaf 側でプロジェクトが変更され続けました。少し待ってから、もう一度お試しください。",
     "sync_case_clash": "Overleaf に、大文字と小文字だけが異なる名前のファイルがあります ({{files}})。Overleaf でどちらかの名前を変更してから、もう一度同期してください。",
     "sync_invalid_names": "Overleaf の一部のファイル名は、このコンピュータに保存できません ({{files}})。Overleaf で名前を変更してから、もう一度同期してください。",
@@ -223,7 +262,9 @@
     "git_token_rejected": "Overleaf が Git トークンを受け付けませんでした。有効期限が切れている可能性があります。Overleaf のアカウント設定で新しいトークンを作成してください。",
     "git_unavailable": "このプロジェクトでは Overleaf の Git 連携を利用できません。プロジェクトのオーナーが有料プランか大学のプランに加入している必要があります。",
     "template_link_invalid": "このリンクは Overleaf のテンプレートページではありません。overleaf.com/latex/templates にあるページのアドレスをコピーして、もう一度お試しください。",
-    "template_unavailable": "Oleafly はこのテンプレートを開けませんでした。Overleaf のギャラリーから削除された可能性があります。"
+    "template_unavailable": "Oleafly はこのテンプレートを開けませんでした。Overleaf のギャラリーから削除された可能性があります。",
+    "browser_sign_in_missing": "Oleafly はそのブラウザのプロファイルで {{server}} のサインイン情報を見つけられませんでした。直接サインインしてください。",
+    "browser_sign_in_failed": "ブラウザから取り込んだサインイン情報は使えませんでした。期限が切れている可能性があります。直接サインインしてください。"
   },
   "collab": {
     "suggestion_role": "このプロジェクトでのあなたの役割では、提案はできません。"
@@ -238,5 +279,53 @@
     "unknown_tool": "Oleafly は {{tool}} というツールを認識できません。",
     "not_managed": "Oleafly が削除できるのは、自分でダウンロードした {{tool}} のコピーだけです。",
     "no_html_output": "HTML の出力はまだありません。先に文書をコンパイルしてください。"
+  },
+  "attachments": {
+    "too_large": "このファイルは {{max}} MB を超えています。もっと小さいファイルを添付してください。",
+    "invalid_request": "Oleafly はこの添付ファイルを読み取れませんでした。",
+    "not_found": "この添付ファイルは、このコンピュータにはもう保存されていません。",
+    "storage_failed": "Oleafly はこの添付ファイルを保存できませんでした。"
+  },
+  "provider_credit": {
+    "failed": "Oleafly は {{provider}} の残高を確認できませんでした。"
+  },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 がインストールされていません。",
+    "git_bash_missing": "Git Bash がインストールされていません。Git for Windows をインストールするか、別の shell を選んでください。",
+    "wsl_missing": "WSL がインストールされていません。",
+    "wsl_no_distro": "WSL に Linux ディストリビューションがまだありません。",
+    "shell_path_empty": "設定で Shell のパスを入力するか、別の shell を選んでください。",
+    "shell_path_missing": "{{path}} にプログラムがありません。"
+  },
+  "mathpix": {
+    "keys_missing": "先に「設定 → AI → ツール」で Mathpix のアプリ ID とキーを追加してください。",
+    "invalid_keys": "そのアプリ ID またはキーには、Mathpix のキーに含まれない文字が入っています。Mathpix のコンソールからもう一度コピーしてください。",
+    "key_rejected": "Mathpix にこれらのキーを受け付けてもらえませんでした。Mathpix のコンソールでアプリ ID とキーを確認してください。",
+    "rate_limited": "Mathpix は現在リクエストを制限しています。1 分ほど待ってから、もう一度お試しください。",
+    "unreachable": "Oleafly は Mathpix に接続できませんでした。インターネット接続を確認してから、もう一度お試しください。",
+    "http_error": "Mathpix からエラーが返されました（HTTP {{status}}）。しばらくしてからもう一度お試しください。",
+    "invalid_response": "Mathpix から Oleafly が読み取れない応答が返されました。しばらくしてからもう一度お試しください。",
+    "rejected": "Mathpix はこのファイルを読み取れませんでした: {{reason}}",
+    "image_too_large": "この画像は Mathpix には大きすぎます。トリミングしてから、もう一度お試しください。",
+    "pdf_too_large": "この PDF は Mathpix の上限である 256 MB を超えています。",
+    "timed_out": "Mathpix は 30 分以内にこの PDF の処理を終えられませんでした。ページ数を減らしてお試しください。",
+    "cancelled": "Mathpix での変換を停止しました。",
+    "wrong_window": "Mathpix は Oleafly のメインウィンドウからのみ使えます。",
+    "pdf_too_large_ipc": "このコンピュータから Mathpix に送れる PDF は 16 MB までです。PDF を分割してから、もう一度お試しください。"
+  },
+  "desktop_apps": {
+    "not_installed": "Cua Driver がインストールされていません。「設定 → 連携 → デスクトップアプリ」でインストールしてください。",
+    "too_old": "Cua Driver {{version}} は古すぎます。{{minimum}} 以降に更新してください。",
+    "no_app_bundle": "macOS の権限を保持できるよう、公式のインストーラで Cua Driver をインストールしてください。",
+    "change_declined": "デスクトップアプリの設定は以前のままです。",
+    "app_blocked": "エージェントは {{name}} を使えません。",
+    "app_invalid": "Oleafly は {{name}} をアプリとして使えません。",
+    "site_invalid": "「{{site}}」は Oleafly で使えるウェブサイトのアドレスではありません。https:// を使ってください。このコンピュータ上のアドレスなら http:// も使えます。",
+    "too_many_apps": "許可できるアプリは {{limit}} 個までです。",
+    "too_many_sites": "許可できるウェブサイトは {{limit}} 個までです。",
+    "start_failed": "Cua Driver を起動できませんでした: {{detail}}",
+    "not_bounded": "Cua Driver が Oleafly の制限付きで起動しなかったため、Oleafly が停止しました。",
+    "task_unattended": "スケジュールで実行するタスクや、Oleafly を閉じたあとに実行するタスクでは、デスクトップアプリを使えません。",
+    "main_window": "デスクトップアプリの設定はメインウィンドウで変更してください。"
   }
 }

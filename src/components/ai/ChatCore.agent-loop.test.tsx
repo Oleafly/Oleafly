@@ -36,9 +36,6 @@ interface PendingRun {
   }) => void;
 }
 
-const launchBrowser = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/browser-window", () => ({ launchBrowser }));
-
 const mocks = vi.hoisted(() => ({
   runs: [] as PendingRun[],
   runAgentHarness: vi.fn(),
@@ -49,6 +46,8 @@ const mocks = vi.hoisted(() => ({
   agentThreadArchive: vi.fn(),
   acpOpen: vi.fn(),
   agentThreadFork: vi.fn(),
+  agentThreadRollback: vi.fn(),
+  providerCredit: vi.fn(),
   claimPrewarmed: vi.fn(),
   approvalsList: vi.fn(),
   approvalsSet: vi.fn(),
@@ -75,6 +74,7 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
   toastErrorUnique: vi.fn(),
   toastSuccess: vi.fn(),
+  toastInfo: vi.fn(),
   logError: vi.fn(),
   createSkill: vi.fn(),
   refetchSkills: vi.fn(),
@@ -140,7 +140,46 @@ vi.mock("@/lib/agent-backend", () => ({
   agentThreadRead: (...args: unknown[]) => mocks.agentThreadRead(...args),
   agentThreadArchive: (...args: unknown[]) => mocks.agentThreadArchive(...args),
   agentThreadFork: (...args: unknown[]) => mocks.agentThreadFork(...args),
+  agentThreadRollback: (...args: unknown[]) => mocks.agentThreadRollback(...args),
   agentThreadClaimPrewarmed: (...args: unknown[]) => mocks.claimPrewarmed(...args),
+  providerCredit: (...args: unknown[]) => mocks.providerCredit(...args),
+}));
+
+// The attachment store, in memory: put returns `sha-<name>`.
+const attachmentStore = vi.hoisted(() => new Map<string, { name: string; mime: string; bytes: Uint8Array }>());
+vi.mock("@/lib/attachments", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/attachments")>();
+  return {
+    ...actual,
+    attachmentPut: async (_scope: string | null, name: string, mime: string, bytes: Uint8Array) => {
+      const sha256 = `sha-${name}`;
+      attachmentStore.set(sha256, { name, mime, bytes });
+      return { sha256, name, mime, size: bytes.length, pages: null, hasText: false };
+    },
+    attachmentPutText: async (_scope: string | null, sha256: string) => {
+      const entry = attachmentStore.get(sha256);
+      return { sha256, name: entry?.name ?? "", mime: entry?.mime ?? "", size: 0, pages: null, hasText: true };
+    },
+    attachmentRead: async (_scope: string | null, sha256: string) => {
+      const entry = attachmentStore.get(sha256);
+      if (!entry) throw new Error("missing");
+      return entry.bytes.slice().buffer;
+    },
+    attachmentText: async (_scope: string | null, sha256: string) => {
+      const entry = attachmentStore.get(sha256);
+      return entry ? new TextDecoder().decode(entry.bytes) : null;
+    },
+    attachmentGc: async () => 0,
+    storeToolImage: async () => null,
+    attachmentObjectUrl: async () => "blob:attachment",
+  };
+});
+vi.mock("@/lib/attachments-normalize", () => ({
+  normalizeAttachment: async (file: File) => ({
+    name: file.name,
+    mime: file.type || "text/plain",
+    bytes: new TextEncoder().encode(await file.text()),
+  }),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
@@ -184,6 +223,7 @@ vi.mock("@/lib/toast", () => ({
     error: (...args: unknown[]) => mocks.toastError(...args),
     errorUnique: (...args: unknown[]) => mocks.toastErrorUnique(...args),
     success: (...args: unknown[]) => mocks.toastSuccess(...args),
+    info: (...args: unknown[]) => mocks.toastInfo(...args),
   },
 }));
 
@@ -277,7 +317,7 @@ vi.mock("@/components/ai/AttachmentChips", async () => {
       items,
       onRemove,
     }: {
-      items: Array<{ id: string; name: string }>;
+      items: Array<{ id: string; name: string; status?: string }>;
       onRemove?: (id: string) => void;
     }) =>
       React.createElement(
@@ -287,7 +327,7 @@ vi.mock("@/components/ai/AttachmentChips", async () => {
           React.createElement(
             React.Fragment,
             { key: item.id },
-            React.createElement("span", null, item.name),
+            React.createElement("span", { "data-status": item.status }, item.name),
             React.createElement("button", {
               type: "button",
               "aria-label": `Remove attachment ${item.name}`,
@@ -465,6 +505,8 @@ let Fragment: typeof import("react").Fragment;
 let LATEX_ENGINE: typeof import("@/lib/document-engine").LATEX_ENGINE;
 let useFilesStore: typeof import("@/store/files").useFilesStore;
 let useChatsStore: typeof import("@/store/chats").useChatsStore;
+let useComposerDrafts: typeof import("@/store/composer-drafts").useComposerDrafts;
+let formatBytes: typeof import("@/lib/format-bytes").formatBytes;
 let useSettingsStore: typeof import("@/store/settings").useSettingsStore;
 let useApprovalModeStore: typeof import("@/store/approval-mode").useApprovalModeStore;
 let useAgentTurnsStore: typeof import("@/store/agent-turns").useAgentTurnsStore;
@@ -564,6 +606,8 @@ beforeAll(async () => {
   ({ LATEX_ENGINE } = await import("@/lib/document-engine"));
   ({ useFilesStore } = await import("@/store/files"));
   ({ useChatsStore } = await import("@/store/chats"));
+  ({ useComposerDrafts } = await import("@/store/composer-drafts"));
+  ({ formatBytes } = await import("@/lib/format-bytes"));
   ({ useSettingsStore } = await import("@/store/settings"));
   ({ useApprovalModeStore } = await import("@/store/approval-mode"));
   ({ useAgentTurnsStore } = await import("@/store/agent-turns"));
@@ -579,6 +623,8 @@ beforeAll(async () => {
   ({ activeChatRun, endChatRun } = await import("./chat-run-registry"));
   // Load the lazy dialog before timing interactions with its trigger.
   await import("@/components/usage/UsageReport");
+  // The composer's usage popover loads lazily too.
+  await import("./usage/UsagePopover");
 }, 60_000);
 
 afterEach(() => cleanup());
@@ -607,6 +653,11 @@ beforeEach(() => {
   useAgentHandoffStore.setState({ pendingPrompt: null, autoSend: false, pendingImages: [] });
   mocks.agentThreadArchive.mockReset().mockResolvedValue(true);
   mocks.agentThreadFork.mockReset().mockResolvedValue("thread-forked");
+  mocks.agentThreadRollback.mockReset().mockResolvedValue([]);
+  mocks.providerCredit.mockReset().mockResolvedValue(null);
+  attachmentStore.clear();
+  useComposerDrafts.setState({ drafts: {} });
+  localStorage.removeItem("oleafly.composer.history");
   mocks.claimPrewarmed.mockReset().mockResolvedValue(null);
   mocks.approvalsList.mockReset().mockResolvedValue({});
   mocks.approvalsSet.mockReset().mockResolvedValue(undefined);
@@ -712,8 +763,6 @@ beforeEach(() => {
     live: {},
   });
   useSettingsStore.setState({
-    browserOpen: false,
-    webBrowser: true,
     chatFloating: false,
     settingsInitialSection: "general",
     settingsOpen: false,
@@ -865,7 +914,7 @@ async function attachTextFile(rendered: RenderResult, name: string, text: string
   fireEvent.change(input, {
     target: { files: [new File([text], name, { type: "text/plain", lastModified: 1 })] },
   });
-  await waitFor(() => expect(rendered.getByText(name)).toBeTruthy());
+  await waitFor(() => expect(rendered.getByText(name)).toHaveAttribute("data-status", "ready"));
 }
 
 function skillEntry(
@@ -1327,6 +1376,19 @@ describe("ChatCore agent turns", () => {
 
     await attachTextFile(rendered, "queued-a.txt", "attachment A");
     submit(rendered, "Read the queued attachment");
+    expect(useAgentTurnsStore.getState().queuedByChat["chat-1"]).toEqual([
+      expect.objectContaining({
+        text: "Read the queued attachment",
+        attachments: [
+          expect.objectContaining({
+            name: "queued-a.txt",
+            sha256: "sha-queued-a.txt",
+            status: "ready",
+          }),
+        ],
+      }),
+    ]);
+    expect(rendered.queryByText("queued-a.txt")).toBeNull();
     await attachTextFile(rendered, "composer-b.txt", "attachment B");
 
     await act(async () => finishRun(0, "First response"));
@@ -1334,9 +1396,10 @@ describe("ChatCore agent turns", () => {
     const followUp = mocks.runs[1].options.messages.at(-1);
     expect(followUp?.content).toEqual([
       { type: "text", text: "Read the queued attachment" },
-      expect.objectContaining({ type: "file", name: "queued-a.txt" }),
+      { type: "text", text: 'Attached file "queued-a.txt":\n\nattachment A' },
     ]);
     expect(JSON.stringify(followUp?.content)).not.toContain("composer-b.txt");
+    expect(rendered.getByText("composer-b.txt")).toHaveAttribute("data-status", "ready");
 
     await act(async () => finishRun(1, "Read it"));
   });
@@ -1434,7 +1497,7 @@ describe("ChatCore agent turns", () => {
       expect.objectContaining({
         text: "Keep this after startup failure",
         status: "pending",
-        attachments: [expect.objectContaining({ name: "retry.txt" })],
+        attachments: [expect.objectContaining({ name: "retry.txt", sha256: "sha-retry.txt" })],
       }),
     ]);
     await waitFor(() =>
@@ -1469,7 +1532,7 @@ describe("ChatCore agent turns", () => {
       role: "user",
       content: [
         { type: "text", text: "Keep this after startup failure" },
-        expect.objectContaining({ type: "file", name: "retry.txt" }),
+        { type: "text", text: 'Attached file "retry.txt":\n\nretry attachment' },
       ],
     });
 
@@ -3557,12 +3620,10 @@ describe("ChatCore agent turns", () => {
     expect(click).toHaveBeenCalledOnce();
   });
 
-  it("launches the browser window from the plus menu", async () => {
+  it("offers no browser entry in the plus menu", async () => {
     const rendered = await renderChat();
     openAttachMenu(rendered);
-    fireEvent.click(rendered.getByRole("menuitem", { name: /Attach browser/ }));
-
-    expect(launchBrowser).toHaveBeenCalled();
+    expect(rendered.queryByRole("menuitem", { name: /Attach browser/ })).toBeNull();
   });
 
   it("opens the goal editor from the plus menu", async () => {
@@ -3654,7 +3715,7 @@ describe("ChatCore agent turns", () => {
     expect(rendered.queryByRole("menuitem", { name: /Files/ })).toBeNull();
     expect(rendered.queryByRole("menuitem", { name: /^Goal/ })).toBeNull();
     expect(rendered.queryByRole("menuitem", { name: /Plan Mode/ })).toBeNull();
-    expect(rendered.getByRole("menuitem", { name: /Attach browser/ })).toBeTruthy();
+    expect(rendered.queryByRole("menuitem", { name: /Attach browser/ })).toBeNull();
     expect(rendered.queryByRole("menuitem", { name: /Record a skill/ })).toBeNull();
   });
 
@@ -4770,55 +4831,50 @@ describe("ChatCore failure notices", () => {
     const rendered = await renderChat();
     const input = rendered.container.querySelector('input[type="file"]');
     if (!(input instanceof HTMLInputElement)) throw new Error("attachment input missing");
-    const file = new File(["x"], "huge.pdf", { type: "application/pdf" });
-    Object.defineProperty(file, "size", { value: 20 * 1024 * 1024 });
+    const text = new File(["x"], "huge.txt", { type: "text/plain" });
+    Object.defineProperty(text, "size", { value: 3 * 1024 * 1024 });
+    const pdf = new File(["x"], "huge.pdf", { type: "application/pdf" });
+    Object.defineProperty(pdf, "size", { value: 33 * 1024 * 1024 });
 
-    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.change(input, { target: { files: [text, pdf] } });
 
     await waitFor(() =>
       expect(mocks.toastErrorUnique).toHaveBeenCalledExactlyOnceWith(
         "ai-attach",
-        enAi.toasts.attachmentTooLarge.replace("{{name}}", "huge.pdf"),
+        [
+          enAi.attachments.tooLarge
+            .replace("{{name}}", "huge.txt")
+            .replace("{{limit}}", formatBytes(2 * 1024 * 1024)),
+          enAi.attachments.tooLarge
+            .replace("{{name}}", "huge.pdf")
+            .replace("{{limit}}", formatBytes(32 * 1024 * 1024)),
+        ].join(" "),
       ),
     );
     expect(mocks.toastError).not.toHaveBeenCalled();
   });
 
-  it("reports every file one selection rejected in a single notice", async () => {
+  it("reports rejected files in one notice and a failed read as an error chip", async () => {
     const rendered = await renderChat();
     const input = rendered.container.querySelector('input[type="file"]');
     if (!(input instanceof HTMLInputElement)) throw new Error("attachment input missing");
     const huge = new File(["x"], "huge.pdf", { type: "application/pdf" });
-    Object.defineProperty(huge, "size", { value: 20 * 1024 * 1024 });
+    Object.defineProperty(huge, "size", { value: 33 * 1024 * 1024 });
     const broken = new File(["y"], "broken.txt", { type: "text/plain" });
+    Object.defineProperty(broken, "text", { value: () => Promise.reject(new Error("unreadable")) });
     const notes = new File(["notes"], "notes.txt", { type: "text/plain", lastModified: 1 });
-    const readAsDataURL = FileReader.prototype.readAsDataURL;
-    const reads = vi
-      .spyOn(FileReader.prototype, "readAsDataURL")
-      .mockImplementation(function (this: FileReader, blob: Blob) {
-        if (blob !== broken) {
-          readAsDataURL.call(this, blob);
-          return;
-        }
-        setTimeout(() => this.onerror?.call(this, {} as ProgressEvent<FileReader>), 0);
-      });
 
-    try {
-      fireEvent.change(input, { target: { files: [huge, broken, notes] } });
+    fireEvent.change(input, { target: { files: [huge, broken, notes] } });
 
-      await waitFor(() => expect(rendered.getByText("notes.txt")).toBeTruthy());
-      expect(mocks.toastErrorUnique).toHaveBeenCalledExactlyOnceWith(
-        "ai-attach",
-        [
-          enAi.toasts.attachmentTooLarge.replace("{{name}}", "huge.pdf"),
-          enAi.toasts.attachmentReadFailed.replace("{{name}}", "broken.txt"),
-        ].join(" "),
-      );
-      expect(mocks.toastError).not.toHaveBeenCalled();
-      expect(mocks.logError).toHaveBeenCalledWith("read attachment", null);
-    } finally {
-      reads.mockRestore();
-    }
+    await waitFor(() => expect(rendered.getByText("notes.txt")).toHaveAttribute("data-status", "ready"));
+    expect(rendered.getByText("broken.txt")).toHaveAttribute("data-status", "error");
+    expect(mocks.toastErrorUnique).toHaveBeenCalledExactlyOnceWith(
+      "ai-attach",
+      enAi.attachments.tooLarge
+        .replace("{{name}}", "huge.pdf")
+        .replace("{{limit}}", formatBytes(32 * 1024 * 1024)),
+    );
+    expect(mocks.toastError).not.toHaveBeenCalled();
   });
 
   it("reports skills that could not be loaded before the send", async () => {
@@ -5465,6 +5521,20 @@ describe("ChatCore composer shortcuts", () => {
 
     expect((rendered.getByPlaceholderText("Ask AI to help with your document…") as HTMLTextAreaElement).value).toBe(
       "/proofread ",
+    );
+  });
+
+  it("puts a home card's skill command before what the user typed", async () => {
+    mocks.skillEntries.push(
+      skillEntry({ id: "proofread", name: "Proofread", enabled: true, projectEnabled: true }),
+    );
+    const rendered = await renderChat();
+    changeComposer("the abstract, please keep it short");
+
+    fireEvent.click(await rendered.findByTestId("assistant-home-card-proofread"));
+
+    expect((rendered.getByPlaceholderText("Ask AI to help with your document…") as HTMLTextAreaElement).value).toBe(
+      "/proofread the abstract, please keep it short",
     );
   });
 

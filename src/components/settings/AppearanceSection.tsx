@@ -30,7 +30,6 @@ import {
   ACCENTS,
   APP_ICONS,
   APP_ZOOM_LEVELS,
-  BROWSER_SEARCH_ENGINES,
   EDITOR_CURSOR_BLINKING,
   EDITOR_CURSOR_HEIGHTS,
   EDITOR_CURSOR_WIDTHS,
@@ -58,7 +57,6 @@ import {
   clampEditorLineHeight,
   sectionDiffersFromDefaults,
   type AppIconId,
-  type BrowserSearchEngineId,
   type EditorLetterSpacing,
   type EditorSurface,
   type TerminalColorThemeId,
@@ -70,9 +68,8 @@ import { APP_FONT_SIZES } from "@/lib/app-font-sizes";
 import { ThemeSegmentedControl } from "@/components/layout/ThemeControls";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
-import { BrowserCookieImport } from "@/components/settings/BrowserCookieImport";
+import { TerminalBehaviorRows } from "@/components/settings/TerminalBehaviorRows";
 import { SystemFontSettingsRow } from "@/components/settings/SystemFontPicker";
-import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { ThemeCustomization } from "@/components/settings/ThemeCustomization";
 import { EditorColors } from "@/components/settings/EditorColors";
@@ -83,7 +80,6 @@ const APPEARANCE_TABS = [
   { id: "editor", label: () => i18n.t(($) => $.settings.appearance.tabs.editor) },
   { id: "terminal", label: () => i18n.t(($) => $.settings.appearance.tabs.terminal) },
   { id: "pdf", label: () => i18n.t(($) => $.settings.appearance.tabs.pdf) },
-  { id: "browser", label: () => i18n.t(($) => $.settings.appearance.tabs.browser) },
   { id: "files", label: () => i18n.t(($) => $.settings.appearance.tabs.files) },
 ] as const;
 
@@ -1316,6 +1312,8 @@ function TerminalAppearanceTab() {
         onChange={setTerminalStartWithProject}
       />
 
+      <TerminalBehaviorRows />
+
       <SettingsRow
         label={t(($) => $.settings.appearance.terminal.colorTheme.label)}
         description={t(($) => $.settings.appearance.terminal.colorTheme.description)}
@@ -1393,96 +1391,6 @@ function TerminalAppearanceTab() {
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-function BrowserAppearanceTab() {
-  const { t } = useTranslation(["common", "settings"]);
-  const browserSearchEngine = useSettingsStore(
-    (state) => state.browserSearchEngine,
-  );
-  const setBrowserSearchEngine = useSettingsStore(
-    (state) => state.setBrowserSearchEngine,
-  );
-  const browserHomePage = useSettingsStore((state) => state.browserHomePage);
-  const setBrowserHomePage = useSettingsStore(
-    (state) => state.setBrowserHomePage,
-  );
-  const [homePageDraft, setHomePageDraft] = useState(browserHomePage);
-  useEffect(() => {
-    setHomePageDraft(browserHomePage);
-  }, [browserHomePage]);
-  const selectedSearchEngine =
-    BROWSER_SEARCH_ENGINES.find(({ id }) => id === browserSearchEngine) ??
-    BROWSER_SEARCH_ENGINES[0];
-  const saveHomePage = () => {
-    setBrowserHomePage(homePageDraft);
-    setHomePageDraft(useSettingsStore.getState().browserHomePage);
-  };
-
-  return (
-    <div className="space-y-3">
-      <SettingsRow
-        label={t(($) => $.settings.appearance.browser.searchEngine.label)}
-        description={t(($) => $.settings.appearance.browser.searchEngine.description)}
-        control={
-          <Select
-            value={browserSearchEngine}
-            onValueChange={(value) =>
-              setBrowserSearchEngine(value as BrowserSearchEngineId)
-            }
-          >
-            <SelectTrigger
-              className="w-44"
-              aria-label={t(($) => $.settings.appearance.browser.searchEngine.label)}
-            >
-              <SelectValue>
-                <span className="flex items-center gap-2">
-                  <SearchEngineIcon engine={selectedSearchEngine.id} />
-                  <span>{selectedSearchEngine.name}</span>
-                </span>
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="z-[100]">
-              {BROWSER_SEARCH_ENGINES.map((engine) => (
-                <SelectItem
-                  key={engine.id}
-                  value={engine.id}
-                  data-testid={`search-engine-option-${engine.id}`}
-                  icon={<SearchEngineIcon engine={engine.id} />}
-                >
-                  {engine.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        }
-      />
-
-      <div className="rounded-lg border bg-card p-3">
-        <label htmlFor="browser-home-page" className="text-sm font-medium">
-          {t(($) => $.settings.appearance.browser.homePage.label)}
-        </label>
-        <div className="mb-2 text-xs text-muted-foreground">
-          {t(($) => $.settings.appearance.browser.homePage.description)}
-        </div>
-        <Input
-          id="browser-home-page"
-          aria-label={t(($) => $.settings.appearance.browser.homePage.ariaLabel)}
-          value={homePageDraft}
-          onChange={(event) => setHomePageDraft(event.target.value)}
-          onBlur={saveHomePage}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter") return;
-            event.preventDefault();
-            saveHomePage();
-          }}
-          placeholder={"https://www.google.com/"}
-        />
-      </div>
-
-      <BrowserCookieImport />
     </div>
   );
 }
@@ -1735,9 +1643,6 @@ export function AppearanceSection() {
         </TabsContent>
         <TabsContent value="pdf">
           <PdfPreviewTab />
-        </TabsContent>
-        <TabsContent value="browser">
-          <BrowserAppearanceTab />
         </TabsContent>
         <TabsContent value="files">
           <FileManagementTab />

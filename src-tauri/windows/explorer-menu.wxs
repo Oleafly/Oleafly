@@ -7,8 +7,32 @@
     <Property Id="OLEAFLY_BACKGROUND_VERB" Secure="yes">
       <RegistrySearch Id="OleaflyBackgroundVerbSearch" Root="HKCU" Key="Software\Classes\Directory\Background\shell\Oleafly\command" Type="raw" />
     </Property>
+    <!-- 0.4.8 L: the background helper's sign-in entry, which the app writes. -->
+    <Property Id="OLEAFLY_BACKGROUND_RUN" Secure="yes">
+      <RegistrySearch Id="OleaflyBackgroundRunSearch" Root="HKCU" Key="Software\Microsoft\Windows\CurrentVersion\Run" Name="OleaflyBackground" Type="raw" />
+    </Property>
 
     <SetProperty Id="OLEAFLY_OWN_VERB" Value="&quot;[INSTALLDIR]oleafly.exe&quot; --open-folder &quot;%V&quot;" After="CostFinalize" Sequence="execute" />
+    <!-- The sign-in entry is this installation's when it starts "<INSTALLDIR>... -->
+    <SetProperty Id="OLEAFLY_INSTALL_PREFIX" Value="&quot;[INSTALLDIR]" After="CostFinalize" Sequence="execute" />
+
+    <!-- 0.4.8 L: as hooks.nsh does for the NSIS installer. The background
+         helper is the app's own executable without a window, so Restart
+         Manager can't close it: it is asked to hand its tasks back and exit
+         before any file is touched (an upgrade's removal of the old version
+         included). Without a command-line tool there is no helper, and the
+         failed run is ignored. -->
+    <SetProperty Id="StopOleaflyHelper" Value="&quot;[INSTALLDIR]oleafly-cli.exe&quot; daemon stop --wait 60 --force" Before="StopOleaflyHelper" Sequence="execute" />
+    <CustomAction Id="StopOleaflyHelper" BinaryKey="WixCA" DllEntry="WixQuietExec64" Execute="deferred" Impersonate="yes" Return="ignore" />
+
+    <!-- 0.4.8 F1: the terminal command and its PATH entry, if this app
+         installed them (the tool checks its own record), on a full
+         uninstall while the tool is still there. -->
+    <SetProperty Id="RemoveOleaflyCommandLineTool" Value="&quot;[INSTALLDIR]oleafly-cli.exe&quot; internal remove-command-line-tool" Before="RemoveOleaflyCommandLineTool" Sequence="execute" />
+    <CustomAction Id="RemoveOleaflyCommandLineTool" BinaryKey="WixCA" DllEntry="WixQuietExec64" Execute="deferred" Impersonate="yes" Return="ignore" />
+
+    <SetProperty Id="RemoveOleaflyBackgroundRun" Value="&quot;[System64Folder]reg.exe&quot; delete &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Run&quot; /v OleaflyBackground /f" Before="RemoveOleaflyBackgroundRun" Sequence="execute" />
+    <CustomAction Id="RemoveOleaflyBackgroundRun" BinaryKey="WixCA" DllEntry="WixQuietExec64" Execute="deferred" Impersonate="yes" Return="ignore" />
 
     <SetProperty Id="RemoveOleaflyFolderVerb" Value="&quot;[System64Folder]reg.exe&quot; delete &quot;HKCU\Software\Classes\Directory\shell\Oleafly&quot; /f" Before="RemoveOleaflyFolderVerb" Sequence="execute" />
     <CustomAction Id="RemoveOleaflyFolderVerb" BinaryKey="WixCA" DllEntry="WixQuietExec64" Execute="deferred" Impersonate="yes" Return="ignore" />
@@ -17,6 +41,9 @@
     <CustomAction Id="RemoveOleaflyBackgroundVerb" BinaryKey="WixCA" DllEntry="WixQuietExec64" Execute="deferred" Impersonate="yes" Return="ignore" />
 
     <InstallExecuteSequence>
+      <Custom Action="StopOleaflyHelper" Before="RemoveExistingProducts">Installed OR WIX_UPGRADE_DETECTED</Custom>
+      <Custom Action="RemoveOleaflyCommandLineTool" Before="RemoveFiles">REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE</Custom>
+      <Custom Action="RemoveOleaflyBackgroundRun" Before="InstallFinalize">REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE AND OLEAFLY_BACKGROUND_RUN ~&lt;&lt; OLEAFLY_INSTALL_PREFIX</Custom>
       <Custom Action="RemoveOleaflyFolderVerb" Before="InstallFinalize">REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE AND OLEAFLY_FOLDER_VERB ~= OLEAFLY_OWN_VERB</Custom>
       <Custom Action="RemoveOleaflyBackgroundVerb" Before="InstallFinalize">REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE AND OLEAFLY_BACKGROUND_VERB ~= OLEAFLY_OWN_VERB</Custom>
     </InstallExecuteSequence>

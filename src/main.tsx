@@ -54,14 +54,13 @@ if ((window as { __OLEAFLY_E2E_BOOT__?: boolean }).__OLEAFLY_E2E_BOOT__) {
   registerE2EImports();
 }
 
-type WindowView = "main" | "update" | "preview" | "browser" | "present" | "presenter" | "admin";
+type WindowView = "main" | "update" | "preview" | "present" | "presenter" | "admin";
 
 function currentWindowView(): WindowView {
   const view = new URLSearchParams(window.location.search).get("view");
   if (
     view === "update" ||
     view === "preview" ||
-    view === "browser" ||
     view === "present" ||
     view === "presenter" ||
     view === "admin"
@@ -98,7 +97,7 @@ function prepareWindow(view: WindowView): void {
     document.documentElement.style.background = "transparent";
     document.body.style.background = "transparent";
   }
-  if (view === "browser" || view === "present" || view === "presenter" || view === "admin") {
+  if (view === "present" || view === "presenter" || view === "admin") {
     document.documentElement.style.setProperty("--app-surface", "var(--background)");
   }
   dismissBootSplash();
@@ -113,9 +112,6 @@ const UpdateWindow = lazy(() =>
 );
 const PreviewWindow = lazy(() =>
   import("@/components/preview/PreviewWindow").then((module) => ({ default: module.PreviewWindow })),
-);
-const BrowserChrome = lazy(() =>
-  import("@/components/browser/BrowserChrome").then((module) => ({ default: module.BrowserChrome })),
 );
 const RenameDialog = lazy(() =>
   import("@/components/layout/RenameDialog").then((module) => ({ default: module.RenameDialog })),
@@ -208,17 +204,6 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
         <StoredAppTypography />
         <AppZoom />
         <AdminConsoleSlot />
-      </ThemeProvider>
-    );
-  }
-  if (view === "browser") {
-    return (
-      <ThemeProvider>
-        <StoredAppTypography />
-        <AppZoom />
-        <Suspense fallback={null}>
-          <BrowserChrome />
-        </Suspense>
       </ThemeProvider>
     );
   }

@@ -34,6 +34,20 @@
           "notAcp": "The program started but did not speak the agent protocol Oleafly uses"
         },
         "copyDetails": "Button that copies the technical error output to the clipboard"
+      },
+      "hermes": {
+        "toolGateway": "Name of a Hermes Agent feature: hosted tools (web search, image, speech, browser) provided through the user's Nous subscription.",
+        "folderHint": "Hint under the Project folder field of the Remote over SSH form. /home/ada/paper is an example Linux path; keep it as is.",
+        "needsValid": "Shown under the disabled Test connection and Save buttons of the Remote over SSH form. {{fields}} is a list of the field names that need fixing, such as Host and Port.",
+        "unsavedEdit": "Shown in the Remote over SSH form when its fields differ from what is stored.",
+        "unsavedMode": "Shown when the person picked Remote over SSH but has not saved it. {{mode}} is the name of the option still in use, such as Project profile.",
+        "errors": {
+          "hostRequired": "user@host means a user name, an @ sign and a host name, as in ssh. Shown under the Host field of the Remote over SSH form.",
+          "hostInvalid": "Shown under the Host field of the Remote over SSH form. @ is the at sign.",
+          "folderInvalid": "Shown under the Project folder field. / is the root of a Linux path; keep it as is.",
+          "command": "Shown under the Hermes command field. hermes is the command name; keep it as is.",
+          "profile": "Shown under the Profile field of the Remote over SSH form. A profile name is a Hermes profile such as lab-1."
+        }
       }
     },
     "approvals": {
@@ -152,6 +166,14 @@
         "catalog": "Badge on a skill downloaded from the domain catalog."
       },
       "updateAction": "Button that replaces an installed skill with a newer bundled version."
+    },
+    "tools": {
+      "tabLabel": "Settings tab for the model the conversion tools use, not the tools the assistant calls",
+      "modelDescription": "Ollama is a product name. The assistant's model is the chat model picked in Settings, AI, which can be a hosted provider",
+      "mathpix": {
+        "title": "Product name; keep Mathpix untranslated",
+        "connected": "{{appId}} is the Mathpix app ID, an account identifier. Keep it verbatim"
+      }
     }
   },
   "appearance": {
@@ -210,6 +232,34 @@
         "bar": "Terminal cursor drawn as a thin vertical bar.",
         "block": "Terminal cursor drawn as a filled rectangle.",
         "underline": "Terminal cursor drawn as a line under the character."
+      },
+      "optionIsMeta": {
+        "description": "macOS only. Option is the ⌥ key; Meta is the Alt key that terminal programs expect.",
+        "label": "macOS only. Option is the ⌥ key; Meta is the Alt key that terminal programs expect."
+      },
+      "scrollback": {
+        "lines_one": "{{value}} is a formatted number such as 1,000; the number of lines a terminal keeps.",
+        "lines_other": "{{value}} is a formatted number such as 5,000; the number of lines a terminal keeps."
+      },
+      "shell": {
+        "notFound": "Marks the saved shell in the Shell list when it is not installed. {{name}} is the shell's name, such as Git Bash.",
+        "notFoundNote": "Shown under the Shell row when the saved shell is not installed (Windows). {{name}} is the shell's name, such as Git Bash.",
+        "windowsOnly": "Marks the saved shell in the Shell list when it only exists on Windows, for example after importing settings on a Mac. {{name}} is the shell's name, such as Git Bash.",
+        "windowsOnlyNote": "Shown under the Shell row on macOS and Linux when the saved shell is a Windows one. {{name}} is the Windows shell's name, such as Git Bash. {{fallback}} is the program that starts instead, such as zsh.",
+        "windowsOnlyNoteDefault": "Shown under the Shell row on macOS and Linux when the saved shell is a Windows one and the default shell has no known name. {{name}} is the Windows shell's name, such as Git Bash.",
+        "options": {
+          "auto": "{{name}} is the shell the default starts, for example zsh or PowerShell 7.",
+          "cmd": "The Windows command shell. Use the name Windows uses in your language.",
+          "defaultShell": "Shown when the computer's default shell could not be named.",
+          "gitBash": "Product name: the Bash shell that comes with Git for Windows. Keep it as is.",
+          "powershell": "Product name: the PowerShell that ships with Windows. Keep PowerShell as is.",
+          "pwsh": "Product name: PowerShell 7, installed separately. Keep it as is.",
+          "wsl": "Product name: Windows Subsystem for Linux. Keep WSL as is."
+        }
+      },
+      "shiftEnter": {
+        "enter": "Shift+Enter sends the same as pressing Enter.",
+        "newline": "Shift+Enter adds a new line inside the program's input instead of sending it."
       }
     },
     "zen": {
@@ -257,12 +307,18 @@
     "fontNotInstalled": "Warning under a font setting when the saved font name is not installed on this computer. {{font}} is the font name."
   },
   "citations": {
+    "braveSearch": {
+      "docsLink": "Link text. Brave Search API is a product name, keep it unchanged."
+    },
     "connected": "Badge showing that a credential is stored for this search source.",
     "openAlex": {
       "emailPlaceholder": "A literal example address. Keep you@example.com unchanged."
     },
     "serper": {
       "docsLink": "Link text. Serper is a product name, keep it unchanged."
+    },
+    "tavily": {
+      "docsLink": "Link text. Tavily is a product name, keep it unchanged."
     },
     "title": "Name of the Oleafly feature that searches scholarly databases."
   },
@@ -363,21 +419,22 @@
       "heading": "Tab and section name. Calepin is a product name. Keep it verbatim."
     }
   },
-  "github": {
+  "gitHosting": {
     "account": {
-      "connected": "Status shown under the avatar when an account is linked but has no display name. Not an action.",
-      "disconnect": "Button that signs the app out of the linked GitHub account.",
-      "handle": "The connected GitHub account handle. Keep the @ prefix and the placeholder verbatim."
+      "caFile": "{{file}} is a file path."
     },
-    "advanced": {
-      "connect": "Button that signs in with the personal access token the user pasted.",
-      "toggle": "Discloses the fallback sign-in route that uses a personal access token.",
-      "tokenPlaceholder": "Example prefix of a GitHub personal access token. Keep it verbatim."
+    "add": {
+      "found": "{{kind}} is a product name: GitHub, GitLab, Gitea or Forgejo.",
+      "kindGitea": "Two product names. Keep both verbatim.",
+      "kindGithub": "Product name: GitHub's server software that organizations run themselves. Keep it verbatim.",
+      "replaces": "Shown before signing in to a server that already has an account. {{login}} is the user name of the account that is already there, such as octocat. {{host}} is a product name such as GitHub or GitLab, or a server name such as git.example.org.",
+      "scopesGitea": "repository and user are permission names in Gitea's token form. Keep them in English.",
+      "scopesGithub": "repo, read:user, api and write_repository are scope names. Keep them verbatim.",
+      "scopesGitlab": "repo, read:user, api and write_repository are scope names. Keep them verbatim.",
+      "serverPlaceholder": "A literal example address. Keep it unchanged."
     },
-    "connect": "Button that starts the GitHub sign-in flow.",
     "device": {
-      "openGithub": "Button that opens the GitHub device authorization page in the browser.",
-      "waiting": "Status shown while the app polls GitHub for the user to finish authorizing."
+      "opened": "Keep the verificationLink tags around {{url}}."
     }
   },
   "integrations": {
@@ -390,8 +447,6 @@
       "connected": "Shown once alphaXiv's MCP server accepted the key. Each alphaXiv tool call still asks the user first."
     },
     "cookies": {
-      "action": "Button label. Starts the browser cookie import.",
-      "hostnamePlaceholder": "A literal example hostname. Keep example.com unchanged.",
       "review": "Button that moves from choosing a profile to the confirmation step.",
       "status": {
         "available": "This browser profile can be read right now.",
@@ -399,11 +454,53 @@
         "noCookieStore": "The browser is installed but has no readable cookie database.",
         "notInstalled": "The browser is not installed on this machine."
       },
-      "tryAgain": "Button that repeats the failed browser detection."
+      "tryAgain": "Button that repeats the failed browser detection.",
+      "useBrowserSignIn": "Button. Copies the sign-in cookies for the online LaTeX service from the person's web browser.",
+      "label": "Row heading for copying the online LaTeX service sign-in from a web browser."
     },
     "zotero": {
       "connected": "Shown once Zotero accepted the key when Oleafly has no saved account name, for example after an update.",
       "connectedAs": "Shown once Zotero accepted the key. {{username}} is the user's Zotero account name, not a person's full name."
+    },
+    "desktopApps": {
+      "description": "Cua Driver is a third-party program name. Keep it untranslated.",
+      "status": {
+        "unreadableVersion": "Shown under Cua Driver when its version number could not be read. Cua Driver is a third-party program name."
+      },
+      "sites": {
+        "signedIn": {
+          "label": "Switch per website. On means the agent uses the person's own logged-in Chrome or Edge profile for that site.",
+          "labelFor": "Spoken name of the same switch for screen readers, one per website. {{origin}} is the website address, such as https://www.example.org."
+        }
+      },
+      "test": {
+        "problems": "Heading of a list of problems that Cua Driver's own check found, shown after a connection test. Cua Driver is a third-party program name."
+      },
+      "scripted": {
+        "label": "Switch that allows small programs (scripts) that control apps."
+      },
+      "apps": {
+        "missing": "Shown under an allowed app whose program is no longer on this computer.",
+        "dialog": {
+          "added": "Reason shown under an app in the picker that is already on the allowed list.",
+          "more": "Shown under the app list when more apps match than are listed. {{shown}} is how many are listed, {{total}} how many match.",
+          "refresh": "Button that reloads the list of installed apps."
+        },
+        "blocked": {
+          "oleafly": "Reason shown next to an app that can't be added.",
+          "driver": "Reason shown next to an app that can't be added.",
+          "terminal": "Reason shown next to an app that can't be added.",
+          "system_settings": "Reason shown next to an app that can't be added.",
+          "passwords": "Reason shown next to an app that can't be added.",
+          "scripting": "Reason shown next to an app that can't be added.",
+          "wrapper": "Reason shown next to an app that can't be added.",
+          "sandboxed": "Reason shown next to an app that can't be added.",
+          "browser": "Reason shown next to a web browser in the app picker. Websites are added in a separate list."
+        }
+      },
+      "spaces": {
+        "title": "Product name. Keep untranslated."
+      }
     }
   },
   "mcp": {
@@ -489,7 +586,8 @@
       "occupied": "Another program already has a file named oleafly at this path. Oleafly never replaces it.",
       "packaged": "Linux .deb and .rpm installs. The package itself put the oleafly command at {{path}}, usually /usr/bin/oleafly, so there is nothing to install."
     },
-    "title": "Settings row that puts an oleafly command on the user's PATH so a terminal can open folders in the app"
+    "title": "Settings row that puts an oleafly command on the user's PATH so a terminal can open folders in the app",
+    "newTerminal": "Windows only. Shown after installing: Windows updates PATH for terminals opened afterwards. oleafly is the command name. Keep it verbatim."
   },
   "shortcuts": {
     "application": {
@@ -540,6 +638,29 @@
       "label": "Title of the macOS row that adds Open in Oleafly to Finder's right-click menus. Finder has no singular term for one Quick Action, so use the plural name of Finder's Quick Actions menu exactly as macOS shows it in your language.",
       "description": "Always shown under the Finder Quick Actions row. It names only the Services menu, where a new Quick Action works right away. Leave out Quick Actions and Customize here. A separate hint explains that step when it is needed. Use the name macOS shows for the Services menu in your language. If your language inflects nouns, put your word for menu before the name so it stays exactly as Finder shows it.",
       "menuHint": "Shown under the Finder Quick Actions row while it is installed but still off in the Quick Actions menu. {{title}} is the menu title of the installed Quick Action, which stays in the language Oleafly used when it was installed. Use the exact names Finder shows in your language, without the trailing ellipsis Finder puts after Customize. If your language inflects nouns, put your word for menu before the name so it stays exactly as Finder shows it."
+    }
+  },
+  "research": {
+    "background": {
+      "title": "Settings card title. Research tasks can keep running in a small background helper process after the app quits.",
+      "enabled": {
+        "label": "Switch. The background helper is a small Oleafly process with no window."
+      },
+      "atLogin": {
+        "label": "Switch that starts the background helper when the user signs in to the computer (a login item).",
+        "moveApp": "macOS only: the app runs from a temporary location until the user moves it to the Applications folder.",
+        "needsBackground": "Shown under the sign-in switch while the Keep tasks running switch above it is off."
+      },
+      "status": {
+        "label": "Row label for the state of the background helper process.",
+        "notResponding": "The helper process runs but stopped reporting that it is alive.",
+        "tasks_one": "{{count}} is the number of research tasks the background helper runs or will start.",
+        "tasks_other": "{{count}} is the number of research tasks the background helper runs or will start."
+      },
+      "stop": "Button that asks the background helper process to hand its tasks back to the app and exit.",
+      "stopHint": "Tooltip on the Stop helper button. The helper's tasks wait, paused, until the user opens Oleafly.",
+      "openLog": "Button that shows the helper's log file in the file manager.",
+      "statusFailed": "Error in the Background tasks card when the helper's state could not be read; a Retry button follows"
     }
   }
 }

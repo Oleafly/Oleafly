@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ResearchTask, ResearchTaskDraft } from "./research-tasks";
+import { defaultBrief, type ResearchTask, type ResearchTaskDraft } from "./research-tasks";
 
 const native = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: native.invoke }));
@@ -38,8 +38,53 @@ describe("research starter task integration", () => {
     expect(native.invoke.mock.calls).toEqual([
       ["research_task_list", { projectId: "paper" }],
       ["get_config"],
-      ["research_task_create", { draft: { projectId: "paper", title: "Plan the thesis", prompt: "Outline the methods and evidence for this thesis", runtimeId: "builtin", agentId: "local-research", modelId: "study-model", skillIds: [], dependencyIds: [] } }],
+      ["research_task_create", { draft: { projectId: "paper", title: "Plan the thesis", prompt: "Outline the methods and evidence for this thesis", runtimeId: "builtin", agentId: "local-research", modelId: "study-model", skillIds: [], dependencyIds: [], brief: defaultBrief("Outline the methods and evidence for this thesis") } }],
     ]);
+  });
+
+  it("sends the default brief with the starter prompt as its goal", async () => {
+    native.invoke.mockImplementation(async (command, args) => {
+      if (command === "research_task_list") return [];
+      if (command === "get_config") return { ai_provider: "openai", ai_model: "research-model" };
+      if (command === "research_task_create") return args.draft;
+      throw new Error(`Unexpected command: ${command}`);
+    });
+
+    await ensureResearchStarterTask(input());
+
+    const [, args] = native.invoke.mock.calls.find(([command]) => command === "research_task_create") ?? [];
+    expect((args as { draft: ResearchTaskDraft }).draft.brief).toEqual({
+      goal: "Outline the methods and evidence for this thesis",
+      successCriteria: [],
+      scope: "",
+      constraints: "",
+      primaryMetric: null,
+      reviewPlanFirst: false,
+      permissions: { network: false, commands: "allow", desktopApps: false },
+      budget: { wallClockMinutes: 120, usdCap: null, maxRuns: null, runTimeoutMinutes: 60 },
+      profile: "analysis",
+      compute: { executor: "local", target: null, resources: null },
+    });
+  });
+
+  it("takes the network default and the time budget from the research settings", async () => {
+    native.invoke.mockImplementation(async (command, args) => {
+      if (command === "research_task_list") return [];
+      if (command === "get_config") {
+        return { ai_provider: "openai", ai_model: "research-model", research_command_network: true, research_time_budget_minutes: 240 };
+      }
+      if (command === "research_task_create") return args.draft;
+      throw new Error(`Unexpected command: ${command}`);
+    });
+
+    await ensureResearchStarterTask(input("settings"));
+
+    const [, args] = native.invoke.mock.calls.find(([command]) => command === "research_task_create") ?? [];
+    expect((args as { draft: ResearchTaskDraft }).draft.brief).toMatchObject({
+      goal: "Outline the methods and evidence for this thesis",
+      permissions: { network: true, commands: "allow" },
+      budget: { wallClockMinutes: 240, runTimeoutMinutes: 60 },
+    });
   });
 
   it("recognizes a persisted starter on reload without duplicating it or requiring provider settings", async () => {

@@ -1,0 +1,63 @@
+{
+  "files": [
+    "chapters/background.tex",
+    "chapters/intro.tex",
+    "chapters/methods.tex",
+    "main.tex"
+  ],
+  "sections": [
+    {
+      "title": "Background",
+      "level": 3,
+      "file": "chapters/background.tex",
+      "line": 1
+    },
+    {
+      "title": "Introduction",
+      "level": 2,
+      "file": "chapters/intro.tex",
+      "line": 1
+    },
+    {
+      "title": "Methods",
+      "level": 2,
+      "file": "chapters/methods.tex",
+      "line": 1
+    },
+    {
+      "title": "Overview",
+      "level": 1,
+      "file": "main.tex",
+      "line": 3
+    }
+  ],
+  "labels": [
+    "sec:background",
+    "sec:intro-section",
+    "sec:methods",
+    "chap:overview"
+  ],
+  "bibKeys": [],
+  "macros": [],
+  "theorems": [],
+  "glossary": [],
+  "inputGraph": [
+    {
+      "from": "chapters/intro.tex",
+      "to": "chapters/background.tex"
+    },
+    {
+      "from": "main.tex",
+      "to": "chapters/intro.tex"
+    },
+    {
+      "from": "main.tex",
+      "to": "chapters/methods.tex"
+    }
+  ],
+  "unresolvedRefs": [
+    "sec:nowhere"
+  ],
+  "unresolvedCites": [],
+  "ambiguousTypstAtUses": []
+}

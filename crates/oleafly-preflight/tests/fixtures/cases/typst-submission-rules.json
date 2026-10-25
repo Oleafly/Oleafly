@@ -1,0 +1,452 @@
+[
+  {
+    "name": "bare-generic",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "Hello"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "bare-arxiv",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "Hello"
+        }
+      ]
+    },
+    "profileId": "arxiv"
+  },
+  {
+    "name": "bare-ieee",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "Hello"
+        }
+      ]
+    },
+    "profileId": "ieee"
+  },
+  {
+    "name": "bare-acm",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "Hello"
+        }
+      ]
+    },
+    "profileId": "acm"
+  },
+  {
+    "name": "bare-journal",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "Hello"
+        }
+      ]
+    },
+    "profileId": "journal"
+  },
+  {
+    "name": "bare-thesis",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "Hello"
+        }
+      ]
+    },
+    "profileId": "thesis"
+  },
+  {
+    "name": "ieee-template",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "#import \"@preview/charged-ieee:0.1.0\": ieee\n#show: ieee.with(title: [A Paper], authors: ((name: \"Ana\"),), abstract: [Text])\n#show: ieee.with(index-terms: (\"a\",))"
+        }
+      ]
+    },
+    "profileId": "ieee"
+  },
+  {
+    "name": "ieee-other-known-template",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "#import \"@preview/clean-acmart:0.0.1\": acmart\n= Abstract\nx\n= Keywords\ny"
+        }
+      ]
+    },
+    "profileId": "ieee"
+  },
+  {
+    "name": "abstract-and-keywords-markup",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "= Abstract\nText\n= Index Terms\nA, B"
+        }
+      ]
+    },
+    "profileId": "acm"
+  },
+  {
+    "name": "abstract-none",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "#show: conf.with(abstract: none, keywords: ())"
+        }
+      ]
+    },
+    "profileId": "acm"
+  },
+  {
+    "name": "keywords-call",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "#abstract[x]\n#ieee-keywords(\"a\")"
+        }
+      ]
+    },
+    "profileId": "acm"
+  },
+  {
+    "name": "placeholder-lorem",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "#lorem(5)"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "placeholder-lorem-ipsum-text",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "Lorem ipsum dolor"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "arxiv-nonportable-names",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "x"
+        },
+        {
+          "path": "figs/My Plot.png"
+        },
+        {
+          "path": "main.pdf"
+        }
+      ]
+    },
+    "profileId": "arxiv"
+  },
+  {
+    "name": "generated-files",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "x"
+        },
+        {
+          "path": "main.aux"
+        },
+        {
+          "path": "main.log"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "pdf-facts-ieee",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "#import \"@preview/charged-ieee:0.1.0\": ieee\n#show: ieee.with(title: [A Paper], authors: ((name: \"Ana\"),), abstract: [Text])\n"
+        }
+      ]
+    },
+    "profileId": "ieee",
+    "pdf": {
+      "version": "1.3",
+      "pageCount": 2,
+      "pages": [
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        },
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        }
+      ],
+      "outlineCount": 0,
+      "linkCount": 1,
+      "attachmentCount": 0,
+      "formFieldCount": 0,
+      "restricted": false,
+      "author": null,
+      "creator": "LaTeX",
+      "producer": "pdfTeX",
+      "fonts": [
+        {
+          "name": "Times",
+          "embedded": false
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing-and-case-paths",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "#image(\"figs/Plot.png\")\n#image(\"figs/none.png\")\n#include \"chapters/Intro.typ\"\n#image(\"../outside.png\")"
+        },
+        {
+          "path": "figs/plot.png"
+        },
+        {
+          "path": "chapters/intro.typ",
+          "content": "x"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "captions",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "#figure(image(\"a.png\"))\n#figure(table(columns: 2)[a][b])\n#figure([#table(columns: 1)[x]])\n#figure(image(\"b.png\"), caption: [])\n#figure(image(\"c.png\"), caption: [C], kind: table)\n#figure(kind: table, [x])"
+        },
+        {
+          "path": "a.png"
+        },
+        {
+          "path": "b.png"
+        },
+        {
+          "path": "c.png"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "large-images",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "#image(\"big.png\")\n#image(\"small.png\")\n#image(\"BIG.png\")"
+        },
+        {
+          "path": "big.png",
+          "size": 6291456
+        },
+        {
+          "path": "small.png",
+          "size": 10
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "privacy-files",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "// TODO: remove before review\nText"
+        },
+        {
+          "path": ".env",
+          "content": "KEY=sk-proj-abcdefghijklmnopqrstuvwxyz123"
+        },
+        {
+          "path": "notes.tex",
+          "content": "% CONFIDENTIAL\n"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "typst-comment-not-whole-line",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "Text /* FIXME later */ more\n```\n// TODO in raw\n```"
+        }
+      ]
+    },
+    "profileId": "generic"
+  },
+  {
+    "name": "blind-review",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "#import \"@preview/charged-ieee:0.1.0\": ieee\n#show: ieee.with(title: [A Paper], authors: ((name: \"Ana\"),), abstract: [Text])\nContact ana@example.org for data.\n= Acknowledgments\nThanks."
+        }
+      ]
+    },
+    "profileId": "generic",
+    "pdf": {
+      "version": "1.7",
+      "pageCount": 2,
+      "pages": [
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        },
+        {
+          "width": 612,
+          "height": 792,
+          "rotation": 0
+        }
+      ],
+      "outlineCount": 0,
+      "linkCount": 0,
+      "attachmentCount": 0,
+      "formFieldCount": 0,
+      "restricted": false,
+      "author": "Ana",
+      "creator": "LaTeX",
+      "producer": "pdfTeX",
+      "fonts": [
+        {
+          "name": "CMR10",
+          "embedded": true
+        }
+      ]
+    },
+    "anonymousReview": true
+  },
+  {
+    "name": "blind-review-anonymous",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "#set document(author: \"Anonymous\")\n#show: conf.with(acknowledgements: none)\nMail @fig or x@y"
+        }
+      ]
+    },
+    "profileId": "generic",
+    "anonymousReview": true
+  },
+  {
+    "name": "blind-review-document-author",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "#set document(author: (\"Ana\", \"Bo\"))\n#show: conf.with(acknowledgments: [Thanks])"
+        }
+      ]
+    },
+    "profileId": "generic",
+    "anonymousReview": true
+  },
+  {
+    "name": "emoji-and-email",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "😀 mail ana.b+x@sub.example.co.uk now"
+        }
+      ]
+    },
+    "profileId": "generic",
+    "anonymousReview": true
+  },
+  {
+    "name": "non-typst-files-ignored",
+    "project": {
+      "mainFile": "main.typ",
+      "files": [
+        {
+          "path": "main.typ",
+          "content": "Hello"
+        },
+        {
+          "path": "other.tex",
+          "content": "\\includegraphics{x}"
+        }
+      ]
+    },
+    "profileId": "generic"
+  }
+]

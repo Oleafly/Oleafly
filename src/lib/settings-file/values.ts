@@ -8,7 +8,6 @@ export type SettingIssue =
   | { kind: "hexColor" }
   | { kind: "hexColorOrEmpty" }
   | { kind: "text"; max: number }
-  | { kind: "webAddress" }
   | { kind: "list"; max: number }
   | { kind: "listItem" }
   | { kind: "duplicate" }
@@ -117,20 +116,6 @@ export function text(max: number, options: { multiline?: boolean; required?: boo
     },
   };
 }
-
-export const webAddress: ValueType<string> = {
-  parse(raw) {
-    if (typeof raw !== "string" || raw.length > 2048) return fail({ kind: "webAddress" });
-    try {
-      const url = new URL(raw);
-      return url.protocol === "http:" || url.protocol === "https:"
-        ? ok(url.toString())
-        : fail({ kind: "webAddress" });
-    } catch {
-      return fail({ kind: "webAddress" });
-    }
-  },
-};
 
 export function textList(maxItems: number, maxLength: number, accepts: (item: string) => boolean = () => true): ValueType<string[]> {
   return {

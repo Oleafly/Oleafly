@@ -114,7 +114,7 @@ function ToolSplitGroup({
         onKeyDownCapture={onSeparatorKeyDown}
         className="group relative flex w-2 shrink-0 cursor-col-resize select-none items-center justify-center border-x border-border/70 bg-background transition-colors hover:bg-accent/50"
       >
-        <span className="pointer-events-none h-10 w-1 rounded-full bg-border transition-colors group-hover:bg-ring group-data-[separator=active]:bg-ring" />
+        <span className="pointer-events-none h-10 w-1 rounded-full bg-border opacity-0 transition-[opacity,background-color] group-hover:bg-ring group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[separator=active]:bg-ring group-data-[separator=active]:opacity-100" />
       </Separator>
       <Panel
         id={endId}

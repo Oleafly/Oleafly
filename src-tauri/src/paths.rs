@@ -5,10 +5,19 @@ use std::path::{Path, PathBuf};
 pub const ENTRY_TEX: &str = "_oleafly_entry.tex";
 pub const ENTRY_STEM: &str = "_oleafly_entry";
 
-/// The user's home directory.
+/// The user's home directory. On Windows `USERPROFILE` comes first: the app
+/// started from the Start menu has no `HOME`, and a `HOME` an MSYS2 or
+/// Cygwin shell sets is its own folder, so the app and the `oleafly` CLI
+/// (which uses the same order) agree on the data folder.
 pub fn home_dir() -> Result<PathBuf, String> {
-    std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
+    let order: [&str; 2] = if cfg!(windows) {
+        ["USERPROFILE", "HOME"]
+    } else {
+        ["HOME", "USERPROFILE"]
+    };
+    order
+        .iter()
+        .find_map(|name| std::env::var_os(name).filter(|value| !value.is_empty()))
         .map(PathBuf::from)
         .ok_or_else(|| "could not determine user home directory".to_string())
 }

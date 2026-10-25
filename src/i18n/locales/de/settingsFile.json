@@ -48,7 +48,6 @@
     "hexColor": "muss eine Farbe wie #2563eb sein",
     "hexColorOrEmpty": "muss eine Farbe wie #2563eb sein, oder \"\" für die Farbe des Designs",
     "text": "muss Text mit höchstens {{max}} Zeichen sein",
-    "webAddress": "muss eine Webadresse sein, die mit http:// oder https:// beginnt",
     "list": "muss eine Liste mit höchstens {{max}} Einträgen sein",
     "listItem": "ist kein zulässiger Eintrag",
     "duplicate": "kommt doppelt vor",

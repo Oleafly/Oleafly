@@ -182,16 +182,34 @@
     "terminal": "正在加载终端"
   },
   "terminal": {
+    "activity": "有新动态",
+    "clipboard": {
+      "blocked": "终端中的程序想要复制文本。"
+    },
     "closeCurrent": "关闭当前标签页",
     "closeLeft": "关闭左侧所有标签页",
     "closeOthers": "关闭其他标签页",
     "closeRight": "关闭右侧所有标签页",
     "closeTab": "关闭 {{title}}",
     "color": "颜色",
+    "dropRefused_other": "{{count}} 个文件名包含控制字符，因此不会在终端中输入。",
     "errors": {
       "input": "shell 无法接受输入。",
       "resize": "终端无法调整大小。",
       "start": "shell 无法启动。"
+    },
+    "find": {
+      "count": "第 {{current}} 个，共 {{total}} 个",
+      "label": "在终端中查找",
+      "next": "下一个匹配项",
+      "none": "没有匹配项",
+      "previous": "上一个匹配项"
+    },
+    "launch": {
+      "invalid": "此命令无法在终端中运行。",
+      "noProject": "请打开一个项目以使用终端。",
+      "run": "运行",
+      "title": "在终端中运行此命令？"
     },
     "limitReached": "关闭一个终端以打开另一个终端。",
     "links": {
@@ -200,8 +218,25 @@
       "openUrlFailed": "无法打开链接。"
     },
     "newTerminal": "新建终端",
+    "openInTerminal": "在终端中打开",
     "settings": "终端设置",
     "starting": "正在启动项目 shell…",
+    "stop": {
+      "closeMany": "关闭终端",
+      "closeOne": "关闭终端",
+      "closeProject": "关闭项目",
+      "dontAsk": "不再询问",
+      "dontAskHint": "要重新开启，请前往“设置 → 外观 → 终端”，打开“关闭忙碌的终端前询问”。",
+      "many_other": "仍有程序在 {{count}} 个终端中运行。",
+      "named": "{{process}} 仍在 {{title}} 中运行。",
+      "quit": "退出",
+      "reload": "重新加载",
+      "restart": "重新启动",
+      "switchProject": "切换项目",
+      "titleMany": "停止正在运行的程序？",
+      "titleOne": "停止正在运行的程序？",
+      "unnamed": "仍有程序在 {{title}} 中运行。"
+    },
     "tabs": "终端",
     "titleInput": "终端标题"
   },

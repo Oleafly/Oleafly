@@ -150,25 +150,6 @@ async fn delegated_session(
 }
 
 #[tokio::test]
-async fn a_delegated_child_under_full_access_answers_its_own_permission() {
-    let (_temp, runtime, id) = delegated_session(crate::acp::PermissionDelegate::AutoAllow).await;
-    let before = runtime.snapshot(&id).await.unwrap().session.last_sequence;
-    runtime
-        .prompt(&id, "permission".into(), Vec::new())
-        .await
-        .unwrap();
-    let events = runtime.events(&id, before, 500).unwrap().events;
-    assert!(events
-        .iter()
-        .any(|event| event.kind == "permission_resolved" && event.data["optionId"] == "yes"));
-    assert!(events
-        .iter()
-        .any(|event| event.kind == "agent_message_chunk"
-            && super::event_text(&event.data) == Some("Permission outcome: selected")));
-    runtime.close(&id).await.unwrap();
-}
-
-#[tokio::test]
 async fn a_delegated_child_forwards_its_permission_to_the_parent_conversation() {
     let (_temp, runtime, id) = delegated_session(crate::acp::PermissionDelegate::ParentChat).await;
     let prompting = runtime.clone();
@@ -429,4 +410,13 @@ fn a_refused_request_is_described_in_the_apps_language() {
         !detail.contains("helperRefused") && !detail.contains("{{"),
         "{detail}"
     );
+}
+
+#[test]
+fn a_helper_asked_for_a_model_its_agent_does_not_offer_fails() {
+    use crate::acp::ModelChoice;
+    let error = super::asked_model_offered(ModelChoice::NotOffered, "codex", "gpt-x").unwrap_err();
+    assert!(error.contains("gpt-x"), "{error}");
+    assert!(super::asked_model_offered(ModelChoice::Selected, "codex", "gpt-x").is_ok());
+    assert!(super::asked_model_offered(ModelChoice::Kept, "codex", "gpt-x").is_ok());
 }

@@ -1,0 +1,24 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx,hyperref}
+\begin{document}
+
+\section{Introduction}
+\label{sec:intro}
+We follow \cite{knuth1984,lamport1994} and \citep[p.~2]{goossens}.
+
+\subsection{Scope}
+\label{sec:scope}
+See Section~\ref{sec:intro}, Equation~\eqref{eq:main},
+\cref{sec:scope} and \autoref{sec:results}.
+
+\section*{Unnumbered}
+\begin{equation}
+  E = mc^2 \label{eq:main}
+\end{equation}
+
+\includegraphics{fig/missing}
+
+\bibliographystyle{plain}
+\bibliography{refs}
+\end{document}

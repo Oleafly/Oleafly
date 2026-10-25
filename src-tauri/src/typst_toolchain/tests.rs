@@ -69,7 +69,9 @@ fn app_error(text: &str) -> (String, BTreeMap<String, String>) {
     (json["code"].as_str().unwrap().to_owned(), params)
 }
 
-fn assert_app_error(text: &str, code: &str, version: &str) {
+fn assert_app_error(error: impl Into<String>, code: &str, version: &str) {
+    let text: String = error.into();
+    let text = text.as_str();
     let (actual, params) = app_error(text);
     assert_eq!(actual, code, "{text}");
     assert_eq!(params.get("version").map(String::as_str), Some(version));
@@ -379,12 +381,12 @@ fn pins_must_name_a_catalog_bundled_or_system_version() {
     assert_eq!(typst.accepted_pin(" 0.13.1 ").unwrap(), "0.13.1");
     assert_eq!(typst.accepted_pin("0.15.1").unwrap(), "0.15.1");
     assert_app_error(
-        &typst.accepted_pin("0.10.0").unwrap_err(),
+        typst.accepted_pin("0.10.0").unwrap_err(),
         "typst_toolchain.unknown_version",
         "0.10.0",
     );
     assert_app_error(
-        &typst.accepted_pin("latest").unwrap_err(),
+        typst.accepted_pin("latest").unwrap_err(),
         "typst_toolchain.unknown_version",
         "latest",
     );
@@ -400,12 +402,12 @@ fn the_default_must_be_installed_and_the_bundled_version_means_follow_the_app() 
     assert_eq!(typst.default_choice_for(Some(" ")).unwrap(), None);
     assert_eq!(typst.default_choice_for(Some("0.15.1")).unwrap(), None);
     assert_app_error(
-        &typst.default_choice_for(Some("0.13.1")).unwrap_err(),
+        typst.default_choice_for(Some("0.13.1")).unwrap_err(),
         "typst_version_missing",
         "0.13.1",
     );
     assert_app_error(
-        &typst.default_choice_for(Some("0.9.0")).unwrap_err(),
+        typst.default_choice_for(Some("0.9.0")).unwrap_err(),
         "typst_toolchain.unknown_version",
         "0.9.0",
     );
@@ -429,10 +431,10 @@ fn removal_is_limited_to_downloaded_versions_that_are_not_the_default_or_install
         ("0.12.0", "typst_toolchain.remove_not_downloaded"),
         ("0.11.1", "typst_toolchain.remove_not_downloaded"),
     ] {
-        assert_app_error(&typst.removable(version, None).unwrap_err(), code, version);
+        assert_app_error(typst.removable(version, None).unwrap_err(), code, version);
     }
     assert_app_error(
-        &typst.removable("0.14.2", Some("0.14.2")).unwrap_err(),
+        typst.removable("0.14.2", Some("0.14.2")).unwrap_err(),
         "typst_toolchain.busy",
         "0.14.2",
     );
@@ -443,7 +445,7 @@ fn removal_is_limited_to_downloaded_versions_that_are_not_the_default_or_install
 
     typst.default_choice = Some("0.13.1".into());
     assert_app_error(
-        &typst.removable("0.13.1", None).unwrap_err(),
+        typst.removable("0.13.1", None).unwrap_err(),
         "typst_toolchain.remove_default",
         "0.13.1",
     );
@@ -463,7 +465,7 @@ fn removing_a_downloaded_version_deletes_its_folder_and_returns_the_status() {
         .unwrap();
     assert!(row.sources.is_empty());
     assert_app_error(
-        &remove_version_blocking("0.14.2").unwrap_err(),
+        remove_version_blocking("0.14.2").unwrap_err(),
         "typst_toolchain.remove_not_downloaded",
         "0.14.2",
     );
@@ -555,7 +557,7 @@ fn setting_the_default_persists_it_and_reports_it_back() {
     assert_eq!(status.default_version, "0.13.1");
     assert_eq!(default_version(), "0.13.1");
     assert_app_error(
-        &set_default_blocking(Some("0.12.0".into())).unwrap_err(),
+        set_default_blocking(Some("0.12.0".into())).unwrap_err(),
         "typst_version_missing",
         "0.12.0",
     );
@@ -599,7 +601,7 @@ fn installs_take_catalog_versions_for_this_computer_only() {
 
     for refused in ["0.10.0", "0.13.2"] {
         assert_app_error(
-            &typst.install_request(refused).unwrap_err().to_string(),
+            typst.install_request(refused).unwrap_err(),
             "typst_toolchain.not_offered",
             refused,
         );
@@ -607,7 +609,7 @@ fn installs_take_catalog_versions_for_this_computer_only() {
     let mut elsewhere = toolchain(root.path());
     elsewhere.target = None;
     assert_app_error(
-        &elsewhere.install_request("0.13.1").unwrap_err(),
+        elsewhere.install_request("0.13.1").unwrap_err(),
         "typst_toolchain.not_offered",
         "0.13.1",
     );
@@ -618,7 +620,7 @@ fn one_install_runs_at_a_time_and_the_status_names_it() {
     let claim = InstallClaim::take("0.13.1").unwrap();
     assert_eq!(installing_version().as_deref(), Some("0.13.1"));
     assert_app_error(
-        &InstallClaim::take("0.14.2").err().unwrap(),
+        InstallClaim::take("0.14.2").err().unwrap(),
         "typst_toolchain.busy",
         "0.13.1",
     );
@@ -756,7 +758,7 @@ fn snippets_render_with_the_project_pin_and_fall_back_to_the_default() {
     let data = DataDir::new();
     library_typst_project("snippet-missing", Some("0.12.0"));
     assert_app_error(
-        &snippet_typst(Some("snippet-missing")).unwrap_err(),
+        snippet_typst(Some("snippet-missing")).unwrap_err(),
         "typst_version_missing",
         "0.12.0",
     );

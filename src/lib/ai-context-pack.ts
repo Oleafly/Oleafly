@@ -44,17 +44,27 @@ export type HistoryMsg = { role: string; content: string };
 
 // `messages` should be the conversation *before* the new user turn is
 // appended by the caller, or the full list excluding the trailing empty
-// assistant.
-export function packChatHistory(
+// assistant. `droppedTurns` counts the messages left out.
+export function packChatHistoryInfo(
   messages: { role: string; content: string }[],
   opts?: { maxTurns?: number; maxChars?: number },
-): HistoryMsg[] {
+): { messages: HistoryMsg[]; droppedTurns: number } {
   const maxTurns = opts?.maxTurns ?? HISTORY_MAX_TURNS;
   const maxChars = opts?.maxChars ?? HISTORY_MSG_MAX_CHARS;
   const textTurns = messages.filter((m) => m.role === "user" || m.role === "assistant");
   const recent = textTurns.slice(-maxTurns);
-  return recent.map((m) => ({
-    role: m.role,
-    content: truncateText(m.content || "", maxChars),
-  }));
+  return {
+    messages: recent.map((m) => ({
+      role: m.role,
+      content: truncateText(m.content || "", maxChars),
+    })),
+    droppedTurns: textTurns.length - recent.length,
+  };
+}
+
+export function packChatHistory(
+  messages: { role: string; content: string }[],
+  opts?: { maxTurns?: number; maxChars?: number },
+): HistoryMsg[] {
+  return packChatHistoryInfo(messages, opts).messages;
 }

@@ -125,6 +125,15 @@ describe("PromptPopover", () => {
     expect(props.onSubmit).toHaveBeenCalledTimes(2);
   });
 
+  it("ignores the Enter that confirms an IME composition", () => {
+    render(<PromptPopover {...props} instruction="翻訳して" />);
+
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter", isComposing: true });
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter", keyCode: 229 });
+
+    expect(props.onSubmit).not.toHaveBeenCalled();
+  });
+
   it("keeps a newline out of the submission on Shift and Enter", () => {
     render(<PromptPopover {...props} instruction="Tighten this" />);
 

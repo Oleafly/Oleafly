@@ -182,7 +182,8 @@
   },
   "imageToLatex": {
     "failed": "Bild zu LaTeX fehlgeschlagen: {{detail}}",
-    "transcribing": "Bild wird transkribiert…"
+    "transcribing": "Bild wird transkribiert…",
+    "notInserted": "Die aktive Datei hat sich geändert, deshalb wurde der LaTeX-Code nicht eingefügt. Kopieren Sie ihn und fügen Sie ihn dort ein, wo Sie ihn haben möchten."
   },
   "import": {
     "chooseOfferedProjectType": "Wählen Sie einen der für diese Datei angebotenen Projekttypen.",
@@ -583,7 +584,9 @@
       "diagnostics_one": "{{count}} Diagnose",
       "diagnostics_other": "{{count}} Diagnosen",
       "papers_one": "{{count}} Aufsatz",
-      "papers_other": "{{count}} Aufsätze"
+      "papers_other": "{{count}} Aufsätze",
+      "sourcesFailed_one": "{{count}} Quelle fehlgeschlagen",
+      "sourcesFailed_other": "{{count}} Quellen fehlgeschlagen"
     }
   },
   "ui": {
@@ -601,6 +604,8 @@
     "saveReason": "der Projektordner ist nicht verfügbar"
   },
   "imageToTypst": {
-    "failed": "Bild zu Typst ist fehlgeschlagen: {{detail}}"
+    "failed": "Bild zu Typst ist fehlgeschlagen: {{detail}}",
+    "copied": "Typst-Quelltext kopiert",
+    "notInserted": "Die aktive Datei hat sich geändert, deshalb wurde der Typst-Code nicht eingefügt. Kopieren Sie ihn und fügen Sie ihn dort ein, wo Sie ihn haben möchten."
   }
 }

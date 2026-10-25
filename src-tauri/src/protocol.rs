@@ -3,7 +3,8 @@ use serde::Serialize;
 // Mirrors packages/backend-port/src/index.ts. The vitest conformance test
 // (src/lib/backend-port-protocol.test.ts) parses this file and fails on any
 // drift between the two, so bump both sides together.
-pub const PROTOCOL_VERSION: u32 = 6;
+// 7 covers every command 0.4.8 removes or renames (one bump per release).
+pub const PROTOCOL_VERSION: u32 = 7;
 pub const CAPABILITIES: [&str; 12] = [
     "agent-server",
     "agent-stream",

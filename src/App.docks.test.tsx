@@ -43,10 +43,9 @@ const appState = vi.hoisted(() => {
       },
     },
   };
-  const computerUseListeners = new Set<() => void>();
   const home = { page: "library" };
   const menuListeners = new Map<string, () => void>();
-  return { analysis, compile, computerUseListeners, files, home, menuListeners, tauri: false };
+  return { analysis, compile, files, home, menuListeners, tauri: false };
 });
 
 const editorControllerMocks = vi.hoisted(() => ({
@@ -92,15 +91,6 @@ vi.mock("@codemirror/commands", async (importOriginal) => ({
   undo: codeMirrorMocks.undo,
 }));
 
-const browserWindowMocks = vi.hoisted(() => ({
-  launchBrowser: vi.fn(),
-  toggleBrowser: vi.fn(),
-}));
-vi.mock("@/lib/browser-window", () => ({
-  launchBrowser: browserWindowMocks.launchBrowser,
-  toggleBrowser: browserWindowMocks.toggleBrowser,
-  registerBrowserCuaSurface: () => () => {},
-}));
 vi.mock("@/lib/ai-tools", () => ({
   initAiPdfCaptureFlag: vi.fn(),
 }));
@@ -323,15 +313,6 @@ vi.mock("@/store/tours", () => ({
 vi.mock("@/store/git-status", () => ({
   useGitStatusStore: selectorStore({ refresh: vi.fn() }),
 }));
-vi.mock("@/store/github", () => ({
-  useGithubStore: { getState: () => ({ refresh: vi.fn(async () => {}) }) },
-}));
-vi.mock("@/lib/agent-item-effects", () => ({
-  subscribeToComputerUseStarts: (listener: () => void) => {
-    appState.computerUseListeners.add(listener);
-    return () => appState.computerUseListeners.delete(listener);
-  },
-}));
 vi.mock("@/lib/open-compile", () => openCompileMocks);
 vi.mock("@/features/synctex", () => ({ forwardFromCursor: vi.fn() }));
 vi.mock("@/lib/updater", () => ({
@@ -390,7 +371,6 @@ describe("project dock layout", () => {
 
   beforeEach(async () => {
     document.body.innerHTML = "<div id='root'></div>";
-    appState.computerUseListeners.clear();
     appState.menuListeners.clear();
     appState.tauri = false;
     appState.files.mainDecision = "auto";
@@ -416,8 +396,6 @@ describe("project dock layout", () => {
     appState.home.page = "library";
     const { useSettingsStore } = await import("@/store/settings");
     useSettingsStore.setState({
-      webBrowser: true,
-      browserOpen: false,
       terminalOpen: false,
       showTree: false,
       chatFloating: false,
@@ -441,7 +419,7 @@ describe("project dock layout", () => {
     root = null;
   });
 
-  it("keeps both dock flags closed when expanded panels autofire on project mount", async () => {
+  it("keeps the terminal dock closed when expanded panels autofire on project mount", async () => {
     const React = await import("react");
     const { act } = React;
     const { createRoot } = await import("react-dom/client");
@@ -459,7 +437,6 @@ describe("project dock layout", () => {
     });
 
     expect(useSettingsStore.getState()).toMatchObject({
-      browserOpen: false,
       terminalOpen: false,
     });
   });
@@ -628,7 +605,7 @@ describe("project dock layout", () => {
     expect(closed?.classList.contains("border-t")).toBe(false);
   });
 
-  it("toggles project docks from their registered keyboard shortcuts", async () => {
+  it("toggles the terminal dock from its registered keyboard shortcut", async () => {
     const React = await import("react");
     const { act } = React;
     const { createRoot } = await import("react-dom/client");
@@ -652,18 +629,79 @@ describe("project dock layout", () => {
       );
     });
     expect(useSettingsStore.getState().terminalOpen).toBe(true);
+  });
 
+  it("lets Ctrl+B, Ctrl+Z and Ctrl+Alt+P through to a focused terminal", async () => {
+    const { act } = await import("react");
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const { useSettingsStore } = await import("@/store/settings");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+    root = createRoot(host);
     await act(async () => {
-      window.dispatchEvent(
-        new window.KeyboardEvent("keydown", {
-          key: "b",
-          ctrlKey: true,
-          shiftKey: true,
-          bubbles: true,
-        }),
-      );
+      root?.render(<App />);
     });
-    expect(browserWindowMocks.toggleBrowser).toHaveBeenCalled();
+
+    const xterm = document.createElement("div");
+    xterm.className = "xterm";
+    const textarea = document.createElement("textarea");
+    xterm.append(textarea);
+    document.body.append(xterm);
+    textarea.focus();
+    const before = useSettingsStore.getState();
+    const events = [
+      { key: "b", ctrlKey: true },
+      { key: "z", ctrlKey: true },
+      { key: "p", ctrlKey: true, altKey: true },
+    ].map((init) => new window.KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init }));
+    await act(async () => {
+      for (const event of events) textarea.dispatchEvent(event);
+    });
+
+    expect(useSettingsStore.getState().showTree).toBe(before.showTree);
+    expect(useSettingsStore.getState().viewMode).toBe(before.viewMode);
+    expect(editorControllerMocks.editorUndo).not.toHaveBeenCalled();
+    expect(editorControllerMocks.editorVimUndo).not.toHaveBeenCalled();
+    expect(events.map((event) => event.defaultPrevented)).toEqual([false, false, false]);
+    xterm.remove();
+  });
+
+  it("still opens the terminal tab shortcuts on macOS", async () => {
+    const { act } = await import("react");
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const { useSettingsStore } = await import("@/store/settings");
+    const { useTerminalsStore } = await import("@/store/terminals");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+    appState.tauri = true;
+    Object.defineProperty(window.navigator, "platform", { configurable: true, value: "MacIntel" });
+    try {
+      root = createRoot(host);
+      await act(async () => {
+        root?.render(<App />);
+      });
+      useTerminalsStore.getState().setProject("project-1");
+      const before = useTerminalsStore.getState().tabs.length;
+
+      await act(async () => {
+        window.dispatchEvent(
+          new window.KeyboardEvent("keydown", {
+            key: "~",
+            ctrlKey: true,
+            shiftKey: true,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      });
+
+      expect(useTerminalsStore.getState().tabs).toHaveLength(before + 1);
+      expect(useSettingsStore.getState().terminalOpen).toBe(true);
+    } finally {
+      delete (window.navigator as unknown as Record<string, unknown>).platform;
+    }
   });
 
   it("opens the shortcut reference unless the editor consumed the chord", async () => {

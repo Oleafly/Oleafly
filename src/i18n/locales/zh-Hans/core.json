@@ -180,7 +180,8 @@
   },
   "imageToLatex": {
     "failed": "图片转 LaTeX 失败：{{detail}}",
-    "transcribing": "正在转录图片…"
+    "transcribing": "正在转录图片…",
+    "notInserted": "当前文件已更改，因此未插入 LaTeX。请复制后粘贴到你想要的位置。"
   },
   "import": {
     "chooseOfferedProjectType": "请选择此文件支持的项目类型。",
@@ -567,7 +568,8 @@
       "compileFailed": "编译失败",
       "compileSucceeded": "编译成功",
       "diagnostics_other": "{{count}} 条诊断信息",
-      "papers_other": "{{count}} 篇论文"
+      "papers_other": "{{count}} 篇论文",
+      "sourcesFailed_other": "{{count}} 个来源失败"
     }
   },
   "ui": {
@@ -585,6 +587,8 @@
     "saveReason": "项目文件夹不可用"
   },
   "imageToTypst": {
-    "failed": "图片转 Typst 失败：{{detail}}"
+    "failed": "图片转 Typst 失败：{{detail}}",
+    "copied": "已复制 Typst 源码",
+    "notInserted": "当前文件已更改，因此未插入 Typst。请复制后粘贴到你想要的位置。"
   }
 }

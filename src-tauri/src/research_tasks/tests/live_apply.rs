@@ -68,6 +68,7 @@ impl Fixture {
                     path: (*path).to_owned(),
                     sha256: sha256.clone(),
                     size: *size,
+                    resolved_link: false,
                 });
             }
             let kind = match (&before, &after) {
@@ -108,6 +109,7 @@ impl Fixture {
                 baseline,
                 allowed_paths: Vec::new(),
                 created_at: now_ms(),
+                skipped: Vec::new(),
             }),
             error: None,
             result: Some(TaskResultMetadata {
@@ -125,6 +127,21 @@ impl Fixture {
             updated_at: now_ms(),
             started_at: Some(now_ms()),
             finished_at: Some(now_ms()),
+            brief: Default::default(),
+            record_slug: String::new(),
+            run_after: None,
+            keep_running_after_quit: false,
+            owner: Default::default(),
+            phase: None,
+            plan_approved: false,
+            stop_reason: None,
+            evidence: None,
+            pending_approvals: 0,
+            active_ms: 0,
+            todos: Vec::new(),
+            pending_start: None,
+            reclaim_requested: false,
+            resumed_from: None,
         }
     }
 

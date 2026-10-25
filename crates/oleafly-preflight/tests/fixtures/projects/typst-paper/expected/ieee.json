@@ -1,0 +1,477 @@
+{
+  "profile": "ieee",
+  "project": {
+    "files": [
+      {
+        "hasContent": true,
+        "path": "chapters/intro.typ"
+      },
+      {
+        "hasContent": true,
+        "path": "extra.yml"
+      },
+      {
+        "hasContent": false,
+        "path": "figs/plot.png",
+        "size": 8
+      },
+      {
+        "hasContent": true,
+        "path": "main.typ"
+      },
+      {
+        "hasContent": true,
+        "path": "refs.bib"
+      }
+    ],
+    "mainFile": "main.typ"
+  },
+  "refs": {
+    "allCitedKeys": [],
+    "bibEntries": [
+      {
+        "fields": {
+          "author": "A",
+          "journal": "J",
+          "title": "Known Work",
+          "year": "2020"
+        },
+        "key": "known",
+        "type": "article"
+      }
+    ],
+    "bibKeyDefinitions": [
+      {
+        "file": "refs.bib",
+        "from": 0,
+        "key": "known",
+        "line": 1,
+        "to": 14
+      }
+    ],
+    "bibKeyDialect": "bibtex",
+    "bibKeys": [
+      "extra-entry",
+      "known"
+    ],
+    "bibLoaded": true,
+    "definedLabels": [
+      "sec:intro",
+      "fig:plot",
+      "sec:dup",
+      "sec:dup"
+    ],
+    "duplicateDois": [],
+    "duplicateLabels": [],
+    "projectFiles": [
+      "chapters/intro.typ",
+      "extra.yml",
+      "figs/plot.png",
+      "main.typ",
+      "refs.bib"
+    ],
+    "unreferencedLabels": [],
+    "unresolvedBibliographies": []
+  },
+  "report": {
+    "a11yScore": null,
+    "atsScore": null,
+    "compileScore": null,
+    "coverage": {
+      "a11y": "not_run",
+      "ats": "not_run",
+      "compile": "not_run",
+      "privacy": "evaluated",
+      "refs": "evaluated",
+      "submission": "partial"
+    },
+    "findings": [
+      {
+        "detail": {
+          "key": "rules.figure-alt.detailTypstFigure"
+        },
+        "file": "main.typ",
+        "from": 233,
+        "id": "figure-alt",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.3",
+            "label": "Graphics",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.3-1"
+          },
+          {
+            "clause": "8.2.5.28.2",
+            "label": "Figure",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "13-004",
+            "label": "Alternative descriptions",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.1.1",
+            "label": "Non-text Content",
+            "standard": "WCAG-2.2",
+            "technique": "PDF1",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+          }
+        ],
+        "title": {
+          "key": "rules.figure-alt.title"
+        },
+        "to": 255
+      },
+      {
+        "detail": {
+          "key": "rules.figure-alt.detailTypstFigure"
+        },
+        "file": "main.typ",
+        "from": 365,
+        "id": "figure-alt",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.3",
+            "label": "Graphics",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.3-1"
+          },
+          {
+            "clause": "8.2.5.28.2",
+            "label": "Figure",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "13-004",
+            "label": "Alternative descriptions",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.1.1",
+            "label": "Non-text Content",
+            "standard": "WCAG-2.2",
+            "technique": "PDF1",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+          }
+        ],
+        "title": {
+          "key": "rules.figure-alt.title"
+        },
+        "to": 390
+      },
+      {
+        "detail": {
+          "key": "rules.privacy-local-path.detail"
+        },
+        "file": "main.typ",
+        "from": 372,
+        "id": "privacy-local-path",
+        "lens": "privacy",
+        "method": "source-heuristic",
+        "severity": "warning",
+        "title": {
+          "key": "rules.privacy-local-path.title",
+          "params": {
+            "path": "/Users/ana/x.png"
+          }
+        },
+        "to": 388
+      },
+      {
+        "detail": {
+          "key": "rules.figure-alt.detailTypstFigure"
+        },
+        "file": "main.typ",
+        "from": 392,
+        "id": "figure-alt",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.3",
+            "label": "Graphics",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.3-1"
+          },
+          {
+            "clause": "8.2.5.28.2",
+            "label": "Figure",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "13-004",
+            "label": "Alternative descriptions",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.1.1",
+            "label": "Non-text Content",
+            "standard": "WCAG-2.2",
+            "technique": "PDF1",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+          }
+        ],
+        "title": {
+          "key": "rules.figure-alt.title"
+        },
+        "to": 417
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.todo-in-text.detail"
+        },
+        "file": "main.typ",
+        "from": 418,
+        "id": "todo-in-text",
+        "lens": "submission",
+        "method": "source-heuristic",
+        "severity": "warning",
+        "title": {
+          "key": "rules.todo-in-text.title"
+        },
+        "to": 422
+      },
+      {
+        "detail": {
+          "key": "rules.empty-heading.detail"
+        },
+        "file": "main.typ",
+        "from": 432,
+        "id": "empty-heading",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.4",
+            "label": "Headings",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.4.2-1"
+          },
+          {
+            "clause": "14-003",
+            "label": "Headings",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.3.1",
+            "label": "Info and Relationships",
+            "standard": "WCAG-2.2",
+            "technique": "PDF9",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF9"
+          },
+          {
+            "clause": "2.4.6",
+            "label": "Headings and Labels",
+            "standard": "WCAG-2.2",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/#pdf"
+          }
+        ],
+        "title": {
+          "key": "rules.empty-heading.title"
+        },
+        "to": 433
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.refs-undefined-ref.detailTypstPackage"
+        },
+        "file": "main.typ",
+        "from": 299,
+        "id": "refs-undefined-ref",
+        "lens": "refs",
+        "severity": "warning",
+        "title": {
+          "key": "rules.refs-undefined-ref.titleTypst",
+          "params": {
+            "label": "fig:nope"
+          }
+        },
+        "to": 308
+      },
+      {
+        "detail": {
+          "key": "rules.refs-undefined-cite.detailTypst"
+        },
+        "file": "main.typ",
+        "from": 348,
+        "id": "refs-undefined-cite",
+        "lens": "refs",
+        "severity": "error",
+        "title": {
+          "key": "rules.refs-undefined-cite.titleTypst",
+          "params": {
+            "key": "unknown"
+          }
+        },
+        "to": 363
+      },
+      {
+        "detail": {
+          "key": "rules.refs-missing-asset.detailImageTypst"
+        },
+        "file": "main.typ",
+        "from": 365,
+        "id": "refs-missing-asset",
+        "lens": "refs",
+        "severity": "error",
+        "title": {
+          "key": "rules.refs-missing-asset.titleImage",
+          "params": {
+            "file": "/Users/ana/x.png"
+          }
+        },
+        "to": 390
+      },
+      {
+        "detail": {
+          "key": "rules.refs-missing-asset.detailImageTypst"
+        },
+        "file": "main.typ",
+        "from": 392,
+        "id": "refs-missing-asset",
+        "lens": "refs",
+        "severity": "error",
+        "title": {
+          "key": "rules.refs-missing-asset.titleImage",
+          "params": {
+            "file": "figs/missing.png"
+          }
+        },
+        "to": 417
+      },
+      {
+        "detail": {
+          "key": "rules.refs-duplicate-label.detail"
+        },
+        "file": "main.typ",
+        "from": 479,
+        "id": "refs-duplicate-label",
+        "lens": "refs",
+        "severity": "warning",
+        "title": {
+          "key": "rules.refs-duplicate-label.title",
+          "params": {
+            "label": "sec:dup"
+          }
+        },
+        "to": 488
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.submission-no-keywords.detailTypst",
+          "params": {
+            "profile": "IEEE conference / journal"
+          }
+        },
+        "id": "submission-no-keywords",
+        "lens": "submission",
+        "severity": "warning",
+        "title": {
+          "key": "rules.submission-no-keywords.title"
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.submission-placeholder.detailTypst"
+        },
+        "id": "submission-placeholder",
+        "lens": "submission",
+        "severity": "warning",
+        "title": {
+          "key": "rules.submission-placeholder.title"
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.submission-missing-project-file.detail",
+          "params": {
+            "file": "main.typ"
+          }
+        },
+        "file": "main.typ",
+        "id": "submission-missing-project-file",
+        "lens": "submission",
+        "severity": "error",
+        "title": {
+          "key": "rules.submission-missing-project-file.titleFigure",
+          "params": {
+            "target": "/Users/ana/x.png"
+          }
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.submission-missing-project-file.detail",
+          "params": {
+            "file": "main.typ"
+          }
+        },
+        "file": "main.typ",
+        "id": "submission-missing-project-file",
+        "lens": "submission",
+        "severity": "error",
+        "title": {
+          "key": "rules.submission-missing-project-file.titleFigure",
+          "params": {
+            "target": "figs/missing.png"
+          }
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.submission-missing-caption.detail"
+        },
+        "file": "main.typ",
+        "id": "submission-missing-caption",
+        "lens": "submission",
+        "severity": "warning",
+        "title": {
+          "key": "rules.submission-missing-caption.titleFigure"
+        }
+      }
+    ],
+    "hasPdf": false,
+    "privacyScore": 94,
+    "refsScore": 43,
+    "scores": {
+      "a11y": 76,
+      "ats": 100,
+      "compile": 100,
+      "privacy": 94,
+      "refs": 43,
+      "submission": 46
+    },
+    "submissionScore": 46
+  }
+}

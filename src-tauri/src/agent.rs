@@ -19,6 +19,8 @@ mod registry;
 mod subagents;
 pub mod task_runtime;
 pub mod usage;
+// 0.4.8 C:
+pub mod web;
 use registry::{acquire_request_slot, cancel_request, run_registered};
 #[cfg(test)]
 use registry::{begin_request, cancel_all_requests, finish_request};
@@ -53,6 +55,15 @@ struct RunResource<T> {
     value: T,
 }
 
+/// A run's steer channel and what a steered message needs: the run's
+/// attachment budget and its web context.
+#[derive(Clone)]
+pub(crate) struct RunSteer {
+    pub handle: oleafly_agent::SteerHandle,
+    pub media: Option<std::sync::Arc<crate::attachments::resolve::RunMediaContext>>,
+    pub web: Option<std::sync::Arc<oleafly_agent::tools::web::WebToolContext>>,
+}
+
 #[derive(Default)]
 struct RequestRegistry {
     active: HashMap<String, ActiveRequest>,
@@ -69,7 +80,7 @@ pub struct AgentState {
     request_slots: std::sync::Arc<tokio::sync::Semaphore>,
     /// Steer senders and cancellation tokens for in-flight runs; registered
     /// at run start, cleaned up at run end and on cancel.
-    steer_senders: Mutex<HashMap<String, RunResource<oleafly_agent::SteerHandle>>>,
+    steer_senders: Mutex<HashMap<String, RunResource<RunSteer>>>,
     run_tokens: Mutex<HashMap<String, RunResource<oleafly_agent::CancellationToken>>>,
     run_projects: Mutex<HashMap<String, RunResource<Option<String>>>>,
     run_tools: Mutex<HashMap<String, RunResource<HashSet<String>>>>,
@@ -283,9 +294,7 @@ pub async fn agent_complete(
         let usage = standalone_usage(&usage_id, &resolved)?;
         let result = oleafly_agent::complete(&client, &resolved, &request).await;
         if let Ok(response) = &result {
-            usage.observe(&AgentEvent::Usage {
-                usage: response.usage,
-            });
+            usage.observe(&AgentEvent::usage(response.usage));
         }
         usage.finish(if result.is_ok() {
             "completed"
@@ -426,7 +435,7 @@ fn register_run_resources(
     state: &AgentState,
     request_id: &str,
     generation: u64,
-    steer: oleafly_agent::SteerHandle,
+    steer: RunSteer,
     token: oleafly_agent::CancellationToken,
     manager: std::sync::Arc<SubagentManager>,
     project: Option<String>,
@@ -564,30 +573,68 @@ async fn steer_run(
     request_id: &str,
     message: oleafly_agent::Message,
 ) -> Result<SteerResult, String> {
+    use oleafly_agent::ContentPart;
     if message.role != oleafly_agent::Role::User {
         return Err("a steer must be a user message".into());
     }
     let has_content = message.content.iter().any(|part| match part {
-        oleafly_agent::ContentPart::Text { text } => !text.trim().is_empty(),
-        oleafly_agent::ContentPart::Image { image } => !image.trim().is_empty(),
+        ContentPart::Text { text } => !text.trim().is_empty(),
+        ContentPart::Image { image } => !image.trim().is_empty(),
+        ContentPart::Attachment { .. } | ContentPart::Document { .. } => true,
         _ => false,
     });
     if !has_content {
         return Err("a steer must contain text or an image".into());
     }
-    let sender = {
+    let steer = {
         let senders = lock_or_recover(&state.steer_senders);
         senders.get(request_id).map(|sender| sender.value.clone())
     };
-    match sender {
-        Some(handle) if handle.steer(message).await => Ok(SteerResult {
+    let Some(steer) = steer else {
+        return Err(format!("no active run {request_id} to steer"));
+    };
+    let message = prepare_steer(&steer, message).await?;
+    if steer.handle.steer(message).await {
+        Ok(SteerResult {
             status: SteerStatus::Delivered,
-        }),
-        Some(_) => Ok(SteerResult {
+        })
+    } else {
+        Ok(SteerResult {
             status: SteerStatus::RunFinished,
-        }),
-        None => Err(format!("no active run {request_id} to steer")),
+        })
     }
+}
+
+/// Resolves a steered message's attachments against the run's remaining
+/// budget and records its URLs for web fetch. Notes for files that could
+/// not be sent stay in the message, where the model reads them.
+async fn prepare_steer(
+    steer: &RunSteer,
+    mut message: oleafly_agent::Message,
+) -> Result<oleafly_agent::Message, String> {
+    use oleafly_agent::ContentPart;
+    if message
+        .content
+        .iter()
+        .any(|part| matches!(part, ContentPart::Attachment { .. }))
+    {
+        let Some(media) = steer.media.clone() else {
+            return Err("This run cannot take attachments.".into());
+        };
+        message = tauri::async_runtime::spawn_blocking(move || {
+            media.resolve_message(&mut message).map(|_| message)
+        })
+        .await
+        .map_err(|error| error.to_string())??;
+    }
+    if let Some(web) = &steer.web {
+        for part in &message.content {
+            if let ContentPart::Text { text } = part {
+                web.observe_text(text);
+            }
+        }
+    }
+    Ok(message)
 }
 
 fn initiating_user_text(request: &CompletionRequest) -> String {
@@ -610,13 +657,16 @@ fn initiating_user_text(request: &CompletionRequest) -> String {
         .unwrap_or_default()
 }
 
+/// `seed_text` is the user's own words, read before attachments were
+/// resolved, so text extracted from a PDF never becomes the rollout's user
+/// message.
 fn turn_recorder_for_request(
     turn_id: String,
     client_turn_id: Option<String>,
-    request: &CompletionRequest,
+    seed_text: String,
 ) -> oleafly_agent::items::TurnRecorder {
     let mut recorder = oleafly_agent::items::TurnRecorder::new(turn_id);
-    recorder.seed_user_message(initiating_user_text(request));
+    recorder.seed_user_message(seed_text);
     if let Some(client_turn_id) = client_turn_id {
         recorder.bind_client_turn_id(client_turn_id);
     }
@@ -671,6 +721,48 @@ fn standalone_usage(
     ))
 }
 
+/// The usage status of a finished run.
+fn run_status<E>(cancelled: bool, outcome: &Result<oleafly_agent::RunOutcome, E>) -> &'static str {
+    if cancelled {
+        "cancelled"
+    } else if matches!(outcome, Ok(outcome) if outcome.error.is_none()) {
+        "completed"
+    } else {
+        "failed"
+    }
+}
+
+/// Appends the run's recorded turn to its thread's rollout and re-indexes
+/// the thread.
+async fn persist_recorded_turn(
+    recorder: &Mutex<oleafly_agent::items::TurnRecorder>,
+    thread_id: &str,
+    project: String,
+    stopped_at_cap: bool,
+) {
+    // The guard must drop before the persist await keeps this future Send; a
+    // poisoned lock simply skips persistence.
+    let snapshot = recorder.lock().ok().map(|mut recorder| {
+        recorder.finish(stopped_at_cap);
+        recorder.snapshot().clone()
+    });
+    let Some(snapshot) = snapshot else {
+        return;
+    };
+    let thread_id = thread_id.to_string();
+    let persist = tauri::async_runtime::spawn_blocking(move || {
+        let Ok(root) = crate::paths::oleafly_root() else {
+            return;
+        };
+        if crate::rollout::append_turn(&root, &thread_id, &snapshot).is_ok() {
+            if let Ok(turns) = crate::rollout::read_turns(&root, &thread_id) {
+                let _ = crate::library_db::resync_thread(&root, &thread_id, &project, &turns);
+            }
+        }
+    });
+    let _ = persist.await;
+}
+
 #[tauri::command]
 #[allow(clippy::too_many_arguments)] // Tauri command surface; each arg is IPC-named.
 pub async fn agent_run(
@@ -698,24 +790,81 @@ pub async fn agent_run(
     // The closure owns its own id copy; `run_registered` borrows the original.
     let run_registration_id = request_id.clone();
     run_registered(agent_state, &request_id, |generation| async move {
+        let mut request = request;
+        let seed_text = initiating_user_text(&request);
+        // A chat with web on may need the local web tools, so the model's
+        // tool support is checked for it too.
+        let wants_tools = !request.tools.is_empty() || request.web.is_some_and(|web| web.any());
+        let resolved = resolve_for_run_off_thread(provider_override, wants_tools).await?;
+        let data_root = crate::paths::oleafly_root()?;
+        let media = std::sync::Arc::new(crate::attachments::resolve::RunMediaContext::new(
+            data_root.clone(),
+            pinned_project.clone(),
+            &resolved,
+        ));
+        let resolving = media.clone();
+        let (resolved_request, mut notices) = tauri::async_runtime::spawn_blocking(move || {
+            let events = resolving.resolve_request(&mut request)?;
+            Ok::<_, String>((request, events))
+        })
+        .await
+        .map_err(|error| error.to_string())??;
+        let mut request = resolved_request;
+        let trust_project = pinned_project.clone();
+        let (search_key, reasoning_summaries, hosted_web) =
+            tauri::async_runtime::spawn_blocking(move || {
+                let summaries = crate::config::read_config()
+                    .map(|cfg| cfg.ai_reasoning_summaries)
+                    .unwrap_or(false);
+                // The provider's own web tools skip the folder-trust prompt.
+                let hosted_web = trust_project
+                    .as_deref()
+                    .is_none_or(crate::trust::is_trusted);
+                (web::configured_search_key(), summaries, hosted_web)
+            })
+            .await
+            .map_err(|error| error.to_string())?;
+        if request.reasoning_summary.is_none() && reasoning_summaries {
+            request.reasoning_summary = Some(true);
+        }
+        let web::RunWeb {
+            ctx: web_ctx,
+            notices: web_notices,
+        } = web::prepare_run_web(&mut request, &resolved, search_key, hosted_web)?;
+        notices.extend(web_notices);
         oleafly_agent::validate_completion_request(&request).map_err(tagged)?;
-        let resolved =
-            resolve_for_run_off_thread(provider_override, !request.tools.is_empty()).await?;
         let client = agent_state.client()?;
         let sink = on_event.clone();
         let allowed_tools: std::collections::HashSet<_> =
             request.tools.iter().map(|tool| tool.name.clone()).collect();
+        // Subagents on a model without hosted web tools add the local ones
+        // to their own requests; their calls pass through this runner.
+        let mut shared_tools = allowed_tools.clone();
+        if let Some(ctx) = &web_ctx {
+            shared_tools.extend(web::web_tool_names(ctx));
+        }
         let app_for_exec_cancel = app.clone();
+        // 0.4.8 I: desktop apps grants follow the chat; the Cua session is this run's.
+        let cua_run =
+            crate::cua_driver::RunScope::for_chat(thread_id.as_deref(), &run_registration_id);
+        let inner_tool = composite_tool_runner(
+            app.clone(),
+            run_id,
+            generation,
+            on_event.clone(),
+            pinned_project.clone(),
+            cua_run,
+        );
+        let inner_tool = match &web_ctx {
+            Some(ctx) => oleafly_agent::tools::web::web_tool_runner(ctx.clone(), inner_tool),
+            None => inner_tool,
+        };
+        // The folder-trust gate asks before network tools, web ones included,
+        // in folders the user has not trusted.
         let base_tool = restricted_tool_runner(
             pinned_project.clone(),
             native_restricted_confirm(app.clone()),
-            composite_tool_runner(
-                app.clone(),
-                run_id,
-                generation,
-                on_event.clone(),
-                pinned_project.clone(),
-            ),
+            inner_tool,
         );
         // Pre-classify every call: project denials short-circuit before any
         // webview round trip; read-class tools may run concurrently under the
@@ -724,14 +873,16 @@ pub async fn agent_run(
             base_tool.clone(),
             approval_classifier(pinned_project.clone()),
         );
-        let classified_tool = allowlisted_tool_runner(allowed_tools.clone(), classified_tool);
+        let classified_tool = allowlisted_tool_runner(shared_tools, classified_tool);
         let pipeline = tool_pipeline();
         // Sub-agents: threads in this run, managed by the tool dispatcher.
-        let multi_agent = crate::agent_config::MultiAgentConfig::load(
-            &crate::paths::oleafly_root().unwrap_or_default(),
-        );
+        let multi_agent = crate::agent_config::MultiAgentConfig::load(&data_root);
+        for notice in notices {
+            let _ = on_event.send(notice);
+        }
+        let cost_tally = std::sync::Arc::new(usage::CostTally::default());
         let record_sink = record_scope.map(|(thread_id, turn_id, client_turn_id)| {
-            let recorder = turn_recorder_for_request(turn_id, client_turn_id, &request);
+            let recorder = turn_recorder_for_request(turn_id, client_turn_id, seed_text);
             (thread_id, std::sync::Arc::new(Mutex::new(recorder)))
         });
         let subagent_manager = std::sync::Arc::new(SubagentManager::with_exec_canceller(
@@ -742,7 +893,7 @@ pub async fn agent_run(
         ));
         let run_context = subagents::RunContext {
             app: Some(app),
-            data_root: crate::paths::oleafly_root()?,
+            data_root: data_root.clone(),
             session_id: thread_id
                 .clone()
                 .unwrap_or_else(|| run_registration_id.clone()),
@@ -763,8 +914,13 @@ pub async fn agent_run(
             depth: 0,
             task_path: subagents::RunContext::root_task_path(),
             multi_agent,
+            cost_tally: cost_tally.clone(),
+            web: web_ctx.clone(),
         };
         let subagent_manager_for_registry = subagent_manager.clone();
+        // Hosted search results reach the shared web context from the
+        // run's events, so subagents on other models can fetch them.
+        let event_web = web_ctx.clone();
         let run_tool = subagents::multi_agent_tool_runner(
             run_context,
             subagent_manager,
@@ -779,13 +935,19 @@ pub async fn agent_run(
             agent_state,
             &run_registration_id,
             generation,
-            steer_handle,
+            RunSteer {
+                handle: steer_handle,
+                media: Some(media),
+                web: web_ctx,
+            },
             pipeline.token.clone(),
             subagent_manager_for_registry.clone(),
             pinned_project.clone(),
             allowed_tools,
         );
         let _run_resources = RunResourcesGuard::new(agent_state, &run_registration_id, generation);
+        // 0.4.8 I: end the Cua session when the turn ends (finished, cancelled or dropped).
+        let _cua_turn = crate::cua_driver::TurnEndGuard::new(run_registration_id.clone());
 
         // A run scoped to a thread records its items into that thread's
         // rollout as it completes.
@@ -797,7 +959,7 @@ pub async fn agent_run(
             settled: false,
         };
         let usage = usage::NativeUsageGuard::new(
-            crate::paths::oleafly_root()?,
+            data_root.clone(),
             usage::UsageScope {
                 session_id: thread_id
                     .clone()
@@ -810,7 +972,8 @@ pub async fn agent_run(
                 parent_session_id: None,
             },
             &resolved,
-        );
+        )
+        .with_tally(cost_tally.clone());
         let run_token = pipeline.token.clone();
         let outcome = oleafly_agent::run_agent_with_pipeline(
             &client,
@@ -822,6 +985,9 @@ pub async fn agent_run(
             run_tool,
             |event| {
                 usage.observe(&event);
+                if let Some(web) = &event_web {
+                    web.observe_event(&event);
+                }
                 if let Some((_, shared)) = &record_sink {
                     if let Ok(mut recorder) = shared.lock() {
                         recorder.record(&event);
@@ -834,39 +1000,22 @@ pub async fn agent_run(
         subagent_manager_for_registry
             .cancel_descendants("/root")
             .await;
-        usage.finish(if run_token.is_cancelled() {
-            "cancelled"
-        } else if matches!(&outcome, Ok(outcome) if outcome.error.is_none()) {
-            "completed"
-        } else {
-            "failed"
-        });
+        usage.finish(run_status(run_token.is_cancelled(), &outcome));
+        // The run's cost with its subagents', from the models' prices.
+        let mut outcome = outcome;
+        if let Ok(outcome) = &mut outcome {
+            outcome.cost_usd = cost_tally.total();
+        }
         persist_guard.settled = true;
         if let Some((thread_id, shared)) = &record_sink {
-            // The guard must drop before the persist await keeps this future
-            // Send; a poisoned lock simply skips persistence.
-            let snapshot = shared.lock().ok().map(|mut recorder| {
-                let stopped_at_cap = matches!(&outcome, Ok(outcome) if outcome.stopped_at_cap);
-                recorder.finish(stopped_at_cap);
-                recorder.snapshot().clone()
-            });
-            if let Some(snapshot) = snapshot {
-                let thread_id = thread_id.clone();
-                let project = pinned_project.clone().unwrap_or_default();
-                let persist = tauri::async_runtime::spawn_blocking(move || {
-                    let Ok(root) = crate::paths::oleafly_root() else {
-                        return;
-                    };
-                    if crate::rollout::append_turn(&root, &thread_id, &snapshot).is_ok() {
-                        if let Ok(turns) = crate::rollout::read_turns(&root, &thread_id) {
-                            let _ = crate::library_db::resync_thread(
-                                &root, &thread_id, &project, &turns,
-                            );
-                        }
-                    }
-                });
-                let _ = persist.await;
-            }
+            let stopped_at_cap = matches!(&outcome, Ok(outcome) if outcome.stopped_at_cap);
+            persist_recorded_turn(
+                shared,
+                thread_id,
+                pinned_project.clone().unwrap_or_default(),
+                stopped_at_cap,
+            )
+            .await;
         }
         let _ = on_event.send(AgentEvent::RunEnd);
         outcome.map_err(tagged)
@@ -882,7 +1031,7 @@ pub const SUBAGENT_TOOL: &str = "spawn_subagents";
 /// everything else confirms, and unknown tools classify as write so nothing
 /// new runs silently. Read-class tools also run concurrently unless they are
 /// listed in SERIAL_READ_TOOLS.
-const READ_RISK_TOOLS: [&str; 30] = [
+const READ_RISK_TOOLS: [&str; 33] = [
     "read_file",
     "read_skill_file",
     "load_skill",
@@ -913,6 +1062,12 @@ const READ_RISK_TOOLS: [&str; 30] = [
     "interrupt_agent",
     "list_agents",
     "close_agent",
+    // 0.4.8 C: the folder-trust gate still asks before these in untrusted
+    // folders.
+    "web_search",
+    "web_fetch",
+    // 0.4.8 E: reports on the project's research tasks.
+    "research_task_status",
 ];
 
 const SERIAL_READ_TOOLS: [&str; 1] = ["show_location"];
@@ -1048,6 +1203,7 @@ fn composite_tool_runner(
     generation: u64,
     tool_sink: tauri::ipc::Channel<AgentEvent>,
     project_id: Option<String>,
+    cua: crate::cua_driver::RunScope,
 ) -> oleafly_agent::ToolRunner {
     let handle = app.clone();
     let webview = webview_tool_runner(app, request_id, generation, tool_sink, project_id.clone());
@@ -1055,7 +1211,13 @@ fn composite_tool_runner(
         let webview = webview.clone();
         let project = project_id.clone();
         let handle = handle.clone();
+        let cua = cua.clone();
         Box::pin(async move {
+            // 0.4.8 I: desktop apps run natively in Rust, behind their own gate.
+            if call.name == crate::cua_driver::DESKTOP_APPS_TOOL {
+                return crate::cua_driver::agent_tool(&cua, project.as_deref(), &call.arguments)
+                    .await;
+            }
             if let Some(project) = project.as_deref() {
                 if crate::mcp::native::handles_for_agent(&call.name) {
                     let active = {
@@ -1339,6 +1501,9 @@ fn sanitized_run_config(config: Option<RunConfig>) -> RunConfig {
     config.retry_base_ms = config
         .retry_base_ms
         .clamp(MIN_RETRY_BASE_MS, MAX_RETRY_BASE_MS);
+    // Long runs are for research tasks in the backend, never a webview request.
+    config.allow_long_runs = false;
+    config.max_duration_ms = None;
     config
 }
 
@@ -1423,11 +1588,13 @@ async fn projected_provider_config(
 }
 
 const PROBE_TOOL: &str = "ping";
-const PROBE_MAX_OUTPUT_TOKENS: u32 = 512;
+// Thinking counts toward the output limit, so the probe leaves room for it.
+const PROBE_MAX_OUTPUT_TOKENS: u32 = 2_048;
 const PROBE_TIMEOUT: Duration = Duration::from_secs(30);
 const PROBE_TIMEOUT_REASON: &str = "The model did not answer before the probe timed out.";
 const PROBE_VERIFIED_REASON: &str = "The model called the ping tool.";
 const PROBE_OUTPUT_LIMIT_REASON: &str = "The model ran out of output before calling the tool.";
+const PROBE_REPLAY_REASON: &str = "The model could not reuse its own reasoning on the next step.";
 
 #[tauri::command]
 pub async fn agent_probe_model(
@@ -1469,6 +1636,7 @@ fn probe_request(timeout: Duration) -> CompletionRequest {
         ),
         messages: vec![oleafly_agent::Message::user("Call the ping tool now.")],
         max_tokens: Some(PROBE_MAX_OUTPUT_TOKENS),
+        effort: Some(oleafly_agent::Effort::Low),
         timeout_ms: Some(timeout_ms),
         idle_timeout_ms: Some(timeout_ms),
         tools: vec![oleafly_agent::ToolSchema {
@@ -1498,12 +1666,88 @@ pub(crate) async fn probe_model(
     let (verdict, reason) = match outcome {
         Err(_) => (ProbeVerdict::Blocked, PROBE_TIMEOUT_REASON.to_string()),
         Ok(Err(error)) => (ProbeVerdict::Blocked, probe_error_reason(&error)),
-        Ok(Ok(outcome)) => judge_probe_outcome(&outcome.tool_calls, outcome.stop_reason.as_deref()),
+        Ok(Ok(outcome)) => {
+            let judged = judge_probe_outcome(&outcome.tool_calls, outcome.stop_reason.as_deref());
+            if judged.0 == ProbeVerdict::Verified && replays_reasoning(resolved, &outcome) {
+                match probe_follow_up(client, resolved, &request, &outcome, timeout).await {
+                    Ok(()) => judged,
+                    Err(reason) => (ProbeVerdict::Blocked, reason),
+                }
+            } else {
+                judged
+            }
+        }
     };
     ModelProbe {
         verdict,
         reason,
         probed_at: unix_time_ms(),
+    }
+}
+
+/// Whether the next step would send the model's thinking back to it, which
+/// only the Anthropic wire does.
+fn replays_reasoning(
+    resolved: &oleafly_agent::Resolved,
+    outcome: &oleafly_agent::StreamOutcome,
+) -> bool {
+    matches!(resolved.wire, oleafly_agent::Wire::Anthropic { .. })
+        && oleafly_agent::assistant_message(outcome)
+            .content
+            .iter()
+            .any(|part| {
+                matches!(
+                    part,
+                    oleafly_agent::ContentPart::Thinking { .. }
+                        | oleafly_agent::ContentPart::RedactedThinking { .. }
+                )
+            })
+}
+
+/// Answers the ping and sends the model's reply back to it, as the next
+/// step of a run would. Fails when the provider dropped the replayed
+/// thinking because it no longer matched.
+async fn probe_follow_up(
+    client: &reqwest::Client,
+    resolved: &oleafly_agent::Resolved,
+    first: &CompletionRequest,
+    outcome: &oleafly_agent::StreamOutcome,
+    timeout: Duration,
+) -> Result<(), String> {
+    let Some(call) = outcome.tool_calls.first() else {
+        return Err(PROBE_REPLAY_REASON.into());
+    };
+    let mut request = first.clone();
+    request
+        .messages
+        .push(oleafly_agent::assistant_message(outcome));
+    request.messages.push(oleafly_agent::Message {
+        role: oleafly_agent::Role::User,
+        content: vec![oleafly_agent::ContentPart::tool_result(
+            call.id.clone(),
+            call.name.clone(),
+            "pong",
+        )],
+    });
+    let next = tokio::time::timeout(
+        timeout,
+        oleafly_agent::stream_completion(client, resolved, &request, |_| {}),
+    )
+    .await;
+    match next {
+        Err(_) => Err(PROBE_TIMEOUT_REASON.into()),
+        Ok(Err(error)) => Err(probe_error_reason(&error)),
+        Ok(Ok(next)) => {
+            let dropped = next.input_transformations.iter().any(|entry| {
+                entry.get("reason").and_then(serde_json::Value::as_str)
+                    == Some("prefix_binding_mismatch")
+            });
+            if dropped {
+                Err(PROBE_REPLAY_REASON.into())
+            } else {
+                Ok(())
+            }
+        }
     }
 }
 
@@ -1534,20 +1778,11 @@ fn probe_arguments_are_valid(arguments: &str) -> bool {
         )
 }
 
-fn stopped_on_output_limit(stop_reason: Option<&str>) -> bool {
-    stop_reason.is_some_and(|reason| {
-        matches!(
-            reason.trim().to_ascii_lowercase().as_str(),
-            "length" | "max_tokens" | "max_output_tokens"
-        )
-    })
-}
-
 fn judge_probe_outcome(
     calls: &[oleafly_agent::ToolCall],
     stop_reason: Option<&str>,
 ) -> (ProbeVerdict, String) {
-    if calls.is_empty() && stopped_on_output_limit(stop_reason) {
+    if calls.is_empty() && oleafly_agent::stream::is_output_limit_stop(stop_reason) {
         return (ProbeVerdict::Blocked, PROBE_OUTPUT_LIMIT_REASON.into());
     }
     judge_probe_calls(calls)
@@ -1587,13 +1822,25 @@ fn resolve_with(
     provider_override: Option<ProviderOverride>,
 ) -> Result<oleafly_agent::Resolved, String> {
     let projected = provider_config(cfg);
-    match provider_override {
+    let mut resolved = match provider_override {
         Some(o) => {
             oleafly_agent::provider::resolve_specific(&projected, &o.provider_id, &o.model_id)
         }
         None => oleafly_agent::resolve(&projected),
     }
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+    let stored = cfg
+        .ai_provider_models
+        .get(&resolved.provider_id)
+        .and_then(|models| models.iter().find(|model| model.id == resolved.model_id))
+        .and_then(|model| model.metadata.as_ref());
+    resolved.caps = crate::ai_model_metadata::model_caps(
+        &crate::ai_model_metadata::snapshot(),
+        stored,
+        &resolved.provider_id,
+        &resolved.model_id,
+    );
+    Ok(resolved)
 }
 
 fn resolve_for(
@@ -1639,11 +1886,24 @@ pub(crate) fn register_steer_for_test(
     request_id: &str,
     handle: oleafly_agent::SteerHandle,
 ) {
+    register_run_steer_for_test(
+        state,
+        request_id,
+        RunSteer {
+            handle,
+            media: None,
+            web: None,
+        },
+    );
+}
+
+#[cfg(test)]
+pub(crate) fn register_run_steer_for_test(state: &AgentState, request_id: &str, steer: RunSteer) {
     lock_or_recover(&state.steer_senders).insert(
         request_id.to_string(),
         RunResource {
             generation: 0,
-            value: handle,
+            value: steer,
         },
     );
 }
@@ -1732,6 +1992,7 @@ mod probe_tests {
                 base_url: format!("http://{address}/v1"),
                 reasoning_content: false,
             },
+            caps: oleafly_agent::ModelCaps::default(),
         };
         (resolved, seen, task)
     }
@@ -1763,6 +2024,135 @@ mod probe_tests {
         server.abort();
         let requests = seen.lock().unwrap().clone();
         (probe, requests)
+    }
+
+    type SeenHeaders = Arc<Mutex<Vec<axum::http::HeaderMap>>>;
+
+    /// A fake Anthropic endpoint answering each request with the next body.
+    async fn anthropic_probe_against(
+        bodies: [String; 2],
+    ) -> (
+        ModelProbe,
+        Vec<serde_json::Value>,
+        Vec<axum::http::HeaderMap>,
+    ) {
+        let seen: SeenRequests = Arc::default();
+        let seen_headers: SeenHeaders = Arc::default();
+        let queue = Arc::new(Mutex::new(std::collections::VecDeque::from(bodies)));
+        let (recorder, header_recorder) = (seen.clone(), seen_headers.clone());
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let app = Router::new().route(
+            "/v1/messages",
+            post(
+                move |headers: axum::http::HeaderMap, Json(request): Json<serde_json::Value>| {
+                    recorder.lock().unwrap().push(request);
+                    header_recorder.lock().unwrap().push(headers);
+                    let body = queue.lock().unwrap().pop_front().unwrap_or_default();
+                    async move { (StatusCode::OK, [(header::CONTENT_TYPE, SSE)], body) }
+                },
+            ),
+        );
+        let task = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let resolved = oleafly_agent::Resolved {
+            provider_id: "anthropic".into(),
+            model_id: "claude-opus-5-5".into(),
+            credential: SECRET.into(),
+            auth: Some(SECRET.into()),
+            wire: oleafly_agent::Wire::Anthropic {
+                base_url: format!("http://{address}/v1"),
+            },
+            caps: oleafly_agent::ModelCaps::default(),
+        };
+        let client = oleafly_agent::build_client().unwrap();
+        let probe = probe_model(&client, &resolved, Duration::from_secs(5)).await;
+        task.abort();
+        let requests = seen.lock().unwrap().clone();
+        let headers = seen_headers.lock().unwrap().clone();
+        (probe, requests, headers)
+    }
+
+    fn sse(events: &[serde_json::Value]) -> String {
+        events
+            .iter()
+            .map(|event| {
+                format!(
+                    "event: {}\ndata: {event}\n\n",
+                    event["type"].as_str().unwrap()
+                )
+            })
+            .collect()
+    }
+
+    fn thinking_ping_sse() -> String {
+        sse(&[
+            serde_json::json!({"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","content":[],"usage":{"input_tokens":12,"output_tokens":0}}}),
+            serde_json::json!({"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}}),
+            serde_json::json!({"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"sig"}}),
+            serde_json::json!({"type":"content_block_stop","index":0}),
+            serde_json::json!({"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"toolu_1","name":"ping","input":{}}}),
+            serde_json::json!({"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{}"}}),
+            serde_json::json!({"type":"content_block_stop","index":1}),
+            serde_json::json!({"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":9}}),
+            serde_json::json!({"type":"message_stop"}),
+        ])
+    }
+
+    fn text_sse(transformations: serde_json::Value) -> String {
+        sse(&[
+            serde_json::json!({"type":"message_start","message":{"id":"msg_2","type":"message","role":"assistant","content":[],"usage":{"input_tokens":30,"output_tokens":0},"input_transformations":transformations}}),
+            serde_json::json!({"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}),
+            serde_json::json!({"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"pong received"}}),
+            serde_json::json!({"type":"content_block_stop","index":0}),
+            serde_json::json!({"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":3}}),
+            serde_json::json!({"type":"message_stop"}),
+        ])
+    }
+
+    #[tokio::test]
+    async fn anthropic_probes_replay_their_own_thinking_on_a_follow_up() {
+        let (probe, requests, headers) =
+            anthropic_probe_against([thinking_ping_sse(), text_sse(serde_json::json!([]))]).await;
+        assert_eq!(probe.verdict, ProbeVerdict::Verified, "{}", probe.reason);
+        assert_eq!(requests.len(), 2);
+        assert_eq!(
+            requests[1]["messages"][1]["content"][0],
+            serde_json::json!({"type":"thinking","thinking":"","signature":"sig"})
+        );
+        assert_eq!(
+            requests[1]["thinking"]["block_binding"]["prefix_mismatch_behavior"],
+            "drop_block"
+        );
+        assert_eq!(
+            headers[1].get("anthropic-beta").unwrap(),
+            "thinking-binding-controls-2026-08-01"
+        );
+        assert!(headers[0].get("anthropic-beta").is_none());
+    }
+
+    #[tokio::test]
+    async fn a_dropped_thinking_block_blocks_the_model() {
+        let (probe, _, _) = anthropic_probe_against([
+            thinking_ping_sse(),
+            text_sse(serde_json::json!([{
+                "type": "thinking_dropped",
+                "path": "messages.1.content.0",
+                "reason": "prefix_binding_mismatch"
+            }])),
+        ])
+        .await;
+        assert_eq!(
+            (probe.verdict, probe.reason.as_str()),
+            (ProbeVerdict::Blocked, PROBE_REPLAY_REASON)
+        );
+    }
+
+    #[test]
+    fn the_probe_request_asks_for_low_effort() {
+        assert_eq!(
+            probe_request(PROBE_TIMEOUT).effort,
+            Some(oleafly_agent::Effort::Low)
+        );
     }
 
     #[test]
@@ -1859,7 +2249,10 @@ mod probe_tests {
     #[test]
     fn every_wire_output_limit_stop_is_recognised_and_a_completed_call_still_counts() {
         for reason in ["length", "max_tokens", "max_output_tokens", "MAX_TOKENS"] {
-            assert!(stopped_on_output_limit(Some(reason)), "{reason}");
+            assert!(
+                oleafly_agent::stream::is_output_limit_stop(Some(reason)),
+                "{reason}"
+            );
         }
         for reason in [
             "stop",
@@ -1869,9 +2262,12 @@ mod probe_tests {
             "completed",
             "STOP",
         ] {
-            assert!(!stopped_on_output_limit(Some(reason)), "{reason}");
+            assert!(
+                !oleafly_agent::stream::is_output_limit_stop(Some(reason)),
+                "{reason}"
+            );
         }
-        assert!(!stopped_on_output_limit(None));
+        assert!(!oleafly_agent::stream::is_output_limit_stop(None));
 
         let call = oleafly_agent::ToolCall {
             id: "call_1".into(),

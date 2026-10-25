@@ -48,7 +48,6 @@
     "hexColor": "trebuie să fie o culoare, de exemplu #2563eb",
     "hexColorOrEmpty": "trebuie să fie o culoare, de exemplu #2563eb, sau \"\" pentru culoarea temei",
     "text": "trebuie să fie text (lungime maximă: {{max}})",
-    "webAddress": "trebuie să fie o adresă web care începe cu http:// sau https://",
     "list": "trebuie să fie o listă (număr maxim de elemente: {{max}})",
     "listItem": "nu este un element permis",
     "duplicate": "apare de două ori",

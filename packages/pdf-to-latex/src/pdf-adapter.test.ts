@@ -21,7 +21,7 @@ vi.mock("./figure-decode", async (importOriginal) => ({
 }));
 
 import { rawToRgba } from "./figure-decode";
-import { extractPagesForConvert } from "./pdf-adapter";
+import { countPdfPages, extractPagesForConvert } from "./pdf-adapter";
 
 type Store = Map<string, unknown>;
 
@@ -102,7 +102,7 @@ describe("extractPagesForConvert", () => {
     openDocument([]);
     const bytes = new Uint8Array([37, 80, 68, 70]);
 
-    expect(await extractPagesForConvert(bytes)).toEqual({ pages: [], figures: [] });
+    expect(await extractPagesForConvert(bytes)).toEqual({ pages: [], figures: [], pageCount: 0 });
 
     const { data } = mocks.getDocument.mock.calls[0][0] as { data: Uint8Array };
     expect(data).toEqual(bytes);
@@ -266,6 +266,87 @@ describe("extractPagesForConvert", () => {
     expect(figures).toEqual([]);
     expect(pages[0].items.map((item) => item.str)).toEqual(["survives"]);
     expect(pages[0].figureNames).toEqual([]);
+  });
+
+  it("reads only the pages in the range and still reports the page count", async () => {
+    const pages = [1, 2, 3, 4].map((number) =>
+      fakePage({
+        items: [textItem(`page ${number}`, [10, 0, 0, 10, 72, 700])],
+        local: new Map([[`img${number}`, rgbImage(40, 40)]]),
+        ops: { fnArray: [85], argsArray: [[`img${number}`]] },
+      }),
+    );
+    openDocument(pages);
+
+    const extracted = await extractPagesForConvert(new Uint8Array([1]), { pageRange: [2, 9] });
+
+    expect(extracted.pageCount).toBe(4);
+    expect(extracted.pages.map((page) => page.items[0].str)).toEqual(["page 2", "page 3", "page 4"]);
+    // Figures keep their PDF page number.
+    expect(extracted.figures.map((figure) => figure.name)).toEqual([
+      "figure_p2_1.png",
+      "figure_p3_1.png",
+      "figure_p4_1.png",
+    ]);
+    expect(pages[0].getTextContent).not.toHaveBeenCalled();
+    expect(pages[0].getOperatorList).not.toHaveBeenCalled();
+  });
+
+  it("does not decode a scan's page images when asked for figures only with text", async () => {
+    const scan = () =>
+      fakePage({
+        view: [0, 0, 595, 842],
+        local: new Map([["page", rgbImage(400, 560)]]),
+        ops: { fnArray: [85], argsArray: [["page"]] },
+      });
+    const pages = [scan(), scan(), scan()];
+    openDocument(pages);
+
+    const extracted = await extractPagesForConvert(new Uint8Array([1]), { figures: "if-text" });
+
+    expect(extracted.figures).toEqual([]);
+    expect(extracted.pages).toEqual(
+      Array.from({ length: 3 }, () => ({ width: 595, height: 842, items: [], figureNames: [] })),
+    );
+    expect(mocks.rgbaToPngDataUrl).not.toHaveBeenCalled();
+    for (const page of pages) expect(page.getOperatorList).not.toHaveBeenCalled();
+  });
+
+  it("decodes figures with if-text once any page read has text", async () => {
+    openDocument([
+      fakePage({ local: new Map([["full", rgbImage(40, 40)]]), ops: { fnArray: [85], argsArray: [["full"]] } }),
+      fakePage({ items: [textItem("caption", [10, 0, 0, 10, 72, 700])] }),
+    ]);
+
+    const { figures, pages } = await extractPagesForConvert(new Uint8Array([1]), { figures: "if-text" });
+
+    expect(figures.map((figure) => figure.name)).toEqual(["figure_p1_1.png"]);
+    expect(pages[0].figureNames).toEqual(["figure_p1_1.png"]);
+  });
+
+  it("stops between pages when the signal aborts, and tears the document down", async () => {
+    const controller = new AbortController();
+    const first = fakePage({ items: [textItem("one", [10, 0, 0, 10, 72, 700])] });
+    first.getTextContent.mockImplementation(async () => {
+      controller.abort();
+      return { items: [] };
+    });
+    const second = fakePage({});
+    openDocument([first, second]);
+
+    await expect(
+      extractPagesForConvert(new Uint8Array([1]), { signal: controller.signal }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(second.getTextContent).not.toHaveBeenCalled();
+    expect(mocks.destroy).toHaveBeenCalledOnce();
+  });
+
+  it("counts pages without reading them", async () => {
+    const pages = [fakePage({}), fakePage({})];
+    openDocument(pages);
+    await expect(countPdfPages(new Uint8Array([1]))).resolves.toBe(2);
+    expect(pages[0].getTextContent).not.toHaveBeenCalled();
+    expect(mocks.destroy).toHaveBeenCalledOnce();
   });
 
   it("tears the document down when a page fails to load", async () => {

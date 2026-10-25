@@ -78,9 +78,14 @@ function configPreferences(config: AppConfig): ConfigPreferences {
   return {
     ai_system_prompt: config.ai_system_prompt,
     ai_pdf_capture: config.ai_pdf_capture,
+    ai_reasoning_summaries: config.ai_reasoning_summaries === true,
     ai_personas: config.ai_personas,
     checkpoints_enabled: config.checkpoints_enabled,
     checkpoint_notifications: config.checkpoint_notifications,
+    research_keep_awake: config.research_keep_awake !== false,
+    research_notifications: config.research_notifications !== false,
+    research_command_network: config.research_command_network === true,
+    research_time_budget_minutes: config.research_time_budget_minutes ?? 120,
   };
 }
 
@@ -130,11 +135,12 @@ describe("settings document", () => {
       "dictionary",
       "data",
       "ai",
+      "research",
       "engine",
       "shortcuts",
       "experimentation",
     ]);
-    expect(Object.keys(document.appearance as object)).toEqual(["app", "editor", "terminal", "pdf", "browser", "files"]);
+    expect(Object.keys(document.appearance as object)).toEqual(["app", "editor", "terminal", "pdf", "files"]);
     const text = serializeSettingsDocument(document);
     expect(text).toContain('\n  "general": {\n    "language": "system",');
     expect(text).toContain('"fontSize": 16');
@@ -238,7 +244,6 @@ describe("reading a settings file", () => {
           app: { fontSize: 15, zoom: 133, accentColor: "blue" },
           editor: { fontSize: 1000, tabSize: 3, colors: { dracula: { background: "red", sparkle: "#000000" } } },
           terminal: { fontWeight: 450 },
-          browser: { homePage: "javascript:alert(1)" },
           files: "grid",
         },
         dictionary: { words: ["ok", "ok"] },
@@ -258,13 +263,113 @@ describe("reading a settings file", () => {
       { path: "appearance.editor.tabSize", issue: { kind: "oneOf", values: [2, 4, 8] } },
       { path: "appearance.editor.colors.dracula.background", issue: { kind: "hexColor" } },
       { path: "appearance.terminal.fontWeight", issue: { kind: "wholeRange", min: 100, max: 900, step: 100 } },
-      { path: "appearance.browser.homePage", issue: { kind: "webAddress" } },
       { path: "appearance.files", issue: { kind: "object" } },
       { path: "dictionary.words[1]", issue: { kind: "duplicate" } },
       { path: "ai.personas[0].color", issue: expect.objectContaining({ kind: "oneOf" }) },
       { path: "shortcuts.app.recompile", issue: { kind: "shortcut" } },
       { path: "shortcuts.editor.uppercase", issue: { kind: "editorKey" } },
     ]);
+  });
+
+  it("keeps the composer height, a panel size, out of the settings file", () => {
+    useSettingsStore.getState().setAiComposerHeight(300);
+    expect(JSON.stringify(buildSettingsDocument(snapshot()))).not.toMatch(/composerHeight|"assistant"/);
+    const read = readSettingsFile(fileWith({ appearance: { assistant: { composerHeight: 400 } } }), snapshot());
+    expect(read).toMatchObject({ ok: true, changed: [], ignored: ["appearance.assistant"] });
+    expect(useSettingsStore.getState().aiComposerHeight).toBe(300);
+  });
+
+  it("round-trips the reasoning summaries setting in a settings file", () => {
+    const read = readSettingsFile(fileWith({ ai: { reasoningSummaries: true } }), snapshot());
+    expect(read).toMatchObject({ ok: true, changed: ["ai.reasoningSummaries"] });
+  });
+
+  it("imports a settings file without the composer height", () => {
+    const read = readSettingsFile(fileWith({ appearance: { editor: { fontSize: 18 } } }), snapshot());
+    expect(read).toMatchObject({ ok: true, changed: ["appearance.editor.fontSize"] });
+    expect(useSettingsStore.getState().aiComposerHeight).toBe(56);
+  });
+
+  it("imports a 0.4.7 file without the new keys", () => {
+    const read = readSettingsFile(fileWith({ appearance: { terminal: { fontSize: 15 } } }), snapshot());
+    expect(read).toMatchObject({ ok: true, changed: ["appearance.terminal.fontSize"] });
+    expect(useSettingsStore.getState()).toMatchObject({
+      terminalShell: "auto",
+      terminalShiftEnter: "newline",
+      terminalScrollback: 5000,
+      terminalConfirmClose: true,
+    });
+  });
+
+  it("round-trips the terminal behavior settings", () => {
+    const read = readSettingsFile(
+      fileWith({
+        appearance: {
+          terminal: {
+            shell: "gitBash",
+            shellPath: "C:\\msys64\\usr\\bin\\zsh.exe",
+            shiftEnter: "enter",
+            copyOnSelect: true,
+            optionIsMeta: true,
+            scrollback: 25000,
+            confirmClose: false,
+          },
+        },
+      }),
+      snapshot(),
+    );
+    expect(read).toMatchObject({
+      ok: true,
+      changed: [
+        "appearance.terminal.shell",
+        "appearance.terminal.shellPath",
+        "appearance.terminal.shiftEnter",
+        "appearance.terminal.copyOnSelect",
+        "appearance.terminal.optionIsMeta",
+        "appearance.terminal.scrollback",
+        "appearance.terminal.confirmClose",
+      ],
+    });
+  });
+
+  it("refuses an unknown shell id and a scrollback outside the list", () => {
+    const read = readSettingsFile(
+      fileWith({ appearance: { terminal: { shell: "fish", scrollback: 7000, shiftEnter: "newline" } } }),
+      snapshot(),
+    );
+    expect(read.ok).toBe(false);
+    if (read.ok || read.reason !== "invalid") throw new Error("expected problems");
+    expect(read.problems).toEqual([
+      { path: "appearance.terminal.shell", issue: expect.objectContaining({ kind: "oneOf" }) },
+      { path: "appearance.terminal.scrollback", issue: expect.objectContaining({ kind: "oneOf" }) },
+    ]);
+  });
+
+  it("reads a 0.4.7 settings file that still has the browser settings", () => {
+    const read = readSettingsFile(
+      fileWith({
+        appearance: { browser: { homePage: "https://example.org/", searchEngine: "bing" }, pdf: { darkMode: true } },
+        experimentation: { webBrowser: true, latexTools: true },
+        shortcuts: { app: { toggleBrowser: "Ctrl-Shift-b", commandPalette: "Mod-p" } },
+      }),
+      snapshot(),
+    );
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+    expect(read.ignored).toEqual([]);
+    expect(read.changed).toEqual(
+      expect.arrayContaining(["appearance.pdf.darkMode", "experimentation.latexTools", "shortcuts.app.commandPalette"]),
+    );
+  });
+
+  it("still reports keys it doesn't know", () => {
+    const read = readSettingsFile(fileWith({ appearance: { pdf: { darkMode: true }, whatever: 1 } }), snapshot());
+    expect(read.ok && read.ignored).toEqual(["appearance.whatever"]);
+  });
+
+  it("writes no browser settings", () => {
+    const document = buildSettingsDocument(snapshot());
+    expect(JSON.stringify(document)).not.toMatch(/webBrowser|browser\.homePage|searchEngine|toggleBrowser/);
   });
 
   it("skips entries it doesn't know and reports them", () => {
@@ -377,7 +482,7 @@ describe("applying a settings file", () => {
           editor: { fontSize: 16, keymap: "vim", lineHeight: "custom", customLineHeight: 1.8 },
           files: { hiddenFiles: [".DS_Store", "*.aux"] },
         },
-        experimentation: { webBrowser: false },
+        experimentation: { latexTools: true },
       }),
       snapshot(),
     );

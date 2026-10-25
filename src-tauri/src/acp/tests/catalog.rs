@@ -1061,6 +1061,9 @@ if (npm) {
   assert.equal(process.cwd(), fs.realpathSync(args[7]));
   assert.equal(process.env.npm_config_userconfig, path.join(args[7], 'empty-npmrc'));
   assert.equal(JSON.parse(fs.readFileSync(path.join(args[7], 'package.json'))).private, true);
+  const cache = process.env.npm_config_cache;
+  fs.mkdirSync(path.join(cache, '_cacache'), {recursive: true});
+  fs.writeFileSync(path.join(cache, '_cacache', 'tarball'), 'x'.repeat(1024));
   const packageRoot = path.join(args[7], 'node_modules/@oleafly-fixture/agent');
   fs.mkdirSync(packageRoot, {recursive: true});
   if (settings.manifest !== null) fs.writeFileSync(path.join(packageRoot, 'package.json'), typeof settings.manifest === 'string' ? settings.manifest : JSON.stringify(settings.manifest));
@@ -1251,6 +1254,9 @@ if (settings.fail) process.exit(2);
             assert!(receipt
                 .executable
                 .ends_with("node_modules/@oleafly-fixture/agent/bin/agent.js"));
+            // npm's cache does not outlive the install.
+            assert!(!data.join("npm-cache").exists());
+            assert!(!receipt_dir(&data, &definition).join("npm-cache").exists());
             let (resolved, output) = launch(&data, &definition).await;
             assert_eq!(resolved.executable, root.join("bin/node"));
             assert_eq!(output, "[\"--acp\",\"argument with spaces\"]");

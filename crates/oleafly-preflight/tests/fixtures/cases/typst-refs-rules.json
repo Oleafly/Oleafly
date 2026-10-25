@@ -1,0 +1,487 @@
+[
+  {
+    "name": "at-reference-resolves",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "See @fig:plot.\n#figure[x] <fig:plot>"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "at-reference-missing",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "See @nope."
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "at-reference-with-package",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#import \"@preview/x:1.0.0\": *\nSee @nope."
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "at-reference-supplement-prefix",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "@eq:sum\n$ x $ <sum>"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "ref-call-in-code",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#ref(<fig:a>) and #ref(label(\"fig:b\"))\n<fig:a>"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "cite-known-key",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#cite(<smith>)\n#bibliography(\"refs.bib\")"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [
+        "smith"
+      ],
+      "bibLoaded": false,
+      "projectFiles": [
+        "main.typ",
+        "refs.bib"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "cite-unknown-key",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#cite(<smith>) #cite(<jones>)\n#bibliography(\"refs.bib\")"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [
+        "smith"
+      ],
+      "bibLoaded": false,
+      "projectFiles": [
+        "main.typ",
+        "refs.bib"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "cite-without-bibliography",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#cite(<smith>)"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [
+        "smith"
+      ],
+      "bibLoaded": false,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "at-cite-counts-as-citation",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "@smith says\n#bibliography(\"refs.bib\")"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [
+        "smith"
+      ],
+      "bibLoaded": false,
+      "projectFiles": [
+        "refs.bib",
+        "main.typ"
+      ],
+      "duplicateDois": [],
+      "bibEntries": [
+        {
+          "key": "smith",
+          "type": "article",
+          "fields": {
+            "title": "T",
+            "year": "2020",
+            "author": "A",
+            "journal": "J"
+          }
+        },
+        {
+          "key": "unused",
+          "type": "misc",
+          "fields": {
+            "title": "U",
+            "year": "2020"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "bibliography-missing-file",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#bibliography(\"missing.bib\")\n@key"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [
+        "key"
+      ],
+      "bibLoaded": false,
+      "projectFiles": [
+        "main.typ"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "bibliography-with-array",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#bibliography((\"a.bib\", \"b.yml\"))"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [
+        "main.typ",
+        "a.bib"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "bibliography-with-method",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#let bib = bibliography.with(\"refs.yml\")\n#bib()"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [
+        "main.typ"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "named-bibliography-file",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#show: conf.with(bibliography-file: \"refs.bib\")"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [
+        "main.typ",
+        "refs.bib"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "bibliography-none",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#show: conf.with(bibliography: none)\n#cite(<a>)"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "duplicate-labels",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "= A <sec:a>\n= B <sec:a>\n= C <sec:c>"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "missing-assets",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#image(\"figs/plot.png\")\n#include \"chapters/missing.typ\"\n#read(\"data.csv\")\n#image(\"https://x/y.png\")"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [
+        "main.typ"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "assets-case-insensitive",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#image(\"FIGS/Plot.png\")"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [
+        "main.typ",
+        "figs/plot.png"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "assets-relative-to-file",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#include \"chapters/intro.typ\""
+      },
+      {
+        "path": "chapters/intro.typ",
+        "content": "#image(\"../figs/a.png\")\n#image(\"/figs/b.png\")\n#image(\"c.png\")"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [
+        "main.typ",
+        "chapters/intro.typ",
+        "figs/a.png",
+        "figs/b.png"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "no-project-files-skips-assets",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#image(\"x.png\")"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "project-quality-typst",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "@a #bibliography(\"refs.bib\")"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [
+        "a"
+      ],
+      "bibLoaded": false,
+      "projectFiles": [
+        "main.typ",
+        "refs.bib",
+        "old/refs.bib"
+      ],
+      "duplicateDois": [
+        {
+          "doi": "10.1/x",
+          "keys": [
+            "Smith",
+            "smith"
+          ]
+        }
+      ],
+      "bibKeyDefinitions": [
+        {
+          "key": "Smith",
+          "file": "refs.bib",
+          "line": 1,
+          "from": 0,
+          "to": 15
+        },
+        {
+          "key": "smith",
+          "file": "refs.bib",
+          "line": 4,
+          "from": 40,
+          "to": 55
+        },
+        {
+          "key": "Smith",
+          "file": "old/refs.bib",
+          "line": 1,
+          "from": 0,
+          "to": 15
+        }
+      ],
+      "duplicateLabels": [
+        {
+          "label": "fig:x",
+          "files": [
+            "a.typ",
+            "b.typ"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "labels-from-context",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "See @fig:ext."
+      }
+    ],
+    "ctx": {
+      "definedLabels": [
+        "fig:ext "
+      ],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "emoji-before-reference",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "😀 @missing and #cite(<k>)\n#bibliography(\"r.bib\")"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [
+        "x"
+      ],
+      "bibLoaded": false,
+      "projectFiles": [
+        "main.typ",
+        "r.bib"
+      ],
+      "duplicateDois": []
+    }
+  },
+  {
+    "name": "path-less-source",
+    "sources": [
+      {
+        "content": "See @nope.\n#image(\"a.png\")"
+      }
+    ],
+    "ctx": {
+      "definedLabels": [],
+      "bibKeys": [],
+      "bibLoaded": false,
+      "projectFiles": [
+        "main.typ"
+      ],
+      "duplicateDois": []
+    }
+  }
+]

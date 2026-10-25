@@ -19,7 +19,6 @@
     "selectAll": "全选",
     "view": "视图",
     "toggleTerminal": "切换终端",
-    "toggleBrowser": "切换浏览器",
     "file": "文件",
     "openFolder": "打开文件夹…",
     "openRecent": "最近打开",
@@ -28,15 +27,7 @@
     "minimize": "最小化",
     "fullscreen": "切换全屏",
     "bringAllToFront": "前置全部窗口",
-    "newTab": "新建标签页",
-    "openLocation": "打开位置…",
-    "closeTab": "关闭标签页",
-    "reloadPage": "重新加载页面",
     "zenMode": "禅模式"
-  },
-  "window": {
-    "browser": "Oleafly 浏览器",
-    "browserTitled": "{{title}} - Oleafly 浏览器"
   },
   "dialog": {
     "cancel": "取消",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "确认导入 Cookie",
-      "messageHost": "要将 {{browser}} 配置文件“{{profile}}”中 {{hostname}} 的 Cookie 导入 Oleafly 的内置浏览器吗？导入的 Cookie 可能会让你自动登录网站。",
-      "messageAll": "要将 {{browser}} 配置文件“{{profile}}”中的全部 Cookie 导入 Oleafly 的内置浏览器吗？导入的 Cookie 可能会让你自动登录网站。",
-      "confirm": "导入 Cookie"
+      "copyHost": "将 {{browser}} 配置文件“{{profile}}”中 {{hostname}} 的 Cookie 复制到 Oleafly？它们可用于登录 {{hostname}}。",
+      "copyAll": "将 {{browser}} 配置文件“{{profile}}”中的所有 Cookie 复制到 Oleafly？它们可用于登录网站。",
+      "copyConfirm": "复制 Cookie"
     },
     "mcpApprove": {
       "title": "批准 MCP 工具",
@@ -108,6 +99,60 @@
       "title": "要在这个共享项目中允许代码吗？",
       "message": "允许后，编译时会在这台电脑上运行此项目中的代码。任何拥有编辑权限的人都可以修改这些代码。只有在你信任项目中的每个人时才允许。",
       "confirm": "在这台电脑上允许"
+    },
+    "desktopApps": {
+      "title": "桌面应用",
+      "action": "{{agent}} 想要{{action}}。",
+      "steps": "{{agent}} 想要在桌面应用中执行以下步骤：",
+      "moreSteps": "未显示且不会运行的步骤：{{count}}",
+      "moreItems": "未显示的项目：{{count}}",
+      "cut": "（未显示的字符：{{count}}）",
+      "signedIn": "此操作会在你自己的已登录浏览器中进行。",
+      "signedInOn": "此操作会在你自己的已登录浏览器中进行：{{origin}}。",
+      "task": "任务：{{title}}",
+      "app": "应用：{{name}}",
+      "window": "窗口：{{title}}",
+      "element": "元素：{{element}}",
+      "text": "文本：“{{text}}”",
+      "address": "地址：{{url}}",
+      "allowOnce": "允许一次",
+      "allowChat": "在此聊天中允许",
+      "allowSession": "在此会话中允许",
+      "allowTask": "在此任务中允许",
+      "deny": "不允许",
+      "pickedFile": "你选择的文件",
+      "actions": {
+        "launchApp": "打开一个应用",
+        "click": "在应用中点击",
+        "doubleClick": "在应用中双击",
+        "rightClick": "在应用中右键点击",
+        "typeText": "在应用中输入",
+        "pressKey": "在应用中按一个键",
+        "hotkey": "在应用中按快捷键",
+        "scroll": "在应用中滚动",
+        "setValue": "在应用中更改字段",
+        "browserPrepare": "为网站打开浏览器",
+        "browserNavigate": "转到网页",
+        "browserClick": "在网页上点击",
+        "browserType": "在网页上输入",
+        "browserSelect": "在网页上选择选项",
+        "runScript": "运行 Cua 脚本"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "允许控制桌面？",
+      "message": "代理将能够使用以下内容。每次操作前仍会询问，保存后所有“在此聊天中允许”的选择都会被清除：",
+      "confirm": "允许",
+      "enabled": "桌面应用",
+      "app": "应用：{{identity}}（{{name}}）",
+      "more": "还有 {{count}} 个",
+      "site": "网站：{{origin}}",
+      "signedIn": "你在 {{origin}} 上已登录的浏览器",
+      "scripted": "Cua 脚本",
+      "spacesTitle": "授予 Cua Spaces 更多访问权限？",
+      "spacesMessage": "使用 Cua Spaces 的代理将能够：",
+      "spacesChanges": "创建和删除 Space，并在其中运行命令",
+      "spacesSignIns": "在 Space 中使用你的 Claude Code 或 Codex 登录"
     }
   },
   "errors": {
@@ -133,5 +178,41 @@
   "cloud": {
     "connectedPage": "已连接。你可以关闭此标签页并返回 Oleafly。",
     "failedPage": "登录未完成。你可以关闭此标签页并返回 Oleafly。"
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "任务可供审阅",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "计划待批准",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "有任务需要你的批准",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "任务已停止",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "任务预算已用完",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly 仍在工作",
+      "body": "你标记为继续运行的研究任务会在后台继续运行。打开 Oleafly 即可查看进度。"
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "权限检查已关闭（{{mode}}）",
+      "description": "该代理无需询问即可编辑文件和运行命令。Oleafly 无法将其切换到其他模式。请在代理自己的设置中更改模式。"
+    }
   }
 }

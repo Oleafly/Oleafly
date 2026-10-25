@@ -14,9 +14,12 @@ reqwest = { version = "0.12", default-features = false, features = [
   "json",
   "stream",
 ] }
-tokio = { version = "1", features = ["time", "sync", "macros", "rt"] }
+tokio = { version = "1", features = ["time", "sync", "macros", "rt", "net"] }
 futures-util = "0.3"
 base64 = "0.23"
+dom_query = "0.27"
+encoding_rs = "0.8"
+url = "2.5"
 
 [dev-dependencies]
-tokio = { version = "1", features = ["macros", "rt"] }
+tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }

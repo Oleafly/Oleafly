@@ -11,7 +11,7 @@ const SKILLS_ROOT = join(REPO_ROOT, "src-tauri", "resources", "skills");
 const PACK_PATH = join(SKILLS_ROOT, "pack.json");
 const PACK_NAME = "research-core";
 
-const PACK_DATE = "2026.09.04";
+const PACK_DATE = "2026.10.19";
 
 export function packVersion(skills) {
   const digest = createHash("sha256");

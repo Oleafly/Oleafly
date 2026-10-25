@@ -302,9 +302,10 @@ describe("Settings search", () => {
     expect(useSettingsStore.getState().settingsInitialSection).toBe("general");
     act(() => useSettingsStore.getState().setSettingsOpen(true));
     expect(searchField()).toHaveValue("");
-    const everySection = SETTINGS_SEARCH_SECTIONS.filter((id) => id !== "developer" && id !== "collaboration").map(
-      (id) => `settings-section-${id}`,
-    );
+    // Collaboration and Research are listed only while their Experimentation switch is on.
+    const everySection = SETTINGS_SEARCH_SECTIONS.filter(
+      (id) => id !== "developer" && id !== "collaboration" && id !== "research",
+    ).map((id) => `settings-section-${id}`);
     await waitFor(() => expect(visibleSections()).toEqual(expect.arrayContaining(everySection)));
     expect(screen.getByTestId("settings-section-engine")).toBeInTheDocument();
     expect(screen.getByTestId("settings-section-general")).toHaveAttribute("aria-current", "page");

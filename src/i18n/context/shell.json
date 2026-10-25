@@ -62,9 +62,6 @@
       "terminalDock": "Name of a crashed app surface, read inside the sentence \"The {{surface}} crashed.\""
     }
   },
-  "githubMenu": {
-    "tooltip": "Tooltip on the GitHub icon button. Keep the product name verbatim."
-  },
   "home": {
     "label": "Button text that returns to the project library"
   },
@@ -107,6 +104,9 @@
     "added": "Confirmation in the one-time offer card after the user adds the Finder Quick Action while it is still off in the Quick Actions menu, or when macOS cannot tell. macOS lists it in the Services menu right away, and in the Quick Actions menu only after the user turns it on in Quick Actions › Customize. Use the exact names Finder shows in your language, without the trailing ellipsis Finder puts after Customize. If your language inflects nouns, put your word for menu before the name so it stays exactly as Finder shows it.",
     "addedInQuickActions": "Confirmation in the one-time offer card after the user adds the Finder Quick Action when macOS already shows it in the Quick Actions menu, because the user turned it on for an earlier install. Do not tell the user to turn it on. Use the exact name Finder shows for the Quick Actions menu in your language. If your language inflects nouns, put your word for menu before the name so it stays exactly as Finder shows it."
   },
+  "remoteMenu": {
+    "openOnHost": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org."
+  },
   "renameDialog": {
     "symbolKinds": {
       "atuse": "Noun naming the kind of document symbol, read inside \"A {{kind}} named ... already exists.\"",
@@ -146,6 +146,8 @@
       "mac": "Shown above the command xcode-select --install. Terminal is the name of the macOS app; keep it verbatim.",
       "windows": "Git for Windows is a product name; keep it verbatim."
     },
+    "publishRepository": "Menu item that opens the Publish dialog, where the user picks the server.",
+    "publishTo": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
     "pullShort": "Short button text for fetching commits from the remote",
     "pushShort": "Short button text for sending commits to the remote",
     "remote": "Heading over the Git remote repository settings",

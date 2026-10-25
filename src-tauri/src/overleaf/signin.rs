@@ -9,6 +9,7 @@ use tauri::{
 use tokio::sync::oneshot;
 
 use super::client::Http;
+use super::errors::app_error;
 use super::session::{self, Session};
 use crate::app_error::AppError;
 
@@ -39,14 +40,9 @@ pub(crate) fn is_dashboard(url: &Url, base: &str) -> bool {
 
 pub(crate) async fn session_from_cookie(base: &str, cookie: String) -> Result<Session, String> {
     let http = Http::new(base)?;
-    let dashboard = http.dashboard(&cookie).await?;
-    let cookie =
-        session::merge_set_cookies(&cookie, dashboard.set_cookies.iter().map(String::as_str));
-    Ok(Session {
-        cookie,
-        user_id: dashboard.user_id,
-        email: dashboard.email,
-    })
+    oleafly_online::session::session_from_cookie(http.online(), cookie, session::SAVED_BY_APP)
+        .await
+        .map_err(app_error)
 }
 
 fn settle(pending: &Pending, outcome: Result<Session, String>) {

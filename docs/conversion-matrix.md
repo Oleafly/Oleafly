@@ -382,7 +382,7 @@ The local PDF pipeline preserves reading order and figures, then writes Typst.
 
 ### pdf-scanned-to-latex
 
-A local Ollama vision model transcribes scanned pages into editable LaTeX.
+The Tools model (local Ollama unless you pick another) transcribes scanned pages into editable LaTeX.
 
 - **Direction:** tool
 - **Engine:** local-model
@@ -394,7 +394,7 @@ A local Ollama vision model transcribes scanned pages into editable LaTeX.
 
 ### image-to-latex
 
-On the Tools page, a local vision model transcribes an equation or table photo into editable LaTeX. The editor toolbar button uses your configured vision-capable provider instead.
+The Tools model (local Ollama unless you pick another) transcribes an equation or table photo into editable LaTeX, on the Tools page and from the editor toolbar. With no Tools model picked and no Ollama vision model, the editor toolbar sends the image to the assistant's model.
 
 - **Direction:** tool
 - **Engine:** local-model
@@ -403,7 +403,7 @@ On the Tools page, a local vision model transcribes an equation or table photo i
 
 ### image-to-typst
 
-On the Tools page, a local vision model transcribes notes, equations, or tables into editable Typst. The Typst editor toolbar button uses your configured vision-capable provider instead.
+The Tools model (local Ollama unless you pick another) transcribes notes, equations, or tables into editable Typst, on the Tools page and from the Typst editor toolbar. With no Tools model picked and no Ollama vision model, the editor toolbar sends the image to the assistant's model.
 
 - **Direction:** tool
 - **Engine:** local-model
@@ -414,7 +414,7 @@ On the Tools page, a local vision model transcribes notes, equations, or tables 
 
 ### equation-to-latex
 
-Normalize typed math directly, or read natural-language and photographed equations with a local model.
+Normalize typed math directly, or read natural-language and photographed equations with the Tools model (local Ollama unless you pick another).
 
 - **Direction:** tool
 - **Engine:** local-model
@@ -423,7 +423,7 @@ Normalize typed math directly, or read natural-language and photographed equatio
 
 ### equation-to-typst
 
-Typed LaTeX math converts with Oleafly's built-in translator, with Pandoc as a fallback for commands it does not know. Natural-language and photographed equations go through a local model first.
+Typed LaTeX math converts with Oleafly's built-in translator, with Pandoc as a fallback for commands it does not know. Natural-language and photographed equations go through the Tools model (local Ollama unless you pick another) first.
 
 - **Direction:** tool
 - **Engine:** internal

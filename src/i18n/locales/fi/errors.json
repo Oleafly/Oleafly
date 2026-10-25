@@ -81,17 +81,52 @@
   "export": {
     "bibliography_unreadable": "Oleafly ei voinut lukea lähdeluettelotiedostoa {{name}}. Tarkista, onko siinä virheellinen merkintä, ja vie sitten uudelleen."
   },
-  "github": {
-    "sign_in_expired": "Kirjautumiskoodi vanheni. Yritä uudelleen.",
-    "sign_in_cancelled": "GitHub-valtuutus peruutettiin.",
-    "sign_in_failed": "GitHub-kirjautuminen epäonnistui.",
-    "repositories_unavailable": "Repositorioita ei voitu ladata.",
-    "create_repo_failed": "Repositoriota ei voitu luoda ({{status}})."
-  },
   "git": {
-    "remote_exists": "Tämä projekti on jo linkitetty kohteeseen {{remote}}.",
+    "access_denied": "{{host}} esti pääsyn tähän repositorioon. Tarkista, että tililläsi on pääsy siihen. Jos organisaatio käyttää kertakirjautumista (SSO), valtuuta kirjautumisesi sille ensin.",
+    "access_denied_account": "{{host}} esti tilin {{account}} pääsyn tähän repositorioon. Tarkista, että tämä tili voi käyttää sitä. Jos organisaatio käyttää kertakirjautumista (SSO), valtuuta kirjautumisesi sille ensin.",
+    "account_missing": "Palvelulle {{host}} ei ole Git-palvelun tiliä. Lisää tili asetuksissa.",
+    "archive_too_large": "Repositorion tiedostot ovat yli {{limit}} MB, joten Oleafly ei voi tuoda niitä. Kloonaa repositorio itse ja avaa sen kansio.",
+    "auth_rejected": "{{host}} hylkäsi tilin {{account}} tallennetun kirjautumisen. Kirjaudu palveluun {{host}} uudelleen asetuksissa.",
+    "credentials_missing": "{{host}} pyysi käyttäjänimeä ja salasanaa. Kirjaudu palveluun {{host}} asetuksissa tai määritä SSH-avain tai Gitin tunnistetietojen apuohjelma.",
+    "credentials_rejected": "{{host}} hylkäsi käyttäjänimen ja salasanan, jotka Git tarjosi. Kirjaudu palveluun {{host}} asetuksissa tai päivitä Gitin käyttämät tunnistetiedot.",
+    "credentials_missing_helper": "{{host}} pyysi käyttäjänimeä ja salasanaa. Määritä SSH-avain tai Gitin tunnistetietojen apuohjelma palvelulle {{host}} ja yritä sitten uudelleen.",
+    "credentials_rejected_helper": "{{host}} hylkäsi käyttäjänimen ja salasanan, jotka Git tarjosi. Päivitä Gitin palvelulle {{host}} käyttämät tunnistetiedot tai käytä SSH-avainta.",
+    "device_flow_unavailable": "Selainkirjautuminen ei ole saatavilla palvelulle {{host}} tässä versiossa. Käytä sen sijaan käyttöoikeustunnusta.",
+    "forge_bad_response": "{{host}} lähetti vastauksen, jota Oleafly ei pystynyt lukemaan.",
+    "forge_ca_file_invalid": "Oleafly ei pystynyt lukemaan varmennetta tästä tiedostosta. Valitse alle 1 MB:n PEM- tai DER-varmennetiedosto.",
+    "forge_forbidden": "{{host}} kieltäytyi. Tunnukselta saattavat puuttua oikeudet {{scopes}}.",
+    "forge_https_required": "Käytä https://-osoitetta. Pelkkä http toimii vain oman verkkosi palvelimille.",
+    "forge_invalid_repository": "Oleafly ei voi käyttää tätä repositorion polkua.",
+    "forge_invalid_repository_name": "Käytä repositorion nimessä vain kirjaimia, numeroita, pisteitä, yhdysmerkkejä ja alaviivoja.",
+    "forge_invalid_server": "Oleafly ei voi käyttää palvelinosoitetta {{server}}.",
+    "forge_missing_scopes": "Tällä tunnuksella ei voi työntää palveluun {{host}}. Luo tunnus, jolla on oikeudet {{scopes}}.",
+    "forge_not_found": "{{host}} ei löytänyt tätä repositoriota.",
+    "forge_rate_limited": "{{host}} rajoittaa pyyntöjä juuri nyt. Yritä uudelleen minuutin kuluttua.",
+    "forge_redirect_refused": "{{host}} yritti ohjata Oleaflyn osoitteeseen {{target}}, joten Oleafly pysähtyi suojatakseen kirjautumisesi.",
+    "forge_repository_exists": "Palvelussa {{host}} on jo tämän niminen repositorio.",
+    "forge_server_error": "{{host}} palautti virheen ({{status}}).",
+    "forge_signed_out": "Kirjautumisesi palveluun {{host}} vanheni tai peruttiin. Kirjaudu uudelleen asetuksissa.",
+    "forge_sso_required": "{{host}} vaatii, että tämä kirjautuminen on valtuutettu organisaation kertakirjautumiseen. Valtuuta se palvelussa {{host}} ja yritä sitten uudelleen.",
+    "forge_store": "Oleafly ei voinut lukea tai tallentaa Git-palvelujen tilejäsi.",
+    "forge_token_invalid": "Tämä ei näytä käyttöoikeustunnukselta. Liitä koko tunnus.",
+    "forge_token_rejected": "{{host}} ei hyväksynyt tätä tunnusta. Tarkista, että kopioit koko tunnuksen ja ettei se ole vanhentunut.",
+    "forge_unknown_server": "Oleafly ei tunnistanut, millainen palvelin {{host}} on. Valitse palvelimen tyyppi.",
+    "host_key_unknown": "SSH ei vielä tunne palvelinta {{host}}. Yhdistä siihen kerran päätteestä ja hyväksy sen isäntäavain, ja yritä sitten uudelleen.",
+    "host_unreachable": "Oleafly ei saanut yhteyttä palvelimeen {{host}}. Tarkista osoite ja verkkoyhteytesi.",
+    "import_cancelled": "Tuonti peruttiin.",
+    "invalid_remote_url": "Anna Git-repositorion HTTPS- tai SSH-osoite.",
     "nested_repository": "Tämä projekti on toisen Git-repositorion sisällä, joten Oleafly ei luo tähän erillistä repositoriota.",
     "not_installed": "Gitiä ei ole asennettu tälle koneelle. Asenna Git ja yritä uudelleen.",
+    "push_rejected": "Etähaarassa on commiteja, joita tässä projektissa ei vielä ole. Nouda ensin ja työnnä sitten uudelleen.",
+    "remote_exists": "Tämä projekti on jo linkitetty kohteeseen {{remote}}.",
+    "remote_has_password": "Poista salasana tai käyttöoikeustunnus osoitteesta. Oleafly kirjautuu sen sijaan Git-palvelun tililläsi tai omilla Git-tunnistetiedoillasi.",
+    "repository_empty": "Tässä repositoriossa ei ole vielä commiteja, joten tuotavaa ei ole.",
+    "repository_not_found": "Palvelussa {{host}} ei ole repositoriota tässä osoitteessa, tai tilisi ei näe sitä.",
+    "sign_in_cancelled": "Kirjautuminen peruttiin selaimessa.",
+    "sign_in_expired": "Kirjautumiskoodi vanheni. Yritä uudelleen.",
+    "sign_in_failed": "Kirjautuminen epäonnistui.",
+    "ssh_key_rejected": "{{host}} hylkäsi SSH-avaimesi. Lisää julkinen avaimesi tiliisi palvelussa {{host}} tai lataa avain SSH-agenttiisi.",
+    "tls_failed": "Oleafly ei voinut vahvistaa palvelimen {{host}} varmennetta. Jos organisaatiollasi on oma varmentaja, lisää sen varmennetiedosto tiliin asetuksissa.",
     "tracked_secret_files": "Julkaisu keskeytyi, koska projektin Git-historian tiedostot voivat sisältää avaimia tai salasanoja: {{files}}"
   },
   "approvals": {
@@ -101,7 +136,7 @@
     "git": "Luota tähän kansioon, jotta voit käyttää versionhallintaa.",
     "repository": "Luota repositorioon {{name}}, jotta voit käyttää versionhallintaa täällä.",
     "terminal": "Avaa pääte itse, jotta voit käyttää sitä tässä kansiossa.",
-    "agents": "Luota tähän kansioon, jotta voit käyttää ulkoisia agentteja.",
+    "agents": "Luota tähän kansioon, jotta voit käyttää komentoriviagentteja.",
     "mcp": "Luota tähän kansioon, ennen kuin MCP-asiakkaat voivat käyttää sitä.",
     "research_tasks": "Luota tähän kansioon, jotta voit suorittaa tutkimustehtäviä.",
     "run_command": "Luota tähän kansioon, jotta avustaja voi suorittaa komentoja.",
@@ -136,6 +171,8 @@
     "changed": "{{path}} on muuttunut sen jälkeen, kun Oleafly asensi sen, joten se jätettiin ennalleen.",
     "failed": "Oleafly ei voinut asentaa päätekomentoa.",
     "remove_failed": "Oleafly ei voinut poistaa päätekomentoa.",
+    "path_failed": "Oleafly asensi komennon, mutta ei voinut lisätä kansiota {{directory}} PATH-muuttujaasi.",
+    "in_use": "{{path}} on käytössä. Sulje päätteet, joissa oleafly on käynnissä, ja yritä sitten uudelleen.",
     "unsupported": "Päätekomento ei ole vielä käytettävissä tässä järjestelmässä."
   },
   "research": {
@@ -212,6 +249,8 @@
     "sync_already_linked": "Tämä projekti on jo linkitetty toiseen Overleaf-projektiin. Lopeta synkronointi ensin.",
     "sync_offline": "Oleafly ei saanut yhteyttä Overleafiin. Muutoksesi ovat täällä tallessa ja synkronoidaan ensi kerralla.",
     "sync_failed": "Synkronointi Overleafin kanssa ei valmistunut. Tiedostosi täällä ovat ennallaan.",
+    "sync_incomplete": "Synkronointi Overleafin kanssa ei valmistunut, mutta osa tiedostoista täällä ehti jo päivittyä. Synkronoi uudelleen, niin se valmistuu.",
+    "sync_backups_saved": "Synkronointi pysähtyi. Omat versiosi tiedostoista, jotka Overleafin versiot korvasivat, on tallennettu kansioon {{folder}}.",
     "sync_kept_changing": "Projekti muuttui Overleafissa koko synkronoinnin ajan. Yritä hetken päästä uudelleen.",
     "sync_case_clash": "Overleafissa on tiedostoja, joiden nimet eroavat vain isojen ja pienten kirjainten osalta ({{files}}). Nimeä yksi niistä uudelleen Overleafissa ja synkronoi sitten uudelleen.",
     "sync_invalid_names": "Joitakin Overleafin tiedostonimiä ei voi tallentaa tälle koneelle ({{files}}). Nimeä tiedostot uudelleen Overleafissa ja synkronoi sitten uudelleen.",
@@ -223,7 +262,9 @@
     "git_token_rejected": "Overleaf ei hyväksynyt Git-tokenia. Se on ehkä vanhentunut. Luo uusi Overleafin tiliasetuksissa.",
     "git_unavailable": "Overleafin Git-integraatio ei ole käytettävissä tälle projektille. Projektin omistaja tarvitsee maksullisen tai yliopiston tilauksen.",
     "template_link_invalid": "Linkki ei vie Overleafin mallipohjasivulle. Avaa mallipohjan sivu osoitteessa overleaf.com/latex/templates, kopioi sen osoite ja yritä uudelleen.",
-    "template_unavailable": "Oleafly ei voinut avata tätä mallipohjaa. Se on ehkä poistettu Overleafin mallipohjagalleriasta."
+    "template_unavailable": "Oleafly ei voinut avata tätä mallipohjaa. Se on ehkä poistettu Overleafin mallipohjagalleriasta.",
+    "browser_sign_in_missing": "Oleafly ei löytänyt palvelun {{server}} kirjautumista tästä selainprofiilista. Kirjaudu sen sijaan sisään.",
+    "browser_sign_in_failed": "Selaimesi kirjautuminen ei toiminut. Se on voinut vanhentua. Kirjaudu sen sijaan sisään."
   },
   "collab": {
     "suggestion_role": "Roolisi tässä projektissa ei salli ehdotuksia."
@@ -238,5 +279,53 @@
     "unknown_tool": "Oleafly ei tunne työkalua nimeltä {{tool}}.",
     "not_managed": "Oleafly voi poistaa vain sen kopion työkalusta {{tool}}, jonka se on itse ladannut.",
     "no_html_output": "HTML-tulostetta ei ole vielä. Käännä dokumentti ensin."
+  },
+  "attachments": {
+    "too_large": "Tämä tiedosto on yli {{max}} MB. Liitä pienempi tiedosto.",
+    "invalid_request": "Oleafly ei voinut lukea tätä liitettä.",
+    "not_found": "Tätä liitettä ei ole enää tallennettu tälle koneelle.",
+    "storage_failed": "Oleafly ei voinut tallentaa tätä liitettä."
+  },
+  "provider_credit": {
+    "failed": "Oleafly ei voinut tarkistaa saldoasi palvelussa {{provider}}."
+  },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 ei ole asennettu.",
+    "git_bash_missing": "Git Bash ei ole asennettu. Asenna Git for Windows tai valitse toinen shell.",
+    "wsl_missing": "WSL ei ole asennettu.",
+    "wsl_no_distro": "WSL:ssä ei ole vielä Linux-jakelua.",
+    "shell_path_empty": "Anna shellin polku asetuksissa tai valitse toinen shell.",
+    "shell_path_missing": "Polusta {{path}} ei löydy ohjelmaa."
+  },
+  "mathpix": {
+    "keys_missing": "Lisää ensin Mathpixin sovellustunnus ja avain kohdassa Asetukset, Tekoäly, Työkalut.",
+    "invalid_keys": "Sovellustunnuksessa tai avaimessa on merkkejä, joita Mathpix-avaimissa ei koskaan ole. Kopioi ne uudelleen Mathpix-konsolista.",
+    "key_rejected": "Mathpix ei hyväksynyt näitä avaimia. Tarkista sovellustunnus ja avain Mathpix-konsolissa.",
+    "rate_limited": "Mathpix rajoittaa pyyntöjä juuri nyt. Odota minuutti ja yritä sitten uudelleen.",
+    "unreachable": "Oleafly ei saanut yhteyttä Mathpix-palveluun. Tarkista internetyhteytesi ja yritä sitten uudelleen.",
+    "http_error": "Mathpix palautti virheen (HTTP {{status}}). Yritä myöhemmin uudelleen.",
+    "invalid_response": "Mathpix lähetti vastauksen, jota Oleafly ei pystynyt lukemaan. Yritä myöhemmin uudelleen.",
+    "rejected": "Mathpix ei pystynyt lukemaan tätä tiedostoa: {{reason}}",
+    "image_too_large": "Kuva on liian suuri Mathpix-palvelulle. Rajaa kuvaa ja yritä uudelleen.",
+    "pdf_too_large": "Tämä PDF on suurempi kuin Mathpix-palvelun 256 MB:n raja.",
+    "timed_out": "Mathpix ei saanut tätä PDF-tiedostoa valmiiksi 30 minuutissa. Kokeile vähemmillä sivuilla.",
+    "cancelled": "Mathpix-muunnos pysäytettiin.",
+    "wrong_window": "Mathpix-palvelua voi käyttää vain Oleaflyn pääikkunasta.",
+    "pdf_too_large_ipc": "Tämä tietokone voi lähettää Mathpixille PDF-tiedostoja enintään 16 MB. Jaa PDF ja yritä uudelleen."
+  },
+  "desktop_apps": {
+    "not_installed": "Cua Driver -ohjelmaa ei ole asennettu. Asenna se kohdassa Asetukset → Integraatiot → Työpöytäsovellukset.",
+    "too_old": "Cua Driver {{version}} on liian vanha. Päivitä versioon {{minimum}} tai uudempaan.",
+    "no_app_bundle": "Asenna Cua Driver virallisella asennusohjelmalla, jotta se voi saada macOS-käyttöoikeudet.",
+    "change_declined": "Aiemmat Työpöytäsovellukset-asetuksesi säilytettiin.",
+    "app_blocked": "Agentit eivät voi käyttää sovellusta {{name}}.",
+    "app_invalid": "Oleafly ei voi käyttää kohdetta {{name}} sovelluksena.",
+    "site_invalid": "”{{site}}” ei ole sivuston osoite, jota Oleafly voi käyttää. Käytä muotoa https://, tai tälle koneelle muotoa http://.",
+    "too_many_apps": "Voit sallia enintään {{limit}} sovellusta.",
+    "too_many_sites": "Voit sallia enintään {{limit}} sivustoa.",
+    "start_failed": "Cua Driver ei käynnistynyt: {{detail}}",
+    "not_bounded": "Cua Driver ei käynnistynyt Oleaflyn rajoituksin, joten Oleafly pysäytti sen.",
+    "task_unattended": "Ajastetut tehtävät ja Oleaflyn sulkemisen jälkeen jatkuvat tehtävät eivät voi käyttää työpöytäsovelluksia.",
+    "main_window": "Muuta Työpöytäsovellukset-asetuksia pääikkunasta."
   }
 }

@@ -11,12 +11,12 @@
       "checkingAction": "檢查中",
       "checkingDescription": "這可能需要一點時間，Oleafly 正在檢查這台電腦上的命令列工具。",
       "checkingInstalled": "正在檢查已安裝的代理程式",
-      "checkingTitle": "正在尋找命令列代理程式",
+      "checkingTitle": "正在尋找 CLI 代理程式",
       "cliPathLabel": "偵測位置",
       "cliTitle": "命令列工具",
       "copySignInCommand": "複製登入指令",
-      "emptyDescription": "請安裝支援的命令列代理程式，然後再次檢查。",
-      "emptyTitle": "找不到命令列代理程式",
+      "emptyDescription": "請安裝支援的 CLI 代理程式，然後再次檢查。",
+      "emptyTitle": "找不到 CLI 代理程式",
       "custom": {
         "description": "貼上代理程式定義，即可註冊 Oleafly 未內建的代理程式。",
         "hint": "貼上代理程式定義，其中要有鎖定版本的 npm 或 uv 套件、已驗證的執行檔，或已安裝的可執行程式。請勿在這份 JSON 中放入密碼與 API 金鑰。",
@@ -36,7 +36,7 @@
       },
       "installBridge": "安裝橋接程式",
       "installBridgeNextStep": "先安裝 ACP 橋接程式，再透過命令列工具登入。",
-      "intro": "透過 ACP 連接本機代理程式。每個代理程式各自管理模型、工具與登入，API 供應商設定則維持獨立。請使用官方 CLI 帳戶登入：Oleafly 不會匯入帳戶權杖，也不會估算訂閱配額。",
+      "intro": "Claude Code、Codex 和 Gemini CLI 等 CLI 代理程式會透過 Agent Client Protocol (ACP) 連接。有些需要橋接程式，這是 Oleafly 安裝的小型轉接器，用來與它們溝通。每個代理程式各自管理模型、工具與登入，API 供應商設定則維持獨立。請使用官方 CLI 帳戶登入：Oleafly 不會匯入帳戶權杖，也不會估算訂閱配額。",
       "nextStepTitle": "下一步",
       "notReported": "未回報",
       "notice": {
@@ -50,19 +50,19 @@
       "platformLabel": "平台",
       "refreshingStatus": "正在重新整理代理程式狀態。目前的清單維持不變。",
       "registry": {
-        "description": "在 ACP 註冊庫中搜尋其他團隊發布的代理程式。",
+        "description": "在 ACP 註冊庫中搜尋其他團隊發布的 CLI 代理程式。",
         "hideDistribution": "隱藏發行資訊",
         "register": "註冊代理程式",
         "registered": "已註冊",
         "reviewHint": "註冊庫項目由發布者自行描述其軟體。註冊或安裝前，請先審視發行內容。",
         "search": "搜尋",
-        "searchLabel": "尋找 ACP 代理程式",
-        "searchPlaceholder": "搜尋 ACP 註冊庫",
+        "searchLabel": "尋找 CLI 代理程式",
+        "searchPlaceholder": "搜尋 CLI 代理程式",
         "searching": "搜尋中",
         "showDistribution": "顯示發行資訊",
         "title": "尋找更多代理程式"
       },
-      "sectionLabel": "ACP 代理程式",
+      "sectionLabel": "CLI 代理程式",
       "signInCommandLabel": "登入指令",
       "versionLabel": "版本",
       "updateBridge": "更新橋接程式",
@@ -113,10 +113,82 @@
           "startFailed": "無法啟動 {{name}}。",
           "timeout": "{{name}} 已啟動，但沒有及時回應。",
           "exited": "{{name}} 在回應前就停止了。",
-          "notAcp": "{{name}} 已啟動，但 Oleafly 無法理解它的回覆。"
+          "notAcp": "{{name}} 已啟動，但 Oleafly 無法理解它的回覆。",
+          "needsSignIn": "{{name}} 可以正常運作。開始對話前請先登入。",
+          "sessionFailed": "{{name}} 已啟動，但無法開啟對話。"
         },
         "getNode": "取得 Node.js",
-        "copyDetails": "複製詳細資料"
+        "copyDetails": "複製詳細資料",
+        "signIn": "登入",
+        "afterSignIn": "請在終端機中完成登入，然後重新測試程式。"
+      },
+      "experimental": {
+        "title": "實驗性",
+        "description": "這些功能使用 Agent Client Protocol 的草案部分，可能會變更或停止運作。",
+        "v2": "可用時使用 ACP v2",
+        "v2Description": "支援第 2 版草案的代理程式會使用它。其他代理程式繼續使用第 1 版。",
+        "providers": "允許代理程式使用我的 Oleafly API 金鑰",
+        "providersDescription": "能夠轉送模型呼叫的代理程式會使用你在它卡片上選擇的金鑰。這把金鑰只會傳送給該代理程式的處理程序。"
+      },
+      "inactivity": {
+        "label": "代理程式無回應多久後停止",
+        "description": "代理程式在這段時間內沒有傳送任何內容時，Oleafly 會停止它。你可以重新連線。",
+        "minutes_other": "{{count}} 分鐘"
+      },
+      "protocolLabel": "協定",
+      "remembered": {
+        "title": "記住的選擇",
+        "effort": "推理強度：{{name}}",
+        "mode": "模式：{{name}}",
+        "forget": "忘記",
+        "none": "新對話會使用代理程式的預設值。"
+      },
+      "providers": {
+        "label": "使用我的 Oleafly API 金鑰",
+        "off": "關閉（代理程式自行登入）",
+        "note": "對話開始時，Oleafly 會將金鑰傳送給這個代理程式，而且不會把它寫進記錄。",
+        "unavailable": "請在「設定 > AI 助理 > 供應商與金鑰」中新增 API 金鑰，才能在這裡使用。"
+      },
+      "hermes": {
+        "title": "這個專案的 Hermes 設定檔",
+        "default": "預設設定檔（共用）",
+        "project": "專案設定檔",
+        "remote": "透過 SSH 在遠端執行",
+        "profileName": "設定檔 {{name}}",
+        "memory": "專案記憶",
+        "memoryDescription": "Hermes 會在這個專案的不同對話之間記住資訊。",
+        "toolGateway": "Tool Gateway",
+        "toolGatewayDescription": "使用你的 Nous 訂閱中代管的網頁搜尋、影像、語音和瀏覽器工具。",
+        "status": {
+          "ready": "閘道正在執行",
+          "starting": "閘道正在啟動",
+          "stopped": "閘道已停止",
+          "unknown": "閘道狀態不明"
+        },
+        "refresh": "重新檢查",
+        "keepsRunning": "中斷 Oleafly 的連線絕不會停止閘道。",
+        "host": "主機",
+        "port": "連接埠",
+        "folder": "那台機器上的專案資料夾",
+        "command": "Hermes 指令",
+        "remoteProfile": "設定檔（選填）",
+        "test": "測試連線",
+        "testOk": "已連線：{{version}}",
+        "save": "儲存",
+        "sshNote": "Oleafly 只使用你的 SSH 金鑰登入。",
+        "folderHint": "那台機器上的完整路徑，例如 /home/ada/paper。",
+        "needsValid": "「測試連線」和「儲存」需要這些欄位的值有效：{{fields}}。",
+        "unsavedEdit": "尚未儲存。儲存後才會使用這些變更。",
+        "unsavedMode": "尚未儲存。儲存前，這個專案會繼續使用：{{mode}}。",
+        "errors": {
+          "hostRequired": "請輸入主機名稱或 user@host。",
+          "hostInvalid": "只能使用字母、數字、句點、連字號和 @，且不能以連字號開頭。",
+          "port": "請使用 1 到 65535 之間的連接埠。",
+          "folderRequired": "請輸入專案資料夾在那台機器上的完整路徑。",
+          "folderInvalid": "請使用以 / 開頭的完整路徑。",
+          "command": "請使用 hermes，或以 / 開頭的完整路徑。",
+          "profile": "請使用小寫字母、數字、連字號和底線。"
+        }
       }
     },
     "approvals": {
@@ -196,6 +268,8 @@
       "defaultModelTitle": "預設對話模型",
       "pdfCaptureDescription": "允許代理程式將編譯後的頁面轉成點陣圖（verify_pdf_pages），以進行視覺版面檢查。若不想把頁面影像傳給供應商，請停用。",
       "pdfCaptureLabel": "允許 AI 擷取 PDF 頁面",
+      "reasoningSummariesDescription": "先思考再回答的模型會傳送推理過程的簡短摘要。適用於 Anthropic 和 OpenAI 模型。",
+      "reasoningSummariesLabel": "顯示推理摘要",
       "save": "儲存指示",
       "saved": "已儲存",
       "toolsHint": "你可以要求它「修正 LaTeX 錯誤」、「新增 Publications 章節」或「重新編譯並檢查 PDF」。",
@@ -508,7 +582,32 @@
       },
       "useInAllProjectsAria": "在所有專案中使用 {{name}}",
       "useInProjectAria": "在此專案中使用 {{name}}",
-      "validateAria": "驗證 {{name}}"
+      "validateAria": "驗證 {{name}}",
+      "shadowNote": "這個技能有較新的 Oleafly 版本可用。",
+      "replaceAction": "使用 Oleafly 版本",
+      "replaceTitle": "要取代你的 {{name}} 副本嗎？",
+      "replaceBody": "你的副本會移到備份資料夾，不會刪除任何內容。",
+      "replaced": "你的副本位於 {{path}}。"
+    },
+    "tools": {
+      "tabLabel": "工具",
+      "loading": "正在載入工具設定…",
+      "modelTitle": "工具所用的模型",
+      "modelDescription": "影像轉 LaTeX、方程式影像和掃描 PDF 會使用這個模型。自動選擇會使用 Ollama，因此影像會留在這台電腦上。如果 Ollama 未執行，或沒有能讀取影像的模型，編輯器中的影像轉 LaTeX 和影像轉 Typst 會改為將影像傳送給助理的模型。",
+      "ocrHint": "想在本機取得最佳效果，請在 Ollama 中拉取 OCR 模型：",
+      "mathpix": {
+        "title": "Mathpix",
+        "description": "選用。Mathpix 可讀取方程式、表格和掃描 PDF，並依影像數和頁數向你自己的 Mathpix 帳號計費。",
+        "docs": "取得 Mathpix 金鑰",
+        "appIdLabel": "應用程式 ID",
+        "appKeyLabel": "應用程式金鑰",
+        "save": "儲存金鑰",
+        "remove": "移除金鑰",
+        "connected": "已連線為 {{appId}}",
+        "saved": "Mathpix 金鑰已儲存。",
+        "removed": "Mathpix 金鑰已移除。",
+        "privacy": "Oleafly 會要求 Mathpix 不保留你的影像，並在讀取結果後從 Mathpix 刪除每個 PDF。"
+      }
     }
   },
   "appearance": {
@@ -562,17 +661,6 @@
       "theme": {
         "description": "「系統」會跟隨作業系統，並隨它一起變更。",
         "label": "外觀"
-      }
-    },
-    "browser": {
-      "homePage": {
-        "ariaLabel": "瀏覽器首頁",
-        "description": "選擇開啟瀏覽器面板時載入的頁面。",
-        "label": "首頁"
-      },
-      "searchEngine": {
-        "description": "選擇文字搜尋使用的搜尋引擎。",
-        "label": "預設搜尋引擎"
       }
     },
     "customTheme": {
@@ -868,7 +956,6 @@
     "sectionName": "外觀",
     "tabs": {
       "app": "應用程式",
-      "browser": "瀏覽器",
       "editor": "編輯器",
       "files": "專案",
       "pdf": "PDF 預覽",
@@ -892,6 +979,14 @@
         "foreground": "文字",
         "foregroundAriaLabel": "終端機文字顏色",
         "label": "終端機顏色"
+      },
+      "confirmClose": {
+        "description": "關閉仍有程式在執行的終端機前先詢問，包括關閉專案或結束時。",
+        "label": "關閉忙碌的終端機前詢問"
+      },
+      "copyOnSelect": {
+        "description": "選取終端機文字後立即複製。",
+        "label": "選取即複製"
       },
       "cursorBlink": {
         "description": "讓終端機游標閃爍。",
@@ -921,6 +1016,49 @@
       "fontWeightBold": {
         "description": "設定終端機粗體文字的字重。",
         "label": "粗體字重"
+      },
+      "optionIsMeta": {
+        "description": "將 Option 組合鍵當作 Meta 傳送到 shell。Option 將不再輸入特殊字元。",
+        "label": "將 Option 當作 Meta"
+      },
+      "scrollback": {
+        "ariaLabel": "終端機回捲行數",
+        "description": "每個終端機保留的行數。行數越多，使用的記憶體越多。",
+        "label": "回捲行數",
+        "lines_other": "{{value}} 行"
+      },
+      "shell": {
+        "ariaLabel": "終端機 shell",
+        "description": "新的終端機會啟動這個 shell。已開啟的終端機保留各自的 shell。",
+        "label": "Shell",
+        "notFound": "{{name}}（找不到）",
+        "notFoundNote": "這台電腦上無法使用 {{name}}，因此無法開啟新的終端機。請選擇其他 shell。",
+        "options": {
+          "auto": "預設（{{name}}）",
+          "cmd": "命令提示字元",
+          "custom": "自訂路徑",
+          "defaultShell": "預設 shell",
+          "gitBash": "Git Bash",
+          "powershell": "Windows PowerShell",
+          "pwsh": "PowerShell 7",
+          "wsl": "WSL"
+        },
+        "path": {
+          "ariaLabel": "自訂 shell 路徑",
+          "description": "新的終端機執行的程式。",
+          "label": "Shell 路徑",
+          "missing": "請輸入 shell 的完整路徑。在此之前無法開啟新的終端機。"
+        },
+        "windowsOnly": "{{name}}（僅限 Windows）",
+        "windowsOnlyNote": "{{name}} 只能在 Windows 上執行。這裡的新終端機會改為啟動 {{fallback}}。",
+        "windowsOnlyNoteDefault": "{{name}} 只能在 Windows 上執行。這裡的新終端機會改為啟動預設 shell。"
+      },
+      "shiftEnter": {
+        "ariaLabel": "終端機中的 Shift+Enter",
+        "description": "Shift+Enter 傳送給終端機中程式的內容。換行可讓 Claude Code 這類聊天式工具在提示詞中加入新的一行。Enter 則像 Enter 鍵一樣送出。",
+        "enter": "傳送 Enter",
+        "label": "Shift+Enter",
+        "newline": "插入新行"
       },
       "startWithProject": {
         "description": "在專案開啟時就啟動 shell，而不是等到第一次顯示終端機。",
@@ -964,6 +1102,15 @@
       "saveEmail": "儲存電子郵件",
       "saveKey": "儲存金鑰"
     },
+    "braveSearch": {
+      "docsLink": "Brave Search API",
+      "hint": "選用。當助理的供應商沒有自己的搜尋功能時，讓助理搜尋網頁。",
+      "keyLabel": "Brave Search API 金鑰",
+      "keyRemoveFailed": "無法移除 Brave Search API 金鑰。",
+      "keyRemoved": "Brave Search API 金鑰已移除",
+      "keySaveFailed": "無法儲存 Brave Search API 金鑰。",
+      "keySaved": "Brave Search API 金鑰已儲存"
+    },
     "connected": "已連線",
     "description": "管理學術搜尋來源使用的憑證。",
     "keyFree": {
@@ -1003,7 +1150,17 @@
       "keySaveFailed": "無法儲存 Serper API 金鑰。",
       "keySaved": "Serper API 金鑰已儲存"
     },
-    "title": "引用搜尋"
+    "tavily": {
+      "docsLink": "Tavily API",
+      "hint": "選用。當助理的供應商沒有自己的搜尋功能時，讓助理搜尋網頁。",
+      "keyLabel": "Tavily API 金鑰",
+      "keyRemoveFailed": "無法移除 Tavily API 金鑰。",
+      "keyRemoved": "Tavily API 金鑰已移除",
+      "keySaveFailed": "無法儲存 Tavily API 金鑰。",
+      "keySaved": "Tavily API 金鑰已儲存"
+    },
+    "title": "引用搜尋",
+    "webSearchOrder": "進行網頁搜尋時，助理會依序使用 Brave、Tavily 和 Serper。"
   },
   "cite": {
     "apa": "同一筆參考文獻的 APA 格式，放在 GitHub 的 Cite this repository 裡",
@@ -1345,17 +1502,64 @@
       "typstNote": "Calepin 會以 Oleafly 內建的 Typst 算繪，需要 Typst 0.15 以上版本。"
     }
   },
-  "github": {
+  "gitHosting": {
     "account": {
-      "connected": "已連線",
-      "disconnect": "中斷連線",
-      "handle": "@{{login}}"
+      "ariaLabel": "{{host}} 上的 {{login}}",
+      "caAdd": "新增憑證檔",
+      "caChange": "變更憑證檔",
+      "caFile": "憑證檔：{{file}}",
+      "checking": "正在檢查…",
+      "signInAgain": "重新登入",
+      "signOut": "登出",
+      "signedInAs": "已登入為 {{login}}",
+      "signedOut": "已登出",
+      "unreachable": "無法連線到伺服器"
     },
-    "advanced": {
-      "connect": "連接",
-      "toggle": "進階：使用個人存取權杖",
-      "tokenPlaceholder": "ghp_…"
+    "add": {
+      "browserHint": "在瀏覽器中使用一次性代碼登入。",
+      "caChoose": "選擇檔案…",
+      "caFilter": "憑證檔",
+      "caHint": "只有在伺服器的憑證來自你組織自己的憑證授權單位時才需要。",
+      "caLabel": "憑證授權單位檔案",
+      "caPickerTitle": "選擇憑證檔",
+      "caRemove": "移除",
+      "chooseKind": "伺服器類型",
+      "connect": "連結",
+      "continue": "繼續",
+      "createToken": "在 {{host}} 上建立權杖",
+      "detecting": "正在檢查伺服器…",
+      "found": "這是一台 {{kind}} 伺服器。",
+      "kindGitea": "Gitea 或 Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
+      "otherServer": "其他伺服器",
+      "replaces": "登入會取代 {{host}} 上的 {{login}}。",
+      "scopesGitea": "授予它 repository 和 user 的讀寫權限。",
+      "scopesGithub": "授予它 repo 和 read:user 權限範圍。",
+      "scopesGitlab": "授予它 api 和 write_repository 權限範圍。",
+      "serverLabel": "伺服器位址",
+      "serverPlaceholder": "https://git.example.org",
+      "signInBrowser": "使用 {{host}} 登入",
+      "title": "新增 Git 代管帳號",
+      "tokenLabel": "存取權杖",
+      "useToken": "改用存取權杖"
     },
+    "addAccount": "新增帳號",
+    "description": "登入後即可推送和提取、發布專案，以及匯入儲存庫。支援 GitHub、GitLab、Gitea、Forgejo 和 Codeberg，也支援你自己架設的伺服器。",
+    "device": {
+      "open": "開啟 {{host}}",
+      "opened": "Oleafly 已在你的瀏覽器中開啟 <verificationLink>{{url}}</verificationLink>。在那裡輸入代碼即可完成登入。",
+      "timedOut": "登入逾時。請再試一次。",
+      "title": "在 {{host}} 上輸入這組代碼",
+      "waiting": "正在等候你在瀏覽器中完成…"
+    },
+    "empty": "還沒有帳號。透過位址連結的專案仍會使用你自己的 Git 登入資訊或 SSH 金鑰推送和提取。",
+    "notice": {
+      "signedIn": "已以 {{login}} 身分登入 {{host}}。",
+      "signedOut": "已登出 {{host}}。"
+    },
+    "title": "Git 代管"
+  },
+  "github": {
     "autoInit": {
       "description": "新建立與開啟的專案都會有 Git 儲存庫，讓 Git 面板可以追蹤變更。新專案通常會先有一次包含其檔案的提交。之後，Oleafly 只會在你要求時提交。",
       "label": "為每個專案初始化 Git"
@@ -1363,23 +1567,6 @@
     "config": {
       "loadFailed": "無法載入 Git 設定。",
       "saveFailed": "無法儲存 Git 設定。"
-    },
-    "connect": "連接 GitHub",
-    "description": "備份專案、在裝置之間同步，並從 Git 面板推送與拉取。",
-    "device": {
-      "openGithub": "開啟 GitHub",
-      "opened": "已在你的瀏覽器中開啟 <verificationLink>{{url}}</verificationLink>。請在該頁面貼上代碼，以授權 Oleafly。",
-      "timedOut": "GitHub 登入逾時。請再試一次。",
-      "title": "在 GitHub 上輸入這組代碼",
-      "waiting": "等待授權中…"
-    },
-    "hint": {
-      "oauth": "會在你的瀏覽器中以一次性代碼登入。",
-      "token": "這個版本尚未設定 OAuth 登入，請改為貼上權杖。"
-    },
-    "notice": {
-      "connected": "已以 @{{login}} 的身分連線",
-      "disconnected": "已中斷連線。"
     }
   },
   "integrations": {
@@ -1396,27 +1583,14 @@
       "disconnectFailed": "無法中斷與 alphaXiv 的連線。請再試一次。"
     },
     "cookies": {
-      "action": "匯入 Cookie",
-      "confirmAllDomains": "你即將從 {{browser}} 的 {{profile}} 設定檔匯入所有網域的 Cookie。Cookie 值會存放在應用程式內建瀏覽器中，而且只會傳送給對應的網站。Oleafly 在讀取設定檔之前，會再用系統對話框請你確認一次。",
-      "confirmDomain": "你即將從 {{browser}} 的 {{profile}} 設定檔匯入 {{domain}} 的 Cookie。Cookie 值會存放在應用程式內建瀏覽器中，而且只會傳送給對應的網站。Oleafly 在讀取設定檔之前，會再用系統對話框請你確認一次。",
       "confirmTitle": "確認匯入 Cookie",
-      "description": "在 Oleafly 的內建瀏覽器中沿用現有的瀏覽器登入狀態。",
       "detecting": "正在尋找已安裝的瀏覽器設定檔…",
       "dialogDescription": "選擇一個已安裝的瀏覽器設定檔。Oleafly 只會在你審視並確認匯入之後才讀取。Chromium 的 Cookie 會透過 macOS Keychain 在本機解鎖。Oleafly 不會把 Cookie 值傳送到 Oleafly 的服務。",
       "dialogTitle": "匯入瀏覽器 Cookie",
       "empty": "找不到支援的瀏覽器設定檔。",
       "errors": {
-        "chooseProfile": "請選擇一個可用的瀏覽器設定檔。",
-        "hostname": "請輸入主機名稱，例如 example.com。"
+        "chooseProfile": "請選擇一個可用的瀏覽器設定檔。"
       },
-      "hostnameHint": "輸入網站主機名稱，就只會匯入該網站能使用的 Cookie。留空則匯入這個設定檔中所有符合條件的 Cookie。",
-      "hostnameLabel": "目標主機名稱（選填）",
-      "hostnamePlaceholder": "example.com",
-      "importedDomain_other": "已從 {{browser}} 匯入 {{domain}} 的 {{count}} 個 Cookie。",
-      "importedProfileDomain_other": "已從 {{browser}} 的 {{profile}} 匯入 {{domain}} 的 {{count}} 個 Cookie。",
-      "importedProfile_other": "已從 {{browser}} 的 {{profile}} 匯入 {{count}} 個 Cookie。",
-      "imported_other": "已從 {{browser}} 匯入 {{count}} 個 Cookie。",
-      "importing": "正在匯入 Cookie…",
       "profileGroupLabel": "瀏覽器設定檔",
       "profileLegend": "瀏覽器設定檔",
       "review": "審視匯入內容",
@@ -1426,8 +1600,15 @@
         "noCookieStore": "沒有 Cookie 資料庫",
         "notInstalled": "未安裝"
       },
-      "title": "匯入 Cookie",
-      "tryAgain": "再試一次"
+      "tryAgain": "再試一次",
+      "label": "瀏覽器登入",
+      "useBrowserSignIn": "使用我瀏覽器中的登入資訊",
+      "signInDescription": "從這台電腦上的瀏覽器複製你在 {{server}} 的登入資訊，就不必重新登入。",
+      "site": "網站：{{domain}}",
+      "confirmCopy": "Oleafly 會從 {{browser}} 的 {{profile}} 設定檔讀取 {{domain}} 的 Cookie。它們會留在 Oleafly 中，而且只會傳送到 {{domain}}。你還需要在系統對話框中再確認一次。",
+      "copyAction": "複製登入資訊",
+      "copying": "正在複製…",
+      "notSignedIn_other": "已從 {{browser}} 複製 {{count}} 個 Cookie，但它們沒有讓你登入。請直接登入。"
     },
     "zotero": {
       "apiKeyHint": "取得金鑰的方式：在 <siteLink>zotero.org</siteLink> 登入，開啟你的 <keyLink>API 金鑰頁面</keyLink> 建立金鑰，並從同一頁複製你的數字使用者 ID。",
@@ -1493,6 +1674,132 @@
       "gitSave": "儲存",
       "gitRemove": "移除",
       "gitFailed": "Oleafly 無法儲存 Git 權杖。請檢查是否貼上了完整的權杖。"
+    },
+    "desktopApps": {
+      "tab": "桌面應用程式",
+      "title": "桌面應用程式",
+      "description": "讓代理程式透過 Cua Driver 使用這台電腦上的應用程式和網站。Oleafly 在每次動作前都會詢問，除非你已在聊天、工作階段或任務中允許該類動作。你已登入的瀏覽器和指令碼一律會詢問。",
+      "docsLink": "Cua Driver 說明文件",
+      "status": {
+        "installed": "已安裝 Cua Driver {{version}}。",
+        "installedNoVersion": "已安裝 Cua Driver。",
+        "notInstalled": "尚未安裝 Cua Driver。",
+        "tooOld": "Cua Driver {{version}} 版本過舊。Oleafly 需要 {{minimum}} 或更新版本。",
+        "noAppBundle": "請使用官方安裝程式安裝 Cua Driver，讓它能取得 macOS 權限。",
+        "unreadableVersion": "Oleafly 無法讀取 Cua Driver 的版本。請確認它能執行，然後重新檢查。",
+        "path": "位於 {{path}}"
+      },
+      "install": {
+        "heading": "安裝 Cua Driver",
+        "hint": "在終端機中執行這個指令，或使用「在終端機中執行」。這個指令會啟動 Cua 的官方安裝程式，Oleafly 本身不會下載 Cua Driver。",
+        "run": "在終端機中執行",
+        "needsProject": "開啟一個專案即可在 Oleafly 的終端機中執行，或者複製這個指令。",
+        "confirm": "這會從 cua.ai 下載 Cua Driver 安裝程式並在你的終端機中執行。要繼續嗎？",
+        "terminalTitle": "安裝 Cua Driver",
+        "checkAgain": "重新檢查"
+      },
+      "permissions": {
+        "heading": "macOS 權限",
+        "granted": "Cua Driver 可以使用輔助使用和螢幕錄製。",
+        "needed": "Cua Driver 需要輔助使用和螢幕錄製權限。請執行授權步驟並依照提示操作。",
+        "unknown": "Oleafly 無法讀取 Cua Driver 的權限。",
+        "grant": "授予權限",
+        "terminalTitle": "Cua Driver 權限"
+      },
+      "gnome": {
+        "heading": "GNOME 輔助程式",
+        "needed": "在 GNOME 上，請執行一次 Cua 視窗輔助程式，然後登出再重新登入。",
+        "active": "GNOME 視窗輔助程式已開啟。"
+      },
+      "enable": {
+        "label": "允許代理程式使用桌面應用程式",
+        "description": "代理程式可以看到下方的應用程式和網站。點按、輸入和頁面變更都會先詢問你，除非你已在聊天、工作階段或任務中允許。新增應用程式或網站會清除這些選擇。"
+      },
+      "apps": {
+        "heading": "允許的應用程式",
+        "empty": "還沒有應用程式。代理程式只能使用你在這裡新增的應用程式。",
+        "add": "新增應用程式",
+        "remove": "移除 {{name}}",
+        "missing": "這台電腦上找不到這個程式。請移除它，或重新安裝該應用程式。",
+        "dialog": {
+          "title": "新增應用程式",
+          "description": "選擇一個代理程式可以使用的應用程式。經你核准後，代理程式可以開啟它、讀取它的視窗並在其中操作。",
+          "search": "搜尋應用程式",
+          "loading": "正在尋找應用程式…",
+          "none": "沒有符合的應用程式。",
+          "choose": "選擇其他應用程式…",
+          "add": "新增",
+          "added": "已新增。",
+          "more": "顯示 {{total}} 個中的 {{shown}} 個。可搜尋以縮小範圍。",
+          "refresh": "重新整理"
+        },
+        "blocked": {
+          "oleafly": "Oleafly 無法控制自己。",
+          "driver": "Cua Driver 無法控制自己。",
+          "terminal": "終端機和程式碼編輯器會略過 Oleafly 的指令核准來執行指令。",
+          "system_settings": "系統設定可以變更權限。",
+          "passwords": "不允許使用密碼類應用程式。",
+          "scripting": "指令碼執行器可以在這台電腦上執行任何操作。",
+          "wrapper": "這個項目會啟動另一個程式。請改為選擇那個程式。",
+          "sandboxed": "尚不支援 Flatpak 和 Snap 應用程式。",
+          "browser": "請改在「允許的網站」中新增該瀏覽器的網站。"
+        }
+      },
+      "sites": {
+        "heading": "允許的網站",
+        "empty": "還沒有網站。",
+        "add": "新增網站",
+        "placeholder": "https://www.example.org",
+        "remove": "移除 {{origin}}",
+        "signedIn": {
+          "label": "使用我已登入的瀏覽器",
+          "labelFor": "在 {{origin}} 使用我已登入的瀏覽器",
+          "description": "代理程式會在你自己的 Chrome 或 Edge 中操作這個網站。關閉這個選項則使用另一個瀏覽器設定檔。"
+        }
+      },
+      "scripted": {
+        "label": "指令碼控制",
+        "description": "允許代理程式執行一次完成多個步驟的 Cua 指令碼。每個指令碼執行前，Oleafly 都會詢問。"
+      },
+      "test": {
+        "action": "測試連線",
+        "running": "正在測試…",
+        "ok": "Cua Driver 正依照你的限制執行。",
+        "problems": "Cua Driver 自己的檢查也回報了：",
+        "failed": "測試失敗：{{detail}}"
+      },
+      "tool": {
+        "description": "使用你在設定中允許的桌面應用程式和網站。",
+        "note": "檢視會立即進行。點按、輸入和頁面變更會先詢問，除非你已在聊天中允許。"
+      },
+      "task": {
+        "label": "桌面應用程式",
+        "description": "允許這項任務使用你允許的桌面應用程式。你需要在電腦前核准動作。",
+        "off": "請先在設定中開啟桌面應用程式。",
+        "unattended": "依排程執行或在 Oleafly 關閉後執行的任務無法使用桌面應用程式。"
+      },
+      "spaces": {
+        "title": "Cua Spaces",
+        "description": "將 Cua Spaces 中隔離的桌面和容器以 MCP 伺服器連結。",
+        "notInstalled": "尚未安裝 cua 指令。",
+        "connect": {
+          "label": "連結 Cua Spaces",
+          "description": "代理程式可以列出你的 Space，並檢視在其中執行的代理程式。"
+        },
+        "fullAccess": {
+          "label": "允許變更",
+          "description": "代理程式還可以建立和刪除 Space，並在其中執行指令。"
+        },
+        "credentials": {
+          "label": "分享我的代理程式登入資訊",
+          "description": "讓在 Space 中啟動的代理程式使用你的 Claude Code 或 Codex 登入資訊。"
+        },
+        "failed": "Oleafly 無法更新 Cua Spaces 連結。",
+        "install": {
+          "terminalTitle": "安裝 Cua",
+          "confirm": "這會從 cua.ai 下載 Cua 安裝程式並在你的終端機中執行。要繼續嗎？"
+        }
+      }
     }
   },
   "language": {
@@ -1572,7 +1879,7 @@
         },
         "legend": "核准政策",
         "trust": {
-          "description": "檔案變更不會出現提示。shell 指令與電腦控制一律需要核准。你的 MCP 用戶端仍是另一道關卡。",
+          "description": "檔案變更會直接套用，不會詢問。shell 指令和新增研究任務一律會先詢問。你的 MCP 用戶端仍可自行詢問。",
           "label": "信任這個連線"
         }
       },
@@ -1819,7 +2126,8 @@
       "unavailable": "此 Oleafly 副本不包含該指令。"
     },
     "title": "終端機指令",
-    "update": "更新"
+    "update": "更新",
+    "newTerminal": "請開啟新的終端機來使用 oleafly。已開啟的終端機看不到這項變更。"
   },
   "shortcuts": {
     "actions": {
@@ -1843,10 +2151,6 @@
         "description": "開啟專案快捷鍵參考。",
         "label": "快捷鍵參考"
       },
-      "toggleBrowser": {
-        "description": "顯示或隱藏專案瀏覽器。",
-        "label": "切換瀏覽器"
-      },
       "toggleSidebar": {
         "description": "顯示或隱藏專案側邊欄。",
         "label": "切換側邊欄"
@@ -1858,6 +2162,22 @@
       "toggleTerminal": {
         "description": "顯示或隱藏專案終端機。",
         "label": "切換終端機"
+      },
+      "newTerminal": {
+        "description": "開啟另一個終端機分頁。",
+        "label": "新增終端機"
+      },
+      "closeTerminal": {
+        "description": "關閉你正在輸入的終端機分頁。",
+        "label": "關閉終端機"
+      },
+      "nextTerminal": {
+        "description": "切換到下一個終端機分頁。",
+        "label": "下一個終端機"
+      },
+      "previousTerminal": {
+        "description": "切換到上一個終端機分頁。",
+        "label": "上一個終端機"
       },
       "openFolder": {
         "label": "開啟資料夾",
@@ -2012,6 +2332,42 @@
       "elsewhere": "選單會開啟另一份 Oleafly。修復後將使用目前這份。",
       "moved": "它指向一份已移動的 Oleafly。修復後將使用目前這份。",
       "noDefaultFileManager": "系統沒有為資料夾設定預設檔案管理員，此項目可能會讓所有資料夾都以 Oleafly 開啟。請移除它。"
+    }
+  },
+  "research": {
+    "background": {
+      "title": "背景任務",
+      "enabled": {
+        "label": "Oleafly 關閉後繼續執行任務",
+        "description": "你結束時，標記為繼續執行的任務會交給一個小型背景輔助程式。開啟 Oleafly 時，它會收回這些任務。"
+      },
+      "atLogin": {
+        "label": "登入時啟動輔助程式",
+        "description": "重新開機後繼續執行背景任務。輔助程式沒有工作時會自行結束。",
+        "moveApp": "請先將 Oleafly 移到「應用程式」資料夾。",
+        "needsBackground": "請先開啟背景任務。"
+      },
+      "status": {
+        "label": "背景輔助程式",
+        "running": "正在執行",
+        "stopped": "未執行",
+        "notResponding": "沒有回應",
+        "tasks_other": "正在處理 {{count}} 項任務"
+      },
+      "stop": "停止輔助程式",
+      "stopHint": "它的任務會回到 Oleafly，並在這裡繼續執行。",
+      "stopConfirm": {
+        "title": "要停止背景輔助程式嗎？",
+        "description_other": "它的 {{count}} 項任務會回到 Oleafly，並在這裡繼續執行。"
+      },
+      "stopFailed": "輔助程式沒有停止。請再試一次。",
+      "openLog": "顯示記錄",
+      "statusFailed": "無法讀取背景輔助程式的狀態。",
+      "toggleFailed": "無法變更這項設定。請再試一次。"
+    },
+    "mcpServers": {
+      "loadFailed": "無法讀取 MCP 伺服器清單。",
+      "missing": "{{name}}（找不到）"
     }
   }
 }

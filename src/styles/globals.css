@@ -1511,14 +1511,16 @@ body[data-tour-active] [data-tour-hide] {
 }
 
 @container ai-composer (max-width: 43rem) {
-  .ai-composer-plan {
+  .ai-composer-plan,
+  .ai-composer-web {
     width: 1.75rem;
     justify-content: center;
     gap: 0;
     padding-inline: 0;
   }
 
-  .ai-composer-plan-value {
+  .ai-composer-plan-value,
+  .ai-composer-web-value {
     display: none;
   }
 }
@@ -1570,6 +1572,10 @@ body[data-tour-active] [data-tour-hide] {
   .ai-composer-model .ai-model-selector-value {
     display: none;
   }
+
+  .ai-composer-effort-value {
+    display: none;
+  }
 }
 
 @container ai-composer (max-width: 24rem) {
@@ -1581,7 +1587,10 @@ body[data-tour-active] [data-tour-hide] {
   .ai-composer-attach,
   .ai-composer-plan,
   .ai-composer-figure,
-  .ai-composer-mic {
+  .ai-composer-mic,
+  .ai-composer-web,
+  .ai-composer-effort .ai-composer-effort-trigger,
+  .ai-composer-usage {
     width: 1.5rem;
     height: 1.5rem;
   }

@@ -1,9 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Check,
   ChevronRight,
-  Copy,
   Download,
   Plus,
   RefreshCw,
@@ -25,8 +23,6 @@ import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui
 import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Tooltip } from "@/components/ui/tooltip";
-import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { ReadinessBadge } from "@/components/ai/acp/AgentReadiness";
 import { bridgeSourceLabel, readinessDetail } from "@/components/ai/acp/agent-copy";
@@ -46,13 +42,17 @@ import {
   type AcpReadiness,
   type AcpRegistryEntry,
 } from "@/lib/acp";
-import { AgentProgramField, CopyDetailsButton, programPlacement } from "./AgentProgramField";
+import { AgentProgramField, CopyDetailsButton, CopyValue, programPlacement } from "./AgentProgramField";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useSettingsStore } from "@/store/settings";
 import { useTerminalsStore } from "@/store/terminals";
 import { i18n } from "@/i18n";
 import { Spinner } from "@/components/ui/spinner";
 import { CodeBlock } from "@/components/ui/code-block";
+
+const AcpAgentPreferenceSections = lazy(() => import("./acp/AcpAgentPreferenceSections"));
+const AcpExperimentalSection = lazy(() => import("./acp/AcpExperimentalSection"));
+const HermesSection = lazy(() => import("./acp/HermesSection"));
 
 const example = JSON.stringify(
   {
@@ -65,39 +65,6 @@ const example = JSON.stringify(
   null,
   2,
 );
-
-function CopyValue({ value, label }: Readonly<{ value: string; label: string }>) {
-  const { t } = useTranslation(["common"]);
-  const { copied, copy } = useCopyStatus();
-  const copiedLabel = t(($) => $.common.actions.copied);
-
-  return (
-    <Tooltip label={copied ? copiedLabel : label}>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className={
-          copied
-            ? "size-8 shrink-0 text-emerald-600 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400"
-            : "size-8 shrink-0"
-        }
-        aria-label={copied ? copiedLabel : label}
-        data-copied={copied ? "true" : undefined}
-        onClick={() => void copy(value)}
-      >
-        {copied ? (
-          <Check aria-hidden="true" className="size-3.5" />
-        ) : (
-          <Copy aria-hidden="true" className="size-3.5" />
-        )}
-        <span aria-live="polite" className="sr-only">
-          {copied ? copiedLabel : ""}
-        </span>
-      </Button>
-    </Tooltip>
-  );
-}
 
 function RegistryResult({
   entry,
@@ -250,6 +217,7 @@ function AgentCard({
     <AgentProgramField
       agent={agent}
       placement={fieldPlacement}
+      projectId={projectId}
       disabled={!!busy}
       retestToken={retestToken}
       onStatus={onStatus}
@@ -356,14 +324,19 @@ function AgentCard({
               </div>
             </section>
           )}
+          {id === "gemini" && (
+            <p data-testid="acp-gemini-note" className="text-[0.6875rem] leading-relaxed text-muted-foreground">
+              {t(($) => $.ai.acp.signIn.geminiGoogle)}
+            </p>
+          )}
           <CollapsibleSection
             id={`acp-agent-bridge-details-${id}`}
             title={t(($) => $.settings.ai.agents.bridgeTitle)}
             headingLevel="h4"
             className="bg-background/40"
           >
-            <dl className="grid grid-cols-3 gap-x-4 gap-y-3">
-              <div className="col-span-3 min-w-0">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+              <div className="col-span-2 min-w-0 sm:col-span-4">
                 <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.bridgePathLabel)}
                 </dt>
@@ -395,6 +368,14 @@ function AgentCard({
                 </dt>
                 <dd className="mt-1 text-xs text-foreground">
                   {bridgeSourceLabel(agent)}
+                </dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t(($) => $.settings.ai.agents.protocolLabel)}
+                </dt>
+                <dd data-testid={`acp-agent-protocol-${id}`} className="mt-1 text-xs text-foreground">
+                  {agent.runtime?.protocolLabel ?? t(($) => $.settings.ai.agents.notReported)}
                 </dd>
               </div>
             </dl>
@@ -467,6 +448,12 @@ function AgentCard({
               )}
             </section>
           )}
+          <div className="space-y-4 border-t border-border/70 pt-4">
+            <Suspense fallback={null}>
+              <AcpAgentPreferenceSections agentId={id} providers={Boolean(agent.runtime?.providers)} />
+              {id === "hermes" && projectId && <HermesSection projectId={projectId} />}
+            </Suspense>
+          </div>
           {!agent.definition.builtin && (
             <div className="flex border-t border-border/70 pt-3">
               <Button
@@ -928,6 +915,10 @@ export function AcpAgentsTab({
           </div>
         </form>
       </CollapsibleSection>
+
+      <Suspense fallback={null}>
+        <AcpExperimentalSection />
+      </Suspense>
 
       <Dialog open={reviewing} onOpenChange={(open) => { if (!open && !busy) setReview(null); }}>
         <DialogContent

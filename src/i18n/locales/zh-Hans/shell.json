@@ -52,19 +52,6 @@
   "branding": {
     "assistantMascot": "Oleafly AI 助手吉祥物"
   },
-  "browser": {
-    "address": "搜索或输入 URL",
-    "back": "后退",
-    "closeTab": "关闭标签页",
-    "copyUrl": "复制 URL",
-    "forward": "前进",
-    "moreOptions": "更多选项",
-    "newTab": "新建标签页",
-    "openExternal": "在浏览器中打开",
-    "openTabs": "已打开的标签页",
-    "reload": "重新加载",
-    "setHomePage": "设为主页"
-  },
   "changelog": {
     "installed": "当前使用的版本",
     "sectionItems_other": "{{count}} 项更改",
@@ -474,10 +461,6 @@
       "hide": "隐藏 AI 助手",
       "show": "显示 AI 助手"
     },
-    "browser": {
-      "close": "关闭浏览器（{{shortcut}}）",
-      "open": "打开浏览器（{{shortcut}}）"
-    },
     "settings": "设置",
     "sidebar": {
       "hide": "隐藏侧边栏（{{shortcut}}）",
@@ -592,22 +575,14 @@
     "tryAgain": "重试",
     "savedCopy": "已将打开的文件保存到 {{folder}}。"
   },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub：{{login}}",
-    "actions": "GitHub 操作",
-    "connect": "连接 GitHub…",
-    "connectedAs": "已连接为 @{{login}}",
-    "copyRepositoryLink": "复制仓库链接",
-    "openInGithub": "在 GitHub 中打开",
-    "pushHint": "推送到 GitHub 即可启用这些功能。",
-    "settings": "GitHub 设置",
-    "tooltip": "GitHub"
-  },
   "home": {
     "ariaLabel": "主页",
     "label": "主页",
     "title": "返回项目库",
     "tooltip": "返回项目库。"
+  },
+  "importDestination": {
+    "scansGoTo": "扫描件会发送到 {{provider}}"
   },
   "keys": {
     "enter": "Enter",
@@ -724,8 +699,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} 未保存的更改仍处于打开状态。你可以留下修复问题，或仍然退出并丢失这些更改。",
+      "descriptionReload": "{{reason}} 未保存的更改仍处于打开状态。你可以留下修复问题，或仍然重新加载并丢失这些更改。",
       "descriptionRestart": "{{reason}} 未保存的更改仍处于打开状态。你可以留下修复问题，或仍然重启并丢失这些更改。",
       "quitAnyway": "仍然退出",
+      "reloadAnyway": "仍然重新加载",
       "restartAnyway": "仍然重启",
       "stay": "留下",
       "title": "部分文件无法保存"
@@ -747,6 +724,14 @@
     "search": "搜索项目",
     "sourceControl": "源代码管理",
     "withShortcut": "{{label}} ({{shortcut}})"
+  },
+  "remoteMenu": {
+    "accountLabel": "{{host}} 上的 {{login}}",
+    "actions": "仓库操作",
+    "copyRepositoryLink": "复制仓库链接",
+    "openOnHost": "在 {{host}} 上打开",
+    "settings": "Git 托管设置",
+    "signedInAs": "已以 {{login}} 身份登录 {{host}}"
   },
   "renameDialog": {
     "close": "关闭重命名对话框",
@@ -790,9 +775,9 @@
         "movedCount_other": "已将 {{count}} 个项目移入回收站。",
         "title": "危险区"
       },
-      "githubHint": "跨设备备份或同步项目：连接 GitHub，然后在“源代码管理”中使用<push>推送</push> / <pull>拉取</pull>。<setup>设置 GitHub →</setup>",
+      "gitHostingHint": "备份项目或在设备之间同步：将其关联到 Git 仓库，然后在源代码管理中使用 <push>推送</push> / <pull>拉取</pull>。<setup>设置 Git 托管 →</setup>",
       "localFirst": "Oleafly 采用本地优先设计。所有项目都保存在你的磁盘上：",
-      "plainFolders": "每个项目都是一个普通文件夹。Git 历史是可选的，除非你推送到 GitHub，否则不会有任何数据离开你的电脑。",
+      "plainFolders": "每个项目都是普通文件夹。Git 历史是可选的，除非你推送到 Git 服务器，否则任何内容都不会离开你的计算机。",
       "recycleBin": {
         "clearAll": "全部清空",
         "clearFailed": "无法清空回收站。",
@@ -855,11 +840,12 @@
         "description": "显示 Oleafly 工具库以及各个工具（PDF 导入、公式、表格、BibTeX、实验与文献检索、截止日期）及其斜杠命令。仍处于测试阶段，默认关闭。",
         "label": "LaTeX 工具"
       },
-      "warning": "这些功能为实验性功能，仍处于测试阶段。它们尚未经过完整测试，可能会在未来的版本中变化、出错或被移除。仅在你想要尝试开发中的功能时才开启。",
-      "webBrowser": {
-        "description": "显示应用内浏览器（含侧边栏开关和快捷方式），并允许 AI 通过 computer use 操控浏览器。目前处于测试阶段，默认关闭。关闭时不会显示浏览器按钮，AI 也没有浏览器工具。",
-        "label": "网页浏览器"
-      }
+      "researchTasks": {
+        "description": "代理会在项目的副本中自行工作，并把修改留给你审阅。极不稳定：运行可能卡住、失败，或留下需要手动处理的修改，而且全程都会占用你的提供商额度。会在设置中添加“研究”分区。关闭后会停止所有正在运行的任务。默认关闭，开启后风险自负。",
+        "label": "研究任务",
+        "saveFailed": "无法保存研究任务开关。请重试。"
+      },
+      "warning": "这些功能为实验性功能，仍处于测试阶段。它们尚未经过完整测试，可能会在未来的版本中变化、出错或被移除。仅在你想要尝试开发中的功能时才开启。"
     },
     "footer": {
       "followOnX": "在 X 上关注",
@@ -941,7 +927,8 @@
       "general": "通用",
       "help": "帮助与关于",
       "integrations": "集成",
-      "shortcuts": "键盘快捷键"
+      "shortcuts": "键盘快捷键",
+      "research": "研究"
     },
     "search": {
       "empty": "没有匹配的设置",
@@ -956,8 +943,9 @@
         "experimentation": "实验室，测试版，beta，早期功能",
         "general": "偏好设置，语言，区域，拼写检查，拼写，错别字，离线，导览，终端命令",
         "help": "关于，版本，更新，更新日志，新功能，文档，支持，社区，Discord，许可证，崩溃报告",
-        "integrations": "Zotero，GitHub，MCP，引用，账户，连接",
-        "shortcuts": "按键绑定，快捷键，热键，按键，键盘"
+        "integrations": "Zotero，GitHub，GitLab，Gitea，Forgejo，Codeberg，Git 托管，桌面应用，Cua，MCP，引用，账户，连接",
+        "shortcuts": "按键绑定，快捷键，热键，按键，键盘",
+        "research": "研究 任务 预算 通知 保持唤醒 实验 运行 research tasks"
       },
       "label": "搜索设置",
       "results_other": "{{count}} 个分区匹配"
@@ -1037,7 +1025,6 @@
     "commitCount_other": "{{count}} 个提交",
     "initialize": "初始化仓库",
     "initialized": "已在分支 {{branch}} 上初始化 Git。",
-    "linkCopied": "GitHub 链接已复制",
     "markResolved": "标记为已解决",
     "mergeNeedsAttention": "解决合并冲突",
     "moreActions": "更多源码管理操作",
@@ -1051,18 +1038,19 @@
     "openFile": "打开文件",
     "openFileFor": "打开 {{path}}",
     "popStash": "应用最近的储藏",
-    "publish": "发布到 GitHub",
+    "publishRepository": "发布…",
+    "publishTo": "发布到 {{host}}",
     "published": "已发布到 {{url}}",
     "pull": "从 origin 拉取",
     "pullShort": "拉取",
     "push": "提交并推送到 origin。",
     "pushShort": "推送",
     "pushSkippedNoRemote": "⚠ 已跳过推送：下方未设置远程 origin。",
-    "pushSkippedNoToken": "⚠ 已跳过推送：没有 GitHub 令牌（设置 → GitHub）。",
     "refresh": "刷新",
     "remote": "远程仓库",
     "remoteHint": "创建新仓库，或将已有仓库关联为该项目的远程仓库，然后推送。",
     "removeCredential": "移除已保存的凭据",
+    "repositoryLinkCopied": "已复制仓库链接",
     "restoreCommit": "恢复此版本",
     "restoreCommitDescription": "这会用此版本替换项目中所有受 Git 跟踪的文件，并移除之后新增的文件。分支仍停留在当前提交。",
     "restoreCommitTitle": "恢复此版本？",
@@ -1091,7 +1079,7 @@
     "titleRequired": "必须填写提交标题。",
     "titleRequiredStatus": "提交前请先输入提交标题。",
     "unlink": "取消链接",
-    "unlinked": "已取消与 GitHub 的链接。",
+    "unlinkedFrom": "已取消与 {{host}} 的关联。",
     "unstage": "取消暂存",
     "unstageFor": "取消暂存 {{path}}",
     "unstageAll": "全部取消暂存",

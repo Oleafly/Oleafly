@@ -182,16 +182,34 @@
     "terminal": "正在載入終端機"
   },
   "terminal": {
+    "activity": "有新動態",
+    "clipboard": {
+      "blocked": "終端機中的程式想要複製文字。"
+    },
     "closeCurrent": "關閉目前分頁",
     "closeLeft": "關閉左側全部",
     "closeOthers": "關閉其他分頁",
     "closeRight": "關閉右側全部",
     "closeTab": "關閉 {{title}}",
     "color": "顏色",
+    "dropRefused_other": "{{count}} 個檔名包含控制字元，因此不會在終端機中輸入。",
     "errors": {
       "input": "shell 無法接受輸入",
       "resize": "終端機無法調整大小",
       "start": "shell 無法啟動"
+    },
+    "find": {
+      "count": "第 {{current}} 個，共 {{total}} 個",
+      "label": "在終端機中尋找",
+      "next": "下一個符合項目",
+      "none": "沒有符合項目",
+      "previous": "上一個符合項目"
+    },
+    "launch": {
+      "invalid": "這個指令無法在終端機中執行。",
+      "noProject": "請開啟一個專案以使用終端機。",
+      "run": "執行",
+      "title": "要在終端機中執行這個指令嗎？"
     },
     "limitReached": "關閉一個終端機才能再開新的",
     "links": {
@@ -200,8 +218,25 @@
       "openUrlFailed": "無法開啟連結。"
     },
     "newTerminal": "新增終端機",
+    "openInTerminal": "在終端機中開啟",
     "settings": "終端機設定",
     "starting": "正在啟動專案 shell…",
+    "stop": {
+      "closeMany": "關閉終端機",
+      "closeOne": "關閉終端機",
+      "closeProject": "關閉專案",
+      "dontAsk": "不要再詢問",
+      "dontAskHint": "若要重新開啟，請前往「設定 > 外觀 > 終端機」的「關閉忙碌的終端機前詢問」。",
+      "many_other": "仍有程式在 {{count}} 個終端機中執行。",
+      "named": "{{process}} 仍在 {{title}} 中執行。",
+      "quit": "結束",
+      "reload": "重新載入",
+      "restart": "重新啟動",
+      "switchProject": "切換專案",
+      "titleMany": "要停止正在執行的程式嗎？",
+      "titleOne": "要停止正在執行的程式嗎？",
+      "unnamed": "仍有程式在 {{title}} 中執行。"
+    },
     "tabs": "終端機",
     "titleInput": "終端機標題"
   },

@@ -19,7 +19,6 @@
     "selectAll": "Select All",
     "view": "View",
     "toggleTerminal": "Toggle Terminal",
-    "toggleBrowser": "Toggle Browser",
     "file": "File",
     "openFolder": "Open Folder…",
     "openRecent": "Open Recent",
@@ -28,15 +27,7 @@
     "minimize": "Minimize",
     "fullscreen": "Toggle Full Screen",
     "bringAllToFront": "Bring All to Front",
-    "newTab": "New Tab",
-    "openLocation": "Open Location…",
-    "closeTab": "Close Tab",
-    "reloadPage": "Reload Page",
     "zenMode": "Zen Mode"
-  },
-  "window": {
-    "browser": "Oleafly Browser",
-    "browserTitled": "{{title}} - Oleafly Browser"
   },
   "dialog": {
     "cancel": "Cancel",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Confirm cookie import",
-      "messageHost": "Import cookies for {{hostname}} from {{browser}} profile \"{{profile}}\" into Oleafly's in-app browser? Imported cookies may sign you in to websites.",
-      "messageAll": "Import all cookies from {{browser}} profile \"{{profile}}\" into Oleafly's in-app browser? Imported cookies may sign you in to websites.",
-      "confirm": "Import cookies"
+      "copyHost": "Copy the cookies for {{hostname}} from {{browser}} profile \"{{profile}}\" into Oleafly? They can sign you in to {{hostname}}.",
+      "copyAll": "Copy every cookie from {{browser}} profile \"{{profile}}\" into Oleafly? They can sign you in to websites.",
+      "copyConfirm": "Copy cookies"
     },
     "mcpApprove": {
       "title": "Approve MCP tool",
@@ -108,6 +99,60 @@
       "title": "Allow code in this shared project?",
       "message": "Compiling will then run the code in this project on this computer. Anyone with edit access can change that code. Only allow this if you trust everyone in the project.",
       "confirm": "Allow on this computer"
+    },
+    "desktopApps": {
+      "title": "Desktop apps",
+      "action": "{{agent}} wants to {{action}}.",
+      "steps": "{{agent}} wants to run these steps in a desktop app:",
+      "moreSteps": "Steps not shown and not run: {{count}}",
+      "moreItems": "Items not shown: {{count}}",
+      "cut": "(characters not shown: {{count}})",
+      "signedIn": "This acts in your own signed-in browser.",
+      "signedInOn": "This acts in your own signed-in browser, on {{origin}}.",
+      "task": "Task: {{title}}",
+      "app": "App: {{name}}",
+      "window": "Window: {{title}}",
+      "element": "Element: {{element}}",
+      "text": "Text: \"{{text}}\"",
+      "address": "Address: {{url}}",
+      "allowOnce": "Allow once",
+      "allowChat": "Allow for this chat",
+      "allowSession": "Allow for this session",
+      "allowTask": "Allow for this task",
+      "deny": "Don't allow",
+      "pickedFile": "the file you picked",
+      "actions": {
+        "launchApp": "open an app",
+        "click": "click in an app",
+        "doubleClick": "double-click in an app",
+        "rightClick": "right-click in an app",
+        "typeText": "type in an app",
+        "pressKey": "press a key in an app",
+        "hotkey": "press a keyboard shortcut in an app",
+        "scroll": "scroll in an app",
+        "setValue": "change a field in an app",
+        "browserPrepare": "open a browser for a website",
+        "browserNavigate": "go to a web page",
+        "browserClick": "click on a web page",
+        "browserType": "type on a web page",
+        "browserSelect": "pick an option on a web page",
+        "runScript": "run a Cua script"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "Allow desktop control?",
+      "message": "Agents will be able to use these. They ask before each action, and saving this clears any \"Allow for this chat\" choices:",
+      "confirm": "Allow",
+      "enabled": "Desktop apps",
+      "app": "App: {{identity}} ({{name}})",
+      "more": "And {{count}} more",
+      "site": "Website: {{origin}}",
+      "signedIn": "Your signed-in browser on {{origin}}",
+      "scripted": "Cua scripts",
+      "spacesTitle": "Give Cua Spaces more access?",
+      "spacesMessage": "Agents that use Cua Spaces will be able to:",
+      "spacesChanges": "Create and delete Spaces, and run commands in them",
+      "spacesSignIns": "Use your Claude Code or Codex sign-in inside a Space"
     }
   },
   "errors": {
@@ -133,5 +178,41 @@
   "cloud": {
     "connectedPage": "You're connected. You can close this tab and go back to Oleafly.",
     "failedPage": "Sign-in did not finish. You can close this tab and go back to Oleafly."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Task ready for review",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Plan ready to approve",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "A task needs your approval",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Task stopped",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Task budget used up",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly keeps working",
+      "body": "Research tasks you marked to keep running continue in the background. Open Oleafly to see their progress."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Permission checks are off ({{mode}})",
+      "description": "The agent can edit files and run commands without asking. Oleafly could not switch it to another mode. Change the mode in the agent's own settings."
+    }
   }
 }

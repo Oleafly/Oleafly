@@ -1,57 +1,56 @@
 import {
   lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
-  type MutableRefObject, type RefObject,
+  useSyncExternalStore, type MutableRefObject, type RefObject,
 } from "react";
-import { ArrowUp, Paperclip, Plus, Sparkles, Square, X } from "lucide-react";
+import { Brain, Plus, Server } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Tooltip } from "@/components/ui/tooltip";
+import { ErrorState } from "@/components/ui/empty";
+import type { ChatComposerHandle } from "@/components/ai/composer/ChatComposer";
 import { useResearchChatActions } from "@/components/ai/use-research-chat-actions";
 import { MessageList, type RenderedMessage } from "@/components/ai/MessageList";
+import { Shimmer } from "@/components/ai/chat-parts";
+import { liveMessageFor } from "@/components/ai/live-message";
 import {
-  acpAuthenticate, acpCancel, acpDisconnect, acpError, acpPermission, acpPrompt, acpReadiness,
-  acpReconnect, acpSetModel, acpUsable, type AcpAgentStatus, type AcpImage, type AcpSession,
+  acpCommitTurn, acpDisconnect, acpElicitationRespond, acpError, acpPermission, acpReadiness,
+  acpReconnect, acpUsable, type AcpAgentStatus, type AcpSession,
 } from "@/lib/acp";
 import { cn } from "@/lib/utils";
 import {
-  attachAcpListeners, isDelegatedSession, useAcpSessionView, useAcpSessionsStore, type AcpAttachment,
+  acpComposerId, attachAcpListeners, isDelegatedSession, useAcpSessionView, useAcpSessionsStore,
+  type AcpPromptDraft,
 } from "@/store/acp-sessions";
+import { useComposerDrafts } from "@/store/composer-drafts";
 import { AssistantHome } from "@/components/ai/home/AssistantHome";
 import { AgentPickerRow, type AgentPickerEntry } from "@/components/ai/home/AgentPickerRow";
-import { openCliAgentSettings } from "@/components/ai/AssistantShellAcpActions";
 import { isSkillAvailable, useSkills, type SkillEntry } from "@/lib/skills";
 import { cliResearchPresets, type ResearchPreset } from "@/lib/research-presets";
 import { gitIsInitialized } from "@/lib/tauri";
 import { TurnChangesCard } from "@/components/ai/turns/TurnChangesCard";
-import { SaveFlushError, useFilesStore } from "@/store/files";
-import { flushOpenFilesToDisk } from "@/lib/external-file-changes";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { AgentLogo } from "./AgentLogo";
-import { AGENT_MARK_IDS } from "./agent-marks";
-import { BridgeInstallCard, openAgentSignInTerminal } from "./AgentReadiness";
-import { terminalLimitMessage } from "@/store/terminals";
+import { BridgeInstallCard } from "./AgentReadiness";
 import { TrustRequiredNotice } from "@/components/open-folder/TrustRequiredNotice";
 import { PermissionCard } from "./PermissionCard";
 import { useAcpConversation, useAcpHasMessages, useAcpMessages, type AcpConversation } from "./conversation";
 import type { ResearchChatActions } from "@/lib/chat-activity";
 import { Spinner } from "@/components/ui/spinner";
+import { AcpComposer, acpDraftId, restoreDraft } from "./AcpComposer";
+import { AcpComposerChips } from "./AcpComposerChips";
+import { AcpControls } from "./AcpControls";
+import { AcpSessionHeader } from "./AcpSessionHeader";
+import { AcpSignIn } from "./AcpSignIn";
+import { ElicitationCard } from "./ElicitationCard";
 
 const CleanLibraryDialog = lazy(() =>
   import("@/components/layout/CleanLibraryDialog").then((module) => ({ default: module.CleanLibraryDialog })),
 );
 
 const EMPTY_PERMISSIONS: never[] = [];
-const EMPTY_IMAGES: AcpAttachment[] = [];
+const EMPTY_ELICITATIONS: never[] = [];
 
 function canReconnect(session: AcpSession): boolean {
   if (isDelegatedSession(session)) return false;
@@ -67,22 +66,32 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   const session = useAcpSessionView(activeId);
   const hasEarlier = useAcpSessionsStore((state) => (activeId ? (state.events[activeId]?.[0]?.sequence ?? 0) > 1 : false));
   const permissions = useAcpSessionsStore((state) => activeId ? state.permissions[activeId] ?? EMPTY_PERMISSIONS : EMPTY_PERMISSIONS);
+  const elicitations = useAcpSessionsStore((state) => activeId ? state.elicitations[activeId] ?? EMPTY_ELICITATIONS : EMPTY_ELICITATIONS);
+  const sending = useAcpSessionsStore((state) => (activeId ? (state.sending[activeId] ?? 0) > 0 : false));
   const agentId = composer?.agentId ?? null;
-  const draft = composer?.draft ?? "";
-  const images = composer?.images ?? EMPTY_IMAGES;
   const setComposer = useAcpSessionsStore((state) => state.setComposer);
   const error = useAcpSessionsStore((state) => state.errors[projectId] ?? null);
+  // Why this conversation's last message did not go out (kept with it, not the project).
+  const sessionError = useAcpSessionsStore((state) => (activeId ? state.sessionErrors[activeId] ?? null : null));
   const starting = useAcpSessionsStore((state) => state.starting[projectId] ?? false);
   const setProjectError = useAcpSessionsStore((state) => state.setError);
   const setError = useCallback(
-    (message: string | null) => setProjectError(projectId, message),
+    (message: string | null) => {
+      setProjectError(projectId, message);
+      // A new action clears what the open conversation last reported, as it clears the project's.
+      if (message === null) {
+        const shown = useAcpSessionsStore.getState().activeByProject[projectId];
+        if (shown) useAcpSessionsStore.getState().setSessionError(shown, null);
+      }
+    },
     [projectId, setProjectError],
   );
   const [busy, setBusy] = useState(false);
-  const [sending, setSending] = useState(false);
+  // Connecting to the agent (reconnect, sign in); the status pill says so, unlike other actions.
+  const [connecting, setConnecting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const nearBottomRef = useRef(true);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<ChatComposerHandle>(null);
   const running = session?.status === "running" || session?.status === "cancelling" || sending;
   const conversation = useAcpConversation(activeId, sending);
   const hasMessages = useAcpHasMessages(conversation);
@@ -90,22 +99,22 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     () => catalog.find((agent) => agent.definition.id === agentId),
     [catalog, agentId],
   );
+  const sessionAgent = useMemo(
+    () => (session ? catalog.find((agent) => agent.definition.id === session.agentId) : undefined),
+    [catalog, session],
+  );
   const selectedReadiness = selectedAgent ? acpReadiness(selectedAgent) : null;
   const projectName = useFilesStore((state) => state.projectName);
   const skillsQuery = useSkills(projectId);
   const skills = skillsQuery.data ?? [];
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const composerSkill = composer?.skill ?? null;
   const [cleanLibraryOpen, setCleanLibraryOpen] = useState(false);
   const [gitRepository, setGitRepository] = useState(false);
-  const setDraft = useCallback((value: string) => setComposer(projectId, { draft: value }), [projectId, setComposer]);
   const focusComposer = useCallback(() => {
-    requestAnimationFrame(() => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      textarea.focus({ preventScroll: true });
-      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-    });
+    requestAnimationFrame(() => composerRef.current?.focus());
+  }, []);
+  // Sending brings the transcript down to the new message and the answer.
+  const followSentMessage = useCallback(() => {
+    nearBottomRef.current = true;
   }, []);
   // A picked skill travels with the next message as a chip; the agent gets its
   // instructions inline, so it works for agents without Oleafly's tools (Pi).
@@ -116,6 +125,22 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     },
     [focusComposer, projectId, setComposer],
   );
+  const perform = useCallback(async (action: () => Promise<void>) => {
+    setError(null); setBusy(true);
+    try { await action(); } catch (error_) { setError(acpError(error_)); }
+    finally { setBusy(false); }
+  }, [setError]);
+  const performConnecting = useCallback(async (action: () => Promise<void>) => {
+    setConnecting(true);
+    try { await perform(action); } finally { setConnecting(false); }
+  }, [perform]);
+  // A draft stays with what the user is writing for when a conversation starts from this panel.
+  const carryDraft = (fromId: string) => {
+    const state = useAcpSessionsStore.getState();
+    const id = state.activeByProject[projectId];
+    const started = id ? state.sessions[id] : undefined;
+    if (started) useComposerDrafts.getState().moveDraft(fromId, acpDraftId(projectId, null, started));
+  };
   const chooseAgent = (nextAgentId: string) => {
     const state = useAcpSessionsStore.getState();
     if (state.composers[projectId]?.agentId === nextAgentId) return;
@@ -128,12 +153,14 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     );
     void perform(async () => {
       if (ready) {
+        const shownDraft = acpDraftId(projectId, open.agentId, open);
         try {
           await useAcpSessionsStore.getState().start(projectId, nextAgentId);
         } catch (error_) {
           setComposer(projectId, { agentId: open.agentId });
           throw error_;
         }
+        carryDraft(shownDraft);
         return;
       }
       if (["ready", "auth_required"].includes(open.status)) {
@@ -149,7 +176,6 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     settings.setSettingsScrollTarget("ai-skills");
     settings.setSettingsOpen(true);
   }, []);
-  const setImages = useCallback((value: AcpAttachment[]) => setComposer(projectId, { images: value }), [projectId, setComposer]);
 
   useEffect(() => {
     let current = true;
@@ -163,13 +189,17 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   useEffect(() => {
     let disposed = false;
     let detach: (() => void) | undefined;
-    setError(null);
+    // The project's last error only: why a conversation's message did not go
+    // out stays until the user does something there.
+    setProjectError(projectId, null);
     void (async () => {
       detach = await attachAcpListeners();
       if (disposed) { detach(); return; }
       const state = useAcpSessionsStore.getState();
       await Promise.all([state.refreshCatalog(), state.loadProject(projectId)]);
-      const id = state.activeByProject[projectId];
+      if (disposed) return;
+      // Read after the waits: a conversation opened from History meanwhile stays shown.
+      const id = useAcpSessionsStore.getState().activeByProject[projectId];
       if (id) await state.open(projectId, id);
     })().catch((error_: unknown) => { if (!disposed) setError(acpError(error_)); });
     const refresh = () => { void useAcpSessionsStore.getState().refreshCatalog().catch(() => {}); };
@@ -179,79 +209,55 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       detach?.();
       window.removeEventListener("oleafly:acp-catalog-changed", refresh);
     };
-  }, [projectId, setError]);
+  }, [projectId, setError, setProjectError]);
 
   useEffect(() => {
     if (!catalog.length) return;
     if (agentId && catalog.some((agent) => agent.definition.id === agentId)) return;
     const preferred = catalog.find((agent) => acpUsable(agent)) ?? catalog[0];
+    // Text typed before the catalog loaded was kept under no agent.
+    useComposerDrafts.getState().moveDraft(acpComposerId(projectId, null), acpComposerId(projectId, preferred.definition.id));
     setComposer(projectId, { agentId: preferred.definition.id });
   }, [catalog, agentId, projectId, setComposer]);
 
-  const perform = async (action: () => Promise<void>) => {
-    setError(null); setBusy(true);
-    try { await action(); } catch (error_) { setError(acpError(error_)); }
-    finally { setBusy(false); }
-  };
-  const send = async () => {
-    if (!activeId || session?.status !== "ready" || sending || (!draft.trim() && images.length === 0)) return;
-    const message = draft;
-    const attachments = images;
-    const prompt = [{ type: "text", text: message }, ...attachments.map(({ image }) => ({ type: "image", ...image }))];
-    if (new TextEncoder().encode(message).byteLength > 256 * 1024 || new TextEncoder().encode(JSON.stringify({ sessionId: session.nativeSessionId, prompt })).byteLength > 1024 * 1024 - 1024) {
-      setError(t(($) => $.ai.acp.messageTooLarge));
-      return;
-    }
-    const beforeSequence = useAcpSessionsStore.getState().sessions[activeId]?.lastSequence ?? session.lastSequence;
-    const clearComposer = () => setComposer(projectId, { draft: "", images: [], skill: null });
-    setError(null); setSending(true); nearBottomRef.current = true;
-    try {
-      await flushOpenFilesToDisk(projectId, "save before agent prompt");
-    } catch (error_) {
-      if (!(error_ instanceof SaveFlushError)) setError(acpError(error_));
-      setSending(false);
-      return;
-    }
-    try {
-      useAcpSessionsStore.getState().setSnapshot(await acpPrompt(projectId, activeId, message, attachments.map((value) => value.image), composerSkill?.id ?? null));
-      clearComposer();
-    } catch (error_) {
-      await useAcpSessionsStore.getState().resync(projectId, activeId).catch(() => {});
-      const state = useAcpSessionsStore.getState();
-      if (state.sessions[activeId]?.status !== "auth_required") setError(acpError(error_));
-      if (state.events[activeId]?.some((event) => event.kind === "user_message" && event.sequence > beforeSequence)) clearComposer();
-    } finally { setSending(false); }
-  };
   const choosePermission = async (id: string, option: string | null) => {
     if (!activeId) return;
     setError(null);
     try { await acpPermission(projectId, activeId, id, option); }
     catch (error_) { setError(acpError(error_)); }
   };
-  const addImage = (file: File) => {
-    if (file.size > 480 * 1024 || images.length >= 4) {
-      setError(t(($) => $.ai.acp.imageTooLarge));
-      return;
+  /** False when the answer did not reach the agent (the banner says why). */
+  const answerQuestion = async (id: string, action: "accept" | "decline" | "cancel", content?: Record<string, unknown>) => {
+    if (!activeId) return false;
+    setError(null);
+    try {
+      await acpElicitationRespond(projectId, activeId, id, action, content ?? null);
+      return true;
+    } catch (error_) {
+      setError(acpError(error_));
+      return false;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const data = (typeof reader.result === "string" ? reader.result : "").split(",")[1];
-      if (!data) return;
-      const image: AcpImage = { mimeType: file.type, data };
-      setComposer(projectId, {
-        images: [...useAcpSessionsStore.getState().composers[projectId]?.images ?? [], { id: crypto.randomUUID(), name: file.name, image }],
-      });
-    };
-    reader.onerror = () => setError(t(($) => $.ai.acp.imageReadFailed));
-    reader.readAsDataURL(file);
   };
 
-  const canSend = session?.status === "ready" && !busy && (!!draft.trim() || images.length > 0);
-  const composerDisabled = session?.status !== "ready" || sending;
   const canStart = !!selectedAgent && acpUsable(selectedAgent) && !busy && !running;
   const start = () => void perform(async () => {
-    if (agentId) await useAcpSessionsStore.getState().start(projectId, agentId);
+    if (!agentId) return;
+    const shownDraft = acpDraftId(projectId, agentId, session);
+    await useAcpSessionsStore.getState().start(projectId, agentId);
+    carryDraft(shownDraft);
   });
+  // Enter with no conversation starts one and sends the message when ready.
+  const startWithDraft = useCallback((draft: AcpPromptDraft) => {
+    if (!agentId) return;
+    void perform(async () => {
+      try {
+        await useAcpSessionsStore.getState().startWithPrompt(projectId, agentId, draft);
+      } catch (error_) {
+        restoreDraft(projectId, acpDraftId(projectId, agentId, undefined), draft);
+        throw error_;
+      }
+    });
+  }, [agentId, perform, projectId]);
 
   // A preset fills the composer and starts a conversation when none is open.
   // It never sends: the researcher reads and adjusts the prompt first.
@@ -263,10 +269,14 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     const presetSkill = preset.skillId
       ? skills.find((entry) => entry.id === preset.skillId && entry.validation.status === "valid" && isSkillAvailable(entry))
       : undefined;
-    setComposer(projectId, {
-      draft: preset.prompt,
-      skill: presetSkill ? { id: presetSkill.id, name: presetSkill.name } : null,
-    });
+    // Added after what the user typed, which stays.
+    const draftId = acpDraftId(projectId, agentId, session);
+    const typed = useComposerDrafts.getState().drafts[draftId]?.text ?? "";
+    let text = preset.prompt;
+    if (typed.includes(preset.prompt)) text = typed;
+    else if (typed.trim()) text = `${typed.trimEnd()}\n\n${preset.prompt}`;
+    useComposerDrafts.getState().setText(draftId, text);
+    setComposer(projectId, { skill: presetSkill ? { id: presetSkill.id, name: presetSkill.name } : null });
     focusComposer();
     if (!session && canStart && !starting) start();
   };
@@ -276,16 +286,41 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     icon: preset.icon,
     onSelect: () => pickPreset(preset),
   }));
+  const agentNameOf = (id: string) => catalog.find((agent) => agent.definition.id === id)?.definition.name ?? id;
+  const commitTurn = session && !isDelegatedSession(session) && gitRepository && !session.remote
+    ? (turnId: string, paths: string[], message: string) =>
+        acpCommitTurn(projectId, session.id, turnId, message, paths).then(() => undefined)
+    : undefined;
+
+  const homeSubtitle = () => {
+    if (session?.status === "ready") {
+      return t(($) => $.ai.acp.readySubtitle, {
+        agent: selectedAgent?.definition.name ?? session.agentId,
+      });
+    }
+    if (projectName) return t(($) => $.ai.acp.projectSubtitle, { project: projectName });
+    return undefined;
+  };
+
   const conversationBody = () =>
     hasMessages ? (
-      <AcpConversationMessages
-        conversation={conversation}
-        activeId={activeId}
-        projectId={projectId}
-        actions={researchChatActions}
-        scrollRef={scrollRef}
-        nearBottomRef={nearBottomRef}
-      />
+      <>
+        <AcpConversationMessages
+          conversation={conversation}
+          activeId={activeId}
+          projectId={projectId}
+          actions={researchChatActions}
+          scrollRef={scrollRef}
+          nearBottomRef={nearBottomRef}
+          onCommit={commitTurn}
+          commitDefaultMessage={t(($) => $.ai.acp.commit.defaultMessage, {
+            agent: session ? agentNameOf(session.agentId) : "",
+          })}
+        />
+        {running && (
+          <AcpThinkingRow conversation={conversation} scrollRef={scrollRef} nearBottomRef={nearBottomRef} />
+        )}
+      </>
     ) : (
       <AssistantHome
         before={
@@ -306,34 +341,14 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       />
     );
 
-  const homeSubtitle = () => {
-    if (session?.status === "ready") {
-      return t(($) => $.ai.acp.readySubtitle, {
-        agent: selectedAgent?.definition.name ?? session.agentId,
-      });
-    }
-    if (projectName) return t(($) => $.ai.acp.projectSubtitle, { project: projectName });
-    return undefined;
-  };
-
   const noResumeHint = (current: AcpSession) => {
     if (current.taskId) return t(($) => $.ai.acp.resumeTask);
     if (current.parentSessionId) return t(($) => $.ai.acp.delegatedConversation);
     return t(($) => $.ai.acp.noResume);
   };
 
-  const modelControl = () => {
-    if (!session) return null;
-    return (
-      <span className="hidden max-w-40 truncate px-1 text-[0.6875rem] text-muted-foreground sm:inline">
-        {session.controls.modelId ?? t(($) => $.ai.acp.modelManaged)}
-      </span>
-    );
-  };
-
-  const conversationArea = () => (
-    <>
-    {(busy || starting) && !hasMessages ? (
+  const conversationArea = () =>
+    (busy || starting) && !hasMessages ? (
       <output
         data-testid="acp-connecting"
         className="mx-auto flex max-w-sm flex-col items-center gap-3 py-16 text-center"
@@ -357,58 +372,95 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       </output>
     ) : (
       conversationBody()
-    )}
-    </>
-  );
+    );
+
+  const reconnect = () =>
+    session &&
+    void performConnecting(async () => {
+      useAcpSessionsStore.getState().setSnapshot(await acpReconnect(projectId, session.id));
+    });
 
   const statusBanners = () => (
     <>
-<TrustRequiredNotice
-  projectId={projectId}
-  reason={t(($) => $.errors.trust.agents)}
-  className="mx-3 my-2"
-/>
-{(error || (session?.error && session.status !== "auth_required")) && <div role="alert" className="mx-3 my-2 select-text rounded-md border border-destructive/40 p-2 text-xs text-destructive">{error ?? session?.error}</div>}
-{session?.status === "auth_required" && <div className="space-y-2 border-t border-border p-3 text-xs">
-  <p>{catalog.find((agent) => agent.definition.id === session.agentId)?.signInHint ?? t(($) => $.ai.acp.signInFallback)}</p>
-  <div className="flex flex-wrap gap-2">
-    {session.authMethods.map((method) => <Button variant="outline" size="sm" key={method.id} type="button" disabled={busy} onClick={() => {
-      // A terminal method signs in interactively: run the located CLI in the project terminal.
-      const cliPath = method.kind === "terminal" ? catalog.find((agent) => agent.definition.id === session.agentId)?.cli?.path : null;
-      if (cliPath) {
-        if (!openAgentSignInTerminal(projectId, cliPath)) {
-          setError(terminalLimitMessage());
-        }
-        return;
-      }
-      void perform(async () => { useAcpSessionsStore.getState().setSnapshot(await acpAuthenticate(projectId, session.id, method.id)); });
-    }}>{method.name}</Button>)}
-    <Button variant="outline" size="sm" type="button" disabled={busy} onClick={() => void perform(async () => { await acpDisconnect(projectId, session.id); useAcpSessionsStore.getState().setSnapshot(await acpReconnect(projectId, session.id)); })}>{t(($) => $.ai.acp.reconnectAfterSignIn)}</Button>
-  </div>
-</div>}
-{session && ["disconnected", "cancelled", "failed"].includes(session.status) && <div className="border-t border-border p-3 text-xs">
-  {canReconnect(session) ? <Button variant="outline" size="sm" type="button" disabled={busy} onClick={() => void perform(async () => { useAcpSessionsStore.getState().setSnapshot(await acpReconnect(projectId, session.id)); })}>{t(($) => $.ai.acp.reconnect)}</Button> : <p>{noResumeHint(session)}</p>}
-</div>}
-{permissions.length > 0 && <div className="max-h-[60vh] space-y-2 overflow-y-auto border-t border-border p-3">
-  {permissions.map((request) => <PermissionCard key={request.id} request={request} agentName={selectedAgent?.definition.name ?? session?.agentId} onChoose={choosePermission} />)}
-</div>}
+      <TrustRequiredNotice
+        projectId={projectId}
+        reason={t(($) => $.errors.trust.agents)}
+        className="mx-3 my-2"
+      />
+      {session?.remote && (
+        <div
+          data-testid="acp-remote-banner"
+          className="mx-3 my-2 flex items-center gap-2 rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground"
+        >
+          <Server className="size-3.5 shrink-0" />
+          {t(($) => $.ai.acp.remote.banner, { host: session.remote.host })}
+        </div>
+      )}
+      {(error || sessionError || (session?.error && session.status !== "auth_required")) && (
+        <ErrorState
+          size="compact"
+          className="mx-3 my-2 rounded-md border border-destructive/40 p-2"
+          message={error ?? sessionError ?? session?.error}
+        />
+      )}
+      {session?.status === "auth_required" && (
+        <AcpSignIn
+          projectId={projectId}
+          session={session}
+          agent={sessionAgent}
+          busy={busy}
+          perform={(action) => void performConnecting(action)}
+        />
+      )}
+      {session && ["disconnected", "cancelled", "failed"].includes(session.status) && (
+        <div className="border-t border-border p-3 text-xs">
+          {canReconnect(session) ? (
+            <Button variant="outline" size="sm" type="button" disabled={busy} onClick={reconnect}>
+              {t(($) => $.ai.acp.reconnect)}
+            </Button>
+          ) : (
+            <p>{noResumeHint(session)}</p>
+          )}
+        </div>
+      )}
+      {(permissions.length > 0 || elicitations.length > 0) && (
+        <div className="max-h-[60vh] space-y-2 overflow-y-auto border-t border-border p-3">
+          {elicitations.map((request) => (
+            <ElicitationCard
+              key={request.id}
+              request={request}
+              agentName={sessionAgent?.definition.name ?? session?.agentId ?? ""}
+              onRespond={(action, content) => answerQuestion(request.id, action, content)}
+            />
+          ))}
+          {permissions.map((request) => (
+            <PermissionCard
+              key={request.id}
+              request={request}
+              agentName={selectedAgent?.definition.name ?? session?.agentId}
+              onChoose={choosePermission}
+            />
+          ))}
+        </div>
+      )}
     </>
   );
 
-  const composerLeftControls = () => (
+  const trackScroll = () => {
+    const el = scrollRef.current;
+    if (el) nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
+  const loadEarlier = () => {
+    if (activeId) void perform(() => useAcpSessionsStore.getState().loadEarlier(projectId, activeId));
+  };
+
+  const leftControls = (
     <div className="ai-composer-controls-left no-scrollbar flex min-w-0 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden">
-      {session?.capabilities.image && (
-        <Tooltip label={t(($) => $.ai.acp.attachImage)}>
-          <button type="button" aria-label={t(($) => $.ai.acp.attachImage)} className="ai-composer-attach flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40" disabled={running} onClick={() => fileRef.current?.click()}>
-            <Paperclip className="size-4" />
-          </button>
-        </Tooltip>
-      )}
       {session ? (
         <SessionStatusPill
           session={session}
-          agentName={catalog.find((value) => value.definition.id === session.agentId)?.definition.name ?? session.agentId}
-          busy={busy}
+          agentName={agentNameOf(session.agentId)}
+          connecting={connecting || starting}
         />
       ) : (
         <Button
@@ -429,133 +481,82 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     </div>
   );
 
-  const composerRightControls = () => (
-    <div className="ai-composer-controls-right ml-auto flex shrink-0 flex-nowrap items-center gap-1">
-      {session && session.controls.models.length > 0 ? (
-        <Select
-          key={session.id}
-          value={session.controls.modelId ?? ""}
-          disabled={busy || running || session.status !== "ready"}
-          onValueChange={(modelId) => void perform(async () => {
-            const current = useAcpSessionsStore.getState().sessions[session.id];
-            if (
-              !current ||
-              current.controls.modelId === modelId ||
-              !current.controls.models.some((model) => model.modelId === modelId)
-            ) {
-              return;
-            }
-            useAcpSessionsStore.getState().setSnapshot(await acpSetModel(projectId, session.id, modelId));
-          })}
-        >
-          <SelectTrigger aria-label={t(($) => $.ai.acp.agentModel)} data-testid="acp-model-picker" className="h-7 w-auto min-w-0 max-w-44 gap-1 border-0 bg-transparent px-2 text-xs font-medium shadow-none hover:bg-accent focus-visible:bg-accent">
-            <SelectValue placeholder={t(($) => $.ai.acp.agentModel)} />
-          </SelectTrigger>
-          <SelectContent className="z-[100]" align="end">
-            {session.controls.models.map((model) => (
-              <SelectItem key={model.modelId} value={model.modelId}>{model.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ) : (
-        modelControl()
+  return (
+    <section
+      className="flex h-full min-h-0 flex-col bg-sidebar text-foreground"
+      aria-label={t(($) => $.ai.acp.assistantAriaLabel)}
+      data-composer-panel
+    >
+      {session && !isDelegatedSession(session) && (
+        <AcpSessionHeader
+          projectId={projectId}
+          session={session}
+          agentName={agentNameOf(session.agentId)}
+          busy={busy}
+          perform={(action) => void perform(action)}
+        />
       )}
-      {running ? (
-        <Tooltip label={t(($) => $.ai.acp.stop)}>
-          <button type="button" aria-label={t(($) => $.ai.acp.stop)} title={t(($) => $.ai.acp.stopTitle)} className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:opacity-90 disabled:opacity-40" disabled={session?.status === "cancelling"} onClick={() => { if (activeId) void perform(async () => { await acpCancel(projectId, activeId); await useAcpSessionsStore.getState().resync(projectId, activeId); }); }}>
-            <Square className="size-3.5 fill-current" />
-          </button>
-        </Tooltip>
-      ) : (
-        <Tooltip label={t(($) => $.ai.acp.send)}>
-          <button type="submit" aria-label={t(($) => $.ai.acp.send)} className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary disabled:opacity-40" disabled={!canSend}>
-            <ArrowUp className="size-4" />
-          </button>
-        </Tooltip>
-      )}
-    </div>
-  );
-
-  return <section className="flex h-full min-h-0 flex-col bg-sidebar text-foreground" aria-label={t(($) => $.ai.acp.assistantAriaLabel)}>
-    <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-3" onScroll={() => { const el = scrollRef.current; if (el) nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
-      {hasEarlier && <Button variant="outline" size="sm" type="button" className="mb-3 w-full" disabled={busy} onClick={() => { if (activeId) void perform(() => useAcpSessionsStore.getState().loadEarlier(projectId, activeId)); }}>{t(($) => $.ai.acp.loadEarlier)}</Button>}
-      {conversationArea()}
-    </div>
-    {statusBanners()}
-    {selectedAgent && selectedReadiness !== "ready" && (
-      <div data-testid="acp-readiness-card" className="px-3 pb-2 pt-1">
-        <BridgeInstallCard agent={selectedAgent} onError={setError} />
-      </div>
-    )}
-    <div className="px-3 pb-1.5 pt-1">
-      <AgentPickerRow
-        agents={agentRoster(catalog)}
-        selectedId={agentId}
-        disabled={running || busy || starting}
-        onSelect={(id) => {
-          if (catalog.some((agent) => agent.definition.id === id)) chooseAgent(id);
-          else openCliAgentSettings();
-        }}
-      />
-    </div>
-    <form className="p-3 pt-1" onSubmit={(event) => { event.preventDefault(); void send(); }}>
-      {(images.length > 0 || composerSkill) && <div className="mb-2 flex flex-wrap gap-1.5">
-        {composerSkill && (
+      <div
+        ref={scrollRef}
+        data-testid="acp-transcript"
+        className="min-h-0 flex-1 overflow-y-auto px-4 py-3"
+        onScroll={trackScroll}
+      >
+        {hasEarlier && (
           <Button
-            type="button"
             variant="outline"
-            size="xs"
-            data-testid="acp-skill-chip"
-            aria-label={t(($) => $.ai.presets.removeSkill, { name: composerSkill.name })}
-            onClick={() => setComposer(projectId, { skill: null })}
+            size="sm"
+            type="button"
+            className="mb-3 w-full"
+            disabled={busy}
+            onClick={loadEarlier}
           >
-            <Sparkles className="size-3" /> {composerSkill.name} <X className="size-3" />
+            {t(($) => $.ai.acp.loadEarlier)}
           </Button>
         )}
-        {images.map((value, index) => (
-          <Button key={value.id} type="button" variant="outline" size="xs" aria-label={t(($) => $.ai.acp.removeImage, { name: value.name })} onClick={() => setImages(images.filter((_, position) => position !== index))}>
-            {value.name} <X className="size-3" />
-          </Button>
-        ))}
-      </div>}
-      <div className="relative rounded-[1.375rem] border bg-card px-3 pb-2 pt-2.5 shadow-sm transition-colors focus-within:border-ring">
-        <Input
-          ref={fileRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          className="hidden"
-          onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) addImage(file); }}
-        />
-        <Textarea
-          ref={textareaRef}
-          aria-label={t(($) => $.ai.acp.composerAriaLabel)}
-          placeholder={
-            session?.status === "ready"
-              ? t(($) => $.ai.acp.composerPlaceholderReady)
-              : t(($) => $.ai.acp.composerPlaceholderIdle)
-          }
-          value={draft}
-          rows={1}
-          disabled={composerDisabled}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.nativeEvent.isComposing) return;
-            if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(); }
-          }}
-          className="max-h-56 min-h-[32px] w-full resize-none overflow-y-auto rounded-md border-0 bg-transparent px-0.5 text-sm shadow-none placeholder:text-muted-foreground/70"
-        />
-        <div data-testid="acp-composer-controls" className="ai-composer-controls mt-2 flex min-h-7 min-w-0 flex-nowrap items-center justify-between gap-0.5">
-          {composerLeftControls()}
-          {composerRightControls()}
-        </div>
+        {conversationArea()}
       </div>
-    </form>
-    {cleanLibraryOpen && (
-      <Suspense fallback={null}>
-        <CleanLibraryDialog open onClose={() => setCleanLibraryOpen(false)} />
-      </Suspense>
-    )}
-  </section>;
+      {statusBanners()}
+      {selectedAgent && selectedReadiness !== "ready" && (
+        <div data-testid="acp-readiness-card" className="px-3 pb-2 pt-1">
+          <BridgeInstallCard agent={selectedAgent} onError={setError} />
+        </div>
+      )}
+      {/* The agent is settled once the conversation has a message; "+" starts another. */}
+      {!hasMessages && (
+        <div className="px-3 pb-1.5 pt-1">
+          <AgentPickerRow
+            agents={agentRoster(catalog)}
+            selectedId={agentId}
+            disabled={running || busy || starting}
+            onSelect={chooseAgent}
+          />
+        </div>
+      )}
+      <AcpComposerChips projectId={projectId} session={session} />
+      <div className="p-3 pt-1">
+        <AcpComposer
+          ref={composerRef}
+          projectId={projectId}
+          session={session}
+          agent={selectedAgent}
+          agentId={agentId}
+          onStart={startWithDraft}
+          onSend={followSentMessage}
+          onError={setError}
+          leftControls={leftControls}
+          trailingControls={session ? (
+            <AcpControls projectId={projectId} session={session} disabled={busy || running} onError={setError} />
+          ) : null}
+        />
+      </div>
+      {cleanLibraryOpen && (
+        <Suspense fallback={null}>
+          <CleanLibraryDialog open onClose={() => setCleanLibraryOpen(false)} />
+        </Suspense>
+      )}
+    </section>
+  );
 }
 
 const AcpConversationMessages = memo(function AcpConversationMessages({
@@ -565,6 +566,8 @@ const AcpConversationMessages = memo(function AcpConversationMessages({
   actions,
   scrollRef,
   nearBottomRef,
+  onCommit,
+  commitDefaultMessage,
 }: Readonly<{
   conversation: AcpConversation;
   activeId: string | null;
@@ -572,6 +575,8 @@ const AcpConversationMessages = memo(function AcpConversationMessages({
   actions: ResearchChatActions;
   scrollRef: RefObject<HTMLDivElement | null>;
   nearBottomRef: MutableRefObject<boolean>;
+  onCommit?: (turnId: string, paths: string[], message: string) => Promise<void>;
+  commitDefaultMessage: string;
 }>) {
   const messages = useAcpMessages(conversation);
   const shownSessionRef = useRef<string | null | undefined>(undefined);
@@ -592,9 +597,11 @@ const AcpConversationMessages = memo(function AcpConversationMessages({
           changes={msg.turnChanges}
           showUnavailable={key === firstUnavailableKey}
           className="mt-1.5"
+          onCommit={onCommit && msg.turnId ? (paths, message) => onCommit(msg.turnId ?? "", paths, message) : undefined}
+          commitDefaultMessage={commitDefaultMessage}
         />
       ) : null,
-    [firstUnavailableKey, projectId],
+    [commitDefaultMessage, firstUnavailableKey, onCommit, projectId],
   );
   return (
     <MessageList
@@ -609,16 +616,51 @@ const AcpConversationMessages = memo(function AcpConversationMessages({
   );
 });
 
-const STATUS_DOT: Record<AcpSession["status"], string> = {
-  connecting: "bg-primary animate-pulse",
-  auth_required: "bg-amber-500",
-  ready: "bg-emerald-500",
-  running: "bg-primary animate-pulse",
-  cancelling: "bg-amber-500 animate-pulse",
-  cancelled: "bg-muted-foreground/60",
-  disconnected: "bg-muted-foreground/60",
-  failed: "bg-destructive",
+/** "Thinking…" while the agent works, as the Oleafly Agent shows it. A live
+ *  reasoning block shows its own, so there is one indicator at a time. */
+const AcpThinkingRow = memo(function AcpThinkingRow({
+  conversation,
+  scrollRef,
+  nearBottomRef,
+}: Readonly<{
+  conversation: AcpConversation;
+  scrollRef: RefObject<HTMLDivElement | null>;
+  nearBottomRef: MutableRefObject<boolean>;
+}>) {
+  const { t } = useTranslation(["common", "ai"]);
+  const messages = useAcpMessages(conversation);
+  const live = useSyncExternalStore(conversation.live.subscribe, conversation.live.get, conversation.live.get);
+  const last = messages.at(-1)?.msg;
+  const tail = last ? liveMessageFor(last, live) : undefined;
+  const reasoningLive = tail?.reasoningBlocks?.some((block) => block.ms === undefined) ?? false;
+  useLayoutEffect(() => {
+    const element = scrollRef.current;
+    if (!reasoningLive && nearBottomRef.current && element) element.scrollTop = element.scrollHeight;
+  }, [nearBottomRef, reasoningLive, scrollRef]);
+  if (reasoningLive) return null;
+  return (
+    <div data-testid="acp-thinking" className="max-w-[85%] text-xs">
+      <div className="flex w-full items-center gap-2 py-1 text-sm text-muted-foreground">
+        <Brain className="ai-shimmer-icon size-3.5 shrink-0" />
+        <Shimmer text={t(($) => $.ai.chat.reasoning.thinking)} />
+      </div>
+    </div>
+  );
+});
+
+const STATUS_TONE: Record<AcpSession["status"], BadgeVariant> = {
+  connecting: "primaryGhost",
+  auth_required: "warning",
+  ready: "success",
+  running: "primaryGhost",
+  cancelling: "warning",
+  cancelled: "muted",
+  disconnected: "muted",
+  failed: "destructive",
 };
+
+/** The statuses in which the agent is busy: their dot pulses, unless motion is reduced. */
+const PULSING_STATUSES: ReadonlySet<AcpSession["status"]> = new Set(["connecting", "running", "cancelling"]);
 
 function sessionStatusLabel(status: AcpSession["status"]): string {
   switch (status) {
@@ -641,28 +683,44 @@ function sessionStatusLabel(status: AcpSession["status"]): string {
   }
 }
 
-function SessionStatusPill({ session, agentName, busy }: Readonly<{ session: AcpSession; agentName: string; busy: boolean }>) {
+function SessionStatusPill({ session, agentName, connecting }: Readonly<{ session: AcpSession; agentName: string; connecting: boolean }>) {
   const { t } = useTranslation(["common", "ai"]);
+  let text: string;
+  if (connecting) {
+    text = t(($) => $.ai.acp.connecting);
+  } else if (session.status === "ready") {
+    text = agentName;
+  } else {
+    text = t(($) => $.ai.acp.sessionStatusPill, {
+      agent: agentName,
+      status: sessionStatusLabel(session.status),
+    });
+  }
   return (
-    <span
+    <Badge
+      variant={connecting ? "outline" : STATUS_TONE[session.status]}
+      size="sm"
       data-testid="acp-session-status"
       data-status={session.status}
-      className="inline-flex h-6 max-w-44 shrink-0 items-center gap-1.5 rounded-full border bg-background px-2 text-[0.625rem] text-muted-foreground"
+      className="h-6 max-w-44 gap-1.5 px-2"
     >
-      {busy ? (
+      {connecting ? (
         <Spinner className="size-2.5" />
       ) : (
-        <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[session.status])} />
+        <span
+          aria-hidden
+          className={cn(
+            "size-1.5 shrink-0 rounded-full bg-current",
+            PULSING_STATUSES.has(session.status) && "motion-safe:animate-pulse",
+          )}
+        />
       )}
-      <span className="truncate">
-        {busy
-          ? t(($) => $.ai.acp.connecting)
-          : t(($) => $.ai.acp.sessionStatusPill, {
-              agent: agentName,
-              status: sessionStatusLabel(session.status),
-            })}
-      </span>
-    </span>
+      <span className="truncate">{text}</span>
+      {/* Ready shows as the green dot alone; screen readers still hear it. */}
+      {!connecting && session.status === "ready" && (
+        <span className="sr-only"> {sessionStatusLabel(session.status)}</span>
+      )}
+    </Badge>
   );
 }
 
@@ -672,45 +730,15 @@ function rosterHint(readiness: ReturnType<typeof acpReadiness>): string {
   return i18n.t(($) => $.ai.acp.roster.unavailable);
 }
 
+/** The agents in the catalog, ready ones selectable. */
 export function agentRoster(catalog: AcpAgentStatus[]): AgentPickerEntry[] {
-  const entries: AgentPickerEntry[] = [];
-  const seen = new Set<string>();
-  for (const agent of catalog) {
-    seen.add(agent.definition.id);
+  return catalog.map((agent) => {
     const readiness = acpReadiness(agent);
-    entries.push({
+    return {
       id: agent.definition.id,
       name: agent.definition.name,
       available: readiness === "ready",
       hint: rosterHint(readiness),
-    });
-  }
-  for (const id of AGENT_MARK_IDS) {
-    if (seen.has(id)) continue;
-    entries.push({
-      id,
-      name: AGENT_ROSTER_NAMES[id] ?? id,
-      available: false,
-      hint: i18n.t(($) => $.ai.acp.roster.comingSoon),
-    });
-  }
-  return entries;
+    };
+  });
 }
-
-const AGENT_ROSTER_NAMES: Record<string, string> = {
-  claude: "Claude Code",
-  codex: "Codex CLI",
-  opencode: "OpenCode",
-  gemini: "Gemini CLI",
-  openclaw: "OpenClaw",
-  cline: "Cline",
-  hermes: "Hermes Agent",
-  codebuddy: "CodeBuddy",
-  kimi: "Kimi Code",
-  pi: "Pi",
-  grok: "Grok Build",
-  cursor: "Cursor",
-  deepseek: "DeepSeek Harness",
-  qoder: "Qoder",
-  antigravity: "Google Antigravity",
-};

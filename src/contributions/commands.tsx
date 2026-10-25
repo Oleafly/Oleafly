@@ -88,8 +88,7 @@ import {
   openAssistantTabs,
 } from "@/components/editor/editor-tabs";
 import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
-import { TERMINAL_LIMIT, terminalLimitMessage, useTerminalsStore } from "@/store/terminals";
-import { toast } from "@/lib/toast";
+import { openNewTerminal } from "@/lib/terminal-open";
 import { runCiteOleaflyAction } from "@/features/cite-oleafly";
 import { requestThemePreference } from "@/lib/theme";
 import { showSourceControlGraph } from "@/lib/source-control-events";
@@ -678,17 +677,10 @@ export function registerPaletteCommands() {
     keywords: () =>
       `${i18n.t(($) => $.shell.commands.newTerminal.keywords)} ${ENGLISH_KEYWORDS.newTerminal}`,
     icon: () => <SquareTerminal className="size-4" />,
+    hint: () => shortcutLabel(useShortcutStore.getState().bindings.newTerminal),
     order: 318,
     when: (ctx) => !!ctx.projectId,
-    run: () => {
-      const terminals = useTerminalsStore.getState();
-      useSettingsStore.getState().setTerminalOpen(true);
-      if (terminals.projectId && terminals.tabs.length >= TERMINAL_LIMIT) {
-        toast.infoUnique("terminal-limit", terminalLimitMessage());
-        return;
-      }
-      terminals.addTerminal();
-    },
+    run: () => openNewTerminal(),
   });
   palette({
     id: "palette.add-citation",

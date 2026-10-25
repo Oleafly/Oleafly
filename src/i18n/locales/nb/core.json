@@ -182,7 +182,8 @@
   },
   "imageToLatex": {
     "failed": "Bilde til LaTeX mislyktes: {{detail}}",
-    "transcribing": "Transkriberer bildet…"
+    "transcribing": "Transkriberer bildet…",
+    "notInserted": "Den aktive filen endret seg, så LaTeX-koden ble ikke satt inn. Kopier den, og lim den inn der du vil ha den."
   },
   "import": {
     "chooseOfferedProjectType": "Velg en av prosjekttypene som tilbys for denne filen.",
@@ -583,7 +584,9 @@
       "diagnostics_one": "{{count}} diagnosemelding",
       "diagnostics_other": "{{count}} diagnosemeldinger",
       "papers_one": "{{count}} artikkel",
-      "papers_other": "{{count}} artikler"
+      "papers_other": "{{count}} artikler",
+      "sourcesFailed_one": "{{count}} kilde mislyktes",
+      "sourcesFailed_other": "{{count}} kilder mislyktes"
     }
   },
   "ui": {
@@ -601,6 +604,8 @@
     "saveReason": "prosjektmappen er ikke tilgjengelig"
   },
   "imageToTypst": {
-    "failed": "Bilde til Typst mislyktes: {{detail}}"
+    "failed": "Bilde til Typst mislyktes: {{detail}}",
+    "copied": "Kopierte Typst-kildekoden",
+    "notInserted": "Den aktive filen endret seg, så Typst-koden ble ikke satt inn. Kopier den, og lim den inn der du vil ha den."
   }
 }

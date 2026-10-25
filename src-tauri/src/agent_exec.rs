@@ -640,20 +640,33 @@ async fn execute_command(
     .await
 }
 
-fn shell_command(command: &str) -> tokio::process::Command {
+/// The shell that runs an agent's command. When the app knows where the
+/// `oleafly` CLI is, its folder goes first on the inherited PATH and
+/// `OLEAFLY_CLI` names it, so commands can call `oleafly` by name.
+fn shell_command(command: &str, cli: &crate::terminal::env::CliEnv) -> tokio::process::Command {
     #[cfg(windows)]
-    {
+    let mut c = {
         let mut c = tokio::process::Command::new("cmd");
         c.arg("/C").arg(command);
         c
-    }
+    };
     #[cfg(not(windows))]
-    {
+    let mut c = {
         let mut c = tokio::process::Command::new(crate::program_locator::user_shell());
         c.arg("-lc").arg(command);
         crate::proc::clear_appimage_env(c.as_std_mut());
         c
+    };
+    if let Some(dir) = &cli.dir {
+        c.env(
+            "PATH",
+            crate::terminal::env::prepend_path(std::env::var_os("PATH").as_deref(), dir),
+        );
     }
+    if let Some(exe) = &cli.exe {
+        c.env("OLEAFLY_CLI", exe);
+    }
+    c
 }
 
 async fn execute_command_with_timeout(
@@ -687,7 +700,7 @@ async fn execute_command_with_timeout(
         return Err("run_command is denied for this project".to_string());
     }
 
-    let mut cmd = shell_command(command);
+    let mut cmd = shell_command(command, &crate::terminal::env::CliEnv::current());
     cmd.no_console()
         .current_dir(cwd)
         .stdin(Stdio::null())
@@ -829,6 +842,44 @@ mod tests {
             command,
             run_id,
         }
+    }
+
+    #[tokio::test]
+    async fn run_command_gets_the_cli_folder_on_path() {
+        let tools = tempfile::tempdir().unwrap();
+        let exe = tools.path().join(if cfg!(windows) {
+            "oleafly.exe"
+        } else {
+            "oleafly"
+        });
+        let cli = crate::terminal::env::CliEnv {
+            dir: Some(tools.path().to_path_buf()),
+            exe: Some(exe.clone()),
+        };
+        #[cfg(unix)]
+        let script = "printf '%s\\n' \"$OLEAFLY_CLI\"; printf '%s\\n' \"$PATH\"";
+        #[cfg(windows)]
+        let script = "echo %OLEAFLY_CLI%& echo %PATH%";
+        let output = shell_command(script, &cli)
+            .no_console()
+            .stdin(Stdio::null())
+            .output()
+            .await
+            .unwrap();
+        let text = String::from_utf8_lossy(&output.stdout);
+        let mut lines = text.lines().map(str::trim);
+        assert_eq!(lines.next(), Some(exe.to_string_lossy().as_ref()), "{text}");
+        let path = lines.next().unwrap_or_default();
+        // A login shell may reorder PATH (macOS path_helper), so look for
+        // the folder rather than insist on the first place.
+        assert!(
+            std::env::split_paths(path).any(|entry| entry == tools.path()),
+            "{path}"
+        );
+
+        let plain = shell_command(script, &crate::terminal::env::CliEnv::default());
+        let envs: Vec<_> = plain.as_std().get_envs().collect();
+        assert!(envs.is_empty(), "{envs:?}");
     }
 
     #[tokio::test]

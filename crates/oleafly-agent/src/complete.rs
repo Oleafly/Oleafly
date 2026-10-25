@@ -1,8 +1,10 @@
+use std::borrow::Cow;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::effort::Effort;
 use crate::error::{AgentError, Result};
 use crate::message::Message;
 use crate::provider::{Resolved, Wire};
@@ -14,7 +16,7 @@ pub(crate) use crate::wire::{
 pub use crate::wire::{request_builder, wire_body};
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(180);
-const MAX_COMPLETION_DURATION: Duration = Duration::from_secs(10 * 60);
+pub(crate) const MAX_COMPLETION_DURATION: Duration = Duration::from_secs(10 * 60);
 
 const MAX_ERROR_CHARS: usize = 300;
 pub(crate) const MAX_COMPLETION_BODY_BYTES: usize = 16 * 1024 * 1024;
@@ -40,6 +42,40 @@ pub struct CompletionRequest {
     #[doc(hidden)]
     #[serde(default, skip_deserializing, skip_serializing_if = "Option::is_none")]
     pub openai_responses_input: Option<Vec<Value>>,
+    /// How hard the model thinks; `None` is the provider's default. Unknown
+    /// names from a newer renderer read as `None`.
+    #[serde(default, deserialize_with = "crate::effort::lenient_effort")]
+    pub effort: Option<Effort>,
+    /// Web search and fetch for this run.
+    #[serde(default)]
+    pub web: Option<WebTools>,
+    /// Ask the model for readable reasoning summaries.
+    #[serde(default)]
+    pub reasoning_summary: Option<bool>,
+    /// Per-run context sent after the system prompt, so the stable prompt
+    /// before it stays cacheable.
+    #[serde(default)]
+    pub system_suffix: Option<String>,
+    /// The Anthropic code-execution container to keep using. Set by the run
+    /// from the provider's replies only.
+    #[doc(hidden)]
+    #[serde(default, skip_deserializing, skip_serializing_if = "Option::is_none")]
+    pub anthropic_container: Option<String>,
+}
+
+/// The web tools a run may use.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct WebTools {
+    #[serde(default)]
+    pub search: bool,
+    #[serde(default)]
+    pub fetch: bool,
+}
+
+impl WebTools {
+    pub fn any(self) -> bool {
+        self.search || self.fetch
+    }
 }
 
 impl CompletionRequest {
@@ -83,6 +119,10 @@ pub struct Usage {
     pub cache_write: Option<u32>,
     #[serde(default, skip_serializing_if = "is_unknown_input_semantics")]
     pub input_semantics: InputTokenSemantics,
+    /// Tokens spent on reasoning, when the provider reports them. They are
+    /// part of `output` too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning: Option<u32>,
 }
 
 impl Usage {
@@ -128,6 +168,7 @@ impl Usage {
         }
         self.cache_read = next.cache_read.or(self.cache_read);
         self.cache_write = next.cache_write.or(self.cache_write);
+        self.reasoning = next.reasoning.or(self.reasoning);
         if next.input_semantics != InputTokenSemantics::Unknown {
             self.input_semantics = next.input_semantics;
         }
@@ -144,6 +185,10 @@ pub struct CompletionResponse {
     pub usage: Usage,
     pub provider_id: String,
     pub model_id: String,
+    /// Why the reply ended, as the provider said it (`stop`, `length`,
+    /// `max_tokens`, `refusal`, ...). `None` when the reply carries none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_reason: Option<String>,
 }
 
 fn as_u32(value: Option<&Value>) -> u32 {
@@ -196,6 +241,9 @@ pub(crate) fn parse_openai(body: &Value) -> Result<(String, Usage)> {
             || as_optional_u32(body.pointer("/usage/completion_tokens")).is_some())
         .then_some(0),
         input_semantics: InputTokenSemantics::Inclusive,
+        reasoning: as_optional_u32(
+            body.pointer("/usage/completion_tokens_details/reasoning_tokens"),
+        ),
     };
     Ok((
         text,
@@ -236,6 +284,7 @@ pub(crate) fn parse_openai_responses(body: &Value) -> Result<(String, Usage)> {
             || as_optional_u32(body.pointer("/usage/output_tokens")).is_some())
         .then_some(0),
         input_semantics: InputTokenSemantics::Inclusive,
+        reasoning: as_optional_u32(body.pointer("/usage/output_tokens_details/reasoning_tokens")),
     };
     Ok((
         text,
@@ -266,6 +315,7 @@ pub(crate) fn parse_anthropic(body: &Value) -> Result<(String, Usage)> {
         cache_read: as_optional_u32(body.pointer("/usage/cache_read_input_tokens")),
         cache_write: as_optional_u32(body.pointer("/usage/cache_creation_input_tokens")),
         input_semantics: InputTokenSemantics::Exclusive,
+        reasoning: None,
     };
     Ok((
         text,
@@ -299,6 +349,7 @@ pub(crate) fn parse_google(body: &Value) -> Result<(String, Usage)> {
         cache_read: as_optional_u32(meta.get("cachedContentTokenCount")).or(counted.then_some(0)),
         cache_write: counted.then_some(0),
         input_semantics: InputTokenSemantics::Inclusive,
+        reasoning: as_optional_u32(meta.get("thoughtsTokenCount")),
     };
     Ok((
         text,
@@ -308,6 +359,29 @@ pub(crate) fn parse_google(body: &Value) -> Result<(String, Usage)> {
             Usage::default()
         },
     ))
+}
+
+/// Why a blocking reply ended, named the way the streaming path names it, so
+/// `is_output_limit_stop` and `is_refusal_stop` read both.
+pub(crate) fn blocking_stop_reason(wire: &Wire, body: &Value) -> Option<String> {
+    let reason = match wire {
+        Wire::OpenAiChat { .. } => body
+            .pointer("/choices/0/finish_reason")
+            .and_then(Value::as_str),
+        Wire::OpenAiResponses { .. } => match body.get("status").and_then(Value::as_str) {
+            Some("incomplete") => Some(
+                body.pointer("/incomplete_details/reason")
+                    .and_then(Value::as_str)
+                    .unwrap_or("incomplete"),
+            ),
+            status => status,
+        },
+        Wire::Anthropic { .. } => body.get("stop_reason").and_then(Value::as_str),
+        Wire::Google { .. } => body
+            .pointer("/candidates/0/finishReason")
+            .and_then(Value::as_str),
+    };
+    reason.map(str::to_string)
 }
 
 pub(crate) fn request_error(error: reqwest::Error) -> AgentError {
@@ -395,14 +469,34 @@ pub(crate) fn error_message(status: u16, raw: &str) -> AgentError {
                 trimmed.to_string()
             }
         });
-    AgentError::Provider { status, message }
+    AgentError::provider(status, message)
 }
 
 fn provider_error_from_read(status: u16, body: Result<Vec<u8>>) -> AgentError {
     match body {
         Ok(raw) => error_message(status, &String::from_utf8_lossy(&raw)),
-        Err(AgentError::Decode(message)) => AgentError::Provider { status, message },
+        Err(AgentError::Decode(message)) => AgentError::provider(status, message),
         Err(error) => error,
+    }
+}
+
+/// The wait a provider asked for: `retry-after-ms` (OpenAI), else
+/// `retry-after` in seconds. An HTTP date in `retry-after` is not read; the
+/// caller's own backoff applies then.
+pub(crate) fn retry_after(headers: &reqwest::header::HeaderMap) -> Option<Duration> {
+    let number = |name: &str| {
+        headers
+            .get(name)?
+            .to_str()
+            .ok()?
+            .trim()
+            .parse::<f64>()
+            .ok()
+            .filter(|value| value.is_finite() && *value >= 0.0)
+    };
+    match number("retry-after-ms") {
+        Some(millis) => Duration::try_from_secs_f64(millis / 1_000.0).ok(),
+        None => number("retry-after").and_then(|seconds| Duration::try_from_secs_f64(seconds).ok()),
     }
 }
 
@@ -411,10 +505,50 @@ pub(crate) async fn read_provider_error(
     status: u16,
     description: &'static str,
 ) -> AgentError {
-    provider_error_from_read(
+    let wait = retry_after(response.headers());
+    let error = provider_error_from_read(
         status,
         read_body_limited(response, MAX_ERROR_BODY_BYTES, description).await,
-    )
+    );
+    match error {
+        AgentError::Provider {
+            status, message, ..
+        } => AgentError::Provider {
+            status,
+            message,
+            retry_after: wait,
+        },
+        other => other,
+    }
+}
+
+/// A blocking call gets a modest output ceiling when it sets none: always on
+/// Anthropic (which requires one), and on Google and Groq when the model's
+/// limit is known.
+pub(crate) fn with_blocking_ceiling<'a>(
+    resolved: &Resolved,
+    req: &'a CompletionRequest,
+) -> Cow<'a, CompletionRequest> {
+    if req.max_tokens.is_some() {
+        return Cow::Borrowed(req);
+    }
+    let needs = match &resolved.wire {
+        Wire::Anthropic { .. } => true,
+        Wire::Google { .. } => resolved.caps.output_limit.is_some(),
+        Wire::OpenAiChat { .. } => {
+            resolved.provider_id == "groq" && resolved.caps.output_limit.is_some()
+        }
+        Wire::OpenAiResponses { .. } => false,
+    };
+    if !needs {
+        return Cow::Borrowed(req);
+    }
+    let mut owned = req.clone();
+    owned.max_tokens = Some(crate::wire::reasoning::default_max_tokens(
+        &resolved.caps,
+        crate::wire::reasoning::BLOCKING_MAX_TOKENS_CAP,
+    ));
+    Cow::Owned(owned)
 }
 
 pub async fn complete(
@@ -424,8 +558,10 @@ pub async fn complete(
 ) -> Result<CompletionResponse> {
     crate::run::validate_completion_request(req)?;
     let timeout = completion_timeout(req);
+    let req = with_blocking_ceiling(resolved, req);
 
-    let builder = request_builder(client, resolved, false).json(&wire_body(resolved, req)?);
+    let body = wire_body(resolved, &req)?;
+    let builder = crate::wire::body_request(client, resolved, false, &body);
 
     let response = builder
         .timeout(timeout)
@@ -458,6 +594,7 @@ pub async fn complete(
         usage,
         provider_id: resolved.provider_id.clone(),
         model_id: resolved.model_id.clone(),
+        stop_reason: blocking_stop_reason(&resolved.wire, &body),
     })
 }
 
@@ -546,6 +683,7 @@ mod tests {
                 cache_read: Some(4),
                 cache_write: Some(0),
                 input_semantics: InputTokenSemantics::Inclusive,
+                reasoning: None,
             }
         );
     }
@@ -582,8 +720,78 @@ mod tests {
                 cache_read: Some(6),
                 cache_write: Some(0),
                 input_semantics: InputTokenSemantics::Inclusive,
+                reasoning: None,
             }
         );
+    }
+
+    #[test]
+    fn an_older_request_without_the_new_fields_still_deserializes() {
+        let request: CompletionRequest = serde_json::from_str(r#"{"messages":[]}"#).unwrap();
+        assert_eq!(
+            (
+                request.effort,
+                request.web,
+                request.reasoning_summary,
+                request.system_suffix
+            ),
+            (None, None, None, None)
+        );
+    }
+
+    #[test]
+    fn unknown_effort_strings_mean_auto() {
+        let parse = |raw: &str| {
+            serde_json::from_str::<CompletionRequest>(raw)
+                .unwrap()
+                .effort
+        };
+        assert_eq!(parse(r#"{"messages":[],"effort":"ultra"}"#), None);
+        assert_eq!(
+            parse(r#"{"messages":[],"effort":"xhigh"}"#),
+            Some(Effort::Xhigh)
+        );
+        assert_eq!(parse(r#"{"messages":[],"effort":7}"#), None);
+        assert_eq!(parse(r#"{"messages":[],"effort":null}"#), None);
+    }
+
+    #[test]
+    fn web_tools_default_to_off() {
+        let request: CompletionRequest =
+            serde_json::from_str(r#"{"messages":[],"web":{}}"#).unwrap();
+        assert_eq!(
+            request.web,
+            Some(WebTools {
+                search: false,
+                fetch: false
+            })
+        );
+    }
+
+    #[test]
+    fn the_renderer_cannot_set_the_internal_container() {
+        let request: CompletionRequest =
+            serde_json::from_str(r#"{"messages":[],"anthropic_container":"c1"}"#).unwrap();
+        assert_eq!(request.anthropic_container, None);
+    }
+
+    #[test]
+    fn reasoning_tokens_merge_and_serialize_only_when_known() {
+        let mut usage = Usage::default();
+        usage.merge_snapshot(Usage {
+            reasoning: Some(12),
+            ..Usage::default()
+        });
+        assert_eq!(usage.reasoning, Some(12));
+        assert!(serde_json::to_value(Usage::default())
+            .unwrap()
+            .get("reasoning")
+            .is_none());
+        let body = json!({
+            "choices": [{ "message": { "content": "a" } }],
+            "usage": { "prompt_tokens": 1, "completion_tokens": 20, "completion_tokens_details": { "reasoning_tokens": 12 } }
+        });
+        assert_eq!(parse_openai(&body).unwrap().1.reasoning, Some(12));
     }
 
     #[test]
@@ -612,6 +820,39 @@ mod tests {
         );
         assert!(!rejected.retryable());
         assert_eq!(rejected.status(), Some(401));
+    }
+
+    #[test]
+    fn a_retry_after_header_is_read_in_seconds_or_milliseconds() {
+        use reqwest::header::{HeaderMap, HeaderValue};
+        let headers = |pairs: &[(&'static str, &'static str)]| {
+            let mut map = HeaderMap::new();
+            for (name, value) in pairs {
+                map.insert(*name, HeaderValue::from_static(value));
+            }
+            map
+        };
+        assert_eq!(retry_after(&HeaderMap::new()), None);
+        assert_eq!(
+            retry_after(&headers(&[("retry-after", "30")])),
+            Some(Duration::from_secs(30))
+        );
+        assert_eq!(
+            retry_after(&headers(&[("retry-after", " 1.5 ")])),
+            Some(Duration::from_millis(1_500))
+        );
+        // The millisecond header wins where a provider sends both.
+        assert_eq!(
+            retry_after(&headers(&[
+                ("retry-after", "30"),
+                ("retry-after-ms", "250")
+            ])),
+            Some(Duration::from_millis(250))
+        );
+        // A date, a negative number and a word are not waits.
+        for value in ["Wed, 21 Oct 2026 07:28:00 GMT", "-5", "soon", "NaN"] {
+            assert_eq!(retry_after(&headers(&[("retry-after", value)])), None);
+        }
     }
 
     #[test]
@@ -664,6 +905,7 @@ mod tests {
                 cache_read: Some(2),
                 cache_write: Some(3),
                 input_semantics: InputTokenSemantics::Exclusive,
+                reasoning: None,
             }
         );
     }
@@ -694,6 +936,7 @@ mod tests {
                 cache_read: Some(4),
                 cache_write: Some(0),
                 input_semantics: InputTokenSemantics::Inclusive,
+                reasoning: None,
             }
         );
     }
@@ -765,6 +1008,63 @@ mod tests {
     }
 
     #[test]
+    fn a_blocking_reply_names_why_it_ended_the_way_the_stream_does() {
+        use crate::stream::{is_output_limit_stop, is_refusal_stop};
+        let base = || "https://example.test".to_string();
+        let chat = Wire::OpenAiChat {
+            base_url: base(),
+            reasoning_content: false,
+        };
+        let responses = Wire::OpenAiResponses { base_url: base() };
+        let anthropic = Wire::Anthropic { base_url: base() };
+        let google = Wire::Google { base_url: base() };
+
+        let reason = |wire: &Wire, body: Value| blocking_stop_reason(wire, &body);
+        let cut_chat = reason(
+            &chat,
+            json!({"choices":[{"message":{"content":""},"finish_reason":"length"}]}),
+        );
+        assert!(is_output_limit_stop(cut_chat.as_deref()));
+        assert_eq!(
+            reason(&chat, json!({"choices":[{"message":{"content":"a"}}]})),
+            None
+        );
+        let cut_responses = reason(
+            &responses,
+            json!({"status":"incomplete","incomplete_details":{"reason":"max_output_tokens"},"output":[]}),
+        );
+        assert!(is_output_limit_stop(cut_responses.as_deref()));
+        assert_eq!(
+            reason(&responses, json!({"status":"completed","output":[]})).as_deref(),
+            Some("completed")
+        );
+        let cut_anthropic = reason(&anthropic, json!({"stop_reason":"max_tokens","content":[]}));
+        assert!(is_output_limit_stop(cut_anthropic.as_deref()));
+        let refused = reason(&anthropic, json!({"stop_reason":"refusal","content":[]}));
+        assert!(is_refusal_stop(refused.as_deref()));
+        let cut_google = reason(
+            &google,
+            json!({"candidates":[{"finishReason":"MAX_TOKENS","content":{"parts":[]}}]}),
+        );
+        assert!(is_output_limit_stop(cut_google.as_deref()));
+    }
+
+    #[test]
+    fn a_completion_response_without_a_stop_reason_stays_wire_compatible() {
+        let response = CompletionResponse {
+            text: "x".into(),
+            usage: Usage::default(),
+            provider_id: "p".into(),
+            model_id: "m".into(),
+            stop_reason: None,
+        };
+        let json = serde_json::to_value(&response).unwrap();
+        assert!(json.get("stop_reason").is_none());
+        let back: CompletionResponse = serde_json::from_value(json).unwrap();
+        assert_eq!(back.stop_reason, None);
+    }
+
+    #[test]
     fn a_shapeless_reply_is_a_decode_error() {
         assert!(parse_openai(&json!({ "choices": [] })).is_err());
         assert!(parse_anthropic(&json!({})).is_err());
@@ -774,13 +1074,7 @@ mod tests {
     #[test]
     fn provider_errors_surface_their_own_sentence() {
         let err = error_message(401, r#"{"error":{"message":"Incorrect API key provided"}}"#);
-        assert_eq!(
-            err,
-            AgentError::Provider {
-                status: 401,
-                message: "Incorrect API key provided".into()
-            }
-        );
+        assert_eq!(err, AgentError::provider(401, "Incorrect API key provided"));
         assert!(!err.retryable());
     }
 

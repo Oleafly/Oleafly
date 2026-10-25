@@ -1,6 +1,10 @@
 import { JSDOM } from "jsdom";
-import { fireEvent, waitFor, within } from "@testing-library/react";
-import type { AcpAgentStatus, AcpEvent, AcpSession } from "@/lib/acp";
+import type { AcpAgentStatus, AcpConfigOption, AcpEvent, AcpModeOption, AcpSelectChoice, AcpSession } from "@/lib/acp";
+
+// Testing Library loads React DOM, which looks for a DOM once, when it loads.
+// Test files import this module before installUiDom() runs, so the helpers
+// load Testing Library when they first need it, after the DOM exists.
+const testingLibrary = () => import("@testing-library/react");
 
 export async function initTestI18n(): Promise<void> {
   const { i18n, initializeI18n } = await import("@/i18n");
@@ -91,10 +95,24 @@ export function event(sequence: number, kind: string, data: Record<string, unkno
   return { sequence, kind, data, sessionId, projectId: "paper", agentId: "fixture", modelId: "first", taskId: null, turnId: "turn", timestamp: sequence };
 }
 
+/**
+ * The list a trigger opened: the one it names in aria-controls (a select
+ * inside another list, such as the model picker, opens a second one), else
+ * the first list on the page.
+ */
+function openedListbox(trigger: HTMLElement): HTMLElement | null {
+  const controlled = trigger.getAttribute("aria-controls");
+  if (!controlled) return trigger.ownerDocument.querySelector<HTMLElement>('[role="listbox"]');
+  const element = trigger.ownerDocument.getElementById(controlled);
+  if (!element || element.getAttribute("role") === "listbox") return element;
+  return element.querySelector<HTMLElement>('[role="listbox"]');
+}
+
 export async function chooseOption(trigger: HTMLElement, option: string | RegExp) {
+  const { fireEvent, waitFor, within } = await testingLibrary();
   fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
   const listbox = await waitFor(() => {
-    const found = trigger.ownerDocument.querySelector<HTMLElement>('[role="listbox"]');
+    const found = openedListbox(trigger);
     if (!found) throw new Error("The dropdown did not open.");
     return found;
   });
@@ -103,9 +121,10 @@ export async function chooseOption(trigger: HTMLElement, option: string | RegExp
 }
 
 export async function optionNames(trigger: HTMLElement): Promise<string[]> {
+  const { fireEvent, waitFor, within } = await testingLibrary();
   fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
   const listbox = await waitFor(() => {
-    const found = trigger.ownerDocument.querySelector<HTMLElement>('[role="listbox"]');
+    const found = openedListbox(trigger);
     if (!found) throw new Error("The dropdown did not open.");
     return found;
   });
@@ -114,12 +133,13 @@ export async function optionNames(trigger: HTMLElement): Promise<string[]> {
     .map((item) => (item.textContent ?? "").trim());
   fireEvent.keyDown(listbox, { key: "Escape" });
   await waitFor(() => {
-    if (trigger.ownerDocument.querySelector('[role="listbox"]')) throw new Error("The dropdown did not close.");
+    if (openedListbox(trigger)) throw new Error("The dropdown did not close.");
   });
   return names;
 }
 
 async function openMenu(trigger: HTMLElement): Promise<HTMLElement> {
+  const { fireEvent, waitFor } = await testingLibrary();
   fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
   return await waitFor(() => {
     const found = trigger.ownerDocument.querySelector<HTMLElement>('[role="menu"]');
@@ -129,11 +149,13 @@ async function openMenu(trigger: HTMLElement): Promise<HTMLElement> {
 }
 
 export async function chooseMenuItem(trigger: HTMLElement, item: string | RegExp) {
+  const { fireEvent, within } = await testingLibrary();
   const menu = await openMenu(trigger);
   fireEvent.click(within(menu).getByRole("menuitem", { name: item }), { button: 0 });
 }
 
 export async function menuItemNames(trigger: HTMLElement): Promise<string[]> {
+  const { fireEvent, waitFor, within } = await testingLibrary();
   const menu = await openMenu(trigger);
   const names = within(menu)
     .queryAllByRole("menuitem")
@@ -152,4 +174,66 @@ export function deferred<T>() {
   let reject: (reason: unknown) => void = () => { throw new Error("Deferred promise is not initialized"); };
   const promise = new Promise<T>((accept, fail) => { resolve = accept; reject = fail; });
   return { promise, resolve, reject };
+}
+
+export function choice(value: string, name: string, extra: Partial<AcpSelectChoice> = {}): AcpSelectChoice {
+  return { value, name, description: null, group: null, blocked: false, ...extra };
+}
+
+export function selectOption(id: string, name: string, category: string | null, current: string | null, choices: AcpSelectChoice[]): AcpConfigOption {
+  return { id, name, description: null, category, kind: { type: "select", currentValue: current, options: choices } };
+}
+
+export function booleanOption(id: string, name: string, category: string | null, on: boolean): AcpConfigOption {
+  return { id, name, description: null, category, kind: { type: "boolean", currentValue: on } };
+}
+
+/** The options claude-agent-acp 0.93.0 reports. */
+export function claudeOptions(): AcpConfigOption[] {
+  return [
+    selectOption("model", "Model", "model", "default", [
+      choice("default", "Default (recommended)"), choice("opus", "Opus"), choice("sonnet", "Sonnet"), choice("haiku", "Haiku"),
+    ]),
+    booleanOption("fast", "Fast", "model_config", false),
+    selectOption("effort", "Effort", "thought_level", "medium", [
+      choice("low", "Low"), choice("medium", "Medium"), choice("high", "High"), choice("max", "Max"),
+    ]),
+    selectOption("mode", "Mode", "mode", "default", [
+      choice("default", "Default"), choice("acceptEdits", "Accept edits"), choice("plan", "Plan"),
+      choice("bypassPermissions", "Bypass permissions", { blocked: true }),
+    ]),
+  ];
+}
+
+/** The options codex-acp 2.2.2 reports. */
+export function codexOptions(): AcpConfigOption[] {
+  return [
+    selectOption("model", "Model", "model", "gpt-5.5", [
+      choice("gpt-5.5", "GPT-5.5", { group: "OpenAI" }), choice("gpt-5.5-mini", "GPT-5.5 mini", { group: "OpenAI" }),
+    ]),
+    selectOption("reasoning_effort", "Reasoning effort", "thought_level", "medium", [
+      choice("minimal", "Minimal"), choice("low", "Low"), choice("medium", "Medium"), choice("high", "High"),
+    ]),
+    selectOption("mode", "Approval preset", "mode", "auto", [
+      choice("read-only", "Read only"), choice("auto", "Auto"), choice("full-access", "Full access", { blocked: true }),
+    ]),
+  ];
+}
+
+/** gemini 0.64.0 reports models and modes the pre-config way. */
+export function geminiControls(): AcpSession["controls"] {
+  const modes: AcpModeOption[] = [
+    { id: "default", name: "Default", description: null, blocked: false },
+    { id: "plan", name: "Plan", description: "Read only", blocked: false },
+    { id: "yolo", name: "YOLO", description: null, blocked: true },
+  ];
+  return {
+    models: [{ modelId: "gemini-3-pro", name: "Gemini 3 Pro" }, { modelId: "gemini-3-flash", name: "Gemini 3 Flash" }],
+    modelId: "gemini-3-pro",
+    modelConfigId: null,
+    options: [],
+    modes,
+    modeId: "default",
+    legacyModels: true,
+  };
 }

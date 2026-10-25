@@ -1,12 +1,12 @@
 //! Keeps the webview of Oleafly's own windows (main, preview, update) the
 //! size of its window on macOS (issue #169).
 //!
-//! The `unstable` Tauri feature, which the browser window needs for its child
-//! webviews, makes every window's webview a child view. Tauri then sizes that
-//! view itself on each tao `Resized` event, converting the event's physical
-//! size back to points with the scale factor the window has when Tauri gets
-//! to the event, not the one it had when the size was measured. When a
-//! display wakes up, a resize can be measured at 1x and handled at 2x. The
+//! The `unstable` Tauri feature makes every window's webview a child view.
+//! Tauri then sizes that view itself on each tao `Resized` event, converting
+//! the event's physical size back to points with the scale factor the window
+//! has when Tauri gets to the event, not the one it had when the size was
+//! measured. When a display wakes up, a resize can be measured at 1x and
+//! handled at 2x. The
 //! webview is then set to exactly half the window's width and height, pinned
 //! top-left, and nothing sets it back.
 //!
@@ -16,9 +16,6 @@
 //! windows behaved before `unstable` (0.3.x). As a safety net, focus, scale
 //! and resize events check the frame, put it back if it drifted, and write a
 //! line to app.log when they do.
-//!
-//! Browser windows are left alone: their chrome and page webviews share the
-//! window, and `browser.rs` lays them out.
 
 /// Windows that hold one webview filling the whole window.
 const FILLING_WINDOWS: [&str; 5] = ["main", "preview", "update", "presentation", "presenter"];

@@ -1,0 +1,13 @@
+{
+  "missing_files": [],
+  "packages": [],
+  "roles": {
+    "chapter.typ": "source",
+    "main.typ": "main",
+    "refs.bib": "bibliography"
+  },
+  "unused_cites": [
+    "unusedtypst"
+  ],
+  "unused_labels": []
+}

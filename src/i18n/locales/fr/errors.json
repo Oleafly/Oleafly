@@ -81,17 +81,52 @@
   "export": {
     "bibliography_unreadable": "Oleafly n'a pas pu lire la bibliographie {{name}}. Vérifiez qu'aucune entrée n'est endommagée, puis exportez à nouveau."
   },
-  "github": {
-    "sign_in_expired": "Le code de connexion a expiré. Réessayez.",
-    "sign_in_cancelled": "L'autorisation GitHub a été annulée.",
-    "sign_in_failed": "La connexion à GitHub a échoué.",
-    "repositories_unavailable": "Impossible de charger les dépôts.",
-    "create_repo_failed": "Impossible de créer le dépôt ({{status}})."
-  },
   "git": {
-    "remote_exists": "Ce projet est déjà lié à {{remote}}.",
+    "access_denied": "{{host}} a refusé l'accès à ce dépôt. Vérifiez que votre compte y a accès. Si l'organisation utilise l'authentification unique (SSO), autorisez d'abord votre connexion pour elle.",
+    "access_denied_account": "{{host}} a refusé l'accès à ce dépôt pour {{account}}. Vérifiez que ce compte peut l'utiliser. Si l'organisation utilise l'authentification unique (SSO), autorisez d'abord votre connexion pour elle.",
+    "account_missing": "Aucun compte d'hébergement Git pour {{host}}. Ajoutez-en un dans les Paramètres.",
+    "archive_too_large": "Les fichiers du dépôt dépassent {{limit}} Mo, Oleafly ne peut donc pas les importer. Clonez vous-même le dépôt et ouvrez son dossier.",
+    "auth_rejected": "{{host}} a refusé la connexion enregistrée pour {{account}}. Reconnectez-vous à {{host}} dans les Paramètres.",
+    "credentials_missing": "{{host}} a demandé un nom d'utilisateur et un mot de passe. Connectez-vous à {{host}} dans les Paramètres, ou configurez une clé SSH ou un assistant d'identifiants Git.",
+    "credentials_rejected": "{{host}} a refusé le nom d'utilisateur et le mot de passe fournis par Git. Connectez-vous à {{host}} dans les Paramètres, ou mettez à jour les identifiants qu'utilise votre Git.",
+    "credentials_missing_helper": "{{host}} a demandé un nom d'utilisateur et un mot de passe. Configurez une clé SSH ou un assistant d'identifiants Git pour {{host}}, puis réessayez.",
+    "credentials_rejected_helper": "{{host}} a refusé le nom d'utilisateur et le mot de passe fournis par Git. Mettez à jour les identifiants qu'utilise votre Git pour {{host}}, ou utilisez une clé SSH.",
+    "device_flow_unavailable": "La connexion par navigateur n'est pas disponible pour {{host}} dans cette version. Utilisez plutôt un jeton d'accès.",
+    "forge_bad_response": "{{host}} a envoyé une réponse qu'Oleafly n'a pas pu lire.",
+    "forge_ca_file_invalid": "Oleafly n'a pas pu lire de certificat dans ce fichier. Choisissez un fichier de certificat PEM ou DER de moins de 1 Mo.",
+    "forge_forbidden": "{{host}} a refusé l'opération. Il manque peut-être au jeton les portées {{scopes}}.",
+    "forge_https_required": "Utilisez une adresse https://. Le http simple ne fonctionne qu'avec les serveurs de votre propre réseau.",
+    "forge_invalid_repository": "Ce chemin de dépôt n'est pas utilisable par Oleafly.",
+    "forge_invalid_repository_name": "Utilisez uniquement des lettres, des chiffres, des points, des tirets et des tirets bas dans le nom du dépôt.",
+    "forge_invalid_server": "{{server}} n'est pas une adresse de serveur utilisable par Oleafly.",
+    "forge_missing_scopes": "Ce jeton ne peut pas pousser vers {{host}}. Créez un jeton avec les portées {{scopes}}.",
+    "forge_not_found": "{{host}} n'a pas trouvé ce dépôt.",
+    "forge_rate_limited": "{{host}} limite les requêtes en ce moment. Réessayez dans une minute.",
+    "forge_redirect_refused": "{{host}} a essayé d'envoyer Oleafly vers {{target}}, alors Oleafly s'est arrêté pour protéger votre connexion.",
+    "forge_repository_exists": "Un dépôt portant ce nom existe déjà sur {{host}}.",
+    "forge_server_error": "{{host}} a renvoyé une erreur ({{status}}).",
+    "forge_signed_out": "Votre connexion à {{host}} a expiré ou a été révoquée. Reconnectez-vous dans les Paramètres.",
+    "forge_sso_required": "{{host}} exige que cette connexion soit autorisée pour l'authentification unique de l'organisation. Autorisez-la sur {{host}}, puis réessayez.",
+    "forge_store": "Oleafly n'a pas pu lire ni enregistrer vos comptes d'hébergement Git.",
+    "forge_token_invalid": "Cela ne ressemble pas à un jeton d'accès. Collez le jeton en entier.",
+    "forge_token_rejected": "{{host}} n'a pas accepté ce jeton. Vérifiez que vous avez copié le jeton en entier et qu'il n'a pas expiré.",
+    "forge_unknown_server": "Oleafly n'a pas pu déterminer le type de serveur de {{host}}. Choisissez le type de serveur.",
+    "host_key_unknown": "SSH ne connaît pas encore {{host}}. Connectez-vous-y une fois depuis un terminal pour accepter sa clé d'hôte, puis réessayez.",
+    "host_unreachable": "Oleafly n'a pas pu joindre {{host}}. Vérifiez l'adresse et votre connexion.",
+    "import_cancelled": "L'importation a été annulée.",
+    "invalid_remote_url": "Saisissez l'adresse HTTPS ou SSH d'un dépôt Git.",
     "nested_repository": "Ce projet se trouve dans un autre dépôt Git, donc Oleafly n'y crée pas de dépôt distinct.",
     "not_installed": "Git n'est pas installé sur cet ordinateur. Installez Git, puis réessayez.",
+    "push_rejected": "La branche distante contient des commits que ce projet n'a pas encore. Tirez d'abord, puis poussez de nouveau.",
+    "remote_exists": "Ce projet est déjà lié à {{remote}}.",
+    "remote_has_password": "Retirez le mot de passe ou le jeton d'accès de l'adresse. Oleafly se connecte plutôt avec votre compte d'hébergement Git ou vos propres identifiants Git.",
+    "repository_empty": "Ce dépôt n'a encore aucun commit, il n'y a donc rien à importer.",
+    "repository_not_found": "{{host}} n'a aucun dépôt à cette adresse, ou votre compte ne peut pas le voir.",
+    "sign_in_cancelled": "La connexion a été annulée dans le navigateur.",
+    "sign_in_expired": "Le code de connexion a expiré. Réessayez.",
+    "sign_in_failed": "La connexion a échoué.",
+    "ssh_key_rejected": "{{host}} a refusé votre clé SSH. Ajoutez votre clé publique à votre compte sur {{host}}, ou chargez la clé dans votre agent SSH.",
+    "tls_failed": "Oleafly n'a pas pu vérifier le certificat de {{host}}. Si votre organisation gère sa propre autorité de certification, ajoutez son fichier de certificat au compte dans les Paramètres.",
     "tracked_secret_files": "Publication arrêtée, car des fichiers de l'historique Git de ce projet peuvent contenir des clés ou des mots de passe : {{files}}"
   },
   "approvals": {
@@ -101,7 +136,7 @@
     "git": "Faites confiance à ce dossier pour utiliser le contrôle de version.",
     "repository": "Faites confiance au dépôt {{name}} pour utiliser ici le contrôle de version.",
     "terminal": "Ouvrez vous-même le terminal pour l'utiliser dans ce dossier.",
-    "agents": "Faites confiance à ce dossier pour utiliser des agents externes.",
+    "agents": "Faites confiance à ce dossier pour utiliser des agents CLI.",
     "mcp": "Faites confiance à ce dossier avant que les clients MCP puissent l'utiliser.",
     "research_tasks": "Faites confiance à ce dossier pour lancer des tâches de recherche.",
     "run_command": "Faites confiance à ce dossier pour permettre à l'assistant d'exécuter des commandes.",
@@ -136,6 +171,8 @@
     "changed": "{{path}} a changé après son installation par Oleafly, il a donc été laissé tel quel.",
     "failed": "Oleafly n'a pas pu installer la commande de terminal.",
     "remove_failed": "Oleafly n'a pas pu supprimer la commande de terminal.",
+    "path_failed": "Oleafly a installé la commande, mais n'a pas pu ajouter {{directory}} à votre PATH.",
+    "in_use": "{{path}} est en cours d'utilisation. Fermez les terminaux qui exécutent oleafly, puis réessayez.",
     "unsupported": "La commande de terminal n'est pas encore disponible sur ce système."
   },
   "research": {
@@ -212,6 +249,8 @@
     "sync_already_linked": "Ce projet est déjà lié à un autre projet Overleaf. Arrêtez d'abord la synchronisation.",
     "sync_offline": "Oleafly n'a pas pu joindre Overleaf. Vos modifications sont en sécurité ici et seront synchronisées la prochaine fois.",
     "sync_failed": "La synchronisation avec Overleaf n'a pas abouti. Vos fichiers ici n'ont pas changé.",
+    "sync_incomplete": "La synchronisation avec Overleaf n'a pas abouti, mais certains fichiers ici ont déjà été mis à jour. Synchronisez à nouveau pour terminer.",
+    "sync_backups_saved": "La synchronisation s'est arrêtée. Vos versions des fichiers, remplacées par celles d'Overleaf, sont enregistrées dans {{folder}}.",
     "sync_kept_changing": "Le projet n'a pas cessé de changer sur Overleaf pendant la synchronisation. Réessayez dans un instant.",
     "sync_case_clash": "Overleaf contient des fichiers dont les noms ne diffèrent que par les majuscules ({{files}}). Renommez l'un d'eux sur Overleaf, puis synchronisez à nouveau.",
     "sync_invalid_names": "Certains noms de fichiers sur Overleaf ne peuvent pas être enregistrés sur cet ordinateur ({{files}}). Renommez-les sur Overleaf, puis synchronisez à nouveau.",
@@ -223,7 +262,9 @@
     "git_token_rejected": "Overleaf n'a pas accepté le jeton Git. Il a peut-être expiré. Créez-en un nouveau dans les paramètres de votre compte Overleaf.",
     "git_unavailable": "L'intégration Git d'Overleaf n'est pas disponible pour ce projet. Elle nécessite un abonnement payant ou universitaire pour le propriétaire du projet.",
     "template_link_invalid": "Ce lien ne mène pas à une page de modèle Overleaf. Copiez l'adresse d'une page de overleaf.com/latex/templates et réessayez.",
-    "template_unavailable": "Oleafly n'a pas pu ouvrir ce modèle. Il a peut-être été retiré de la galerie d'Overleaf."
+    "template_unavailable": "Oleafly n'a pas pu ouvrir ce modèle. Il a peut-être été retiré de la galerie d'Overleaf.",
+    "browser_sign_in_missing": "Oleafly n'a trouvé aucune connexion à {{server}} dans ce profil de navigateur. Connectez-vous directement.",
+    "browser_sign_in_failed": "La connexion récupérée dans votre navigateur n'a pas fonctionné. Elle a peut-être expiré. Connectez-vous directement."
   },
   "collab": {
     "suggestion_role": "Votre rôle dans ce projet ne permet pas de faire des suggestions."
@@ -238,5 +279,53 @@
     "unknown_tool": "Oleafly ne connaît aucun outil nommé {{tool}}.",
     "not_managed": "Oleafly ne peut supprimer {{tool}} que s'il l'a téléchargé lui-même.",
     "no_html_output": "Il n'y a pas encore de sortie HTML. Compilez d'abord le document."
+  },
+  "attachments": {
+    "too_large": "Ce fichier dépasse {{max}} Mo. Joignez un fichier plus petit.",
+    "invalid_request": "Oleafly n'a pas pu lire cette pièce jointe.",
+    "not_found": "Cette pièce jointe n'est plus stockée sur cet ordinateur.",
+    "storage_failed": "Oleafly n'a pas pu enregistrer cette pièce jointe."
+  },
+  "provider_credit": {
+    "failed": "Oleafly n'a pas pu vérifier votre solde {{provider}}."
+  },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 n'est pas installé.",
+    "git_bash_missing": "Git Bash n'est pas installé. Installez Git for Windows ou choisissez un autre shell.",
+    "wsl_missing": "WSL n'est pas installé.",
+    "wsl_no_distro": "WSL n'a encore aucune distribution Linux.",
+    "shell_path_empty": "Saisissez un chemin de shell dans les Paramètres, ou choisissez un autre shell.",
+    "shell_path_missing": "Aucun programme à l'emplacement {{path}}."
+  },
+  "mathpix": {
+    "keys_missing": "Ajoutez d'abord votre ID d'application et votre clé Mathpix dans Paramètres, Assistant IA, Outils.",
+    "invalid_keys": "Cet ID d'application ou cette clé contient des caractères que les clés Mathpix ne contiennent jamais. Copiez-les de nouveau depuis la console Mathpix.",
+    "key_rejected": "Mathpix n'a pas accepté ces clés. Vérifiez l'ID d'application et la clé dans la console Mathpix.",
+    "rate_limited": "Mathpix limite les requêtes en ce moment. Attendez une minute, puis réessayez.",
+    "unreachable": "Oleafly n'a pas pu joindre Mathpix. Vérifiez votre connexion internet, puis réessayez.",
+    "http_error": "Mathpix a renvoyé une erreur (HTTP {{status}}). Réessayez plus tard.",
+    "invalid_response": "Mathpix a envoyé une réponse qu'Oleafly n'a pas pu lire. Réessayez plus tard.",
+    "rejected": "Mathpix n'a pas pu lire ce fichier : {{reason}}",
+    "image_too_large": "Cette image est trop grande pour Mathpix. Recadrez-la et réessayez.",
+    "pdf_too_large": "Ce PDF dépasse la limite de 256 Mo de Mathpix.",
+    "timed_out": "Mathpix n'a pas terminé ce PDF en 30 minutes. Essayez avec moins de pages.",
+    "cancelled": "La conversion Mathpix a été arrêtée.",
+    "wrong_window": "Mathpix ne peut être utilisé que depuis la fenêtre principale d'Oleafly.",
+    "pdf_too_large_ipc": "Cet ordinateur peut envoyer à Mathpix des PDF jusqu'à 16 Mo. Découpez le PDF et réessayez."
+  },
+  "desktop_apps": {
+    "not_installed": "Cua Driver n'est pas installé. Installez-le dans Paramètres, Intégrations, Applications de bureau.",
+    "too_old": "Cua Driver {{version}} est trop ancien. Mettez-le à jour vers {{minimum}} ou une version plus récente.",
+    "no_app_bundle": "Installez Cua Driver avec le programme d'installation officiel pour qu'il puisse conserver les autorisations macOS.",
+    "change_declined": "Vous avez conservé vos réglages précédents pour les applications de bureau.",
+    "app_blocked": "Les agents ne peuvent pas utiliser {{name}}.",
+    "app_invalid": "Oleafly ne peut pas utiliser {{name}} comme application.",
+    "site_invalid": "« {{site}} » n'est pas une adresse de site web utilisable par Oleafly. Utilisez https://, ou http:// pour cet ordinateur.",
+    "too_many_apps": "Vous pouvez autoriser jusqu'à {{limit}} applications.",
+    "too_many_sites": "Vous pouvez autoriser jusqu'à {{limit}} sites web.",
+    "start_failed": "Cua Driver n'a pas pu démarrer : {{detail}}",
+    "not_bounded": "Cua Driver n'a pas démarré avec les limites d'Oleafly, alors Oleafly l'a arrêté.",
+    "task_unattended": "Les tâches qui s'exécutent selon une planification ou après la fermeture d'Oleafly ne peuvent pas utiliser les applications de bureau.",
+    "main_window": "Modifiez les applications de bureau depuis la fenêtre principale."
   }
 }

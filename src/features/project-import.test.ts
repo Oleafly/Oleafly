@@ -5,7 +5,8 @@ import { useToastStore } from "@/store/toast";
 const mocks = vi.hoisted(() => ({
   files: { projectId: null as string | null },
   ensurePandoc: vi.fn(),
-  githubImportRepo: vi.fn(),
+  forgeImportRepo: vi.fn(),
+  gitCloneProject: vi.fn(),
   importArxivEprint: vi.fn(),
   importDocument: vi.fn(),
   importProject: vi.fn(),
@@ -17,11 +18,9 @@ vi.mock("@/features/pandoc", () => ({
   ensurePandoc: mocks.ensurePandoc,
 }));
 
-vi.mock("@/lib/github", () => ({
-  githubImportRepo: mocks.githubImportRepo,
-}));
-
 vi.mock("@/lib/tauri", () => ({
+  forgeImportRepo: mocks.forgeImportRepo,
+  gitCloneProject: mocks.gitCloneProject,
   importDocument: mocks.importDocument,
   importArxivEprint: mocks.importArxivEprint,
 }));
@@ -38,9 +37,10 @@ vi.mock("@/store/files", () => ({
 }));
 
 import {
+  cloneRepository,
   importArxivPaper,
   importFileKind,
-  importGitHubRepository,
+  importForgeRepository,
   importSelectedFile,
   importTargetsForKind,
   normalizeArxivImportId,
@@ -54,7 +54,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.files.projectId = null;
   mocks.ensurePandoc.mockResolvedValue(true);
-  mocks.githubImportRepo.mockResolvedValue("github-project");
+  mocks.forgeImportRepo.mockResolvedValue("forge-project");
+  mocks.gitCloneProject.mockResolvedValue("cloned-project");
   mocks.importDocument.mockResolvedValue("converted-project");
   mocks.importProject.mockResolvedValue("archive-project");
   mocks.openProject.mockImplementation(async (id: string) => {
@@ -148,21 +149,22 @@ describe("project file import", () => {
   });
 });
 
-describe("GitHub repository import", () => {
-  it("imports the linked repository and opens the project", async () => {
-    const repository = {
-      full_name: "oleafly/example-paper",
-      html_url: "https://github.com/oleafly/example-paper",
-      clone_url: "https://github.com/oleafly/example-paper.git",
-      private: false,
-    };
+describe("Git repository import", () => {
+  it("imports a repository from an account and opens it", async () => {
+    await importForgeRepository("https://gitlab.com", { fullName: "group/sub/paper" });
 
-    await importGitHubRepository(repository);
-
-    expect(mocks.githubImportRepo).toHaveBeenCalledWith(repository.full_name);
+    expect(mocks.forgeImportRepo).toHaveBeenCalledWith("https://gitlab.com", "group/sub/paper");
     expect(mocks.refreshProjects).toHaveBeenCalledOnce();
-    expect(mocks.openProject).toHaveBeenCalledWith("github-project");
+    expect(mocks.openProject).toHaveBeenCalledWith("forge-project");
     expect(useToastStore.getState().toasts).toEqual([]);
+  });
+
+  it("clones a repository and opens it", async () => {
+    await cloneRepository("  git@codeberg.org:me/paper.git  ");
+
+    expect(mocks.gitCloneProject).toHaveBeenCalledWith("git@codeberg.org:me/paper.git");
+    expect(mocks.refreshProjects).toHaveBeenCalledOnce();
+    expect(mocks.openProject).toHaveBeenCalledWith("cloned-project");
   });
 });
 

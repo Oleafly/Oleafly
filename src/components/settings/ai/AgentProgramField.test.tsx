@@ -9,15 +9,20 @@ const { restore } = await vi.hoisted(async () => {
 });
 vi.mock("@/lib/acp", async (original) => ({
   ...await original<typeof import("@/lib/acp")>(),
-  acpCheckAgent: vi.fn(), acpPickAgentProgram: vi.fn(), acpSetAgentProgram: vi.fn(),
+  acpCheckAgent: vi.fn(), acpPickAgentProgram: vi.fn(), acpSetAgentProgram: vi.fn(), acpSignInCommand: vi.fn(),
 }));
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn() }));
+vi.mock("@/lib/terminal-launch", async (original) => ({
+  ...await original<typeof import("@/lib/terminal-launch")>(),
+  openTerminalWith: vi.fn(),
+}));
 
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import {
-  acpCheckAgent, acpPickAgentProgram, acpSetAgentProgram,
-  type AcpAgentCheck, type AcpAgentStatus, type AcpCheckCode, type AcpCliStatus,
+  acpCheckAgent, acpPickAgentProgram, acpSetAgentProgram, acpSignInCommand,
+  type AcpAgentCheck, type AcpAgentStatus, type AcpAuthMethod, type AcpCheckCode, type AcpCliStatus,
 } from "@/lib/acp";
+import { openTerminalWith, TerminalLaunchError } from "@/lib/terminal-launch";
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { agent, deferred } from "@/components/ai/acp/tests/ui-fixtures";
 import { AgentProgramField, checkMessage, programPlacement } from "./AgentProgramField";
@@ -74,7 +79,7 @@ describe("program placement", () => {
 });
 
 describe("program row", () => {
-  it("shows where the program came from with Choose and Test, and the typed field only when nothing was found", () => {
+  it("shows where the program came from with Choose and Test, and keeps the typed field visible", () => {
     const found = render(
       <AgentProgramField agent={pi({ cli: { ...piCli, path: "/usr/local/bin/pi", source: "auto" } })} placement="main" onStatus={vi.fn()} />,
     );
@@ -85,7 +90,8 @@ describe("program row", () => {
     expect(row).toHaveTextContent(copy.source.auto);
     expect(within(row).getByRole("button", { name: copy.choose })).toBeInTheDocument();
     expect(within(row).getByRole("button", { name: copy.test })).toBeInTheDocument();
-    expect(within(row).queryByRole("textbox")).not.toBeInTheDocument();
+    // 0.4.8 (D11): the typed path stays available to point at another program.
+    expect(within(row).getByRole("textbox", { name: fill(copy.inputLabel, { name: "Pi" }) })).toHaveValue("");
     expect(within(row).queryByRole("button", { name: copy.useAutomatic })).not.toBeInTheDocument();
     found.unmount();
 
@@ -360,5 +366,121 @@ describe("program row edge cases", () => {
 
     fireEvent.click(ui.getByRole("button", { name: copy.useAutomatic }));
     await waitFor(() => expect(ui.getByRole("alert")).toHaveTextContent("Settings are read-only."));
+  });
+});
+
+describe("0.4.8 program checks", () => {
+  const login: AcpAuthMethod = { id: "login", name: "Pi login", description: null, kind: "terminal" };
+  const browser: AcpAuthMethod = { id: "browser", name: "Browser", description: null, terminalCommand: { command: "pi", args: ["/login"], label: "Pi in a browser" } };
+
+  beforeEach(() => {
+    vi.mocked(acpSignInCommand).mockResolvedValue({ title: "Sign in to Pi", program: "/usr/local/bin/pi", args: ["login"], env: {} });
+    vi.mocked(openTerminalWith).mockResolvedValue({ terminalId: "t1" });
+  });
+
+  it("keeps the typed path field visible after a program is chosen", async () => {
+    vi.mocked(acpPickAgentProgram).mockResolvedValue(PICKED);
+    vi.mocked(acpCheckAgent).mockResolvedValue(check("ready", { program: PICKED, version: "0.81.2" }));
+    const saved = pi({ programOverride: PICKED, cli: { ...piCli, path: PICKED, source: "override" } });
+    vi.mocked(acpSetAgentProgram).mockResolvedValue(saved);
+    const ui = render(<AgentProgramField agent={pi()} placement="main" onStatus={vi.fn()} />);
+    fireEvent.click(ui.getByRole("button", { name: copy.choose }));
+    await ui.findByRole("status");
+    ui.rerender(<AgentProgramField agent={saved} placement="main" onStatus={vi.fn()} />);
+    const input = ui.getByTestId("acp-agent-program-input-pi");
+    expect(input).toBeVisible();
+    expect(input).toHaveValue("");
+    fillInput(input, "/opt/pi/bin/pi");
+    vi.mocked(acpCheckAgent).mockResolvedValue(check("not_found", { program: "/opt/pi/bin/pi" }));
+    fireEvent.submit(input.closest("form") as HTMLFormElement);
+    await waitFor(() => expect(acpCheckAgent).toHaveBeenLastCalledWith("pi", "/opt/pi/bin/pi"));
+  });
+
+  it("offers sign-in when the check says the agent needs it", async () => {
+    vi.mocked(acpPickAgentProgram).mockResolvedValue(PICKED);
+    vi.mocked(acpCheckAgent).mockResolvedValue(check("needs_sign_in", { program: PICKED, authMethods: [login] }));
+    vi.mocked(acpSetAgentProgram).mockResolvedValue(pi({ programOverride: PICKED }));
+    const ui = render(<AgentProgramField agent={pi()} placement="main" projectId="paper" onStatus={vi.fn()} />);
+    fireEvent.click(ui.getByRole("button", { name: copy.choose }));
+    const result = await ui.findByTestId("acp-agent-program-result-pi");
+    expect(result).toHaveTextContent(fill(copy.check.needsSignIn, { name: "Pi" }));
+    // A program that only needs a sign-in works, so it is kept.
+    expect(acpSetAgentProgram).toHaveBeenCalledWith("pi", PICKED);
+    fireEvent.click(within(result).getByRole("button", { name: copy.signIn }));
+    await waitFor(() => expect(openTerminalWith).toHaveBeenCalledWith({
+      title: "Sign in to Pi",
+      command: "/usr/local/bin/pi",
+      args: ["login"],
+      env: {},
+      confirmText: "Pi signs in through the command below, which runs in a terminal tab. Check it before you agree.",
+    }));
+    expect(acpSignInCommand).toHaveBeenCalledWith("paper", "pi", null, "login");
+    expect(await within(result).findByText(copy.afterSignIn)).toBeInTheDocument();
+  });
+
+  it("names each sign-in method when there are several", async () => {
+    vi.mocked(acpCheckAgent).mockResolvedValue(check("needs_sign_in", { authMethods: [login, browser, { id: "key", name: "Key", description: null }] }));
+    const ui = render(<AgentProgramField agent={pi()} placement="main" projectId="paper" onStatus={vi.fn()} />);
+    fireEvent.click(ui.getByRole("button", { name: copy.test }));
+    const result = await ui.findByTestId("acp-agent-program-result-pi");
+    expect(within(result).getByTestId("acp-agent-sign-in-pi-login")).toHaveTextContent("Pi login");
+    expect(within(result).getByTestId("acp-agent-sign-in-pi-browser")).toHaveTextContent("Pi in a browser");
+    expect(within(result).queryByTestId("acp-agent-sign-in-pi-key")).toBeNull();
+  });
+
+  it("shows the sign-in command to copy when no project is open", async () => {
+    vi.mocked(acpCheckAgent).mockResolvedValue(check("needs_sign_in", { authMethods: [login] }));
+    const ui = render(<AgentProgramField agent={pi()} placement="main" onStatus={vi.fn()} />);
+    fireEvent.click(ui.getByRole("button", { name: copy.test }));
+    const line = await ui.findByTestId("acp-agent-sign-in-line-pi-login");
+    expect(line).toHaveTextContent("/usr/local/bin/pi");
+    expect(line).toHaveTextContent("login");
+    expect(acpSignInCommand).toHaveBeenCalledWith(null, "pi", null, "login");
+    expect(ui.queryByRole("button", { name: copy.signIn })).toBeNull();
+  });
+
+  it("leaves out a sign-in command it could not build, and falls back to the hint", async () => {
+    vi.mocked(acpSignInCommand).mockRejectedValue(new Error("unknown method"));
+    vi.mocked(acpCheckAgent).mockResolvedValueOnce(check("needs_sign_in", { authMethods: [login] }));
+    const ui = render(<AgentProgramField agent={pi()} placement="main" onStatus={vi.fn()} />);
+    fireEvent.click(ui.getByRole("button", { name: copy.test }));
+    await ui.findByTestId("acp-agent-program-result-pi");
+    await waitFor(() => expect(acpSignInCommand).toHaveBeenCalled());
+    expect(ui.queryByTestId("acp-agent-sign-in-line-pi-login")).toBeNull();
+    cleanup();
+    vi.mocked(acpCheckAgent).mockResolvedValueOnce(check("needs_sign_in", { authMethods: [] }));
+    const hint = render(<AgentProgramField agent={pi()} placement="main" onStatus={vi.fn()} />);
+    fireEvent.click(hint.getByRole("button", { name: copy.test }));
+    const result = await hint.findByTestId("acp-agent-program-result-pi");
+    expect(result).toHaveTextContent("Run pi in your terminal and sign in with /login, then reconnect.");
+  });
+
+  it("reports a sign-in terminal that could not open, except a full tab bar", async () => {
+    vi.mocked(acpCheckAgent).mockResolvedValue(check("needs_sign_in", { authMethods: [login] }));
+    vi.mocked(openTerminalWith)
+      .mockRejectedValueOnce(new TerminalLaunchError("tab-limit"))
+      .mockRejectedValueOnce(new TerminalLaunchError("invalid"))
+      .mockRejectedValueOnce(new Error("The shell could not start."));
+    const ui = render(<AgentProgramField agent={pi()} placement="main" projectId="paper" onStatus={vi.fn()} />);
+    fireEvent.click(ui.getByRole("button", { name: copy.test }));
+    const result = await ui.findByTestId("acp-agent-program-result-pi");
+    const button = within(result).getByRole("button", { name: copy.signIn });
+    fireEvent.click(button);
+    await waitFor(() => expect(openTerminalWith).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(within(result).queryByRole("alert")).toBeNull();
+    fireEvent.click(button);
+    expect(await within(result).findByRole("alert")).toBeInTheDocument();
+    fireEvent.click(button);
+    await waitFor(() => expect(within(result).getByRole("alert")).toHaveTextContent("The shell could not start."));
+  });
+
+  it("explains a program that started but could not open a conversation", async () => {
+    vi.mocked(acpCheckAgent).mockResolvedValue(check("session_failed", { detail: "session/new failed: no model" }));
+    const ui = render(<AgentProgramField agent={pi()} placement="main" onStatus={vi.fn()} />);
+    fireEvent.click(ui.getByRole("button", { name: copy.test }));
+    const result = await ui.findByTestId("acp-agent-program-result-pi");
+    expect(result).toHaveTextContent(fill(copy.check.sessionFailed, { name: "Pi" }));
+    expect(result).toHaveTextContent("session/new failed: no model");
   });
 });

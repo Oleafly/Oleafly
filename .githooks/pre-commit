@@ -32,7 +32,8 @@ if printf '%s\n' "$staged" | grep -qE '^(src/|packages/|package\.json|pnpm-lock\
   pnpm i18n:types:check || fail "i18n types"
   pnpm i18n:validate || fail "i18n validate"
   echo "→ frontend: typecheck + build"
-  pnpm build || fail "tsc / vite build"
+  # The Vite build peaks close to Node's default heap; CI gives it 6 GB, so the hook does too.
+  NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=6144}" pnpm build || fail "tsc / vite build"
   echo "→ frontend: tests"
   pnpm test || fail "vitest"
 fi

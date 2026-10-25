@@ -17,7 +17,6 @@ mod arxiv_import;
 mod assets;
 mod bib_clean;
 mod biber_toolchain;
-mod browser;
 mod browser_cookie_import;
 mod buffer_copy;
 mod build_hygiene;
@@ -39,7 +38,6 @@ mod compile_fingerprint;
 mod config;
 mod connectors;
 mod conversion;
-mod cua_policy;
 mod custom_templates;
 mod deadlines;
 mod deep_link;
@@ -53,7 +51,6 @@ mod folder_write;
 mod fs_identity;
 mod fsperm;
 mod git;
-mod github;
 mod i18n;
 mod initial_state;
 mod known_folders;
@@ -149,6 +146,18 @@ mod webview_frame;
 mod window_frame;
 mod worktree_lock;
 mod zotero;
+// 0.4.8 C:
+mod attachments;
+// 0.4.8 G:
+mod forge;
+// 0.4.8 H:
+mod mathpix;
+// 0.4.8 I:
+mod cua_driver;
+// 0.4.8 K:
+mod research_compute;
+// 0.4.8 L:
+mod daemon_handoff;
 
 use state::AppState;
 
@@ -228,17 +237,49 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     }
     program_locator::start_background_probe();
     acp::attach(app.handle()).map_err(std::io::Error::other)?;
+    // 0.4.8 F1: `oleafly` for agents, terminals and research commands, and
+    // the Windows terminal command kept current after an update. The shim's
+    // path is known up front, so a terminal restored before the refresh
+    // ends still finds `oleafly`.
+    if let Some(shim) = program_locator::planned_cli_shim() {
+        acp::set_cli_program(shim);
+    }
+    tauri::async_runtime::spawn_blocking(|| {
+        match program_locator::refresh_cli_shim() {
+            Ok(path) => acp::set_cli_program(path),
+            Err(error) => {
+                let _ = project::append_app_log(format!("oleafly command unavailable: {error}"));
+            }
+        }
+        #[cfg(windows)]
+        shell_command::refresh_installed_copy();
+    });
+    // 0.4.8 I: desktop apps (Cua Driver) state, stale daemon cleanup, idle
+    // reaper. Without it desktop apps stay off; the app still starts.
+    if let Err(error) = cua_driver::attach(app.handle()) {
+        let _ = project::append_app_log(format!("desktop apps unavailable: {error}"));
+    }
     agent::usage::attach_acp_usage(app.handle()).map_err(std::io::Error::other)?;
-    agent::task_runtime::register_task_runtimes(app.handle()).map_err(std::io::Error::other)?;
     {
         use tauri::Manager;
         let handle = app.handle().clone();
-        handle
-            .state::<research_tasks::ResearchTaskState>()
-            .attach_app(handle.clone());
+        research_tasks::attach(
+            handle.state::<research_tasks::ResearchTaskState>().inner(),
+            &handle,
+        );
+        // The built-in runtime uses the run services attach creates.
+        agent::task_runtime::register_task_runtimes(app.handle()).map_err(std::io::Error::other)?;
+        // 0.4.8 L: the background helper's usage and tasks come back, and a
+        // watcher shows its progress while it still runs tasks.
+        daemon_handoff::on_launch(
+            &handle,
+            std::sync::Arc::new(research_tasks::host::AppResearchHost::new(handle.clone())),
+        );
         tauri::async_runtime::spawn(async move {
             let tasks = handle.state::<research_tasks::ResearchTaskState>();
-            if let Err(error) = tasks.recover(handle.state::<AppState>().inner()).await {
+            if let Err(error) =
+                research_tasks::recover(tasks.inner(), handle.state::<AppState>().inner()).await
+            {
                 let _ = crate::project::append_app_log(format!(
                     "Research task recovery failed: {error}"
                 ));
@@ -363,8 +404,26 @@ fn e2e_boot_seed_script(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // MCP servers in this process report the app's version.
+    oleafly_research::mcp::protocol::set_server_version(env!("CARGO_PKG_VERSION"));
+    // The Windows sandbox launcher, the sandbox self-test and a sandboxed
+    // run re-enter the app binary with their own flags.
+    if let Some(code) = oleafly_sandbox::entry(research_compute::sandbox_config) {
+        std::process::exit(code);
+    }
+    if let Some(config) = research_compute::sandbox_config() {
+        oleafly_sandbox::configure(config);
+    }
+    // A detached run supervisor re-enters the app binary with its flag.
+    if let Some(code) = oleafly_research::runs::supervisor::run_if_requested() {
+        std::process::exit(code);
+    }
     if research_mcp::stdio_bridge_requested() {
         std::process::exit(research_mcp::serve_stdio_bridge());
+    }
+    // 0.4.8 L: the background helper is this binary with its own flag.
+    if daemon_handoff::daemon_requested(std::env::args_os()) {
+        std::process::exit(daemon_handoff::serve_daemon());
     }
     let open_intake = open_request::OpenIntake::default();
     open_intake.enqueue(
@@ -381,7 +440,6 @@ pub fn run() {
     }
     builder = with_open_intake(builder, open_intake)
         .on_page_load(|webview, payload| {
-            browser::on_page_load(webview, payload);
             terminal::on_page_load(webview, payload);
             deep_link::on_page_load(webview, payload);
         })
@@ -396,7 +454,9 @@ pub fn run() {
         .plugin(typst_watch::lifecycle_plugin())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_dialog::init());
+        .plugin(tauri_plugin_dialog::init())
+        // Research tasks tell the user when they need them.
+        .plugin(tauri_plugin_notification::init());
 
     // Lets AppKit, not Tauri's scale-converting resize, size the webviews
     // of the main, preview and update windows (issue #169).
@@ -482,7 +542,7 @@ pub fn run() {
     builder
         .manage(AppState::default())
         .manage(updater::UpdateState::default())
-        .manage(research_tasks::ResearchTaskState::default())
+        .manage(research_tasks::new_state())
         .manage(agent::AgentState::default())
         .manage(agent_exec::AgentExecState::default())
         .manage(agent_server::AgentServerState::default())
@@ -503,6 +563,7 @@ pub fn run() {
             typst_query::typst_document_insights,
             typst_slide_notes::typst_slide_notes,
             arxiv_import::extract_arxiv_source,
+            research_tasks::research_tasks_set_enabled,
             research_tasks::research_task_list,
             research_tasks::research_task_create,
             research_tasks::research_task_edit,
@@ -588,19 +649,6 @@ pub fn run() {
             checkpoint_backup::checkpoint_export,
             checkpoint_backup::checkpoint_import,
             commands::app_version,
-            commands::has_orx,
-            browser::browser_window_open,
-            browser::browser_window_focus,
-            browser::browser_window_close,
-            browser::browser_state,
-            browser::browser_tab_open,
-            browser::browser_tab_activate,
-            browser::browser_tab_close,
-            browser::browser_navigate,
-            browser::browser_back,
-            browser::browser_forward,
-            browser::browser_reload,
-            browser::browser_content_visible,
             browser_cookie_import::detect_browser_cookie_sources,
             browser_cookie_import::import_browser_cookies,
             protocol::backend_protocol_info,
@@ -680,7 +728,6 @@ pub fn run() {
             i18n::set_ui_locale,
             i18n::get_ui_locale,
             app_icon::app_icon_set,
-            cua_policy::cua_action_confirm,
             agent_exec::agent_exec_cwd,
             agent_exec::agent_exec_authorize,
             agent_exec::agent_exec_register_external,
@@ -732,15 +779,6 @@ pub fn run() {
             cloud::commands::cloud_settings_defer,
             cloud::commands::cloud_wait_for_changes,
             cloud::commands::cloud_settings_keep_local,
-            github::gh_request_device_code,
-            github::gh_check_device_token,
-            github::gh_current_user,
-            github::gh_set_token,
-            github::gh_clear_token,
-            github::gh_list_repos,
-            github::gh_create_repo,
-            github::gh_public_repo_stats,
-            github::gh_import_repo,
             collab::commands::collab_servers_list,
             collab::commands::collab_server_probe,
             collab::commands::collab_server_sign_in,
@@ -1121,12 +1159,128 @@ pub fn run() {
             git::git_continue_merge,
             git::git_abort_merge,
             git::git_show,
+            // 0.4.8 C:
+            attachments::attachment_put,
+            attachments::attachment_put_text,
+            attachments::attachment_read,
+            attachments::attachment_meta,
+            attachments::attachment_gc,
+            agent::usage::agent_provider_credit,
+            agent::web::agent_web_support,
+            // 0.4.8 B:
+            chats::chats_load,
+            chats::chat_read,
+            chats::chat_save,
+            chats::chat_delete,
+            agent_server::agent_thread_rollback,
+            // 0.4.8 E:
+            citation::verify_citation,
+            skills::skills_replace_with_builtin,
+            literature::literature_search_all,
+            research_tasks::research_task_plan,
+            research_tasks::research_task_approve_plan,
+            research_tasks::research_task_run_cancel,
+            research_tasks::research_task_run_log,
+            research_tasks::research_task_attention,
+            research_tasks::research_notification_permission,
+            research_tasks::research_task_approvals,
+            research_tasks::research_task_approval_decide,
+            research_tasks::research_task_evidence_refresh,
+            research_tasks::research_task_progress,
+            research_tasks::research_task_watch,
+            research_tasks::pdf_text::research_pdf_text_fetch,
+            research_tasks::pdf_text::research_pdf_text_result,
+            // 0.4.8 D:
+            acp::commands::acp_preferences,
+            acp::commands::acp_set_preferences,
+            acp::commands::acp_agent_preferences,
+            acp::commands::acp_set_agent_preferences,
+            acp::commands::acp_set_agent_preference,
+            acp::commands::acp_provider_choices,
+            acp::commands::acp_buffer_reply,
+            acp::commands::acp_set_config_option,
+            acp::commands::acp_set_mode,
+            acp::commands::acp_refresh_plan_usage,
+            acp::commands::acp_sign_in_command,
+            acp::commands::acp_logout,
+            acp::commands::acp_elicitation_respond,
+            acp::commands::acp_steer,
+            acp::commands::acp_session_rename,
+            acp::commands::acp_session_delete,
+            acp::commands::acp_agent_sessions,
+            acp::commands::acp_session_import,
+            acp::commands::acp_fork,
+            acp::commands::acp_commit_turn,
+            acp::commands::acp_hermes_settings,
+            acp::commands::acp_set_hermes_settings,
+            acp::commands::acp_hermes_status,
+            acp::commands::acp_hermes_set_option,
+            acp::commands::acp_test_remote_hermes,
+            // 0.4.8 A:
+            terminal::term_shells,
+            terminal::term_ack,
+            terminal::term_foreground,
+            // 0.4.8 G:
+            forge::public_stats::gh_public_repo_stats,
+            forge::commands::forge_accounts_list,
+            forge::commands::forge_detect,
+            forge::commands::forge_sign_in_token,
+            forge::commands::forge_device_start,
+            forge::commands::forge_device_poll,
+            forge::commands::forge_device_cancel,
+            forge::commands::forge_sign_out,
+            forge::commands::forge_set_ca_file,
+            forge::commands::forge_validate,
+            forge::commands::forge_list_repos,
+            forge::commands::forge_create_repo,
+            forge::import::forge_import_repo,
+            git::git_clone_project,
+            // 0.4.8 H:
+            config::set_ai_tools_model,
+            ollama::ollama_list_model_details,
+            mathpix::mathpix_key_status,
+            mathpix::mathpix_save_keys,
+            mathpix::mathpix_clear_keys,
+            mathpix::mathpix_text,
+            mathpix::mathpix_text_cancel,
+            mathpix::mathpix_pdf_upload,
+            mathpix::mathpix_pdf_wait,
+            mathpix::mathpix_pdf_cancel,
+            // 0.4.8 I:
+            overleaf::overleaf_sign_in_with_app_cookies,
+            cua_driver::commands::cua_driver_status,
+            cua_driver::commands::cua_driver_settings_set,
+            cua_driver::commands::cua_driver_installed_apps,
+            cua_driver::commands::cua_driver_pick_app,
+            cua_driver::commands::cua_driver_test,
+            cua_driver::commands::cua_driver_tool_spec,
+            // 0.4.8 K:
+            research_compute::research_compute_settings,
+            research_compute::research_compute_target_save,
+            research_compute::research_compute_target_remove,
+            research_compute::research_compute_ssh_hosts,
+            research_compute::research_compute_target_test,
+            research_compute::research_compute_trust_host_key,
+            research_compute::research_compute_forget_host_key,
+            research_compute::research_sandbox_status,
+            research_compute::research_sandbox_set_windows,
+            research_compute::research_sandbox_remove_access,
+            research_compute::research_sandbox_check,
+            // 0.4.8 L:
+            daemon_handoff::background_helper_status,
+            daemon_handoff::background_helper_stop,
+            daemon_handoff::background_helper_set_login_item,
+            daemon_handoff::background_helper_reveal_log,
+            daemon_handoff::background_tasks_set_enabled,
+            daemon_handoff::research_task_set_keep_running,
         ]))
         .build(tauri::generate_context!())
         .expect("error while running Oleafly")
         .run(|_, event| {
             if let tauri::RunEvent::Exit = event {
                 collab::live::finish_for_quit(collab::live::QUIT_WAIT);
+                // 0.4.8 I: stop the Cua Driver daemons Oleafly started.
+                cua_driver::shutdown_for_quit(std::time::Duration::from_millis(1500));
                 quit_gate::on_app_exit();
             }
         });

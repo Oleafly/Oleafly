@@ -48,7 +48,6 @@
     "hexColor": "moet een kleur zijn zoals #2563eb",
     "hexColorOrEmpty": "moet een kleur zijn zoals #2563eb, of \"\" om de kleur van het thema te gebruiken",
     "text": "moet tekst zijn van maximaal {{max}} tekens",
-    "webAddress": "moet een webadres zijn dat begint met http:// of https://",
     "list": "moet een lijst zijn met maximaal {{max}} items",
     "listItem": "is geen toegestaan item",
     "duplicate": "staat er twee keer in",

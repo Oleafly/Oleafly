@@ -66,9 +66,9 @@ static APPROVALS_WRITE_LOCK: Mutex<()> = Mutex::new(());
 const KNOWN_TOOLS: &[&str] = &[
     "close_agent",
     "compile",
-    "computer_use",
     "create_file",
     "delete_file",
+    "desktop_apps",
     "followup_task",
     "forget_note",
     "get_log",
@@ -99,6 +99,8 @@ const KNOWN_TOOLS: &[&str] = &[
     "remember_note",
     "rename_file",
     "replace_in_file",
+    "research_task_create",
+    "research_task_status",
     "run_command",
     "search_project",
     "send_message",
@@ -114,6 +116,10 @@ const KNOWN_TOOLS: &[&str] = &[
 ];
 
 const MCP_TOOL_PREFIX: &str = "mcp_ext_";
+
+/// Tools Oleafly had and removed. Rules that still name them load without a
+/// warning and do nothing.
+const RETIRED_TOOLS: &[&str] = &["computer_use"];
 
 /// A rule whose tool name matches no tool, with the closest real name.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -159,7 +165,11 @@ fn unknown_tools(approvals: &ApprovalsFile) -> Vec<UnknownTool> {
         .decisions
         .values()
         .flat_map(|tools| tools.keys())
-        .filter(|tool| !KNOWN_TOOLS.contains(&tool.as_str()) && !tool.starts_with(MCP_TOOL_PREFIX))
+        .filter(|tool| {
+            !KNOWN_TOOLS.contains(&tool.as_str())
+                && !RETIRED_TOOLS.contains(&tool.as_str())
+                && !tool.starts_with(MCP_TOOL_PREFIX)
+        })
         .collect::<std::collections::BTreeSet<_>>()
         .into_iter()
         .map(|tool| UnknownTool {
@@ -227,6 +237,14 @@ pub fn decision_for(root: &Path, project_id: &str, tool: &str) -> Option<ToolDec
 #[cfg(test)]
 pub fn mode_for(root: &Path, project_id: &str) -> ApprovalMode {
     try_mode_for(root, project_id).unwrap_or(ApprovalMode::Custom)
+}
+
+// 0.4.8 D: the approval mode a CLI-agent session starts under (kebab-case).
+pub(crate) fn mode_name(root: &Path, project_id: &str) -> Option<String> {
+    let mode = try_mode_for(root, project_id).ok()?;
+    serde_json::to_value(mode)
+        .ok()
+        .and_then(|value| value.as_str().map(str::to_owned))
 }
 
 fn try_mode_for(root: &Path, project_id: &str) -> Result<ApprovalMode, String> {
@@ -724,6 +742,21 @@ mod tests {
     fn unreadable_file_yields_empty_decisions() {
         let root = temp_root("missing");
         assert!(decisions_for(&root, "anything").is_empty());
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    // 0.4.8 I: computer_use is gone and desktop_apps is a tool rules can name.
+    #[test]
+    fn desktop_apps_rules_are_known_and_computer_use_rules_are_retired_quietly() {
+        let root = temp_root("retired");
+        let warnings = write_raw(
+            &root,
+            "[proj]\ncomputer_use = \"deny\"\ndesktop_apps = \"allow\"\n",
+        )
+        .unwrap();
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert!(KNOWN_TOOLS.contains(&"desktop_apps"));
+        assert!(!KNOWN_TOOLS.contains(&"computer_use"));
         std::fs::remove_dir_all(&root).ok();
     }
 

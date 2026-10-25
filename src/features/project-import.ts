@@ -1,7 +1,12 @@
-import type { GitHubRepo } from "@/lib/github";
-import { githubImportRepo } from "@/lib/github";
 import { ensurePandoc } from "@/features/pandoc";
-import { importArxivEprint, importDocument, type ImportTarget } from "@/lib/tauri";
+import {
+  forgeImportRepo,
+  gitCloneProject,
+  importArxivEprint,
+  importDocument,
+  type ForgeRepo,
+  type ImportTarget,
+} from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
@@ -152,9 +157,21 @@ export async function importArxivPaper(arxivId: string): Promise<boolean> {
   return true;
 }
 
-export async function importGitHubRepository(repository: GitHubRepo): Promise<void> {
-  const projectId = await githubImportRepo(repository.full_name);
+async function openImported(projectId: string): Promise<void> {
   const files = useFilesStore.getState();
   await files.refreshProjects();
   await files.openProject(projectId);
+}
+
+/** Import a repository from a Git hosting account and open it. */
+export async function importForgeRepository(
+  base: string,
+  repository: Pick<ForgeRepo, "fullName">,
+): Promise<void> {
+  await openImported(await forgeImportRepo(base, repository.fullName));
+}
+
+/** Clone a repository by its HTTPS or SSH address and open it. */
+export async function cloneRepository(url: string): Promise<void> {
+  await openImported(await gitCloneProject(url.trim()));
 }

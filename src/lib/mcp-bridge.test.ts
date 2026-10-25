@@ -3,6 +3,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 
+// 0.4.8: research tasks are experimental; the bridge offers their tools only while they are on.
+const flag = vi.hoisted(() => ({ enabled: true }));
+vi.mock("@/store/research-tasks-flag", () => ({
+  researchTasksEnabled: () => flag.enabled,
+  primeResearchTasksFlag: () => {},
+  useResearchTasksFlagStore: { subscribe: () => () => {}, getState: () => ({ enabled: flag.enabled }) },
+}));
+
 // The bridge imports the app tool registry, which pulls stores + tauri; mock
 // the heavy edges the same way src/lib/ai-tools.test.ts does.
 const mocks = vi.hoisted(() => ({
@@ -89,11 +97,9 @@ import {
   startMcpBridge,
   validateToolInput,
 } from "@/lib/mcp-bridge";
-import { registerCuaSurface } from "@/lib/cua-sandbox";
 import { summarizeMcpError, summarizeMcpResult } from "@/store/mcp-activity";
 import { invoke } from "@tauri-apps/api/core";
 import type { SkillEntry } from "@/lib/skills";
-import { useSettingsStore } from "@/store/settings";
 import { LATEX_ENGINE, UNKNOWN_ENGINE } from "@/lib/document-engine";
 import type { DocumentEngineDescriptor } from "@/lib/tauri";
 
@@ -150,12 +156,7 @@ function skillFixture(overrides: Partial<SkillEntry> = {}): SkillEntry {
   };
 }
 
-// The registry is built at collection time and computer_use is only exposed
-// when the experimental web browser is on, so enable it before the describe.
-useSettingsStore.getState().setWebBrowser(true);
-
 afterEach(() => {
-  registerCuaSurface(null);
   mocks.filesState.engine = LATEX_ENGINE;
   mocks.filesState.engineLoaded = true;
   mocks.filesState.mainDoc = "main.tex";
@@ -188,10 +189,10 @@ describe("mcp tool registry", () => {
       "insert_figure",
       "load_image",
       "run_command",
-      "computer_use",
     ]) {
       expect(registry[name], name).toBeDefined();
     }
+    expect(registry.computer_use).toBeUndefined();
   });
 
   it("advertises the skill tools the Rust server answers natively", () => {
@@ -341,7 +342,6 @@ describe("mcp tool registry", () => {
       "remember_note",
       "forget_note",
       "run_command",
-      "computer_use",
     ]) {
       expect(ro[name], name).toBeUndefined();
     }
@@ -349,27 +349,40 @@ describe("mcp tool registry", () => {
     expect(ro.compile).toBeDefined();
   });
 
-  it("trust prompts before read-only computer control actions", async () => {
-    registerCuaSurface({
-      get document(): Document {
-        throw new Error("computer control must not run before approval");
-      },
-      url: () => "https://sandbox.local/",
-      navigate: vi.fn(),
-    });
-    const request = vi.fn(async () => false);
-    const guarded = buildMcpToolRegistry({
-      confirm: confirmForPolicy("trust", request),
-      readOnly: false,
-      onImage: () => {},
-    });
+  it("is exposed through the MCP bridge while research tasks are on, and blocked in read-only mode", async () => {
+    expect(registry.research_task_create).toBeDefined();
+    expect(registry.research_task_status).toBeDefined();
+    // 0.4.8: research tasks are experimental and off by default; outside agents get no task tools then.
+    flag.enabled = false;
+    try {
+      const off = buildMcpToolRegistry({ confirm: async () => true, readOnly: false, onImage: () => {} });
+      expect(off.research_task_create).toBeUndefined();
+      expect(off.research_task_status).toBeUndefined();
+      expect(off.read_file).toBeDefined();
+    } finally {
+      flag.enabled = true;
+    }
+    const ro = buildMcpToolRegistry({ confirm: async () => true, readOnly: true, onImage: () => {} });
+    expect(ro.research_task_create).toBeUndefined();
+    expect(ro.research_task_status).toBeDefined();
 
-    const result = await guarded.computer_use.execute({ action: "read" });
+    const confirm = vi.fn(async () => false);
+    const local = buildMcpToolRegistry({ confirm, readOnly: false, onImage: () => {} });
+    const declined = await local.research_task_create.execute({ title: "Survey", prompt: "Find papers" });
 
-    expect(request).toHaveBeenCalledWith(
-      expect.objectContaining({ tool: "computer_use", summary: "read" }),
+    expect(confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tool: "research_task_create",
+        summary: expect.stringContaining('Create the research task "Survey" and start it'),
+        researchTask: expect.objectContaining({ prompt: "Find papers" }),
+      }),
     );
-    expect(result).toMatchObject({ declined: true, status: "declined" });
+    expect(declined).toMatchObject({ declined: true, tool: "research_task_create" });
+    expect(invoke).not.toHaveBeenCalledWith("research_task_create", expect.anything());
+
+    vi.mocked(invoke).mockResolvedValueOnce([]);
+    await expect(ro.research_task_status.execute({})).resolves.toEqual({ tasks: [] });
+    expect(invoke).toHaveBeenCalledWith("research_task_list", { projectId: "proj" });
   });
 
   it("keeps the Rust fail-safe mutation list in parity with the webview registry", () => {
@@ -481,8 +494,8 @@ describe("confirmForPolicy", () => {
     expect(r.wasPrompted()).toBe(false);
   });
 
-  it("trust still prompts before shell and computer control", async () => {
-    for (const tool of ["run_command", "computer_use"]) {
+  it("trust still prompts before shell commands and research tasks", async () => {
+    for (const tool of ["run_command", "research_task_create"]) {
       const r = denyingRequest();
       const confirm = confirmForPolicy("trust", r.fn);
       expect(await confirm(req(tool))).toBe(false);

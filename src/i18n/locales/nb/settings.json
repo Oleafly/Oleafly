@@ -36,7 +36,7 @@
       },
       "installBridge": "Installer broen",
       "installBridgeNextStep": "Installer ACP-broen, og logg inn via kommandolinjeverktøyet.",
-      "intro": "Koble til en lokal agent gjennom ACP. Hver agent styrer sine egne modeller, verktøy og innlogging, og innstillingene for API-leverandører holdes atskilt. Bruk den offisielle CLI-kontoen til innlogging: Oleafly importerer ikke kontotokener og anslår ikke abonnementskvoter.",
+      "intro": "Kommandolinjeagenter som Claude Code, Codex og Gemini CLI kobles til gjennom Agent Client Protocol (ACP). Noen trenger en bro, en liten adapter Oleafly installerer for å kunne snakke med dem. Hver agent styrer sine egne modeller, verktøy og innlogging, og innstillingene for API-leverandører holdes atskilt. Bruk den offisielle CLI-kontoen til innlogging: Oleafly importerer ikke kontotokener og anslår ikke abonnementskvoter.",
       "nextStepTitle": "Neste steg",
       "notReported": "Ikke oppgitt",
       "notice": {
@@ -50,19 +50,19 @@
       "platformLabel": "Plattform",
       "refreshingStatus": "Oppdaterer agentstatusen. Listen du ser nå, blir stående.",
       "registry": {
-        "description": "Søk i ACP-registeret etter agenter som andre team har publisert.",
+        "description": "Søk i ACP-registeret etter CLI-agenter som andre team har publisert.",
         "hideDistribution": "Skjul distribusjonen",
         "register": "Registrer agenten",
         "registered": "Registrert",
         "reviewHint": "Oppføringene i registeret beskriver programvare slik utgiverne selv beskriver den. Se over distribusjonen før du registrerer eller installerer den.",
         "search": "Søk",
-        "searchLabel": "Finn en ACP-agent",
-        "searchPlaceholder": "Søk i ACP-registeret",
+        "searchLabel": "Finn en CLI-agent",
+        "searchPlaceholder": "Søk etter CLI-agenter",
         "searching": "Søker",
         "showDistribution": "Vis distribusjonen",
         "title": "Finn flere agenter"
       },
-      "sectionLabel": "ACP-agenter",
+      "sectionLabel": "CLI-agenter",
       "signInCommandLabel": "Innloggingskommando",
       "versionLabel": "Versjon",
       "updateBridge": "Oppdater broen",
@@ -113,10 +113,83 @@
           "startFailed": "{{name}} kunne ikke startes.",
           "timeout": "{{name}} startet, men svarte ikke i tide.",
           "exited": "{{name}} stoppet før den svarte.",
-          "notAcp": "{{name}} startet, men Oleafly forsto ikke svaret."
+          "notAcp": "{{name}} startet, men Oleafly forsto ikke svaret.",
+          "needsSignIn": "{{name}} fungerer. Logg inn før du starter en samtale.",
+          "sessionFailed": "{{name}} startet, men kunne ikke åpne en samtale."
         },
         "getNode": "Last ned Node.js",
-        "copyDetails": "Kopier detaljene"
+        "copyDetails": "Kopier detaljene",
+        "signIn": "Logg inn",
+        "afterSignIn": "Fullfør innloggingen i terminalen, og test deretter programmet på nytt."
+      },
+      "experimental": {
+        "title": "Eksperimentelt",
+        "description": "Disse funksjonene bruker utkast til deler av Agent Client Protocol. De kan endres eller slutte å fungere.",
+        "v2": "Bruk ACP v2 når det er tilgjengelig",
+        "v2Description": "Agenter som støtter utkastet til versjon 2, bruker det. Andre agenter blir værende på versjon 1.",
+        "providers": "La agenter bruke API-nøklene mine i Oleafly",
+        "providersDescription": "En agent som kan omdirigere modellkallene sine, bruker nøkkelen du velger på kortet til agenten. Nøkkelen går bare til prosessen til den agenten."
+      },
+      "inactivity": {
+        "label": "Stopp en taus agent etter",
+        "description": "Når en agent ikke sender noe på så lang tid, stopper Oleafly den. Du kan koble til på nytt.",
+        "minutes_one": "{{count}} minutt",
+        "minutes_other": "{{count}} minutter"
+      },
+      "protocolLabel": "Protokoll",
+      "remembered": {
+        "title": "Lagrede valg",
+        "effort": "Innsats: {{name}}",
+        "mode": "Modus: {{name}}",
+        "forget": "Glem",
+        "none": "Nye samtaler bruker standardvalgene til agenten."
+      },
+      "providers": {
+        "label": "Bruk API-nøkkelen min i Oleafly",
+        "off": "Av (agenten logger inn selv)",
+        "note": "Oleafly sender nøkkelen til denne agenten når en samtale starter, og holder den utenfor transkripsjoner.",
+        "unavailable": "Legg til en API-nøkkel under Innstillinger, AI-assistent, Leverandører og nøkler for å bruke den her."
+      },
+      "hermes": {
+        "title": "Hermes-profil for dette prosjektet",
+        "default": "Standardprofil (delt)",
+        "project": "Prosjektprofil",
+        "remote": "Ekstern via SSH",
+        "profileName": "Profil {{name}}",
+        "memory": "Prosjektminne",
+        "memoryDescription": "Hermes husker ting på tvers av samtaler i dette prosjektet.",
+        "toolGateway": "Tool Gateway",
+        "toolGatewayDescription": "Bruk de skybaserte verktøyene for nettsøk, bilder, tale og nettleser fra Nous-abonnementet ditt.",
+        "status": {
+          "ready": "Gatewayen kjører",
+          "starting": "Gatewayen starter",
+          "stopped": "Gatewayen er stoppet",
+          "unknown": "Statusen til gatewayen er ukjent"
+        },
+        "refresh": "Sjekk på nytt",
+        "keepsRunning": "Gatewayen stoppes aldri når Oleafly kobler fra.",
+        "host": "Vert",
+        "port": "Port",
+        "folder": "Prosjektmappe på den maskinen",
+        "command": "Hermes-kommando",
+        "remoteProfile": "Profil (valgfritt)",
+        "test": "Test tilkoblingen",
+        "testOk": "Tilkoblet: {{version}}",
+        "save": "Lagre",
+        "sshNote": "Oleafly logger bare inn med SSH-nøklene dine.",
+        "folderHint": "Hele stien på den maskinen, for eksempel /home/ada/paper.",
+        "needsValid": "Test tilkoblingen og Lagre krever gyldige verdier for: {{fields}}.",
+        "unsavedEdit": "Ikke lagret ennå. Lagre for å bruke disse endringene.",
+        "unsavedMode": "Ikke lagret ennå. Til du lagrer, bruker dette prosjektet: {{mode}}.",
+        "errors": {
+          "hostRequired": "Skriv inn vertsnavnet eller user@host.",
+          "hostInvalid": "Bruk bare bokstaver, sifre, punktum, bindestreker og @, og ikke start med en bindestrek.",
+          "port": "Bruk en port fra 1 til 65535.",
+          "folderRequired": "Skriv inn hele stien til prosjektmappen på den maskinen.",
+          "folderInvalid": "Bruk hele stien, som begynner med /.",
+          "command": "Bruk hermes, eller hele stien til den som begynner med /.",
+          "profile": "Bruk små bokstaver, sifre, bindestreker og understreker."
+        }
       }
     },
     "approvals": {
@@ -196,6 +269,8 @@
       "defaultModelTitle": "Standardmodell for samtaler",
       "pdfCaptureDescription": "Lar agenten tegne opp kompilerte sider som bilder (verify_pdf_pages) for å sjekke oppsettet visuelt. Slå av hvis du helst ikke vil sende sidebilder til leverandøren din.",
       "pdfCaptureLabel": "Tillat at AI-en fanger PDF-sider",
+      "reasoningSummariesDescription": "Modeller som tenker før de svarer, sender et kort sammendrag av resonneringen sin. Gjelder Anthropic- og OpenAI-modeller.",
+      "reasoningSummariesLabel": "Vis sammendrag av resonneringen",
       "save": "Lagre instruksjonene",
       "saved": "Lagret",
       "toolsHint": "Be om ting som \"rett LaTeX-feilene\", \"legg til en seksjon med publikasjoner\" eller \"kompiler på nytt og sjekk PDF-en\".",
@@ -511,7 +586,32 @@
       },
       "useInAllProjectsAria": "Bruk {{name}} i alle prosjekter",
       "useInProjectAria": "Bruk {{name}} i dette prosjektet",
-      "validateAria": "Valider {{name}}"
+      "validateAria": "Valider {{name}}",
+      "shadowNote": "En nyere Oleafly-versjon av denne ferdigheten er tilgjengelig.",
+      "replaceAction": "Bruk Oleafly-versjonen",
+      "replaceTitle": "Vil du erstatte kopien din av {{name}}?",
+      "replaceBody": "Kopien din flyttes til en mappe for sikkerhetskopier. Ingenting slettes.",
+      "replaced": "Kopien din ligger i {{path}}."
+    },
+    "tools": {
+      "tabLabel": "Verktøy",
+      "loading": "Laster innstillinger for Verktøy…",
+      "modelTitle": "Modell for Verktøy",
+      "modelDescription": "Bilde til LaTeX, bilder av ligninger og skannede PDF-er bruker denne modellen. Det automatiske valget bruker Ollama, så bildene blir værende på denne maskinen. Hvis Ollama ikke kjører eller ikke har noen modell som kan lese bilder, sender Bilde til LaTeX og Bilde til Typst i redigeringsprogrammet bildet til assistentens modell i stedet.",
+      "ocrHint": "For de beste lokale resultatene kan du hente en OCR-modell i Ollama:",
+      "mathpix": {
+        "title": "Mathpix",
+        "description": "Valgfritt. Mathpix leser ligninger, tabeller og skannede PDF-er og fakturerer din egen Mathpix-konto for hvert bilde og hver side.",
+        "docs": "Få Mathpix-nøkler",
+        "appIdLabel": "App-ID",
+        "appKeyLabel": "Appnøkkel",
+        "save": "Lagre nøklene",
+        "remove": "Fjern nøklene",
+        "connected": "Tilkoblet som {{appId}}",
+        "saved": "Mathpix-nøklene er lagret.",
+        "removed": "Mathpix-nøklene er fjernet.",
+        "privacy": "Oleafly ber Mathpix om ikke å beholde bildene dine, og sletter hver PDF hos Mathpix etter at resultatet er lest."
+      }
     }
   },
   "appearance": {
@@ -565,17 +665,6 @@
       "theme": {
         "description": "System følger operativsystemet og endrer seg når det gjør det.",
         "label": "Utseende"
-      }
-    },
-    "browser": {
-      "homePage": {
-        "ariaLabel": "Startside i nettleseren",
-        "description": "Velg siden som åpnes med nettleserpanelet.",
-        "label": "Startside"
-      },
-      "searchEngine": {
-        "description": "Velg søkemotoren som brukes til tekstsøk.",
-        "label": "Standard søkemotor"
       }
     },
     "customTheme": {
@@ -873,7 +962,6 @@
     "sectionName": "Utseende",
     "tabs": {
       "app": "App",
-      "browser": "Nettleser",
       "editor": "Editor",
       "files": "Prosjekt",
       "pdf": "PDF-forhåndsvisning",
@@ -897,6 +985,14 @@
         "foreground": "Tekst",
         "foregroundAriaLabel": "Tekstfarge i terminalen",
         "label": "Terminalfarger"
+      },
+      "confirmClose": {
+        "description": "Spør først når et program fortsatt kjører i en terminal du lukker, også når du lukker prosjektet eller avslutter.",
+        "label": "Spør før en opptatt terminal lukkes"
+      },
+      "copyOnSelect": {
+        "description": "Kopier terminaltekst så snart du merker den.",
+        "label": "Kopier ved merking"
       },
       "cursorBlink": {
         "description": "La markøren i terminalen blinke.",
@@ -926,6 +1022,50 @@
       "fontWeightBold": {
         "description": "Sett vekten for halvfet terminaltekst.",
         "label": "Vekt for halvfet skrift"
+      },
+      "optionIsMeta": {
+        "description": "Send tastekombinasjoner med Option til shell som Meta. Option skriver ikke lenger spesialtegn.",
+        "label": "Bruk Option som Meta"
+      },
+      "scrollback": {
+        "ariaLabel": "Rullehistorikk i terminalen",
+        "description": "Hvor mange linjer hver terminal beholder. Flere linjer bruker mer minne.",
+        "label": "Rullehistorikk",
+        "lines_one": "{{value}} linje",
+        "lines_other": "{{value}} linjer"
+      },
+      "shell": {
+        "ariaLabel": "Terminalens shell",
+        "description": "Nye terminaler starter dette shellet. Åpne terminaler beholder sitt.",
+        "label": "Shell",
+        "notFound": "{{name}} (finnes ikke)",
+        "notFoundNote": "{{name}} finnes ikke på denne maskinen, så nye terminaler kan ikke starte. Velg et annet shell.",
+        "options": {
+          "auto": "Standard ({{name}})",
+          "cmd": "Ledetekst",
+          "custom": "Egendefinert bane",
+          "defaultShell": "Standardshell",
+          "gitBash": "Git Bash",
+          "powershell": "Windows PowerShell",
+          "pwsh": "PowerShell 7",
+          "wsl": "WSL"
+        },
+        "path": {
+          "ariaLabel": "Bane til egendefinert shell",
+          "description": "Programmet nye terminaler kjører.",
+          "label": "Bane til shell",
+          "missing": "Skriv inn hele banen til en shell. Nye terminaler kan ikke starte før du gjør det."
+        },
+        "windowsOnly": "{{name}} (bare Windows)",
+        "windowsOnlyNote": "{{name}} kjører bare på Windows. Nye terminaler her starter {{fallback}} i stedet.",
+        "windowsOnlyNoteDefault": "{{name}} kjører bare på Windows. Nye terminaler her starter standardshellet i stedet."
+      },
+      "shiftEnter": {
+        "ariaLabel": "Shift+Enter i terminalen",
+        "description": "Hva Shift+Enter sender til programmet i terminalen. Ny linje lar chatbaserte verktøy som Claude Code legge til en linje i prompten sin. Enter sender, som Enter-tasten.",
+        "enter": "Send Enter",
+        "label": "Shift+Enter",
+        "newline": "Sett inn en ny linje"
       },
       "startWithProject": {
         "description": "Start shell når et prosjekt åpnes, i stedet for første gang du viser terminalen.",
@@ -969,6 +1109,15 @@
       "saveEmail": "Lagre e-postadressen",
       "saveKey": "Lagre nøkkelen"
     },
+    "braveSearch": {
+      "docsLink": "Brave Search API",
+      "hint": "Valgfritt. Lar assistenten søke på nettet når leverandøren ikke har et eget søk.",
+      "keyLabel": "Nøkkel for Brave Search API",
+      "keyRemoveFailed": "Kunne ikke fjerne nøkkelen for Brave Search API.",
+      "keyRemoved": "Nøkkelen for Brave Search API er fjernet",
+      "keySaveFailed": "Kunne ikke lagre nøkkelen for Brave Search API.",
+      "keySaved": "Nøkkelen for Brave Search API er lagret"
+    },
     "connected": "Tilkoblet",
     "description": "Administrer nøklene som de vitenskapelige søkekildene bruker.",
     "keyFree": {
@@ -1008,7 +1157,17 @@
       "keySaveFailed": "Kunne ikke lagre API-nøkkelen for Serper.",
       "keySaved": "API-nøkkelen for Serper er lagret"
     },
-    "title": "Siteringssøk"
+    "tavily": {
+      "docsLink": "Tavily API",
+      "hint": "Valgfritt. Lar assistenten søke på nettet når leverandøren ikke har et eget søk.",
+      "keyLabel": "API-nøkkel for Tavily",
+      "keyRemoveFailed": "Kunne ikke fjerne API-nøkkelen for Tavily.",
+      "keyRemoved": "API-nøkkelen for Tavily er fjernet",
+      "keySaveFailed": "Kunne ikke lagre API-nøkkelen for Tavily.",
+      "keySaved": "API-nøkkelen for Tavily er lagret"
+    },
+    "title": "Siteringssøk",
+    "webSearchOrder": "For nettsøk bruker assistenten først Brave, deretter Tavily og deretter Serper."
   },
   "cite": {
     "apa": "Den samme referansen i APA ligger bak Cite this repository på GitHub",
@@ -1354,17 +1513,64 @@
       "typstNote": "Calepin gjengir dokumentet med Typst som følger med Oleafly. Det krever Typst 0.15 eller nyere."
     }
   },
-  "github": {
+  "gitHosting": {
     "account": {
-      "connected": "Tilkoblet",
-      "disconnect": "Koble fra",
-      "handle": "@{{login}}"
+      "ariaLabel": "{{login}} på {{host}}",
+      "caAdd": "Legg til sertifikatfil",
+      "caChange": "Bytt sertifikatfil",
+      "caFile": "Sertifikatfil: {{file}}",
+      "checking": "Sjekker…",
+      "signInAgain": "Logg inn på nytt",
+      "signOut": "Logg ut",
+      "signedInAs": "Logget inn som {{login}}",
+      "signedOut": "Logget ut",
+      "unreachable": "Får ikke kontakt med serveren"
     },
-    "advanced": {
+    "add": {
+      "browserHint": "Logger deg inn med en engangskode i nettleseren.",
+      "caChoose": "Velg fil…",
+      "caFilter": "Sertifikatfiler",
+      "caHint": "Trengs bare når sertifikatet til serveren kommer fra organisasjonens egen sertifiseringsinstans.",
+      "caLabel": "Fil for sertifiseringsinstans",
+      "caPickerTitle": "Velg en sertifikatfil",
+      "caRemove": "Fjern",
+      "chooseKind": "Servertype",
       "connect": "Koble til",
-      "toggle": "Avansert: bruk et personlig tilgangstoken",
-      "tokenPlaceholder": "ghp_…"
+      "continue": "Fortsett",
+      "createToken": "Opprett et token på {{host}}",
+      "detecting": "Sjekker serveren…",
+      "found": "Dette er en {{kind}}-server.",
+      "kindGitea": "Gitea eller Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
+      "otherServer": "En annen server",
+      "replaces": "Hvis du logger inn, erstattes {{login}} på {{host}}.",
+      "scopesGitea": "Gi det lese- og skrivetilgang til repository og user.",
+      "scopesGithub": "Gi det tillatelsene repo og read:user.",
+      "scopesGitlab": "Gi det tillatelsene api og write_repository.",
+      "serverLabel": "Serveradresse",
+      "serverPlaceholder": "https://git.example.org",
+      "signInBrowser": "Logg inn med {{host}}",
+      "title": "Legg til en Git-konto",
+      "tokenLabel": "Tilgangstoken",
+      "useToken": "Bruk et tilgangstoken i stedet"
     },
+    "addAccount": "Legg til konto",
+    "description": "Logg inn for å pushe og pulle, publisere prosjekter og importere repositorier. Fungerer med GitHub, GitLab, Gitea, Forgejo og Codeberg, og med servere du drifter selv.",
+    "device": {
+      "open": "Åpne {{host}}",
+      "opened": "Oleafly åpnet <verificationLink>{{url}}</verificationLink> i nettleseren din. Skriv inn koden der for å fullføre innloggingen.",
+      "timedOut": "Tidsavbrudd for innloggingen. Prøv igjen.",
+      "title": "Skriv inn denne koden på {{host}}",
+      "waiting": "Venter på at du blir ferdig i nettleseren…"
+    },
+    "empty": "Ingen kontoer ennå. Prosjekter du kobler til via adresse, pusher og puller fortsatt med din egen Git-innlogging eller SSH-nøkkel.",
+    "notice": {
+      "signedIn": "Logget inn på {{host}} som {{login}}.",
+      "signedOut": "Logget ut av {{host}}."
+    },
+    "title": "Git-hosting"
+  },
+  "github": {
     "autoInit": {
       "description": "Nye og åpnede prosjekter får et Git-repositorium, slik at Git-panelet kan spore endringer. Et nytt prosjekt starter som regel med én commit av filene sine. Etter det committer Oleafly bare når du ber om det.",
       "label": "Sett opp Git for alle prosjekter"
@@ -1372,23 +1578,6 @@
     "config": {
       "loadFailed": "Kunne ikke laste Git-innstillingene.",
       "saveFailed": "Kunne ikke lagre Git-innstillingene."
-    },
-    "connect": "Koble til GitHub",
-    "description": "Sikkerhetskopier prosjekter, synkroniser mellom enheter, og push og pull fra Git-panelet.",
-    "device": {
-      "openGithub": "Åpne GitHub",
-      "opened": "Vi åpnet <verificationLink>{{url}}</verificationLink> i nettleseren din. Lim inn koden der for å gi Oleafly tilgang.",
-      "timedOut": "Innloggingen på GitHub tok for lang tid. Prøv igjen.",
-      "title": "Skriv inn denne koden på GitHub",
-      "waiting": "Venter på godkjenning…"
-    },
-    "hint": {
-      "oauth": "Logger deg inn med en engangskode i nettleseren.",
-      "token": "OAuth-innlogging er ikke satt opp i dette bygget ennå, så lim inn et token i stedet."
-    },
-    "notice": {
-      "connected": "Koblet til som @{{login}}",
-      "disconnected": "Koblet fra."
     }
   },
   "integrations": {
@@ -1405,31 +1594,14 @@
       "disconnectFailed": "Kunne ikke koble fra alphaXiv. Prøv igjen."
     },
     "cookies": {
-      "action": "Importer cookies",
-      "confirmAllDomains": "Du er i ferd med å importere cookies fra profilen {{profile}} i {{browser}} for alle domener. Cookie-verdiene lagres i nettleseren i appen og sendes bare til nettstedene de hører til. Oleafly ber deg bekrefte én gang til i en native dialog før profilen leses.",
-      "confirmDomain": "Du er i ferd med å importere cookies fra profilen {{profile}} i {{browser}} for {{domain}}. Cookie-verdiene lagres i nettleseren i appen og sendes bare til nettstedene de hører til. Oleafly ber deg bekrefte én gang til i en native dialog før profilen leses.",
       "confirmTitle": "Bekreft import av cookies",
-      "description": "Bruk en innlogging du allerede har i nettleseren, i den innebygde nettleseren i Oleafly.",
       "detecting": "Leter etter installerte nettleserprofiler...",
       "dialogDescription": "Velg én installert nettleserprofil. Oleafly leser den først når du har sett over importen og bekreftet den. Cookies fra Chromium låses opp lokalt via macOS-nøkkelringen. Oleafly sender ikke cookie-verdier til noen Oleafly-tjeneste.",
       "dialogTitle": "Importer cookies fra nettleseren",
       "empty": "Fant ingen nettleserprofiler som støttes.",
       "errors": {
-        "chooseProfile": "Velg en nettleserprofil som er tilgjengelig.",
-        "hostname": "Skriv inn et vertsnavn, for eksempel example.com."
+        "chooseProfile": "Velg en nettleserprofil som er tilgjengelig."
       },
-      "hostnameHint": "Skriv inn vertsnavnet til et nettsted for bare å importere cookies det nettstedet kan bruke. La det stå tomt for å importere alle aktuelle cookies i denne profilen.",
-      "hostnameLabel": "Målvertsnavn (valgfritt)",
-      "hostnamePlaceholder": "example.com",
-      "importedDomain_one": "Importerte {{count}} cookie fra {{browser}} for {{domain}}.",
-      "importedDomain_other": "Importerte {{count}} cookies fra {{browser}} for {{domain}}.",
-      "importedProfileDomain_one": "Importerte {{count}} cookie fra {{browser}}, {{profile}} for {{domain}}.",
-      "importedProfileDomain_other": "Importerte {{count}} cookies fra {{browser}}, {{profile}} for {{domain}}.",
-      "importedProfile_one": "Importerte {{count}} cookie fra {{browser}}, {{profile}}.",
-      "importedProfile_other": "Importerte {{count}} cookies fra {{browser}}, {{profile}}.",
-      "imported_one": "Importerte {{count}} cookie fra {{browser}}.",
-      "imported_other": "Importerte {{count}} cookies fra {{browser}}.",
-      "importing": "Importerer cookies...",
       "profileGroupLabel": "Nettleserprofiler",
       "profileLegend": "Nettleserprofil",
       "review": "Se over importen",
@@ -1439,8 +1611,16 @@
         "noCookieStore": "Ingen cookie-lager",
         "notInstalled": "Ikke installert"
       },
-      "title": "Importer cookies",
-      "tryAgain": "Prøv igjen"
+      "tryAgain": "Prøv igjen",
+      "label": "Innlogging fra nettleseren",
+      "useBrowserSignIn": "Bruk innloggingen fra nettleseren min",
+      "signInDescription": "Kopier innloggingen din for {{server}} fra en nettleser på denne maskinen, så du slipper å logge inn på nytt.",
+      "site": "Nettsted: {{domain}}",
+      "confirmCopy": "Oleafly leser cookies for {{domain}} fra profilen {{profile}} i {{browser}}. De blir værende i Oleafly og sendes bare til {{domain}}. Du bekrefter én gang til i en systemdialog.",
+      "copyAction": "Kopier innloggingen",
+      "copying": "Kopierer…",
+      "notSignedIn_one": "Kopierte {{count}} cookie fra {{browser}}, men den logget deg ikke inn. Logg inn i stedet.",
+      "notSignedIn_other": "Kopierte {{count}} cookies fra {{browser}}, men de logget deg ikke inn. Logg inn i stedet."
     },
     "zotero": {
       "apiKeyHint": "Slik får du en nøkkel: logg inn på <siteLink>zotero.org</siteLink>, åpne <keyLink>siden for API-nøkler</keyLink> for å lage en nøkkel, og kopier den numeriske bruker-ID-en din fra samme side.",
@@ -1509,6 +1689,132 @@
       "gitSave": "Lagre",
       "gitRemove": "Fjern",
       "gitFailed": "Oleafly kunne ikke lagre Git-tokenet. Sjekk at du limte inn hele tokenet."
+    },
+    "desktopApps": {
+      "tab": "Skrivebordsapper",
+      "title": "Skrivebordsapper",
+      "description": "La agenter bruke apper og nettsteder på denne maskinen via Cua Driver. Oleafly spør før hver handling, med mindre du tillater den typen handling for samtalen, økten eller oppgaven. Den innloggede nettleseren din og skript spør alltid.",
+      "docsLink": "Dokumentasjon for Cua Driver",
+      "status": {
+        "installed": "Cua Driver {{version}} er installert.",
+        "installedNoVersion": "Cua Driver er installert.",
+        "notInstalled": "Cua Driver er ikke installert.",
+        "tooOld": "Cua Driver {{version}} er for gammel. Oleafly trenger {{minimum}} eller nyere.",
+        "noAppBundle": "Installer Cua Driver med det offisielle installasjonsprogrammet, slik at den kan få macOS-tillatelsene.",
+        "unreadableVersion": "Oleafly kunne ikke lese versjonen til Cua Driver. Sjekk at den kjører, og sjekk deretter på nytt.",
+        "path": "Funnet i {{path}}"
+      },
+      "install": {
+        "heading": "Installer Cua Driver",
+        "hint": "Kjør denne kommandoen i en terminal, eller bruk Kjør i terminalen. Kommandoen starter det offisielle installasjonsprogrammet fra Cua, og Oleafly laster ikke ned Cua Driver selv.",
+        "run": "Kjør i terminalen",
+        "needsProject": "Åpne et prosjekt for å kjøre dette i terminalen i Oleafly, eller kopier kommandoen.",
+        "confirm": "Dette laster ned installasjonsprogrammet for Cua Driver fra cua.ai og kjører det i terminalen din. Vil du fortsette?",
+        "terminalTitle": "Installer Cua Driver",
+        "checkAgain": "Sjekk på nytt"
+      },
+      "permissions": {
+        "heading": "macOS-tillatelser",
+        "granted": "Cua Driver kan bruke Tilgjengelighet og Skjermopptak.",
+        "needed": "Cua Driver trenger Tilgjengelighet og Skjermopptak. Kjør trinnet som gir tillatelsene, og følg instruksjonene.",
+        "unknown": "Oleafly kunne ikke lese tillatelsene til Cua Driver.",
+        "grant": "Gi tillatelser",
+        "terminalTitle": "Tillatelser for Cua Driver"
+      },
+      "gnome": {
+        "heading": "GNOME-hjelper",
+        "needed": "På GNOME kjører du vindushjelperen til Cua én gang, og logger deretter ut og inn igjen.",
+        "active": "Vindushjelperen for GNOME er på."
+      },
+      "enable": {
+        "label": "La agenter bruke skrivebordsapper",
+        "description": "Agenter kan se appene og nettstedene nedenfor. Klikk, skriving og sidebytter spør deg først, med mindre du tillater dem for samtalen, økten eller oppgaven. Når du legger til en app eller et nettsted, fjernes disse valgene."
+      },
+      "apps": {
+        "heading": "Tillatte apper",
+        "empty": "Ingen apper ennå. Agenter kan bare bruke apper du legger til her.",
+        "add": "Legg til app",
+        "remove": "Fjern {{name}}",
+        "missing": "Programmet ble ikke funnet på denne maskinen. Fjern det, eller installer appen på nytt.",
+        "dialog": {
+          "title": "Legg til en app",
+          "description": "Velg en app agenter kan bruke. De kan åpne den, lese vinduene og handle i den etter at du har godkjent.",
+          "search": "Søk i apper",
+          "loading": "Leter etter apper…",
+          "none": "Ingen apper passer.",
+          "choose": "Velg en annen app…",
+          "add": "Legg til",
+          "added": "Allerede lagt til.",
+          "more": "Viser {{shown}} av {{total}}. Søk for å begrense listen.",
+          "refresh": "Oppdater"
+        },
+        "blocked": {
+          "oleafly": "Oleafly kan ikke styre seg selv.",
+          "driver": "Cua Driver kan ikke styre seg selv.",
+          "terminal": "Terminaler og kodeeditorer kjører kommandoer uten kommandogodkjenningen i Oleafly.",
+          "system_settings": "Systeminnstillinger kan endre tillatelser.",
+          "passwords": "Passordapper er alltid utelukket.",
+          "scripting": "Skriptkjørere kan gjøre hva som helst på denne maskinen.",
+          "wrapper": "Denne oppføringen starter et annet program. Velg det programmet i stedet.",
+          "sandboxed": "Flatpak- og Snap-apper støttes ikke ennå.",
+          "browser": "Legg i stedet til nettstedene til en nettleser under Tillatte nettsteder."
+        }
+      },
+      "sites": {
+        "heading": "Tillatte nettsteder",
+        "empty": "Ingen nettsteder ennå.",
+        "add": "Legg til nettsted",
+        "placeholder": "https://www.example.org",
+        "remove": "Fjern {{origin}}",
+        "signedIn": {
+          "label": "Bruk den innloggede nettleseren min",
+          "labelFor": "Bruk den innloggede nettleseren min på {{origin}}",
+          "description": "Agenter jobber i din egen Chrome eller Edge på dette nettstedet. La det være av for å bruke en separat nettleserprofil."
+        }
+      },
+      "scripted": {
+        "label": "Skriptstyring",
+        "description": "La agenter kjøre Cua-skript som gjør mange trinn på én gang. Oleafly spør før hvert skript."
+      },
+      "test": {
+        "action": "Test tilkoblingen",
+        "running": "Tester…",
+        "ok": "Cua Driver kjører med grensene dine.",
+        "problems": "Cua Drivers egen sjekk rapporterte også:",
+        "failed": "Testen mislyktes: {{detail}}"
+      },
+      "tool": {
+        "description": "Bruk skrivebordsappene og nettstedene du har tillatt i Innstillinger.",
+        "note": "Å se skjer med en gang. Klikk, skriving og sidebytter spør først, med mindre du tillater dem for samtalen."
+      },
+      "task": {
+        "label": "Skrivebordsapper",
+        "description": "La denne oppgaven bruke de tillatte skrivebordsappene dine. Du må være ved maskinen for å godkjenne handlinger.",
+        "off": "Slå på Skrivebordsapper i Innstillinger først.",
+        "unattended": "Oppgaver som kjører etter en tidsplan eller etter at Oleafly er lukket, kan ikke bruke skrivebordsapper."
+      },
+      "spaces": {
+        "title": "Cua Spaces",
+        "description": "Koble til isolerte skrivebord og containere fra Cua Spaces som en MCP-server.",
+        "notInstalled": "Kommandoen cua er ikke installert.",
+        "connect": {
+          "label": "Koble til Cua Spaces",
+          "description": "Agenter kan liste opp Spaces og følge med på agenter som kjører der."
+        },
+        "fullAccess": {
+          "label": "Tillat endringer",
+          "description": "Agenter kan også opprette og slette Spaces og kjøre kommandoer i dem."
+        },
+        "credentials": {
+          "label": "Del agentinnloggingene mine",
+          "description": "La agenter som starter i en Space, bruke innloggingen din for Claude Code eller Codex."
+        },
+        "failed": "Oleafly kunne ikke oppdatere tilkoblingen til Cua Spaces.",
+        "install": {
+          "terminalTitle": "Installer Cua",
+          "confirm": "Dette laster ned installasjonsprogrammet for Cua fra cua.ai og kjører det i terminalen din. Vil du fortsette?"
+        }
+      }
     }
   },
   "language": {
@@ -1589,7 +1895,7 @@
         },
         "legend": "Retningslinje for godkjenning",
         "trust": {
-          "description": "Filendringer spør ikke. Shell-kommandoer og styring av maskinen krever alltid godkjenning. MCP-klienten din er fortsatt en ekstra port.",
+          "description": "Filendringer brukes uten å spørre. Shell-kommandoer og nye forskningsoppgaver spør alltid først. MCP-klienten din kan fortsatt spørre på egen hånd.",
           "label": "Stol på denne forbindelsen"
         }
       },
@@ -1841,7 +2147,8 @@
       "unavailable": "Denne kopien av Oleafly inneholder ikke kommandoen."
     },
     "title": "Terminalkommando",
-    "update": "Oppdater"
+    "update": "Oppdater",
+    "newTerminal": "Åpne en ny terminal for å bruke oleafly. Terminaler som allerede er åpne, ser ikke endringen."
   },
   "shortcuts": {
     "actions": {
@@ -1865,10 +2172,6 @@
         "description": "Åpne oversikten over hurtigtaster i prosjektet.",
         "label": "Oversikt over hurtigtaster"
       },
-      "toggleBrowser": {
-        "description": "Vis eller skjul nettleseren i prosjektet.",
-        "label": "Vis eller skjul nettleseren"
-      },
       "toggleSidebar": {
         "description": "Vis eller skjul sidepanelet i prosjektet.",
         "label": "Vis eller skjul sidepanelet"
@@ -1880,6 +2183,22 @@
       "toggleTerminal": {
         "description": "Vis eller skjul terminalen i prosjektet.",
         "label": "Vis eller skjul terminalen"
+      },
+      "newTerminal": {
+        "description": "Åpne en ny terminalfane.",
+        "label": "Ny terminal"
+      },
+      "closeTerminal": {
+        "description": "Lukk terminalfanen du skriver i.",
+        "label": "Lukk terminalen"
+      },
+      "nextTerminal": {
+        "description": "Bytt til neste terminalfane.",
+        "label": "Neste terminal"
+      },
+      "previousTerminal": {
+        "description": "Bytt til forrige terminalfane.",
+        "label": "Forrige terminal"
       },
       "openFolder": {
         "label": "Åpne mappe",
@@ -2034,6 +2353,44 @@
       "elsewhere": "Menyen åpner en annen kopi av Oleafly. Reparer den for å bruke denne.",
       "moved": "Den peker på en kopi av Oleafly som er flyttet. Reparer den for å bruke denne.",
       "noDefaultFileManager": "Systemet ditt har ingen standard filbehandler for mapper, så denne oppføringen kan åpne alle mapper i Oleafly. Fjern den."
+    }
+  },
+  "research": {
+    "background": {
+      "title": "Bakgrunnsoppgaver",
+      "enabled": {
+        "label": "La oppgaver fortsette å kjøre etter at Oleafly lukkes",
+        "description": "Oppgaver du merker for å fortsette å kjøre, flyttes til en liten hjelpeprosess i bakgrunnen når du avslutter. Oleafly tar dem tilbake når du åpner appen."
+      },
+      "atLogin": {
+        "label": "Start hjelpeprosessen når du logger inn",
+        "description": "Gjenopptar bakgrunnsoppgaver etter en omstart. Hjelpeprosessen avslutter når den ikke har noe å gjøre.",
+        "moveApp": "Flytt Oleafly til Programmer-mappen først.",
+        "needsBackground": "Slå på bakgrunnsoppgaver først."
+      },
+      "status": {
+        "label": "Hjelpeprosess i bakgrunnen",
+        "running": "Kjører",
+        "stopped": "Kjører ikke",
+        "notResponding": "Svarer ikke",
+        "tasks_one": "Jobber med {{count}} oppgave",
+        "tasks_other": "Jobber med {{count}} oppgaver"
+      },
+      "stop": "Stopp hjelpeprosessen",
+      "stopHint": "Oppgavene flyttes tilbake til Oleafly og fortsetter å kjøre her.",
+      "stopConfirm": {
+        "title": "Stoppe hjelpeprosessen i bakgrunnen?",
+        "description_one": "{{count}} oppgave flyttes tilbake til Oleafly og fortsetter å kjøre her.",
+        "description_other": "{{count}} oppgaver flyttes tilbake til Oleafly og fortsetter å kjøre her."
+      },
+      "stopFailed": "Hjelpeprosessen stoppet ikke. Prøv igjen.",
+      "openLog": "Vis loggen",
+      "statusFailed": "Statusen til hjelpeprosessen kunne ikke leses.",
+      "toggleFailed": "Kunne ikke endre denne innstillingen. Prøv igjen."
+    },
+    "mcpServers": {
+      "loadFailed": "Listen over MCP-servere kunne ikke leses.",
+      "missing": "{{name}} (ikke funnet)"
     }
   }
 }

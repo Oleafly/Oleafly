@@ -43,13 +43,15 @@
       "command": "Opdracht bevestigen",
       "externalTool": "Actie van externe tool bevestigen",
       "internet": "Internettoegang bevestigen",
-      "edit": "AI-bewerking bevestigen"
+      "edit": "AI-bewerking bevestigen",
+      "researchTask": "Onderzoekstaak bevestigen"
     },
     "headline": {
       "command": "De assistent wil deze opdracht uitvoeren",
       "externalTool": "De assistent wil een externe tool gebruiken",
       "internet": "De assistent wil toegang tot internet",
-      "edit": "De assistent wil je bestanden wijzigen"
+      "edit": "De assistent wil je bestanden wijzigen",
+      "researchTask": "De assistent wil een onderzoekstaak aanmaken"
     },
     "mcpNote": "Hiermee gaan de argumenten hieronder naar de ingestelde MCP-server.",
     "line": "regel {{line}}",
@@ -70,10 +72,50 @@
       "title": "Verzoek van een externe agent (MCP)",
       "moreWaiting_one": "nog {{count}} in de wachtrij",
       "moreWaiting_other": "nog {{count}} in de wachtrij"
+    },
+    "researchTask": {
+      "note": "De taak werkt zelfstandig in een kopie van het project. Je beoordeelt de wijzigingen daarna.",
+      "title": "Titel",
+      "goal": "Doel",
+      "skills": "Vaardigheden",
+      "prompt": "Instructies",
+      "commands": "Opdrachten",
+      "commandsAsk": "Vragen voor elke opdracht",
+      "network": "Netwerk",
+      "timeBudget": "Tijdbudget",
+      "timeBudgetDefault": "Standaard",
+      "minutes_one": "{{count}} minuut",
+      "minutes_other": "{{count}} minuten",
+      "planFirst": "Eerst een plan maken",
+      "startNow": "Nu starten"
     }
   },
   "attachments": {
-    "remove": "{{name}} weghalen"
+    "remove": "{{name}} weghalen",
+    "processing": "{{name}} voorbereiden…",
+    "failed": "{{name}} kon niet worden toegevoegd.",
+    "pages_one": "{{count}} pagina",
+    "pages_other": "{{count}} pagina's",
+    "pagesLimited": "Alleen de eerste {{limit}} van {{count}} pagina's worden gebruikt.",
+    "tooMany": "Je kunt maximaal {{max}} bestanden aan één bericht toevoegen.",
+    "tooLarge": "{{name}} is groter dan {{limit}}.",
+    "unsupported": "{{name}} kan niet worden toegevoegd. Voeg afbeeldingen, PDF's of tekstbestanden toe.",
+    "unreadableImage": "Oleafly kan de afbeeldingsindeling van {{name}} niet lezen. Sla hem op als PNG of JPEG en voeg hem opnieuw toe.",
+    "unreadablePdf": "{{name}} kon niet als PDF worden geopend.",
+    "storeFailed": "{{name}} kon niet voor deze chat worden opgeslagen.",
+    "visionUnsupported": "{{model}} kan geen afbeeldingen lezen, dus de afbeeldingen in dit bericht worden niet verstuurd.",
+    "scannedPdf": "{{name}} heeft geen tekstlaag en {{model}} kan geen afbeeldingen lezen.",
+    "dropFiles": "Zet bestanden neer om ze toe te voegen",
+    "dropProjectFile": "Zet neer om dit bestand te noemen",
+    "open": "{{name}} openen",
+    "saveCopy": "Een kopie van {{name}} opslaan",
+    "saved": "Een kopie van {{name}} is opgeslagen.",
+    "saveFailed": "Kon {{name}} niet opslaan.",
+    "missing": "{{name}} is niet meer beschikbaar.",
+    "sentAsText": "{{name}} is als tekst verstuurd, omdat dit model het niet als bestand kan lezen.",
+    "skipped": "{{name}} is niet verstuurd.",
+    "dropUnreadable": "{{names}} konden niet worden gelezen.",
+    "notReplayed": "Bestanden van een oudere versie kunnen niet opnieuw worden verstuurd: {{names}}."
   },
   "chat": {
     "pill": {
@@ -182,7 +224,9 @@
     "stop": "Stoppen",
     "stopTitle": "Genereren stoppen",
     "send": "Versturen",
-    "checkAgain": "Opnieuw controleren"
+    "checkAgain": "Opnieuw controleren",
+    "resizeHandle": "Grootte van het berichtvak aanpassen",
+    "resizeHint": "Sleep om de grootte aan te passen. Dubbelklik om terug te zetten."
   },
   "commands": {
     "groups": {
@@ -220,10 +264,6 @@
     "files": {
       "label": "Bestanden",
       "description": "Voeg bestanden toe aan je volgende bericht"
-    },
-    "browser": {
-      "label": "Browser toevoegen",
-      "description": "Open de browser naast je document"
     }
   },
   "models": {
@@ -272,7 +312,10 @@
       "minutes": "{{count}} min geleden",
       "hours": "{{count}} u geleden",
       "days": "{{count}} d geleden"
-    }
+    },
+    "skipped_one": "{{count}} chat kon niet worden geladen. Hij staat nog op de schijf.",
+    "skipped_other": "{{count}} chats konden niet worden geladen. Ze staan nog op de schijf.",
+    "openFailed": "Kon deze chat niet openen."
   },
   "tools": {
     "approval": {
@@ -318,7 +361,6 @@
       "listAgents": "Somt de hulpagents en hun status op.",
       "closeAgent": "Sluit een hulpagent.",
       "runCommand": "Voert een shell-opdracht uit in de projectmap, met een limiet van twee minuten.",
-      "computerUse": "Opent een webpagina in het browservenster van de assistent.",
       "toggleTheme": "Wisselt tussen de lichte en de donkere modus.",
       "listOverleafProjects": "Toont je Overleaf-projecten en meldt zich eerst aan als dat nodig is.",
       "importOverleafProjects": "Importeert Overleaf-projecten in je bibliotheek, met hun compiler en hoofdbestand."
@@ -347,8 +389,7 @@
       "latexOnly": "Alleen LaTeX-projecten",
       "latexAndTypstOnly": "Alleen LaTeX- en Typst-projecten",
       "pdfCaptureSetting": "Vereist de instelling voor PDF-paginaopname",
-      "chatApproval": "Goedgekeurd in de chat, één opdracht tegelijk",
-      "browserSetting": "Vereist de instelling voor de webbrowser"
+      "chatApproval": "Goedgekeurd in de chat, één opdracht tegelijk"
     },
     "sourceGroups": {
       "figure": "Figuur",
@@ -471,18 +512,20 @@
     "resumeTask": "Open de onderzoekstaak om dit werk te hervatten.",
     "delegatedConversation": "Dit gesprek hoort bij een gedelegeerde agentrun.",
     "noResume": "Deze agent kan bewaarde gesprekken niet hervatten. Begin een nieuw gesprek wanneer je zover bent.",
-    "imageTooLarge": "Kies een afbeelding kleiner dan 480 KiB. Je kunt maximaal vier afbeeldingen toevoegen.",
     "imageReadFailed": "De afbeelding kon niet worden gelezen.",
-    "removeImage": "{{name}} weghalen",
     "composerAriaLabel": "Bericht aan de CLI-agent",
     "composerPlaceholderReady": "Vraag de agent om aan dit project te werken",
     "composerPlaceholderIdle": "Start of hervat een gesprek om een bericht te sturen",
-    "attachImage": "Afbeelding toevoegen",
     "startConversation": "Een gesprek met {{agent}} starten",
     "startConversationFallback": "een agent",
     "agentModel": "Model van de agent",
     "modelManaged": "Het model wordt door de agent beheerd",
     "stop": "Stoppen",
+    "stopReason": {
+      "refusal": "De agent weigerde verder te gaan met dit verzoek.",
+      "maxTokens": "De agent heeft zijn uitvoerlimiet bereikt en is gestopt.",
+      "maxTurnRequests": "De agent heeft zijn limiet aan verzoeken voor deze beurt bereikt en is gestopt."
+    },
     "stopTitle": "De agent stoppen",
     "send": "Versturen",
     "connecting": "Verbinden",
@@ -500,8 +543,7 @@
     "roster": {
       "bridgeMissing": "installeer de bridge bij Agent instellen",
       "cliMissing": "CLI niet gevonden op deze computer",
-      "unavailable": "niet beschikbaar op deze computer",
-      "comingSoon": "binnenkort"
+      "unavailable": "niet beschikbaar op deze computer"
     },
     "messageTooLarge": "Dit bericht en de afbeeldingen erbij zijn te groot. Maak het bericht korter of haal een afbeelding weg.",
     "terminalCommand": "De agent voert een terminalopdracht uit.",
@@ -549,7 +591,131 @@
       "tool": "Tool: {{name}}",
       "changedFiles": "Gewijzigde bestanden",
       "moreFiles_one": "en nog {{count}} bestand",
-      "moreFiles_other": "en nog {{count}} bestanden"
+      "moreFiles_other": "en nog {{count}} bestanden",
+      "mode": "Modus",
+      "effort": "Inspanning",
+      "permissionProfile": "Goedkeuringsmodus",
+      "commits": "Commits"
+    },
+    "composerPlaceholderStart": "Stuur {{agent}} een bericht om een gesprek te beginnen",
+    "composerPlaceholderConnecting": "Typ alvast. Het bericht gaat weg zodra de agent klaar is.",
+    "composerPlaceholderRunning": "Typ je volgende bericht. Het gaat weg zodra de agent klaar is.",
+    "attachFile": "Bestanden toevoegen",
+    "composer": {
+      "tooManyAttachments": "Voeg maximaal 10 bestanden aan één bericht toe.",
+      "imagesUnsupported": "Deze agent accepteert geen afbeeldingen. Haal ze weg en probeer het opnieuw.",
+      "attachmentsNotReady": "Wacht tot de bijlagen klaar zijn.",
+      "removeSelection": "Citaat {{label}} verwijderen"
+    },
+    "queue": {
+      "queued": "In de wachtrij: wordt verstuurd zodra de agent klaar is",
+      "remove": "Bericht uit de wachtrij verwijderen",
+      "sendNow": "Nu versturen",
+      "sendFailed": "Dit bericht is niet verstuurd. Verstuur het opnieuw of verwijder het.",
+      "queuedConnecting": "In de wachtrij: wordt verstuurd zodra de agent gereed is",
+      "queuedSignIn": "In de wachtrij: wordt verstuurd nadat je je hebt aangemeld",
+      "retry": "Opnieuw versturen",
+      "edit": "Bewerken"
+    },
+    "slash": {
+      "commands": "Opdrachten van de agent",
+      "skills": "Vaardigheden"
+    },
+    "controls": {
+      "effort": "Inspanning",
+      "mode": "Modus",
+      "more": "Meer opties voor de agent",
+      "blockedMode": "Uit in Oleafly",
+      "blockedModeHint": "Oleafly houdt de controle van rechten aan, dus deze modus is niet beschikbaar."
+    },
+    "usage": {
+      "ariaLabel": "Verbruik van de agent bekijken",
+      "tooltip": "Verbruik in dit gesprek",
+      "contextShare": "{{percent}}% van het contextvenster gebruikt",
+      "window": {
+        "fiveHour": "Sessie van 5 uur",
+        "weekly": "Per week, alle modellen",
+        "weeklyOpus": "Per week, Opus",
+        "weeklySonnet": "Per week, Sonnet",
+        "overage": "Extra verbruik",
+        "other": "Verbruikslimiet {{id}}"
+      },
+      "costIn": "De agent meldde kosten van {{amount}} {{currency}}.",
+      "modelTokens": "{{model}}: {{tokens}} tokens"
+    },
+    "compaction": {
+      "running": "Eerdere context samenvatten",
+      "done": "Eerdere context samengevat",
+      "failed": "Kon de eerdere context niet samenvatten"
+    },
+    "signIn": {
+      "inTerminal": "{{name}} in de terminal",
+      "afterTerminal": "Rond het aanmelden af in de terminal en verbind daarna opnieuw.",
+      "apiKeyLabel": "API-sleutel voor {{provider}}",
+      "apiKeyPlaceholder": "Plak je API-sleutel",
+      "geminiGoogle": "Aanmelden met Google werkt niet meer voor individuele abonnementen. Gebruik een Gemini API-sleutel of Vertex AI.",
+      "noProject": "Open een project om je vanuit de terminal aan te melden.",
+      "signOut": "Afmelden",
+      "confirmTerminal": "{{agent}} meldt zich aan met de opdracht hieronder, die in een terminaltabblad wordt uitgevoerd. Controleer hem voordat je akkoord gaat.",
+      "remote": "Dit gesprek draait op een andere machine. Meld je daar aan bij de agent."
+    },
+    "elicitation": {
+      "ariaLabel": "Verzoek van de agent",
+      "from": "{{agent}} vraagt:",
+      "submit": "Versturen",
+      "decline": "Weigeren",
+      "cancel": "Annuleren",
+      "required": "Verplicht",
+      "invalid": "Controleer dit veld.",
+      "openUrl": "Openen in browser",
+      "confirmTitle": "{{host}} openen?",
+      "confirmDescription": "De agent vraagt je een stap op deze site af te ronden. De site opent in je browser.",
+      "waiting": "Wachten tot de site klaar is.",
+      "openFailed": "De link kon niet in je browser worden geopend."
+    },
+    "remote": {
+      "banner": "Hermes draait via SSH op {{host}}. De wijzigingen blijven op die machine."
+    },
+    "history": {
+      "all": "Alle gesprekken",
+      "title": "Gesprekken",
+      "search": "Gesprekken zoeken",
+      "empty": "Geen gesprekken gevonden.",
+      "loadMore": "Meer laden",
+      "rename": "Naam wijzigen",
+      "renameLabel": "Naam van het gesprek",
+      "delete": "Verwijderen",
+      "deleteTitle": "Dit gesprek verwijderen?",
+      "deleteDescription": "Oleafly verwijdert het verslag en de bijlagen ervan uit dit project.",
+      "deleteFromAgent": "Ook verwijderen uit {{agent}}",
+      "deleteAgentFailed": "Verwijderd in Oleafly. {{agent}} kon zijn kopie niet verwijderen: {{error}}",
+      "deleteRunning": "Stop de agent voordat je dit gesprek verwijdert.",
+      "importFind": "Gesprekken van {{agent}} voor dit project zoeken",
+      "imported": "Al in Oleafly",
+      "importSelected": "Selectie importeren",
+      "importEmpty": "{{agent}} heeft geen andere gesprekken voor dit project."
+    },
+    "header": {
+      "startedAt": "Gestart bij {{revision}}",
+      "startedDirty": "Gestart bij {{revision}} met wijzigingen die nog niet gecommit zijn",
+      "menu": "Acties voor het gesprek",
+      "fork": "Gesprek forken",
+      "forkUnsupported": "Deze agent kan geen gesprekken forken.",
+      "forkBusy": "Wacht tot de agent klaar is voordat je forkt.",
+      "v2": "Protocolconcept",
+      "remote": "Extern",
+      "signOutTitle": "{{agent}} afmelden?",
+      "signOutDescription": "Dit beëindigt de aanmelding van {{agent}} zelf. Ook een terminal die dezelfde aanmelding gebruikt, wordt afgemeld, en dit gesprek stopt totdat je je opnieuw aanmeldt.",
+      "signOutAccount": "Aangemeld met {{account}}"
+    },
+    "commit": {
+      "button": "Committen",
+      "title": "Deze beurt committen",
+      "message": "Commitbericht",
+      "files": "Te committen bestanden",
+      "defaultMessage": "Wijzigingen van {{agent}}",
+      "submit": "Bestanden committen",
+      "cancel": "Annuleren"
     }
   },
   "agents": {
@@ -721,8 +887,6 @@
     "restoreFailed": "Kon niet herstellen: {{error}}",
     "steerFailed": "De lopende beurt kon niet worden bijgestuurd.",
     "approvalRuleSaveFailed": "Kon de goedkeuringsregel van het project niet opslaan.",
-    "attachmentTooLarge": "{{name}} is te groot (maximaal 10 MB).",
-    "attachmentReadFailed": "Kon {{name}} niet lezen.",
     "tooManyTools": "Er staan {{enabled}} tools aan, maar een run ondersteunt er maximaal {{max}}. Schakel er minstens {{excess}} uit bij Tools en probeer het opnieuw."
   },
   "header": {
@@ -749,7 +913,29 @@
     "summaryRunNoTokens_one": "Laatste run: {{count}} stap, totaal aantal tokens niet beschikbaar",
     "summaryRunNoTokens_other": "Laatste run: {{count}} stappen, totaal aantal tokens niet beschikbaar",
     "summaryChat": "Deze chat: {{steps}} stappen, {{tokens}} tokens",
-    "summaryFallback": "AI-verbruik"
+    "summaryFallback": "AI-verbruik",
+    "context": "Context",
+    "contextUsed": "{{used}} van {{size}} tokens",
+    "contextShare": "{{percent}} van het contextvenster gebruikt",
+    "contextUnknown": "Het contextvenster van dit model is onbekend.",
+    "reasoning": "Redeneren",
+    "cacheRead": "Cachelezingen",
+    "cacheWrite": "Cacheschrijfacties",
+    "cost": "Geschatte kosten",
+    "budget": "Projectbudget",
+    "budgetUsed": "{{spent}} van {{limit}}",
+    "credit": "Resterend tegoed",
+    "creditOf": "{{remaining}} van {{limit}}",
+    "planLimits": "Limieten van het abonnement",
+    "resetsAt": "Wordt {{time}} gereset",
+    "windowWarning": "Bijna aan de limiet",
+    "windowBlocked": "Limiet bereikt",
+    "refreshPlan": "Verbruik van het abonnement vernieuwen",
+    "refreshing": "Vernieuwen…",
+    "historyTrimmed_one": "Alleen de laatste {{count}} beurt van deze chat is naar het model gestuurd.",
+    "historyTrimmed_other": "Alleen de laatste {{count}} beurten van deze chat zijn naar het model gestuurd.",
+    "empty": "Nog geen verbruik in deze chat.",
+    "loading": "Verbruik laden…"
   },
   "provider": {
     "connectTitle": "Verbind een AI-provider om verder te gaan",
@@ -769,7 +955,21 @@
     "projectSubtitle": "Bezig met \"{{project}}\"",
     "noOutput": "Het model gaf geen uitvoer terug. Kijk bij Instellingen → AI-assistent.",
     "planMissing": "Er is nog geen plan om goed te keuren. Vraag de assistent om een plan of zet Plan uit.",
-    "planUnchanged": "Het plan is niet gewijzigd."
+    "planUnchanged": "Het plan is niet gewijzigd.",
+    "stillWorking": "Nog bezig ({{seconds}} s). Redeneermodellen en lokale modellen kunnen traag zijn. Klik op Stoppen om te annuleren.",
+    "retrying": "Verbindingsprobleem. Opnieuw proberen ({{attempt}} van {{max}})…",
+    "stopped": "Gestopt.",
+    "stepLimit": "De limiet voor stappen is bereikt. Stuur nog een bericht om door te gaan.",
+    "outputLimit": "Het antwoord heeft de uitvoerlimiet van het model bereikt. Stuur nog een bericht om door te gaan.",
+    "tooLargeToSave": "Deze chat is te lang om op te slaan. Nieuwe berichten blijven bewaard tot je Oleafly sluit. Exporteer de chat om een kopie te houden.",
+    "exportChat": "Chat exporteren",
+    "exported": "Chat geëxporteerd.",
+    "exportFailed": "Kon de chat niet exporteren.",
+    "saveFailed": "Nieuwe berichten in deze chat konden niet worden opgeslagen. Controleer of de schijf vrije ruimte heeft.",
+    "exportYou": "Jij",
+    "exportAssistant": "Assistent",
+    "exportAttachments": "Bijlagen",
+    "exportTools": "Gebruikte hulpmiddelen"
   },
   "followUps": {
     "steered": "Bijgestuurd in de lopende beurt: {{summary}}",
@@ -856,6 +1056,46 @@
     "figureAudit": "Figurencontrole",
     "gitReview": "Git-review",
     "referenceCleanup": "Referenties opschonen",
-    "removeSkill": "Vaardigheid {{name}} verwijderen"
+    "removeSkill": "Vaardigheid {{name}} verwijderen",
+    "compilationRepair": "Compilatie herstellen",
+    "submissionPrep": "Indienen voorbereiden",
+    "reviewerResponse": "Antwoord aan reviewers"
+  },
+  "effort": {
+    "label": "Inspanning",
+    "tooltip": "Hoeveel het model redeneert voordat het antwoordt",
+    "ariaLabel": "Redeneerinspanning: {{level}}",
+    "auto": "Automatisch",
+    "autoDescription": "De standaard van het model gebruiken",
+    "levels": {
+      "none": "Geen",
+      "minimal": "Minimaal",
+      "low": "Laag",
+      "medium": "Gemiddeld",
+      "high": "Hoog",
+      "xhigh": "Zeer hoog",
+      "max": "Maximaal"
+    }
+  },
+  "web": {
+    "label": "Web",
+    "on": "Zoeken op het web en pagina's lezen staan aan voor deze chat",
+    "off": "Zoeken op het web en pagina's lezen aanzetten voor deze chat",
+    "ariaLabel": "Webtoegang",
+    "searchUnavailable": "Dit model kan niet op het web zoeken. Voeg een zoeksleutel toe bij Instellingen om het aan te zetten."
+  },
+  "messageActions": {
+    "edit": "Bericht bewerken",
+    "regenerate": "Antwoord opnieuw genereren",
+    "retry": "Opnieuw proberen",
+    "editingLatest": "Je bewerkt je laatste bericht. Als je het verstuurt, wordt het antwoord vervangen.",
+    "editingEarlier": "Je bewerkt een eerder bericht. Als je het verstuurt, begint daar een nieuwe chat en blijft deze chat in de Geschiedenis staan.",
+    "cancelEdit": "Bewerken annuleren",
+    "replaceTitle": "Dit antwoord vervangen?",
+    "replaceDescription_one": "Het antwoord heeft {{count}} bestand gewijzigd. De wijziging blijft in je project, maar de kaart om hem ongedaan te maken verdwijnt met het antwoord.",
+    "replaceDescription_other": "Het antwoord heeft {{count}} bestanden gewijzigd. De wijzigingen blijven in je project, maar de kaart om ze ongedaan te maken verdwijnt met het antwoord.",
+    "replaceConfirm": "Antwoord vervangen",
+    "forked": "Een nieuwe chat is gestart vanaf het bewerkte bericht.",
+    "failed": "Kon het bericht niet opnieuw versturen."
   }
 }

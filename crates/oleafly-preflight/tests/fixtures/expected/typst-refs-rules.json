@@ -1,0 +1,375 @@
+{
+  "assets-case-insensitive": [],
+  "assets-relative-to-file": [
+    {
+      "detail": {
+        "key": "rules.refs-missing-asset.detailImageTypst"
+      },
+      "file": "chapters/intro.typ",
+      "from": 47,
+      "id": "refs-missing-asset",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-missing-asset.titleImage",
+        "params": {
+          "file": "c.png"
+        }
+      },
+      "to": 61
+    }
+  ],
+  "at-cite-counts-as-citation": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-uncited-entries.detail",
+        "params": {
+          "keys": "unused"
+        }
+      },
+      "id": "refs-uncited-entries",
+      "lens": "refs",
+      "severity": "info",
+      "title": {
+        "key": "rules.refs-uncited-entries.title",
+        "params": {
+          "count": 1
+        }
+      }
+    }
+  ],
+  "at-reference-missing": [
+    {
+      "detail": {
+        "key": "rules.refs-undefined-ref.detailTypst"
+      },
+      "file": "main.typ",
+      "from": 4,
+      "id": "refs-undefined-ref",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-ref.titleTypst",
+        "params": {
+          "label": "nope"
+        }
+      },
+      "to": 9
+    }
+  ],
+  "at-reference-resolves": [],
+  "at-reference-supplement-prefix": [],
+  "at-reference-with-package": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.refs-undefined-ref.detailTypstPackage"
+      },
+      "file": "main.typ",
+      "from": 34,
+      "id": "refs-undefined-ref",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-undefined-ref.titleTypst",
+        "params": {
+          "label": "nope"
+        }
+      },
+      "to": 39
+    }
+  ],
+  "bibliography-missing-file": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-bib-missing.detailTypst"
+      },
+      "file": "main.typ",
+      "from": 1,
+      "id": "refs-bib-missing",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-bib-missing.title",
+        "params": {
+          "file": "missing.bib"
+        }
+      },
+      "to": 28
+    }
+  ],
+  "bibliography-none": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-no-bibliography.detail"
+      },
+      "id": "refs-no-bibliography",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-no-bibliography.title"
+      }
+    }
+  ],
+  "bibliography-with-array": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-bib-missing.detailTypst"
+      },
+      "file": "main.typ",
+      "from": 1,
+      "id": "refs-bib-missing",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-bib-missing.title",
+        "params": {
+          "file": "b.yml"
+        }
+      },
+      "to": 33
+    }
+  ],
+  "bibliography-with-method": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-bib-missing.detailTypst"
+      },
+      "file": "main.typ",
+      "from": 11,
+      "id": "refs-bib-missing",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-bib-missing.title",
+        "params": {
+          "file": "refs.yml"
+        }
+      },
+      "to": 40
+    }
+  ],
+  "cite-known-key": [],
+  "cite-unknown-key": [
+    {
+      "detail": {
+        "key": "rules.refs-undefined-cite.detailTypst"
+      },
+      "file": "main.typ",
+      "from": 16,
+      "id": "refs-undefined-cite",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-cite.titleTypst",
+        "params": {
+          "key": "jones"
+        }
+      },
+      "to": 29
+    }
+  ],
+  "cite-without-bibliography": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-no-bibliography.detail"
+      },
+      "id": "refs-no-bibliography",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-no-bibliography.title"
+      }
+    }
+  ],
+  "duplicate-labels": [
+    {
+      "detail": {
+        "key": "rules.refs-duplicate-label.detail"
+      },
+      "file": "main.typ",
+      "from": 16,
+      "id": "refs-duplicate-label",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-duplicate-label.title",
+        "params": {
+          "label": "sec:a"
+        }
+      },
+      "to": 23
+    }
+  ],
+  "emoji-before-reference": [
+    {
+      "detail": {
+        "key": "rules.refs-undefined-ref.detailTypst"
+      },
+      "file": "main.typ",
+      "from": 3,
+      "id": "refs-undefined-ref",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-ref.titleTypst",
+        "params": {
+          "label": "missing"
+        }
+      },
+      "to": 11
+    },
+    {
+      "detail": {
+        "key": "rules.refs-undefined-cite.detailTypst"
+      },
+      "file": "main.typ",
+      "from": 17,
+      "id": "refs-undefined-cite",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-cite.titleTypst",
+        "params": {
+          "key": "k"
+        }
+      },
+      "to": 26
+    }
+  ],
+  "labels-from-context": [],
+  "missing-assets": [
+    {
+      "detail": {
+        "key": "rules.refs-missing-asset.detailImageTypst"
+      },
+      "file": "main.typ",
+      "from": 1,
+      "id": "refs-missing-asset",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-missing-asset.titleImage",
+        "params": {
+          "file": "figs/plot.png"
+        }
+      },
+      "to": 23
+    },
+    {
+      "detail": {
+        "key": "rules.refs-missing-asset.detailIncludeTypst"
+      },
+      "file": "main.typ",
+      "from": 25,
+      "id": "refs-missing-asset",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-missing-asset.titleInclude",
+        "params": {
+          "file": "chapters/missing.typ"
+        }
+      },
+      "to": 55
+    }
+  ],
+  "named-bibliography-file": [],
+  "no-project-files-skips-assets": [],
+  "path-less-source": [
+    {
+      "detail": {
+        "key": "rules.refs-undefined-ref.detailTypst"
+      },
+      "from": 4,
+      "id": "refs-undefined-ref",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-ref.titleTypst",
+        "params": {
+          "label": "nope"
+        }
+      },
+      "to": 9
+    },
+    {
+      "detail": {
+        "key": "rules.refs-missing-asset.detailImageTypst"
+      },
+      "from": 12,
+      "id": "refs-missing-asset",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-missing-asset.titleImage",
+        "params": {
+          "file": "a.png"
+        }
+      },
+      "to": 26
+    }
+  ],
+  "project-quality-typst": [
+    {
+      "detail": {
+        "key": "rules.refs-duplicate-bib.detail",
+        "params": {
+          "doi": "10.1/x"
+        }
+      },
+      "id": "refs-duplicate-bib",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-duplicate-bib.title",
+        "params": {
+          "keys": "Smith, smith"
+        }
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-project-duplicate-label.detail",
+        "params": {
+          "labels": "fig:x (a.typ, b.typ)"
+        }
+      },
+      "id": "refs-project-duplicate-label",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-project-duplicate-label.title",
+        "params": {
+          "count": 1
+        }
+      }
+    }
+  ],
+  "ref-call-in-code": [
+    {
+      "detail": {
+        "key": "rules.refs-undefined-ref.detailTypst"
+      },
+      "file": "main.typ",
+      "from": 19,
+      "id": "refs-undefined-ref",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-ref.titleTypst",
+        "params": {
+          "label": "fig:b"
+        }
+      },
+      "to": 38
+    }
+  ]
+}

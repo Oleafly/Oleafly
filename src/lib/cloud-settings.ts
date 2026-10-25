@@ -17,24 +17,34 @@ const THEME = {
   setPreference: (preference: ThemePreference) => requestThemePreference(preference),
 };
 
-// Settings each computer keeps for itself. The default LaTeX engine is one this
-// computer has: latexmk needs a TeX installation another computer may lack.
-const LOCAL_ONLY: ReadonlyArray<readonly [section: string, key: string]> = [
-  ["experimentation", "webBrowser"],
+// Settings that only make sense on the computer that chose them: the
+// terminal shell (a Windows shell or path means nothing on a Mac), whether
+// task commands may reach the network, a security choice made per machine,
+// and the default LaTeX engine (latexmk needs a TeX installation another
+// computer may lack).
+const LOCAL_ONLY_PATHS: readonly (readonly string[])[] = [
+  ["appearance", "terminal", "shell"],
+  ["appearance", "terminal", "shellPath"],
+  ["research", "commandNetwork"],
   ["engine", "defaultLatexEngine"],
 ];
 
-export function withoutLocalOnlySettings(document: Record<string, unknown>): Record<string, unknown> {
-  let copy: Record<string, unknown> | null = null;
-  for (const [section, key] of LOCAL_ONLY) {
-    const group = (copy ?? document)[section];
-    if (!isRecord(group) || !(key in group)) continue;
-    copy ??= { ...document };
-    const kept = Object.fromEntries(Object.entries(group).filter(([name]) => name !== key));
-    if (Object.keys(kept).length > 0) copy[section] = kept;
-    else delete copy[section];
+/** `node` without the value at `path`, dropping parents it leaves empty. Never mutates. */
+function withoutPath(node: Record<string, unknown>, path: readonly string[]): Record<string, unknown> {
+  const [head, ...rest] = path;
+  if (head === undefined || !Object.hasOwn(node, head)) return node;
+  if (rest.length > 0) {
+    const child = node[head];
+    if (!isRecord(child)) return node;
+    const next = withoutPath(child, rest);
+    if (next === child) return node;
+    if (Object.keys(next).length > 0) return { ...node, [head]: next };
   }
-  return copy ?? document;
+  return Object.fromEntries(Object.entries(node).filter(([key]) => key !== head));
+}
+
+export function withoutLocalOnlySettings(document: Record<string, unknown>): Record<string, unknown> {
+  return LOCAL_ONLY_PATHS.reduce((current, path) => withoutPath(current, path), document);
 }
 
 export async function gatherCloudSettings(): Promise<Record<string, unknown>> {

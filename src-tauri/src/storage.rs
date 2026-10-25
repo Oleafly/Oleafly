@@ -1107,7 +1107,30 @@ fn complete_cleanup_job_locked(
     }
     crate::checkpoints::remove_project_checkpoint_data(&expected.project_id)?;
     crate::agent_turns::remove_project(&expected.project_id);
+    remove_project_chat_history(&expected.project_id);
     clear_cleanup_job(path, expected)
+}
+
+/// Removes a deleted project's chat history: its chat files and its rows in
+/// the search index. Best effort, as for its attachments.
+fn remove_project_chat_history(project_id: &str) {
+    if let Err(error) = crate::chats::remove_project_chats(project_id) {
+        let _ = crate::project::append_app_log(format!(
+            "could not remove the chat history of {project_id}: {error}"
+        ));
+    }
+    let cleared = crate::paths::oleafly_root().and_then(|root| {
+        if root.join("library.db").is_file() {
+            crate::library_db::index_project_chats(&root, project_id, "[]")
+        } else {
+            Ok(())
+        }
+    });
+    if let Err(error) = cleared {
+        let _ = crate::project::append_app_log(format!(
+            "could not remove the chat search rows of {project_id}: {error}"
+        ));
+    }
 }
 
 pub(crate) fn retry_pending_checkpoint_cleanup() -> Result<(), String> {
@@ -1427,6 +1450,12 @@ fn permanently_delete_recycled_project_sync(recycle_id: &str) -> Result<(), Stri
         if let Err(error) = crate::overleaf::forget_sync_copy(&manifest.project_id) {
             let _ = crate::project::append_app_log(format!(
                 "could not remove the sync copy of {}: {error}",
+                manifest.project_id
+            ));
+        }
+        if let Err(error) = crate::attachments::remove_project(&manifest.project_id) {
+            let _ = crate::project::append_app_log(format!(
+                "could not remove the chat attachments of {}: {error}",
                 manifest.project_id
             ));
         }
@@ -1994,6 +2023,36 @@ mod tests {
     }
 
     #[test]
+    fn permanently_deleting_a_project_removes_its_chat_history_and_search_rows() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let project_id = "paper";
+        let project = crate::paths::projects_root().unwrap().join(project_id);
+        std::fs::create_dir(&project).unwrap();
+        std::fs::write(project.join("project.json"), br#"{"name":"Paper"}"#).unwrap();
+        let root = crate::paths::oleafly_root().unwrap();
+        let chat = r#"{"id":"chat-1","title":"Notes","updatedAt":1,"messages":[{"role":"user","content":"cuttlefishnotes"}]}"#;
+        crate::chats::write_chat(&root, project_id, "chat-1", chat, true).unwrap();
+        let legacy = root.join("chats").join("paper.json");
+        std::fs::write(&legacy, format!("[{chat}]")).unwrap();
+        let search = || crate::library_db::search_chats(&root, "cuttlefishnotes", 10).unwrap();
+        assert_eq!(search().len(), 1);
+
+        let recycle_id = recycle_project_directory(
+            &crate::project_location::LibraryProjectDir::resolve(project_id).unwrap(),
+            "Paper",
+        )
+        .unwrap();
+        permanently_delete_recycled_project_sync(&recycle_id).unwrap();
+
+        assert!(!root.join("chats").join(project_id).exists());
+        assert!(!legacy.exists());
+        assert!(search().is_empty());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
     fn deleting_a_recycled_identity_never_removes_an_active_projects_history() {
         let _env_guard = crate::paths::data_dir_env_lock();
         let directory = tempfile::tempdir().unwrap();
@@ -2013,10 +2072,24 @@ mod tests {
 
         std::fs::create_dir(&project).unwrap();
         std::fs::write(project.join("project.json"), br#"{"name":"Active"}"#).unwrap();
+        let root = crate::paths::oleafly_root().unwrap();
+        crate::chats::write_chat(
+            &root,
+            project_id,
+            "chat-1",
+            r#"{"id":"chat-1","messages":[]}"#,
+            false,
+        )
+        .unwrap();
         permanently_delete_recycled_project_sync(&recycle_id).unwrap();
 
         assert!(project.exists());
         assert!(checkpoint_store.exists());
+        assert!(root
+            .join("chats")
+            .join(project_id)
+            .join("chat-1.json")
+            .is_file());
         assert!(list_recycled_projects_sync().unwrap().is_empty());
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }

@@ -332,7 +332,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
   {
     id: "pdf-scanned-to-latex",
     label: "Scanned PDF to LaTeX",
-    blurb: "A local Ollama vision model transcribes scanned pages into editable LaTeX.",
+    blurb: "The Tools model (local Ollama unless you pick another) transcribes scanned pages into editable LaTeX.",
     source: "pdf",
     target: "latex",
     direction: "tool",
@@ -346,7 +346,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
   {
     id: "image-to-latex",
     label: "LaTeX equation",
-    blurb: "On the Tools page, a local vision model transcribes an equation or table photo into editable LaTeX. The editor toolbar button uses your configured vision-capable provider instead.",
+    blurb: "The Tools model (local Ollama unless you pick another) transcribes an equation or table photo into editable LaTeX, on the Tools page and from the editor toolbar. With no Tools model picked and no Ollama vision model, the editor toolbar sends the image to the assistant's model.",
     source: "image",
     target: "latex",
     direction: "tool",
@@ -357,7 +357,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
   {
     id: "image-to-typst",
     label: "Typst source",
-    blurb: "On the Tools page, a local vision model transcribes notes, equations, or tables into editable Typst. The Typst editor toolbar button uses your configured vision-capable provider instead.",
+    blurb: "The Tools model (local Ollama unless you pick another) transcribes notes, equations, or tables into editable Typst, on the Tools page and from the Typst editor toolbar. With no Tools model picked and no Ollama vision model, the editor toolbar sends the image to the assistant's model.",
     source: "image",
     target: "typst",
     direction: "tool",
@@ -370,7 +370,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
   {
     id: "equation-to-latex",
     label: "LaTeX equation",
-    blurb: "Normalize typed math directly, or read natural-language and photographed equations with a local model.",
+    blurb: "Normalize typed math directly, or read natural-language and photographed equations with the Tools model (local Ollama unless you pick another).",
     source: "equation",
     target: "latex",
     direction: "tool",
@@ -382,7 +382,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
   {
     id: "equation-to-typst",
     label: "Typst equation",
-    blurb: "Typed LaTeX math converts with Oleafly's built-in translator, with Pandoc as a fallback for commands it does not know. Natural-language and photographed equations go through a local model first.",
+    blurb: "Typed LaTeX math converts with Oleafly's built-in translator, with Pandoc as a fallback for commands it does not know. Natural-language and photographed equations go through the Tools model (local Ollama unless you pick another) first.",
     source: "equation",
     target: "typst",
     direction: "tool",

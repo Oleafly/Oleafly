@@ -1,0 +1,106 @@
+[
+  {
+    "name": "nothing",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "Hello"
+      }
+    ],
+    "anonymousReview": false
+  },
+  {
+    "name": "nothing-anonymous",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "Hello"
+      }
+    ],
+    "anonymousReview": true
+  },
+  {
+    "name": "document-set-rule",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#set document(title: \"T\", author: \"A\")"
+      }
+    ],
+    "anonymousReview": false
+  },
+  {
+    "name": "document-blank-values",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#set document(title: \"\", author: ())"
+      }
+    ],
+    "anonymousReview": false
+  },
+  {
+    "name": "document-call-without-set",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#document(title: \"T\")"
+      }
+    ],
+    "anonymousReview": false
+  },
+  {
+    "name": "template-show-rule",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#import \"@preview/charged-ieee:0.1.0\": ieee\n#show: ieee.with(title: [A Paper], authors: ((name: \"Ana\"),), abstract: [Text])\n"
+      }
+    ],
+    "anonymousReview": false
+  },
+  {
+    "name": "template-named-variants",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#import \"@preview/x:1.0.0\": conf\n#show: conf.with(title-page: [T], authors-short: \"A\")"
+      }
+    ],
+    "anonymousReview": false
+  },
+  {
+    "name": "imported-function-call",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#import \"@preview/x:1.0.0\": paper\n#paper(title: \"T\")[Body]"
+      }
+    ],
+    "anonymousReview": false
+  },
+  {
+    "name": "spread-over-files",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#set document(title: \"T\")"
+      },
+      {
+        "path": "chapters/a.typ",
+        "content": "#set document(author: \"A\")"
+      }
+    ],
+    "anonymousReview": false
+  },
+  {
+    "name": "arrow-show-rule",
+    "sources": [
+      {
+        "path": "main.typ",
+        "content": "#show: doc => conf(title: [T], doc)"
+      }
+    ],
+    "anonymousReview": false
+  }
+]

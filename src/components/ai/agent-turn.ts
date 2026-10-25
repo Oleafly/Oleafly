@@ -1,3 +1,4 @@
+import type { AgentUsage, EffortLevel, WebToggle } from "@oleafly/ai-core";
 import { i18n } from "@/i18n";
 import type { ModelMessage, ToolSet } from "@/lib/chat-types";
 import { packToolOutput, truncateText } from "@/lib/ai-context-pack";
@@ -20,6 +21,13 @@ export interface HarnessToolCall {
   args: unknown;
 }
 
+/** What a usage event adds beside the run totals. */
+export interface UsageExtras {
+  /** The latest step alone: the context the model just saw. */
+  lastStep?: AgentUsage;
+  contextWindow?: number;
+}
+
 export interface HarnessHandlers {
   onActivity(): void;
   onThinking(label: string | null): void;
@@ -29,11 +37,13 @@ export interface HarnessHandlers {
   onReasoningEnd(): void;
   onToolCall(call: HarnessToolCall): void | Promise<void>;
   onToolResult(result: { id: string; name: string; output: unknown }): void;
-  onUsage(usage: Extract<AgentEvent, { kind: "usage" }>["usage"]): void;
+  onUsage(usage: AgentUsage, extras?: UsageExtras): void;
   onStep(step: number): void;
   onRetry(attempt: number, max: number): void;
   onSubagentUpdate(update: Extract<AgentEvent, { kind: "subagentUpdate" }>): void;
   onSteered?(text: string): void;
+  /** Something the user should know that is not an error (a file sent as text). */
+  onNotice?(code: string, detail: string | null): void;
 }
 
 export function toolSchemasFor(tools: ToolSet): AgentToolSchema[] {
@@ -112,6 +122,12 @@ function convertPart(part: Record<string, unknown>): AgentContentPart | null {
       return part.text ? { type: "text", text: String(part.text) } : null;
     case "image":
       return { type: "image", image: String(part.image) };
+    case "attachment":
+      return typeof part.sha256 === "string" &&
+        typeof part.name === "string" &&
+        typeof part.mime === "string"
+        ? { type: "attachment", sha256: part.sha256, name: part.name, mime: part.mime }
+        : null;
     case "file":
       return { type: "text", text: fileAttachmentText(part) };
     case "tool-call":
@@ -187,6 +203,10 @@ export async function runAgentHarness(args: {
    * the mechanism that keeps a run pinned to the project it started in.
    */
   guardToolCall?: (call: HarnessToolCall) => string | null;
+  /** Sent only when set; Auto leaves it out. */
+  effort?: EffortLevel;
+  /** Sent only when web is on for the chat. */
+  web?: WebToggle;
   handlers: HarnessHandlers;
 }): Promise<AgentRunOutcome> {
   const { handlers } = args;
@@ -211,12 +231,16 @@ export async function runAgentHarness(args: {
     handlers.onReasoningEnd();
   };
 
+  const request: Parameters<typeof runViaBackend>[0] = {
+    system: args.system,
+    messages: toAgentMessages(args.messages),
+    tools: toolSchemasFor(args.tools),
+  };
+  if (args.effort) request.effort = args.effort;
+  if (args.web && (args.web.search || args.web.fetch)) request.web = { ...args.web };
+
   return runViaBackend(
-    {
-      system: args.system,
-      messages: toAgentMessages(args.messages),
-      tools: toolSchemasFor(args.tools),
-    },
+    request,
     {
       onEvent: (event) => {
         if (args.signal.aborted) return;
@@ -276,7 +300,13 @@ export async function runAgentHarness(args: {
             break;
           }
           case "usage":
-            handlers.onUsage(event.usage);
+            handlers.onUsage(event.usage, {
+              lastStep: event.lastStep ?? undefined,
+              contextWindow: event.contextWindow ?? undefined,
+            });
+            break;
+          case "notice":
+            handlers.onNotice?.(event.code, event.detail ?? null);
             break;
           case "subagentUpdate":
             handlers.onActivity();

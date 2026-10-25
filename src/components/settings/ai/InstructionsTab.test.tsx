@@ -28,7 +28,7 @@ const cfg = {
 function renderTab(overrides: Partial<InstructionsTabProps> = {}) {
   const props: InstructionsTabProps = {
     cfg,
-    setCfg: vi.fn(),
+    configLoaded: true,
     savedKeys: {},
     persist: vi.fn().mockResolvedValue(undefined),
     sysPrompt: "",
@@ -89,10 +89,10 @@ describe("InstructionsTab", () => {
     expect(saveSystemPrompt).toHaveBeenCalled();
   });
 
-  it("writes the PDF capture switch back to the config", async () => {
+  it("saves the PDF capture switch through the merging save", async () => {
     const user = userEvent.setup();
-    const setCfg = vi.fn();
-    renderTab({ setCfg });
+    localStorage.removeItem("oleafly:ai_pdf_capture");
+    const props = renderTab();
 
     const checkbox = screen.getByRole("checkbox", {
       name: new RegExp(instructions.pdfCaptureLabel),
@@ -100,16 +100,31 @@ describe("InstructionsTab", () => {
     expect(checkbox).toBeChecked();
 
     await user.click(checkbox);
-    expect(setCfg).toHaveBeenCalledWith({ ...cfg, ai_pdf_capture: false });
-    expect(mocks.setConfig).toHaveBeenCalledWith({ ...cfg, ai_pdf_capture: false });
+    expect(props.persist).toHaveBeenCalledWith({ ...cfg, ai_pdf_capture: false });
+    // Never the screen's own copy of the whole config.
+    expect(mocks.setConfig).not.toHaveBeenCalled();
     expect(localStorage.getItem("oleafly:ai_pdf_capture")).toBe("0");
   });
 
-  it("reports a config write that fails", async () => {
+  it("turns reasoning summaries on through the merging save", async () => {
+    const user = userEvent.setup();
+    const props = renderTab();
+
+    const checkbox = screen.getByRole("checkbox", {
+      name: new RegExp(instructions.reasoningSummariesLabel),
+    });
+    expect(checkbox).not.toBeChecked();
+
+    await user.click(checkbox);
+    expect(props.persist).toHaveBeenCalledWith({ ...cfg, ai_reasoning_summaries: true });
+    expect(mocks.setConfig).not.toHaveBeenCalled();
+  });
+
+  it("reports a save that fails and leaves the PDF mirror alone", async () => {
     const user = userEvent.setup();
     const setMsg = vi.fn();
-    mocks.setConfig.mockRejectedValue(new Error("disk full"));
-    renderTab({ setMsg });
+    localStorage.setItem("oleafly:ai_pdf_capture", "1");
+    renderTab({ setMsg, persist: vi.fn().mockRejectedValue(new Error("disk full")) });
 
     await user.click(
       screen.getByRole("checkbox", {
@@ -117,6 +132,20 @@ describe("InstructionsTab", () => {
       }),
     );
     expect(setMsg).toHaveBeenCalledWith({ ok: false, text: "disk full" });
+    expect(localStorage.getItem("oleafly:ai_pdf_capture")).toBe("1");
+    expect(screen.getByRole("checkbox", { name: new RegExp(instructions.pdfCaptureLabel) })).toBeChecked();
+  });
+
+  it("keeps both switches off until the stored config has loaded", async () => {
+    const user = userEvent.setup();
+    const props = renderTab({ configLoaded: false });
+
+    const pdf = screen.getByRole("checkbox", { name: new RegExp(instructions.pdfCaptureLabel) });
+    const reasoning = screen.getByRole("checkbox", { name: new RegExp(instructions.reasoningSummariesLabel) });
+    expect(pdf).toBeDisabled();
+    expect(reasoning).toBeDisabled();
+    await user.click(reasoning);
+    expect(props.persist).not.toHaveBeenCalled();
   });
 
   it("reveals the tool table on request", async () => {

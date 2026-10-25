@@ -4,16 +4,17 @@ import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { setConfig, type AppConfig } from "@/lib/tauri";
+import type { AppConfig } from "@/lib/tauri";
 import { describeError } from "@/lib/app-error";
-import { mergeCustomProviders, suggestedProviderId } from "@/lib/ai-providers";
-import { enabledModels } from "@/lib/ai-model-state";
+import { suggestedProviderId } from "@/lib/ai-providers";
+import { configuredModelGroups } from "@/lib/ai-model-groups";
 import { AiToolsTable } from "@/components/ai/AiToolsList";
-import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
+import { ModelSelector } from "@/components/ai/ModelSelector";
 
 export interface InstructionsTabProps {
   cfg: AppConfig;
-  setCfg: Dispatch<SetStateAction<AppConfig>>;
+  /** False until the stored config is read: the switches stay off so a click can't write the defaults. */
+  configLoaded: boolean;
   savedKeys: Record<string, string>;
   persist: (next: AppConfig) => Promise<void>;
   sysPrompt: string;
@@ -25,7 +26,7 @@ export interface InstructionsTabProps {
 
 export function InstructionsTab({
   cfg,
-  setCfg,
+  configLoaded,
   savedKeys,
   persist,
   sysPrompt,
@@ -39,18 +40,14 @@ export function InstructionsTab({
   // Providers the user has actually connected (saved key, or a custom
   // provider with an optional key), same "configured" definition ChatCore
   // uses for its own model switcher.
-  const allProviders = mergeCustomProviders(cfg.ai_custom_providers);
-  const configuredProviders = allProviders.filter((p) => {
-    if ((savedKeys[p.id] ?? "").trim().length > 0) return true;
-    return Boolean(cfg.ai_custom_providers.find((c) => c.id === p.id)?.keyOptional);
-  });
-  const defaultModelGroups: ModelSelectorGroup[] = configuredProviders.map((p) => {
-    const storedModels = cfg.ai_provider_models[p.id];
-    const models = storedModels
-      ? enabledModels(storedModels).map((m) => ({ id: m.id, name: m.name }))
-      : p.models.map((m) => ({ id: m.id, name: m.name }));
-    return { id: p.id, name: p.name, models };
-  });
+  const defaultModelGroups = configuredModelGroups(
+    {
+      keys: savedKeys,
+      customProviders: cfg.ai_custom_providers,
+      providerModels: cfg.ai_provider_models,
+    },
+    { dropEmpty: false },
+  );
 
   return (
     <div className="space-y-4">
@@ -108,16 +105,19 @@ export function InstructionsTab({
             id="ai-pdf-capture"
             className="mt-0.5"
             checked={cfg.ai_pdf_capture !== false}
+            disabled={!configLoaded}
             onCheckedChange={(checked) => {
               const on = checked === true;
-              const next = { ...cfg, ai_pdf_capture: on };
-              setCfg(next);
-              try {
-                localStorage.setItem("oleafly:ai_pdf_capture", on ? "1" : "0");
-              } catch {
-                /* ignore */
-              }
-              void setConfig(next).catch((err) => setMsg({ ok: false, text: describeError(err) }));
+              // persist() merges into the stored config; the box changes only once it is saved.
+              void persist({ ...cfg, ai_pdf_capture: on })
+                .then(() => {
+                  try {
+                    localStorage.setItem("oleafly:ai_pdf_capture", on ? "1" : "0");
+                  } catch {
+                    /* ignore */
+                  }
+                })
+                .catch((err) => setMsg({ ok: false, text: describeError(err) }));
             }}
           />
           <span>
@@ -126,6 +126,27 @@ export function InstructionsTab({
             </span>
             <span className="mt-0.5 block text-muted-foreground">
               {t(($) => $.settings.ai.instructions.pdfCaptureDescription)}
+            </span>
+          </span>
+        </label>
+        <label htmlFor="ai-reasoning-summaries" className="flex cursor-pointer items-start gap-2.5 text-xs">
+          <Checkbox
+            id="ai-reasoning-summaries"
+            className="mt-0.5"
+            checked={cfg.ai_reasoning_summaries === true}
+            disabled={!configLoaded}
+            onCheckedChange={(checked) => {
+              void persist({ ...cfg, ai_reasoning_summaries: checked === true }).catch((err) =>
+                setMsg({ ok: false, text: describeError(err) }),
+              );
+            }}
+          />
+          <span>
+            <span className="font-medium text-foreground">
+              {t(($) => $.settings.ai.instructions.reasoningSummariesLabel)}
+            </span>
+            <span className="mt-0.5 block text-muted-foreground">
+              {t(($) => $.settings.ai.instructions.reasoningSummariesDescription)}
             </span>
           </span>
         </label>

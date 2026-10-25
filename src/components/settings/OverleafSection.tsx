@@ -17,6 +17,7 @@ import {
   IntegrationError,
 } from "@/components/settings/IntegrationCard";
 import { useOverleafImportStore } from "@/store/overleaf-import";
+import { BrowserSignInCopy } from "@/components/settings/BrowserSignInCopy";
 
 function serverHost(server: string): string {
   try {
@@ -76,6 +77,9 @@ export function OverleafSection() {
         </IntegrationConnected>
       ) : null}
       {failed ? <IntegrationError>{t(($) => $.settings.integrations.overleaf.signOutFailed)}</IntegrationError> : null}
+      {signedIn ? null : (
+        <BrowserSignInCopy server={status?.server ?? server} onSignedIn={() => void refreshStatus()} />
+      )}
       <GitTokenField server={status?.server ?? server} />
     </IntegrationCard>
   );

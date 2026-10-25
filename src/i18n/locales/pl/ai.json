@@ -43,13 +43,15 @@
       "command": "Potwierdź polecenie",
       "externalTool": "Potwierdź działanie narzędzia zewnętrznego",
       "internet": "Potwierdź dostęp do internetu",
-      "edit": "Potwierdź zmianę wprowadzaną przez AI"
+      "edit": "Potwierdź zmianę wprowadzaną przez AI",
+      "researchTask": "Potwierdź zadanie badawcze"
     },
     "headline": {
       "command": "Asystent chce uruchomić to polecenie",
       "externalTool": "Asystent chce użyć narzędzia zewnętrznego",
       "internet": "Asystent chce uzyskać dostęp do internetu",
-      "edit": "Asystent chce zmienić Twoje pliki"
+      "edit": "Asystent chce zmienić Twoje pliki",
+      "researchTask": "Asystent chce utworzyć zadanie badawcze"
     },
     "mcpNote": "Spowoduje to wysłanie poniższych argumentów do skonfigurowanego serwera MCP.",
     "line": "wiersz {{line}}",
@@ -72,10 +74,54 @@
       "moreWaiting_few": "jeszcze {{count}} oczekują",
       "moreWaiting_many": "jeszcze {{count}} oczekuje",
       "moreWaiting_other": "jeszcze {{count}} oczekuje"
+    },
+    "researchTask": {
+      "note": "Zadanie pracuje samodzielnie na kopii projektu. Jego zmiany przejrzysz potem.",
+      "title": "Tytuł",
+      "goal": "Cel",
+      "skills": "Umiejętności",
+      "prompt": "Instrukcje",
+      "commands": "Polecenia",
+      "commandsAsk": "Pytaj przed każdym",
+      "network": "Sieć",
+      "timeBudget": "Budżet czasu",
+      "timeBudgetDefault": "Domyślnie",
+      "minutes_one": "{{count}} minuta",
+      "minutes_other": "{{count}} minuty",
+      "planFirst": "Plan najpierw",
+      "startNow": "Start od razu",
+      "minutes_many": "{{count}} minut",
+      "minutes_few": "{{count}} minuty"
     }
   },
   "attachments": {
-    "remove": "Usuń {{name}}"
+    "remove": "Usuń {{name}}",
+    "processing": "Przygotowywanie {{name}}…",
+    "failed": "Nie udało się dołączyć {{name}}.",
+    "pages_one": "{{count}} strona",
+    "pages_few": "{{count}} strony",
+    "pages_many": "{{count}} stron",
+    "pages_other": "{{count}} strony",
+    "pagesLimited": "Używane są tylko pierwsze strony ({{limit}} z {{count}}).",
+    "tooMany": "Do jednej wiadomości możesz dołączyć najwyżej {{max}} plików.",
+    "tooLarge": "{{name}} jest większy niż {{limit}}.",
+    "unsupported": "Nie można dołączyć {{name}}. Dołączaj obrazy, pliki PDF lub pliki tekstowe.",
+    "unreadableImage": "Oleafly nie może odczytać formatu obrazu {{name}}. Zapisz go jako PNG lub JPEG i dołącz ponownie.",
+    "unreadablePdf": "Nie udało się otworzyć {{name}} jako pliku PDF.",
+    "storeFailed": "Nie udało się zapisać {{name}} dla tego czatu.",
+    "visionUnsupported": "{{model}} nie odczytuje obrazów, więc obrazy z tej wiadomości nie zostaną wysłane.",
+    "scannedPdf": "{{name}} nie ma warstwy tekstowej, a {{model}} nie odczytuje obrazów.",
+    "dropFiles": "Upuść pliki, aby je dołączyć",
+    "dropProjectFile": "Upuść, aby wspomnieć ten plik",
+    "open": "Otwórz {{name}}",
+    "saveCopy": "Zapisz kopię {{name}}",
+    "saved": "Zapisano kopię {{name}}.",
+    "saveFailed": "Nie udało się zapisać {{name}}.",
+    "missing": "{{name}} nie jest już dostępny.",
+    "sentAsText": "{{name}} wysłano jako tekst, bo ten model nie odczyta go jako pliku.",
+    "skipped": "Nie wysłano {{name}}.",
+    "dropUnreadable": "Nie udało się odczytać: {{names}}.",
+    "notReplayed": "Nie można ponownie wysłać plików zapisanych przez starszą wersję: {{names}}."
   },
   "chat": {
     "pill": {
@@ -194,7 +240,9 @@
     "stop": "Zatrzymaj",
     "stopTitle": "Zatrzymaj generowanie",
     "send": "Wyślij",
-    "checkAgain": "Sprawdź ponownie"
+    "checkAgain": "Sprawdź ponownie",
+    "resizeHandle": "Zmień rozmiar pola wiadomości",
+    "resizeHint": "Przeciągnij, aby zmienić rozmiar. Kliknij dwukrotnie, aby przywrócić."
   },
   "commands": {
     "groups": {
@@ -232,10 +280,6 @@
     "files": {
       "label": "Pliki",
       "description": "Dołącz pliki do następnej wiadomości"
-    },
-    "browser": {
-      "label": "Dołącz przeglądarkę",
-      "description": "Otwórz przeglądarkę obok dokumentu"
     }
   },
   "models": {
@@ -286,7 +330,12 @@
       "minutes": "{{count}} min temu",
       "hours": "{{count}} godz. temu",
       "days": "{{count}} dni temu"
-    }
+    },
+    "skipped_one": "Nie udało się wczytać {{count}} czatu. Nadal jest na dysku.",
+    "skipped_few": "Nie udało się wczytać {{count}} czatów. Nadal są na dysku.",
+    "skipped_many": "Nie udało się wczytać {{count}} czatów. Nadal są na dysku.",
+    "skipped_other": "Nie udało się wczytać {{count}} czatu. Nadal są na dysku.",
+    "openFailed": "Nie udało się otworzyć tego czatu."
   },
   "tools": {
     "approval": {
@@ -332,7 +381,6 @@
       "listAgents": "Wypisuje agentów pomocniczych i ich stan.",
       "closeAgent": "Zamyka agenta pomocniczego.",
       "runCommand": "Uruchamia polecenie shell w folderze projektu, z limitem dwóch minut.",
-      "computerUse": "Otwiera stronę internetową w oknie przeglądarki asystenta.",
       "toggleTheme": "Przełącza między trybem jasnym a ciemnym.",
       "listOverleafProjects": "Wyświetla listę projektów Overleaf i w razie potrzeby najpierw loguje.",
       "importOverleafProjects": "Importuje projekty Overleaf do biblioteki razem z kompilatorem i plikiem głównym."
@@ -361,8 +409,7 @@
       "latexOnly": "Tylko projekty LaTeX",
       "latexAndTypstOnly": "Tylko projekty LaTeX i Typst",
       "pdfCaptureSetting": "Wymaga ustawienia przechwytywania stron PDF",
-      "chatApproval": "Zatwierdzane w czacie, po jednym poleceniu naraz",
-      "browserSetting": "Wymaga ustawienia przeglądarki internetowej"
+      "chatApproval": "Zatwierdzane w czacie, po jednym poleceniu naraz"
     },
     "sourceGroups": {
       "figure": "Rysunek",
@@ -485,18 +532,20 @@
     "resumeTask": "Otwórz zadanie badawcze, aby wznowić tę pracę.",
     "delegatedConversation": "Ta rozmowa należy do uruchomienia zleconego agenta.",
     "noResume": "Ten agent nie może wznawiać zapisanych rozmów. Rozpocznij nową rozmowę, gdy będziesz gotowy.",
-    "imageTooLarge": "Wybierz obraz mniejszy niż 480 KiB. Można dołączyć do czterech obrazów.",
     "imageReadFailed": "Nie udało się odczytać obrazu.",
-    "removeImage": "Usuń {{name}}",
     "composerAriaLabel": "Wiadomość do agenta CLI",
     "composerPlaceholderReady": "Poproś agenta o pracę nad tym projektem",
     "composerPlaceholderIdle": "Rozpocznij lub wznów rozmowę, aby wysłać wiadomość",
-    "attachImage": "Dołącz obraz",
     "startConversation": "Rozpocznij rozmowę z {{agent}}",
     "startConversationFallback": "agentem",
     "agentModel": "Model agenta",
     "modelManaged": "Modelem zarządza agent",
     "stop": "Zatrzymaj",
+    "stopReason": {
+      "refusal": "Agent odmówił kontynuowania tej prośby.",
+      "maxTokens": "Agent osiągnął limit odpowiedzi i się zatrzymał.",
+      "maxTurnRequests": "Agent osiągnął limit żądań w tej turze i się zatrzymał."
+    },
     "stopTitle": "Zatrzymaj agenta",
     "send": "Wyślij",
     "connecting": "Łączenie",
@@ -514,8 +563,7 @@
     "roster": {
       "bridgeMissing": "zainstaluj mostek w Konfiguracji agenta",
       "cliMissing": "nie znaleziono CLI na tym komputerze",
-      "unavailable": "niedostępny na tym komputerze",
-      "comingSoon": "wkrótce"
+      "unavailable": "niedostępny na tym komputerze"
     },
     "messageTooLarge": "Ta wiadomość wraz z obrazami jest za duża. Skróć wiadomość albo usuń obraz.",
     "terminalCommand": "Agent uruchamia polecenie w terminalu.",
@@ -565,7 +613,131 @@
       "moreFiles_one": "i jeszcze {{count}} plik",
       "moreFiles_few": "i jeszcze {{count}} pliki",
       "moreFiles_many": "i jeszcze {{count}} plików",
-      "moreFiles_other": "i jeszcze {{count}} pliku"
+      "moreFiles_other": "i jeszcze {{count}} pliku",
+      "mode": "Tryb",
+      "effort": "Wysiłek",
+      "permissionProfile": "Tryb zatwierdzania",
+      "commits": "Commity"
+    },
+    "composerPlaceholderStart": "Napisz do {{agent}}, aby zacząć rozmowę",
+    "composerPlaceholderConnecting": "Możesz już pisać. Wiadomość zostanie wysłana, gdy agent będzie gotowy.",
+    "composerPlaceholderRunning": "Wpisz następną wiadomość. Zostanie wysłana, gdy agent skończy.",
+    "attachFile": "Dołącz pliki",
+    "composer": {
+      "tooManyAttachments": "Do jednej wiadomości dołącz najwyżej 10 plików.",
+      "imagesUnsupported": "Ten agent nie przyjmuje obrazów. Usuń je i spróbuj ponownie.",
+      "attachmentsNotReady": "Poczekaj, aż załączniki będą gotowe.",
+      "removeSelection": "Usuń cytat {{label}}"
+    },
+    "queue": {
+      "queued": "W kolejce: zostanie wysłana, gdy agent skończy",
+      "remove": "Usuń wiadomość z kolejki",
+      "sendNow": "Wyślij teraz",
+      "sendFailed": "Ta wiadomość nie została wysłana. Wyślij ją ponownie albo usuń.",
+      "queuedConnecting": "W kolejce: zostanie wysłana, gdy agent będzie gotowy",
+      "queuedSignIn": "W kolejce: zostanie wysłana po zalogowaniu",
+      "retry": "Wyślij ponownie",
+      "edit": "Edytuj"
+    },
+    "slash": {
+      "commands": "Polecenia agenta",
+      "skills": "Umiejętności"
+    },
+    "controls": {
+      "effort": "Wysiłek",
+      "mode": "Tryb",
+      "more": "Więcej opcji agenta",
+      "blockedMode": "Wyłączone w Oleafly",
+      "blockedModeHint": "Oleafly zawsze sprawdza uprawnienia, więc ten tryb jest niedostępny."
+    },
+    "usage": {
+      "ariaLabel": "Zobacz zużycie agenta",
+      "tooltip": "Zużycie w tej rozmowie",
+      "contextShare": "Użyto {{percent}}% okna kontekstu",
+      "window": {
+        "fiveHour": "Sesja 5-godzinna",
+        "weekly": "Tygodniowo, wszystkie modele",
+        "weeklyOpus": "Tygodniowo, Opus",
+        "weeklySonnet": "Tygodniowo, Sonnet",
+        "overage": "Dodatkowe zużycie",
+        "other": "Limit zużycia {{id}}"
+      },
+      "costIn": "Agent zgłosił koszt {{amount}} {{currency}}.",
+      "modelTokens": "{{model}}: {{tokens}} tokenów"
+    },
+    "compaction": {
+      "running": "Podsumowywanie wcześniejszego kontekstu",
+      "done": "Podsumowano wcześniejszy kontekst",
+      "failed": "Nie udało się podsumować wcześniejszego kontekstu"
+    },
+    "signIn": {
+      "inTerminal": "{{name}} w terminalu",
+      "afterTerminal": "Dokończ logowanie w terminalu, a potem połącz ponownie.",
+      "apiKeyLabel": "Klucz API dla {{provider}}",
+      "apiKeyPlaceholder": "Wklej swój klucz API",
+      "geminiGoogle": "Logowanie przez Google nie działa już w planach indywidualnych. Użyj klucza API Gemini albo Vertex AI.",
+      "noProject": "Otwórz projekt, aby zalogować się z terminala.",
+      "signOut": "Wyloguj się",
+      "confirmTerminal": "{{agent}} loguje się poniższym poleceniem, które zostanie uruchomione w karcie terminala. Sprawdź je, zanim się zgodzisz.",
+      "remote": "Ta rozmowa działa na innej maszynie. Zaloguj się do agenta tam."
+    },
+    "elicitation": {
+      "ariaLabel": "Prośba agenta",
+      "from": "{{agent}} pyta:",
+      "submit": "Wyślij",
+      "decline": "Odrzuć",
+      "cancel": "Anuluj",
+      "required": "Wymagane",
+      "invalid": "Sprawdź to pole.",
+      "openUrl": "Otwórz w przeglądarce",
+      "confirmTitle": "Otworzyć {{host}}?",
+      "confirmDescription": "Agent prosi Cię o wykonanie kroku na tej stronie. Otworzy się ona w Twojej przeglądarce.",
+      "waiting": "Czekamy, aż strona zakończy krok.",
+      "openFailed": "Nie udało się otworzyć linku w Twojej przeglądarce."
+    },
+    "remote": {
+      "banner": "Hermes działa na {{host}} przez SSH. Jego zmiany zostają na tamtej maszynie."
+    },
+    "history": {
+      "all": "Wszystkie rozmowy",
+      "title": "Rozmowy",
+      "search": "Szukaj w rozmowach",
+      "empty": "Brak pasujących rozmów.",
+      "loadMore": "Wczytaj więcej",
+      "rename": "Zmień nazwę",
+      "renameLabel": "Nazwa rozmowy",
+      "delete": "Usuń",
+      "deleteTitle": "Usunąć tę rozmowę?",
+      "deleteDescription": "Oleafly usunie jej zapis i załączniki z tego projektu.",
+      "deleteFromAgent": "Usuń ją też z {{agent}}",
+      "deleteAgentFailed": "Usunięto w Oleafly. {{agent}} nie udało się usunąć swojej kopii: {{error}}",
+      "deleteRunning": "Zatrzymaj agenta, zanim usuniesz tę rozmowę.",
+      "importFind": "Znajdź rozmowy {{agent}} dla tego projektu",
+      "imported": "Już w Oleafly",
+      "importSelected": "Importuj zaznaczone",
+      "importEmpty": "{{agent}} nie ma innych rozmów dla tego projektu."
+    },
+    "header": {
+      "startedAt": "Rozpoczęta na {{revision}}",
+      "startedDirty": "Rozpoczęta na {{revision}} z niezatwierdzonymi zmianami",
+      "menu": "Działania rozmowy",
+      "fork": "Rozgałęź rozmowę",
+      "forkUnsupported": "Ten agent nie potrafi rozgałęziać rozmów.",
+      "forkBusy": "Poczekaj, aż agent skończy, zanim rozgałęzisz rozmowę.",
+      "v2": "Wersja robocza ACP v2",
+      "remote": "Zdalnie",
+      "signOutTitle": "Wylogować się z {{agent}}?",
+      "signOutDescription": "To kończy samo logowanie do {{agent}}. Terminal, który korzysta z tego samego logowania, też zostanie wylogowany, a ta rozmowa zatrzyma się, dopóki nie zalogujesz się ponownie.",
+      "signOutAccount": "Zalogowano jako {{account}}"
+    },
+    "commit": {
+      "button": "Zatwierdź",
+      "title": "Zatwierdź tę turę",
+      "message": "Opis commita",
+      "files": "Pliki do zatwierdzenia",
+      "defaultMessage": "Zmiany od {{agent}}",
+      "submit": "Zatwierdź pliki",
+      "cancel": "Anuluj"
     }
   },
   "agents": {
@@ -739,8 +911,6 @@
     "restoreFailed": "Nie udało się przywrócić: {{error}}",
     "steerFailed": "Nie udało się pokierować trwającą turą.",
     "approvalRuleSaveFailed": "Nie udało się zapisać reguły zatwierdzania dla projektu.",
-    "attachmentTooLarge": "{{name}} jest za duży (maksymalnie 10 MB).",
-    "attachmentReadFailed": "Nie udało się odczytać {{name}}.",
     "tooManyTools": "Włączonych narzędzi jest {{enabled}}, a jedno uruchomienie obsługuje najwyżej {{max}}. Wyłącz co najmniej {{excess}} w sekcji Narzędzia i spróbuj ponownie."
   },
   "header": {
@@ -771,7 +941,31 @@
     "summaryRunNoTokens_many": "Ostatnie uruchomienie: {{count}} kroków, łączna liczba tokenów niedostępna",
     "summaryRunNoTokens_other": "Ostatnie uruchomienie: {{count}} kroku, łączna liczba tokenów niedostępna",
     "summaryChat": "Ten czat: kroki {{steps}}, tokeny {{tokens}}",
-    "summaryFallback": "Zużycie AI"
+    "summaryFallback": "Zużycie AI",
+    "context": "Kontekst",
+    "contextUsed": "{{used}} z {{size}} tokenów",
+    "contextShare": "Użyto {{percent}} okna kontekstu",
+    "contextUnknown": "Okno kontekstu tego modelu jest nieznane.",
+    "reasoning": "Rozumowanie",
+    "cacheRead": "Odczyty z pamięci podręcznej",
+    "cacheWrite": "Zapisy do pamięci podręcznej",
+    "cost": "Szacowany koszt",
+    "budget": "Budżet projektu",
+    "budgetUsed": "{{spent}} z {{limit}}",
+    "credit": "Pozostały kredyt",
+    "creditOf": "{{remaining}} z {{limit}}",
+    "planLimits": "Limity planu",
+    "resetsAt": "Odnowienie {{time}}",
+    "windowWarning": "Blisko limitu",
+    "windowBlocked": "Limit osiągnięty",
+    "refreshPlan": "Odśwież zużycie planu",
+    "refreshing": "Odświeżanie…",
+    "historyTrimmed_one": "Do modelu wysłano tylko {{count}} ostatnią turę tego czatu.",
+    "historyTrimmed_few": "Do modelu wysłano tylko {{count}} ostatnie tury tego czatu.",
+    "historyTrimmed_many": "Do modelu wysłano tylko {{count}} ostatnich tur tego czatu.",
+    "historyTrimmed_other": "Do modelu wysłano tylko {{count}} ostatniej tury tego czatu.",
+    "empty": "W tym czacie nie ma jeszcze zużycia.",
+    "loading": "Wczytywanie zużycia…"
   },
   "provider": {
     "connectTitle": "Podłącz dostawcę AI, aby kontynuować",
@@ -791,7 +985,21 @@
     "projectSubtitle": "Praca nad projektem \"{{project}}\"",
     "noOutput": "Model nie zwrócił żadnych danych. Sprawdź Ustawienia → Asystent AI.",
     "planMissing": "Nie ma jeszcze planu do zatwierdzenia. Poproś asystenta o plan albo wyłącz Plan.",
-    "planUnchanged": "Plan się nie zmienił."
+    "planUnchanged": "Plan się nie zmienił.",
+    "stillWorking": "Nadal pracuję ({{seconds}} s). Modele rozumujące i modele lokalne bywają wolne. Kliknij Zatrzymaj, aby anulować.",
+    "retrying": "Problem z połączeniem. Ponawiam ({{attempt}} z {{max}})…",
+    "stopped": "Zatrzymano.",
+    "stepLimit": "Osiągnięto limit kroków. Wyślij kolejną wiadomość, aby kontynuować.",
+    "outputLimit": "Odpowiedź osiągnęła limit długości odpowiedzi modelu. Wyślij kolejną wiadomość, aby kontynuować.",
+    "tooLargeToSave": "Ten czat jest za długi, aby go zapisać. Nowe wiadomości są przechowywane do zamknięcia Oleafly. Wyeksportuj czat, aby zachować kopię.",
+    "exportChat": "Eksportuj czat",
+    "exported": "Wyeksportowano czat.",
+    "exportFailed": "Nie udało się wyeksportować czatu.",
+    "saveFailed": "Nie udało się zapisać nowych wiadomości w tym czacie. Sprawdź, czy na dysku jest wolne miejsce.",
+    "exportYou": "Ty",
+    "exportAssistant": "Asystent",
+    "exportAttachments": "Załączniki",
+    "exportTools": "Użyte narzędzia"
   },
   "followUps": {
     "steered": "Skierowano do trwającej tury: {{summary}}",
@@ -888,6 +1096,48 @@
     "figureAudit": "Kontrola rysunków",
     "gitReview": "Przegląd zmian w Git",
     "referenceCleanup": "Porządkowanie bibliografii",
-    "removeSkill": "Usuń umiejętność {{name}}"
+    "removeSkill": "Usuń umiejętność {{name}}",
+    "compilationRepair": "Naprawa kompilacji",
+    "submissionPrep": "Przygotowanie zgłoszenia",
+    "reviewerResponse": "Odpowiedź dla recenzentów"
+  },
+  "effort": {
+    "label": "Wysiłek",
+    "tooltip": "Jak dużo model rozumuje przed odpowiedzią",
+    "ariaLabel": "Wysiłek rozumowania: {{level}}",
+    "auto": "Automatycznie",
+    "autoDescription": "Użyj domyślnego ustawienia modelu",
+    "levels": {
+      "none": "Brak",
+      "minimal": "Minimalny",
+      "low": "Niski",
+      "medium": "Średni",
+      "high": "Wysoki",
+      "xhigh": "Bardzo wysoki",
+      "max": "Maksymalny"
+    }
+  },
+  "web": {
+    "label": "Sieć",
+    "on": "Wyszukiwanie w sieci i czytanie stron są włączone w tym czacie",
+    "off": "Włącz wyszukiwanie w sieci i czytanie stron w tym czacie",
+    "ariaLabel": "Dostęp do sieci",
+    "searchUnavailable": "Ten model nie potrafi szukać w sieci. Dodaj klucz wyszukiwania w Ustawieniach, aby to włączyć."
+  },
+  "messageActions": {
+    "edit": "Edytuj wiadomość",
+    "regenerate": "Wygeneruj odpowiedź ponownie",
+    "retry": "Spróbuj ponownie",
+    "editingLatest": "Edytujesz swoją ostatnią wiadomość. Wysłanie jej zastąpi odpowiedź.",
+    "editingEarlier": "Edytujesz wcześniejszą wiadomość. Wysłanie jej rozpocznie od tego miejsca nowy czat, a ten zostanie w Historii.",
+    "cancelEdit": "Anuluj edycję",
+    "replaceTitle": "Zastąpić tę odpowiedź?",
+    "replaceDescription_one": "Odpowiedź zmieniła {{count}} plik. Zmiana zostaje w projekcie, ale jej karta cofania zniknie razem z odpowiedzią.",
+    "replaceDescription_few": "Odpowiedź zmieniła {{count}} pliki. Zmiany zostają w projekcie, ale ich karta cofania zniknie razem z odpowiedzią.",
+    "replaceDescription_many": "Odpowiedź zmieniła {{count}} plików. Zmiany zostają w projekcie, ale ich karta cofania zniknie razem z odpowiedzią.",
+    "replaceDescription_other": "Odpowiedź zmieniła {{count}} pliku. Zmiany zostają w projekcie, ale ich karta cofania zniknie razem z odpowiedzią.",
+    "replaceConfirm": "Zastąp odpowiedź",
+    "forked": "Rozpoczęto nowy czat od edytowanej wiadomości.",
+    "failed": "Nie udało się ponownie wysłać wiadomości."
   }
 }
