@@ -488,6 +488,34 @@ function PaneBody({
   );
 }
 
+function ResolvedFilter({ showResolved, hidden }: Readonly<{ showResolved: boolean; hidden: number }>) {
+  const { t } = useTranslation(["collab"]);
+  const label = showResolved ? t(($) => $.collab.comments.hideResolved) : t(($) => $.collab.comments.showResolved);
+  return (
+    <Tooltip label={label}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label={label}
+        aria-pressed={showResolved}
+        className={cn(
+          "h-6 w-auto min-w-6 gap-1 px-1 text-muted-foreground hover:text-foreground",
+          showResolved && "bg-primary/10 text-foreground",
+        )}
+        onClick={() => setShowResolved(!showResolved)}
+      >
+        <CheckCheck aria-hidden className="size-3.5" />
+        {hidden > 0 ? (
+          <span aria-hidden className="font-mono text-[0.625rem] tabular-nums">
+            {hidden}
+          </span>
+        ) : null}
+      </Button>
+    </Tooltip>
+  );
+}
+
 export function CommentsPane() {
   const { t } = useTranslation(["collab"]);
   const state = useComments(
@@ -563,9 +591,6 @@ export function CommentsPane() {
   const resolvedElsewhere = tallies.reduce((total, tally) => total + tally.resolved, 0);
   const linkedHere = state.threads.filter((thread) => linked.has(thread.id)).length;
   const hiddenResolved = state.showResolved ? 0 : state.threads.length - linkedHere - shown.length + resolvedElsewhere;
-  const filterLabel = state.showResolved
-    ? t(($) => $.collab.comments.hideResolved)
-    : t(($) => $.collab.comments.showResolved);
   const newLabel = t(($) => $.collab.comments.newLabel);
   const commentsFailed = commentsOn && phaseFailed(state.path, state.phase);
   const suggestionsFailed = phaseFailed(review.path, review.phase);
@@ -583,29 +608,7 @@ export function CommentsPane() {
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="comments-pane" data-comments-pane>
       <SidebarPanelHeader icon={MessageSquare} title={t(($) => $.collab.comments.title)}>
-        {commentsOn ? (
-          <Tooltip label={filterLabel}>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={filterLabel}
-              aria-pressed={state.showResolved}
-              className={cn(
-                "h-6 w-auto min-w-6 gap-1 px-1 text-muted-foreground hover:text-foreground",
-                state.showResolved && "bg-primary/10 text-foreground",
-              )}
-              onClick={() => setShowResolved(!state.showResolved)}
-            >
-              <CheckCheck aria-hidden className="size-3.5" />
-              {hiddenResolved > 0 ? (
-                <span aria-hidden className="font-mono text-[0.625rem] tabular-nums">
-                  {hiddenResolved}
-                </span>
-              ) : null}
-            </Button>
-          </Tooltip>
-        ) : null}
+        {commentsOn ? <ResolvedFilter showResolved={state.showResolved} hidden={hiddenResolved} /> : null}
       </SidebarPanelHeader>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {state.draft && canWrite ? (
