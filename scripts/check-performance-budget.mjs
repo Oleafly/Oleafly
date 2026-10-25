@@ -51,11 +51,14 @@ const limits = {
   // +40 KB for main's links between project files and SyncTeX accuracy
   // (about 21 KB of it lands in the entry with the source editor) on top of
   // 0.4.8's audit fixes: the entry measures 4,969,172 bytes on macOS.
-  largestJavaScript: 4_990_000,
+  // +1 KB for the research tasks switch at startup (the rail entry's
+  // condition, the rail's re-render on it, the capped small-button radius):
+  // the entry measures 4,990,252 bytes, 252 over the old ceiling.
+  largestJavaScript: 5_000_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
   // asset becomes the largest.
-  entryJavaScript: 4_990_000,
+  entryJavaScript: 5_000_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
