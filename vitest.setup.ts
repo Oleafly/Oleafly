@@ -3,6 +3,7 @@ import { afterEach, vi } from "vitest";
 import { getQueriesForElement, queries, screen } from "@testing-library/dom";
 import { resetSidebarViewState } from "./src/store/sidebar-view-state";
 import { provideTestCatalogs } from "@oleafly/i18n-contract/testing";
+import { setCorpusTransport } from "@oleafly/latex-intelligence";
 import diagram from "./src/i18n/locales/en/diagram.json" with { type: "json" };
 import editor from "./src/i18n/locales/en/editor.json" with { type: "json" };
 import preflight from "./src/i18n/locales/en/preflight.json" with { type: "json" };
@@ -18,6 +19,16 @@ provideTestCatalogs({
   templates: templates.package,
   wysiwyg,
 });
+
+// The editor's LaTeX corpus is fetched lazily from the page origin, which no
+// unit test serves. With the default transport that fetch fails only after a
+// connection attempt, and the loader's debug log then lands after the test
+// file is done, sometimes while Vitest is already closing the worker ("Closing
+// rpc while onUserConsoleLog was pending" fails the whole run). Answer every
+// corpus request with "nothing there" at once instead. Tests that need a
+// catalog set their own transport, and `setCorpusTransport(null)` still
+// restores the fetch-based default for the tests that exercise it.
+setCorpusTransport(async () => null);
 
 vi.mock("@lobehub/icons", () => {
   const stub = () => {
