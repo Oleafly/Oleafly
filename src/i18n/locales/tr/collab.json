@@ -61,6 +61,7 @@
       "loading": "Cihazlarınız yükleniyor…",
       "loadFailed": "Oleafly cihazlarınızı yükleyemedi.",
       "current": "Bu bilgisayar",
+      "browser": "Tarayıcı",
       "added": "Eklenme: {{date}}",
       "lastSeen": "Son görülme: {{date}}",
       "neverSeen": "Henüz görülmedi",
@@ -139,6 +140,7 @@
   "addServer": {
     "title": "İş birliği sunucusu ekle",
     "description": "Grubunuzun size verdiği adresi girin. Oleafly, siz oturum açmadan önce sunucuyu denetler.",
+    "oleaflyDescription": "Herkese açık Oleafly sunucusu",
     "addressLabel": "Sunucu adresi",
     "addressPlaceholder": "collab.example.edu",
     "continue": "Devam et",
@@ -218,7 +220,15 @@
     "server_removed": "Bu projenin sunucusu artık listenizde değil. Projeyi yerel kopya olarak saklayın veya sunucuyu yeniden ekleyin.",
     "share_in_progress": "Bu proje zaten paylaşılıyor. Bitmesini bekleyin.",
     "cancelled": "Paylaşılan projenin açılması iptal edildi.",
-    "cloud_synced": "Oleafly kitaplığınız bir bulut hizmetinin eşitlediği bir klasörde. Proje paylaşmak veya projelere katılmak için onu Dropbox, OneDrive veya iCloud Drive dışına taşıyın."
+    "cloud_synced": "Oleafly kitaplığınız bir bulut hizmetinin eşitlediği bir klasörde. Proje paylaşmak veya projelere katılmak için onu Dropbox, OneDrive veya iCloud Drive dışına taşıyın.",
+    "suggestion_not_found": "Bu öneri artık yok. Biri onu kabul etmiş ya da reddetmiş olabilir.",
+    "suggestion_not_yours": "Bu öneriyi yalnızca öneriyi yapan kişi geri çekebilir.",
+    "suggestion_role": "Bu projedeki rolünüz öneri yapmaya izin vermiyor.",
+    "chat_role": "Bu projedeki rolünüz sohbette bunu yapmaya izin vermiyor.",
+    "history_unavailable": "Bu projenin geçmişi henüz bu bilgisayarda yok. Proje eşitlendikten sonra yeniden deneyin.",
+    "account_storage_full": "Proje sahibinin hesabının bu sunucudaki depolama alanı doldu. Yer açmak için bazı dosyaları kaldırın veya sunucunun yöneticisinden daha fazla alan isteyin.",
+    "too_many_projects": "Bu sunucunun izin verdiği kadar paylaşılan projeniz zaten var. Başka bir projeyi paylaşmadan önce birinin paylaşımını durdurun.",
+    "too_many_uploads": "Son bir saatte çok fazla yükleme yaptınız. Daha sonra yeniden deneyin."
   },
   "roles": {
     "admin": "Yönetici",
@@ -481,8 +491,16 @@
   "projectRoles": {
     "owner": "Sahip",
     "editor": "Düzenleyen",
+    "reviewer": "İnceleyen",
+    "commenter": "Yorumcu",
     "viewer": "Görüntüleyen",
     "unknown": "Bilinmeyen rol"
+  },
+  "projectRoleDescriptions": {
+    "editor": "Düzenler ve önerileri inceler",
+    "reviewer": "Değişiklik önerir ve yorum yapar",
+    "commenter": "Okur ve yorum yapar",
+    "viewer": "Yalnızca okur"
   },
   "share": {
     "button": "Paylaş",
@@ -494,6 +512,8 @@
     "editCopy": "Bu, paylaşılan kopyadır. Bundan sonra özgün klasörü değil, bu kopyayı düzenleyin.",
     "serverLabel": "Sunucu",
     "noServers": "Önce bir iş birliği sunucusunda oturum açın, ardından paylaşmak için buraya dönün.",
+    "noServersYet": "Bu projeyi paylaşmak için bir iş birliği sunucusu ekleyin ve oturum açın.",
+    "addOleafly": "Oleafly sunucusunu ekle",
     "openSettings": "İş Birliği ayarlarını aç",
     "checking": "Proje denetleniyor…",
     "checkFailed": "Oleafly bu projeyi denetleyemedi.",
@@ -503,7 +523,7 @@
     "cloudSynced": "Oleafly kitaplığınız, iCloud, Dropbox veya benzeri bir hizmetin eşitlediği bir klasörde. İki eşitleme hizmeti aynı dosyalar için çakışır, bu yüzden Oleafly oradan paylaşım yapamaz. Önce kitaplığı bu klasörün dışına taşıyın.",
     "tooLarge": "Bu dosyalar sunucunun {{size}} MB sınırını aşıyor. Paylaşmadan önce dosyaları küçültün veya kaldırın.",
     "renamed": "Bazı adlar her bilgisayarda çalışmaz. Diğer kişiler bu dosyaları biraz farklı bir adla alır.",
-    "excluded": "Paylaşılmayanlar: derleme çıktısı, Oleafly ayarları ve Git geçmişi.",
+    "excluded": "Paylaşılmayanlar: diğer derleme çıktıları, Oleafly ayarları ve Git geçmişi. En son derlenen PDF paylaşılır, böylece ortak yazarlar onu tarayıcıda okuyabilir.",
     "start": "Paylaş",
     "preparing": "Proje hazırlanıyor…",
     "uploading": "Şekiller ve diğer dosyalar yükleniyor: {{done}} / {{total}}",
@@ -551,7 +571,7 @@
     },
     "comments": {
       "label": "Yorumlar",
-      "description": "Düzenleyebilen herkes bu projedeki metne yorum yapabilir. Bunu kapatırsanız yorumlar gizlenir ama silinmez.",
+      "description": "Sahipler, düzenleyenler, inceleyenler ve yorumcular bu projedeki metne yorum yapabilir. Bunu kapatırsanız yorumlar gizlenir ama silinmez.",
       "serverOff": "{{server}} sunucusunda yorumlar kapalı. Sunucunun yöneticisinden bunları açmasını isteyin."
     },
     "stop": "Paylaşımı durdur",
@@ -594,6 +614,7 @@
     "unknownPerson": "Biri",
     "viewing": "Görüntülüyor: {{path}}",
     "editing": "Düzenliyor: {{path}}",
+    "reviewing": "İnceliyor: {{path}}",
     "goTo": "{{name}} kişisine git",
     "nowhere": "Hiçbir dosyada değil, gidilecek bir yer yok"
   },
@@ -666,6 +687,8 @@
   },
   "activity": {
     "welcomeEdit": "{{owner}} tarafından {{server}} sunucusunda paylaşıldı. Düzenleyebilirsiniz.",
+    "welcomeReview": "{{owner}} tarafından {{server}} sunucusunda paylaşıldı. Değişiklik önerebilir ve yorum yapabilirsiniz.",
+    "welcomeComment": "{{owner}} tarafından {{server}} sunucusunda paylaşıldı. Yorum yapabilirsiniz.",
     "welcomeView": "{{owner}} tarafından {{server}} sunucusunda paylaşıldı. Görüntüleyebilirsiniz.",
     "joined": "{{name}} projeyi açtı",
     "left": "{{name}} projeyi kapattı",
@@ -774,9 +797,7 @@
       "signedOutTitle": "Bu sunucudaki oturumunuz kapalı",
       "signedOutDescription": "Ayarlar'da yeniden oturum açın, ardından yönetici konsolunu sunucunun kartından açın.",
       "refusedTitle": "Yönetici konsolu yöneticiler ve sorumlular içindir",
-      "refusedDescription": "Bu sunucudaki rolünüz: {{role}}. Sunucuyu yönetmeniz gerekiyorsa bir yöneticiye sorun.",
-      "turnedOffTitle": "Canlı iş birliği kapalı",
-      "turnedOffDescription": "Bu sunucuyu burada yönetmek için Ayarlar'daki Deneysel Özellikler bölümünden yeniden açın."
+      "refusedDescription": "Bu sunucudaki rolünüz: {{role}}. Sunucuyu yönetmeniz gerekiyorsa bir yöneticiye sorun."
     },
     "overview": {
       "loading": "Genel bakış yükleniyor…",
@@ -929,8 +950,6 @@
     }
   },
   "links": {
-    "turnedOff": "Canlı iş birliği kapalı. Ayarlar'daki Deneysel Özellikler bölümünden açın, ardından bağlantıyı yeniden açın.",
-    "openSettings": "Ayarları aç",
     "malformed": "Oleafly bu bağlantıyı açamıyor. Gönderen kişiden yeni bir bağlantı isteyin.",
     "opening": "Paylaşılan proje açılıyor…",
     "downloading": "Dosyalar indiriliyor: {{done}} / {{total}}",
@@ -952,8 +971,8 @@
     "add": "Yorum ekle",
     "showResolved": "Çözülen yorumları göster",
     "hideResolved": "Çözülen yorumları gizle",
-    "empty": "Henüz yorum yok.",
-    "emptyCanWrite": "Henüz yorum yok. Başlatmak için metin seçin ve Yorum ekle'yi seçin.",
+    "empty": "Henüz yorum ya da öneri yok.",
+    "emptyCanWrite": "Henüz yorum ya da öneri yok. Başlatmak için metin seçin ve Yorum ekle'yi seçin.",
     "allResolved": "Tüm yorumlar çözüldü.",
     "loadFailed": "Bu dosyanın yorumları yüklenemedi.",
     "detached": "Bağlantısı kopan yorumlar",
@@ -1010,6 +1029,111 @@
       "empty": "Göndermeden önce bir şey yazın."
     }
   },
+  "suggestions": {
+    "insertedBy": "{{name}} bunun eklenmesini önerdi",
+    "deletedBy": "{{name}} bunun silinmesini önerdi",
+    "unverifiedLabel": "Oleafly'nin doğrulayamadığı biri tarafından önerildi",
+    "card": "{{name}} kişisinin önerisi",
+    "unverifiedCard": "Oleafly'nin doğrulayamadığı birinden öneri",
+    "added": "Eklendi",
+    "deleted": "Silindi",
+    "accept": "Kabul et",
+    "reject": "Reddet",
+    "withdraw": "Geri çek",
+    "acceptAll": "Tümünü kabul et",
+    "rejectAll": "Tümünü reddet",
+    "fileActions": "{{file}} dosyasındaki öneriler",
+    "pendingCount": "Bekleyen öneriler: {{number}}",
+    "loadFailed": "Bu dosyanın önerileri yüklenemedi.",
+    "rejectAllConfirm": {
+      "title": "{{file}} dosyasındaki tüm öneriler reddedilsin mi?",
+      "description": "Özgün metin, bu projedeki herkes için dosyaya geri döner. Bekleyen öneriler: {{number}}.",
+      "confirm": "Tümünü reddet"
+    },
+    "withdrawConfirm": {
+      "title": "Bu öneri geri çekilsin mi?",
+      "description": "Özgün metin, bu projedeki herkes için dosyaya geri döner.",
+      "confirm": "Geri çek"
+    },
+    "pendingCompile": "Bu projede incelenmeyi bekleyen öneriler var: {{number}}. PDF bunları kabul edilmiş gibi gösterir.",
+    "pendingExport": "Bu projede incelenmeyi bekleyen öneriler var: {{number}}. Dışa aktarılan dosya bunları kabul edilmiş gibi içerir.",
+    "mode": {
+      "label": "Düzenleme ya da öneri",
+      "editing": "Düzenleme",
+      "suggesting": "Öneri",
+      "editingHint": "Düzenleme: düzenlemeleriniz metni anında değiştirir",
+      "suggestingHint": "Öneri: düzenlemeleriniz, bir sahibin ya da düzenleyenin kabul edeceği önerilere dönüşür",
+      "reviewerHint": "İnceleyen olduğunuz için düzenlemeleriniz, bir sahibin ya da düzenleyenin kabul edeceği önerilere dönüşür"
+    }
+  },
+  "chat": {
+    "title": "Sohbet",
+    "titleUnread": "Sohbet, yeni mesajlar",
+    "list": "Mesajlar",
+    "empty": "Henüz mesaj yok.",
+    "label": "Mesaj",
+    "placeholder": "Bir mesaj yazın",
+    "send": "Gönder",
+    "readOnly": "Görüntüleyenler sohbeti okuyabilir ama sohbete yazamaz.",
+    "offline": "Bu proje şu anda bağlı değil, bu yüzden mesaj gönderemezsiniz.",
+    "delete": "Mesajı sil",
+    "deleteConfirm": {
+      "title": "Bu mesaj silinsin mi?",
+      "description": "Bu projedeki herkes için silinir."
+    },
+    "deleted": "Bu mesaj silindi.",
+    "clear": "Sohbeti temizle",
+    "clearConfirm": {
+      "title": "Sohbet temizlensin mi?",
+      "description": "Tüm mesajlar bu projedeki herkes için kaldırılır. Bu işlem geri alınamaz.",
+      "confirm": "Sohbeti temizle"
+    },
+    "loadFailed": "Oleafly sohbeti yükleyemedi.",
+    "loadOlder": "Daha eski mesajları göster"
+  },
+  "history": {
+    "title": "Geçmiş",
+    "refresh": "Geçmişi yenile",
+    "empty": "Henüz değişiklik yok.",
+    "loadFailed": "Oleafly projenin geçmişini yükleyemedi.",
+    "loadMore": "Daha eski değişiklikleri göster",
+    "earlier": "Daha önceki değişiklikler",
+    "timeRange": "{{from}} ile {{to}} arası",
+    "authorsMore": "{{names}} ve {{number}} kişi daha",
+    "filesChanged": "Değişen dosyalar: {{number}}",
+    "open": "Aç",
+    "compare": "Karşılaştır",
+    "compareWith": "Bununla karşılaştır",
+    "comparePick": "Karşılaştırmak için ikinci bir sürüm seçin.",
+    "cancelCompare": "İptal",
+    "name": "Bu sürüme ad ver",
+    "rename": "Yeniden adlandır",
+    "unname": "Adı kaldır",
+    "nameLabel": "Sürüm adı",
+    "namePlaceholder": "Örneğin, Hakemlere gönderildi",
+    "versionDescription": "Projenin bu değişikliklerden sonraki hâli. Burada hiçbir şeyi değiştirmeden okuyabilirsiniz.",
+    "files": "Dosyalar",
+    "noFiles": "Bu sürümde hiçbir metin dosyası değişmedi.",
+    "fileLabel": "{{path}} dosyasının {{time}} itibarıyla hâli",
+    "fileMissing": "Bu dosya bu sürümde yoktu.",
+    "loadingFile": "Yükleniyor…",
+    "restoreFile": "Bu dosyayı geri yükle",
+    "restoreProject": "Tüm projeyi geri yükle",
+    "restoreFileConfirm": {
+      "title": "{{path}} dosyası geri yüklensin mi?",
+      "description": "Dosya, bu projedeki herkes için {{time}} itibarıyla olduğu hâline döner. Şu anki metni geçmişte tutulur, böylece ona geri dönebilirsiniz.",
+      "confirm": "Dosyayı geri yükle"
+    },
+    "restoreProjectConfirm": {
+      "title": "Tüm proje geri yüklensin mi?",
+      "description": "Her dosya, bu projedeki herkes için {{time}} itibarıyla olduğu hâline döner. Şu anki metin geçmişte tutulur, böylece ona geri dönebilirsiniz.",
+      "confirm": "Projeyi geri yükle"
+    },
+    "compareTitle": "İki sürüm arasındaki değişiklikler",
+    "compareDescription": "{{from}} ile {{to}} arası",
+    "changedFiles": "Değişen dosyalar: {{number}}",
+    "noChanges": "Bu sürümler arasında hiçbir metin değişmedi."
+  },
   "accessLog": {
     "opened": "{{name}} projeyi açtı",
     "joinedLink": "{{name}} bağlantıyla katıldı",
@@ -1065,6 +1189,10 @@
   "access": {
     "viewerBy": "{{name}} sizi görüntüleyen yaptı. Bu projeyi okuyabilirsiniz ancak düzenleyemezsiniz.",
     "viewer": "Artık görüntüleyensiniz. Bu projeyi okuyabilirsiniz ancak düzenleyemezsiniz.",
+    "commenterBy": "{{name}} sizi yorumcu yaptı. Bu projeyi okuyup yorum yapabilirsiniz ancak düzenleyemezsiniz.",
+    "commenter": "Artık yorumcusunuz. Bu projeyi okuyup yorum yapabilirsiniz ancak düzenleyemezsiniz.",
+    "reviewerBy": "{{name}} sizi inceleyen yaptı. Düzenlemeleriniz, bir sahibin ya da düzenleyenin kabul edeceği önerilere dönüşür.",
+    "reviewer": "Artık inceleyensiniz. Düzenlemeleriniz, bir sahibin ya da düzenleyenin kabul edeceği önerilere dönüşür.",
     "viewOnly": "Bu paylaşılan projeyi görüntüleyebilirsiniz ama düzenleyemezsiniz.",
     "connecting": "Bu paylaşılan proje hâlâ bağlanıyor, bu yüzden henüz değiştirilemez. Birazdan yeniden deneyin.",
     "unsentReadOnly": "Bu projeyi artık yalnızca görüntüleyebildiğiniz için {{path}} dosyasındaki son değişiklikleriniz gönderilmedi.",
@@ -1081,6 +1209,8 @@
     "projectTooLarge": "Proje sunucunun {{limit}} boyut sınırına ulaştığı için {{file}} bu bilgisayarda kalıyor. Sunucuyu yöneten kişiden sınırı artırmasını isteyin.",
     "projectTooLargeUnknown": "Proje sunucunun boyut sınırına ulaştığı için {{file}} bu bilgisayarda kalıyor. Sunucuyu yöneten kişiden sınırı artırmasını isteyin.",
     "projectFull": "Bu proje sunucunun boyut sınırına ulaştı, bu yüzden değişiklikleriniz şimdilik bu bilgisayarda kalıyor. Sunucuyu yöneten kişiden sınırı artırmasını isteyin.",
+    "accountStorageFull": "Proje sahibinin bu sunucudaki depolama alanı dolduğu için paylaşılamadı: {{files}}",
+    "tooManyUploads": "Son bir saatte çok fazla yükleme yaptığınız için henüz paylaşılmadı: {{files}}. Daha sonra yeniden deneyin.",
     "replaced": "{{name}}, {{file}} dosyasını sizinle aynı anda değiştirdi. Sizin sürümünüz {{copy}} olarak saklandı.",
     "added": "{{name}} aynı adda bir dosya eklediği için {{file}} artık {{copy}} adını taşıyor.",
     "beside": "Aynı adda bir {{file}} dosyası {{name}} tarafından da eklendi. Bu dosya {{copy}} olarak saklandı.",

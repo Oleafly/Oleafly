@@ -124,6 +124,27 @@ describe("FileNoticesBanner", () => {
     expect(screen.getByRole("button", { name: copy.retry })).toBeTruthy();
   });
 
+  it("says which figures wait because the project owner is out of storage, and retries them", async () => {
+    render(<FileNoticesBanner />);
+    show([upload({ state: "account_storage_full" }), upload({ path: "figures/map.png", state: "account_storage_full" })]);
+    expect(screen.getByTestId("collab-upload-storage-full")).toHaveTextContent(
+      fill(copy.accountStorageFull, { files: "plot.png and map.png" }),
+    );
+    expect(screen.queryByTestId("collab-upload-failed")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: copy.retry }));
+    expect(mocks.collabUploadRetry).toHaveBeenCalledWith("paper");
+  });
+
+  it("says which figures wait because of the hourly upload limit", () => {
+    render(<FileNoticesBanner />);
+    show([upload({ state: "too_many_uploads" })]);
+    expect(screen.getByTestId("collab-upload-too-many")).toHaveTextContent(
+      fill(copy.tooManyUploads, { files: "plot.png" }),
+    );
+    expect(screen.getByRole("button", { name: copy.retry })).toBeTruthy();
+    expect(screen.queryByTestId("collab-upload-progress")).toBeNull();
+  });
+
   it("names a figure that is too large with its size and the server limit and lets it be dismissed", async () => {
     render(<FileNoticesBanner />);
     show([upload({ path: "figures/big60.png", state: "too_large", size: 60 * 1024 * 1024, limit: 50 * 1024 * 1024 })]);

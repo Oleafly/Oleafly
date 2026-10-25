@@ -216,10 +216,6 @@ test("one app and a headless peer share, edit together, merge after time away, a
   try {
     const ready = await stack.ready;
 
-    await test.step("live collaboration is turned on by the launch seed", async () => {
-      expect(await page.evaluate<string | null>(`localStorage.getItem("oleafly.liveCollaboration")`)).toBe("1");
-    });
-
     await test.step("the owner creates a project and signs in to the server", async () => {
       await createBlankProject(page, project);
       await page.evaluate(

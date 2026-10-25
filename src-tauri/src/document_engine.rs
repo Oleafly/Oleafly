@@ -4,6 +4,8 @@ use tauri::Emitter;
 
 use crate::proc::{isolate_process_tree, terminate_process_tree, NoConsole};
 
+mod calepin;
+mod quarto;
 mod typst_diagnostics;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -12,6 +14,8 @@ pub enum DocumentEngineId {
     Latexmk,
     Typst,
     Markdown,
+    Quarto,
+    Calepin,
 }
 
 impl DocumentEngineId {
@@ -21,6 +25,8 @@ impl DocumentEngineId {
             Self::Latexmk => "latexmk",
             Self::Typst => "typst",
             Self::Markdown => "markdown",
+            Self::Quarto => "quarto",
+            Self::Calepin => "calepin",
         }
     }
 }
@@ -92,6 +98,8 @@ pub enum CompilerPrerequisite {
     /// A system TeX distribution (MacTeX, TeX Live, MiKTeX, or TinyTeX) that
     /// provides `latexmk`. Used by engines Oleafly does not bundle.
     SystemTex,
+    Quarto,
+    Calepin,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -132,6 +140,8 @@ pub struct EngineDescriptor {
     pub typst_vendor_packages: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub typst_options: Option<crate::typst_options::TypstOptionsDescriptor>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notebook_output: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -226,6 +236,7 @@ pub struct EngineArtifacts {
     pub pdf: Option<PathBuf>,
     pub log: Option<PathBuf>,
     pub synctex: Option<PathBuf>,
+    pub html: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -254,6 +265,13 @@ pub trait DocumentEngine: Sync {
         options: CompileOptions,
     ) -> Result<EngineCompileSpec, String>;
     fn parse_errors(&self, log: &str) -> Vec<CompileError>;
+    fn compile_notes(
+        &self,
+        _spec: &EngineCompileSpec,
+        _options: &CompileOptions,
+    ) -> Vec<CompileError> {
+        Vec::new()
+    }
 }
 
 struct LatexEngine;
@@ -325,6 +343,7 @@ impl DocumentEngine for LatexEngine {
             pdf: Some(out_dir.join(format!("{stem}.pdf"))),
             log: Some(out_dir.join(format!("{stem}.log"))),
             synctex: Some(out_dir.join(format!("{stem}.synctex.gz"))),
+            html: None,
         }
     }
 
@@ -1060,6 +1079,7 @@ impl DocumentEngine for TypstEngine {
             pdf: Some(out_dir.join(format!("{stem}.pdf"))),
             log: None,
             synctex: None,
+            html: None,
         }
     }
 
@@ -1216,6 +1236,7 @@ impl DocumentEngine for MarkdownEngine {
             pdf: Some(out_dir.join(format!("{stem}.pdf"))),
             log: None,
             synctex: None,
+            html: None,
         }
     }
 
@@ -1261,6 +1282,10 @@ pub fn engine_for(
         &TYPST_ENGINE
     } else if MARKDOWN_ENGINE.accepts_metadata_name(metadata_name) {
         &MARKDOWN_ENGINE
+    } else if quarto::QUARTO_ENGINE.accepts_metadata_name(metadata_name) {
+        &quarto::QUARTO_ENGINE
+    } else if calepin::CALEPIN_ENGINE.accepts_metadata_name(metadata_name) {
+        &calepin::CALEPIN_ENGINE
     } else {
         return Err(format!(
             "unsupported document engine `{metadata_name}` for {main_document}"
@@ -1490,10 +1515,14 @@ pub fn descriptor_for(
             DocumentEngineId::Latexmk => "LaTeX (latexmk)",
             DocumentEngineId::Typst => "Typst",
             DocumentEngineId::Markdown => "Markdown / Pandoc",
+            DocumentEngineId::Quarto => "Quarto",
+            DocumentEngineId::Calepin => "Calepin",
         }
         .to_owned(),
         source_format: match engine.id() {
             DocumentEngineId::Latexmk => "latex".to_owned(),
+            DocumentEngineId::Quarto => "markdown".to_owned(),
+            DocumentEngineId::Calepin => "typst".to_owned(),
             id => id.as_str().to_owned(),
         },
         main_document: main_document.to_owned(),
@@ -1510,7 +1539,167 @@ pub fn descriptor_for(
         typst_missing: None,
         typst_vendor_packages: false,
         typst_options: None,
+        notebook_output: match engine.id() {
+            DocumentEngineId::Calepin => Some("pdf".to_owned()),
+            _ => None,
+        },
     })
+}
+
+fn notebook_engine(metadata_name: &str, main_document: &str) -> Option<DocumentEngineId> {
+    engine_for(metadata_name, main_document)
+        .ok()
+        .map(|engine| engine.id())
+        .filter(|id| matches!(id, DocumentEngineId::Quarto | DocumentEngineId::Calepin))
+}
+
+pub(crate) fn require_notebook_trust(
+    project_id: &str,
+    metadata_name: &str,
+    main_document: &str,
+) -> Result<(), String> {
+    if notebook_engine(metadata_name, main_document).is_some() {
+        crate::trust::require_trusted(project_id, crate::trust::Capability::Notebook)?;
+    }
+    Ok(())
+}
+
+pub(crate) fn describe_notebook_output(
+    descriptor: &mut EngineDescriptor,
+    project_id: &str,
+    main_document: &str,
+) {
+    if descriptor.id != DocumentEngineId::Quarto.as_str() {
+        return;
+    }
+    let Ok(input) = crate::project::resolve_in_project(project_id, main_document) else {
+        return;
+    };
+    let root = crate::project_location::locate(project_id)
+        .ok()
+        .map(|location| location.root);
+    let target = quarto::target_for_file(&input, root.as_deref());
+    descriptor.notebook_output = Some(if target.html { "html" } else { "pdf" }.to_owned());
+}
+
+pub(crate) fn exports_through_engine(metadata_name: &str, main_document: &str) -> bool {
+    notebook_engine(metadata_name, main_document).is_some()
+}
+
+pub(crate) struct NotebookExport<'a> {
+    pub(crate) engine: &'a str,
+    pub(crate) project_dir: &'a Path,
+    pub(crate) main_document: &'a str,
+    pub(crate) format: &'a str,
+    pub(crate) destination: &'a Path,
+    pub(crate) allow_code: bool,
+}
+
+fn notebook_export_spec(
+    engine: DocumentEngineId,
+    project_dir: &Path,
+    main_document: &str,
+    format: &str,
+    out_dir: &Path,
+    allow_code: bool,
+) -> Result<(EngineCompileSpec, PathBuf), String> {
+    let extension = match format {
+        "docx" if engine == DocumentEngineId::Quarto => "docx",
+        "html" => "html",
+        other => return Err(format!("unsupported export format: {other}")),
+    };
+    let output = out_dir.join(format!("{}.{extension}", crate::paths::ENTRY_STEM));
+    let artifacts = EngineArtifacts {
+        output_dir: out_dir.to_owned(),
+        pdf: None,
+        log: None,
+        synctex: None,
+        html: None,
+    };
+    let spec = match engine {
+        DocumentEngineId::Quarto => {
+            quarto::export_spec(project_dir, main_document, format, out_dir, allow_code)?
+        }
+        DocumentEngineId::Calepin if allow_code => {
+            calepin::calepin_spec(project_dir, main_document, &output, format, artifacts, None)?
+        }
+        DocumentEngineId::Calepin => {
+            return Err(crate::app_error::AppError::new("notebook.code_needed")
+                .param("engine", "Calepin")
+                .into())
+        }
+        _ => return Err(format!("unsupported export format: {format}")),
+    };
+    Ok((spec, output))
+}
+
+fn notebook_failure(label: &str, errors: &[CompileError], log: &str) -> String {
+    let reason = errors
+        .iter()
+        .find(|error| error.kind == "error")
+        .map(|error| error.message.clone())
+        .unwrap_or_else(|| {
+            let tail: Vec<&str> = log
+                .lines()
+                .rev()
+                .filter(|line| !line.trim().is_empty())
+                .take(3)
+                .collect();
+            tail.into_iter().rev().collect::<Vec<_>>().join(" ")
+        });
+    format!("{label} could not export the document. {reason}")
+}
+
+pub(crate) async fn export_notebook(export: NotebookExport<'_>) -> Result<(), String> {
+    let engine = engine_for(export.engine, export.main_document)?;
+    let scratch = tempfile::Builder::new()
+        .prefix("oleafly-export-")
+        .tempdir()
+        .map_err(|error| format!("Oleafly could not create a folder for the export: {error}"))?;
+    let (spec, output) = {
+        let id = engine.id();
+        let project_dir = export.project_dir.to_owned();
+        let main_document = export.main_document.to_owned();
+        let format = export.format.to_owned();
+        let out_dir = scratch.path().to_owned();
+        let allow_code = export.allow_code;
+        tokio::task::spawn_blocking(move || {
+            notebook_export_spec(
+                id,
+                &project_dir,
+                &main_document,
+                &format,
+                &out_dir,
+                allow_code,
+            )
+        })
+        .await
+        .map_err(|error| format!("failed to prepare the export: {error}"))??
+    };
+    let EngineExecutable::ExternalPath(program) = &spec.executable else {
+        return Err("the export needs an external program".into());
+    };
+    let (log, exit_code) = run_supervised_process_with_environment(
+        program,
+        &spec.args,
+        &spec.working_dir,
+        None,
+        COMPILE_TIMEOUT,
+        None,
+        &spec.environment,
+    )
+    .await?;
+    if exit_code != Some(0) || !output.is_file() {
+        let label = match engine.id() {
+            DocumentEngineId::Calepin => "Calepin",
+            _ => "Quarto",
+        };
+        return Err(notebook_failure(label, &engine.parse_errors(&log), &log));
+    }
+    tokio::fs::copy(&output, export.destination)
+        .await
+        .map_err(|error| format!("Oleafly could not save the export: {error}"))?;
+    Ok(())
 }
 
 #[derive(Serialize, Clone, Debug, Default, PartialEq, Eq)]
@@ -1552,6 +1741,8 @@ pub struct CompileResult {
     /// The user stopped this compile. Distinguishes an intentional stop from a
     /// document that genuinely failed to build.
     pub stopped: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub html_output: Option<String>,
 }
 
 /// Must stay byte-for-byte compatible with
@@ -1625,6 +1816,8 @@ pub async fn prepare_compile_spec(
             DocumentEngineId::Latexmk => &LATEXMK_ENGINE,
             DocumentEngineId::Typst => &TYPST_ENGINE,
             DocumentEngineId::Markdown => &MARKDOWN_ENGINE,
+            DocumentEngineId::Quarto => &quarto::QUARTO_ENGINE,
+            DocumentEngineId::Calepin => &calepin::CALEPIN_ENGINE,
         };
         match owned_target {
             (Some(main_document), None, None) => engine.compile_spec(
@@ -2029,21 +2222,24 @@ async fn finish_compile(
     let mut log =
         combined_compile_log(&spec, stdout_buf, exit_code, &biber_notes, &pythontex_notes);
     append_missing_biber_diagnosis(request, &spec, &mut log, resolved_biber, bbl_before);
+    let html_output = fresh_html_output(&spec, &retained_stale);
     let output_id = verify_compile_output(capabilities, &spec, retained_stale).await?;
     let has_pdf = output_id.is_some();
+    let has_output = has_pdf || html_output.is_some();
     let mut errors = request.engine.parse_errors(&log);
+    errors.extend(request.engine.compile_notes(&spec, &request.options));
     append_pythontex_error(&mut errors, stopped, pythontex_failure);
     append_shell_escape_error(
         request,
         &spec,
         stopped,
-        has_pdf,
+        has_output,
         exit_code,
         &mut log,
         &mut errors,
     );
     let ok = compile_succeeded(
-        request, &spec, stopped, has_pdf, exit_code, &errors, &mut log,
+        request, &spec, stopped, has_output, exit_code, &errors, &mut log,
     );
     if let Some(main_document) =
         image_check_main_document(request.engine.id(), request.target, ok, stopped)
@@ -2075,8 +2271,17 @@ async fn finish_compile(
             errors,
             diagnostics,
             log,
+            html_output,
         },
     ))
+}
+
+fn fresh_html_output(spec: &EngineCompileSpec, retained: &[RetainedArtifact]) -> Option<String> {
+    spec.artifacts
+        .html
+        .as_ref()
+        .filter(|path| artifact_is_fresh(path, retained))
+        .map(|path| path.to_string_lossy().into_owned())
 }
 
 fn image_check_main_document(
@@ -2166,7 +2371,10 @@ async fn parse_log_diagnostics(
     log_dir: PathBuf,
     mut errors: Vec<CompileError>,
 ) -> Result<ParsedCompileLog, String> {
-    if engine == DocumentEngineId::Typst {
+    if matches!(
+        engine,
+        DocumentEngineId::Typst | DocumentEngineId::Calepin | DocumentEngineId::Quarto
+    ) {
         return tokio::task::spawn_blocking(move || {
             typst_diagnostics::attach_typst_sources(&project_dir, &log_dir, &mut errors);
             let diagnostics = typst_diagnostics::typst_log_diagnostics(&errors);
@@ -2423,6 +2631,7 @@ struct CompileResultParts {
     errors: Vec<CompileError>,
     diagnostics: Vec<oleafly_core::LogDiagnostic>,
     log: String,
+    html_output: Option<String>,
 }
 
 fn build_compile_result(
@@ -2449,6 +2658,7 @@ fn build_compile_result(
         synctex_path,
         out_dir: Some(spec.artifacts.output_dir.to_string_lossy().into_owned()),
         compile_time_ms: compile_start.elapsed().as_millis() as u64,
+        html_output: parts.html_output,
     }
 }
 
@@ -3254,9 +3464,14 @@ fn artifact_identity(path: &Path) -> Option<ArtifactIdentity> {
 
 fn clear_stale_artifacts(artifacts: &EngineArtifacts) -> Vec<RetainedArtifact> {
     let mut retained = Vec::new();
-    for path in [&artifacts.pdf, &artifacts.log, &artifacts.synctex]
-        .into_iter()
-        .flatten()
+    for path in [
+        &artifacts.pdf,
+        &artifacts.log,
+        &artifacts.synctex,
+        &artifacts.html,
+    ]
+    .into_iter()
+    .flatten()
     {
         match std::fs::remove_file(path) {
             Ok(()) => {}
@@ -5017,6 +5232,7 @@ mod tests {
             pdf: Some(dir.join("old.pdf")),
             log: Some(dir.join("old.log")),
             synctex: Some(dir.join("old.synctex.gz")),
+            html: None,
         };
         for path in [&artifacts.pdf, &artifacts.log, &artifacts.synctex]
             .into_iter()
@@ -5041,6 +5257,7 @@ mod tests {
             pdf: Some(directory.path().join("output.pdf")),
             log: Some(directory.path().join("output.log")),
             synctex: None,
+            html: None,
         };
         let biber_control = directory
             .path()
@@ -8007,6 +8224,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             pdf: None,
             log: None,
             synctex: None,
+            html: None,
         };
         let biber_control = directory.path().join("never-written.bcf");
 
@@ -8024,6 +8242,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             pdf: None,
             log: None,
             synctex: None,
+            html: None,
         };
         let biber_control = directory.path().join("stubborn.bcf");
         std::fs::create_dir(&biber_control).unwrap();
@@ -8047,6 +8266,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             pdf: None,
             log: None,
             synctex: None,
+            html: None,
         };
         let stem = crate::paths::ENTRY_STEM;
         let biber_control = directory.path().join(format!("{stem}.bcf"));

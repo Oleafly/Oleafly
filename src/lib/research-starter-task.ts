@@ -1,3 +1,5 @@
+import { currentLocale } from "@/i18n";
+import { suggestedProviderId } from "@/lib/ai-providers";
 import { getConfig } from "@/lib/tauri";
 import { createResearchTask, listResearchTasks } from "@/lib/research-tasks";
 
@@ -19,7 +21,7 @@ export function ensureResearchStarterTask({ projectId, title, prompt }: {
       title,
       prompt,
       runtimeId: "builtin",
-      agentId: config.ai_provider || "openai",
+      agentId: config.ai_provider || suggestedProviderId(currentLocale()),
       modelId: config.ai_model || "",
       skillIds: [],
       dependencyIds: [],

@@ -95,6 +95,15 @@ describe("conversion registry invariants", () => {
     ]);
   });
 
+  it("offers the exports Quarto and Calepin render themselves", () => {
+    const quarto = exportRoutesFor("quarto", ["docx", "html"]);
+    expect(quarto.map((route) => route.target)).toEqual(["docx", "html"]);
+    expect(quarto.every((route) => route.source === "markdown")).toBe(true);
+    const calepin = exportRoutesFor("calepin", ["html"]);
+    expect(calepin.map((route) => route.target)).toEqual(["html"]);
+    expect(exportRoutesFor("calepin", ["docx"])).toEqual([]);
+  });
+
   it("lists import routes for the Import dialog", () => {
     const ids = importRoutes().map((route) => route.id);
     for (const id of [

@@ -31,6 +31,8 @@ pub enum UploadState {
     Failed,
     TooLarge,
     ProjectTooLarge,
+    AccountStorageFull,
+    TooManyUploads,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -106,6 +108,8 @@ enum Outcome {
     Refused,
     TooLarge(Option<u64>),
     ProjectTooLarge(Option<u64>),
+    AccountStorageFull,
+    TooManyUploads,
 }
 
 struct Pending {
@@ -146,7 +150,13 @@ fn judged(error: &CollabError) -> Outcome {
         CollabError::Api {
             status: 413, code, ..
         } if code == "project_too_large" => Outcome::ProjectTooLarge(None),
+        CollabError::Api {
+            status: 413, code, ..
+        } if code == "account_storage_full" => Outcome::AccountStorageFull,
         CollabError::Api { status: 413, .. } => Outcome::TooLarge(None),
+        CollabError::Api {
+            status: 429, code, ..
+        } if code == "too_many_uploads" => Outcome::TooManyUploads,
         CollabError::Api { status, .. }
             if (400..500).contains(status) && !matches!(status, 401 | 408 | 425 | 429) =>
         {
@@ -307,6 +317,14 @@ fn record(
                 pending.state = UploadState::ProjectTooLarge;
                 pending.limit = limit;
             }
+            Outcome::AccountStorageFull => {
+                pending.attempts = 0;
+                pending.state = UploadState::AccountStorageFull;
+            }
+            Outcome::TooManyUploads => {
+                pending.attempts = 0;
+                pending.state = UploadState::TooManyUploads;
+            }
             Outcome::Sent => {}
         }
     }
@@ -437,6 +455,7 @@ impl Active {
                     (Retry::Reconnect, UploadState::ProjectTooLarge) => {
                         project_limit.is_some() && project_limit != pending.limit
                     }
+                    (Retry::Reconnect, UploadState::AccountStorageFull) => false,
                     (Retry::Reconnect | Retry::Asked, _) => true,
                 };
                 if again {
@@ -461,10 +480,12 @@ impl Active {
         let waiting = guard(&UPLOADS)
             .get(&self.upload_key())
             .is_some_and(|uploads| {
-                uploads
-                    .files
-                    .values()
-                    .any(|pending| pending.state != UploadState::TooLarge)
+                uploads.files.values().any(|pending| {
+                    !matches!(
+                        pending.state,
+                        UploadState::TooLarge | UploadState::AccountStorageFull
+                    )
+                })
             });
         if waiting {
             let active = Arc::clone(self);

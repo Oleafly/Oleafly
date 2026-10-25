@@ -1,6 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
-import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import {
   COLLAB_ERROR_CODES,
@@ -15,9 +14,7 @@ beforeAll(async () => {
   await loadNamespace("errors");
 });
 
-// The switch's refusal reuses the sentence the app's other errors already use.
-const SHARED_MESSAGES = new Set<string>(["turned_off"]);
-const CATALOG_CODES = COLLAB_ERROR_CODES.filter((code) => !SHARED_MESSAGES.has(code));
+const CATALOG_CODES = COLLAB_ERROR_CODES;
 
 describe("collab errors", () => {
   it("lists every error code the backend can send, and the catalog has each one", () => {
@@ -27,20 +24,15 @@ describe("collab errors", () => {
 
   it.each(CATALOG_CODES)("reads %s from an IPC error and says it in words", (code) => {
     expect(collabErrorCode({ code, message: "raw" })).toBe(code);
-    expect(collabErrorMessage(code as Exclude<typeof code, "turned_off">)).toBe(
+    expect(collabErrorMessage(code)).toBe(
       enCollab.errors[code as keyof typeof enCollab.errors],
     );
   });
 
-  it("says live collaboration is turned off in the words the rest of the app uses", () => {
-    expect(collabErrorCode({ code: "turned_off", message: "" })).toBe("turned_off");
-    expect(collabErrorMessage("turned_off")).toBe(enErrors.collab.turned_off);
-  });
-
-  it("names the switch being off when the command was refused as one of the app's own errors", () => {
-    const refused = '@oleafly/error:{"code":"collab.turned_off","params":{}}';
-    expect(collabErrorCode(refused)).toBe("turned_off");
-    expect(collabErrorText(new Error(refused))).toBe(enErrors.collab.turned_off);
+  it("names a role refusal that came back as one of the app's own errors", () => {
+    const refused = '@oleafly/error:{"code":"collab.suggestion_role","params":{}}';
+    expect(collabErrorCode(refused)).toBe("suggestion_role");
+    expect(collabErrorText(new Error(refused))).toBe(enCollab.errors.suggestion_role);
     expect(collabErrorCode('@oleafly/error:{"code":"project.not_found"}')).toBe("internal");
   });
 

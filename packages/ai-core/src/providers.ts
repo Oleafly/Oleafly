@@ -184,6 +184,38 @@ export function credentialMeta(providerId: string): { label: string; placeholder
   return { label: "API key", placeholder: "sk-…" };
 }
 
+const SUGGESTED_PROVIDER_BY_LANGUAGE: Readonly<Record<string, string>> = {
+  zh: "deepseek",
+};
+
+export const DEFAULT_SUGGESTED_PROVIDER = "openai";
+
+export function suggestedProviderId(locale: string | null | undefined): string {
+  const language = (locale ?? "").split("-")[0]?.toLowerCase() ?? "";
+  return SUGGESTED_PROVIDER_BY_LANGUAGE[language] ?? DEFAULT_SUGGESTED_PROVIDER;
+}
+
+export function suggestedFirst<T extends { id: string }>(providers: readonly T[], suggested: string): T[] {
+  const index = providers.findIndex((provider) => provider.id === suggested);
+  const first = providers[index];
+  if (index <= 0 || !first) return [...providers];
+  return [first, ...providers.slice(0, index), ...providers.slice(index + 1)];
+}
+
+export interface CustomProviderPreset {
+  id: string;
+  name: string;
+  baseURL: string;
+}
+
+export const CUSTOM_PROVIDER_PRESETS: readonly CustomProviderPreset[] = [
+  { id: "qwen", name: "Qwen (DashScope)", baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1" },
+  { id: "kimi", name: "Kimi (Moonshot)", baseURL: "https://api.moonshot.cn/v1" },
+  { id: "zhipu", name: "Zhipu GLM", baseURL: "https://open.bigmodel.cn/api/paas/v4" },
+  { id: "siliconflow", name: "SiliconFlow", baseURL: "https://api.siliconflow.cn/v1" },
+  { id: "volcengine-ark", name: "Volcengine Ark", baseURL: "https://ark.cn-beijing.volces.com/api/v3" },
+];
+
 export interface CustomProviderLike {
   id: string;
   name: string;

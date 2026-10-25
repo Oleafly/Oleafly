@@ -109,8 +109,9 @@ const SelectItem = React.forwardRef<
     icon?: React.ReactNode;
     indicator?: "left" | "right-circle";
     trailing?: React.ReactNode;
+    description?: React.ReactNode;
   }
->(({ className, children, icon, indicator = "left", trailing, ...props }, ref) => (
+>(({ className, children, icon, indicator = "left", trailing, description, ...props }, ref) => (
   <SelectPrimitive.Item
     ref={ref}
     data-label={React.Children.toArray(children)
@@ -137,7 +138,14 @@ const SelectItem = React.forwardRef<
       </span>
     )}
     {icon && <span className="mr-1.5 inline-flex shrink-0 items-center">{icon}</span>}
-    <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+    {description ? (
+      <span className="flex min-w-0 flex-col">
+        <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+        <span className="text-xs text-muted-foreground">{description}</span>
+      </span>
+    ) : (
+      <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+    )}
     {trailing ? (
       <span className="ml-auto inline-flex shrink-0 items-center pl-6">{trailing}</span>
     ) : null}

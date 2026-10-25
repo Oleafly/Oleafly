@@ -1,4 +1,4 @@
-export { parseTypst, typstParser, typstPlainTitle } from "./typst-parser";
+export { parseTypst, typstEditorParser, typstParser, typstPlainTitle } from "./typst-parser";
 export { typstHeadingFold, typstHeadingFoldRange } from "./typst-folding";
 export {
   type TypstHeading,

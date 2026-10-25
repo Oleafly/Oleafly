@@ -59,6 +59,7 @@ pub enum Capability {
     FullAccess,
     SystemTex,
     ShellEscape,
+    Notebook,
 }
 
 impl Capability {
@@ -73,6 +74,7 @@ impl Capability {
             Self::FullAccess => "trust.full_access",
             Self::SystemTex => "trust.system_tex",
             Self::ShellEscape => "trust.shell_escape",
+            Self::Notebook => "trust.notebook",
         }
     }
 }

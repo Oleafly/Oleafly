@@ -61,6 +61,8 @@ pub struct AppState {
     pub comment_guard: CommentGuard,
     pub mentions: Mentions,
     pub transfers: Transfers,
+    #[cfg(feature = "web")]
+    pub web: Arc<crate::web::Hub>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -70,6 +72,7 @@ pub struct MaintenanceReport {
     pub expired_projects: usize,
     pub access_events: usize,
     pub guest_invitations: usize,
+    pub web_sessions: usize,
 }
 
 fn open_database(data_dir: &std::path::Path) -> Result<Db, ServerError> {
@@ -167,6 +170,8 @@ impl AppState {
             comment_guard: CommentGuard::default(),
             mentions: Mentions::default(),
             transfers: Transfers::with_budget(transfer_budget),
+            #[cfg(feature = "web")]
+            web: Arc::new(crate::web::Hub::default()),
         })
     }
 
@@ -245,6 +250,24 @@ impl AppState {
         {
             Ok(count) => report.guest_invitations = count,
             Err(error) => note("prune old guest invitations", error),
+        }
+        match self
+            .db
+            .call(move |conn| {
+                let transaction = conn.transaction()?;
+                let ended = crate::web_sessions::prune(&transaction, now)?;
+                transaction.commit()?;
+                Ok(ended)
+            })
+            .await
+        {
+            Ok(ended) => {
+                report.web_sessions = ended.len();
+                for device in ended {
+                    self.sockets.revoke(device, None);
+                }
+            }
+            Err(error) => note("end expired browser sessions", error),
         }
         match self.expire_projects(now).await {
             Ok(count) => report.expired_projects = count,

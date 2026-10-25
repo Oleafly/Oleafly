@@ -103,6 +103,11 @@
       "confirm": "Programma gebruiken",
       "pickTitle": "Kies het programma voor {{name}}",
       "filter": "Programma's"
+    },
+    "sharedCodeExecution": {
+      "title": "Code toestaan in dit gedeelde project?",
+      "message": "Bij het compileren wordt dan de code in dit project op deze computer uitgevoerd. Iedereen met bewerkrechten kan die code wijzigen. Sta dit alleen toe als je iedereen in het project vertrouwt.",
+      "confirm": "Toestaan op deze computer"
     }
   },
   "errors": {

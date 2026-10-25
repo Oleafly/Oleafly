@@ -452,7 +452,19 @@
       "help": "Uma variante passa os próprios valores para sys.inputs, como uma versão de rascunho ou a final. A variante escolhida fica neste computador. Adicione ou edite variantes em Configurações do documento.",
       "none": "Nenhuma variante"
     },
-    "sharedViewer": "Leitores não podem alterar essas configurações em um projeto compartilhado."
+    "typEngine": {
+      "title": "Motor (deste projeto)",
+      "help": "O Typst compila o documento como está escrito. O Calepin também executa o código que ele contém e coloca os resultados no PDF.",
+      "typst": "Typst <note>[embutido]</note>",
+      "calepin": "Calepin <note>[executa código]</note>"
+    },
+    "code": {
+      "title": "Código (deste computador)",
+      "help": "O Quarto e o Calepin podem executar o código R, Python e Julia deste projeto. O código roda com as suas permissões, então só permita isso em um projeto em que você confia. A escolha vale só para este computador.",
+      "off": "Desligado",
+      "run": "Executar código neste computador"
+    },
+    "sharedViewer": "Só proprietários e editores podem alterar essas configurações em um projeto compartilhado."
   },
   "datePicker": {
     "placeholder": "Escolha uma data"
@@ -524,6 +536,18 @@
   "shellCommands": {
     "allow": "Permitir comandos externos",
     "banner": "Este documento executa comandos externos durante a compilação, e este projeto os bloqueia. Permita-os apenas se você confiar em todos os arquivos do projeto."
+  },
+  "codeExecution": {
+    "allow": "Permitir código neste projeto",
+    "needed": "Este documento precisa executar o código dele para ser gerado, e o código está desligado neste projeto. Só permita código se você confiar em todos os arquivos do projeto.",
+    "skipped": "O código deste documento não foi executado porque o código está desligado neste projeto. Só permita código se você confiar em todos os arquivos do projeto.",
+    "storedResults": "O PDF mostra resultados de código salvos de uma execução anterior porque o código está desligado neste projeto. Só permita código se você confiar em todos os arquivos do projeto."
+  },
+  "typstCjkFonts": {
+    "message": "Este documento tem texto em chinês, japonês ou coreano que nenhuma fonte deste computador consegue mostrar, então ele não aparece no PDF.",
+    "download": "Baixar fontes",
+    "downloadSize": "Baixar fontes ({{size}})",
+    "downloading": "Baixando fontes"
   },
   "errorBoundary": {
     "copyDiagnostics": "Copiar os diagnósticos",
@@ -653,6 +677,8 @@
       "standalone": "Figura independente",
       "typst": "Typst",
       "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Notebook Calepin",
       "unknown": "Outro"
     },
     "reason": {
@@ -858,10 +884,6 @@
       "latexTools": {
         "description": "Mostra a galeria de Ferramentas do Oleafly e as ferramentas individuais (importação de PDF, equações, tabelas, BibTeX, busca de laboratórios e de literatura, prazos), além dos comandos de barra delas. Desligado por padrão enquanto está em beta.",
         "label": "Ferramentas LaTeX"
-      },
-      "liveCollaboration": {
-        "description": "Edite projetos com outras pessoas por um servidor de colaboração que você ou o seu grupo mantém. Adiciona uma seção Colaboração às Configurações. Desligado por padrão enquanto está em beta.",
-        "label": "Colaboração em tempo real"
       },
       "warning": "Estes recursos são experimentais e ainda estão em beta. Eles não foram totalmente testados e podem mudar, quebrar ou sumir em uma versão futura. Ligue-os só se você quiser experimentar o que está em andamento.",
       "webBrowser": {

@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "採用管理システム（ATS）が確実に解析できる履歴書テンプレートだけを表示します。1 段組で、標準的なフォントを使い、テキストを選択できる（文字が画像に埋め込まれていない）ものです。",
       "atsFriendly": "ATS 対応",
       "offlineTooltip": "ダウンロードなしでコンパイルできるテンプレートだけを表示します。フォントとパッケージが同梱されているため、インターネットに接続していなくてもビルドできます。",

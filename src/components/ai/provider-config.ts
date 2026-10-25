@@ -1,6 +1,7 @@
 import { getConfigCached, invalidateConfigCache } from "@/lib/config-cache";
 import { getSnapshotConfig } from "@/lib/initial-state";
-import { defaultModel } from "@/lib/ai-providers";
+import { currentLocale } from "@/i18n";
+import { defaultModel, suggestedProviderId } from "@/lib/ai-providers";
 import type { AppConfig, CustomProvider, Persona, StoredModel } from "@/lib/tauri";
 
 export interface ProviderState {
@@ -14,10 +15,14 @@ export interface ProviderState {
   customPrompt: string;
 }
 
-export function deriveProviderState(cfg: AppConfig): ProviderState {
-  const saved = cfg.ai_provider || "openai";
+export function deriveProviderState(
+  cfg: AppConfig,
+  suggested: string = suggestedProviderId(currentLocale()),
+): ProviderState {
+  const saved = cfg.ai_provider || suggested;
+  const legacy = cfg.ai_provider || "openai";
   const keys = { ...cfg.ai_keys };
-  if (cfg.ai_api_key && !keys[saved]) keys[saved] = cfg.ai_api_key;
+  if (cfg.ai_api_key && !keys[legacy]) keys[legacy] = cfg.ai_api_key;
   const customs = cfg.ai_custom_providers ?? [];
   const keyOptionalIds = customs.filter((c) => c.keyOptional).map((c) => c.id);
   const firstConfigured = Object.keys(keys).find((k) => (keys[k] ?? "").trim());

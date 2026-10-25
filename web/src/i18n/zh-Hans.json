@@ -1,0 +1,188 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "正在加载",
+    "loadFailed": "Oleafly 无法连接到服务器。",
+    "retry": "重试",
+    "dismiss": "关闭",
+    "projects": "项目",
+    "account": "账户",
+    "signOut": "退出登录",
+    "signOutFailed": "无法退出登录。请重试。",
+    "cancel": "取消"
+  },
+  "signIn": {
+    "title": "登录 Oleafly",
+    "description": "请使用合作作者与你共享项目时所用的账户登录。",
+    "action": "登录"
+  },
+  "projects": {
+    "title": "与你共享的项目",
+    "emptyTitle": "还没有人与你共享项目",
+    "emptyDescription": "当有人与你的账户共享项目时，它会显示在这里。",
+    "untitled": "未命名项目",
+    "ownedBy": "所有者：{{name}}",
+    "loadFailed": "无法加载你的项目。",
+    "list": "项目"
+  },
+  "roles": {
+    "owner": "所有者",
+    "editor": "编辑者",
+    "reviewer": "审阅者",
+    "commenter": "评论者",
+    "viewer": "查看者",
+    "unknown": "只读"
+  },
+  "connection": {
+    "connecting": "正在连接",
+    "online": "已连接",
+    "offline": "离线",
+    "offlineBanner": "你已离线。你的更改会被保留，并在恢复连接后发送。",
+    "ended": "已断开连接"
+  },
+  "ended": {
+    "signedOutTitle": "你已退出登录",
+    "signedOutDescription": "重新登录即可继续处理此项目。",
+    "noAccessTitle": "你无法打开此项目",
+    "noAccessDescription": "此项目未与你的账户共享，或你的访问权限已被移除。",
+    "stoppedTitle": "已断开连接",
+    "stoppedDescription": "重新加载页面即可再次连接。"
+  },
+  "access": {
+    "changed": "你在此项目中的角色已变为 {{role}}。"
+  },
+  "discarded": {
+    "read_only": "你最后的编辑没有保存，因为你现在无法编辑此项目。",
+    "refused": "你最后的编辑无法保存。"
+  },
+  "views": {
+    "label": "面板",
+    "files": "文件",
+    "source": "源码",
+    "pdf": "PDF",
+    "comments": "评论",
+    "chat": "聊天"
+  },
+  "presence": {
+    "label": "当前在此项目中的人"
+  },
+  "files": {
+    "title": "文件",
+    "empty": "此项目还没有文件。",
+    "tree": "项目文件"
+  },
+  "source": {
+    "noFileTitle": "打开文件",
+    "noFileDescription": "从列表中选择一个文件进行阅读。",
+    "opening": "正在打开 {{path}}",
+    "removed": "{{path}} 已从项目中移除。",
+    "readOnly": "只读",
+    "readOnlyHint": "你的角色可以阅读此项目，但不能编辑。",
+    "modeLabel": "编辑模式",
+    "editing": "编辑",
+    "suggesting": "建议",
+    "suggestingHint": "你的编辑会成为建议，由所有者或编辑者审阅。",
+    "comment": "评论",
+    "commentHint": "选中文本即可评论。",
+    "binary": "此文件无法在浏览器中显示。",
+    "blobFailed": "无法加载该文件。"
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "由 {{name}} 于 {{time}} 编译",
+    "emptyTitle": "还没有 PDF",
+    "emptyDescription": "有人在 Oleafly 应用中编译项目后，PDF 会显示在这里。",
+    "loading": "正在加载 PDF",
+    "failed": "无法加载 PDF。",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "fitWidth": "适合宽度",
+    "download": "下载",
+    "zoom": "{{percent}}%"
+  },
+  "comments": {
+    "emptyTitle": "没有评论或建议",
+    "emptyCanComment": "在源码中选中文本，然后选择“评论”即可发起讨论。",
+    "emptyReadOnly": "此项目的评论和建议会显示在这里。",
+    "newComment": "新评论",
+    "placeholder": "添加评论",
+    "submit": "评论",
+    "reply": "回复",
+    "replyPlaceholder": "回复",
+    "replyLabel": "回复此讨论",
+    "edit": "编辑",
+    "editLabel": "编辑评论",
+    "save": "保存",
+    "delete": "删除",
+    "deleteTitle": "删除这条评论吗？",
+    "deleteDescription": "此操作无法撤销。",
+    "messageActions": "评论操作",
+    "resolve": "解决",
+    "reopen": "重新打开",
+    "resolvedBy": "由 {{name}} 解决",
+    "deleted": "评论已删除",
+    "edited": "已编辑",
+    "anchorLost": "这条评论所针对的文本已被删除。",
+    "showInSource": "在源码中显示",
+    "thread": "{{name}} 的评论",
+    "hideResolved": "隐藏已解决",
+    "resolvedCount_other": "{{count}} 条已解决"
+  },
+  "suggestions": {
+    "inserted": "已添加",
+    "deleted": "已删除",
+    "accept": "接受",
+    "reject": "拒绝",
+    "withdraw": "撤回",
+    "acceptAll": "全部接受",
+    "rejectAll": "全部拒绝",
+    "pending_other": "{{count}} 条建议",
+    "card": "{{name}} 的建议",
+    "lineBreak": "换行"
+  },
+  "chat": {
+    "emptyTitle": "还没有消息",
+    "emptyDescription": "项目中的每个人都能看到这里的消息。",
+    "placeholder": "写一条消息",
+    "label": "消息",
+    "send": "发送",
+    "readOnly": "你可以阅读聊天内容。查看者不能发送消息。",
+    "delete": "删除消息",
+    "clear": "清空聊天",
+    "clearTitle": "要为所有人清空聊天吗？",
+    "clearDescription": "项目中的每个人都会失去这些消息。",
+    "messages": "聊天消息"
+  },
+  "people": {
+    "you": "你",
+    "someone": "某人",
+    "unverified": "未经验证的作者"
+  },
+  "errors": {
+    "offline": "你已离线。请在连接后重试。",
+    "generic": "服务器拒绝了此更改。",
+    "suggestion_not_found": "该建议已被处理。",
+    "suggestion_not_yours": "你只能撤回自己的建议。",
+    "suggestion_role": "你的角色无法提出或审阅建议。",
+    "chat_role": "你的角色无法在聊天中发送消息。",
+    "comment_not_live": "评论当前不可用。",
+    "comment_not_yours": "你只能修改自己的评论。",
+    "comment_off_server": "此服务器已关闭评论。",
+    "comment_off_project": "此项目已关闭评论。",
+    "comment_viewer": "查看者不能评论。",
+    "comment_someone_replied": "已有人回复，所以这条评论无法删除。",
+    "comment_message_deleted": "该评论已被删除。",
+    "comment_selection_changed": "你写评论时文本发生了更改。请重新选择。",
+    "comment_too_long": "评论太长了。",
+    "comment_empty": "请先写点内容。",
+    "rate_limited": "一次更改太多。请稍等片刻后重试。",
+    "too_large": "内容太大，无法发送。",
+    "project_too_large": "此项目太大，无法在浏览器中打开。",
+    "server_busy": "服务器繁忙。请稍后重试。",
+    "not_open": "请先打开文件，再进行更改。",
+    "cross_site": "此请求并非来自此服务器上的 Oleafly 网页应用。请重新加载页面后重试。",
+    "conflict": "此操作与他人所做的更改冲突。请重试。",
+    "account_storage_full": "在此服务器上，项目所有者的账户存储空间已用完。",
+    "too_many_uploads": "你在过去一小时内上传次数过多。请稍后重试。"
+  }
+}

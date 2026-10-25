@@ -103,6 +103,11 @@
       "confirm": "Käytä ohjelmaa",
       "pickTitle": "Valitse ohjelma agentille {{name}}",
       "filter": "Ohjelmat"
+    },
+    "sharedCodeExecution": {
+      "title": "Sallitaanko koodi tässä jaetussa projektissa?",
+      "message": "Kääntäminen suorittaa silloin tämän projektin koodin tällä koneella. Kuka tahansa, jolla on muokkausoikeus, voi muuttaa sitä koodia. Salli tämä vain, jos luotat kaikkiin projektin jäseniin.",
+      "confirm": "Salli tällä koneella"
     }
   },
   "errors": {

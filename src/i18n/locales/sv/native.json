@@ -103,6 +103,11 @@
       "confirm": "Använd programmet",
       "pickTitle": "Välj programmet för {{name}}",
       "filter": "Program"
+    },
+    "sharedCodeExecution": {
+      "title": "Vill du tillåta kod i det här delade projektet?",
+      "message": "Då körs koden i det här projektet på den här datorn när du kompilerar. Alla med redigeringsbehörighet kan ändra den koden. Tillåt det bara om du litar på alla i projektet.",
+      "confirm": "Tillåt på den här datorn"
     }
   },
   "errors": {

@@ -112,6 +112,7 @@ fn project_engine_sync(
     let mut descriptor = crate::document_engine::descriptor_for(&meta.engine, &meta.main_doc)?;
     crate::typst_toolchain::describe_project(&mut descriptor, &meta);
     crate::typst_options::describe(&mut descriptor, &project_id, &meta);
+    crate::document_engine::describe_notebook_output(&mut descriptor, &project_id, &meta.main_doc);
     descriptor.tex_flavor = meta.tex_flavor;
     descriptor.allow_shell_escape = meta.allow_shell_escape;
     Ok(descriptor)
@@ -333,6 +334,7 @@ pub async fn compile_project(
                 out_dir: None,
                 compile_time_ms: 0,
                 stopped: false,
+                html_output: None,
             });
         }
     }
@@ -466,6 +468,18 @@ pub async fn compile_project(
             &meta.main_doc,
             &toolchain_identity,
         );
+        if let (true, Some(output_id)) = (result.has_pdf, result.output_id.clone()) {
+            crate::collab::output::upload_after_compile(
+                &app,
+                crate::collab::output::CompiledOutput {
+                    project_id: project_id.clone(),
+                    engine: meta.engine.clone(),
+                    main_file: main_doc.clone(),
+                    output_id,
+                    synctex: result.synctex_path.clone().map(std::path::PathBuf::from),
+                },
+            );
+        }
     }
     #[cfg(debug_assertions)]
     eprintln!(
@@ -601,6 +615,7 @@ impl MainCompile {
     ) -> Result<Self, String> {
         let location = crate::project_location::locate(project_id)?;
         let meta = crate::project::read_compile_meta(project_id, main_doc)?;
+        crate::document_engine::require_notebook_trust(project_id, &meta.engine, main_doc)?;
         let typst = {
             let meta = meta.clone();
             tauri::async_runtime::spawn_blocking(move || {

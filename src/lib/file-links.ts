@@ -23,7 +23,7 @@ const TAURI_ORIGINS: ReadonlySet<string> = new Set([
 
 export function linkLanguageFor(path: string | null | undefined): LinkLanguage | null {
   if (!path) return null;
-  if (/\.(?:md|markdown)$/iu.test(path)) return "markdown";
+  if (/\.(?:md|markdown|qmd|rmd)$/iu.test(path)) return "markdown";
   if (/\.typ$/iu.test(path)) return "typst";
   if (/\.(?:tex|latex|ltx)$/iu.test(path)) return "latex";
   return null;

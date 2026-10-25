@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  CUSTOM_PROVIDER_PRESETS,
   PROVIDERS,
   getProvider,
   defaultModel,
@@ -7,6 +8,8 @@ import {
   hasConfiguredProvider,
   mergeCustomProviders,
   pickActiveProvider,
+  suggestedFirst,
+  suggestedProviderId,
 } from "./providers";
 
 describe("ai-providers", () => {
@@ -155,5 +158,44 @@ describe("hasConfiguredProvider", () => {
         ai_custom_providers: [{ id: "gateway", name: "Gateway", baseURL: "http://b" }],
       }),
     ).toBe(false);
+  });
+});
+
+describe("suggested provider", () => {
+  it("suggests DeepSeek for Chinese interfaces and OpenAI everywhere else", () => {
+    expect(suggestedProviderId("zh-Hans")).toBe("deepseek");
+    expect(suggestedProviderId("zh-Hant")).toBe("deepseek");
+    expect(suggestedProviderId("ZH-cn")).toBe("deepseek");
+    expect(suggestedProviderId("en")).toBe("openai");
+    expect(suggestedProviderId("ja")).toBe("openai");
+    expect(suggestedProviderId(undefined)).toBe("openai");
+    expect(getProvider(suggestedProviderId("zh-Hans"))).toBeDefined();
+  });
+
+  it("moves the suggested provider to the front and keeps the rest in order", () => {
+    const ids = (list: { id: string }[]) => list.map((provider) => provider.id);
+    const list = [{ id: "openai" }, { id: "anthropic" }, { id: "deepseek" }, { id: "zai" }];
+    expect(ids(suggestedFirst(list, "deepseek"))).toEqual(["deepseek", "openai", "anthropic", "zai"]);
+    expect(ids(suggestedFirst(list, "openai"))).toEqual(["openai", "anthropic", "deepseek", "zai"]);
+    expect(ids(suggestedFirst(list, "missing"))).toEqual(["openai", "anthropic", "deepseek", "zai"]);
+    expect(suggestedFirst(list, "openai")).not.toBe(list);
+  });
+});
+
+describe("custom provider presets", () => {
+  it("fills in OpenAI-compatible endpoints with ids no built-in provider uses", () => {
+    expect(CUSTOM_PROVIDER_PRESETS.map((preset) => preset.id)).toEqual([
+      "qwen",
+      "kimi",
+      "zhipu",
+      "siliconflow",
+      "volcengine-ark",
+    ]);
+    for (const preset of CUSTOM_PROVIDER_PRESETS) {
+      expect(preset.id).toMatch(/^[a-z0-9][a-z0-9-]*$/u);
+      expect(getProvider(preset.id)).toBeUndefined();
+      expect(new URL(preset.baseURL).protocol).toBe("https:");
+      expect(preset.baseURL.endsWith("/")).toBe(false);
+    }
   });
 });

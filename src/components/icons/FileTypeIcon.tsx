@@ -98,6 +98,8 @@ const TARGET_KINDS: Readonly<Record<string, FileTypeIconKind>> = {
   html: "html",
   markdown: "markdown",
   md: "markdown",
+  qmd: "markdown",
+  rmd: "markdown",
   typst: "typst",
   latex: "latex",
   tex: "latex",

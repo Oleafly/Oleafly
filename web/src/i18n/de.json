@@ -1,0 +1,190 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "Wird geladen",
+    "loadFailed": "Oleafly konnte den Server nicht erreichen.",
+    "retry": "Erneut versuchen",
+    "dismiss": "Ausblenden",
+    "projects": "Projekte",
+    "account": "Konto",
+    "signOut": "Abmelden",
+    "signOutFailed": "Sie konnten nicht abgemeldet werden. Versuchen Sie es erneut.",
+    "cancel": "Abbrechen"
+  },
+  "signIn": {
+    "title": "Bei Oleafly anmelden",
+    "description": "Melden Sie sich mit dem Konto an, mit dem ein Koautor das Projekt geteilt hat.",
+    "action": "Anmelden"
+  },
+  "projects": {
+    "title": "Mit Ihnen geteilt",
+    "emptyTitle": "Noch nichts mit Ihnen geteilt",
+    "emptyDescription": "Wenn jemand ein Projekt mit Ihrem Konto teilt, erscheint es hier.",
+    "untitled": "Unbenanntes Projekt",
+    "ownedBy": "Inhaber: {{name}}",
+    "loadFailed": "Ihre Projekte konnten nicht geladen werden.",
+    "list": "Projekte"
+  },
+  "roles": {
+    "owner": "Inhaber",
+    "editor": "Bearbeiter",
+    "reviewer": "Gutachter",
+    "commenter": "Kommentator",
+    "viewer": "Betrachter",
+    "unknown": "Nur lesen"
+  },
+  "connection": {
+    "connecting": "Wird verbunden",
+    "online": "Verbunden",
+    "offline": "Offline",
+    "offlineBanner": "Sie sind offline. Ihre Änderungen bleiben erhalten und werden gesendet, sobald die Verbindung wieder steht.",
+    "ended": "Getrennt"
+  },
+  "ended": {
+    "signedOutTitle": "Sie sind abgemeldet",
+    "signedOutDescription": "Melden Sie sich erneut an, um an diesem Projekt weiterzuarbeiten.",
+    "noAccessTitle": "Sie können dieses Projekt nicht öffnen",
+    "noAccessDescription": "Es wurde nicht mit Ihrem Konto geteilt, oder Ihr Zugriff wurde entfernt.",
+    "stoppedTitle": "Getrennt",
+    "stoppedDescription": "Laden Sie die Seite neu, um sich wieder zu verbinden."
+  },
+  "access": {
+    "changed": "Ihre Rolle in diesem Projekt ist jetzt {{role}}."
+  },
+  "discarded": {
+    "read_only": "Ihre letzten Bearbeitungen wurden nicht gespeichert, weil Sie dieses Projekt jetzt nicht bearbeiten können.",
+    "refused": "Ihre letzten Bearbeitungen konnten nicht gespeichert werden."
+  },
+  "views": {
+    "label": "Bereiche",
+    "files": "Dateien",
+    "source": "Quelltext",
+    "pdf": "PDF",
+    "comments": "Kommentare",
+    "chat": "Chat"
+  },
+  "presence": {
+    "label": "Personen hier"
+  },
+  "files": {
+    "title": "Dateien",
+    "empty": "Dieses Projekt hat noch keine Dateien.",
+    "tree": "Projektdateien"
+  },
+  "source": {
+    "noFileTitle": "Datei öffnen",
+    "noFileDescription": "Wählen Sie eine Datei aus der Liste, um sie zu lesen.",
+    "opening": "{{path}} wird geöffnet",
+    "removed": "{{path}} wurde aus dem Projekt entfernt.",
+    "readOnly": "Schreibgeschützt",
+    "readOnlyHint": "Mit Ihrer Rolle können Sie dieses Projekt lesen, aber nicht bearbeiten.",
+    "modeLabel": "Bearbeitungsmodus",
+    "editing": "Bearbeiten",
+    "suggesting": "Vorschlagen",
+    "suggestingHint": "Ihre Bearbeitungen sind Vorschläge, die ein Inhaber oder Bearbeiter prüft.",
+    "comment": "Kommentieren",
+    "commentHint": "Markieren Sie Text, um ihn zu kommentieren.",
+    "binary": "Diese Datei kann im Browser nicht angezeigt werden.",
+    "blobFailed": "Die Datei konnte nicht geladen werden."
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "Kompiliert von {{name}}, {{time}}",
+    "emptyTitle": "Noch kein PDF",
+    "emptyDescription": "Das PDF erscheint hier, nachdem jemand das Projekt in der Oleafly-App kompiliert hat.",
+    "loading": "Das PDF wird geladen",
+    "failed": "Das PDF konnte nicht geladen werden.",
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern",
+    "fitWidth": "An Breite anpassen",
+    "download": "Herunterladen",
+    "zoom": "{{percent}} %"
+  },
+  "comments": {
+    "emptyTitle": "Keine Kommentare oder Vorschläge",
+    "emptyCanComment": "Markieren Sie Text im Quelltext und wählen Sie Kommentieren, um eine Unterhaltung zu beginnen.",
+    "emptyReadOnly": "Kommentare und Vorschläge zu diesem Projekt erscheinen hier.",
+    "newComment": "Neuer Kommentar",
+    "placeholder": "Kommentar schreiben",
+    "submit": "Kommentieren",
+    "reply": "Antworten",
+    "replyPlaceholder": "Antwort schreiben",
+    "replyLabel": "Auf diese Unterhaltung antworten",
+    "edit": "Bearbeiten",
+    "editLabel": "Kommentar bearbeiten",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "deleteTitle": "Diesen Kommentar löschen?",
+    "deleteDescription": "Das lässt sich nicht rückgängig machen.",
+    "messageActions": "Aktionen für diesen Kommentar",
+    "resolve": "Erledigen",
+    "reopen": "Wieder öffnen",
+    "resolvedBy": "Erledigt von {{name}}",
+    "deleted": "Kommentar gelöscht",
+    "edited": "bearbeitet",
+    "anchorLost": "Der Text, auf den sich dieser Kommentar bezog, wurde entfernt.",
+    "showInSource": "Im Quelltext anzeigen",
+    "thread": "Kommentar von {{name}}",
+    "hideResolved": "Erledigte ausblenden",
+    "resolvedCount_one": "{{count}} erledigt",
+    "resolvedCount_other": "{{count}} erledigt"
+  },
+  "suggestions": {
+    "inserted": "Eingefügt",
+    "deleted": "Gelöscht",
+    "accept": "Übernehmen",
+    "reject": "Verwerfen",
+    "withdraw": "Zurückziehen",
+    "acceptAll": "Alle übernehmen",
+    "rejectAll": "Alle verwerfen",
+    "pending_one": "{{count}} Vorschlag",
+    "pending_other": "{{count}} Vorschläge",
+    "card": "Vorschlag von {{name}}",
+    "lineBreak": "Zeilenumbruch"
+  },
+  "chat": {
+    "emptyTitle": "Noch keine Nachrichten",
+    "emptyDescription": "Nachrichten hier sehen alle im Projekt.",
+    "placeholder": "Nachricht schreiben",
+    "label": "Nachricht",
+    "send": "Senden",
+    "readOnly": "Sie können den Chat lesen. Betrachter können nichts schreiben.",
+    "delete": "Nachricht löschen",
+    "clear": "Chat leeren",
+    "clearTitle": "Den Chat für alle leeren?",
+    "clearDescription": "Alle im Projekt verlieren diese Nachrichten.",
+    "messages": "Chatnachrichten"
+  },
+  "people": {
+    "you": "Sie",
+    "someone": "Jemand",
+    "unverified": "Nicht geprüfter Autor"
+  },
+  "errors": {
+    "offline": "Sie sind offline. Versuchen Sie es erneut, wenn Sie verbunden sind.",
+    "generic": "Der Server hat diese Änderung abgelehnt.",
+    "suggestion_not_found": "Dieser Vorschlag wurde bereits übernommen oder verworfen.",
+    "suggestion_not_yours": "Sie können nur Ihre eigenen Vorschläge zurückziehen.",
+    "suggestion_role": "Mit Ihrer Rolle können Sie keine Vorschläge machen oder prüfen.",
+    "chat_role": "Mit Ihrer Rolle können Sie nicht im Chat schreiben.",
+    "comment_not_live": "Kommentare sind gerade nicht verfügbar.",
+    "comment_not_yours": "Sie können nur Ihre eigenen Kommentare ändern.",
+    "comment_off_server": "Kommentare sind auf diesem Server ausgeschaltet.",
+    "comment_off_project": "Kommentare sind für dieses Projekt ausgeschaltet.",
+    "comment_viewer": "Betrachter können nicht kommentieren.",
+    "comment_someone_replied": "Jemand hat geantwortet, daher kann dieser Kommentar nicht gelöscht werden.",
+    "comment_message_deleted": "Dieser Kommentar wurde gelöscht.",
+    "comment_selection_changed": "Der Text hat sich geändert, während Sie geschrieben haben. Markieren Sie ihn erneut.",
+    "comment_too_long": "Der Kommentar ist zu lang.",
+    "comment_empty": "Schreiben Sie zuerst etwas.",
+    "rate_limited": "Zu viele Änderungen auf einmal. Warten Sie einen Moment und versuchen Sie es erneut.",
+    "too_large": "Das ist zu groß zum Senden.",
+    "project_too_large": "Dieses Projekt ist zu groß, um es in einem Browser zu öffnen.",
+    "server_busy": "Der Server ist ausgelastet. Versuchen Sie es gleich erneut.",
+    "not_open": "Öffnen Sie die Datei, bevor Sie sie ändern.",
+    "cross_site": "Diese Anfrage kam nicht von der Oleafly-Web-App auf diesem Server. Laden Sie die Seite neu und versuchen Sie es erneut.",
+    "conflict": "Das kollidiert mit einer Änderung, die jemand anderes vorgenommen hat. Versuchen Sie es erneut.",
+    "account_storage_full": "Das Konto des Projektinhabers hat auf diesem Server keinen Speicherplatz mehr.",
+    "too_many_uploads": "Sie haben in der letzten Stunde zu viele Dateien hochgeladen. Versuchen Sie es später erneut."
+  }
+}

@@ -85,6 +85,22 @@ pub(crate) struct ToolchainInstallRequest {
     pub(crate) timeouts: DownloadTimeouts,
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct TreeInstallRequest {
+    pub(crate) urls: Vec<String>,
+    pub(crate) allowed_hosts: Vec<String>,
+    pub(crate) archive_kind: ArchiveKind,
+    pub(crate) archive_size: u64,
+    pub(crate) archive_sha256: String,
+    pub(crate) install_dir: PathBuf,
+    pub(crate) executables: Vec<String>,
+    pub(crate) timeouts: DownloadTimeouts,
+}
+
+const MAX_TREE_MEMBERS: usize = 100_000;
+const MAX_TREE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
+pub(crate) const TREE_RECEIPT: &str = ".oleafly-archive.sha256";
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum InstallPhase {
@@ -451,6 +467,43 @@ impl InstallPlan {
     }
 }
 
+impl InstallPlan {
+    fn for_tree(
+        request: TreeInstallRequest,
+    ) -> Result<(Self, Vec<Vec<String>>), ToolchainInstallError> {
+        if request.archive_kind == ArchiveKind::Binary {
+            return Err(invalid("A tree install needs an archive."));
+        }
+        let executables = request
+            .executables
+            .iter()
+            .map(|candidate| {
+                member_components(candidate.as_bytes())
+                    .ok()
+                    .filter(|parts| !parts.is_empty())
+            })
+            .collect::<Option<Vec<_>>>()
+            .filter(|candidates| !candidates.is_empty())
+            .ok_or_else(|| {
+                invalid("The program path inside the archive is not a safe relative path.")
+            })?;
+        let plan = Self::new(ToolchainInstallRequest {
+            urls: request.urls,
+            allowed_hosts: request.allowed_hosts,
+            archive_kind: request.archive_kind,
+            archive_size: request.archive_size,
+            archive_member: request.executables.first().cloned(),
+            binary_size: request.archive_size,
+            binary_sha256: request.archive_sha256.clone(),
+            archive_sha256: request.archive_sha256,
+            install_dir: request.install_dir,
+            binary_name: TREE_RECEIPT.to_string(),
+            timeouts: request.timeouts,
+        })?;
+        Ok((plan, executables))
+    }
+}
+
 fn plan_member(
     kind: ArchiveKind,
     member: Option<&str>,
@@ -769,6 +822,132 @@ where
     Ok(ToolchainInstallOutcome::Installed(
         layout.destination.join(&plan.binary_name),
     ))
+}
+
+pub(crate) async fn install_tree<F>(
+    request: TreeInstallRequest,
+    cancel: CancelToken,
+    progress: F,
+) -> Result<ToolchainInstallOutcome, ToolchainInstallError>
+where
+    F: Fn(InstallProgress) + Send + Sync + 'static,
+{
+    let (plan, executables) = InstallPlan::for_tree(request)?;
+    let plan = Arc::new(plan);
+    let executables = Arc::new(executables);
+    let progress: ProgressSink = Arc::new(progress);
+    if cancel.is_cancelled() {
+        return Err(cancelled());
+    }
+    let layout = run_blocking({
+        let plan = plan.clone();
+        move || Layout::prepare(&plan)
+    })
+    .await?;
+    let active = ActiveInstall::register(layout.destination.clone(), None)?;
+    let stop = StopSignal {
+        cancel: cancel.clone(),
+        abandoned: active.abandoned.clone(),
+    };
+    let (lock, installed) = run_blocking({
+        let layout = layout.clone();
+        let plan = plan.clone();
+        let executables = executables.clone();
+        move || {
+            let lock = VersionLock::acquire(&layout)?;
+            layout.sweep_stale_staging();
+            Ok((
+                lock,
+                installed_tree(&layout.destination, &plan.archive_sha256, &executables),
+            ))
+        }
+    })
+    .await?;
+    let size = plan.archive_size;
+    if let Some(executable) = installed {
+        drop(lock);
+        drop(active);
+        progress(InstallProgress::at(InstallPhase::Done, size, size));
+        return Ok(ToolchainInstallOutcome::AlreadyInstalled(executable));
+    }
+    let staging = run_blocking({
+        let layout = layout.clone();
+        move || Staging::create(&layout)
+    })
+    .await?;
+    download_archive(&plan, &staging.archive(), &cancel, &progress).await?;
+    if stop.stopped() {
+        return Err(cancelled());
+    }
+    progress(InstallProgress::at(InstallPhase::Extracting, size, size));
+    let relative = run_blocking({
+        let plan = plan.clone();
+        let executables = executables.clone();
+        let archive = staging.archive();
+        let payload = staging.payload();
+        let stop = stop.clone();
+        move || {
+            extract_tree(&plan, &archive, &payload, &stop)?;
+            let executable = tree_executable(&payload, &executables)
+                .ok_or_else(|| integrity("The archive does not contain the expected program."))?;
+            let relative = executable
+                .strip_prefix(&payload)
+                .map(Path::to_path_buf)
+                .map_err(|_| install_failed("The extracted program is outside the install."))?;
+            let receipt = payload.join(TREE_RECEIPT);
+            std::fs::write(&receipt, &plan.archive_sha256)
+                .map_err(|error| filesystem_error("write", &receipt, error))?;
+            Ok(relative)
+        }
+    })
+    .await?;
+    if stop.stopped() {
+        return Err(cancelled());
+    }
+    publish(&staging, &layout)?;
+    drop(staging);
+    drop(lock);
+    drop(active);
+    progress(InstallProgress::at(InstallPhase::Done, size, size));
+    Ok(ToolchainInstallOutcome::Installed(
+        layout.destination.join(relative),
+    ))
+}
+
+pub(crate) fn installed_tree(
+    destination: &Path,
+    archive_sha256: &str,
+    executables: &[Vec<String>],
+) -> Option<PathBuf> {
+    let receipt = std::fs::read_to_string(destination.join(TREE_RECEIPT)).ok()?;
+    if !receipt.trim().eq_ignore_ascii_case(archive_sha256.trim()) {
+        return None;
+    }
+    tree_executable(destination, executables)
+}
+
+pub(crate) fn tree_executable(root: &Path, executables: &[Vec<String>]) -> Option<PathBuf> {
+    executables
+        .iter()
+        .map(|parts| tree_target(root, parts))
+        .find(|path| std::fs::symlink_metadata(path).is_ok_and(|metadata| metadata.is_file()))
+}
+
+pub(crate) fn tree_executable_candidates(candidates: &[String]) -> Vec<Vec<String>> {
+    candidates
+        .iter()
+        .filter_map(|candidate| {
+            member_components(candidate.as_bytes())
+                .ok()
+                .filter(|parts| !parts.is_empty())
+        })
+        .collect()
+}
+
+fn tree_target(root: &Path, parts: &[String]) -> PathBuf {
+    parts
+        .iter()
+        .fold(root.to_path_buf(), |path, part| path.join(part))
 }
 
 enum SourceFailure {
@@ -1234,6 +1413,228 @@ fn make_executable(path: &Path) -> Result<(), ToolchainInstallError> {
 
 #[cfg(not(unix))]
 fn make_executable(_path: &Path) -> Result<(), ToolchainInstallError> {
+    Ok(())
+}
+
+#[derive(Default)]
+struct TreeBudget {
+    members: usize,
+    bytes: u64,
+}
+
+impl TreeBudget {
+    fn member(&mut self) -> Result<(), ToolchainInstallError> {
+        self.members += 1;
+        if self.members > MAX_TREE_MEMBERS {
+            return Err(integrity("The archive has too many members."));
+        }
+        Ok(())
+    }
+
+    fn bytes(&mut self, size: u64) -> Result<(), ToolchainInstallError> {
+        self.bytes = self.bytes.saturating_add(size);
+        if self.bytes > MAX_TREE_BYTES {
+            return Err(integrity(
+                "The archive expands to more than Oleafly allows.",
+            ));
+        }
+        Ok(())
+    }
+}
+
+fn extract_tree(
+    plan: &InstallPlan,
+    archive: &Path,
+    payload: &Path,
+    stop: &StopSignal,
+) -> Result<(), ToolchainInstallError> {
+    std::fs::create_dir(payload).map_err(|error| filesystem_error("create", payload, error))?;
+    let open = || File::open(archive).map_err(|error| filesystem_error("open", archive, error));
+    match plan.kind {
+        ArchiveKind::TarGz => tree_from_tar(flate2::read::GzDecoder::new(open()?), payload, stop),
+        ArchiveKind::TarXz => tree_from_tar(xz_reader(open()?)?, payload, stop),
+        ArchiveKind::Zip => tree_from_zip(open()?, payload, stop),
+        ArchiveKind::Binary => Err(invalid("A tree install needs an archive.")),
+    }
+}
+
+fn create_tree_directory(path: &Path) -> Result<(), ToolchainInstallError> {
+    std::fs::create_dir_all(path).map_err(|error| filesystem_error("create", path, error))
+}
+
+fn tree_from_tar<R: Read>(
+    reader: R,
+    payload: &Path,
+    stop: &StopSignal,
+) -> Result<(), ToolchainInstallError> {
+    let mut archive = tar::Archive::new(reader);
+    let entries = archive.entries().map_err(archive_error)?;
+    let mut budget = TreeBudget::default();
+    let mut links = Vec::new();
+    for entry in entries {
+        if stop.stopped() {
+            return Err(cancelled());
+        }
+        let mut entry = entry.map_err(archive_error)?;
+        let kind = entry.header().entry_type();
+        if kind.is_pax_global_extensions() {
+            continue;
+        }
+        budget.member()?;
+        let parts = member_components(&entry.path_bytes()).map_err(|()| unsafe_member())?;
+        if parts.is_empty() {
+            continue;
+        }
+        let target = tree_target(payload, &parts);
+        if kind.is_dir() {
+            create_tree_directory(&target)?;
+            continue;
+        }
+        if kind.is_symlink() {
+            let link = entry.link_name_bytes().ok_or_else(link_member)?;
+            links.push((target, confined_link(&parts, &link)?));
+            continue;
+        }
+        if !kind.is_file() {
+            return Err(link_member());
+        }
+        let size = entry.size();
+        budget.bytes(size)?;
+        let executable = entry.header().mode().is_ok_and(|mode| mode & 0o111 != 0);
+        write_tree_file(&mut entry, &target, size, executable, stop)?;
+    }
+    create_tree_links(links)
+}
+
+fn tree_from_zip(
+    file: File,
+    payload: &Path,
+    stop: &StopSignal,
+) -> Result<(), ToolchainInstallError> {
+    let mut zip = zip::ZipArchive::new(file).map_err(archive_error)?;
+    if zip.len() > MAX_TREE_MEMBERS {
+        return Err(integrity("The archive has too many members."));
+    }
+    let mut budget = TreeBudget::default();
+    for index in 0..zip.len() {
+        if stop.stopped() {
+            return Err(cancelled());
+        }
+        let mut entry = zip.by_index(index).map_err(archive_error)?;
+        let parts = member_components(entry.name_raw()).map_err(|()| unsafe_member())?;
+        let file_type = entry.unix_mode().map_or(0, |mode| mode & 0o170000);
+        if !matches!(file_type, 0 | 0o100000 | 0o040000) {
+            return Err(link_member());
+        }
+        if entry.encrypted() {
+            return Err(integrity("The archive contains an encrypted member."));
+        }
+        if parts.is_empty() {
+            continue;
+        }
+        let target = tree_target(payload, &parts);
+        if entry.is_dir() || file_type == 0o040000 {
+            create_tree_directory(&target)?;
+            continue;
+        }
+        let size = entry.size();
+        budget.bytes(size)?;
+        let executable = entry.unix_mode().is_some_and(|mode| mode & 0o111 != 0);
+        write_tree_file(&mut entry, &target, size, executable, stop)?;
+    }
+    Ok(())
+}
+
+fn confined_link(member: &[String], link: &[u8]) -> Result<PathBuf, ToolchainInstallError> {
+    let text = std::str::from_utf8(link).map_err(|_| link_member())?;
+    if text.is_empty() || text.contains('\0') || text.contains(':') || text.starts_with(['/', '\\'])
+    {
+        return Err(link_member());
+    }
+    let mut depth = member.len().saturating_sub(1);
+    for part in text.split(['/', '\\']) {
+        match part {
+            "" | "." => {}
+            ".." => depth = depth.checked_sub(1).ok_or_else(link_member)?,
+            _ => depth += 1,
+        }
+    }
+    Ok(PathBuf::from(text))
+}
+
+#[cfg(unix)]
+fn create_tree_links(links: Vec<(PathBuf, PathBuf)>) -> Result<(), ToolchainInstallError> {
+    for (path, target) in links {
+        if let Some(parent) = path.parent() {
+            create_tree_directory(parent)?;
+        }
+        std::os::unix::fs::symlink(&target, &path)
+            .map_err(|error| filesystem_error("create", &path, error))?;
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn create_tree_links(links: Vec<(PathBuf, PathBuf)>) -> Result<(), ToolchainInstallError> {
+    if links.is_empty() {
+        Ok(())
+    } else {
+        Err(link_member())
+    }
+}
+
+fn write_tree_file(
+    reader: &mut dyn Read,
+    target: &Path,
+    size: u64,
+    executable: bool,
+    stop: &StopSignal,
+) -> Result<(), ToolchainInstallError> {
+    if let Some(parent) = target.parent() {
+        create_tree_directory(parent)?;
+    }
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        options.mode(if executable { 0o755 } else { 0o644 });
+    }
+    #[cfg(not(unix))]
+    let _ = executable;
+    let mut output = options.open(target).map_err(|error| {
+        if error.kind() == std::io::ErrorKind::AlreadyExists {
+            integrity("The archive holds the same file more than once.")
+        } else {
+            filesystem_error("create", target, error)
+        }
+    })?;
+    let mut limited = reader.take(size.saturating_add(1));
+    let mut buffer = vec![0_u8; COPY_BUFFER_BYTES];
+    let mut written = 0_u64;
+    loop {
+        if stop.stopped() {
+            return Err(cancelled());
+        }
+        let read = limited.read(&mut buffer).map_err(archive_error)?;
+        if read == 0 {
+            break;
+        }
+        written += read as u64;
+        if written > size {
+            return Err(integrity(
+                "An archive member is larger than its header says.",
+            ));
+        }
+        output
+            .write_all(&buffer[..read])
+            .map_err(|error| filesystem_error("write", target, error))?;
+    }
+    if written != size {
+        return Err(integrity(
+            "An archive member is shorter than its header says.",
+        ));
+    }
     Ok(())
 }
 
@@ -2407,5 +2808,286 @@ mod tests {
     #[ignore = "downloads Typst 0.13.1 from the network"]
     async fn installs_typst_through_the_real_github_redirect() {
         installs_real_typst(&["githubUrl"]).await;
+    }
+
+    fn tree_request(
+        root: &Path,
+        kind: ArchiveKind,
+        archive: &[u8],
+        url: String,
+        executables: &[&str],
+    ) -> TreeInstallRequest {
+        TreeInstallRequest {
+            urls: vec![url],
+            allowed_hosts: vec!["127.0.0.1".into()],
+            archive_kind: kind,
+            archive_size: archive.len() as u64,
+            archive_sha256: sha256_hex(archive),
+            install_dir: root.join("toolchains").join("quarto").join("1.10.19"),
+            executables: executables.iter().map(|path| (*path).to_owned()).collect(),
+            timeouts: quick_timeouts(),
+        }
+    }
+
+    fn tar_with_link(link: &str, target: &str) -> Vec<u8> {
+        let program = binary_bytes();
+        let mut builder = tar::Builder::new(Vec::new());
+        let mut header = tar::Header::new_gnu();
+        header.set_size(program.len() as u64);
+        header.set_mode(0o755);
+        header.set_entry_type(tar::EntryType::Regular);
+        builder
+            .append_data(&mut header, "tool-fixture/bin/quarto", &program[..])
+            .unwrap();
+        let mut symlink = tar::Header::new_gnu();
+        symlink.set_size(0);
+        symlink.set_mode(0o777);
+        symlink.set_entry_type(tar::EntryType::Symlink);
+        builder.append_link(&mut symlink, link, target).unwrap();
+        builder.into_inner().unwrap()
+    }
+
+    #[tokio::test]
+    async fn a_tree_archive_is_unpacked_whole_and_its_program_is_found() {
+        let program = binary_bytes();
+        let archive = gzip(&tar_with(&[
+            ("tool-fixture/bin/quarto", &program),
+            ("tool-fixture/share/filters/main.lua", b"return {}"),
+        ]));
+        let server = TestServer::start().await;
+        let url = server.route("/tree", Route::Bytes(archive.clone()));
+        let root = tempfile::tempdir().unwrap();
+        let request = tree_request(
+            root.path(),
+            ArchiveKind::TarGz,
+            &archive,
+            url,
+            &["bin/quarto", "tool-fixture/bin/quarto"],
+        );
+        let (events, sink) = recorder();
+
+        let outcome = install_tree(request.clone(), CancelToken::new(), sink)
+            .await
+            .unwrap();
+
+        assert!(matches!(outcome, ToolchainInstallOutcome::Installed(_)));
+        let installed = request.install_dir.join("tool-fixture/bin/quarto");
+        assert_eq!(
+            std::fs::canonicalize(outcome.binary_path()).unwrap(),
+            std::fs::canonicalize(&installed).unwrap()
+        );
+        assert_eq!(std::fs::read(&installed).unwrap(), program);
+        assert_eq!(
+            std::fs::read_to_string(
+                request
+                    .install_dir
+                    .join("tool-fixture/share/filters/main.lua")
+            )
+            .unwrap(),
+            "return {}"
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            let mode = std::fs::metadata(&installed).unwrap().permissions().mode();
+            assert_ne!(mode & 0o111, 0, "program is not executable: {mode:o}");
+        }
+        assert_eq!(
+            events.lock().unwrap().last().unwrap().phase,
+            InstallPhase::Done
+        );
+        let candidates = tree_executable_candidates(&request.executables);
+        assert_eq!(
+            installed_tree(&request.install_dir, &request.archive_sha256, &candidates)
+                .map(|path| std::fs::canonicalize(path).unwrap()),
+            Some(std::fs::canonicalize(&installed).unwrap())
+        );
+        assert_eq!(
+            staging_leftovers_in(&request.install_dir),
+            Vec::<String>::new()
+        );
+
+        let again = install_tree(request.clone(), CancelToken::new(), |_| {})
+            .await
+            .unwrap();
+        assert!(matches!(
+            again,
+            ToolchainInstallOutcome::AlreadyInstalled(_)
+        ));
+        assert_eq!(server.hits("/tree"), 1);
+    }
+
+    fn staging_leftovers_in(install_dir: &Path) -> Vec<String> {
+        let staging = install_dir.parent().unwrap().join(".staging");
+        let Ok(entries) = std::fs::read_dir(staging) else {
+            return Vec::new();
+        };
+        entries
+            .filter_map(Result::ok)
+            .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_dir()))
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .collect()
+    }
+
+    #[tokio::test]
+    async fn a_zip_tree_finds_the_program_under_any_listed_path() {
+        let program = binary_bytes();
+        let archive = zip_with(&[
+            ("tool-fixture/calepin.exe", &program),
+            ("tool-fixture/LICENSE", b"MIT"),
+        ]);
+        let server = TestServer::start().await;
+        let url = server.route("/zip-tree", Route::Bytes(archive.clone()));
+        let root = tempfile::tempdir().unwrap();
+        let request = tree_request(
+            root.path(),
+            ArchiveKind::Zip,
+            &archive,
+            url,
+            &["calepin.exe", "tool-fixture/calepin.exe"],
+        );
+
+        let outcome = install_tree(request.clone(), CancelToken::new(), |_| {})
+            .await
+            .unwrap();
+
+        assert!(outcome.binary_path().ends_with("tool-fixture/calepin.exe"));
+        assert!(request.install_dir.join("tool-fixture/LICENSE").is_file());
+        assert!(request.install_dir.join(TREE_RECEIPT).is_file());
+    }
+
+    #[tokio::test]
+    async fn a_tree_without_the_program_is_refused_and_leaves_nothing() {
+        let archive = gzip(&tar_with(&[("tool-fixture/README", b"no program here")]));
+        let server = TestServer::start().await;
+        let url = server.route("/empty-tree", Route::Bytes(archive.clone()));
+        let root = tempfile::tempdir().unwrap();
+        let request = tree_request(
+            root.path(),
+            ArchiveKind::TarGz,
+            &archive,
+            url,
+            &["bin/quarto"],
+        );
+
+        let error = install_tree(request.clone(), CancelToken::new(), |_| {})
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.kind(), ToolchainInstallErrorKind::IntegrityFailure);
+        assert!(!request.install_dir.exists());
+        assert_eq!(
+            staging_leftovers_in(&request.install_dir),
+            Vec::<String>::new()
+        );
+    }
+
+    #[tokio::test]
+    async fn a_tree_member_that_escapes_the_archive_is_refused() {
+        let archive = gzip(&tar_with_raw_member(
+            b"../escape.txt",
+            b"escaped",
+            tar::EntryType::Regular,
+        ));
+        let server = TestServer::start().await;
+        let url = server.route("/escape-tree", Route::Bytes(archive.clone()));
+        let root = tempfile::tempdir().unwrap();
+        let request = tree_request(
+            root.path(),
+            ArchiveKind::TarGz,
+            &archive,
+            url,
+            &["tool-fixture/tool"],
+        );
+
+        let error = install_tree(request.clone(), CancelToken::new(), |_| {})
+            .await
+            .unwrap_err();
+
+        assert_eq!(error.kind(), ToolchainInstallErrorKind::IntegrityFailure);
+        assert!(!root.path().join("toolchains/quarto/escape.txt").exists());
+        assert!(!request.install_dir.exists());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn links_inside_the_tree_are_kept_and_links_out_of_it_are_refused() {
+        let inside = gzip(&tar_with_link("tool-fixture/bin/quarto-link", "quarto"));
+        let server = TestServer::start().await;
+        let url = server.route("/link-inside", Route::Bytes(inside.clone()));
+        let root = tempfile::tempdir().unwrap();
+        let request = tree_request(
+            root.path(),
+            ArchiveKind::TarGz,
+            &inside,
+            url,
+            &["tool-fixture/bin/quarto"],
+        );
+        install_tree(request.clone(), CancelToken::new(), |_| {})
+            .await
+            .unwrap();
+        let link = request.install_dir.join("tool-fixture/bin/quarto-link");
+        assert!(std::fs::symlink_metadata(&link)
+            .unwrap()
+            .file_type()
+            .is_symlink());
+        assert_eq!(std::fs::read_link(&link).unwrap(), PathBuf::from("quarto"));
+
+        let outside = gzip(&tar_with_link("tool-fixture/bin/escape", "../../../etc"));
+        let url = server.route("/link-outside", Route::Bytes(outside.clone()));
+        let other = tempfile::tempdir().unwrap();
+        let request = tree_request(
+            other.path(),
+            ArchiveKind::TarGz,
+            &outside,
+            url,
+            &["tool-fixture/bin/quarto"],
+        );
+        let error = install_tree(request.clone(), CancelToken::new(), |_| {})
+            .await
+            .unwrap_err();
+        assert_eq!(error.kind(), ToolchainInstallErrorKind::IntegrityFailure);
+        assert!(!request.install_dir.exists());
+    }
+
+    #[test]
+    fn link_targets_must_stay_inside_the_tree() {
+        let member = vec!["quarto".to_owned(), "bin".to_owned(), "tool".to_owned()];
+        assert_eq!(
+            confined_link(&member, b"../share/tool").unwrap(),
+            PathBuf::from("../share/tool")
+        );
+        assert!(confined_link(&member, b"../../share").is_ok());
+        assert!(confined_link(&member, b"../../../outside").is_err());
+        assert!(confined_link(&member, b"/etc/passwd").is_err());
+        assert!(confined_link(&member, b"C:\\Windows").is_err());
+        assert!(confined_link(&member, b"").is_err());
+    }
+
+    #[tokio::test]
+    async fn a_bare_binary_cannot_be_installed_as_a_tree() {
+        let root = tempfile::tempdir().unwrap();
+        let request = tree_request(
+            root.path(),
+            ArchiveKind::Binary,
+            b"binary",
+            "http://127.0.0.1:9/binary".into(),
+            &["tool"],
+        );
+        let error = install_tree(request, CancelToken::new(), |_| {})
+            .await
+            .unwrap_err();
+        assert_eq!(error.kind(), ToolchainInstallErrorKind::InvalidRequest);
+        let unsafe_path = tree_request(
+            root.path(),
+            ArchiveKind::TarGz,
+            b"archive",
+            "http://127.0.0.1:9/archive".into(),
+            &["../tool"],
+        );
+        let error = install_tree(unsafe_path, CancelToken::new(), |_| {})
+            .await
+            .unwrap_err();
+        assert_eq!(error.kind(), ToolchainInstallErrorKind::InvalidRequest);
     }
 }

@@ -190,6 +190,48 @@ describe("AddCustomProviderDialog", () => {
   });
 });
 
+describe("AddCustomProviderDialog presets", () => {
+  it("fills in a known endpoint in one click and leaves the key to the user", async () => {
+    const onSubmit = vi.fn().mockResolvedValue({ ok: true });
+    render(<AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />);
+
+    expect(screen.getByRole("group", { name: enSettings.ai.customProvider.presetsLabel })).toBeInTheDocument();
+    const qwen = screen.getByTestId("custom-provider-preset-qwen");
+    expect(qwen).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(qwen);
+
+    expect(screen.getByTestId("custom-provider-id")).toHaveValue("qwen");
+    expect(screen.getByTestId("custom-provider-name")).toHaveValue("Qwen (DashScope)");
+    expect(screen.getByTestId("custom-provider-baseurl")).toHaveValue(
+      "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    );
+    expect(qwen).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("custom-provider-key")).toHaveFocus();
+
+    fill("custom-provider-key", "sk-qwen");
+    fireEvent.click(screen.getByTestId("custom-provider-submit"));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        id: "qwen",
+        name: "Qwen (DashScope)",
+        baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        apiKey: "sk-qwen",
+      }),
+    );
+  });
+
+  it("hides presets already added and every preset while editing", () => {
+    const { rerender } = render(
+      <AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} takenIds={["kimi"]} />,
+    );
+    expect(screen.queryByTestId("custom-provider-preset-kimi")).toBeNull();
+    expect(screen.getByTestId("custom-provider-preset-zhipu")).toBeInTheDocument();
+
+    rerender(<AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} editing={ACME} />);
+    expect(screen.queryByRole("group", { name: enSettings.ai.customProvider.presetsLabel })).toBeNull();
+  });
+});
+
 describe("AddCustomProviderDialog validation", () => {
   const errors = enSettings.ai.customProvider.errors;
 

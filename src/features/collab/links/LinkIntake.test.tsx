@@ -113,7 +113,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  useSettingsStore.setState({ liveCollaboration: true, settingsOpen: false, settingsInitialSection: "general" });
+  useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "general" });
   useFilesStore.setState({
     projectsLoaded: true,
     loading: false,
@@ -545,21 +545,6 @@ describe("LinkIntake", () => {
     deliver([ADD]);
     await waitFor(() => expect(useSettingsStore.getState().settingsOpen).toBe(true));
     expect(useSettingsStore.getState().settingsInitialSection).toBe("collaboration");
-    expect(useAddServerRequest.getState().url).toBeNull();
-  });
-
-  it("says in one line that live collaboration is off and opens that setting", async () => {
-    useSettingsStore.setState({ liveCollaboration: false });
-    const user = userEvent.setup();
-    deliver([OPEN, ADD, "oleafly://nonsense"]);
-    expect(await screen.findByText(copy.turnedOff)).toBeInTheDocument();
-    expect(screen.getAllByTestId("collab-link-notice")).toHaveLength(1);
-    await user.click(screen.getByRole("button", { name: copy.openSettings }));
-    expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "experimentation" });
-    expect(screen.queryByText(copy.turnedOff)).not.toBeInTheDocument();
-    await sleep(400);
-    expect(screen.queryByTestId("collab-link-notice")).not.toBeInTheDocument();
-    expect(mocks.collabJoinProject).not.toHaveBeenCalled();
     expect(useAddServerRequest.getState().url).toBeNull();
   });
 

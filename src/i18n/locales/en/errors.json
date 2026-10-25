@@ -109,7 +109,8 @@
     "shell_escape": "Trust this folder before allowing shell escape.",
     "broad_folder": "Oleafly can't trust all of {{name}}. Choose a smaller folder.",
     "declined": "The folder wasn't trusted.",
-    "unavailable": "Oleafly couldn't check whether this folder is trusted."
+    "unavailable": "Oleafly couldn't check whether this folder is trusted.",
+    "notebook": "Trust this folder to compile with Quarto or Calepin."
   },
   "open_folder": {
     "not_absolute": "Use the full path to the folder.",
@@ -224,6 +225,17 @@
     "template_unavailable": "Oleafly couldn't open this template. It may have been removed from Overleaf's gallery."
   },
   "collab": {
-    "turned_off": "Live collaboration is turned off. Turn it on in Settings, under Experimentation."
+    "suggestion_role": "Your role in this project doesn't allow suggestions."
+  },
+  "notebook": {
+    "code_needed": "{{engine}} has to run code to build this document, and code is off for this project. Allow code in this project to compile it.",
+    "quarto_missing": "Quarto isn't installed. Install it from Settings > Engines > Quarto, then compile again.",
+    "calepin_missing": "Calepin isn't installed. Install it from Settings > Engines > Calepin, then compile again.",
+    "not_offered": "Oleafly can't download {{tool}} for this computer. Install it yourself, then compile again.",
+    "busy": "{{tool}} is still installing. Try again when it's done.",
+    "install_unverified": "{{tool}} downloaded but failed its integrity check. Try installing it again.",
+    "unknown_tool": "Oleafly doesn't know a tool called {{tool}}.",
+    "not_managed": "Oleafly can only remove the copy of {{tool}} it downloaded.",
+    "no_html_output": "There's no HTML output yet. Compile the document first."
   }
 }

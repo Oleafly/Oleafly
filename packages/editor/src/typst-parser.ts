@@ -1,10 +1,14 @@
 import {
   type Input,
+  parseMixed,
   Parser,
   type PartialParse,
+  type SyntaxNodeRef,
   Tree,
+  type TreeBuffer,
   type TreeFragment,
 } from "@lezer/common";
+import { codeChunkParser } from "./code-chunks";
 import { isNewline } from "./typst-lexer";
 import { K, typstNodeSet } from "./typst-nodes";
 import { TypstParserCore } from "./typst-parser-core";
@@ -23,7 +27,7 @@ interface Chunk {
   readonly errorAtEnd: boolean;
 }
 
-const chunkIndex = new WeakMap<Tree, readonly Chunk[]>();
+const chunkIndex = new WeakMap<readonly (Tree | TreeBuffer)[], readonly Chunk[]>();
 
 function chunkStartingAt(chunks: readonly Chunk[], pos: number): Chunk | null {
   let low = 0;
@@ -133,7 +137,7 @@ class TypstParse implements PartialParse {
     const lineStart = this.lineStart(pos);
     const dependsFrom = lineStart === this.from ? lineStart : lineStart - 1;
     if (fragment.from > dependsFrom) return false;
-    const chunks = chunkIndex.get(fragment.tree);
+    const chunks = chunkIndex.get(fragment.tree.children);
     if (!chunks) return false;
     const shift = fragment.offset;
     const chunk = chunkStartingAt(chunks, pos + shift);
@@ -188,7 +192,7 @@ class TypstParse implements PartialParse {
       this.chunks.map((chunk) => chunk.from - this.from),
     );
     const root = new Tree(typstNodeSet.types[K.Source], trees, positions, pos - this.from);
-    chunkIndex.set(root, this.chunks);
+    chunkIndex.set(root.children, this.chunks);
     this.parsedPos = pos;
     return root;
   }
@@ -205,6 +209,30 @@ class TypstTreeParser extends Parser {
 }
 
 export const typstParser: Parser = new TypstTreeParser();
+
+function rawBlockLanguage(node: SyntaxNodeRef, input: Input) {
+  if (node.type.id !== K.Raw) return null;
+  const raw = node.node;
+  const lang = raw.getChild("RawLang");
+  const close = raw.lastChild;
+  if (!lang || !close || close.name !== "RawDelim" || close.from <= lang.to) return null;
+  const parser = codeChunkParser(input.read(lang.from, lang.to));
+  return parser ? { parser, overlay: [{ from: lang.to, to: close.from }] } : null;
+}
+
+const nestRawBlocks = parseMixed(rawBlockLanguage);
+
+class TypstEditorTreeParser extends Parser {
+  createParse(
+    input: Input,
+    fragments: readonly TreeFragment[],
+    ranges: readonly { from: number; to: number }[],
+  ): PartialParse {
+    return nestRawBlocks(new TypstParse(input, fragments, ranges), input, fragments, ranges);
+  }
+}
+
+export const typstEditorParser: Parser = new TypstEditorTreeParser();
 
 export function parseTypst(text: string): Tree {
   return typstParser.parse(text);

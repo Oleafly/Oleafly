@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "N'afficher que les modèles de CV que les logiciels de suivi des candidatures analysent de façon fiable : une seule colonne, polices standard et texte sélectionnable (aucun mot intégré à une image).",
       "atsFriendly": "Compatible ATS",
       "offlineTooltip": "N'afficher que les modèles qui compilent sans téléchargement : leurs polices et leurs paquets sont déjà fournis, ils se construisent donc sans connexion internet.",

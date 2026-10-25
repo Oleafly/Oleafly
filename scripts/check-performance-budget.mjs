@@ -141,7 +141,7 @@ const limits = {
   // Links that open project files in Visual mode, word-level Typst sync and
   // the cloud sync fixes bring it to 20,439,121 bytes. The DOMPurify 3.4.17
   // and markdown-it 14.3.3 security updates then take it to 20,414,055.
-  totalJavaScript: 20_440_000,
+  totalJavaScript: 20_635_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
   // 620 KB; keep narrow headroom so a namespace accidentally bundled twice

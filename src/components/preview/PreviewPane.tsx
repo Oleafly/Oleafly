@@ -10,6 +10,8 @@ import { usePdfKeyboardShortcuts } from "./use-pdf-keyboard-shortcuts";
 import { usePdfPosition } from "@/lib/use-pdf-position";
 import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
 import {
+  lazy,
+  Suspense,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -49,6 +51,7 @@ import {
   type CompileStatus,
 } from "@/store/compile";
 import { CompileOfferButton } from "./CompileOfferButton";
+import { notebookOutput } from "@/lib/notebook-engines";
 import { useFilesStore } from "@/store/files";
 import { mainDocumentMissing } from "@/lib/main-document";
 import { usePdfViewStore } from "@/store/pdf-view";
@@ -103,6 +106,10 @@ interface PreviewDocument {
   checkpoint: CompileSuccessCheckpoint | null;
   identity: string;
 }
+
+const HtmlOutputPanel = lazy(() =>
+  import("./HtmlOutputPanel").then((module) => ({ default: module.HtmlOutputPanel })),
+);
 
 const PDF_SCROLL_AXES = ["y", "x"] as const;
 
@@ -711,7 +718,9 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const compileFailureReason = useCompileStore(
     (state) => state.failureReason,
   );
+  const htmlOutput = useCompileStore((state) => state.htmlOutput);
   const projectId = useFilesStore((s) => s.projectId);
+  const htmlEngine = useFilesStore((s) => notebookOutput(s.engine) === "html");
   const projectName = useFilesStore((s) => s.projectName);
   const refreshTree = useFilesStore((s) => s.refreshTree);
   const mainDoc = useFilesStore((s) => s.mainDoc);
@@ -876,6 +885,14 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const syncTexAvailable = canUseSyncTexForCheckpoint(displayedCheckpoint);
   const staleSyncTexAvailable = pdfIsStale && syncTexAvailable;
   const displayedBytes = viewerDocument?.bytes ?? null;
+  const htmlBuiltAt =
+    htmlOutput !== null && htmlOutput.projectId === projectId ? htmlOutput.builtAt : null;
+  const showHtmlOutput =
+    projectId !== null &&
+    !noMainDocument &&
+    (htmlBuiltAt !== null ||
+      (htmlEngine && !displayedBytes && status !== "error" && status !== "unavailable"));
+  const shownBytes = showHtmlOutput ? null : displayedBytes;
   const staleAnnouncement = displayedCheckpoint
     ? t(($) => $.preview.stale.explanation)
     : t(($) => $.preview.stale.noIdentity);
@@ -1069,7 +1086,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
         setSaveName("");
         toast.success(t(($) => $.preview.save.imageSaved));
       } else {
-        const raw = saveName.trim() || mainDoc.replace(/\.(?:tex|typ|md|markdown)$/i, "") || "document";
+        const raw = saveName.trim() || mainDoc.replace(/\.(?:tex|typ|md|markdown|qmd|rmd)$/i, "") || "document";
         const name = `${raw.replace(/\.pdf$/i, "")}.pdf`;
         await saveFileBase64(
           projectId,
@@ -1301,7 +1318,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
 
       {tab === "pdf" && (
         <PdfToolbarControls
-          isImage={isImage} hasDocument={!!displayedBytes} numPages={numPages}
+          isImage={isImage} hasDocument={!!shownBytes} numPages={numPages}
           page={page} pageInput={pageInput} setPageInput={setPageInput} jumpToPage={jumpToPage}
           pdfRef={pdfRef} layout={layout} setLayout={setLayout}
           outlineOpen={outlineOpen} setOutlineOpen={setOutlineOpen}
@@ -1313,7 +1330,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
           onSave={() => {
             const base = isImage
               ? trimEdgeCharacter((projectName || "figure").replace(/[^\w.-]+/g, "-"), "-") || "figure"
-              : mainDoc.replace(/\.(?:tex|typ|md|markdown)$/i, "") || "document";
+              : mainDoc.replace(/\.(?:tex|typ|md|markdown|qmd|rmd)$/i, "") || "document";
             setSaveName(`${base}.${isImage ? "png" : "pdf"}`);
             setSaveOpen(true);
           }}
@@ -1505,8 +1522,25 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     </div>
   );
 
+  const renderHtmlOutput = () => (
+    <div className="flex h-full flex-col items-center justify-center bg-sidebar px-6">
+      {projectId && (
+        <Suspense fallback={null}>
+          <HtmlOutputPanel
+            projectId={projectId}
+            builtAt={htmlBuiltAt}
+            compiling={status === "compiling"}
+            onCompile={() => void recompile()}
+          />
+        </Suspense>
+      )}
+    </div>
+  );
+
+  const renderFallbackPreview = () => (showHtmlOutput ? renderHtmlOutput() : renderEmptyPreview());
+
   const renderPreviewBody = () => (
-    tab !== "logs" && (displayedBytes && viewerDocument ? (
+    tab !== "logs" && (displayedBytes && viewerDocument && !showHtmlOutput ? (
       <div className="flex h-full min-h-0 flex-col bg-sidebar">
         <div className="relative min-h-0 flex-1 overflow-hidden">
           {/* Editing while a PDF is on screen is the normal case, so
@@ -1546,7 +1580,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
         </div>
       </div>
     ) : (
-      renderEmptyPreview()
+      renderFallbackPreview()
     ))
   );
 

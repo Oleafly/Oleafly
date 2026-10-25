@@ -557,11 +557,13 @@ export const isTypstSourcePath = (path: string | null): boolean =>
 export const isProseSourcePath = (path: string | null): boolean =>
   !!path &&
   !isVendoredTypstPackagePath(path) &&
-  /\.(?:tex|latex|ltx|md|markdown|typ)$/i.test(path);
+  /\.(?:tex|latex|ltx|md|markdown|qmd|rmd|typ)$/i.test(path);
 const isLatexDocumentPath = (path: string | null): boolean =>
   !!path && /\.(?:tex|latex|ltx)$/i.test(path);
 const isMarkdownDocumentPath = (path: string | null): boolean =>
-  !!path && /\.(?:md|markdown)$/i.test(path);
+  !!path && /\.(?:md|markdown|qmd|rmd)$/i.test(path);
+const isQuartoDocumentPath = (path: string | null): boolean =>
+  !!path && /\.(?:qmd|rmd)$/i.test(path);
 
 export function supportsVisualMode(path: string | null): boolean {
   return isLatexDocumentPath(path) || isTypstSourcePath(path);
@@ -707,6 +709,26 @@ function latexSourceTools(
   ];
 }
 
+let chunkOptionsLoading: Promise<typeof import("./chunk-options")> | null = null;
+
+function loadChunkOptions(): Promise<typeof import("./chunk-options")> {
+  chunkOptionsLoading ??= import("./chunk-options");
+  return chunkOptionsLoading;
+}
+
+function preloadChunkOptions(): void {
+  loadChunkOptions().then(
+    () => undefined,
+    () => undefined,
+  );
+}
+
+const quartoChunkOptionCompletions: CompletionSource = (context) =>
+  loadChunkOptions().then((module) => module.quartoChunkOptionCompletions(context));
+
+const calepinChunkOptionCompletions: CompletionSource = (context) =>
+  loadChunkOptions().then((module) => module.calepinChunkOptionCompletions(context));
+
 function sourceToolsForPath(
   path: string | null,
   completionSyntax: CompletionSyntax,
@@ -752,6 +774,7 @@ function sourceToolsForPath(
   }
 
   if (isTypstSourcePath(path)) {
+    preloadChunkOptions();
     return [
       ...mathPreviewExtensions,
       typstMathPaste(),
@@ -759,22 +782,27 @@ function sourceToolsForPath(
         ? [ghostCompletion([...ghostCompletionSources, typstSlashCompletions], completionSyntax)]
         : []),
       autocompletion({
-        override: [...gatedCompletionSources, typstSlashCompletions],
+        override: [...gatedCompletionSources, typstSlashCompletions, calepinChunkOptionCompletions],
         activateOnTyping: autocompleteWhileTyping,
         closeOnBlur: true,
       }),
     ];
   }
 
+  const quarto = isQuartoDocumentPath(path);
+  if (quarto) preloadChunkOptions();
+  const overrideSources = quarto
+    ? [...gatedCompletionSources, quartoChunkOptionCompletions]
+    : gatedCompletionSources;
   return [
     ...mathPreviewExtensions,
     ...(ghostCompletionEnabled && ghostCompletionSources.length > 0
       ? [ghostCompletion(ghostCompletionSources, completionSyntax)]
       : []),
-    ...(gatedCompletionSources.length > 0
+    ...(overrideSources.length > 0
       ? [
           autocompletion({
-            override: gatedCompletionSources,
+            override: overrideSources,
             activateOnTyping: autocompleteWhileTyping,
             closeOnBlur: true,
           }),

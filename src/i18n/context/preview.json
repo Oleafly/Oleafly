@@ -24,7 +24,9 @@
     "invert": "Inverts the rendered colors of the PDF, a dark mode for the document",
     "retryCompile": "Starts a new compile after a failed one",
     "chooseEngine": "Button in the failed-compile panel that opens the compile engine picker",
-    "installPackages_other": "Button in the failed-compile panel that looks up and installs the missing LaTeX packages"
+    "installPackages_other": "Button in the failed-compile panel that looks up and installs the missing LaTeX packages",
+    "installTool": "Button. {{tool}} is Quarto or Calepin, {{version}} a version number.",
+    "installToolSize": "Button. {{tool}} is Quarto or Calepin, {{version}} a version number, {{size}} a download size such as 120 MB."
   },
   "stale": {
     "badge": "Short badge over the document meaning the PDF is older than the editor content",
@@ -69,5 +71,9 @@
     "status": {
       "loading": "Progress message while the compiled PDF is being opened in the viewer"
     }
+  },
+  "html": {
+    "builtDetail": "{{time}} is a clock time such as 14:05.",
+    "open": "Button that opens the compiled HTML page in the default web browser."
   }
 }

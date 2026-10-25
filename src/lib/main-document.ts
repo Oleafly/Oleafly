@@ -2,7 +2,16 @@ import type { FileEntry, ManifestHome } from "@oleafly/backend-port";
 import { i18n } from "@/i18n";
 import type { DetectionCandidate, DetectionReason, DocumentKind } from "@/lib/folder-detection";
 
-export const ALL_MAIN_EXTENSIONS: readonly string[] = ["tex", "ltx", "latex", "typ", "md", "markdown"];
+export const ALL_MAIN_EXTENSIONS: readonly string[] = [
+  "tex",
+  "ltx",
+  "latex",
+  "typ",
+  "md",
+  "markdown",
+  "qmd",
+  "rmd",
+];
 
 const REASON_ORDER: readonly DetectionReason[] = [
   "declared",
@@ -77,6 +86,10 @@ export function documentKindLabel(kind: DocumentKind): string {
       return i18n.t(($) => $.shell.openedFolder.kind.typst);
     case "markdown":
       return i18n.t(($) => $.shell.openedFolder.kind.markdown);
+    case "quarto":
+      return i18n.t(($) => $.shell.openedFolder.kind.quarto);
+    case "calepin":
+      return i18n.t(($) => $.shell.openedFolder.kind.calepin);
     default:
       return i18n.t(($) => $.shell.openedFolder.kind.unknown);
   }

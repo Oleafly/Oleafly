@@ -104,6 +104,7 @@ export const SETTINGS_SEARCH_TABS: Readonly<Record<string, string>> = {
   "engine.distributions": "latex",
   "engine.packages": "latex",
   "engine.tagging": "latex",
+  "engine.notebook": "quarto",
   "ai.approvals": "providers",
   "ai.budget": "providers",
   "ai.models": "providers",

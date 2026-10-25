@@ -1,0 +1,194 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "Načítání",
+    "loadFailed": "Oleafly se nemohl připojit k serveru.",
+    "retry": "Zkusit znovu",
+    "dismiss": "Zavřít",
+    "projects": "Projekty",
+    "account": "Účet",
+    "signOut": "Odhlásit se",
+    "signOutFailed": "Odhlášení se nezdařilo. Zkuste to znovu.",
+    "cancel": "Zrušit"
+  },
+  "signIn": {
+    "title": "Přihlásit se do Oleafly",
+    "description": "Přihlaste se účtem, se kterým s vámi spoluautor projekt sdílel.",
+    "action": "Přihlásit se"
+  },
+  "projects": {
+    "title": "Sdíleno s vámi",
+    "emptyTitle": "Zatím s vámi nikdo nic nesdílel",
+    "emptyDescription": "Když někdo s vaším účtem nasdílí projekt, zobrazí se tady.",
+    "untitled": "Projekt bez názvu",
+    "ownedBy": "Vlastník: {{name}}",
+    "loadFailed": "Vaše projekty se nepodařilo načíst.",
+    "list": "Projekty"
+  },
+  "roles": {
+    "owner": "Vlastník",
+    "editor": "Editor",
+    "reviewer": "Recenzent",
+    "commenter": "Komentátor",
+    "viewer": "Čtenář",
+    "unknown": "Jen ke čtení"
+  },
+  "connection": {
+    "connecting": "Připojování",
+    "online": "Připojeno",
+    "offline": "Offline",
+    "offlineBanner": "Jste offline. Vaše změny se uchovají a odešlou, až se připojení obnoví.",
+    "ended": "Odpojeno"
+  },
+  "ended": {
+    "signedOutTitle": "Jste odhlášeni",
+    "signedOutDescription": "Přihlaste se znovu, abyste mohli na projektu dál pracovat.",
+    "noAccessTitle": "Tento projekt nemůžete otevřít",
+    "noAccessDescription": "Nebyl sdílen s vaším účtem, nebo vám byl přístup odebrán.",
+    "stoppedTitle": "Odpojeno",
+    "stoppedDescription": "Obnovte stránku a připojte se znovu."
+  },
+  "access": {
+    "changed": "Vaše nová role v tomto projektu: {{role}}."
+  },
+  "discarded": {
+    "read_only": "Vaše poslední úpravy se neuložily, protože tento projekt teď nemůžete upravovat.",
+    "refused": "Vaše poslední úpravy se nepodařilo uložit."
+  },
+  "views": {
+    "label": "Panely",
+    "files": "Soubory",
+    "source": "Zdroj",
+    "pdf": "PDF",
+    "comments": "Komentáře",
+    "chat": "Chat"
+  },
+  "presence": {
+    "label": "Právě přítomní"
+  },
+  "files": {
+    "title": "Soubory",
+    "empty": "Tento projekt zatím nemá žádné soubory.",
+    "tree": "Soubory projektu"
+  },
+  "source": {
+    "noFileTitle": "Otevřete soubor",
+    "noFileDescription": "Vyberte ze seznamu soubor, který chcete číst.",
+    "opening": "Otevírá se {{path}}",
+    "removed": "Soubor {{path}} byl z projektu odebrán.",
+    "readOnly": "Jen ke čtení",
+    "readOnlyHint": "Vaše role umožňuje tento projekt číst, ale ne upravovat.",
+    "modeLabel": "Režim úprav",
+    "editing": "Úpravy",
+    "suggesting": "Navrhování",
+    "suggestingHint": "Vaše úpravy jsou návrhy, které posoudí vlastník nebo editor.",
+    "comment": "Komentovat",
+    "commentHint": "Vyberte text, ke kterému chcete přidat komentář.",
+    "binary": "Tento soubor nelze v prohlížeči zobrazit.",
+    "blobFailed": "Soubor se nepodařilo načíst."
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "Kompilace: {{name}}, {{time}}",
+    "emptyTitle": "Zatím žádné PDF",
+    "emptyDescription": "PDF se tu zobrazí, až někdo projekt zkompiluje v aplikaci Oleafly.",
+    "loading": "Načítá se PDF",
+    "failed": "PDF se nepodařilo načíst.",
+    "zoomIn": "Přiblížit",
+    "zoomOut": "Oddálit",
+    "fitWidth": "Přizpůsobit šířce",
+    "download": "Stáhnout",
+    "zoom": "{{percent}} %"
+  },
+  "comments": {
+    "emptyTitle": "Žádné komentáře ani návrhy",
+    "emptyCanComment": "Vyberte text ve zdroji a zvolte Komentovat, tím založíte vlákno.",
+    "emptyReadOnly": "Tady se zobrazují komentáře a návrhy k tomuto projektu.",
+    "newComment": "Nový komentář",
+    "placeholder": "Napište komentář",
+    "submit": "Komentovat",
+    "reply": "Odpovědět",
+    "replyPlaceholder": "Odpověď",
+    "replyLabel": "Odpovědět v tomto vlákně",
+    "edit": "Upravit",
+    "editLabel": "Upravit komentář",
+    "save": "Uložit",
+    "delete": "Smazat",
+    "deleteTitle": "Smazat tento komentář?",
+    "deleteDescription": "Tento krok nelze vrátit.",
+    "messageActions": "Akce komentáře",
+    "resolve": "Vyřešit",
+    "reopen": "Znovu otevřít",
+    "resolvedBy": "Vyřešeno: {{name}}",
+    "deleted": "Komentář smazán",
+    "edited": "upraveno",
+    "anchorLost": "Text, ke kterému se komentář vztahoval, byl odstraněn.",
+    "showInSource": "Zobrazit ve zdroji",
+    "thread": "Komentář od {{name}}",
+    "hideResolved": "Skrýt vyřešené",
+    "resolvedCount_one": "{{count}} vyřešený komentář",
+    "resolvedCount_few": "{{count}} vyřešené komentáře",
+    "resolvedCount_many": "{{count}} vyřešeného komentáře",
+    "resolvedCount_other": "{{count}} vyřešených komentářů"
+  },
+  "suggestions": {
+    "inserted": "Přidáno",
+    "deleted": "Smazáno",
+    "accept": "Přijmout",
+    "reject": "Odmítnout",
+    "withdraw": "Vzít zpět",
+    "acceptAll": "Přijmout vše",
+    "rejectAll": "Odmítnout vše",
+    "pending_one": "{{count}} návrh",
+    "pending_few": "{{count}} návrhy",
+    "pending_many": "{{count}} návrhu",
+    "pending_other": "{{count}} návrhů",
+    "card": "Návrh od {{name}}",
+    "lineBreak": "Zalomení řádku"
+  },
+  "chat": {
+    "emptyTitle": "Zatím žádné zprávy",
+    "emptyDescription": "Zprávy tady vidí všichni v projektu.",
+    "placeholder": "Napište zprávu",
+    "label": "Zpráva",
+    "send": "Odeslat",
+    "readOnly": "Chat můžete číst. Čtenáři do něj nemohou psát.",
+    "delete": "Smazat zprávu",
+    "clear": "Vymazat chat",
+    "clearTitle": "Vymazat chat pro všechny?",
+    "clearDescription": "Všichni v projektu o tyto zprávy přijdou.",
+    "messages": "Zprávy chatu"
+  },
+  "people": {
+    "you": "Vy",
+    "someone": "Někdo",
+    "unverified": "Neověřený autor"
+  },
+  "errors": {
+    "offline": "Jste offline. Zkuste to znovu, až budete připojeni.",
+    "generic": "Server tuto změnu odmítl.",
+    "suggestion_not_found": "Tento návrh už někdo vyřídil.",
+    "suggestion_not_yours": "Vzít zpět můžete jen vlastní návrhy.",
+    "suggestion_role": "Vaše role neumožňuje vytvářet ani posuzovat návrhy.",
+    "chat_role": "Vaše role neumožňuje psát do chatu.",
+    "comment_not_live": "Komentáře teď nejsou k dispozici.",
+    "comment_not_yours": "Měnit můžete jen vlastní komentáře.",
+    "comment_off_server": "Komentáře jsou na tomto serveru vypnuté.",
+    "comment_off_project": "Komentáře jsou v tomto projektu vypnuté.",
+    "comment_viewer": "Čtenáři nemohou komentovat.",
+    "comment_someone_replied": "Někdo už odpověděl, takže tento komentář nelze smazat.",
+    "comment_message_deleted": "Tento komentář byl smazán.",
+    "comment_selection_changed": "Text se změnil, zatímco jste psali. Vyberte ho znovu.",
+    "comment_too_long": "Komentář je příliš dlouhý.",
+    "comment_empty": "Nejdřív něco napište.",
+    "rate_limited": "Příliš mnoho změn najednou. Chvíli počkejte a zkuste to znovu.",
+    "too_large": "To je příliš velké na odeslání.",
+    "project_too_large": "Tento projekt je příliš velký na otevření v prohlížeči.",
+    "server_busy": "Server je zaneprázdněný. Zkuste to za chvíli znovu.",
+    "not_open": "Než soubor změníte, otevřete ho.",
+    "cross_site": "Tento požadavek nepřišel z webové aplikace Oleafly na tomto serveru. Obnovte stránku a zkuste to znovu.",
+    "conflict": "To koliduje se změnou, kterou provedl někdo jiný. Zkuste to znovu.",
+    "account_storage_full": "Účtu vlastníka projektu došlo na tomto serveru místo v úložišti.",
+    "too_many_uploads": "Za poslední hodinu jste nahráli příliš mnoho souborů. Zkuste to znovu později."
+  }
+}

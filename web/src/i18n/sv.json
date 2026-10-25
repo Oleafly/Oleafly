@@ -1,0 +1,190 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "Läser in",
+    "loadFailed": "Oleafly kunde inte nå servern.",
+    "retry": "Försök igen",
+    "dismiss": "Stäng",
+    "projects": "Projekt",
+    "account": "Konto",
+    "signOut": "Logga ut",
+    "signOutFailed": "Det gick inte att logga ut dig. Försök igen.",
+    "cancel": "Avbryt"
+  },
+  "signIn": {
+    "title": "Logga in på Oleafly",
+    "description": "Logga in med kontot som en medförfattare delade projektet med.",
+    "action": "Logga in"
+  },
+  "projects": {
+    "title": "Delat med dig",
+    "emptyTitle": "Inget har delats med dig än",
+    "emptyDescription": "När någon delar ett projekt med ditt konto visas det här.",
+    "untitled": "Namnlöst projekt",
+    "ownedBy": "Ägs av {{name}}",
+    "loadFailed": "Det gick inte att läsa in dina projekt.",
+    "list": "Projekt"
+  },
+  "roles": {
+    "owner": "Ägare",
+    "editor": "Redigerare",
+    "reviewer": "Granskare",
+    "commenter": "Kommentator",
+    "viewer": "Läsare",
+    "unknown": "Skrivskyddad"
+  },
+  "connection": {
+    "connecting": "Ansluter",
+    "online": "Ansluten",
+    "offline": "Offline",
+    "offlineBanner": "Du är offline. Dina ändringar sparas och skickas när anslutningen är tillbaka.",
+    "ended": "Frånkopplad"
+  },
+  "ended": {
+    "signedOutTitle": "Du är utloggad",
+    "signedOutDescription": "Logga in igen för att fortsätta arbeta med projektet.",
+    "noAccessTitle": "Du kan inte öppna det här projektet",
+    "noAccessDescription": "Det har inte delats med ditt konto, eller så har din åtkomst tagits bort.",
+    "stoppedTitle": "Frånkopplad",
+    "stoppedDescription": "Läs in sidan igen för att ansluta på nytt."
+  },
+  "access": {
+    "changed": "Din nya roll i projektet: {{role}}."
+  },
+  "discarded": {
+    "read_only": "Dina senaste ändringar sparades inte eftersom du inte längre kan redigera projektet.",
+    "refused": "Det gick inte att spara dina senaste ändringar."
+  },
+  "views": {
+    "label": "Paneler",
+    "files": "Filer",
+    "source": "Källkod",
+    "pdf": "PDF",
+    "comments": "Kommentarer",
+    "chat": "Chatt"
+  },
+  "presence": {
+    "label": "Här just nu"
+  },
+  "files": {
+    "title": "Filer",
+    "empty": "Projektet har inga filer än.",
+    "tree": "Projektfiler"
+  },
+  "source": {
+    "noFileTitle": "Öppna en fil",
+    "noFileDescription": "Välj en fil i listan för att läsa den.",
+    "opening": "Öppnar {{path}}",
+    "removed": "{{path}} har tagits bort från projektet.",
+    "readOnly": "Skrivskyddad",
+    "readOnlyHint": "Din roll kan läsa projektet men inte redigera det.",
+    "modeLabel": "Redigeringsläge",
+    "editing": "Redigering",
+    "suggesting": "Förslag",
+    "suggestingHint": "Dina ändringar blir förslag som en ägare eller redigerare granskar.",
+    "comment": "Kommentera",
+    "commentHint": "Markera text för att kommentera den.",
+    "binary": "Den här filen kan inte visas i webbläsaren.",
+    "blobFailed": "Det gick inte att läsa in filen."
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "Kompilerad av {{name}}, {{time}}",
+    "emptyTitle": "Ingen PDF än",
+    "emptyDescription": "PDF:en visas här när någon kompilerar projektet i Oleafly-appen.",
+    "loading": "Läser in PDF:en",
+    "failed": "Det gick inte att läsa in PDF:en.",
+    "zoomIn": "Zooma in",
+    "zoomOut": "Zooma ut",
+    "fitWidth": "Anpassa till bredden",
+    "download": "Ladda ner",
+    "zoom": "{{percent}} %"
+  },
+  "comments": {
+    "emptyTitle": "Inga kommentarer eller förslag",
+    "emptyCanComment": "Markera text i källkoden och välj Kommentera för att starta en tråd.",
+    "emptyReadOnly": "Kommentarer och förslag i projektet visas här.",
+    "newComment": "Ny kommentar",
+    "placeholder": "Skriv en kommentar",
+    "submit": "Kommentera",
+    "reply": "Svara",
+    "replyPlaceholder": "Svara",
+    "replyLabel": "Svara i den här tråden",
+    "edit": "Redigera",
+    "editLabel": "Redigera kommentar",
+    "save": "Spara",
+    "delete": "Ta bort",
+    "deleteTitle": "Ta bort den här kommentaren?",
+    "deleteDescription": "Det går inte att ångra.",
+    "messageActions": "Åtgärder för kommentaren",
+    "resolve": "Lös",
+    "reopen": "Öppna igen",
+    "resolvedBy": "Löst av {{name}}",
+    "deleted": "Kommentaren har tagits bort",
+    "edited": "redigerad",
+    "anchorLost": "Texten som kommentaren gällde har tagits bort.",
+    "showInSource": "Visa i källkoden",
+    "thread": "Kommentar från {{name}}",
+    "hideResolved": "Dölj lösta",
+    "resolvedCount_one": "{{count}} löst",
+    "resolvedCount_other": "{{count}} lösta"
+  },
+  "suggestions": {
+    "inserted": "Tillagt",
+    "deleted": "Borttaget",
+    "accept": "Acceptera",
+    "reject": "Avvisa",
+    "withdraw": "Dra tillbaka",
+    "acceptAll": "Acceptera alla",
+    "rejectAll": "Avvisa alla",
+    "pending_one": "{{count}} förslag",
+    "pending_other": "{{count}} förslag",
+    "card": "Förslag från {{name}}",
+    "lineBreak": "Radbrytning"
+  },
+  "chat": {
+    "emptyTitle": "Inga meddelanden än",
+    "emptyDescription": "Meddelanden här syns för alla i projektet.",
+    "placeholder": "Skriv ett meddelande",
+    "label": "Meddelande",
+    "send": "Skicka",
+    "readOnly": "Du kan läsa chatten. Läsare kan inte skriva i den.",
+    "delete": "Ta bort meddelande",
+    "clear": "Rensa chatten",
+    "clearTitle": "Rensa chatten för alla?",
+    "clearDescription": "Alla i projektet förlorar de här meddelandena.",
+    "messages": "Chattmeddelanden"
+  },
+  "people": {
+    "you": "Du",
+    "someone": "Någon",
+    "unverified": "Obekräftad författare"
+  },
+  "errors": {
+    "offline": "Du är offline. Försök igen när du är ansluten.",
+    "generic": "Servern avvisade ändringen.",
+    "suggestion_not_found": "Förslaget har redan hanterats.",
+    "suggestion_not_yours": "Du kan bara dra tillbaka dina egna förslag.",
+    "suggestion_role": "Din roll kan inte lämna eller granska förslag.",
+    "chat_role": "Din roll kan inte skriva i chatten.",
+    "comment_not_live": "Kommentarer är inte tillgängliga just nu.",
+    "comment_not_yours": "Du kan bara ändra dina egna kommentarer.",
+    "comment_off_server": "Kommentarer är avstängda på den här servern.",
+    "comment_off_project": "Kommentarer är avstängda för det här projektet.",
+    "comment_viewer": "Läsare kan inte kommentera.",
+    "comment_someone_replied": "Någon har svarat, så kommentaren kan inte tas bort.",
+    "comment_message_deleted": "Kommentaren har tagits bort.",
+    "comment_selection_changed": "Texten ändrades medan du skrev. Markera den igen.",
+    "comment_too_long": "Kommentaren är för lång.",
+    "comment_empty": "Skriv något först.",
+    "rate_limited": "För många ändringar på en gång. Vänta en stund och försök igen.",
+    "too_large": "Det är för stort för att skickas.",
+    "project_too_large": "Projektet är för stort för att öppnas i en webbläsare.",
+    "server_busy": "Servern är upptagen. Försök igen om en stund.",
+    "not_open": "Öppna filen innan du ändrar den.",
+    "cross_site": "Den här begäran kom inte från Oleafly-webbappen på den här servern. Läs in sidan igen och försök på nytt.",
+    "conflict": "Det krockar med en ändring som någon annan har gjort. Försök igen.",
+    "account_storage_full": "Projektägarens konto har slut på lagringsutrymme på den här servern.",
+    "too_many_uploads": "Du har laddat upp för många filer den senaste timmen. Försök igen senare."
+  }
+}

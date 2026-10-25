@@ -26,7 +26,7 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { CollabLinkKeeper } from "./CollabLinkKeeper";
 
-const OPEN = "oleafly://open?server=https%3A%2F%2Fcollab.uni.edu&project=01920000-0000-7000-8000-0000000000aa";
+const UNREADABLE = "oleafly://open?path=/srv/thesis";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -37,7 +37,7 @@ beforeEach(() => {
     mocks.handler = handler;
     return mocks.unlisten;
   });
-  useSettingsStore.setState({ liveCollaboration: false, settingsOpen: false });
+  useSettingsStore.setState({ settingsOpen: false });
   useFilesStore.setState({ projectsLoaded: true, loading: false });
 });
 
@@ -65,25 +65,25 @@ describe("CollabLinkKeeper", () => {
   });
 
   it("hands the links it drains to the link intake", async () => {
-    mocks.collabPendingLinks.mockResolvedValueOnce([OPEN]);
+    mocks.collabPendingLinks.mockResolvedValueOnce([UNREADABLE]);
     render(<CollabLinkKeeper />);
-    expect(await screen.findByText(enCollab.links.turnedOff, {}, { timeout: 5_000 })).toBeInTheDocument();
+    expect(await screen.findByText(enCollab.links.malformed, {}, { timeout: 5_000 })).toBeInTheDocument();
   });
 
   it("hands over links that arrive later too", async () => {
     render(<CollabLinkKeeper />);
     await waitFor(() => expect(mocks.collabPendingLinks).toHaveBeenCalledOnce());
-    expect(screen.queryByText(enCollab.links.turnedOff)).not.toBeInTheDocument();
-    mocks.collabPendingLinks.mockResolvedValueOnce([OPEN]);
+    expect(screen.queryByText(enCollab.links.malformed)).not.toBeInTheDocument();
+    mocks.collabPendingLinks.mockResolvedValueOnce([UNREADABLE]);
     await act(async () => mocks.handler?.());
-    expect(await screen.findByText(enCollab.links.turnedOff, {}, { timeout: 5_000 })).toBeInTheDocument();
+    expect(await screen.findByText(enCollab.links.malformed, {}, { timeout: 5_000 })).toBeInTheDocument();
   });
 
   it("hands links pasted inside the app to the link intake too, and empties the paste box", async () => {
     render(<CollabLinkKeeper />);
     await waitFor(() => expect(mocks.collabPendingLinks).toHaveBeenCalledOnce());
-    act(() => useLinkInbox.getState().add(OPEN));
-    expect(await screen.findByText(enCollab.links.turnedOff, {}, { timeout: 5_000 })).toBeInTheDocument();
+    act(() => useLinkInbox.getState().add(UNREADABLE));
+    expect(await screen.findByText(enCollab.links.malformed, {}, { timeout: 5_000 })).toBeInTheDocument();
     expect(useLinkInbox.getState().links).toEqual([]);
   });
 

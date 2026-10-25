@@ -163,6 +163,7 @@ pub use mock_smtp::{
     CapturedEmail, MockSmtp, MockSmtpFault, MOCK_MAIL_FROM, MOCK_SMTP_PASSWORD, MOCK_SMTP_USER,
 };
 mod server;
+pub mod suggestions;
 
 pub use server::{
     allowlist, api_error_code, app_callback, challenge_nonce, follow_to_app, no_redirect_client,

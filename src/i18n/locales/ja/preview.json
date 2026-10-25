@@ -96,7 +96,20 @@
     "chooseEngine": "エンジンを選択",
     "installPackages_other": "{{count}} 件のファイルを探してインストール",
     "downloadTypst": "Typst {{version}} をダウンロード",
-    "useTypst": "Typst {{version}} を使う"
+    "useTypst": "Typst {{version}} を使う",
+    "installTool": "{{tool}} {{version}} をインストール",
+    "installToolSize": "{{tool}} {{version}} をインストール（{{size}}）",
+    "engineSettings": "エンジンの設定を開く"
+  },
+  "html": {
+    "builtTitle": "ウェブページとしてビルドしました",
+    "builtDetail": "{{time}} にビルドしました。ウェブページはブラウザで開きます。",
+    "building": "ウェブページをビルドしています",
+    "buildingDetail": "完了したら、ブラウザで開けます。",
+    "pendingTitle": "この文書はウェブページとしてビルドされます",
+    "pendingDetail": "コンパイルしてから、ブラウザで開いてください。",
+    "open": "ブラウザで開く",
+    "compile": "コンパイル"
   },
   "stale": {
     "badge": "古い",

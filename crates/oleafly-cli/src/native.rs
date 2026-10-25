@@ -45,7 +45,7 @@ impl BuildOptions {
             Engine::Tectonic => (false, false, false),
             Engine::Latexmk => (false, true, false),
             Engine::Typst => (false, true, true),
-            Engine::Markdown => (true, true, true),
+            Engine::Markdown | Engine::Quarto | Engine::Calepin => (true, true, true),
         };
         [
             (offline && self.offline, "--offline"),
@@ -185,6 +185,7 @@ impl BuildTools {
             Engine::Latexmk => self.latexmk.as_deref(),
             Engine::Typst => self.typst.as_deref(),
             Engine::Markdown => self.pandoc.as_deref(),
+            Engine::Quarto | Engine::Calepin => None,
         }
     }
 
@@ -197,6 +198,7 @@ impl BuildTools {
                 ("pandoc", self.pandoc.as_deref()),
                 ("tectonic", self.tectonic.as_deref()),
             ],
+            Engine::Quarto | Engine::Calepin => Vec::new(),
         }
     }
 
@@ -207,6 +209,9 @@ impl BuildTools {
     }
 
     fn missing_for_engine(&self, engine: Engine) -> Error {
+        if matches!(engine, Engine::Quarto | Engine::Calepin) {
+            return not_in_command_line(engine);
+        }
         let name = engine.tool_name();
         if let (Engine::Typst, Some(message)) = (engine, self.typst_pin_error()) {
             return Error::new(ErrorKind::MissingTool, message);
@@ -433,6 +438,7 @@ impl NativeCompiler {
                     output.clone(),
                 )
             }
+            Engine::Quarto | Engine::Calepin => return Err(not_in_command_line(build.engine())),
         };
         let working_directory = match (&scratch, build.engine()) {
             (Some(scratch), _) => scratch.path(),
@@ -536,6 +542,19 @@ fn pandoc_engine_path(tectonic: &Path) -> Result<(PathBuf, Option<CompilerAlias>
     }
     let alias = CompilerAlias::create(tectonic, "tectonic")?;
     Ok((alias.executable.clone(), Some(alias)))
+}
+
+fn not_in_command_line(engine: Engine) -> Error {
+    let (name, command) = match engine {
+        Engine::Calepin => ("Calepin", "calepin compile"),
+        _ => ("Quarto", "quarto render"),
+    };
+    Error::new(
+        ErrorKind::Build,
+        format!(
+            "{name} projects can't be built from the command line yet. Open the project in Oleafly, or run `{command}` yourself."
+        ),
+    )
 }
 
 fn missing_tool(engine: Engine) -> Error {
@@ -1130,8 +1149,8 @@ fn image_check_applies(ok: bool, engine: Engine) -> bool {
 
 fn parse_errors(engine: Engine, log: &str) -> Vec<BuildError> {
     match engine {
-        Engine::Typst => parse_typst_errors(log),
-        Engine::Markdown => parse_pandoc_errors(log),
+        Engine::Typst | Engine::Calepin => parse_typst_errors(log),
+        Engine::Markdown | Engine::Quarto => parse_pandoc_errors(log),
         Engine::Tectonic | Engine::Latexmk => parse_tex_errors(log),
     }
 }
@@ -1290,6 +1309,26 @@ mod tests {
         assert!(offline_only.ignored_by(Engine::Typst).is_empty());
         assert_eq!(offline_only.ignored_by(Engine::Markdown), vec!["--offline"]);
         assert!(offline_only.ignored_by(Engine::Latexmk).is_empty());
+    }
+
+    #[test]
+    fn quarto_and_calepin_projects_say_the_command_line_cannot_build_them_yet() {
+        let compiler = NativeCompiler::new(BuildTools::default());
+        for engine in [Engine::Quarto, Engine::Calepin] {
+            let directory = TempDir::new().unwrap();
+            let workspace = workspace_for_engine(&directory, engine, None);
+            let build = workspace.prepare_build().unwrap();
+            let Err(error) = compiler.command(&build, BuildOptions::default()) else {
+                panic!("{engine:?} built from the command line");
+            };
+            assert_eq!(error.kind(), ErrorKind::Build);
+            assert!(
+                error.message().contains("command line yet"),
+                "{}",
+                error.message()
+            );
+            assert!(BuildTools::default().required_for_engine(engine).is_empty());
+        }
     }
 
     #[test]
@@ -1556,6 +1595,7 @@ mod tests {
                     Engine::Latexmk => Some(latexmk.as_path()),
                     Engine::Typst => Some(typst.as_path()),
                     Engine::Markdown => Some(pandoc.as_path()),
+                    Engine::Quarto | Engine::Calepin => None,
                 }
             );
         }

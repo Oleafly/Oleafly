@@ -96,7 +96,20 @@
     "chooseEngine": "选择引擎",
     "installPackages_other": "查找并安装 {{count}} 个文件",
     "downloadTypst": "下载 Typst {{version}}",
-    "useTypst": "使用 Typst {{version}}"
+    "useTypst": "使用 Typst {{version}}",
+    "installTool": "安装 {{tool}} {{version}}",
+    "installToolSize": "安装 {{tool}} {{version}}（{{size}}）",
+    "engineSettings": "打开引擎设置"
+  },
+  "html": {
+    "builtTitle": "已构建为网页",
+    "builtDetail": "构建于 {{time}}。网页会在你的浏览器中打开。",
+    "building": "正在构建网页",
+    "buildingDetail": "完成后，你可以在浏览器中打开它。",
+    "pendingTitle": "此文档会构建为网页",
+    "pendingDetail": "请先编译，然后在浏览器中打开。",
+    "open": "在浏览器中打开",
+    "compile": "编译"
   },
   "stale": {
     "badge": "已过期",

@@ -1,6 +1,6 @@
 use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, Query, State};
-use axum::http::{header, HeaderMap, StatusCode};
+use axum::http::{header, HeaderMap, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -31,11 +31,12 @@ use crate::mail::notify;
 use crate::members;
 use crate::rate_limit::client_key;
 use crate::routes::sign_in_pages::{self, Tone};
-use crate::routes::{code_sign_in, email_sign_in, json_body, Authenticated, ClientIp};
+use crate::routes::{code_sign_in, email_sign_in, json_body, web_pages, Authenticated, ClientIp};
 use crate::security_log::{self, NewSecurityEvent};
 use crate::settings;
 use crate::state::{setup_code_hash, AppState};
 use crate::tokens::random_token;
+use crate::web_sessions;
 
 const INCOMPLETE: &str = "This sign-in request is incomplete. Start again in Oleafly.";
 
@@ -152,7 +153,7 @@ pub(crate) fn account_label(identity: &ExternalIdentity) -> String {
         .unwrap_or_else(|| identity.display_name.clone())
 }
 
-fn callback_url(state: &AppState, provider: &str) -> Url {
+pub(crate) fn callback_url(state: &AppState, provider: &str) -> Url {
     state.config.endpoint(&format!("/auth/callback/{provider}"))
 }
 
@@ -255,11 +256,19 @@ async fn start(
     State(state): State<AppState>,
     PageLocale(locale): PageLocale,
     headers: HeaderMap,
-    Query(query): Query<AuthStartQuery>,
+    uri: Uri,
 ) -> Result<Response, ServerError> {
     if from_another_site(&headers) {
         return Err(ServerError::BadRequest(INCOMPLETE.to_owned()));
     }
+    #[cfg(feature = "web")]
+    if crate::web::sign_in::wanted(&uri) {
+        return crate::web::sign_in::start(&state, locale, &headers, &uri).await;
+    }
+    let query = match Query::<AuthStartQuery>::try_from_uri(&uri) {
+        Ok(Query(query)) => query,
+        Err(rejection) => return Ok(rejection.into_response()),
+    };
     let Some(redirect) = loopback_redirect(&query.redirect_uri) else {
         return Ok(sign_in_pages::notice(
             locale,
@@ -402,7 +411,7 @@ async fn refuse_other_browser(
         ip,
         detail: json!({
             "provider": pending.provider_id,
-            "flow": "device_code",
+            "flow": if web_sessions::is_web(pending) { "web" } else { "device_code" },
             "reason": "other_browser",
             "platform": pending.platform
         }),
@@ -434,7 +443,7 @@ async fn callback(
     else {
         return Ok(sign_in_already_over(locale));
     };
-    if pending.device_authorization.is_some()
+    if (pending.device_authorization.is_some() || web_sessions::is_web(&pending))
         && !browser_binding::holds(&headers, &state.config, &pending.code_challenge)
     {
         return refuse_other_browser(locale, &state, &pending, ip, now).await;
@@ -508,9 +517,20 @@ async fn callback(
     let account = account_label(&identity);
     let finishing = pending.clone();
     let max_members = state.config.limits.max_members_per_project;
+    let open_signup = state.config.open_signup;
     let outcome = state
         .db
-        .call(move |conn| complete_sign_in(conn, &identity, &finishing, ip, max_members, now))
+        .call(move |conn| {
+            complete_sign_in(
+                conn,
+                &identity,
+                &finishing,
+                ip,
+                max_members,
+                open_signup,
+                now,
+            )
+        })
         .await?;
     conclude_naming(locale, &state, &pending, outcome, Some(&account))
 }
@@ -520,6 +540,7 @@ pub(crate) enum Finish {
     Code(String),
     DeviceApproved,
     DeviceGone,
+    Web(web_sessions::Opened),
 }
 
 fn sign_in_already_over(locale: Locale) -> Response {
@@ -553,12 +574,17 @@ pub(crate) fn conclude_naming(
             locale, state, pending, outcome, account,
         ));
     }
+    if web_sessions::is_web(pending) {
+        return Ok(web_pages::concluded(
+            locale, state, pending, outcome, account,
+        ));
+    }
     let redirect = Url::parse(&pending.redirect_uri)
         .map_err(|error| ServerError::Internal(error.to_string()))?;
     let client_state = &pending.client_state;
     Ok(match outcome {
         Ok(Finish::Code(code)) => back_to_app(&state.config, &redirect, client_state, Ok(&code)),
-        Ok(Finish::DeviceApproved | Finish::DeviceGone) => back_to_app(
+        Ok(Finish::DeviceApproved | Finish::DeviceGone | Finish::Web(_)) => back_to_app(
             &state.config,
             &redirect,
             client_state,
@@ -576,6 +602,7 @@ pub(crate) fn complete_sign_in(
     pending: &PendingSignIn,
     ip: Option<String>,
     max_members: u32,
+    open_signup: bool,
     now: i64,
 ) -> Result<Result<Finish, AuthErrorCode>, ServerError> {
     let tx = conn.transaction().map_err(db_error)?;
@@ -584,7 +611,12 @@ pub(crate) fn complete_sign_in(
             return Ok(Ok(Finish::DeviceGone));
         }
     }
-    let decision = admission::decide(&tx, identity, pending.setup_code_hash.as_deref())?;
+    let decision = admission::decide(
+        &tx,
+        identity,
+        pending.setup_code_hash.as_deref(),
+        open_signup,
+    )?;
     let result = match admission::apply(&tx, identity, decision, max_members, ip.as_deref(), now)? {
         Applied::Admitted(admitted) => {
             if admitted.via == Via::Setup {
@@ -607,7 +639,7 @@ pub(crate) fn complete_sign_in(
                     actor: Some(admitted.account_id),
                     kind: SecurityEventKind::SignIn,
                     target: Some(admitted.account_id.to_string()),
-                    ip,
+                    ip: ip.clone(),
                     detail: json!({
                         "provider": identity.provider_id,
                         "via": admitted.via.as_str(),
@@ -623,6 +655,13 @@ pub(crate) fn complete_sign_in(
                 },
             )?;
             match &pending.device_authorization {
+                None if web_sessions::is_web(pending) => Ok(Finish::Web(web_sessions::open(
+                    &tx,
+                    pending,
+                    admitted.account_id,
+                    ip,
+                    now,
+                )?)),
                 None => Ok(Finish::Code(pending::issue_code(
                     &tx,
                     pending,

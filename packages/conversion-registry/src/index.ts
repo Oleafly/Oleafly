@@ -617,6 +617,8 @@ export function exportRoutesFor(
     latexmk: ["latex"],
     typst: ["typst"],
     markdown: ["markdown"],
+    quarto: ["markdown"],
+    calepin: ["typst"],
   };
   const sources = sourcesByEngine[engineId];
   if (!sources) {
@@ -629,6 +631,8 @@ export function exportRoutesFor(
     latexmk: ["pdf", "docx", "html", "md", "typst", "txt", "pptx", "epub"],
     typst: ["pdf", "tex", "docx", "html", "md", "txt"],
     markdown: ["pdf", "docx", "html", "typst", "tex", "txt", "pptx", "epub"],
+    quarto: ["pdf", "docx", "html"],
+    calepin: ["pdf", "html"],
   };
   const targetForFormat: Record<string, TargetFormat> = {
     pdf: "pdf",

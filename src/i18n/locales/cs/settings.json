@@ -184,6 +184,7 @@
       "keyPlaceholder": "Nechte prázdné, pokud žádný není potřeba",
       "keyPlaceholderStored": "Uložený klíč zůstane, dokud nezadáte nový",
       "namePlaceholder": "Acme",
+      "presetsLabel": "Běžní poskytovatelé",
       "submitAdd": "Přidat poskytovatele"
     },
     "instructions": {
@@ -280,7 +281,8 @@
       "badge": {
         "connected": "Připojeno",
         "notRunning": "Neběží",
-        "running": "Běží"
+        "running": "Běží",
+        "suggested": "Doporučeno"
       },
       "blurbs": {
         "anthropic": "Modely Claude - silné v kódu i psaní.",
@@ -290,7 +292,7 @@
         "groq": "Velmi rychlá inference otevřených modelů.",
         "mistral": "Modely Mistral a Codestral.",
         "ollama": "Spouští modely ve vašem počítači. Klíč není potřeba - nainstalujte Ollama a stáhněte model.",
-        "openai": "Modely GPT. Výchozí volba.",
+        "openai": "Modely GPT.",
         "openrouter": "Jeden klíč, přístup k modelům z mnoha laboratoří.",
         "perplexity": "Modely Sonar s živým ukotvením ve webu.",
         "xai": "Modely Grok od xAI.",
@@ -1301,6 +1303,58 @@
         "detail": "Sestavte otevřený projekt novější nainstalovanou verzí a před přepnutím porovnejte výsledky.",
         "check": "Zkontrolovat s Typst {{version}}"
       }
+    },
+    "notebook": {
+      "loading": "V tomto počítači se hledají Quarto, Calepin a jazyky",
+      "source": {
+        "system": "V tomto počítači",
+        "managed": "Staženo aplikací Oleafly"
+      },
+      "active": {
+        "version": "{{tool}} {{version}}",
+        "missing": "V tomto počítači nenalezeno."
+      },
+      "managedIdle": "Nepoužívá se. Oleafly přednostně používá kopii nalezenou v tomto počítači.",
+      "download": {
+        "optional": "Volitelné. Oleafly už používá kopii v tomto počítači.",
+        "license": "Licence {{license}}.",
+        "action": "Stáhnout {{tool}} {{version}} ({{size}})",
+        "actionNoSize": "Stáhnout {{tool}} {{version}}",
+        "notOffered": "Oleafly nemůže nástroj {{tool}} pro tento počítač stáhnout. Nainstalujte ho sami a Oleafly ho najde."
+      },
+      "removeAria": "Odebrat nástroj {{tool}}, který stáhl Oleafly",
+      "languages": {
+        "heading": "Jazyky",
+        "tooltip": "Kód v dokumentech Quarto a Calepin se spouští těmito programy.",
+        "notFound": "Nenalezeno",
+        "note": "Oleafly spouští kód pomocí jazyků R, Python a Julia, které už v tomto počítači jsou. Sám je nikdy neinstaluje."
+      },
+      "codeNote": "Kód v dokumentu se spustí až poté, co pro jeho projekt povolíte kód v nabídce kompilace.",
+      "progress": {
+        "starting": "Spouští se",
+        "downloading": "Stahuje se {{percent}} %",
+        "verifying": "Kontroluje se",
+        "extracting": "Rozbaluje se",
+        "done": "Dokončuje se"
+      },
+      "error": {
+        "load": "Quarto, Calepin a jazyky se nepodařilo vyhledat.",
+        "install": "{{tool}} se nepodařilo nainstalovat.",
+        "remove": "{{tool}} se nepodařilo odebrat."
+      }
+    },
+    "quarto": {
+      "heading": "Quarto",
+      "tooltip": "Quarto převádí dokumenty .qmd a .Rmd na PDF, webovou stránku nebo prezentaci. Oleafly použije Quarto z tohoto počítače, pokud ho najde, jinak kopii, kterou si stáhne.",
+      "detail": "Oleafly kompiluje dokumenty .qmd a .Rmd touto kopií.",
+      "downloadDetail": "Oleafly uchovává vlastní kopii ve složce aplikace. Quarto obsahuje Pandoc a další nástroje s vlastními licencemi."
+    },
+    "calepin": {
+      "heading": "Calepin",
+      "tooltip": "Calepin spustí kód v dokumentu Typst a výsledky vloží do PDF. Oleafly použije Calepin z tohoto počítače, pokud ho najde, jinak kopii, kterou si stáhne.",
+      "detail": "Oleafly kompiluje dokumenty Calepin touto kopií.",
+      "downloadDetail": "Oleafly uchovává vlastní kopii ve složce aplikace.",
+      "typstNote": "Calepin vysází výstup pomocí Typstu vestavěného v Oleafly. Vyžaduje Typst 0.15 nebo novější."
     }
   },
   "github": {

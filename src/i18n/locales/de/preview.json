@@ -97,7 +97,20 @@
     "installPackages_one": "{{name}} finden und installieren",
     "installPackages_other": "{{count}} Dateien finden und installieren",
     "downloadTypst": "Typst {{version}} herunterladen",
-    "useTypst": "Typst {{version}} verwenden"
+    "useTypst": "Typst {{version}} verwenden",
+    "installTool": "{{tool}} {{version}} installieren",
+    "installToolSize": "{{tool}} {{version}} installieren ({{size}})",
+    "engineSettings": "Engine-Einstellungen öffnen"
+  },
+  "html": {
+    "builtTitle": "Als Webseite erstellt",
+    "builtDetail": "Erstellt um {{time}}. Webseiten öffnen sich in Ihrem Browser.",
+    "building": "Webseite wird erstellt",
+    "buildingDetail": "Wenn sie fertig ist, können Sie sie in Ihrem Browser öffnen.",
+    "pendingTitle": "Dieses Dokument wird als Webseite erstellt",
+    "pendingDetail": "Kompilieren Sie es und öffnen Sie es dann in Ihrem Browser.",
+    "open": "Im Browser öffnen",
+    "compile": "Kompilieren"
   },
   "stale": {
     "badge": "Veraltet",

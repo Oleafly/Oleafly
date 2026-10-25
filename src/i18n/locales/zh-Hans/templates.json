@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "只显示 ATS（求职申请跟踪系统）能可靠解析的简历模板：单栏布局、标准字体、文字可选中（不把文字嵌入图片）。",
       "atsFriendly": "ATS 友好",
       "offlineTooltip": "只显示无需下载即可编译的模板：字体和依赖包已内置，无需联网即可构建。",

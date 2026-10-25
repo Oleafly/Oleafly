@@ -1069,6 +1069,16 @@
         "unknownEntryType": "Type d'entrée bibliographique inconnu @{{type}}."
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "option de bloc de code Quarto"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "option de bloc de code Calepin"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "Chargement de l'image",
@@ -1520,5 +1530,5 @@
     "keyTaken": "Une variante ne peut pas définir deux fois le même nom.",
     "saveFailed": "Impossible d'enregistrer les variantes."
   },
-  "sharedSettingsViewer": "Les lecteurs ne peuvent pas modifier ceci dans un projet partagé."
+  "sharedSettingsViewer": "Seuls les propriétaires et les éditeurs peuvent modifier ceci dans un projet partagé."
 }

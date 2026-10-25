@@ -7,6 +7,7 @@ const appState = vi.hoisted(() => {
   const files = {
     projectId: "project-1" as string | null,
     projectName: "Paper",
+    engine: { label: "Tectonic" },
     engineLoaded: false,
     loading: false,
     mainDoc: "main.tex",
@@ -266,6 +267,8 @@ vi.mock("@/components/layout/EnginePickerModal", () => ({ EnginePickerModal: () 
 vi.mock("@/components/open-folder/MainDocumentPicker", () => ({ MainDocumentPicker: () => null }));
 vi.mock("@/components/open-folder/OpenedFolderBanners", () => ({ OpenedFolderBanners: () => null }));
 vi.mock("@/components/layout/ShellCommandsBanner", () => ({ ShellCommandsBanner: () => null }));
+vi.mock("@/components/layout/CodeExecutionBanner", () => ({ CodeExecutionBanner: () => null }));
+vi.mock("@/components/layout/TypstCjkFontBanner", () => ({ TypstCjkFontBanner: () => null }));
 vi.mock("@/components/open-folder/OpenFolderKeeper", () => ({ OpenFolderKeeper: () => null }));
 vi.mock("@/components/layout/TinytexGuards", () => ({ TinytexGuards: () => null }));
 vi.mock("@/components/layout/QuitGuard", () => ({ QuitGuard: () => null }));

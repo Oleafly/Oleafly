@@ -109,7 +109,8 @@
     "shell_escape": "Vertrauen Sie diesem Ordner, bevor Sie shell escape erlauben.",
     "broad_folder": "Oleafly kann nicht dem ganzen Ordner {{name}} vertrauen. Wählen Sie einen kleineren Ordner.",
     "declined": "Dem Ordner wurde nicht vertraut.",
-    "unavailable": "Oleafly konnte nicht prüfen, ob diesem Ordner vertraut wird."
+    "unavailable": "Oleafly konnte nicht prüfen, ob diesem Ordner vertraut wird.",
+    "notebook": "Vertrauen Sie diesem Ordner, um mit Quarto oder Calepin zu kompilieren."
   },
   "open_folder": {
     "not_absolute": "Geben Sie den vollständigen Pfad zum Ordner an.",
@@ -224,6 +225,17 @@
     "template_unavailable": "Oleafly konnte diese Vorlage nicht öffnen. Möglicherweise wurde sie aus der Vorlagengalerie von Overleaf entfernt."
   },
   "collab": {
-    "turned_off": "Live-Zusammenarbeit ist ausgeschaltet. Schalten Sie sie in den Einstellungen unter Experimente ein."
+    "suggestion_role": "Ihre Rolle in diesem Projekt erlaubt keine Vorschläge."
+  },
+  "notebook": {
+    "code_needed": "{{engine}} muss Code ausführen, um dieses Dokument zu erstellen, und Code ist für dieses Projekt ausgeschaltet. Erlauben Sie Code in diesem Projekt, um es zu kompilieren.",
+    "quarto_missing": "Quarto ist nicht installiert. Installieren Sie es unter Einstellungen > Engines > Quarto und kompilieren Sie dann erneut.",
+    "calepin_missing": "Calepin ist nicht installiert. Installieren Sie es unter Einstellungen > Engines > Calepin und kompilieren Sie dann erneut.",
+    "not_offered": "Oleafly kann {{tool}} für diesen Computer nicht herunterladen. Installieren Sie es selbst und kompilieren Sie dann erneut.",
+    "busy": "{{tool}} wird noch installiert. Versuchen Sie es erneut, wenn die Installation fertig ist.",
+    "install_unverified": "{{tool}} wurde heruntergeladen, hat aber die Integritätsprüfung nicht bestanden. Versuchen Sie die Installation erneut.",
+    "unknown_tool": "Oleafly kennt kein Werkzeug namens {{tool}}.",
+    "not_managed": "Oleafly kann nur die Kopie von {{tool}} entfernen, die es selbst heruntergeladen hat.",
+    "no_html_output": "Es gibt noch keine HTML-Ausgabe. Kompilieren Sie zuerst das Dokument."
   }
 }

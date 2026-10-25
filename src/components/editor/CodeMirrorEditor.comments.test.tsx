@@ -63,7 +63,7 @@ function pressCommentChord(): KeyboardEvent {
 
 beforeEach(() => {
   useVisualModeStore.setState({ enabled: false });
-  useSettingsStore.setState({ spellcheck: false, harper: false, railTab: "files", liveCollaboration: true });
+  useSettingsStore.setState({ spellcheck: false, harper: false, railTab: "files" });
   useFilesStore.setState({ projectId: "project", manifestHome: "library", engine: LATEX_ENGINE, engineLoaded: true });
   useCommentsRail.setState({ visible: true, canCompose: true, request: null });
 });
@@ -71,7 +71,6 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   useCommentsRail.setState({ visible: false, canCompose: false, request: null });
-  useSettingsStore.setState({ liveCollaboration: false });
   useFilesStore.setState({ projectId: null, activePath: null, openTabs: [], files: {}, tree: [] });
 });
 
@@ -89,15 +88,6 @@ describe("comments in the source editor", () => {
 
   it("leaves the chord alone when the person cannot comment", async () => {
     useCommentsRail.setState({ canCompose: false });
-    await mount();
-    act(() => view().dispatch({ selection: { anchor: 16, head: 21 } }));
-    const event = pressCommentChord();
-    expect(event.defaultPrevented).toBe(false);
-    expect(useCommentsRail.getState().request).toBeNull();
-  });
-
-  it("leaves the chord alone while live collaboration is off", async () => {
-    useSettingsStore.setState({ liveCollaboration: false });
     await mount();
     act(() => view().dispatch({ selection: { anchor: 16, head: 21 } }));
     const event = pressCommentChord();

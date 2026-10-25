@@ -6,7 +6,7 @@ import type { FileReferenceLanguage, PathReference } from "./types";
 export function referenceLanguageForPath(path: string): FileReferenceLanguage | null {
   if (/\.(?:tex|ltx|latex|sty|cls)$/i.test(path)) return "latex";
   if (/\.typ$/i.test(path)) return "typst";
-  if (/\.(?:md|markdown)$/i.test(path)) return "markdown";
+  if (/\.(?:md|markdown|qmd|rmd)$/i.test(path)) return "markdown";
   return null;
 }
 

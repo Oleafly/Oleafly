@@ -61,6 +61,7 @@
       "loading": "기기 목록을 불러오는 중…",
       "loadFailed": "Oleafly가 기기 목록을 불러오지 못했습니다.",
       "current": "이 컴퓨터",
+      "browser": "브라우저",
       "added": "{{date}}에 추가됨",
       "lastSeen": "마지막 접속: {{date}}",
       "neverSeen": "아직 접속 기록 없음",
@@ -139,6 +140,7 @@
   "addServer": {
     "title": "공동 작업 서버 추가",
     "description": "그룹에서 받은 주소를 입력하세요. 로그인하기 전에 Oleafly가 서버를 확인합니다.",
+    "oleaflyDescription": "공개 Oleafly 서버",
     "addressLabel": "서버 주소",
     "addressPlaceholder": "collab.example.edu",
     "continue": "계속",
@@ -218,7 +220,15 @@
     "server_removed": "이 프로젝트의 서버가 더 이상 목록에 없습니다. 프로젝트를 로컬 사본으로 보관하거나 서버를 다시 추가하세요.",
     "share_in_progress": "이 프로젝트는 이미 공유하는 중입니다. 끝날 때까지 기다리세요.",
     "cancelled": "공유 프로젝트 열기가 취소되었습니다.",
-    "cloud_synced": "Oleafly 라이브러리가 클라우드 서비스가 동기화하는 폴더에 있습니다. 프로젝트를 공유하거나 참여하려면 Dropbox, OneDrive 또는 iCloud Drive 밖으로 옮기세요."
+    "cloud_synced": "Oleafly 라이브러리가 클라우드 서비스가 동기화하는 폴더에 있습니다. 프로젝트를 공유하거나 참여하려면 Dropbox, OneDrive 또는 iCloud Drive 밖으로 옮기세요.",
+    "suggestion_not_found": "이미 없는 제안입니다. 다른 사람이 수락하거나 거부했을 수 있습니다.",
+    "suggestion_not_yours": "이 제안은 제안한 사람만 철회할 수 있습니다.",
+    "suggestion_role": "이 프로젝트에서 내 역할로는 제안할 수 없습니다.",
+    "chat_role": "이 프로젝트에서 내 역할로는 채팅에서 그 작업을 할 수 없습니다.",
+    "history_unavailable": "이 프로젝트의 기록이 아직 이 컴퓨터에 없습니다. 동기화가 끝나면 다시 시도하세요.",
+    "account_storage_full": "프로젝트 소유자의 계정이 이 서버의 저장소를 모두 사용했습니다. 파일을 일부 제거해 공간을 확보하거나 서버 관리자에게 공간을 늘려 달라고 요청하세요.",
+    "too_many_projects": "이 서버가 허용하는 최대 개수의 공유 프로젝트가 이미 있습니다. 다른 프로젝트를 공유하려면 먼저 하나의 공유를 중지하세요.",
+    "too_many_uploads": "지난 한 시간 동안 업로드를 너무 많이 했습니다. 나중에 다시 시도하세요."
   },
   "roles": {
     "admin": "관리자",
@@ -481,8 +491,16 @@
   "projectRoles": {
     "owner": "소유자",
     "editor": "편집자",
+    "reviewer": "검토자",
+    "commenter": "댓글 작성자",
     "viewer": "뷰어",
     "unknown": "알 수 없는 역할"
+  },
+  "projectRoleDescriptions": {
+    "editor": "편집 및 제안 검토",
+    "reviewer": "변경 제안 및 댓글",
+    "commenter": "읽기 및 댓글",
+    "viewer": "읽기 전용"
   },
   "share": {
     "button": "공유",
@@ -494,6 +512,8 @@
     "editCopy": "공유된 사본입니다. 앞으로는 원래 폴더가 아니라 이 사본을 편집하세요.",
     "serverLabel": "서버",
     "noServers": "먼저 공동 작업 서버에 로그인한 다음 여기로 돌아와 공유하세요.",
+    "noServersYet": "이 프로젝트를 공유하려면 공동 작업 서버를 추가하고 로그인하세요.",
+    "addOleafly": "Oleafly 서버 추가",
     "openSettings": "공동 작업 설정 열기",
     "checking": "프로젝트를 확인하는 중…",
     "checkFailed": "Oleafly가 이 프로젝트를 확인하지 못했습니다.",
@@ -503,7 +523,7 @@
     "cloudSynced": "Oleafly 라이브러리가 iCloud, Dropbox 같은 서비스가 동기화하는 폴더에 있습니다. 두 동기화 서비스가 같은 파일을 두고 충돌하므로 Oleafly는 그곳에서 공유할 수 없습니다. 먼저 라이브러리를 그 폴더 밖으로 옮기세요.",
     "tooLarge": "이 파일들은 서버 한도인 {{size}} MB를 넘습니다. 공유하기 전에 파일 크기를 줄이거나 파일을 제거하세요.",
     "renamed": "일부 파일 이름은 컴퓨터에 따라 쓸 수 없습니다. 다른 사람에게는 이 파일들이 조금 다른 이름으로 전달됩니다.",
-    "excluded": "공유하지 않는 항목: 빌드 출력, Oleafly 설정, Git 기록.",
+    "excluded": "공유하지 않는 항목: 기타 빌드 출력, Oleafly 설정, Git 기록. 최신 컴파일 PDF는 공유되므로 공동 저자가 브라우저에서 읽을 수 있습니다.",
     "start": "공유",
     "preparing": "프로젝트를 준비하는 중…",
     "uploading": "그림과 기타 파일 업로드 중: {{total}}개 중 {{done}}개",
@@ -551,7 +571,7 @@
     },
     "comments": {
       "label": "댓글",
-      "description": "편집할 수 있는 사람은 누구나 이 프로젝트의 텍스트에 댓글을 달 수 있습니다. 끄면 댓글이 숨겨지지만 삭제되지는 않습니다.",
+      "description": "소유자, 편집자, 검토자, 댓글 작성자는 이 프로젝트의 텍스트에 댓글을 달 수 있습니다. 끄면 댓글이 숨겨지지만 삭제되지는 않습니다.",
       "serverOff": "{{server}}에서 댓글이 꺼져 있습니다. 서버 관리자에게 켜 달라고 요청하세요."
     },
     "stop": "공유 중지",
@@ -594,6 +614,7 @@
     "unknownPerson": "누군가",
     "viewing": "{{path}} 보는 중",
     "editing": "{{path}} 편집 중",
+    "reviewing": "{{path}} 검토 중",
     "goTo": "{{name}} 님 위치로 이동",
     "nowhere": "열린 파일이 없어 이동할 곳이 없습니다"
   },
@@ -666,6 +687,8 @@
   },
   "activity": {
     "welcomeEdit": "{{server}}의 {{owner}} 님이 공유했습니다. 편집할 수 있습니다.",
+    "welcomeReview": "{{server}}의 {{owner}} 님이 공유했습니다. 변경을 제안하고 댓글을 달 수 있습니다.",
+    "welcomeComment": "{{server}}의 {{owner}} 님이 공유했습니다. 댓글을 달 수 있습니다.",
     "welcomeView": "{{server}}의 {{owner}} 님이 공유했습니다. 볼 수 있습니다.",
     "joined": "{{name}} 님이 프로젝트를 열었습니다",
     "left": "{{name}} 님이 프로젝트를 닫았습니다",
@@ -774,9 +797,7 @@
       "signedOutTitle": "이 서버에서 로그아웃되어 있습니다",
       "signedOutDescription": "설정에서 다시 로그인한 다음 서버 카드에서 관리 콘솔을 여세요.",
       "refusedTitle": "관리 콘솔은 관리자와 유지 관리자만 쓸 수 있습니다",
-      "refusedDescription": "이 서버에서 내 역할은 {{role}}입니다. 서버를 관리해야 한다면 관리자에게 요청하세요.",
-      "turnedOffTitle": "실시간 공동 작업이 꺼져 있습니다",
-      "turnedOffDescription": "여기에서 이 서버를 관리하려면 설정의 실험 기능에서 다시 켜세요."
+      "refusedDescription": "이 서버에서 내 역할은 {{role}}입니다. 서버를 관리해야 한다면 관리자에게 요청하세요."
     },
     "overview": {
       "loading": "개요를 불러오는 중…",
@@ -929,8 +950,6 @@
     }
   },
   "links": {
-    "turnedOff": "실시간 공동 작업이 꺼져 있습니다. 설정의 실험 기능에서 켠 다음 링크를 다시 여세요.",
-    "openSettings": "설정 열기",
     "malformed": "Oleafly에서 이 링크를 열 수 없습니다. 링크를 보낸 사람에게 새 링크를 요청하세요.",
     "opening": "공유 프로젝트를 여는 중…",
     "downloading": "파일 다운로드 중: {{total}}개 중 {{done}}개",
@@ -952,8 +971,8 @@
     "add": "댓글 추가",
     "showResolved": "해결된 댓글 보기",
     "hideResolved": "해결된 댓글 숨기기",
-    "empty": "아직 댓글이 없습니다.",
-    "emptyCanWrite": "아직 댓글이 없습니다. 텍스트를 선택하고 댓글 추가를 눌러 시작하세요.",
+    "empty": "아직 댓글이나 제안이 없습니다.",
+    "emptyCanWrite": "아직 댓글이나 제안이 없습니다. 텍스트를 선택하고 댓글 추가를 눌러 시작하세요.",
     "allResolved": "모든 댓글이 해결되었습니다.",
     "loadFailed": "이 파일의 댓글을 불러오지 못했습니다.",
     "detached": "분리된 댓글",
@@ -1010,6 +1029,111 @@
       "empty": "게시하기 전에 내용을 입력하세요."
     }
   },
+  "suggestions": {
+    "insertedBy": "{{name}} 님이 이 텍스트 추가를 제안했습니다",
+    "deletedBy": "{{name}} 님이 이 텍스트 삭제를 제안했습니다",
+    "unverifiedLabel": "Oleafly가 확인할 수 없는 사람이 제안함",
+    "card": "{{name}} 님의 제안",
+    "unverifiedCard": "Oleafly가 확인할 수 없는 사람의 제안",
+    "added": "추가됨",
+    "deleted": "삭제됨",
+    "accept": "수락",
+    "reject": "거부",
+    "withdraw": "철회",
+    "acceptAll": "모두 수락",
+    "rejectAll": "모두 거부",
+    "fileActions": "{{file}}의 제안",
+    "pendingCount": "검토 대기 중인 제안: {{number}}개",
+    "loadFailed": "이 파일의 제안을 불러오지 못했습니다.",
+    "rejectAllConfirm": {
+      "title": "{{file}}의 모든 제안을 거부할까요?",
+      "description": "이 프로젝트의 모든 사람에게 원래 텍스트가 파일로 돌아갑니다. 검토 대기 중인 제안: {{number}}개.",
+      "confirm": "모두 거부"
+    },
+    "withdrawConfirm": {
+      "title": "이 제안을 철회할까요?",
+      "description": "이 프로젝트의 모든 사람에게 원래 텍스트가 파일로 돌아갑니다.",
+      "confirm": "철회"
+    },
+    "pendingCompile": "이 프로젝트에 검토를 기다리는 제안이 {{number}}개 있습니다. PDF에는 제안이 수락된 것처럼 표시됩니다.",
+    "pendingExport": "이 프로젝트에 검토를 기다리는 제안이 {{number}}개 있습니다. 내보낸 파일에는 제안이 수락된 것처럼 포함됩니다.",
+    "mode": {
+      "label": "편집 또는 제안",
+      "editing": "편집",
+      "suggesting": "제안",
+      "editingHint": "편집: 편집한 내용이 텍스트에 바로 반영됩니다",
+      "suggestingHint": "제안: 편집한 내용이 제안이 되고 소유자나 편집자가 수락합니다",
+      "reviewerHint": "검토자이므로 편집한 내용이 제안이 되고 소유자나 편집자가 수락합니다"
+    }
+  },
+  "chat": {
+    "title": "채팅",
+    "titleUnread": "채팅, 새 메시지",
+    "list": "메시지",
+    "empty": "아직 메시지가 없습니다.",
+    "label": "메시지",
+    "placeholder": "메시지를 입력하세요",
+    "send": "보내기",
+    "readOnly": "뷰어는 채팅을 읽을 수 있지만 게시할 수는 없습니다.",
+    "offline": "지금은 이 프로젝트가 연결되어 있지 않아 게시할 수 없습니다.",
+    "delete": "메시지 삭제",
+    "deleteConfirm": {
+      "title": "이 메시지를 삭제할까요?",
+      "description": "이 프로젝트의 모든 사람에게서 삭제됩니다."
+    },
+    "deleted": "삭제된 메시지입니다.",
+    "clear": "채팅 지우기",
+    "clearConfirm": {
+      "title": "채팅을 지울까요?",
+      "description": "이 프로젝트의 모든 사람에게서 모든 메시지가 삭제됩니다. 되돌릴 수 없습니다.",
+      "confirm": "채팅 지우기"
+    },
+    "loadFailed": "Oleafly가 채팅을 불러오지 못했습니다.",
+    "loadOlder": "이전 메시지 보기"
+  },
+  "history": {
+    "title": "기록",
+    "refresh": "기록 새로 고침",
+    "empty": "아직 변경 사항이 없습니다.",
+    "loadFailed": "Oleafly가 프로젝트 기록을 불러오지 못했습니다.",
+    "loadMore": "이전 변경 사항 보기",
+    "earlier": "그 이전 변경 사항",
+    "timeRange": "{{from}}부터 {{to}}까지",
+    "authorsMore": "{{names}} 외 {{number}}명",
+    "filesChanged": "변경된 파일: {{number}}개",
+    "open": "열기",
+    "compare": "비교",
+    "compareWith": "이 버전과 비교",
+    "comparePick": "비교할 두 번째 버전을 선택하세요.",
+    "cancelCompare": "취소",
+    "name": "이 버전에 이름 지정",
+    "rename": "이름 바꾸기",
+    "unname": "이름 제거",
+    "nameLabel": "버전 이름",
+    "namePlaceholder": "예: 심사자에게 보냄",
+    "versionDescription": "이 변경 이후 프로젝트의 모습입니다. 아무것도 바꾸지 않고 여기서 읽을 수 있습니다.",
+    "files": "파일",
+    "noFiles": "이 버전에서 변경된 텍스트 파일이 없습니다.",
+    "fileLabel": "{{time}} 시점의 {{path}}",
+    "fileMissing": "이 버전에는 이 파일이 없었습니다.",
+    "loadingFile": "불러오는 중…",
+    "restoreFile": "이 파일 복원",
+    "restoreProject": "전체 프로젝트 복원",
+    "restoreFileConfirm": {
+      "title": "{{path}}을(를) 복원할까요?",
+      "description": "이 프로젝트의 모든 사람에게 파일이 {{time}} 시점의 상태로 돌아갑니다. 현재 텍스트는 기록에 남으므로 다시 되돌릴 수 있습니다.",
+      "confirm": "파일 복원"
+    },
+    "restoreProjectConfirm": {
+      "title": "전체 프로젝트를 복원할까요?",
+      "description": "이 프로젝트의 모든 사람에게 모든 파일이 {{time}} 시점의 상태로 돌아갑니다. 현재 텍스트는 기록에 남으므로 다시 되돌릴 수 있습니다.",
+      "confirm": "프로젝트 복원"
+    },
+    "compareTitle": "두 버전 사이의 변경 사항",
+    "compareDescription": "{{from}}부터 {{to}}까지",
+    "changedFiles": "변경된 파일: {{number}}개",
+    "noChanges": "이 두 버전 사이에 바뀐 텍스트가 없습니다."
+  },
   "accessLog": {
     "opened": "{{name}} 님이 프로젝트를 열었습니다",
     "joinedLink": "{{name}} 님이 링크로 참여했습니다",
@@ -1065,6 +1189,10 @@
   "access": {
     "viewerBy": "{{name}} 님이 나를 뷰어로 변경했습니다. 이 프로젝트를 읽을 수는 있지만 편집할 수는 없습니다.",
     "viewer": "이제 뷰어입니다. 이 프로젝트를 읽을 수는 있지만 편집할 수는 없습니다.",
+    "commenterBy": "{{name}} 님이 나를 댓글 작성자로 변경했습니다. 이 프로젝트를 읽고 댓글을 달 수는 있지만 편집할 수는 없습니다.",
+    "commenter": "이제 댓글 작성자입니다. 이 프로젝트를 읽고 댓글을 달 수는 있지만 편집할 수는 없습니다.",
+    "reviewerBy": "{{name}} 님이 나를 검토자로 변경했습니다. 내 편집은 제안이 되고 소유자나 편집자가 수락합니다.",
+    "reviewer": "이제 검토자입니다. 내 편집은 제안이 되고 소유자나 편집자가 수락합니다.",
     "viewOnly": "이 공유 프로젝트를 볼 수는 있지만 편집할 수는 없습니다.",
     "connecting": "이 공유 프로젝트는 아직 연결 중이라 아직 변경할 수 없습니다. 잠시 후 다시 시도하세요.",
     "unsentReadOnly": "이제 이 프로젝트를 보기만 할 수 있어서 {{path}}의 마지막 변경 내용을 보내지 못했습니다.",
@@ -1081,6 +1209,8 @@
     "projectTooLarge": "이 프로젝트가 서버의 크기 제한({{limit}})에 도달해 {{file}}은(는) 이 컴퓨터에 남습니다. 서버를 운영하는 사람에게 제한을 늘려 달라고 요청하세요.",
     "projectTooLargeUnknown": "이 프로젝트가 서버의 크기 제한에 도달해 {{file}}은(는) 이 컴퓨터에 남습니다. 서버를 운영하는 사람에게 제한을 늘려 달라고 요청하세요.",
     "projectFull": "이 프로젝트가 서버의 크기 제한에 도달해 변경 사항이 당분간 이 컴퓨터에 남습니다. 서버를 운영하는 사람에게 제한을 늘려 달라고 요청하세요.",
+    "accountStorageFull": "프로젝트 소유자가 이 서버의 저장소를 모두 사용해 공유하지 못함: {{files}}",
+    "tooManyUploads": "지난 한 시간 동안 업로드를 너무 많이 해서 아직 공유하지 못함: {{files}}. 나중에 다시 시도하세요.",
     "replaced": "{{name}} 님이 같은 시점에 {{file}} 파일을 바꿨습니다. 내 버전은 {{copy}}(으)로 보관됩니다.",
     "added": "{{name}} 님이 같은 이름의 파일을 추가해서 {{file}} 파일 이름이 {{copy}}(으)로 바뀌었습니다.",
     "beside": "{{name}} 님에게도 {{file}} 파일이 있습니다. 그 파일은 {{copy}}(으)로 보관됩니다.",

@@ -45,32 +45,44 @@ function UploadProgressLine({ path }: Readonly<{ path: string }>) {
   );
 }
 
-function UploadRow({ files, failed }: Readonly<{ files: readonly CollabUploadFile[]; failed: boolean }>) {
+type UploadRowKind = "waiting" | "failed" | "account_storage_full" | "too_many_uploads";
+
+const UPLOAD_ROW_TEST_IDS: Readonly<Record<UploadRowKind, string>> = {
+  waiting: "collab-upload-waiting",
+  failed: "collab-upload-failed",
+  account_storage_full: "collab-upload-storage-full",
+  too_many_uploads: "collab-upload-too-many",
+};
+
+function UploadRow({ files, kind }: Readonly<{ files: readonly CollabUploadFile[]; kind: UploadRowKind }>) {
   const { t } = useTranslation(["collab"]);
   const retrying = useFileNotices((state) => state.retrying);
   const names = formatList(files.map((file) => basename(file.path)));
-  const tone: WorkspaceBannerTone = failed ? "warning" : "primary";
-  const message = failed
-    ? t(($) => $.collab.files.failed, { files: names })
-    : t(($) => $.collab.files.waiting, { files: names });
+  const waiting = kind === "waiting";
+  const tone: WorkspaceBannerTone = waiting ? "primary" : "warning";
+  let message: string;
+  if (kind === "waiting") message = t(($) => $.collab.files.waiting, { files: names });
+  else if (kind === "failed") message = t(($) => $.collab.files.failed, { files: names });
+  else if (kind === "account_storage_full") message = t(($) => $.collab.files.accountStorageFull, { files: names });
+  else message = t(($) => $.collab.files.tooManyUploads, { files: names });
   return (
-    <WorkspaceBanner tone={tone} data-testid={failed ? "collab-upload-failed" : "collab-upload-waiting"}>
-      {failed ? (
-        <CloudAlert aria-hidden className="size-3.5 shrink-0" />
-      ) : (
+    <WorkspaceBanner tone={tone} data-testid={UPLOAD_ROW_TEST_IDS[kind]}>
+      {waiting ? (
         <CloudUpload aria-hidden className="size-3.5 shrink-0 text-primary" />
+      ) : (
+        <CloudAlert aria-hidden className="size-3.5 shrink-0" />
       )}
       <PathMessage paths={files.map((file) => file.path)}>{message}</PathMessage>
       <WorkspaceBannerButton
         tone={tone}
-        className={failed ? undefined : "text-primary"}
+        className={waiting ? "text-primary" : undefined}
         disabled={retrying}
         onClick={() => void useFileNotices.getState().retry()}
       >
         {retrying ? <Spinner size="xs" /> : null}
         {t(($) => $.collab.files.retry)}
       </WorkspaceBannerButton>
-      {failed ? null : files.map((file) => <UploadProgressLine key={file.path} path={file.path} />)}
+      {waiting ? files.map((file) => <UploadProgressLine key={file.path} path={file.path} />) : null}
     </WorkspaceBanner>
   );
 }
@@ -206,11 +218,15 @@ export function FileNoticesBanner() {
   const waiting = notices.uploads.filter((file) => file.state === "waiting");
   const tooLarge = notices.uploads.filter((file) => file.state === "too_large");
   const projectFull = notices.uploads.filter((file) => file.state === "project_too_large");
+  const storageFull = notices.uploads.filter((file) => file.state === "account_storage_full");
+  const tooMany = notices.uploads.filter((file) => file.state === "too_many_uploads");
   const quiet =
     failed.length === 0 &&
     waiting.length === 0 &&
     tooLarge.length === 0 &&
     projectFull.length === 0 &&
+    storageFull.length === 0 &&
+    tooMany.length === 0 &&
     notices.kept.length === 0;
   if (quiet && !notices.offer && !notices.broughtIn) return null;
   const someone = t(($) => $.collab.toolbar.unknownPerson);
@@ -218,8 +234,10 @@ export function FileNoticesBanner() {
     <div className="flex shrink-0 flex-col">
       {notices.offer ? <LocalCopyRow offer={notices.offer} /> : null}
       {notices.broughtIn ? <BroughtInRow name={notices.broughtIn} /> : null}
-      {failed.length > 0 ? <UploadRow files={failed} failed /> : null}
-      {waiting.length > 0 ? <UploadRow files={waiting} failed={false} /> : null}
+      {failed.length > 0 ? <UploadRow files={failed} kind="failed" /> : null}
+      {storageFull.length > 0 ? <UploadRow files={storageFull} kind="account_storage_full" /> : null}
+      {tooMany.length > 0 ? <UploadRow files={tooMany} kind="too_many_uploads" /> : null}
+      {waiting.length > 0 ? <UploadRow files={waiting} kind="waiting" /> : null}
       {tooLarge.map((file) => (
         <TooLargeRow key={file.path} file={file} />
       ))}

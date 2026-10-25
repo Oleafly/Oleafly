@@ -18,7 +18,7 @@ export type LoadedInsights =
 
 const TYPST_FILE = /\.typ$/iu;
 const LATEX_FILE = /\.(?:tex|ltx|latex|sty|cls|bib)$/iu;
-const MARKDOWN_FILE = /\.(?:md|markdown|bib|json|ya?ml)$/iu;
+const MARKDOWN_FILE = /\.(?:md|markdown|qmd|rmd|bib|json|ya?ml)$/iu;
 const MAX_EXTRA_READS = 200;
 
 export function insightsEngineFor(engine: { id?: string; source_format?: string } | null | undefined): InsightsEngine | null {

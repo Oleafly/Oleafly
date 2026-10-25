@@ -162,19 +162,31 @@ pub fn scratch_name(name: &str) -> bool {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct ShareRules(Vec<IgnoreRule>);
+pub struct ShareRules {
+    rules: Vec<IgnoreRule>,
+    root: Option<PathBuf>,
+}
 
 impl ShareRules {
     pub fn load(root: &Path) -> ShareRules {
-        ShareRules(
-            std::fs::read_to_string(root.join(".gitignore"))
+        ShareRules {
+            rules: std::fs::read_to_string(root.join(".gitignore"))
                 .map(|text| parse_gitignore(&text))
                 .unwrap_or_default(),
-        )
+            root: Some(root.to_path_buf()),
+        }
+    }
+
+    fn generated(&self, relative: &str) -> bool {
+        oleafly_core::exclude::is_generated_folder(relative, |sibling| {
+            self.root
+                .as_ref()
+                .is_some_and(|root| root.join(sibling).is_file())
+        })
     }
 
     fn skips(&self, name: &str, relative: &str, is_dir: bool) -> bool {
-        scratch_name(name) || ignored(&self.0, relative, is_dir)
+        scratch_name(name) || self.generated(relative) || ignored(&self.rules, relative, is_dir)
     }
 
     pub fn leaves_out(&self, relative: &str, is_dir: bool) -> bool {
@@ -812,6 +824,49 @@ mod tests {
                 scan.excluded
             );
         }
+    }
+
+    #[test]
+    fn quarto_output_is_never_shared_and_calepin_results_are() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        for path in [
+            "report.qmd",
+            "report_files/figure-html/plot.png",
+            "notes/analysis.Rmd",
+            "notes/analysis_files/libs/quarto.js",
+            "data_files/raw.csv",
+            ".quarto/xref/index.json",
+            ".calepin/calepin.typ",
+        ] {
+            write(root, path, "x");
+        }
+        let scan = scan_folder(root).unwrap();
+        let files: Vec<&str> = scan.files.iter().map(|(path, _)| path.as_str()).collect();
+        assert_eq!(
+            files,
+            vec![
+                ".calepin/calepin.typ",
+                "data_files/raw.csv",
+                "notes/analysis.Rmd",
+                "report.qmd"
+            ]
+        );
+        assert!(!scan.excluded.iter().any(|path| path == ".calepin/"));
+        for left_out in [".quarto/", "notes/analysis_files/", "report_files/"] {
+            assert!(
+                scan.excluded.iter().any(|path| path == left_out),
+                "{left_out} in {:?}",
+                scan.excluded
+            );
+        }
+        let rules = ShareRules::load(root);
+        assert!(rules.leaves_out("report_files/figure-html/plot.png", false));
+        assert!(rules.leaves_out(".quarto", false));
+        assert!(!rules.leaves_out("chapters/.Calepin/intro/calepin.typ", false));
+        assert!(!rules.leaves_out("data_files/raw.csv", false));
+        assert!(!rules.leaves_out("notes/report_files/plot.png", false));
+        assert!(!ShareRules::default().leaves_out("report_files/plot.png", false));
     }
 
     #[test]

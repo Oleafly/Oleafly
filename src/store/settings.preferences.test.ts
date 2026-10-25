@@ -40,7 +40,6 @@ describe("on/off preferences", () => {
     ["setShowWordChoice", "showWordChoice", "oleafly.harper.wordchoice"],
     ["setChatFloating", "chatFloating", "oleafly.ai.floating"],
     ["setLatexTools", "latexTools", "oleafly.latexTools"],
-    ["setLiveCollaboration", "liveCollaboration", "oleafly.liveCollaboration"],
     ["setEditorAutoCloseMath", "editorAutoCloseMath", "oleafly.editor.closeMath"],
     ["setEditorAutoCloseEnvironments", "editorAutoCloseEnvironments", "oleafly.editor.closeEnvironments"],
     ["setEditorStickyScroll", "editorStickyScroll", "oleafly.editor.stickyScroll"],
@@ -83,11 +82,10 @@ describe("on/off preferences", () => {
     expect("collabPresence" in settings).toBe(false);
   });
 
-  it("keeps live collaboration off on a new install", async () => {
-    const fresh = await reload({});
-    expect(fresh.liveCollaboration).toBe(false);
-    const on = await reload({ "oleafly.liveCollaboration": "1" });
-    expect(on.liveCollaboration).toBe(true);
+  it("has no live collaboration switch and forgets an old saved one on load", async () => {
+    const settings = await reload({ "oleafly.liveCollaboration": "1" });
+    expect("liveCollaboration" in settings).toBe(false);
+    expect(localStorage.getItem("oleafly.liveCollaboration")).toBeNull();
   });
 });
 

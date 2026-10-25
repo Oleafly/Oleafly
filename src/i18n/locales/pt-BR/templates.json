@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "Mostrar apenas modelos de currículo que os sistemas de triagem de candidatos (ATS) conseguem ler com segurança: coluna única, fontes padrão e texto selecionável (sem palavras embutidas em imagens).",
       "atsFriendly": "Compatível com ATS",
       "offlineTooltip": "Mostrar apenas modelos que compilam sem baixar nada: as fontes e os pacotes já vêm embutidos, então eles funcionam sem conexão.",

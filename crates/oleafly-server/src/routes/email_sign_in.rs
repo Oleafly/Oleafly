@@ -8,11 +8,13 @@ use oleafly_collab_protocol::page::status;
 use serde::Deserialize;
 use serde_json::json;
 
+use crate::auth::browser_binding;
 use crate::auth::csrf;
 use crate::auth::device_code;
 use crate::auth::email_link::{self, Link};
 use crate::auth::pending::{self, PendingSignIn};
 use crate::auth::throttle::{self, Throttle};
+use crate::config::ServerConfig;
 use crate::error::ServerError;
 use crate::i18n::{Key, Locale, PageLocale};
 use crate::mail::{deliverable, messages, EmailKind, OutgoingEmail};
@@ -26,6 +28,7 @@ use crate::routes::sign_in_pages::{self, device_label, Field, Input};
 use crate::routes::ClientIp;
 use crate::security_log::{self, NewSecurityEvent};
 use crate::state::AppState;
+use crate::web_sessions;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -163,7 +166,10 @@ fn on_a_phone_or_tablet(headers: &HeaderMap) -> bool {
         })
 }
 
-fn needs_the_computer(pending: &PendingSignIn, headers: &HeaderMap) -> bool {
+fn needs_the_computer(pending: &PendingSignIn, headers: &HeaderMap, config: &ServerConfig) -> bool {
+    if web_sessions::is_web(pending) {
+        return !browser_binding::holds(headers, config, &pending.code_challenge);
+    }
     let desktop = matches!(
         pending.platform.trim().to_ascii_lowercase().as_str(),
         "macos" | "windows" | "linux"
@@ -174,11 +180,16 @@ fn needs_the_computer(pending: &PendingSignIn, headers: &HeaderMap) -> bool {
 fn open_on_the_computer(locale: Locale, state: &AppState, pending: &PendingSignIn) -> Response {
     let device = device_label(&pending.device_name, &pending.platform);
     let title = title(locale, state);
+    let text = if web_sessions::is_web(pending) {
+        Key::WebOtherBrowser
+    } else {
+        Key::EmailWrongDevice
+    };
     let body = format!(
         "{}{}{}",
         status(sign_in_pages::Tone::Notice),
         sign_in_pages::heading(&title),
-        sign_in_pages::paragraph(&locale.fill(Key::EmailWrongDevice, &[("device", &device)])),
+        sign_in_pages::paragraph(&locale.fill(text, &[("device", &device)])),
     );
     sign_in_pages::render(locale, StatusCode::OK, &title, &body, None)
 }
@@ -429,7 +440,7 @@ async fn show_link(
     let Some(pending) = pending else {
         return Ok(sign_in_expired(locale));
     };
-    if needs_the_computer(&pending, &headers) {
+    if needs_the_computer(&pending, &headers, &state.config) {
         return Ok(open_on_the_computer(locale, &state, &pending));
     }
     let csrf = csrf::token(&headers);
@@ -550,8 +561,10 @@ async fn use_link(
     let now = state.clock.now_ms();
     let token = form.token.clone();
     let max_members = state.config.limits.max_members_per_project;
+    let open_signup = state.config.open_signup;
     let typed = form.user_code.clone();
     let phone = headers.clone();
+    let config = std::sync::Arc::clone(&state.config);
     let outcome = state
         .db
         .call(move |conn| {
@@ -564,7 +577,7 @@ async fn use_link(
             else {
                 return Ok(Err(Used::Gone));
             };
-            if needs_the_computer(&pending, &phone) {
+            if needs_the_computer(&pending, &phone, &config) {
                 return Ok(Err(Used::WrongDevice(pending)));
             }
             if let Some(problem) = typed_code_problem(conn, pending, &typed, &ip, now)? {
@@ -586,6 +599,7 @@ async fn use_link(
                 &pending,
                 ip,
                 max_members,
+                open_signup,
                 now,
             )?;
             Ok(Ok((pending, finished, email)))

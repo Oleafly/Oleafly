@@ -1,0 +1,188 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "正在載入",
+    "loadFailed": "Oleafly 無法連線到伺服器。",
+    "retry": "再試一次",
+    "dismiss": "關閉",
+    "projects": "專案",
+    "account": "帳號",
+    "signOut": "登出",
+    "signOutFailed": "無法登出。請再試一次。",
+    "cancel": "取消"
+  },
+  "signIn": {
+    "title": "登入 Oleafly",
+    "description": "請用共同作者分享專案給你時所用的帳號登入。",
+    "action": "登入"
+  },
+  "projects": {
+    "title": "與你分享的專案",
+    "emptyTitle": "還沒有人與你分享專案",
+    "emptyDescription": "當有人與你的帳號分享專案時，專案會顯示在這裡。",
+    "untitled": "未命名專案",
+    "ownedBy": "擁有者：{{name}}",
+    "loadFailed": "無法載入你的專案。",
+    "list": "專案"
+  },
+  "roles": {
+    "owner": "擁有者",
+    "editor": "編輯者",
+    "reviewer": "審閱者",
+    "commenter": "評論者",
+    "viewer": "檢視者",
+    "unknown": "唯讀"
+  },
+  "connection": {
+    "connecting": "連線中",
+    "online": "已連線",
+    "offline": "離線",
+    "offlineBanner": "你已離線。你的變更會保留下來，並在連線恢復後送出。",
+    "ended": "已中斷連線"
+  },
+  "ended": {
+    "signedOutTitle": "你已登出",
+    "signedOutDescription": "重新登入即可繼續處理這個專案。",
+    "noAccessTitle": "你無法開啟這個專案",
+    "noAccessDescription": "這個專案未與你的帳號分享，或你的存取權已被移除。",
+    "stoppedTitle": "已中斷連線",
+    "stoppedDescription": "重新載入頁面即可再次連線。"
+  },
+  "access": {
+    "changed": "你在這個專案中的角色已變更為 {{role}}。"
+  },
+  "discarded": {
+    "read_only": "你最後的編輯沒有儲存，因為你現在無法編輯這個專案。",
+    "refused": "你最後的編輯無法儲存。"
+  },
+  "views": {
+    "label": "面板",
+    "files": "檔案",
+    "source": "原始碼",
+    "pdf": "PDF",
+    "comments": "評論",
+    "chat": "聊天"
+  },
+  "presence": {
+    "label": "目前在這個專案中的人"
+  },
+  "files": {
+    "title": "檔案",
+    "empty": "這個專案還沒有檔案。",
+    "tree": "專案檔案"
+  },
+  "source": {
+    "noFileTitle": "開啟檔案",
+    "noFileDescription": "從清單中選擇一個檔案來閱讀。",
+    "opening": "正在開啟 {{path}}",
+    "removed": "{{path}} 已從專案中移除。",
+    "readOnly": "唯讀",
+    "readOnlyHint": "你的角色可以閱讀這個專案，但不能編輯。",
+    "modeLabel": "編輯模式",
+    "editing": "編輯",
+    "suggesting": "建議",
+    "suggestingHint": "你的編輯會成為建議，由擁有者或編輯者審閱。",
+    "comment": "評論",
+    "commentHint": "選取文字即可評論。",
+    "binary": "這個檔案無法在瀏覽器中顯示。",
+    "blobFailed": "無法載入這個檔案。"
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "由 {{name}} 於 {{time}} 編譯",
+    "emptyTitle": "還沒有 PDF",
+    "emptyDescription": "有人在 Oleafly 應用程式中編譯專案後，PDF 會顯示在這裡。",
+    "loading": "正在載入 PDF",
+    "failed": "無法載入 PDF。",
+    "zoomIn": "放大",
+    "zoomOut": "縮小",
+    "fitWidth": "符合寬度",
+    "download": "下載",
+    "zoom": "{{percent}}%"
+  },
+  "comments": {
+    "emptyTitle": "沒有評論或建議",
+    "emptyCanComment": "在原始碼中選取文字，然後選擇「評論」即可開始討論。",
+    "emptyReadOnly": "這個專案的評論和建議會顯示在這裡。",
+    "newComment": "新評論",
+    "placeholder": "新增評論",
+    "submit": "評論",
+    "reply": "回覆",
+    "replyPlaceholder": "回覆",
+    "replyLabel": "回覆這個討論",
+    "edit": "編輯",
+    "editLabel": "編輯評論",
+    "save": "儲存",
+    "delete": "刪除",
+    "deleteTitle": "刪除這則評論嗎？",
+    "deleteDescription": "此動作無法復原。",
+    "messageActions": "評論操作",
+    "resolve": "解決",
+    "reopen": "重新開啟",
+    "resolvedBy": "由 {{name}} 解決",
+    "deleted": "評論已刪除",
+    "edited": "已編輯",
+    "anchorLost": "這則評論所針對的文字已被移除。",
+    "showInSource": "在原始碼中顯示",
+    "thread": "{{name}} 的評論",
+    "hideResolved": "隱藏已解決",
+    "resolvedCount_other": "{{count}} 則已解決"
+  },
+  "suggestions": {
+    "inserted": "已新增",
+    "deleted": "已刪除",
+    "accept": "接受",
+    "reject": "拒絕",
+    "withdraw": "撤回",
+    "acceptAll": "全部接受",
+    "rejectAll": "全部拒絕",
+    "pending_other": "{{count}} 個建議",
+    "card": "{{name}} 的建議",
+    "lineBreak": "換行"
+  },
+  "chat": {
+    "emptyTitle": "還沒有訊息",
+    "emptyDescription": "專案中的每個人都看得到這裡的訊息。",
+    "placeholder": "寫一則訊息",
+    "label": "訊息",
+    "send": "傳送",
+    "readOnly": "你可以閱讀聊天內容。檢視者無法傳送訊息。",
+    "delete": "刪除訊息",
+    "clear": "清除聊天",
+    "clearTitle": "要為所有人清除聊天嗎？",
+    "clearDescription": "專案中的每個人都會失去這些訊息。",
+    "messages": "聊天訊息"
+  },
+  "people": {
+    "you": "你",
+    "someone": "某人",
+    "unverified": "未經驗證的作者"
+  },
+  "errors": {
+    "offline": "你已離線。請在連線後再試一次。",
+    "generic": "伺服器拒絕了這項變更。",
+    "suggestion_not_found": "這個建議已經處理過了。",
+    "suggestion_not_yours": "你只能撤回自己的建議。",
+    "suggestion_role": "你的角色無法提出或審閱建議。",
+    "chat_role": "你的角色無法在聊天中傳送訊息。",
+    "comment_not_live": "目前無法使用評論。",
+    "comment_not_yours": "你只能修改自己的評論。",
+    "comment_off_server": "這個伺服器已關閉評論。",
+    "comment_off_project": "這個專案已關閉評論。",
+    "comment_viewer": "檢視者無法評論。",
+    "comment_someone_replied": "已有人回覆，所以這則評論無法刪除。",
+    "comment_message_deleted": "這則評論已被刪除。",
+    "comment_selection_changed": "你撰寫評論時文字已變更。請重新選取。",
+    "comment_too_long": "評論太長了。",
+    "comment_empty": "請先寫點內容。",
+    "rate_limited": "一次變更太多。請稍候再試一次。",
+    "too_large": "內容太大，無法傳送。",
+    "project_too_large": "這個專案太大，無法在瀏覽器中開啟。",
+    "server_busy": "伺服器忙碌中。請稍後再試一次。",
+    "not_open": "請先開啟檔案，再進行變更。",
+    "cross_site": "這個請求並非來自這個伺服器上的 Oleafly 網頁應用程式。請重新載入頁面後再試一次。",
+    "conflict": "這與其他人所做的變更衝突。請再試一次。",
+    "account_storage_full": "在這個伺服器上，專案擁有者的帳號儲存空間已用完。",
+    "too_many_uploads": "你在過去一小時內上傳次數過多。請稍後再試一次。"
+  }
+}

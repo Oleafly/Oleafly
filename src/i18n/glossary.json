@@ -4,7 +4,8 @@
     "BibTeX", "biber", "SyncTeX", "TikZ", "PDF", "DOI", "arXiv", "Git", "GitHub", "Ollama", "MCP",
     "ACP", "Vim", "URL", "JSON", "YAML", "CSV", "PNG", "SVG", "API", "GPU", "CPU", "Harper",
     "Hunspell", "Mermaid", "Excalidraw", "Zotero", "OpenAI", "Anthropic", "Claude", "Gemini",
-    "Codex", "Semantic Scholar", "Crossref", "OpenAlex", "Cookie", "shell", "Discord", "Dropbox"
+    "Codex", "Semantic Scholar", "Crossref", "OpenAlex", "Cookie", "shell", "Discord", "Dropbox",
+    "Quarto", "Calepin", "Python", "Julia", "Jupyter", "knitr", "reveal.js"
   ],
   "terms": {
     "zh-Hans": {

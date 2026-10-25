@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { AppConfig, StoredModel } from "@/lib/tauri";
-import { defaultModel, mergeCustomProviders, supportsModelDiscovery } from "@/lib/ai-providers";
+import { defaultModel, mergeCustomProviders, suggestedFirst, supportsModelDiscovery } from "@/lib/ai-providers";
 import { enabledModels, seedProviderModels } from "@/lib/ai-model-state";
 import { DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
 import { cn } from "@/lib/utils";
@@ -329,6 +329,7 @@ export interface ProvidersTabProps {
   onAddCustomProvider: () => void;
   onEditCustomProvider: (id: string) => void;
   deleteCustomProvider: (id: string) => Promise<void>;
+  suggestedProvider: string;
 }
 
 const BUILT_IN_PROVIDER_IDS = [
@@ -373,10 +374,13 @@ export function ProvidersTab({
   onAddCustomProvider,
   onEditCustomProvider,
   deleteCustomProvider,
+  suggestedProvider,
 }: Readonly<ProvidersTabProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const activeProvider = cfg.ai_provider;
-  const allProviders = mergeCustomProviders(cfg.ai_custom_providers);
+  const allProviders = suggestedFirst(mergeCustomProviders(cfg.ai_custom_providers), suggestedProvider);
+  const nothingSetUp =
+    cfg.ai_custom_providers.length === 0 && !allProviders.some((p) => (savedKeys[p.id] ?? "").length > 0);
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null);
   const [editingKey, setEditingKey] = useState<Record<string, boolean>>({});
 
@@ -412,8 +416,6 @@ export function ProvidersTab({
           const isReplacingKey = !hasSaved || (editingKey[p.id] ?? false);
           const isSelected = activeProvider === p.id;
           const isActive = isSelected && isConfigured;
-          // Settings never recommends or expands a provider implicitly. The
-          // user chooses which card to inspect, including the active provider.
           const isOpen = openProviders[p.id] ?? false;
           const renderProviderKeyActions = () => (
             <div className="mt-2 flex gap-2">
@@ -624,6 +626,11 @@ export function ProvidersTab({
                   </div>
                 </button>
                 <div className="relative mt-0.5 flex shrink-0 items-center gap-2">
+                  {nothingSetUp && p.id === suggestedProvider && (
+                    <Badge variant="primaryGhost" size="sm" data-testid="ai-provider-suggested">
+                      {t(($) => $.settings.ai.providers.badge.suggested)}
+                    </Badge>
+                  )}
                   <ProviderStatusBadge
                     isHost={p.isHost}
                     ollamaStatus={ollama.status}

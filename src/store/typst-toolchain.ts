@@ -101,7 +101,7 @@ function reportFailure(scope: string, error: unknown, message: string): void {
 
 async function refreshOpenTypstEngine(): Promise<void> {
   const files = useFilesStore.getState();
-  if (!files.projectId || files.engine.source_format !== "typst") return;
+  if (!files.projectId || files.engine.id !== "typst") return;
   await files.refreshEngine();
 }
 
@@ -222,7 +222,7 @@ export const useTypstToolchainStore = create<TypstToolchainStore>((set, get) => 
 });
 
 function typstEngineKey(engine: DocumentEngineDescriptor | null | undefined): string | null {
-  if (engine?.source_format !== "typst") return null;
+  if (engine?.id !== "typst") return null;
   return [engine.typst_version ?? "", engine.typst_resolved?.version ?? "", engine.typst_missing ?? ""].join("|");
 }
 

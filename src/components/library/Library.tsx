@@ -1103,6 +1103,8 @@ export function Library() {
                 { value: "latex", label: "LaTeX" },
                 { value: "typst", label: "Typst" },
                 { value: "markdown", label: "Markdown" },
+                { value: "quarto", label: "Quarto" },
+                { value: "calepin", label: "Calepin" },
               ]}
             />
             <FilterSelect

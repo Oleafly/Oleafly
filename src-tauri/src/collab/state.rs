@@ -181,14 +181,6 @@ impl CollabState {
         }
     }
 
-    pub(crate) fn cancel_joins(&self) {
-        for slot in locked(&self.joins).values() {
-            if Arc::strong_count(slot) > 1 {
-                slot.cancels.send_modify(|count| *count += 1);
-            }
-        }
-    }
-
     pub(crate) fn cancel_join(&self, server: ServerId, shared: SharedProjectId) -> bool {
         match locked(&self.joins).get(&(server, shared)) {
             Some(slot) if Arc::strong_count(slot) > 1 => {

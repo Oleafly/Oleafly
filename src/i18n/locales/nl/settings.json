@@ -184,6 +184,7 @@
       "keyPlaceholder": "Laat leeg als er geen nodig is",
       "keyPlaceholderStored": "De opgeslagen sleutel blijft staan tenzij je een nieuwe invult",
       "namePlaceholder": "Acme",
+      "presetsLabel": "Veelgebruikte providers",
       "submitAdd": "Provider toevoegen"
     },
     "instructions": {
@@ -280,7 +281,8 @@
       "badge": {
         "connected": "Verbonden",
         "notRunning": "Draait niet",
-        "running": "Draait"
+        "running": "Draait",
+        "suggested": "Aanbevolen"
       },
       "blurbs": {
         "anthropic": "Claude-modellen, sterk in code en schrijven.",
@@ -290,7 +292,7 @@
         "groq": "Zeer snelle inferentie met open modellen.",
         "mistral": "Mistral- en Codestral-modellen.",
         "ollama": "Draait modellen op je eigen computer. Geen sleutel nodig: installeer Ollama en haal een model op.",
-        "openai": "GPT-modellen. De standaardkeuze.",
+        "openai": "GPT-modellen.",
         "openrouter": "Eén sleutel, toegang tot modellen van veel labs.",
         "perplexity": "Sonar-modellen met actuele informatie van het web.",
         "xai": "Grok-modellen van xAI.",
@@ -1283,6 +1285,58 @@
         "detail": "Bouw het geopende project met een nieuwere geïnstalleerde versie en vergelijk de resultaten voordat je overstapt.",
         "check": "Controleren met Typst {{version}}"
       }
+    },
+    "notebook": {
+      "loading": "Deze computer controleren op Quarto, Calepin en talen",
+      "source": {
+        "system": "Op deze computer",
+        "managed": "Gedownload door Oleafly"
+      },
+      "active": {
+        "version": "{{tool}} {{version}}",
+        "missing": "Niet gevonden op deze computer."
+      },
+      "managedIdle": "Niet in gebruik. Oleafly gebruikt eerst de kopie die op deze computer is gevonden.",
+      "download": {
+        "optional": "Optioneel. Oleafly gebruikt de kopie op deze computer al.",
+        "license": "{{license}}-licentie.",
+        "action": "{{tool}} {{version}} downloaden ({{size}})",
+        "actionNoSize": "{{tool}} {{version}} downloaden",
+        "notOffered": "Oleafly kan {{tool}} niet downloaden voor deze computer. Installeer het zelf, dan vindt Oleafly het."
+      },
+      "removeAria": "Door Oleafly gedownloade kopie van {{tool}} verwijderen",
+      "languages": {
+        "heading": "Talen",
+        "tooltip": "Code in Quarto- en Calepin-documenten wordt met deze programma's uitgevoerd.",
+        "notFound": "Niet gevonden",
+        "note": "Oleafly voert code uit met de R, Python en Julia die al op deze computer staan. Het installeert ze nooit zelf."
+      },
+      "codeNote": "Code in een document wordt pas uitgevoerd nadat je code voor dat project hebt toegestaan in het compileermenu.",
+      "progress": {
+        "starting": "Starten",
+        "downloading": "Downloaden {{percent}}%",
+        "verifying": "Controleren",
+        "extracting": "Uitpakken",
+        "done": "Afronden"
+      },
+      "error": {
+        "load": "Kon niet controleren op Quarto, Calepin en talen.",
+        "install": "Kon {{tool}} niet installeren.",
+        "remove": "Kon {{tool}} niet verwijderen."
+      }
+    },
+    "quarto": {
+      "heading": "Quarto",
+      "tooltip": "Quarto maakt van .qmd- en .Rmd-documenten een PDF, een webpagina of dia's. Oleafly gebruikt de Quarto op deze computer als het die vindt, en anders een kopie die het zelf downloadt.",
+      "detail": "Oleafly compileert .qmd- en .Rmd-documenten met deze kopie.",
+      "downloadDetail": "Oleafly bewaart een eigen kopie in zijn appmap. Quarto bevat Pandoc en andere tools met hun eigen licenties."
+    },
+    "calepin": {
+      "heading": "Calepin",
+      "tooltip": "Calepin voert de code in een Typst-document uit en zet de resultaten in de PDF. Oleafly gebruikt de Calepin op deze computer als het die vindt, en anders een kopie die het zelf downloadt.",
+      "detail": "Oleafly compileert Calepin-documenten met deze kopie.",
+      "downloadDetail": "Oleafly bewaart een eigen kopie in zijn appmap.",
+      "typstNote": "Calepin rendert met de Typst die in Oleafly is ingebouwd. Daarvoor is Typst 0.15 of nieuwer nodig."
     }
   },
   "github": {

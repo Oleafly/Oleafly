@@ -51,7 +51,12 @@
     "test:e2e:app": "./scripts/e2e.sh",
     "i18n:types": "node --experimental-strip-types --no-warnings scripts/i18n/gen-types.ts",
     "i18n:types:check": "node --experimental-strip-types --no-warnings scripts/i18n/gen-types.ts --check",
-    "i18n:validate": "node --experimental-strip-types --no-warnings scripts/i18n/validate.ts"
+    "i18n:validate": "node --experimental-strip-types --no-warnings scripts/i18n/validate.ts",
+    "web:dev": "vite --config vite.web.config.ts",
+    "web:build": "vite build --config vite.web.config.ts",
+    "web:test": "vitest run --config vitest.web.config.ts",
+    "web:typecheck": "tsc --noEmit -p web",
+    "web:mock": "node --experimental-transform-types --no-warnings web/dev/mock-server.ts"
   },
   "dependencies": {
     "@citation-js/core": "0.8.2",

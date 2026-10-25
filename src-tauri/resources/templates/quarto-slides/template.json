@@ -1,0 +1,14 @@
+{
+  "id": "quarto-slides",
+  "name": "Quarto slides",
+  "category": "Presentations",
+  "description": "A Quarto reveal.js slide deck with a title slide, bullet points, math, a two-column slide and a Python code chunk. It builds an HTML deck that opens in your browser.",
+  "main_doc": "slides.qmd",
+  "engine": "quarto",
+  "layout": "slides",
+  "pages": "multi",
+  "default_color": "#447099",
+  "license": { "spdx": "MIT", "author": "Oleafly", "url": "https://github.com/Oleafly/Oleafly" },
+  "requires": { "packages": [], "fonts": [], "engine": "quarto" },
+  "order": 71
+}

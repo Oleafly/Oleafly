@@ -24,7 +24,7 @@ const SECTION_TABS: readonly (readonly [SettingsSearchSection, readonly string[]
   ["appearance", ["app", "editor", "terminal", "pdf", "browser", "files"]],
   ["data", ["local", "cloud"]],
   ["ai", ["providers", "agents", "instructions", "personas", "skills", "mcp"]],
-  ["engine", ["latex", "typst", "markdown"]],
+  ["engine", ["latex", "typst", "markdown", "quarto", "calepin"]],
   ["downloads", ["fonts", "templates", "dictionaries"]],
   ["integrations", ["github", "alphaxiv", "zotero", "citation-search", "oleafly-mcp"]],
   ["shortcuts", ["application", "editor", "codeIntelligence", "pdf"]],

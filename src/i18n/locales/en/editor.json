@@ -1055,6 +1055,16 @@
         "unknownEntryType": "Unknown bibliography entry type @{{type}}."
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "Quarto chunk option"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "Calepin chunk option"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "Loading image",
@@ -1499,5 +1509,5 @@
     "keyTaken": "A variant can't set the same name twice.",
     "saveFailed": "Could not save the variants."
   },
-  "sharedSettingsViewer": "Viewers can't change this in a shared project."
+  "sharedSettingsViewer": "Only owners and editors can change this in a shared project."
 }

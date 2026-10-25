@@ -61,6 +61,7 @@
       "loading": "Ladataan laitteitasi…",
       "loadFailed": "Oleafly ei voinut ladata laitteitasi.",
       "current": "Tämä kone",
+      "browser": "Selain",
       "added": "Lisätty {{date}}",
       "lastSeen": "Nähty viimeksi {{date}}",
       "neverSeen": "Ei vielä nähty",
@@ -139,6 +140,7 @@
   "addServer": {
     "title": "Lisää yhteistyöpalvelin",
     "description": "Anna osoite, jonka ryhmäsi antoi sinulle. Oleafly tarkistaa palvelimen ennen kuin kirjaudut sisään.",
+    "oleaflyDescription": "Julkinen Oleafly-palvelin",
     "addressLabel": "Palvelimen osoite",
     "addressPlaceholder": "collab.example.edu",
     "continue": "Jatka",
@@ -218,7 +220,15 @@
     "server_removed": "Tämän projektin palvelin ei ole enää listallasi. Säilytä projekti paikallisena kopiona tai lisää palvelin uudelleen.",
     "share_in_progress": "Tätä projektia jaetaan jo. Odota, että jakaminen valmistuu.",
     "cancelled": "Jaetun projektin avaaminen peruttiin.",
-    "cloud_synced": "Oleafly-kirjastosi on kansiossa, jota pilvipalvelu synkronoi. Siirrä se pois Dropboxista, OneDrivesta tai iCloud Drivesta, niin voit jakaa projekteja tai liittyä niihin."
+    "cloud_synced": "Oleafly-kirjastosi on kansiossa, jota pilvipalvelu synkronoi. Siirrä se pois Dropboxista, OneDrivesta tai iCloud Drivesta, niin voit jakaa projekteja tai liittyä niihin.",
+    "suggestion_not_found": "Ehdotusta ei enää ole. Joku on ehkä jo hyväksynyt tai hylännyt sen.",
+    "suggestion_not_yours": "Vain ehdotuksen tekijä voi perua sen.",
+    "suggestion_role": "Roolisi tässä projektissa ei salli ehdotuksia.",
+    "chat_role": "Roolisi tässä projektissa ei salli tätä keskustelussa.",
+    "history_unavailable": "Tämän projektin historia ei ole vielä tällä koneella. Yritä uudelleen, kun se on synkronoitu.",
+    "account_storage_full": "Projektin omistajan tililtä on loppunut tallennustila tällä palvelimella. Poista joitakin tiedostoja vapauttaaksesi tilaa tai pyydä palvelimen ylläpitäjältä lisää tilaa.",
+    "too_many_projects": "Sinulla on jo niin monta jaettua projektia kuin tämä palvelin sallii. Lopeta yhden projektin jakaminen ennen kuin jaat uuden.",
+    "too_many_uploads": "Olet lähettänyt viimeisen tunnin aikana liian monta tiedostoa. Yritä myöhemmin uudelleen."
   },
   "roles": {
     "admin": "Ylläpitäjä",
@@ -481,8 +491,16 @@
   "projectRoles": {
     "owner": "Omistaja",
     "editor": "Muokkaaja",
+    "reviewer": "Tarkastaja",
+    "commenter": "Kommentoija",
     "viewer": "Katselija",
     "unknown": "Tuntematon rooli"
+  },
+  "projectRoleDescriptions": {
+    "editor": "Muokkaa ja käsittelee ehdotuksia",
+    "reviewer": "Ehdottaa muutoksia ja kommentoi",
+    "commenter": "Lukee ja kommentoi",
+    "viewer": "Lukee vain"
   },
   "share": {
     "button": "Jaa",
@@ -494,6 +512,8 @@
     "editCopy": "Tämä on jaettu kopio. Muokkaa tästä lähtien tätä kopiota, älä alkuperäistä kansiota.",
     "serverLabel": "Palvelin",
     "noServers": "Kirjaudu ensin yhteistyöpalvelimelle ja palaa sitten jakamaan.",
+    "noServersYet": "Lisää yhteistyöpalvelin ja kirjaudu sisään, niin voit jakaa tämän projektin.",
+    "addOleafly": "Lisää Oleafly-palvelin",
     "openSettings": "Avaa Yhteistyö-asetukset",
     "checking": "Tarkistetaan projektia…",
     "checkFailed": "Oleafly ei voinut tarkistaa tätä projektia.",
@@ -503,7 +523,7 @@
     "cloudSynced": "Oleafly-kirjastosi on kansiossa, jota iCloud, Dropbox tai vastaava palvelu synkronoi. Kaksi synkronointipalvelua kilpailisi samoista tiedostoista, joten Oleafly ei voi jakaa sieltä. Siirrä kirjasto ensin pois kansiosta.",
     "tooLarge": "Nämä tiedostot ylittävät palvelimen rajan, joka on {{size}} MB. Pienennä tai poista ne ennen jakamista.",
     "renamed": "Kaikki nimet eivät toimi jokaisella koneella. Muut saavat nämä tiedostot hieman eri nimellä.",
-    "excluded": "Ei jaeta: käännöstulosteet, Oleafly-asetukset ja Git-historia.",
+    "excluded": "Ei jaeta: muut käännöstulosteet, Oleafly-asetukset ja Git-historia. Uusin käännetty PDF jaetaan, jotta kanssakirjoittajat voivat lukea sen selaimessa.",
     "start": "Jaa",
     "preparing": "Valmistellaan projektia…",
     "uploading": "Lähetetään kuvia ja muita tiedostoja: {{done}}/{{total}}",
@@ -551,7 +571,7 @@
     },
     "comments": {
       "label": "Kommentit",
-      "description": "Kaikki, joilla on muokkausoikeus, voivat kommentoida tämän projektin tekstiä. Jos poistat tämän käytöstä, kommentit piilotetaan, mutta niitä ei poisteta.",
+      "description": "Omistajat, muokkaajat, tarkastajat ja kommentoijat voivat kommentoida tämän projektin tekstiä. Jos poistat tämän käytöstä, kommentit piilotetaan, mutta niitä ei poisteta.",
       "serverOff": "Kommentit on poistettu käytöstä palvelimella {{server}}. Pyydä sen ylläpitäjää ottamaan ne käyttöön."
     },
     "stop": "Lopeta jakaminen",
@@ -594,6 +614,7 @@
     "unknownPerson": "Joku",
     "viewing": "Katselee: {{path}}",
     "editing": "Muokkaa: {{path}}",
+    "reviewing": "Tarkastaa: {{path}}",
     "goTo": "Siirry: {{name}}",
     "nowhere": "Ei missään tiedostossa, joten siirtymiskohdetta ei ole"
   },
@@ -666,6 +687,8 @@
   },
   "activity": {
     "welcomeEdit": "{{owner}} jakoi tämän palvelimella {{server}}. Voit muokata.",
+    "welcomeReview": "{{owner}} jakoi tämän palvelimella {{server}}. Voit ehdottaa muutoksia ja kommentoida.",
+    "welcomeComment": "{{owner}} jakoi tämän palvelimella {{server}}. Voit kommentoida.",
     "welcomeView": "{{owner}} jakoi tämän palvelimella {{server}}. Voit katsella.",
     "joined": "{{name}} avasi projektin",
     "left": "{{name}} sulki projektin",
@@ -774,9 +797,7 @@
       "signedOutTitle": "Olet kirjautunut ulos tältä palvelimelta",
       "signedOutDescription": "Kirjaudu uudelleen sisään Asetuksissa ja avaa sitten hallintakonsoli palvelimen kortista.",
       "refusedTitle": "Hallintakonsoli on ylläpitäjille ja valvojille",
-      "refusedDescription": "Roolisi tällä palvelimella on {{role}}. Kysy ylläpitäjältä, jos sinun täytyy hallita palvelinta.",
-      "turnedOffTitle": "Reaaliaikainen yhteistyö on pois päältä",
-      "turnedOffDescription": "Ota se uudelleen käyttöön Asetusten kohdassa Kokeilut, niin voit hallita palvelinta täällä."
+      "refusedDescription": "Roolisi tällä palvelimella on {{role}}. Kysy ylläpitäjältä, jos sinun täytyy hallita palvelinta."
     },
     "overview": {
       "loading": "Ladataan yleiskatsausta…",
@@ -929,8 +950,6 @@
     }
   },
   "links": {
-    "turnedOff": "Reaaliaikainen yhteistyö on pois päältä. Ota se käyttöön Asetusten Kokeilut-osiossa ja avaa linkki sitten uudelleen.",
-    "openSettings": "Avaa Asetukset",
     "malformed": "Oleafly ei voi avata tätä linkkiä. Pyydä lähettäjältä uusi linkki.",
     "opening": "Avataan jaettua projektia…",
     "downloading": "Ladataan tiedostoja: {{done}}/{{total}}",
@@ -952,8 +971,8 @@
     "add": "Lisää kommentti",
     "showResolved": "Näytä ratkaistut kommentit",
     "hideResolved": "Piilota ratkaistut kommentit",
-    "empty": "Kommentteja ei ole vielä.",
-    "emptyCanWrite": "Kommentteja ei ole vielä. Valitse tekstiä ja valitse Lisää kommentti aloittaaksesi.",
+    "empty": "Kommentteja tai ehdotuksia ei ole vielä.",
+    "emptyCanWrite": "Kommentteja tai ehdotuksia ei ole vielä. Valitse tekstiä ja valitse Lisää kommentti aloittaaksesi.",
     "allResolved": "Kaikki kommentit on ratkaistu.",
     "loadFailed": "Tämän tiedoston kommentteja ei voitu ladata.",
     "detached": "Irrotetut",
@@ -1010,6 +1029,111 @@
       "empty": "Kirjoita jotain ennen lähettämistä."
     }
   },
+  "suggestions": {
+    "insertedBy": "{{name}} ehdotti tämän lisäämistä",
+    "deletedBy": "{{name}} ehdotti tämän poistamista",
+    "unverifiedLabel": "Ehdottanut joku, jota Oleafly ei voinut vahvistaa",
+    "card": "Ehdotus käyttäjältä {{name}}",
+    "unverifiedCard": "Ehdotus joltakulta, jota Oleafly ei voinut vahvistaa",
+    "added": "Lisätty",
+    "deleted": "Poistettu",
+    "accept": "Hyväksy",
+    "reject": "Hylkää",
+    "withdraw": "Peru",
+    "acceptAll": "Hyväksy kaikki",
+    "rejectAll": "Hylkää kaikki",
+    "fileActions": "Ehdotukset tiedostossa {{file}}",
+    "pendingCount": "Odottavia ehdotuksia: {{number}}",
+    "loadFailed": "Tämän tiedoston ehdotuksia ei voitu ladata.",
+    "rejectAllConfirm": {
+      "title": "Hylätäänkö kaikki ehdotukset tiedostossa {{file}}?",
+      "description": "Alkuperäinen teksti palautetaan tiedostoon kaikille tämän projektin jäsenille. Odottavia ehdotuksia: {{number}}.",
+      "confirm": "Hylkää kaikki"
+    },
+    "withdrawConfirm": {
+      "title": "Perutaanko tämä ehdotus?",
+      "description": "Alkuperäinen teksti palautetaan tiedostoon kaikille tämän projektin jäsenille.",
+      "confirm": "Peru"
+    },
+    "pendingCompile": "Tässä projektissa on tarkistusta odottavia ehdotuksia: {{number}}. PDF näyttää ne ikään kuin ne olisi hyväksytty.",
+    "pendingExport": "Tässä projektissa on tarkistusta odottavia ehdotuksia: {{number}}. Vienti sisältää ne ikään kuin ne olisi hyväksytty.",
+    "mode": {
+      "label": "Muokkaaminen tai ehdottaminen",
+      "editing": "Muokkaaminen",
+      "suggesting": "Ehdottaminen",
+      "editingHint": "Muokkaaminen: muokkauksesi muuttavat tekstiä heti",
+      "suggestingHint": "Ehdottaminen: muokkauksistasi tulee ehdotuksia, jotka omistaja tai muokkaaja voi hyväksyä",
+      "reviewerHint": "Olet tarkastaja, joten muokkauksistasi tulee ehdotuksia, jotka omistaja tai muokkaaja voi hyväksyä"
+    }
+  },
+  "chat": {
+    "title": "Keskustelu",
+    "titleUnread": "Keskustelu, uusia viestejä",
+    "list": "Viestit",
+    "empty": "Viestejä ei ole vielä.",
+    "label": "Viesti",
+    "placeholder": "Kirjoita viesti",
+    "send": "Lähetä",
+    "readOnly": "Katselijat voivat lukea keskustelua mutta eivät kirjoittaa siihen.",
+    "offline": "Tämä projekti ei ole nyt yhteydessä, joten et voi lähettää viestejä.",
+    "delete": "Poista viesti",
+    "deleteConfirm": {
+      "title": "Poistetaanko tämä viesti?",
+      "description": "Se poistetaan kaikilta tämän projektin jäseniltä."
+    },
+    "deleted": "Tämä viesti on poistettu.",
+    "clear": "Tyhjennä keskustelu",
+    "clearConfirm": {
+      "title": "Tyhjennetäänkö keskustelu?",
+      "description": "Kaikki viestit poistetaan kaikilta tämän projektin jäseniltä. Tätä ei voi perua.",
+      "confirm": "Tyhjennä keskustelu"
+    },
+    "loadFailed": "Oleafly ei voinut ladata keskustelua.",
+    "loadOlder": "Näytä vanhemmat viestit"
+  },
+  "history": {
+    "title": "Historia",
+    "refresh": "Päivitä historia",
+    "empty": "Muutoksia ei ole vielä.",
+    "loadFailed": "Oleafly ei voinut ladata projektin historiaa.",
+    "loadMore": "Näytä vanhemmat muutokset",
+    "earlier": "Aiemmat muutokset",
+    "timeRange": "{{from}} ja {{to}} välillä",
+    "authorsMore": "{{names}} ja muita: {{number}}",
+    "filesChanged": "Muuttuneita tiedostoja: {{number}}",
+    "open": "Avaa",
+    "compare": "Vertaa",
+    "compareWith": "Vertaa tähän",
+    "comparePick": "Valitse toinen versio vertailua varten.",
+    "cancelCompare": "Peruuta",
+    "name": "Nimeä tämä versio",
+    "rename": "Nimeä uudelleen",
+    "unname": "Poista nimi",
+    "nameLabel": "Version nimi",
+    "namePlaceholder": "Esimerkiksi Lähetetty arvioijille",
+    "versionDescription": "Projekti sellaisena kuin se oli näiden muutosten jälkeen. Voit lukea sitä täällä muuttamatta mitään.",
+    "files": "Tiedostot",
+    "noFiles": "Tässä versiossa ei muuttunut yhtään tekstitiedostoa.",
+    "fileLabel": "{{path}} sellaisena kuin se oli ajankohtana {{time}}",
+    "fileMissing": "Tätä tiedostoa ei ollut tässä versiossa.",
+    "loadingFile": "Ladataan…",
+    "restoreFile": "Palauta tämä tiedosto",
+    "restoreProject": "Palauta koko projekti",
+    "restoreFileConfirm": {
+      "title": "Palautetaanko tiedosto {{path}}?",
+      "description": "Tiedosto palautuu kaikille tämän projektin jäsenille sellaiseksi kuin se oli ajankohtana {{time}}. Sen nykyinen teksti jää historiaan, joten voit palata siihen.",
+      "confirm": "Palauta tiedosto"
+    },
+    "restoreProjectConfirm": {
+      "title": "Palautetaanko koko projekti?",
+      "description": "Kaikki tiedostot palautuvat kaikille tämän projektin jäsenille sellaisiksi kuin ne olivat ajankohtana {{time}}. Nykyinen teksti jää historiaan, joten voit palata siihen.",
+      "confirm": "Palauta projekti"
+    },
+    "compareTitle": "Muutokset kahden version välillä",
+    "compareDescription": "{{from}} ja {{to}} välillä",
+    "changedFiles": "Muuttuneita tiedostoja: {{number}}",
+    "noChanges": "Tekstiä ei muuttunut näiden versioiden välillä."
+  },
   "accessLog": {
     "opened": "{{name}} avasi projektin",
     "joinedLink": "{{name}} liittyi linkin kautta",
@@ -1065,6 +1189,10 @@
   "access": {
     "viewerBy": "{{name}} muutti sinut katselijaksi. Voit lukea projektia mutta et muokata sitä.",
     "viewer": "Olet nyt katselija. Voit lukea projektia mutta et muokata sitä.",
+    "commenterBy": "{{name}} muutti sinut kommentoijaksi. Voit lukea ja kommentoida projektia mutta et muokata sitä.",
+    "commenter": "Olet nyt kommentoija. Voit lukea ja kommentoida projektia mutta et muokata sitä.",
+    "reviewerBy": "{{name}} muutti sinut tarkastajaksi. Muokkauksistasi tulee ehdotuksia, jotka omistaja tai muokkaaja voi hyväksyä.",
+    "reviewer": "Olet nyt tarkastaja. Muokkauksistasi tulee ehdotuksia, jotka omistaja tai muokkaaja voi hyväksyä.",
     "viewOnly": "Voit katsoa tätä jaettua projektia, mutta et muokata sitä.",
     "connecting": "Tätä jaettua projektia yhdistetään vielä, joten sitä ei voi vielä muuttaa. Yritä hetken päästä uudelleen.",
     "unsentReadOnly": "Viimeisimpiä muutoksiasi tiedostoon {{path}} ei lähetetty, koska voit nyt vain katsella tätä projektia.",
@@ -1081,6 +1209,8 @@
     "projectTooLarge": "{{file}} jää tälle koneelle, koska projekti on saavuttanut palvelimen kokorajan {{limit}}. Pyydä palvelimen ylläpitäjää nostamaan sitä.",
     "projectTooLargeUnknown": "{{file}} jää tälle koneelle, koska projekti on saavuttanut palvelimen kokorajan. Pyydä palvelimen ylläpitäjää nostamaan sitä.",
     "projectFull": "Tämä projekti on saavuttanut palvelimen kokorajan, joten muutoksesi jäävät toistaiseksi tälle koneelle. Pyydä palvelimen ylläpitäjää nostamaan rajaa.",
+    "accountStorageFull": "Jakaminen ei onnistunut, koska projektin omistajan tallennustila on loppunut tällä palvelimella: {{files}}",
+    "tooManyUploads": "Jakaminen ei ole vielä onnistunut, koska olet lähettänyt viimeisen tunnin aikana liian monta tiedostoa: {{files}}. Yritä myöhemmin uudelleen.",
     "replaced": "{{name}} korvasi tiedoston {{file}} samaan aikaan kuin sinä. Versiosi on tallessa nimellä {{copy}}.",
     "added": "{{file}} on nyt {{copy}}, koska {{name}} lisäsi samannimisen tiedoston.",
     "beside": "Myös käyttäjällä {{name}} on tiedosto nimeltä {{file}}. Se on tallessa nimellä {{copy}}.",

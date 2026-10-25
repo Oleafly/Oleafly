@@ -450,7 +450,19 @@
       "help": "En variant skickar egna värden till sys.inputs, till exempel för ett utkast eller en tryckfärdig version. Den valda varianten stannar på den här datorn. Lägg till eller redigera varianter under Dokumentinställningar.",
       "none": "Ingen variant"
     },
-    "sharedViewer": "Läsare kan inte ändra de här inställningarna i ett delat projekt."
+    "typEngine": {
+      "title": "Motor (det här projektet)",
+      "help": "Typst kompilerar dokumentet som det är skrivet. Calepin kör också koden i det och lägger in resultaten i PDF-filen.",
+      "typst": "Typst <note>[inbyggd]</note>",
+      "calepin": "Calepin <note>[kör kod]</note>"
+    },
+    "code": {
+      "title": "Kod (den här datorn)",
+      "help": "Quarto och Calepin kan köra R-, Python- och Julia-koden i det här projektet. Kod körs med dina behörigheter, så tillåt det bara för ett projekt du litar på. Valet gäller bara den här datorn.",
+      "off": "Av",
+      "run": "Kör kod på den här datorn"
+    },
+    "sharedViewer": "Bara ägare och redigerare kan ändra de här inställningarna i ett delat projekt."
   },
   "datePicker": {
     "placeholder": "Välj ett datum"
@@ -521,6 +533,18 @@
   "shellCommands": {
     "allow": "Tillåt externa kommandon",
     "banner": "Det här dokumentet kör externa kommandon när det kompileras, och det här projektet blockerar dem. Tillåt dem bara om du litar på alla filer i projektet."
+  },
+  "codeExecution": {
+    "allow": "Tillåt kod i det här projektet",
+    "needed": "Det här dokumentet måste köra sin kod för att byggas, och kod är avstängd för det här projektet. Tillåt kod bara om du litar på alla filer i projektet.",
+    "skipped": "Koden i det här dokumentet kördes inte eftersom kod är avstängd för det här projektet. Tillåt kod bara om du litar på alla filer i projektet.",
+    "storedResults": "PDF-filen visar kodresultat som sparats från en tidigare körning eftersom kod är avstängd för det här projektet. Tillåt kod bara om du litar på alla filer i projektet."
+  },
+  "typstCjkFonts": {
+    "message": "Dokumentet har kinesisk, japansk eller koreansk text som inget typsnitt på den här datorn kan visa, så texten saknas i PDF:en.",
+    "download": "Ladda ned typsnitt",
+    "downloadSize": "Ladda ned typsnitt ({{size}})",
+    "downloading": "Laddar ned typsnitt"
   },
   "errorBoundary": {
     "copyDiagnostics": "Kopiera diagnostiken",
@@ -650,6 +674,8 @@
       "standalone": "Fristående figur",
       "typst": "Typst",
       "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Calepin-anteckningsbok",
       "unknown": "Annat"
     },
     "reason": {
@@ -843,10 +869,6 @@
       "latexTools": {
         "description": "Visa galleriet Oleafly Tools och de enskilda verktygen (PDF-import, ekvationer, tabeller, BibTeX, labb- och litteratursökning, deadlines) plus deras snedstreckskommandon. Av som standard medan det fortfarande är i beta.",
         "label": "LaTeX-verktyg"
-      },
-      "liveCollaboration": {
-        "description": "Redigera projekt tillsammans med andra via en samarbetsserver som du eller din grupp driver. Lägger till avsnittet Samarbete i Inställningar. Av som standard medan det är i beta.",
-        "label": "Samarbete i realtid"
       },
       "warning": "De här funktionerna är experimentella och fortfarande i beta. De är inte fullt testade än och kan ändras, sluta fungera eller tas bort i en framtida version. Slå bara på dem om du vill prova pågående arbete.",
       "webBrowser": {

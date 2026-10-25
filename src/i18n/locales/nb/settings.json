@@ -184,6 +184,7 @@
       "keyPlaceholder": "La stå tom hvis ingen kreves",
       "keyPlaceholderStored": "Den lagrede nøkkelen blir stående til du skriver inn en ny",
       "namePlaceholder": "Acme",
+      "presetsLabel": "Vanlige leverandører",
       "submitAdd": "Legg til leverandør"
     },
     "instructions": {
@@ -280,7 +281,8 @@
       "badge": {
         "connected": "Tilkoblet",
         "notRunning": "Kjører ikke",
-        "running": "Kjører"
+        "running": "Kjører",
+        "suggested": "Anbefalt"
       },
       "blurbs": {
         "anthropic": "Claude-modeller - sterke på kode og skriving.",
@@ -290,7 +292,7 @@
         "groq": "Svært rask inferens på åpne modeller.",
         "mistral": "Mistral- og Codestral-modeller.",
         "ollama": "Kjører modeller på maskinen din. Ingen nøkkel trengs - installer Ollama og hent en modell.",
-        "openai": "GPT-modeller. Standardvalget.",
+        "openai": "GPT-modeller.",
         "openrouter": "Én nøkkel, tilgang til modeller fra mange labber.",
         "perplexity": "Sonar-modeller med direkte forankring i nettet.",
         "xai": "Grok-modeller fra xAI.",
@@ -1283,6 +1285,58 @@
         "detail": "Bygg det åpne prosjektet med en nyere installert versjon og sammenlign resultatene før du bytter.",
         "check": "Sjekk med Typst {{version}}"
       }
+    },
+    "notebook": {
+      "loading": "Ser etter Quarto, Calepin og språk på denne maskinen",
+      "source": {
+        "system": "På denne maskinen",
+        "managed": "Lastet ned av Oleafly"
+      },
+      "active": {
+        "version": "{{tool}} {{version}}",
+        "missing": "Ikke funnet på denne maskinen."
+      },
+      "managedIdle": "Ikke i bruk. Oleafly bruker først kopien som ble funnet på denne maskinen.",
+      "download": {
+        "optional": "Valgfritt. Oleafly bruker allerede kopien på denne maskinen.",
+        "license": "{{license}}-lisens.",
+        "action": "Last ned {{tool}} {{version}} ({{size}})",
+        "actionNoSize": "Last ned {{tool}} {{version}}",
+        "notOffered": "Oleafly kan ikke laste ned {{tool}} for denne maskinen. Installer det selv, så finner Oleafly det."
+      },
+      "removeAria": "Fjern kopien av {{tool}} som Oleafly lastet ned",
+      "languages": {
+        "heading": "Språk",
+        "tooltip": "Kode i Quarto- og Calepin-dokumenter kjøres med disse programmene.",
+        "notFound": "Ikke funnet",
+        "note": "Oleafly kjører kode med R, Python og Julia som allerede finnes på denne maskinen. Oleafly installerer dem aldri."
+      },
+      "codeNote": "Kode i et dokument kjøres bare etter at du har tillatt kode for prosjektet i kompileringsmenyen.",
+      "progress": {
+        "starting": "Starter",
+        "downloading": "Laster ned {{percent}} %",
+        "verifying": "Sjekker",
+        "extracting": "Pakker ut",
+        "done": "Fullfører"
+      },
+      "error": {
+        "load": "Kunne ikke se etter Quarto, Calepin og språk.",
+        "install": "Kunne ikke installere {{tool}}.",
+        "remove": "Kunne ikke fjerne {{tool}}."
+      }
+    },
+    "quarto": {
+      "heading": "Quarto",
+      "tooltip": "Quarto gjør .qmd- og .Rmd-dokumenter om til en PDF, en nettside eller lysbilder. Oleafly bruker Quarto som er installert på denne maskinen hvis det finnes, og ellers en kopi den laster ned.",
+      "detail": "Oleafly kompilerer .qmd- og .Rmd-dokumenter med denne kopien.",
+      "downloadDetail": "Oleafly lagrer sin egen kopi i appmappen. Quarto inneholder Pandoc og andre verktøy med egne lisenser."
+    },
+    "calepin": {
+      "heading": "Calepin",
+      "tooltip": "Calepin kjører koden i et Typst-dokument og legger resultatene inn i PDF-en. Oleafly bruker Calepin som er installert på denne maskinen hvis det finnes, og ellers en kopi den laster ned.",
+      "detail": "Oleafly kompilerer Calepin-dokumenter med denne kopien.",
+      "downloadDetail": "Oleafly lagrer sin egen kopi i appmappen.",
+      "typstNote": "Calepin gjengir dokumentet med Typst som følger med Oleafly. Det krever Typst 0.15 eller nyere."
     }
   },
   "github": {

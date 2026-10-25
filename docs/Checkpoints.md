@@ -25,9 +25,10 @@ The project folder as it stands after the compile. Everything under the project
 root, whether or not the document refers to it. Oleafly does
 not work out which files the compiler read and keep only those.
 
-Left out: `.git`, `.oleafly`, `node_modules`, and any directory named
-`_minted-*` or `pythontex-files-*`. Build output lives inside `.oleafly`, so the
-compiled PDF and the log go out with it.
+Left out: `.git`, `.oleafly`, `node_modules`, `.quarto`, any directory
+named `_minted-*` or `pythontex-files-*`, and a `<name>_files` folder
+next to `<name>.qmd` or `<name>.Rmd` (Quarto writes its figures there). Build
+output lives inside `.oleafly`, so the compiled PDF and the log go out with it.
 
 A folder you opened in place follows extra rules. Oleafly also leaves out
 hidden folders, `target`, `build`, `out`, `__MACOSX`, links, cloud-only files

@@ -99,7 +99,20 @@
     "installPackages_many": "Знайти і встановити {{count}} файлів",
     "installPackages_other": "Знайти і встановити {{count}} файла",
     "downloadTypst": "Завантажити Typst {{version}}",
-    "useTypst": "Використати Typst {{version}}"
+    "useTypst": "Використати Typst {{version}}",
+    "installTool": "Встановити {{tool}} {{version}}",
+    "installToolSize": "Встановити {{tool}} {{version}} ({{size}})",
+    "engineSettings": "Відкрити налаштування рушія"
+  },
+  "html": {
+    "builtTitle": "Зібрано як вебсторінку",
+    "builtDetail": "Зібрано о {{time}}. Вебсторінки відкриваються в браузері.",
+    "building": "Збираємо вебсторінку",
+    "buildingDetail": "Коли сторінка буде готова, ви зможете відкрити її в браузері.",
+    "pendingTitle": "Цей документ збирається у вебсторінку",
+    "pendingDetail": "Скомпілюйте його, а потім відкрийте в браузері.",
+    "open": "Відкрити в браузері",
+    "compile": "Скомпілювати"
   },
   "stale": {
     "badge": "Застарілий",

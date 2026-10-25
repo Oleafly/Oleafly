@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { setConfig, type AppConfig } from "@/lib/tauri";
 import { describeError } from "@/lib/app-error";
-import { mergeCustomProviders } from "@/lib/ai-providers";
+import { mergeCustomProviders, suggestedProviderId } from "@/lib/ai-providers";
 import { enabledModels } from "@/lib/ai-model-state";
 import { AiToolsTable } from "@/components/ai/AiToolsList";
 import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
@@ -34,7 +34,7 @@ export function InstructionsTab({
   saveSystemPrompt,
   setMsg,
 }: Readonly<InstructionsTabProps>) {
-  const { t } = useTranslation(["settings"]);
+  const { t, i18n } = useTranslation(["settings"]);
   const [toolsOpen, setToolsOpen] = useState(false);
   // Providers the user has actually connected (saved key, or a custom
   // provider with an optional key), same "configured" definition ChatCore
@@ -61,7 +61,7 @@ export function InstructionsTab({
         </p>
         <div data-testid="ai-default-model" data-tour="ai-default-model">
           <ModelSelector
-            providerId={cfg.ai_provider || "openai"}
+            providerId={cfg.ai_provider || suggestedProviderId(i18n.language)}
             modelId={cfg.ai_model || ""}
             groups={defaultModelGroups}
             contentClassName="z-[100]"

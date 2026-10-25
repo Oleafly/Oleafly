@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { i18n } from "@/i18n";
@@ -14,6 +14,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
+import { CUSTOM_PROVIDER_PRESETS, type CustomProviderPreset } from "@/lib/ai-providers";
+import { cn } from "@/lib/utils";
 
 export interface AddCustomProviderInput {
   id: string;
@@ -34,6 +36,7 @@ export interface AddCustomProviderDialogProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: AddCustomProviderInput) => Promise<{ ok: boolean; message?: string }>;
   editing?: CustomProviderEditTarget | null;
+  takenIds?: readonly string[];
 }
 
 const EMPTY: AddCustomProviderInput = { id: "", name: "", baseURL: "", apiKey: "" };
@@ -90,12 +93,15 @@ export function AddCustomProviderDialog({
   onOpenChange,
   onSubmit,
   editing = null,
+  takenIds = [],
 }: Readonly<AddCustomProviderDialogProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const [form, setForm] = useState<AddCustomProviderInput>(EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const keyRef = useRef<HTMLInputElement>(null);
+  const presets = editing ? [] : CUSTOM_PROVIDER_PRESETS.filter((preset) => !takenIds.includes(preset.id));
   const editingId = editing?.id ?? "";
   const editingName = editing?.name ?? "";
   const editingBaseURL = editing?.baseURL ?? "";
@@ -126,6 +132,12 @@ export function AddCustomProviderDialog({
   const setField = (key: keyof AddCustomProviderInput) => (value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
     setFieldErrors((e) => ({ ...e, [key]: undefined }));
+  };
+
+  const applyPreset = (preset: CustomProviderPreset) => {
+    setForm((f) => ({ ...f, id: preset.id, name: preset.name, baseURL: preset.baseURL }));
+    setFieldErrors({});
+    keyRef.current?.focus();
   };
 
   const submit = async () => {
@@ -187,6 +199,34 @@ export function AddCustomProviderDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
+          {presets.length > 0 && (
+            <fieldset className="space-y-1">
+              <legend className="text-xs font-medium text-muted-foreground">
+                {t(($) => $.settings.ai.customProvider.presetsLabel)}
+              </legend>
+              <div className="flex flex-wrap gap-1.5">
+                {presets.map((preset) => {
+                  const chosen = form.id === preset.id && normalizeBaseURL(form.baseURL) === preset.baseURL;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      data-testid={`custom-provider-preset-${preset.id}`}
+                      aria-pressed={chosen}
+                      disabled={busy}
+                      onClick={() => applyPreset(preset)}
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-xs transition-colors focus-visible:border-ring disabled:opacity-50",
+                        chosen ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-accent",
+                      )}
+                    >
+                      {preset.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+          )}
           <div className="space-y-1">
             <label htmlFor="custom-provider-id" className="text-xs font-medium text-muted-foreground">
               {t(($) => $.settings.ai.customProvider.idLabel)}
@@ -255,6 +295,7 @@ export function AddCustomProviderDialog({
               {keyLabel}
             </label>
             <Input
+              ref={keyRef}
               id="custom-provider-key"
               data-testid="custom-provider-key"
               type="password"

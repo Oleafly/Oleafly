@@ -61,6 +61,7 @@
       "loading": "Laster enhetene dine…",
       "loadFailed": "Oleafly kunne ikke laste enhetene dine.",
       "current": "Denne maskinen",
+      "browser": "Nettleser",
       "added": "Lagt til {{date}}",
       "lastSeen": "Sist sett {{date}}",
       "neverSeen": "Ikke sett ennå",
@@ -139,6 +140,7 @@
   "addServer": {
     "title": "Legg til en samarbeidsserver",
     "description": "Skriv inn adressen gruppen din ga deg. Oleafly sjekker serveren før du logger inn.",
+    "oleaflyDescription": "Den offentlige Oleafly-serveren",
     "addressLabel": "Serveradresse",
     "addressPlaceholder": "collab.example.edu",
     "continue": "Fortsett",
@@ -218,7 +220,15 @@
     "server_removed": "Serveren til dette prosjektet står ikke lenger i listen din. Behold prosjektet som en lokal kopi, eller legg til serveren igjen.",
     "share_in_progress": "Dette prosjektet holder allerede på å bli delt. Vent til det er ferdig.",
     "cancelled": "Åpningen av det delte prosjektet ble avbrutt.",
-    "cloud_synced": "Oleafly-biblioteket ditt ligger i en mappe som en skytjeneste synkroniserer. Flytt det ut av Dropbox, OneDrive eller iCloud Drive for å dele prosjekter eller bli med i dem."
+    "cloud_synced": "Oleafly-biblioteket ditt ligger i en mappe som en skytjeneste synkroniserer. Flytt det ut av Dropbox, OneDrive eller iCloud Drive for å dele prosjekter eller bli med i dem.",
+    "suggestion_not_found": "Det forslaget finnes ikke lenger. Noen kan ha godtatt eller avslått det.",
+    "suggestion_not_yours": "Bare personen som kom med forslaget, kan trekke det tilbake.",
+    "suggestion_role": "Rollen din i dette prosjektet gir ikke lov til forslag.",
+    "chat_role": "Rollen din i dette prosjektet gir ikke lov til det i chatten.",
+    "history_unavailable": "Historikken til dette prosjektet er ikke på denne datamaskinen ennå. Prøv igjen når prosjektet er synkronisert.",
+    "account_storage_full": "Kontoen til prosjekteieren har gått tom for lagringsplass på denne serveren. Fjern noen filer for å få plass, eller be administratoren for serveren om mer plass.",
+    "too_many_projects": "Du har allerede så mange delte prosjekter som denne serveren tillater. Slutt å dele ett før du deler et nytt.",
+    "too_many_uploads": "Du har lastet opp for mange filer den siste timen. Prøv igjen senere."
   },
   "roles": {
     "admin": "Administrator",
@@ -481,8 +491,16 @@
   "projectRoles": {
     "owner": "Eier",
     "editor": "Redaktør",
+    "reviewer": "Korrekturleser",
+    "commenter": "Kommentator",
     "viewer": "Leser",
     "unknown": "Ukjent rolle"
+  },
+  "projectRoleDescriptions": {
+    "editor": "Redigerer og går gjennom forslag",
+    "reviewer": "Foreslår endringer og kommenterer",
+    "commenter": "Leser og kommenterer",
+    "viewer": "Leser bare"
   },
   "share": {
     "button": "Del",
@@ -494,6 +512,8 @@
     "editCopy": "Dette er den delte kopien. Rediger denne fra nå av, ikke den opprinnelige mappen.",
     "serverLabel": "Server",
     "noServers": "Logg inn på en samarbeidsserver først, og kom så tilbake for å dele.",
+    "noServersYet": "Legg til en samarbeidsserver og logg inn for å dele dette prosjektet.",
+    "addOleafly": "Legg til Oleafly-serveren",
     "openSettings": "Åpne samarbeidsinnstillingene",
     "checking": "Sjekker prosjektet…",
     "checkFailed": "Oleafly kunne ikke sjekke dette prosjektet.",
@@ -503,7 +523,7 @@
     "cloudSynced": "Oleafly-biblioteket ditt ligger i en mappe som iCloud, Dropbox eller en lignende tjeneste synkroniserer. To synkroniseringstjenester ville slåss om de samme filene, så Oleafly kan ikke dele derfra. Flytt biblioteket ut av den mappen først.",
     "tooLarge": "Disse filene går over servergrensen på {{size}} MB. Gjør dem mindre eller fjern dem før du deler.",
     "renamed": "Noen navn fungerer ikke på alle maskiner. Andre får disse filene under et litt annet navn.",
-    "excluded": "Deles ikke: byggefiler, Oleafly-innstillinger og Git-historikk.",
+    "excluded": "Deles ikke: andre byggefiler, Oleafly-innstillinger og Git-historikk. Den nyeste kompilerte PDF-en deles, slik at medforfattere kan lese den i en nettleser.",
     "start": "Del",
     "preparing": "Gjør prosjektet klart…",
     "uploading": "Laster opp figurer og andre filer: {{done}} av {{total}}",
@@ -551,7 +571,7 @@
     },
     "comments": {
       "label": "Kommentarer",
-      "description": "Alle som kan redigere, kan kommentere tekst i dette prosjektet. Hvis du slår det av, skjules kommentarene, men de slettes ikke.",
+      "description": "Eiere, redaktører, korrekturlesere og kommentatorer kan kommentere tekst i dette prosjektet. Hvis du slår det av, skjules kommentarene, men de slettes ikke.",
       "serverOff": "Kommentarer er slått av på {{server}}. Be administratoren om å slå dem på."
     },
     "stop": "Slutt å dele",
@@ -594,6 +614,7 @@
     "unknownPerson": "Noen",
     "viewing": "Ser på {{path}}",
     "editing": "Redigerer {{path}}",
+    "reviewing": "Går gjennom {{path}}",
     "goTo": "Gå til {{name}}",
     "nowhere": "Ikke i en fil, så det er ingen steder å gå"
   },
@@ -666,6 +687,8 @@
   },
   "activity": {
     "welcomeEdit": "Delt av {{owner}} på {{server}}. Du kan redigere prosjektet.",
+    "welcomeReview": "Delt av {{owner}} på {{server}}. Du kan foreslå endringer og kommentere.",
+    "welcomeComment": "Delt av {{owner}} på {{server}}. Du kan kommentere prosjektet.",
     "welcomeView": "Delt av {{owner}} på {{server}}. Du kan se prosjektet.",
     "joined": "{{name}} åpnet prosjektet",
     "left": "{{name}} lukket prosjektet",
@@ -774,9 +797,7 @@
       "signedOutTitle": "Du er logget ut av denne serveren",
       "signedOutDescription": "Logg inn på nytt i Innstillinger, og åpne administrasjonskonsollen fra kortet til serveren.",
       "refusedTitle": "Administrasjonskonsollen er for administratorer og vedlikeholdere",
-      "refusedDescription": "Rollen din på denne serveren er {{role}}. Spør en administrator hvis du trenger å administrere den.",
-      "turnedOffTitle": "Samarbeid i sanntid er slått av",
-      "turnedOffDescription": "Slå det på igjen i Innstillinger under Eksperimentering for å administrere serveren her."
+      "refusedDescription": "Rollen din på denne serveren er {{role}}. Spør en administrator hvis du trenger å administrere den."
     },
     "overview": {
       "loading": "Laster oversikten…",
@@ -929,8 +950,6 @@
     }
   },
   "links": {
-    "turnedOff": "Samarbeid i sanntid er slått av. Slå det på i Innstillinger under Eksperimentering, og åpne lenken på nytt.",
-    "openSettings": "Åpne Innstillinger",
     "malformed": "Oleafly kan ikke åpne denne lenken. Be den som sendte den, om en ny.",
     "opening": "Åpner det delte prosjektet…",
     "downloading": "Laster ned filer: {{done}} av {{total}}",
@@ -952,8 +971,8 @@
     "add": "Legg til kommentar",
     "showResolved": "Vis løste kommentarer",
     "hideResolved": "Skjul løste kommentarer",
-    "empty": "Det er ingen kommentarer ennå.",
-    "emptyCanWrite": "Det er ingen kommentarer ennå. Merk litt tekst og velg Legg til kommentar for å starte en.",
+    "empty": "Det er ingen kommentarer eller forslag ennå.",
+    "emptyCanWrite": "Det er ingen kommentarer eller forslag ennå. Merk litt tekst og velg Legg til kommentar for å starte en.",
     "allResolved": "Alle kommentarene er løst.",
     "loadFailed": "Kunne ikke laste inn kommentarene til denne filen.",
     "detached": "Frakoblet",
@@ -1010,6 +1029,111 @@
       "empty": "Skriv noe før du sender."
     }
   },
+  "suggestions": {
+    "insertedBy": "{{name}} foreslo å legge til dette",
+    "deletedBy": "{{name}} foreslo å slette dette",
+    "unverifiedLabel": "Foreslått av noen Oleafly ikke kunne bekrefte",
+    "card": "Forslag fra {{name}}",
+    "unverifiedCard": "Forslag fra noen Oleafly ikke kunne bekrefte",
+    "added": "Lagt til",
+    "deleted": "Slettet",
+    "accept": "Godta",
+    "reject": "Avslå",
+    "withdraw": "Trekk tilbake",
+    "acceptAll": "Godta alle",
+    "rejectAll": "Avslå alle",
+    "fileActions": "Forslag i {{file}}",
+    "pendingCount": "Ventende forslag: {{number}}",
+    "loadFailed": "Kunne ikke laste inn forslagene til denne filen.",
+    "rejectAllConfirm": {
+      "title": "Avslå alle forslag i {{file}}?",
+      "description": "Den opprinnelige teksten kommer tilbake i filen for alle i prosjektet. Ventende forslag: {{number}}.",
+      "confirm": "Avslå alle"
+    },
+    "withdrawConfirm": {
+      "title": "Trekke tilbake dette forslaget?",
+      "description": "Den opprinnelige teksten kommer tilbake i filen for alle i prosjektet.",
+      "confirm": "Trekk tilbake"
+    },
+    "pendingCompile": "Prosjektet har forslag som venter på gjennomgang: {{number}}. PDF-en viser dem som om de var godtatt.",
+    "pendingExport": "Prosjektet har forslag som venter på gjennomgang: {{number}}. Eksporten tar dem med som om de var godtatt.",
+    "mode": {
+      "label": "Redigering eller forslag",
+      "editing": "Redigering",
+      "suggesting": "Forslag",
+      "editingHint": "Redigering: endringene dine havner i teksten med en gang",
+      "suggestingHint": "Forslag: endringene dine blir forslag som en eier eller redaktør kan godta",
+      "reviewerHint": "Du er korrekturleser, så endringene dine blir forslag som en eier eller redaktør kan godta"
+    }
+  },
+  "chat": {
+    "title": "Chat",
+    "titleUnread": "Chat, nye meldinger",
+    "list": "Meldinger",
+    "empty": "Det er ingen meldinger ennå.",
+    "label": "Melding",
+    "placeholder": "Skriv en melding",
+    "send": "Send",
+    "readOnly": "Lesere kan lese chatten, men ikke skrive i den.",
+    "offline": "Prosjektet er ikke tilkoblet akkurat nå, så du kan ikke skrive i chatten.",
+    "delete": "Slett melding",
+    "deleteConfirm": {
+      "title": "Slette denne meldingen?",
+      "description": "Den slettes for alle i prosjektet."
+    },
+    "deleted": "Denne meldingen er slettet.",
+    "clear": "Tøm chatten",
+    "clearConfirm": {
+      "title": "Tømme chatten?",
+      "description": "Alle meldinger fjernes for alle i prosjektet. Dette kan ikke angres.",
+      "confirm": "Tøm chatten"
+    },
+    "loadFailed": "Oleafly kunne ikke laste inn chatten.",
+    "loadOlder": "Vis eldre meldinger"
+  },
+  "history": {
+    "title": "Historikk",
+    "refresh": "Oppdater historikken",
+    "empty": "Ingen endringer ennå.",
+    "loadFailed": "Oleafly kunne ikke laste inn historikken til prosjektet.",
+    "loadMore": "Vis eldre endringer",
+    "earlier": "Tidligere endringer",
+    "timeRange": "{{from}} til {{to}}",
+    "authorsMore": "{{names}} og {{number}} til",
+    "filesChanged": "Endrede filer: {{number}}",
+    "open": "Åpne",
+    "compare": "Sammenlign",
+    "compareWith": "Sammenlign med denne",
+    "comparePick": "Velg en annen versjon å sammenligne med.",
+    "cancelCompare": "Avbryt",
+    "name": "Gi denne versjonen et navn",
+    "rename": "Gi nytt navn",
+    "unname": "Fjern navnet",
+    "nameLabel": "Versjonsnavn",
+    "namePlaceholder": "For eksempel: Sendt til fagfellene",
+    "versionDescription": "Slik så prosjektet ut etter disse endringene. Du kan lese det her uten å endre noe.",
+    "files": "Filer",
+    "noFiles": "Ingen tekstfiler ble endret i denne versjonen.",
+    "fileLabel": "{{path}} slik den var {{time}}",
+    "fileMissing": "Denne filen fantes ikke i denne versjonen.",
+    "loadingFile": "Laster…",
+    "restoreFile": "Gjenopprett denne filen",
+    "restoreProject": "Gjenopprett hele prosjektet",
+    "restoreFileConfirm": {
+      "title": "Gjenopprette {{path}}?",
+      "description": "Filen settes tilbake til slik den var {{time}}, for alle i prosjektet. Den nåværende teksten blir værende i historikken, så du kan gå tilbake til den.",
+      "confirm": "Gjenopprett filen"
+    },
+    "restoreProjectConfirm": {
+      "title": "Gjenopprette hele prosjektet?",
+      "description": "Alle filene settes tilbake til slik de var {{time}}, for alle i prosjektet. Den nåværende teksten blir værende i historikken, så du kan gå tilbake til den.",
+      "confirm": "Gjenopprett prosjektet"
+    },
+    "compareTitle": "Endringer mellom to versjoner",
+    "compareDescription": "Fra {{from}} til {{to}}",
+    "changedFiles": "Endrede filer: {{number}}",
+    "noChanges": "Ingen tekst ble endret mellom disse versjonene."
+  },
   "accessLog": {
     "opened": "{{name}} åpnet prosjektet",
     "joinedLink": "{{name}} ble med via lenken",
@@ -1065,6 +1189,10 @@
   "access": {
     "viewerBy": "{{name}} har gjort deg til leser. Du kan lese prosjektet, men ikke redigere det.",
     "viewer": "Du er nå leser. Du kan lese prosjektet, men ikke redigere det.",
+    "commenterBy": "{{name}} har gjort deg til kommentator. Du kan lese og kommentere prosjektet, men ikke redigere det.",
+    "commenter": "Du er nå kommentator. Du kan lese og kommentere prosjektet, men ikke redigere det.",
+    "reviewerBy": "{{name}} har gjort deg til korrekturleser. Endringene dine blir forslag som en eier eller redaktør kan godta.",
+    "reviewer": "Du er nå korrekturleser. Endringene dine blir forslag som en eier eller redaktør kan godta.",
     "viewOnly": "Du kan se dette delte prosjektet, men ikke redigere det.",
     "connecting": "Dette delte prosjektet kobler seg fortsatt til, så det kan ikke endres ennå. Prøv igjen om litt.",
     "unsentReadOnly": "De siste endringene dine i {{path}} ble ikke sendt fordi du nå bare kan se dette prosjektet.",
@@ -1081,6 +1209,8 @@
     "projectTooLarge": "{{file}} blir på denne maskinen fordi prosjektet har nådd serverens størrelsesgrense på {{limit}}. Be den som drifter serveren om å øke den.",
     "projectTooLargeUnknown": "{{file}} blir på denne maskinen fordi prosjektet har nådd serverens størrelsesgrense. Be den som drifter serveren om å øke den.",
     "projectFull": "Prosjektet har nådd serverens størrelsesgrense, så endringene dine blir på denne maskinen inntil videre. Be den som drifter serveren om å øke den.",
+    "accountStorageFull": "Kunne ikke deles fordi prosjekteieren har gått tom for lagringsplass på denne serveren: {{files}}",
+    "tooManyUploads": "Kunne ikke deles ennå fordi du har lastet opp for mange filer den siste timen: {{files}}. Prøv igjen senere.",
     "replaced": "{{name}} erstattet {{file}} samtidig med deg. Versjonen din er lagret som {{copy}}.",
     "added": "{{file}} heter nå {{copy}} fordi {{name}} la til en fil med samme navn.",
     "beside": "{{name}} har også en fil som heter {{file}}. Den er lagret som {{copy}}.",

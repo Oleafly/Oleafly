@@ -61,6 +61,7 @@
       "loading": "Načítají se vaše zařízení…",
       "loadFailed": "Oleafly nemohl načíst vaše zařízení.",
       "current": "Tento počítač",
+      "browser": "Prohlížeč",
       "added": "Přidáno {{date}}",
       "lastSeen": "Naposledy aktivní {{date}}",
       "neverSeen": "Zatím nebylo aktivní",
@@ -139,6 +140,7 @@
   "addServer": {
     "title": "Přidat server pro spolupráci",
     "description": "Zadejte adresu, kterou vám dala vaše skupina. Oleafly server zkontroluje, než se přihlásíte.",
+    "oleaflyDescription": "Veřejný server Oleafly",
     "addressLabel": "Adresa serveru",
     "addressPlaceholder": "collab.example.edu",
     "continue": "Pokračovat",
@@ -218,7 +220,15 @@
     "server_removed": "Server tohoto projektu už ve vašem seznamu není. Ponechte si projekt jako místní kopii, nebo server přidejte znovu.",
     "share_in_progress": "Tento projekt se už sdílí. Počkejte, až to skončí.",
     "cancelled": "Otevírání sdíleného projektu bylo zrušeno.",
-    "cloud_synced": "Vaše knihovna Oleafly je ve složce, kterou synchronizuje cloudová služba. Pokud chcete sdílet projekty nebo se k nim připojit, přesuňte ji mimo Dropbox, OneDrive nebo iCloud Drive."
+    "cloud_synced": "Vaše knihovna Oleafly je ve složce, kterou synchronizuje cloudová služba. Pokud chcete sdílet projekty nebo se k nim připojit, přesuňte ji mimo Dropbox, OneDrive nebo iCloud Drive.",
+    "suggestion_not_found": "Tento návrh už neexistuje. Někdo ho možná přijal nebo odmítl.",
+    "suggestion_not_yours": "Tento návrh může vzít zpět jen ten, kdo ho vytvořil.",
+    "suggestion_role": "Vaše role v tomto projektu nedovoluje navrhovat změny.",
+    "chat_role": "Vaše role v tomto projektu to v chatu nedovoluje.",
+    "history_unavailable": "Historie tohoto projektu ještě není v tomto počítači. Zkuste to znovu, až se projekt synchronizuje.",
+    "account_storage_full": "Účet vlastníka projektu nemá na tomto serveru volné úložiště. Odeberte některé soubory, abyste uvolnili místo, nebo požádejte administrátora serveru o více místa.",
+    "too_many_projects": "Už máte tolik sdílených projektů, kolik tento server dovoluje. Než začnete sdílet další, ukončete sdílení jednoho z nich.",
+    "too_many_uploads": "Za poslední hodinu jste nahráli příliš mnoho souborů. Zkuste to později."
   },
   "roles": {
     "admin": "Administrátor",
@@ -481,8 +491,16 @@
   "projectRoles": {
     "owner": "Vlastník",
     "editor": "Editor",
+    "reviewer": "Recenzent",
+    "commenter": "Komentátor",
     "viewer": "Čtenář",
     "unknown": "Neznámá role"
+  },
+  "projectRoleDescriptions": {
+    "editor": "Upravuje a posuzuje návrhy",
+    "reviewer": "Navrhuje změny a komentuje",
+    "commenter": "Čte a komentuje",
+    "viewer": "Jen čte"
   },
   "share": {
     "button": "Sdílet",
@@ -494,6 +512,8 @@
     "editCopy": "Toto je sdílená kopie. Od teď upravujte ji, ne původní složku.",
     "serverLabel": "Server",
     "noServers": "Nejdřív se přihlaste k serveru pro spolupráci a pak se sem vraťte, abyste mohli projekt sdílet.",
+    "noServersYet": "Přidejte server pro spolupráci a přihlaste se, abyste mohli tento projekt sdílet.",
+    "addOleafly": "Přidat server Oleafly",
     "openSettings": "Otevřít nastavení spolupráce",
     "checking": "Kontroluje se projekt…",
     "checkFailed": "Oleafly nemohl tento projekt zkontrolovat.",
@@ -503,7 +523,7 @@
     "cloudSynced": "Vaše knihovna Oleafly je ve složce, kterou synchronizuje iCloud, Dropbox nebo podobná služba. Dvě synchronizační služby by se přetahovaly o stejné soubory, proto z ní Oleafly nemůže sdílet. Nejdřív knihovnu z této složky přesuňte.",
     "tooLarge": "Tyto soubory překračují limit serveru {{size}} MB. Před sdílením je zmenšete nebo odeberte.",
     "renamed": "Některé názvy nefungují na každém počítači. Ostatní dostanou tyto soubory pod mírně odlišným názvem.",
-    "excluded": "Nesdílí se: výstup sestavení, nastavení Oleafly a historie Gitu.",
+    "excluded": "Nesdílí se: ostatní výstup sestavení, nastavení Oleafly a historie Gitu. Nejnovější zkompilované PDF se sdílí, aby si ho spoluautoři mohli přečíst v prohlížeči.",
     "start": "Sdílet",
     "preparing": "Připravuje se projekt…",
     "uploading": "Nahrávání obrázků a dalších souborů: {{done}} z {{total}}",
@@ -551,7 +571,7 @@
     },
     "comments": {
       "label": "Komentáře",
-      "description": "Kdokoli, kdo může upravovat, může komentovat text v tomto projektu. Když tuto možnost vypnete, komentáře se skryjí, ale nesmažou.",
+      "description": "Vlastníci, editoři, recenzenti a komentátoři mohou komentovat text v tomto projektu. Když tuto možnost vypnete, komentáře se skryjí, ale nesmažou.",
       "serverOff": "Komentáře jsou na serveru {{server}} vypnuté. Požádejte jeho administrátora, aby je zapnul."
     },
     "stop": "Ukončit sdílení",
@@ -594,6 +614,7 @@
     "unknownPerson": "Někdo",
     "viewing": "Prohlíží {{path}}",
     "editing": "Upravuje {{path}}",
+    "reviewing": "Recenzuje {{path}}",
     "goTo": "Přejít k {{name}}",
     "nowhere": "Není v žádném souboru, takže není kam přejít"
   },
@@ -666,6 +687,8 @@
   },
   "activity": {
     "welcomeEdit": "Sdílí {{owner}} na serveru {{server}}. Můžete upravovat.",
+    "welcomeReview": "Sdílí {{owner}} na serveru {{server}}. Můžete navrhovat změny a komentovat.",
+    "welcomeComment": "Sdílí {{owner}} na serveru {{server}}. Můžete komentovat.",
     "welcomeView": "Sdílí {{owner}} na serveru {{server}}. Můžete prohlížet.",
     "joined": "Uživatel {{name}} otevřel projekt",
     "left": "Uživatel {{name}} zavřel projekt",
@@ -774,9 +797,7 @@
       "signedOutTitle": "Jste z tohoto serveru odhlášeni",
       "signedOutDescription": "Přihlaste se znovu v Nastavení a pak otevřete konzoli pro správu z karty serveru.",
       "refusedTitle": "Konzole pro správu je určena administrátorům a správcům",
-      "refusedDescription": "Vaše role na tomto serveru je {{role}}. Pokud ho potřebujete spravovat, požádejte administrátora.",
-      "turnedOffTitle": "Živá spolupráce je vypnutá",
-      "turnedOffDescription": "Pokud chcete tento server spravovat tady, znovu ji zapněte v Nastavení v části Experimenty."
+      "refusedDescription": "Vaše role na tomto serveru je {{role}}. Pokud ho potřebujete spravovat, požádejte administrátora."
     },
     "overview": {
       "loading": "Načítá se přehled…",
@@ -929,8 +950,6 @@
     }
   },
   "links": {
-    "turnedOff": "Živá spolupráce je vypnutá. Zapněte ji v Nastavení v sekci Experimenty a pak odkaz otevřete znovu.",
-    "openSettings": "Otevřít nastavení",
     "malformed": "Oleafly tento odkaz nedokáže otevřít. Požádejte odesílatele o nový.",
     "opening": "Otevírá se sdílený projekt…",
     "downloading": "Stahování souborů: {{done}} z {{total}}",
@@ -952,8 +971,8 @@
     "add": "Přidat komentář",
     "showResolved": "Zobrazit vyřešené komentáře",
     "hideResolved": "Skrýt vyřešené komentáře",
-    "empty": "Zatím tu nejsou žádné komentáře.",
-    "emptyCanWrite": "Zatím tu nejsou žádné komentáře. Vyberte text a zvolte Přidat komentář.",
+    "empty": "Zatím tu nejsou žádné komentáře ani návrhy.",
+    "emptyCanWrite": "Zatím tu nejsou žádné komentáře ani návrhy. Vyberte text a zvolte Přidat komentář.",
     "allResolved": "Všechny komentáře jsou vyřešené.",
     "loadFailed": "Komentáře k tomuto souboru se nepodařilo načíst.",
     "detached": "Odpojené",
@@ -1010,6 +1029,111 @@
       "empty": "Než komentář odešlete, něco napište."
     }
   },
+  "suggestions": {
+    "insertedBy": "Uživatel {{name}} navrhl přidat tento text",
+    "deletedBy": "Uživatel {{name}} navrhl smazat tento text",
+    "unverifiedLabel": "Navrhl někdo, koho Oleafly nemohl ověřit",
+    "card": "Návrh od {{name}}",
+    "unverifiedCard": "Návrh od někoho, koho Oleafly nemohl ověřit",
+    "added": "Přidáno",
+    "deleted": "Smazáno",
+    "accept": "Přijmout",
+    "reject": "Odmítnout",
+    "withdraw": "Vzít zpět",
+    "acceptAll": "Přijmout vše",
+    "rejectAll": "Odmítnout vše",
+    "fileActions": "Návrhy v souboru {{file}}",
+    "pendingCount": "Čekající návrhy: {{number}}",
+    "loadFailed": "Návrhy k tomuto souboru se nepodařilo načíst.",
+    "rejectAllConfirm": {
+      "title": "Odmítnout všechny návrhy v souboru {{file}}?",
+      "description": "Do souboru se pro všechny v tomto projektu vrátí původní text. Čekající návrhy: {{number}}.",
+      "confirm": "Odmítnout vše"
+    },
+    "withdrawConfirm": {
+      "title": "Vzít tento návrh zpět?",
+      "description": "Do souboru se pro všechny v tomto projektu vrátí původní text.",
+      "confirm": "Vzít zpět"
+    },
+    "pendingCompile": "Návrhy v tomto projektu, které čekají na kontrolu: {{number}}. PDF je zobrazuje, jako by byly přijaté.",
+    "pendingExport": "Návrhy v tomto projektu, které čekají na kontrolu: {{number}}. Export je obsahuje, jako by byly přijaté.",
+    "mode": {
+      "label": "Úpravy nebo navrhování",
+      "editing": "Úpravy",
+      "suggesting": "Navrhování",
+      "editingHint": "Úpravy: vaše změny se v textu projeví hned",
+      "suggestingHint": "Navrhování: z vašich změn se stanou návrhy, které může přijmout vlastník nebo editor",
+      "reviewerHint": "Jste recenzent, takže z vašich změn se stanou návrhy, které může přijmout vlastník nebo editor"
+    }
+  },
+  "chat": {
+    "title": "Chat",
+    "titleUnread": "Chat, nové zprávy",
+    "list": "Zprávy",
+    "empty": "Zatím tu nejsou žádné zprávy.",
+    "label": "Zpráva",
+    "placeholder": "Napište zprávu",
+    "send": "Odeslat",
+    "readOnly": "Čtenáři mohou chat číst, ale nemohou do něj psát.",
+    "offline": "Tento projekt teď není připojený, takže nemůžete psát.",
+    "delete": "Smazat zprávu",
+    "deleteConfirm": {
+      "title": "Smazat tuto zprávu?",
+      "description": "Smaže se pro všechny v tomto projektu."
+    },
+    "deleted": "Tato zpráva byla smazána.",
+    "clear": "Vymazat chat",
+    "clearConfirm": {
+      "title": "Vymazat chat?",
+      "description": "Všechny zprávy se odstraní pro všechny v tomto projektu. Tento krok nelze vrátit.",
+      "confirm": "Vymazat chat"
+    },
+    "loadFailed": "Oleafly nemohl načíst chat.",
+    "loadOlder": "Zobrazit starší zprávy"
+  },
+  "history": {
+    "title": "Historie",
+    "refresh": "Aktualizovat historii",
+    "empty": "Zatím žádné změny.",
+    "loadFailed": "Oleafly nemohl načíst historii projektu.",
+    "loadMore": "Zobrazit starší změny",
+    "earlier": "Dřívější změny",
+    "timeRange": "{{from}} až {{to}}",
+    "authorsMore": "{{names}} a další ({{number}})",
+    "filesChanged": "Změněné soubory: {{number}}",
+    "open": "Otevřít",
+    "compare": "Porovnat",
+    "compareWith": "Porovnat s touto verzí",
+    "comparePick": "Vyberte druhou verzi k porovnání.",
+    "cancelCompare": "Zrušit",
+    "name": "Pojmenovat tuto verzi",
+    "rename": "Přejmenovat",
+    "unname": "Odebrat název",
+    "nameLabel": "Název verze",
+    "namePlaceholder": "Například Odesláno recenzentům",
+    "versionDescription": "Takto projekt vypadal po těchto změnách. Můžete si ho tu přečíst, aniž byste cokoli změnili.",
+    "files": "Soubory",
+    "noFiles": "V této verzi se nezměnily žádné textové soubory.",
+    "fileLabel": "{{path}} ve stavu z {{time}}",
+    "fileMissing": "Tento soubor v této verzi neexistoval.",
+    "loadingFile": "Načítá se…",
+    "restoreFile": "Obnovit tento soubor",
+    "restoreProject": "Obnovit celý projekt",
+    "restoreFileConfirm": {
+      "title": "Obnovit {{path}}?",
+      "description": "Soubor se pro všechny v tomto projektu vrátí do stavu z {{time}}. Jeho aktuální text zůstane v historii, takže se k němu můžete vrátit.",
+      "confirm": "Obnovit soubor"
+    },
+    "restoreProjectConfirm": {
+      "title": "Obnovit celý projekt?",
+      "description": "Všechny soubory se pro všechny v tomto projektu vrátí do stavu z {{time}}. Aktuální text zůstane v historii, takže se k němu můžete vrátit.",
+      "confirm": "Obnovit projekt"
+    },
+    "compareTitle": "Změny mezi dvěma verzemi",
+    "compareDescription": "Od {{from}} do {{to}}",
+    "changedFiles": "Změněné soubory: {{number}}",
+    "noChanges": "Mezi těmito verzemi se žádný text nezměnil."
+  },
   "accessLog": {
     "opened": "Uživatel {{name}} otevřel projekt",
     "joinedLink": "Uživatel {{name}} se připojil přes odkaz",
@@ -1065,6 +1189,10 @@
   "access": {
     "viewerBy": "Uživatel {{name}} vám nastavil roli čtenáře. Projekt můžete číst, ale ne upravovat.",
     "viewer": "Teď jste čtenář. Projekt můžete číst, ale ne upravovat.",
+    "commenterBy": "Uživatel {{name}} vám nastavil roli komentátora. Projekt můžete číst a komentovat, ale ne upravovat.",
+    "commenter": "Teď jste komentátor. Projekt můžete číst a komentovat, ale ne upravovat.",
+    "reviewerBy": "Uživatel {{name}} vám nastavil roli recenzenta. Z vašich změn se stanou návrhy, které může přijmout vlastník nebo editor.",
+    "reviewer": "Teď jste recenzent. Z vašich změn se stanou návrhy, které může přijmout vlastník nebo editor.",
     "viewOnly": "Tento sdílený projekt můžete zobrazit, ale ne upravovat.",
     "connecting": "Tento sdílený projekt se ještě připojuje, takže ho zatím nelze měnit. Zkuste to za chvíli znovu.",
     "unsentReadOnly": "Vaše poslední změny v souboru {{path}} se neodeslaly, protože tento projekt teď můžete jen prohlížet.",
@@ -1081,6 +1209,8 @@
     "projectTooLarge": "{{file}} zůstane v tomto počítači, protože projekt dosáhl limitu velikosti serveru {{limit}}. Požádejte toho, kdo server spravuje, aby limit zvýšil.",
     "projectTooLargeUnknown": "{{file}} zůstane v tomto počítači, protože projekt dosáhl limitu velikosti serveru. Požádejte toho, kdo server spravuje, aby limit zvýšil.",
     "projectFull": "Tento projekt dosáhl limitu velikosti serveru, takže vaše změny zatím zůstanou v tomto počítači. Požádejte toho, kdo server spravuje, aby limit zvýšil.",
+    "accountStorageFull": "Nepodařilo se sdílet, protože vlastník projektu nemá na tomto serveru volné úložiště: {{files}}",
+    "tooManyUploads": "Zatím se nepodařilo sdílet, protože jste za poslední hodinu nahráli příliš mnoho souborů: {{files}}. Zkuste to později.",
     "replaced": "{{name}} nahradil(a) {{file}} ve stejnou chvíli jako vy. Vaše verze je uložena jako {{copy}}.",
     "added": "{{file}} je teď {{copy}}, protože {{name}} přidal(a) soubor se stejným názvem.",
     "beside": "{{name}} má také soubor s názvem {{file}}. Je uložen jako {{copy}}.",

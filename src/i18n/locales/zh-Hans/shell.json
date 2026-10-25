@@ -448,7 +448,19 @@
       "help": "变体会将自己的值传给 sys.inputs，例如草稿版或终稿版构建。你选择的变体只保存在这台电脑上。可在文档设置中添加或编辑变体。",
       "none": "无变体"
     },
-    "sharedViewer": "在共享项目中，查看者无法更改这些设置。"
+    "typEngine": {
+      "title": "引擎（本项目）",
+      "help": "Typst 按原样编译文档。Calepin 还会运行其中的代码，并将结果放入 PDF。",
+      "typst": "Typst <note>[内置]</note>",
+      "calepin": "Calepin <note>[运行代码]</note>"
+    },
+    "code": {
+      "title": "代码（本机）",
+      "help": "Quarto 和 Calepin 可以运行此项目中的 R、Python 和 Julia 代码。代码会以你的权限运行，因此仅对你信任的项目允许。此选择仅适用于这台电脑。",
+      "off": "关闭",
+      "run": "在这台电脑上运行代码"
+    },
+    "sharedViewer": "在共享项目中，只有所有者和编辑者可以更改这些设置。"
   },
   "datePicker": {
     "placeholder": "选择日期"
@@ -518,6 +530,18 @@
   "shellCommands": {
     "allow": "允许外部命令",
     "banner": "此文档在编译时会运行外部命令，但此项目阻止了这些命令。仅在你信任项目中每个文件时才允许。"
+  },
+  "codeExecution": {
+    "allow": "在此项目中允许代码",
+    "needed": "此文档需要运行其代码才能构建，但此项目的代码已关闭。仅在你信任项目中每个文件时才允许代码。",
+    "skipped": "此项目的代码已关闭，因此此文档中的代码没有运行。仅在你信任项目中每个文件时才允许代码。",
+    "storedResults": "此项目的代码已关闭，因此 PDF 显示的是之前运行时保存的代码结果。仅在你信任项目中每个文件时才允许代码。"
+  },
+  "typstCjkFonts": {
+    "message": "此文档包含中文、日文或韩文文本，但这台电脑上没有能显示它们的字体，所以 PDF 中缺少这些文字。",
+    "download": "下载字体",
+    "downloadSize": "下载字体（{{size}}）",
+    "downloading": "正在下载字体"
   },
   "errorBoundary": {
     "copyDiagnostics": "复制诊断信息",
@@ -647,6 +671,8 @@
       "standalone": "独立图形",
       "typst": "Typst",
       "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Calepin 笔记本",
       "unknown": "其他"
     },
     "reason": {
@@ -828,10 +854,6 @@
       "latexTools": {
         "description": "显示 Oleafly 工具库以及各个工具（PDF 导入、公式、表格、BibTeX、实验与文献检索、截止日期）及其斜杠命令。仍处于测试阶段，默认关闭。",
         "label": "LaTeX 工具"
-      },
-      "liveCollaboration": {
-        "description": "通过你或你的团队运行的协作服务器，与他人一起编辑项目。会在设置中添加“协作”分区。仍处于测试阶段，默认关闭。",
-        "label": "实时协作"
       },
       "warning": "这些功能为实验性功能，仍处于测试阶段。它们尚未经过完整测试，可能会在未来的版本中变化、出错或被移除。仅在你想要尝试开发中的功能时才开启。",
       "webBrowser": {

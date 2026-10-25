@@ -826,7 +826,7 @@ mod tests {
             read_server(json!({
                 "type": "subscribed",
                 "project_id": PROJECT,
-                "role": "commenter",
+                "role": "auditor",
                 "head_seq": 9
             }))
             .unwrap(),
@@ -841,7 +841,7 @@ mod tests {
             read_server(json!({
                 "type": "access_changed",
                 "project_id": PROJECT,
-                "role": "commenter"
+                "role": "auditor"
             }))
             .unwrap(),
             ServerFrame::AccessChanged {

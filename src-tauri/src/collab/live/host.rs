@@ -26,6 +26,8 @@ pub trait LiveHost: Send + Sync + 'static {
     fn comments_changed(&self, _payload: crate::collab::comments::CommentsChangedPayload) {}
     fn comments_not_sent(&self, _payload: crate::collab::comments::CommentsNotSentPayload) {}
     fn comments_status(&self, _payload: crate::collab::comments::CommentsStatusPayload) {}
+    fn suggestions_changed(&self, _payload: crate::collab::suggesting::SuggestionsChangedPayload) {}
+    fn chat_changed(&self, _payload: crate::collab::chat::ChatChangedPayload) {}
     fn members(&self, _payload: MembersPayload) {}
     fn change_skipped(&self, _payload: ChangeSkippedPayload) {}
     fn project_full(&self, _payload: ProjectFullPayload) {}
@@ -105,6 +107,19 @@ impl LiveHost for AppLiveHost {
         let _ = self
             .app
             .emit(crate::collab::comments::COMMENTS_STATUS_EVENT, payload);
+    }
+
+    fn suggestions_changed(&self, payload: crate::collab::suggesting::SuggestionsChangedPayload) {
+        let _ = self.app.emit(
+            crate::collab::suggesting::SUGGESTIONS_CHANGED_EVENT,
+            payload,
+        );
+    }
+
+    fn chat_changed(&self, payload: crate::collab::chat::ChatChangedPayload) {
+        let _ = self
+            .app
+            .emit(crate::collab::chat::CHAT_CHANGED_EVENT, payload);
     }
 
     fn members(&self, payload: MembersPayload) {

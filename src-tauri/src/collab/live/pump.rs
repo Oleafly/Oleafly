@@ -231,6 +231,8 @@ fn on_changed(active: &Active) {
         active.account_id,
         active.host.as_ref(),
     );
+    crate::collab::suggesting::announce(&active.project_id, &active.live, active.host.as_ref());
+    crate::collab::chat::announce(&active.project_id, &active.live, active.host.as_ref());
 }
 
 fn on_merged(active: &Active, report: MergeReport) {

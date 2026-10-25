@@ -1,0 +1,190 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "Yükleniyor",
+    "loadFailed": "Oleafly sunucuya ulaşamadı.",
+    "retry": "Yeniden dene",
+    "dismiss": "Kapat",
+    "projects": "Projeler",
+    "account": "Hesap",
+    "signOut": "Oturumu kapat",
+    "signOutFailed": "Oturumunuz kapatılamadı. Yeniden deneyin.",
+    "cancel": "İptal"
+  },
+  "signIn": {
+    "title": "Oleafly'de oturum açın",
+    "description": "Bir ortak yazarın projeyi paylaştığı hesapla oturum açın.",
+    "action": "Oturum aç"
+  },
+  "projects": {
+    "title": "Sizinle paylaşılanlar",
+    "emptyTitle": "Henüz sizinle paylaşılan bir şey yok",
+    "emptyDescription": "Biri hesabınızla bir proje paylaştığında burada görünür.",
+    "untitled": "Adsız proje",
+    "ownedBy": "Sahibi: {{name}}",
+    "loadFailed": "Projeleriniz yüklenemedi.",
+    "list": "Projeler"
+  },
+  "roles": {
+    "owner": "Sahip",
+    "editor": "Düzenleyen",
+    "reviewer": "İnceleyen",
+    "commenter": "Yorumcu",
+    "viewer": "Görüntüleyen",
+    "unknown": "Salt okunur"
+  },
+  "connection": {
+    "connecting": "Bağlanıyor",
+    "online": "Bağlı",
+    "offline": "Çevrimdışı",
+    "offlineBanner": "Çevrimdışısınız. Değişiklikleriniz saklanır ve bağlantı geri geldiğinde gönderilir.",
+    "ended": "Bağlantı kesildi"
+  },
+  "ended": {
+    "signedOutTitle": "Oturumunuz kapandı",
+    "signedOutDescription": "Bu projede çalışmaya devam etmek için yeniden oturum açın.",
+    "noAccessTitle": "Bu projeyi açamazsınız",
+    "noAccessDescription": "Proje hesabınızla paylaşılmadı ya da erişiminiz kaldırıldı.",
+    "stoppedTitle": "Bağlantı kesildi",
+    "stoppedDescription": "Yeniden bağlanmak için sayfayı yenileyin."
+  },
+  "access": {
+    "changed": "Bu projedeki yeni rolünüz: {{role}}."
+  },
+  "discarded": {
+    "read_only": "Bu projeyi artık düzenleyemediğiniz için son düzenlemeleriniz kaydedilmedi.",
+    "refused": "Son düzenlemeleriniz kaydedilemedi."
+  },
+  "views": {
+    "label": "Paneller",
+    "files": "Dosyalar",
+    "source": "Kaynak",
+    "pdf": "PDF",
+    "comments": "Yorumlar",
+    "chat": "Sohbet"
+  },
+  "presence": {
+    "label": "Burada olanlar"
+  },
+  "files": {
+    "title": "Dosyalar",
+    "empty": "Bu projede henüz dosya yok.",
+    "tree": "Proje dosyaları"
+  },
+  "source": {
+    "noFileTitle": "Bir dosya açın",
+    "noFileDescription": "Okumak için listeden bir dosya seçin.",
+    "opening": "Açılıyor: {{path}}",
+    "removed": "{{path}} projeden kaldırıldı.",
+    "readOnly": "Salt okunur",
+    "readOnlyHint": "Rolünüzle bu projeyi okuyabilirsiniz ama düzenleyemezsiniz.",
+    "modeLabel": "Düzenleme modu",
+    "editing": "Düzenleme",
+    "suggesting": "Öneri",
+    "suggestingHint": "Düzenlemeleriniz, bir sahibin ya da düzenleyenin incelediği önerilerdir.",
+    "comment": "Yorum yap",
+    "commentHint": "Yorum yapmak için metin seçin.",
+    "binary": "Bu dosya tarayıcıda gösterilemez.",
+    "blobFailed": "Dosya yüklenemedi."
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "Derleyen: {{name}}, {{time}}",
+    "emptyTitle": "Henüz PDF yok",
+    "emptyDescription": "Biri projeyi Oleafly uygulamasında derledikten sonra PDF burada görünür.",
+    "loading": "PDF yükleniyor",
+    "failed": "PDF yüklenemedi.",
+    "zoomIn": "Yakınlaştır",
+    "zoomOut": "Uzaklaştır",
+    "fitWidth": "Genişliğe sığdır",
+    "download": "İndir",
+    "zoom": "%{{percent}}"
+  },
+  "comments": {
+    "emptyTitle": "Yorum ya da öneri yok",
+    "emptyCanComment": "Bir konu başlatmak için kaynakta metin seçin ve Yorum yap düğmesine tıklayın.",
+    "emptyReadOnly": "Bu projedeki yorumlar ve öneriler burada görünür.",
+    "newComment": "Yeni yorum",
+    "placeholder": "Bir yorum ekleyin",
+    "submit": "Yorum yap",
+    "reply": "Yanıtla",
+    "replyPlaceholder": "Yanıt",
+    "replyLabel": "Bu konuyu yanıtla",
+    "edit": "Düzenle",
+    "editLabel": "Yorumu düzenle",
+    "save": "Kaydet",
+    "delete": "Sil",
+    "deleteTitle": "Bu yorum silinsin mi?",
+    "deleteDescription": "Bu işlem geri alınamaz.",
+    "messageActions": "Yorum işlemleri",
+    "resolve": "Çöz",
+    "reopen": "Yeniden aç",
+    "resolvedBy": "Çözen: {{name}}",
+    "deleted": "Yorum silindi",
+    "edited": "düzenlendi",
+    "anchorLost": "Bu yorumun ait olduğu metin kaldırıldı.",
+    "showInSource": "Kaynakta göster",
+    "thread": "{{name}} kişisinin yorumu",
+    "hideResolved": "Çözülenleri gizle",
+    "resolvedCount_one": "{{count}} çözülen yorum",
+    "resolvedCount_other": "{{count}} çözülen yorum"
+  },
+  "suggestions": {
+    "inserted": "Eklendi",
+    "deleted": "Silindi",
+    "accept": "Kabul et",
+    "reject": "Reddet",
+    "withdraw": "Geri çek",
+    "acceptAll": "Tümünü kabul et",
+    "rejectAll": "Tümünü reddet",
+    "pending_one": "{{count}} öneri",
+    "pending_other": "{{count}} öneri",
+    "card": "{{name}} kişisinin önerisi",
+    "lineBreak": "Satır sonu"
+  },
+  "chat": {
+    "emptyTitle": "Henüz mesaj yok",
+    "emptyDescription": "Buradaki mesajları projedeki herkes görür.",
+    "placeholder": "Bir mesaj yazın",
+    "label": "Mesaj",
+    "send": "Gönder",
+    "readOnly": "Sohbeti okuyabilirsiniz. Görüntüleyenler mesaj gönderemez.",
+    "delete": "Mesajı sil",
+    "clear": "Sohbeti temizle",
+    "clearTitle": "Sohbet herkes için temizlensin mi?",
+    "clearDescription": "Projedeki herkes bu mesajları kaybeder.",
+    "messages": "Sohbet mesajları"
+  },
+  "people": {
+    "you": "Siz",
+    "someone": "Biri",
+    "unverified": "Doğrulanmamış yazar"
+  },
+  "errors": {
+    "offline": "Çevrimdışısınız. Bağlandığınızda yeniden deneyin.",
+    "generic": "Sunucu bu değişikliği reddetti.",
+    "suggestion_not_found": "Bu öneri zaten kabul edildi ya da reddedildi.",
+    "suggestion_not_yours": "Yalnızca kendi önerilerinizi geri çekebilirsiniz.",
+    "suggestion_role": "Rolünüz öneri yapmaya ya da önerileri incelemeye izin vermiyor.",
+    "chat_role": "Rolünüz sohbete yazmaya izin vermiyor.",
+    "comment_not_live": "Yorumlar şu anda kullanılamıyor.",
+    "comment_not_yours": "Yalnızca kendi yorumlarınızı değiştirebilirsiniz.",
+    "comment_off_server": "Bu sunucuda yorumlar kapalı.",
+    "comment_off_project": "Bu projede yorumlar kapalı.",
+    "comment_viewer": "Görüntüleyenler yorum yapamaz.",
+    "comment_someone_replied": "Biri yanıt verdiği için bu yorum silinemez.",
+    "comment_message_deleted": "Bu yorum silindi.",
+    "comment_selection_changed": "Siz yazarken metin değişti. Metni yeniden seçin.",
+    "comment_too_long": "Yorum çok uzun.",
+    "comment_empty": "Önce bir şey yazın.",
+    "rate_limited": "Aynı anda çok fazla değişiklik var. Biraz bekleyip yeniden deneyin.",
+    "too_large": "Bu, gönderilemeyecek kadar büyük.",
+    "project_too_large": "Bu proje, tarayıcıda açılamayacak kadar büyük.",
+    "server_busy": "Sunucu meşgul. Biraz sonra yeniden deneyin.",
+    "not_open": "Dosyayı değiştirmeden önce açın.",
+    "cross_site": "Bu istek, bu sunucudaki Oleafly web uygulamasından gelmedi. Sayfayı yenileyip yeniden deneyin.",
+    "conflict": "Bu, başka birinin yaptığı bir değişiklikle çakışıyor. Yeniden deneyin.",
+    "account_storage_full": "Proje sahibinin bu sunucudaki hesabında depolama alanı kalmadı.",
+    "too_many_uploads": "Son bir saatte çok fazla yükleme yaptınız. Daha sonra yeniden deneyin."
+  }
+}

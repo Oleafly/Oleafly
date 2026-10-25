@@ -9,6 +9,7 @@ import {
   exportTypstDocument,
   setTypstProjectOptions,
   typstArchivalStandards,
+  typstGlyphCoverage,
   typstHtmlExport,
   typstProjectFonts,
   typstProjectOptions,
@@ -81,11 +82,13 @@ describe("Typst option commands", () => {
     await typstProjectOptions("paper");
     await setTypstProjectOptions("paper", { systemFonts: false });
     await typstProjectFonts("paper");
+    await typstGlyphCoverage("paper", "你好");
     await exportTypstDocument("paper", "main.typ", { format: "png", ppi: 300 }, "/out/paper.png");
     expect(mocks.invoke.mock.calls).toEqual([
       ["typst_project_options", { projectId: "paper" }],
       ["set_typst_project_options", { projectId: "paper", update: { systemFonts: false } }],
       ["typst_project_fonts", { projectId: "paper" }],
+      ["typst_glyph_coverage", { projectId: "paper", characters: "你好" }],
       [
         "export_typst_document",
         { projectId: "paper", mainDoc: "main.typ", request: { format: "png", ppi: 300 }, dest: "/out/paper.png" },

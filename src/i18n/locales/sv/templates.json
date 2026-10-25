@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "Visa bara CV-mallar som rekryteringssystem (ATS) kan tolka på ett tillförlitligt sätt: en spalt, vanliga typsnitt och markerbar text (inga ord inbakade i grafik).",
       "atsFriendly": "ATS-vänlig",
       "offlineTooltip": "Visa bara mallar som kompilerar utan nedladdningar: deras typsnitt och paket följer redan med, så de byggs utan internetanslutning.",

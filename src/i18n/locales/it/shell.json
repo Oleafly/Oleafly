@@ -452,7 +452,19 @@
       "help": "Una variante passa i propri valori a sys.inputs, ad esempio per una versione di bozza o quella definitiva. La variante che scegli resta su questo computer. Aggiungi o modifica le varianti in Impostazioni del documento.",
       "none": "Nessuna variante"
     },
-    "sharedViewer": "I visualizzatori non possono modificare queste impostazioni in un progetto condiviso."
+    "typEngine": {
+      "title": "Motore (questo progetto)",
+      "help": "Typst compila il documento così com'è scritto. Calepin esegue anche il codice che contiene e inserisce i risultati nel PDF.",
+      "typst": "Typst <note>[integrato]</note>",
+      "calepin": "Calepin <note>[esegue codice]</note>"
+    },
+    "code": {
+      "title": "Codice (questo computer)",
+      "help": "Quarto e Calepin possono eseguire il codice R, Python e Julia di questo progetto. Il codice viene eseguito con i tuoi permessi, quindi consentilo solo per un progetto di cui ti fidi. La scelta vale solo per questo computer.",
+      "off": "Disattivato",
+      "run": "Esegui il codice su questo computer"
+    },
+    "sharedViewer": "Solo proprietari ed editor possono modificare queste impostazioni in un progetto condiviso."
   },
   "datePicker": {
     "placeholder": "Scegli una data"
@@ -524,6 +536,18 @@
   "shellCommands": {
     "allow": "Consenti comandi esterni",
     "banner": "Questo documento esegue comandi esterni durante la compilazione, e questo progetto li blocca. Consentili solo se ti fidi di ogni file del progetto."
+  },
+  "codeExecution": {
+    "allow": "Consenti il codice in questo progetto",
+    "needed": "Questo documento deve eseguire il suo codice per essere generato, e il codice è disattivato per questo progetto. Consenti il codice solo se ti fidi di ogni file del progetto.",
+    "skipped": "Il codice di questo documento non è stato eseguito perché il codice è disattivato per questo progetto. Consenti il codice solo se ti fidi di ogni file del progetto.",
+    "storedResults": "Il PDF mostra i risultati del codice salvati da un'esecuzione precedente perché il codice è disattivato per questo progetto. Consenti il codice solo se ti fidi di ogni file del progetto."
+  },
+  "typstCjkFonts": {
+    "message": "Questo documento contiene testo cinese, giapponese o coreano che nessun font di questo computer può mostrare, quindi non compare nel PDF.",
+    "download": "Scarica i font",
+    "downloadSize": "Scarica i font ({{size}})",
+    "downloading": "Download dei font in corso"
   },
   "errorBoundary": {
     "copyDiagnostics": "Copia le diagnostiche",
@@ -653,6 +677,8 @@
       "standalone": "Figura autonoma",
       "typst": "Typst",
       "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Notebook Calepin",
       "unknown": "Altro"
     },
     "reason": {
@@ -858,10 +884,6 @@
       "latexTools": {
         "description": "Mostra la galleria Oleafly Tools e i singoli strumenti (importazione PDF, equazioni, tabelle, BibTeX, ricerca di laboratori e letteratura, scadenze) più i relativi comandi slash. Disattivata per impostazione predefinita finché è in beta.",
         "label": "Strumenti LaTeX"
-      },
-      "liveCollaboration": {
-        "description": "Modifica i progetti con altre persone tramite un server di collaborazione gestito da te o dal tuo gruppo. Aggiunge la sezione Collaborazione alle Impostazioni. Disattivata per impostazione predefinita finché è in beta.",
-        "label": "Collaborazione in tempo reale"
       },
       "warning": "Queste funzioni sono sperimentali e ancora in beta. Non sono del tutto testate e possono cambiare, smettere di funzionare o essere rimosse in una versione futura. Attivale solo se vuoi provare un lavoro in corso.",
       "webBrowser": {

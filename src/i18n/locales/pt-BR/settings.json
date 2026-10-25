@@ -184,6 +184,7 @@
       "keyPlaceholder": "Deixe em branco se nenhuma for necessária",
       "keyPlaceholderStored": "A chave salva permanece, a menos que você digite outra",
       "namePlaceholder": "Acme",
+      "presetsLabel": "Provedores comuns",
       "submitAdd": "Adicionar provedor"
     },
     "instructions": {
@@ -280,7 +281,8 @@
       "badge": {
         "connected": "Conectado",
         "notRunning": "Não está rodando",
-        "running": "Rodando"
+        "running": "Rodando",
+        "suggested": "Recomendado"
       },
       "blurbs": {
         "anthropic": "Modelos Claude - fortes em código e escrita.",
@@ -290,7 +292,7 @@
         "groq": "Inferência muito rápida de modelos abertos.",
         "mistral": "Modelos Mistral e Codestral.",
         "ollama": "Roda modelos na sua máquina. Sem chave - instale o Ollama e baixe um modelo.",
-        "openai": "Modelos GPT. A escolha padrão.",
+        "openai": "Modelos GPT.",
         "openrouter": "Uma chave só, acesso a modelos de vários laboratórios.",
         "perplexity": "Modelos Sonar com apoio na web ao vivo.",
         "xai": "Modelos Grok da xAI.",
@@ -1292,6 +1294,58 @@
         "detail": "Compile o projeto aberto com uma versão instalada mais nova e compare os resultados antes de mudar.",
         "check": "Verificar com o Typst {{version}}"
       }
+    },
+    "notebook": {
+      "loading": "Procurando o Quarto, o Calepin e linguagens neste computador",
+      "source": {
+        "system": "Neste computador",
+        "managed": "Baixado pelo Oleafly"
+      },
+      "active": {
+        "version": "{{tool}} {{version}}",
+        "missing": "Não encontrado neste computador."
+      },
+      "managedIdle": "Não está em uso. O Oleafly usa primeiro a cópia encontrada neste computador.",
+      "download": {
+        "optional": "Opcional. O Oleafly já usa a cópia deste computador.",
+        "license": "Licença {{license}}.",
+        "action": "Baixar o {{tool}} {{version}} ({{size}})",
+        "actionNoSize": "Baixar o {{tool}} {{version}}",
+        "notOffered": "O Oleafly não pode baixar o {{tool}} para este computador. Instale-o você mesmo e o Oleafly vai encontrá-lo."
+      },
+      "removeAria": "Remover o {{tool}} baixado pelo Oleafly",
+      "languages": {
+        "heading": "Linguagens",
+        "tooltip": "O código em documentos Quarto e Calepin é executado com estes programas.",
+        "notFound": "Não encontrado",
+        "note": "O Oleafly executa o código com o R, o Python e o Julia que já estão neste computador. Ele nunca os instala."
+      },
+      "codeNote": "O código de um documento só é executado depois que você permitir código para esse projeto no menu de compilação.",
+      "progress": {
+        "starting": "Iniciando",
+        "downloading": "Baixando {{percent}}%",
+        "verifying": "Verificando",
+        "extracting": "Descompactando",
+        "done": "Finalizando"
+      },
+      "error": {
+        "load": "Não foi possível procurar o Quarto, o Calepin e as linguagens.",
+        "install": "Não foi possível instalar o {{tool}}.",
+        "remove": "Não foi possível remover o {{tool}}."
+      }
+    },
+    "quarto": {
+      "heading": "Quarto",
+      "tooltip": "O Quarto transforma documentos .qmd e .Rmd em PDF, página da web ou slides. O Oleafly usa o Quarto deste computador quando encontra um, ou uma cópia que ele baixa.",
+      "detail": "O Oleafly compila documentos .qmd e .Rmd com esta cópia.",
+      "downloadDetail": "O Oleafly mantém uma cópia própria na pasta do aplicativo. O Quarto inclui o Pandoc e outras ferramentas, cada uma com a própria licença."
+    },
+    "calepin": {
+      "heading": "Calepin",
+      "tooltip": "O Calepin executa o código de um documento Typst e coloca os resultados no PDF. O Oleafly usa o Calepin deste computador quando encontra um, ou uma cópia que ele baixa.",
+      "detail": "O Oleafly compila documentos Calepin com esta cópia.",
+      "downloadDetail": "O Oleafly mantém uma cópia própria na pasta do aplicativo.",
+      "typstNote": "O Calepin renderiza com o Typst embutido no Oleafly. Ele precisa do Typst 0.15 ou mais recente."
     }
   },
   "github": {

@@ -60,7 +60,9 @@ Partagez un projet sur l'Oleafly Server de votre laboratoire et tout le monde mo
 - Les modifications faites hors ligne fusionnent quand vous vous reconnectez. Si elles recoupent celles de quelqu'un d'autre, Oleafly vous montre les deux versions et vous demande avant d'appliquer quoi que ce soit.
 - Les modifications de l'IA, les citations Zotero, les renommages, les suppressions et les figures sont aussi partagés. Si deux personnes remplacent la même figure en même temps, les deux versions sont conservées.
 - Le fichier principal, le compilateur, la langue de vérification orthographique et les options Typst sont partagés, donc toute l'équipe compile le projet de la même façon.
-- Chaque projet a un propriétaire, des éditeurs et des lecteurs. Les invités ajoutés par e-mail ne voient que les projets auxquels ils ont été invités.
+- Chaque projet a un propriétaire, des éditeurs, des relecteurs, des commentateurs et des lecteurs. Les modifications des relecteurs deviennent des suggestions, et les propriétaires et les éditeurs peuvent aussi passer en mode Suggestion. Les invités ajoutés par e-mail ne voient que les projets auxquels ils ont été invités.
+- Chaque projet partagé a un chat et un historique où vous pouvez comparer des versions, en restaurer une ou lui donner un nom.
+- Les coauteurs peuvent ouvrir un projet partagé dans leur navigateur quand l'accès par navigateur est activé sur le serveur, et lire le PDF de la dernière compilation.
 
 ### Hébergez le serveur vous-même
 
@@ -162,6 +164,7 @@ Tectonic, Typst et Pandoc sont fournis avec l'application, donc un nouveau proje
 - Complétion et diagnostics en direct pour les labels, citations, commandes, environnements et chemins de fichiers dans tout le projet.
 - Les vérifications orthographiques et grammaticales s'exécutent en local et sont adaptées à l'écriture académique.
 - XeLaTeX, LuaLaTeX, et upLaTeX ou pLaTeX pour les documents en japonais.
+- Les documents Quarto et Calepin exécutent leur code R, Python ou Julia dès que vous autorisez le code pour le projet. Oleafly peut télécharger l'un ou l'autre de ces outils pour vous.
 
 ## Citations, figures, vérifications et modèles
 

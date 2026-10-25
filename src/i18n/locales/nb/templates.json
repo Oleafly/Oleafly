@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "Vis bare CV-maler som rekrutteringssystemer (ATS) kan lese pålitelig: én spalte, standardskrifter og tekst som kan markeres (ingen ord bakt inn i grafikk).",
       "atsFriendly": "ATS-vennlig",
       "offlineTooltip": "Vis bare maler som kompilerer uten nedlasting: skriftene og pakkene ligger allerede med, så de bygges uten nett.",

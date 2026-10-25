@@ -15,7 +15,6 @@ import { appendAppLog } from "@/lib/tauri";
 import { loadDisplayHomes } from "@/lib/display-path";
 import { logError } from "@/lib/log";
 import { installQuitFallback } from "@/lib/quit-flush";
-import { syncLiveCollaborationSwitch } from "@/lib/collab-switch";
 import { reapOrphanAgentRuns } from "@/lib/agent-backend";
 import { getSnapshotConfig, getSnapshotPendingOpen, hydrateFromSnapshot } from "@/lib/initial-state";
 import { prepareColdOpen } from "@/features/open-folder";
@@ -255,7 +254,6 @@ async function bootstrap(): Promise<void> {
   // Fetched early so the first paint already shows home paths as ~/…
   void loadDisplayHomes();
   if (view === "main") {
-    syncLiveCollaborationSwitch();
     void installQuitFallback().catch((error) => logError("prepare quit fallback", error));
     await Promise.all([reapOrphanAgentRuns(), hydrateFromSnapshot(), initializeDesktopI18n()]);
     await syncLocaleFromConfig(getSnapshotConfig()?.ui_locale);

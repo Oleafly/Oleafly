@@ -158,6 +158,8 @@ jobs:
       # frontend build needs no Tectonic sidecar.
       - name: Typecheck & build
         run: pnpm build
+      - name: Browser app typecheck, test and build
+        run: pnpm exec tsc --noEmit -p web && pnpm web:test && pnpm web:build
       - name: Check performance budgets
         run: pnpm check:performance
 
@@ -348,6 +350,11 @@ jobs:
 
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Server with browser access
+        run: |
+          cargo clippy -p oleafly-server --all-targets --features web -- -D warnings
+          cargo test -p oleafly-server --all-targets --features web --no-fail-fast
 
       - name: Install minimum supported Rust toolchain
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de

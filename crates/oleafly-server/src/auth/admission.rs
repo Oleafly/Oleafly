@@ -31,6 +31,7 @@ pub enum Admission {
     Guest {
         existing: Option<AccountId>,
     },
+    Open,
     Suspended,
     InactiveAccountAddress,
     SetupCodeInvalid,
@@ -44,6 +45,7 @@ pub enum Via {
     Domain,
     Setup,
     Guest,
+    Open,
 }
 
 impl Via {
@@ -54,6 +56,7 @@ impl Via {
             Via::Domain => "domain",
             Via::Setup => "setup",
             Via::Guest => "guest",
+            Via::Open => "open_signup",
         }
     }
 }
@@ -82,6 +85,7 @@ pub fn decide(
     conn: &Connection,
     identity: &ExternalIdentity,
     setup_code_hash: Option<&str>,
+    open_signup: bool,
 ) -> Result<Admission, ServerError> {
     let removed =
         match members::find_account_by_identity(conn, &identity.issuer, &identity.subject)? {
@@ -129,6 +133,9 @@ pub fn decide(
             role,
             existing: None,
         });
+    }
+    if open_signup && setup_code_hash.is_none() && removed.is_none() && inactive.is_empty() {
+        return Ok(Admission::Open);
     }
     let invitation = guest_invitation(conn, identity, removed)?;
     if invitation.is_some() && !all_may_return_as_guest(conn, &inactive)? {
@@ -207,6 +214,7 @@ pub fn apply(
             }
             (ServerRole::Guest, None, existing, Via::Guest)
         }
+        Admission::Open => (ServerRole::Member, None, None, Via::Open),
         Admission::Suspended => return Ok(refused(AuthErrorCode::NotAdmitted, "suspended")),
         Admission::InactiveAccountAddress => {
             return Ok(refused(

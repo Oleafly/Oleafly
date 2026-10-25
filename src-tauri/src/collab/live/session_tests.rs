@@ -1292,6 +1292,40 @@ fn files_the_project_leaves_out_never_enter_the_shared_tree_but_shared_ones_keep
 }
 
 #[test]
+fn quarto_output_never_enters_the_shared_tree_but_calepin_results_do() {
+    let (_dir, root, _host, rig) = watched_rig("notebook", &[("report.qmd", "# Report")]);
+    for (folder, file) in [
+        ("report_files/figure-html", "plot.svg"),
+        (".quarto/xref", "index.json"),
+        (".calepin", "calepin.typ"),
+        ("data_files", "raw.csv"),
+    ] {
+        std::fs::create_dir_all(root.join(folder)).unwrap();
+        std::fs::write(root.join(folder).join(file), "generated").unwrap();
+    }
+    rig.import(&[
+        "report_files",
+        "report_files/figure-html/plot.svg",
+        ".quarto",
+        ".quarto/xref/index.json",
+        ".calepin",
+        ".calepin/calepin.typ",
+        "data_files",
+        "data_files/raw.csv",
+    ]);
+    assert_eq!(
+        rig.paths(),
+        [
+            ".calepin",
+            ".calepin/calepin.typ",
+            "data_files",
+            "data_files/raw.csv",
+            "report.qmd"
+        ]
+    );
+}
+
+#[test]
 fn a_viewer_write_is_refused_as_read_only_and_never_reaches_the_document() {
     let (_dir, root, _host, rig) = watched_rig("viewing", &[("main.tex", "abc")]);
     let _live = rig.go_live();

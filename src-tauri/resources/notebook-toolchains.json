@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-24",
+  "allowedDownloadHosts": [
+    "github.com",
+    "release-assets.githubusercontent.com",
+    "objects.githubusercontent.com"
+  ],
+  "tools": {
+    "quarto": {
+      "version": "1.10.19",
+      "license": "MIT",
+      "repository": "https://github.com/quarto-dev/quarto-cli",
+      "targets": {
+        "aarch64-apple-darwin": {
+          "asset": "quarto-1.10.19-macos.tar.gz",
+          "archiveType": "tar.gz",
+          "archiveSha256": "c617db5422824e506750573ea94a1e26a475532adfe18c8fea310816ced97f47",
+          "archiveSize": 247498232,
+          "executables": ["bin/quarto", "quarto-1.10.19/bin/quarto"],
+          "url": "https://github.com/quarto-dev/quarto-cli/releases/download/v1.10.19/quarto-1.10.19-macos.tar.gz"
+        },
+        "x86_64-unknown-linux-gnu": {
+          "asset": "quarto-1.10.19-linux-amd64.tar.gz",
+          "archiveType": "tar.gz",
+          "archiveSha256": "8e38c2b2df6a6dbd369ea16e15acded6894545258d13a02f777f81ad18fd7973",
+          "archiveSize": 147020886,
+          "executables": ["quarto-1.10.19/bin/quarto", "bin/quarto"],
+          "url": "https://github.com/quarto-dev/quarto-cli/releases/download/v1.10.19/quarto-1.10.19-linux-amd64.tar.gz"
+        },
+        "aarch64-unknown-linux-gnu": {
+          "asset": "quarto-1.10.19-linux-arm64.tar.gz",
+          "archiveType": "tar.gz",
+          "archiveSha256": "bba2bb55add74c754c313905df42b0f45a8250aee2110a4fce7f83020bfe1b8f",
+          "archiveSize": 145751670,
+          "executables": ["quarto-1.10.19/bin/quarto", "bin/quarto"],
+          "url": "https://github.com/quarto-dev/quarto-cli/releases/download/v1.10.19/quarto-1.10.19-linux-arm64.tar.gz"
+        },
+        "x86_64-pc-windows-msvc": {
+          "asset": "quarto-1.10.19-win.zip",
+          "archiveType": "zip",
+          "archiveSha256": "a9c62e4fef34ea05d4dd9175d905f80f0542414a1ae17a9d45698f6646c01173",
+          "archiveSize": 148269697,
+          "executables": ["bin/quarto.exe", "quarto-1.10.19/bin/quarto.exe"],
+          "url": "https://github.com/quarto-dev/quarto-cli/releases/download/v1.10.19/quarto-1.10.19-win.zip"
+        }
+      }
+    },
+    "calepin": {
+      "version": "0.0.61",
+      "license": "MIT",
+      "repository": "https://github.com/vincentarelbundock/calepin",
+      "targets": {
+        "aarch64-apple-darwin": {
+          "asset": "calepin-aarch64-apple-darwin.tar.xz",
+          "archiveType": "tar.xz",
+          "archiveSha256": "eacc19fe4ed2c41c8ac74224db24b09e11da8bb406b95aaf23a30905ea01b2cb",
+          "archiveSize": 10268720,
+          "executables": ["calepin-aarch64-apple-darwin/calepin", "calepin"],
+          "url": "https://github.com/vincentarelbundock/calepin/releases/download/v0.0.61/calepin-aarch64-apple-darwin.tar.xz"
+        },
+        "x86_64-unknown-linux-gnu": {
+          "asset": "calepin-x86_64-unknown-linux-gnu.tar.xz",
+          "archiveType": "tar.xz",
+          "archiveSha256": "2424ff105dadb832de6be3ae28eb6922abce126785803951c80300e419ed5db5",
+          "archiveSize": 10942228,
+          "executables": ["calepin-x86_64-unknown-linux-gnu/calepin", "calepin"],
+          "url": "https://github.com/vincentarelbundock/calepin/releases/download/v0.0.61/calepin-x86_64-unknown-linux-gnu.tar.xz"
+        },
+        "aarch64-unknown-linux-gnu": {
+          "asset": "calepin-aarch64-unknown-linux-gnu.tar.xz",
+          "archiveType": "tar.xz",
+          "archiveSha256": "d200104bb6755f683d347013986eb0a383c8d05a986a364ef75dbb8cb0a17cfb",
+          "archiveSize": 10337236,
+          "executables": ["calepin-aarch64-unknown-linux-gnu/calepin", "calepin"],
+          "url": "https://github.com/vincentarelbundock/calepin/releases/download/v0.0.61/calepin-aarch64-unknown-linux-gnu.tar.xz"
+        },
+        "x86_64-pc-windows-msvc": {
+          "asset": "calepin-x86_64-pc-windows-msvc.zip",
+          "archiveType": "zip",
+          "archiveSha256": "2ec71d62ba8e0265f40d876f4a47983c45d9a3e24f9a8b155072858671ea5956",
+          "archiveSize": 16635534,
+          "executables": ["calepin.exe", "calepin-x86_64-pc-windows-msvc/calepin.exe"],
+          "url": "https://github.com/vincentarelbundock/calepin/releases/download/v0.0.61/calepin-x86_64-pc-windows-msvc.zip"
+        }
+      }
+    }
+  }
+}

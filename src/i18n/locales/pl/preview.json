@@ -99,7 +99,20 @@
     "installPackages_many": "Znajdź i zainstaluj {{count}} plików",
     "installPackages_other": "Znajdź i zainstaluj {{count}} pliku",
     "downloadTypst": "Pobierz Typst {{version}}",
-    "useTypst": "Użyj Typst {{version}}"
+    "useTypst": "Użyj Typst {{version}}",
+    "installTool": "Zainstaluj {{tool}} {{version}}",
+    "installToolSize": "Zainstaluj {{tool}} {{version}} ({{size}})",
+    "engineSettings": "Otwórz ustawienia silnika"
+  },
+  "html": {
+    "builtTitle": "Skompilowano jako stronę internetową",
+    "builtDetail": "Skompilowano o {{time}}. Strony internetowe otwierają się w przeglądarce.",
+    "building": "Kompilowanie strony internetowej",
+    "buildingDetail": "Gdy będzie gotowa, możesz otworzyć ją w przeglądarce.",
+    "pendingTitle": "Ten dokument kompiluje się do strony internetowej",
+    "pendingDetail": "Skompiluj go, a potem otwórz w przeglądarce.",
+    "open": "Otwórz w przeglądarce",
+    "compile": "Kompiluj"
   },
   "stale": {
     "badge": "Nieaktualny",

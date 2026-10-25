@@ -350,18 +350,94 @@ fn a_typst_project_skips_imported_and_library_files() {
 }
 
 #[test]
-fn markdown_and_quarto_folders_open_only_named_documents() {
+fn a_quarto_folder_opens_its_only_document() {
     let quarto = tree(&[
         ("_quarto.yml", "project:\n  type: book\n"),
         ("index.qmd", "# Book\n"),
         ("README.md", "# Readme\n"),
     ]);
     let detection = detect(&quarto);
+    auto(&detection, "index.qmd", DetectionSource::Scan);
     assert_eq!(
-        (detection.decision, detection.main),
-        (Decision::NoMain, None)
+        candidate(&detection, "index.qmd").kind,
+        DocumentKind::Quarto
+    );
+    assert_eq!(
+        candidate(&detection, "index.qmd").family,
+        SourceFamily::Quarto
     );
 
+    let analysis = tree(&[
+        (
+            "analysis.Rmd",
+            "---\ntitle: \"Growth curves\"\noutput: html_document\n---\n\n```{r}\nsummary(cars)\n```\n",
+        ),
+        ("README.Rmd", "# Package\n"),
+    ]);
+    let detection = detect(&analysis);
+    auto(&detection, "analysis.Rmd", DetectionSource::Scan);
+    assert_eq!(paths(&detection), ["analysis.Rmd"]);
+    assert_eq!(
+        candidate(&detection, "analysis.Rmd").title.as_deref(),
+        Some("Growth curves")
+    );
+
+    let root = tree(&[
+        ("main.qmd", "---\ntitle: Root\n---\nText.\n"),
+        ("appendix.qmd", "# Appendix\n"),
+    ]);
+    auto(&detect(&root), "main.qmd", DetectionSource::RootMain);
+
+    let two = tree(&[("paper.qmd", "# Paper\n"), ("slides.qmd", "# Slides\n")]);
+    assert_eq!(detect(&two).decision, Decision::Ask);
+}
+
+#[test]
+fn a_calepin_notebook_is_told_apart_from_plain_typst() {
+    let directory = tree(&[
+        (
+            "report.typ",
+            "#import \"/.calepin/calepin.typ\" as calepin\n#show: calepin.document\n= Report\n\n```python\nprint(1)\n```\n",
+        ),
+        (".calepin/calepin.typ", "#let document(body) = body\n"),
+    ]);
+    let detection = detect(&directory);
+    auto(&detection, "report.typ", DetectionSource::Scan);
+    assert_eq!(
+        candidate(&detection, "report.typ").kind,
+        DocumentKind::Calepin
+    );
+    assert_eq!(
+        candidate(&detection, "report.typ").family,
+        SourceFamily::Typst
+    );
+
+    let plain = tree(&[("notes.typ", "= Notes\nText.\n")]);
+    assert_eq!(
+        candidate(&detect(&plain), "notes.typ").kind,
+        DocumentKind::Typst
+    );
+}
+
+#[test]
+fn calepin_runtime_imports_are_recognised_in_typst_source() {
+    assert!(typst_uses_calepin(
+        "#import \"/.calepin/calepin.typ\" as calepin\n"
+    ));
+    assert!(typst_uses_calepin(
+        "#import \"/.calepin/chapters/intro/calepin.typ\" as calepin\n"
+    ));
+    assert!(!typst_uses_calepin(
+        "// #import \"/.calepin/calepin.typ\" as calepin\n= Draft\n"
+    ));
+    assert!(!typst_uses_calepin(
+        "#import \"@preview/calepin:0.0.1\": *\n"
+    ));
+    assert!(!typst_uses_calepin("#import \"lib/calepin.typ\": conf\n"));
+}
+
+#[test]
+fn markdown_folders_open_only_named_documents() {
     let paper = tree(&[
         ("paper.md", "---\ntitle: \"Field Notes\"\n---\nText.\n"),
         ("README.md", "# Readme\n"),

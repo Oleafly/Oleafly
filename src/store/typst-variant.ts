@@ -47,10 +47,10 @@ export const useTypstVariantStore = create<TypstVariantState>((set, get) => ({
 
 export function activeTypstVariant(
   projectId: string | null,
-  engine: Pick<DocumentEngineDescriptor, "source_format" | "typst_options">,
+  engine: Pick<DocumentEngineDescriptor, "id" | "typst_options">,
   selections: Selections = useTypstVariantStore.getState().selections,
 ): string | null {
-  if (!projectId || engine.source_format !== "typst") return null;
+  if (!projectId || engine.id !== "typst") return null;
   const chosen = selections[projectId];
   return chosen && engine.typst_options?.variants.includes(chosen) ? chosen : null;
 }

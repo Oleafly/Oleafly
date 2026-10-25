@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 
 const mocks = vi.hoisted(() => ({
@@ -98,13 +98,8 @@ beforeEach(async () => {
   });
 });
 
-afterEach(() => {
-  useSettingsStore.setState({ liveCollaboration: false });
-});
-
 describe("FileTree collaboration presence", () => {
   it("puts a dot for each person on the file they have open", async () => {
-    useSettingsStore.setState({ liveCollaboration: true });
     render(<FileTree />);
     const main = screen.getByRole("treeitem", { name: /^main\.tex/ });
     expect(await within(main).findByRole("img", { name: "Alice Chen has this file open" })).toBeInTheDocument();
@@ -115,7 +110,6 @@ describe("FileTree collaboration presence", () => {
   it("badges a file that got a new name on disk because another file has its name", async () => {
     const label = "main.tex also has the name Main.tex, so this file got a new name on disk.";
     mocks.clashes.set("refs.bib", label);
-    useSettingsStore.setState({ liveCollaboration: true });
     render(<FileTree />);
     const refs = screen.getByRole("treeitem", { name: /^refs\.bib/ });
     expect(await within(refs).findByRole("img", { name: label })).toBeInTheDocument();
@@ -138,12 +132,5 @@ describe("FileTree collaboration presence", () => {
     const rows = screen.getAllByRole("treeitem").length;
     expect(rows).toBeGreaterThanOrEqual(50);
     expect(mocks.readyChecks).toBeLessThan(rows / 4);
-  });
-
-  it("loads no presence while live collaboration is off", async () => {
-    render(<FileTree />);
-    await screen.findByRole("treeitem", { name: /^main\.tex/ });
-    expect(mocks.presence).not.toHaveBeenCalled();
-    expect(screen.queryByRole("img", { name: "Alice Chen has this file open" })).toBeNull();
   });
 });

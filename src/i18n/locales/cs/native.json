@@ -103,6 +103,11 @@
       "confirm": "Použít program",
       "pickTitle": "Vyberte program pro {{name}}",
       "filter": "Programy"
+    },
+    "sharedCodeExecution": {
+      "title": "Povolit kód v tomto sdíleném projektu?",
+      "message": "Kompilace pak spustí kód tohoto projektu v tomto počítači. Kdokoli s oprávněním k úpravám může tento kód změnit. Povolte to jen tehdy, pokud důvěřujete všem v projektu.",
+      "confirm": "Povolit v tomto počítači"
     }
   },
   "errors": {

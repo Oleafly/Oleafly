@@ -39,7 +39,7 @@ import {
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { collabErrorCode } from "../errors";
-import { isReadOnlyProjectRole } from "../roles";
+import { canCommentProjectRole } from "../roles";
 import { useCollabLiveStore } from "../live/live-store";
 import { useCollabActivity } from "../sharing/activity-store";
 import {
@@ -119,7 +119,7 @@ export function canWriteComments(
   return (
     commentsShown(status) &&
     status?.canComment === true &&
-    !isReadOnlyProjectRole(role as CollabProjectRole | null) &&
+    canCommentProjectRole(role as CollabProjectRole | null) &&
     live !== null &&
     live !== "ended"
   );
@@ -167,7 +167,7 @@ function draftRangeOf(draft: CommentRequest): CommentDraftRange {
   return range;
 }
 
-interface Settles {
+export interface Settles {
   settled(): Promise<void>;
 }
 
@@ -175,7 +175,7 @@ function settles(session: unknown): session is Settles {
   return typeof (session as Partial<Settles> | null)?.settled === "function";
 }
 
-interface Revisioned extends Settles {
+export interface Revisioned extends Settles {
   readonly phase: string;
   readonly synchronized: boolean;
   readonly revision: number;
@@ -192,20 +192,20 @@ function revisioned(session: unknown): session is Revisioned {
   );
 }
 
-function openSession(path: string): Revisioned | null {
+export function openSession(path: string): Revisioned | null {
   const session = collabDocumentSession(path);
   return revisioned(session) && session.phase === "open" ? session : null;
 }
 
-type Freshness = "current" | "behind" | "stale";
+export type Freshness = "current" | "behind" | "stale";
 
-function freshness(session: Revisioned | null, rev: number | null): Freshness {
+export function freshness(session: Revisioned | null, rev: number | null): Freshness {
   if (!session) return "current";
   if (!session.synchronized || rev === null || rev < session.revision) return "stale";
   return rev === session.revision ? "current" : "behind";
 }
 
-async function catchUp(path: string, session: Revisioned, verdict: Freshness): Promise<void> {
+export async function catchUp(path: string, session: Revisioned, verdict: Freshness): Promise<void> {
   await settled(path);
   if (verdict !== "behind") return;
   await new Promise<void>((resolve) => {

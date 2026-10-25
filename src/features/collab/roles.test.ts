@@ -6,8 +6,13 @@ import {
   SERVER_ROLES,
   assignableRoles,
   canChangeMember,
+  canChatProjectRole,
+  canCommentProjectRole,
+  canEditProjectRole,
   canManageServer,
+  canSuggestProjectRole,
   isReadOnlyProjectRole,
+  suggestsOnlyProjectRole,
   isStaffRole,
   serverRoleAllows,
   toServerRole,
@@ -108,5 +113,31 @@ describe("role helpers", () => {
     expect(isReadOnlyProjectRole("editor")).toBe(false);
     expect(isReadOnlyProjectRole("owner")).toBe(false);
     expect(isReadOnlyProjectRole(null)).toBe(false);
+  });
+
+  it("gives each project role the rights in the role table", () => {
+    const table = {
+      owner: { readOnly: false, edit: true, suggestOnly: false, suggest: true, comment: true, chat: true },
+      editor: { readOnly: false, edit: true, suggestOnly: false, suggest: true, comment: true, chat: true },
+      reviewer: { readOnly: false, edit: false, suggestOnly: true, suggest: true, comment: true, chat: true },
+      commenter: { readOnly: true, edit: false, suggestOnly: false, suggest: false, comment: true, chat: true },
+      viewer: { readOnly: true, edit: false, suggestOnly: false, suggest: false, comment: false, chat: false },
+      unknown: { readOnly: true, edit: false, suggestOnly: false, suggest: false, comment: false, chat: false },
+    } as const;
+    for (const [role, rights] of Object.entries(table) as [keyof typeof table, (typeof table)[keyof typeof table]][]) {
+      expect(
+        {
+          readOnly: isReadOnlyProjectRole(role),
+          edit: canEditProjectRole(role),
+          suggestOnly: suggestsOnlyProjectRole(role),
+          suggest: canSuggestProjectRole(role),
+          comment: canCommentProjectRole(role),
+          chat: canChatProjectRole(role),
+        },
+        role,
+      ).toEqual(rights);
+    }
+    expect(canEditProjectRole(null)).toBe(false);
+    expect(canCommentProjectRole(undefined)).toBe(false);
   });
 });

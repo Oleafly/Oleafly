@@ -1041,6 +1041,16 @@
         "unknownEntryType": "不明な参考文献の項目の種類 @{{type}} です。"
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "Quarto のチャンクオプション"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "Calepin のチャンクオプション"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "画像を読み込み中",
@@ -1478,5 +1488,5 @@
     "keyTaken": "1 つのバリアントで同じ名前を 2 回設定することはできません。",
     "saveFailed": "バリアントを保存できませんでした。"
   },
-  "sharedSettingsViewer": "共有プロジェクトでは、閲覧者はこの設定を変更できません。"
+  "sharedSettingsViewer": "共有プロジェクトでは、この設定を変更できるのは所有者と編集者だけです。"
 }

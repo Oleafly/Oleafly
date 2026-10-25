@@ -78,7 +78,10 @@ export function SelectionActionMenu() {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [text, setText] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const [readOnly, setReadOnly] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const canCommentRef = useRef(canComment);
+  canCommentRef.current = canComment;
   const posRef = useRef(pos);
   posRef.current = pos;
   const textRef = useRef(text);
@@ -105,10 +108,11 @@ export function SelectionActionMenu() {
         hide(false);
         return;
       }
-      if (v.state.readOnly) {
+      if (v.state.readOnly && !canCommentRef.current) {
         hide(true);
         return;
       }
+      setReadOnly(v.state.readOnly);
       const sel = v.state.selection.main;
       if (sel.from === sel.to) {
         hide(true);
@@ -189,10 +193,12 @@ export function SelectionActionMenu() {
         </div>
       ) : (
         <div className="flex items-center gap-1">
-          <button type="button" onClick={() => setExpanded(true)} className={PILL}>
-            <Sparkles className="size-3.5" />
-            {t(($) => $.editor.selectionActions.askAi)}
-          </button>
+          {readOnly ? null : (
+            <button type="button" onClick={() => setExpanded(true)} className={PILL}>
+              <Sparkles className="size-3.5" />
+              {t(($) => $.editor.selectionActions.askAi)}
+            </button>
+          )}
           {canComment ? (
             <CommentPill
               onDone={() => {

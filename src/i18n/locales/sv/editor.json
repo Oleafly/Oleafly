@@ -1055,6 +1055,16 @@
         "unknownEntryType": "Okänd typ av bibliografipost @{{type}}."
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "kodblocksalternativ i Quarto"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "kodblocksalternativ i Calepin"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "Läser in bilden",
@@ -1499,5 +1509,5 @@
     "keyTaken": "En variant kan inte ange samma namn två gånger.",
     "saveFailed": "Det gick inte att spara varianterna."
   },
-  "sharedSettingsViewer": "Läsare kan inte ändra det här i ett delat projekt."
+  "sharedSettingsViewer": "Bara ägare och redigerare kan ändra det här i ett delat projekt."
 }

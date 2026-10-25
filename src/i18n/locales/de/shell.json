@@ -450,7 +450,19 @@
       "help": "Eine Variante übergibt eigene Werte an sys.inputs, etwa für einen Entwurf oder eine druckfertige Fassung. Die gewählte Variante bleibt auf diesem Rechner. Varianten fügen Sie in den Dokumenteinstellungen hinzu oder bearbeiten sie dort.",
       "none": "Keine Variante"
     },
-    "sharedViewer": "Betrachter können diese Einstellungen in einem geteilten Projekt nicht ändern."
+    "typEngine": {
+      "title": "Engine (dieses Projekt)",
+      "help": "Typst kompiliert das Dokument so, wie es geschrieben ist. Calepin führt außerdem den Code darin aus und fügt die Ergebnisse in das PDF ein.",
+      "typst": "Typst <note>[eingebaut]</note>",
+      "calepin": "Calepin <note>[führt Code aus]</note>"
+    },
+    "code": {
+      "title": "Code (dieser Computer)",
+      "help": "Quarto und Calepin können den R-, Python- und Julia-Code in diesem Projekt ausführen. Code läuft mit Ihren Berechtigungen, erlauben Sie ihn also nur bei einem Projekt, dem Sie vertrauen. Die Auswahl gilt nur für diesen Computer.",
+      "off": "Aus",
+      "run": "Code auf diesem Computer ausführen"
+    },
+    "sharedViewer": "Nur Inhaber und Bearbeiter können diese Einstellungen in einem geteilten Projekt ändern."
   },
   "datePicker": {
     "placeholder": "Datum wählen"
@@ -521,6 +533,18 @@
   "shellCommands": {
     "allow": "Externe Befehle erlauben",
     "banner": "Dieses Dokument führt beim Kompilieren externe Befehle aus, und dieses Projekt blockiert sie. Erlauben Sie sie nur, wenn Sie jeder Datei im Projekt vertrauen."
+  },
+  "codeExecution": {
+    "allow": "Code in diesem Projekt erlauben",
+    "needed": "Dieses Dokument muss zum Erstellen seinen Code ausführen, und Code ist für dieses Projekt ausgeschaltet. Erlauben Sie Code nur, wenn Sie jeder Datei im Projekt vertrauen.",
+    "skipped": "Der Code in diesem Dokument wurde nicht ausgeführt, weil Code für dieses Projekt ausgeschaltet ist. Erlauben Sie Code nur, wenn Sie jeder Datei im Projekt vertrauen.",
+    "storedResults": "Das PDF zeigt gespeicherte Code-Ergebnisse aus einem früheren Durchlauf, weil Code für dieses Projekt ausgeschaltet ist. Erlauben Sie Code nur, wenn Sie jeder Datei im Projekt vertrauen."
+  },
+  "typstCjkFonts": {
+    "message": "Dieses Dokument enthält chinesischen, japanischen oder koreanischen Text, den keine Schrift auf diesem Computer darstellen kann. Deshalb fehlt er im PDF.",
+    "download": "Schriften herunterladen",
+    "downloadSize": "Schriften herunterladen ({{size}})",
+    "downloading": "Schriften werden heruntergeladen"
   },
   "errorBoundary": {
     "copyDiagnostics": "Diagnose kopieren",
@@ -650,6 +674,8 @@
       "standalone": "Eigenständige Grafik",
       "typst": "Typst",
       "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Calepin-Notebook",
       "unknown": "Sonstiges"
     },
     "reason": {
@@ -843,10 +869,6 @@
       "latexTools": {
         "description": "Zeigt die Galerie Oleafly Tools und die einzelnen Werkzeuge (PDF-Import, Formeln, Tabellen, BibTeX, Labor- und Literatursuche, Fristen) samt ihren Schrägstrich-Befehlen. Standardmäßig aus, solange es noch Beta ist.",
         "label": "LaTeX-Werkzeuge"
-      },
-      "liveCollaboration": {
-        "description": "Lässt Sie Projekte über einen Kollaborationsserver, den Sie oder Ihre Gruppe betreiben, gemeinsam mit anderen bearbeiten. Fügt den Einstellungen den Bereich Zusammenarbeit hinzu. Standardmäßig aus, solange es noch Beta ist.",
-        "label": "Live-Zusammenarbeit"
       },
       "warning": "Diese Funktionen sind experimentell und noch in der Beta. Sie sind noch nicht vollständig getestet und können sich ändern, kaputtgehen oder in einer künftigen Version verschwinden. Schalten Sie sie nur ein, wenn Sie Werk in Arbeit ausprobieren möchten.",
       "webBrowser": {

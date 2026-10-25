@@ -384,6 +384,9 @@ pub(crate) fn sample_manifest(protocol: ProtocolRange) -> CapabilityManifest {
             access_logs: false,
             comments: false,
             encryption: EncryptionSupport::None,
+            suggestions: false,
+            chat: false,
+            web: false,
         },
         limits: Limits {
             max_project_mb: 200,

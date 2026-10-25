@@ -98,7 +98,20 @@
     "installPackages_many": "Trouver et installer {{count}} fichiers",
     "installPackages_other": "Trouver et installer {{count}} fichiers",
     "downloadTypst": "Télécharger Typst {{version}}",
-    "useTypst": "Utiliser Typst {{version}}"
+    "useTypst": "Utiliser Typst {{version}}",
+    "installTool": "Installer {{tool}} {{version}}",
+    "installToolSize": "Installer {{tool}} {{version}} ({{size}})",
+    "engineSettings": "Ouvrir les paramètres du moteur"
+  },
+  "html": {
+    "builtTitle": "Généré sous forme de page web",
+    "builtDetail": "Généré à {{time}}. Les pages web s'ouvrent dans votre navigateur.",
+    "building": "Génération de la page web",
+    "buildingDetail": "Une fois la génération terminée, vous pourrez l'ouvrir dans votre navigateur.",
+    "pendingTitle": "Ce document produit une page web",
+    "pendingDetail": "Compilez-le, puis ouvrez-le dans votre navigateur.",
+    "open": "Ouvrir dans le navigateur",
+    "compile": "Compiler"
   },
   "stale": {
     "badge": "Obsolète",

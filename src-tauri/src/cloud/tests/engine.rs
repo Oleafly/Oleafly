@@ -240,6 +240,39 @@ async fn two_computers_share_edits_and_deletes_and_build_output_stays_home() {
 }
 
 #[tokio::test]
+async fn quarto_output_stays_home_and_calepin_results_sync() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    desk.write(
+        "project.json",
+        r#"{"name":"Report","main_doc":"report.qmd","engine":"quarto"}"#,
+    );
+    desk.write("report.qmd", "# Report");
+    desk.write("report_files/figure-html/plot.png", "figure");
+    desk.write(".quarto/xref/index.json", "{}");
+    desk.write(".calepin/calepin.typ", "runtime");
+    desk.write("data_files/raw.csv", "a,b");
+    let first = desk.sync(&store, cloud).await;
+    assert_eq!(first.outcome.uploaded, 4);
+    for left_out in [
+        "report_files/figure-html/plot.png",
+        ".quarto/xref/index.json",
+    ] {
+        assert!(
+            store.read(&file_remote(cloud, left_out)).is_none(),
+            "{left_out}"
+        );
+    }
+    assert!(store
+        .read(&file_remote(cloud, "data_files/raw.csv"))
+        .is_some());
+    assert!(store
+        .read(&file_remote(cloud, ".calepin/calepin.typ"))
+        .is_some());
+}
+
+#[tokio::test]
 async fn concurrent_edits_keep_both_versions_and_name_the_copy_after_its_author() {
     let (store, cloud, mut desk, mut laptop) = paired().await;
     desk.write("main.tex", "desk edit");

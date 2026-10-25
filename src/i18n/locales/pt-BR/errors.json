@@ -109,7 +109,8 @@
     "shell_escape": "Confie nesta pasta antes de permitir shell escape.",
     "broad_folder": "O Oleafly não pode confiar em toda a pasta {{name}}. Escolha uma pasta menor.",
     "declined": "A pasta não foi marcada como confiável.",
-    "unavailable": "O Oleafly não conseguiu verificar se esta pasta é confiável."
+    "unavailable": "O Oleafly não conseguiu verificar se esta pasta é confiável.",
+    "notebook": "Confie nesta pasta para compilar com o Quarto ou o Calepin."
   },
   "open_folder": {
     "not_absolute": "Use o caminho completo da pasta.",
@@ -224,6 +225,17 @@
     "template_unavailable": "O Oleafly não conseguiu abrir este modelo. Ele pode ter sido removido da galeria do Overleaf."
   },
   "collab": {
-    "turned_off": "A colaboração em tempo real está desativada. Ative-a em Configurações, na seção Experimentação."
+    "suggestion_role": "Sua função neste projeto não permite sugestões."
+  },
+  "notebook": {
+    "code_needed": "O {{engine}} precisa executar código para gerar este documento, e o código está desligado neste projeto. Permita código neste projeto para compilá-lo.",
+    "quarto_missing": "O Quarto não está instalado. Instale-o em Configurações > Motores > Quarto e compile de novo.",
+    "calepin_missing": "O Calepin não está instalado. Instale-o em Configurações > Motores > Calepin e compile de novo.",
+    "not_offered": "O Oleafly não pode baixar o {{tool}} para este computador. Instale-o você mesmo e compile de novo.",
+    "busy": "O {{tool}} ainda está sendo instalado. Tente de novo quando terminar.",
+    "install_unverified": "O {{tool}} foi baixado, mas não passou na verificação de integridade. Tente instalá-lo de novo.",
+    "unknown_tool": "O Oleafly não conhece nenhuma ferramenta chamada {{tool}}.",
+    "not_managed": "O Oleafly só pode remover o {{tool}} quando foi ele mesmo que o baixou.",
+    "no_html_output": "Ainda não há saída HTML. Compile o documento primeiro."
   }
 }

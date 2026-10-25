@@ -450,7 +450,19 @@
       "help": "A variant passes its own values to sys.inputs, such as a draft or a camera-ready build. The variant you pick stays on this computer. Add or edit variants in Document settings.",
       "none": "No variant"
     },
-    "sharedViewer": "Viewers can't change these settings in a shared project."
+    "typEngine": {
+      "title": "Engine (this project)",
+      "help": "Typst compiles the document as written. Calepin also runs the code in it and puts the results in the PDF.",
+      "typst": "Typst <note>[built in]</note>",
+      "calepin": "Calepin <note>[runs code]</note>"
+    },
+    "code": {
+      "title": "Code (this computer)",
+      "help": "Quarto and Calepin can run the R, Python and Julia code in this project. Code runs with your permissions, so allow it only for a project you trust. The choice applies to this computer only.",
+      "off": "Off",
+      "run": "Run code on this computer"
+    },
+    "sharedViewer": "Only owners and editors can change these settings in a shared project."
   },
   "datePicker": {
     "placeholder": "Pick a date"
@@ -521,6 +533,18 @@
   "shellCommands": {
     "allow": "Allow external commands",
     "banner": "This document runs external commands while it compiles, and this project blocks them. Allow them only if you trust every file in the project."
+  },
+  "codeExecution": {
+    "allow": "Allow code in this project",
+    "needed": "This document has to run its code to build, and code is off for this project. Allow code only if you trust every file in the project.",
+    "skipped": "The code in this document did not run because code is off for this project. Allow code only if you trust every file in the project.",
+    "storedResults": "The PDF shows code results stored from an earlier run because code is off for this project. Allow code only if you trust every file in the project."
+  },
+  "typstCjkFonts": {
+    "message": "This document has Chinese, Japanese or Korean text that no font on this computer can show, so the PDF leaves it out.",
+    "download": "Download fonts",
+    "downloadSize": "Download fonts ({{size}})",
+    "downloading": "Downloading fonts"
   },
   "errorBoundary": {
     "copyDiagnostics": "Copy diagnostics",
@@ -650,6 +674,8 @@
       "standalone": "Standalone figure",
       "typst": "Typst",
       "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Calepin notebook",
       "unknown": "Other"
     },
     "reason": {
@@ -843,10 +869,6 @@
       "latexTools": {
         "description": "Show the Oleafly Tools gallery and the individual tools (PDF import, equations, tables, BibTeX, lab and literature search, deadlines) plus their slash commands. Off by default while still in beta.",
         "label": "LaTeX tools"
-      },
-      "liveCollaboration": {
-        "description": "Edit projects with other people through a collaboration server that you or your group runs. Adds a Collaboration section to Settings. Off by default while in beta.",
-        "label": "Live collaboration"
       },
       "warning": "These features are experimental and still in beta. They are not fully tested yet and may change, break, or be removed in a future release. Turn them on only if you want to try work in progress.",
       "webBrowser": {

@@ -267,7 +267,6 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   },
 ];
 
-const NAV_WITHOUT_COLLABORATION = NAV.filter((item) => item.id !== "collaboration");
 const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   general: "settings-general",
   appearance: "settings-appearance",
@@ -315,8 +314,6 @@ export function SettingsModal() {
   const latexTools = useSettingsStore((s) => s.latexTools);
   const webBrowser = useSettingsStore((s) => s.webBrowser);
   const setWebBrowser = useSettingsStore((s) => s.setWebBrowser);
-  const liveCollaboration = useSettingsStore((s) => s.liveCollaboration);
-  const setLiveCollaboration = useSettingsStore((s) => s.setLiveCollaboration);
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
 
   const projectId = useFilesStore((s) => s.projectId);
@@ -371,14 +368,13 @@ export function SettingsModal() {
   const dismissedTours = AVAILABLE_TOUR_IDS.filter(
     (id) => tours[id].status === "dismissed",
   ).length;
-  const sectionNav = liveCollaboration ? NAV : NAV_WITHOUT_COLLABORATION;
   const navigation = developerSettings
     ? [
-        ...sectionNav.slice(0, -1),
+        ...NAV.slice(0, -1),
         developerSettings.DEVELOPER_NAV_ITEM,
-        ...sectionNav.slice(-1),
+        ...NAV.slice(-1),
       ]
-    : sectionNav;
+    : NAV;
   const settingsInitialSection = useSettingsStore((s) => s.settingsInitialSection);
   const closeSettings = () => {
     if (useTourStore.getState().activeTourId === "settings") return;
@@ -418,8 +414,7 @@ export function SettingsModal() {
 
   useEffect(() => {
     if (!open) return;
-    const available = useSettingsStore.getState().liveCollaboration ? NAV : NAV_WITHOUT_COLLABORATION;
-    const next = available.some((item) => item.id === settingsInitialSection)
+    const next = NAV.some((item) => item.id === settingsInitialSection)
       ? (settingsInitialSection as Section)
       : "general";
     setSection(next);
@@ -442,10 +437,6 @@ export function SettingsModal() {
   useEffect(() => {
     if (cloudLibraryRevision > 0) setStorageRefreshKey((value) => value + 1);
   }, [cloudLibraryRevision]);
-
-  useEffect(() => {
-    if (!liveCollaboration && section === "collaboration") setSection("general");
-  }, [liveCollaboration, section]);
 
   useEffect(() => {
     if (!open || section !== "data" || !isTauri()) return;
@@ -783,13 +774,6 @@ export function SettingsModal() {
           checked={webBrowser}
           onChange={setWebBrowser}
         />
-        <SettingsToggleRow
-          testId="settings-live-collaboration"
-          label={t(($) => $.shell.settings.experimentation.liveCollaboration.label)}
-          description={t(($) => $.shell.settings.experimentation.liveCollaboration.description)}
-          checked={liveCollaboration}
-          onChange={setLiveCollaboration}
-        />
         <ResetToDefaults
           sectionName={t(($) => $.shell.settings.nav.experimentation)}
           onReset={resetExperimentationPreferences}
@@ -800,7 +784,7 @@ export function SettingsModal() {
   );
 
   const renderCollaborationSection = () =>
-    section === "collaboration" && liveCollaboration ? (
+    section === "collaboration" ? (
       <Suspense fallback={<LoadingState size="compact" label={t(($) => $.common.state.loading)} />}>
         <CollaborationSection />
       </Suspense>

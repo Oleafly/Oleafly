@@ -32,7 +32,6 @@ const BUSY_DELAY_MS = 300;
 const MODAL_OPEN = '[aria-modal="true"], [role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]';
 
 type Notice =
-  | { kind: "off" }
   | { kind: "malformed" }
   | { kind: "noAccess" }
   | { kind: "error"; code: CollabErrorCode; text: string };
@@ -142,8 +141,6 @@ function LinkNotice({ notice, onClose }: Readonly<{ notice: Notice; onClose: () 
   const textId = useId();
   const text = (() => {
     switch (notice.kind) {
-      case "off":
-        return t(($) => $.collab.links.turnedOff);
       case "malformed":
         return t(($) => $.collab.links.malformed);
       case "noAccess":
@@ -152,10 +149,6 @@ function LinkNotice({ notice, onClose }: Readonly<{ notice: Notice; onClose: () 
         return notice.text;
     }
   })();
-  const openSetting = () => {
-    onClose();
-    useSettingsStore.getState().openSettingsAt("experimentation");
-  };
   return (
     <ModalShell
       open
@@ -181,13 +174,6 @@ function LinkNotice({ notice, onClose }: Readonly<{ notice: Notice; onClose: () 
           <X aria-hidden className="size-4" />
         </Button>
       </div>
-      {notice.kind === "off" ? (
-        <div className="flex justify-end">
-          <Button type="button" size="sm" variant="outline" data-modal-initial-focus onClick={openSetting}>
-            {t(($) => $.collab.links.openSettings)}
-          </Button>
-        </div>
-      ) : null}
     </ModalShell>
   );
 }
@@ -301,12 +287,6 @@ function createFlow(ui: FlowUi) {
   };
 
   const run = async (link: AppLink): Promise<void> => {
-    if (!useSettingsStore.getState().liveCollaboration) {
-      const now = Date.now();
-      for (const rest of queue.splice(0)) seen.set(linkKey(rest), now);
-      ui.setPending(0);
-      return show({ kind: "off" });
-    }
     switch (link.kind) {
       case "malformed":
         return show({ kind: "malformed" });

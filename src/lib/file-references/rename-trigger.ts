@@ -6,7 +6,7 @@ import { useFilesStore } from "@/store/files";
 
 type FileRenameModule = typeof import("./rename-at-cursor");
 
-const REFERENCE_SOURCE = /\.(?:tex|ltx|latex|sty|cls|typ|md|markdown)$/i;
+const REFERENCE_SOURCE = /\.(?:tex|ltx|latex|sty|cls|typ|md|markdown|qmd|rmd)$/i;
 
 let loaded: FileRenameModule | null = null;
 let loading: Promise<FileRenameModule> | null = null;

@@ -109,7 +109,8 @@
     "shell_escape": "Considera affidabile questa cartella prima di consentire lo shell escape.",
     "broad_folder": "Oleafly non può considerare affidabile tutta la cartella {{name}}. Scegli una cartella più piccola.",
     "declined": "La cartella non è stata considerata affidabile.",
-    "unavailable": "Oleafly non è riuscito a verificare se questa cartella è affidabile."
+    "unavailable": "Oleafly non è riuscito a verificare se questa cartella è affidabile.",
+    "notebook": "Considera affidabile questa cartella per compilare con Quarto o Calepin."
   },
   "open_folder": {
     "not_absolute": "Usa il percorso completo della cartella.",
@@ -224,6 +225,17 @@
     "template_unavailable": "Oleafly non è riuscito ad aprire questo modello. Potrebbe essere stato rimosso dalla galleria di Overleaf."
   },
   "collab": {
-    "turned_off": "La collaborazione in tempo reale è disattivata. Attivala in Impostazioni, sotto Sperimentazione."
+    "suggestion_role": "Il tuo ruolo in questo progetto non consente suggerimenti."
+  },
+  "notebook": {
+    "code_needed": "{{engine}} deve eseguire del codice per generare questo documento, e il codice è disattivato per questo progetto. Consenti il codice in questo progetto per compilarlo.",
+    "quarto_missing": "Quarto non è installato. Installalo da Impostazioni > Motori > Quarto, poi compila di nuovo.",
+    "calepin_missing": "Calepin non è installato. Installalo da Impostazioni > Motori > Calepin, poi compila di nuovo.",
+    "not_offered": "Oleafly non può scaricare {{tool}} per questo computer. Installalo tu, poi compila di nuovo.",
+    "busy": "{{tool}} si sta ancora installando. Riprova quando ha finito.",
+    "install_unverified": "{{tool}} è stato scaricato ma non ha superato la verifica di integrità. Prova a installarlo di nuovo.",
+    "unknown_tool": "Oleafly non conosce nessuno strumento chiamato {{tool}}.",
+    "not_managed": "Oleafly può rimuovere {{tool}} solo se l'ha scaricato lui stesso.",
+    "no_html_output": "Non c'è ancora un output HTML. Compila prima il documento."
   }
 }

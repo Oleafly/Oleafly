@@ -184,6 +184,7 @@
       "keyPlaceholder": "Leave blank if none is required",
       "keyPlaceholderStored": "Saved key stays unless you enter a new one",
       "namePlaceholder": "Acme",
+      "presetsLabel": "Common providers",
       "submitAdd": "Add provider"
     },
     "instructions": {
@@ -280,7 +281,8 @@
       "badge": {
         "connected": "Connected",
         "notRunning": "Not running",
-        "running": "Running"
+        "running": "Running",
+        "suggested": "Suggested"
       },
       "blurbs": {
         "anthropic": "Claude models - strong at code and writing.",
@@ -290,7 +292,7 @@
         "groq": "Very fast open-model inference.",
         "mistral": "Mistral & Codestral models.",
         "ollama": "Runs models on your machine. No key needed - install Ollama and pull a model.",
-        "openai": "GPT models. The default choice.",
+        "openai": "GPT models.",
         "openrouter": "One key, access models from many labs.",
         "perplexity": "Sonar models with live web grounding.",
         "xai": "Grok models from xAI.",
@@ -1283,6 +1285,58 @@
         "detail": "Build the open project with a newer installed version and compare the results before you switch.",
         "check": "Check with Typst {{version}}"
       }
+    },
+    "notebook": {
+      "loading": "Checking this computer for Quarto, Calepin and languages",
+      "source": {
+        "system": "On this computer",
+        "managed": "Downloaded by Oleafly"
+      },
+      "active": {
+        "version": "{{tool}} {{version}}",
+        "missing": "Not found on this computer."
+      },
+      "managedIdle": "Not in use. Oleafly uses the copy found on this computer first.",
+      "download": {
+        "optional": "Optional. Oleafly already uses the copy on this computer.",
+        "license": "{{license}} license.",
+        "action": "Download {{tool}} {{version}} ({{size}})",
+        "actionNoSize": "Download {{tool}} {{version}}",
+        "notOffered": "Oleafly can't download {{tool}} for this computer. Install it yourself and Oleafly will find it."
+      },
+      "removeAria": "Remove the {{tool}} that Oleafly downloaded",
+      "languages": {
+        "heading": "Languages",
+        "tooltip": "Code in Quarto and Calepin documents runs with these programs.",
+        "notFound": "Not found",
+        "note": "Oleafly runs code with the R, Python and Julia already on this computer. It never installs them."
+      },
+      "codeNote": "Code in a document runs only after you allow code for that project in the Compile menu.",
+      "progress": {
+        "starting": "Starting",
+        "downloading": "Downloading {{percent}}%",
+        "verifying": "Checking",
+        "extracting": "Unpacking",
+        "done": "Finishing"
+      },
+      "error": {
+        "load": "Could not check for Quarto, Calepin and languages.",
+        "install": "Could not install {{tool}}.",
+        "remove": "Could not remove {{tool}}."
+      }
+    },
+    "quarto": {
+      "heading": "Quarto",
+      "tooltip": "Quarto turns .qmd and .Rmd documents into a PDF, a web page or slides. Oleafly uses the Quarto on this computer when it finds one, or a copy it downloads.",
+      "detail": "Oleafly compiles .qmd and .Rmd documents with this copy.",
+      "downloadDetail": "Oleafly keeps its own copy in its app folder. Quarto includes Pandoc and other tools under their own licenses."
+    },
+    "calepin": {
+      "heading": "Calepin",
+      "tooltip": "Calepin runs the code in a Typst document and puts the results in the PDF. Oleafly uses the Calepin on this computer when it finds one, or a copy it downloads.",
+      "detail": "Oleafly compiles Calepin documents with this copy.",
+      "downloadDetail": "Oleafly keeps its own copy in its app folder.",
+      "typstNote": "Calepin renders with the Typst built into Oleafly. It needs Typst 0.15 or newer."
     }
   },
   "github": {

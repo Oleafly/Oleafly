@@ -109,7 +109,8 @@
     "shell_escape": "Než povolíte shell escape, této složce důvěřujte.",
     "broad_folder": "Oleafly nemůže důvěřovat celé složce {{name}}. Vyberte menší složku.",
     "declined": "Složce nebyla udělena důvěra.",
-    "unavailable": "Oleafly nedokázal ověřit, zda je tato složka důvěryhodná."
+    "unavailable": "Oleafly nedokázal ověřit, zda je tato složka důvěryhodná.",
+    "notebook": "Chcete-li kompilovat pomocí Quarto nebo Calepin, této složce důvěřujte."
   },
   "open_folder": {
     "not_absolute": "Zadejte úplnou cestu ke složce.",
@@ -224,6 +225,17 @@
     "template_unavailable": "Oleafly nemohl tuto šablonu otevřít. Možná byla odstraněna z galerie Overleafu."
   },
   "collab": {
-    "turned_off": "Živá spolupráce je vypnutá. Zapněte ji v Nastavení v části Experimenty."
+    "suggestion_role": "Vaše role v tomto projektu nedovoluje navrhovat změny."
+  },
+  "notebook": {
+    "code_needed": "{{engine}} musí ke kompilaci tohoto dokumentu spustit kód a kód je pro tento projekt vypnutý. Chcete-li dokument zkompilovat, povolte kód v tomto projektu.",
+    "quarto_missing": "Nástroj Quarto není nainstalován. Nainstalujte ho v Nastavení > Enginy > Quarto a pak znovu spusťte kompilaci.",
+    "calepin_missing": "Nástroj Calepin není nainstalován. Nainstalujte ho v Nastavení > Enginy > Calepin a pak znovu spusťte kompilaci.",
+    "not_offered": "Oleafly nemůže nástroj {{tool}} pro tento počítač stáhnout. Nainstalujte ho sami a pak znovu spusťte kompilaci.",
+    "busy": "{{tool}} se stále instaluje. Zkuste to znovu, až instalace skončí.",
+    "install_unverified": "Nástroj {{tool}} se stáhl, ale neprošel kontrolou integrity. Zkuste ho nainstalovat znovu.",
+    "unknown_tool": "Oleafly nezná žádný nástroj s názvem {{tool}}.",
+    "not_managed": "Oleafly může odebrat jen kopii nástroje {{tool}}, kterou sám stáhl.",
+    "no_html_output": "Výstup HTML zatím neexistuje. Nejprve dokument zkompilujte."
   }
 }

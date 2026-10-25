@@ -5,6 +5,7 @@ use std::time::Duration;
 use oleafly_core::typst_toolchain::{TypstCapabilities, TypstCompileFlag, TypstFontFamily};
 use oleafly_core::{TypstSpec, TypstVariant};
 use serde::{Deserialize, Serialize};
+use skrifa::{FontRef, MetadataProvider};
 
 use crate::app_error::AppError;
 use crate::document_engine::{DocumentEngineId, EngineDescriptor};
@@ -15,6 +16,8 @@ const FONT_LIST_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_VARIANT_NAME_CHARS: usize = 64;
 const MAX_INPUT_CHARS: usize = 4096;
 const EMBEDDED_FONT: &str = "(Embedded)";
+const COVERAGE_PROBE_LIMIT: usize = 64;
+const PLACEHOLDER_FAMILIES: [&str; 1] = ["LastResort"];
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TypstCompileSettings {
@@ -558,6 +561,97 @@ fn list_fonts_blocking(project_id: &str) -> Result<TypstFontList, String> {
 #[tauri::command]
 pub async fn typst_project_fonts(project_id: String) -> Result<TypstFontList, String> {
     tauri::async_runtime::spawn_blocking(move || list_fonts_blocking(&project_id))
+        .await
+        .map_err(|error| error.to_string())?
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TypstGlyphCoverage {
+    pub uncovered: String,
+    pub packs_apply: bool,
+}
+
+fn coverage_probes(characters: &str) -> Vec<char> {
+    let mut probes = Vec::new();
+    for character in characters
+        .chars()
+        .filter(|character| !character.is_whitespace() && !character.is_control())
+    {
+        if !probes.contains(&character) {
+            probes.push(character);
+            if probes.len() == COVERAGE_PROBE_LIMIT {
+                break;
+            }
+        }
+    }
+    probes
+}
+
+fn draws_placeholders(family: &str) -> bool {
+    PLACEHOLDER_FAMILIES
+        .iter()
+        .any(|name| family.eq_ignore_ascii_case(name))
+}
+
+fn uncovered_by(database: &fontdb::Database, characters: &str) -> String {
+    let mut probes = coverage_probes(characters);
+    for face in database.faces() {
+        if probes.is_empty() {
+            break;
+        }
+        if face
+            .families
+            .iter()
+            .any(|(family, _)| draws_placeholders(family))
+        {
+            continue;
+        }
+        database.with_face_data(face.id, |data, index| {
+            if let Ok(font) = FontRef::from_index(data, index) {
+                let charmap = font.charmap();
+                probes.retain(|character| {
+                    charmap
+                        .map(*character)
+                        .is_none_or(|glyph| glyph.to_u32() == 0)
+                });
+            }
+        });
+    }
+    probes.into_iter().collect()
+}
+
+fn coverage_database(settings: &TypstCompileSettings) -> fontdb::Database {
+    let mut database = fontdb::Database::new();
+    for directory in &settings.font_dirs {
+        database.load_fonts_dir(directory);
+    }
+    if !settings.ignore_system_fonts {
+        database.load_system_fonts();
+    }
+    database
+}
+
+fn glyph_coverage_blocking(
+    project_id: &str,
+    characters: &str,
+) -> Result<TypstGlyphCoverage, String> {
+    let meta =
+        crate::trust::restrict_compile_meta(project_id, crate::project::read_meta(project_id)?)?;
+    let root = crate::project_location::locate(project_id)?.root;
+    let settings = font_list_settings(&meta, &root);
+    Ok(TypstGlyphCoverage {
+        uncovered: uncovered_by(&coverage_database(&settings), characters),
+        packs_apply: !settings.ignore_system_fonts,
+    })
+}
+
+#[tauri::command]
+pub async fn typst_glyph_coverage(
+    project_id: String,
+    characters: String,
+) -> Result<TypstGlyphCoverage, String> {
+    tauri::async_runtime::spawn_blocking(move || glyph_coverage_blocking(&project_id, &characters))
         .await
         .map_err(|error| error.to_string())?
 }

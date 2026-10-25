@@ -61,6 +61,7 @@
       "loading": "正在加载你的设备…",
       "loadFailed": "Oleafly 无法加载你的设备。",
       "current": "这台电脑",
+      "browser": "浏览器",
       "added": "添加于 {{date}}",
       "lastSeen": "上次在线于 {{date}}",
       "neverSeen": "尚未在线",
@@ -139,6 +140,7 @@
   "addServer": {
     "title": "添加协作服务器",
     "description": "输入你的团队提供的地址。Oleafly 会在你登录前检查该服务器。",
+    "oleaflyDescription": "公共 Oleafly 服务器",
     "addressLabel": "服务器地址",
     "addressPlaceholder": "collab.example.edu",
     "continue": "继续",
@@ -218,7 +220,15 @@
     "server_removed": "此项目的服务器已不在你的列表中。请将项目保留为本地副本，或重新添加该服务器。",
     "share_in_progress": "此项目正在共享中。请等待其完成。",
     "cancelled": "已取消打开共享项目。",
-    "cloud_synced": "你的 Oleafly 库位于由云服务同步的文件夹中。要共享或加入项目，请把它移出 Dropbox、OneDrive 或 iCloud Drive。"
+    "cloud_synced": "你的 Oleafly 库位于由云服务同步的文件夹中。要共享或加入项目，请把它移出 Dropbox、OneDrive 或 iCloud Drive。",
+    "suggestion_not_found": "该建议已不存在。可能已有人接受或拒绝了它。",
+    "suggestion_not_yours": "只有提出这条建议的人才能撤回它。",
+    "suggestion_role": "你在此项目中的角色不允许提建议。",
+    "chat_role": "你在此项目中的角色不允许在聊天中执行此操作。",
+    "history_unavailable": "此项目的历史记录尚未同步到这台电脑。请在同步完成后重试。",
+    "account_storage_full": "项目所有者的账户在此服务器上的存储空间已用完。请移除一些文件以腾出空间，或请服务器的管理员提供更多空间。",
+    "too_many_projects": "你的共享项目数量已达到此服务器允许的上限。请先停止共享其中一个，再共享其他项目。",
+    "too_many_uploads": "你在过去一小时内上传次数过多。请稍后再试。"
   },
   "roles": {
     "admin": "管理员",
@@ -481,8 +491,16 @@
   "projectRoles": {
     "owner": "所有者",
     "editor": "编辑者",
+    "reviewer": "审阅者",
+    "commenter": "评论者",
     "viewer": "查看者",
     "unknown": "未知角色"
+  },
+  "projectRoleDescriptions": {
+    "editor": "编辑并审阅建议",
+    "reviewer": "建议更改并评论",
+    "commenter": "阅读并评论",
+    "viewer": "仅阅读"
   },
   "share": {
     "button": "共享",
@@ -494,6 +512,8 @@
     "editCopy": "这是共享的副本。从现在起请编辑这个副本，而不是原文件夹。",
     "serverLabel": "服务器",
     "noServers": "请先登录协作服务器，然后回到这里共享。",
+    "noServersYet": "添加协作服务器并登录后，即可共享此项目。",
+    "addOleafly": "添加 Oleafly 服务器",
     "openSettings": "打开协作设置",
     "checking": "正在检查项目…",
     "checkFailed": "Oleafly 无法检查此项目。",
@@ -503,7 +523,7 @@
     "cloudSynced": "你的 Oleafly 库位于由 iCloud、Dropbox 或类似服务同步的文件夹中。两个同步服务会争夺同一批文件，因此 Oleafly 无法从那里共享。请先将库移出该文件夹。",
     "tooLarge": "这些文件超出了服务器 {{size}} MB 的上限。请在共享前缩小或移除这些文件。",
     "renamed": "有些名称并非在所有电脑上都可用。其他人收到的这些文件，名称会略有不同。",
-    "excluded": "不会共享：构建输出、Oleafly 设置和 Git 历史。",
+    "excluded": "不会共享：其他构建输出、Oleafly 设置和 Git 历史。最新编译的 PDF 会共享，方便合作者在浏览器中阅读。",
     "start": "共享",
     "preparing": "正在准备项目…",
     "uploading": "正在上传图片和其他文件：{{done}}/{{total}}",
@@ -551,7 +571,7 @@
     },
     "comments": {
       "label": "评论",
-      "description": "能编辑的人都可以评论此项目中的文本。关闭后，评论会被隐藏，但不会被删除。",
+      "description": "所有者、编辑者、审阅者和评论者都可以评论此项目中的文本。关闭后，评论会被隐藏，但不会被删除。",
       "serverOff": "{{server}} 已关闭评论。请让其管理员开启。"
     },
     "stop": "停止共享",
@@ -594,6 +614,7 @@
     "unknownPerson": "某人",
     "viewing": "正在查看 {{path}}",
     "editing": "正在编辑 {{path}}",
+    "reviewing": "正在审阅 {{path}}",
     "goTo": "前往 {{name}} 所在位置",
     "nowhere": "未在任何文件中，无法前往"
   },
@@ -666,6 +687,8 @@
   },
   "activity": {
     "welcomeEdit": "由 {{server}} 上的 {{owner}} 共享。你可以编辑。",
+    "welcomeReview": "由 {{server}} 上的 {{owner}} 共享。你可以建议更改和评论。",
+    "welcomeComment": "由 {{server}} 上的 {{owner}} 共享。你可以评论。",
     "welcomeView": "由 {{server}} 上的 {{owner}} 共享。你可以查看。",
     "joined": "{{name}} 打开了项目",
     "left": "{{name}} 关闭了项目",
@@ -774,9 +797,7 @@
       "signedOutTitle": "你未登录此服务器",
       "signedOutDescription": "请在设置中重新登录，然后从服务器卡片打开管理控制台。",
       "refusedTitle": "管理控制台仅供管理员和维护者使用",
-      "refusedDescription": "你在此服务器上的角色是 {{role}}。如果需要管理此服务器，请询问管理员。",
-      "turnedOffTitle": "实时协作已关闭",
-      "turnedOffDescription": "如需在这里管理此服务器，请在设置的实验功能中重新开启。"
+      "refusedDescription": "你在此服务器上的角色是 {{role}}。如果需要管理此服务器，请询问管理员。"
     },
     "overview": {
       "loading": "正在加载概览…",
@@ -929,8 +950,6 @@
     }
   },
   "links": {
-    "turnedOff": "实时协作已关闭。请在设置的“实验功能”中开启，然后重新打开链接。",
-    "openSettings": "打开设置",
     "malformed": "Oleafly 无法打开此链接。请向发送者索取新链接。",
     "opening": "正在打开共享项目…",
     "downloading": "正在下载文件：{{done}}/{{total}}",
@@ -952,8 +971,8 @@
     "add": "添加评论",
     "showResolved": "显示已解决的评论",
     "hideResolved": "隐藏已解决的评论",
-    "empty": "还没有评论。",
-    "emptyCanWrite": "还没有评论。选中一些文本，然后选择“添加评论”即可发起。",
+    "empty": "还没有评论或建议。",
+    "emptyCanWrite": "还没有评论或建议。选中一些文本，然后选择“添加评论”即可发起。",
     "allResolved": "所有评论都已解决。",
     "loadFailed": "无法加载此文件的评论。",
     "detached": "已脱离的评论",
@@ -1010,6 +1029,111 @@
       "empty": "发布前请先写点内容。"
     }
   },
+  "suggestions": {
+    "insertedBy": "{{name}} 建议添加此内容",
+    "deletedBy": "{{name}} 建议删除此内容",
+    "unverifiedLabel": "由 Oleafly 无法确认身份的人建议",
+    "card": "{{name}} 的建议",
+    "unverifiedCard": "来自 Oleafly 无法确认身份的人的建议",
+    "added": "已添加",
+    "deleted": "已删除",
+    "accept": "接受",
+    "reject": "拒绝",
+    "withdraw": "撤回",
+    "acceptAll": "全部接受",
+    "rejectAll": "全部拒绝",
+    "fileActions": "{{file}} 中的建议",
+    "pendingCount": "等待审阅的建议：{{number}}",
+    "loadFailed": "无法加载此文件的建议。",
+    "rejectAllConfirm": {
+      "title": "要拒绝 {{file}} 中的所有建议吗？",
+      "description": "文件会为本项目中的所有人恢复原来的文本。等待审阅的建议：{{number}}。",
+      "confirm": "全部拒绝"
+    },
+    "withdrawConfirm": {
+      "title": "要撤回这条建议吗？",
+      "description": "文件会为本项目中的所有人恢复原来的文本。",
+      "confirm": "撤回"
+    },
+    "pendingCompile": "此项目有等待审阅的建议：{{number}}。PDF 会将它们显示为已接受。",
+    "pendingExport": "此项目有等待审阅的建议：{{number}}。导出内容会将它们视为已接受并包含在内。",
+    "mode": {
+      "label": "编辑或建议",
+      "editing": "编辑",
+      "suggesting": "建议",
+      "editingHint": "编辑：你的编辑会立即修改文本",
+      "suggestingHint": "建议：你的编辑会变成建议，由所有者或编辑者接受",
+      "reviewerHint": "你是审阅者，所以你的编辑会变成建议，由所有者或编辑者接受"
+    }
+  },
+  "chat": {
+    "title": "聊天",
+    "titleUnread": "聊天，有新消息",
+    "list": "消息",
+    "empty": "还没有消息。",
+    "label": "消息",
+    "placeholder": "写一条消息",
+    "send": "发送",
+    "readOnly": "查看者可以阅读聊天内容，但不能发送消息。",
+    "offline": "此项目当前未连接，所以你无法发送消息。",
+    "delete": "删除消息",
+    "deleteConfirm": {
+      "title": "删除这条消息吗？",
+      "description": "它会对本项目中的所有人删除。"
+    },
+    "deleted": "此消息已删除。",
+    "clear": "清空聊天",
+    "clearConfirm": {
+      "title": "清空聊天吗？",
+      "description": "所有消息都会对本项目中的所有人移除。此操作无法撤销。",
+      "confirm": "清空聊天"
+    },
+    "loadFailed": "Oleafly 无法加载聊天。",
+    "loadOlder": "显示更早的消息"
+  },
+  "history": {
+    "title": "历史记录",
+    "refresh": "刷新历史记录",
+    "empty": "还没有更改。",
+    "loadFailed": "Oleafly 无法加载项目的历史记录。",
+    "loadMore": "显示更早的更改",
+    "earlier": "更早的更改",
+    "timeRange": "{{from}} 至 {{to}}",
+    "authorsMore": "{{names}} 和另外 {{number}} 人",
+    "filesChanged": "更改的文件：{{number}}",
+    "open": "打开",
+    "compare": "比较",
+    "compareWith": "与此版本比较",
+    "comparePick": "再选择一个版本进行比较。",
+    "cancelCompare": "取消",
+    "name": "为此版本命名",
+    "rename": "重命名",
+    "unname": "移除名称",
+    "nameLabel": "版本名称",
+    "namePlaceholder": "例如：已发送给审稿人",
+    "versionDescription": "这些更改之后项目的样子。你可以在这里阅读，不会改动任何内容。",
+    "files": "文件",
+    "noFiles": "此版本中没有文本文件发生更改。",
+    "fileLabel": "{{path}} 在 {{time}} 时的内容",
+    "fileMissing": "此版本中不存在该文件。",
+    "loadingFile": "正在加载…",
+    "restoreFile": "恢复此文件",
+    "restoreProject": "恢复整个项目",
+    "restoreFileConfirm": {
+      "title": "要恢复 {{path}} 吗？",
+      "description": "该文件会为本项目中的所有人恢复到 {{time}} 时的状态。它当前的文本会保留在历史记录中，所以你可以再回到它。",
+      "confirm": "恢复文件"
+    },
+    "restoreProjectConfirm": {
+      "title": "要恢复整个项目吗？",
+      "description": "每个文件都会为本项目中的所有人恢复到 {{time}} 时的状态。当前的文本会保留在历史记录中，所以你可以再回到它。",
+      "confirm": "恢复项目"
+    },
+    "compareTitle": "两个版本之间的更改",
+    "compareDescription": "从 {{from}} 到 {{to}}",
+    "changedFiles": "更改的文件：{{number}}",
+    "noChanges": "这两个版本之间没有文本更改。"
+  },
   "accessLog": {
     "opened": "{{name}} 打开了项目",
     "joinedLink": "{{name}} 通过链接加入了项目",
@@ -1065,6 +1189,10 @@
   "access": {
     "viewerBy": "{{name}} 已将你设为查看者。你可以阅读此项目，但不能编辑。",
     "viewer": "你现在是查看者。你可以阅读此项目，但不能编辑。",
+    "commenterBy": "{{name}} 已将你设为评论者。你可以阅读和评论此项目，但不能编辑。",
+    "commenter": "你现在是评论者。你可以阅读和评论此项目，但不能编辑。",
+    "reviewerBy": "{{name}} 已将你设为审阅者。你的编辑会变成建议，由所有者或编辑者接受。",
+    "reviewer": "你现在是审阅者。你的编辑会变成建议，由所有者或编辑者接受。",
     "viewOnly": "你可以查看这个共享项目，但不能编辑。",
     "connecting": "这个共享项目仍在连接，所以暂时无法更改。请稍后再试。",
     "unsentReadOnly": "你现在只能查看此项目，因此你对 {{path}} 的最后更改没有发送。",
@@ -1081,6 +1209,8 @@
     "projectTooLarge": "这个项目已达到服务器的大小上限 {{limit}}，所以 {{file}} 会留在这台电脑上。请让管理服务器的人提高上限。",
     "projectTooLargeUnknown": "这个项目已达到服务器的大小上限，所以 {{file}} 会留在这台电脑上。请让管理服务器的人提高上限。",
     "projectFull": "这个项目已达到服务器的大小上限，所以你的更改暂时留在这台电脑上。请让管理服务器的人提高上限。",
+    "accountStorageFull": "由于项目所有者在此服务器上的存储空间已用完，无法共享：{{files}}",
+    "tooManyUploads": "由于你在过去一小时内上传次数过多，暂未共享：{{files}}。请稍后再试。",
     "replaced": "{{name}} 与你同时替换了 {{file}}。你的版本已保存为 {{copy}}。",
     "added": "因为 {{name}} 添加了同名文件，{{file}} 现在是 {{copy}}。",
     "beside": "{{name}} 也有一个名为 {{file}} 的文件。该文件已保存为 {{copy}}。",

@@ -6,6 +6,7 @@ import {
   collabDocumentSession,
   collabHandBack,
   collabProjectReadOnly,
+  collabSettingsLocked,
   collabVisualReadOnly,
 } from "@/lib/collab-live-bridge";
 
@@ -108,7 +109,7 @@ const PROJECT = "project-1";
 let channels: Map<string, (message: CollabDocMessage) => void>;
 let release: (() => void) | null = null;
 
-function start(role: "owner" | "editor" | "viewer" | "unknown" = "editor") {
+function start(role: "owner" | "editor" | "reviewer" | "commenter" | "viewer" | "unknown" = "editor") {
   useCollabLiveStore.setState({ projectId: PROJECT, role });
   release = startLiveEditing({ projectId: PROJECT, role, accountId: "alice", deviceId: "device-me" });
 }
@@ -262,6 +263,23 @@ describe("live editing", () => {
     useCollabLiveStore.setState({ role: "editor" });
     expect(collabProjectReadOnly(PROJECT)).toBe(false);
     expect(collabVisualReadOnly(PROJECT)).toBe(true);
+  });
+
+  it("lets a reviewer type, since every edit becomes a suggestion, but locks files and settings", () => {
+    start("reviewer");
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
+    expect(collabSettingsLocked(PROJECT)).toBe(true);
+    useCollabLiveStore.setState({ role: "editor" });
+    expect(collabSettingsLocked(PROJECT)).toBe(false);
+  });
+
+  it("keeps a commenter's editor read-only and locks files and settings", () => {
+    start("commenter");
+    expect(collabProjectReadOnly(PROJECT)).toBe(true);
+    expect(collabSettingsLocked(PROJECT)).toBe(true);
+    useCollabLiveStore.setState({ role: "reviewer" });
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
+    expect(collabSettingsLocked(PROJECT)).toBe(true);
   });
 
   it("shares this person's file and selection, throttled", async () => {

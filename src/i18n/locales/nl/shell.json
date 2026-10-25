@@ -450,7 +450,19 @@
       "help": "Een variant geeft eigen waarden door aan sys.inputs, bijvoorbeeld voor een concept of een drukklare versie. De gekozen variant blijft op deze computer. Varianten voeg je toe of bewerk je in Documentinstellingen.",
       "none": "Geen variant"
     },
-    "sharedViewer": "Lezers kunnen deze instellingen in een gedeeld project niet wijzigen."
+    "typEngine": {
+      "title": "Engine (dit project)",
+      "help": "Typst compileert het document zoals het geschreven is. Calepin voert ook de code erin uit en zet de resultaten in de PDF.",
+      "typst": "Typst <note>[ingebouwd]</note>",
+      "calepin": "Calepin <note>[voert code uit]</note>"
+    },
+    "code": {
+      "title": "Code (deze computer)",
+      "help": "Quarto en Calepin kunnen de R-, Python- en Julia-code in dit project uitvoeren. Code draait met jouw rechten, dus sta het alleen toe voor een project dat je vertrouwt. De keuze geldt alleen voor deze computer.",
+      "off": "Uit",
+      "run": "Code uitvoeren op deze computer"
+    },
+    "sharedViewer": "Alleen eigenaren en bewerkers kunnen deze instellingen in een gedeeld project wijzigen."
   },
   "datePicker": {
     "placeholder": "Kies een datum"
@@ -521,6 +533,18 @@
   "shellCommands": {
     "allow": "Externe opdrachten toestaan",
     "banner": "Dit document voert tijdens het compileren externe opdrachten uit, en dit project blokkeert ze. Sta ze alleen toe als je elk bestand in het project vertrouwt."
+  },
+  "codeExecution": {
+    "allow": "Code toestaan in dit project",
+    "needed": "Dit document moet zijn code uitvoeren om te bouwen, en code staat uit voor dit project. Sta code alleen toe als je elk bestand in het project vertrouwt.",
+    "skipped": "De code in dit document is niet uitgevoerd, omdat code uit staat voor dit project. Sta code alleen toe als je elk bestand in het project vertrouwt.",
+    "storedResults": "De PDF toont coderesultaten die bij een eerdere run zijn opgeslagen, omdat code uit staat voor dit project. Sta code alleen toe als je elk bestand in het project vertrouwt."
+  },
+  "typstCjkFonts": {
+    "message": "Dit document bevat Chinese, Japanse of Koreaanse tekst die geen enkel lettertype op deze computer kan tonen, dus die tekst ontbreekt in de PDF.",
+    "download": "Lettertypen downloaden",
+    "downloadSize": "Lettertypen downloaden ({{size}})",
+    "downloading": "Lettertypen worden gedownload"
   },
   "errorBoundary": {
     "copyDiagnostics": "Diagnostiek kopiëren",
@@ -650,6 +674,8 @@
       "standalone": "Losse figuur",
       "typst": "Typst",
       "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Calepin-notebook",
       "unknown": "Overig"
     },
     "reason": {
@@ -843,10 +869,6 @@
       "latexTools": {
         "description": "Toon de galerij Oleafly Tools en de losse tools (PDF-import, vergelijkingen, tabellen, BibTeX, lab- en literatuurzoeken, deadlines) plus hun slash-opdrachten. Staat standaard uit zolang dit in bèta is.",
         "label": "LaTeX-tools"
-      },
-      "liveCollaboration": {
-        "description": "Bewerk projecten samen met anderen via een samenwerkingsserver die jij of je groep beheert. Voegt de sectie Samenwerking toe aan Instellingen. Staat standaard uit zolang dit in bèta is.",
-        "label": "Live samenwerken"
       },
       "warning": "Deze functies zijn experimenteel en nog in bèta. Ze zijn nog niet volledig getest en kunnen veranderen, stukgaan of in een volgende versie verdwijnen. Zet ze alleen aan als je werk in uitvoering wilt proberen.",
       "webBrowser": {

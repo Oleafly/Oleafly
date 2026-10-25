@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CopyPlus, Eye, Share2, X } from "lucide-react";
+import { CopyPlus, Eye, Plus, Share2, X } from "lucide-react";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/empty";
@@ -24,6 +24,8 @@ import {
 } from "@/lib/tauri-collab";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { AddServerDialog } from "../AddServerDialog";
+import { OLEAFLY_SERVER } from "../default-server";
 import { collabErrorCode, collabErrorText } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { useCollabStore } from "../store";
@@ -60,14 +62,24 @@ function PathList({ paths }: Readonly<{ paths: readonly string[] }>) {
   );
 }
 
-function NoServers() {
+function NoServers({ onAddOleafly }: Readonly<{ onAddOleafly: (() => void) | null }>) {
   const { t } = useTranslation(["collab"]);
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">{t(($) => $.collab.share.noServers)}</p>
-      <Button type="button" variant="outline" onClick={openCollaborationSettings}>
-        {t(($) => $.collab.share.openSettings)}
-      </Button>
+      <p className="text-sm text-muted-foreground">
+        {onAddOleafly ? t(($) => $.collab.share.noServersYet) : t(($) => $.collab.share.noServers)}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {onAddOleafly ? (
+          <Button type="button" onClick={onAddOleafly}>
+            <Plus aria-hidden />
+            {t(($) => $.collab.share.addOleafly)}
+          </Button>
+        ) : null}
+        <Button type="button" variant="outline" onClick={openCollaborationSettings}>
+          {t(($) => $.collab.share.openSettings)}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -342,6 +354,7 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
   const [justShared, setJustShared] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [shareRequest, setShareRequest] = useState(0);
+  const [addingOleafly, setAddingOleafly] = useState(false);
   const name = project?.name ?? "";
 
   useEffect(() => {
@@ -368,6 +381,7 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
 
   const signedIn = servers.filter((entry) => entry.signed_in);
   const serversKnown = serversStatus === "ready" || serversStatus === "failed" || signedIn.length > 0;
+  const noServerYet = serversStatus === "ready" && servers.length === 0;
 
   const renderBody = () => {
     if (shareError) {
@@ -393,7 +407,9 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
       );
     }
     if (!serversKnown) return <LoadingState size="compact" label={t(($) => $.collab.share.loading)} />;
-    if (signedIn.length === 0) return <NoServers />;
+    if (signedIn.length === 0) {
+      return <NoServers onAddOleafly={noServerYet ? () => setAddingOleafly(true) : null} />;
+    }
     if (project && isFolderProject(project)) return <CopyStep projectId={projectId} name={name} />;
     return (
       <ShareStep
@@ -409,35 +425,40 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
   };
 
   return (
-    <ModalShell
-      open
-      onClose={close}
-      closeLabel={t(($) => $.common.actions.close)}
-      width="lg"
-      labelledBy={titleId}
-      className="max-h-[calc(100vh-2rem)] space-y-4 overflow-y-auto p-5"
-      testId="collab-share-dialog"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          <h2 id={titleId} className="truncate text-base font-semibold">
-            {t(($) => $.collab.share.title, { name })}
-          </h2>
-          <p className="text-xs text-muted-foreground">{t(($) => $.collab.share.description)}</p>
+    <>
+      <ModalShell
+        open
+        onClose={close}
+        closeLabel={t(($) => $.common.actions.close)}
+        width="lg"
+        labelledBy={titleId}
+        className="max-h-[calc(100vh-2rem)] space-y-4 overflow-y-auto p-5"
+        testId="collab-share-dialog"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <h2 id={titleId} className="truncate text-base font-semibold">
+              {t(($) => $.collab.share.title, { name })}
+            </h2>
+            <p className="text-xs text-muted-foreground">{t(($) => $.collab.share.description)}</p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7 shrink-0"
+            aria-label={t(($) => $.common.actions.close)}
+            disabled={sharing}
+            onClick={close}
+          >
+            <X aria-hidden className="size-4" />
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-7 shrink-0"
-          aria-label={t(($) => $.common.actions.close)}
-          disabled={sharing}
-          onClick={close}
-        >
-          <X aria-hidden className="size-4" />
-        </Button>
-      </div>
-      {renderBody()}
-    </ModalShell>
+        {renderBody()}
+      </ModalShell>
+      {addingOleafly ? (
+        <AddServerDialog open initialUrl={OLEAFLY_SERVER.url} onClose={() => setAddingOleafly(false)} />
+      ) : null}
+    </>
   );
 }

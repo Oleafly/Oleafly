@@ -12,7 +12,9 @@ import { useFilesStore } from "@/store/files";
 import { goToPerson } from "../live/go-to-person";
 import { peerPlaces, useCollabLiveStore } from "../live/live-store";
 import { GuestBadge } from "../GuestBadge";
+import { canEditProjectRole, suggestsOnlyProjectRole } from "../roles";
 import { useCollabStore } from "../store";
+import { EditModeSwitch } from "../suggestions/EditModeSwitch";
 import { copyThenShare } from "./copy-then-share";
 import { middleEllipsisPath } from "./middle-ellipsis";
 import { presentPeople, type PresentPerson } from "./presence";
@@ -26,9 +28,9 @@ type Translate = ReturnType<typeof useTranslation<["collab"]>>["t"];
 
 function placeOf(entry: PresentPerson, t: Translate, path: string | null): string {
   if (!path) return t(($) => $.collab.toolbar.nowhere);
-  return entry.role === "editor" || entry.role === "owner"
-    ? t(($) => $.collab.toolbar.editing, { path })
-    : t(($) => $.collab.toolbar.viewing, { path });
+  if (canEditProjectRole(entry.role)) return t(($) => $.collab.toolbar.editing, { path });
+  if (suggestsOnlyProjectRole(entry.role)) return t(($) => $.collab.toolbar.reviewing, { path });
+  return t(($) => $.collab.toolbar.viewing, { path });
 }
 
 function PersonTip({ entry }: Readonly<{ entry: PresentPerson | undefined }>) {
@@ -146,7 +148,12 @@ function PresentAvatars({ projectId }: Readonly<{ projectId: string }>) {
 export function CollabToolbarItem() {
   const projectId = useFilesStore((state) => state.projectId);
   if (!projectId) return null;
-  return <PresentAvatars projectId={projectId} />;
+  return (
+    <>
+      <EditModeSwitch projectId={projectId} />
+      <PresentAvatars projectId={projectId} />
+    </>
+  );
 }
 
 function ShareTip({ label, state, words }: Readonly<{ label: string; state: SyncState; words: string }>) {

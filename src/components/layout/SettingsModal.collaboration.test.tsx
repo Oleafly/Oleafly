@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { i18n } from "@/i18n";
@@ -25,72 +25,41 @@ import { SettingsModal } from "./SettingsModal";
 
 const experimentation = enShell.settings.experimentation;
 
-describe("Live collaboration flag", () => {
-  beforeEach(() => {
-    localStorage.clear();
-    const settings = useSettingsStore.getState();
-    settings.setLiveCollaboration(false);
-    settings.setSettingsInitialSection("experimentation");
-    settings.setSettingsOpen(true);
-  });
-
-  it("turns live collaboration on and off from Experimentation", () => {
-    render(<SettingsModal />);
-    const toggle = screen.getByRole("switch", { name: experimentation.liveCollaboration.label });
-    expect(toggle).toHaveAttribute("aria-checked", "false");
-    expect(toggle).toHaveTextContent(experimentation.liveCollaboration.description);
-
-    fireEvent.click(toggle);
-    expect(useSettingsStore.getState().liveCollaboration).toBe(true);
-    expect(localStorage.getItem("oleafly.liveCollaboration")).toBe("1");
-    expect(toggle).toHaveAttribute("aria-checked", "true");
-
-    fireEvent.click(toggle);
-    expect(useSettingsStore.getState().liveCollaboration).toBe(false);
-    expect(localStorage.getItem("oleafly.liveCollaboration")).toBe("0");
-  });
-});
-
 describe("Collaboration section", () => {
   beforeEach(() => {
     localStorage.clear();
     const settings = useSettingsStore.getState();
-    settings.setLiveCollaboration(false);
     settings.setSettingsInitialSection("general");
     settings.setSettingsOpen(true);
   });
 
-  it("appears in the navigation only while the flag is on and loads its strings with it", async () => {
+  it("appears in the navigation and loads its strings when opened", async () => {
     render(<SettingsModal />);
-    expect(screen.queryByTestId("settings-section-collaboration")).toBeNull();
     expect(i18n.hasResourceBundle("en", "collab")).toBe(false);
 
-    act(() => useSettingsStore.getState().setLiveCollaboration(true));
     const entry = screen.getByTestId("settings-section-collaboration");
     expect(entry).toHaveTextContent(enShell.settings.nav.collaboration);
     fireEvent.click(entry);
     expect(await screen.findByTestId("collab-section-stub")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: enShell.settings.nav.collaboration })).toBeInTheDocument();
     expect(i18n.hasResourceBundle("en", "collab")).toBe(true);
-
-    act(() => useSettingsStore.getState().setLiveCollaboration(false));
-    expect(screen.queryByTestId("settings-section-collaboration")).toBeNull();
-    expect(screen.queryByTestId("collab-section-stub")).toBeNull();
-    expect(screen.getByTestId("settings-section-general")).toHaveAttribute("aria-current", "page");
   });
 
-  it("opens straight on Collaboration when asked, and on General while the flag is off", async () => {
-    useSettingsStore.getState().setLiveCollaboration(true);
-    useSettingsStore.getState().setSettingsInitialSection("collaboration");
-    const first = render(<SettingsModal />);
-    expect(await screen.findByTestId("collab-section-stub")).toBeInTheDocument();
-    first.unmount();
-
-    useSettingsStore.getState().setLiveCollaboration(false);
+  it("opens straight on Collaboration when asked", async () => {
     useSettingsStore.getState().setSettingsInitialSection("collaboration");
     render(<SettingsModal />);
-    expect(screen.getByTestId("settings-section-general")).toHaveAttribute("aria-current", "page");
-    expect(screen.queryByTestId("collab-section-stub")).toBeNull();
+    expect(await screen.findByTestId("collab-section-stub")).toBeInTheDocument();
+    expect(screen.getByTestId("settings-section-collaboration")).toHaveAttribute("aria-current", "page");
+  });
+
+  it("leaves only the LaTeX tools and web browser switches in Experimentation", () => {
+    useSettingsStore.getState().setSettingsInitialSection("experimentation");
+    render(<SettingsModal />);
+    const body = within(screen.getByTestId("settings-body"));
+    expect(body.getAllByRole("switch")).toEqual([
+      body.getByRole("switch", { name: experimentation.latexTools.label }),
+      body.getByRole("switch", { name: experimentation.webBrowser.label }),
+    ]);
   });
 });
 
@@ -108,23 +77,12 @@ describe("Collaboration in the Settings search", () => {
     });
   }
 
-  it("opens Collaboration from its keywords while the flag is on", async () => {
-    useSettingsStore.getState().setLiveCollaboration(true);
+  it("opens Collaboration from its keywords", async () => {
     render(<SettingsModal />);
     typeQuery("maintainers");
     await waitFor(() =>
       expect(screen.getByTestId("settings-section-collaboration")).toHaveAttribute("aria-current", "page"),
     );
     expect(await screen.findByTestId("collab-section-stub")).toBeInTheDocument();
-  });
-
-  it("never offers Collaboration while the flag is off", async () => {
-    useSettingsStore.getState().setLiveCollaboration(false);
-    render(<SettingsModal />);
-    typeQuery("maintainers");
-    await waitFor(() =>
-      expect(screen.getByTestId("settings-search-status")).toHaveTextContent(enShell.settings.search.empty),
-    );
-    expect(screen.queryByTestId("settings-section-collaboration")).toBeNull();
   });
 });

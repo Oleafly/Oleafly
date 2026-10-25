@@ -258,6 +258,9 @@ pub struct LiveProject {
     suspect: BTreeSet<u64>,
     // The person heard on this connection that the project is full.
     told_full: bool,
+    edit_mode: crate::suggestions::EditMode,
+    suggested: BTreeSet<String>,
+    chatted: bool,
 }
 
 struct ChangeLog {
@@ -495,6 +498,9 @@ impl LiveProject {
             skipped: BTreeSet::new(),
             suspect: BTreeSet::new(),
             told_full: false,
+            edit_mode: crate::suggestions::EditMode::default(),
+            suggested: BTreeSet::new(),
+            chatted: false,
         }
     }
 
@@ -724,6 +730,43 @@ impl LiveProject {
         project_role_allows(self.role, ProjectAction::Edit)
     }
 
+    pub fn can_send(&self) -> bool {
+        project_role_allows(self.role, ProjectAction::Comment)
+    }
+
+    pub fn edit_mode(&self) -> Option<crate::suggestions::EditMode> {
+        match self.role {
+            ProjectRole::Owner | ProjectRole::Editor => Some(self.edit_mode),
+            ProjectRole::Reviewer => Some(crate::suggestions::EditMode::Suggesting),
+            ProjectRole::Commenter | ProjectRole::Viewer | ProjectRole::Unknown => None,
+        }
+    }
+
+    pub fn chosen_edit_mode(&self) -> crate::suggestions::EditMode {
+        self.edit_mode
+    }
+
+    pub fn set_edit_mode(&mut self, mode: crate::suggestions::EditMode) {
+        self.edit_mode = mode;
+    }
+
+    pub fn suggesting(&self) -> bool {
+        self.edit_mode() == Some(crate::suggestions::EditMode::Suggesting)
+    }
+
+    pub fn take_suggestion_changes(&mut self) -> BTreeSet<String> {
+        let ids = std::mem::take(&mut self.suggested);
+        if ids.is_empty() {
+            return BTreeSet::new();
+        }
+        self.guarded(|live| Ok(live.doc.files_of_suggestions(&ids)))
+            .unwrap_or_default()
+    }
+
+    pub fn take_chat_changes(&mut self) -> bool {
+        std::mem::take(&mut self.chatted)
+    }
+
     pub fn received(&self) -> u64 {
         self.received
     }
@@ -879,10 +922,16 @@ impl LiveProject {
         if self.damaged {
             return Ok(());
         }
-        if !self.can_edit() {
+        let Some(mode) = self.edit_mode() else {
+            self.reset_file(id)?;
+            return Ok(());
+        };
+        let author = self.doc.author_account();
+        if mode == crate::suggestions::EditMode::Suggesting && author.is_none() {
             self.reset_file(id)?;
             return Ok(());
         }
+        let device = self.device;
         let open = self
             .open
             .get_mut(id)
@@ -895,7 +944,24 @@ impl LiveProject {
                 };
                 let sink = Arc::clone(&open.sink);
                 let before = self.own_counter();
-                if self.doc.apply_operation(id, &applied).is_err() {
+                let written = match (mode, author) {
+                    (crate::suggestions::EditMode::Suggesting, Some(author)) => {
+                        self.doc.suggest_operation(
+                            id,
+                            &applied,
+                            author,
+                            device,
+                            crate::suggestions::now_ms(),
+                        )
+                    }
+                    _ => self
+                        .doc
+                        .apply_operation(id, &applied)
+                        .and_then(|()| self.doc.drop_empty_suggestions(id).map(|_| ())),
+                };
+                if written.is_err() {
+                    self.note_offline(id, before);
+                    self.disk.texts.insert(id.to_owned());
                     return self.reset_file(id);
                 }
                 self.note_offline(id, before);
@@ -949,6 +1015,8 @@ impl LiveProject {
 
     fn deliver(&mut self, changes: DocChanges) -> Result<(), CollabError> {
         self.comments.extend(changes.comments);
+        self.suggested.extend(changes.suggestions);
+        self.chatted |= changes.chat;
         if changes.tree {
             self.disk.tree = true;
         }
@@ -1711,6 +1779,160 @@ impl LiveProject {
         self.guarded(|live| live.applying(id, operation))
     }
 
+    pub fn suggested_text(&mut self, id: &str, content: &str) -> Result<bool, CollabError> {
+        self.guarded(|live| live.suggesting_text(id, content))
+    }
+
+    fn suggesting_text(&mut self, id: &str, content: &str) -> Result<bool, CollabError> {
+        if self.damaged {
+            return Ok(false);
+        }
+        let author = self.doc.author_account().ok_or_else(|| CollabError::Api {
+            status: 403,
+            code: "suggestion_role".to_owned(),
+            message: "sign in again to suggest changes".to_owned(),
+        })?;
+        let before = self.own_counter();
+        let operation = self.doc.suggest_text(
+            id,
+            content,
+            author,
+            self.device,
+            crate::suggestions::now_ms(),
+        );
+        self.note_offline(id, before);
+        self.disk.texts.insert(id.to_owned());
+        let operation = match operation {
+            Ok(operation) => operation,
+            Err(error) => {
+                self.reset_file(id)?;
+                return Err(error);
+            }
+        };
+        if operation.is_noop() {
+            return Ok(false);
+        }
+        let Some(open) = self.open.get_mut(id) else {
+            return Ok(true);
+        };
+        if open.channel.remote(operation.clone()).is_err() {
+            self.reset_file(id)?;
+            return Ok(true);
+        }
+        (open.sink)(DocMessage::Remote {
+            rev: open.channel.rev(),
+            op: operation,
+            length: open.channel.length(),
+        });
+        Ok(true)
+    }
+
+    pub fn edit_suggestions<T>(
+        &mut self,
+        files: &BTreeSet<String>,
+        work: impl FnOnce(&mut ProjectDoc) -> Result<T, CollabError>,
+    ) -> Result<T, CollabError> {
+        self.guarded(|live| {
+            if live.damaged {
+                return Err(crate::doc::engine_failed());
+            }
+            let before: Vec<(String, Option<String>)> = files
+                .iter()
+                .map(|id| (id.clone(), live.doc.text(id).ok()))
+                .collect();
+            let own = live.own_counter();
+            let outcome = work(&mut live.doc);
+            for (id, was) in before {
+                let now = live.doc.text(&id).ok();
+                if now != was {
+                    live.note_offline(&id, own);
+                    live.disk.texts.insert(id.clone());
+                    live.route_local(&id, was.as_deref(), now.as_deref())?;
+                }
+            }
+            outcome
+        })
+    }
+
+    fn route_local(
+        &mut self,
+        id: &str,
+        was: Option<&str>,
+        now: Option<&str>,
+    ) -> Result<(), CollabError> {
+        let (Some(was), Some(now)) = (was, now) else {
+            return self.reset_file(id);
+        };
+        let operation = TextOperation::between(was, now);
+        let Some(open) = self.open.get_mut(id) else {
+            return Ok(());
+        };
+        if !open.channel.holds(was) || open.channel.remote(operation.clone()).is_err() {
+            return self.reset_file(id);
+        }
+        (open.sink)(DocMessage::Remote {
+            rev: open.channel.rev(),
+            op: operation,
+            length: open.channel.length(),
+        });
+        Ok(())
+    }
+
+    pub fn restore_version(
+        &mut self,
+        version: &str,
+        files: Option<&BTreeSet<String>>,
+    ) -> Result<Vec<String>, CollabError> {
+        self.guarded(|live| live.restoring(version, files))
+    }
+
+    fn restoring(
+        &mut self,
+        version: &str,
+        files: Option<&BTreeSet<String>>,
+    ) -> Result<Vec<String>, CollabError> {
+        if self.damaged {
+            return Err(crate::doc::engine_failed());
+        }
+        let old = self.doc.at_history(version)?;
+        let wanted = |id: &str| files.is_none_or(|files| files.contains(id));
+        let current: HashMap<String, crate::doc::FileNode> = self
+            .doc
+            .nodes()?
+            .into_iter()
+            .map(|node| (node.id.clone(), node))
+            .collect();
+        let mut restored = Vec::new();
+        for node in old.nodes()? {
+            if node.parent == crate::doc::NodeParent::Trash || !wanted(&node.id) {
+                continue;
+            }
+            let Some(now) = current.get(&node.id) else {
+                continue;
+            };
+            let mut changed = false;
+            if now.parent == crate::doc::NodeParent::Trash {
+                self.doc.restore_node(&node.id)?;
+                self.disk.tree = true;
+                changed = true;
+            }
+            if node.kind == crate::doc::NodeKind::Text {
+                let content = old.text(&node.id)?;
+                let before = self.own_counter();
+                let changes = self.doc.restore_text(&node.id, &content)?;
+                self.note_offline(&node.id, before);
+                if !changes.is_empty() {
+                    changed = true;
+                    self.route(changes, None)?;
+                }
+            }
+            if changed {
+                restored.push(node.id);
+            }
+        }
+        Ok(restored)
+    }
+
     fn applying(&mut self, id: &str, operation: &TextOperation) -> Result<bool, CollabError> {
         if operation.is_noop() || self.damaged {
             return Ok(false);
@@ -1746,13 +1968,16 @@ impl LiveProject {
             outgoing.sent_at = std::time::Instant::now();
             return Ok(Some(outgoing.clone()));
         }
-        if !self.can_edit() || self.unsendable {
+        if !self.can_send() || self.unsendable {
             return Ok(None);
         }
         let ready = self.ready(self.pieces());
         let total: usize = ready.iter().map(Piece::atoms).sum();
         if total == 0 {
             return Ok(None);
+        }
+        if !self.can_edit() {
+            return self.next_whole(&ready, total);
         }
         let target = self.batch_limit.min(PIECE_BYTES);
         let mut atoms = total.min(target.saturating_mul(2)).max(1);
@@ -1777,6 +2002,42 @@ impl LiveProject {
         };
         self.outgoing = Some(outgoing.clone());
         Ok(Some(outgoing))
+    }
+
+    fn next_whole(
+        &mut self,
+        ready: &[Piece],
+        total: usize,
+    ) -> Result<Option<Outgoing>, CollabError> {
+        if !self.only_allowed(ready) {
+            self.unsendable = true;
+            return Ok(None);
+        }
+        let (payload, version) = self.export_prefix(ready, total)?;
+        if payload.len() > self.batch_limit {
+            self.unsendable = true;
+            return Ok(None);
+        }
+        let outgoing = Outgoing {
+            batch: BatchId::new_v7(),
+            payload,
+            version,
+            sent: true,
+            sent_at: std::time::Instant::now(),
+            held: false,
+        };
+        self.outgoing = Some(outgoing.clone());
+        Ok(Some(outgoing))
+    }
+
+    fn only_allowed(&self, ready: &[Piece]) -> bool {
+        let loro = self.doc.loro();
+        let reviewer = self.role == ProjectRole::Reviewer;
+        ready.iter().all(|piece| {
+            loro.get_changed_containers_in(ID::new(piece.peer, piece.from), piece.atoms())
+                .iter()
+                .all(|container| allowed_for(loro, container, reviewer))
+        })
     }
 
     pub fn acknowledged(&mut self, batch: BatchId, seq: u64) {
@@ -1951,7 +2212,7 @@ impl LiveProject {
         self.outgoing.is_none()
             && !self.unsendable
             && !self.damaged
-            && self.can_edit()
+            && self.can_send()
             && !self.unsent().is_empty()
     }
 
@@ -2015,6 +2276,27 @@ impl LiveProject {
                 Err(crate::doc::engine_failed())
             }
         }
+    }
+}
+
+fn allowed_for(loro: &loro::LoroDoc, container: &loro::ContainerID, reviewer: bool) -> bool {
+    let root = match container {
+        loro::ContainerID::Root { .. } => container.clone(),
+        loro::ContainerID::Normal { .. } => match loro
+            .get_path_to_container(container)
+            .and_then(|path| path.into_iter().next())
+        {
+            Some((root, _)) => root,
+            None => return true,
+        },
+    };
+    let loro::ContainerID::Root { name, .. } = root else {
+        return false;
+    };
+    match name.as_str() {
+        crate::comments::COMMENTS | crate::chat::CHAT => true,
+        crate::suggestions::SUGGESTIONS => reviewer,
+        other => reviewer && other.starts_with("text:"),
     }
 }
 
@@ -4167,5 +4449,209 @@ mod tests {
         assert_ne!(again.batch, first.batch);
         assert_eq!(again.payload, first.payload);
         assert_eq!(alice.doc().text(&main).unwrap(), "abc one");
+    }
+
+    fn reviewing(role: ProjectRole) -> (LiveProject, LiveProject, String, AccountId) {
+        let mut doc = ProjectDoc::create().unwrap();
+        doc.set_author("01920000-0000-7000-8000-0000000000b0", "Owen");
+        let main = doc
+            .add_node(None, "main.tex", NodeKind::Text, None, "Hello world")
+            .unwrap();
+        let snapshot = doc.snapshot().unwrap();
+        let owner = LiveProject::new(doc, 0, ProjectRole::Owner);
+        let account: AccountId = "01920000-0000-7000-8000-0000000000b1".parse().unwrap();
+        let mut joined = ProjectDoc::load(&snapshot).unwrap();
+        joined.set_author(&account.to_string(), "Rae");
+        (owner, LiveProject::new(joined, 0, role), main, account)
+    }
+
+    fn judged_by_server(
+        owner: &LiveProject,
+        payload: &[u8],
+        role: ProjectRole,
+        account: AccountId,
+    ) -> oleafly_server::role_guard::RoleVerdict {
+        let server = loro::LoroDoc::new();
+        server.import(&owner.doc().snapshot().unwrap()).unwrap();
+        let rule = oleafly_server::role_guard::RoleRule {
+            role,
+            account,
+            comments_off: false,
+        };
+        oleafly_server::role_guard::judge(&server, payload, &rule).0
+    }
+
+    #[test]
+    fn a_reviewer_always_suggests_and_the_server_takes_the_whole_batch() {
+        let (mut owner, mut rae, main, account) = reviewing(ProjectRole::Reviewer);
+        assert_eq!(
+            rae.edit_mode(),
+            Some(crate::suggestions::EditMode::Suggesting)
+        );
+        rae.set_edit_mode(crate::suggestions::EditMode::Editing);
+        assert!(rae.suggesting());
+        let (sink, seen) = recorder();
+        rae.open_file(&main, sink).unwrap();
+        rae.editor_change(&main, 0, insert(5, ",", 11)).unwrap();
+        rae.editor_change(&main, 1, insert(6, " dear", 12)).unwrap();
+        assert_eq!(
+            seen.lock().unwrap().last(),
+            Some(&DocMessage::Ack { rev: 2, length: 17 })
+        );
+        assert_eq!(rae.doc().text(&main).unwrap(), "Hello, dear world");
+        let listed = rae.doc().suggestions(&main).unwrap();
+        assert_eq!(listed.len(), 1);
+        assert_eq!((listed[0].from, listed[0].to), (5, 11));
+        let outgoing = rae
+            .next_outgoing()
+            .unwrap()
+            .expect("the suggestion goes out");
+        assert_eq!(
+            judged_by_server(&owner, &outgoing.payload, ProjectRole::Reviewer, account),
+            oleafly_server::role_guard::RoleVerdict::Allowed
+        );
+        assert!(owner.import_update(1, &outgoing.payload).unwrap());
+        assert_eq!(
+            owner.take_suggestion_changes(),
+            BTreeSet::from([main.clone()])
+        );
+        assert_eq!(owner.doc().suggestions(&main).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_commenter_or_viewer_typing_in_the_editor_is_put_back() {
+        for role in [ProjectRole::Commenter, ProjectRole::Viewer] {
+            let (_owner, mut reader, main, _) = reviewing(role);
+            assert_eq!(reader.edit_mode(), None);
+            let (sink, seen) = recorder();
+            reader.open_file(&main, sink).unwrap();
+            reader.editor_change(&main, 0, insert(0, "x", 11)).unwrap();
+            assert_eq!(reader.doc().text(&main).unwrap(), "Hello world");
+            assert!(matches!(
+                seen.lock().unwrap().last(),
+                Some(DocMessage::Reset { .. })
+            ));
+            assert!(reader.next_outgoing().unwrap().is_none());
+        }
+    }
+
+    #[test]
+    fn a_commenter_sends_comments_and_chat_but_never_text() {
+        let (owner, mut commenter, main, account) = reviewing(ProjectRole::Commenter);
+        commenter
+            .comment_doc()
+            .create_comment_thread(&main, 0, 5, account, 10, "Nice opening", &[])
+            .unwrap();
+        commenter
+            .comment_doc()
+            .send_chat(account, 11, "Ready for review?")
+            .unwrap();
+        let outgoing = commenter.next_outgoing().unwrap().expect("a batch to send");
+        assert_eq!(
+            judged_by_server(&owner, &outgoing.payload, ProjectRole::Commenter, account),
+            oleafly_server::role_guard::RoleVerdict::Allowed
+        );
+        commenter.acknowledged(outgoing.batch, 1);
+        commenter.doc_mut().rename(&main, "other.tex").unwrap();
+        assert!(commenter.next_outgoing().unwrap().is_none());
+        assert!(commenter.take_unsendable());
+    }
+
+    #[test]
+    fn an_editor_in_suggesting_mode_suggests_and_back_in_editing_mode_edits() {
+        let (mut owner, mut editor, main, account) = reviewing(ProjectRole::Editor);
+        assert_eq!(
+            editor.edit_mode(),
+            Some(crate::suggestions::EditMode::Editing)
+        );
+        editor.set_edit_mode(crate::suggestions::EditMode::Suggesting);
+        let (sink, _) = recorder();
+        editor.open_file(&main, sink).unwrap();
+        editor.editor_change(&main, 0, insert(11, "!", 11)).unwrap();
+        assert_eq!(editor.doc().suggestions(&main).unwrap().len(), 1);
+        editor.set_edit_mode(crate::suggestions::EditMode::Editing);
+        editor.editor_change(&main, 1, insert(0, ">", 12)).unwrap();
+        assert_eq!(editor.doc().text(&main).unwrap(), ">Hello world!");
+        assert_eq!(editor.doc().suggestions(&main).unwrap().len(), 1);
+        let outgoing = editor.next_outgoing().unwrap().unwrap();
+        assert!(owner.import_update(1, &outgoing.payload).unwrap());
+        assert_eq!(owner.doc().text(&main).unwrap(), ">Hello world!");
+        let _ = account;
+    }
+
+    #[test]
+    fn a_tool_write_by_a_reviewer_becomes_suggestions_the_open_editor_hears() {
+        let (owner, mut rae, main, account) = reviewing(ProjectRole::Reviewer);
+        let (sink, seen) = recorder();
+        rae.open_file(&main, sink).unwrap();
+        assert!(rae.suggested_text(&main, "Hello brave world").unwrap());
+        assert!(matches!(
+            seen.lock().unwrap().last(),
+            Some(DocMessage::Remote { .. })
+        ));
+        assert_eq!(rae.doc().suggestions(&main).unwrap().len(), 1);
+        let outgoing = rae.next_outgoing().unwrap().unwrap();
+        assert_eq!(
+            judged_by_server(&owner, &outgoing.payload, ProjectRole::Reviewer, account),
+            oleafly_server::role_guard::RoleVerdict::Allowed
+        );
+    }
+
+    #[test]
+    fn accepting_through_the_live_project_updates_the_open_editor() {
+        let (mut owner, mut rae, main, _) = reviewing(ProjectRole::Reviewer);
+        rae.suggested_text(&main, "Hello brave world").unwrap();
+        let outgoing = rae.next_outgoing().unwrap().unwrap();
+        owner.import_update(1, &outgoing.payload).unwrap();
+        let (sink, seen) = recorder();
+        owner.open_file(&main, sink).unwrap();
+        let ids: Vec<_> = owner
+            .doc()
+            .suggestions(&main)
+            .unwrap()
+            .into_iter()
+            .map(|found| found.id)
+            .collect();
+        let files = BTreeSet::from([main.clone()]);
+        owner
+            .edit_suggestions(&files, |doc| doc.reject_suggestions(&ids))
+            .unwrap();
+        assert_eq!(owner.doc().text(&main).unwrap(), "Hello world");
+        assert!(matches!(
+            seen.lock().unwrap().last(),
+            Some(DocMessage::Remote { length: 11, .. })
+        ));
+    }
+
+    #[test]
+    fn restoring_a_version_brings_back_its_text_and_its_deleted_files() {
+        let (mut owner, _, main, _) = reviewing(ProjectRole::Reviewer);
+        let notes = owner
+            .doc_mut()
+            .add_node(None, "notes.md", NodeKind::Text, None, "notes")
+            .unwrap();
+        let version = owner.doc().current_version_id();
+        owner.local_text(&main, "Changed").unwrap();
+        owner.doc_mut().trash(&notes).unwrap();
+        let fresh = owner
+            .doc_mut()
+            .add_node(None, "fresh.tex", NodeKind::Text, None, "new")
+            .unwrap();
+        let restored = owner.restore_version(&version, None).unwrap();
+        assert!(restored.contains(&main) && restored.contains(&notes));
+        assert_eq!(owner.doc().text(&main).unwrap(), "Hello world");
+        let nodes = owner.doc().nodes().unwrap();
+        let parent_of = |id: &str| {
+            nodes
+                .iter()
+                .find(|node| node.id == id)
+                .map(|node| node.parent.clone())
+        };
+        assert_eq!(parent_of(&notes), Some(crate::doc::NodeParent::Root));
+        assert_eq!(parent_of(&fresh), Some(crate::doc::NodeParent::Root));
+        let only = BTreeSet::from([main.clone()]);
+        owner.local_text(&main, "Again").unwrap();
+        owner.restore_version(&version, Some(&only)).unwrap();
+        assert_eq!(owner.doc().text(&main).unwrap(), "Hello world");
     }
 }

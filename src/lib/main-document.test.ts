@@ -34,7 +34,7 @@ describe("main document helpers", () => {
   });
 
   it("offers every source family for a main document", () => {
-    expect(ALL_MAIN_EXTENSIONS).toEqual(["tex", "ltx", "latex", "typ", "md", "markdown"]);
+    expect(ALL_MAIN_EXTENSIONS).toEqual(["tex", "ltx", "latex", "typ", "md", "markdown", "qmd", "rmd"]);
   });
 
   it("reports a missing main only for an opened folder whose main file is not in the tree", () => {
@@ -85,7 +85,18 @@ describe("main document helpers", () => {
   });
 
   it("names each document kind", () => {
-    for (const kind of ["document", "book", "presentation", "poster", "standalone", "typst", "markdown", "unknown"] as const) {
+    for (const kind of [
+      "document",
+      "book",
+      "presentation",
+      "poster",
+      "standalone",
+      "typst",
+      "markdown",
+      "quarto",
+      "calepin",
+      "unknown",
+    ] as const) {
       expect(documentKindLabel(kind), kind).toBe(labels.kind[kind]);
     }
   });

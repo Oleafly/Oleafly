@@ -99,7 +99,20 @@
     "installPackages_many": "Najít a nainstalovat {{count}} souboru",
     "installPackages_other": "Najít a nainstalovat {{count}} souborů",
     "downloadTypst": "Stáhnout Typst {{version}}",
-    "useTypst": "Použít Typst {{version}}"
+    "useTypst": "Použít Typst {{version}}",
+    "installTool": "Nainstalovat {{tool}} {{version}}",
+    "installToolSize": "Nainstalovat {{tool}} {{version}} ({{size}})",
+    "engineSettings": "Otevřít nastavení enginu"
+  },
+  "html": {
+    "builtTitle": "Sestaveno jako webová stránka",
+    "builtDetail": "Sestaveno v {{time}}. Webové stránky se otevírají v prohlížeči.",
+    "building": "Sestavuje se webová stránka",
+    "buildingDetail": "Až bude hotová, můžete ji otevřít v prohlížeči.",
+    "pendingTitle": "Výstupem tohoto dokumentu je webová stránka",
+    "pendingDetail": "Zkompilujte ho a pak ho otevřete v prohlížeči.",
+    "open": "Otevřít v prohlížeči",
+    "compile": "Kompilovat"
   },
   "stale": {
     "badge": "Zastaralé",

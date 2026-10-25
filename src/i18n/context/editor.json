@@ -175,6 +175,16 @@
       "inline": {
         "edit": "Small button that opens the exact inline LaTeX for editing"
       }
+    },
+    "quarto": {
+      "completion": {
+        "chunkOption": "Autocomplete hint for a Quarto code chunk option, offered after #| at the top of a chunk. Quarto is a product name"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "Autocomplete hint for a Calepin code chunk option, offered after #| at the top of a raw block in a Typst file. Calepin is a product name"
+      }
     }
   },
   "projectInfo": {

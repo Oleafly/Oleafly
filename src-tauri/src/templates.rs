@@ -292,6 +292,8 @@ fn to_info(app: &AppHandle, m: TemplateManifest, has_preview: bool, source: &str
     let document_engine = match m.engine.to_ascii_lowercase().as_str() {
         "typst" | "typ" => "typst",
         "markdown" | "md" | "pandoc" => "markdown",
+        "quarto" | "qmd" => "quarto",
+        "calepin" => "calepin",
         "xetex" | "latex" | "tectonic" | "luatex" | "latexmk" => "latex",
         _ => "unknown",
     }
@@ -629,6 +631,47 @@ mod tests {
         missing.id = "blank-markdown".into();
         missing.main_doc = "missing.md".into();
         assert!(validate_manifest_dir(&root.join("blank-markdown"), &missing).is_err());
+    }
+
+    #[test]
+    fn bundled_ctex_templates_use_the_portable_fandol_fonts() {
+        fn tex_sources(directory: &Path, found: &mut Vec<PathBuf>) {
+            for entry in std::fs::read_dir(directory).unwrap().flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    tex_sources(&path, found);
+                } else if path
+                    .extension()
+                    .and_then(|extension| extension.to_str())
+                    .is_some_and(|extension| matches!(extension, "tex" | "cls" | "sty"))
+                {
+                    found.push(path);
+                }
+            }
+        }
+        let mut sources = Vec::new();
+        tex_sources(&repo_templates_dir(), &mut sources);
+        assert!(!sources.is_empty());
+        for path in sources {
+            let text = std::fs::read_to_string(&path).unwrap();
+            let loads_ctex = text.lines().any(|line| {
+                let code = line.split('%').next().unwrap_or_default();
+                [
+                    "{ctex}",
+                    "{ctexart}",
+                    "{ctexrep}",
+                    "{ctexbook}",
+                    "{ctexbeamer}",
+                ]
+                .iter()
+                .any(|class| code.contains(class))
+            });
+            assert!(
+                !loads_ctex || text.contains("fontset=fandol"),
+                "{} loads ctex without fontset=fandol",
+                path.display()
+            );
+        }
     }
 
     #[test]

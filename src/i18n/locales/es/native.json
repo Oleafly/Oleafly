@@ -103,6 +103,11 @@
       "confirm": "Usar el programa",
       "pickTitle": "Elige el programa para {{name}}",
       "filter": "Programas"
+    },
+    "sharedCodeExecution": {
+      "title": "¿Permitir código en este proyecto compartido?",
+      "message": "Al compilar, se ejecutará el código de este proyecto en este equipo. Cualquier persona con acceso de edición puede cambiar ese código. Permítelo solo si confías en todas las personas del proyecto.",
+      "confirm": "Permitir en este equipo"
     }
   },
   "errors": {

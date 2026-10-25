@@ -184,6 +184,7 @@
       "keyPlaceholder": "Jätä tyhjäksi, jos avainta ei vaadita",
       "keyPlaceholderStored": "Tallennettu avain säilyy, ellet anna uutta",
       "namePlaceholder": "Acme",
+      "presetsLabel": "Yleiset palvelut",
       "submitAdd": "Lisää palvelu"
     },
     "instructions": {
@@ -280,7 +281,8 @@
       "badge": {
         "connected": "Yhdistetty",
         "notRunning": "Ei käynnissä",
-        "running": "Käynnissä"
+        "running": "Käynnissä",
+        "suggested": "Suositeltu"
       },
       "blurbs": {
         "anthropic": "Claude-mallit, vahvoja koodissa ja kirjoittamisessa.",
@@ -290,7 +292,7 @@
         "groq": "Erittäin nopea avointen mallien päättely.",
         "mistral": "Mistral- ja Codestral-mallit.",
         "ollama": "Ajaa malleja omalla koneellasi. Avainta ei tarvita, asenna Ollama ja nouda malli.",
-        "openai": "GPT-mallit. Oletusvalinta.",
+        "openai": "GPT-mallit.",
         "openrouter": "Yksi avain, pääsy monen tutkimusryhmän malleihin.",
         "perplexity": "Sonar-mallit, joissa on elävä verkkoperustaisuus.",
         "xai": "xAI:n Grok-mallit.",
@@ -1283,6 +1285,58 @@
         "detail": "Käännä avoin projekti uudemmalla asennetulla versiolla ja vertaa tuloksia ennen vaihtamista.",
         "check": "Tarkista versiolla Typst {{version}}"
       }
+    },
+    "notebook": {
+      "loading": "Etsitään tältä koneelta Quartoa, Calepinia ja kieliä",
+      "source": {
+        "system": "Tällä koneella",
+        "managed": "Oleaflyn lataama"
+      },
+      "active": {
+        "version": "{{tool}} {{version}}",
+        "missing": "Ei löytynyt tältä koneelta."
+      },
+      "managedIdle": "Ei käytössä. Oleafly käyttää ensisijaisesti tältä koneelta löytynyttä kopiota.",
+      "download": {
+        "optional": "Valinnainen. Oleafly käyttää jo tällä koneella olevaa kopiota.",
+        "license": "{{license}}-lisenssi.",
+        "action": "Lataa {{tool}} {{version}} ({{size}})",
+        "actionNoSize": "Lataa {{tool}} {{version}}",
+        "notOffered": "Oleafly ei voi ladata työkalua {{tool}} tälle koneelle. Asenna se itse, niin Oleafly löytää sen."
+      },
+      "removeAria": "Poista Oleaflyn lataama {{tool}}",
+      "languages": {
+        "heading": "Kielet",
+        "tooltip": "Quarto- ja Calepin-dokumenttien koodi suoritetaan näillä ohjelmilla.",
+        "notFound": "Ei löytynyt",
+        "note": "Oleafly suorittaa koodin tällä koneella jo olevilla R-, Python- ja Julia-asennuksilla. Se ei koskaan asenna niitä."
+      },
+      "codeNote": "Dokumentin koodi suoritetaan vasta, kun sallit koodin sen projektille käännösvalikossa.",
+      "progress": {
+        "starting": "Aloitetaan",
+        "downloading": "Ladataan {{percent}} %",
+        "verifying": "Tarkistetaan",
+        "extracting": "Puretaan",
+        "done": "Viimeistellään"
+      },
+      "error": {
+        "load": "Quartoa, Calepinia ja kieliä ei voitu etsiä.",
+        "install": "Työkalua {{tool}} ei voitu asentaa.",
+        "remove": "Työkalua {{tool}} ei voitu poistaa."
+      }
+    },
+    "quarto": {
+      "heading": "Quarto",
+      "tooltip": "Quarto muuntaa .qmd- ja .Rmd-dokumentit PDF:ksi, verkkosivuksi tai kalvoiksi. Oleafly käyttää tämän koneen Quartoa, jos se löytää sellaisen, ja muuten lataamaansa kopiota.",
+      "detail": "Oleafly kääntää .qmd- ja .Rmd-dokumentit tällä kopiolla.",
+      "downloadDetail": "Oleafly säilyttää omaa kopiotaan sovelluskansiossaan. Quarto sisältää Pandocin ja muita työkaluja, joilla on omat lisenssinsä."
+    },
+    "calepin": {
+      "heading": "Calepin",
+      "tooltip": "Calepin suorittaa Typst-dokumentin koodin ja lisää tulokset PDF:ään. Oleafly käyttää tämän koneen Calepinia, jos se löytää sellaisen, ja muuten lataamaansa kopiota.",
+      "detail": "Oleafly kääntää Calepin-dokumentit tällä kopiolla.",
+      "downloadDetail": "Oleafly säilyttää omaa kopiotaan sovelluskansiossaan.",
+      "typstNote": "Calepin tuottaa tulosteen Oleaflyn sisäänrakennetulla Typstillä. Se vaatii Typst-version 0.15 tai uudemman."
     }
   },
   "github": {

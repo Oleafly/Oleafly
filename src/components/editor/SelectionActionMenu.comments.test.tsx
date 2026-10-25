@@ -18,10 +18,14 @@ vi.mock("@/features/assistant-handoff", () => ({ handoffToAssistant: vi.fn() }))
 
 import { SelectionActionMenu } from "./SelectionActionMenu";
 
-function editorView() {
+function editorView(readOnly = false) {
   return {
     hasFocus: true,
-    state: EditorState.create({ doc: "A selected phrase.", selection: EditorSelection.single(2, 10) }),
+    state: EditorState.create({
+      doc: "A selected phrase.",
+      selection: EditorSelection.single(2, 10),
+      extensions: EditorState.readOnly.of(readOnly),
+    }),
     coordsAtPos: () => ({ top: 120, left: 40, bottom: 136, right: 90 }),
   };
 }
@@ -40,13 +44,12 @@ beforeAll(async () => {
 beforeEach(() => {
   controller.getEditorView.mockReturnValue(editorView());
   useFilesStore.setState({ projectId: "paper", activePath: "intro.tex" });
-  useSettingsStore.setState({ railTab: "files", showTree: true, liveCollaboration: true });
+  useSettingsStore.setState({ railTab: "files", showTree: true });
   useCommentsRail.setState({ visible: true, canCompose: true, request: null });
 });
 
 afterEach(() => {
   useCommentsRail.setState({ visible: false, canCompose: false, request: null });
-  useSettingsStore.setState({ liveCollaboration: false });
 });
 
 describe("Comment in the selection menu", () => {
@@ -59,11 +62,20 @@ describe("Comment in the selection menu", () => {
     expect(screen.queryByRole("button", { name: enCollab.comments.add })).not.toBeInTheDocument();
   });
 
-  it("is left out while live collaboration is off, even when the comment state allows it", () => {
-    useSettingsStore.setState({ liveCollaboration: false });
+  it("offers only Comment in a read-only editor where the person can comment", () => {
+    controller.getEditorView.mockReturnValue(editorView(true));
     showMenu();
-    expect(screen.getByRole("button", { name: en.selectionActions.askAi })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: enCollab.comments.add })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: en.selectionActions.askAi })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: enCollab.comments.add }));
+    expect(useCommentsRail.getState().request).toEqual({ path: "intro.tex", from: 2, to: 10, quote: "selected" });
+  });
+
+  it("shows nothing in a read-only editor where the person cannot comment", () => {
+    controller.getEditorView.mockReturnValue(editorView(true));
+    useCommentsRail.setState({ canCompose: false });
+    showMenu();
+    expect(screen.queryByRole("button", { name: en.selectionActions.askAi })).toBeNull();
+    expect(screen.queryByRole("button", { name: enCollab.comments.add })).toBeNull();
   });
 
   it("is left out while the person cannot comment", () => {

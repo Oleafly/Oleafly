@@ -145,6 +145,7 @@ export interface CompileResult {
     out_dir: string | null;
     compile_time_ms: number;
     stopped?: boolean;
+    html_output?: string | null;
 }
 export interface EngineCapabilities {
     produces_pdf: boolean;
@@ -156,7 +157,7 @@ export interface EngineCapabilities {
     features: EngineFeature[];
     conversion_exports: Array<"docx" | "html" | "md" | "txt" | "pptx" | "epub" | "typst" | "tex">;
     template_kinds: Array<"document" | "image">;
-    compiler_prerequisite: "pandoc" | "system_tex" | null;
+    compiler_prerequisite: "pandoc" | "system_tex" | "quarto" | "calepin" | null;
 }
 export type EngineFeature = "citations" | "document_index";
 export interface DocumentEngineDescriptor {
@@ -197,9 +198,10 @@ export interface TypstSpec {
     reproducible?: boolean;
     inputs?: Record<string, string>;
     variants?: Record<string, { inputs?: Record<string, string> }>;
+    notebook_output?: "pdf" | "html" | null;
 }
 export type TexFlavor = "pdflatex" | "xelatex" | "lualatex" | "uplatex" | "platex";
-export type DocumentEngineId = "latex" | "latexmk" | "typst" | "markdown" | "unknown";
+export type DocumentEngineId = "latex" | "latexmk" | "typst" | "markdown" | "quarto" | "calepin" | "unknown";
 export interface ValidatedCompileFingerprint {
     main_document: string;
     engine_id: string;
@@ -1185,10 +1187,17 @@ export type CollabErrorCode =
     | "server_removed"
     | "share_in_progress"
     | "cancelled"
-    | "turned_off"
     | "cloud_synced"
     | "owner_away"
-    | "wrong_server";
+    | "wrong_server"
+    | "suggestion_not_found"
+    | "suggestion_not_yours"
+    | "suggestion_role"
+    | "chat_role"
+    | "history_unavailable"
+    | "account_storage_full"
+    | "too_many_projects"
+    | "too_many_uploads";
 export interface CollabCommandError {
     code: CollabErrorCode;
     message: string;
@@ -1197,7 +1206,7 @@ export interface CollabServerChanged {
     serverId: string;
 }
 // "unknown" is a role from a later server: read-only, like a viewer.
-export type CollabProjectRole = "owner" | "editor" | "viewer" | "unknown";
+export type CollabProjectRole = "owner" | "editor" | "reviewer" | "commenter" | "viewer" | "unknown";
 export type CollabProjectStatus = "pending" | "active" | "archived" | "unknown";
 export interface CollabPerson {
     account_id: string;
@@ -1803,7 +1812,13 @@ export interface CollabLiveRemoved {
 }
 // "project_too_large": the project as a whole reached the server's size
 // limit, so the file waits until the limit is raised.
-export type CollabUploadState = "waiting" | "failed" | "too_large" | "project_too_large";
+export type CollabUploadState =
+  | "waiting"
+  | "failed"
+  | "too_large"
+  | "project_too_large"
+  | "account_storage_full"
+  | "too_many_uploads";
 export interface CollabUploadFile {
   path: string;
   state: CollabUploadState;
@@ -2274,4 +2289,91 @@ export interface CollabLiveMembers {
     accountId: string;
     by: string;
     kind: CollabMemberChangeKind;
+}
+
+export type CollabSuggestionKind = "insert" | "delete";
+export interface CollabSuggestion {
+    id: string;
+    fileId: string;
+    kind: CollabSuggestionKind;
+    author: string;
+    createdAt: number;
+    from: number;
+    to: number;
+    text: string;
+    threadId: string | null;
+    verified: boolean;
+}
+export interface CollabSuggestionList {
+    rev: number | null;
+    suggestions: CollabSuggestion[];
+}
+export interface CollabSuggestionCount {
+    path: string;
+    pending: number;
+}
+export type CollabEditMode = "editing" | "suggesting";
+export interface CollabSuggestionsChanged {
+    projectId: string;
+    paths: string[];
+    local: boolean;
+}
+export interface CollabChatMessage {
+    id: string;
+    author: string;
+    at: number;
+    body: string;
+    deleted: boolean;
+    verified: boolean;
+}
+export interface CollabChatChanged {
+    projectId: string;
+    local: boolean;
+}
+export interface CollabHistoryEntry {
+    id: string;
+    at: number;
+    until: number;
+    authors: string[];
+    files: string[];
+    name: string | null;
+    versionId: string | null;
+}
+export interface CollabHistoryPage {
+    entries: CollabHistoryEntry[];
+    nextBefore: string | null;
+}
+export interface CollabFileAtVersion {
+    path: string;
+    text: string | null;
+    existed: boolean;
+}
+export interface CollabOutputInfo {
+    kind: "pdf" | "synctex";
+    size: number;
+    compiledBy: string;
+    compiledAt: number;
+    mainFile: string;
+}
+export interface BackendPort {
+  collabEditModeGet: (projectId: string) => Promise<CollabEditMode>;
+  collabEditModeSet: (projectId: string, mode: CollabEditMode) => Promise<void>;
+  collabSuggestionList: (projectId: string, path: string) => Promise<CollabSuggestionList>;
+  collabSuggestionCounts: (projectId: string) => Promise<CollabSuggestionCount[]>;
+  collabSuggestionAccept: (projectId: string, ids: string[]) => Promise<void>;
+  collabSuggestionReject: (projectId: string, ids: string[]) => Promise<void>;
+  collabSuggestionWithdraw: (projectId: string, ids: string[]) => Promise<void>;
+  collabSuggestionAcceptFile: (projectId: string, path: string) => Promise<void>;
+  collabSuggestionRejectFile: (projectId: string, path: string) => Promise<void>;
+  collabChatList: (projectId: string, before: string | null, limit: number) => Promise<CollabChatMessage[]>;
+  collabChatSend: (projectId: string, body: string) => Promise<CollabChatMessage>;
+  collabChatDelete: (projectId: string, id: string) => Promise<void>;
+  collabChatClear: (projectId: string) => Promise<void>;
+  collabHistoryList: (projectId: string, before: string | null, limit: number) => Promise<CollabHistoryPage>;
+  collabHistoryFile: (projectId: string, versionId: string, path: string) => Promise<CollabFileAtVersion>;
+  collabHistoryChangedFiles: (projectId: string, fromVersion: string, toVersion: string) => Promise<string[]>;
+  collabHistoryRestore: (projectId: string, versionId: string, paths: string[] | null) => Promise<void>;
+  collabVersionName: (projectId: string, versionId: string, name: string) => Promise<void>;
+  collabVersionUnname: (projectId: string, versionId: string) => Promise<void>;
+  collabOutputInfo: (projectId: string) => Promise<CollabOutputInfo[]>;
 }

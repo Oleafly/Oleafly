@@ -1055,6 +1055,16 @@
         "unknownEntryType": "Tuntematon lähdeviitteen tyyppi @{{type}}."
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "Quarto-koodilohkon asetus"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "Calepin-koodilohkon asetus"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "Ladataan kuvaa",
@@ -1499,5 +1509,5 @@
     "keyTaken": "Muunnelma ei voi asettaa samaa nimeä kahdesti.",
     "saveFailed": "Muunnelmia ei voitu tallentaa."
   },
-  "sharedSettingsViewer": "Katselijat eivät voi muuttaa tätä jaetussa projektissa."
+  "sharedSettingsViewer": "Vain omistajat ja muokkaajat voivat muuttaa tätä jaetussa projektissa."
 }

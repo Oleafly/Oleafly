@@ -93,7 +93,7 @@ import {
   useZoteroStaleStore,
 } from "@/features/zotero-actions";
 
-const SUPPORTED_SOURCE_RE = /\.(?:tex|latex|ltx|sty|cls|md|markdown|typ|bib)$/i;
+const SUPPORTED_SOURCE_RE = /\.(?:tex|latex|ltx|sty|cls|md|markdown|qmd|rmd|typ|bib)$/i;
 // This cap is applied only after the current query has filtered the complete
 // project index. Completion results deliberately omit `validFor`, so every
 // completion-query edit reruns the source and symbols beyond the initial page
@@ -1511,7 +1511,7 @@ function linkDestinationCompletion(
   path: string,
 ): CompletionResult | null | undefined {
   const before = context.state.sliceDoc(Math.max(0, context.pos - 1_000), context.pos);
-  if (/\.(?:md|markdown)$/i.test(path)) return markdownPathCompletion(context, path, before);
+  if (/\.(?:md|markdown|qmd|rmd)$/i.test(path)) return markdownPathCompletion(context, path, before);
   if (/\.(?:tex|latex|ltx)$/i.test(path)) return latexHrefCompletion(context, path, before);
   return undefined;
 }
@@ -1547,7 +1547,7 @@ export const projectIntelligenceCompletion: CompletionSource = (
   if (/\.(?:tex|latex|ltx|sty|cls)$/.test(normalizedPath)) {
     return latexCompletion(context, current.snapshot, guard, before);
   }
-  if (/\.(?:md|markdown)$/.test(normalizedPath)) {
+  if (/\.(?:md|markdown|qmd|rmd)$/.test(normalizedPath)) {
     return markdownCompletion(context, current.snapshot, guard, before);
   }
   if (normalizedPath.endsWith(".bib")) {
@@ -2037,7 +2037,7 @@ export function typstCompletionWithLanguageService(
   return source;
 }
 
-const MARKDOWN_SOURCE_RE = /\.(?:md|markdown)$/i;
+const MARKDOWN_SOURCE_RE = /\.(?:md|markdown|qmd|rmd)$/i;
 const latexCitationSource = zoteroCitationSource(
   "latex",
   gateCompletionSource(projectIntelligenceCompletion, "latex"),

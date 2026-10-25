@@ -452,7 +452,19 @@
       "help": "O variantă transmite propriile valori către sys.inputs, de exemplu pentru o versiune de ciornă sau una finală. Varianta aleasă rămâne pe acest computer. Adaugă sau editează variante în Setările documentului.",
       "none": "Fără variantă"
     },
-    "sharedViewer": "Cititorii nu pot modifica aceste setări într-un proiect partajat."
+    "typEngine": {
+      "title": "Motor (acest proiect)",
+      "help": "Typst compilează documentul așa cum este scris. Calepin rulează și codul din el și pune rezultatele în PDF.",
+      "typst": "Typst <note>[inclus]</note>",
+      "calepin": "Calepin <note>[rulează cod]</note>"
+    },
+    "code": {
+      "title": "Cod (acest computer)",
+      "help": "Quarto și Calepin pot rula codul R, Python și Julia din acest proiect. Codul rulează cu permisiunile tale, așa că permite-l doar pentru un proiect în care ai încredere. Alegerea se aplică doar pe acest computer.",
+      "off": "Oprit",
+      "run": "Rulează codul pe acest computer"
+    },
+    "sharedViewer": "Doar proprietarii și editorii pot modifica aceste setări într-un proiect partajat."
   },
   "datePicker": {
     "placeholder": "Alege o dată"
@@ -524,6 +536,18 @@
   "shellCommands": {
     "allow": "Permite comenzi externe",
     "banner": "Acest document rulează comenzi externe la compilare, iar acest proiect le blochează. Permite-le doar dacă ai încredere în fiecare fișier din proiect."
+  },
+  "codeExecution": {
+    "allow": "Permite rularea codului în acest proiect",
+    "needed": "Acest document trebuie să-și ruleze codul ca să se compileze, iar codul este oprit pentru acest proiect. Permite rularea codului doar dacă ai încredere în fiecare fișier din proiect.",
+    "skipped": "Codul din acest document nu a rulat, deoarece codul este oprit pentru acest proiect. Permite rularea codului doar dacă ai încredere în fiecare fișier din proiect.",
+    "storedResults": "PDF-ul arată rezultatele codului salvate de la o rulare anterioară, deoarece codul este oprit pentru acest proiect. Permite rularea codului doar dacă ai încredere în fiecare fișier din proiect."
+  },
+  "typstCjkFonts": {
+    "message": "Acest document conține text în chineză, japoneză sau coreeană pe care niciun font de pe acest computer nu îl poate afișa, așa că lipsește din PDF.",
+    "download": "Descarcă fonturile",
+    "downloadSize": "Descarcă fonturile ({{size}})",
+    "downloading": "Se descarcă fonturile"
   },
   "errorBoundary": {
     "copyDiagnostics": "Copiază diagnosticele",
@@ -653,6 +677,8 @@
       "standalone": "Figură de sine stătătoare",
       "typst": "Typst",
       "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Blocnotes Calepin",
       "unknown": "Altceva"
     },
     "reason": {
@@ -858,10 +884,6 @@
       "latexTools": {
         "description": "Arată galeria Instrumente Oleafly și instrumentele individuale (import PDF, ecuații, tabele, BibTeX, căutare de laboratoare și de literatură, termene limită), împreună cu comenzile lor cu bară oblică. Dezactivată implicit, cât timp este în beta.",
         "label": "Instrumente LaTeX"
-      },
-      "liveCollaboration": {
-        "description": "Editează proiecte împreună cu alte persoane printr-un server de colaborare administrat de tine sau de grupul tău. Adaugă secțiunea Colaborare în Setări. Dezactivată implicit, cât timp este în beta.",
-        "label": "Colaborare în timp real"
       },
       "warning": "Aceste funcții sunt experimentale și încă în beta. Nu sunt testate complet și se pot schimba, strica sau dispărea într-o versiune viitoare. Activează-le doar dacă vrei să încerci lucruri în lucru.",
       "webBrowser": {

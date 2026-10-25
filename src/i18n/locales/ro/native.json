@@ -103,6 +103,11 @@
       "confirm": "Folosește programul",
       "pickTitle": "Alege programul pentru {{name}}",
       "filter": "Programe"
+    },
+    "sharedCodeExecution": {
+      "title": "Permiți rularea codului în acest proiect partajat?",
+      "message": "Compilarea va rula apoi codul din acest proiect pe acest computer. Oricine are drept de editare poate modifica acel cod. Permite asta doar dacă ai încredere în toți cei din proiect.",
+      "confirm": "Permite pe acest computer"
     }
   },
   "errors": {

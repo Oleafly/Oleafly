@@ -1,0 +1,190 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "Laden",
+    "loadFailed": "Oleafly kon de server niet bereiken.",
+    "retry": "Opnieuw proberen",
+    "dismiss": "Sluiten",
+    "projects": "Projecten",
+    "account": "Account",
+    "signOut": "Afmelden",
+    "signOutFailed": "Je kon niet worden afgemeld. Probeer het opnieuw.",
+    "cancel": "Annuleren"
+  },
+  "signIn": {
+    "title": "Aanmelden bij Oleafly",
+    "description": "Meld je aan met het account waarmee een coauteur het project heeft gedeeld.",
+    "action": "Aanmelden"
+  },
+  "projects": {
+    "title": "Met jou gedeeld",
+    "emptyTitle": "Er is nog niets met je gedeeld",
+    "emptyDescription": "Als iemand een project met je account deelt, verschijnt het hier.",
+    "untitled": "Naamloos project",
+    "ownedBy": "Eigenaar: {{name}}",
+    "loadFailed": "Je projecten konden niet worden geladen.",
+    "list": "Projecten"
+  },
+  "roles": {
+    "owner": "Eigenaar",
+    "editor": "Bewerker",
+    "reviewer": "Beoordelaar",
+    "commenter": "Reageerder",
+    "viewer": "Lezer",
+    "unknown": "Alleen lezen"
+  },
+  "connection": {
+    "connecting": "Verbinden",
+    "online": "Verbonden",
+    "offline": "Offline",
+    "offlineBanner": "Je bent offline. Je wijzigingen blijven bewaard en worden verstuurd zodra de verbinding terug is.",
+    "ended": "Verbinding verbroken"
+  },
+  "ended": {
+    "signedOutTitle": "Je bent afgemeld",
+    "signedOutDescription": "Meld je opnieuw aan om verder te werken aan dit project.",
+    "noAccessTitle": "Je kunt dit project niet openen",
+    "noAccessDescription": "Het is niet met je account gedeeld, of je toegang is ingetrokken.",
+    "stoppedTitle": "Verbinding verbroken",
+    "stoppedDescription": "Laad de pagina opnieuw om weer verbinding te maken."
+  },
+  "access": {
+    "changed": "Je nieuwe rol in dit project: {{role}}."
+  },
+  "discarded": {
+    "read_only": "Je laatste bewerkingen zijn niet opgeslagen, omdat je dit project nu niet kunt bewerken.",
+    "refused": "Je laatste bewerkingen konden niet worden opgeslagen."
+  },
+  "views": {
+    "label": "Panelen",
+    "files": "Bestanden",
+    "source": "Broncode",
+    "pdf": "PDF",
+    "comments": "Opmerkingen",
+    "chat": "Chat"
+  },
+  "presence": {
+    "label": "Mensen hier"
+  },
+  "files": {
+    "title": "Bestanden",
+    "empty": "Dit project heeft nog geen bestanden.",
+    "tree": "Projectbestanden"
+  },
+  "source": {
+    "noFileTitle": "Een bestand openen",
+    "noFileDescription": "Kies een bestand uit de lijst om het te lezen.",
+    "opening": "{{path}} wordt geopend",
+    "removed": "{{path}} is uit het project verwijderd.",
+    "readOnly": "Alleen-lezen",
+    "readOnlyHint": "Met je rol kun je dit project lezen, maar niet bewerken.",
+    "modeLabel": "Bewerkmodus",
+    "editing": "Bewerken",
+    "suggesting": "Suggereren",
+    "suggestingHint": "Je bewerkingen zijn suggesties die een eigenaar of bewerker beoordeelt.",
+    "comment": "Opmerking",
+    "commentHint": "Selecteer tekst om er een opmerking bij te plaatsen.",
+    "binary": "Dit bestand kan niet in de browser worden getoond.",
+    "blobFailed": "Het bestand kon niet worden geladen."
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "Gecompileerd door {{name}}, {{time}}",
+    "emptyTitle": "Nog geen PDF",
+    "emptyDescription": "De PDF verschijnt hier nadat iemand het project in de Oleafly-app heeft gecompileerd.",
+    "loading": "De PDF laden",
+    "failed": "De PDF kon niet worden geladen.",
+    "zoomIn": "Inzoomen",
+    "zoomOut": "Uitzoomen",
+    "fitWidth": "Passend in de breedte",
+    "download": "Downloaden",
+    "zoom": "{{percent}}%"
+  },
+  "comments": {
+    "emptyTitle": "Geen opmerkingen of suggesties",
+    "emptyCanComment": "Selecteer tekst in de broncode en kies Opmerking om een gesprek te beginnen.",
+    "emptyReadOnly": "Opmerkingen en suggesties bij dit project verschijnen hier.",
+    "newComment": "Nieuwe opmerking",
+    "placeholder": "Schrijf een opmerking",
+    "submit": "Plaatsen",
+    "reply": "Antwoorden",
+    "replyPlaceholder": "Schrijf een antwoord",
+    "replyLabel": "Antwoorden in dit gesprek",
+    "edit": "Bewerken",
+    "editLabel": "Opmerking bewerken",
+    "save": "Opslaan",
+    "delete": "Verwijderen",
+    "deleteTitle": "Deze opmerking verwijderen?",
+    "deleteDescription": "Dit kun je niet ongedaan maken.",
+    "messageActions": "Acties voor deze opmerking",
+    "resolve": "Oplossen",
+    "reopen": "Heropenen",
+    "resolvedBy": "Opgelost door {{name}}",
+    "deleted": "Opmerking verwijderd",
+    "edited": "bewerkt",
+    "anchorLost": "De tekst waar deze opmerking bij hoorde, is verwijderd.",
+    "showInSource": "Tonen in de broncode",
+    "thread": "Opmerking van {{name}}",
+    "hideResolved": "Opgeloste verbergen",
+    "resolvedCount_one": "{{count}} opgelost",
+    "resolvedCount_other": "{{count}} opgelost"
+  },
+  "suggestions": {
+    "inserted": "Ingevoegd",
+    "deleted": "Verwijderd",
+    "accept": "Accepteren",
+    "reject": "Weigeren",
+    "withdraw": "Intrekken",
+    "acceptAll": "Alles accepteren",
+    "rejectAll": "Alles weigeren",
+    "pending_one": "{{count}} suggestie",
+    "pending_other": "{{count}} suggesties",
+    "card": "Suggestie van {{name}}",
+    "lineBreak": "Regeleinde"
+  },
+  "chat": {
+    "emptyTitle": "Nog geen berichten",
+    "emptyDescription": "Berichten hier zijn zichtbaar voor iedereen in het project.",
+    "placeholder": "Schrijf een bericht",
+    "label": "Bericht",
+    "send": "Versturen",
+    "readOnly": "Je kunt de chat lezen. Lezers kunnen niets plaatsen.",
+    "delete": "Bericht verwijderen",
+    "clear": "Chat wissen",
+    "clearTitle": "De chat voor iedereen wissen?",
+    "clearDescription": "Iedereen in het project verliest deze berichten.",
+    "messages": "Chatberichten"
+  },
+  "people": {
+    "you": "Jij",
+    "someone": "Iemand",
+    "unverified": "Niet-geverifieerde auteur"
+  },
+  "errors": {
+    "offline": "Je bent offline. Probeer het opnieuw als je verbinding hebt.",
+    "generic": "De server heeft die wijziging geweigerd.",
+    "suggestion_not_found": "Die suggestie is al afgehandeld.",
+    "suggestion_not_yours": "Je kunt alleen je eigen suggesties intrekken.",
+    "suggestion_role": "Met je rol kun je geen suggesties doen of beoordelen.",
+    "chat_role": "Met je rol kun je niets in de chat plaatsen.",
+    "comment_not_live": "Opmerkingen zijn nu niet beschikbaar.",
+    "comment_not_yours": "Je kunt alleen je eigen opmerkingen wijzigen.",
+    "comment_off_server": "Opmerkingen staan uit op deze server.",
+    "comment_off_project": "Opmerkingen staan uit voor dit project.",
+    "comment_viewer": "Lezers kunnen geen opmerkingen plaatsen.",
+    "comment_someone_replied": "Iemand heeft gereageerd, dus deze opmerking kan niet worden verwijderd.",
+    "comment_message_deleted": "Die opmerking is verwijderd.",
+    "comment_selection_changed": "De tekst is veranderd terwijl je schreef. Selecteer hem opnieuw.",
+    "comment_too_long": "De opmerking is te lang.",
+    "comment_empty": "Schrijf eerst iets.",
+    "rate_limited": "Te veel wijzigingen tegelijk. Wacht even en probeer het opnieuw.",
+    "too_large": "Dat is te groot om te versturen.",
+    "project_too_large": "Dit project is te groot om in een browser te openen.",
+    "server_busy": "De server heeft het druk. Probeer het zo meteen opnieuw.",
+    "not_open": "Open het bestand voordat je het wijzigt.",
+    "cross_site": "Dit verzoek kwam niet van de Oleafly-webapp op deze server. Laad de pagina opnieuw en probeer het nog eens.",
+    "conflict": "Dat botst met een wijziging van iemand anders. Probeer het opnieuw.",
+    "account_storage_full": "Het account van de projecteigenaar heeft geen opslagruimte meer op deze server.",
+    "too_many_uploads": "Je hebt het afgelopen uur te veel bestanden geüpload. Probeer het later opnieuw."
+  }
+}

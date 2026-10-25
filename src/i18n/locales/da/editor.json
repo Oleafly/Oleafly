@@ -1055,6 +1055,16 @@
         "unknownEntryType": "Ukendt posttype i litteraturlisten @{{type}}."
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "kodeblokindstilling i Quarto"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "kodeblokindstilling i Calepin"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "Indlæser billedet",
@@ -1499,5 +1509,5 @@
     "keyTaken": "En variant kan ikke angive det samme navn to gange.",
     "saveFailed": "Varianterne kunne ikke gemmes."
   },
-  "sharedSettingsViewer": "Læsere kan ikke ændre dette i et delt projekt."
+  "sharedSettingsViewer": "Kun ejere og redaktører kan ændre dette i et delt projekt."
 }

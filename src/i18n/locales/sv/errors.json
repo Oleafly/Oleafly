@@ -109,7 +109,8 @@
     "shell_escape": "Lita på den här mappen innan du tillåter shell escape.",
     "broad_folder": "Oleafly kan inte lita på hela {{name}}. Välj en mindre mapp.",
     "declined": "Mappen markerades inte som betrodd.",
-    "unavailable": "Oleafly kunde inte kontrollera om den här mappen är betrodd."
+    "unavailable": "Oleafly kunde inte kontrollera om den här mappen är betrodd.",
+    "notebook": "Lita på den här mappen för att kompilera med Quarto eller Calepin."
   },
   "open_folder": {
     "not_absolute": "Använd den fullständiga sökvägen till mappen.",
@@ -224,6 +225,17 @@
     "template_unavailable": "Oleafly kunde inte öppna den här mallen. Den kan ha tagits bort från Overleafs mallgalleri."
   },
   "collab": {
-    "turned_off": "Samarbete i realtid är avstängt. Slå på det i Inställningar under Experiment."
+    "suggestion_role": "Din roll i det här projektet tillåter inte förslag."
+  },
+  "notebook": {
+    "code_needed": "{{engine}} måste köra kod för att bygga det här dokumentet, och kod är avstängd för det här projektet. Tillåt kod i det här projektet för att kompilera det.",
+    "quarto_missing": "Quarto är inte installerat. Installera det under Inställningar > Motorer > Quarto och kompilera sedan igen.",
+    "calepin_missing": "Calepin är inte installerat. Installera det under Inställningar > Motorer > Calepin och kompilera sedan igen.",
+    "not_offered": "Oleafly kan inte ladda ner {{tool}} för den här datorn. Installera det själv och kompilera sedan igen.",
+    "busy": "{{tool}} installeras fortfarande. Försök igen när det är klart.",
+    "install_unverified": "{{tool}} laddades ner men klarade inte integritetskontrollen. Försök installera det igen.",
+    "unknown_tool": "Oleafly känner inte till något verktyg som heter {{tool}}.",
+    "not_managed": "Oleafly kan bara ta bort den kopia av {{tool}} som programmet själv har laddat ner.",
+    "no_html_output": "Det finns ingen HTML-utdata än. Kompilera dokumentet först."
   }
 }

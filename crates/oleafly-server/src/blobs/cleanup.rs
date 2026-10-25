@@ -7,6 +7,7 @@ use crate::blobs::BlobStore;
 use crate::db::Db;
 use crate::error::ServerError;
 use crate::projects::{self, PendingRemoval, Removal};
+use crate::quotas::Storage;
 use crate::snapshots::Snapshots;
 use crate::state::DAY_MS;
 
@@ -25,6 +26,7 @@ pub struct UnusedFile {
 // first check together can't take the project past it: the one that
 // would is refused, and its file is removed later unless another project
 // holds it.
+#[allow(clippy::too_many_arguments)]
 pub async fn upload(
     db: &Db,
     blobs: &BlobStore,
@@ -32,6 +34,7 @@ pub async fn upload(
     hash: &str,
     bytes: Bytes,
     limit_mb: u64,
+    storage: Option<Storage>,
     now: i64,
 ) -> Result<(), ServerError> {
     let _held = blobs.hold(hash).await;
@@ -42,12 +45,21 @@ pub async fn upload(
         let transaction = conn.transaction()?;
         let held = projects::blob_size(&transaction, project, &hash)?.is_some();
         let after = projects::stored_bytes(&transaction, project)?.saturating_add(size);
-        if !held && after > limit_mb.saturating_mul(1024 * 1024) {
+        let refused = if held {
+            None
+        } else if after > limit_mb.saturating_mul(1024 * 1024) {
+            Some(projects::too_large_for(limit_mb))
+        } else if let Some(storage) = storage {
+            storage.refusal(&transaction, size, 0)?
+        } else {
+            None
+        };
+        if let Some(refused) = refused {
             if !projects::blob_in_use(&transaction, &hash)? {
                 projects::queue_removal(&transaction, Removal::File, None, &hash, now)?;
             }
             transaction.commit()?;
-            return Err(projects::too_large_for(limit_mb));
+            return Err(refused);
         }
         projects::add_blob(&transaction, project, &hash, size, now)?;
         transaction.commit()?;
@@ -183,6 +195,10 @@ pub async fn finish_removals(
     Ok(finished)
 }
 
+pub async fn remove_if_unused(db: &Db, blobs: &BlobStore, hash: &str) -> Result<bool, ServerError> {
+    retry_file(db, blobs, hash).await
+}
+
 async fn retry_file(db: &Db, blobs: &BlobStore, hash: &str) -> Result<bool, ServerError> {
     let _held = blobs.hold(hash).await;
     let lookup = hash.to_string();
@@ -228,10 +244,10 @@ mod tests {
         let first = Bytes::from(vec![1u8; 600 * 1024]);
         let second = Bytes::from(vec![2u8; 600 * 1024]);
         let (kept, refused) = (sha256_hex(&first), sha256_hex(&second));
-        upload(&db, &blobs, project, &kept, first.clone(), 1, 1)
+        upload(&db, &blobs, project, &kept, first.clone(), 1, None, 1)
             .await
             .expect("the first file fits");
-        let answer = upload(&db, &blobs, project, &refused, second, 1, 2).await;
+        let answer = upload(&db, &blobs, project, &refused, second, 1, None, 2).await;
         assert_eq!(
             answer.err().map(|error| error.code()),
             Some("project_too_large")
@@ -250,8 +266,57 @@ mod tests {
             queued.iter().any(|removal| removal.hash == refused),
             "the refused file is removed later: {queued:?}"
         );
-        upload(&db, &blobs, project, &kept, first, 1, 3)
+        upload(&db, &blobs, project, &kept, first, 1, None, 3)
             .await
             .expect("a file the project holds is taken again");
+    }
+
+    #[tokio::test]
+    async fn an_upload_that_would_fill_the_owners_account_is_refused_where_it_is_recorded() {
+        let dir = tempfile::tempdir().unwrap();
+        let blobs = BlobStore::filesystem(dir.path());
+        let db = Db::open_in_memory().unwrap();
+        let project = project(&db).await;
+        let owner = db
+            .call(move |conn| {
+                Ok(projects::project_row(conn, project)?
+                    .expect("the project")
+                    .owner)
+            })
+            .await
+            .unwrap();
+        let storage = Storage {
+            owner,
+            by: owner,
+            limit_mb: 1,
+        };
+        let first = Bytes::from(vec![3u8; 700 * 1024]);
+        let second = Bytes::from(vec![4u8; 400 * 1024]);
+        let (kept, refused) = (sha256_hex(&first), sha256_hex(&second));
+        upload(
+            &db,
+            &blobs,
+            project,
+            &kept,
+            first.clone(),
+            10,
+            Some(storage),
+            1,
+        )
+        .await
+        .expect("the first file fits the account");
+        let answer = upload(&db, &blobs, project, &refused, second, 10, Some(storage), 2).await;
+        assert_eq!(
+            answer.err().map(|error| error.code()),
+            Some("account_storage_full")
+        );
+        let queued = db
+            .call(|conn| projects::pending_removals(conn, 10))
+            .await
+            .unwrap();
+        assert!(queued.iter().any(|removal| removal.hash == refused));
+        upload(&db, &blobs, project, &kept, first, 10, Some(storage), 3)
+            .await
+            .expect("a file the project holds needs no room");
     }
 }

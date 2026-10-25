@@ -9,6 +9,7 @@ import { i18n } from "@/i18n";
 import { basename } from "@/lib/path-utils";
 import type { TypstExportRequest } from "@/lib/typst-options";
 import { activeTypstVariant } from "@/store/typst-variant";
+import { noteUnreviewedSuggestions } from "@/lib/collab-live-bridge";
 
 export type DocumentExportFormat = "docx" | "html" | "md" | "pptx" | "epub" | "txt" | "typst" | "tex";
 
@@ -20,6 +21,7 @@ export async function exportCurrentDocument(format: DocumentExportFormat | "zip"
   if (documentExportInFlight) return;
   const { projectId, projectName, engine } = useFilesStore.getState();
   if (!projectId) return;
+  noteUnreviewedSuggestions(projectId, "export");
   const mainDoc = resolveEffectiveMainDoc().mainDoc;
   const extension = format === "typst" ? "typ" : format;
   const name = (projectName || "document").replace(/[^\w.-]+/g, "_");
@@ -90,6 +92,7 @@ export async function exportCurrentPdf(): Promise<void> {
   if (!projectId || !pdfBytes) return;
   const name = (projectName || "document").replace(/[^\w.-]+/g, "_");
   if (documentExportInFlight) return;
+  noteUnreviewedSuggestions(projectId, "export");
   documentExportInFlight = true;
   try {
     const dest = await pickSavePath({
@@ -122,6 +125,7 @@ export async function exportCurrentImagePng(scale = 3): Promise<void> {
   const { projectId, projectName } = useFilesStore.getState();
   const { pdfBytes } = useCompileStore.getState();
   if (!projectId || !pdfBytes || documentExportInFlight) return;
+  noteUnreviewedSuggestions(projectId, "export");
   const name = (projectName || "figure").replace(/[^\w.-]+/g, "_");
   documentExportInFlight = true;
   try {
@@ -160,7 +164,7 @@ export async function exportCurrentImagePng(scale = 3): Promise<void> {
 export async function exportCurrentTypst(request: TypstExportRequest): Promise<void> {
   if (documentExportInFlight) return;
   const { projectId, projectName, engine } = useFilesStore.getState();
-  if (!projectId || engine.source_format !== "typst") return;
+  if (!projectId || engine.id !== "typst") return;
   const mainDoc = resolveEffectiveMainDoc().mainDoc;
   const extension = request.format;
   const kind = extension.toUpperCase();

@@ -184,6 +184,7 @@
       "keyPlaceholder": "Lad feltet stå tomt, hvis ingen er nødvendig",
       "keyPlaceholderStored": "Den gemte nøgle bliver, medmindre du indtaster en ny",
       "namePlaceholder": "Acme",
+      "presetsLabel": "Almindelige udbydere",
       "submitAdd": "Tilføj udbyderen"
     },
     "instructions": {
@@ -280,7 +281,8 @@
       "badge": {
         "connected": "Forbundet",
         "notRunning": "Kører ikke",
-        "running": "Kører"
+        "running": "Kører",
+        "suggested": "Anbefalet"
       },
       "blurbs": {
         "anthropic": "Claude-modeller, stærke til kode og skrivning.",
@@ -290,7 +292,7 @@
         "groq": "Meget hurtig inferens på åbne modeller.",
         "mistral": "Mistral- og Codestral-modeller.",
         "ollama": "Kører modeller på din maskine. Ingen nøgle nødvendig, bare installer Ollama, og hent en model.",
-        "openai": "GPT-modeller. Standardvalget.",
+        "openai": "GPT-modeller.",
         "openrouter": "Én nøgle, adgang til modeller fra mange laboratorier.",
         "perplexity": "Sonar-modeller med direkte forankring i nettet.",
         "xai": "Grok-modeller fra xAI.",
@@ -1283,6 +1285,58 @@
         "detail": "Byg det åbne projekt med en nyere installeret version, og sammenlign resultaterne, før du skifter.",
         "check": "Tjek med Typst {{version}}"
       }
+    },
+    "notebook": {
+      "loading": "Tjekker denne computer for Quarto, Calepin og sprog",
+      "source": {
+        "system": "På denne computer",
+        "managed": "Downloadet af Oleafly"
+      },
+      "active": {
+        "version": "{{tool}} {{version}}",
+        "missing": "Ikke fundet på denne computer."
+      },
+      "managedIdle": "Bruges ikke. Oleafly bruger først den kopi, der blev fundet på denne computer.",
+      "download": {
+        "optional": "Valgfri. Oleafly bruger allerede kopien på denne computer.",
+        "license": "{{license}}-licens.",
+        "action": "Hent {{tool}} {{version}} ({{size}})",
+        "actionNoSize": "Hent {{tool}} {{version}}",
+        "notOffered": "Oleafly kan ikke hente {{tool}} til denne computer. Installer det selv, så finder Oleafly det."
+      },
+      "removeAria": "Fjern den kopi af {{tool}}, som Oleafly har hentet",
+      "languages": {
+        "heading": "Sprog",
+        "tooltip": "Kode i Quarto- og Calepin-dokumenter køres med disse programmer.",
+        "notFound": "Ikke fundet",
+        "note": "Oleafly kører kode med R, Python og Julia, som allerede er installeret på denne computer. Oleafly installerer dem aldrig selv."
+      },
+      "codeNote": "Kode i et dokument køres først, når du har tilladt kode for det projekt i kompileringsmenuen.",
+      "progress": {
+        "starting": "Starter",
+        "downloading": "Henter {{percent}} %",
+        "verifying": "Tjekker",
+        "extracting": "Pakker ud",
+        "done": "Afslutter"
+      },
+      "error": {
+        "load": "Kunne ikke tjekke for Quarto, Calepin og sprog.",
+        "install": "{{tool}} kunne ikke installeres.",
+        "remove": "{{tool}} kunne ikke fjernes."
+      }
+    },
+    "quarto": {
+      "heading": "Quarto",
+      "tooltip": "Quarto laver .qmd- og .Rmd-dokumenter om til en PDF, en webside eller slides. Oleafly bruger Quarto på denne computer, hvis programmet finder det, og ellers en kopi, som Oleafly selv henter.",
+      "detail": "Oleafly kompilerer .qmd- og .Rmd-dokumenter med denne kopi.",
+      "downloadDetail": "Oleafly gemmer sin egen kopi i appens mappe. Quarto indeholder Pandoc og andre værktøjer under deres egne licenser."
+    },
+    "calepin": {
+      "heading": "Calepin",
+      "tooltip": "Calepin kører koden i et Typst-dokument og sætter resultaterne ind i PDF'en. Oleafly bruger Calepin på denne computer, hvis programmet finder det, og ellers en kopi, som Oleafly selv henter.",
+      "detail": "Oleafly kompilerer Calepin-dokumenter med denne kopi.",
+      "downloadDetail": "Oleafly gemmer sin egen kopi i appens mappe.",
+      "typstNote": "Calepin renderer med den Typst, der er indbygget i Oleafly. Det kræver Typst 0.15 eller nyere."
     }
   },
   "github": {

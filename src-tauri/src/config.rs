@@ -179,8 +179,6 @@ pub struct AppConfig {
     pub typst_default_version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub latex_default_engine: Option<String>,
-    #[serde(default)]
-    pub live_collaboration: bool,
 }
 
 fn default_ui_locale() -> String {
@@ -232,7 +230,6 @@ impl Default for AppConfig {
             ui_locale: default_ui_locale(),
             typst_default_version: None,
             latex_default_engine: None,
-            live_collaboration: false,
         }
     }
 }
@@ -991,7 +988,6 @@ fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     config.mcp_servers = stored.mcp_servers;
     config.typst_default_version = stored.typst_default_version;
     config.latex_default_engine = stored.latex_default_engine;
-    config.live_collaboration = stored.live_collaboration;
     config.github_connected = false;
     write_config_unlocked(&config)
 }

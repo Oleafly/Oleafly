@@ -46,9 +46,9 @@ import type { ProjectInfo } from "@/lib/tauri";
 
 type Translate = ReturnType<typeof useTranslation<["common", "library"]>>["t"];
 type ProjectFlag = SearchFlag<ProjectInfo, QueryMeta>;
-type ProjectEngine = "latex" | "typst" | "markdown";
+type ProjectEngine = "latex" | "typst" | "markdown" | "quarto" | "calepin";
 
-export const PROJECT_ENGINES: readonly ProjectEngine[] = ["latex", "typst", "markdown"];
+export const PROJECT_ENGINES: readonly ProjectEngine[] = ["latex", "typst", "markdown", "quarto", "calepin"];
 export const PROJECT_KINDS = ["document", "image", "diagram"] as const;
 export const DEFAULT_PROJECT_SORT = "activity-desc";
 
@@ -56,11 +56,15 @@ const ENGINE_LABELS: Readonly<Record<ProjectEngine, string>> = {
   latex: "LaTeX",
   typst: "Typst",
   markdown: "Markdown",
+  quarto: "Quarto",
+  calepin: "Calepin",
 };
 
 export function projectEngine(project: Pick<ProjectInfo, "engine" | "main_doc">): ProjectEngine {
   const value = project.engine?.trim().toLowerCase();
   const path = project.main_doc.toLowerCase();
+  if (value === "quarto" || path.endsWith(".qmd") || path.endsWith(".rmd")) return "quarto";
+  if (value === "calepin") return "calepin";
   if (value === "typst" || value === "typ" || path.endsWith(".typ")) return "typst";
   if (
     value === "markdown" ||
@@ -182,6 +186,8 @@ function valueFields(t: Translate, state: ProjectSearchState): SearchField<Proje
         { value: "latex", aliases: ["tectonic", "tex", "latexmk"], meta: { label: ENGINE_LABELS.latex, icon: icon(FileCode2) } },
         { value: "typst", aliases: ["typ"], meta: { label: ENGINE_LABELS.typst, icon: icon(FileCode2) } },
         { value: "markdown", aliases: ["md", "pandoc"], meta: { label: ENGINE_LABELS.markdown, icon: icon(FileCode2) } },
+        { value: "quarto", aliases: ["qmd", "rmd"], meta: { label: ENGINE_LABELS.quarto, icon: icon(FileCode2) } },
+        { value: "calepin", meta: { label: ENGINE_LABELS.calepin, icon: icon(FileCode2) } },
       ],
       test: (project, value) => projectEngine(project) === value,
     },

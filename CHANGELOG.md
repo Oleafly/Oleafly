@@ -19,9 +19,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the command palette has **Insert link to file**. (#315)
 - In Visual mode, Cmd+click (Ctrl+click on Windows and Linux) on a link to a
   project file opens that file in Oleafly. (#316)
+- Suggesting mode for shared projects. Switch the editor from Editing to
+  Suggesting and your edits become tracked changes: added text is
+  highlighted, and deleted text stays visible, struck through. Owners and
+  editors accept or reject each suggestion, or every suggestion in a file at
+  once, and whoever suggested a change can withdraw it. The Comments pane
+  lists suggestions next to the comments, and you can reply to one like a
+  comment.
+  AI edits and inserted citations made while suggesting become suggestions
+  too. A compile or export with suggestions waiting tells you how many.
+- Reviewer and Commenter roles for shared projects. A reviewer comments and
+  suggests changes, and every edit they make is a suggestion. A commenter
+  reads and comments. Both can use the chat. You can give these roles to
+  people you add, to guests and to the project's link. The server checks
+  every change a reviewer or commenter sends, so an edit their role doesn't
+  allow never reaches anyone.
+- A chat for each shared project, in a Chat tab next to Comments. Everyone
+  but viewers can post, people can delete their own messages, and the owner can
+  clear the chat.
+- History for shared projects, in the collaboration pane. It lists changes by
+  time and person. Open any version to read it, compare two versions, restore
+  one file or the whole project, or give a version a name such as "Sent to
+  the reviewers". Owners and editors restore and name versions. A restore is
+  a new change, so the text it replaces stays in the history.
+- Add server now offers the Oleafly server as a one-click choice above the
+  address field. Any other server's address still works as before.
+- Co-authors can open a shared project in their browser when the
+  collaboration server has browser access turned on. Without installing
+  Oleafly, they can edit as their role allows, comment, handle suggestions,
+  chat and read the latest PDF, and the project's web page gets an **Open in
+  browser** button. Whoever runs the server turns it on with
+  `OLEAFLY_WEB=true`, and the published server image already includes the
+  browser app.
+- After a successful compile of a shared project, an owner's or editor's app
+  uploads the PDF and its SyncTeX file to the server, at most once a minute,
+  so people reading the project in a browser see the newest PDF and who
+  compiled it.
+- Oleafly Server can let anyone sign up. With `OLEAFLY_OPEN_SIGNUP=true`,
+  anyone who signs in with one of the server's sign-in options gets an
+  account, and each account gets 100 MB of storage, 50 shared projects and
+  300 uploads an hour. `OLEAFLY_ACCOUNT_STORAGE_MB`,
+  `OLEAFLY_MAX_PROJECTS_PER_ACCOUNT` and `OLEAFLY_UPLOADS_PER_HOUR` change
+  those limits, and also work without open sign-up. Compiled PDFs count
+  toward storage but not toward uploads.
+- Quarto and Calepin engines. Quarto turns `.qmd` and `.Rmd` documents into a
+  PDF, a web page or slides, and Calepin runs the code in a Typst document
+  and puts the results in the PDF. Oleafly uses the copy on your computer, or
+  downloads a pinned, checksum-verified one from Settings > Engines when you
+  ask. Code runs with your own R, Python or Julia, and only after you allow
+  code for that project in the Compile menu. Until then Quarto shows the code
+  without running it, and Calepin shows the results from its last run. New
+  templates: Quarto article, Quarto slides and Calepin report. Quarto's
+  working folders (`.quarto` and a document's `_files` folder) stay out of
+  cloud sync, shared projects and checkpoints. Calepin's `.calepin` folder is
+  shared and synced like any other, so co-authors who haven't allowed code
+  still see its stored results.
+- When a Typst document has Chinese, Japanese or Korean text that no font on
+  this computer can show, Oleafly says so and offers to download the free
+  font pack that covers it.
+- **Add custom provider** in Settings > AI has presets for Qwen (DashScope),
+  Kimi (Moonshot), Zhipu GLM, SiliconFlow and Volcengine Ark. Pick one and it
+  fills in the name and base URL, so you only add your API key.
 
 ### Changed
 
+- Live collaboration is no longer an experiment and is always on. Settings >
+  Collaboration is there from the start, and the switch under Settings >
+  Experimentation is gone.
+- With Oleafly in Chinese, DeepSeek is the suggested AI provider. It comes
+  first in the provider list and is preselected until you set up a provider.
 - With an Anthropic key, the default model is now Claude Opus 5.5, and the
   model list has Claude Sonnet 5.5, Claude Haiku 5.5 and Claude Fable 5.1.
   Opus 5.5 costs $4 per million input tokens and $20 per million output

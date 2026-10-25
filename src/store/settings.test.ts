@@ -930,7 +930,7 @@ describe("section reset checks", () => {
     ["appearance", { editorMathPreview: false }, "resetAppearancePreferences"],
     ["appearance", { hiddenFilePatterns: [] }, "resetAppearancePreferences"],
     ["experimentation", { webBrowser: true }, "resetExperimentationPreferences"],
-    ["experimentation", { liveCollaboration: true }, "resetExperimentationPreferences"],
+    ["experimentation", { latexTools: true }, "resetExperimentationPreferences"],
     ["engine", { defaultLatexEngine: "latexmk" }, "resetEnginePreferences"],
   ];
 

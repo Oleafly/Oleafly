@@ -3281,7 +3281,10 @@ fn engine_for_path(path: &str) -> Option<Engine> {
     if lower.ends_with(".typ") {
         return Some(Engine::Typst);
     }
-    if lower.ends_with(".md") || lower.ends_with(".markdown") {
+    if [".md", ".markdown", ".qmd", ".rmd"]
+        .iter()
+        .any(|extension| lower.ends_with(extension))
+    {
         return Some(Engine::Markdown);
     }
     if [".tex", ".ltx", ".latex", ".sty", ".cls"]
@@ -4816,6 +4819,8 @@ mod tests {
         assert_eq!(resolve_typst_import("main.typ", "@preview/x:1.0.0"), None);
         assert_eq!(engine_for_path("A/B.TEX"), Some(Engine::Latex));
         assert_eq!(engine_for_path("notes.markdown"), Some(Engine::Markdown));
+        assert_eq!(engine_for_path("paper.qmd"), Some(Engine::Markdown));
+        assert_eq!(engine_for_path("analysis.Rmd"), Some(Engine::Markdown));
         assert_eq!(engine_for_path("refs.bib"), None);
     }
 
