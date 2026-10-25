@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { i18n } from "@/i18n";
-import { openBrowserWindow } from "@/lib/browser-window";
 import {
   createResearchArtifactAction,
   resolveSourceUrl,
@@ -10,6 +9,7 @@ import {
 import { logError } from "@/lib/log";
 import { openProjectLocation } from "@/lib/open-location";
 import { readResearchRootFile } from "@/lib/research-workspace";
+import { openInSystemBrowser } from "@/lib/system-browser";
 import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -21,7 +21,7 @@ export function useResearchChatActions(projectId: string | null): ResearchChatAc
     openSource(target) {
       const url = resolveSourceUrl(target);
       if (!url) return;
-      void openBrowserWindow(url).then((opened) => {
+      void openInSystemBrowser(url).then((opened) => {
         if (!opened) toast.error(i18n.t(($) => $.ai.research.sourceOpenFailed));
       }).catch((error: unknown) => {
         void logError("open research source", error);

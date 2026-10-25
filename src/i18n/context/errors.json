@@ -1,6 +1,31 @@
 {
   "git": {
-    "tracked_secret_files": "Shown when Publish to GitHub stops before uploading. {{files}} is up to five project file paths separated by commas, such as .env, deploy/server.pem, followed by (+N) when there are more. Keep the paths and the (+N) exactly as they are."
+    "access_denied": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org. Single sign-on is the organization's own company or university login.",
+    "access_denied_account": "Shown instead of the previous message when the sign-in that Oleafly used is known. {{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org. {{account}} is the account's user name and server, such as octocat@github.com. Single sign-on is the organization's own company or university login.",
+    "account_missing": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "auth_rejected": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org. {{account}} is the account's user name and server, such as octocat@github.com.",
+    "credentials_missing": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "credentials_rejected": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "device_flow_unavailable": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "forge_bad_response": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "forge_forbidden": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org. {{scopes}} is a comma-separated list of token scope names such as api, write_repository. Keep the names verbatim.",
+    "forge_missing_scopes": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org. {{scopes}} is a comma-separated list of token scope names such as api, write_repository. Keep the names verbatim.",
+    "forge_not_found": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "forge_rate_limited": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "forge_redirect_refused": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org. {{target}} is a server name such as cdn.example.org.",
+    "forge_repository_exists": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "forge_server_error": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "forge_signed_out": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "forge_sso_required": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org. Single sign-on is the organization's own company or university login. The person authorizes the token or sign-in for the organization in the server's settings.",
+    "forge_token_rejected": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "forge_unknown_server": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "host_key_unknown": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org. Host key is the SSH term for the server's identity key.",
+    "host_unreachable": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "import_cancelled": "Shown when the person cancels cloning or importing a Git repository.",
+    "repository_not_found": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "ssh_key_rejected": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "tls_failed": "{{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
+    "tracked_secret_files": "Shown when Publish stops before uploading. {{files}} is up to five project file paths separated by commas, such as .env, deploy/server.pem, followed by (+N) when there are more. Keep the paths and the (+N) exactly as they are."
   },
   "project": {
     "linked_in_app_data": "Shown when a folder opened in place and Oleafly's own data folder end up one inside the other, usually after one of them was moved. {{folder}} is only the folder's name, never a full path. Either folder can be the one inside.",
@@ -13,5 +38,24 @@
   },
   "collab": {
     "turned_off": "Shown when something asks for live collaboration while its switch is off. \"Live collaboration\" is the switch label and \"Experimentation\" is the Settings section that holds it. Use the same words as those two labels."
+  },
+  "provider_credit": {
+    "failed": "{{provider}} is an AI provider name such as OpenRouter or DeepSeek. Keep it unchanged."
+  },
+  "mathpix": {
+    "rejected": "{{reason}} is Mathpix's own English error text",
+    "http_error": "{{status}} is a numeric HTTP status code such as 502",
+    "pdf_too_large_ipc": "Shown when the webview hands a PDF to Mathpix as a long list of numbers (a fallback on some Linux systems) and the file is over 16 MB; the usual limit is 256 MB"
+  },
+  "terminal": {
+    "wsl_missing": "WSL is Windows Subsystem for Linux. Keep the name WSL. Shown in the terminal when the person picked WSL as the shell.",
+    "wsl_no_distro": "WSL is Windows Subsystem for Linux. Keep the name WSL. A Linux distribution is an installed Linux system such as Ubuntu.",
+    "git_bash_missing": "Git Bash and Git for Windows are product names. Keep them verbatim.",
+    "pwsh_missing": "PowerShell 7 is a product name. Keep it verbatim.",
+    "shell_path_missing": "{{path}} is the file path of the shell program the person entered in Settings. Shown in the terminal."
+  },
+  "shell_command": {
+    "path_failed": "Windows only. PATH is the environment variable name. Keep it verbatim. {{directory}} is a folder path.",
+    "in_use": "Windows only. {{path}} is the oleafly.exe file. oleafly is the command name."
   }
 }

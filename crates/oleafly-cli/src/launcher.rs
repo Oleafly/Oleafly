@@ -90,7 +90,7 @@ fn override_target(app: &Path, own: Option<&Path>) -> Result<PathBuf, Error> {
     Ok(app.to_path_buf())
 }
 
-fn is_this_command(candidate: &Path, own: Option<&Path>) -> bool {
+pub(crate) fn is_this_command(candidate: &Path, own: Option<&Path>) -> bool {
     own.is_some_and(|own| {
         candidate
             .canonicalize()
@@ -246,6 +246,24 @@ fn windows_candidates(
     program_files: Option<PathBuf>,
 ) -> Vec<PathBuf> {
     let mut directories: Vec<PathBuf> = own_directory.into_iter().collect();
+    directories.extend(windows_dirs(registry, local_app_data, program_files));
+    unique(
+        directories
+            .into_iter()
+            .map(|directory| directory.join(WINDOWS_APP))
+            .collect(),
+    )
+}
+
+/// The app's install folders: the registry (per user, then per machine),
+/// then `%LOCALAPPDATA%\Oleafly`, then Program Files.
+#[cfg(any(windows, test))]
+fn windows_dirs(
+    registry: impl Fn(Hive, Option<&str>) -> Option<OsString>,
+    local_app_data: Option<PathBuf>,
+    program_files: Option<PathBuf>,
+) -> Vec<PathBuf> {
+    let mut directories = Vec::new();
     for hive in [Hive::CurrentUser, Hive::LocalMachine] {
         for value in [None, Some("InstallDir")] {
             directories.extend(
@@ -257,12 +275,23 @@ fn windows_candidates(
     }
     directories.extend(local_app_data.map(|directory| directory.join("Oleafly")));
     directories.extend(program_files.map(|directory| directory.join("Oleafly")));
-    unique(
-        directories
-            .into_iter()
-            .map(|directory| directory.join(WINDOWS_APP))
-            .collect(),
-    )
+    unique(directories)
+}
+
+/// Where the Windows app may be installed (empty elsewhere).
+pub(crate) fn windows_install_dirs() -> Vec<PathBuf> {
+    #[cfg(windows)]
+    {
+        windows_dirs(
+            registry_value,
+            std::env::var_os("LOCALAPPDATA").map(PathBuf::from),
+            std::env::var_os("ProgramFiles").map(PathBuf::from),
+        )
+    }
+    #[cfg(not(windows))]
+    {
+        Vec::new()
+    }
 }
 
 #[cfg(any(windows, test))]

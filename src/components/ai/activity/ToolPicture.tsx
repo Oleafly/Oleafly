@@ -4,8 +4,11 @@ import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
 import type { ToolEntry } from "@/store/chats";
 import { TikzSourceView } from "@/components/ai/TikzSourceView";
+import { useAttachmentUrl } from "@/components/ai/composer/use-attachment-url";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
+import { attachmentRead } from "@/lib/attachments";
+import { bytesToBase64 } from "@/lib/base64";
 import { logError } from "@/lib/log";
 import { writeProjectBytes } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
@@ -15,7 +18,7 @@ import { useFilesStore } from "@/store/files";
 export function lastFinishedPicture(tools: readonly ToolEntry[]): ToolEntry[] {
   for (let i = tools.length - 1; i >= 0; i--) {
     const tool = tools[i];
-    if (tool.image && tool.status === "done") return [tool];
+    if ((tool.image || tool.imageRef) && tool.status === "done") return [tool];
   }
   return [];
 }
@@ -49,9 +52,11 @@ async function saveToolPicture(tc: ToolEntry): Promise<string | null> {
     );
     return path;
   }
-  if (tc.image) {
+  if (tc.image || tc.imageRef) {
     const path = freeFigurePath(existing, "png");
-    const base64 = tc.image.split(",")[1] ?? "";
+    const base64 = tc.image
+      ? (tc.image.split(",")[1] ?? "")
+      : bytesToBase64(new Uint8Array(await attachmentRead(projectId, tc.imageRef?.sha256 ?? "")));
     await writeProjectBytes(projectId, path, base64);
     await files.refreshTree().catch((error: unknown) => logError("refresh tree after figure save", error));
     return path;
@@ -64,6 +69,10 @@ export function ToolPicture({ tc }: Readonly<{ tc: ToolEntry }>) {
   const [view, setView] = useState<"image" | "code">("image");
   const { copied, copy } = useCopyStatus();
   const [saving, setSaving] = useState(false);
+  const projectId = useFilesStore((state) => state.projectId);
+  // Screenshots saved since 0.4.8 are kept by reference in the attachment store.
+  const stored = useAttachmentUrl(projectId, tc.image ? undefined : tc.imageRef);
+  const imageUrl = tc.image ?? stored.url ?? undefined;
   const hasCode = Boolean(tc.code);
   const label =
     tc.name === "preview_figure"
@@ -162,7 +171,7 @@ export function ToolPicture({ tc }: Readonly<{ tc: ToolEntry }>) {
       {view === "image" || !hasCode ? (
         <div className="p-2">
           <img
-            src={tc.image}
+            src={imageUrl}
             alt={label}
             data-testid="tool-image"
             className="mx-auto max-h-80 max-w-full rounded object-contain"

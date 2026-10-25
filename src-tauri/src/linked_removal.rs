@@ -196,6 +196,7 @@ fn purge_project_data(project_id: &str) -> Result<(), String> {
     crate::checkpoints::remove_project_checkpoint_data(project_id)?;
     crate::agent_turns::remove_project(project_id);
     crate::chats::remove_project_chats(project_id)?;
+    crate::attachments::remove_project(project_id)?;
     if data_root.join("library.db").is_file() {
         crate::library_db::index_project_chats(&data_root, project_id, "[]")?;
     }

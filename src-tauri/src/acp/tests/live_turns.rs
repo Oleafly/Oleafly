@@ -76,10 +76,12 @@ async fn ask(
     let request = json!({"kind": kind, "path": path});
     harness
         .runtime
-        .prompt_with_skill(
+        .prompt_input(
             &harness.id,
-            format!("ask-permission:{request}"),
-            Vec::new(),
+            crate::acp::attachments::PromptInput {
+                text: format!("ask-permission:{request}"),
+                ..Default::default()
+            },
             skill,
         )
         .await

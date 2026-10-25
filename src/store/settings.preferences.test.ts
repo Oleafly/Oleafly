@@ -157,20 +157,6 @@ describe("value preferences", () => {
     expect(localStorage.getItem("oleafly.library.projectLayout")).toBe("list");
   });
 
-  it("closes the browser dock when the experimental browser is turned off", () => {
-    const settings = useSettingsStore.getState();
-    settings.setWebBrowser(true);
-    settings.setBrowserOpen(true);
-    expect(useSettingsStore.getState().browserOpen).toBe(true);
-
-    settings.setWebBrowser(false);
-
-    expect(useSettingsStore.getState()).toMatchObject({ webBrowser: false, browserOpen: false });
-    expect(localStorage.getItem("oleafly.webBrowser")).toBe("0");
-    settings.setBrowserOpen(true);
-    expect(useSettingsStore.getState().browserOpen).toBe(false);
-  });
-
   it("opens settings at a section and tab", () => {
     useSettingsStore.getState().openSettingsAt("appearance", "terminal");
 
@@ -188,17 +174,8 @@ describe("value preferences", () => {
     expect(useSettingsStore.getState().terminalFontFamily).toBe(DEFAULT_TERMINAL_FONT_FAMILY);
   });
 
-  it("normalizes browser home pages and grammar dialects", () => {
+  it("normalizes grammar dialects", () => {
     const settings = useSettingsStore.getState();
-
-    settings.setBrowserHomePage("example.org/start");
-    expect(useSettingsStore.getState().browserHomePage).toBe("https://example.org/start");
-
-    settings.setBrowserHomePage("   ");
-    expect(useSettingsStore.getState().browserHomePage).toBe("https://www.google.com/");
-
-    settings.setBrowserHomePage("http://[broken");
-    expect(useSettingsStore.getState().browserHomePage).toBe("https://www.google.com/");
 
     settings.setGrammarDialect("klingon" as never);
     expect(useSettingsStore.getState().grammarDialect).toBe("american");
@@ -350,5 +327,66 @@ describe("preference helpers", () => {
   it("ignores blank hidden-file patterns when matching", () => {
     expect(fileTreePathIsHidden("notes/todo.txt", ["  ", "*.txt"])).toBe(true);
     expect(fileTreePathIsHidden("notes/todo.md", ["  "])).toBe(false);
+  });
+});
+
+describe("terminal behavior preferences", () => {
+  it("starts with the defaults on a new install", async () => {
+    const fresh = await reload({});
+    expect(fresh).toMatchObject({
+      terminalShell: "auto",
+      terminalShellPath: "",
+      terminalShiftEnter: "newline",
+      terminalCopyOnSelect: false,
+      terminalOptionIsMeta: false,
+      terminalScrollback: 5000,
+      terminalConfirmClose: true,
+    });
+  });
+
+  it("reads saved values and replaces values it does not know", async () => {
+    const saved = await reload({
+      "oleafly.terminal.shell": "wsl",
+      "oleafly.terminal.shellPath": "  C:\\Tools\\nu.exe ",
+      "oleafly.terminal.shiftEnter": "enter",
+      "oleafly.terminal.copyOnSelect": "1",
+      "oleafly.terminal.optionIsMeta": "1",
+      "oleafly.terminal.scrollback": "25000",
+      "oleafly.terminal.confirmClose": "0",
+    });
+    expect(saved).toMatchObject({
+      terminalShell: "wsl",
+      terminalShellPath: "C:\\Tools\\nu.exe",
+      terminalShiftEnter: "enter",
+      terminalCopyOnSelect: true,
+      terminalOptionIsMeta: true,
+      terminalScrollback: 25000,
+      terminalConfirmClose: false,
+    });
+    const odd = await reload({
+      "oleafly.terminal.shell": "fish",
+      "oleafly.terminal.shiftEnter": "tab",
+      "oleafly.terminal.scrollback": "7000",
+    });
+    expect(odd).toMatchObject({ terminalShell: "auto", terminalShiftEnter: "newline", terminalScrollback: 5000 });
+  });
+
+  it("saves each terminal setting in the format a reset restores", () => {
+    const settings = useSettingsStore.getState();
+    settings.setTerminalShell("gitBash");
+    settings.setTerminalShellPath(`  ${"x".repeat(2000)}`);
+    settings.setTerminalShiftEnter("enter");
+    settings.setTerminalScrollback(100000);
+    settings.setTerminalConfirmClose(false);
+    expect(localStorage.getItem("oleafly.terminal.shell")).toBe("gitBash");
+    expect(useSettingsStore.getState().terminalShellPath).toHaveLength(1024);
+    expect(localStorage.getItem("oleafly.terminal.shiftEnter")).toBe("enter");
+    expect(localStorage.getItem("oleafly.terminal.scrollback")).toBe("100000");
+    expect(localStorage.getItem("oleafly.terminal.confirmClose")).toBe("0");
+
+    settings.setTerminalScrollback(123);
+    expect(useSettingsStore.getState().terminalScrollback).toBe(5000);
+    settings.setTerminalShell("bogus" as never);
+    expect(useSettingsStore.getState().terminalShell).toBe("auto");
   });
 });

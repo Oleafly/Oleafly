@@ -109,6 +109,7 @@ mod tests {
             credential: "k".into(),
             auth: Some("k".into()),
             wire,
+            caps: crate::caps::ModelCaps::default(),
         }
     }
 

@@ -52,19 +52,6 @@
   "branding": {
     "assistantMascot": "Oleafly AI 助理吉祥物"
   },
-  "browser": {
-    "address": "搜尋或輸入 URL",
-    "back": "上一頁",
-    "closeTab": "關閉分頁",
-    "copyUrl": "複製 URL",
-    "forward": "下一頁",
-    "moreOptions": "更多選項",
-    "newTab": "新增分頁",
-    "openExternal": "在你的瀏覽器中開啟",
-    "openTabs": "已開啟的分頁",
-    "reload": "重新載入",
-    "setHomePage": "設為首頁"
-  },
   "changelog": {
     "installed": "你目前使用的版本",
     "sectionItems_other": "{{count}} 項變更",
@@ -462,10 +449,6 @@
       "hide": "隱藏 AI 助理",
       "show": "顯示 AI 助理"
     },
-    "browser": {
-      "close": "關閉瀏覽器（{{shortcut}}）",
-      "open": "開啟瀏覽器（{{shortcut}}）"
-    },
     "settings": "設定",
     "sidebar": {
       "hide": "隱藏側邊欄（{{shortcut}}）",
@@ -568,22 +551,14 @@
     "tryAgain": "再試一次",
     "savedCopy": "已將開啟的檔案儲存到 {{folder}}。"
   },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub：{{login}}",
-    "actions": "GitHub 操作",
-    "connect": "連接 GitHub…",
-    "connectedAs": "已以 @{{login}} 連接",
-    "copyRepositoryLink": "複製儲存庫連結",
-    "openInGithub": "在 GitHub 中開啟",
-    "pushHint": "推送到 GitHub 後即可使用這些功能",
-    "settings": "GitHub 設定",
-    "tooltip": "GitHub"
-  },
   "home": {
     "ariaLabel": "首頁",
     "label": "首頁",
     "title": "返回專案庫",
     "tooltip": "返回專案庫"
+  },
+  "importDestination": {
+    "scansGoTo": "掃描檔會傳送到 {{provider}}"
   },
   "keys": {
     "enter": "Enter",
@@ -698,8 +673,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} 未儲存的變更仍保持開啟。你可以留下來解決問題，或仍要結束並放棄這些變更。",
+      "descriptionReload": "{{reason}} 未儲存的變更仍保持開啟。你可以留下來解決問題，或仍要重新載入並放棄這些變更。",
       "descriptionRestart": "{{reason}} 未儲存的變更仍保持開啟。你可以留下來解決問題，或仍要重新啟動並放棄這些變更。",
       "quitAnyway": "仍要結束",
+      "reloadAnyway": "仍要重新載入",
       "restartAnyway": "仍要重新啟動",
       "stay": "留下",
       "title": "部分檔案無法儲存"
@@ -721,6 +698,14 @@
     "search": "搜尋專案",
     "sourceControl": "原始檔控制",
     "withShortcut": "{{label}}（{{shortcut}}）"
+  },
+  "remoteMenu": {
+    "accountLabel": "{{host}} 上的 {{login}}",
+    "actions": "儲存庫動作",
+    "copyRepositoryLink": "複製儲存庫連結",
+    "openOnHost": "在 {{host}} 上開啟",
+    "settings": "Git 代管設定",
+    "signedInAs": "已以 {{login}} 身分登入 {{host}}"
   },
   "renameDialog": {
     "close": "關閉重新命名對話框",
@@ -764,9 +749,9 @@
         "movedCount_other": "已將 {{count}} 個專案移到資源回收筒。",
         "title": "危險區域"
       },
-      "githubHint": "跨裝置備份或同步專案：先連接 GitHub，再到「原始檔控制」使用<push>推送</push> / <pull>提取</pull>。<setup>設定 GitHub →</setup>",
+      "gitHostingHint": "備份專案或在裝置之間同步：將它連結到 Git 儲存庫，然後在原始檔控制中使用 <push>推送</push> / <pull>提取</pull>。<setup>設定 Git 代管 →</setup>",
       "localFirst": "Oleafly 採用本機優先設計。所有專案都存放在你的磁碟上：",
-      "plainFolders": "每個專案都是普通的資料夾。Git 歷史記錄是選用的，除非你推送到 GitHub，否則不會有任何資料離開你的電腦。",
+      "plainFolders": "每個專案都是一般資料夾。Git 歷史記錄是選用的，除非你推送到 Git 伺服器，否則任何內容都不會離開你的電腦。",
       "recycleBin": {
         "clearAll": "全部清除",
         "clearFailed": "無法清空資源回收筒。",
@@ -833,11 +818,12 @@
         "description": "透過你或你的團隊架設的協作伺服器，與其他人共同編輯專案。會在「設定」中新增「協作」分區。仍在 beta 階段，預設為關閉。",
         "label": "即時協作"
       },
-      "warning": "這些功能屬於實驗性質，仍在 beta 階段。它們尚未完整測試，未來版本中可能會變更、失效或被移除。只有在你想試用開發中的功能時才開啟。",
-      "webBrowser": {
-        "description": "顯示應用程式內建的網頁瀏覽器（含停駐列切換與快捷鍵），並允許 AI 透過 computer use 操作它。目前在 beta 階段，預設為關閉。關閉時不會有瀏覽器按鈕，AI 也沒有瀏覽器工具。",
-        "label": "網頁瀏覽器"
-      }
+      "researchTasks": {
+        "description": "代理程式會在專案的副本中自行運作，並把修改留給你審閱。極不穩定：執行可能卡住、失敗，或留下需要手動處理的修改，而且全程都會用掉你的供應商額度。會在「設定」中新增「研究」分區。關閉後會停止所有執行中的任務。預設為關閉，開啟後風險自負。",
+        "label": "研究任務",
+        "saveFailed": "無法儲存研究任務開關。請再試一次。"
+      },
+      "warning": "這些功能屬於實驗性質，仍在 beta 階段。它們尚未完整測試，未來版本中可能會變更、失效或被移除。只有在你想試用開發中的功能時才開啟。"
     },
     "footer": {
       "followOnX": "在 X 上追蹤",
@@ -919,7 +905,8 @@
       "general": "一般",
       "help": "說明與關於",
       "integrations": "整合",
-      "shortcuts": "鍵盤快捷鍵"
+      "shortcuts": "鍵盤快捷鍵",
+      "research": "研究"
     },
     "search": {
       "empty": "沒有相符的設定",
@@ -934,8 +921,9 @@
         "experimentation": "實驗室，測試版，beta，搶先體驗功能",
         "general": "偏好設定，語言，地區，拼字檢查，拼字，錯字，離線，導覽，終端機指令",
         "help": "關於，版本，更新，更新記錄，新功能，說明文件，支援，社群，Discord，授權條款，當機報告",
-        "integrations": "Zotero，GitHub，MCP，引用，帳戶，帳號，連線",
-        "shortcuts": "按鍵綁定，快捷鍵，熱鍵，按鍵，鍵盤"
+        "integrations": "Zotero，GitHub，GitLab，Gitea，Forgejo，Codeberg，Git 代管，桌面應用程式，Cua，MCP，引用，帳號，連線",
+        "shortcuts": "按鍵綁定，快捷鍵，熱鍵，按鍵，鍵盤",
+        "research": "研究 任務 預算 通知 保持喚醒 實驗 執行 research tasks"
       },
       "label": "搜尋設定",
       "results_other": "{{count}} 個分區相符"
@@ -1015,7 +1003,6 @@
     "commitCount_other": "{{count}} 個提交",
     "initialize": "初始化儲存庫",
     "initialized": "已在 {{branch}} 上初始化 Git。",
-    "linkCopied": "已複製 GitHub 連結",
     "markResolved": "標記為已解決",
     "mergeNeedsAttention": "解決合併衝突",
     "moreActions": "更多原始檔控制操作",
@@ -1029,18 +1016,19 @@
     "openFile": "開啟檔案",
     "openFileFor": "開啟 {{path}}",
     "popStash": "套用最近的擱置",
-    "publish": "發布到 GitHub",
+    "publishRepository": "發布…",
+    "publishTo": "發布到 {{host}}",
     "published": "已發布到 {{url}}",
     "pull": "從 origin 提取",
     "pullShort": "提取",
     "push": "提交並推送到 origin",
     "pushShort": "推送",
     "pushSkippedNoRemote": "⚠ 已略過推送：下方未設定遠端 origin。",
-    "pushSkippedNoToken": "⚠ 已略過推送：沒有 GitHub 權杖（設定 → GitHub）。",
     "refresh": "重新整理",
     "remote": "遠端",
     "remoteHint": "建立新的儲存庫，或將現有儲存庫連結為這個專案的遠端，然後推送。",
     "removeCredential": "移除已儲存的憑證",
+    "repositoryLinkCopied": "已複製儲存庫連結",
     "restoreCommit": "還原版本",
     "restoreCommitDescription": "這會用這個版本取代所有受追蹤的專案檔案，並移除之後新增的檔案。你的分支仍停留在目前的提交。",
     "restoreCommitTitle": "要還原這個版本嗎？",
@@ -1069,7 +1057,7 @@
     "titleRequired": "必須填寫提交標題。",
     "titleRequiredStatus": "提交前請先輸入提交標題。",
     "unlink": "取消連結",
-    "unlinked": "已取消與 GitHub 的連結。",
+    "unlinkedFrom": "已取消與 {{host}} 的連結。",
     "unstage": "取消暫存",
     "unstageFor": "取消暫存 {{path}}",
     "unstageAll": "全部取消暫存",

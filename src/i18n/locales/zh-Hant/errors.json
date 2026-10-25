@@ -80,17 +80,52 @@
   "export": {
     "bibliography_unreadable": "Oleafly 無法讀取參考文獻 {{name}}。請檢查其中是否有損壞的條目，然後重新匯出。"
   },
-  "github": {
-    "sign_in_expired": "登入碼已過期。請再試一次。",
-    "sign_in_cancelled": "GitHub 授權已取消。",
-    "sign_in_failed": "GitHub 登入失敗。",
-    "repositories_unavailable": "無法載入儲存庫。",
-    "create_repo_failed": "無法建立儲存庫（{{status}}）。"
-  },
   "git": {
-    "remote_exists": "此專案已連結到 {{remote}}。",
+    "access_denied": "{{host}} 拒絕存取此儲存庫。請確認你的帳號有權存取它。如果該組織使用單一登入 (SSO)，請先為該組織授權你的登入。",
+    "access_denied_account": "{{host}} 拒絕 {{account}} 存取此儲存庫。請確認這個帳號有權使用它。如果該組織使用單一登入 (SSO)，請先為該組織授權你的登入。",
+    "account_missing": "沒有 {{host}} 的 Git 代管帳號。請在設定中新增。",
+    "archive_too_large": "儲存庫檔案超過 {{limit}} MB，Oleafly 無法匯入。請自行複製儲存庫並開啟它的資料夾。",
+    "auth_rejected": "{{host}} 拒絕了 {{account}} 儲存的登入資訊。請在設定中重新登入 {{host}}。",
+    "credentials_missing": "{{host}} 要求提供使用者名稱和密碼。請在設定中登入 {{host}}，或設定 SSH 金鑰或 Git 認證輔助程式。",
+    "credentials_rejected": "{{host}} 拒絕了 Git 提供的使用者名稱和密碼。請在設定中登入 {{host}}，或更新 Git 使用的認證。",
+    "credentials_missing_helper": "{{host}} 要求提供使用者名稱和密碼。請為 {{host}} 設定 SSH 金鑰或 Git 認證輔助程式，然後再試一次。",
+    "credentials_rejected_helper": "{{host}} 拒絕了 Git 提供的使用者名稱和密碼。請更新 Git 用於 {{host}} 的認證，或改用 SSH 金鑰。",
+    "device_flow_unavailable": "這個版本無法透過瀏覽器登入 {{host}}。請改用存取權杖。",
+    "forge_bad_response": "{{host}} 傳回了 Oleafly 無法讀取的回應。",
+    "forge_ca_file_invalid": "Oleafly 無法從這個檔案讀取憑證。請選擇小於 1 MB 的 PEM 或 DER 憑證檔。",
+    "forge_forbidden": "{{host}} 拒絕了這項操作。這個權杖可能缺少 {{scopes}} 權限範圍。",
+    "forge_https_required": "請使用 https:// 位址。一般 http 只適用於你自己網路中的伺服器。",
+    "forge_invalid_repository": "這不是 Oleafly 可以使用的儲存庫路徑。",
+    "forge_invalid_repository_name": "儲存庫名稱只能使用字母、數字、句點、連字號和底線。",
+    "forge_invalid_server": "{{server}} 不是 Oleafly 可以使用的伺服器位址。",
+    "forge_missing_scopes": "這個權杖無法推送到 {{host}}。請建立具有 {{scopes}} 權限範圍的權杖。",
+    "forge_not_found": "{{host}} 找不到這個儲存庫。",
+    "forge_rate_limited": "{{host}} 目前正在限制要求。請一分鐘後再試一次。",
+    "forge_redirect_refused": "{{host}} 試圖將 Oleafly 重新導向到 {{target}}，為了保護你的登入資訊，Oleafly 已停止。",
+    "forge_repository_exists": "{{host}} 上已有同名的儲存庫。",
+    "forge_server_error": "{{host}} 傳回錯誤（{{status}}）。",
+    "forge_signed_out": "你在 {{host}} 的登入已過期或被撤銷。請在設定中重新登入。",
+    "forge_sso_required": "{{host}} 要求這個登入必須經過組織單一登入 (SSO) 的授權。請先在 {{host}} 上完成授權，然後再試一次。",
+    "forge_store": "Oleafly 無法讀取或儲存你的 Git 代管帳號。",
+    "forge_token_invalid": "這看起來不像存取權杖。請貼上完整的權杖。",
+    "forge_token_rejected": "{{host}} 未接受此權杖。請確認你複製了完整的權杖，且權杖尚未過期。",
+    "forge_unknown_server": "Oleafly 無法判斷 {{host}} 是哪一種伺服器。請選擇伺服器類型。",
+    "host_key_unknown": "SSH 還不認得 {{host}}。請先從終端機連線一次以接受它的主機金鑰，然後再試一次。",
+    "host_unreachable": "Oleafly 無法連線到 {{host}}。請檢查位址和網路連線。",
+    "import_cancelled": "已取消匯入。",
+    "invalid_remote_url": "請輸入 Git 儲存庫的 HTTPS 或 SSH 位址。",
     "nested_repository": "此專案位於另一個 Git 儲存庫中，因此 Oleafly 不會在這裡另外建立儲存庫。",
     "not_installed": "這台電腦上沒有安裝 Git。請安裝 Git，然後再試一次。",
+    "push_rejected": "遠端分支含有這個專案尚未取得的提交。請先提取，然後再推送一次。",
+    "remote_exists": "此專案已連結到 {{remote}}。",
+    "remote_has_password": "請從位址中移除密碼或存取權杖。Oleafly 會改用你的 Git 代管帳號或你自己的 Git 認證登入。",
+    "repository_empty": "這個儲存庫還沒有任何提交，沒有可匯入的內容。",
+    "repository_not_found": "{{host}} 在這個位址上沒有儲存庫，或者你的帳號無法檢視它。",
+    "sign_in_cancelled": "已在瀏覽器中取消登入。",
+    "sign_in_expired": "登入代碼已過期。請再試一次。",
+    "sign_in_failed": "登入失敗。",
+    "ssh_key_rejected": "{{host}} 拒絕了你的 SSH 金鑰。請將你的公開金鑰新增到 {{host}} 上的帳號，或將金鑰載入 SSH 代理程式。",
+    "tls_failed": "Oleafly 無法驗證 {{host}} 的憑證。如果你的組織使用自己的憑證授權單位，請在設定中將它的憑證檔加入這個帳號。",
     "tracked_secret_files": "此專案的 Git 歷史記錄中有檔案可能包含金鑰或密碼，已停止發布：{{files}}"
   },
   "approvals": {
@@ -100,7 +135,7 @@
     "git": "信任這個資料夾後才能使用原始檔控制。",
     "repository": "信任儲存庫 {{name}} 後才能在這裡使用原始檔控制。",
     "terminal": "請自行開啟終端機，才能在這個資料夾中使用它。",
-    "agents": "信任這個資料夾後才能使用外部代理程式。",
+    "agents": "信任這個資料夾後才能使用 CLI 代理程式。",
     "mcp": "信任這個資料夾後，MCP 用戶端才能使用它。",
     "research_tasks": "信任這個資料夾後才能執行研究任務。",
     "run_command": "信任這個資料夾後，助理才能執行指令。",
@@ -134,6 +169,8 @@
     "changed": "{{path}} 在 Oleafly 安裝後遭到變更，因此已保持原狀。",
     "failed": "Oleafly 無法安裝終端機指令。",
     "remove_failed": "Oleafly 無法移除終端機指令。",
+    "path_failed": "Oleafly 已安裝這個指令，但無法將 {{directory}} 加入你的 PATH。",
+    "in_use": "{{path}} 正在使用中。請關閉正在執行 oleafly 的終端機，然後再試一次。",
     "unsupported": "此系統尚不支援終端機指令。"
   },
   "research": {
@@ -210,6 +247,8 @@
     "sync_already_linked": "這個專案已連結到另一個 Overleaf 專案。請先停止同步。",
     "sync_offline": "Oleafly 無法連線到 Overleaf。你的變更在本機很安全，下次會同步。",
     "sync_failed": "與 Overleaf 的同步沒有完成。本機檔案沒有變動。",
+    "sync_incomplete": "與 Overleaf 的同步沒有完成，但本機有些檔案已經更新。請重新同步以完成。",
+    "sync_backups_saved": "同步已停止。被 Overleaf 版本取代的那些檔案，你的版本已儲存在 {{folder}}。",
     "sync_kept_changing": "同步期間，Overleaf 上的專案一直在變動。請稍後再試一次。",
     "sync_case_clash": "Overleaf 上有檔名只差在大小寫的檔案（{{files}}）。請在 Overleaf 上重新命名其中一個，再重新同步。",
     "sync_invalid_names": "Overleaf 上有些檔名無法儲存到這台電腦（{{files}}）。請在 Overleaf 上重新命名這些檔案，再重新同步。",
@@ -221,9 +260,59 @@
     "git_token_rejected": "Overleaf 不接受這個 Git 權杖，它可能已過期。請在 Overleaf 帳號設定中建立新的權杖。",
     "git_unavailable": "這個專案無法使用 Overleaf 的 Git 整合。專案擁有者需要付費方案或學校方案。",
     "template_link_invalid": "這個連結不是 Overleaf 範本頁面。請複製 overleaf.com/latex/templates 中某個頁面的網址，再試一次。",
-    "template_unavailable": "Oleafly 無法開啟這個範本。它可能已從 Overleaf 的範本庫移除。"
+    "template_unavailable": "Oleafly 無法開啟這個範本。它可能已從 Overleaf 的範本庫移除。",
+    "browser_sign_in_missing": "Oleafly 在這個瀏覽器設定檔中找不到 {{server}} 的登入資訊。請直接登入。",
+    "browser_sign_in_failed": "來自瀏覽器的登入資訊無效，可能已經過期。請直接登入。"
   },
   "collab": {
     "turned_off": "即時協作已關閉。請在設定的「實驗功能」中開啟。"
+  },
+  "attachments": {
+    "too_large": "這個檔案超過 {{max}} MB。請附加較小的檔案。",
+    "invalid_request": "Oleafly 無法讀取這個附件。",
+    "not_found": "這個附件已不在這台電腦上。",
+    "storage_failed": "Oleafly 無法儲存這個附件。"
+  },
+  "provider_credit": {
+    "failed": "Oleafly 無法查詢你的 {{provider}} 餘額。"
+  },
+  "terminal": {
+    "pwsh_missing": "尚未安裝 PowerShell 7。",
+    "git_bash_missing": "尚未安裝 Git Bash。請安裝 Git for Windows，或選擇其他 shell。",
+    "wsl_missing": "尚未安裝 WSL。",
+    "wsl_no_distro": "WSL 還沒有任何 Linux 發行版。",
+    "shell_path_empty": "請在設定中輸入 shell 路徑，或選擇其他 shell。",
+    "shell_path_missing": "在 {{path}} 找不到程式。"
+  },
+  "mathpix": {
+    "keys_missing": "請先在「設定 > AI 助理 > 工具」中新增你的 Mathpix 應用程式 ID 和金鑰。",
+    "invalid_keys": "這個應用程式 ID 或金鑰含有 Mathpix 金鑰中不會出現的字元。請從 Mathpix 主控台重新複製。",
+    "key_rejected": "Mathpix 不接受這些金鑰。請在 Mathpix 主控台中檢查應用程式 ID 和金鑰。",
+    "rate_limited": "Mathpix 目前正在限制要求。請等候一分鐘後再試一次。",
+    "unreachable": "Oleafly 無法連線到 Mathpix。請檢查網路連線，然後再試一次。",
+    "http_error": "Mathpix 傳回錯誤（HTTP {{status}}）。請稍後再試一次。",
+    "invalid_response": "Mathpix 傳回了 Oleafly 無法讀取的回應。請稍後再試一次。",
+    "rejected": "Mathpix 無法讀取這個檔案：{{reason}}",
+    "image_too_large": "這張影像對 Mathpix 來說太大。請裁切後再試一次。",
+    "pdf_too_large": "這個 PDF 超過 Mathpix 的 256 MB 限制。",
+    "timed_out": "Mathpix 未能在 30 分鐘內處理完這個 PDF。請減少頁數後再試一次。",
+    "cancelled": "Mathpix 轉換已停止。",
+    "wrong_window": "只能在 Oleafly 主視窗中使用 Mathpix。",
+    "pdf_too_large_ipc": "這台電腦最多可將 16 MB 的 PDF 傳送給 Mathpix。請分割 PDF 後再試一次。"
+  },
+  "desktop_apps": {
+    "not_installed": "尚未安裝 Cua Driver。請在「設定 → 整合 → 桌面應用程式」中安裝。",
+    "too_old": "Cua Driver {{version}} 版本過舊。請更新到 {{minimum}} 或更新版本。",
+    "no_app_bundle": "請使用官方安裝程式安裝 Cua Driver，讓它能取得 macOS 權限。",
+    "change_declined": "已保留你先前的桌面應用程式設定。",
+    "app_blocked": "代理程式無法使用 {{name}}。",
+    "app_invalid": "Oleafly 無法將 {{name}} 當作應用程式使用。",
+    "site_invalid": "「{{site}}」不是 Oleafly 可以使用的網站位址。請使用 https://，本機位址可使用 http://。",
+    "too_many_apps": "最多可以允許 {{limit}} 個應用程式。",
+    "too_many_sites": "最多可以允許 {{limit}} 個網站。",
+    "start_failed": "Cua Driver 無法啟動：{{detail}}",
+    "not_bounded": "Cua Driver 沒有依照 Oleafly 的限制啟動，因此 Oleafly 已將它停止。",
+    "task_unattended": "依排程執行或在 Oleafly 關閉後執行的任務無法使用桌面應用程式。",
+    "main_window": "請在主視窗中變更桌面應用程式設定。"
   }
 }

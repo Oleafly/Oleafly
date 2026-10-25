@@ -14,14 +14,43 @@ use crate::sse::{SseDecoder, SseEvent};
 
 const DEFAULT_STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(120);
 const LOCAL_STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(360);
-const MAX_STREAM_DURATION: Duration = Duration::from_secs(10 * 60);
-const MAX_STREAM_BYTES: usize = 32 * 1024 * 1024;
+const MAX_STREAM_DURATION: Duration = Duration::from_secs(20 * 60);
+pub(crate) const MAX_STREAM_BYTES: usize = 64 * 1024 * 1024;
 const MAX_TOOL_ARGUMENT_BYTES: usize = 8 * 1024 * 1024;
-pub(crate) const MAX_STREAM_TOOL_CALLS: usize = 32;
+/// The most tool calls one provider reply may carry before the stream is
+/// refused as malformed.
+pub(crate) const MAX_STREAM_TOOL_CALLS: usize = 256;
+/// The most of them a turn runs. The rest of a longer reply get an answer
+/// that says so, so the model sends them again, instead of the run ending
+/// after the tokens were paid for.
+pub(crate) const MAX_TOOL_CALLS_PER_TURN: usize = 32;
 
+pub(crate) mod anthropic_blocks;
 mod translate;
 
+pub(crate) use anthropic_blocks::AssistantBlock;
 pub use translate::{Translator, WireKind};
+
+/// The reply stopped because it reached its output limit, or the context
+/// window filled up while it was being written.
+pub fn is_output_limit_stop(reason: Option<&str>) -> bool {
+    reason.is_some_and(|reason| {
+        matches!(
+            reason.trim().to_ascii_lowercase().as_str(),
+            "length" | "max_tokens" | "max_output_tokens" | "model_context_window_exceeded"
+        )
+    })
+}
+
+/// The model declined to answer.
+pub fn is_refusal_stop(reason: Option<&str>) -> bool {
+    reason.is_some_and(|reason| {
+        matches!(
+            reason.trim().to_ascii_lowercase().as_str(),
+            "refusal" | "content_filter" | "safety"
+        )
+    })
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ToolCall {
@@ -39,6 +68,12 @@ pub struct StreamOutcome {
     pub tool_calls: Vec<ToolCall>,
     pub stop_reason: Option<String>,
     pub(crate) response_items: Vec<Value>,
+    /// The Anthropic reply's blocks in order, for an exact replay.
+    pub(crate) blocks: Vec<AssistantBlock>,
+    /// The Anthropic code-execution container to keep using.
+    pub container: Option<String>,
+    pub input_transformations: Vec<Value>,
+    pub refusal_category: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -320,6 +355,10 @@ fn finalize<F: FnMut(AgentEvent)>(
     outcome.tool_calls = translator.tool_calls();
     outcome.response_items = translator.response_items();
     outcome.stop_reason = translator.stop_reason();
+    outcome.blocks = translator.take_blocks();
+    outcome.container = translator.container();
+    outcome.input_transformations = translator.input_transformations();
+    outcome.refusal_category = translator.refusal_category();
     Ok(outcome)
 }
 
@@ -329,8 +368,7 @@ async fn open_stream(
     req: &CompletionRequest,
 ) -> Result<reqwest::Response> {
     let body = stream_body(resolved, req)?;
-    let response = crate::complete::request_builder(client, resolved, true)
-        .json(&body)
+    let response = crate::wire::body_request(client, resolved, true, &body)
         .header("accept", "text/event-stream")
         .send()
         .await

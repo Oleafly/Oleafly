@@ -212,7 +212,12 @@ for (const browserType of [chromium, webkit]) {
         await page.evaluate(() =>
           (window as any).__settingsInstallTest.calls
             .map((call: any) => call.command)
-            .filter((command: string) => command.startsWith("acp_") && command !== "acp_catalog"),
+            .filter(
+              (command: string) =>
+                command.startsWith("acp_") &&
+                // Reads that land in no fixed order: the catalog and the effort and model preferences.
+                !["acp_catalog", "acp_preferences", "acp_agent_preferences"].includes(command),
+            ),
         ),
       ).toEqual(["acp_pick_agent_program", "acp_check_agent", "acp_set_agent_program"]);
     } finally {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,11 +21,26 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
-import type { ResearchTask, ResearchTaskEdit } from "@/lib/research-tasks";
+import {
+  defaultBrief,
+  type ResearchBrief,
+  type ResearchTask,
+  type ResearchTaskEdit,
+} from "@/lib/research-tasks";
+import { describeError } from "@/lib/app-error";
+import { getConfig } from "@/lib/tauri";
+import { COMPUTE_TARGETS_CHANGED, computeSettings } from "@/components/settings/research/compute-api";
 import { useResearchTasksStore, type ResearchTaskComposerDraft } from "@/store/research-tasks";
 import { i18n } from "@/i18n";
 import { statusLabel } from "./task-status";
 import type { ResearchTaskAgentOption } from "./ResearchTasksPanel";
+import { BriefFields, briefErrors, startError, upcomingStart } from "./brief/BriefFields";
+
+const ComputeBriefFields = lazy(() =>
+  import("@/components/settings/research/ComputeBriefFields").then((module) => ({
+    default: module.ComputeBriefFields,
+  })),
+);
 
 export interface ResearchTaskStarter {
   id: string;
@@ -33,6 +48,8 @@ export interface ResearchTaskStarter {
   title: () => string;
   prompt: string;
   skillIds: string[];
+  /** Brief settings the starter turns on. */
+  brief?: Partial<ResearchBrief>;
 }
 
 export const BLANK_STARTER_ID = "blank";
@@ -76,7 +93,16 @@ export const RESEARCH_TASK_STARTERS: ResearchTaskStarter[] = [
     title: () => i18n.t(($) => $.researchTools.tasks.starter.reviewerResponse.title),
     prompt:
       "Draft a point-by-point response using the reviewer comments and manuscript. Separate proposed manuscript edits from the response letter, and flag requests that need an author decision.",
-    skillIds: ["peer-review"],
+    skillIds: ["oleafly-response-letter"],
+  },
+  {
+    id: "experiment-loop",
+    label: () => i18n.t(($) => $.researchTools.tasks.starter.experimentLoop.label),
+    title: () => i18n.t(($) => $.researchTools.tasks.starter.experimentLoop.title),
+    prompt:
+      "Improve the main metric with a series of small, recorded experiments. Measure a baseline first, change one thing per run, and keep only changes that help.",
+    skillIds: ["oleafly-experiment-loop"],
+    brief: { reviewPlanFirst: true },
   },
 ];
 
@@ -88,6 +114,11 @@ interface TaskComposerProps {
   busy: boolean;
   onCancel: () => void;
   onDismiss?: () => void;
+  /**
+   * Opens Settings for a link in the brief. The composer has closed (its draft
+   * saved) by then; the caller can bring it back when Settings closes.
+   */
+  onOpenSettings?: (open: () => void) => void;
   onCreate: (input: ResearchTaskEdit & { projectId: string }) => Promise<void>;
   onSave: (taskId: string, input: ResearchTaskEdit) => Promise<void>;
 }
@@ -105,8 +136,45 @@ function initialAgentKey(
   return "";
 }
 
+interface StarterBrief {
+  patch: Partial<ResearchBrief>;
+  previous: Record<string, unknown>;
+}
+
+/** A restored draft that began from a starter still has that starter's brief settings to undo. */
+function restoredStarterBrief(starterId: string | undefined): StarterBrief | null {
+  const patch = RESEARCH_TASK_STARTERS.find((candidate) => candidate.id === starterId)?.brief;
+  if (!patch) return null;
+  const defaults = defaultBrief() as unknown as Record<string, unknown>;
+  return { patch, previous: Object.fromEntries(Object.keys(patch).map((key) => [key, defaults[key]])) };
+}
+
 export function composerDraftKey(projectId: string, editingTaskId: string | null): string {
   return `${projectId}\u0000${editingTaskId ?? ""}`;
+}
+
+/** Whether the brief's compute target is gone from Settings; `false` until the list loads, or when it can't. */
+function useComputeTargetMissing(target: string | null): boolean {
+  const [targets, setTargets] = useState<readonly string[] | null>(null);
+  useEffect(() => {
+    if (target === null) return;
+    let current = true;
+    const load = () => {
+      void computeSettings()
+        .then((view) => {
+          if (current) setTargets(view.targets.map((entry) => entry.id));
+        })
+        // A list that failed to load says nothing about whether the target still exists.
+        .catch(() => {});
+    };
+    load();
+    window.addEventListener(COMPUTE_TARGETS_CHANGED, load);
+    return () => {
+      current = false;
+      window.removeEventListener(COMPUTE_TARGETS_CHANGED, load);
+    };
+  }, [target]);
+  return target !== null && targets !== null && !targets.includes(target);
 }
 
 export function TaskComposer(props: Readonly<TaskComposerProps>) {
@@ -121,6 +189,7 @@ function TaskComposerDraft({
   busy,
   onCancel,
   onDismiss,
+  onOpenSettings,
   onCreate,
   onSave,
 }: Readonly<TaskComposerProps>) {
@@ -143,27 +212,123 @@ function TaskComposerDraft({
   const [dependencyIds, setDependencyIds] = useState<string[]>(
     restored?.dependencyIds ?? editingTask?.dependencyIds ?? [],
   );
+  const [brief, setBrief] = useState<ResearchBrief>(
+    () => restored?.brief ?? editingTask?.brief ?? defaultBrief(),
+  );
+  // A start time that already passed means "start now": the saved one on a task that
+  // waited behind another, or one in a draft left open for a while.
+  const [runAfter, setRunAfter] = useState<number | null>(() =>
+    upcomingStart(restored?.runAfter ?? editingTask?.runAfter ?? null),
+  );
+  const [keepRunning, setKeepRunning] = useState(
+    restored?.keepRunning ?? editingTask?.keepRunningAfterQuit ?? false,
+  );
+  const [backgroundEnabled, setBackgroundEnabled] = useState(false);
+  const briefTouched = useRef(Boolean(restored?.brief || editingTask));
   const [error, setError] = useState<string | null>(null);
+  // The "Run on" fields found something that can't be saved (a removed target, bad Slurm text).
+  const [computeFieldProblem, setComputeFieldProblem] = useState(false);
+  // Those fields sit in the collapsed part of the brief, so the composer checks
+  // the target itself: a task saved with a removed target fails every run.
+  const targetMissing = useComputeTargetMissing(brief.compute.target);
+  const computeProblem = computeFieldProblem || targetMissing;
+  // What the chosen starter set in the brief, and what each setting was before, so another choice can undo it.
+  const starterBrief = useRef<StarterBrief | null>(restoredStarterBrief(restored?.starterId));
+  const [pendingStarter, setPendingStarter] = useState<string | null>(null);
+
+  // New tasks start with the time budget and network choice from Settings.
+  useEffect(() => {
+    let current = true;
+    void getConfig()
+      .then((config) => {
+        if (!current) return;
+        const settings = config as typeof config & { research_background_enabled?: boolean };
+        setBackgroundEnabled(settings.research_background_enabled === true);
+        if (briefTouched.current) return;
+        setBrief((previous) => ({
+          ...previous,
+          permissions: {
+            ...previous.permissions,
+            network: config.research_command_network ?? previous.permissions.network,
+          },
+          budget: {
+            ...previous.budget,
+            wallClockMinutes: config.research_time_budget_minutes ?? previous.budget.wallClockMinutes,
+          },
+        }));
+      })
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  const changeBrief = (next: ResearchBrief) => {
+    briefTouched.current = true;
+    setBrief(next);
+  };
 
   useEffect(() => {
     if (firstAvailable) setAgentKey((current) => current || selectedAgentKey(firstAvailable));
   }, [firstAvailable]);
 
-  const chooseStarter = (nextStarterId: string) => {
+  const applyStarter = (nextStarterId: string) => {
     setStarterId(nextStarterId);
     const starter = RESEARCH_TASK_STARTERS.find((candidate) => candidate.id === nextStarterId);
+    // Settings the last starter turned on go back, unless the user changed them since.
+    let next = brief;
+    const applied = starterBrief.current;
+    starterBrief.current = null;
+    if (applied) {
+      const reverted: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(applied.patch)) {
+        if (Object.is((brief as unknown as Record<string, unknown>)[key], value)) reverted[key] = applied.previous[key];
+      }
+      next = { ...next, ...reverted };
+    }
     if (!starter) {
       setSkillIds([]);
+      if (next !== brief) setBrief(next);
       return;
     }
     setTitle(starter.title());
     setPrompt(starter.prompt);
     setSkillIds(starter.skillIds);
+    if (starter.brief) {
+      const previous: Record<string, unknown> = {};
+      for (const key of Object.keys(starter.brief)) previous[key] = (next as unknown as Record<string, unknown>)[key];
+      starterBrief.current = { patch: starter.brief, previous };
+      next = { ...next, ...starter.brief };
+    }
+    if (next !== brief) setBrief(next);
+  };
+
+  /** A starter replaces the title and instructions, so ask first when the user changed them. */
+  const chooseStarter = (nextStarterId: string) => {
+    const known = RESEARCH_TASK_STARTERS.some((candidate) => candidate.id === nextStarterId);
+    const current = RESEARCH_TASK_STARTERS.find((candidate) => candidate.id === starterId);
+    const typed = title.trim() !== "" || prompt.trim() !== "";
+    const edited = current ? title !== current.title() || prompt !== current.prompt : typed;
+    if (known && typed && edited) {
+      setPendingStarter(nextStarterId);
+      return;
+    }
+    setPendingStarter(null);
+    applyStarter(nextStarterId);
   };
 
   const submit = async () => {
     const agent = agents.find((candidate) => selectedAgentKey(candidate) === agentKey);
     if (busy || !agent || agent.available === false || !title.trim() || !prompt.trim()) return;
+    // A start time that passed while the form stayed open means "start now", as it does for a restored draft.
+    const start = upcomingStart(runAfter) ?? (runAfter !== null && Number.isNaN(runAfter) ? runAfter : null);
+    if (start !== runAfter) setRunAfter(start);
+    const refusal = startError(start);
+    if (Object.keys(briefErrors(brief)).length > 0 || refusal !== undefined || computeProblem) {
+      // Say why, so a click that saves nothing doesn't look like a dead button.
+      setError(refusal ?? t(($) => $.researchTools.tasks.composer.cannotSave));
+      return;
+    }
     const input: ResearchTaskEdit = {
       title: title.trim(),
       prompt: prompt.trim(),
@@ -172,6 +337,9 @@ function TaskComposerDraft({
       modelId: agent.modelId,
       skillIds,
       dependencyIds,
+      brief,
+      runAfter: start,
+      keepRunningAfterQuit: keepRunning && backgroundEnabled,
     };
     setError(null);
     try {
@@ -179,19 +347,38 @@ function TaskComposerDraft({
       else await onCreate({ projectId, ...input });
       clearDraft(draftId);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(describeError(cause));
     }
   };
 
   const dismiss = () => {
     if (busy) return;
-    saveDraft(draftId, { starterId, title, prompt, agentKey, skillIds, dependencyIds });
+    saveDraft(draftId, {
+      starterId,
+      title,
+      prompt,
+      agentKey,
+      skillIds,
+      dependencyIds,
+      brief,
+      runAfter,
+      keepRunning,
+    });
     (onDismiss ?? onCancel)();
   };
 
   const cancel = () => {
     clearDraft(draftId);
     onCancel();
+  };
+
+  // Settings opens above the app, not inside this modal dialog: the composer
+  // closes first, keeping the draft.
+  const openSettingsFromBrief = (open: () => void) => {
+    if (busy) return;
+    dismiss();
+    if (onOpenSettings) onOpenSettings(open);
+    else open();
   };
 
   const selectableDependencies = tasks.filter(
@@ -206,6 +393,9 @@ function TaskComposerDraft({
     Boolean(prompt.trim()) &&
     Boolean(chosenAgent) &&
     chosenAgent?.available !== false &&
+    Object.keys(briefErrors(brief)).length === 0 &&
+    startError(runAfter) === undefined &&
+    !computeProblem &&
     !busy;
 
   const submitLabel = () => {
@@ -217,7 +407,7 @@ function TaskComposerDraft({
   return (
     <Dialog open onOpenChange={(next) => { if (!next) dismiss(); }}>
       <DialogContent
-        className="max-h-[88vh] max-w-2xl overflow-hidden"
+        className="flex max-h-[88vh] max-w-2xl flex-col overflow-hidden"
         closeDisabled={busy}
         data-testid="research-task-composer"
       >
@@ -256,6 +446,28 @@ function TaskComposerDraft({
                   ))}
                 </SelectContent>
               </Select>
+              {pendingStarter ? (
+                <div
+                  role="alert"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs"
+                >
+                  <span className="min-w-0">{t(($) => $.researchTools.tasks.composer.replaceText)}</span>
+                  <span className="flex shrink-0 gap-2">
+                    <Button size="xs" variant="outline" onClick={() => setPendingStarter(null)}>
+                      {t(($) => $.researchTools.tasks.composer.keepText)}
+                    </Button>
+                    <Button
+                      size="xs"
+                      onClick={() => {
+                        applyStarter(pendingStarter);
+                        setPendingStarter(null);
+                      }}
+                    >
+                      {t(($) => $.researchTools.tasks.composer.replaceConfirm)}
+                    </Button>
+                  </span>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -287,6 +499,31 @@ function TaskComposerDraft({
               placeholder={t(($) => $.researchTools.tasks.composer.promptPlaceholder)}
             />
           </div>
+
+          <BriefFields
+            brief={brief}
+            onChange={changeBrief}
+            runAfter={runAfter}
+            onRunAfterChange={setRunAfter}
+            keepRunning={keepRunning}
+            onKeepRunningChange={setKeepRunning}
+            backgroundEnabled={backgroundEnabled}
+            disabled={busy}
+            computeProblem={computeProblem}
+            onOpenSettings={openSettingsFromBrief}
+            renderCompute={(fieldId) => (
+              <Suspense fallback={null}>
+                <ComputeBriefFields
+                  id={fieldId}
+                  value={brief.compute}
+                  disabled={busy}
+                  onChange={(compute) => changeBrief({ ...brief, compute })}
+                  onProblemChange={setComputeFieldProblem}
+                  onOpenSettings={openSettingsFromBrief}
+                />
+              </Suspense>
+            )}
+          />
 
           <div className="grid gap-1.5">
             <label htmlFor="research-task-agent" className="text-xs font-medium">

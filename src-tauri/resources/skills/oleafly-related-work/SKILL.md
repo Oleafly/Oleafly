@@ -5,7 +5,7 @@ license: MIT
 compatibility: Needs a project with a bibliography and an engine that can compile. project_map is offered only when the engine advertises a document index, and this skill falls back to search_project.
 allowed-tools: project_map search_project project_library_search read_file write_file replace_in_file create_file compile get_log get_pdf_text verify_citation update_todos load_skill
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   skill-author: "Oleafly"
   oleafly:
     tier: native
@@ -135,3 +135,15 @@ A citation that resolves at compile time can still render as a question mark if 
 - `references/structure.md` covers grouping patterns, paragraph shapes, and the failure modes of each.
 - `references/citation-syntax.md` covers cite commands per engine and how to detect which one the project uses.
 - `assets/related-work-skeleton.tex`, `.typ` and `.md` are starting skeletons.
+
+## From a terminal
+
+Outside the app (a terminal, or a coding agent with a shell), the `oleafly` command does the same work. Always pass `--json` and check `ok`.
+
+| In Oleafly | From a terminal |
+|---|---|
+| `compile` | `oleafly build --json` |
+| `get_log` | `oleafly log --diagnostics --json` |
+| `project_map` | `oleafly context --json` |
+| `list_files`, `read_file`, `search_project` | Your own file tools; `oleafly context --json` for the outline |
+| `verify_citation` | `oleafly bib check --json`, or `oleafly cite <doi> --json` for one entry |

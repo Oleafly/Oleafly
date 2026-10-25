@@ -36,7 +36,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   setConfig: mocks.setConfig,
   discordCommunityStats: () => Promise.resolve({ online: 3 }),
 }));
-vi.mock("@/lib/github", async (importOriginal) => ({
+vi.mock("@/lib/forge", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   githubGetPublicRepoStats: () => Promise.resolve({ stars: 1, forks: 1 }),
 }));
@@ -76,7 +76,7 @@ import {
   tourRegistry,
 } from "@/lib/tours/registry";
 import { useFilesStore } from "@/store/files";
-import { useGithubStore } from "@/store/github";
+import { useForgeAccountsStore } from "@/store/forge-accounts";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
 import { SettingsModal } from "./SettingsModal";
@@ -167,7 +167,7 @@ beforeEach(() => {
     refreshProjects: mocks.refreshProjects,
     closeProject: mocks.closeProject,
   } as unknown as ReturnType<typeof useFilesStore.getState>);
-  useGithubStore.setState({ status: "disconnected", user: null });
+  useForgeAccountsStore.setState({ status: "ready", accounts: [], checks: {}, error: null });
   useTourStore.getState().resetAll();
   useTourStore.setState({ activeTourId: null });
 });

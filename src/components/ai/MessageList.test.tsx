@@ -21,10 +21,29 @@ const itemRenders = vi.hoisted(() => new Map<string, number>());
 vi.mock("@/components/ai/chat-parts", async () => {
   const { memo } = await import("react");
   return {
-    MessageItem: memo(function MessageItem({ msg, expansionScope }: { msg: ChatMessage; expansionScope?: string }) {
+    MessageItem: memo(function MessageItem({
+      msg,
+      expansionScope,
+      regenerateKind,
+      editable,
+      onMessageAction,
+    }: {
+      msg: ChatMessage;
+      expansionScope?: string;
+      regenerateKind?: string;
+      editable?: boolean;
+      onMessageAction?: (action: string, id: string) => void;
+    }) {
       itemRenders.set(msg.id ?? "", (itemRenders.get(msg.id ?? "") ?? 0) + 1);
       return (
-        <div data-testid="message-item" data-scope={expansionScope} data-content={msg.content}>
+        <div
+          data-testid="message-item"
+          data-scope={expansionScope}
+          data-content={msg.content}
+          data-regenerate={regenerateKind ?? ""}
+          data-editable={editable ? "true" : "false"}
+          onClick={() => onMessageAction?.("edit", msg.id ?? "")}
+        >
           {msg.id}
         </div>
       );
@@ -543,3 +562,30 @@ describe("MessageList windowing", () => {
     expect(nextMountIndex(messages, 99)).toBe(15);
   });
 });
+
+describe("message actions in the list", () => {
+  it("passes each row its actions and the action handler", () => {
+    const onMessageAction = vi.fn();
+    const rows: RenderedMessage[] = [
+      { key: "u", index: 0, live: false, isLatestAssistant: false, msg: { id: "u", role: "user", content: "q" }, actions: { editable: true } },
+      { key: "a", index: 1, live: false, isLatestAssistant: true, msg: { id: "a", role: "assistant", content: "r" }, actions: { regenerate: "retry" } },
+    ];
+    const scrollRef = { current: null };
+    const nearBottomRef = { current: true };
+    const { getAllByTestId } = render(
+      <MessageList
+        messages={rows}
+        chatId="c"
+        scrollRef={scrollRef}
+        nearBottomRef={nearBottomRef}
+        onMessageAction={onMessageAction}
+      />,
+    );
+    const items = getAllByTestId("message-item");
+    expect(items[0]).toHaveAttribute("data-editable", "true");
+    expect(items[1]).toHaveAttribute("data-regenerate", "retry");
+    fireEvent.click(items[0]);
+    expect(onMessageAction).toHaveBeenCalledWith("edit", "u");
+  });
+});
+

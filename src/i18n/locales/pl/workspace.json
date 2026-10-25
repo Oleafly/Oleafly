@@ -194,16 +194,37 @@
     "terminal": "Wczytywanie terminala"
   },
   "terminal": {
+    "activity": "Nowa aktywność",
+    "clipboard": {
+      "blocked": "Program w terminalu chce skopiować tekst."
+    },
     "closeCurrent": "Zamknij bieżącą",
     "closeLeft": "Zamknij wszystkie po lewej",
     "closeOthers": "Zamknij pozostałe",
     "closeRight": "Zamknij wszystkie po prawej",
     "closeTab": "Zamknij {{title}}",
     "color": "Kolor",
+    "dropRefused_one": "Nazwa tego pliku zawiera znak sterujący, więc terminal go nie wpisze.",
+    "dropRefused_few": "Nazwy {{count}} plików zawierają znaki sterujące, więc terminal ich nie wpisze.",
+    "dropRefused_many": "Nazwy {{count}} plików zawierają znaki sterujące, więc terminal ich nie wpisze.",
+    "dropRefused_other": "Nazwy {{count}} pliku zawierają znaki sterujące, więc terminal ich nie wpisze.",
     "errors": {
       "input": "Powłoka shell nie przyjęła danych wejściowych",
       "resize": "Nie udało się zmienić rozmiaru terminala",
       "start": "Nie udało się uruchomić powłoki shell"
+    },
+    "find": {
+      "count": "{{current}} z {{total}}",
+      "label": "Znajdź w terminalu",
+      "next": "Następne dopasowanie",
+      "none": "Brak dopasowań",
+      "previous": "Poprzednie dopasowanie"
+    },
+    "launch": {
+      "invalid": "Tego polecenia nie można uruchomić w terminalu.",
+      "noProject": "Otwórz projekt, aby używać terminala.",
+      "run": "Uruchom",
+      "title": "Uruchomić to polecenie w terminalu?"
     },
     "limitReached": "Zamknij jeden terminal, aby otworzyć kolejny",
     "links": {
@@ -212,8 +233,28 @@
       "openUrlFailed": "Nie udało się otworzyć linku."
     },
     "newTerminal": "Nowy terminal",
+    "openInTerminal": "Otwórz w terminalu",
     "settings": "Ustawienia terminala",
     "starting": "Uruchamianie powłoki shell projektu…",
+    "stop": {
+      "closeMany": "Zamknij terminale",
+      "closeOne": "Zamknij terminal",
+      "closeProject": "Zamknij projekt",
+      "dontAsk": "Nie pytaj ponownie",
+      "dontAskHint": "Aby włączyć to ponownie, otwórz Ustawienia, Wygląd, Terminal, Pytaj przed zamknięciem zajętego terminala.",
+      "many_one": "Program nadal działa w {{count}} terminalu.",
+      "many_few": "Programy nadal działają w {{count}} terminalach.",
+      "many_many": "Programy nadal działają w {{count}} terminalach.",
+      "many_other": "Programy nadal działają w {{count}} terminala.",
+      "named": "{{process}} nadal działa w {{title}}.",
+      "quit": "Zakończ",
+      "reload": "Wczytaj ponownie",
+      "restart": "Uruchom ponownie",
+      "switchProject": "Przełącz projekt",
+      "titleMany": "Zatrzymać działające programy?",
+      "titleOne": "Zatrzymać działający program?",
+      "unnamed": "W {{title}} nadal działa program."
+    },
     "tabs": "Terminale",
     "titleInput": "Tytuł terminala"
   },

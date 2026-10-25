@@ -4,6 +4,7 @@ export const SETTINGS_SEARCH_SECTIONS = [
   "dictionary",
   "data",
   "ai",
+  "research",
   "engine",
   "downloads",
   "integrations",
@@ -36,12 +37,7 @@ export const SETTINGS_SEARCH_SOURCES: Readonly<Record<SettingsSearchSection, rea
     ["settingsFile"],
     keywords("general"),
   ],
-  appearance: [
-    ["settings", "appearance"],
-    // Cookie import sits with the in-app browser settings.
-    ["settings", "integrations", "cookies"],
-    keywords("appearance"),
-  ],
+  appearance: [["settings", "appearance"], keywords("appearance")],
   dictionary: [["settings", "proofreading"], keywords("dictionary")],
   data: [["shell", "settings", "data"], ["settings", "checkpoints"], keywords("data")],
   ai: [
@@ -52,13 +48,25 @@ export const SETTINGS_SEARCH_SOURCES: Readonly<Record<SettingsSearchSection, rea
     ["settings", "mcp", "import"],
     keywords("ai"),
   ],
+  research: [
+    ["researchTools", "tasks", "settings"],
+    // Run targets (SSH, Slurm, Cua Spaces) and the local sandbox.
+    ["researchTools", "compute"],
+    // 0.4.8 L: tasks that keep running after Oleafly closes.
+    ["settings", "research", "background"],
+    keywords("research"),
+  ],
   engine: [["settings", "engine"], keywords("engine")],
   downloads: [["settings", "downloads"], keywords("downloads")],
   integrations: [
     ["settings", "integrations", "actions"],
     ["settings", "integrations", "alphaxiv"],
     ["settings", "integrations", "overleaf"],
+    // The browser sign-in copy sits with the online LaTeX account.
+    ["settings", "integrations", "cookies"],
     ["settings", "integrations", "zotero"],
+    ["settings", "integrations", "desktopApps"],
+    ["settings", "gitHosting"],
     ["settings", "github"],
     ["settings", "citations"],
     // The Oleafly MCP server that other apps connect to.
@@ -74,6 +82,10 @@ export const SETTINGS_SEARCH_SOURCES: Readonly<Record<SettingsSearchSection, rea
 
 export const SETTINGS_SEARCH_EXCLUDED: readonly CatalogPath[] = [
   ["settings", "reset"],
+  // Validation messages and the task brief's own lines are not settings.
+  ["researchTools", "compute", "form", "errors"],
+  ["settings", "research", "mcpServers"],
+  ["researchTools", "compute", "brief"],
   ["shell", "settings", "nav"],
   ["shell", "settings", "close"],
   ["shell", "settings", "footer"],
@@ -92,7 +104,8 @@ export const SETTINGS_SEARCH_TABS: Readonly<Record<string, string>> = {
   "appearance.customTheme": "app",
   "appearance.preview": "pdf",
   "appearance.zen": "files",
-  "integrations.cookies": "browser",
+  "integrations.cookies": "overleaf",
+  "integrations.desktopApps": "desktop-apps",
   "shortcuts.actions": "application",
   "shortcuts.editorKeys": "editor",
   "downloads.fontPacks": "fonts",
@@ -104,6 +117,10 @@ export const SETTINGS_SEARCH_TABS: Readonly<Record<string, string>> = {
   "engine.distributions": "latex",
   "engine.packages": "latex",
   "engine.tagging": "latex",
+  github: "git-hosting",
+  gitHosting: "git-hosting",
+  // Its rows' keys also name the Providers tab ("ai.agents.providers").
+  "ai.agents": "agents",
   "ai.approvals": "providers",
   "ai.budget": "providers",
   "ai.models": "providers",
@@ -123,6 +140,9 @@ const PLATFORM_ROWS: Readonly<Record<string, SettingsSearchPlatform>> = {
   "systemIntegration.nemo": "linux",
   "systemIntegration.nautilus": "linux",
   "systemIntegration.folderOpenWith": "linux",
+  "appearance.terminal.optionIsMeta": "macos",
+  "integrations.desktopApps.permissions": "macos",
+  "integrations.desktopApps.gnome": "linux",
 };
 
 /**
@@ -130,9 +150,16 @@ const PLATFORM_ROWS: Readonly<Record<string, SettingsSearchPlatform>> = {
  * not on the page until then, so they are not rows, but their words still find
  * the section.
  */
-const FLOW_PATHS: ReadonlySet<string> = new Set(["mcp.import", "mcp.registry"]);
+const FLOW_PATHS: ReadonlySet<string> = new Set([
+  "mcp.import",
+  "mcp.registry",
+  "gitHosting.add",
+  "integrations.desktopApps.apps.dialog",
+]);
 
 const SKIPPED_KEY_WORDS = new Set(["aria", "error", "errors", "failed", "toast", "confirm"]);
+/** Settings whose key has one of those words but which are rows on the page. */
+const KEPT_PATHS: ReadonlySet<string> = new Set(["appearance.terminal.confirmClose"]);
 /** Subtrees that are dialogs, sign-in steps or empty states, not rows on the page. */
 const NOT_A_ROW_KEY_WORDS = new Set(["dialog", "device", "empty"]);
 const ROW_LABEL_KEYS = ["label", "title", "heading", "name"] as const;
@@ -206,8 +233,8 @@ function keyHasWord(key: string, words: ReadonlySet<string>): boolean {
     .some((word) => words.has(word));
 }
 
-function isSkippedKey(key: string): boolean {
-  return keyHasWord(key, SKIPPED_KEY_WORDS);
+function isSkipped(path: readonly string[]): boolean {
+  return !KEPT_PATHS.has(path.join(".")) && keyHasWord(path.at(-1) ?? "", SKIPPED_KEY_WORDS);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -252,7 +279,7 @@ function collectText(
   out: string[],
   platform: SettingsSearchPlatform,
 ): void {
-  if (isSkippedKey(path.at(-1) ?? "") || onOtherPlatform(path, platform)) return;
+  if (isSkipped(path) || onOtherPlatform(path, platform)) return;
   if (typeof node === "string") {
     const text = cleanCatalogText(node);
     if (text) out.push(text);
@@ -273,7 +300,7 @@ function collectRows(
   const { locale, platform } = context;
   if (
     !isRecord(node) ||
-    isSkippedKey(path.at(-1) ?? "") ||
+    isSkipped(path) ||
     onOtherPlatform(path, platform) ||
     isTransient(node, path)
   ) {

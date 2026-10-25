@@ -49,6 +49,41 @@ source file opens in the editor at the line and column the output gives. PDFs
 and images open in their viewer tab, and web addresses open in your browser.
 Only relative paths that match a project file get a link for now.
 
+Settings > Appearance > Terminal picks the shell new terminals start. On
+Windows the choices are PowerShell 7, Windows PowerShell, Command Prompt, Git
+Bash, WSL and a custom path, and the default is PowerShell 7 when it is
+installed. On macOS and Linux the default is your login shell, and a custom
+path works there too. Terminals that are already open keep their shell. The
+same section sets the scrollback, copy on select, what Shift+Enter sends and,
+on macOS, whether Option works as Meta.
+
+Shift+Enter starts a new line in command-line agents instead of sending what
+you typed; the Shift+Enter setting turns it back into Enter. To copy and paste,
+use Ctrl+Shift+C and Ctrl+Shift+V on Windows and Linux. On Windows, Ctrl+C
+also copies when text is selected (without a selection it stops the running
+program) and Ctrl+V pastes. On macOS, ⌘C and ⌘V work as everywhere else.
+Ctrl+Shift+F (⌘F on macOS) searches the output, and ⌘K clears it on macOS. While a
+terminal has focus, keys go to the shell; [Terminal keys](KeyboardShortcuts.md#terminal-keys)
+lists the app shortcuts that still work there.
+
+Tabs you are not looking at keep running and keep all of their output. When a
+program rings the bell in one of them, the tab gets a dot, and so does the
+terminal button while the dock is closed. Hover a tab to see the title its
+program set.
+
+Right click a folder in the file tree, or the empty space below the files, and
+choose Open in terminal to start a terminal in that folder. Drag files from the
+file tree onto a terminal to type their paths, quoted for the shell. On Linux
+this also works with files dragged from the file manager.
+
+Closing a terminal that is still running a program asks first, and so do
+closing or switching the project and quitting Oleafly while one runs. Don't ask
+again in that question, or the setting in Settings > Appearance > Terminal,
+turns it off.
+
+Terminals have the `oleafly` command on their PATH once Oleafly has set it up,
+and `OLEAFLY_CLI` holds its full path.
+
 <div align="center">
   <img src="assets/readme/project-terminal.png" alt="Oleafly terminal opened beside a manuscript project" width="100%" />
 </div>

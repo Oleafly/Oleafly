@@ -3,26 +3,38 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   tauri: true,
-  disk: new Map<string, string>(),
-  loadProjectChats: vi.fn(),
-  saveProjectChats: vi.fn(),
+  files: new Map<string, Map<string, string>>(),
+  skipped: 0,
+  chatsLoad: vi.fn(),
+  chatRead: vi.fn(),
+  chatSave: vi.fn(),
+  chatDelete: vi.fn(),
+  attachmentGc: vi.fn(),
   agentThreadDelete: vi.fn(),
+  logError: vi.fn(),
 }));
 
-vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => mocks.tauri }));
+vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => mocks.tauri, invoke: vi.fn() }));
 vi.mock("@/lib/tauri", () => ({
-  loadProjectChats: mocks.loadProjectChats,
-  saveProjectChats: mocks.saveProjectChats,
+  chatsLoad: mocks.chatsLoad,
+  chatRead: mocks.chatRead,
+  chatSave: mocks.chatSave,
+  chatDelete: mocks.chatDelete,
 }));
+vi.mock("@/lib/attachments", () => ({ attachmentGc: mocks.attachmentGc }));
 vi.mock("@/lib/agent-backend", () => ({ agentThreadDelete: mocks.agentThreadDelete }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 import type { StoredChat } from "./chats";
 
 type ChatsModule = typeof import("./chats");
 type TurnsModule = typeof import("./agent-turns");
+type DraftsModule = typeof import("./composer-drafts");
 
+let chatsModule: ChatsModule;
 let store: ChatsModule["useChatsStore"];
 let turns: TurnsModule["useAgentTurnsStore"];
+let drafts: DraftsModule["useComposerDrafts"];
 
 function chat(projectId: string, id: string, updatedAt: number, extra: Partial<StoredChat> = {}): StoredChat {
   return {
@@ -37,9 +49,22 @@ function chat(projectId: string, id: string, updatedAt: number, extra: Partial<S
   };
 }
 
-function savedOnDisk(projectId: string): StoredChat[] {
-  const calls = mocks.saveProjectChats.mock.calls.filter(([pid]) => pid === projectId);
-  return JSON.parse(String(calls.at(-1)?.[1] ?? "[]"));
+function project(projectId: string): Map<string, string> {
+  let files = mocks.files.get(projectId);
+  if (!files) {
+    files = new Map();
+    mocks.files.set(projectId, files);
+  }
+  return files;
+}
+
+function putOnDisk(...chats: StoredChat[]) {
+  for (const item of chats) project(item.projectId).set(item.id, JSON.stringify(item));
+}
+
+function savedOnDisk(projectId: string, chatId: string): StoredChat | undefined {
+  const json = mocks.files.get(projectId)?.get(chatId);
+  return json ? JSON.parse(json) : undefined;
 }
 
 function settle() {
@@ -49,15 +74,33 @@ function settle() {
 beforeEach(async () => {
   vi.resetModules();
   mocks.tauri = true;
-  mocks.disk.clear();
+  mocks.files.clear();
+  mocks.skipped = 0;
   localStorage.clear();
-  mocks.loadProjectChats.mockReset().mockImplementation(async (pid: string) => mocks.disk.get(pid) ?? "");
-  mocks.saveProjectChats.mockReset().mockImplementation(async (pid: string, json: string) => {
-    mocks.disk.set(pid, json);
+  mocks.chatsLoad.mockReset().mockImplementation(async (pid: string) => {
+    const chats = [...(mocks.files.get(pid)?.values() ?? [])]
+      .map((json) => JSON.parse(json) as StoredChat)
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+    return { json: JSON.stringify(chats), skipped: mocks.skipped };
   });
+  mocks.chatRead.mockReset().mockImplementation(async (pid: string, id: string) => {
+    const json = mocks.files.get(pid)?.get(id);
+    if (!json) throw new Error("missing");
+    return json;
+  });
+  mocks.chatSave.mockReset().mockImplementation(async (pid: string, id: string, json: string) => {
+    project(pid).set(id, json);
+  });
+  mocks.chatDelete.mockReset().mockImplementation(async (pid: string, id: string) => {
+    mocks.files.get(pid)?.delete(id);
+  });
+  mocks.attachmentGc.mockReset().mockResolvedValue(0);
   mocks.agentThreadDelete.mockReset().mockResolvedValue(undefined);
-  store = (await import("./chats")).useChatsStore;
+  mocks.logError.mockReset();
+  chatsModule = await import("./chats");
+  store = chatsModule.useChatsStore;
   turns = (await import("./agent-turns")).useAgentTurnsStore;
+  drafts = (await import("./composer-drafts")).useComposerDrafts;
 });
 
 afterEach(() => {
@@ -65,19 +108,292 @@ afterEach(() => {
 });
 
 describe("chat persistence on disk", () => {
+  it("loads per-chat files newest first and remembers how many were skipped", async () => {
+    putOnDisk(chat("p1", "old", 1), chat("p1", "new", 2));
+    mocks.skipped = 2;
+
+    await store.getState().load("p1");
+
+    expect(store.getState().chats.map((c) => c.id)).toEqual(["new", "old"]);
+    expect(store.getState().skippedOnLoad).toBe(2);
+  });
+
+  it("saves only the chat that changed", async () => {
+    putOnDisk(chat("p1", "a", 1), chat("p1", "b", 2));
+    await store.getState().load("p1");
+
+    store.getState().saveMessages("a", [{ role: "user", content: "hello" }]);
+    await settle();
+
+    expect(mocks.chatSave).toHaveBeenCalledTimes(1);
+    expect(mocks.chatSave.mock.calls[0].slice(0, 2)).toEqual(["p1", "a"]);
+  });
+
+  it("coalesces rapid saves of one chat so the newest state lands last", async () => {
+    putOnDisk(chat("p1", "a", 1));
+    await store.getState().load("p1");
+    let release!: () => void;
+    mocks.chatSave.mockImplementationOnce(
+      (pid: string, id: string, json: string) =>
+        new Promise<void>((resolve) => {
+          release = () => {
+            project(pid).set(id, json);
+            resolve();
+          };
+        }),
+    );
+
+    store.getState().saveMessages("a", [{ role: "user", content: "one" }]);
+    store.getState().saveMessages("a", [{ role: "user", content: "two" }]);
+    store.getState().saveMessages("a", [{ role: "user", content: "three" }]);
+    await settle();
+    release();
+    await settle();
+    await settle();
+
+    expect(mocks.chatSave.mock.calls.length).toBeLessThanOrEqual(2);
+    expect(savedOnDisk("p1", "a")?.messages[0].content).toBe("three");
+  });
+
+  it("saves streamed replies without indexing and indexes the final save", async () => {
+    putOnDisk(chat("p1", "a", 1));
+    await store.getState().load("p1");
+
+    store.getState().saveMessages("a", [{ role: "assistant", content: "partial" }], { index: false });
+    await settle();
+    store.getState().saveMessages("a", [{ role: "assistant", content: "final" }]);
+    await settle();
+
+    expect(mocks.chatSave.mock.calls.map((call) => call[3])).toEqual([false, true]);
+  });
+
+  it("keeps a chat in memory when it is too large to save and flags it", async () => {
+    const failed = vi.fn();
+    window.addEventListener("oleafly:chat-save-failed", failed);
+    putOnDisk(chat("p1", "a", 1));
+    await store.getState().load("p1");
+    mocks.chatSave.mockRejectedValueOnce(new Error("[chat_too_large] This chat is larger than the 8 MB save limit."));
+
+    store.getState().saveMessages("a", [{ role: "user", content: "big" }]);
+    await settle();
+
+    expect(store.getState().saveProblems.a).toBe("tooLarge");
+    expect(store.getState().byId("a")?.messages[0].content).toBe("big");
+    expect(failed).not.toHaveBeenCalled();
+
+    store.getState().saveMessages("a", [{ role: "user", content: "smaller" }]);
+    await settle();
+    expect(store.getState().saveProblems.a).toBeUndefined();
+    window.removeEventListener("oleafly:chat-save-failed", failed);
+  });
+
+  it("tells the app when a save fails for another reason", async () => {
+    const failed = vi.fn();
+    window.addEventListener("oleafly:chat-save-failed", failed);
+    await store.getState().load("p1");
+    mocks.chatSave.mockRejectedValueOnce(new Error("disk full"));
+
+    store.getState().create("p1", null);
+    await settle();
+
+    expect(failed).toHaveBeenCalledTimes(1);
+    window.removeEventListener("oleafly:chat-save-failed", failed);
+  });
+
+  it("never writes a stub back to disk", async () => {
+    putOnDisk(chat("p1", "old", 1));
+    mocks.chatsLoad.mockResolvedValueOnce({
+      json: JSON.stringify([{ ...chat("p1", "old", 1), stub: true, messageCount: 4 }]),
+      skipped: 0,
+    });
+    await store.getState().load("p1");
+
+    store.getState().saveMessages("old", [{ role: "user", content: "x" }]);
+    store.getState().addUsage("old", { inputTokens: 1, outputTokens: 1, steps: 1 });
+    await settle();
+
+    expect(mocks.chatSave).not.toHaveBeenCalled();
+    expect(chatsModule.chatMessageCount(store.getState().byId("old") as StoredChat)).toBe(4);
+  });
+
+  it("loads the body of an older chat on demand", async () => {
+    putOnDisk(chat("p1", "old", 1, { messages: [{ role: "user", content: "hi" }] }));
+    mocks.chatsLoad.mockResolvedValueOnce({
+      json: JSON.stringify([{ ...chat("p1", "old", 1), stub: true, messageCount: 1 }]),
+      skipped: 0,
+    });
+    await store.getState().load("p1");
+
+    const body = await store.getState().loadChatBody("old");
+
+    expect(body?.messages).toEqual([{ role: "user", content: "hi" }]);
+    expect(store.getState().byId("old")?.stub).toBeUndefined();
+  });
+
+  it("collects only attachments nothing still uses", async () => {
+    putOnDisk(
+      chat("p1", "gone", 1, {
+        messages: [{ role: "user", content: "x", attachments: [{ name: "a.png", mediaType: "image/png", sha256: "removed" }] }],
+      }),
+      chat("p1", "kept", 2, {
+        messages: [
+          {
+            role: "user",
+            content: "y",
+            attachments: [{ name: "b.pdf", mediaType: "application/pdf", sha256: "other", pageImages: [{ sha256: "page", mime: "image/png" }] }],
+            toolCalls: [{ name: "preview_figure", status: "done", imageRef: { sha256: "shot", mime: "image/png" } }],
+          },
+        ],
+      }),
+    );
+    await store.getState().load("p1");
+    drafts.getState().addAttachments("p1:builtin", [
+      { id: "d", name: "c.png", mime: "image/png", size: 1, status: "ready", kind: "image", scope: "p1", sha256: "draft" },
+    ]);
+    turns.getState().queueFollowUp("kept", "later", [
+      { id: "q", name: "q.png", mime: "image/png", size: 1, status: "ready", kind: "image", scope: "p1", sha256: "queued" },
+    ]);
+
+    store.getState().remove("gone");
+    await settle();
+    await settle();
+
+    expect(mocks.chatDelete).toHaveBeenCalledWith("p1", "gone");
+    const [projectId, keep] = mocks.attachmentGc.mock.calls[0];
+    expect(projectId).toBe("p1");
+    expect([...keep].sort()).toEqual(["draft", "other", "page", "queued", "shot"]);
+  });
+
+  it("keeps the files of a reply still streaming when another chat is deleted", async () => {
+    putOnDisk(chat("p1", "gone", 1), chat("p1", "running", 2));
+    await store.getState().load("p1");
+    // The screenshot is in the live transcript; the saved chat does not list it yet.
+    store.getState().setLive("running", [
+      { role: "assistant", content: "", toolCalls: [{ name: "preview_figure", status: "done", imageRef: { sha256: "fresh-shot", mime: "image/png" } }] },
+    ]);
+
+    store.getState().remove("gone");
+    await settle();
+    await settle();
+
+    const [, keep] = mocks.attachmentGc.mock.calls[0];
+    expect(keep).toContain("fresh-shot");
+  });
+
+  it("saves a chat into the project it belongs to after the window moved to another", async () => {
+    putOnDisk(chat("p1", "a", 1));
+    await store.getState().load("p1");
+    await store.getState().load("p2");
+
+    store.getState().saveMessages("a", [{ role: "user", content: "kept" }], { projectId: "p1" });
+    // Another project's chats that are not cached, and the shown project's, are left alone.
+    store.getState().saveMessages("a", [{ role: "user", content: "lost" }], { projectId: "p9" });
+    store.getState().saveMessages("a", [{ role: "user", content: "lost" }]);
+    await settle();
+
+    expect(savedOnDisk("p1", "a")?.messages).toEqual([{ role: "user", content: "kept" }]);
+    expect(savedOnDisk("p9", "a")).toBeUndefined();
+    expect(store.getState().projectId).toBe("p2");
+    expect(store.getState().chats).toEqual([]);
+  });
+
+  it("skips collection while older chats are still stubs", async () => {
+    mocks.chatsLoad.mockResolvedValueOnce({
+      json: JSON.stringify([chat("p1", "a", 2), { ...chat("p1", "old", 1), stub: true, messageCount: 3 }]),
+      skipped: 0,
+    });
+    await store.getState().load("p1");
+
+    store.getState().remove("a");
+    await settle();
+    await settle();
+
+    expect(mocks.chatDelete).toHaveBeenCalledWith("p1", "a");
+    expect(mocks.attachmentGc).not.toHaveBeenCalled();
+  });
+
+  it("strips stored tool screenshots and keeps old data URL ones", () => {
+    const withRef = chat("p1", "a", 1, {
+      messages: [
+        {
+          role: "assistant",
+          content: "",
+          toolCalls: [
+            { name: "preview_figure", status: "done", image: "data:image/png;base64,AA", imageRef: { sha256: "s", mime: "image/png" } },
+            { name: "preview_figure", status: "done", image: "data:image/png;base64,BB" },
+          ],
+        },
+      ],
+    });
+    const disk = chatsModule.chatForDisk(withRef);
+    expect(disk.messages[0].toolCalls?.[0]).not.toHaveProperty("image");
+    expect(disk.messages[0].toolCalls?.[0].imageRef).toEqual({ sha256: "s", mime: "image/png" });
+    expect(disk.messages[0].toolCalls?.[1].image).toBe("data:image/png;base64,BB");
+    expect(chatsModule.chatForDisk(chat("p1", "b", 1))).toEqual(chat("p1", "b", 1));
+  });
+
+  it("stores a chat's effort and web settings", async () => {
+    await store.getState().load("p1");
+    const created = store.getState().create("p1", null, { web: { search: true, fetch: true } });
+    store.getState().setChatSettings(created.id, { effort: "high" });
+    await settle();
+    expect(savedOnDisk("p1", created.id)).toMatchObject({ effort: "high", web: { search: true, fetch: true } });
+
+    store.getState().setChatSettings(created.id, { effort: null, web: null });
+    await settle();
+    expect(savedOnDisk("p1", created.id)).not.toHaveProperty("effort");
+    expect(savedOnDisk("p1", created.id)).not.toHaveProperty("web");
+  });
+
+  it("adds cache tokens and keeps the latest context", async () => {
+    await store.getState().load("p1");
+    const created = store.getState().create("p1", null);
+    store.getState().addUsage(created.id, {
+      inputTokens: 10,
+      outputTokens: 2,
+      steps: 1,
+      cacheReadTokens: 5,
+      context: { used: 100, size: 1000 },
+    });
+    store.getState().addUsage(created.id, {
+      inputTokens: 1,
+      outputTokens: 1,
+      steps: 1,
+      cacheReadTokens: 7,
+      cacheWriteTokens: 3,
+      context: { used: 300, size: 1000 },
+    });
+    expect(store.getState().byId(created.id)?.usage).toMatchObject({
+      inputTokens: 11,
+      cacheReadTokens: 12,
+      cacheWriteTokens: 3,
+      context: { used: 300, size: 1000 },
+      runs: 2,
+    });
+  });
+
+  it("sets a chat's cost from the ledger", async () => {
+    await store.getState().load("p1");
+    const created = store.getState().create("p1", null);
+    store.getState().addUsage(created.id, { inputTokens: 1, outputTokens: 1, steps: 1, estimatedUsd: 0.01 });
+    store.getState().setChatCost(created.id, 0.42);
+    expect(store.getState().byId(created.id)?.usage?.estimatedUsd).toBe(0.42);
+  });
+
   it("moves chats saved by an older version from local storage to disk", async () => {
     localStorage.setItem("oleafly.chats.p1", JSON.stringify([chat("p1", "old", 1), chat("p1", "newer", 2)]));
 
     await store.getState().load("p1");
 
     expect(store.getState().chats.map((c) => c.id)).toEqual(["newer", "old"]);
-    expect(savedOnDisk("p1").map((c) => c.id)).toEqual(["newer", "old"]);
+    expect(savedOnDisk("p1", "old")?.id).toBe("old");
+    expect(savedOnDisk("p1", "newer")?.id).toBe("newer");
     expect(localStorage.getItem("oleafly.chats.p1")).toBeNull();
   });
 
   it("keeps the old local copy when the move to disk fails", async () => {
     localStorage.setItem("oleafly.chats.p1", JSON.stringify([chat("p1", "old", 1)]));
-    mocks.saveProjectChats.mockRejectedValueOnce(new Error("disk full"));
+    mocks.chatSave.mockRejectedValueOnce(new Error("disk full"));
 
     await store.getState().load("p1");
 
@@ -92,72 +408,109 @@ describe("chat persistence on disk", () => {
     await store.getState().load("p1");
 
     expect(store.getState().chats).toEqual([]);
-    expect(mocks.saveProjectChats).not.toHaveBeenCalled();
-  });
-
-  it("forgets the migration check for the least recent of more than 16 projects", async () => {
-    for (let index = 0; index < 17; index += 1) await store.getState().load(`p${index}`);
-    localStorage.setItem("oleafly.chats.p0", JSON.stringify([chat("p0", "late", 1)]));
-
-    await store.getState().load("p0");
-
-    expect(store.getState().chats.map((c) => c.id)).toEqual(["late"]);
-    expect(savedOnDisk("p0").map((c) => c.id)).toEqual(["late"]);
+    expect(mocks.chatSave).not.toHaveBeenCalled();
   });
 
   it("reads the local copy when the disk read fails", async () => {
     localStorage.setItem("oleafly.chats.p1", JSON.stringify([chat("p1", "local", 1)]));
-    mocks.loadProjectChats.mockRejectedValueOnce(new Error("permission denied"));
+    mocks.chatsLoad.mockRejectedValueOnce(new Error("permission denied"));
 
     await store.getState().load("p1");
 
     expect(store.getState().chats.map((c) => c.id)).toEqual(["local"]);
   });
 
-  it("retries a failed save with the newest half of the chats", async () => {
-    mocks.disk.set("p1", JSON.stringify(Array.from({ length: 50 }, (_, index) => chat("p1", `c${index}`, index))));
-    await store.getState().load("p1");
-    mocks.saveProjectChats.mockRejectedValueOnce(new Error("too large"));
-
-    store.getState().saveMessages("c0", [{ role: "user", content: "hello" }]);
-    await settle();
-
-    expect(mocks.saveProjectChats).toHaveBeenCalledTimes(2);
-    const kept = savedOnDisk("p1");
-    expect(kept).toHaveLength(25);
-    expect(kept[0].id).toBe("c0");
-  });
-
-  it("tells the app when chats cannot be saved at all", async () => {
-    const quota = vi.fn();
-    window.addEventListener("oleafly:chats-quota-exceeded", quota);
-    await store.getState().load("p1");
-    mocks.saveProjectChats.mockRejectedValue(new Error("disk full"));
-
-    store.getState().create("p1", null);
-    await settle();
-
-    expect(quota).toHaveBeenCalledTimes(1);
-    window.removeEventListener("oleafly:chats-quota-exceeded", quota);
-  });
-
-  it("saves at most the 50 most recent chats", async () => {
-    mocks.disk.set("p1", JSON.stringify(Array.from({ length: 60 }, (_, index) => chat("p1", `c${index}`, index))));
+  it("keeps every chat: there is no cap on disk", async () => {
+    putOnDisk(...Array.from({ length: 60 }, (_, index) => chat("p1", `c${index}`, index)));
     await store.getState().load("p1");
 
     store.getState().saveMessages("c59", [{ role: "assistant", content: "done" }]);
     await settle();
 
-    const kept = savedOnDisk("p1");
-    expect(kept).toHaveLength(50);
-    expect(kept.some((c) => c.id === "c0")).toBe(false);
+    expect(store.getState().chats).toHaveLength(60);
+    expect(mocks.chatDelete).not.toHaveBeenCalled();
   });
 
-  it("drops the cached chats of the least recent of more than 16 projects", async () => {
+  it("keeps a just-updated chat first when a later update does not sort", async () => {
+    putOnDisk(chat("p1", "old", 1), chat("p1", "mid", 2), chat("p1", "new", 3));
+    await store.getState().load("p1");
+
+    store.getState().saveMessages("old", [{ role: "user", content: "hello" }]);
+    store.getState().addUsage("old", { inputTokens: 1, outputTokens: 1, steps: 1 });
+    store.getState().setChatCost("old", 0.5);
+    store.getState().setThreadId("old", "thread-1");
+    await settle();
+
+    expect(store.getState().chats.map((c) => c.id)).toEqual(["old", "new", "mid"]);
+  });
+
+  it("merges the chat files into a chat created before the first load finished", async () => {
+    putOnDisk(chat("p1", "older", 1), chat("p1", "oldest", 0));
+    const created = store.getState().create("p1", null);
+
+    await store.getState().load("p1");
+
+    expect(store.getState().chats.map((c) => c.id).sort()).toEqual([created.id, "older", "oldest"].sort());
+    // The chat a run is using stays the active one.
+    expect(store.getState().activeId).toBe(created.id);
+  });
+
+  it("does not bring back a chat that was deleted while the files were read", async () => {
+    putOnDisk(chat("p1", "a", 1), chat("p1", "b", 2));
+    await store.getState().load("p1");
+    let release!: () => void;
+    mocks.chatDelete.mockImplementationOnce(
+      (pid: string, id: string) =>
+        new Promise<void>((resolve) => {
+          release = () => {
+            mocks.files.get(pid)?.delete(id);
+            resolve();
+          };
+        }),
+    );
+    store.getState().remove("a");
+    await settle();
+
+    await store.getState().load("p1");
+
+    expect(store.getState().chats.map((c) => c.id)).toEqual(["b"]);
+    release();
+  });
+
+  it("does not collect attachments from a list that never met the chat files", async () => {
+    putOnDisk(chat("p1", "hidden", 1, {
+      messages: [{ role: "user", content: "x", attachments: [{ name: "a.png", mediaType: "image/png", sha256: "hidden-file" }] }],
+    }));
+    const created = store.getState().create("p1", null);
+    const other = store.getState().create("p1", null);
+
+    store.getState().remove(other.id);
+    await settle();
+    await settle();
+    expect(mocks.attachmentGc).not.toHaveBeenCalled();
+
+    await store.getState().load("p1");
+    store.getState().remove(created.id);
+    await settle();
+    await settle();
+    const [, keep] = mocks.attachmentGc.mock.calls[0];
+    expect(keep).toContain("hidden-file");
+  });
+
+  it("still writes a chat whose project left the cache before its save ran", async () => {
+    store.getState().create("p0", null);
+    for (let index = 1; index <= 6; index += 1) store.getState().create(`p${index}`, null);
+    await settle();
+
+    expect(mocks.chatSave.mock.calls.some((call) => call[0] === "p0")).toBe(true);
+  });
+
+  it("drops the cached chats of the least recent projects past the cache size", async () => {
     store.getState().create("p0", null);
     for (let index = 1; index <= 16; index += 1) store.getState().create(`p${index}`, null);
     await settle();
-    mocks.disk.set("p0", JSON.stringify([chat("p0", "from-disk", 5)]));
+    mocks.files.delete("p0");
+    putOnDisk(chat("p0", "from-disk", 5));
 
     await store.getState().load("p0");
 
@@ -181,7 +534,7 @@ describe("chat persistence in the browser", () => {
     store.setState({ projectId: null, chats: [] });
     await store.getState().load("web");
     expect(store.getState().chats.map((c) => c.id)).toEqual([created.id]);
-    expect(mocks.loadProjectChats).not.toHaveBeenCalled();
+    expect(mocks.chatsLoad).not.toHaveBeenCalled();
   });
 
   it("treats unreadable local data as no chats", async () => {
@@ -255,7 +608,7 @@ describe("chat editing", () => {
     store.getState().setThreadId("c1", "t1");
 
     expect(store.getState().chats).toEqual([chat("p1", "c1", 1)]);
-    expect(mocks.saveProjectChats).not.toHaveBeenCalled();
+    expect(mocks.chatSave).not.toHaveBeenCalled();
   });
 
   it("titles a new chat from its first user message", () => {
@@ -279,7 +632,7 @@ describe("chat editing", () => {
   });
 
   it("fills a title only while the chat has none", async () => {
-    mocks.disk.set("p2", JSON.stringify([chat("p2", "named", 0, { title: "Named" }), chat("p2", "blank", 0, { title: "" })]));
+    putOnDisk(chat("p2", "named", 0, { title: "Named" }), chat("p2", "blank", 0, { title: "" }));
     await store.getState().load("p2");
     const created = store.getState().create("p2", null);
 
@@ -308,13 +661,14 @@ describe("chat editing", () => {
   });
 
   it("records usage for a background project read from disk", async () => {
-    mocks.disk.set("other", JSON.stringify([chat("other", "bg", 3)]));
+    putOnDisk(chat("other", "bg", 3));
 
     await store.getState().addUsageForProject("other", "bg", { inputTokens: 4, outputTokens: 6, steps: 2 });
     await store.getState().addUsageForProject("other", "missing", { inputTokens: 4, outputTokens: 6, steps: 2 });
+    await settle();
 
     expect(store.getState().projectId).toBe("p1");
-    expect(savedOnDisk("other")[0].usage).toEqual({
+    expect(savedOnDisk("other", "bg")?.usage).toEqual({
       inputTokens: 4,
       outputTokens: 6,
       steps: 2,
@@ -327,11 +681,12 @@ describe("chat editing", () => {
     const created = store.getState().create("p1", null);
     store.getState().setThreadId(created.id, "thread-1");
     await settle();
-    mocks.saveProjectChats.mockClear();
+    mocks.chatSave.mockClear();
 
     store.getState().setThreadId(created.id, "thread-1");
+    await settle();
 
-    expect(mocks.saveProjectChats).not.toHaveBeenCalled();
+    expect(mocks.chatSave).not.toHaveBeenCalled();
     expect(store.getState().byId(created.id)?.threadId).toBe("thread-1");
   });
 

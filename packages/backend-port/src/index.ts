@@ -14,7 +14,8 @@
  * src-tauri/src/protocol.rs mirrors both constants; the vitest conformance
  * test (src/lib/backend-port-protocol.test.ts) fails on drift.
  */
-export const PROTOCOL_VERSION = 6;
+// 7 covers every command 0.4.8 removes or renames (one bump per release).
+export const PROTOCOL_VERSION = 7;
 /** Feature areas the shell requires from its backend. Keep sorted. */
 export const BACKEND_CAPABILITIES = [
     "agent-server",
@@ -768,6 +769,18 @@ export interface ModelCost {
     output?: number;
     cacheRead?: number;
 }
+/** One models.dev reasoning control: effort names, a token budget, or an on/off switch. */
+export interface ReasoningOption {
+    type: "effort" | "budget_tokens" | "toggle";
+    values?: string[];
+    min?: number;
+    max?: number;
+}
+/** A project's chats as one JSON array, and how many files could not be read. */
+export interface ChatsLoadResult {
+    json: string;
+    skipped: number;
+}
 export interface ModelMetadata {
     name: string;
     contextWindow?: number;
@@ -776,6 +789,7 @@ export interface ModelMetadata {
     outputModalities: string[];
     toolCall: boolean;
     reasoning: boolean;
+    reasoningOptions?: ReasoningOption[];
     attachment: boolean;
     structuredOutput: boolean;
     status: ModelStatus;
@@ -824,6 +838,7 @@ export interface AppConfig {
     ai_keys: Record<string, string>;
     ai_system_prompt: string;
     ai_pdf_capture: boolean;
+    ai_reasoning_summaries?: boolean;
     ai_provider_models: Record<string, StoredModel[]>;
     ai_custom_providers: CustomProvider[];
     ai_personas: Persona[];
@@ -840,6 +855,33 @@ export interface AppConfig {
     mcp_servers: McpServerConfig[];
     skills_share_with_agents?: boolean;
     ui_locale?: string;
+    research_keep_awake?: boolean;
+    research_notifications?: boolean;
+    research_command_network?: boolean;
+    research_time_budget_minutes?: number;
+    research_task_mcp_servers?: string[];
+    /** 0.4.8: research tasks are experimental and off until the user turns
+     * them on. Absent = off. Only `research_tasks_set_enabled` changes it;
+     * `set_config` keeps the stored value. */
+    research_tasks_enabled?: boolean;
+    /** 0.4.8 L: tasks marked to keep running move to the background helper
+     * when Oleafly quits. Absent = on. `set_config` keeps the stored value;
+     * `background_tasks_set_enabled` changes it. */
+    research_background_enabled?: boolean;
+    /** 0.4.8 L: the helper starts at sign-in. Absent = off. Only
+     * `background_helper_set_login_item` changes it. */
+    research_background_at_login?: boolean;
+    /** 0.4.8 H: the Tools model. Absent = automatic local (Ollama). Only
+     * `set_ai_tools_model` changes it; `set_config` keeps the stored value. */
+    ai_tools_model?: ToolsModelChoice | null;
+    /** 0.4.8 I: Desktop apps. Device-local; only `cua_driver_settings_set`
+     * changes it, and `set_config` keeps the stored value. */
+    cua_driver?: { enabled: boolean; apps: unknown[]; sites: unknown[] };
+}
+/** The provider and model the Tools converters send images to. */
+export interface ToolsModelChoice {
+    provider: string;
+    model: string;
 }
 export type McpServerConfig = {
     name: string;
@@ -898,17 +940,65 @@ export interface ProviderModel {
     blockedReason?: string;
     metadata?: ModelMetadata;
 }
-export interface GitHubUser {
+/** The REST API a Git server speaks. `gitea` covers Forgejo and Codeberg. */
+export type ForgeKind = "github" | "gitlab" | "gitea";
+export type ForgeFlavor = "gitea" | "forgejo";
+export type ForgeAuthMethod = "oauth" | "token";
+/** A signed-in Git hosting account. Never carries a token. */
+export interface ForgeAccount {
+    /** Normalized base URL, such as `https://gitlab.com` or `https://example.org/gitlab`. */
+    base: string;
+    kind: ForgeKind;
+    flavor?: ForgeFlavor;
     login: string;
-    name: string | null;
-    avatar_url: string;
-    html_url: string;
+    name?: string;
+    avatarUrl?: string;
+    /** Certificate authority file for a server signed by an organization's own authority. */
+    caFile?: string;
+    auth: ForgeAuthMethod;
+    /** Epoch milliseconds. */
+    addedAt: number;
 }
-export interface GitHubRepo {
-    full_name: string;
-    html_url: string;
-    clone_url: string;
+export interface ForgeServerInfo {
+    base: string;
+    kind: ForgeKind | null;
+    flavor: ForgeFlavor | null;
+    /** Whether this build offers browser (device code) sign-in for the server. */
+    deviceFlow: boolean;
+}
+/** A started browser sign-in. The device code stays in the backend. */
+export interface ForgeDeviceStart {
+    flowId: string;
+    userCode: string;
+    verificationUri: string;
+    verificationUriComplete: string | null;
+    expiresIn: number;
+    interval: number;
+}
+export type ForgeDevicePoll =
+    | { status: "pending" }
+    | { status: "slow_down"; interval: number }
+    | { status: "done"; account: ForgeAccount };
+export interface ForgeAccountCheck {
+    base: string;
+    state: "ok" | "signed_out" | "unreachable";
+    account: ForgeAccount | null;
+}
+export interface ForgeRepo {
+    id: string;
+    /** `owner/repo`, or a nested GitLab path such as `group/sub/repo`. */
+    fullName: string;
+    name: string;
+    webUrl: string;
+    cloneUrl: string;
     private: boolean;
+    defaultBranch: string | null;
+}
+export interface ForgeRepoPage {
+    repos: ForgeRepo[];
+    nextPage: number | null;
+    /** Whether the server filtered by the query; otherwise filter the loaded rows. */
+    searched: boolean;
 }
 export interface GitHubRepoStats {
     stars: number;
@@ -1395,6 +1485,10 @@ export interface BackendPort {
   writeBytesFile: (dest: string, dataBase64: string) => Promise<void>;
   loadProjectChats: (projectId: string) => Promise<string>;
   saveProjectChats: (projectId: string, json: string) => Promise<void>;
+  chatsLoad: (projectId: string) => Promise<ChatsLoadResult>;
+  chatRead: (projectId: string, chatId: string) => Promise<string>;
+  chatSave: (projectId: string, chatId: string, json: string, index?: boolean) => Promise<void>;
+  chatDelete: (projectId: string, chatId: string) => Promise<void>;
   listFiles: (projectId: string) => Promise<FileEntry[]>;
   listFileTree: (projectId: string) => Promise<FileTreeListing>;
   existingProjectFiles: (projectId: string, paths: string[]) => Promise<string[]>;
@@ -1606,12 +1700,22 @@ export interface BackendPort {
   agentServerAbandonRequest: (requestId: string) => Promise<void>;
   mcpSetActiveProject: (projectId: string | null) => Promise<void>;
   mcpToolResult: (callId: number, result: unknown, rendererSession: number) => Promise<void>;
-  ghCurrentUser: () => Promise<GitHubUser>;
-  ghSetToken: (token: string) => Promise<GitHubUser>;
-  ghClearToken: () => Promise<void>;
-  ghListRepos: () => Promise<GitHubRepo[]>;
-  ghCreateRepo: (name: string, isPrivate: boolean) => Promise<GitHubRepo>;
   ghPublicRepoStats: (fullName: string) => Promise<GitHubRepoStats>;
+  forgeAccountsList: () => Promise<ForgeAccount[]>;
+  forgeDetect: (base: string, caFile?: string | null) => Promise<ForgeServerInfo>;
+  forgeSignInToken: (base: string, kind: ForgeKind, token: string, caFile?: string | null) => Promise<ForgeAccount>;
+  forgeDeviceStart: (base: string) => Promise<ForgeDeviceStart>;
+  forgeDevicePoll: (flowId: string) => Promise<ForgeDevicePoll>;
+  forgeDeviceCancel: (flowId: string) => Promise<void>;
+  forgeSignOut: (base: string) => Promise<void>;
+  forgeSetCaFile: (base: string, caFile: string | null) => Promise<ForgeAccount>;
+  forgeValidate: (base: string) => Promise<ForgeAccountCheck>;
+  forgeListRepos: (base: string, page: number, query?: string | null) => Promise<ForgeRepoPage>;
+  forgeCreateRepo: (base: string, name: string, isPrivate: boolean) => Promise<ForgeRepo>;
+  forgeImportRepo: (base: string, fullName: string) => Promise<string>;
+  gitCloneProject: (url: string) => Promise<string>;
+  /** Another window or the backend added, changed or removed an account. */
+  onForgeAccountsChanged: (handler: () => void) => Promise<() => void>;
   discordCommunityStats: () => Promise<DiscordCommunityStats>;
   collabServersList: () => Promise<CollabServer[]>;
   collabServerProbe: (url: string) => Promise<CollabCapabilities>;

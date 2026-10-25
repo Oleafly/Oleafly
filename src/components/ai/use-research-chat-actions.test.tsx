@@ -7,16 +7,16 @@ const { restore } = await vi.hoisted(async () => {
   await initTestI18n();
   return installUiDom();
 });
-vi.mock("@/lib/browser-window", () => ({ openBrowserWindow: vi.fn() }));
+vi.mock("@/lib/system-browser", () => ({ openInSystemBrowser: vi.fn() }));
 vi.mock("@/lib/research-workspace", async (original) => ({ ...await original<typeof import("@/lib/research-workspace")>(), readResearchRootFile: vi.fn() }));
 vi.mock("@/lib/tauri", async (original) => ({ ...await original<typeof import("@/lib/tauri")>(), readFileContent: vi.fn() }));
 vi.mock("@/lib/toast", () => ({ toast: { error: vi.fn() } }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn(async () => undefined) }));
 vi.mock("@/components/editor/cm/controller", () => ({ waitForEditorDocument: vi.fn(), gotoLine: vi.fn() }));
 import { gotoLine, waitForEditorDocument } from "@/components/editor/cm/controller";
-import { openBrowserWindow } from "@/lib/browser-window";
 import { logError } from "@/lib/log";
 import { readResearchRootFile } from "@/lib/research-workspace";
+import { openInSystemBrowser } from "@/lib/system-browser";
 import { readFileContent } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
@@ -30,7 +30,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   useFilesStore.setState({ projectId: "paper", files: {}, activePath: null, openTabs: [], tabOrder: {} });
   useSettingsStore.setState({ viewMode: "pdf" });
-  vi.mocked(openBrowserWindow).mockResolvedValue(true);
+  vi.mocked(openInSystemBrowser).mockResolvedValue(true);
   vi.mocked(readFileContent).mockResolvedValue("Methods\r\nResults\r\nConclusion");
   vi.mocked(waitForEditorDocument).mockResolvedValue(editor);
 });
@@ -125,10 +125,10 @@ describe("research chat source actions", () => {
       result.current.openSource?.({ url: "javascript:alert(1)", doi: "https://dx.doi.org/10.1234/example" });
       result.current.openSource?.({ sourceId: "W12345" });
     });
-    expect(vi.mocked(openBrowserWindow).mock.calls).toEqual([["https://journal.example/paper"], ["https://doi.org/10.1234/example"], ["https://openalex.org/W12345"]]);
+    expect(vi.mocked(openInSystemBrowser).mock.calls).toEqual([["https://journal.example/paper"], ["https://doi.org/10.1234/example"], ["https://openalex.org/W12345"]]);
     expect(toast.error).not.toHaveBeenCalled();
     result.current.openSource?.({ url: "file:///outside/project.txt", sourceId: "untrusted", doi: "invalid" });
-    expect(openBrowserWindow).toHaveBeenCalledTimes(3);
+    expect(openInSystemBrowser).toHaveBeenCalledTimes(3);
     expect(toast.error).not.toHaveBeenCalled();
   });
 
@@ -140,9 +140,9 @@ describe("research chat source actions", () => {
     expect(resolveSourceUrl({})).toBeUndefined();
   });
 
-  it("reports both declined and failed native browser launches", async () => {
+  it("reports both declined and failed system browser launches", async () => {
     const failure = new Error("Window unavailable");
-    vi.mocked(openBrowserWindow).mockResolvedValueOnce(false).mockRejectedValueOnce(failure);
+    vi.mocked(openInSystemBrowser).mockResolvedValueOnce(false).mockRejectedValueOnce(failure);
     const { result } = renderHook(() => useResearchChatActions("paper"));
     await act(async () => {
       result.current.openSource?.({ url: "https://journal.example/first" });

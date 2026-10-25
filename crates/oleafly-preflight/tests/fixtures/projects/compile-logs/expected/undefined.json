@@ -1,0 +1,345 @@
+{
+  "profile": "generic",
+  "project": {
+    "files": [
+      {
+        "hasContent": false,
+        "path": "build-logs/destination.log"
+      },
+      {
+        "hasContent": false,
+        "path": "build-logs/glyph.log"
+      },
+      {
+        "hasContent": false,
+        "path": "build-logs/overfull.log"
+      },
+      {
+        "hasContent": false,
+        "path": "build-logs/rerun.log"
+      },
+      {
+        "hasContent": false,
+        "path": "build-logs/tagging.log"
+      },
+      {
+        "hasContent": false,
+        "path": "build-logs/undefined.log"
+      },
+      {
+        "hasContent": true,
+        "path": "main.tex"
+      }
+    ],
+    "mainFile": "main.tex"
+  },
+  "refs": {
+    "allCitedKeys": [],
+    "bibEntries": [],
+    "bibKeyDefinitions": [],
+    "bibKeyDialect": "bibtex",
+    "bibKeys": [],
+    "bibLoaded": false,
+    "definedLabels": [],
+    "duplicateDois": [],
+    "duplicateLabels": [],
+    "projectFiles": [
+      "build-logs/destination.log",
+      "build-logs/glyph.log",
+      "build-logs/overfull.log",
+      "build-logs/rerun.log",
+      "build-logs/tagging.log",
+      "build-logs/undefined.log",
+      "main.tex"
+    ],
+    "unreferencedLabels": [],
+    "unresolvedBibliographies": []
+  },
+  "report": {
+    "a11yScore": null,
+    "atsScore": null,
+    "compileScore": 70,
+    "coverage": {
+      "a11y": "not_run",
+      "ats": "not_run",
+      "compile": "evaluated",
+      "privacy": "evaluated",
+      "refs": "evaluated",
+      "submission": "partial"
+    },
+    "findings": [
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.no-glyphtounicode.detailAutomatic"
+        },
+        "file": "main.tex",
+        "id": "no-glyphtounicode",
+        "lens": "both",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "info",
+        "standards": [
+          {
+            "clause": "7.21.7",
+            "label": "Character encoding",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/"
+          },
+          {
+            "clause": "8.4.5.8",
+            "label": "Character encoding",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "10-001",
+            "label": "Character encoding",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.4.5",
+            "label": "Images of Text",
+            "standard": "WCAG-2.2",
+            "technique": "PDF7",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF7"
+          }
+        ],
+        "title": {
+          "key": "rules.no-glyphtounicode.title"
+        }
+      },
+      {
+        "detail": {
+          "key": "rules.no-lang.detail"
+        },
+        "file": "main.tex",
+        "id": "no-lang",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.2",
+            "label": "Text",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.2-29"
+          },
+          {
+            "clause": "8.4.4",
+            "label": "Natural language",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "11-001",
+            "label": "Natural language",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "3.1.1",
+            "label": "Language of Page",
+            "standard": "WCAG-2.2",
+            "technique": "PDF16",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF16"
+          }
+        ],
+        "title": {
+          "key": "rules.no-lang.title"
+        }
+      },
+      {
+        "detail": {
+          "key": "rules.no-title.detail"
+        },
+        "file": "main.tex",
+        "id": "no-title",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "info",
+        "standards": [
+          {
+            "clause": "7.1",
+            "label": "Document title",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.1-9"
+          },
+          {
+            "clause": "8.11.1",
+            "label": "Metadata",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "06-003",
+            "label": "Metadata",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "2.4.2",
+            "label": "Page Titled",
+            "standard": "WCAG-2.2",
+            "technique": "PDF18",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF18"
+          }
+        ],
+        "title": {
+          "key": "rules.no-title.title"
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.compile-failed.detail"
+        },
+        "id": "compile-failed",
+        "lens": "compile",
+        "method": "compile-log",
+        "severity": "error",
+        "title": {
+          "key": "rules.compile-failed.title"
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.compile-unresolved-references.detail"
+        },
+        "id": "compile-unresolved-references",
+        "lens": "compile",
+        "method": "compile-log",
+        "severity": "error",
+        "title": {
+          "key": "rules.compile-unresolved-references.title"
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.submission-generated-file.detail"
+        },
+        "file": "build-logs/destination.log",
+        "id": "submission-generated-file",
+        "lens": "submission",
+        "severity": "info",
+        "title": {
+          "key": "rules.submission-generated-file.title",
+          "params": {
+            "file": "build-logs/destination.log"
+          }
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.submission-generated-file.detail"
+        },
+        "file": "build-logs/glyph.log",
+        "id": "submission-generated-file",
+        "lens": "submission",
+        "severity": "info",
+        "title": {
+          "key": "rules.submission-generated-file.title",
+          "params": {
+            "file": "build-logs/glyph.log"
+          }
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.submission-generated-file.detail"
+        },
+        "file": "build-logs/overfull.log",
+        "id": "submission-generated-file",
+        "lens": "submission",
+        "severity": "info",
+        "title": {
+          "key": "rules.submission-generated-file.title",
+          "params": {
+            "file": "build-logs/overfull.log"
+          }
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.submission-generated-file.detail"
+        },
+        "file": "build-logs/rerun.log",
+        "id": "submission-generated-file",
+        "lens": "submission",
+        "severity": "info",
+        "title": {
+          "key": "rules.submission-generated-file.title",
+          "params": {
+            "file": "build-logs/rerun.log"
+          }
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.submission-generated-file.detail"
+        },
+        "file": "build-logs/tagging.log",
+        "id": "submission-generated-file",
+        "lens": "submission",
+        "severity": "info",
+        "title": {
+          "key": "rules.submission-generated-file.title",
+          "params": {
+            "file": "build-logs/tagging.log"
+          }
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.submission-generated-file.detail"
+        },
+        "file": "build-logs/undefined.log",
+        "id": "submission-generated-file",
+        "lens": "submission",
+        "severity": "info",
+        "title": {
+          "key": "rules.submission-generated-file.title",
+          "params": {
+            "file": "build-logs/undefined.log"
+          }
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.submission-no-abstract.detail"
+        },
+        "id": "submission-no-abstract",
+        "lens": "submission",
+        "severity": "warning",
+        "title": {
+          "key": "rules.submission-no-abstract.title"
+        }
+      }
+    ],
+    "hasPdf": false,
+    "privacyScore": 100,
+    "refsScore": 100,
+    "scores": {
+      "a11y": 90,
+      "ats": 98,
+      "compile": 70,
+      "privacy": 100,
+      "refs": 100,
+      "submission": 82
+    },
+    "submissionScore": 82
+  }
+}

@@ -19,7 +19,6 @@
     "selectAll": "Selecionar tudo",
     "view": "Exibir",
     "toggleTerminal": "Alternar terminal",
-    "toggleBrowser": "Alternar navegador",
     "file": "Arquivo",
     "openFolder": "Abrir pasta…",
     "openRecent": "Abrir recentes",
@@ -28,15 +27,7 @@
     "minimize": "Minimizar",
     "fullscreen": "Alternar tela cheia",
     "bringAllToFront": "Trazer tudo para a frente",
-    "newTab": "Nova aba",
-    "openLocation": "Abrir endereço…",
-    "closeTab": "Fechar aba",
-    "reloadPage": "Recarregar página",
     "zenMode": "Modo Zen"
-  },
-  "window": {
-    "browser": "Navegador do Oleafly",
-    "browserTitled": "{{title}} - Navegador do Oleafly"
   },
   "dialog": {
     "cancel": "Cancelar",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Confirmar importação de cookies",
-      "messageHost": "Importar os cookies de {{hostname}} do perfil \"{{profile}}\" do {{browser}} para o navegador interno do Oleafly? Os cookies importados podem conectar você a sites.",
-      "messageAll": "Importar todos os cookies do perfil \"{{profile}}\" do {{browser}} para o navegador interno do Oleafly? Os cookies importados podem conectar você a sites.",
-      "confirm": "Importar cookies"
+      "copyHost": "Copiar para o Oleafly os cookies de {{hostname}} do perfil \"{{profile}}\" do {{browser}}? Eles podem fazer o seu login em {{hostname}}.",
+      "copyAll": "Copiar para o Oleafly todos os cookies do perfil \"{{profile}}\" do {{browser}}? Eles podem fazer o seu login em sites.",
+      "copyConfirm": "Copiar os cookies"
     },
     "mcpApprove": {
       "title": "Aprovar ferramenta MCP",
@@ -103,6 +94,60 @@
       "confirm": "Usar programa",
       "pickTitle": "Escolha o programa para {{name}}",
       "filter": "Programas"
+    },
+    "desktopApps": {
+      "title": "Aplicativos de desktop",
+      "action": "{{agent}} quer {{action}}.",
+      "steps": "{{agent}} quer executar estas etapas em um aplicativo de desktop:",
+      "moreSteps": "Etapas não exibidas e não executadas: {{count}}",
+      "moreItems": "Itens não exibidos: {{count}}",
+      "cut": "(caracteres não exibidos: {{count}})",
+      "signedIn": "Isso acontece no seu próprio navegador conectado.",
+      "signedInOn": "Isso acontece no seu próprio navegador conectado, em {{origin}}.",
+      "task": "Tarefa: {{title}}",
+      "app": "Aplicativo: {{name}}",
+      "window": "Janela: {{title}}",
+      "element": "Elemento: {{element}}",
+      "text": "Texto: \"{{text}}\"",
+      "address": "Endereço: {{url}}",
+      "allowOnce": "Permitir uma vez",
+      "allowChat": "Permitir nesta conversa",
+      "allowSession": "Permitir nesta sessão",
+      "allowTask": "Permitir nesta tarefa",
+      "deny": "Não permitir",
+      "pickedFile": "o arquivo que você escolheu",
+      "actions": {
+        "launchApp": "abrir um aplicativo",
+        "click": "clicar em um aplicativo",
+        "doubleClick": "clicar duas vezes em um aplicativo",
+        "rightClick": "clicar com o botão direito em um aplicativo",
+        "typeText": "digitar em um aplicativo",
+        "pressKey": "pressionar uma tecla em um aplicativo",
+        "hotkey": "pressionar um atalho de teclado em um aplicativo",
+        "scroll": "rolar em um aplicativo",
+        "setValue": "alterar um campo em um aplicativo",
+        "browserPrepare": "abrir um navegador para um site",
+        "browserNavigate": "ir para uma página da web",
+        "browserClick": "clicar em uma página da web",
+        "browserType": "digitar em uma página da web",
+        "browserSelect": "escolher uma opção em uma página da web",
+        "runScript": "executar um script do Cua"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "Permitir o controle do desktop?",
+      "message": "Os agentes poderão usar o seguinte. Eles perguntam antes de cada ação, e salvar isto limpa todas as escolhas de \"Permitir nesta conversa\":",
+      "confirm": "Permitir",
+      "enabled": "Aplicativos de desktop",
+      "app": "Aplicativo: {{identity}} ({{name}})",
+      "more": "E mais {{count}}",
+      "site": "Site: {{origin}}",
+      "signedIn": "Seu navegador conectado em {{origin}}",
+      "scripted": "Scripts do Cua",
+      "spacesTitle": "Dar mais acesso ao Cua Spaces?",
+      "spacesMessage": "Os agentes que usam o Cua Spaces poderão:",
+      "spacesChanges": "Criar e excluir Spaces e executar comandos neles",
+      "spacesSignIns": "Usar seu login do Claude Code ou do Codex dentro de um Space"
     }
   },
   "errors": {
@@ -128,5 +173,41 @@
   "cloud": {
     "connectedPage": "Você está conectado. Pode fechar esta aba e voltar ao Oleafly.",
     "failedPage": "O login não foi concluído. Pode fechar esta aba e voltar ao Oleafly."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Tarefa pronta para revisão",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Plano pronto para aprovar",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "Uma tarefa precisa da sua aprovação",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Tarefa parada",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Orçamento da tarefa esgotado",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "O Oleafly continua trabalhando",
+      "body": "As tarefas de pesquisa que você marcou para continuar rodando seguem em segundo plano. Abra o Oleafly para ver o progresso."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Verificações de permissão desligadas ({{mode}})",
+      "description": "O agente pode editar arquivos e executar comandos sem perguntar. O Oleafly não conseguiu trocar para outro modo. Mude o modo nas configurações do próprio agente."
+    }
   }
 }

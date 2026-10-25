@@ -383,7 +383,7 @@ export function ResearchProjectSetup({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && !creating && onClose()}>
-      <DialogContent className="max-h-[92vh] max-w-4xl overflow-hidden" closeDisabled={creating}>
+      <DialogContent className="flex max-h-[92vh] max-w-4xl flex-col overflow-hidden" closeDisabled={creating}>
         <DialogHeader>
           <DialogTitle>{t(($) => $.researchTools.setup.title)}</DialogTitle>
           <DialogDescription>{t(($) => $.researchTools.setup.description)}</DialogDescription>

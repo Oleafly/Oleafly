@@ -38,15 +38,16 @@ Todo aquí es gratis, incluido lo que otros editores reservan para sus planes de
 - Un editor pensado para documentos largos: completado de etiquetas, citas y comandos, comprobación de errores en directo, un esquema de todo el proyecto, combinaciones de teclas de Vim y Emacs, un modo visual y una paleta de 236 símbolos LaTeX en la que puedes buscar.
 - Compila en tu propio ordenador. Tectonic, Typst y Pandoc vienen integrados, y TeX Live, MacTeX, MiKTeX o TinyTeX toman el relevo cuando un proyecto necesita una distribución completa.
 - Haz clic en el PDF para saltar al código fuente y volver, y el último PDF correcto sigue en pantalla mientras corriges un error.
-- Cada proyecto es un repositorio de Git que puedes subir a GitHub, y Checkpoints guarda una instantánea después de cada compilación correcta.
+- Cada proyecto es un repositorio de Git que puedes subir a GitHub, GitLab, Gitea, Forgejo, Codeberg o tu propio servidor Git, y Checkpoints guarda una instantánea después de cada compilación correcta.
 - Cita desde tu biblioteca de Zotero mientras escribes y busca en arXiv, Semantic Scholar, Crossref, PubMed y OpenAlex sin salir del editor.
 - La corrección ortográfica y gramatical, adaptada a la escritura académica, se ejecuta en tu ordenador.
 - Preflight detecta referencias rotas, figuras ausentes, fuentes que no se incrustaron, carencias de accesibilidad y cualquier cosa que rompa el anonimato de una revisión, antes de que hagas el envío.
 - Dibuja figuras que se conservan como código TikZ, Typst o Mermaid, y empieza con más de 1700 plantillas para artículos, tesis, diapositivas, pósteres y currículums.
-- Importa desde Word, un PDF, un código fuente de arXiv, un repositorio de GitHub o una cuenta de un servicio de LaTeX en línea.
+- Importa desde Word, un PDF, un código fuente de arXiv, un repositorio de Git o una cuenta de un servicio de LaTeX en línea.
+- El comando `oleafly` compila, comprueba y sincroniza tus proyectos desde cualquier terminal o trabajo de CI, con los mismos compiladores y ajustes que la aplicación.
 - La sincronización en la nube mantiene tus proyectos en cada ordenador que usas, y puedes seguir escribiendo sin conexión.
 - Claude Code, Codex y 12 agentes más trabajan dentro de tu proyecto, o puedes conectar cualquier modelo, incluidos los locales. La IA es opcional, y cada cambio que hace es una diferencia que puedes revisar y deshacer.
-- Las tareas de investigación hacen una revisión bibliográfica, una auditoría de evidencias o una pasada de revisión en una copia separada del proyecto mientras sigues escribiendo, y tú eliges qué archivos modificados conservar.
+- Las tareas de investigación hacen una revisión bibliográfica, una auditoría de evidencias o una pasada de revisión en una copia separada del proyecto mientras sigues escribiendo, y tú eliges qué archivos modificados conservar. Son experimentales y vienen desactivadas de forma predeterminada; se activan en Ajustes > Experimentación.
 
 ## Escribe en equipo, en directo
 
@@ -143,8 +144,9 @@ Elige un agente del catálogo y trabajará en tu proyecto con el código fuente,
 - Cada cambio en un archivo es una diferencia. Aprueba cada uno, deja que el asistente trabaje por su cuenta o define reglas por herramienta, y deshaz un solo archivo o un turno completo.
 - El modo de planificación traza el proyecto antes de que se escriba nada.
 - Una revisión bibliográfica o una pasada de revisión puede ejecutarse en su propio worktree de Git mientras sigues escribiendo. Tú eliges qué archivos modificados conservar.
-- La aplicación incluye 36 skills de investigación, entre ellas rastreos bibliográficos, trabajo relacionado, verificación de afirmaciones y cartas de respuesta a revisores.
+- La aplicación incluye 39 skills de investigación, entre ellas rastreos bibliográficos, trabajo relacionado, verificación de afirmaciones y cartas de respuesta a revisores.
 - Un servidor MCP local permite que un cliente de IA externo use las mismas herramientas del proyecto. Solo escucha en 127.0.0.1.
+- `oleafly mcp` ofrece las herramientas del proyecto a Claude Code, Codex, Cursor y Gemini CLI por stdio, con la aplicación abierta o cerrada.
 
 La IA es opcional. El editor, el compilador, el PDF, las citas, la corrección y las comprobaciones funcionan con ella desactivada.
 
@@ -194,13 +196,15 @@ Tectonic, Typst y Pandoc vienen con la aplicación, así que un proyecto nuevo c
 
 ## Git, historial y un terminal
 
-Cada proyecto es una carpeta normal con un repositorio de Git normal. Prepara archivos, compara diferencias, haz commit, push y pull, y publica en GitHub desde el panel Source Control, o usa tu propio terminal, ya que no se le oculta nada. Checkpoints guarda una instantánea local después de cada compilación correcta, así que puedes volver atrás sin hacer un commit.
+Cada proyecto es una carpeta normal con un repositorio de Git normal. Prepara archivos, compara diferencias, haz commit, push y pull, y publica en GitHub, GitLab, Gitea, Forgejo, Codeberg o tu propio servidor desde el panel Source Control, o usa tu propio terminal, ya que no se le oculta nada. Checkpoints guarda una instantánea local después de cada compilación correcta, así que puedes volver atrás sin hacer un commit.
 
 <p align="center">
   <img src="../assets/readme/git-history.png" alt="Panel Source Control de Oleafly con una diferencia, un grafo de ramas y controles de commit" width="100%" />
 </p>
 
 Bajo el editor hay un terminal acoplado con hasta diez pestañas por proyecto. Haz Cmd-clic (Ctrl-clic) en una ruta de archivo de su salida para abrirlo en esa línea.
+
+El comando `oleafly` trabaja con los mismos proyectos desde cualquier terminal: compila, vuelve a compilar con cada cambio, comprueba antes de enviar, sincroniza con un servicio de LaTeX en línea o ejecuta el agente de Oleafly sin abrir la aplicación. Cada comando puede imprimir JSON con códigos de salida estables para scripts y CI. Consulta la [guía de la línea de comandos](../cli.md).
 
 ## Y mucho más
 
@@ -274,21 +278,21 @@ La galería de herramientas está en beta y viene desactivada de forma predeterm
 </details>
 
 <details>
-<summary>Las 36 skills de investigación incluidas con Oleafly</summary>
+<summary>Las 39 skills de investigación incluidas con Oleafly</summary>
 
 Las skills son carpetas `SKILL.md` normales que siguen la estructura de Agent Skills. Ejecuta una con un comando de barra, añade las tuyas o compártelas con agentes CLI compatibles en el mismo ordenador.
 
-El paquete `research-core` incluido contiene 36 skills. Los nombres siguientes son los identificadores que usan el catálogo y los ajustes del proyecto.
+El paquete `research-core` incluido contiene 39 skills. Los nombres siguientes son los identificadores que usan el catálogo y los ajustes del proyecto.
 
 | Categoría | Skills |
 | --- | --- |
-| Investigación y literatura | `citation-management`, `exploratory-data-analysis`, `hypothesis-generation`, `literature-review`, `oleafly-literature-sweep`, `oleafly-research-loop`, `openresearch`, `paper-lookup`, `research-lookup`, `scientific-brainstorming`, `scientific-critical-thinking` |
+| Investigación y literatura | `citation-management`, `exploratory-data-analysis`, `hypothesis-generation`, `literature-review`, `oleafly-experiment-loop`, `oleafly-literature-sweep`, `oleafly-research-loop`, `openresearch`, `paper-lookup`, `research-lookup`, `scientific-brainstorming`, `scientific-critical-thinking` |
 | Autoría y análisis de manuscritos | `experimental-design`, `oleafly-data-analysis`, `oleafly-manuscript-scaffold`, `oleafly-related-work`, `scientific-writing`, `statistical-analysis`, `statistical-power`, `venue-templates` |
 | Figuras y visualización | `oleafly-figure-prep`, `scientific-schematics`, `scientific-visualization` |
 | Revisión y evidencias | `oleafly-response-letter`, `oleafly-review-manuscript`, `oleafly-verify-claims`, `peer-review`, `scholar-evaluation` |
 | Envío | `oleafly-pre-submission` |
 | Comunicación | `oleafly-slides-and-posters`, `pptx-posters`, `research-grants`, `scientific-slides` |
-| Importación y herramientas de compilación | `import-refine`, `oleafly-latex-build`, `pdf-to-latex`, `template-generate` |
+| Herramientas y automatización | `desktop-apps`, `import-refine`, `oleafly-cli`, `oleafly-latex-build`, `pdf-to-latex`, `template-generate` |
 
 </details>
 
@@ -367,6 +371,7 @@ Sí, esa es la idea. Oleafly Server se ejecuta en tu propia máquina o cuenta en
 - [AI Copilot](../AICopilot.md)
 - [Skills](../Skills.md)
 - [Integración con MCP](../mcp.md)
+- [Herramienta de línea de comandos](../cli.md)
 - [Configuración de desarrollo](../development.md)
 - [Registro de cambios](../../CHANGELOG.md)
 

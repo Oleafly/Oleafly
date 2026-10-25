@@ -14,7 +14,7 @@ use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::{oneshot, watch, Mutex, OwnedSemaphorePermit, Semaphore};
 
-use super::protocol::{dispatch, rpc_error, rpc_result, rpc_tool_error, RpcOutcome, ToolMeta};
+use super::protocol::{rpc_error, rpc_result, rpc_tool_error, RpcOutcome, ToolMeta};
 use crate::paths;
 
 /// Upper bound for one forwarded tool call: compiles and human approvals are

@@ -7,9 +7,9 @@
     "tests/31-ai-figure.spec.ts",
     "tests/39-ai-secret-storage.spec.ts",
     "tests/72-terminal-dock.spec.ts",
-    "tests/73-browser-dock.spec.ts",
     "tests/74-agent-steer.spec.ts",
-    "tests/75-skills.spec.ts"
+    "tests/75-skills.spec.ts",
+    "tests/76-terminal-keys.spec.ts"
   ],
   "include": ["../src", "../packages"]
 }

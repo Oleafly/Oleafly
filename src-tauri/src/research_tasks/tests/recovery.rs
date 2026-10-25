@@ -14,6 +14,7 @@ async fn pending_review(state: &ResearchTaskState, project: &Path) -> ResearchTa
     let isolation = tokio::task::spawn_blocking(move || {
         isolation::prepare(
             &preparation_store,
+            &host::AppResearchHost::detached(),
             &preparation_task,
             &CancellationToken::new(),
         )
@@ -141,7 +142,7 @@ async fn completed_disk_apply_is_recorded_before_its_dependent_task_starts() {
     let (runtime, mut starts) = ControlledRuntime::new();
     state.register_runtime("fixture", runtime).unwrap();
 
-    state.recover(&app_state).await.unwrap();
+    recover(&state, &app_state).await.unwrap();
 
     let completed = store.require(&task.id).unwrap();
     assert_eq!(completed.status, ResearchTaskStatus::Completed);
@@ -155,7 +156,18 @@ async fn completed_disk_apply_is_recorded_before_its_dependent_task_starts() {
         crate::project::project_mutation_generation("paper".into()).unwrap(),
         mutation.generation
     );
-    let next = next_run(&mut starts).await;
+    // On a timeout, say where the dependent task stopped (this has only
+    // failed inside the full suite).
+    let next = tokio::time::timeout(test_wait::CHILD_PATIENCE, starts.recv())
+        .await
+        .unwrap_or_else(|_| {
+            let task = store.require(&dependent.id).ok();
+            panic!(
+                "the dependent task did not start: {:?}",
+                task.map(|task| (task.status, task.phase, task.error))
+            )
+        })
+        .expect("the adapter start channel closed");
     assert_eq!(next.context.task_id, dependent.id);
     assert_eq!(
         fs::read_to_string(PathBuf::from(&next.context.execution_root).join("main.tex")).unwrap(),
@@ -191,7 +203,7 @@ async fn partial_disk_apply_rolls_back_and_retains_review_before_queue_admission
         "original notes"
     );
 
-    state.recover(&app_state).await.unwrap();
+    recover(&state, &app_state).await.unwrap();
 
     let recovered = store.require(&task.id).unwrap();
     assert_eq!(recovered.status, ResearchTaskStatus::AwaitingReview);
@@ -252,7 +264,7 @@ async fn conflicting_recovery_preserves_evidence_and_defers_the_queue_until_reso
     let (runtime, mut starts) = ControlledRuntime::new();
     state.register_runtime("fixture", runtime).unwrap();
 
-    let error = state.recover(&app_state).await.unwrap_err();
+    let error = recover(&state, &app_state).await.unwrap_err();
 
     assert!(error.contains("main.tex changed while an interrupted task apply was being recovered"));
     assert_eq!(
@@ -275,14 +287,14 @@ async fn conflicting_recovery_preserves_evidence_and_defers_the_queue_until_reso
         ResearchTaskStatus::Queued
     );
     assert!(starts.try_recv().is_err());
-    assert!(lock(&state.inner.active).is_empty());
+    assert_eq!(state.active_count(), 0);
     assert_eq!(
         crate::project::project_mutation_generation("paper".into()).unwrap(),
         before_recovery + 1
     );
 
     fs::write(project.join("main.tex"), "reviewed manuscript").unwrap();
-    state.recover(&app_state).await.unwrap();
+    recover(&state, &app_state).await.unwrap();
 
     assert!(store.pending_applies().unwrap().is_empty());
     assert!(!journal.exists());
@@ -315,7 +327,7 @@ async fn a_pending_apply_for_a_deleted_project_no_longer_blocks_every_other_reco
     assert_eq!(claimed.status, ResearchTaskStatus::Running);
     fs::remove_dir_all(&paper).unwrap();
 
-    let error = state.recover(&app_state).await.unwrap_err();
+    let error = recover(&state, &app_state).await.unwrap_err();
 
     assert!(error.contains(&stranded.id));
     assert!(store.pending_applies().unwrap().is_empty());
@@ -370,8 +382,7 @@ async fn recovery_keeps_a_run_owned_by_a_live_process_until_that_process_exits()
         )
         .unwrap();
 
-    state
-        .recover(&crate::state::AppState::default())
+    recover(&state, &crate::state::AppState::default())
         .await
         .unwrap();
     assert_eq!(
@@ -380,12 +391,52 @@ async fn recovery_keeps_a_run_owned_by_a_live_process_until_that_process_exits()
     );
 
     owner.kill().await.unwrap();
-    state
-        .recover(&crate::state::AppState::default())
+    recover(&state, &crate::state::AppState::default())
         .await
         .unwrap();
     assert_eq!(
         store.require(&task.id).unwrap().status,
         ResearchTaskStatus::Failed
     );
+}
+
+// Discard changes after an apply that found the project changed cancels
+// the task: the failed apply left no journal, so its mark was cleared.
+#[tokio::test]
+async fn a_task_whose_apply_found_the_project_changed_can_still_be_cancelled() {
+    let data = DataRoot::new();
+    let project = data.project("paper");
+    let state = data.state(1);
+    let task = pending_review(&state, &project).await;
+    let store = state.store().unwrap();
+    // The user edited the manuscript after the task started.
+    fs::write(
+        project.join("main.tex"),
+        "an edit saved after the task started",
+    )
+    .unwrap();
+    let error = apply::apply_review(
+        &store,
+        &task,
+        &project,
+        &["main.tex".into(), "notes.md".into()],
+    )
+    .unwrap_err();
+    assert!(error.contains("changed after this task started"), "{error}");
+    assert!(!apply::has_recovery_journal(&store, &task).unwrap());
+    store.clear_apply(&task.id, Some(&error)).unwrap();
+    let retained = store.require(&task.id).unwrap();
+    assert_eq!(retained.status, ResearchTaskStatus::AwaitingReview);
+    assert!(retained
+        .error
+        .as_deref()
+        .is_some_and(|error| error.contains("changed after this task started")));
+
+    let cancelled = state.cancel(task.id.clone()).await.unwrap();
+    assert_eq!(cancelled.status, ResearchTaskStatus::Cancelled);
+    assert_eq!(
+        store.require(&task.id).unwrap().status,
+        ResearchTaskStatus::Cancelled
+    );
+    stop(&state).await;
 }

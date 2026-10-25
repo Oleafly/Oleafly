@@ -1,0 +1,946 @@
+[
+  {
+    "name": "phone-0",
+    "fn": "extractPhoneNumber",
+    "args": [
+      "Call +1 (555) 123-4567 today"
+    ]
+  },
+  {
+    "name": "phone-1",
+    "fn": "extractPhoneNumber",
+    "args": [
+      "tel: 555 123 4567 ext. 12"
+    ]
+  },
+  {
+    "name": "phone-2",
+    "fn": "extractPhoneNumber",
+    "args": [
+      "+44 20 7946 0958"
+    ]
+  },
+  {
+    "name": "phone-3",
+    "fn": "extractPhoneNumber",
+    "args": [
+      "5551234567"
+    ]
+  },
+  {
+    "name": "phone-4",
+    "fn": "extractPhoneNumber",
+    "args": [
+      "2019 - 2023"
+    ]
+  },
+  {
+    "name": "phone-5",
+    "fn": "extractPhoneNumber",
+    "args": [
+      "2019–2023"
+    ]
+  },
+  {
+    "name": "phone-6",
+    "fn": "extractPhoneNumber",
+    "args": [
+      "12/05/2020"
+    ]
+  },
+  {
+    "name": "phone-7",
+    "fn": "extractPhoneNumber",
+    "args": [
+      "3.9 / 4.0"
+    ]
+  },
+  {
+    "name": "phone-8",
+    "fn": "extractPhoneNumber",
+    "args": [
+      "1111111111"
+    ]
+  },
+  {
+    "name": "phone-9",
+    "fn": "extractPhoneNumber",
+    "args": [
+      "(555 123-4567"
+    ]
+  },
+  {
+    "name": "phone-10",
+    "fn": "extractPhoneNumber",
+    "args": [
+      "ISBN 978-3-16-148410-0"
+    ]
+  },
+  {
+    "name": "phone-11",
+    "fn": "extractPhoneNumber",
+    "args": [
+      "phone: 555.123.4567x89"
+    ]
+  },
+  {
+    "name": "phone-12",
+    "fn": "extractPhoneNumber",
+    "args": [
+      "１２３４５６７８９０"
+    ]
+  },
+  {
+    "name": "phone-13",
+    "fn": "extractPhoneNumber",
+    "args": [
+      "a5551234567"
+    ]
+  },
+  {
+    "name": "contact-0",
+    "fn": "containsContactToken",
+    "args": [
+      "ana@example.com"
+    ]
+  },
+  {
+    "name": "contact-1",
+    "fn": "containsContactToken",
+    "args": [
+      "\\href{mailto:x}{Mail}"
+    ]
+  },
+  {
+    "name": "contact-2",
+    "fn": "containsContactToken",
+    "args": [
+      "Experience"
+    ]
+  },
+  {
+    "name": "contact-3",
+    "fn": "containsContactToken",
+    "args": [
+      "+1 555 123 4567"
+    ]
+  },
+  {
+    "name": "contact-4",
+    "fn": "containsContactToken",
+    "args": [
+      "MAILTO :x"
+    ]
+  },
+  {
+    "name": "email-0",
+    "fn": "extractEmail",
+    "args": [
+      "x ana.b+1@ex-ample.co.uk y"
+    ]
+  },
+  {
+    "name": "email-1",
+    "fn": "extractEmail",
+    "args": [
+      "no email"
+    ]
+  },
+  {
+    "name": "email-2",
+    "fn": "extractEmail",
+    "args": [
+      "a@b"
+    ]
+  },
+  {
+    "name": "email-3",
+    "fn": "extractEmail",
+    "args": [
+      "first@x.io second@y.io"
+    ]
+  },
+  {
+    "name": "resume-heading-0",
+    "fn": "matchResumeSectionHeading",
+    "args": [
+      "Experience"
+    ]
+  },
+  {
+    "name": "resume-heading-1",
+    "fn": "matchResumeSectionHeading",
+    "args": [
+      "WORK-EXPERIENCE"
+    ]
+  },
+  {
+    "name": "resume-heading-2",
+    "fn": "matchResumeSectionHeading",
+    "args": [
+      "GitHub Projects"
+    ]
+  },
+  {
+    "name": "resume-heading-3",
+    "fn": "matchResumeSectionHeading",
+    "args": [
+      "Projects I built at GitHub"
+    ]
+  },
+  {
+    "name": "resume-heading-4",
+    "fn": "matchResumeSectionHeading",
+    "args": [
+      "  "
+    ]
+  },
+  {
+    "name": "resume-heading-5",
+    "fn": "matchResumeSectionHeading",
+    "args": [
+      "Honours"
+    ]
+  },
+  {
+    "name": "resume-heading-6",
+    "fn": "matchResumeSectionHeading",
+    "args": [
+      "Relevant Coursework"
+    ]
+  },
+  {
+    "name": "resume-heading-7",
+    "fn": "matchResumeSectionHeading",
+    "args": [
+      "Ｅｄｕｃａｔｉｏｎ"
+    ]
+  },
+  {
+    "name": "resume-heading-8",
+    "fn": "matchResumeSectionHeading",
+    "args": [
+      "Summary:"
+    ]
+  },
+  {
+    "name": "resume-source-0",
+    "fn": "looksLikeResumeSource",
+    "args": [
+      "\\documentclass{deedy-resume-openfont}"
+    ]
+  },
+  {
+    "name": "resume-source-1",
+    "fn": "looksLikeResumeSource",
+    "args": [
+      "\\documentclass[11pt]{moderncv}"
+    ]
+  },
+  {
+    "name": "resume-source-2",
+    "fn": "looksLikeResumeSource",
+    "args": [
+      "\\documentclass{article}\n\\section{Experience}\n\\section{Education}"
+    ]
+  },
+  {
+    "name": "resume-source-3",
+    "fn": "looksLikeResumeSource",
+    "args": [
+      "\\documentclass{article}\n\\section{Introduction}"
+    ]
+  },
+  {
+    "name": "resume-source-4",
+    "fn": "looksLikeResumeSource",
+    "args": [
+      "\\section{Experience}\n\\section{Experience}"
+    ]
+  },
+  {
+    "name": "profile-0",
+    "fn": "detectSubmissionProfile",
+    "args": [
+      "\\documentclass[conference]{IEEEtran}"
+    ]
+  },
+  {
+    "name": "profile-1",
+    "fn": "detectSubmissionProfile",
+    "args": [
+      "\\documentclass{acmart}"
+    ]
+  },
+  {
+    "name": "profile-2",
+    "fn": "detectSubmissionProfile",
+    "args": [
+      "\\documentclass{memoir}"
+    ]
+  },
+  {
+    "name": "profile-3",
+    "fn": "detectSubmissionProfile",
+    "args": [
+      "\\documentclass{book}"
+    ]
+  },
+  {
+    "name": "profile-4",
+    "fn": "detectSubmissionProfile",
+    "args": [
+      "\\documentclass{article}"
+    ]
+  },
+  {
+    "name": "profile-5",
+    "fn": "detectSubmissionProfile",
+    "args": [
+      "#import \"@preview/charged-ieee:0.1.0\": ieee"
+    ]
+  },
+  {
+    "name": "profile-6",
+    "fn": "detectSubmissionProfile",
+    "args": [
+      "#import \"@preview/clean-acmart:0.0.1\": acmart"
+    ]
+  },
+  {
+    "name": "profile-7",
+    "fn": "detectSubmissionProfile",
+    "args": [
+      "#import \"@preview/modern-thesis:1.0.0\": thesis"
+    ]
+  },
+  {
+    "name": "profile-8",
+    "fn": "detectSubmissionProfile",
+    "args": [
+      "  #import \"@local/my-dissertation:0.1.0\": *"
+    ]
+  },
+  {
+    "name": "profile-9",
+    "fn": "detectSubmissionProfile",
+    "args": [
+      "plain text"
+    ]
+  },
+  {
+    "name": "document-class-0",
+    "fn": "extractDocumentClass",
+    "args": [
+      "\\documentclass [a4paper] { article }"
+    ]
+  },
+  {
+    "name": "document-class-1",
+    "fn": "extractDocumentClass",
+    "args": [
+      "\\documentclass[x{y}"
+    ]
+  },
+  {
+    "name": "document-class-2",
+    "fn": "extractDocumentClass",
+    "args": [
+      "\\documentclass{  }"
+    ]
+  },
+  {
+    "name": "document-class-3",
+    "fn": "extractDocumentClass",
+    "args": [
+      "\\documentclass\n{report}"
+    ]
+  },
+  {
+    "name": "document-class-4",
+    "fn": "extractDocumentClass",
+    "args": [
+      "% \\documentclass{a}\n\\documentclass{b}"
+    ]
+  },
+  {
+    "name": "document-class-5",
+    "fn": "extractDocumentClass",
+    "args": [
+      "\\documentclassx{a}"
+    ]
+  },
+  {
+    "name": "typst-templates",
+    "fn": "extractTypstTemplates",
+    "args": [
+      "#import \"@preview/a-b:1.0.0\": x\n  #import \"@local/c:0.1.0\": *\n#import \"local.typ\": y\nx #import \"@preview/d:1\": z"
+    ]
+  },
+  {
+    "name": "mask-comments-0",
+    "fn": "maskComments",
+    "args": [
+      "a % b\nc"
+    ]
+  },
+  {
+    "name": "mask-comments-1",
+    "fn": "maskComments",
+    "args": [
+      "50\\% off % note"
+    ]
+  },
+  {
+    "name": "mask-comments-2",
+    "fn": "maskComments",
+    "args": [
+      "x\\\\% c"
+    ]
+  },
+  {
+    "name": "mask-comments-3",
+    "fn": "maskComments",
+    "args": [
+      "a %😀\nb"
+    ]
+  },
+  {
+    "name": "mask-comments-4",
+    "fn": "maskComments",
+    "args": [
+      "%full line\n  %indented"
+    ]
+  },
+  {
+    "name": "tagged-pdf-0",
+    "fn": "requestsTaggedPdf",
+    "args": [
+      "\\DocumentMetadata{pdfstandard=ua-1}"
+    ]
+  },
+  {
+    "name": "tagged-pdf-1",
+    "fn": "requestsTaggedPdf",
+    "args": [
+      "\\DocumentMetadata{testphase=latest}"
+    ]
+  },
+  {
+    "name": "tagged-pdf-2",
+    "fn": "requestsTaggedPdf",
+    "args": [
+      "\\DocumentMetadata{tagging=off,testphase=latest}"
+    ]
+  },
+  {
+    "name": "tagged-pdf-3",
+    "fn": "requestsTaggedPdf",
+    "args": [
+      "% \\DocumentMetadata{testphase=latest}"
+    ]
+  },
+  {
+    "name": "tagged-pdf-4",
+    "fn": "requestsTaggedPdf",
+    "args": [
+      "\\DocumentMetadata{pdfstandard={A-2b}}"
+    ]
+  },
+  {
+    "name": "tagged-pdf-5",
+    "fn": "requestsTaggedPdf",
+    "args": [
+      "\\DocumentMetadata{tagging={on}}"
+    ]
+  },
+  {
+    "name": "declarations-0",
+    "fn": "bibliographyDeclarations",
+    "args": [
+      "\\bibliography{a, b,https://x}"
+    ]
+  },
+  {
+    "name": "declarations-1",
+    "fn": "bibliographyDeclarations",
+    "args": [
+      "\\addbibresource[label=x]{refs.bib}"
+    ]
+  },
+  {
+    "name": "declarations-2",
+    "fn": "bibliographyDeclarations",
+    "args": [
+      "\\bibliography*{\"quoted\"}"
+    ]
+  },
+  {
+    "name": "declarations-3",
+    "fn": "bibliographyDeclarations",
+    "args": [
+      "x \\bibliography {refs} y \\addbibresource{other.bib}"
+    ]
+  },
+  {
+    "name": "declarations-4",
+    "fn": "bibliographyDeclarations",
+    "args": [
+      "😀 \\bibliography{refs}"
+    ]
+  },
+  {
+    "name": "candidates-0",
+    "fn": "bibliographyCandidatePaths",
+    "args": [
+      "refs",
+      "chapters/a.tex",
+      "latex"
+    ]
+  },
+  {
+    "name": "candidates-1",
+    "fn": "bibliographyCandidatePaths",
+    "args": [
+      "refs.bib",
+      "",
+      "biblatex"
+    ]
+  },
+  {
+    "name": "candidates-2",
+    "fn": "bibliographyCandidatePaths",
+    "args": [
+      "refs",
+      "",
+      "biblatex"
+    ]
+  },
+  {
+    "name": "candidates-3",
+    "fn": "bibliographyCandidatePaths",
+    "args": [
+      "./refs",
+      "a/b.tex",
+      "typst"
+    ]
+  },
+  {
+    "name": "candidates-4",
+    "fn": "bibliographyCandidatePaths",
+    "args": [
+      "refs.yml",
+      "a/b.typ",
+      "typst"
+    ]
+  },
+  {
+    "name": "candidates-5",
+    "fn": "bibliographyCandidatePaths",
+    "args": [
+      "refs.json",
+      "",
+      "markdown"
+    ]
+  },
+  {
+    "name": "candidates-6",
+    "fn": "bibliographyCandidatePaths",
+    "args": [
+      "../x",
+      "",
+      "latex"
+    ]
+  },
+  {
+    "name": "candidates-7",
+    "fn": "bibliographyCandidatePaths",
+    "args": [
+      "../shared/refs",
+      "chapters/a.tex",
+      "latex"
+    ]
+  },
+  {
+    "name": "candidates-8",
+    "fn": "bibliographyCandidatePaths",
+    "args": [
+      "/abs.bib",
+      "",
+      "latex"
+    ]
+  },
+  {
+    "name": "candidates-9",
+    "fn": "bibliographyCandidatePaths",
+    "args": [
+      "C:/x.bib",
+      "",
+      "latex"
+    ]
+  },
+  {
+    "name": "candidates-10",
+    "fn": "bibliographyCandidatePaths",
+    "args": [
+      "https://x/refs.bib",
+      "",
+      "latex"
+    ]
+  },
+  {
+    "name": "candidates-11",
+    "fn": "bibliographyCandidatePaths",
+    "args": [
+      "#refs",
+      "",
+      "latex"
+    ]
+  },
+  {
+    "name": "candidates-12",
+    "fn": "bibliographyCandidatePaths",
+    "args": [
+      "'quoted'",
+      "",
+      "latex"
+    ]
+  },
+  {
+    "name": "resolve-0",
+    "fn": "resolveBibliographyPath",
+    "args": [
+      "refs",
+      "main.tex",
+      [
+        "refs.bib"
+      ],
+      "latex"
+    ]
+  },
+  {
+    "name": "resolve-1",
+    "fn": "resolveBibliographyPath",
+    "args": [
+      "Refs",
+      "main.tex",
+      [
+        "refs.bib",
+        "REFS.BIB"
+      ],
+      "latex"
+    ]
+  },
+  {
+    "name": "resolve-2",
+    "fn": "resolveBibliographyPath",
+    "args": [
+      "refs",
+      "ch/a.tex",
+      [
+        "ch/refs.bib"
+      ],
+      "latex"
+    ]
+  },
+  {
+    "name": "resolve-3",
+    "fn": "resolveBibliographyPath",
+    "args": [
+      "refs",
+      "main.tex",
+      [
+        "refs"
+      ],
+      "biblatex"
+    ]
+  },
+  {
+    "name": "resolve-4",
+    "fn": "resolveBibliographyPath",
+    "args": [
+      "missing",
+      "main.tex",
+      [
+        "refs.bib"
+      ],
+      "latex"
+    ]
+  },
+  {
+    "name": "display-name-0",
+    "fn": "bibliographyDisplayName",
+    "args": [
+      "refs",
+      "latex"
+    ]
+  },
+  {
+    "name": "display-name-1",
+    "fn": "bibliographyDisplayName",
+    "args": [
+      "refs.bib",
+      "latex"
+    ]
+  },
+  {
+    "name": "display-name-2",
+    "fn": "bibliographyDisplayName",
+    "args": [
+      "refs",
+      "biblatex"
+    ]
+  },
+  {
+    "name": "display-name-3",
+    "fn": "bibliographyDisplayName",
+    "args": [
+      " \"x\" ",
+      "latex"
+    ]
+  },
+  {
+    "name": "parse-entry-0",
+    "fn": "parseEntry",
+    "args": [
+      "@Article{key,\n title = {A {B} c},\n year = 2020,\n note = \"x\"}"
+    ]
+  },
+  {
+    "name": "parse-entry-1",
+    "fn": "parseEntry",
+    "args": [
+      "@book(key2, title={x})"
+    ]
+  },
+  {
+    "name": "parse-entry-2",
+    "fn": "parseEntry",
+    "args": [
+      "  @misc{k,\n  url={u}, doi = {10.1/x},}  "
+    ]
+  },
+  {
+    "name": "parse-entry-3",
+    "fn": "parseEntry",
+    "args": [
+      "@misc{k}"
+    ]
+  },
+  {
+    "name": "parse-entry-4",
+    "fn": "parseEntry",
+    "args": [
+      "@inproceedings{a:b-c, booktitle={Proc}, author={A and B}, Title={T}}"
+    ]
+  },
+  {
+    "name": "parse-entry-5",
+    "fn": "parseEntry",
+    "args": [
+      "@article{open, title = {never closed"
+    ]
+  },
+  {
+    "name": "parse-entry-6",
+    "fn": "parseEntry",
+    "args": [
+      "not an entry"
+    ]
+  },
+  {
+    "name": "parse-entry-7",
+    "fn": "parseEntry",
+    "args": [
+      "@misc{k, note={a}, note={b}}"
+    ]
+  },
+  {
+    "name": "hayagriva-keys-0",
+    "fn": "hayagrivaKeys",
+    "args": [
+      "---\n# c\nsmith2020:\n  type: article\n  title: X\n\"quoted key\": { type: book }\n"
+    ]
+  },
+  {
+    "name": "hayagriva-keys-1",
+    "fn": "hayagrivaKeys",
+    "args": [
+      "a:\n  title: T\nb: {title: U}\n...\n"
+    ]
+  },
+  {
+    "name": "hayagriva-keys-2",
+    "fn": "hayagrivaKeys",
+    "args": [
+      "'single quoted':\n  type: misc\nplain-key : \n  title: x\n"
+    ]
+  },
+  {
+    "name": "looks-like-hayagriva-0",
+    "fn": "looksLikeHayagriva",
+    "args": [
+      "smith:\n  type: article\n  title: X\n"
+    ]
+  },
+  {
+    "name": "looks-like-hayagriva-1",
+    "fn": "looksLikeHayagriva",
+    "args": [
+      "smith: { type: article }\n"
+    ]
+  },
+  {
+    "name": "looks-like-hayagriva-2",
+    "fn": "looksLikeHayagriva",
+    "args": [
+      "name: app\nversion: 2\n"
+    ]
+  },
+  {
+    "name": "looks-like-hayagriva-3",
+    "fn": "looksLikeHayagriva",
+    "args": [
+      "---\n%YAML 1.2\nx:\n  author: A\n"
+    ]
+  },
+  {
+    "name": "looks-like-hayagriva-4",
+    "fn": "looksLikeHayagriva",
+    "args": [
+      "  indented:\n    type: misc\n"
+    ]
+  },
+  {
+    "name": "typst-version-0",
+    "fn": "typstVersionAtLeast",
+    "args": [
+      "0.14.0",
+      [
+        0,
+        14,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "typst-version-1",
+    "fn": "typstVersionAtLeast",
+    "args": [
+      "v0.13.1",
+      [
+        0,
+        14,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "typst-version-2",
+    "fn": "typstVersionAtLeast",
+    "args": [
+      null,
+      [
+        0,
+        14,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "typst-version-3",
+    "fn": "typstVersionAtLeast",
+    "args": [
+      "nightly",
+      [
+        0,
+        14,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "typst-version-4",
+    "fn": "typstVersionAtLeast",
+    "args": [
+      "0.14",
+      [
+        0,
+        14,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "typst-version-5",
+    "fn": "typstVersionAtLeast",
+    "args": [
+      "1.0.0-rc.1",
+      [
+        0,
+        14,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "typst-version-6",
+    "fn": "typstVersionAtLeast",
+    "args": [
+      "0.15.1",
+      [
+        0,
+        14,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "typst-path-0",
+    "fn": "resolveTypstPath",
+    "args": [
+      "ch/a.typ",
+      "../img/x.png"
+    ]
+  },
+  {
+    "name": "typst-path-1",
+    "fn": "resolveTypstPath",
+    "args": [
+      "ch/a.typ",
+      "/x.png"
+    ]
+  },
+  {
+    "name": "typst-path-2",
+    "fn": "resolveTypstPath",
+    "args": [
+      null,
+      "@preview/x:1.0.0"
+    ]
+  },
+  {
+    "name": "typst-path-3",
+    "fn": "resolveTypstPath",
+    "args": [
+      null,
+      "../x"
+    ]
+  },
+  {
+    "name": "typst-path-4",
+    "fn": "resolveTypstPath",
+    "args": [
+      "a.typ",
+      "https://x/y.png"
+    ]
+  },
+  {
+    "name": "typst-path-5",
+    "fn": "resolveTypstPath",
+    "args": [
+      "a/b/c.typ",
+      "./d\\e.png"
+    ]
+  }
+]

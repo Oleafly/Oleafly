@@ -281,6 +281,98 @@ describe("terminals store", () => {
     expect(useTerminalsStore.getState()).toBe(before);
   });
 
+  it("adds a launched terminal with its title, folder, env and command without saving the title", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    const tab = store.addTerminal({
+      title: "Install Cua Driver",
+      cwd: "tools",
+      env: { A: "1" },
+      launch: { command: "sh", args: ["-c", "echo"] },
+    });
+
+    expect(tab).toMatchObject({
+      index: 2,
+      title: "Install Cua Driver",
+      cwd: "tools",
+      env: { A: "1" },
+      launch: { command: "sh", args: ["-c", "echo"] },
+      autoStart: true,
+      bell: false,
+      oscTitle: null,
+    });
+    expect(useTerminalsStore.getState().activeId).toBe(tab?.id);
+    expect(localStorage.getItem(terminalTitlesKey("project-1"))).toBeNull();
+    expect(store.addTerminal({ title: "   " })?.title).toBe("Terminal 3");
+  });
+
+  it("marks and clears the bell without touching state twice", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    const id = useTerminalsStore.getState().tabs[0].id;
+
+    store.markTerminalBell(id);
+    const rung = useTerminalsStore.getState();
+    expect(rung.tabs[0].bell).toBe(true);
+    store.markTerminalBell(id);
+    expect(useTerminalsStore.getState()).toBe(rung);
+
+    store.clearTerminalBell(id);
+    const cleared = useTerminalsStore.getState();
+    expect(cleared.tabs[0].bell).toBe(false);
+    store.clearTerminalBell(id);
+    store.markTerminalBell("missing");
+    expect(useTerminalsStore.getState()).toBe(cleared);
+  });
+
+  it("keeps the program's title", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    const id = useTerminalsStore.getState().tabs[0].id;
+
+    store.setTerminalOscTitle(id, "vim main.tex");
+    const titled = useTerminalsStore.getState();
+    expect(titled.tabs[0]).toMatchObject({ oscTitle: "vim main.tex", title: "Terminal 1" });
+    store.setTerminalOscTitle(id, "vim main.tex");
+    expect(useTerminalsStore.getState()).toBe(titled);
+    expect(localStorage.getItem(terminalTitlesKey("project-1"))).toBeNull();
+  });
+
+  it("forgets the program's title when it sets a blank one", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    const id = useTerminalsStore.getState().tabs[0].id;
+
+    store.setTerminalOscTitle(id, "vim main.tex");
+    store.setTerminalOscTitle(id, "");
+    expect(useTerminalsStore.getState().tabs[0].oscTitle).toBeNull();
+    store.setTerminalOscTitle(id, "vim main.tex");
+    store.setTerminalOscTitle(id, "   ");
+    expect(useTerminalsStore.getState().tabs[0].oscTitle).toBeNull();
+  });
+
+  it("activates the next and previous terminal, wrapping", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    const first = useTerminalsStore.getState().tabs[0];
+    const second = store.addTerminal();
+    const third = store.addTerminal();
+    if (!second || !third) throw new Error("expected three terminals");
+
+    store.activateRelativeTerminal(1);
+    expect(useTerminalsStore.getState().activeId).toBe(first.id);
+    store.activateRelativeTerminal(1);
+    expect(useTerminalsStore.getState().activeId).toBe(second.id);
+    store.activateRelativeTerminal(-1);
+    store.activateRelativeTerminal(-1);
+    expect(useTerminalsStore.getState().activeId).toBe(third.id);
+
+    store.closeOtherTerminals(third.id);
+    const alone = useTerminalsStore.getState();
+    store.activateRelativeTerminal(1);
+    expect(useTerminalsStore.getState()).toBe(alone);
+  });
+
   it("ignores stored titles that are not a map of slots", () => {
     localStorage.setItem(terminalTitlesKey("project-1"), JSON.stringify(["Build"]));
 

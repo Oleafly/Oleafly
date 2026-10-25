@@ -85,6 +85,10 @@ jobs:
     name: Frontend (typecheck + build)
     runs-on: ubuntu-22.04
     timeout-minutes: 40
+    env:
+      # The 0.4.8 vite build peaks near Node's default 4 GB heap (same
+      # setting as release.yml).
+      NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: actions/checkout@v7
 
@@ -187,6 +191,10 @@ jobs:
     name: Frontend (Windows)
     runs-on: windows-2022
     timeout-minutes: 45
+    env:
+      # The 0.4.8 vite build peaks near Node's default 4 GB heap (same
+      # setting as release.yml).
+      NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -354,8 +362,37 @@ jobs:
         with:
           toolchain: 1.87.0
 
-      - name: Check core and CLI against the Rust 1.87 MSRV
-        run: cargo +1.87.0 check -p oleafly-core -p oleafly-cli --all-targets
+      - name: Check the shared crates against the Rust 1.87 MSRV
+        run: >-
+          cargo +1.87.0 check --all-targets
+          -p oleafly-core -p oleafly-secrets -p oleafly-doctools
+          -p oleafly-downloads -p oleafly-sandbox -p oleafly-forge
+          -p oleafly-agent
+
+      # Preflight and research read PDFs with lopdf 0.42 (research through
+      # pdf-extract), which uses let chains, so they need Rust 1.88 although
+      # lopdf declares 1.85. The ACP client needs 1.88 for the official ACP SDK
+      # and schema crates. Lint builds on 1.88 without its proofread feature;
+      # harper-core's dependencies need 1.90.
+      - name: Install the PDF crates' minimum supported Rust toolchain
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
+        with:
+          toolchain: 1.88.0
+
+      - name: Check the PDF crates, the ACP client and lint against their Rust 1.88 MSRV
+        run: |
+          cargo +1.88.0 check -p oleafly-preflight -p oleafly-research -p oleafly-acp --all-targets
+          cargo +1.88.0 check -p oleafly-lint --no-default-features --all-targets
+
+      # The CLI links the collaboration client, and online import decrypts
+      # browser cookies with aes 0.9. Both need Rust 1.89.
+      - name: Install the CLI's minimum supported Rust toolchain
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
+        with:
+          toolchain: 1.89.0
+
+      - name: Check the CLI and online import against their Rust 1.89 MSRV
+        run: cargo +1.89.0 check -p oleafly-cli -p oleafly-online --all-targets
 
   rust-windows:
     name: Rust checks (Windows)
@@ -482,7 +519,9 @@ jobs:
     name: E2E app build (macOS)
     needs: [frontend, rust]
     runs-on: macos-15
-    timeout-minutes: 40
+    # About 30 minutes with a warm cache, before the shared crates' macOS tests
+    # and clippy were added below.
+    timeout-minutes: 55
     env:
       # The vite build graph exceeds Node's default ~4GB heap on the 7GB
       # macOS arm64 runners (same setting as release.yml).
@@ -581,12 +620,24 @@ jobs:
         run: node scripts/fetch-language-servers.mjs --server tinymist --target aarch64-apple-darwin --install-mode resource
 
       # Third-platform coverage for the shared crates, moved here from the
-      # shard jobs so shards stay pure test runners.
+      # shard jobs so shards stay pure test runners. The sandbox, secrets,
+      # online, research and ACP crates have macOS-only code (the Seatbelt
+      # profile, the keychain, browser cookies, process isolation) that the
+      # Linux and Windows jobs never compile, so this is the only job that
+      # tests and lints it. Keep the clippy list in step with the crates in
+      # scripts/run-macos-shared-rust-tests.sh.
       - name: Test the macOS Rust retry guard
         run: bash scripts/run-macos-shared-rust-tests.test.sh
 
-      - name: Run shared core and oleaflyc tests
+      - name: Run the shared crates' tests
         run: bash scripts/run-macos-shared-rust-tests.sh
+
+      - name: Lint the shared crates' macOS code
+        run: >-
+          cargo clippy --all-targets
+          -p oleafly-core -p oleafly-cli -p oleafly-sandbox -p oleafly-secrets
+          -p oleafly-online -p oleafly-research -p oleafly-acp
+          -- -D warnings
 
       - name: Build the packaged e2e app
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
@@ -623,6 +674,10 @@ jobs:
     needs: [frontend, rust]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
+    env:
+      # The vite build peaks near Node's default ~4GB heap and ran out of it
+      # here (same setting as the frontend jobs and release.yml).
+      NODE_OPTIONS: --max-old-space-size=6144
     outputs:
       collab: ${{ steps.collab-changes.outputs.run }}
     steps:
@@ -1239,6 +1294,10 @@ jobs:
     needs: [frontend, rust]
     runs-on: windows-2022
     timeout-minutes: 45
+    env:
+      # The vite build peaks near Node's default ~4GB heap (the Linux build
+      # ran out of it; same setting as the frontend jobs and release.yml).
+      NODE_OPTIONS: --max-old-space-size=6144
     outputs:
       installers: ${{ steps.installer-changes.outputs.run }}
     steps:

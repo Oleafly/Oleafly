@@ -1,0 +1,35 @@
+{
+  "missing_files": [
+    {
+      "file": "main.tex",
+      "kind": "figure",
+      "line": 20,
+      "target": "fig/missing"
+    }
+  ],
+  "packages": [
+    {
+      "file": "main.tex",
+      "line": 2,
+      "name": "inputenc"
+    },
+    {
+      "file": "main.tex",
+      "line": 3,
+      "name": "graphicx"
+    },
+    {
+      "file": "main.tex",
+      "line": 3,
+      "name": "hyperref"
+    }
+  ],
+  "roles": {
+    "main.tex": "main",
+    "refs.bib": "bibliography"
+  },
+  "unused_cites": [
+    "unused2020"
+  ],
+  "unused_labels": []
+}

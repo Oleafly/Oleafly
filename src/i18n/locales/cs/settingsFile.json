@@ -48,7 +48,6 @@
     "hexColor": "musí být barva, například #2563eb",
     "hexColorOrEmpty": "musí být barva, například #2563eb, nebo \"\" pro barvu motivu",
     "text": "musí být text (maximální délka: {{max}})",
-    "webAddress": "musí být webová adresa, která začíná http:// nebo https://",
     "list": "musí být seznam (maximální počet položek: {{max}})",
     "listItem": "není povolená položka",
     "duplicate": "se opakuje",

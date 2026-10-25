@@ -10,7 +10,6 @@ type ActionName =
   | "archive-chat"
   | "attach-files"
   | "fork-chat"
-  | "open-browser"
   | "open-goal"
   | "open-mcp"
   | "open-model"
@@ -22,7 +21,6 @@ function actionLayer(calls: ActionName[]): ComposerCommandActions {
     archiveChat: () => calls.push("archive-chat"),
     attachFiles: () => calls.push("attach-files"),
     forkChat: () => calls.push("fork-chat"),
-    openBrowser: () => calls.push("open-browser"),
     openGoalEditor: () => calls.push("open-goal"),
     openMcpSettings: () => calls.push("open-mcp"),
     openModelPicker: () => calls.push("open-model"),
@@ -60,7 +58,7 @@ describe("composer command registry", () => {
     actions.togglePlanMode = undefined;
 
     expect(createSlashCommands(actions).map((command) => command.id)).toEqual(["mcp"]);
-    expect(createAttachCommands(actions).map((command) => command.id)).toEqual(["browser"]);
+    expect(createAttachCommands(actions).map((command) => command.id)).toEqual([]);
   });
 
   it("offers one insert command per skill, searchable by id", () => {
@@ -91,7 +89,6 @@ describe("composer command registry", () => {
 
   it.each([
     ["files", "attach-files"],
-    ["browser", "open-browser"],
     ["goal", "open-goal"],
     ["plan-mode", "toggle-plan"],
     ["record-skill", "record-skill"],

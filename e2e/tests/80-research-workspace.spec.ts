@@ -10,6 +10,7 @@ import {
   listProjectEntries,
   openGallery,
   openRailTab,
+  openSettings,
   setNextImportPaths,
   waitLong,
   type Page,
@@ -44,7 +45,50 @@ async function connectAgent(page: Page) {
     `window.__aiConnect?.("ollama", ${JSON.stringify(server.url)}, "llama3.2") ?? false`,
   );
   expect(connected, "the provider connection fixture must be available").toBe(true);
+  // 0.4.8: research tasks are experimental and off by default.
+  const enabled = await page.evaluate<boolean>(`window.__researchTasksSet?.(true) ?? false`);
+  expect(enabled, "the research tasks fixture must be available").toBe(true);
 }
+
+/** Opens the sidebar if it is collapsed; the rail with its tabs is inside it. */
+async function showSidebar(page: Page) {
+  await page.evaluate(
+    `(() => { const show = document.querySelector('[aria-label^="Show sidebar"]'); if (show) show.click(); })()`,
+  );
+}
+
+test("research tasks stay off until the Experimentation switch is turned on", async ({ tauriPage }) => {
+  test.setTimeout(90_000);
+  const run = Date.now().toString(36);
+  // A spec that ran earlier in this data dir may have turned tasks on.
+  const reset = await tauriPage.evaluate<boolean>(`window.__researchTasksSet?.(false) ?? false`);
+  expect(reset, "the research tasks fixture must be available").toBe(true);
+  await createBlankProject(tauriPage, `Research switch ${run}`);
+  // The rail lives in the sidebar, which a fresh project may open collapsed:
+  // show it and check the Files tab is there before reading the Research tab.
+  await showSidebar(tauriPage);
+  await expect(tauriPage.locator('[data-tour="rail-files"]')).toHaveCount(1, { timeout: 10_000 });
+  // No Research tab in the rail, no Research section in Settings.
+  await expect(tauriPage.locator('[data-tour="rail-research"]')).toHaveCount(0);
+  await openSettings(tauriPage, "experimentation");
+  await expect(tauriPage.locator('[data-testid="settings-section-research"]')).toHaveCount(0);
+  const toggle = tauriPage.getByTestId("settings-research-tasks");
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await expect(toggle).toContainText("Highly unstable");
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+  await expect(tauriPage.locator('[data-testid="settings-section-research"]')).toHaveCount(1, { timeout: 10_000 });
+  await tauriPage.click('[data-testid="settings-close"]');
+
+  await showSidebar(tauriPage);
+  await expect(tauriPage.locator('[data-tour="rail-files"]')).toHaveCount(1, { timeout: 10_000 });
+  await expect(tauriPage.locator('[data-tour="rail-research"]')).toHaveCount(1, { timeout: 10_000 });
+  await openRailTab(tauriPage, "Research workspace");
+  const panel = tauriPage.getByTestId("research-workspace-panel");
+  await expect(panel).toBeVisible({ timeout: 20_000 });
+  await expect(panel.getByText("New task", { exact: true })).toBeVisible({ timeout: 20_000 });
+});
 
 async function activeProjectId(page: Page) {
   const projectId = await page.evaluate<string>(
@@ -108,6 +152,8 @@ test("a research task runs in Rust, reaches review, and records the same native 
     nativeSessionId: string | null;
     resultSessionId: string | null;
     status: string;
+    recordDir: string;
+    changedPaths: string[];
   }>(
     `import("/src/lib/research-tasks.ts").then(async ({ listResearchTasks }) => {
       const tasks = await listResearchTasks(${JSON.stringify(projectId)});
@@ -117,6 +163,8 @@ test("a research task runs in Rust, reaches review, and records the same native 
         nativeSessionId: task.nativeSessionId,
         resultSessionId: task.result?.nativeSessionId ?? null,
         status: task.status,
+        recordDir: task.recordDir,
+        changedPaths: (task.result?.changedFiles ?? []).map((change) => change.path),
       };
     })`,
   );
@@ -124,9 +172,13 @@ test("a research task runs in Rust, reaches review, and records the same native 
   expect(task.nativeSessionId).toBeTruthy();
   expect(task.resultSessionId).toBe(task.nativeSessionId);
   expect(server.requestCount()).toBeGreaterThan(0);
+  // The task changed no project files: its review is only its research record.
+  expect(task.changedPaths.length).toBeGreaterThan(0);
+  expect(task.changedPaths.every((path) => path.startsWith(`${task.recordDir}/`))).toBe(true);
 
   await clickTabByText(tauriPage, '[data-testid="research-task-detail"]', "Review");
-  await detail.getByText("Mark reviewed", { exact: true }).click();
+  // The record applies without a preview.
+  await detail.getByText(`Apply ${task.changedPaths.length} selected`, { exact: true }).click();
   await expect(detail).toContainText("Completed", { timeout: 20_000 });
   await tauriPage.press("body", "Escape");
   await expect(tauriPage.locator('[data-testid="research-task-detail"]')).toHaveCount(0);

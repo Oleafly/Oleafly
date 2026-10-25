@@ -78,11 +78,11 @@
     "linkedNote_other": "{{count}} progetti aperti da una cartella non vengono sincronizzati. Solo i progetti della tua libreria hanno un backup."
   },
   "transfer": {
-    "uploading_many": "Caricamento file: {{done}} di {{total}}",
     "uploading_one": "Caricamento file: {{done}} di {{total}}",
+    "uploading_many": "Caricamento file: {{done}} di {{total}}",
     "uploading_other": "Caricamento file: {{done}} di {{total}}",
-    "downloading_many": "Download file: {{done}} di {{total}}",
     "downloading_one": "Download file: {{done}} di {{total}}",
+    "downloading_many": "Download file: {{done}} di {{total}}",
     "downloading_other": "Download file: {{done}} di {{total}}",
     "fetching": "Download in corso: {{done}} di {{total}}"
   },

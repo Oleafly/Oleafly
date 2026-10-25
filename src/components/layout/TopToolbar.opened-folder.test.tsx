@@ -109,7 +109,6 @@ beforeEach(() => {
     viewMode: "split",
     assistantOpen: false,
     workspaceHidden: false,
-    webBrowser: true,
   });
   useFolderAccessStore.getState().reset("linked-a");
   useFolderAccessStore.setState({

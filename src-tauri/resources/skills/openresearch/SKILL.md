@@ -5,7 +5,7 @@ license: MIT
 compatibility: Needs the orx CLI on the login shell PATH. Commands go through run_command, which runs one shell line in the project directory with a 120 second timeout and a 200 KiB output cap.
 allowed-tools: run_command, read_file, write_file, replace_in_file, create_file, list_files, search_project, get_todos, update_todos, remember_note, load_skill, read_skill_file
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   skill-author: Oleafly
   oleafly:
     tier: native
@@ -55,9 +55,12 @@ curl -LsSf https://openresearch.sh/install.sh | sh
 orx up
 ```
 
-`orx up` opens the local dashboard on http://127.0.0.1:4791. The shell installer covers
-macOS and Linux only. On Windows, point the user at the desktop app on
-https://openresearch.sh/download instead.
+`orx up` opens the local dashboard on http://127.0.0.1:4791. Create the project there
+first: `orx create-experiment` needs a project the dashboard already knows.
+
+The shell installer covers macOS and Linux only. On Windows, point the user at the desktop
+app on https://openresearch.sh/download instead. Inside an Oleafly research task on
+Windows, commands run only when the Windows sandbox is available.
 
 If the user does not want to install anything, say so once and fall back: literature work
 goes to `oleafly-literature-sweep` (which uses `literature_search`, `alphaxiv_search`, and
@@ -96,7 +99,7 @@ network if the run is in a mode that prompts for it.
 | Command | Effect |
 |---|---|
 | `orx project edit <localProjectId> --run-command "<cmd>"` | Sets the project's fixed run command. |
-| `orx create-experiment <localProjectId> --title "<t>"` | Adds an experiment node and prints its git branch. |
+| `orx create-experiment <localProjectId> --title "<t>"` | Adds an experiment node and prints its git branch. The project must exist in the dashboard (`orx up`) first. |
 | `orx exp run <localExpId>` | Launches the node's run. |
 | `orx exp cancel <localExpId>` | Stops it. |
 | `orx exp desc <expId> --set "<text>"` | Overwrites the node's description. |
@@ -140,8 +143,9 @@ survives interruption.
    `load_skill("hypothesis-generation")` and produce candidates before touching the CLI.
 2. **Find the node.** `orx projects`, then `orx project view <projectId>`. Pick the
    experiment id to branch from, or create a child node with `orx create-experiment`.
-3. **Launch.** `orx exp run <localExpId>`. See step 6 for what to do when this outruns the
-   timeout.
+3. **Launch.** `orx exp run <localExpId>`. Inside a research task, start it with `start_run`
+   instead, so it survives the tool call and the task wakes when it ends (step 6). In chat,
+   see step 6 for what to do when it outruns the timeout.
 4. **Wait, then read the evidence.** `orx runs <projectId>` for the run id and its state,
    then `orx logs <runId>`. Do not summarise a run that has not finished; say it is still
    running and poll again.
@@ -165,8 +169,13 @@ A timed-out `orx exp run` may well have launched the run anyway.
 
 - Never re-run `orx exp run` after a timeout. Check first: `orx runs <projectId>` shows
   whether a new run exists. Re-running duplicates work and pollutes the tree.
-- Do not use a blocking wait (`orx exp wait`) inside `run_command`. Poll instead: run
+- A bounded wait fits: `orx exp wait <expId> --timeout 100` returns before the 120 second
+  limit. Never run `orx exp wait` without `--timeout`. Otherwise poll: run
   `orx runs <projectId>` and `orx logs <runId>` in later turns.
+- Inside an Oleafly research task, use the task's own runs for anything long:
+  `start_run` with `{"name": "<expId>", "command": "orx exp run <expId>"}`, then
+  `wait_runs`, which returns as soon as a run finishes. The run's log stays readable with
+  `read_run_log`, and the task is woken with the result if its turn ends first.
 - For something you know will be long, start it detached and keep the output:
   ```sh
   mkdir -p research/experiments && nohup orx exp run <expId> > research/experiments/<expId>.out 2>&1 &

@@ -6,12 +6,17 @@ import type { ResearchTask, TaskTranscriptEvent } from "@/lib/research-tasks";
 
 const chipRenders = vi.hoisted(() => new Map<string, number>());
 
-vi.mock("@/lib/research-tasks", () => ({
+vi.mock("@/lib/research-tasks", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/research-tasks")>()),
   acceptResearchTaskResult: vi.fn(), applyResearchTask: vi.fn(), cancelResearchTask: vi.fn(),
   createResearchTask: vi.fn(), deleteResearchTask: vi.fn(), editResearchTask: vi.fn(), listResearchTasks: vi.fn(),
   listenForResearchTaskChanges: vi.fn(), listenForResearchTaskEvents: vi.fn(),
-  loadResearchTaskEvents: vi.fn(), retryResearchTask: vi.fn(), startResearchTask: vi.fn(),
+  loadResearchTaskEvents: vi.fn(), loadResearchTaskEventsBefore: vi.fn(), retryResearchTask: vi.fn(), startResearchTask: vi.fn(),
   previewResearchTaskFile: vi.fn(), previewResearchTaskArtifact: vi.fn(),
+  // 0.4.8: the store also listens for live text and tells the backend which task it shows.
+  listenForResearchTaskDeltas: vi.fn(async () => () => {}),
+  watchResearchTask: vi.fn(async () => {}),
+  listResearchTaskApprovals: vi.fn(async () => []),
 }));
 
 vi.mock("@/store/files", () => ({
@@ -41,6 +46,7 @@ vi.mock("./TaskChips", async (importOriginal) => {
 import * as api from "@/lib/research-tasks";
 import { useResearchTasksStore } from "@/store/research-tasks";
 import { ResearchTasksPanel } from "./ResearchTasksPanel";
+import { taskFieldsSince047 } from "./tests/task-fixtures";
 
 function task(index: number): ResearchTask {
   return {
@@ -52,6 +58,7 @@ function task(index: number): ResearchTask {
     sourceRevision: "snapshot:base", isolation: null, error: null, result: null,
     review: null, startRequested: false, cancelRequested: false,
     createdAt: 1_000 - index, updatedAt: 1, startedAt: 1, finishedAt: null,
+    ...taskFieldsSince047(),
   };
 }
 
@@ -73,7 +80,7 @@ describe("ResearchTasksPanel rendering", () => {
     vi.resetAllMocks();
     chipRenders.clear();
     await useResearchTasksStore.getState().bindProject(null);
-    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [], nextSequence: null });
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({ events: [], nextSequence: null });
     vi.mocked(api.listenForResearchTaskChanges).mockImplementation(async (listener) => {
       changedTask = listener;
       return () => {};
@@ -88,12 +95,14 @@ describe("ResearchTasksPanel rendering", () => {
 
   it("streams activity for the selected task without rendering the task list again", async () => {
     await mountList(12);
+    // Activity streams only into an open dialog.
+    await act(async () => useResearchTasksStore.getState().openTaskDetail("t5"));
     const before = new Map(chipRenders);
 
     act(() => {
       for (let sequence = 1; sequence <= 5; sequence++) {
         changedEvent?.({
-          taskId: "t0",
+          taskId: "t5",
           executionGeneration: 1,
           sequence,
           createdAt: sequence,
@@ -103,7 +112,23 @@ describe("ResearchTasksPanel rendering", () => {
     });
 
     expect(useResearchTasksStore.getState().events).toHaveLength(5);
-    expect(chipRenders).toEqual(before);
+    // The dialog shows t5 and draws again; no row of the list does.
+    for (const [id, count] of before) {
+      if (id !== "t5") expect(chipRenders.get(id)).toBe(count);
+    }
+  });
+
+  it("keeps the newest task's live text out of memory while no dialog shows it", async () => {
+    await mountList(3);
+    expect(useResearchTasksStore.getState().selectedTaskId).toBe("t0");
+
+    act(() => {
+      changedEvent?.({ taskId: "t0", executionGeneration: 1, sequence: 1, createdAt: 1, event: { kind: "text", text: "progress" } });
+    });
+
+    expect(useResearchTasksStore.getState().events).toEqual([]);
+    expect(api.watchResearchTask).not.toHaveBeenCalledWith("t0");
+    expect(api.loadResearchTaskEventsBefore).not.toHaveBeenCalled();
   });
 
   it("renders only the task that changed", async () => {

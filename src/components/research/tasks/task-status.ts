@@ -1,14 +1,16 @@
 import {
   CheckCircle2,
   CircleDashed,
+  ClipboardCheck,
   CircleSlash,
   FlaskConical,
   Loader2,
   XCircle,
 } from "lucide-react";
+import type { BadgeVariant } from "@/components/ui/badge";
 import { i18n } from "@/i18n";
 import { formatRelativeTimeFrom } from "@/lib/intl";
-import type { ResearchTaskStatus } from "@/lib/research-tasks";
+import type { ApprovalStatus, ResearchTaskStatus, RunState, TaskPhase } from "@/lib/research-tasks";
 
 export function statusLabel(status: ResearchTaskStatus): string {
   switch (status) {
@@ -24,6 +26,8 @@ export function statusLabel(status: ResearchTaskStatus): string {
       return i18n.t(($) => $.researchTools.tasks.status.failed);
     case "cancelled":
       return i18n.t(($) => $.researchTools.tasks.status.cancelled);
+    case "plan_ready":
+      return i18n.t(($) => $.researchTools.tasks.status.planReady);
   }
 }
 
@@ -34,15 +38,17 @@ export const STATUS_ICONS: Record<ResearchTaskStatus, typeof CircleDashed> = {
   completed: CheckCircle2,
   failed: XCircle,
   cancelled: CircleSlash,
+  plan_ready: ClipboardCheck,
 };
 
-const STATUS_BADGES: Record<ResearchTaskStatus, string> = {
-  queued: "border-border bg-muted text-muted-foreground",
-  running: "border-primary/30 bg-primary/10 text-primary",
-  awaiting_review: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  completed: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  failed: "border-destructive/30 bg-destructive/10 text-destructive",
-  cancelled: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+const STATUS_BADGES: Record<ResearchTaskStatus, BadgeVariant> = {
+  queued: "muted",
+  running: "primaryGhost",
+  awaiting_review: "warning",
+  completed: "success",
+  failed: "destructive",
+  cancelled: "warning",
+  plan_ready: "warning",
 };
 
 const STATUS_DOTS: Record<ResearchTaskStatus, string> = {
@@ -52,9 +58,11 @@ const STATUS_DOTS: Record<ResearchTaskStatus, string> = {
   completed: "bg-emerald-500",
   failed: "bg-destructive",
   cancelled: "bg-amber-500",
+  plan_ready: "bg-amber-500",
 };
 
-export function statusBadgeClass(status: ResearchTaskStatus): string {
+/** The `Badge` tone of a task status. */
+export function statusBadgeVariant(status: ResearchTaskStatus): BadgeVariant {
   return STATUS_BADGES[status];
 }
 
@@ -72,4 +80,55 @@ export function relativeTime(value: number): string {
       return i18n.t(($) => $.researchTools.tasks.relative.days, { days: count });
     },
   });
+}
+
+export function runStateLabel(state: RunState): string {
+  switch (state) {
+    case "starting":
+      return i18n.t(($) => $.researchTools.runs.status.starting);
+    case "running":
+      return i18n.t(($) => $.researchTools.runs.status.running);
+    case "succeeded":
+      return i18n.t(($) => $.researchTools.runs.status.succeeded);
+    case "failed":
+      return i18n.t(($) => $.researchTools.runs.status.failed);
+    case "timed_out":
+      return i18n.t(($) => $.researchTools.runs.status.timedOut);
+    case "cancelled":
+      return i18n.t(($) => $.researchTools.runs.status.cancelled);
+    case "lost":
+      return i18n.t(($) => $.researchTools.runs.status.lost);
+  }
+}
+
+export function approvalStatusLabel(status: Exclude<ApprovalStatus, "pending">): string {
+  switch (status) {
+    case "approved":
+      return i18n.t(($) => $.researchTools.tasks.approvals.status.approved);
+    case "denied":
+      return i18n.t(($) => $.researchTools.tasks.approvals.status.denied);
+    case "expired":
+      return i18n.t(($) => $.researchTools.tasks.approvals.status.expired);
+    case "withdrawn":
+      return i18n.t(($) => $.researchTools.tasks.approvals.status.withdrawn);
+  }
+}
+
+export function phaseLabel(phase: TaskPhase): string {
+  switch (phase) {
+    case "preparing":
+      return i18n.t(($) => $.researchTools.tasks.phase.preparing);
+    case "planning":
+      return i18n.t(($) => $.researchTools.tasks.phase.planning);
+    case "working":
+      return i18n.t(($) => $.researchTools.tasks.phase.working);
+    case "waiting_runs":
+      return i18n.t(($) => $.researchTools.tasks.phase.waitingRuns);
+    case "waiting_approval":
+      return i18n.t(($) => $.researchTools.tasks.phase.waitingApproval);
+    case "wrapping_up":
+      return i18n.t(($) => $.researchTools.tasks.phase.wrappingUp);
+    case "checking_evidence":
+      return i18n.t(($) => $.researchTools.tasks.phase.checkingEvidence);
+  }
 }

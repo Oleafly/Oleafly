@@ -1,0 +1,111 @@
+[
+  {
+    "name": "image-without-alt",
+    "text": "#image(\"a.png\")"
+  },
+  {
+    "name": "image-with-alt",
+    "text": "#image(\"a.png\", alt: \"A chart of results\")"
+  },
+  {
+    "name": "image-blank-alt",
+    "text": "#image(\"a.png\", alt: \"\")"
+  },
+  {
+    "name": "image-alt-none",
+    "text": "#image(\"a.png\", alt: none)"
+  },
+  {
+    "name": "image-alt-repeats-path",
+    "text": "#image(\"figs/a.png\", alt: \"figs/a.png\")"
+  },
+  {
+    "name": "image-alt-repeats-file-name",
+    "text": "#image(\"figs/plot.png\", alt: \"Plot.png\")"
+  },
+  {
+    "name": "figure-alt-covers-image",
+    "text": "#figure(image(\"a.png\"), alt: \"A chart\", caption: [Results])",
+    "version": "0.14.0"
+  },
+  {
+    "name": "figure-alt-before-0-14",
+    "text": "#figure(image(\"a.png\"), alt: \"A chart\", caption: [Results])",
+    "version": "0.13.0"
+  },
+  {
+    "name": "figure-alt-version-prefix",
+    "text": "#figure(image(\"a.png\"), alt: \"A chart\")",
+    "version": "v0.14.2"
+  },
+  {
+    "name": "figure-without-alt",
+    "text": "#figure(image(\"a.png\"), caption: [x])",
+    "version": "0.14.0"
+  },
+  {
+    "name": "empty-heading-marker",
+    "text": "= \n== Intro\n===\nText"
+  },
+  {
+    "name": "heading-with-only-label",
+    "text": "= <sec:empty>\n= Real <sec:real>"
+  },
+  {
+    "name": "heading-call-empty",
+    "text": "#heading[]\n#heading[Body]\n#heading(level: 2)[ ]"
+  },
+  {
+    "name": "heading-call-argument",
+    "text": "#heading(\"\")\n#heading(level: 1, [Text])\n#heading(none)"
+  },
+  {
+    "name": "heading-set-rule-ignored",
+    "text": "#set heading(numbering: \"1.\")\n#show heading: it => it"
+  },
+  {
+    "name": "heading-in-code-block",
+    "text": "#let x = [= ]\n```\n= raw heading\n```"
+  },
+  {
+    "name": "todo-notes",
+    "text": "TODO: write this. Also FIXME and TBD.\n// TODO in a comment\n#let todo = \"TODO\""
+  },
+  {
+    "name": "todo-lowercase",
+    "text": "todo and Todo stay"
+  },
+  {
+    "name": "local-paths",
+    "text": "#image(\"/Users/ana/x.png\")\n#image(\"C:\\\\data\\\\y.png\")\n#include \"~/notes.typ\"\n#image(\"figs/ok.png\")"
+  },
+  {
+    "name": "unc-and-tmp-paths",
+    "text": "#bibliography(\"/tmp/refs.bib\")\n#read(\"\\\\\\\\server\\\\share\")"
+  },
+  {
+    "name": "autolink-in-markup",
+    "text": "See https://example.com/a_b?x=1. Then #image(\"a.png\")"
+  },
+  {
+    "name": "raw-and-comments",
+    "text": "`#image(\"x.png\")`\n/* #image(\"y.png\") */\n#image(\"z.png\", alt: \"Z\")"
+  },
+  {
+    "name": "math-and-escapes",
+    "text": "$ #image(\"m.png\") $ and \\#image(\"e.png\")"
+  },
+  {
+    "name": "emoji-before-findings",
+    "text": "😀 TODO\n#image(\"a.png\")\n= "
+  },
+  {
+    "name": "nested-content-calls",
+    "text": "#figure([#image(\"a.png\")], caption: [A])\n#box(image(\"b.png\", alt: \"B\"))",
+    "version": "0.15.1"
+  },
+  {
+    "name": "method-chain",
+    "text": "#let fig = image.with(width: 50%)\n#fig(\"a.png\")"
+  }
+]

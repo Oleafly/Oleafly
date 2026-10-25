@@ -1,13 +1,19 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/i18n";
 
 const mocks = vi.hoisted(() => ({
+  transcribeEditorImage: vi.fn(),
+  modelInfo: vi.fn(),
   completeViaBackend: vi.fn(),
   insertAtCursor: vi.fn(),
   logError: vi.fn(),
   writeText: vi.fn(),
-  files: { projectId: "paper" as string | null, activePath: "main.tex" as string | null },
+  files: {
+    projectId: "paper" as string | null,
+    activePath: "main.tex" as string | null,
+    engine: { id: "latex", typst_resolved: null as { version: string } | null },
+  },
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -18,17 +24,18 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
+vi.mock("@/features/tools-ai/transcribe", () => ({
+  transcribeEditorImage: mocks.transcribeEditorImage,
+  modelInfo: mocks.modelInfo,
+}));
 vi.mock("@/lib/agent-backend", () => ({ completeViaBackend: mocks.completeViaBackend }));
 vi.mock("@/components/editor/cm/controller", () => ({ insertAtCursor: mocks.insertAtCursor }));
-vi.mock("@/lib/ai-figure", () => ({ modelSupportsVision: vi.fn(() => true) }));
-vi.mock("@/lib/ai-providers", () => ({ hasConfiguredProvider: vi.fn(() => true), pickActiveProvider: vi.fn() }));
 vi.mock("@/lib/tauri", () => ({ getConfig: vi.fn() }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({ toast: mocks.toast }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.files } }));
 
 import { getConfig } from "@/lib/tauri";
-import { pickActiveProvider } from "@/lib/ai-providers";
 import { invalidateConfigCache } from "@/lib/config-cache";
 import { imageToLatex, imageToLatexAvailable, imageToTypst } from "./image-to-latex";
 
@@ -43,16 +50,20 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.files.projectId = "paper";
   mocks.files.activePath = "main.tex";
-  mocks.completeViaBackend.mockResolvedValue({ text: "```latex\n\\begin{equation}E=mc^2\\end{equation}\n```" });
+  mocks.files.engine = { id: "latex", typst_resolved: null };
+  mocks.transcribeEditorImage.mockResolvedValue("\\begin{equation}E=mc^2\\end{equation}");
+  mocks.modelInfo.mockReturnValue({ label: "glm-ocr", sentTo: null });
   mocks.writeText.mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: mocks.writeText } });
 });
 
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
 describe("imageToLatex", () => {
+  it("transcribes with the Tools model instead of the assistant's provider", async () => {
+    await imageToLatex(image());
+    expect(mocks.transcribeEditorImage).toHaveBeenCalledWith(expect.any(File), "LaTeX", expect.any(Object));
+    expect(mocks.completeViaBackend).not.toHaveBeenCalled();
+  });
+
   it("shows one progress slot and lets the inserted snippet confirm the result", async () => {
     await imageToLatex(image());
 
@@ -69,8 +80,36 @@ describe("imageToLatex", () => {
     expect(mocks.toast.errorUnique).not.toHaveBeenCalled();
   });
 
+  it("says where the image goes while a hosted model works", async () => {
+    const hosted = { engine: "llm", label: "Claude Opus 5.5" };
+    mocks.modelInfo.mockReturnValue({ label: "Claude Opus 5.5", sentTo: "Anthropic" });
+    mocks.transcribeEditorImage.mockImplementation(
+      async (_file: File, _target: string, options: { onModel?: (model: unknown) => void }) => {
+        options.onModel?.(hosted);
+        return "x^2";
+      },
+    );
+
+    await imageToLatex(image());
+
+    expect(mocks.modelInfo).toHaveBeenCalledWith(hosted);
+    expect(mocks.toast.infoUnique).toHaveBeenLastCalledWith(KEY, "Sending the image to Anthropic…", undefined, true);
+    expect(mocks.insertAtCursor).toHaveBeenCalledWith("x^2");
+  });
+
+  it("keeps the first progress text for a model on this computer", async () => {
+    mocks.transcribeEditorImage.mockImplementation(
+      async (_file: File, _target: string, options: { onModel?: (model: unknown) => void }) => {
+        options.onModel?.({ engine: "llm", label: "glm-ocr" });
+        return "x";
+      },
+    );
+    await imageToLatex(image());
+    expect(mocks.toast.infoUnique).toHaveBeenCalledOnce();
+  });
+
   it("turns the progress slot into a catalog failure when the model returns nothing", async () => {
-    mocks.completeViaBackend.mockResolvedValue({ text: "```\n```" });
+    mocks.transcribeEditorImage.mockResolvedValue("   ");
 
     await imageToLatex(image());
 
@@ -84,7 +123,7 @@ describe("imageToLatex", () => {
   });
 
   it("describes a backend error without the raw error prefix", async () => {
-    mocks.completeViaBackend.mockRejectedValue(new Error("provider unavailable"));
+    mocks.transcribeEditorImage.mockRejectedValue(new Error("provider unavailable"));
 
     await imageToLatex(image());
 
@@ -92,7 +131,7 @@ describe("imageToLatex", () => {
   });
 
   it("translates a structured backend error", async () => {
-    mocks.completeViaBackend.mockRejectedValue('@oleafly/error:{"code":"project.name_empty","params":{}}');
+    mocks.transcribeEditorImage.mockRejectedValue('@oleafly/error:{"code":"project.name_empty","params":{}}');
 
     await imageToLatex(image());
 
@@ -103,32 +142,22 @@ describe("imageToLatex", () => {
   });
 
   it("reports an unreadable image through the same slot instead of an unhandled rejection", async () => {
-    class BrokenReader {
-      onload: (() => void) | null = null;
-      onerror: (() => void) | null = null;
-      result: string | null = null;
-      readAsDataURL() {
-        queueMicrotask(() => this.onerror?.());
-      }
-    }
-    vi.stubGlobal("FileReader", BrokenReader);
+    const unreadable = i18n.t(($) => $.researchTools.converterErrors.imageFormat);
+    mocks.transcribeEditorImage.mockRejectedValue(new Error(unreadable));
 
     await expect(imageToLatex(image())).resolves.toBeUndefined();
 
-    expect(mocks.completeViaBackend).not.toHaveBeenCalled();
-    expect(mocks.toast.errorUnique).toHaveBeenCalledExactlyOnceWith(
-      KEY,
-      failure(i18n.t(($) => $.ai.acp.imageReadFailed)),
-    );
+    expect(mocks.insertAtCursor).not.toHaveBeenCalled();
+    expect(mocks.toast.errorUnique).toHaveBeenCalledExactlyOnceWith(KEY, failure(unreadable));
   });
 
   it.each([
     ["the active file changed", () => { mocks.files.activePath = "chapter.tex"; }],
     ["the project closed", () => { mocks.files.projectId = null; mocks.files.activePath = null; }],
   ])("copies the snippet instead of inserting it when %s", async (_label, change) => {
-    mocks.completeViaBackend.mockImplementation(async () => {
+    mocks.transcribeEditorImage.mockImplementation(async () => {
       change();
-      return { text: "x^2" };
+      return "x^2";
     });
 
     await imageToLatex(image());
@@ -140,40 +169,120 @@ describe("imageToLatex", () => {
     expect(mocks.toast.dismiss).not.toHaveBeenCalled();
   });
 
+  it("keeps the result in a toast with a Copy button when the webview refuses the late clipboard write", async () => {
+    mocks.transcribeEditorImage.mockImplementation(async () => {
+      mocks.files.activePath = "chapter.tex";
+      return "x^2";
+    });
+    mocks.writeText.mockRejectedValueOnce(new DOMException("not allowed", "NotAllowedError"));
+
+    await imageToLatex(image());
+
+    expect(mocks.toast.errorUnique).not.toHaveBeenCalled();
+    const [key, message, action, sticky] = mocks.toast.infoUnique.mock.lastCall as unknown as [
+      string,
+      string,
+      { label: string; onClick: () => void },
+      boolean,
+    ];
+    expect([key, message, sticky]).toEqual([KEY, i18n.t(($) => $.core.imageToLatex.notInserted), true]);
+    expect(action.label).toBe(i18n.t(($) => $.common.actions.copy));
+
+    // The click carries the gesture the webview wants.
+    action.onClick();
+    await vi.waitFor(() => expect(mocks.writeText).toHaveBeenCalledTimes(2));
+    expect(mocks.writeText).toHaveBeenLastCalledWith("x^2");
+    await vi.waitFor(() =>
+      expect(mocks.toast.infoUnique).toHaveBeenLastCalledWith(KEY, i18n.t(($) => $.library.pdfImport.copied)),
+    );
+  });
+
+  it("says Typst, not LaTeX, when Image to Typst copies its result", async () => {
+    mocks.transcribeEditorImage.mockImplementation(async () => {
+      mocks.files.activePath = "chapter.typ";
+      return "$ x $";
+    });
+    await imageToTypst(image());
+    expect(mocks.toast.infoUnique).toHaveBeenLastCalledWith(KEY, "Copied Typst source");
+
+    mocks.files.activePath = "main.tex";
+    mocks.transcribeEditorImage.mockImplementation(async () => {
+      mocks.files.activePath = "chapter.typ";
+      return "$ x $";
+    });
+    mocks.writeText.mockRejectedValueOnce(new Error("denied"));
+    await imageToTypst(image());
+    const [, notice] = mocks.toast.infoUnique.mock.lastCall as unknown as [string, string];
+    expect(notice).toBe(i18n.t(($) => $.core.imageToTypst.notInserted));
+  });
+
+  it("says the assistant's model read the image when the editor fell back to it", async () => {
+    const fallback = { engine: "llm", label: "Claude Opus 5.5", assistantFallback: true };
+    mocks.modelInfo.mockReturnValue({ label: "Claude Opus 5.5", sentTo: "Anthropic" });
+    mocks.transcribeEditorImage.mockImplementation(
+      async (_file: File, _target: string, options: { onModel?: (model: unknown) => void }) => {
+        options.onModel?.(fallback);
+        return "x^2";
+      },
+    );
+
+    await imageToLatex(image());
+
+    expect(mocks.toast.infoUnique).toHaveBeenCalledWith(
+      KEY,
+      "Sending the image to Anthropic (assistant model)…",
+      undefined,
+      true,
+    );
+    expect(mocks.insertAtCursor).toHaveBeenCalledWith("x^2");
+    // The note stays after success instead of vanishing.
+    expect(mocks.toast.dismiss).not.toHaveBeenCalled();
+    expect(mocks.toast.infoUnique).toHaveBeenLastCalledWith(KEY, "Sent to Anthropic (assistant model)");
+  });
+
   it("keeps a newer transcription's progress visible when an older one finishes first", async () => {
-    let finishFirst!: (value: { text: string }) => void;
-    mocks.completeViaBackend
+    let finishFirst!: (value: string) => void;
+    mocks.transcribeEditorImage
       .mockReturnValueOnce(new Promise((resolve) => { finishFirst = resolve; }))
       .mockReturnValueOnce(new Promise(() => {}));
 
     const first = imageToLatex(image());
-    await vi.waitFor(() => expect(mocks.completeViaBackend).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(mocks.transcribeEditorImage).toHaveBeenCalledTimes(1));
     void imageToLatex(image());
-    await vi.waitFor(() => expect(mocks.completeViaBackend).toHaveBeenCalledTimes(2));
-    finishFirst({ text: "a+b" });
+    await vi.waitFor(() => expect(mocks.transcribeEditorImage).toHaveBeenCalledTimes(2));
+    finishFirst("a+b");
     await first;
 
     expect(mocks.insertAtCursor).toHaveBeenCalledWith("a+b");
     expect(mocks.toast.dismiss).not.toHaveBeenCalled();
   });
 
-  it("transcribes into Typst with its own prompt and failure message", async () => {
-    mocks.completeViaBackend.mockResolvedValueOnce({ text: "```typst\n$ E = m c^2 $\n```" });
+  it("passes the Typst version for Image to Typst", async () => {
+    mocks.files.engine = { id: "typst", typst_resolved: { version: "0.13.1" } };
+    mocks.transcribeEditorImage.mockResolvedValueOnce("$ E = m c^2 $");
     await imageToTypst(image());
-    const request = mocks.completeViaBackend.mock.calls[0][0] as {
-      system: string;
-      messages: { content: { type: string; text?: string }[] }[];
-    };
-    expect(request.system).toContain("Typst");
-    expect(request.system).not.toContain("LaTeX");
-    expect(request.messages[0].content[0].text).toBe("Transcribe this image to Typst.");
+    expect(mocks.transcribeEditorImage).toHaveBeenCalledWith(
+      expect.any(File),
+      "Typst",
+      expect.objectContaining({ typstVersion: "0.13.1" }),
+    );
     expect(mocks.insertAtCursor).toHaveBeenCalledExactlyOnceWith("$ E = m c^2 $");
 
-    mocks.completeViaBackend.mockRejectedValueOnce(new Error("offline"));
+    mocks.transcribeEditorImage.mockRejectedValueOnce(new Error("offline"));
     await imageToTypst(image());
     expect(mocks.toast.errorUnique).toHaveBeenCalledWith(
       KEY,
       i18n.t(($) => $.core.imageToTypst.failed, { detail: "offline" }),
+    );
+  });
+
+  it("sends no Typst version for Image to LaTeX", async () => {
+    mocks.files.engine = { id: "typst", typst_resolved: { version: "0.13.1" } };
+    await imageToLatex(image());
+    expect(mocks.transcribeEditorImage).toHaveBeenCalledWith(
+      expect.any(File),
+      "LaTeX",
+      expect.objectContaining({ typstVersion: null }),
     );
   });
 });
@@ -181,8 +290,10 @@ describe("imageToLatex", () => {
 describe("imageToLatexAvailable", () => {
   beforeEach(() => {
     invalidateConfigCache();
-    vi.mocked(getConfig).mockResolvedValue({} as never);
-    vi.mocked(pickActiveProvider).mockReturnValue({ providerId: "openai", modelId: "gpt-4o" } as never);
+    vi.mocked(getConfig).mockResolvedValue({
+      ai_provider: "anthropic",
+      ai_keys: { anthropic: "__stored__" },
+    } as never);
   });
 
   it("reads the AI config once when several toolbars ask on project open", async () => {
@@ -200,10 +311,25 @@ describe("imageToLatexAvailable", () => {
     expect(getConfig).toHaveBeenCalledTimes(2);
   });
 
+  it("shows the button when any AI is set up and hides it without one", async () => {
+    vi.mocked(getConfig).mockResolvedValue({ ai_keys: {} } as never);
+    await expect(imageToLatexAvailable()).resolves.toBe(false);
+
+    invalidateConfigCache();
+    vi.mocked(getConfig).mockResolvedValue({ ai_keys: { ollama: "http://127.0.0.1:11434" } } as never);
+    await expect(imageToLatexAvailable()).resolves.toBe(true);
+
+    invalidateConfigCache();
+    vi.mocked(getConfig).mockResolvedValue({
+      ai_keys: { ollama: "http://127.0.0.1:11434" },
+      ai_tools_model: { provider: "anthropic", model: "claude-opus-5-5" },
+    } as never);
+    await expect(imageToLatexAvailable()).resolves.toBe(false);
+  });
+
   it("reports unavailable when the config cannot be read", async () => {
     vi.mocked(getConfig).mockRejectedValue(new Error("no backend"));
 
     await expect(imageToLatexAvailable()).resolves.toBe(false);
   });
 });
-

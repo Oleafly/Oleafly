@@ -186,7 +186,8 @@
   },
   "imageToLatex": {
     "failed": "Převod obrázku do LaTeXu selhal: {{detail}}",
-    "transcribing": "Přepisuje se obrázek…"
+    "transcribing": "Přepisuje se obrázek…",
+    "notInserted": "Aktivní soubor se změnil, takže LaTeX nebyl vložen. Zkopírujte ho a vložte tam, kam potřebujete."
   },
   "import": {
     "chooseOfferedProjectType": "Vyberte některý z typů projektu nabízených pro tento soubor.",
@@ -615,7 +616,11 @@
       "papers_one": "{{count}} článek",
       "papers_few": "{{count}} články",
       "papers_many": "{{count}} článku",
-      "papers_other": "{{count}} článků"
+      "papers_other": "{{count}} článků",
+      "sourcesFailed_one": "{{count}} zdroj selhal",
+      "sourcesFailed_few": "{{count}} zdroje selhaly",
+      "sourcesFailed_many": "{{count}} zdroje selhalo",
+      "sourcesFailed_other": "{{count}} zdrojů selhalo"
     }
   },
   "ui": {
@@ -633,6 +638,8 @@
     "saveReason": "složka projektu není dostupná"
   },
   "imageToTypst": {
-    "failed": "Převod obrázku do formátu Typst selhal: {{detail}}"
+    "failed": "Převod obrázku do formátu Typst selhal: {{detail}}",
+    "copied": "Zdrojový kód Typst zkopírován",
+    "notInserted": "Aktivní soubor se změnil, takže Typst nebyl vložen. Zkopírujte ho a vložte tam, kam potřebujete."
   }
 }

@@ -14,9 +14,7 @@
       "disconnected": "Lowercase status inside the session pill: the process ended",
       "failed": "Lowercase status inside the session pill: the session errored"
     },
-    "roster": {
-      "comingSoon": "Hint on an agent that Oleafly does not support yet"
-    },
+    "roster": {},
     "bridgeSource": {
       "notInstalled": "The ACP bridge for this agent is not installed",
       "managed": "Oleafly installed and updates this agent's bridge"
@@ -40,6 +38,38 @@
     "export": {
       "menuItem": "History menu item that saves the conversation as a Markdown or JSON file",
       "uncommitted": "Export header value; {{revision}} is a short Git commit id"
+    },
+    "queue": {
+      "queued": "Shown on a message the user typed while a CLI agent was working; it is sent automatically when the agent's turn ends.",
+      "queuedConnecting": "Label of a message waiting while the CLI agent is still connecting",
+      "retry": "Button on a queued message that failed to send: tries sending it once more",
+      "edit": "Button on a queued message that failed to send: moves its text and files back into the message box"
+    },
+    "controls": {
+      "blockedMode": "Suffix on an agent mode that turns off permission checks (for example a bypass or full-access mode); Oleafly lists it but does not allow it."
+    },
+    "usage": {
+      "window": {
+        "fiveHour": "A rolling five-hour usage limit of the agent's subscription plan.",
+        "weekly": "A weekly usage limit that counts every model.",
+        "weeklyOpus": "A weekly usage limit for the Opus models only.",
+        "weeklySonnet": "A weekly usage limit for the Sonnet models only.",
+        "overage": "Usage beyond the plan limits that the user pays for separately.",
+        "other": "A usage limit Oleafly has no name for; {{id}} is the agent's own identifier."
+      }
+    },
+    "header": {
+      "v2": "Badge on a conversation that uses the draft version 2 of the Agent Client Protocol.",
+      "signOutTitle": "Title of the confirmation before signing the CLI agent out of its own account",
+      "signOutDescription": "Explains what signing a CLI agent out does, in the confirmation dialog",
+      "signOutAccount": "Names the plan or account the CLI agent is signed in with, for example Claude Max, in the sign-out confirmation"
+    },
+    "signIn": {
+      "confirmTerminal": "Text above the command line the user must approve before a terminal runs a CLI agent's sign-in command",
+      "remote": "Shown instead of the terminal sign-in button for a CLI agent conversation that runs over SSH on another computer"
+    },
+    "elicitation": {
+      "openFailed": "Shown on an agent's request card when the system browser could not open the site it asked to visit"
     }
   },
   "approval": {
@@ -51,7 +81,29 @@
     "commandLabel": "Field label above the shell command the assistant wants to run",
     "arguments": "Field label above the arguments sent to an external MCP tool",
     "line": "Line number badge next to a file, not a text line of prose",
-    "firstChange": "Marks the first changed line in a diff; L is the abbreviation for line"
+    "firstChange": "Marks the first changed line in a diff; L is the abbreviation for line",
+    "confirm": {
+      "researchTask": "Accessible name of the approval card when an assistant wants to create a background research task"
+    },
+    "headline": {
+      "researchTask": "Headline of the approval card for creating a background research task"
+    },
+    "researchTask": {
+      "note": "Short note under the headline of the research task approval card",
+      "title": "Field label for the title of the research task the assistant wants to create",
+      "goal": "Field label for what the research task should find out or produce",
+      "skills": "Field label above the list of skills given to the research task",
+      "prompt": "Field label above the full text the research task will be told to do; also its accessible name",
+      "commands": "Field label for how the task's shell commands are approved",
+      "commandsAsk": "Value of the Commands field: every shell command the task runs asks for approval first",
+      "network": "Field label for whether the task's commands may use the network; the value is On or Off",
+      "timeBudget": "Field label for how long the task may work",
+      "timeBudgetDefault": "Value of the Time budget field when the assistant did not set one",
+      "minutes_one": "Time budget of the research task in minutes",
+      "minutes_other": "Time budget of the research task in minutes",
+      "planFirst": "Field label: the task writes a plan and waits for approval before working; the value is Yes or No",
+      "startNow": "Field label: the task starts right after it is created; the value is Yes or No"
+    }
   },
   "chat": {
     "errorHints": {
@@ -126,7 +178,8 @@
     "stop": "Stops the assistant mid-answer",
     "send": "Sends the composed message",
     "prompts": "Label of the menu of ready-made prompts",
-    "checkAgain": "Re-runs the compatibility probe for the selected model"
+    "checkAgain": "Re-runs the compatibility probe for the selected model",
+    "resizeHandle": "Accessible name of the bar on the top edge of the chat input that changes its height"
   },
   "goal": {
     "label": "Field label for the standing objective the assistant works toward",
@@ -227,7 +280,11 @@
     "runs": "Number of assistant runs in this chat",
     "tokens": "Total tokens for this chat",
     "lastRun": "Heading above the most recent run's numbers",
-    "thisChat": "Heading above the running totals for the whole chat"
+    "thisChat": "Heading above the running totals for the whole chat",
+    "contextUsed": "{{used}} and {{size}} are formatted token counts",
+    "resetsAt": "{{time}} is a relative time such as \"in 3 hours\"",
+    "historyTrimmed_one": "Shown in the usage popover; older turns of a long chat were left out of the request",
+    "historyTrimmed_other": "Shown in the usage popover; older turns of a long chat were left out of the request"
   },
   "turnChanges": {
     "buildOnly": "Card heading when an agent turn only rewrote TeX build output such as .aux or .log files",
@@ -244,5 +301,26 @@
   "presets": {
     "referenceCleanup": "Quick start that opens the bibliography cleanup dialog",
     "removeSkill": "Accessible label of the x on the skill chip in the CLI agent composer"
+  },
+  "effort": {
+    "auto": "Effort choice that leaves the decision to the model's own default",
+    "levels": {
+      "xhigh": "Effort level between High and Max"
+    }
+  },
+  "web": {
+    "label": "Short toggle label; when on, the assistant may search the web and read pages for this chat"
+  },
+  "conversation": {
+    "stopped": "Replaces a stored English marker at the end of a reply the user stopped",
+    "stepLimit": "Replaces a stored English marker when a run hit its step limit"
+  },
+  "attachments": {
+    "pagesLimited": "Under a PDF chip: the model only sees the first {{limit}} pages of {{count}}",
+    "dropUnreadable": "Toast text naming dropped items that could not be read, for example a folder; names are separated by commas",
+    "notReplayed": "Toast when regenerating or editing a message whose files were saved by an older version of Oleafly that kept only their names"
+  },
+  "messageActions": {
+    "editingEarlier": "Banner above the chat input while the user edits an older message"
   }
 }

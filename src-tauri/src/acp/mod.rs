@@ -1,22 +1,37 @@
+mod attachments;
+mod buffers;
 mod catalog;
+mod coalesce;
 pub mod commands;
 mod export;
+pub(crate) mod hermes;
+mod host;
+mod options;
 mod permission_view;
+pub(crate) mod preferences;
 mod protocol;
+mod providers;
 mod redact;
+pub(crate) mod remote;
 mod review;
 mod runtime;
+mod sessions;
 mod setup;
+mod signin;
 mod skill_block;
 mod store;
 mod task_launch;
 mod transcript;
 pub mod types;
+mod updates;
+mod usage_probe;
 
-pub use runtime::{AcpRuntime, PermissionDelegate};
+pub use options::ModelChoice;
+pub use runtime::{AcpRuntime, PermissionDelegate, PromptFailure};
 pub use types::*;
 
-use std::sync::Arc;
+use std::path::PathBuf;
+use std::sync::{Arc, OnceLock};
 use tauri::{Emitter, Manager};
 
 pub(crate) async fn admit_agent_bridge<T>(
@@ -27,20 +42,114 @@ pub(crate) async fn admit_agent_bridge<T>(
     bridge.await
 }
 
+static CLI_PROGRAM: OnceLock<PathBuf> = OnceLock::new();
+
+/// The `oleafly` CLI agents may run (set once at startup by the CLI
+/// install); its folder joins the agents' search path.
+pub fn set_cli_program(path: PathBuf) {
+    let _ = CLI_PROGRAM.set(path);
+}
+
+pub(crate) fn cli_program() -> Option<PathBuf> {
+    CLI_PROGRAM.get().cloned()
+}
+
+/// Where an event goes: the window that owns the session, or every window
+/// (tasks and child agents are watched from different places).
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum Route {
+    Window(String),
+    AllWindows,
+}
+
+pub(super) fn route_target(owner: Option<&str>, windows: &[String]) -> Route {
+    match owner {
+        Some(owner) if windows.iter().any(|window| window == owner) => Route::Window(owner.into()),
+        _ => Route::AllWindows,
+    }
+}
+
+/// Whether the owner of a line in `agents.pids` still runs: this instance
+/// (`me`) always does, so its own agents are never reaped.
+pub(super) fn owner_alive(
+    owner: &oleafly_acp::orphans::OwnerTag,
+    me: oleafly_sandbox::process::identity::ProcessIdentity,
+) -> bool {
+    use oleafly_sandbox::process::identity;
+    owner.identity == me || identity::owner_is_live(Some(owner.identity), me, identity::probe)
+}
+
 pub fn attach(app: &tauri::AppHandle) -> Result<(), String> {
-    let runtime = AcpRuntime::new(crate::paths::oleafly_root()?.join("acp"))?;
+    let root = crate::paths::oleafly_root()?.join("acp");
+    let runtime = AcpRuntime::new(root.clone())?;
+    let buffers = buffers::WindowBuffers::new(app.clone());
+    runtime.set_buffer_source(Arc::new(buffers.clone()));
+    app.manage(buffers);
+    // Agents left by an Oleafly that was killed are stopped before new ones
+    // start; agents of a live background helper are kept.
+    let registry_root = root.clone();
+    let identity = oleafly_sandbox::process::identity::current();
+    // Nothing waits for the reap; it runs in the background.
+    drop(tauri::async_runtime::spawn_blocking(move || {
+        use oleafly_sandbox::process::identity;
+        let me = identity::current();
+        let _ = oleafly_acp::orphans::PidRegistry::reap(
+            &registry_root,
+            // This instance's own lines (an agent started before the reap
+            // ran) belong to a live owner, as the helper's reap counts them.
+            |owner| owner_alive(owner, me),
+            |pid, started| {
+                matches!(identity::probe(pid), identity::ProcessProbe::Running { started: now }
+                    if started.is_some() && now == started)
+            },
+        );
+    }));
+    if let Ok(registry) = oleafly_acp::orphans::PidRegistry::open(
+        &root,
+        oleafly_acp::orphans::OwnerTag {
+            kind: "app".into(),
+            identity,
+        },
+    ) {
+        runtime.set_pid_registry(registry);
+    }
     let mut events = runtime.subscribe();
+    let mut summaries = runtime.subscribe_summaries();
     app.manage(runtime);
     let handle = app.clone();
     tauri::async_runtime::spawn(async move {
         loop {
             match events.recv().await {
                 Ok(event) => {
-                    let _ = handle.emit("acp:event", event);
+                    let windows: Vec<String> = handle.webview_windows().keys().cloned().collect();
+                    match route_target(event.owner.as_deref(), &windows) {
+                        Route::Window(label) => {
+                            let _ = handle.emit_to(
+                                tauri::EventTarget::webview_window(label.as_str()),
+                                "acp:event",
+                                event,
+                            );
+                        }
+                        Route::AllWindows => {
+                            let _ = handle.emit("acp:event", event);
+                        }
+                    }
                 }
                 Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
                     let _ = handle.emit("acp:resync", ());
                 }
+                Err(_) => break,
+            }
+        }
+    });
+    let handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        loop {
+            match summaries.recv().await {
+                Ok(summary) => {
+                    let _ = handle.emit("acp:session", summary);
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
                 Err(_) => break,
             }
         }

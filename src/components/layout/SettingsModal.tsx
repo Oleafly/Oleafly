@@ -78,7 +78,8 @@ import {
   type GrammarDialect,
 } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
-import { useGithubStore } from "@/store/github";
+import { setResearchTasksEnabled, useResearchTasksEnabled, useResearchTasksFlagStore } from "@/store/research-tasks-flag";
+import { useForgeAccountsStore } from "@/store/forge-accounts";
 import { useCloudStore } from "@/store/cloud";
 import { useTemplateLinkStore } from "@/store/template-link";
 import {
@@ -139,7 +140,7 @@ import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMa
 import {
   githubGetPublicRepoStats,
   type GitHubRepoStats,
-} from "@/lib/github";
+} from "@/lib/forge";
 import { Badge } from "@/components/ui/badge";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 
@@ -158,6 +159,13 @@ const CloudTab = lazy(() =>
 );
 const ChangelogDialog = lazy(() =>
   import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
+);
+
+const ResearchSettingsSection = lazy(() =>
+  Promise.all([
+    import("@/components/settings/research/ResearchSettingsSection"),
+    loadNamespace("researchTools"),
+  ]).then(([module]) => ({ default: module.ResearchSettingsSection })),
 );
 
 const CollaborationSection = lazy(() =>
@@ -217,6 +225,13 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
     icon: Sparkles,
   },
   {
+    id: "research",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.research);
+    },
+    icon: FlaskConical,
+  },
+  {
     id: "engine",
     get label() {
       return i18n.t(($) => $.shell.settings.nav.engine);
@@ -267,7 +282,13 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   },
 ];
 
-const NAV_WITHOUT_COLLABORATION = NAV.filter((item) => item.id !== "collaboration");
+/** The sections to list: Collaboration and Research exist only while their Experimentation switch is on. */
+function availableNav(liveCollaboration: boolean, researchTasks: boolean) {
+  return NAV.filter(
+    (item) =>
+      (item.id !== "collaboration" || liveCollaboration) && (item.id !== "research" || researchTasks),
+  );
+}
 const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   general: "settings-general",
   appearance: "settings-appearance",
@@ -313,18 +334,29 @@ export function SettingsModal() {
   const offline = useSettingsStore((s) => s.offline);
   const setOffline = useSettingsStore((s) => s.setOffline);
   const latexTools = useSettingsStore((s) => s.latexTools);
-  const webBrowser = useSettingsStore((s) => s.webBrowser);
-  const setWebBrowser = useSettingsStore((s) => s.setWebBrowser);
   const liveCollaboration = useSettingsStore((s) => s.liveCollaboration);
   const setLiveCollaboration = useSettingsStore((s) => s.setLiveCollaboration);
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
+  // 0.4.8: research tasks are experimental; Rust keeps the switch and stops running tasks when it goes off.
+  const researchTasks = useResearchTasksEnabled();
+  const [researchTasksBusy, setResearchTasksBusy] = useState(false);
+  const [researchTasksFailed, setResearchTasksFailed] = useState(false);
+  const toggleResearchTasks = (value: boolean) => {
+    if (researchTasksBusy) return;
+    setResearchTasksBusy(true);
+    setResearchTasksFailed(false);
+    void setResearchTasksEnabled(value)
+      .catch(() => setResearchTasksFailed(true))
+      .finally(() => setResearchTasksBusy(false));
+  };
 
   const projectId = useFilesStore((s) => s.projectId);
   const projects = useFilesStore((s) => s.projects);
   const libraryProjects = projects.filter(isLibraryProject);
   const closeProject = useFilesStore((s) => s.closeProject);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
-  const githubStatus = useGithubStore((s) => s.status);
+  const forgeStatus = useForgeAccountsStore((s) => s.status);
+  const forgeAccountCount = useForgeAccountsStore((s) => s.accounts.length);
 
   const [section, setSection] = useState<Section>("general");
   const [dataTab, setDataTab] = useState("local");
@@ -371,7 +403,7 @@ export function SettingsModal() {
   const dismissedTours = AVAILABLE_TOUR_IDS.filter(
     (id) => tours[id].status === "dismissed",
   ).length;
-  const sectionNav = liveCollaboration ? NAV : NAV_WITHOUT_COLLABORATION;
+  const sectionNav = availableNav(liveCollaboration, researchTasks);
   const navigation = developerSettings
     ? [
         ...sectionNav.slice(0, -1),
@@ -418,7 +450,10 @@ export function SettingsModal() {
 
   useEffect(() => {
     if (!open) return;
-    const available = useSettingsStore.getState().liveCollaboration ? NAV : NAV_WITHOUT_COLLABORATION;
+    const available = availableNav(
+      useSettingsStore.getState().liveCollaboration,
+      useResearchTasksFlagStore.getState().enabled,
+    );
     const next = available.some((item) => item.id === settingsInitialSection)
       ? (settingsInitialSection as Section)
       : "general";
@@ -446,6 +481,14 @@ export function SettingsModal() {
   useEffect(() => {
     if (!liveCollaboration && section === "collaboration") setSection("general");
   }, [liveCollaboration, section]);
+  useEffect(() => {
+    if (!researchTasks && section === "research") setSection("general");
+  }, [researchTasks, section]);
+
+  // The data section suggests Git hosting while no account is connected.
+  useEffect(() => {
+    if (open && section === "data") void useForgeAccountsStore.getState().ensureLoaded();
+  }, [open, section]);
 
   useEffect(() => {
     if (!open || section !== "data" || !isTauri()) return;
@@ -778,22 +821,32 @@ export function SettingsModal() {
           onChange={setLatexTools}
         />
         <SettingsToggleRow
-          label={t(($) => $.shell.settings.experimentation.webBrowser.label)}
-          description={t(($) => $.shell.settings.experimentation.webBrowser.description)}
-          checked={webBrowser}
-          onChange={setWebBrowser}
-        />
-        <SettingsToggleRow
           testId="settings-live-collaboration"
           label={t(($) => $.shell.settings.experimentation.liveCollaboration.label)}
           description={t(($) => $.shell.settings.experimentation.liveCollaboration.description)}
           checked={liveCollaboration}
           onChange={setLiveCollaboration}
         />
+        <SettingsToggleRow
+          testId="settings-research-tasks"
+          label={t(($) => $.shell.settings.experimentation.researchTasks.label)}
+          description={t(($) => $.shell.settings.experimentation.researchTasks.description)}
+          checked={researchTasks}
+          disabled={researchTasksBusy}
+          onChange={toggleResearchTasks}
+        />
+        {researchTasksFailed ? (
+          <p role="alert" className="px-1 text-xs text-destructive">
+            {t(($) => $.shell.settings.experimentation.researchTasks.saveFailed)}
+          </p>
+        ) : null}
         <ResetToDefaults
           sectionName={t(($) => $.shell.settings.nav.experimentation)}
-          onReset={resetExperimentationPreferences}
-          changed={experimentationChanged}
+          onReset={() => {
+            resetExperimentationPreferences();
+            if (researchTasks) toggleResearchTasks(false);
+          }}
+          changed={experimentationChanged || researchTasks}
         />
       </div>
     )
@@ -820,6 +873,11 @@ export function SettingsModal() {
       {renderDataSection()}
 
       {section === "ai" && <AISection />}
+      {section === "research" && (
+        <Suspense fallback={null}>
+          <ResearchSettingsSection />
+        </Suspense>
+      )}
 
       {section === "engine" && <EngineSection />}
       {section === "downloads" && <DownloadsSection />}
@@ -986,20 +1044,23 @@ export function SettingsModal() {
           </div>
           {renderRecycleBin()}
         </section>
-        {githubStatus === "disconnected" ? (
+        {forgeStatus === "ready" && forgeAccountCount === 0 ? (
         <div className="flex items-start gap-2 rounded-lg border border-dashed bg-card p-3 text-xs text-muted-foreground">
-          <Github className="mt-0.5 size-4 shrink-0" />
+          <GitFork className="mt-0.5 size-4 shrink-0" />
           <span>
             <Trans
               ns="shell"
-              i18nKey={($) => $.shell.settings.data.githubHint}
+              i18nKey={($) => $.shell.settings.data.gitHostingHint}
               components={{
                 push: <strong className="font-medium text-foreground" />,
                 pull: <strong className="font-medium text-foreground" />,
                 setup: (
                   <button
                     type="button"
-                    onClick={() => setSection("integrations")}
+                    onClick={() => {
+                      useSettingsStore.getState().setSettingsScrollTarget("git-hosting");
+                      setSection("integrations");
+                    }}
                     className="font-medium text-primary hover:underline"
                   />
                 ),

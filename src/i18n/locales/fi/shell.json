@@ -53,19 +53,6 @@
   "branding": {
     "assistantMascot": "Oleaflyn tekoälyavustajan maskotti"
   },
-  "browser": {
-    "address": "Hae tai kirjoita URL",
-    "back": "Takaisin",
-    "closeTab": "Sulje välilehti",
-    "copyUrl": "Kopioi URL",
-    "forward": "Eteenpäin",
-    "moreOptions": "Lisää vaihtoehtoja",
-    "newTab": "Uusi välilehti",
-    "openExternal": "Avaa omassa selaimessa",
-    "openTabs": "Avoimet välilehdet",
-    "reload": "Lataa uudelleen",
-    "setHomePage": "Aseta aloitussivuksi"
-  },
   "changelog": {
     "installed": "Käytössä on tämä versio",
     "sectionItems_one": "{{count}} muutos",
@@ -464,10 +451,6 @@
       "hide": "Piilota tekoälyavustaja",
       "show": "Näytä tekoälyavustaja"
     },
-    "browser": {
-      "close": "Sulje selain ({{shortcut}})",
-      "open": "Avaa selain ({{shortcut}})"
-    },
     "settings": "Asetukset",
     "sidebar": {
       "hide": "Piilota sivupalkki ({{shortcut}})",
@@ -571,22 +554,14 @@
     "tryAgain": "Yritä uudelleen",
     "savedCopy": "Avoimet tiedostosi tallennettiin kansioon {{folder}}."
   },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub: {{login}}",
-    "actions": "GitHub-toiminnot",
-    "connect": "Yhdistä GitHub…",
-    "connectedAs": "Yhdistetty tunnuksella @{{login}}",
-    "copyRepositoryLink": "Kopioi repositorion linkki",
-    "openInGithub": "Avaa GitHubissa",
-    "pushHint": "Työnnä GitHubiin, niin nämä tulevat käyttöön",
-    "settings": "GitHub-asetukset",
-    "tooltip": "GitHub"
-  },
   "home": {
     "ariaLabel": "Aloitusnäkymä",
     "label": "Aloitus",
     "title": "Takaisin kirjastoon",
     "tooltip": "Palaa projektikirjastoon"
+  },
+  "importDestination": {
+    "scansGoTo": "Skannaukset lähetetään palveluun {{provider}}"
   },
   "keys": {
     "enter": "Enter",
@@ -701,8 +676,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Tallentamattomat muutokset pidetään avoinna. Jää korjaamaan ongelma tai lopeta silti ja menetä ne.",
+      "descriptionReload": "{{reason}} Tallentamattomat muutokset pidetään avoinna. Jää korjaamaan ongelma tai lataa silti uudelleen ja menetä ne.",
       "descriptionRestart": "{{reason}} Tallentamattomat muutokset pidetään avoinna. Jää korjaamaan ongelma tai käynnistä silti uudelleen ja menetä ne.",
       "quitAnyway": "Lopeta silti",
+      "reloadAnyway": "Lataa silti uudelleen",
       "restartAnyway": "Käynnistä silti uudelleen",
       "stay": "Jää",
       "title": "Joitakin tiedostoja ei voitu tallentaa"
@@ -725,6 +702,14 @@
     "search": "Hae projektista",
     "sourceControl": "Versionhallinta",
     "withShortcut": "{{label}} ({{shortcut}})"
+  },
+  "remoteMenu": {
+    "accountLabel": "{{login}} palvelussa {{host}}",
+    "actions": "Repositorion toiminnot",
+    "copyRepositoryLink": "Kopioi repositorion linkki",
+    "openOnHost": "Avaa palvelussa {{host}}",
+    "settings": "Git-palveluiden asetukset",
+    "signedInAs": "Kirjautunut palveluun {{host}} käyttäjänä {{login}}"
   },
   "renameDialog": {
     "close": "Sulje uudelleennimeämisikkuna",
@@ -773,9 +758,9 @@
         "movedCount_other": "{{count}} projektia siirrettiin roskakoriin.",
         "title": "Vaaravyöhyke"
       },
-      "githubHint": "Varmuuskopioi tai synkronoi projekti laitteiden välillä: yhdistä GitHub ja käytä sitten versionhallinnassa <push>Työnnä</push> / <pull>Nouda</pull>. <setup>Ota GitHub käyttöön →</setup>",
+      "gitHostingHint": "Varmuuskopioi tai synkronoi projekti laitteiden välillä: linkitä se Git-repositorioon ja käytä sitten Versionhallinnan toimintoja <push>Työnnä</push> / <pull>Nouda</pull>. <setup>Määritä Git-palvelut →</setup>",
       "localFirst": "Oleafly on paikallisuutta korostava. Kaikki projektit ovat omalla levylläsi:",
-      "plainFolders": "Jokainen projekti on tavallinen kansio. Git-historia on valinnainen, eikä mikään lähde koneeltasi, ellet työnnä sitä GitHubiin.",
+      "plainFolders": "Jokainen projekti on tavallinen kansio. Git-historia on valinnainen, eikä mikään lähde koneeltasi, ellet työnnä sitä Git-palvelimelle.",
       "recycleBin": {
         "clearAll": "Tyhjennä kaikki",
         "clearFailed": "Roskakoria ei voitu tyhjentää.",
@@ -848,11 +833,12 @@
         "description": "Muokkaa projekteja muiden kanssa yhteistyöpalvelimen kautta, jota sinä tai ryhmäsi ylläpitää. Lisää asetuksiin Yhteistyö-osion. Oletuksena pois, koska ominaisuus on vielä beta-vaiheessa.",
         "label": "Reaaliaikainen yhteistyö"
       },
-      "warning": "Nämä ominaisuudet ovat kokeellisia ja yhä beta-vaiheessa. Niitä ei ole vielä testattu kattavasti, ja ne voivat muuttua, hajota tai poistua tulevassa julkaisussa. Ota ne käyttöön vain, jos haluat kokeilla keskeneräistä työtä.",
-      "webBrowser": {
-        "description": "Näytä sovelluksen sisäinen selain (sen telakkavalitsin ja pikanäppäin) ja anna tekoälyn ohjata sitä tietokoneen käytöllä. Oletuksena pois, koska tämä on vielä beta-vaiheessa. Kun asetus on pois, selainpainiketta ei ole eikä tekoälyllä ole selaintyökalua.",
-        "label": "Verkkoselain"
-      }
+      "researchTasks": {
+        "description": "Agentti työskentelee itsenäisesti projektin kopiossa ja jättää muutokset sinun tarkistettavaksesi. Erittäin epävakaa: ajot voivat jumittua, epäonnistua tai jättää muutoksia, jotka pitää selvittää käsin, ja ne kuluttavat tekoälypalvelusi kiintiötä koko ajan. Lisää asetuksiin Tutkimus-osion. Kun kytket sen pois, kaikki käynnissä olevat tehtävät pysähtyvät. Oletuksena pois. Ota käyttöön omalla vastuullasi.",
+        "label": "Tutkimustehtävät",
+        "saveFailed": "Tutkimustehtävien kytkintä ei voitu tallentaa. Yritä uudelleen."
+      },
+      "warning": "Nämä ominaisuudet ovat kokeellisia ja yhä beta-vaiheessa. Niitä ei ole vielä testattu kattavasti, ja ne voivat muuttua, hajota tai poistua tulevassa julkaisussa. Ota ne käyttöön vain, jos haluat kokeilla keskeneräistä työtä."
     },
     "footer": {
       "followOnX": "Seuraa X:ssä",
@@ -936,7 +922,8 @@
       "general": "Yleiset",
       "help": "Ohje ja tietoja",
       "integrations": "Integraatiot",
-      "shortcuts": "Pikanäppäimet"
+      "shortcuts": "Pikanäppäimet",
+      "research": "Tutkimus"
     },
     "search": {
       "empty": "Ei vastaavia asetuksia",
@@ -951,8 +938,9 @@
         "experimentation": "kokeilut, kokeelliset ominaisuudet, beta, varhaiset ominaisuudet",
         "general": "asetukset, kieli, alue, kielialue, oikoluku, oikeinkirjoitus, kirjoitusvirheet, offline, esittelyt, päätekomento",
         "help": "tietoja, versio, päivitykset, muutosloki, mitä uutta, dokumentaatio, ohjeet, tuki, yhteisö, Discord, lisenssi, kaatumisraportti",
-        "integrations": "Zotero, GitHub, MCP, viittaukset, viitteet, tilit, yhteydet",
-        "shortcuts": "pikanäppäimet, näppäinyhdistelmät, näppäimet, näppäimistö"
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-palvelut, työpöytäsovellukset, Cua, MCP, viittaukset, viitteet, tilit, yhteydet",
+        "shortcuts": "pikanäppäimet, näppäinyhdistelmät, näppäimet, näppäimistö",
+        "research": "tutkimus tehtävät budjetti ilmoitukset hereillä pito kokeet ajot"
       },
       "label": "Hae asetuksista",
       "results_one": "{{count}} osio vastaa hakua",
@@ -1034,7 +1022,6 @@
     "commitCount_other": "{{count}} commitia",
     "initialize": "Alusta repositorio",
     "initialized": "Git alustettiin haaraan {{branch}}.",
-    "linkCopied": "GitHub-linkki kopioitiin",
     "markResolved": "Merkitse ratkaistuksi",
     "mergeNeedsAttention": "Ratkaise yhdistämisristiriidat",
     "moreActions": "Lisää versionhallinnan toimintoja",
@@ -1048,18 +1035,19 @@
     "openFile": "Avaa tiedosto",
     "openFileFor": "Avaa {{path}}",
     "popStash": "Ota käyttöön viimeisin varasto",
-    "publish": "Julkaise GitHubiin",
+    "publishRepository": "Julkaise…",
+    "publishTo": "Julkaise palveluun {{host}}",
     "published": "Julkaistiin kohteeseen {{url}}",
     "pull": "Nouda origin-etäosoitteesta",
     "pullShort": "Nouda",
     "push": "Vahvista ja työnnä origin-etäosoitteeseen",
     "pushShort": "Työnnä",
     "pushSkippedNoRemote": "⚠ Työntö ohitettiin - alla ei ole asetettu origin-etäosoitetta.",
-    "pushSkippedNoToken": "⚠ Työntö ohitettiin - ei GitHub-tokenia (Asetukset → GitHub).",
     "refresh": "Päivitä",
     "remote": "Etäosoite",
     "remoteHint": "Luo uusi repositorio tai linkitä olemassa oleva tämän projektin etäosoitteeksi ja työnnä sitten.",
     "removeCredential": "Poista tallennettu tunnistetieto",
+    "repositoryLinkCopied": "Repositorion linkki kopioitiin",
     "restoreCommit": "Palauta versio",
     "restoreCommitDescription": "Tämä korvaa jokaisen seuratun projektitiedoston tällä versiolla ja poistaa myöhemmin lisätyt tiedostot. Haara pysyy nykyisessä commitissaan.",
     "restoreCommitTitle": "Palautetaanko tämä versio?",
@@ -1089,7 +1077,7 @@
     "titleRequired": "Commitin otsikko vaaditaan.",
     "titleRequiredStatus": "Kirjoita commitin otsikko ennen vahvistamista.",
     "unlink": "Poista linkitys",
-    "unlinked": "Linkitys GitHubiin poistettiin.",
+    "unlinkedFrom": "Linkitys palveluun {{host}} poistettiin.",
     "unstage": "Peru valmistelu",
     "unstageFor": "Peru kohteen {{path}} valmistelu",
     "unstageAll": "Peru kaikkien valmistelu",

@@ -7,7 +7,6 @@ import {
   type IndexUseView,
   type ProjectIndexView,
 } from "./tools";
-import type { CuaSurface } from "./cua";
 
 function makeHost(overrides: Partial<AiToolsHost> = {}): AiToolsHost {
   return {
@@ -537,88 +536,5 @@ describe("run_command", () => {
       error: "Error: spawn failed",
     });
     expect(host.refreshOpenFiles).toHaveBeenCalledWith("proj");
-  });
-});
-
-describe("computer_use", () => {
-  function nativeSurface(): CuaSurface & { navigated: string[] } {
-    const navigated: string[] = [];
-    return {
-      get document(): Document {
-        throw new Error("separate window");
-      },
-      url: () => "https://example.org/",
-      navigate(url: string) {
-        navigated.push(url);
-      },
-      navigated,
-    };
-  }
-
-  it("is absent unless a browser surface is wired", () => {
-    expect(createOleaflyTools(makeHost()).computer_use).toBeUndefined();
-  });
-
-  it("describes the stricter approval policy when every action needs confirming", () => {
-    const strict = createOleaflyTools(makeHost(), {
-      cuaSurface: () => null,
-      alwaysConfirmComputerUse: true,
-    }).computer_use;
-    const relaxed = createOleaflyTools(makeHost(), { cuaSurface: () => null }).computer_use;
-    expect(strict.description).toContain("Every navigation requires explicit user approval");
-    expect(relaxed.description).toContain("follows the active approval policy");
-  });
-
-  it("explains when the browser window is unavailable", async () => {
-    const tools = createOleaflyTools(makeHost(), { cuaSurface: () => null });
-    expect(await tools.computer_use.execute({ action: "wait" })).toEqual({
-      error: "The browser window is unavailable. Enable the web browser to use computer_use.",
-    });
-  });
-
-  it("waits without asking", async () => {
-    const confirm = vi.fn<ConfirmFn>(async () => true);
-    const surface = nativeSurface();
-    const tools = createOleaflyTools(makeHost(), { confirm, cuaSurface: () => surface });
-    expect(await tools.computer_use.execute({ action: "wait", amount: 0 })).toEqual({ ok: true, message: "Waited" });
-    expect(confirm).not.toHaveBeenCalled();
-  });
-
-  it("navigates only after approval naming the URL", async () => {
-    const confirm = vi.fn<ConfirmFn>(async () => true);
-    const surface = nativeSurface();
-    const tools = createOleaflyTools(makeHost(), { confirm, cuaSurface: () => surface });
-    const result = await tools.computer_use.execute({ action: "navigate", text: "https://arxiv.org/" });
-    expect(confirm).toHaveBeenCalledWith({ tool: "computer_use", summary: "navigate https://arxiv.org/" });
-    expect(surface.navigated).toEqual(["https://arxiv.org/"]);
-    expect(result).toMatchObject({ ok: true, message: "Navigated to https://arxiv.org/" });
-  });
-
-  it("declines a navigation with no approval flow or a refused approval", async () => {
-    const surface = nativeSurface();
-    const unapproved = createOleaflyTools(makeHost(), { cuaSurface: () => surface });
-    expect(await unapproved.computer_use.execute({ action: "navigate", text: "https://a.org/" })).toMatchObject({
-      declined: true,
-      tool: "computer_use",
-    });
-    const refused = createOleaflyTools(makeHost(), {
-      confirm: async () => false,
-      cuaSurface: () => surface,
-    });
-    expect(await refused.computer_use.execute({ action: "navigate", text: "https://a.org/" })).toMatchObject({
-      declined: true,
-    });
-    expect(surface.navigated).toEqual([]);
-  });
-
-  it("confirms even a wait when every action must be approved", async () => {
-    const confirm = vi.fn<ConfirmFn>(async () => true);
-    const tools = createOleaflyTools(makeHost(), {
-      confirm,
-      cuaSurface: () => nativeSurface(),
-      alwaysConfirmComputerUse: true,
-    });
-    await tools.computer_use.execute({ action: "wait", amount: 0 });
-    expect(confirm).toHaveBeenCalledWith({ tool: "computer_use", summary: "wait" });
   });
 });

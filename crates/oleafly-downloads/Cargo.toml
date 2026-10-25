@@ -1,0 +1,37 @@
+[package]
+name = "oleafly-downloads"
+version = "0.1.0"
+description = "Downloads shared by the Oleafly app and CLI: pinned toolchains, Typst versions and template packs"
+license = "AGPL-3.0-or-later"
+publish = false
+edition = "2021"
+rust-version = "1.87"
+
+[dependencies]
+fs4 = "1.1"
+flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }
+futures-util = "0.3"
+oleafly-core = { path = "../oleafly-core" }
+rand = "0.8"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tar = "0.4"
+tokio = { version = "1", features = ["fs", "io-util", "macros", "rt", "sync", "time"] }
+zip = { version = "4", default-features = false, features = ["deflate"] }
+
+[target.'cfg(not(windows))'.dependencies]
+# Streaming decoder for .tar.xz toolchains. Static linking avoids a runtime
+# liblzma dependency; disabling defaults avoids bindgen.
+liblzma = { version = "=0.4.8", default-features = false, features = ["static"] }
+
+[features]
+# Installs are visible only to the thread that started them, so parallel
+# tests in a dependent crate don't see each other's installs.
+test-support = []
+
+[dev-dependencies]
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
+tempfile = { workspace = true }
+tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "rt", "rt-multi-thread", "sync", "time"] }

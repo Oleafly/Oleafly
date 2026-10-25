@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { packChatHistory, truncateText } from "./ai-context-pack";
+import { packChatHistory, truncateText, packChatHistoryInfo } from "./ai-context-pack";
 
 describe("truncateText", () => {
   it("leaves short strings alone", () => {
@@ -24,4 +24,16 @@ describe("packChatHistory", () => {
     expect(packed).toHaveLength(4);
     expect(packed[0].content).toBe("m36");
   });
+
+  it("reports the turns it dropped", () => {
+    const msgs = Array.from({ length: 30 }, (_, i) => ({
+      role: i % 2 === 0 ? "user" : "assistant",
+      content: `m${i}`,
+    }));
+    const packed = packChatHistoryInfo(msgs);
+    expect(packed.droppedTurns).toBe(6);
+    expect(packed.messages).toHaveLength(24);
+    expect(packChatHistoryInfo(msgs.slice(0, 4)).droppedTurns).toBe(0);
+  });
 });
+

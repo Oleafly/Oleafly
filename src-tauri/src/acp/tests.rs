@@ -89,10 +89,10 @@ async fn runtime(extra: Vec<String>) -> (tempfile::TempDir, Arc<AcpRuntime>, Ses
 
 #[test]
 fn unknown_capabilities_are_disabled_and_versions_are_checked() {
-    let caps = Capabilities::from_initialize(&json!({"protocolVersion":1})).unwrap();
+    let caps = capabilities_from_initialize(&json!({"protocolVersion":1})).unwrap();
     assert!(!caps.image && !caps.load_session && !caps.resume);
-    assert!(Capabilities::from_initialize(&json!({"protocolVersion":2})).is_err());
-    let caps = Capabilities::from_initialize(&json!({"protocolVersion":1,"agentCapabilities":{"loadSession":true,"sessionCapabilities":{"resume":{}}}})).unwrap();
+    assert!(capabilities_from_initialize(&json!({"protocolVersion":2})).is_err());
+    let caps = capabilities_from_initialize(&json!({"protocolVersion":1,"agentCapabilities":{"loadSession":true,"sessionCapabilities":{"resume":{}}}})).unwrap();
     assert!(caps.load_session && caps.resume);
 }
 
@@ -280,11 +280,11 @@ async fn authentication_is_owned_by_the_agent_and_recovers() {
     let (_temp, runtime, snapshot) = runtime(vec!["".into(), "--require-login".into()]).await;
     assert_eq!(snapshot.session.status, SessionStatus::AuthRequired);
     assert!(runtime
-        .authenticate(&snapshot.session.id, "unknown")
+        .authenticate(&snapshot.session.id, "unknown", None)
         .await
         .is_err());
     let ready = runtime
-        .authenticate(&snapshot.session.id, "fixture-login")
+        .authenticate(&snapshot.session.id, "fixture-login", None)
         .await
         .unwrap();
     assert_eq!(ready.session.status, SessionStatus::Ready);
@@ -377,6 +377,47 @@ async fn cancelling_a_compliant_turn_keeps_the_session_connected() {
     })
     .await
     .unwrap();
+}
+
+// 0.4.8 I: a finished turn ends the agent's desktop apps session.
+#[tokio::test]
+async fn a_finished_turn_ends_the_agents_desktop_session() {
+    let (_temp, runtime, snapshot) = runtime(Vec::new()).await;
+    let id = snapshot.session.id;
+    runtime
+        .prompt(&id, "Hello".into(), Vec::new())
+        .await
+        .unwrap();
+    assert!(crate::cua_driver::dispatch::TEST_ACP_TURN_ENDS
+        .lock()
+        .unwrap()
+        .contains(&id));
+    runtime.close(&id).await.unwrap();
+}
+
+// 0.4.8 I: a session keeps one resource, so the research bridge and the
+// desktop apps bridge live (and go) together.
+#[tokio::test]
+async fn acp_sessions_keep_both_bridges_in_one_resource() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    struct Counted(Arc<AtomicUsize>);
+    impl Drop for Counted {
+        fn drop(&mut self) {
+            self.0.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+    let (_temp, runtime, snapshot) = runtime(Vec::new()).await;
+    let dropped = Arc::new(AtomicUsize::new(0));
+    runtime
+        .retain_resource(
+            &snapshot.session.id,
+            (Counted(dropped.clone()), Some(Counted(dropped.clone()))),
+        )
+        .await
+        .unwrap();
+    assert_eq!(dropped.load(Ordering::SeqCst), 0);
+    runtime.stop_all_now();
+    assert_eq!(dropped.load(Ordering::SeqCst), 2);
 }
 
 #[tokio::test]
@@ -528,6 +569,25 @@ fn missing_usage_is_not_zero_or_context_input() {
 }
 
 #[test]
+fn the_ledger_reads_prompt_usage_as_the_session_view_does() {
+    // An agent that reports a turn's tokens only in `_meta.quota`, in
+    // snake case.
+    let answer = json!({"stopReason":"end_turn","_meta":{"quota":{"token_count":{
+        "input_tokens": 12, "output_tokens": 3, "cached_read_tokens": 4}}}});
+    let counters = prompt_usage(&answer).unwrap();
+    assert_eq!(
+        (
+            counters.input_tokens,
+            counters.output_tokens,
+            counters.cache_read_tokens
+        ),
+        (Some(12), Some(3), Some(4))
+    );
+    let snake = prompt_usage(&json!({"usage":{"input_tokens":7}})).unwrap();
+    assert_eq!(snake.input_tokens, Some(7));
+}
+
+#[test]
 fn secrets_are_removed_from_text_tools_and_permission_payloads() {
     let redactor = Redactor::new(&[
         json!({"headers":[{"name":"Authorization","value":"Bearer bare-secret-123456"}]}),
@@ -593,6 +653,7 @@ fn rebinding_project_paths_skips_task_sessions_and_other_projects() {
         last_sequence: 0,
         start_revision: None,
         start_dirty: None,
+        ..SessionRecord::default()
     };
     let own = record("p", None);
     let task = record("p", Some("task"));
@@ -701,6 +762,7 @@ fn reopening_storage_recovers_running_status_without_erasing_events() {
         last_sequence: 1,
         start_revision: None,
         start_dirty: None,
+        ..SessionRecord::default()
     };
     store.save(&session).unwrap();
     let event = AcpEvent {
@@ -714,8 +776,9 @@ fn reopening_storage_recovers_running_status_without_erasing_events() {
         timestamp: 1,
         kind: "agent_message_chunk".into(),
         data: json!({"content":{"type":"text","text":"partial"}}),
+        owner: None,
     };
-    store.append(&session, &event).unwrap();
+    store.append(&event, Some(&session)).unwrap();
     drop(store);
     let reopened = Store::open(temp.path()).unwrap();
     assert_eq!(
@@ -788,19 +851,166 @@ fn task_availability_distinguishes_platform_and_agent_family() {
         .iter()
         .find(|definition| definition.id == "codex")
         .unwrap();
-    assert!(catalog::task_unavailable_reason_for(codex, "macos")
-        .unwrap()
-        .contains("child processes"));
-    assert!(catalog::task_unavailable_reason_for(codex, "linux").is_none());
+    assert!(catalog::task_unavailable_reason_for(
+        codex,
+        "macos",
+        &catalog::WindowsTaskSupport::default()
+    )
+    .unwrap()
+    .contains("child processes"));
+    assert!(catalog::task_unavailable_reason_for(
+        codex,
+        "linux",
+        &catalog::WindowsTaskSupport::default()
+    )
+    .is_none());
     let mut renamed = codex.clone();
     renamed.id = "my-custom-agent".into();
-    assert!(catalog::task_unavailable_reason_for(&renamed, "macos").is_some());
+    assert!(catalog::task_unavailable_reason_for(
+        &renamed,
+        "macos",
+        &catalog::WindowsTaskSupport::default()
+    )
+    .is_some());
     for definition in definitions {
-        assert!(catalog::task_unavailable_reason_for(&definition, "windows").is_some());
-        if definition.id != "codex" {
-            assert!(catalog::task_unavailable_reason_for(&definition, "macos").is_none());
+        if cfg!(not(windows)) {
+            assert!(catalog::task_unavailable_reason_for(
+                &definition,
+                "windows",
+                &catalog::WindowsTaskSupport::default()
+            )
+            .is_some());
+        }
+        if !["codex", "hermes", "pi"].contains(&definition.id.as_str()) {
+            assert!(catalog::task_unavailable_reason_for(
+                &definition,
+                "macos",
+                &catalog::WindowsTaskSupport::default()
+            )
+            .is_none());
         }
     }
+}
+
+#[test]
+fn windows_tasks_need_the_sandbox_switch() {
+    let claude = catalog::builtins()
+        .into_iter()
+        .find(|definition| definition.id == "claude")
+        .unwrap();
+    let off = catalog::WindowsTaskSupport {
+        sandbox_on: false,
+        node_libuv: Some((1, 60, 0)),
+    };
+    assert!(
+        catalog::task_unavailable_reason_for(&claude, "windows", &off)
+            .unwrap()
+            .contains("Windows sandbox")
+    );
+}
+
+#[test]
+fn windows_node_agents_wait_for_libuv_1_53() {
+    let node_agent = catalog::builtins()
+        .into_iter()
+        .find(|definition| {
+            definition.distribution.npx.is_some()
+                && !["codex", "hermes", "pi"].contains(&definition.id.as_str())
+        })
+        .unwrap();
+    let support = |node_libuv| catalog::WindowsTaskSupport {
+        sandbox_on: true,
+        node_libuv,
+    };
+    assert!(catalog::task_unavailable_reason_for(
+        &node_agent,
+        "windows",
+        &support(Some((1, 52, 1)))
+    )
+    .unwrap()
+    .contains("libuv 1.53"));
+    assert!(catalog::task_unavailable_reason_for(
+        &node_agent,
+        "windows",
+        &support(Some((1, 53, 0)))
+    )
+    .is_none());
+    assert!(catalog::task_unavailable_reason_for(&node_agent, "windows", &support(None)).is_some());
+}
+
+#[test]
+fn windows_native_agents_follow_the_switch() {
+    let mut native = catalog::builtins()
+        .into_iter()
+        .find(|definition| definition.id == "claude")
+        .unwrap();
+    native.id = "native-agent".into();
+    native.distribution.npx = None;
+    native.distribution.uvx = None;
+    native.distribution.command = Some(crate::acp::types::CommandDistribution {
+        executable: "native-agent.exe".into(),
+        args: vec!["acp".into()],
+    });
+    let on = catalog::WindowsTaskSupport {
+        sandbox_on: true,
+        node_libuv: None,
+    };
+    assert!(catalog::task_unavailable_reason_for(&native, "windows", &on).is_none());
+}
+
+#[test]
+fn hermes_tasks_are_disabled_everywhere_with_the_gateway_reason() {
+    let hermes = catalog::builtins()
+        .into_iter()
+        .find(|definition| definition.id == "hermes")
+        .unwrap();
+    for os in ["linux", "macos", "windows"] {
+        assert!(catalog::task_unavailable_reason_for(
+            &hermes,
+            os,
+            &catalog::WindowsTaskSupport::default()
+        )
+        .unwrap()
+        .contains("gateway"));
+    }
+}
+
+#[test]
+fn pi_tasks_wait_for_a_verified_run() {
+    let pi = catalog::builtins()
+        .into_iter()
+        .find(|definition| definition.id == "pi")
+        .unwrap();
+    for os in ["linux", "macos"] {
+        assert!(catalog::task_unavailable_reason_for(
+            &pi,
+            os,
+            &catalog::WindowsTaskSupport::default()
+        )
+        .unwrap()
+        .starts_with("Pi tasks stay off"));
+    }
+}
+
+#[test]
+fn codex_tasks_follow_the_verified_list() {
+    let codex = catalog::builtins()
+        .into_iter()
+        .find(|definition| definition.id == "codex")
+        .unwrap();
+    assert!(catalog::task_unavailable_reason_for(
+        &codex,
+        "linux",
+        &catalog::WindowsTaskSupport::default()
+    )
+    .is_none());
+    assert!(catalog::task_unavailable_reason_for(
+        &codex,
+        "macos",
+        &catalog::WindowsTaskSupport::default()
+    )
+    .unwrap()
+    .contains("child processes"));
 }
 
 fn pending_runtime(extra: Vec<String>) -> (tempfile::TempDir, Arc<AcpRuntime>, StartSession) {
@@ -1409,6 +1619,7 @@ async fn restricted_folders_never_start_or_resume_external_agents() {
         last_sequence: 0,
         start_revision: None,
         start_dirty: None,
+        ..SessionRecord::default()
     };
     Store::open(&temp.path().join("acp"))
         .unwrap()
@@ -1847,6 +2058,7 @@ fn sandboxed_task_launches_keep_the_sandbox_environment() {
         last_sequence: 0,
         start_revision: None,
         start_dirty: None,
+        ..SessionRecord::default()
     };
     let command = super::runtime::build_agent_command(
         &temp.path().join("acp"),
@@ -1873,11 +2085,18 @@ fn sandboxed_task_launches_keep_the_sandbox_environment() {
             )
         })
         .collect();
-    assert!(envs.iter().all(|(name, _)| name != "PI_ACP_PI_COMMAND"));
+    // The CLI hand-off reaches the sandboxed bridge; the search path never does.
+    assert!(envs.iter().any(
+        |(name, value)| name == "PI_ACP_PI_COMMAND" && value.as_deref() == Some("/outside/pi")
+    ));
     assert!(envs
         .iter()
         .all(|(_, value)| value.as_deref() != Some("/should/not/reach/the/sandbox")));
 }
 
+mod controls;
 mod live_turns;
 mod review;
+mod sessions048;
+mod store;
+mod turns048;

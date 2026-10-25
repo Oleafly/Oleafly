@@ -31,6 +31,7 @@ vi.mock("@/store/files", () => ({
 }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn(async () => {}) }));
 
+import { AppError, describeError } from "@/lib/app-error";
 import { useOverleafSyncStore } from "./overleaf-sync";
 
 const SERVER = "https://www.overleaf.com";
@@ -174,6 +175,16 @@ describe("overleaf sync store", () => {
     api.overleafSyncUnlink.mockRejectedValueOnce(new Error("locked"));
     await useOverleafSyncStore.getState().unlink();
     expect(useOverleafSyncStore.getState().error).toEqual(new Error("locked"));
+  });
+
+  it("says where stopping the sync kept the files Overleaf's versions replaced", async () => {
+    const folder = "/Users/zoe/.oleafly/overleaf-sync-backups/p1";
+    api.overleafSyncUnlink.mockResolvedValue(status({ backupsFolder: folder }));
+    await useOverleafSyncStore.getState().unlink();
+    const notice = useOverleafSyncStore.getState().error;
+    expect(notice).toBeInstanceOf(AppError);
+    expect(notice).toMatchObject({ code: "overleaf.sync_backups_saved", params: { folder } });
+    expect(describeError(notice)).toContain(folder);
   });
 
   it("finishes a quiet sync without the editor lease", async () => {

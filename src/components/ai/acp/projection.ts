@@ -93,6 +93,10 @@ interface ProjectionState {
   rows: Row[];
   tools: Map<string, number>;
   lastKind: string;
+  /** The plan row of each turn, replaced in place. */
+  plans: Map<string, number>;
+  /** Files committed per turn (`path → commit`), applied whenever the changes card arrives. */
+  commits: Map<string, Record<string, string>>;
 }
 
 const TERMINAL_STATUSES = new Set(["failed", "disconnected", "cancelled"]);
@@ -109,15 +113,28 @@ function appendRow(
   raw?: string,
 ) {
   const id = rowId(event);
-  state.rows.push({ id, turn: event.turnId, kind, msg: { id, createdAt: event.timestamp, ...msg }, raw });
+  state.rows.push({
+    id,
+    turn: event.turnId,
+    kind,
+    msg: { id, createdAt: event.timestamp, ...(event.turnId ? { turnId: event.turnId } : {}), ...msg },
+    raw,
+  });
 }
 
-function imageAttachments(images: unknown) {
-  if (!Array.isArray(images)) return undefined;
-  return images.map((image: unknown, index) => ({
-    name: i18n.t(($) => $.ai.acp.imageAttachmentName, { index: index + 1 }),
-    mediaType: text(object(image).mimeType),
-  }));
+/** Images and files sent with a user message (a 0.4.7 message has images only). */
+function sentAttachments(images: unknown, files: unknown) {
+  const shown = [
+    ...(Array.isArray(images) ? images : []).map((image: unknown, index) => ({
+      name: i18n.t(($) => $.ai.acp.imageAttachmentName, { index: index + 1 }),
+      mediaType: text(object(image).mimeType),
+    })),
+    ...(Array.isArray(files) ? files : []).map((file: unknown) => ({
+      name: text(object(file).name),
+      mediaType: text(object(file).mime) || "application/octet-stream",
+    })),
+  ].filter((entry) => entry.name);
+  return shown.length > 0 ? shown : undefined;
 }
 
 function mergeChunk(previous: Row, chunk: string, reasoning: boolean) {
@@ -135,6 +152,17 @@ function applyChunk(state: ProjectionState, event: AcpEvent): boolean {
   if (!chunk) return false;
   const previous = state.rows.at(-1);
   const reasoning = event.kind === "agent_thought_chunk";
+  // An ACP v2 agent rewrote the message it is streaming.
+  if (event.data.replace === true && previous?.kind === event.kind && previous.turn === event.turnId) {
+    const block = previous.msg.reasoningBlocks?.[0];
+    if (reasoning && block) {
+      previous.msg = { ...previous.msg, reasoningBlocks: [{ ...block, text: chunk }] };
+    } else {
+      previous.raw = chunk;
+      previous.msg = noticed(previous.msg, chunk);
+    }
+    return true;
+  }
   if (previous?.kind === event.kind && previous.turn === event.turnId && state.lastKind === event.kind) {
     mergeChunk(previous, chunk, reasoning);
   } else if (reasoning) {
@@ -149,6 +177,17 @@ function applyChunk(state: ProjectionState, event: AcpEvent): boolean {
   return true;
 }
 
+/** A v2 agent streams tool output in pieces: an append goes on the end of what the call has. */
+function mergedToolOutput(previous: string | undefined, output: string | undefined, append: boolean): string | undefined {
+  if (output === undefined) return previous;
+  return append && previous ? `${previous}${output}` : output;
+}
+
+function mergedToolDiffs(data: Data, previous: ToolEntry | undefined): ToolDiff[] | undefined {
+  if (!data.content) return previous?.diffs;
+  return toolDiffs(data) ?? (data.append === true ? previous?.diffs : undefined);
+}
+
 function applyToolCall(state: ProjectionState, event: AcpEvent): boolean {
   const data = event.data;
   const toolId = text(data.toolCallId);
@@ -156,13 +195,14 @@ function applyToolCall(state: ProjectionState, event: AcpEvent): boolean {
   const key = `${event.turnId}:${toolId}`;
   const index = state.tools.get(key);
   const previous = index === undefined ? undefined : state.rows[index].msg.toolCalls?.[0];
+  const output = data.content ? toolOutput(data) : undefined;
   const tool: ToolEntry = {
     id: toolId,
     // Agents title tool calls with absolute paths ("Read /Users/…/main.tex").
     name: displayText(text(data.title)) || previous?.name || i18n.t(($) => $.ai.acp.agentToolFallback),
     status: toolStatus(data.status, previous?.status),
-    output: data.content ? toolOutput(data) : previous?.output,
-    diffs: data.content ? toolDiffs(data) : previous?.diffs,
+    output: mergedToolOutput(previous?.output, output, data.append === true),
+    diffs: mergedToolDiffs(data, previous),
   };
   if (!tool.diffs) delete tool.diffs;
   if (index === undefined) {
@@ -232,6 +272,12 @@ function closeTurn(state: ProjectionState, turnId: string | null) {
   }
 }
 
+const STOP_NOTICES: Record<string, () => string> = {
+  refusal: () => i18n.t(($) => $.ai.acp.stopReason.refusal),
+  max_tokens: () => i18n.t(($) => $.ai.acp.stopReason.maxTokens),
+  max_turn_requests: () => i18n.t(($) => $.ai.acp.stopReason.maxTurnRequests),
+};
+
 function applyTurnEnd(state: ProjectionState, event: AcpEvent) {
   const data = event.data;
   const terminal = event.kind === "turn_complete" || TERMINAL_STATUSES.has(text(data.status));
@@ -240,6 +286,82 @@ function applyTurnEnd(state: ProjectionState, event: AcpEvent) {
   const error = text(data.error);
   if (error.trim() && !alreadySaid(state.rows, event.turnId, error)) {
     appendRow(state, event, "error", noticed({ role: "assistant", content: "" }, displayText(error)));
+    return;
+  }
+  const stop = event.kind === "turn_complete" ? STOP_NOTICES[text(data.stopReason)] : undefined;
+  if (stop) appendRow(state, event, "notice", { role: "assistant", content: "", notices: [stop()] });
+}
+
+function applyPlan(state: ProjectionState, event: AcpEvent, entries: readonly unknown[]) {
+  const turn = event.turnId ?? "";
+  const index = state.plans.get(turn);
+  const content = planContent(entries);
+  if (index !== undefined && state.rows[index]) {
+    state.rows[index].msg = { ...state.rows[index].msg, content };
+    return;
+  }
+  state.plans.set(turn, state.rows.length);
+  appendRow(state, event, "plan", { role: "assistant", content });
+}
+
+function noticeText(title: string, description: string): string {
+  if (!description) return title;
+  return title ? `${title}: ${description}` : description;
+}
+
+function applyNotice(state: ProjectionState, event: AcpEvent) {
+  const title = displayText(text(event.data.title));
+  const description = displayText(text(event.data.description));
+  const notice = noticeText(title, description);
+  if (!notice) return false;
+  appendRow(state, event, "notice", { role: "assistant", content: "", notices: [notice] });
+  return true;
+}
+
+function compactionName(status: string): string {
+  if (status === "completed") return i18n.t(($) => $.ai.acp.compaction.done);
+  if (status === "failed" || status === "cancelled") return i18n.t(($) => $.ai.acp.compaction.failed);
+  return i18n.t(($) => $.ai.acp.compaction.running);
+}
+
+function compactionStatus(status: string): ToolEntry["status"] {
+  if (status === "completed") return "done";
+  return status === "failed" || status === "cancelled" ? "error" : "running";
+}
+
+/** A compaction shows as a step whose output is the summary. */
+function applyCompaction(state: ProjectionState, event: AcpEvent) {
+  const id = text(event.data.compactionId);
+  if (!id) return false;
+  const status = text(event.data.status);
+  const key = `compaction:${id}`;
+  const index = state.tools.get(key);
+  const tool: ToolEntry = {
+    id: key,
+    name: compactionName(status),
+    status: compactionStatus(status),
+    output: text(event.data.summary) || text(event.data.error) || undefined,
+  };
+  if (index === undefined) {
+    state.tools.set(key, state.rows.length);
+    appendRow(state, event, "tool", { role: "assistant", content: "", toolCalls: [tool] });
+  } else {
+    state.rows[index].msg = { ...state.rows[index].msg, toolCalls: [tool] };
+  }
+  return true;
+}
+
+/** Marks committed files on the turn's changes card, whichever arrives first. */
+function applyCommit(state: ProjectionState, event: AcpEvent) {
+  const turn = text(event.data.turnId) || event.turnId;
+  const commit = text(event.data.commit);
+  if (!turn || !commit || !Array.isArray(event.data.paths)) return;
+  const committed = { ...state.commits.get(turn) };
+  for (const path of event.data.paths) if (typeof path === "string") committed[path] = commit;
+  state.commits.set(turn, committed);
+  for (const row of state.rows) {
+    if (row.turn !== turn || !row.msg.turnChanges) continue;
+    row.msg = { ...row.msg, turnChanges: { ...row.msg.turnChanges, committed } };
   }
 }
 
@@ -268,7 +390,11 @@ function applyTurnChanges(state: ProjectionState, event: AcpEvent) {
     }
   }
   if (target < 0) return;
-  state.rows[target].msg = { ...state.rows[target].msg, turnChanges };
+  const committed = turn ? state.commits.get(turn) : undefined;
+  state.rows[target].msg = {
+    ...state.rows[target].msg,
+    turnChanges: committed ? { ...turnChanges, committed } : turnChanges,
+  };
 }
 
 function applyEvent(state: ProjectionState, event: AcpEvent): boolean {
@@ -278,11 +404,18 @@ function applyEvent(state: ProjectionState, event: AcpEvent): boolean {
     appendRow(state, event, "user", {
       role: "user",
       content: text(data.text),
-      attachments: imageAttachments(data.images),
+      attachments: sentAttachments(data.images, data.files),
       ...(skill ? { skill } : {}),
+      ...(data.steered === true ? { steered: true } : {}),
     });
     return true;
   }
+  if (event.kind === "turn_commit") {
+    applyCommit(state, event);
+    return false;
+  }
+  if (event.kind === "notice") return applyNotice(state, event);
+  if (event.kind === "compaction") return applyCompaction(state, event);
   if (event.kind === "turn_changes") {
     applyTurnChanges(state, event);
     return false;
@@ -294,7 +427,7 @@ function applyEvent(state: ProjectionState, event: AcpEvent): boolean {
     return applyToolCall(state, event);
   }
   if (event.kind === "plan" && Array.isArray(data.entries)) {
-    appendRow(state, event, "plan", { role: "assistant", content: planContent(data.entries) });
+    applyPlan(state, event, data.entries);
     return true;
   }
   if (event.kind === "diagnostics") return applyDiagnostics(state, event);
@@ -334,13 +467,15 @@ function isAppendOnly(previousEvents: readonly AcpEvent[], events: readonly AcpE
 export function createAcpProjector() {
   let previousEvents: readonly AcpEvent[] = [];
   let rendered: RenderedMessage[] = [];
-  const state: ProjectionState = { rows: [], tools: new Map(), lastKind: "" };
+  const state: ProjectionState = { rows: [], tools: new Map(), lastKind: "", plans: new Map(), commits: new Map() };
   return (events: readonly AcpEvent[], running: boolean): RenderedMessage[] => {
     const appendOnly = isAppendOnly(previousEvents, events);
     const from = appendOnly ? previousEvents.length : 0;
     if (!appendOnly) {
       state.rows = [];
       state.tools = new Map();
+      state.plans = new Map();
+      state.commits = new Map();
       state.lastKind = "";
       rendered = [];
     }

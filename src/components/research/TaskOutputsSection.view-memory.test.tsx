@@ -3,6 +3,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ResearchTask } from "@/lib/research-tasks";
+import { taskFieldsSince047 } from "./tasks/tests/task-fixtures";
 
 vi.mock("@/lib/research-tasks", () => ({
   acceptResearchTaskResult: vi.fn(),
@@ -19,7 +20,14 @@ vi.mock("@/lib/research-tasks", () => ({
   startResearchTask: vi.fn(),
   previewResearchTaskFile: vi.fn(),
   previewResearchTaskArtifact: vi.fn(),
+  // 0.4.8: the store also listens for live text and tells the backend which task it shows.
+  listenForResearchTaskDeltas: vi.fn(async () => () => {}),
+  watchResearchTask: vi.fn(async () => {}),
 }));
+
+// 0.4.8: research tasks are experimental; the section shows only while they are on.
+const flag = vi.hoisted(() => ({ enabled: true }));
+vi.mock("@/store/research-tasks-flag", () => ({ useResearchTasksEnabled: () => flag.enabled }));
 
 vi.mock("@/store/files", () => {
   let state: { projectId: string | null } = { projectId: null };
@@ -72,6 +80,7 @@ function task(projectId: string): ResearchTask {
     updatedAt: 1,
     startedAt: 1,
     finishedAt: 1,
+    ...taskFieldsSince047(),
   };
 }
 
@@ -83,7 +92,7 @@ function seed(projectId: string) {
       tasks: [task("outputs-a"), task("outputs-b")],
       selectedTaskId: null,
       events: [],
-      eventsNextSequence: null,
+      eventsPreviousSequence: null,
       loading: false,
       eventsLoading: false,
       action: null,

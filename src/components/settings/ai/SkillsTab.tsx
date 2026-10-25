@@ -41,6 +41,7 @@ import {
   setSkillProjectEnabled,
   SKILLS_QUERY_KEY,
   skillsQueryKey,
+  replaceSkillWithBuiltin,
   updateBuiltinSkill,
   updateSkill,
   upsertSkillRecord,
@@ -328,6 +329,7 @@ function SkillCard({
   onResetProject,
   onToggleFiles,
   onUpdate,
+  onReplace,
   onValidate,
   onEdit,
   onRemove,
@@ -341,6 +343,7 @@ function SkillCard({
   onResetProject: (skillId: string) => void;
   onToggleFiles: (skillId: string) => void;
   onUpdate: (skill: SkillEntry) => void;
+  onReplace: (skill: SkillEntry) => void;
   onValidate: (skillId: string) => void;
   onEdit: (skill: SkillEntry) => void;
   onRemove: (skill: SkillEntry) => void;
@@ -359,6 +362,23 @@ function SkillCard({
   const changedForProject = projectScope && projectAvailable !== skill.enabled;
   const renderSkillActions = () => (
     <div className="mt-2 flex items-center justify-end gap-1">
+      {skill.shadowsBundled ? (
+        <span className="mr-auto text-xs text-muted-foreground" data-testid={`skill-shadow-note-${skill.id}`}>
+          {t(($) => $.settings.ai.skills.shadowNote)}
+        </span>
+      ) : null}
+      {skill.shadowsBundled ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          data-testid={`skill-replace-${skill.id}`}
+          disabled={busy}
+          onClick={() => onReplace(skill)}
+        >
+          {t(($) => $.settings.ai.skills.replaceAction)}
+        </Button>
+      ) : null}
       {skill.updateAvailable ? (
         <Button
           type="button"
@@ -559,6 +579,7 @@ export function SkillsTab() {
   const [editor, setEditor] = useState<EditorTarget>(null);
   const [removeTarget, setRemoveTarget] = useState<SkillEntry | null>(null);
   const [updateTarget, setUpdateTarget] = useState<SkillEntry | null>(null);
+  const [replaceTarget, setReplaceTarget] = useState<SkillEntry | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
@@ -715,6 +736,21 @@ export function SkillsTab() {
     }
   };
 
+  const confirmReplace = async () => {
+    const target = replaceTarget;
+    setReplaceTarget(null);
+    if (!target) return;
+    let backupPath = "";
+    const record = await runRecordMutation(target.id, async () => {
+      const result = await replaceSkillWithBuiltin(target.id);
+      backupPath = result.backupPath;
+      return result.record;
+    });
+    if (record) {
+      setMessage({ ok: true, text: t(($) => $.settings.ai.skills.replaced, { path: backupPath }) });
+    }
+  };
+
   const toggleFiles = (id: string) => {
     setExpandedFiles((current) => {
       const next = new Set(current);
@@ -839,6 +875,7 @@ export function SkillsTab() {
                     onResetProject={(skillId) => applyProjectScope(skillId, null)}
                     onToggleFiles={toggleFiles}
                     onUpdate={setUpdateTarget}
+                    onReplace={setReplaceTarget}
                     onValidate={runSkillValidation}
                     onEdit={setEditor}
                     onRemove={setRemoveTarget}
@@ -876,6 +913,15 @@ export function SkillsTab() {
         destructive
         onConfirm={() => void removeSelected()}
         onCancel={() => setRemoveTarget(null)}
+      />
+
+      <ConfirmationDialog
+        open={replaceTarget !== null}
+        title={t(($) => $.settings.ai.skills.replaceTitle, { name: replaceTarget?.name ?? "" })}
+        description={t(($) => $.settings.ai.skills.replaceBody)}
+        confirmLabel={t(($) => $.settings.ai.skills.replaceAction)}
+        onConfirm={() => void confirmReplace()}
+        onCancel={() => setReplaceTarget(null)}
       />
 
       <ConfirmationDialog

@@ -7,11 +7,12 @@ use futures_util::StreamExt;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     ffi::OsString,
     io::Read,
     path::{Component, Path, PathBuf},
     process::Stdio,
+    sync::Mutex,
     time::Duration,
 };
 
@@ -91,6 +92,8 @@ enum BuiltinDist {
     Native {
         cmd: &'static str,
         args: &'static [&'static str],
+        /// Other names the same program is installed under.
+        alt_cmds: &'static [&'static str],
     },
     Bridge {
         package: &'static str,
@@ -105,9 +108,9 @@ const BUILTINS: &[Builtin] = &[
         id: "claude",
         name: "Claude Code",
         description: "Uses the agent's own CLI account and permissions.",
-        version: "0.74.0",
+        version: "0.93.0",
         dist: BuiltinDist::Bridge {
-            package: "@agentclientprotocol/claude-agent-acp@0.74.0",
+            package: "@agentclientprotocol/claude-agent-acp@0.93.0",
             cmd: "claude-agent-acp",
             args: &[],
             node: 22,
@@ -117,9 +120,9 @@ const BUILTINS: &[Builtin] = &[
         id: "codex",
         name: "Codex CLI",
         description: "Uses the agent's own CLI account and permissions.",
-        version: "1.10.0",
+        version: "2.2.2",
         dist: BuiltinDist::Bridge {
-            package: "@agentclientprotocol/codex-acp@1.10.0",
+            package: "@agentclientprotocol/codex-acp@2.2.2",
             cmd: "codex-acp",
             args: &[],
             node: 20,
@@ -129,10 +132,13 @@ const BUILTINS: &[Builtin] = &[
         id: "gemini",
         name: "Gemini CLI",
         description: "Uses the agent's own CLI account and permissions.",
-        version: "0.57.0",
+        version: "0.64.0",
         dist: BuiltinDist::Bridge {
-            package: "@google/gemini-cli@0.57.0",
+            package: "@google/gemini-cli@0.64.0",
             cmd: "gemini",
+            // Every Gemini CLI release takes this flag (still in 0.64.0, as a
+            // deprecated alias); `--acp` only exists from 0.33.0, and the same
+            // args reach a Gemini the user installed themselves.
             args: &["--experimental-acp"],
             node: 20,
         },
@@ -153,10 +159,11 @@ const BUILTINS: &[Builtin] = &[
         id: "opencode",
         name: "OpenCode",
         description: "Serves ACP from the installed CLI.",
-        version: "1.18.29",
+        version: "1.19.3",
         dist: BuiltinDist::Native {
             cmd: "opencode",
             args: &["acp"],
+            alt_cmds: &[],
         },
     },
     Builtin {
@@ -167,6 +174,7 @@ const BUILTINS: &[Builtin] = &[
         dist: BuiltinDist::Native {
             cmd: "openclaw",
             args: &["acp"],
+            alt_cmds: &[],
         },
     },
     Builtin {
@@ -177,16 +185,18 @@ const BUILTINS: &[Builtin] = &[
         dist: BuiltinDist::Native {
             cmd: "cline",
             args: &["--acp"],
+            alt_cmds: &[],
         },
     },
     Builtin {
         id: "hermes",
         name: "Hermes Agent",
         description: "Serves ACP from the installed CLI.",
-        version: "0.21.0",
+        version: "0.22.2",
         dist: BuiltinDist::Native {
             cmd: "hermes",
             args: &["acp"],
+            alt_cmds: &[],
         },
     },
     Builtin {
@@ -197,36 +207,40 @@ const BUILTINS: &[Builtin] = &[
         dist: BuiltinDist::Native {
             cmd: "codebuddy",
             args: &["--acp"],
+            alt_cmds: &[],
         },
     },
     Builtin {
         id: "kimi",
         name: "Kimi Code",
         description: "Serves ACP from the installed CLI.",
-        version: "0.41.0",
+        version: "1.52.0",
         dist: BuiltinDist::Native {
             cmd: "kimi",
             args: &["acp"],
+            alt_cmds: &[],
         },
     },
     Builtin {
         id: "grok",
         name: "Grok Build",
         description: "Serves ACP from the installed CLI.",
-        version: "1.0.13",
+        version: "1.0.63",
         dist: BuiltinDist::Native {
             cmd: "grok",
             args: &["agent", "stdio"],
+            alt_cmds: &[],
         },
     },
     Builtin {
         id: "cursor",
         name: "Cursor",
         description: "Serves ACP from the installed CLI.",
-        version: "2026.09.02",
+        version: "2026.10.16",
         dist: BuiltinDist::Native {
-            cmd: "agent",
+            cmd: "cursor-agent",
             args: &["acp"],
+            alt_cmds: &["agent"],
         },
     },
     Builtin {
@@ -237,6 +251,7 @@ const BUILTINS: &[Builtin] = &[
         dist: BuiltinDist::Native {
             cmd: "dsh",
             args: &["--profile", "acp"],
+            alt_cmds: &[],
         },
     },
     Builtin {
@@ -247,6 +262,7 @@ const BUILTINS: &[Builtin] = &[
         dist: BuiltinDist::Native {
             cmd: "qodercli",
             args: &["--acp"],
+            alt_cmds: &[],
         },
     },
 ];
@@ -261,7 +277,7 @@ pub fn builtins() -> Vec<AgentDefinition> {
             description: entry.description.into(),
             builtin: true,
             distribution: match &entry.dist {
-                BuiltinDist::Native { cmd, args } => Distribution {
+                BuiltinDist::Native { cmd, args, .. } => Distribution {
                     command: Some(CommandDistribution {
                         executable: (*cmd).into(),
                         args: args.iter().map(|value| (*value).to_string()).collect(),
@@ -286,6 +302,55 @@ pub fn builtins() -> Vec<AgentDefinition> {
             },
         })
         .collect()
+}
+
+/// Other program names a built-in agent may be installed under (Cursor's
+/// CLI is `cursor-agent` or, in older installs, `agent`).
+pub(crate) fn builtin_alt_commands(id: &str) -> &'static [&'static str] {
+    BUILTINS
+        .iter()
+        .find(|entry| entry.id == id)
+        .map(|entry| match entry.dist {
+            BuiltinDist::Native { alt_cmds, .. } => alt_cmds,
+            BuiltinDist::Bridge { .. } => &[],
+        })
+        .unwrap_or(&[])
+}
+
+/// Removes bridge versions a newer install replaced (folders with a
+/// receipt other than `keep`) and install folders left for over a day.
+pub(crate) fn cleanup_old_versions(
+    root: &Path,
+    definition: &AgentDefinition,
+    keep: &str,
+) -> Vec<PathBuf> {
+    let parent = root.join("agents").join(&definition.id);
+    let Ok(entries) = std::fs::read_dir(&parent) else {
+        return Vec::new();
+    };
+    let day = Duration::from_secs(24 * 60 * 60);
+    let mut removed = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let Ok(metadata) = entry.metadata() else {
+            continue;
+        };
+        if !metadata.is_dir() || metadata.file_type().is_symlink() {
+            continue;
+        }
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let stale_install = name.starts_with("install-")
+            && metadata
+                .modified()
+                .ok()
+                .and_then(|time| time.elapsed().ok())
+                .is_some_and(|age| age > day);
+        let old_version = name != keep && path.join("receipt.json").is_file();
+        if (stale_install || old_version) && std::fs::remove_dir_all(&path).is_ok() {
+            removed.push(path);
+        }
+    }
+    removed
 }
 
 pub fn platform() -> String {
@@ -711,7 +776,15 @@ fn resolve_cli(
             ),
         };
     }
-    let (found, rejected) = locator::locate(vendor.command);
+    let (mut found, mut rejected) = locator::locate(vendor.command);
+    for alternate in vendor.alternates {
+        if found.is_some() {
+            break;
+        }
+        let (located, more) = locator::locate(alternate);
+        found = located;
+        rejected.extend(more);
+    }
     (
         found.map(|located| CliProgram {
             located,
@@ -846,13 +919,19 @@ fn resolve_launch(
             ..Launch::default()
         });
     }
-    let found = definition_program_name(definition).and_then(|name| {
-        if Path::new(&name).is_absolute() {
-            locator::locate_path(Path::new(&name)).ok()
-        } else {
-            locator::locate(&name).0
-        }
-    });
+    let found = definition_program_name(definition)
+        .and_then(|name| {
+            if Path::new(&name).is_absolute() {
+                locator::locate_path(Path::new(&name)).ok()
+            } else {
+                locator::locate(&name).0
+            }
+        })
+        .or_else(|| {
+            builtin_alt_commands(&definition.id)
+                .iter()
+                .find_map(|name| locator::locate(name).0)
+        });
     if let Some(located) = found {
         return Ok(launch_program(located, args, node));
     }
@@ -872,10 +951,18 @@ pub(crate) fn launch_env(
     cli: Option<&CliProgram>,
     launch: &Launch,
 ) -> Vec<(String, OsString)> {
-    let (prepend, append) = search_path_folders(vendor, node, cli, launch);
+    let (mut prepend, append) = search_path_folders(vendor, node, cli, launch);
+    // Agents can run Oleafly's own CLI (`oleafly`) from their shell.
+    let oleafly = super::cli_program();
+    if let Some(folder) = oleafly.as_ref().and_then(|path| path.parent()) {
+        prepend.push(folder.to_path_buf());
+    }
     let mut env = locator::child_env(&prepend, &append);
     if let Some(handoff) = vendor.and_then(|vendor| cli_handoff(vendor, cli)) {
         env.push(handoff);
+    }
+    if let Some(path) = oleafly {
+        env.push(("OLEAFLY_CLI".into(), path.into_os_string()));
     }
     env
 }
@@ -1094,17 +1181,131 @@ pub fn install_reason(definition: &AgentDefinition) -> Option<String> {
 }
 
 pub fn task_unavailable_reason(definition: &AgentDefinition) -> Option<String> {
-    task_unavailable_reason_for(definition, std::env::consts::OS)
+    let windows = if cfg!(windows) {
+        windows_task_support()
+    } else {
+        WindowsTaskSupport::default()
+    };
+    task_unavailable_reason_for(definition, std::env::consts::OS, &windows)
 }
 
-pub(super) fn task_unavailable_reason_for(
-    definition: &AgentDefinition,
-    os: &str,
-) -> Option<String> {
-    if os == "windows" {
-        return Some("Isolated CLI agent tasks are not available on Windows yet. Use the agent in the assistant instead.".into());
+/// What decides whether CLI agents can run as tasks on Windows.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct WindowsTaskSupport {
+    /// The Windows sandbox works here and its beta switch is on.
+    pub sandbox_on: bool,
+    /// The libuv version of the Node.js that runs Node-based bridges.
+    pub node_libuv: Option<(u32, u32, u32)>,
+}
+
+/// libuv names its pipes so an AppContainer can create them from 1.53 on;
+/// older versions spin forever when Node.js starts a child with pipes.
+const LIBUV_FIXED: (u32, u32, u32) = (1, 53, 0);
+
+fn windows_task_support() -> WindowsTaskSupport {
+    // The switch first: checking availability creates and deletes a probe
+    // AppContainer profile, which machines with the beta off never need.
+    let sandbox_on = crate::paths::oleafly_root()
+        .is_ok_and(|root| oleafly_research::runs::remote::settings::windows_sandbox_enabled(&root))
+        && matches!(
+            oleafly_sandbox::availability(),
+            oleafly_sandbox::Availability::Available
+        );
+    let node_libuv = if sandbox_on {
+        crate::program_locator::locate_native("node")
+            .and_then(|node| node_libuv_version(&node.path))
+    } else {
+        None
+    };
+    WindowsTaskSupport {
+        sandbox_on,
+        node_libuv,
     }
-    let codex = definition.id == "codex"
+}
+
+fn parse_libuv(text: &str) -> Option<(u32, u32, u32)> {
+    let mut parts = text.trim().split('.').map(|part| part.parse::<u32>().ok());
+    Some((
+        parts.next()??,
+        parts.next()??,
+        parts.next().flatten().unwrap_or(0),
+    ))
+}
+
+/// `node -p process.versions.uv`, outside any sandbox, at most 5 s, cached
+/// per Node.js path.
+pub(crate) fn node_libuv_version(node: &Path) -> Option<(u32, u32, u32)> {
+    use crate::proc::NoConsole as _;
+    type Versions = HashMap<PathBuf, Option<(u32, u32, u32)>>;
+    static SEEN: Mutex<Option<Versions>> = Mutex::new(None);
+    if let Some(found) = SEEN
+        .lock()
+        .ok()
+        .and_then(|seen| seen.as_ref().and_then(|seen| seen.get(node).copied()))
+    {
+        return found;
+    }
+    let version = (|| {
+        let mut child = std::process::Command::new(node)
+            .args(["-p", "process.versions.uv"])
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .no_console()
+            .spawn()
+            .ok()?;
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        loop {
+            match child.try_wait() {
+                Ok(Some(_)) => break,
+                Ok(None) if std::time::Instant::now() < deadline => {
+                    std::thread::sleep(std::time::Duration::from_millis(25));
+                }
+                _ => {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return None;
+                }
+            }
+        }
+        let output = child.wait_with_output().ok()?;
+        parse_libuv(&String::from_utf8_lossy(&output.stdout))
+    })();
+    if let Ok(mut seen) = SEEN.lock() {
+        seen.get_or_insert_with(HashMap::new)
+            .insert(node.to_path_buf(), version);
+    }
+    version
+}
+
+/// The agent's bridge runs on Node.js (an npm package, or `node <script>`).
+pub(crate) fn runs_on_node(definition: &AgentDefinition) -> bool {
+    definition.distribution.npx.is_some()
+        || definition
+            .distribution
+            .command
+            .as_ref()
+            .is_some_and(|command| {
+                Path::new(&command.executable)
+                    .file_stem()
+                    .is_some_and(|stem| stem.eq_ignore_ascii_case("node"))
+                    || command.args.first().is_some_and(|arg| {
+                        let arg = arg.to_ascii_lowercase();
+                        [".js", ".mjs", ".cjs"]
+                            .iter()
+                            .any(|extension| arg.ends_with(extension))
+                    })
+            })
+}
+
+/// Systems where an isolated Codex task passed a live run.
+const CODEX_TASKS_VERIFIED_ON: &[&str] = &["linux"];
+/// Systems where an isolated Pi task passed a live run.
+const PI_TASKS_VERIFIED_ON: &[&str] = &[];
+
+/// Codex's ACP bridge, by id, npm package or program name.
+pub(crate) fn is_codex(definition: &AgentDefinition) -> bool {
+    definition.id == "codex"
         || definition.distribution.npx.as_ref().is_some_and(|package| {
             package_parts(&package.package, true)
                 .is_ok_and(|(name, _)| name == "@agentclientprotocol/codex-acp")
@@ -1117,9 +1318,40 @@ pub(super) fn task_unavailable_reason_for(
                 Path::new(&command.executable)
                     .file_stem()
                     .is_some_and(|stem| stem == "codex-acp")
-            });
-    if os == "macos" && codex {
-        return Some("Codex cannot start its child processes under macOS task isolation. Use Codex in the assistant or choose Oleafly Assistant for this task.".into());
+            })
+}
+
+pub(super) fn task_unavailable_reason_for(
+    definition: &AgentDefinition,
+    os: &str,
+    windows: &WindowsTaskSupport,
+) -> Option<String> {
+    if definition.id == "hermes" {
+        return Some("Hermes runs its tools in its gateway, outside the task sandbox. Use Hermes in the assistant.".into());
+    }
+    if os == "windows" {
+        if !windows.sandbox_on {
+            return Some("Turn on the Windows sandbox (beta) in Settings › Research › Compute to run CLI agents as tasks.".into());
+        }
+        if runs_on_node(definition)
+            && !windows
+                .node_libuv
+                .is_some_and(|version| version >= LIBUV_FIXED)
+        {
+            return Some("This agent runs on Node.js, which hangs in the Windows sandbox until Node.js includes libuv 1.53. Use the agent in the assistant instead.".into());
+        }
+    }
+    if is_codex(definition) && !CODEX_TASKS_VERIFIED_ON.contains(&os) {
+        if os == "macos" {
+            return Some("Codex cannot start its child processes under macOS task isolation. Use Codex in the assistant or choose Oleafly Assistant for this task.".into());
+        }
+        return Some("Codex tasks stay off until a test run passes on this system. Use Codex in the assistant.".into());
+    }
+    if definition.id == "pi" && !PI_TASKS_VERIFIED_ON.contains(&os) {
+        return Some(
+            "Pi tasks stay off until a test run passes on this system. Use Pi in the assistant."
+                .into(),
+        );
     }
     None
 }
@@ -1132,6 +1364,8 @@ pub(crate) struct VendorCli {
     pub(crate) shares_bridge: bool,
     /// The variable the bridge reads to find the vendor CLI.
     pub(crate) cli_env: Option<&'static str>,
+    /// Other names the CLI may be installed under.
+    pub(crate) alternates: &'static [&'static str],
     /// Set the variable only for a CLI the user chose; otherwise the bridge
     /// uses the CLI it bundles.
     pub(crate) cli_env_needs_override: bool,
@@ -1153,6 +1387,7 @@ impl VendorCli {
             sign_in_command,
             shares_bridge: true,
             cli_env: None,
+            alternates: &[],
             cli_env_needs_override: false,
             cli_env_accepts_script: false,
             bridge_needs_cli: false,
@@ -1169,6 +1404,7 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
             sign_in_command: "claude auth login",
             shares_bridge: false,
             cli_env: Some("CLAUDE_CODE_EXECUTABLE"),
+            alternates: &[],
             cli_env_needs_override: true,
             cli_env_accepts_script: false,
             bridge_needs_cli: false,
@@ -1182,6 +1418,7 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
             sign_in_command: "codex login",
             shares_bridge: false,
             cli_env: Some("CODEX_PATH"),
+            alternates: &[],
             cli_env_needs_override: true,
             cli_env_accepts_script: true,
             bridge_needs_cli: false,
@@ -1199,6 +1436,7 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
             sign_in_command: "pi",
             shares_bridge: false,
             cli_env: Some("PI_ACP_PI_COMMAND"),
+            alternates: &[],
             cli_env_needs_override: false,
             cli_env_accepts_script: true,
             bridge_needs_cli: true,
@@ -1228,7 +1466,10 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
     ),
     (
         "cursor",
-        VendorCli::shared("agent", "Cursor CLI", "agent login"),
+        VendorCli {
+            alternates: &["agent"],
+            ..VendorCli::shared("cursor-agent", "Cursor CLI", "cursor-agent login")
+        },
     ),
     (
         "deepseek",
@@ -1608,6 +1849,8 @@ pub async fn status_with(
             .as_ref()
             .is_some_and(|vendor| vendor.bridge_needs_cli),
         definition,
+        // The runtime fills in what the agent last reported.
+        runtime: None,
     }
 }
 
@@ -2154,7 +2397,21 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
             "npm_config_userconfig",
             locator::child_path(&temporary.join("empty-npmrc")),
         );
-        bounded_command(command, Duration::from_secs(300)).await?;
+        tokio::fs::write(temporary.join("empty-globalnpmrc"), b"")
+            .await
+            .map_err(|_| "The package manifest could not be written.")?;
+        command.env(
+            "npm_config_globalconfig",
+            locator::child_path(&temporary.join("empty-globalnpmrc")),
+        );
+        // The cache lives and ends with this install: one shared folder would
+        // keep every bridge version's tarballs for good.
+        let cache = temporary.join("npm-cache");
+        command.env("npm_config_cache", locator::child_path(&cache));
+        command.env("npm_config_update_notifier", "false");
+        let installed = bounded_command(command, Duration::from_secs(300)).await;
+        let _ = tokio::fs::remove_dir_all(&cache).await;
+        installed?;
         let (name, _) = package_parts(&package.package, true)?;
         let package_root = temporary.join("node_modules").join(name);
         let manifest_bytes = tokio::fs::read(package_root.join("package.json"))

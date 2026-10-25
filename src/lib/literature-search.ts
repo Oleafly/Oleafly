@@ -301,6 +301,8 @@ interface OpenAlexResponse {
     cited_by_count?: number;
     open_access?: { is_oa?: boolean; oa_url?: string };
     best_oa_location?: { landing_page_url?: string; pdf_url?: string };
+    /** Rebuilt by Oleafly from OpenAlex's inverted index. */
+    abstract?: string;
   }>;
 }
 
@@ -330,7 +332,7 @@ export function parseOpenAlexLiterature(raw: string): ParsedSource {
         pdfUrl:
           safeUrl(item.best_oa_location?.pdf_url) ??
           safeUrl(item.primary_location?.pdf_url),
-        abstract: null,
+        abstract: text(item.abstract),
         citationCount: finiteNumber(item.cited_by_count),
         openAccess:
           typeof item.open_access?.is_oa === "boolean"

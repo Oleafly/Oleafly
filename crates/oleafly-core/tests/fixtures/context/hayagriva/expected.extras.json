@@ -1,0 +1,12 @@
+{
+  "missing_files": [],
+  "packages": [],
+  "roles": {
+    "main.typ": "main",
+    "refs.yml": "bibliography"
+  },
+  "unused_cites": [
+    "spare"
+  ],
+  "unused_labels": []
+}

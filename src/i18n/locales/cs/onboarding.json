@@ -128,7 +128,7 @@
     },
     "integrations": {
       "title": "Integrace",
-      "content": "Připojte GitHub, alphaXiv, Zotero, vyhledávání citací a místní server MCP aplikace Oleafly."
+      "content": "Připojte hosting Git (GitHub, GitLab, Codeberg a další), alphaXiv, Zotero, vyhledávání citací, aplikace v počítači pro agenty a místní server MCP aplikace Oleafly."
     },
     "shortcuts": {
       "title": "Klávesové zkratky",

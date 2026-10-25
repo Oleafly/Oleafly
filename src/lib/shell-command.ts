@@ -27,6 +27,8 @@ export interface ShellCommandStatus {
   method?: ShellCommandMethod | null;
   on_path?: boolean;
   after_sign_in?: boolean;
+  /** Windows: the PATH change reaches terminals opened from now on. */
+  after_new_terminal?: boolean;
   hint?: ShellCommandPathHint | null;
 }
 

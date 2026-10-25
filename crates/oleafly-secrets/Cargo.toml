@@ -1,0 +1,44 @@
+[package]
+name = "oleafly-secrets"
+version = "0.1.0"
+description = "Encrypted secret store and private-file helpers shared by the Oleafly app and CLI"
+license = "AGPL-3.0-or-later"
+publish = false
+edition = "2021"
+rust-version = "1.87"
+
+[dependencies]
+atomicwrites = "0.4"
+base64 = "0.23"
+oleafly-core = { path = "../oleafly-core" }
+rand = "0.8"
+ring = "0.17"
+same-file = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = "2.5"
+keyring-core = { version = "1", optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { version = "1", features = ["keychain"], optional = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-native-keyring-store = { version = "1", optional = true }
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Threading",
+] }
+
+[features]
+default = []
+keychain = [
+    "dep:keyring-core",
+    "dep:apple-native-keyring-store",
+    "dep:windows-native-keyring-store",
+]
+
+[dev-dependencies]
+tempfile = { workspace = true }

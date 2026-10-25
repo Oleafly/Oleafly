@@ -24,7 +24,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
 vi.mock("@/components/layout/UpdateChecker", () => ({
   UpdateChecker: () => null,
 }));
-vi.mock("@/lib/github", () => ({
+vi.mock("@/lib/forge", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/forge")>()),
   githubGetPublicRepoStats: mocks.githubGetPublicRepoStats,
 }));
 vi.mock("@/lib/theme", () => ({

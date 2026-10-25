@@ -39,6 +39,7 @@ const READ_TOOLS = new Set([
   "interrupt_agent",
   "list_agents",
   "close_agent",
+  "research_task_status",
 ]);
 
 const WRITE_TOOLS = new Set([
@@ -50,9 +51,9 @@ const WRITE_TOOLS = new Set([
   "set_main_doc",
   "insert_figure",
   "import_overleaf_projects",
-  // computer_use gates per-action in its own executor (read-only auto,
-  // navigate/click/type confirmed), so the tool itself is not a blanket write.
-  "computer_use",
+  // desktop_apps runs natively in Rust, which asks per action (observation runs, actions ask).
+  "desktop_apps",
+  "research_task_create",
 ]);
 
 const NETWORK_TOOLS = new Set([
@@ -84,6 +85,7 @@ const READ_ONLY_TOOLS = new Set([
   "literature_search",
   "verify_citation",
   "list_overleaf_projects",
+  "research_task_status",
 ]);
 
 export const PLAN_MODE_TOOL_ERROR =

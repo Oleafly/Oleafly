@@ -1,4 +1,12 @@
 use std::io;
+use std::path::Path;
+use std::time::{Duration, Instant};
+
+#[cfg(windows)]
+const NULL_DEVICE: &str = "NUL";
+#[cfg(not(windows))]
+const NULL_DEVICE: &str = "/dev/null";
+const GIT_POLL: Duration = Duration::from_millis(25);
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -8,6 +16,176 @@ const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
 const CREATE_SUSPENDED: u32 = 0x0000_0004;
 #[cfg(windows)]
 const DETACHED_PROCESS: u32 = 0x0000_0008;
+
+/// Drops the Git variables a calling Git exports (a hook sets `GIT_DIR` and
+/// `GIT_INDEX_FILE`, for example), so `git` acts on the folder it runs in
+/// and not on the caller's repository.
+pub(crate) fn clear_inherited_git_env(command: &mut std::process::Command) {
+    for name in oleafly_research::host::GIT_REPOSITORY_ENV {
+        command.env_remove(name);
+    }
+}
+
+/// Runs `git -C <root> <args>` to read a folder's state and returns up to
+/// `max_bytes` of its output when it succeeds (`None` when it can't start,
+/// fails or outlives `timeout`).
+///
+/// The folder's own `.git/config` comes with the folder, and `git status`
+/// runs the command it names as `core.fsmonitor`, so that and hooks are
+/// turned off. It also re-hashes changed files through the repository's
+/// `filter.<driver>.clean`/`process` commands, so every driver the
+/// repository's own config names is blanked (as the app's
+/// `restricted_git_env` does), and submodules are not entered. Optional
+/// locks are skipped (the index refresh would make a user's concurrent
+/// `git commit` fail), and the variables a calling Git exports
+/// (`GIT_DIR`...) are dropped, so Git reads the folder asked about.
+pub(crate) fn read_git(
+    git: &Path,
+    root: &Path,
+    args: &[&str],
+    timeout: Duration,
+    max_bytes: u64,
+) -> Option<Vec<u8>> {
+    let deadline = Instant::now() + timeout;
+    let drivers = repository_filter_drivers(git, root, deadline)?;
+    let (status, output) = run_git(
+        git,
+        root,
+        args,
+        &blanked_filter_env(&drivers),
+        deadline,
+        max_bytes,
+    )?;
+    status.success().then_some(output)
+}
+
+/// The filter drivers the repository's own config (with its includes and a
+/// linked worktree's config) defines, read by Git itself so includes and
+/// `gitdir:` files resolve as Git resolves them. Reading config runs no
+/// repository program. `None` when Git can't say (not a repository, a
+/// timeout), so the caller runs nothing.
+fn repository_filter_drivers(
+    git: &Path,
+    root: &Path,
+    deadline: Instant,
+) -> Option<std::collections::BTreeSet<String>> {
+    let mut drivers = std::collections::BTreeSet::new();
+    for scope in ["--local", "--worktree"] {
+        let (status, output) = run_git(
+            git,
+            root,
+            &[
+                "config",
+                scope,
+                "--includes",
+                "--name-only",
+                "--get-regexp",
+                r"^filter\.",
+            ],
+            &[],
+            deadline,
+            1024 * 1024,
+        )?;
+        // 1 is "no such key"; anything else is a failure.
+        match status.code() {
+            Some(0) => drivers.extend(filter_driver_names(&String::from_utf8_lossy(&output))),
+            Some(1) => {}
+            _ if scope == "--worktree" => {}
+            _ => return None,
+        }
+    }
+    Some(drivers)
+}
+
+/// `filter.<driver>.<key>` names, one per line, to their driver names. A
+/// driver name may itself hold dots.
+fn filter_driver_names(listing: &str) -> impl Iterator<Item = String> + '_ {
+    listing.lines().filter_map(|line| {
+        let rest = line.trim_end_matches('\r').strip_prefix("filter.")?;
+        let (driver, _key) = rest.rsplit_once('.')?;
+        (!driver.is_empty()).then(|| driver.to_string())
+    })
+}
+
+/// `GIT_CONFIG_*` settings that blank each driver's commands. The caller's
+/// own `GIT_CONFIG_COUNT` is dropped by [`clear_inherited_git_env`], so the
+/// numbering starts at 0.
+fn blanked_filter_env(
+    drivers: &std::collections::BTreeSet<String>,
+) -> Vec<(String, std::ffi::OsString)> {
+    let mut settings: Vec<(String, &str)> = vec![("diff.ignoreSubmodules".into(), "all")];
+    for driver in drivers {
+        for key in ["clean", "smudge", "process"] {
+            settings.push((format!("filter.{driver}.{key}"), ""));
+        }
+    }
+    let mut env = Vec::with_capacity(settings.len() * 2 + 1);
+    for (index, (key, value)) in settings.iter().enumerate() {
+        env.push((format!("GIT_CONFIG_KEY_{index}"), key.into()));
+        env.push((format!("GIT_CONFIG_VALUE_{index}"), (*value).into()));
+    }
+    env.push(("GIT_CONFIG_COUNT".into(), settings.len().to_string().into()));
+    env
+}
+
+fn run_git(
+    git: &Path,
+    root: &Path,
+    args: &[&str],
+    env: &[(String, std::ffi::OsString)],
+    deadline: Instant,
+    max_bytes: u64,
+) -> Option<(std::process::ExitStatus, Vec<u8>)> {
+    use std::io::Read;
+    use std::process::Stdio;
+    let mut command = std::process::Command::new(git);
+    clear_inherited_git_env(&mut command);
+    command
+        .args(["-c", "core.fsmonitor=false", "-c"])
+        .arg(format!("core.hooksPath={NULL_DEVICE}"))
+        .arg("-C")
+        .arg(root)
+        .args(args)
+        .envs(env.iter().map(|(key, value)| (key, value)))
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    let mut child = command.spawn().ok()?;
+    let (sender, receiver) = std::sync::mpsc::channel();
+    if let Some(stdout) = child.stdout.take() {
+        std::thread::spawn(move || {
+            let mut output = Vec::new();
+            let _ = stdout.take(max_bytes).read_to_end(&mut output);
+            let _ = sender.send(output);
+        });
+    }
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(GIT_POLL),
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+        }
+    };
+    let output = receiver
+        .recv_timeout(
+            deadline
+                .saturating_duration_since(Instant::now())
+                .max(GIT_POLL),
+        )
+        .unwrap_or_default();
+    Some((status, output))
+}
 
 pub(crate) fn detach(command: &mut std::process::Command) {
     #[cfg(unix)]
@@ -29,10 +207,16 @@ pub(crate) fn detach(command: &mut std::process::Command) {
 }
 
 pub(crate) fn isolate(command: &mut tokio::process::Command) {
+    isolate_std(command.as_std_mut());
+}
+
+/// [`isolate`] for a `std` command: its own process group (Unix), or a
+/// suspended start that [`contain`] puts in a job and resumes (Windows).
+pub(crate) fn isolate_std(command: &mut std::process::Command) {
     #[cfg(unix)]
     unsafe {
         use std::os::unix::process::CommandExt;
-        command.as_std_mut().pre_exec(|| {
+        command.pre_exec(|| {
             if libc::setpgid(0, 0) == 0 {
                 Ok(())
             } else {
@@ -43,9 +227,7 @@ pub(crate) fn isolate(command: &mut tokio::process::Command) {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        command
-            .as_std_mut()
-            .creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED);
+        command.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED);
     }
 }
 
@@ -231,5 +413,101 @@ fn resume_thread(thread_id: u32) -> io::Result<()> {
         let error = (previous_suspend_count == u32::MAX).then(io::Error::last_os_error);
         CloseHandle(thread);
         error.map_or(Ok(()), Err)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::OsStr;
+
+    #[test]
+    fn filter_driver_names_keep_dotted_driver_names() {
+        let names: Vec<String> = super::filter_driver_names(
+            "filter.lfs.clean\nfilter.a.b.process\r\nfilter.\nother.x.y\n",
+        )
+        .collect();
+        assert_eq!(names, ["lfs", "a.b"]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn git_status_never_runs_the_repositorys_filter_commands() {
+        let Some(git) = oleafly_research::host::default_git_env()
+            .map(|env| std::path::PathBuf::from(env.program))
+        else {
+            return;
+        };
+        let temp = tempfile::tempdir().unwrap();
+        let repo = temp.path().join("repo");
+        std::fs::create_dir(&repo).unwrap();
+        let marker = temp.path().join("ran");
+        let git_in = |args: &[&str]| {
+            let mut command = std::process::Command::new(&git);
+            super::clear_inherited_git_env(&mut command);
+            let status = command
+                .arg("-C")
+                .arg(&repo)
+                .args(args)
+                .env("GIT_CONFIG_GLOBAL", "/dev/null")
+                .env("GIT_CONFIG_NOSYSTEM", "1")
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .unwrap();
+            assert!(status.success(), "git {args:?} failed");
+        };
+        git_in(&["init", "-q"]);
+        std::fs::write(repo.join("main.tex"), "hello\n").unwrap();
+        git_in(&["add", "main.tex"]);
+        git_in(&[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.com",
+            "commit",
+            "-qm",
+            "init",
+        ]);
+        let command = format!("sh -c 'touch {}; cat'", marker.display());
+        git_in(&["config", "filter.evil.clean", &command]);
+        git_in(&["config", "filter.evil.process", &command]);
+        std::fs::write(repo.join(".git/info/attributes"), "* filter=evil\n").unwrap();
+        // A new mtime makes `git status` re-hash the file through its filter.
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        std::fs::write(repo.join("main.tex"), "hello again\n").unwrap();
+
+        let output = super::read_git(
+            &git,
+            &repo,
+            &["status", "--porcelain=v2", "--branch"],
+            std::time::Duration::from_secs(20),
+            1024 * 1024,
+        )
+        .expect("git status runs");
+        assert!(String::from_utf8_lossy(&output).contains("main.tex"));
+        assert!(!marker.exists(), "the repository's filter command ran");
+    }
+
+    #[test]
+    fn git_runs_without_the_callers_repository_variables() {
+        let mut command = std::process::Command::new("git");
+        super::clear_inherited_git_env(&mut command);
+        let removed: Vec<&OsStr> = command
+            .get_envs()
+            .filter(|(_, value)| value.is_none())
+            .map(|(name, _)| name)
+            .collect();
+        for name in [
+            "GIT_DIR",
+            "GIT_WORK_TREE",
+            "GIT_INDEX_FILE",
+            "GIT_COMMON_DIR",
+            "GIT_PREFIX",
+        ] {
+            assert!(
+                removed.contains(&OsStr::new(name)),
+                "{name} is still passed on"
+            );
+        }
     }
 }

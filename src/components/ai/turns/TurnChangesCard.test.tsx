@@ -477,3 +477,67 @@ describe("TurnChangesCard edge states", () => {
     expect(undo).toHaveAttribute("title", "Undo is available when the agent finishes.");
   });
 });
+
+describe("Commit this turn", () => {
+  it("commits the chosen files of a turn with an edited message", async () => {
+    const onCommit = vi.fn(async () => {});
+    render(<TurnChangesCard projectId="paper" changes={changes()} onCommit={onCommit} commitDefaultMessage="Changes from Codex" />);
+    fireEvent.click(within(card()).getByTestId("turn-changes-commit"));
+    const form = within(card()).getByTestId("turn-changes-commit-form");
+    expect(form).toHaveAttribute("aria-label", "Commit this turn");
+    const message = within(form).getByRole("textbox");
+    expect(message).toHaveValue("Changes from Codex");
+    fireEvent.change(message, { target: { value: "  Fix intro  " } });
+    fireEvent.click(within(form).getByRole("checkbox", { name: "refs.bib" }));
+    fireEvent.click(within(form).getByRole("button", { name: "Commit files" }));
+    await waitFor(() => expect(onCommit).toHaveBeenCalledWith(["main.tex"], "Fix intro"));
+    await waitFor(() => expect(within(card()).queryByTestId("turn-changes-commit-form")).toBeNull());
+  });
+
+  it("keeps the form open and shows why a commit failed", async () => {
+    const onCommit = vi.fn(async () => { throw new Error("Nothing to commit."); });
+    render(<TurnChangesCard projectId="paper" changes={changes()} onCommit={onCommit} commitDefaultMessage="Changes" />);
+    fireEvent.click(within(card()).getByTestId("turn-changes-commit"));
+    const form = within(card()).getByTestId("turn-changes-commit-form");
+    fireEvent.click(within(form).getByRole("button", { name: "Commit files" }));
+    expect(await within(form).findByRole("alert")).toHaveTextContent("Nothing to commit.");
+    const plain = vi.fn(async () => { throw "plain failure"; });
+    cleanup();
+    render(<TurnChangesCard projectId="paper" changes={changes()} onCommit={plain} commitDefaultMessage="Changes" />);
+    fireEvent.click(within(card()).getByTestId("turn-changes-commit"));
+    fireEvent.submit(within(card()).getByTestId("turn-changes-commit-form"));
+    expect(await within(card()).findByRole("alert")).toHaveTextContent("plain failure");
+  });
+
+  it("needs a message and at least one file, and cancels", () => {
+    const onCommit = vi.fn(async () => {});
+    render(<TurnChangesCard projectId="paper" changes={changes()} onCommit={onCommit} />);
+    fireEvent.click(within(card()).getByTestId("turn-changes-commit"));
+    const form = within(card()).getByTestId("turn-changes-commit-form");
+    const submit = within(form).getByRole("button", { name: "Commit files" });
+    expect(submit).toBeDisabled();
+    fireEvent.change(within(form).getByRole("textbox"), { target: { value: "Fix" } });
+    expect(submit).toBeEnabled();
+    fireEvent.click(within(form).getByRole("checkbox", { name: "main.tex" }));
+    fireEvent.click(within(form).getByRole("checkbox", { name: "refs.bib" }));
+    expect(submit).toBeDisabled();
+    fireEvent.submit(form);
+    expect(onCommit).not.toHaveBeenCalled();
+    fireEvent.click(within(form).getByRole("button", { name: "Cancel" }));
+    expect(within(card()).queryByTestId("turn-changes-commit-form")).toBeNull();
+    expect(within(card()).getByTestId("turn-changes-commit")).toBeInTheDocument();
+  });
+
+  it("hides Commit when every file is committed or undone", async () => {
+    vi.mocked(agentTurnStatus).mockResolvedValue({ expired: false, files: [{ index: 1, state: "undone" }] });
+    const value = { ...changes(), committed: { "main.tex": "abc1234" } };
+    render(<TurnChangesCard projectId="paper" changes={value} onCommit={vi.fn(async () => {})} />);
+    await waitFor(() => expect(agentTurnStatus).toHaveBeenCalled());
+    await waitFor(() => expect(within(card()).queryByTestId("turn-changes-commit")).toBeNull());
+  });
+
+  it("does not offer Commit without onCommit", () => {
+    render(<TurnChangesCard projectId="paper" changes={changes()} />);
+    expect(within(card()).queryByTestId("turn-changes-commit")).toBeNull();
+  });
+});

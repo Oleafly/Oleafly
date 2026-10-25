@@ -1,10 +1,16 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
   overleafStatus: vi.fn(),
   overleafSignOut: vi.fn(),
+  overleafSignInWithAppCookies: vi.fn(),
+}));
+const cookies = vi.hoisted(() => ({
+  detectBrowserCookieSources: vi.fn(async () => [] as unknown[]),
+  importBrowserCookies: vi.fn(),
 }));
 const git = vi.hoisted(() => ({
   overleafGitTokenStatus: vi.fn(async () => false),
@@ -20,6 +26,10 @@ vi.mock("@/lib/overleaf-sync", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/overleaf-sync")>()),
   ...git,
 }));
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+  ...cookies,
+}));
 vi.mock("@/lib/log", () => ({ logError: vi.fn(async () => {}) }));
 const shell = vi.hoisted(() => ({ open: vi.fn(async () => undefined) }));
 vi.mock("@tauri-apps/plugin-shell", () => shell);
@@ -32,6 +42,11 @@ const SERVER = "https://www.overleaf.com";
 beforeEach(() => {
   api.overleafStatus.mockReset();
   api.overleafSignOut.mockReset();
+  api.overleafSignInWithAppCookies.mockReset();
+  cookies.detectBrowserCookieSources.mockReset().mockResolvedValue([]);
+  cookies.importBrowserCookies.mockReset();
+  Element.prototype.hasPointerCapture = vi.fn(() => false);
+  Element.prototype.scrollIntoView = vi.fn();
   useOverleafImportStore.setState({ server: SERVER, status: null, phase: "idle", error: null });
 });
 
@@ -86,5 +101,38 @@ describe("OverleafSection", () => {
     expect(screen.getByText("Git integration needs a paid or university Overleaf plan for the project's owner.")).toBeInTheDocument();
     fireEvent.click(link);
     expect(shell.open).toHaveBeenCalledWith("https://www.overleaf.com/user/settings");
+  });
+
+  it("offers the browser sign-in copy while signed out and refreshes after it signs in", async () => {
+    api.overleafStatus
+      .mockResolvedValueOnce({ server: SERVER, signedIn: false, email: null })
+      .mockResolvedValue({ server: SERVER, signedIn: true, email: "ada@uni.edu" });
+    cookies.detectBrowserCookieSources.mockResolvedValue([
+      { browser: "chrome", browserName: "Google Chrome", profile: "Default", profileName: "Default", status: "available", detail: "Ready" },
+    ]);
+    cookies.importBrowserCookies.mockResolvedValue({ imported: 2, browserName: "Google Chrome", profileName: "Default", domain: "www.overleaf.com" });
+    api.overleafSignInWithAppCookies.mockResolvedValue({ server: SERVER, signedIn: true, email: "ada@uni.edu" });
+    const user = userEvent.setup();
+    render(<OverleafSection />);
+    expect(await screen.findByTestId("browser-sign-in-copy-row")).toBeInTheDocument();
+    await user.click(screen.getByTestId("browser-sign-in-copy"));
+    await user.click(await screen.findByLabelText(/Google Chrome/));
+    await user.click(screen.getByRole("button", { name: "Review import" }));
+    await user.click(screen.getByRole("button", { name: "Copy sign-in" }));
+    await waitFor(() =>
+      expect(cookies.importBrowserCookies).toHaveBeenCalledWith({ browser: "chrome", profile: "Default", domain: "www.overleaf.com" }),
+    );
+    expect(await screen.findByTestId("overleaf-connected")).toHaveTextContent("Signed in as ada@uni.edu");
+    expect(screen.queryByTestId("browser-sign-in-copy-row")).not.toBeInTheDocument();
+  });
+
+  it("hides the browser sign-in copy while signed in", async () => {
+    api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: true, email: "ada@uni.edu" });
+    cookies.detectBrowserCookieSources.mockResolvedValue([
+      { browser: "chrome", browserName: "Google Chrome", profile: "Default", profileName: "Default", status: "available", detail: "Ready" },
+    ]);
+    render(<OverleafSection />);
+    expect(await screen.findByTestId("overleaf-connected")).toBeInTheDocument();
+    expect(screen.queryByTestId("browser-sign-in-copy-row")).not.toBeInTheDocument();
   });
 });

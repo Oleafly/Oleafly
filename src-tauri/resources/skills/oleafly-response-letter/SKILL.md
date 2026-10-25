@@ -5,7 +5,7 @@ license: MIT
 compatibility: Any LaTeX or Typst project. Finding what changed works best when the project is a git repository, which Oleafly projects are by default. The bundled templates compile on the app engines with no extra packages.
 allowed-tools: read_file list_files search_project create_file write_file replace_in_file compile get_log set_main_doc run_command read_skill_file show_location update_todos
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
   skill-author: "Oleafly"
   oleafly:
     tier: native
@@ -168,3 +168,14 @@ Then call `show_location` on two or three of the largest changes so the user can
 - Unaddressed points are visible as unaddressed.
 - The main document is back to the paper.
 - The user has been told which points still need their decision.
+
+## From a terminal
+
+Outside the app (a terminal, or a coding agent with a shell), the `oleafly` command does the same work. Always pass `--json` and check `ok`.
+
+| In Oleafly | From a terminal |
+|---|---|
+| `compile` | `oleafly build --json` |
+| `get_log` | `oleafly log --diagnostics --json` |
+| `list_files`, `read_file`, `search_project` | Your own file tools; `oleafly context --json` for the outline |
+| `set_main_doc` | `oleafly config set main <file>` |

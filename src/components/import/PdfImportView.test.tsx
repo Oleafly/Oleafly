@@ -51,6 +51,33 @@ vi.mock("@/lib/toast", () => ({
   },
 }));
 
+vi.mock("@/components/tools/ScanTranscribeBanner", () => ({
+  ScanTranscribeBanner: ({
+    pages,
+    range,
+  }: {
+    pages: readonly { width: number; height: number }[];
+    range?: readonly [number, number];
+  }) => (
+    <div
+      data-testid="scan-transcribe-banner"
+      data-pages={JSON.stringify(pages)}
+      data-range={JSON.stringify(range ?? null)}
+    />
+  ),
+}));
+
+const providerConfig = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }));
+
+vi.mock("@/components/ai/provider-config", () => ({
+  knownProviderConfig: () => providerConfig.current,
+  loadProviderConfig: async () => {
+    if (!providerConfig.current) throw new Error("no config in tests");
+    return providerConfig.current;
+  },
+  subscribeProviderConfig: () => () => {},
+}));
+
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
     isFullscreen: () => Promise.resolve(false),
@@ -126,6 +153,7 @@ beforeEach(() => {
   notifyError.mockReset();
   writeText.mockReset();
   rerun.mockReset();
+  providerConfig.current = null;
   useHomeViewStore.setState({ page: "pdf-import" });
   useImportStore.setState({
     open: false,
@@ -138,6 +166,9 @@ beforeEach(() => {
     error: null,
     view: "split",
     options: {},
+    scanTranscribed: false,
+    scanModel: null,
+    scanProgress: null,
   });
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
@@ -337,11 +368,102 @@ describe("PdfImportView converted document", () => {
       result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
     });
     render(<PdfImportView />);
+    // The text the lazy Tools banner replaces once it loads.
     expect(
       screen.getByText(
-        "This PDF looks scanned. Transcribe it with a local vision model to recover editable text.",
+        "This PDF looks scanned. Transcribe it with a vision model to recover editable text.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("shows the Tools banner for a scanned PDF", async () => {
+    seedConverted({
+      view: "source",
+      pages: [
+        { width: 612, height: 792, items: [], figureNames: [] },
+        { width: 500, height: 700, items: [], figureNames: [] },
+      ],
+      options: { pageRange: [2, 2] },
+      result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
+    });
+    render(<PdfImportView />);
+    const banner = await screen.findByTestId("scan-transcribe-banner");
+    expect(JSON.parse(banner.getAttribute("data-pages") ?? "[]")).toEqual([
+      { width: 612, height: 792 },
+      { width: 500, height: 700 },
+    ]);
+    expect(JSON.parse(banner.getAttribute("data-range") ?? "null")).toEqual([2, 2]);
+  });
+
+  it("shows where scanned pages go and the estimate in every view, not just the source pane", async () => {
+    seedConverted({
+      view: "preview",
+      result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
+    });
+    render(<PdfImportView />);
+    expect(await screen.findByTestId("scan-transcribe-banner")).toBeInTheDocument();
+    expect(screen.getByTestId("import-transcribe-scan")).toBeInTheDocument();
+  });
+
+  it("names the hosted Tools model's service in the header before a scan is transcribed", async () => {
+    providerConfig.current = {
+      ai_tools_model: { provider: "openai", model: "gpt-5" },
+      ai_keys: { openai: "sk-test" },
+    };
+    seedConverted({
+      view: "preview",
+      result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
+      scanTranscribed: false,
+    });
+    render(<PdfImportView />);
+    const pill = screen.getByTestId("import-destination");
+    expect(pill).toHaveTextContent("Scans go to OpenAI");
+    expect(pill).toHaveAttribute("data-destination", "remote");
+  });
+
+  it("keeps the Local pill for a document that isn't scanned, whatever the Tools model", () => {
+    providerConfig.current = {
+      ai_tools_model: { provider: "openai", model: "gpt-5" },
+      ai_keys: { openai: "sk-test" },
+    };
+    seedConverted();
+    render(<PdfImportView />);
+    expect(screen.getByTestId("import-destination")).toHaveTextContent(enLibrary.pdfImport.local);
+  });
+
+  it("labels the transcribe button without promising local", () => {
+    seedConverted({
+      result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
+      scanTranscribed: false,
+    });
+    render(<PdfImportView />);
+    expect(screen.getByTestId("import-transcribe-scan")).toHaveTextContent("Transcribe scan");
+    expect(screen.getByTestId("import-destination")).toHaveTextContent(enLibrary.pdfImport.local);
+  });
+
+  it("after a hosted transcription the header names where the scan went and the footer names the model", () => {
+    seedConverted({
+      result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
+      scanTranscribed: true,
+      scanModel: { label: "Claude Opus 5.5", sentTo: "Anthropic" },
+    });
+    render(<PdfImportView />);
+    expect(screen.getByTestId("import-destination")).toHaveTextContent("Sent to Anthropic");
+    expect(
+      screen.getByText("Transcribed with Claude Opus 5.5. Review equations and tables."),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("scan-transcribe-banner")).not.toBeInTheDocument();
+  });
+
+  it("names a local model in the footer and keeps the Local badge", () => {
+    seedConverted({
+      result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
+      scanTranscribed: true,
+      scanModel: { label: "glm-ocr", sentTo: null },
+    });
+    render(<PdfImportView />);
+    expect(screen.getByTestId("import-destination")).toHaveTextContent(enLibrary.pdfImport.local);
+    expect(screen.getByText("Transcribed with glm-ocr. Review equations and tables.")).toBeInTheDocument();
   });
 
   it("re-runs the conversion with a page range and a column count", async () => {
@@ -467,5 +589,26 @@ describe("PdfImportView converted document", () => {
     act(() => useImportStore.setState({ scanTranscribed: true }));
     expect(screen.queryByTestId("import-transcribe-scan")).toBeNull();
     expect(screen.queryByText(enLibrary.pdfImport.disclaimer)).toBeNull();
+  });
+
+  it("shows the page a scan transcription is on and cancels it without closing the PDF", () => {
+    const cancelScan = vi.fn();
+    seedConverted({
+      result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
+      busy: true,
+      scanProgress: { step: "transcribingPage", page: 1, total: 10, pdfPage: 41, model: "glm-ocr" },
+      cancelScan,
+    });
+    render(<PdfImportView />);
+
+    expect(screen.getByTestId("import-progress")).toHaveTextContent("Transcribing page 41 (1 of 10) with glm-ocr");
+    expect(screen.getByTestId("import-cancel-scan")).toHaveTextContent(enResearchTools.converter.cancel);
+    fireEvent.click(screen.getByTestId("import-cancel-scan"));
+    expect(cancelScan).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("pdf-import-view")).toBeInTheDocument();
+
+    act(() => useImportStore.setState({ busy: true, scanProgress: null }));
+    expect(screen.getByTestId("import-progress")).toHaveTextContent(enLibrary.pdfImport.converting);
+    expect(screen.queryByTestId("import-cancel-scan")).toBeNull();
   });
 });

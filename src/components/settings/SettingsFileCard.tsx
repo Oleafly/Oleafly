@@ -95,8 +95,6 @@ function issueText(t: Translate, issue: SettingIssue): string {
       return t(($) => $.settingsFile.valueErrors.hexColorOrEmpty);
     case "text":
       return t(($) => $.settingsFile.valueErrors.text, { max: issue.max });
-    case "webAddress":
-      return t(($) => $.settingsFile.valueErrors.webAddress);
     case "list":
       return t(($) => $.settingsFile.valueErrors.list, { max: issue.max });
     case "listItem":

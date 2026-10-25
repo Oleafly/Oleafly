@@ -43,13 +43,15 @@
       "command": "Confirmă comanda",
       "externalTool": "Confirmă acțiunea instrumentului extern",
       "internet": "Confirmă accesul la internet",
-      "edit": "Confirmă modificarea făcută de AI"
+      "edit": "Confirmă modificarea făcută de AI",
+      "researchTask": "Confirmă sarcina de cercetare"
     },
     "headline": {
       "command": "Asistentul vrea să ruleze această comandă",
       "externalTool": "Asistentul vrea să folosească un instrument extern",
       "internet": "Asistentul vrea să acceseze internetul",
-      "edit": "Asistentul vrea să îți modifice fișierele"
+      "edit": "Asistentul vrea să îți modifice fișierele",
+      "researchTask": "Asistentul vrea să creeze o sarcină de cercetare"
     },
     "mcpNote": "Aceasta trimite argumentele de mai jos către serverul MCP configurat.",
     "line": "linia {{line}}",
@@ -71,10 +73,52 @@
       "moreWaiting_one": "încă {{count}} în așteptare",
       "moreWaiting_few": "încă {{count}} în așteptare",
       "moreWaiting_other": "încă {{count}} în așteptare"
+    },
+    "researchTask": {
+      "note": "Sarcina lucrează de una singură într-o copie a proiectului. Îi verifici modificările după aceea.",
+      "title": "Titlu",
+      "goal": "Obiectiv",
+      "skills": "Abilități",
+      "prompt": "Prompt",
+      "commands": "Comenzi",
+      "commandsAsk": "Întreabă înainte de fiecare",
+      "network": "Rețea",
+      "timeBudget": "Buget de timp",
+      "timeBudgetDefault": "Implicit",
+      "minutes_one": "{{count}} minut",
+      "minutes_other": "{{count}} de minute",
+      "planFirst": "Planifică mai întâi",
+      "startNow": "Pornește imediat",
+      "minutes_few": "{{count}} minute"
     }
   },
   "attachments": {
-    "remove": "Elimină {{name}}"
+    "remove": "Elimină {{name}}",
+    "processing": "Se pregătește {{name}}…",
+    "failed": "{{name}} nu a putut fi atașat.",
+    "pages_one": "{{count}} pagină",
+    "pages_few": "{{count}} pagini",
+    "pages_other": "{{count}} de pagini",
+    "pagesLimited": "Pagini folosite: primele {{limit}} din {{count}}.",
+    "tooMany": "Numărul maxim de fișiere atașate la un mesaj este {{max}}.",
+    "tooLarge": "{{name}} este mai mare de {{limit}}.",
+    "unsupported": "{{name}} nu poate fi atașat. Atașează imagini, fișiere PDF sau fișiere text.",
+    "unreadableImage": "Oleafly nu poate citi formatul imaginii {{name}}. Salveaz-o ca PNG sau JPEG și atașeaz-o din nou.",
+    "unreadablePdf": "{{name}} nu a putut fi deschis ca PDF.",
+    "storeFailed": "{{name}} nu a putut fi salvat pentru această conversație.",
+    "visionUnsupported": "{{model}} nu poate citi imagini, așa că imaginile din acest mesaj nu vor fi trimise.",
+    "scannedPdf": "{{name}} nu are strat de text, iar {{model}} nu poate citi imagini.",
+    "dropFiles": "Plasează fișierele aici ca să le atașezi",
+    "dropProjectFile": "Plasează aici ca să menționezi acest fișier",
+    "open": "Deschide {{name}}",
+    "saveCopy": "Salvează o copie a fișierului {{name}}",
+    "saved": "Copia fișierului {{name}} a fost salvată.",
+    "saveFailed": "{{name}} nu a putut fi salvat.",
+    "missing": "{{name}} nu mai este disponibil.",
+    "sentAsText": "{{name}} a fost trimis ca text, fiindcă acest model nu îl poate citi ca fișier.",
+    "skipped": "{{name}} nu a fost trimis.",
+    "dropUnreadable": "{{names}} nu au putut fi citite.",
+    "notReplayed": "Fișierele dintr-o versiune mai veche nu pot fi trimise din nou: {{names}}."
   },
   "chat": {
     "pill": {
@@ -188,7 +232,9 @@
     "stop": "Oprește",
     "stopTitle": "Oprește generarea",
     "send": "Trimite",
-    "checkAgain": "Verifică din nou"
+    "checkAgain": "Verifică din nou",
+    "resizeHandle": "Redimensionează caseta de mesaj",
+    "resizeHint": "Trage ca să redimensionezi. Dublu clic pentru dimensiunea inițială."
   },
   "commands": {
     "groups": {
@@ -226,10 +272,6 @@
     "files": {
       "label": "Fișiere",
       "description": "Atașează fișiere la următorul tău mesaj"
-    },
-    "browser": {
-      "label": "Atașează browserul",
-      "description": "Deschide browserul lângă documentul tău"
     }
   },
   "models": {
@@ -279,7 +321,11 @@
       "minutes": "acum {{count}} min",
       "hours": "acum {{count}} h",
       "days": "acum {{count}} z"
-    }
+    },
+    "skipped_one": "{{count}} conversație nu a putut fi încărcată. Este încă pe disc.",
+    "skipped_few": "{{count}} conversații nu au putut fi încărcate. Sunt încă pe disc.",
+    "skipped_other": "{{count}} de conversații nu au putut fi încărcate. Sunt încă pe disc.",
+    "openFailed": "Această conversație nu a putut fi deschisă."
   },
   "tools": {
     "approval": {
@@ -325,7 +371,6 @@
       "listAgents": "Listează agenții ajutători și starea lor.",
       "closeAgent": "Închide un agent ajutător.",
       "runCommand": "Rulează o comandă shell în folderul proiectului, cu o limită de două minute.",
-      "computerUse": "Deschide o pagină web în fereastra de browser a asistentului.",
       "toggleTheme": "Comută între tema deschisă și cea întunecată.",
       "listOverleafProjects": "Listează proiectele tale Overleaf și se autentifică mai întâi, dacă e nevoie.",
       "importOverleafProjects": "Importă proiecte Overleaf în biblioteca ta, cu compilatorul și fișierul principal."
@@ -354,8 +399,7 @@
       "latexOnly": "Doar pentru proiecte LaTeX",
       "latexAndTypstOnly": "Doar pentru proiecte LaTeX și Typst",
       "pdfCaptureSetting": "Necesită setarea de captură a paginilor PDF",
-      "chatApproval": "Aprobat în conversație, câte o comandă pe rând",
-      "browserSetting": "Necesită setarea pentru browserul web"
+      "chatApproval": "Aprobat în conversație, câte o comandă pe rând"
     },
     "sourceGroups": {
       "figure": "Figură",
@@ -478,18 +522,20 @@
     "resumeTask": "Deschide sarcina de cercetare ca să reiei această lucrare.",
     "delegatedConversation": "Această conversație aparține unei rulări delegate unui agent.",
     "noResume": "Acest agent nu poate relua conversațiile salvate. Începe o conversație nouă când ești pregătit.",
-    "imageTooLarge": "Alege o imagine mai mică de 480 KiB. Poți atașa până la patru imagini.",
     "imageReadFailed": "Imaginea nu a putut fi citită.",
-    "removeImage": "Elimină {{name}}",
     "composerAriaLabel": "Scrie agentului din linia de comandă",
     "composerPlaceholderReady": "Cere-i agentului să lucreze la acest proiect",
     "composerPlaceholderIdle": "Pornește sau reconectează o conversație ca să trimiți un mesaj",
-    "attachImage": "Atașează o imagine",
     "startConversation": "Începe o conversație cu {{agent}}",
     "startConversationFallback": "un agent",
     "agentModel": "Modelul agentului",
     "modelManaged": "Modelul este gestionat de agent",
     "stop": "Oprește",
+    "stopReason": {
+      "refusal": "Agentul a refuzat să continue această cerere.",
+      "maxTokens": "Agentul a atins limita de ieșire și s-a oprit.",
+      "maxTurnRequests": "Agentul a atins limita de cereri pentru acest schimb și s-a oprit."
+    },
     "stopTitle": "Oprește agentul",
     "send": "Trimite",
     "connecting": "Se conectează",
@@ -507,8 +553,7 @@
     "roster": {
       "bridgeMissing": "instalează puntea din Configurarea agentului",
       "cliMissing": "instrumentul de linie de comandă nu a fost găsit pe acest computer",
-      "unavailable": "nu este disponibil pe acest computer",
-      "comingSoon": "în curând"
+      "unavailable": "nu este disponibil pe acest computer"
     },
     "messageTooLarge": "Acest mesaj și imaginile lui sunt prea mari. Scurtează mesajul sau elimină o imagine.",
     "terminalCommand": "Agentul rulează o comandă în terminal.",
@@ -557,7 +602,131 @@
       "changedFiles": "Fișiere modificate",
       "moreFiles_one": "și încă {{count}} fișier",
       "moreFiles_few": "și încă {{count}} fișiere",
-      "moreFiles_other": "și încă {{count}} de fișiere"
+      "moreFiles_other": "și încă {{count}} de fișiere",
+      "mode": "Mod",
+      "effort": "Efort",
+      "permissionProfile": "Mod de aprobare",
+      "commits": "Comiteri"
+    },
+    "composerPlaceholderStart": "Scrie-i lui {{agent}} ca să începi o conversație",
+    "composerPlaceholderConnecting": "Poți scrie de acum. Mesajul pleacă când agentul este gata.",
+    "composerPlaceholderRunning": "Scrie următorul mesaj. Pleacă după ce agentul termină.",
+    "attachFile": "Atașează fișiere",
+    "composer": {
+      "tooManyAttachments": "Atașează cel mult 10 fișiere la un mesaj.",
+      "imagesUnsupported": "Acest agent nu acceptă imagini. Elimină-le și încearcă din nou.",
+      "attachmentsNotReady": "Așteaptă până se termină pregătirea atașamentelor.",
+      "removeSelection": "Elimină citatul {{label}}"
+    },
+    "queue": {
+      "queued": "În coadă: pleacă după ce agentul termină",
+      "remove": "Elimină mesajul din coadă",
+      "sendNow": "Trimite acum",
+      "sendFailed": "Acest mesaj nu a fost trimis. Trimite-l din nou sau elimină-l.",
+      "queuedConnecting": "În coadă: pleacă când agentul este pregătit",
+      "queuedSignIn": "În coadă: pleacă după ce te autentifici",
+      "retry": "Trimite din nou",
+      "edit": "Editează"
+    },
+    "slash": {
+      "commands": "Comenzile agentului",
+      "skills": "Abilități"
+    },
+    "controls": {
+      "effort": "Efort",
+      "mode": "Mod",
+      "more": "Mai multe opțiuni ale agentului",
+      "blockedMode": "Dezactivat în Oleafly",
+      "blockedModeHint": "Oleafly păstrează verificarea permisiunilor activă, așa că acest mod nu este disponibil."
+    },
+    "usage": {
+      "ariaLabel": "Vezi utilizarea agentului",
+      "tooltip": "Utilizarea în această conversație",
+      "contextShare": "S-a folosit {{percent}}% din fereastra de context",
+      "window": {
+        "fiveHour": "Sesiune de 5 ore",
+        "weekly": "Săptămânal, toate modelele",
+        "weeklyOpus": "Săptămânal, Opus",
+        "weeklySonnet": "Săptămânal, Sonnet",
+        "overage": "Utilizare suplimentară",
+        "other": "Limita de utilizare {{id}}"
+      },
+      "costIn": "Agentul a raportat un cost de {{amount}} {{currency}}.",
+      "modelTokens": "{{model}}, tokenuri: {{tokens}}"
+    },
+    "compaction": {
+      "running": "Se rezumă contextul anterior",
+      "done": "Contextul anterior a fost rezumat",
+      "failed": "Contextul anterior nu a putut fi rezumat"
+    },
+    "signIn": {
+      "inTerminal": "{{name}} în terminal",
+      "afterTerminal": "Termină autentificarea în terminal, apoi reconectează-te.",
+      "apiKeyLabel": "Cheie API pentru {{provider}}",
+      "apiKeyPlaceholder": "Lipește cheia ta API",
+      "geminiGoogle": "Autentificarea cu Google nu mai funcționează pentru planurile individuale. Folosește o cheie API Gemini sau Vertex AI.",
+      "noProject": "Deschide un proiect ca să te autentifici din terminal.",
+      "signOut": "Deconectează-te",
+      "confirmTerminal": "{{agent}} se autentifică prin comanda de mai jos, care rulează într-o filă de terminal. Verific-o înainte să fii de acord.",
+      "remote": "Această conversație rulează pe alt computer. Autentifică-te la agent de acolo."
+    },
+    "elicitation": {
+      "ariaLabel": "Cererea agentului",
+      "from": "{{agent}} întreabă:",
+      "submit": "Trimite",
+      "decline": "Refuză",
+      "cancel": "Anulează",
+      "required": "Obligatoriu",
+      "invalid": "Verifică acest câmp.",
+      "openUrl": "Deschide în browser",
+      "confirmTitle": "Deschizi {{host}}?",
+      "confirmDescription": "Agentul ți-a cerut să termini un pas pe acest site. Site-ul se deschide în browserul tău.",
+      "waiting": "Se așteaptă ca site-ul să termine.",
+      "openFailed": "Linkul nu a putut fi deschis în browserul tău."
+    },
+    "remote": {
+      "banner": "Hermes rulează pe {{host}} prin SSH. Modificările lui rămân pe acel computer."
+    },
+    "history": {
+      "all": "Toate conversațiile",
+      "title": "Conversații",
+      "search": "Caută în conversații",
+      "empty": "Nicio conversație nu se potrivește.",
+      "loadMore": "Încarcă mai multe",
+      "rename": "Redenumește",
+      "renameLabel": "Numele conversației",
+      "delete": "Șterge",
+      "deleteTitle": "Ștergi această conversație?",
+      "deleteDescription": "Oleafly îi elimină transcrierea și atașamentele din acest proiect.",
+      "deleteFromAgent": "Șterge-o și din {{agent}}",
+      "deleteAgentFailed": "Ștearsă în Oleafly. {{agent}} nu și-a putut șterge copia: {{error}}",
+      "deleteRunning": "Oprește agentul înainte să ștergi această conversație.",
+      "importFind": "Găsește conversațiile {{agent}} pentru acest proiect",
+      "imported": "Deja în Oleafly",
+      "importSelected": "Importă selecția",
+      "importEmpty": "{{agent}} nu are alte conversații pentru acest proiect."
+    },
+    "header": {
+      "startedAt": "Pornită la {{revision}}",
+      "startedDirty": "Pornită la {{revision}}, cu modificări necomise",
+      "menu": "Acțiuni pentru conversație",
+      "fork": "Ramifică conversația",
+      "forkUnsupported": "Acest agent nu poate ramifica conversații.",
+      "forkBusy": "Așteaptă ca agentul să termine înainte să ramifici conversația.",
+      "v2": "Previzualizare a protocolului",
+      "remote": "La distanță",
+      "signOutTitle": "Te deconectezi de la {{agent}}?",
+      "signOutDescription": "Aceasta încheie chiar autentificarea cu {{agent}}. Un terminal care folosește aceeași autentificare este deconectat și el, iar această conversație se oprește până te autentifici din nou.",
+      "signOutAccount": "Autentificat cu {{account}}"
+    },
+    "commit": {
+      "button": "Comite",
+      "title": "Comite acest schimb",
+      "message": "Mesajul comiterii",
+      "files": "Fișiere de comis",
+      "defaultMessage": "Modificări de la {{agent}}",
+      "submit": "Comite fișierele",
+      "cancel": "Anulează"
     }
   },
   "agents": {
@@ -730,8 +899,6 @@
     "restoreFailed": "Restabilirea nu a reușit: {{error}}",
     "steerFailed": "Rularea în curs nu a putut fi direcționată.",
     "approvalRuleSaveFailed": "Regula de aprobare a proiectului nu a putut fi salvată.",
-    "attachmentTooLarge": "{{name}} este prea mare (maximum 10 MB).",
-    "attachmentReadFailed": "{{name}} nu a putut fi citit.",
     "tooManyTools": "Sunt activate {{enabled}} instrumente, dar o rulare acceptă cel mult {{max}}. Dezactivează cel puțin {{excess}} în Instrumente și încearcă din nou."
   },
   "header": {
@@ -760,7 +927,30 @@
     "summaryRunNoTokens_few": "Ultima rulare: {{count}} pași, totalul de tokenuri nu este disponibil",
     "summaryRunNoTokens_other": "Ultima rulare: {{count}} de pași, totalul de tokenuri nu este disponibil",
     "summaryChat": "Această conversație: {{steps}} pași, {{tokens}} tokenuri",
-    "summaryFallback": "Utilizare AI"
+    "summaryFallback": "Utilizare AI",
+    "context": "Context",
+    "contextUsed": "Tokenuri: {{used}} din {{size}}",
+    "contextShare": "S-a folosit {{percent}} din fereastra de context",
+    "contextUnknown": "Fereastra de context a acestui model nu este cunoscută.",
+    "reasoning": "Raționament",
+    "cacheRead": "Citiri din cache",
+    "cacheWrite": "Scrieri în cache",
+    "cost": "Cost estimat",
+    "budget": "Bugetul proiectului",
+    "budgetUsed": "{{spent}} din {{limit}}",
+    "credit": "Credit rămas",
+    "creditOf": "{{remaining}} din {{limit}}",
+    "planLimits": "Limitele planului",
+    "resetsAt": "Se resetează {{time}}",
+    "windowWarning": "Aproape de limită",
+    "windowBlocked": "Limită atinsă",
+    "refreshPlan": "Reîmprospătează utilizarea planului",
+    "refreshing": "Se reîmprospătează…",
+    "historyTrimmed_one": "Modelului i s-a trimis doar {{count}} schimb din această conversație, cel mai recent.",
+    "historyTrimmed_few": "Modelului i s-au trimis doar ultimele {{count}} schimburi din această conversație.",
+    "historyTrimmed_other": "Modelului i s-au trimis doar ultimele {{count}} de schimburi din această conversație.",
+    "empty": "Încă nu există utilizare în această conversație.",
+    "loading": "Se încarcă utilizarea…"
   },
   "provider": {
     "connectTitle": "Conectează un furnizor AI ca să continui",
@@ -780,7 +970,21 @@
     "projectSubtitle": "Lucrează la „{{project}}”",
     "noOutput": "Modelul nu a returnat nimic. Verifică Setări → Asistentul AI.",
     "planMissing": "Încă nu există un plan de aprobat. Cere-i asistentului un plan sau oprește Plan.",
-    "planUnchanged": "Planul nu s-a schimbat."
+    "planUnchanged": "Planul nu s-a schimbat.",
+    "stillWorking": "Încă lucrează ({{seconds}} s). Modelele cu raționament și modelele locale pot fi lente. Apasă Oprește ca să anulezi.",
+    "retrying": "Problemă de conexiune. Se reîncearcă ({{attempt}} din {{max}})…",
+    "stopped": "Oprit.",
+    "stepLimit": "S-a atins limita de pași. Trimite alt mesaj ca să continui.",
+    "outputLimit": "Răspunsul a atins limita de ieșire a modelului. Trimite alt mesaj ca să continui.",
+    "tooLargeToSave": "Această conversație este prea lungă pentru a fi salvată. Mesajele noi se păstrează până închizi Oleafly. Exportă conversația ca să păstrezi o copie.",
+    "exportChat": "Exportă conversația",
+    "exported": "Conversația a fost exportată.",
+    "exportFailed": "Conversația nu a putut fi exportată.",
+    "saveFailed": "Mesajele noi din această conversație nu au putut fi salvate. Verifică dacă discul are spațiu liber.",
+    "exportYou": "Tu",
+    "exportAssistant": "Asistent",
+    "exportAttachments": "Atașamente",
+    "exportTools": "Instrumente folosite"
   },
   "followUps": {
     "steered": "Direcționat în rularea curentă: {{summary}}",
@@ -872,6 +1076,47 @@
     "figureAudit": "Auditul figurilor",
     "gitReview": "Verificare Git",
     "referenceCleanup": "Curățarea referințelor",
-    "removeSkill": "Elimină abilitatea {{name}}"
+    "removeSkill": "Elimină abilitatea {{name}}",
+    "compilationRepair": "Repararea compilării",
+    "submissionPrep": "Pregătirea pentru trimitere",
+    "reviewerResponse": "Răspuns către recenzenți"
+  },
+  "effort": {
+    "label": "Efort",
+    "tooltip": "Cât raționează modelul înainte să răspundă",
+    "ariaLabel": "Efort de raționament: {{level}}",
+    "auto": "Automat",
+    "autoDescription": "Folosește valoarea implicită a modelului",
+    "levels": {
+      "none": "Deloc",
+      "minimal": "Minim",
+      "low": "Scăzut",
+      "medium": "Mediu",
+      "high": "Ridicat",
+      "xhigh": "Foarte ridicat",
+      "max": "Maxim"
+    }
+  },
+  "web": {
+    "label": "Web",
+    "on": "Căutarea pe web și citirea paginilor sunt active pentru această conversație",
+    "off": "Activează căutarea pe web și citirea paginilor pentru această conversație",
+    "ariaLabel": "Acces la web",
+    "searchUnavailable": "Acest model nu poate căuta pe web. Adaugă o cheie de căutare în Setări ca să activezi căutarea."
+  },
+  "messageActions": {
+    "edit": "Editează mesajul",
+    "regenerate": "Regenerează răspunsul",
+    "retry": "Reîncearcă",
+    "editingLatest": "Editezi ultimul tău mesaj. Când îl trimiți, înlocuiește răspunsul.",
+    "editingEarlier": "Editezi un mesaj anterior. Când îl trimiți, de acolo pornește o conversație nouă, iar aceasta rămâne în Istoric.",
+    "cancelEdit": "Anulează editarea",
+    "replaceTitle": "Înlocuiești acest răspuns?",
+    "replaceDescription_one": "Răspunsul a modificat {{count}} fișier. Modificarea rămâne în proiectul tău, dar cardul ei de anulare dispare odată cu răspunsul.",
+    "replaceDescription_few": "Răspunsul a modificat {{count}} fișiere. Modificările rămân în proiectul tău, dar cardul lor de anulare dispare odată cu răspunsul.",
+    "replaceDescription_other": "Răspunsul a modificat {{count}} de fișiere. Modificările rămân în proiectul tău, dar cardul lor de anulare dispare odată cu răspunsul.",
+    "replaceConfirm": "Înlocuiește răspunsul",
+    "forked": "A pornit o conversație nouă de la mesajul editat.",
+    "failed": "Mesajul nu a putut fi trimis din nou."
   }
 }

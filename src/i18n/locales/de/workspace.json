@@ -186,16 +186,35 @@
     "terminal": "Terminal wird geladen"
   },
   "terminal": {
+    "activity": "Neue Aktivität",
+    "clipboard": {
+      "blocked": "Ein Programm im Terminal möchte Text kopieren."
+    },
     "closeCurrent": "Aktuelles schließen",
     "closeLeft": "Alle links schließen",
     "closeOthers": "Andere schließen",
     "closeRight": "Alle rechts schließen",
     "closeTab": "{{title}} schließen",
     "color": "Farbe",
+    "dropRefused_one": "Der Name dieser Datei enthält ein Steuerzeichen, deshalb tippt das Terminal ihn nicht ein.",
+    "dropRefused_other": "{{count}} Dateinamen enthalten Steuerzeichen, deshalb tippt das Terminal sie nicht ein.",
     "errors": {
       "input": "Die shell konnte keine Eingabe annehmen",
       "resize": "Die Größe des Terminals ließ sich nicht ändern",
       "start": "Die shell konnte nicht starten"
+    },
+    "find": {
+      "count": "{{current}} von {{total}}",
+      "label": "Im Terminal suchen",
+      "next": "Nächster Treffer",
+      "none": "Keine Treffer",
+      "previous": "Vorheriger Treffer"
+    },
+    "launch": {
+      "invalid": "Dieser Befehl kann nicht im Terminal laufen.",
+      "noProject": "Öffnen Sie ein Projekt, um das Terminal zu verwenden.",
+      "run": "Ausführen",
+      "title": "Diesen Befehl im Terminal ausführen?"
     },
     "limitReached": "Schließen Sie ein Terminal, um ein weiteres zu öffnen",
     "links": {
@@ -204,8 +223,26 @@
       "openUrlFailed": "Der Link konnte nicht geöffnet werden."
     },
     "newTerminal": "Neues Terminal",
+    "openInTerminal": "Im Terminal öffnen",
     "settings": "Terminal-Einstellungen",
     "starting": "Die shell des Projekts wird gestartet…",
+    "stop": {
+      "closeMany": "Terminals schließen",
+      "closeOne": "Terminal schließen",
+      "closeProject": "Projekt schließen",
+      "dontAsk": "Nicht mehr fragen",
+      "dontAskHint": "Schalten Sie sie unter Einstellungen, Darstellung, Terminal, „Vor dem Schließen eines beschäftigten Terminals fragen“ wieder ein.",
+      "many_one": "In {{count}} Terminal läuft noch ein Programm.",
+      "many_other": "In {{count}} Terminals laufen noch Programme.",
+      "named": "{{process}} läuft noch in {{title}}.",
+      "quit": "Beenden",
+      "reload": "Neu laden",
+      "restart": "Neu starten",
+      "switchProject": "Projekt wechseln",
+      "titleMany": "Die laufenden Programme stoppen?",
+      "titleOne": "Das laufende Programm stoppen?",
+      "unnamed": "In {{title}} läuft noch ein Programm."
+    },
     "tabs": "Terminals",
     "titleInput": "Titel des Terminals"
   },

@@ -1,23 +1,38 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ForgeAccount, ForgeRepo, ForgeRepoPage } from "@/lib/tauri";
 
-const githubState = { status: "connected" as string, refresh: vi.fn() };
-
-vi.mock("@/store/github", () => ({
-  useGithubStore: (selector: (state: unknown) => unknown) => selector(githubState),
+const tauriMocks = vi.hoisted(() => ({
+  forgeListRepos: vi.fn(),
+  forgeImportRepo: vi.fn(),
+  gitCloneProject: vi.fn(),
 }));
 
-vi.mock("@/lib/github", () => ({
-  githubListRepos: vi.fn(async () => [
-    { full_name: "oleafly/paper", html_url: "https://github.com/oleafly/paper", private: false },
-    { full_name: "oleafly/notes", html_url: "https://github.com/oleafly/notes", private: true },
-  ]),
+const forgeState = vi.hoisted(() => ({
+  status: "ready" as "idle" | "loading" | "ready" | "error",
+  accounts: [] as ForgeAccount[],
+  ensureLoaded: vi.fn(async () => [] as ForgeAccount[]),
+}));
+
+vi.mock("@/store/forge-accounts", () => ({
+  useForgeAccountsStore: Object.assign(
+    (selector: (state: typeof forgeState) => unknown) => selector(forgeState),
+    { getState: () => forgeState },
+  ),
+}));
+
+// Repository imports and clones run the real helpers down to these commands.
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+  forgeListRepos: tauriMocks.forgeListRepos,
+  forgeImportRepo: tauriMocks.forgeImportRepo,
+  gitCloneProject: tauriMocks.gitCloneProject,
 }));
 
 vi.mock("@/features/project-import", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/features/project-import")>(),
-  importGitHubRepository: vi.fn(async () => {}),
   importSelectedFile: vi.fn(async () => {}),
   importArxivPaper: vi.fn(async () => true),
   importFileKind: (path: string) => {
@@ -44,7 +59,14 @@ vi.mock("@/lib/native-file-dialog", () => ({
   pickOpenPath: vi.fn(async () => "/tmp/paper.zip"),
 }));
 
-vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn(async () => {}) }));
+vi.mock("@/lib/system-browser", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/system-browser")>()),
+  openInSystemBrowser: vi.fn(async () => true),
+}));
+vi.mock("@tauri-apps/api/event", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tauri-apps/api/event")>()),
+  emit: vi.fn(async () => {}),
+}));
 vi.mock("@/lib/overleaf", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/overleaf")>()),
   overleafStatus: vi.fn(async () => ({ server: "https://www.overleaf.com", signedIn: false, email: null })),
@@ -57,19 +79,67 @@ vi.mock("@/features/custom-templates", () => ({
 
 import {
   importArxivPaper,
-  importGitHubRepository,
   importSelectedFile,
 } from "@/features/project-import";
+import { allowRadixSelect, chooseOption } from "@/features/collab/tests/select";
 import { pickOpenPath } from "@/lib/native-file-dialog";
-import { githubListRepos } from "@/lib/github";
-import { notifyError } from "@/lib/toast";
-import { open as openExternal } from "@tauri-apps/plugin-shell";
+import { notifyError, toast } from "@/lib/toast";
+import { openInSystemBrowser as openExternal } from "@/lib/system-browser";
+import { emit } from "@tauri-apps/api/event";
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import { useSettingsStore } from "@/store/settings";
 import { CHOICE_ART } from "./choice-art";
 import { ProjectImportDialog } from "./ProjectImportDialog";
 import { announceSavedTemplate, saveProjectTemplate } from "@/features/custom-templates";
 import { useFilesStore } from "@/store/files";
+
+const githubAccount: ForgeAccount = {
+  base: "https://github.com",
+  kind: "github",
+  login: "oleafly",
+  auth: "oauth",
+  addedAt: 1,
+};
+
+const gitlabAccount: ForgeAccount = {
+  base: "https://gitlab.com",
+  kind: "gitlab",
+  login: "zoe",
+  auth: "token",
+  addedAt: 2,
+};
+
+function repository(base: string, fullName: string, isPrivate = false): ForgeRepo {
+  return {
+    id: fullName,
+    fullName,
+    name: fullName.split("/").pop() ?? fullName,
+    webUrl: `${base}/${fullName}`,
+    cloneUrl: `${base}/${fullName}.git`,
+    private: isPrivate,
+    defaultBranch: "main",
+  };
+}
+
+function page(repos: ForgeRepo[]): ForgeRepoPage {
+  return { repos, nextPage: null, searched: false };
+}
+
+const GITHUB_REPOS = [
+  repository(githubAccount.base, "oleafly/paper"),
+  repository(githubAccount.base, "oleafly/notes", true),
+];
+const GITLAB_REPOS = [repository(gitlabAccount.base, "group/sub/paper", true)];
+
+const filesActions = {
+  refreshProjects: vi.fn(async () => {}),
+  openProject: vi.fn(async (_projectId: string) => {}),
+};
+
+function fill(template: string, values: Record<string, string>): string {
+  return Object.entries(values).reduce((text, [name, value]) => text.replaceAll(`{{${name}}}`, value), template);
+}
 
 const LOCAL_CARDS = [
   ["project-import-project", CHOICE_ART.importArchive, "Existing project", "A .zip archive of a project folder."],
@@ -80,7 +150,7 @@ const LOCAL_CARDS = [
 ] as const;
 const CLOUD_CARDS = [
   ["project-import-arxiv", CHOICE_ART.importArxiv, "arXiv paper", "Download a paper's LaTeX source by its arXiv id."],
-  ["project-import-github", CHOICE_ART.importGithub, "GitHub", "Pick from the repositories you can reach."],
+  ["project-import-git", CHOICE_ART.importGithub, "Git repository", "Pick from your repositories or clone one by address."],
   ["project-import-overleaf", CHOICE_ART.importOverleaf, "Overleaf", "Pick projects from your Overleaf account"],
 ] as const;
 const ALL_CARDS = [...LOCAL_CARDS, ...CLOUD_CARDS];
@@ -93,7 +163,17 @@ function section(heading: string): HTMLElement {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  githubState.status = "connected";
+  forgeState.status = "ready";
+  forgeState.accounts = [githubAccount];
+  tauriMocks.forgeListRepos
+    .mockReset()
+    .mockImplementation(async (base: string) => page(base === gitlabAccount.base ? GITLAB_REPOS : GITHUB_REPOS));
+  tauriMocks.forgeImportRepo.mockReset().mockResolvedValue("imported-repository");
+  tauriMocks.gitCloneProject.mockReset().mockResolvedValue("cloned-repository");
+  useFilesStore.setState({
+    refreshProjects: filesActions.refreshProjects,
+    openProject: filesActions.openProject,
+  });
   vi.mocked(pickOpenPath).mockResolvedValue("/tmp/paper.zip");
   vi.mocked(importArxivPaper).mockResolvedValue(true);
 });
@@ -111,21 +191,77 @@ describe("ProjectImportDialog", () => {
     expect(onImported).toHaveBeenCalledOnce();
   });
 
-  it("lists repositories behind the GitHub step and imports the chosen one", async () => {
-    render(<ProjectImportDialog open onClose={vi.fn()} />);
+  it("lists repositories behind the Git step and imports the chosen one", async () => {
+    const onClose = vi.fn();
+    render(<ProjectImportDialog open onClose={onClose} />);
     expect(screen.queryByText("oleafly/paper")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId("project-import-github"));
+    fireEvent.click(screen.getByTestId("project-import-git"));
 
     expect(await screen.findByText("oleafly/paper")).toBeInTheDocument();
     expect(screen.getByLabelText("Private repository")).toBeInTheDocument();
+    expect(tauriMocks.forgeListRepos).toHaveBeenCalledWith("https://github.com", 1, null);
+    // One account: nothing to choose between.
+    expect(screen.queryByTestId("project-import-account")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("project-import-repository-oleafly/paper"));
     await waitFor(() =>
-      expect(importGitHubRepository).toHaveBeenCalledWith(
-        expect.objectContaining({ full_name: "oleafly/paper" }),
-      ),
+      expect(tauriMocks.forgeImportRepo).toHaveBeenCalledWith("https://github.com", "oleafly/paper"),
     );
+    await waitFor(() => expect(filesActions.openProject).toHaveBeenCalledWith("imported-repository"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("imports a nested GitLab repository from the picked account", async () => {
+    allowRadixSelect();
+    forgeState.accounts = [githubAccount, gitlabAccount];
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<ProjectImportDialog open onClose={onClose} />);
+
+    await user.click(screen.getByTestId("project-import-git"));
+    expect(await screen.findByText("oleafly/paper")).toBeInTheDocument();
+    await chooseOption(user, enLibrary.import.accountLabel, "GitLab · zoe");
+
+    await user.click(await screen.findByTestId("project-import-repository-group/sub/paper"));
+
+    await waitFor(() =>
+      expect(tauriMocks.forgeImportRepo).toHaveBeenCalledWith("https://gitlab.com", "group/sub/paper"),
+    );
+    expect(tauriMocks.forgeListRepos).toHaveBeenCalledWith("https://gitlab.com", 1, null);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it("clones a repository by its address", async () => {
+    const onClose = vi.fn();
+    render(<ProjectImportDialog open onClose={onClose} />);
+    fireEvent.click(screen.getByTestId("project-import-git"));
+
+    const address = await screen.findByTestId("project-import-clone-url");
+    expect(screen.getByTestId("project-import-clone")).toBeDisabled();
+    fireEvent.change(address, { target: { value: "git@gitlab.com:g/sub/paper.git" } });
+    fireEvent.click(screen.getByTestId("project-import-clone"));
+
+    await waitFor(() =>
+      expect(tauriMocks.gitCloneProject).toHaveBeenCalledWith("git@gitlab.com:g/sub/paper.git"),
+    );
+    await waitFor(() => expect(filesActions.openProject).toHaveBeenCalledWith("cloned-repository"));
+    expect(filesActions.refreshProjects).toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses an address that carries a password", async () => {
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("project-import-git"));
+
+    fireEvent.change(await screen.findByTestId("project-import-clone-url"), {
+      target: { value: "https://me:hunter22@gitlab.com/g/paper.git" },
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(enErrors.git.remote_has_password);
+    expect(screen.getByTestId("project-import-clone")).toBeDisabled();
+    fireEvent.keyDown(screen.getByTestId("project-import-clone-url"), { key: "Enter" });
+    expect(tauriMocks.gitCloneProject).not.toHaveBeenCalled();
   });
 
   it("opens the Overleaf step from its card and from the menu's initial view", async () => {
@@ -139,9 +275,9 @@ describe("ProjectImportDialog", () => {
     expect(await screen.findByTestId("overleaf-sign-in-panel")).toBeInTheDocument();
   });
 
-  it("returns from the GitHub step to the sources", async () => {
+  it("returns from the Git step to the sources", async () => {
     render(<ProjectImportDialog open onClose={vi.fn()} />);
-    fireEvent.click(screen.getByTestId("project-import-github"));
+    fireEvent.click(screen.getByTestId("project-import-git"));
     await screen.findByText("oleafly/paper");
 
     fireEvent.click(screen.getByTestId("project-import-back"));
@@ -176,15 +312,6 @@ describe("ProjectImportDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /Import/ }));
 
     await waitFor(() => expect(importArxivPaper).toHaveBeenCalledWith("2301.01234"));
-  });
-
-  it("offers the Settings route when GitHub is not connected", () => {
-    githubState.status = "disconnected";
-    render(<ProjectImportDialog open onClose={vi.fn()} />);
-    fireEvent.click(screen.getByTestId("project-import-github"));
-
-    expect(screen.getByRole("button", { name: /Connect GitHub/ })).toBeInTheDocument();
-    expect(importGitHubRepository).not.toHaveBeenCalled();
   });
 });
 
@@ -226,13 +353,14 @@ describe("ProjectImportDialog source cards", () => {
     }
   });
 
-  it("tells a signed-out user that GitHub needs connecting first", () => {
-    githubState.status = "disconnected";
+  it("tells a user without accounts that cloning still works", () => {
+    forgeState.accounts = [];
     render(<ProjectImportDialog open onClose={vi.fn()} />);
 
-    const github = screen.getByTestId("project-import-github");
-    expect(github).toBeEnabled();
-    expect(github).toHaveAccessibleDescription("Connect your account to list repositories.");
+    const git = screen.getByTestId("project-import-git");
+    expect(git).toBeEnabled();
+    expect(git).toHaveAccessibleDescription(enLibrary.import.gitDisconnected);
+    expect(forgeState.ensureLoaded).toHaveBeenCalled();
   });
 
   it("disables every card while the file picker is open and spins only on the chosen card", async () => {
@@ -270,7 +398,7 @@ describe("ProjectImportDialog source cards", () => {
 
     await waitFor(() => expect(importSelectedFile).toHaveBeenCalledWith("/tmp/paper.docx"));
     expect(screen.getByTestId("project-import-word")).toHaveAttribute("aria-busy", "true");
-    expect(screen.getByTestId("project-import-github")).not.toHaveAttribute("aria-busy");
+    expect(screen.getByTestId("project-import-git")).not.toHaveAttribute("aria-busy");
 
     finish();
 
@@ -328,12 +456,12 @@ describe("import recovery", () => {
     await waitFor(() => expect(importSelectedFile).toHaveBeenCalledOnce());
   });
   it("explains a refused repository import instead of showing the raw error", async () => {
-    vi.mocked(importGitHubRepository).mockRejectedValueOnce(
+    tauriMocks.forgeImportRepo.mockRejectedValueOnce(
       '@oleafly/error:{"code":"git.nested_repository","params":{}}',
     );
     const onClose = vi.fn();
     render(<ProjectImportDialog open onClose={onClose} />);
-    fireEvent.click(screen.getByTestId("project-import-github"));
+    fireEvent.click(screen.getByTestId("project-import-git"));
     fireEvent.click(await screen.findByTestId("project-import-repository-oleafly/paper"));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("inside another Git repository");
@@ -354,68 +482,141 @@ describe("import recovery", () => {
   });
 });
 
-describe("ProjectImportDialog GitHub step", () => {
+describe("ProjectImportDialog Git step", () => {
   const copy = enLibrary.import;
 
-  it("checks the GitHub connection before listing repositories", () => {
-    githubState.status = "unknown";
+  it("waits for the accounts before listing repositories", async () => {
+    forgeState.status = "loading";
+    forgeState.accounts = [];
     render(<ProjectImportDialog open onClose={vi.fn()} />);
 
-    fireEvent.click(screen.getByTestId("project-import-github"));
+    fireEvent.click(screen.getByTestId("project-import-git"));
 
-    expect(githubState.refresh).toHaveBeenCalled();
-    expect(screen.getByText(copy.loadingRepositories)).toBeInTheDocument();
-    expect(githubListRepos).not.toHaveBeenCalled();
+    expect(await screen.findByText(copy.loadingRepositories)).toBeInTheDocument();
+    expect(forgeState.ensureLoaded).toHaveBeenCalled();
+    expect(tauriMocks.forgeListRepos).not.toHaveBeenCalled();
+    // Cloning by address never waits for the accounts.
+    expect(screen.getByTestId("project-import-clone-url")).toBeEnabled();
   });
 
   it("explains a failed repository list and loads it again", async () => {
-    vi.mocked(githubListRepos).mockRejectedValueOnce(new Error("rate limited"));
+    tauriMocks.forgeListRepos.mockRejectedValueOnce(new Error("rate limited"));
     render(<ProjectImportDialog open onClose={vi.fn()} />);
-    fireEvent.click(screen.getByTestId("project-import-github"));
+    fireEvent.click(screen.getByTestId("project-import-git"));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(copy.repositoriesFailed);
     fireEvent.click(screen.getByRole("button", { name: copy.tryAgain }));
 
     expect(await screen.findByText("oleafly/paper")).toBeInTheDocument();
-    expect(githubListRepos).toHaveBeenCalledTimes(2);
+    expect(tauriMocks.forgeListRepos).toHaveBeenCalledTimes(2);
   });
 
   it("says when the account has no repositories", async () => {
-    vi.mocked(githubListRepos).mockResolvedValueOnce([]);
+    tauriMocks.forgeListRepos.mockResolvedValueOnce(page([]));
     render(<ProjectImportDialog open onClose={vi.fn()} />);
 
-    fireEvent.click(screen.getByTestId("project-import-github"));
+    fireEvent.click(screen.getByTestId("project-import-git"));
 
-    expect(await screen.findByText(copy.noRepositories)).toBeInTheDocument();
+    expect(await screen.findByText(enLibrary.github.noRepositories)).toBeInTheDocument();
   });
 
-  it("opens a repository on GitHub and reports a failure to open it", async () => {
-    vi.mocked(openExternal).mockRejectedValueOnce(new Error("no browser"));
+  it("opens a repository on its host and reports a failure to open it", async () => {
+    vi.mocked(openExternal).mockResolvedValueOnce(false);
     render(<ProjectImportDialog open onClose={vi.fn()} />);
-    fireEvent.click(screen.getByTestId("project-import-github"));
+    fireEvent.click(screen.getByTestId("project-import-git"));
 
     fireEvent.click(
-      await screen.findByRole("button", { name: copy.openRepository.replace("{{name}}", "oleafly/paper") }),
+      await screen.findByRole("button", {
+        name: fill(copy.openRepositoryOnHost, { name: "oleafly/paper", host: "GitHub" }),
+      }),
     );
 
     expect(openExternal).toHaveBeenCalledWith("https://github.com/oleafly/paper");
-    await waitFor(() => expect(notifyError).toHaveBeenCalledWith("open repository", expect.any(Error)));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(fill(copy.openFailed, { host: "GitHub" })),
+    );
+    expect(tauriMocks.forgeImportRepo).not.toHaveBeenCalled();
   });
 
-  it("opens the GitHub settings and closes the dialog", () => {
-    githubState.status = "disconnected";
+  it("cancels a running clone from the dialog without reporting an error", async () => {
+    let fail!: (error: unknown) => void;
+    tauriMocks.gitCloneProject.mockReturnValueOnce(new Promise((_, reject) => { fail = reject; }));
     const onClose = vi.fn();
     render(<ProjectImportDialog open onClose={onClose} />);
-    fireEvent.click(screen.getByTestId("project-import-github"));
+    fireEvent.click(screen.getByTestId("project-import-git"));
+    fireEvent.change(await screen.findByTestId("project-import-clone-url"), {
+      target: { value: "https://gitlab.com/g/paper.git" },
+    });
+    fireEvent.click(screen.getByTestId("project-import-clone"));
 
-    fireEvent.click(screen.getByRole("button", { name: /Connect GitHub/ }));
+    fireEvent.click(await screen.findByTestId("project-import-cancel"));
+    expect(emit).toHaveBeenCalledWith("import-cancel");
+    expect(onClose).not.toHaveBeenCalled();
+
+    // The backend answers with the cancelled error once Git is stopped.
+    fail('@oleafly/error:{"code":"git.import_cancelled","params":{}}');
+    await waitFor(() => expect(screen.queryByTestId("project-import-cancel")).not.toBeInTheDocument());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByTestId("project-import-clone-url")).toBeEnabled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("closing the dialog during a repository import cancels it", async () => {
+    tauriMocks.forgeImportRepo.mockReturnValueOnce(new Promise(() => {}));
+    const onClose = vi.fn();
+    render(<ProjectImportDialog open onClose={onClose} />);
+    fireEvent.click(screen.getByTestId("project-import-git"));
+    fireEvent.click(await screen.findByTestId("project-import-repository-oleafly/paper"));
+    await screen.findByTestId("project-import-cancel");
+
+    fireEvent.keyDown(screen.getByTestId("project-import-dialog"), { key: "Escape" });
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(emit).toHaveBeenCalledWith("import-cancel");
+  });
+
+  it("keeps a file import open while it runs, with no way to cancel it", async () => {
+    let finish!: () => void;
+    vi.mocked(pickOpenPath).mockResolvedValueOnce("/tmp/paper.docx");
+    vi.mocked(importSelectedFile).mockReturnValueOnce(new Promise((resolve) => { finish = () => resolve(true); }));
+    const onClose = vi.fn();
+    render(<ProjectImportDialog open onClose={onClose} />);
+    fireEvent.click(screen.getByTestId("project-import-word"));
+    await waitFor(() => expect(importSelectedFile).toHaveBeenCalled());
+
+    expect(screen.queryByTestId("project-import-cancel")).not.toBeInTheDocument();
+    fireEvent.keyDown(screen.getByTestId("project-import-dialog"), { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
+
+    finish();
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it("points to Git hosting settings when no account is connected", async () => {
+    forgeState.accounts = [];
+    const onClose = vi.fn();
+    render(<ProjectImportDialog open onClose={onClose} />);
+    fireEvent.click(screen.getByTestId("project-import-git"));
+
+    expect(await screen.findByText(copy.connectPromptGit)).toBeInTheDocument();
+    expect(tauriMocks.forgeListRepos).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: copy.connectGitHosting }));
 
     expect(useSettingsStore.getState()).toMatchObject({
       settingsOpen: true,
       settingsInitialSection: "integrations",
-      settingsScrollTarget: "github",
+      settingsScrollTarget: "git-hosting",
     });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens straight on the Git step from the menu", async () => {
+    render(<ProjectImportDialog open initialView="git" onClose={vi.fn()} />);
+
+    expect(await screen.findByTestId("project-import-clone-url")).toBeInTheDocument();
+    expect(screen.getByTestId("project-import-dialog")).toHaveTextContent(copy.gitTitle);
+    expect(screen.queryByTestId("project-import-project")).not.toBeInTheDocument();
   });
 });
 

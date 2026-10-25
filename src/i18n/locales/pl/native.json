@@ -19,7 +19,6 @@
     "selectAll": "Zaznacz wszystko",
     "view": "Widok",
     "toggleTerminal": "Przełącz terminal",
-    "toggleBrowser": "Przełącz przeglądarkę",
     "file": "Plik",
     "openFolder": "Otwórz folder…",
     "openRecent": "Otwórz ostatnie",
@@ -28,15 +27,7 @@
     "minimize": "Minimalizuj",
     "fullscreen": "Przełącz pełny ekran",
     "bringAllToFront": "Przenieś wszystko na wierzch",
-    "newTab": "Nowa karta",
-    "openLocation": "Otwórz adres…",
-    "closeTab": "Zamknij kartę",
-    "reloadPage": "Przeładuj stronę",
     "zenMode": "Tryb Zen"
-  },
-  "window": {
-    "browser": "Przeglądarka Oleafly",
-    "browserTitled": "{{title}} - przeglądarka Oleafly"
   },
   "dialog": {
     "cancel": "Anuluj",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Potwierdź import plików cookie",
-      "messageHost": "Zaimportować pliki cookie witryny {{hostname}} z profilu \"{{profile}}\" przeglądarki {{browser}} do wbudowanej przeglądarki Oleafly? Zaimportowane pliki cookie mogą automatycznie logować do witryn.",
-      "messageAll": "Zaimportować wszystkie pliki cookie z profilu \"{{profile}}\" przeglądarki {{browser}} do wbudowanej przeglądarki Oleafly? Zaimportowane pliki cookie mogą automatycznie logować do witryn.",
-      "confirm": "Importuj pliki cookie"
+      "copyHost": "Skopiować do Oleafly pliki cookie dla {{hostname}} z profilu „{{profile}}” przeglądarki {{browser}}? Mogą Cię zalogować do {{hostname}}.",
+      "copyAll": "Skopiować do Oleafly wszystkie pliki cookie z profilu „{{profile}}” przeglądarki {{browser}}? Mogą Cię logować do stron.",
+      "copyConfirm": "Skopiuj pliki cookie"
     },
     "mcpApprove": {
       "title": "Zatwierdź narzędzie MCP",
@@ -103,6 +94,60 @@
       "confirm": "Użyj programu",
       "pickTitle": "Wybierz program dla {{name}}",
       "filter": "Programy"
+    },
+    "desktopApps": {
+      "title": "Aplikacje na komputerze",
+      "action": "{{agent}} chce {{action}}.",
+      "steps": "{{agent}} chce wykonać te kroki w aplikacji na komputerze:",
+      "moreSteps": "Niewyświetlone i niewykonane kroki: {{count}}",
+      "moreItems": "Niewyświetlone elementy: {{count}}",
+      "cut": "(niewyświetlone znaki: {{count}})",
+      "signedIn": "To działanie odbywa się w Twojej własnej zalogowanej przeglądarce.",
+      "signedInOn": "To działanie odbywa się w Twojej własnej zalogowanej przeglądarce, na stronie {{origin}}.",
+      "task": "Zadanie: {{title}}",
+      "app": "Aplikacja: {{name}}",
+      "window": "Okno: {{title}}",
+      "element": "Element: {{element}}",
+      "text": "Tekst: „{{text}}”",
+      "address": "Adres: {{url}}",
+      "allowOnce": "Zezwól raz",
+      "allowChat": "Zezwól w tym czacie",
+      "allowSession": "Zezwól w tej sesji",
+      "allowTask": "Zezwól dla tego zadania",
+      "deny": "Nie zezwalaj",
+      "pickedFile": "wybranego przez Ciebie pliku",
+      "actions": {
+        "launchApp": "otworzyć aplikację",
+        "click": "kliknąć w aplikacji",
+        "doubleClick": "kliknąć dwukrotnie w aplikacji",
+        "rightClick": "kliknąć prawym przyciskiem w aplikacji",
+        "typeText": "pisać w aplikacji",
+        "pressKey": "nacisnąć klawisz w aplikacji",
+        "hotkey": "nacisnąć skrót klawiszowy w aplikacji",
+        "scroll": "przewinąć w aplikacji",
+        "setValue": "zmienić pole w aplikacji",
+        "browserPrepare": "otworzyć przeglądarkę dla strony",
+        "browserNavigate": "przejść do strony internetowej",
+        "browserClick": "kliknąć na stronie internetowej",
+        "browserType": "pisać na stronie internetowej",
+        "browserSelect": "wybrać opcję na stronie internetowej",
+        "runScript": "uruchomić skrypt Cua"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "Zezwolić na sterowanie komputerem?",
+      "message": "Agenci będą mogli z nich korzystać. Przed każdą akcją zapytają, a zapisanie usunie wszystkie wybory „Zezwól w tym czacie”:",
+      "confirm": "Zezwól",
+      "enabled": "Aplikacje na komputerze",
+      "app": "Aplikacja: {{identity}} ({{name}})",
+      "more": "I jeszcze {{count}}",
+      "site": "Strona: {{origin}}",
+      "signedIn": "Twoja przeglądarka zalogowana na {{origin}}",
+      "scripted": "Skrypty Cua",
+      "spacesTitle": "Przyznać Cua Spaces większy dostęp?",
+      "spacesMessage": "Agenci korzystający z Cua Spaces będą mogli:",
+      "spacesChanges": "Tworzyć i usuwać Spaces oraz uruchamiać w nich polecenia",
+      "spacesSignIns": "Używać Twojego logowania do Claude Code lub Codex w Space"
     }
   },
   "errors": {
@@ -128,5 +173,41 @@
   "cloud": {
     "connectedPage": "Połączono. Możesz zamknąć tę kartę i wrócić do Oleafly.",
     "failedPage": "Logowanie nie zostało ukończone. Możesz zamknąć tę kartę i wrócić do Oleafly."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Zadanie gotowe do przeglądu",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Plan gotowy do zatwierdzenia",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "Zadanie czeka na Twoje zatwierdzenie",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Zadanie zatrzymane",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Budżet zadania wyczerpany",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly pracuje dalej",
+      "body": "Zadania badawcze oznaczone do dalszego działania pracują w tle. Otwórz Oleafly, aby zobaczyć ich postęp."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Sprawdzanie uprawnień jest wyłączone ({{mode}})",
+      "description": "Agent może edytować pliki i uruchamiać polecenia bez pytania. Oleafly nie mógł przełączyć go w inny tryb. Zmień tryb w ustawieniach samego agenta."
+    }
   }
 }

@@ -52,19 +52,6 @@
   "branding": {
     "assistantMascot": "Oleafly AI 어시스턴트 마스코트"
   },
-  "browser": {
-    "address": "검색하거나 URL을 입력하세요",
-    "back": "뒤로",
-    "closeTab": "탭 닫기",
-    "copyUrl": "URL 복사",
-    "forward": "앞으로",
-    "moreOptions": "추가 옵션",
-    "newTab": "새 탭",
-    "openExternal": "기본 브라우저에서 열기",
-    "openTabs": "열린 탭",
-    "reload": "새로 고침",
-    "setHomePage": "홈 페이지로 지정"
-  },
   "changelog": {
     "installed": "현재 쓰고 있는 버전입니다",
     "sectionItems_other": "변경 사항 {{count}}개",
@@ -462,10 +449,6 @@
       "hide": "AI 어시스턴트 숨기기",
       "show": "AI 어시스턴트 표시"
     },
-    "browser": {
-      "close": "브라우저 닫기({{shortcut}})",
-      "open": "브라우저 열기({{shortcut}})"
-    },
     "settings": "설정",
     "sidebar": {
       "hide": "사이드바 숨기기({{shortcut}})",
@@ -568,22 +551,14 @@
     "tryAgain": "다시 시도",
     "savedCopy": "열린 파일을 {{folder}}에 저장했습니다."
   },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub: {{login}}",
-    "actions": "GitHub 작업",
-    "connect": "GitHub 연결…",
-    "connectedAs": "@{{login}}(으)로 연결됨",
-    "copyRepositoryLink": "저장소 링크 복사",
-    "openInGithub": "GitHub에서 열기",
-    "pushHint": "이 기능을 쓰려면 GitHub에 푸시하세요",
-    "settings": "GitHub 설정",
-    "tooltip": "GitHub"
-  },
   "home": {
     "ariaLabel": "홈",
     "label": "홈",
     "title": "라이브러리로 돌아가기",
     "tooltip": "프로젝트 라이브러리로 돌아갑니다"
+  },
+  "importDestination": {
+    "scansGoTo": "스캔본은 {{provider}}(으)로 전송됩니다"
   },
   "keys": {
     "enter": "Enter",
@@ -698,8 +673,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} 저장하지 않은 변경 사항은 그대로 열려 있습니다. 남아서 문제를 해결하거나, 그대로 종료해 변경 사항을 버릴 수 있습니다.",
+      "descriptionReload": "{{reason}} 저장하지 않은 변경 사항은 그대로 열려 있습니다. 남아서 문제를 해결하거나, 그대로 다시 불러와 변경 사항을 버릴 수 있습니다.",
       "descriptionRestart": "{{reason}} 저장하지 않은 변경 사항은 그대로 열려 있습니다. 남아서 문제를 해결하거나, 그대로 다시 시작해 변경 사항을 버릴 수 있습니다.",
       "quitAnyway": "그대로 종료",
+      "reloadAnyway": "그대로 다시 불러오기",
       "restartAnyway": "그대로 다시 시작",
       "stay": "남기",
       "title": "일부 파일을 저장하지 못했습니다"
@@ -721,6 +698,14 @@
     "search": "프로젝트 검색",
     "sourceControl": "소스 관리",
     "withShortcut": "{{label}}({{shortcut}})"
+  },
+  "remoteMenu": {
+    "accountLabel": "{{host}}의 {{login}}",
+    "actions": "저장소 작업",
+    "copyRepositoryLink": "저장소 링크 복사",
+    "openOnHost": "{{host}}에서 열기",
+    "settings": "Git 호스팅 설정",
+    "signedInAs": "{{login}}(으)로 {{host}}에 로그인됨"
   },
   "renameDialog": {
     "close": "이름 바꾸기 대화 상자 닫기",
@@ -764,9 +749,9 @@
         "movedCount_other": "프로젝트 {{count}}개를 휴지통으로 옮겼습니다.",
         "title": "위험 구역"
       },
-      "githubHint": "프로젝트를 백업하거나 여러 기기에서 동기화하려면 GitHub를 연결한 다음 소스 관리에서 <push>푸시</push> / <pull>풀</pull>을 쓰세요. <setup>GitHub 설정하기 →</setup>",
+      "gitHostingHint": "프로젝트를 백업하거나 여러 기기에서 동기화하려면 Git 저장소에 연결한 다음 소스 관리에서 <push>푸시</push> / <pull>풀</pull>을 사용하세요. <setup>Git 호스팅 설정 →</setup>",
       "localFirst": "Oleafly는 로컬 우선입니다. 모든 프로젝트는 디스크에 있습니다:",
-      "plainFolders": "각 프로젝트는 평범한 폴더입니다. Git 이력은 선택 사항이며, GitHub에 푸시하지 않는 한 아무것도 컴퓨터 밖으로 나가지 않습니다.",
+      "plainFolders": "각 프로젝트는 일반 폴더입니다. Git 기록은 선택 사항이며, Git 서버에 푸시하지 않는 한 아무것도 내 컴퓨터 밖으로 나가지 않습니다.",
       "recycleBin": {
         "clearAll": "모두 비우기",
         "clearFailed": "휴지통을 비우지 못했습니다.",
@@ -833,11 +818,12 @@
         "description": "직접 또는 소속 그룹이 운영하는 공동 작업 서버를 통해 다른 사람과 프로젝트를 함께 편집합니다. 설정에 공동 작업 섹션이 추가됩니다. 아직 베타라서 기본은 꺼짐입니다.",
         "label": "실시간 공동 작업"
       },
-      "warning": "이 기능들은 실험 단계이며 아직 베타입니다. 충분히 검증되지 않았고 앞으로 바뀌거나 동작하지 않거나 사라질 수 있습니다. 진행 중인 작업을 써 보고 싶을 때만 켜세요.",
-      "webBrowser": {
-        "description": "앱 내장 웹 브라우저(독 전환과 단축키)를 표시하고 AI가 컴퓨터 사용 기능으로 브라우저를 다룰 수 있게 합니다. 아직 베타라서 기본은 꺼짐이며, 꺼져 있으면 브라우저 버튼도 AI의 브라우저 도구도 없습니다.",
-        "label": "웹 브라우저"
-      }
+      "researchTasks": {
+        "description": "에이전트가 프로젝트 사본에서 혼자 작업하고, 바뀐 내용은 검토할 수 있도록 남겨 둡니다. 매우 불안정합니다. 실행이 멈추거나 실패할 수 있고, 직접 정리해야 하는 변경이 남을 수도 있으며, 실행하는 동안 내내 제공자의 할당량을 사용합니다. 설정에 연구 섹션이 추가됩니다. 끄면 실행 중인 모든 작업이 중지됩니다. 기본은 꺼짐입니다. 위험을 감수하고 켜세요.",
+        "label": "연구 작업",
+        "saveFailed": "연구 작업 스위치를 저장하지 못했습니다. 다시 시도하세요."
+      },
+      "warning": "이 기능들은 실험 단계이며 아직 베타입니다. 충분히 검증되지 않았고 앞으로 바뀌거나 동작하지 않거나 사라질 수 있습니다. 진행 중인 작업을 써 보고 싶을 때만 켜세요."
     },
     "footer": {
       "followOnX": "X에서 팔로우하기",
@@ -919,7 +905,8 @@
       "general": "일반",
       "help": "도움말 및 정보",
       "integrations": "연동",
-      "shortcuts": "키보드 단축키"
+      "shortcuts": "키보드 단축키",
+      "research": "연구"
     },
     "search": {
       "empty": "일치하는 설정이 없습니다",
@@ -934,8 +921,9 @@
         "experimentation": "실험실, 랩, 베타, 미리 보기 기능",
         "general": "환경 설정, 언어, 지역, 맞춤법 검사, 맞춤법, 오타, 오프라인, 둘러보기, 터미널 명령",
         "help": "정보, 버전, 업데이트, 변경 내역, 새로운 기능, 문서, 지원, 커뮤니티, Discord, 라이선스, 충돌 보고서",
-        "integrations": "Zotero, GitHub, MCP, 인용, 계정, 연결, 연동",
-        "shortcuts": "키 바인딩, 단축키, 핫키, 키, 키보드"
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git 호스팅, 데스크톱 앱, Cua, MCP, 인용, 계정, 연결",
+        "shortcuts": "키 바인딩, 단축키, 핫키, 키, 키보드",
+        "research": "연구 작업 예산 알림 깨어 있음 실험 실행 research tasks"
       },
       "label": "설정 검색",
       "results_other": "섹션 {{count}}개가 일치합니다"
@@ -1015,7 +1003,6 @@
     "commitCount_other": "커밋 {{count}}개",
     "initialize": "저장소 초기화",
     "initialized": "{{branch}}에서 Git을 초기화했습니다.",
-    "linkCopied": "GitHub 링크를 복사했습니다",
     "markResolved": "해결됨으로 표시",
     "mergeNeedsAttention": "병합 충돌 해결",
     "moreActions": "추가 소스 관리 작업",
@@ -1029,18 +1016,19 @@
     "openFile": "파일 열기",
     "openFileFor": "{{path}} 열기",
     "popStash": "최근 스태시 적용",
-    "publish": "GitHub에 게시",
+    "publishRepository": "게시…",
+    "publishTo": "{{host}}에 게시",
     "published": "{{url}}에 게시했습니다",
     "pull": "origin에서 풀",
     "pullShort": "풀",
     "push": "커밋하고 origin에 푸시",
     "pushShort": "푸시",
     "pushSkippedNoRemote": "⚠ 푸시를 건너뛰었습니다 - 아래에 원격 origin이 설정되지 않았습니다.",
-    "pushSkippedNoToken": "⚠ 푸시를 건너뛰었습니다 - GitHub 토큰이 없습니다(설정 → GitHub).",
     "refresh": "새로 고침",
     "remote": "원격",
     "remoteHint": "새 저장소를 만들거나 기존 저장소를 이 프로젝트의 원격으로 연결한 다음 푸시하세요.",
     "removeCredential": "저장된 자격 증명 제거",
+    "repositoryLinkCopied": "저장소 링크를 복사했습니다",
     "restoreCommit": "버전 복원",
     "restoreCommitDescription": "추적 중인 모든 프로젝트 파일을 이 버전으로 바꾸고 이후에 추가된 파일을 제거합니다. 브랜치는 현재 커밋에 그대로 있습니다.",
     "restoreCommitTitle": "이 버전을 복원할까요?",
@@ -1069,7 +1057,7 @@
     "titleRequired": "커밋 제목이 필요합니다.",
     "titleRequiredStatus": "커밋하기 전에 커밋 제목을 입력하세요.",
     "unlink": "연결 해제",
-    "unlinked": "GitHub 연결을 해제했습니다.",
+    "unlinkedFrom": "{{host}}과(와)의 연결을 해제했습니다.",
     "unstage": "스테이지 해제",
     "unstageFor": "{{path}} 스테이지 해제",
     "unstageAll": "모두 스테이지 해제",

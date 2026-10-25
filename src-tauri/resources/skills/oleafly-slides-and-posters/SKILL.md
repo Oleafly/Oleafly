@@ -5,7 +5,7 @@ license: MIT
 compatibility: A deck or a poster is an ordinary project file, not a separate project type. Beamer and beamerposter build with the bundled LaTeX engine. Typst decks need touying or polylux, which the Typst engine fetches when online. PowerPoint export is available from the Export menu for Beamer LaTeX projects only.
 allowed-tools: read_file list_files search_project project_map create_file write_file replace_in_file compile get_log get_pdf_text verify_pdf_pages set_main_doc load_skill read_skill_file show_location update_todos
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   skill-author: "Oleafly"
   oleafly:
     tier: native
@@ -153,3 +153,15 @@ Then run the checklist in `references/quality-checklist.md` and say which items 
 - No frame overflows.
 - Font sizes on a poster meet the minimums in `references/poster.md`.
 - The project's main document is back to the paper.
+
+## From a terminal
+
+Outside the app (a terminal, or a coding agent with a shell), the `oleafly` command does the same work. Always pass `--json` and check `ok`.
+
+| In Oleafly | From a terminal |
+|---|---|
+| `compile` | `oleafly build --json` |
+| `get_log` | `oleafly log --diagnostics --json` |
+| `project_map` | `oleafly context --json` |
+| `list_files`, `read_file`, `search_project` | Your own file tools; `oleafly context --json` for the outline |
+| `set_main_doc` | `oleafly config set main <file>` |

@@ -36,7 +36,7 @@
       },
       "installBridge": "Installer broen",
       "installBridgeNextStep": "Installer ACP-broen, og log så ind gennem kommandolinjeværktøjet.",
-      "intro": "Forbind en lokal agent gennem ACP. Hver agent styrer selv sine modeller, værktøjer og login, og indstillingerne for API-udbydere holdes adskilt. Brug den officielle CLI-konto til login: Oleafly importerer ikke kontotokens og gætter ikke på kvoter for abonnementer.",
+      "intro": "CLI-agenter som Claude Code, Codex og Gemini CLI forbinder gennem Agent Client Protocol (ACP). Nogle kræver en bro, en lille adapter, som Oleafly installerer, så den kan tale med dem. Hver agent styrer selv sine modeller, værktøjer og login, og indstillingerne for API-udbydere holdes adskilt. Brug den officielle CLI-konto til login: Oleafly importerer ikke kontotokens og gætter ikke på kvoter for abonnementer.",
       "nextStepTitle": "Næste skridt",
       "notReported": "Ikke oplyst",
       "notice": {
@@ -50,19 +50,19 @@
       "platformLabel": "Platform",
       "refreshingStatus": "Opdaterer agenternes status. Den nuværende liste bliver stående.",
       "registry": {
-        "description": "Søg i ACP-registret efter agenter, som andre teams har udgivet.",
+        "description": "Søg i ACP-registret efter CLI-agenter, som andre teams har udgivet.",
         "hideDistribution": "Skjul distributionen",
         "register": "Registrer agenten",
         "registered": "Registreret",
         "reviewHint": "Poster i registret beskriver software, sådan som udgiverne selv fremstiller den. Gennemgå distributionen, før du registrerer eller installerer den.",
         "search": "Søg",
-        "searchLabel": "Find en ACP-agent",
-        "searchPlaceholder": "Søg i ACP-registret",
+        "searchLabel": "Find en CLI-agent",
+        "searchPlaceholder": "Søg efter CLI-agenter",
         "searching": "Søger",
         "showDistribution": "Vis distributionen",
         "title": "Find flere agenter"
       },
-      "sectionLabel": "ACP-agenter",
+      "sectionLabel": "CLI-agenter",
       "signInCommandLabel": "Login-kommando",
       "versionLabel": "Version",
       "updateBridge": "Opdater broen",
@@ -113,10 +113,83 @@
           "startFailed": "{{name}} kunne ikke startes.",
           "timeout": "{{name}} startede, men svarede ikke i tide.",
           "exited": "{{name}} stoppede, før det svarede.",
-          "notAcp": "{{name}} startede, men Oleafly kunne ikke forstå svaret."
+          "notAcp": "{{name}} startede, men Oleafly kunne ikke forstå svaret.",
+          "needsSignIn": "{{name}} virker. Log ind, før du starter en samtale.",
+          "sessionFailed": "{{name}} startede, men kunne ikke åbne en samtale."
         },
         "getNode": "Hent Node.js",
-        "copyDetails": "Kopier detaljerne"
+        "copyDetails": "Kopier detaljerne",
+        "signIn": "Log ind",
+        "afterSignIn": "Gør login færdigt i terminalen, og test så programmet igen."
+      },
+      "experimental": {
+        "title": "Eksperimentelt",
+        "description": "Disse funktioner bruger udkast til dele af Agent Client Protocol. De kan ændre sig eller holde op med at virke.",
+        "v2": "Brug ACP v2, når det er tilgængeligt",
+        "v2Description": "Agenter, der understøtter udkastet til version 2, bruger det. Andre agenter bliver ved version 1.",
+        "providers": "Lad agenter bruge mine API-nøgler i Oleafly",
+        "providersDescription": "En agent, der kan omdirigere sine modelkald, bruger den nøgle, du vælger på dens kort. Nøglen går kun til den agents proces."
+      },
+      "inactivity": {
+        "label": "Stop en tavs agent efter",
+        "description": "Når en agent ikke sender noget i så lang tid, stopper Oleafly den. Du kan oprette forbindelse igen.",
+        "minutes_one": "{{count}} minut",
+        "minutes_other": "{{count}} minutter"
+      },
+      "protocolLabel": "Protokol",
+      "remembered": {
+        "title": "Gemte valg",
+        "effort": "Indsats: {{name}}",
+        "mode": "Tilstand: {{name}}",
+        "forget": "Glem",
+        "none": "Nye samtaler bruger agentens standarder."
+      },
+      "providers": {
+        "label": "Brug min API-nøgle i Oleafly",
+        "off": "Fra (agenten logger selv ind)",
+        "note": "Oleafly sender nøglen til denne agent, når en samtale starter, og holder den ude af transskriptioner.",
+        "unavailable": "Tilføj en API-nøgle under Indstillinger, AI-assistent, Udbydere og nøgler for at bruge den her."
+      },
+      "hermes": {
+        "title": "Hermes-profil til dette projekt",
+        "default": "Standardprofil (delt)",
+        "project": "Projektprofil",
+        "remote": "Ekstern via SSH",
+        "profileName": "Profil {{name}}",
+        "memory": "Projekthukommelse",
+        "memoryDescription": "Hermes husker ting på tværs af samtaler i dette projekt.",
+        "toolGateway": "Tool Gateway",
+        "toolGatewayDescription": "Brug de hostede værktøjer til websøgning, billeder, tale og browser fra dit Nous-abonnement.",
+        "status": {
+          "ready": "Gatewayen kører",
+          "starting": "Gatewayen starter",
+          "stopped": "Gatewayen er stoppet",
+          "unknown": "Gatewayens status er ukendt"
+        },
+        "refresh": "Tjek igen",
+        "keepsRunning": "Gatewayen stopper aldrig, når Oleafly afbryder forbindelsen.",
+        "host": "Vært",
+        "port": "Port",
+        "folder": "Projektmappe på den maskine",
+        "command": "Hermes-kommando",
+        "remoteProfile": "Profil (valgfri)",
+        "test": "Test forbindelsen",
+        "testOk": "Forbundet: {{version}}",
+        "save": "Gem",
+        "sshNote": "Oleafly logger kun ind med dine SSH-nøgler.",
+        "folderHint": "Den fulde sti på den maskine, for eksempel /home/ada/paper.",
+        "needsValid": "Test forbindelsen og Gem kræver gyldige værdier for: {{fields}}.",
+        "unsavedEdit": "Endnu ikke gemt. Gem for at bruge disse ændringer.",
+        "unsavedMode": "Endnu ikke gemt. Indtil du gemmer, bruger dette projekt stadig: {{mode}}.",
+        "errors": {
+          "hostRequired": "Indtast værtsnavnet eller user@host.",
+          "hostInvalid": "Brug kun bogstaver, tal, punktummer, bindestreger og @, og start ikke med en bindestreg.",
+          "port": "Brug en port fra 1 til 65535.",
+          "folderRequired": "Indtast den fulde sti til projektmappen på den maskine.",
+          "folderInvalid": "Brug den fulde sti, som starter med /.",
+          "command": "Brug hermes, eller den fulde sti til den, som starter med /.",
+          "profile": "Brug små bogstaver, tal, bindestreger og understregninger."
+        }
       }
     },
     "approvals": {
@@ -195,6 +268,8 @@
       "defaultModelTitle": "Standardmodel til chat",
       "pdfCaptureDescription": "Lader agenten rastrere kompilerede sider (verify_pdf_pages) til visuelle tjek af layoutet. Slå det fra, hvis du helst ikke vil sende billeder af siderne til din udbyder.",
       "pdfCaptureLabel": "Tillad, at AI tager billeder af PDF-sider",
+      "reasoningSummariesDescription": "Modeller, der tænker, før de svarer, sender et kort resumé af deres ræsonnement. Gælder Anthropic- og OpenAI-modeller.",
+      "reasoningSummariesLabel": "Vis resuméer af ræsonnementet",
       "save": "Gem instruktionerne",
       "saved": "Gemt",
       "toolsHint": "Bed den om ting som »ret LaTeX-fejlene«, »tilføj et afsnit med publikationer« eller »kompiler igen, og tjek PDF'en«.",
@@ -509,7 +584,32 @@
       },
       "useInAllProjectsAria": "Brug {{name}} i alle projekter",
       "useInProjectAria": "Brug {{name}} i dette projekt",
-      "validateAria": "Valider {{name}}"
+      "validateAria": "Valider {{name}}",
+      "shadowNote": "En nyere Oleafly-version af denne færdighed er tilgængelig.",
+      "replaceAction": "Brug Oleaflys version",
+      "replaceTitle": "Vil du erstatte din kopi af {{name}}?",
+      "replaceBody": "Din kopi flyttes til en mappe med sikkerhedskopier. Intet bliver slettet.",
+      "replaced": "Din kopi ligger i {{path}}."
+    },
+    "tools": {
+      "tabLabel": "Værktøjer",
+      "loading": "Indlæser indstillinger for Værktøjer…",
+      "modelTitle": "Model til Værktøjer",
+      "modelDescription": "Billede til LaTeX, billeder af ligninger og skannede PDF'er bruger denne model. Det automatiske valg bruger Ollama, så billederne bliver på denne computer. Hvis Ollama ikke kører eller ikke har nogen model, der kan læse billeder, sender editorens Billede til LaTeX og Billede til Typst billedet til assistentens model i stedet.",
+      "ocrHint": "For de bedste lokale resultater skal du hente en OCR-model i Ollama:",
+      "mathpix": {
+        "title": "Mathpix",
+        "description": "Valgfri. Mathpix læser ligninger, tabeller og skannede PDF'er og fakturerer din egen Mathpix-konto for hvert billede og hver side.",
+        "docs": "Få Mathpix-nøgler",
+        "appIdLabel": "App-id",
+        "appKeyLabel": "App-nøgle",
+        "save": "Gem nøglerne",
+        "remove": "Fjern nøglerne",
+        "connected": "Forbundet som {{appId}}",
+        "saved": "Mathpix-nøglerne er gemt.",
+        "removed": "Mathpix-nøglerne er fjernet.",
+        "privacy": "Oleafly beder Mathpix om ikke at gemme dine billeder og sletter hver PDF hos Mathpix, når resultatet er læst."
+      }
     }
   },
   "appearance": {
@@ -548,17 +648,6 @@
       "theme": {
         "description": "System følger styresystemet og skifter, når det skifter.",
         "label": "Udseende"
-      }
-    },
-    "browser": {
-      "homePage": {
-        "ariaLabel": "Browserens startside",
-        "description": "Vælg den side, der åbnes sammen med browserdocken.",
-        "label": "Startside"
-      },
-      "searchEngine": {
-        "description": "Vælg den søgemaskine, der bruges til tekstsøgninger.",
-        "label": "Standardsøgemaskine"
       }
     },
     "customTheme": {
@@ -856,7 +945,6 @@
     "sectionName": "Udseende",
     "tabs": {
       "app": "App",
-      "browser": "Browser",
       "editor": "Editor",
       "files": "Projekt",
       "pdf": "PDF-forhåndsvisning",
@@ -880,6 +968,14 @@
         "foreground": "Tekst",
         "foregroundAriaLabel": "Terminalens tekstfarve",
         "label": "Terminalens farver"
+      },
+      "confirmClose": {
+        "description": "Spørg først, når et program stadig kører i en terminal, du lukker, også når du lukker projektet eller afslutter.",
+        "label": "Spørg, før en optaget terminal lukkes"
+      },
+      "copyOnSelect": {
+        "description": "Kopiér tekst fra terminalen, så snart du markerer den.",
+        "label": "Kopiér ved markering"
       },
       "cursorBlink": {
         "description": "Få terminalens markør til at blinke.",
@@ -909,6 +1005,50 @@
       "fontWeightBold": {
         "description": "Indstil vægten for fed tekst i terminalen.",
         "label": "Vægt for fed skrift"
+      },
+      "optionIsMeta": {
+        "description": "Send tastekombinationer med Option til din shell som Meta. Option skriver ikke længere specialtegn.",
+        "label": "Brug Option som Meta"
+      },
+      "scrollback": {
+        "ariaLabel": "Terminalens rullehistorik",
+        "description": "Hvor mange linjer hver terminal gemmer. Flere linjer bruger mere hukommelse.",
+        "label": "Rullehistorik",
+        "lines_one": "{{value}} linje",
+        "lines_other": "{{value}} linjer"
+      },
+      "shell": {
+        "ariaLabel": "Terminalens shell",
+        "description": "Nye terminaler starter denne shell. Åbne terminaler beholder deres.",
+        "label": "Shell",
+        "notFound": "{{name}} (ikke fundet)",
+        "notFoundNote": "{{name}} er ikke tilgængelig på denne computer, så nye terminaler kan ikke starte. Vælg en anden shell.",
+        "options": {
+          "auto": "Standard ({{name}})",
+          "cmd": "Kommandoprompt",
+          "custom": "Brugerdefineret sti",
+          "defaultShell": "Standardshell",
+          "gitBash": "Git Bash",
+          "powershell": "Windows PowerShell",
+          "pwsh": "PowerShell 7",
+          "wsl": "WSL"
+        },
+        "path": {
+          "ariaLabel": "Sti til brugerdefineret shell",
+          "description": "Det program, nye terminaler kører.",
+          "label": "Sti til shell",
+          "missing": "Indtast den fulde sti til en shell. Nye terminaler kan ikke starte, før du gør det."
+        },
+        "windowsOnly": "{{name}} (kun Windows)",
+        "windowsOnlyNote": "{{name}} kører kun på Windows. Nye terminaler her starter {{fallback}} i stedet.",
+        "windowsOnlyNoteDefault": "{{name}} kører kun på Windows. Nye terminaler her starter standardshellen i stedet."
+      },
+      "shiftEnter": {
+        "ariaLabel": "Shift+Enter i terminalen",
+        "description": "Hvad Shift+Enter sender til programmet i terminalen. En ny linje lader chatbaserede værktøjer som Claude Code tilføje en linje til deres prompt. Enter sender, ligesom Enter-tasten.",
+        "enter": "Send Enter",
+        "label": "Shift+Enter",
+        "newline": "Indsæt en ny linje"
       },
       "startWithProject": {
         "description": "Start shell, når et projekt åbnes, i stedet for første gang du viser terminalen.",
@@ -952,6 +1092,15 @@
       "saveEmail": "Gem e-mailadressen",
       "saveKey": "Gem nøglen"
     },
+    "braveSearch": {
+      "docsLink": "Brave Search API",
+      "hint": "Valgfri. Lader assistenten søge på nettet, når dens udbyder ikke selv har søgning.",
+      "keyLabel": "Nøgle til Brave Search API",
+      "keyRemoveFailed": "Nøglen til Brave Search API kunne ikke fjernes.",
+      "keyRemoved": "Nøglen til Brave Search API er fjernet",
+      "keySaveFailed": "Nøglen til Brave Search API kunne ikke gemmes.",
+      "keySaved": "Nøglen til Brave Search API er gemt"
+    },
     "connected": "Forbundet",
     "description": "Administrer de legitimationsoplysninger, de videnskabelige søgekilder bruger.",
     "keyFree": {
@@ -991,7 +1140,17 @@
       "keySaveFailed": "API-nøglen til Serper kunne ikke gemmes.",
       "keySaved": "API-nøglen til Serper er gemt"
     },
-    "title": "Citationssøgning"
+    "tavily": {
+      "docsLink": "Tavily API",
+      "hint": "Valgfri. Lader assistenten søge på nettet, når dens udbyder ikke selv har søgning.",
+      "keyLabel": "API-nøgle til Tavily",
+      "keyRemoveFailed": "API-nøglen til Tavily kunne ikke fjernes.",
+      "keyRemoved": "API-nøglen til Tavily er fjernet",
+      "keySaveFailed": "API-nøglen til Tavily kunne ikke gemmes.",
+      "keySaved": "API-nøglen til Tavily er gemt"
+    },
+    "title": "Citationssøgning",
+    "webSearchOrder": "Til websøgning bruger assistenten først Brave, derefter Tavily og derefter Serper."
   },
   "cite": {
     "apa": "Den samme reference i APA ligger bag Cite this repository på GitHub",
@@ -1285,17 +1444,64 @@
       }
     }
   },
-  "github": {
+  "gitHosting": {
     "account": {
-      "connected": "Forbundet",
-      "disconnect": "Afbryd forbindelsen",
-      "handle": "@{{login}}"
+      "ariaLabel": "{{login}} på {{host}}",
+      "caAdd": "Tilføj certifikatfil",
+      "caChange": "Skift certifikatfil",
+      "caFile": "Certifikatfil: {{file}}",
+      "checking": "Tjekker…",
+      "signInAgain": "Log ind igen",
+      "signOut": "Log ud",
+      "signedInAs": "Logget ind som {{login}}",
+      "signedOut": "Logget ud",
+      "unreachable": "Kan ikke få forbindelse til serveren"
     },
-    "advanced": {
+    "add": {
+      "browserHint": "Logger dig ind med en engangskode i din browser.",
+      "caChoose": "Vælg fil…",
+      "caFilter": "Certifikatfiler",
+      "caHint": "Kun nødvendig, når serverens certifikat kommer fra din organisations egen certifikatudsteder.",
+      "caLabel": "Fil fra certifikatudsteder",
+      "caPickerTitle": "Vælg en certifikatfil",
+      "caRemove": "Fjern",
+      "chooseKind": "Servertype",
       "connect": "Forbind",
-      "toggle": "Avanceret: brug en personlig adgangstoken",
-      "tokenPlaceholder": "ghp_…"
+      "continue": "Fortsæt",
+      "createToken": "Opret et token på {{host}}",
+      "detecting": "Tjekker serveren…",
+      "found": "Dette er en {{kind}}-server.",
+      "kindGitea": "Gitea eller Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
+      "otherServer": "En anden server",
+      "replaces": "Login erstatter {{login}} på {{host}}.",
+      "scopesGitea": "Giv det læse- og skriveadgang til repository og user.",
+      "scopesGithub": "Giv det rettighederne repo og read:user.",
+      "scopesGitlab": "Giv det rettighederne api og write_repository.",
+      "serverLabel": "Serveradresse",
+      "serverPlaceholder": "https://git.example.org",
+      "signInBrowser": "Log ind med {{host}}",
+      "title": "Tilføj en Git-konto",
+      "tokenLabel": "Adgangstoken",
+      "useToken": "Brug et adgangstoken i stedet"
     },
+    "addAccount": "Tilføj konto",
+    "description": "Log ind for at pushe og pulle, udgive projekter og importere repositories. Virker med GitHub, GitLab, Gitea, Forgejo og Codeberg og med servere, du selv driver.",
+    "device": {
+      "open": "Åbn {{host}}",
+      "opened": "Oleafly åbnede <verificationLink>{{url}}</verificationLink> i din browser. Indtast koden der for at gøre login færdigt.",
+      "timedOut": "Tiden til login løb ud. Prøv igen.",
+      "title": "Indtast denne kode på {{host}}",
+      "waiting": "Venter på, at du bliver færdig i browseren…"
+    },
+    "empty": "Ingen konti endnu. Projekter, du tilknytter via adresse, pusher og puller stadig med dit eget Git-login eller din SSH-nøgle.",
+    "notice": {
+      "signedIn": "Logget ind på {{host}} som {{login}}.",
+      "signedOut": "Logget ud af {{host}}."
+    },
+    "title": "Git-hosting"
+  },
+  "github": {
     "autoInit": {
       "description": "Nye og åbnede projekter får et Git-arkiv, så Git-panelet kan følge ændringerne. Et nyt projekt starter som regel med én commit af sine filer. Derefter committer Oleafly kun, når du beder om det.",
       "label": "Klargør Git til alle projekter"
@@ -1303,23 +1509,6 @@
     "config": {
       "loadFailed": "Kunne ikke indlæse Git-indstillingerne.",
       "saveFailed": "Kunne ikke gemme Git-indstillingerne."
-    },
-    "connect": "Forbind GitHub",
-    "description": "Sikkerhedskopier projekter, synkroniser på tværs af enheder, og push og pull fra Git-panelet.",
-    "device": {
-      "openGithub": "Åbn GitHub",
-      "opened": "Vi åbnede <verificationLink>{{url}}</verificationLink> i din browser. Indsæt koden der for at give Oleafly adgang.",
-      "timedOut": "Tiden løb ud for login på GitHub. Prøv igen.",
-      "title": "Indtast denne kode på GitHub",
-      "waiting": "Venter på godkendelse…"
-    },
-    "hint": {
-      "oauth": "Logger dig ind med en engangskode i din browser.",
-      "token": "Login med OAuth er endnu ikke sat op i denne version, så indsæt en token i stedet."
-    },
-    "notice": {
-      "connected": "Forbundet som @{{login}}",
-      "disconnected": "Forbindelsen er afbrudt."
     }
   },
   "integrations": {
@@ -1336,31 +1525,14 @@
       "disconnectFailed": "Kunne ikke afbryde forbindelsen til alphaXiv. Prøv igen."
     },
     "cookies": {
-      "action": "Importer cookies",
-      "confirmAllDomains": "Du er ved at importere cookies fra profilen {{profile}} i {{browser}} for alle domæner. Cookieværdierne gemmes i appens indbyggede browser og sendes kun til de websteder, de hører til. Oleafly beder dig bekræfte en gang til i en systemdialog, før profilen læses.",
-      "confirmDomain": "Du er ved at importere cookies fra profilen {{profile}} i {{browser}} for {{domain}}. Cookieværdierne gemmes i appens indbyggede browser og sendes kun til de websteder, de hører til. Oleafly beder dig bekræfte en gang til i en systemdialog, før profilen læses.",
       "confirmTitle": "Bekræft import af cookies",
-      "description": "Brug et eksisterende browserlogin i Oleaflys indbyggede browser.",
       "detecting": "Leder efter installerede browserprofiler...",
       "dialogDescription": "Vælg én installeret browserprofil. Oleafly læser den først, når du har gennemgået og bekræftet importen. Cookies fra Chromium låses op lokalt via macOS Keychain. Oleafly sender ikke cookieværdier til en Oleafly-tjeneste.",
       "dialogTitle": "Importer cookies fra browseren",
       "empty": "Der blev ikke fundet nogen understøttede browserprofiler.",
       "errors": {
-        "chooseProfile": "Vælg en tilgængelig browserprofil.",
-        "hostname": "Indtast et værtsnavn som example.com."
+        "chooseProfile": "Vælg en tilgængelig browserprofil."
       },
-      "hostnameHint": "Indtast et værtsnavn for kun at importere de cookies, det websted kan bruge. Lad feltet stå tomt for at importere alle egnede cookies i denne profil.",
-      "hostnameLabel": "Værtsnavn (valgfrit)",
-      "hostnamePlaceholder": "example.com",
-      "importedDomain_one": "Importerede {{count}} cookie fra {{browser}} for {{domain}}.",
-      "importedDomain_other": "Importerede {{count}} cookies fra {{browser}} for {{domain}}.",
-      "importedProfileDomain_one": "Importerede {{count}} cookie fra {{browser}}, {{profile}} for {{domain}}.",
-      "importedProfileDomain_other": "Importerede {{count}} cookies fra {{browser}}, {{profile}} for {{domain}}.",
-      "importedProfile_one": "Importerede {{count}} cookie fra {{browser}}, {{profile}}.",
-      "importedProfile_other": "Importerede {{count}} cookies fra {{browser}}, {{profile}}.",
-      "imported_one": "Importerede {{count}} cookie fra {{browser}}.",
-      "imported_other": "Importerede {{count}} cookies fra {{browser}}.",
-      "importing": "Importerer cookies...",
       "profileGroupLabel": "Browserprofiler",
       "profileLegend": "Browserprofil",
       "review": "Gennemgå importen",
@@ -1370,8 +1542,16 @@
         "noCookieStore": "Intet cookielager",
         "notInstalled": "Ikke installeret"
       },
-      "title": "Importer cookies",
-      "tryAgain": "Prøv igen"
+      "tryAgain": "Prøv igen",
+      "label": "Login fra browseren",
+      "useBrowserSignIn": "Brug login fra min browser",
+      "signInDescription": "Kopiér dit login til {{server}} fra en browser på denne computer, så du ikke behøver at logge ind igen.",
+      "site": "Hjemmeside: {{domain}}",
+      "confirmCopy": "Oleafly læser cookies til {{domain}} fra profilen {{profile}} i {{browser}}. De bliver i Oleafly og sendes kun til {{domain}}. Du bekræfter en gang til i en systemdialog.",
+      "copyAction": "Kopiér login",
+      "copying": "Kopierer…",
+      "notSignedIn_one": "Kopierede {{count}} cookie fra {{browser}}, men den loggede dig ikke ind. Log ind i stedet.",
+      "notSignedIn_other": "Kopierede {{count}} cookies fra {{browser}}, men de loggede dig ikke ind. Log ind i stedet."
     },
     "zotero": {
       "apiKeyHint": "Sådan får du en nøgle: log ind på <siteLink>zotero.org</siteLink>, åbn din <keyLink>side med API-nøgler</keyLink> for at oprette en nøgle, og kopier dit numeriske bruger-id fra samme side.",
@@ -1440,6 +1620,132 @@
       "gitSave": "Gem",
       "gitRemove": "Fjern",
       "gitFailed": "Oleafly kunne ikke gemme Git-tokenet. Tjek, at du har indsat hele tokenet."
+    },
+    "desktopApps": {
+      "tab": "Skrivebordsapps",
+      "title": "Skrivebordsapps",
+      "description": "Lad agenter bruge apps og hjemmesider på denne computer via Cua Driver. Oleafly spørger før hver handling, medmindre du tillader den slags handling for chatten, sessionen eller opgaven. Din browser med login og scripts spørger altid.",
+      "docsLink": "Dokumentation til Cua Driver",
+      "status": {
+        "installed": "Cua Driver {{version}} er installeret.",
+        "installedNoVersion": "Cua Driver er installeret.",
+        "notInstalled": "Cua Driver er ikke installeret.",
+        "tooOld": "Cua Driver {{version}} er for gammel. Oleafly kræver {{minimum}} eller nyere.",
+        "noAppBundle": "Installer Cua Driver med det officielle installationsprogram, så den kan få macOS-tilladelserne.",
+        "unreadableVersion": "Oleafly kunne ikke læse Cua Drivers version. Tjek, at den kører, og tjek så igen.",
+        "path": "Fundet i {{path}}"
+      },
+      "install": {
+        "heading": "Installer Cua Driver",
+        "hint": "Kør denne kommando i en terminal, eller brug Kør i terminalen. Kommandoen starter Cuas officielle installationsprogram, og Oleafly henter ikke selv Cua Driver.",
+        "run": "Kør i terminalen",
+        "needsProject": "Åbn et projekt for at køre dette i Oleaflys terminal, eller kopiér kommandoen.",
+        "confirm": "Dette henter installationsprogrammet til Cua Driver fra cua.ai og kører det i din terminal. Vil du fortsætte?",
+        "terminalTitle": "Installer Cua Driver",
+        "checkAgain": "Tjek igen"
+      },
+      "permissions": {
+        "heading": "macOS-tilladelser",
+        "granted": "Cua Driver kan bruge Tilgængelighed og Skærmoptagelse.",
+        "needed": "Cua Driver kræver Tilgængelighed og Skærmoptagelse. Kør trinnet, der giver tilladelserne, og følg anvisningerne.",
+        "unknown": "Oleafly kunne ikke læse tilladelserne for Cua Driver.",
+        "grant": "Giv tilladelser",
+        "terminalTitle": "Tilladelser til Cua Driver"
+      },
+      "gnome": {
+        "heading": "GNOME-hjælper",
+        "needed": "På GNOME skal du køre Cuas vindueshjælper én gang og derefter logge ud og ind igen.",
+        "active": "GNOME-vindueshjælperen er slået til."
+      },
+      "enable": {
+        "label": "Lad agenter bruge skrivebordsapps",
+        "description": "Agenter kan se apps og hjemmesider nedenfor. Klik, indtastning og sideskift spørger dig først, medmindre du tillader dem for chatten, sessionen eller opgaven. Når du tilføjer en app eller hjemmeside, ryddes de valg."
+      },
+      "apps": {
+        "heading": "Tilladte apps",
+        "empty": "Ingen apps endnu. Agenter kan kun bruge apps, du tilføjer her.",
+        "add": "Tilføj app",
+        "remove": "Fjern {{name}}",
+        "missing": "Dette program blev ikke fundet på denne computer. Fjern den, eller geninstaller appen.",
+        "dialog": {
+          "title": "Tilføj en app",
+          "description": "Vælg en app, som agenter må bruge. De kan åbne den, læse dens vinduer og handle i den, når du har godkendt.",
+          "search": "Søg i apps",
+          "loading": "Leder efter apps…",
+          "none": "Ingen apps passer.",
+          "choose": "Vælg en anden app…",
+          "add": "Tilføj",
+          "added": "Allerede tilføjet.",
+          "more": "Viser {{shown}} af {{total}}. Søg for at indsnævre listen.",
+          "refresh": "Opdater"
+        },
+        "blocked": {
+          "oleafly": "Oleafly kan ikke styre sig selv.",
+          "driver": "Cua Driver kan ikke styre sig selv.",
+          "terminal": "Terminaler og kodeeditorer kører kommandoer uden Oleaflys godkendelse af kommandoer.",
+          "system_settings": "Systemindstillinger kan ændre tilladelser.",
+          "passwords": "Adgangskodeapps er altid udelukket.",
+          "scripting": "Scriptkørere kan gøre hvad som helst på denne computer.",
+          "wrapper": "Denne post starter et andet program. Vælg det program i stedet.",
+          "sandboxed": "Flatpak- og Snap-apps understøttes ikke endnu.",
+          "browser": "Tilføj i stedet en browsers hjemmesider under Tilladte hjemmesider."
+        }
+      },
+      "sites": {
+        "heading": "Tilladte hjemmesider",
+        "empty": "Ingen hjemmesider endnu.",
+        "add": "Tilføj hjemmeside",
+        "placeholder": "https://www.example.org",
+        "remove": "Fjern {{origin}}",
+        "signedIn": {
+          "label": "Brug min browser med login",
+          "labelFor": "Brug min browser med login på {{origin}}",
+          "description": "Agenter arbejder i din egen Chrome eller Edge på denne hjemmeside. Lad den være slået fra for at bruge en separat browserprofil."
+        }
+      },
+      "scripted": {
+        "label": "Scriptstyring",
+        "description": "Lad agenter køre Cua-scripts, der udfører mange trin på én gang. Oleafly spørger før hvert script."
+      },
+      "test": {
+        "action": "Test forbindelsen",
+        "running": "Tester…",
+        "ok": "Cua Driver kører med dine grænser.",
+        "problems": "Cua Drivers eget tjek meldte også:",
+        "failed": "Testen mislykkedes: {{detail}}"
+      },
+      "tool": {
+        "description": "Brug de skrivebordsapps og hjemmesider, du har tilladt under Indstillinger.",
+        "note": "Det at kigge sker med det samme. Klik, indtastning og sideskift spørger først, medmindre du tillader dem for chatten."
+      },
+      "task": {
+        "label": "Skrivebordsapps",
+        "description": "Lad denne opgave bruge dine tilladte skrivebordsapps. Du skal være ved computeren for at godkende handlinger.",
+        "off": "Slå Skrivebordsapps til under Indstillinger først.",
+        "unattended": "Opgaver, der kører efter en tidsplan eller efter at Oleafly er lukket, kan ikke bruge skrivebordsapps."
+      },
+      "spaces": {
+        "title": "Cua Spaces",
+        "description": "Forbind isolerede skriveborde og containere fra Cua Spaces som en MCP-server.",
+        "notInstalled": "Kommandoen cua er ikke installeret.",
+        "connect": {
+          "label": "Forbind Cua Spaces",
+          "description": "Agenter kan vise dine Spaces og holde øje med agenter, der kører der."
+        },
+        "fullAccess": {
+          "label": "Tillad ændringer",
+          "description": "Agenter kan også oprette og slette Spaces og køre kommandoer i dem."
+        },
+        "credentials": {
+          "label": "Del mine agentlogins",
+          "description": "Lad agenter, der starter i en Space, bruge dit login til Claude Code eller Codex."
+        },
+        "failed": "Oleafly kunne ikke opdatere forbindelsen til Cua Spaces.",
+        "install": {
+          "terminalTitle": "Installer Cua",
+          "confirm": "Dette henter installationsprogrammet til Cua fra cua.ai og kører det i din terminal. Vil du fortsætte?"
+        }
+      }
     }
   },
   "language": {
@@ -1520,7 +1826,7 @@
         },
         "legend": "Godkendelsespolitik",
         "trust": {
-          "description": "Filændringer spørger ikke. Kommandoer i en shell og styring af computeren kræver altid godkendelse. Din MCP-klient er stadig en ekstra spærre.",
+          "description": "Filændringer anvendes uden at spørge. Kommandoer i en shell og nye forskningsopgaver spørger altid først. Din MCP-klient kan stadig spørge på egen hånd.",
           "label": "Stol på denne forbindelse"
         }
       },
@@ -1772,7 +2078,8 @@
       "unavailable": "Denne kopi af Oleafly indeholder ikke kommandoen."
     },
     "title": "Terminalkommando",
-    "update": "Opdater"
+    "update": "Opdater",
+    "newTerminal": "Åbn en ny terminal for at bruge oleafly. Terminaler, der allerede er åbne, ser ikke ændringen."
   },
   "shortcuts": {
     "actions": {
@@ -1796,10 +2103,6 @@
         "description": "Åbn oversigten over projektets genveje.",
         "label": "Genvejsoversigt"
       },
-      "toggleBrowser": {
-        "description": "Vis eller skjul projektets browser.",
-        "label": "Vis eller skjul browseren"
-      },
       "toggleSidebar": {
         "description": "Vis eller skjul projektets sidepanel.",
         "label": "Vis eller skjul sidepanelet"
@@ -1811,6 +2114,22 @@
       "toggleTerminal": {
         "description": "Vis eller skjul projektets terminal.",
         "label": "Vis eller skjul terminalen"
+      },
+      "newTerminal": {
+        "description": "Åbn endnu en terminalfane.",
+        "label": "Ny terminal"
+      },
+      "closeTerminal": {
+        "description": "Luk den terminalfane, du skriver i.",
+        "label": "Luk terminalen"
+      },
+      "nextTerminal": {
+        "description": "Skift til den næste terminalfane.",
+        "label": "Næste terminal"
+      },
+      "previousTerminal": {
+        "description": "Skift til den forrige terminalfane.",
+        "label": "Forrige terminal"
       },
       "openFolder": {
         "label": "Åbn mappe",
@@ -1965,6 +2284,44 @@
       "elsewhere": "Menuen åbner en anden kopi af Oleafly. Reparer den for at bruge denne.",
       "moved": "Den peger på en kopi af Oleafly, der er flyttet. Reparer den for at bruge denne.",
       "noDefaultFileManager": "Dit system har ingen standardfilhåndtering for mapper, så denne post kan åbne alle mapper i Oleafly. Fjern den."
+    }
+  },
+  "research": {
+    "background": {
+      "title": "Baggrundsopgaver",
+      "enabled": {
+        "label": "Lad opgaver køre videre, efter at Oleafly er lukket",
+        "description": "Opgaver, som du markerer til at blive ved med at køre, flytter til en lille hjælpeproces i baggrunden, når du afslutter. Oleafly tager dem tilbage, når du åbner appen."
+      },
+      "atLogin": {
+        "label": "Start hjælpeprocessen, når du logger ind",
+        "description": "Genoptager baggrundsopgaver efter en genstart. Hjælpeprocessen afslutter, når den ikke har noget at lave.",
+        "moveApp": "Flyt først Oleafly til mappen Programmer.",
+        "needsBackground": "Slå baggrundsopgaver til først."
+      },
+      "status": {
+        "label": "Hjælpeproces i baggrunden",
+        "running": "Kører",
+        "stopped": "Kører ikke",
+        "notResponding": "Svarer ikke",
+        "tasks_one": "Arbejder på {{count}} opgave",
+        "tasks_other": "Arbejder på {{count}} opgaver"
+      },
+      "stop": "Stop hjælpeprocessen",
+      "stopHint": "Dens opgaver flytter tilbage til Oleafly og kører videre her.",
+      "stopConfirm": {
+        "title": "Vil du stoppe hjælpeprocessen i baggrunden?",
+        "description_one": "{{count}} opgave flytter tilbage til Oleafly og kører videre her.",
+        "description_other": "{{count}} opgaver flytter tilbage til Oleafly og kører videre her."
+      },
+      "stopFailed": "Hjælpeprocessen stoppede ikke. Prøv igen.",
+      "openLog": "Vis loggen",
+      "statusFailed": "Statussen for hjælpeprocessen i baggrunden kunne ikke læses.",
+      "toggleFailed": "Indstillingen kunne ikke ændres. Prøv igen."
+    },
+    "mcpServers": {
+      "loadFailed": "Listen over MCP-servere kunne ikke læses.",
+      "missing": "{{name}} (ikke fundet)"
     }
   }
 }

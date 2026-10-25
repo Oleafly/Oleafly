@@ -1,0 +1,330 @@
+[
+  {
+    "name": "two-column-option",
+    "text": "\\documentclass[twocolumn]{article}"
+  },
+  {
+    "name": "multicol-package",
+    "text": "\\usepackage{multicol}"
+  },
+  {
+    "name": "paracol-package-with-options",
+    "text": "\\usepackage[x]{paracol}"
+  },
+  {
+    "name": "multicols-environment",
+    "text": "\\begin{multicols}{2}x\\end{multicols}"
+  },
+  {
+    "name": "altacv-class",
+    "text": "\\documentclass{altacv}"
+  },
+  {
+    "name": "deedy-class",
+    "text": "\\documentclass{deedy-resume}"
+  },
+  {
+    "name": "plain-article",
+    "text": "\\documentclass{article}"
+  },
+  {
+    "name": "no-unicode-map",
+    "text": "\\documentclass{article}\n\\begin{document}hi\\end{document}"
+  },
+  {
+    "name": "glyphtounicode-satisfied",
+    "text": "\\documentclass{article}\n\\input{glyphtounicode}\n\\pdfgentounicode=1\n\\begin{document}hi\\end{document}"
+  },
+  {
+    "name": "cmap-package",
+    "text": "\\documentclass{article}\\usepackage{cmap}"
+  },
+  {
+    "name": "glyph-pdflatex",
+    "text": "\\documentclass{article}\n\\begin{document}hi\\end{document}",
+    "engine": "pdflatex"
+  },
+  {
+    "name": "glyph-lualatex",
+    "text": "\\documentclass{article}\n\\begin{document}hi\\end{document}",
+    "engine": "lualatex"
+  },
+  {
+    "name": "glyph-xelatex",
+    "text": "\\documentclass{article}\n\\begin{document}hi\\end{document}",
+    "engine": "xelatex"
+  },
+  {
+    "name": "glyph-bundled",
+    "text": "\\documentclass{article}\n\\begin{document}hi\\end{document}",
+    "engine": "bundled"
+  },
+  {
+    "name": "ua2-without-title",
+    "text": "\\DocumentMetadata{pdfstandard=ua-2,tagging=on}\\documentclass{article}"
+  },
+  {
+    "name": "ua2-title-not-displayed",
+    "text": "\\DocumentMetadata{pdfstandard=ua-2}\\documentclass{article}\\hypersetup{pdftitle={A paper}}"
+  },
+  {
+    "name": "ua2-title-displayed",
+    "text": "\\DocumentMetadata{pdfstandard=ua-2}\\documentclass{article}\\hypersetup{pdftitle={A paper},pdfdisplaydoctitle=true}"
+  },
+  {
+    "name": "ua1-display-without-title",
+    "text": "\\DocumentMetadata{pdfstandard=ua-1}\\documentclass{article}\\hypersetup{pdfdisplaydoctitle=true}"
+  },
+  {
+    "name": "tagging-without-ua",
+    "text": "\\DocumentMetadata{tagging=on}\\documentclass{article}"
+  },
+  {
+    "name": "ua-nested-key",
+    "text": "\\DocumentMetadata{tagging-setup={table/header-rows={1}},pdfstandard=ua-2}\\documentclass{article}"
+  },
+  {
+    "name": "ua-braced-value",
+    "text": "\\DocumentMetadata{lang=en-US,pdfstandard={ua-2}}\\documentclass{article}"
+  },
+  {
+    "name": "ua-on-bundled",
+    "text": "\\DocumentMetadata{pdfstandard=ua-2,tagging=on}\\documentclass{article}",
+    "engine": "bundled"
+  },
+  {
+    "name": "ua-on-lualatex",
+    "text": "\\DocumentMetadata{pdfstandard=ua-2,tagging=on}\\documentclass{article}",
+    "engine": "lualatex"
+  },
+  {
+    "name": "ua-nested-on-bundled",
+    "text": "\\DocumentMetadata{tagging-setup={table/header-rows={1}},pdfstandard=ua-2}\\documentclass{article}",
+    "engine": "bundled"
+  },
+  {
+    "name": "table-ruled-header",
+    "text": "\\begin{tabular}{ll}Name & Score \\\\\\hline Ada & 1\\end{tabular}"
+  },
+  {
+    "name": "table-declared-header",
+    "text": "\\DocumentMetadata{tagging-setup={table/header-rows={1}}}\\begin{tabular}{ll}Name & Score \\\\\\hline Ada & 1\\end{tabular}"
+  },
+  {
+    "name": "table-no-rule",
+    "text": "\\begin{tabular}{ll}a & b \\\\ c & d\\end{tabular}"
+  },
+  {
+    "name": "table-bottom-rule",
+    "text": "\\begin{tabular}{ll}a & b \\\\ c & d \\\\ \\hline\\end{tabular}"
+  },
+  {
+    "name": "table-midrule",
+    "text": "\\begin{tabular}{ll}Name & Score \\\\\\midrule Ada & 1\\end{tabular}"
+  },
+  {
+    "name": "table-spaced-terminator",
+    "text": "\\begin{tabular}{ll}Name & Score \\\\[2pt]\n\\hline\nAda & 1\\end{tabular}"
+  },
+  {
+    "name": "table-twice",
+    "text": "\\begin{tabular}{ll}Name & Score \\\\\\hline Ada & 1\\end{tabular}\\begin{tabular}{ll}Name & Score \\\\\\hline Ada & 1\\end{tabular}"
+  },
+  {
+    "name": "longtable-cline",
+    "text": "\\begin{longtable}{ll}A & B \\\\ \\cline{1-2} c & d\\end{longtable}"
+  },
+  {
+    "name": "table-without-end",
+    "text": "\\begin{tabular}{ll}A & B \\\\ \\hline c"
+  },
+  {
+    "name": "icon-email",
+    "text": "\\faEnvelope\\ jane@doe.com"
+  },
+  {
+    "name": "icon-phone",
+    "text": "\\faPhone\\ +1 (555) 123-4567"
+  },
+  {
+    "name": "icon-no-contact",
+    "text": "\\faStar\\ rating"
+  },
+  {
+    "name": "email-no-icon",
+    "text": "jane@doe.com"
+  },
+  {
+    "name": "tabular-layout",
+    "text": "\\begin{tabular}{ll}a&b\\end{tabular}"
+  },
+  {
+    "name": "tikz-layout",
+    "text": "\\begin{tikzpicture}\\end{tikzpicture}"
+  },
+  {
+    "name": "header-contact",
+    "text": "\\lhead{jane@doe.com}"
+  },
+  {
+    "name": "fancyhead-email",
+    "text": "\\fancyhead[L]{ana@example.com}\n\\fancyfoot{Page}"
+  },
+  {
+    "name": "header-title",
+    "text": "\\lhead{Resume}"
+  },
+  {
+    "name": "figure-no-alt",
+    "text": "\\includegraphics{photo.png}"
+  },
+  {
+    "name": "figure-options-no-alt",
+    "text": "\\includegraphics[width=2cm]{photo.png}"
+  },
+  {
+    "name": "alt-repeats-file",
+    "text": "\\includegraphics[alt=photo.png]{photo.png}"
+  },
+  {
+    "name": "alt-braced-file-name",
+    "text": "\\includegraphics[alt={plot.png}]{plot.png}"
+  },
+  {
+    "name": "alt-descriptive",
+    "text": "\\includegraphics[alt={A headshot of Jane Doe}]{photo.png}"
+  },
+  {
+    "name": "alt-empty",
+    "text": "\\includegraphics[alt={},width=3cm]{photo.png}"
+  },
+  {
+    "name": "link-click-here",
+    "text": "\\href{https://x.com}{click here}"
+  },
+  {
+    "name": "link-padded-here",
+    "text": "\\href{u}{ Here }"
+  },
+  {
+    "name": "link-url-label",
+    "text": "\\href{https://x.com}{https://x.com}"
+  },
+  {
+    "name": "link-descriptive",
+    "text": "\\href{https://x.com}{my portfolio}"
+  },
+  {
+    "name": "no-lang",
+    "text": "\\documentclass{article}\\begin{document}hi\\end{document}"
+  },
+  {
+    "name": "babel",
+    "text": "\\documentclass{article}\\usepackage[english]{babel}"
+  },
+  {
+    "name": "pdflang",
+    "text": "\\documentclass{article}\\hypersetup{pdflang=en-US}"
+  },
+  {
+    "name": "metadata-lang",
+    "text": "\\DocumentMetadata{lang=en}\\documentclass{article}"
+  },
+  {
+    "name": "pdftitle",
+    "text": "\\documentclass{article}\\hypersetup{pdftitle={Jane Doe CV}}"
+  },
+  {
+    "name": "heading-skip",
+    "text": "\\section{A}\\subsubsection{B}"
+  },
+  {
+    "name": "heading-nested",
+    "text": "\\section{A}\\subsection{B}\\subsubsection{C}"
+  },
+  {
+    "name": "heading-starred-skip",
+    "text": "\\chapter*{A}\n\\subsection *{B}"
+  },
+  {
+    "name": "resume-nonstandard",
+    "text": "\\section{Experience}\\section{My Journey}"
+  },
+  {
+    "name": "resume-hobbies",
+    "text": "\\section{Experience}\n\\section{Education}\n\\section{Hobbies and Passions}"
+  },
+  {
+    "name": "paper-headings",
+    "text": "\\section{Introduction}\\section{Methods}"
+  },
+  {
+    "name": "resume-standard",
+    "text": "\\section{Experience}\\section{Education}"
+  },
+  {
+    "name": "textcolor",
+    "text": "\\textcolor{red}{Important}"
+  },
+  {
+    "name": "marginpar",
+    "text": "\\marginpar{a note}"
+  },
+  {
+    "name": "wrapfigure",
+    "text": "\\begin{wrapfigure}{r}{4cm}x\\end{wrapfigure}"
+  },
+  {
+    "name": "plain-prose",
+    "text": "plain prose"
+  },
+  {
+    "name": "commented-multicol",
+    "text": "% \\usepackage{multicol}"
+  },
+  {
+    "name": "multicol-after-comment",
+    "text": "% a note\n\\usepackage{multicol}"
+  },
+  {
+    "name": "escaped-percent-multicol",
+    "text": "\\documentclass{article} \\% literal percent \\usepackage{multicol}"
+  },
+  {
+    "name": "offsets-after-comment",
+    "text": "% comment\n\\includegraphics{photo.png}"
+  },
+  {
+    "name": "math-equation",
+    "text": "\\documentclass{article}\n\\begin{document}\n\\begin{equation}\n  E = mc^2\n\\end{equation}\n\\end{document}\n"
+  },
+  {
+    "name": "prose-no-math",
+    "text": "\\documentclass{article}\nPlain prose only.\n"
+  },
+  {
+    "name": "inline-math",
+    "text": "Let $x$ be."
+  },
+  {
+    "name": "display-math",
+    "text": "\\[ x^2 \\]"
+  },
+  {
+    "name": "dollar-after-backslash",
+    "text": "Costs \\$5 and \\$6."
+  },
+  {
+    "name": "emoji-before-findings",
+    "text": "😀 é \\includegraphics{a.png}\n\\begin{tikzpicture}\\end{tikzpicture}\n\\href{u}{here}"
+  },
+  {
+    "name": "crlf-input",
+    "text": "\\documentclass{article}\r\n\\includegraphics{a.png}\r\n\\section{A}\r\n\\subsubsection{B}\r\n"
+  },
+  {
+    "name": "full-twocolumn-paper",
+    "text": "\\documentclass[conference,twocolumn]{IEEEtran}\n\\usepackage{graphicx}\n\\begin{document}\n\\section{Intro}\\label{sec:intro}\n\\includegraphics[width=\\linewidth]{figs/plot}\n\\textcolor{blue}{note}\n\\end{document}",
+    "engine": "pdflatex"
+  }
+]

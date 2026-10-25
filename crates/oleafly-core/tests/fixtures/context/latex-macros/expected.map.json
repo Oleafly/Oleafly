@@ -1,0 +1,32 @@
+{
+  "files": [
+    "main.tex"
+  ],
+  "sections": [
+    {
+      "title": "Notation",
+      "level": 2,
+      "file": "main.tex",
+      "line": 12
+    }
+  ],
+  "labels": [
+    "gpu",
+    "sec:notation",
+    "lem:bound"
+  ],
+  "bibKeys": [],
+  "macros": [
+    "R",
+    "norm",
+    "vec",
+    "argmax",
+    "eps"
+  ],
+  "theorems": [],
+  "glossary": [],
+  "inputGraph": [],
+  "unresolvedRefs": [],
+  "unresolvedCites": [],
+  "ambiguousTypstAtUses": []
+}

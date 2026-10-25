@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { openProject, openRailTab, pressGlobal, type Page } from "../helpers";
+import { openProject, openRailTab, openSettings, pressGlobal, type Page } from "../helpers";
 
 const TERMINAL = '[data-testid="dock-terminal"]';
 const TERMINAL_HOST = '[data-testid="dock-terminal-host"]';
@@ -7,7 +7,6 @@ const TERMINAL_TAB = '[data-testid="dock-terminal-tab"]';
 const NEW_TERMINAL = '[data-testid="dock-terminal-tabs"] [aria-label="New terminal"]';
 const TAB_MENU = '[data-testid="dock-terminal-tab-menu"]';
 const TERMINAL_TOGGLE = '[data-testid="rail-terminal-toggle"]';
-const BROWSER_TOGGLE = '[data-testid="rail-browser-toggle"]';
 const TERMINAL_LIMIT = 10;
 
 function terminalTab(index: number): string {
@@ -72,41 +71,32 @@ async function enterTerminalCommand(page: Page, command: string): Promise<void> 
   );
 }
 
-async function triggerDockShortcut(
-  page: Page,
-  dock: "terminal" | "browser",
-): Promise<void> {
+async function triggerTerminalShortcut(page: Page): Promise<void> {
   const nativeMenu = await page.evaluate<boolean>(
     `Boolean(window.__TAURI_INTERNALS__) && /Mac/.test(navigator.platform)`,
   );
   if (nativeMenu) {
     await page.evaluate(
       `window.__TAURI_INTERNALS__.invoke("plugin:event|emit", {
-        event: ${JSON.stringify(`menu://toggle-${dock}`)},
+        event: "menu://toggle-terminal",
         payload: null,
       }).then(() => true)`,
     );
     return;
   }
-  if (dock === "terminal") {
-    await pressGlobal(page, "`", { ctrl: true });
-  } else {
-    const linux = process.platform === "linux";
-    await pressGlobal(page, "b", { ctrl: true, alt: linux, shift: !linux });
-  }
+  await pressGlobal(page, "`", { ctrl: true });
 }
 
-test("project docks start closed and their toggles are accessible from the top toolbar", async ({
+test("the terminal dock starts closed and its toggle is in the top toolbar", async ({
   tauriPage,
 }) => {
   await expect(tauriPage.locator(TERMINAL_TOGGLE)).toHaveCount(0);
-  await expect(tauriPage.locator(BROWSER_TOGGLE)).toHaveCount(0);
 
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await expect(tauriPage.locator(TERMINAL)).not.toBeVisible();
-  await expect(tauriPage.getByTestId("dock-browser")).not.toBeVisible();
   await expect(tauriPage.locator(TERMINAL_TOGGLE)).toBeVisible();
+  await expect(tauriPage.locator('[data-testid="rail-browser-toggle"]')).toHaveCount(0);
 
   await openRailTab(tauriPage, "Source Control");
   await expect(
@@ -114,23 +104,7 @@ test("project docks start closed and their toggles are accessible from the top t
   ).toBeVisible();
 
   const terminalLabel = await tauriPage.getAttribute(TERMINAL_TOGGLE, "aria-label");
-  // Narrow windows move the browser action into the toolbar's overflow menu.
-  const directBrowser = await tauriPage.evaluate<boolean>(
-    `!!document.querySelector(${JSON.stringify(BROWSER_TOGGLE)})?.getBoundingClientRect().width`,
-  );
-  if (!directBrowser) await tauriPage.click('[data-testid="workspace-menu"]');
-  await expect(tauriPage.locator(BROWSER_TOGGLE)).toBeVisible();
-  const browserLabel = await tauriPage.evaluate<string>(`(() => {
-    const action = document.querySelector(${JSON.stringify(BROWSER_TOGGLE)});
-    return action.getAttribute('aria-label') || action.textContent.trim();
-  })()`);
   expect(terminalLabel).toMatch(/^Show terminal \(Ctrl(?:\+)?`\)$/u);
-  expect(browserLabel).toMatch(
-    process.platform === "linux"
-      ? /^Open browser \(Ctrl\+Alt\+B\)$/u
-      : /^Open browser \(Ctrl(?:\+Shift\+|⇧)B\)$/u,
-  );
-  if (!directBrowser) await tauriPage.press('body', 'Escape');
 });
 
 test("the real terminal opens, echoes, and exits cleanly", async ({
@@ -315,19 +289,113 @@ test("the new terminal button stops at ten terminals", async ({ tauriPage }) => 
   await expect(tauriPage.locator(NEW_TERMINAL)).toBeEnabled();
 });
 
-test("configured terminal and browser shortcut routes toggle their docks", async ({ tauriPage }) => {
+test("the configured terminal shortcut route toggles its dock", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  await triggerDockShortcut(tauriPage, "terminal");
+  await triggerTerminalShortcut(tauriPage);
   await expect(tauriPage.locator(TERMINAL)).toBeVisible({ timeout: 10_000 });
-  await triggerDockShortcut(tauriPage, "terminal");
+  await triggerTerminalShortcut(tauriPage);
   await expect(tauriPage.locator(TERMINAL)).not.toBeVisible({ timeout: 10_000 });
+});
 
-  // The browser shortcut launches a separate window (no dock), so it is a
-  // safe no-op here; assert only that it does not throw or open a dock.
-  await triggerDockShortcut(tauriPage, "browser");
-  await expect(tauriPage.getByTestId("dock-browser")).not.toBeVisible();
+async function selectTerminalAppearanceTab(page: Page): Promise<void> {
+  const selector = '[data-testid="appearance-tab-terminal"]';
+  await page.waitForFunction(`!!document.querySelector(${JSON.stringify(selector)})`, 15_000);
+  // Radix tab triggers activate on focus or keydown, never on a synthetic
+  // click, so drive both on every poll tick until the tab reports active.
+  await page.waitForFunction(
+    `(() => {
+      const tab = document.querySelector(${JSON.stringify(selector)});
+      if (!(tab instanceof HTMLElement)) return false;
+      if (tab.getAttribute("data-state") !== "active") {
+        tab.focus();
+        tab.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }),
+        );
+      }
+      return tab.getAttribute("data-state") === "active";
+    })()`,
+    10_000,
+  );
+}
+
+async function pickOption(page: Page, triggerSelector: string, optionText: string): Promise<void> {
+  // A list that just closed fades out before it leaves the page; picking from
+  // it does nothing. Wait for it to go, and only use the open list.
+  await page.waitForFunction(`!document.querySelector('[role="listbox"][data-state="closed"]')`, 5_000);
+  await page.click(triggerSelector);
+  const optionSelector = `[role="listbox"][data-state="open"] [role="option"][data-label=${JSON.stringify(optionText)}]`;
+  await page.waitForFunction(`!!document.querySelector(${JSON.stringify(optionSelector)})`, 5_000);
+  await page.evaluate(
+    `document.querySelector(${JSON.stringify(optionSelector)})?.scrollIntoView({ block: "nearest" })`,
+  );
+  await page.click(optionSelector);
+}
+
+test("terminal font size and color theme apply to the open terminal", async ({ tauriPage }) => {
+  test.setTimeout(90_000);
+  await openTerminalDock(tauriPage);
+  await expect(tauriPage.locator(`${TERMINAL} .xterm`)).toHaveCount(1, { timeout: 30_000 });
+  const before = await tauriPage.evaluate<{ fontSize: number; theme: string }>(
+    `import("/src/store/settings.ts").then(({ useSettingsStore }) => {
+      const state = useSettingsStore.getState();
+      return { fontSize: state.terminalFontSize, theme: state.terminalColorTheme };
+    })`,
+  );
+
+  try {
+    await openSettings(tauriPage, "appearance");
+    await selectTerminalAppearanceTab(tauriPage);
+    await pickOption(tauriPage, '[role="combobox"][aria-label="Terminal font size"]', "18px");
+    await pickOption(
+      tauriPage,
+      '[role="combobox"][aria-label="Terminal color theme"]',
+      "Light · light",
+    );
+    await expect
+      .poll(
+        () =>
+          tauriPage.evaluate<{ fontSize: number; theme: string }>(
+            `import("/src/store/settings.ts").then(({ useSettingsStore }) => {
+              const state = useSettingsStore.getState();
+              return { fontSize: state.terminalFontSize, theme: state.terminalColorTheme };
+            })`,
+          ),
+        { timeout: 5_000 },
+      )
+      .toEqual({ fontSize: 18, theme: "light" });
+    // The open terminal picks the change up without a restart.
+    await expect(tauriPage.locator(TERMINAL)).toHaveAttribute("data-terminal-font-size", "18");
+    await expect(tauriPage.locator(TERMINAL)).toHaveAttribute("data-terminal-color-theme", "light");
+    await expect
+      .poll(
+        () =>
+          tauriPage.evaluate<string>(
+            `getComputedStyle(document.querySelector(${JSON.stringify(TERMINAL)})).backgroundColor`,
+          ),
+        { timeout: 5_000 },
+      )
+      .toBe("rgb(255, 255, 255)");
+    await tauriPage.click('[aria-label="Close settings"]');
+  } finally {
+    await tauriPage.evaluate(
+      `import("/src/store/settings.ts").then(({ useSettingsStore }) => {
+        const state = useSettingsStore.getState();
+        state.setTerminalFontSize(${JSON.stringify(before.fontSize)});
+        state.setTerminalColorTheme(${JSON.stringify(before.theme)});
+        return true;
+      })`,
+    );
+  }
+  await expect(tauriPage.locator(TERMINAL)).toHaveAttribute(
+    "data-terminal-font-size",
+    String(before.fontSize),
+  );
+  await expect(tauriPage.locator(TERMINAL)).toHaveAttribute(
+    "data-terminal-color-theme",
+    before.theme,
+  );
 });
 
 // Native Ctrl dock accelerator keystrokes cannot be synthesized through the app bridge, so there is no

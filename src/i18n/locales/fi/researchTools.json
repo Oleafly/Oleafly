@@ -2,6 +2,7 @@
   "workspace": {
     "title": "Tutkimustyötila",
     "configureAgents": "Määritä tutkimusagentit",
+    "openSettings": "Tutkimuksen asetukset",
     "configError": "Avustajan asetuksia ei voitu ladata.",
     "tabTasks": "Tehtävät",
     "tabFolders": "Linkitetyt kansiot",
@@ -135,7 +136,8 @@
       "awaitingReview": "Vaatii tarkistuksen",
       "completed": "Valmis",
       "failed": "Epäonnistui",
-      "cancelled": "Peruutettu"
+      "cancelled": "Peruutettu",
+      "planReady": "Suunnitelma valmis"
     },
     "relative": {
       "justNow": "juuri nyt",
@@ -145,7 +147,11 @@
     },
     "timeline": {
       "sessionConnected": "Istunto yhdistetty.",
-      "toolCall": "Työkalukutsu"
+      "toolCall": "Työkalukutsu",
+      "runStarted": "Aloitettiin ajo {{name}}",
+      "runFinished": "Ajo {{name}}: {{status}}",
+      "approvalRequested": "Pyydettiin hyväksyntää: {{summary}}",
+      "approvalDecided": "Hyväksyntä: {{status}}"
     },
     "panel": {
       "noProjectTitle": "Avaa projekti, niin tutkimustehtäviä voi käyttää",
@@ -172,7 +178,9 @@
       "viewTask": "Katso tehtävä",
       "deleteTitle": "Poistetaanko tämä tehtävä?",
       "deleteDescription": "\"{{title}}\" ja sen eristetty työtila poistetaan. Projektiin jo sovelletut tiedostot jäävät paikoilleen.",
-      "deleteConfirm": "Poista tehtävä"
+      "deleteConfirm": "Poista tehtävä",
+      "pendingApprovals_one": "{{count}} pyyntö odottaa",
+      "pendingApprovals_other": "{{count}} pyyntöä odottaa"
     },
     "composer": {
       "editTitle": "Muokkaa tehtävää",
@@ -193,7 +201,11 @@
       "unavailable": "Ei käytettävissä",
       "saving": "Tallennetaan...",
       "saveTask": "Tallenna tehtävä",
-      "createTask": "Luo tehtävä"
+      "createTask": "Luo tehtävä",
+      "replaceText": "Korvataanko kirjoittamasi otsikko ja ohjeet tällä pohjalla?",
+      "keepText": "Säilytä omat",
+      "replaceConfirm": "Korvaa",
+      "cannotSave": "Korjaa yllä merkityt valinnat ja yritä uudelleen."
     },
     "starter": {
       "literatureReview": {
@@ -215,6 +227,10 @@
       "reviewerResponse": {
         "label": "Vastaus arvioijille",
         "title": "Luonnostele vastaus arvioijille"
+      },
+      "experimentLoop": {
+        "label": "Aja kokeita",
+        "title": "Aja kokeita kohti tavoitetta"
       }
     },
     "detail": {
@@ -233,6 +249,10 @@
       "dependencies": "Riippuvuudet",
       "dependencyUnavailable": "Ei käytettävissä",
       "noActivity": "Tälle ajolle ei kirjattu tapahtumia.",
+      "activityGap_one": "Välissä oleva {{count}} kohde ei näy.",
+      "activityGap_other": "Välissä olevaa {{count}} kohdetta ei näy.",
+      "activityMore": "Lisää tapahtumia ei näytetä vielä.",
+      "keepRunningDesktopApps": "Tämä tehtävä käyttää työpöytäsovelluksia, jotka vaativat sinua koneen ääressä.",
       "startToRecord": "Käynnistä tämä tehtävä, niin sen tapahtumat kirjataan.",
       "reasoning": "Raportoitu päättely",
       "savedArtifact": "Tallennettu {{label}}",
@@ -245,6 +265,8 @@
       "clearSelection": "Tyhjennä valinta",
       "selectAll": "Valitse kaikki",
       "previewBeforeApply": "Esikatsele jokainen valittu tiedosto ennen käyttöönottoa.",
+      "researchRecord": "Tutkimuspäiväkirja",
+      "researchRecordHint": "Tehtävän omat muistiinpanot. Niitä ei tarvitse esikatsella ennen käyttöönottoa.",
       "driftedOne": "{{path}} muuttui projektissa tämän tehtävän käynnistymisen jälkeen. Sen vertailu on vanhempaa versiota vasten, joten sitä ei voi ottaa käyttöön.",
       "driftedMany": "{{fileCount}} tiedostoa muuttui projektissa tämän tehtävän käynnistymisen jälkeen. Niiden vertailut ovat vanhempia versioita vasten, joten niitä ei voi ottaa käyttöön.",
       "applyAria": "Ota käyttöön {{path}}",
@@ -274,7 +296,131 @@
       "loadMore": "Lataa lisää tapahtumia",
       "changeAdded": "lisätty",
       "changeModified": "muokattu",
-      "changeDeleted": "poistettu"
+      "changeDeleted": "poistettu",
+      "tabProgress": "Eteneminen",
+      "resume": "Jatka",
+      "resumeHint": "Jatka samassa työtilassa tallennetusta luovutusmuistiosta.",
+      "startOver": "Aloita alusta",
+      "startOverHint": "Aloita nykyisestä projektista. Tutkimuspäiväkirja tulee mukana.",
+      "stopReason": {
+        "budgetTime": "Pysäytettiin, kun aikabudjetti loppui.",
+        "budgetCost": "Pysäytettiin kustannusrajaan.",
+        "budgetRuns": "Pysäytettiin ajorajaan."
+      },
+      "startsAt": "Alkaa {{time}}",
+      "olderActivity": "Tämän ajon aiempia tapahtumia ei näytetä.",
+      "tooLargeToDiff": "Tiedosto on liian suuri vertailtavaksi tässä, joten vain sen koot näytetään."
+    },
+    "confirm": {
+      "stopTitle": "Pysäytetäänkö tämä tehtävä?",
+      "stopDescription": "\"{{title}}\" pysähtyy nykyisen vaiheensa jälkeen. Jatka-painikkeella voit jatkaa sitä myöhemmin sen työtilasta.",
+      "cancelTitle": "Peruutetaanko tämä tehtävä?",
+      "cancelDescription": "\"{{title}}\" ei käynnisty. Voit yrittää sitä uudelleen myöhemmin.",
+      "cancelTask": "Peruuta tehtävä",
+      "discardTitle": "Hylätäänkö nämä muutokset?",
+      "discardDescription": "Mikään tehtävän \"{{title}}\" muutoksista ei päädy projektiisi, ja tehtävä merkitään peruutetuksi. Jatka-painike ajaa agentin uudelleen.",
+      "keepTask": "Säilytä tehtävä",
+      "keepChanges": "Säilytä muutokset",
+      "dependents_one": "Tämä tehtävä odottaa sitä ja epäonnistuu myös:",
+      "dependents_other": "Nämä {{count}} tehtävää odottavat sitä ja epäonnistuvat myös:",
+      "runs_one": "Tämä ajo pysähtyy myös:",
+      "runs_other": "Nämä {{count}} ajoa pysähtyvät myös:"
+    },
+    "plan": {
+      "title": "Suunnitelma",
+      "description": "Lue suunnitelma ja muokkaa sitä halutessasi. Hyväksy se, niin tehtävä voi jatkua.",
+      "approve": "Hyväksy suunnitelma",
+      "approveEdited": "Hyväksy muokattu suunnitelma",
+      "discard": "Peruuta tehtävä",
+      "loading": "Ladataan suunnitelmaa…",
+      "missing": "Suunnitelmatiedosto puuttuu. Aja tehtävä uudelleen.",
+      "loadFailed": "Oleafly ei voinut ladata suunnitelmaa.",
+      "truncated": "Tämä suunnitelma on yli 64 KiB, joten vain sen alku näytetään. Karsi se haluamiisi vaiheisiin ja hyväksy se sitten.",
+      "tooLong": "Suunnitelma voi olla enintään 64 KiB. Lyhennä sitä ennen hyväksymistä."
+    },
+    "approvals": {
+      "title": "Odottaa hyväksyntääsi",
+      "approve": "Hyväksy",
+      "deny": "Hylkää",
+      "kindCommand": "Suorita komento",
+      "kindRun": "Aloita ajo",
+      "kindMcp": "Käytä työkalua",
+      "expires": "Odottaa {{time}} asti",
+      "detailCommand": "Koko komento",
+      "detailRun": "Ajon tiedot",
+      "detailMcp": "Työkalun argumentit",
+      "loadFailed": "Odottavia pyyntöjä ei voitu ladata.",
+      "status": {
+        "approved": "Hyväksytty",
+        "denied": "Hylätty",
+        "expired": "Vanhentunut",
+        "withdrawn": "Peruttu"
+      }
+    },
+    "phase": {
+      "preparing": "Valmistellaan työtilaa",
+      "planning": "Kirjoitetaan suunnitelmaa",
+      "working": "Työskentelee",
+      "waitingRuns": "Odotetaan ajoja",
+      "waitingApproval": "Odotetaan hyväksyntää",
+      "wrappingUp": "Viimeistellään",
+      "checkingEvidence": "Tarkistetaan näyttöä"
+    },
+    "progress": {
+      "loading": "Ladataan etenemistä…",
+      "plan": "Suunnitelma",
+      "noPlan": "Ei vielä suunnitelmaa.",
+      "ledger": "Tulosloki",
+      "noLedger": "Tuloksia ei ole vielä kirjattu.",
+      "best": "Paras {{metric}}",
+      "bestValue": "{{value}} ajossa {{run}}",
+      "runsInFlight": "Käynnissä olevat ajot",
+      "noRuns": "Ei käynnissä olevia ajoja.",
+      "budget": "Budjetti",
+      "timeUsed": "{{used}} / {{total}}",
+      "costUsed": "{{used}} / {{limit}}",
+      "costSpent": "{{used}} käytetty",
+      "ledgerCapped": "Näytetään vain uusimmat {{limit}} tulosta.",
+      "costUnknown": "Tämän mallin kustannusta ei tiedetä.",
+      "runsUsed": "Ajoja: {{used}} / {{limit}}",
+      "runsUsedNoLimit": "Ajoja: {{used}}",
+      "stopRun": "Pysäytä ajo",
+      "stopRunTitle": "Pysäytetäänkö tämä ajo?",
+      "stopRunDescription": "\"{{name}}\" ({{run}}) pysähtyy nyt. Sen toisella koneella tai klusterissa suorittama työ perutaan myös siellä.",
+      "keepRun": "Pidä käynnissä",
+      "viewLog": "Näytä loki",
+      "columns": {
+        "run": "Ajo",
+        "time": "Aika",
+        "hypothesis": "Hypoteesi",
+        "change": "Muutos",
+        "metrics": "Mittarit",
+        "verdict": "Arvio"
+      },
+      "verdict": {
+        "keep": "Säilytetty",
+        "discard": "Hylätty",
+        "crash": "Kaatui"
+      }
+    },
+    "settings": {
+      "title": "Tutkimustehtävät",
+      "keepAwake": "Pidä kone hereillä tehtävien ajon aikana",
+      "keepAwakeHint": "Näyttö voi silti sammua.",
+      "notifications": "Ilmoita, kun tehtävä vaatii huomiota",
+      "notificationsHint": "Näytetään, kun Oleafly on taustalla.",
+      "notificationsBlocked": "Oleaflyn ilmoitukset on poistettu käytöstä järjestelmän asetuksissa.",
+      "allowNotifications": "Salli ilmoitukset",
+      "network": "Salli verkkoyhteys tehtävien komennoille oletuksena",
+      "timeBudget": "Oletusaikabudjetti",
+      "mcpServers": "MCP-palvelimet, joita tehtävät voivat käyttää",
+      "mcpServersHint": "Tehtävät kutsuvat näitä työkaluja kunkin tehtävän komentosääntöjen mukaisesti.",
+      "noMcpServers": "MCP-palvelimia ei ole määritetty.",
+      "networkHint": "Tehtävien komennot pääsevät internetiin. Jokainen tehtävä voi silti kytkeä verkon pois.",
+      "loadFailed": "Tutkimusasetuksiasi ei voitu ladata.",
+      "sectionName": "Tutkimus",
+      "resetConfirm": "Palauta tutkimuksen oletukset: hereillä pitäminen, ilmoitukset, verkkoyhteys, aikabudjetti ja MCP-palvelimet, joita tehtävät voivat käyttää. Ajokohteet ja taustatehtävät säilyvät ennallaan.",
+      "saveFailed": "Tutkimusasetuksiasi ei voitu tallentaa. Yritä uudelleen."
     }
   },
   "tools": {
@@ -354,7 +500,7 @@
       "name": "Kuvasta LaTeXiin",
       "description": "Muunna muistiinpanojen, kaavojen tai taulukon kuva muokattavaksi LaTeXiksi.",
       "tag1": "Kuvat",
-      "tag2": "Laitteella toimiva malli",
+      "tag2": "Paikallinen tai pilvessä toimiva malli",
       "tag3": "Projektia ei tarvita"
     },
     "visualTypstEditor": {
@@ -376,7 +522,7 @@
       "description": "Muunna kirjoitettu kaava tai kaavan kuva siistiksi LaTeX-matematiikaksi.",
       "tag1": "Teksti tai kuva",
       "tag2": "Matematiikka",
-      "tag3": "Laitteella toimiva malli"
+      "tag3": "Paikallinen tai pilvessä toimiva malli"
     },
     "excelToLatex": {
       "name": "Excelistä LaTeXiin",
@@ -396,7 +542,7 @@
       "name": "Kuvasta Typstiin",
       "description": "Muunna muistiinpanojen, kaavojen tai taulukon kuva muokattavaksi Typstiksi.",
       "tag1": "Kuvat",
-      "tag2": "Laitteella toimiva malli",
+      "tag2": "Paikallinen tai pilvessä toimiva malli",
       "tag3": "Projektia ei tarvita"
     },
     "latexToHtml": {
@@ -744,13 +890,14 @@
     "progressNeedsAttention": "Vaatii huomiota",
     "progressCancelled": "Peruutettu",
     "progressReadingPages": "Luetaan sivuja",
-    "progressTranscribingPage": "Litteroidaan sivua {{page}}/{{total}}",
+    "progressTranscribingPage": "Litteroidaan sivua {{page}}/{{total}} mallilla {{model}}",
+    "progressTranscribingPdfPage": "Litteroidaan sivua {{pdfPage}} ({{page}} / {{total}}) mallilla {{model}}",
     "progressDocumentStructure": "Muunnetaan dokumentin rakennetta",
     "progressMermaid": "Piirretään Mermaid-kaaviota",
     "progressFirstSheet": "Luetaan ensimmäistä taulukkoa",
-    "progressVisionModel": "Ajetaan paikallista konenäkömallia",
-    "progressReadingEquation": "Luetaan kaavaa paikallisella konenäkömallilla",
-    "progressConvertingEquation": "Muunnetaan kaavaa paikallisella mallilla",
+    "progressVisionModel": "Luetaan kuvaa mallilla {{model}}",
+    "progressReadingEquation": "Luetaan kaavaa mallilla {{model}}",
+    "progressConvertingEquation": "Muunnetaan kaavaa mallilla {{model}}",
     "progressUnpackingSource": "Puretaan tallennettua lähdepakettia",
     "progressDownloadingSource": "Ladataan e-print-lähdepakettia",
     "copied": "Kopioitu {{label}}",
@@ -785,14 +932,19 @@
     "fileReady": "{{fileName}} on valmis",
     "saveWordHint": "Tallenna Word-dokumentti, kun olet valmis.",
     "resultPlaceholder": "Muunnettu tulos ilmestyy tähän.",
-    "progressConvertingSource": "Muunnetaan lähdekoodia Typst-muotoon"
+    "progressConvertingSource": "Muunnetaan lähdekoodia Typst-muotoon",
+    "pageRange": "Sivut",
+    "pageRangePlaceholder": "Kaikki sivut tai alue, kuten 1-50",
+    "pageRangeInvalid": "Anna yksi sivunumero tai alue, kuten 1-50.",
+    "pageCount_one": "Tässä PDF-tiedostossa on {{count}} sivu.",
+    "pageCount_other": "Tässä PDF-tiedostossa on {{count}} sivua."
   },
   "converters": {
     "imageToLatex": {
       "title": "Kuvasta LaTeXiin",
-      "subtitle": "Litteroi muistiinpanot, kaavat tai taulukot laitteella toimivalla konenäkömallilla",
+      "subtitle": "Litteroi muistiinpanot, kaavat tai taulukot konenäkömallilla",
       "inputLabel": "Kuva",
-      "inputHint": "PNG, JPEG tai WebP. Kuva pysyy tällä laitteella.",
+      "inputHint": "PNG, JPEG tai WebP, enintään 20 MB.",
       "outputLabel": "LaTeX"
     },
     "arxivToLatex": {
@@ -825,9 +977,9 @@
     },
     "imageToTypst": {
       "title": "Kuvasta Typstiin",
-      "subtitle": "Litteroi muistiinpanot, kaavat tai taulukot laitteella toimivalla konenäkömallilla",
+      "subtitle": "Litteroi muistiinpanot, kaavat tai taulukot konenäkömallilla",
       "inputLabel": "Kuva",
-      "inputHint": "PNG, JPEG tai WebP. Kuva pysyy tällä laitteella.",
+      "inputHint": "PNG, JPEG tai WebP, enintään 20 MB.",
       "outputLabel": "Typst"
     },
     "latexToHtml": {
@@ -883,14 +1035,14 @@
       "title": "PDF:stä Markdowniin",
       "subtitle": "Poimi teksti, kaavat ja kuvat paikallisesti",
       "inputLabel": "PDF",
-      "inputHint": "Tekstilliset PDF-tiedostot poimitaan deterministisesti. Skannaukset käyttävät paikallista konenäkömallia.",
+      "inputHint": "Tekstiä sisältävät PDF-tiedostot puretaan deterministisesti. Skannauksiin käytetään valitsemaasi mallia.",
       "outputLabel": "Markdown"
     },
     "pdfToTypst": {
       "title": "PDF:stä Typstiin",
       "subtitle": "Poimi teksti, kaavat ja kuvat paikallisesti",
       "inputLabel": "PDF",
-      "inputHint": "Tekstilliset PDF-tiedostot poimitaan deterministisesti. Skannaukset käyttävät paikallista konenäkömallia.",
+      "inputHint": "Tekstiä sisältävät PDF-tiedostot puretaan deterministisesti. Skannauksiin käytetään valitsemaasi mallia.",
       "outputLabel": "Typst"
     },
     "typstToLatex": {
@@ -981,10 +1133,10 @@
   "converterErrors": {
     "chooseSmallerImage": "Valitse kuva, joka on pienempi kuin 20 MB.",
     "imageFormat": "Valitse PNG-, JPEG- tai WebP-kuva.",
-    "ollamaUnavailable": "Käynnistä Ollama asetuksissa ja asenna sitten paikallinen malli tätä muunnosta varten.",
-    "visionModelMissing": "Asenna Ollamaan konenäkömalli, esimerkiksi Llama 3.2 Vision, ja yritä uudelleen.",
-    "localModelMissing": "Asenna paikallinen Ollama-malli ja yritä uudelleen.",
-    "emptyTranscription": "Paikallinen malli palautti tyhjän litteroinnin.",
+    "ollamaUnavailable": "Käynnistä Ollama tai valitse Työkaluille toinen malli.",
+    "visionModelMissing": "Nouda Ollamaan konenäkömalli, kuten glm-ocr, tai valitse Työkaluille toinen malli.",
+    "localModelMissing": "Nouda Ollamaan malli tai valitse Työkaluille toinen malli.",
+    "emptyTranscription": "Malli palautti tyhjän litteroinnin.",
     "pdfNoPages": "Tässä PDF-tiedostossa ei ole litteroitavia sivuja.",
     "pdfPageLimit": "Skannatun PDF:n litterointi on rajattu 50 sivuun kerrallaan.",
     "pandocNotReady": "Pandoc ei ole vielä valmis.",
@@ -992,10 +1144,16 @@
     "fileTooLarge": "Valitse tiedosto, joka on pienempi kuin 128 MB.",
     "emptySheet": "Valittu taulukko on tyhjä.",
     "arxivInputRequired": "Anna arXiv-tunnus tai valitse lähdearkisto.",
-    "equationToTypst": "Pandoc ei voinut muuntaa tätä kaavaa Typst-muotoon. Tarkista LaTeX-matematiikka ja yritä uudelleen."
+    "equationToTypst": "Pandoc ei voinut muuntaa tätä kaavaa Typst-muotoon. Tarkista LaTeX-matematiikka ja yritä uudelleen.",
+    "pdfTooManyPages": "Tässä skannauksessa on {{pages}} sivua, ja Oleafly litteroi kerrallaan enintään {{limit}}. Anna tiedoston alle sivualue, esimerkiksi 1-{{limit}}.",
+    "outputLimit": "Mallilta loppui tila ennen valmistumista, joten litterointi jäisi kesken. Valitse kohdassa Asetukset, Tekoäly, Työkalut malli, jolla on suurempi tulostusraja, tai litteroi pienempi osa.",
+    "refused": "Malli kieltäytyi litteroimasta tätä, joten mitään ei lisätty. Valitse toinen malli kohdassa Asetukset, Tekoäly, Työkalut.",
+    "pageRangePastEnd_one": "Tässä PDF-tiedostossa on {{count}} sivu. Anna 1 tai jätä Sivut-kenttä tyhjäksi.",
+    "pageRangePastEnd_other": "Tässä PDF-tiedostossa on {{count}} sivua. Anna alue väliltä 1-{{count}}."
   },
   "converterNotes": {
-    "scannedPages": "{{pages}} skannattua sivua litteroitiin paikallisella mallilla. Tarkista kaavat ja taulukot ennen tuloksen käyttöä.",
+    "scannedPages_one": "Litteroitu {{count}} skannattu sivu mallilla {{model}}. Tarkista kaavat ja taulukot ennen tuloksen käyttöä.",
+    "scannedPages_other": "Litteroitu {{count}} skannattua sivua mallilla {{model}}. Tarkista kaavat ja taulukot ennen tuloksen käyttöä.",
     "extracted": "{{pages}} sivua ja {{figures}} kuvaa poimittiin paikallisesti.",
     "mermaidTikz": "Tämä vuokaavio muunnettiin muokattavaksi TikZ-koodiksi.",
     "mermaidRendered": "Tämä kaavio piirrettiin paikallisesti, koska sen Mermaid-syntaksi ei kartoitu siististi muokattavaan TikZ-koodiin.",
@@ -1010,6 +1168,53 @@
     "notConverted_one": "{{count}} kohde jäi muuntamatta.",
     "notConverted_other": "{{count}} kohdetta jäi muuntamatta.",
     "checkLine": "Rivi {{line}}: {{message}}"
+  },
+  "converterModel": {
+    "label": "Työkalujen malli",
+    "automatic": "Automaattinen (paras paikallinen malli)",
+    "localGroup": "Paikallinen (Ollama)",
+    "mathpixModel": "Mathpix OCR",
+    "sentTo": "Kuvat lähetetään palveluun {{provider}}",
+    "sentToHost": "Kuvat lähetetään Ollamalle osoitteessa {{host}}",
+    "scansSentTo": "Skannatut sivut lähetetään palveluun {{provider}}",
+    "scansSentToHost": "Skannatut sivut lähetetään Ollamalle osoitteessa {{host}}",
+    "pdfSentToMathpix": "Koko PDF lähetetään Mathpix-palveluun",
+    "transcribingHosted": "Lähetetään kuvaa palveluun {{provider}}…",
+    "transcribingFallback": "Lähetetään kuvaa palveluun {{provider}} (avustajan malli)…",
+    "sentFallback": "Lähetetty palveluun {{provider}} (avustajan malli)",
+    "editorFallback": "Editorin Kuvasta LaTeXiin -toiminto lähettää kuvat palveluun {{provider}}, kunnes Ollamalla on konenäkömalli",
+    "progressUploading": "Lähetetään PDF Mathpix-palveluun",
+    "progressFormatting": "Muunnetaan litterointia Pandocilla",
+    "scannedTitle": "Tämä PDF vaikuttaa skannatulta",
+    "estimateOllama_one": "{{count}} sivu. Ollamalta voi kulua hetki sen lukemiseen.",
+    "estimateOllama_other": "{{count}} sivua. Ollama lukee ne yksi kerrallaan, mikä voi kestää hetken.",
+    "estimateCost_one": "{{count}} sivu. Noin {{cost}} mallilla {{model}}.",
+    "estimateCost_other": "{{count}} sivua. Noin {{cost}} mallilla {{model}}.",
+    "estimateUnknown_one": "{{count}} sivu. {{provider}} laskuttaa sen käytön mukaan.",
+    "estimateUnknown_other": "{{count}} sivua. {{provider}} laskuttaa ne käytön mukaan.",
+    "estimatePlan_one": "{{count}} sivu. {{provider}} sisällyttää sen tilaukseesi.",
+    "estimatePlan_other": "{{count}} sivua. {{provider}} sisällyttää ne tilaukseesi.",
+    "estimateLocal_one": "{{count}} sivu. Malli toimii tällä koneella ilman kustannuksia.",
+    "estimateLocal_other": "{{count}} sivua. Malli toimii tällä koneella ilman kustannuksia.",
+    "estimateFree_one": "{{count}} sivu. Maksuton mallilla {{model}}.",
+    "estimateFree_other": "{{count}} sivua. Maksuton mallilla {{model}}.",
+    "transcribePages_one": "Litteroi {{count}} sivu",
+    "transcribePages_other": "Litteroi {{count}} sivua",
+    "transcribedWith": "Litteroitu mallilla {{model}}. Tarkista kaavat ja taulukot.",
+    "sentBadge": "Lähetetty palveluun {{provider}}",
+    "openToolsSettings": "Työkalujen asetukset",
+    "openProviderSettings": "Palvelun asetukset",
+    "errors": {
+      "offline": "Oleafly on offline-tilassa. Valitse paikallinen malli tai poista offline-tila käytöstä.",
+      "providerNotConfigured": "Palvelulla {{provider}} ei ole API-avainta. Lisää avain asetuksissa tai valitse toinen malli.",
+      "modelDisabled": "{{model}} on poistettu käytöstä asetuksissa. Ota se käyttöön tai valitse toinen malli.",
+      "modelUnavailable": "{{model}} ei ole enää saatavilla palvelusta {{provider}}. Valitse toinen malli.",
+      "cannotSeeImages": "{{model}} ei osaa lukea kuvia. Valitse konenäkömalli.",
+      "localModelGone": "Mallia {{model}} ei enää ole Ollamassa. Nouda se uudelleen tai valitse toinen malli.",
+      "imagesOnly": "{{model}} lukee vain kuvia. Valitse kielimalli, jos haluat muuntaa kirjoitettuja kaavoja.",
+      "mathpixNotSetUp": "Lisää Mathpix-avaimesi kohdassa Asetukset, Tekoäly, Työkalut tai valitse toinen malli.",
+      "imageTooLarge": "Kuva on yhä liian suuri pienentämisen jälkeen. Rajaa kuvaa ja yritä uudelleen."
+    }
   },
   "mermaidErrors": {
     "tooLarge": "Tämä Mermaid-kaavio on suurempi kuin 50 000 merkin raja.",
@@ -1557,5 +1762,263 @@
     "citeAdded": "{{citation}} lisättiin",
     "addFailed": "Viittausta ei voitu lisätä.",
     "toastCopyFailed": "BibTeXiä ei voitu kopioida."
+  },
+  "brief": {
+    "title": "Toimeksianto",
+    "goalLabel": "Tavoite",
+    "goalPlaceholder": "Mitä tämän tehtävän pitäisi selvittää tai tuottaa?",
+    "criteriaLabel": "Onnistumisen kriteerit",
+    "criteriaHint": "Yksi riville. Jokaisen pitäisi olla jotain, minkä voit tarkistaa.",
+    "scopeLabel": "Rajaus",
+    "constraintsLabel": "Rajoitteet",
+    "metricLabel": "Päämittari",
+    "metricPlaceholder": "Esimerkiksi val_loss",
+    "metricMaximize": "Suurempi on parempi",
+    "metricMinimize": "Pienempi on parempi",
+    "reviewPlan": "Tarkista suunnitelma ensin",
+    "reviewPlanHint": "Agentti kirjoittaa tiedoston plan.md ja odottaa hyväksyntääsi ennen aloittamista.",
+    "commandsLabel": "Komennot",
+    "commandsAllow": "Suorita kysymättä",
+    "commandsAsk": "Kysy ennen suorittamista",
+    "commandsOff": "Älä suorita komentoja",
+    "network": "Salli komentojen verkkoyhteys",
+    "networkHint": "Tarvitaan pakettien asentamiseen tai datan lataamiseen.",
+    "budgetLabel": "Budjetti",
+    "timeLabel": "Aika",
+    "minutes_one": "{{count}} minuutti",
+    "minutes_other": "{{count}} minuuttia",
+    "hours_one": "{{count}} tunti",
+    "hours_other": "{{count}} tuntia",
+    "costLabel": "Kustannusraja (USD)",
+    "noLimit": "Ei rajaa",
+    "runsLabel": "Ajoraja",
+    "runTimeoutLabel": "Ajon enimmäiskesto",
+    "profileLabel": "Ajoprofiili",
+    "profileAnalysis": "Analyysi",
+    "profileAnalysisHint": "Python- ja R-ympäristösi, vain luku -tilassa olevat datakansiot, ei GPU:ta.",
+    "profileTraining": "Koulutus",
+    "profileTrainingHint": "Lisää GPU-käytön ja pidemmät ajot.",
+    "computeLabel": "Missä ajot tehdään",
+    "computeLocal": "Tämä kone",
+    "startAtLabel": "Aloitusaika",
+    "startNow": "Kun käynnistän sen",
+    "keepRunning": "Jatka ajoa, kun Oleafly on suljettu",
+    "keepRunningHint": "Ota ensin Taustatehtävät käyttöön kohdassa Asetukset, Tutkimus.",
+    "invalidMetric": "Käytä kirjaimia, numeroita, pisteitä, yhdysmerkkejä tai alaviivoja.",
+    "invalidCost": "Anna nollaa suurempi summa.",
+    "invalidCostMax": "Anna summa, joka on enintään {{max}}.",
+    "invalidCostNumber": "Anna summa lukuna, esimerkiksi {{example}}.",
+    "invalidRuns": "Anna kokonaisluku, joka on vähintään 1 ja enintään 1 000.",
+    "invalidStart": "Valitse aloitusaika seuraavan 30 päivän sisältä.",
+    "invalidStartFormat": "Käytä muotoa {{example}}.",
+    "startAtFormat": "Kirjoita aika muodossa {{example}}.",
+    "problemHidden": "Jokin toimeksiannon valinta vaatii korjausta. Avaa Toimeksianto nähdäksesi mikä."
+  },
+  "runs": {
+    "status": {
+      "starting": "Käynnistyy",
+      "running": "Käynnissä",
+      "succeeded": "Valmis",
+      "failed": "Epäonnistui",
+      "timedOut": "Aikakatkaisu",
+      "cancelled": "Pysäytetty",
+      "lost": "Kadonnut"
+    }
+  },
+  "evidence": {
+    "title": "Näytön tarkistukset",
+    "hint": "Nämä tarkistukset vain varoittavat. Ne eivät estä käyttöönottoa.",
+    "running": "Tarkistetaan…",
+    "refresh": "Tarkista uudelleen",
+    "empty": "Tälle tulokselle ei ole vielä tehty tarkistuksia.",
+    "more_one": "{{count}} lisää ei ole luettelossa.",
+    "more_other": "{{count}} lisää ei ole luettelossa.",
+    "status": {
+      "pass": "Läpäisty",
+      "warn": "Tarkista tämä",
+      "skipped": "Ei tarkistettu"
+    },
+    "checks": {
+      "build": "Projekti kääntyy",
+      "references": "Ei uusia ratkaisemattomia viitteitä tai viittauksia",
+      "bibliography": "Uudet lähdeluettelon merkinnät on varmistettu",
+      "numbers": "Luvut vastaavat ajojaan",
+      "figures": "Uudet kuvat ovat olemassa ja käytössä"
+    },
+    "items": {
+      "buildFailed": "Kääntäminen epäonnistui. Virheitä: {{errors}}.",
+      "buildSkipped": "Kääntämistä ei tarkistettu: {{reason}}",
+      "referencesUnresolved": "Viite {{key}} ei osoita mihinkään.",
+      "referencesNotChecked": "Viitteitä ei vielä tarkisteta tässä käännöksessä.",
+      "bibUnverified": "Lähdettä {{key}} ei voitu varmistaa.",
+      "bibTitleMismatch": "Lähde {{key}} viittaa eri otsikkoon: {{found}}",
+      "bibLookupFailed": "Lähdettä {{key}} ei voitu hakea. Yritä myöhemmin uudelleen.",
+      "numbersMismatch": "{{value}} ei vastaa ajoa {{run}} ({{recorded}}).",
+      "numbersUnknownRun": "Ajoa {{run}} ei ole.",
+      "numbersNoLedgerRow": "Ajolla {{run}} ei ole riviä tuloslokissa.",
+      "figuresMissing": "Tiedostoon {{path}} viitataan, mutta se puuttuu.",
+      "figuresUnused": "Tiedostoa {{path}} ei käytetä dokumentissa."
+    }
+  },
+  "compute": {
+    "title": "Laskentaresurssit",
+    "description": "Valitse, missä kokeiden ajot suoritetaan. Jokainen tehtävä valitsee kohteen toimeksiannossaan.",
+    "targets": {
+      "heading": "Ajokohteet",
+      "local": "Tämä kone",
+      "localDescription": "Ajot käyttävät tämän koneen hiekkalaatikkoa.",
+      "add": "Lisää kohde",
+      "addSsh": "SSH-isäntä",
+      "addSlurm": "Slurm-klusteri",
+      "addCua": "Cua Space",
+      "import": "Tuo SSH-asetuksista",
+      "test": "Testaa",
+      "testing": "Testataan…",
+      "more": "Lisää toimintoja: {{label}}",
+      "edit": "Muokkaa",
+      "remove": "Poista",
+      "removeTitle": "Poistetaanko kohde {{label}}?",
+      "removeConfirm": "Siellä jo käynnistetyt ajot jatkuvat. Aloitusta odottavat tehtävät epäonnistuvat.",
+      "forgetHostKey": "Unohda isäntäavain",
+      "reviewHostKey": "Tarkista isäntäavain",
+      "notTested": "Ei testattu",
+      "tested": "Testattu {{time}}",
+      "testFailed": "Testi epäonnistui",
+      "perTaskSpace": "Uusi Space jokaiselle tehtävälle",
+      "saveFailed": "Kohdetta ei voitu tallentaa: {{message}}"
+    },
+    "kind": {
+      "ssh": "SSH",
+      "slurm": "Slurm",
+      "cuaSpace": "Cua Space"
+    },
+    "notes": {
+      "keys": "Oleafly yhdistää SSH-avaimillasi tai agentillasi. Se ei koskaan pyydä eikä tallenna salasanoja tai avaimia.",
+      "windowsRsync": "Windowsissa ei ole rsync-ohjelmaa, joten Oleafly kopioi tiedostot tar-ohjelmalla SSH-yhteyden yli.",
+      "sshMissingWindows": "OpenSSH-asiakasohjelmaa ei ole asennettu. Lisää se Windowsin asetuksissa kohdassa Järjestelmä, Valinnaiset ominaisuudet.",
+      "sshMissing": "OpenSSH-ohjelmaa ei ole asennettu. Asenna se paketinhallinnalla.",
+      "cuaMissing": "Cua-ohjelmaa ei ole asennettu. Asenna se osoitteesta cua.ai ja testaa sitten uudelleen.",
+      "relay": "Tämä Space toimii oikealla tietokoneella. Siellä tehtävät ajot eivät ole eristettyjä.",
+      "outputs": "Ajon luomat tiedostot palaavat kansioon runs/<run>/outputs tehtävän kopiossa."
+    },
+    "form": {
+      "addTitle": "Lisää {{kind}}",
+      "editTitle": "Muokkaa kohdetta {{label}}",
+      "label": "Nimi",
+      "host": "Isäntä",
+      "hostHint": "Isäntä SSH-asetuksistasi tai isäntänimi",
+      "user": "Käyttäjä",
+      "userHint": "Jätä tyhjäksi, niin SSH-asetuksiasi käytetään.",
+      "port": "Portti",
+      "remoteRoot": "Etäkansio",
+      "remoteRootHint": "Ajot tallentuvat kotikansiosi kansioon .oleafly-runs, ellet valitse toista kansiota.",
+      "prelude": "Valmistelukomennot",
+      "preludeHint": "Suoritetaan ennen jokaista komentoa, esimerkiksi module load python.",
+      "partition": "Partitio",
+      "account": "Tili",
+      "qos": "QOS",
+      "time": "Aikaraja",
+      "timeHint": "Esimerkiksi 2:00:00 tai 1-00:00:00",
+      "gpus": "GPU:t",
+      "cpus": "CPU:t",
+      "mem": "Muisti (GB)",
+      "memHint": "Esimerkiksi 16",
+      "gpuFlag": "GPU-valitsin",
+      "spaceMode": "Space",
+      "spaceNamed": "Käytä nimettyä Space-ympäristöä",
+      "spacePerTask": "Luo uusi Space jokaiselle tehtävälle",
+      "space": "Space-ympäristön nimi",
+      "image": "Levykuva",
+      "save": "Tallenna",
+      "cancel": "Peruuta",
+      "errors": {
+        "label": "Anna enintään 80 merkin nimi.",
+        "host": "Anna isäntänimi ilman välilyöntejä.",
+        "user": "Käytä kirjaimia, numeroita, pisteitä, yhdysmerkkejä tai alaviivoja.",
+        "port": "Käytä porttinumeroa, joka on vähintään 1 ja enintään 65535.",
+        "remoteRoot": "Käytä kansiopolkua ilman välilyöntejä, lainausmerkkejä tai merkkijonoa ”..”.",
+        "time": "Käytä Slurmin aikamuotoa, kuten 2:00:00.",
+        "name": "Käytä kirjaimia, numeroita, pisteitä, pilkkuja, yhdysmerkkejä tai alaviivoja.",
+        "mem": "Käytä gigatavuina kokonaislukua, esimerkiksi 16.",
+        "count": "Käytä kokonaislukua sallitulta väliltä.",
+        "prelude": "Pidä valmistelukomennot enintään 4 kt:n kokoisina. Aksenttikirjaimet ja ei-latinalaiset kirjoitusjärjestelmät vievät enemmän tilaa."
+      }
+    },
+    "test": {
+      "connect": "Yhdistä",
+      "echo": "Suorita komento",
+      "disk": "Vapaa tila",
+      "python": "Python",
+      "gpu": "GPU",
+      "rsync": "rsync",
+      "slurm": "Slurm",
+      "cua": "Cua",
+      "space": "Space",
+      "pass": "Läpäisty",
+      "warn": "Tarkista tämä",
+      "fail": "Epäonnistui",
+      "skipped": "Ei tarkistettu"
+    },
+    "hostKey": {
+      "title": "Luotetaanko tähän isäntään?",
+      "body": "Oleafly ei ole aiemmin yhdistänyt palvelimeen {{host}}. Vertaa näitä sormenjälkiä ylläpitäjältäsi saamiisi.",
+      "trust": "Luota ja yhdistä",
+      "changedTitle": "Isäntäavain on muuttunut",
+      "changed": "Palvelimen {{host}} isäntäavain on muuttunut. Joku saattaa siepata yhteyden. Jos ylläpitäjäsi vaihtoi avaimen, unohda vanha avain ja testaa uudelleen."
+    },
+    "import": {
+      "title": "Tuo SSH-isännät",
+      "body": "Valitse lisättävät isännät. Oleafly lukee SSH-asetuksesi eikä koskaan muuta niitä.",
+      "none": "SSH-asetuksistasi ei löytynyt isäntiä.",
+      "added": "Jo lisätty",
+      "add_one": "Lisää {{count}} isäntä",
+      "add_other": "Lisää {{count}} isäntää",
+      "skipped": "Ei lisätty: {{hosts}}. {{reason}}"
+    },
+    "sandbox": {
+      "heading": "Tämän koneen hiekkalaatikko",
+      "description": "Tämän koneen ajot voivat lukea tulkkejasi ja linkitettyjä kansioita. Ne kirjoittavat vain tehtävän kopioon.",
+      "ready": "Valmis",
+      "unavailable": "Ei käytettävissä",
+      "macos": "Käyttää macOS-hiekkalaatikkoa.",
+      "linux": "Käyttää bubblewrap-ohjelmaa.",
+      "linuxMissing": "Asenna bubblewrap (bwrap), niin voit suorittaa tehtävien komentoja.",
+      "windowsLabel": "Suorita tehtävien komennot Windowsin hiekkalaatikossa",
+      "windowsDescription": "Komennot suoritetaan Windows AppContainer -säiliössä, joka pääsee vain tehtävän tiedostoihin ja alla oleviin kansioihin. Oletuksena pois käytöstä beetavaiheen ajan.",
+      "gpuWindows": "GPU-käyttöä Windowsin hiekkalaatikossa ei ole vielä varmistettu. Käytä GPU-työhön SSH- tai Slurm-kohdetta.",
+      "limitsWindows": "Windowsin hiekkalaatikossa Pythonin multiprocessing ja muita ohjelmia käynnistävät Node.js-ohjelmat eivät vielä toimi.",
+      "check": "Tarkista hiekkalaatikko",
+      "checking": "Tarkistetaan…",
+      "checkPassed": "Hiekkalaatikko toimii.",
+      "checkFailed": "Hiekkalaatikon tarkistus epäonnistui: {{reason}}",
+      "runtimes": "Tulkit",
+      "runtimesEmpty": "Pythonia, R:ää tai Juliaa ei löytynyt.",
+      "refresh": "Päivitä",
+      "access": "Kansiot, joita hiekkalaatikko voi lukea",
+      "accessNote": "Jotta tehtävät voivat lukea näitä kansioita, Oleafly lisää jokaiseen käyttöoikeusmerkinnän.",
+      "removeAccess": "Poista käyttöoikeus",
+      "removeAccessTitle": "Poistetaanko hiekkalaatikon käyttöoikeus?",
+      "removeAccessConfirm": "Poistetaanko hiekkalaatikon käyttöoikeus näihin kansioihin? Oleafly lisää sen uudelleen, kun jokin tehtävä seuraavan kerran tarvitsee sitä."
+    },
+    "brief": {
+      "runsOn": "Ajetaan kohteessa {{target}}",
+      "runsLocal": "Ajetaan tällä koneella.",
+      "missing": "Tämän tehtävän käyttämä kohde poistettiin. Valitse toinen.",
+      "loadFailed": "Ajokohteitasi ei voitu ladata.",
+      "windowsOff": "Ota Windowsin hiekkalaatikko käyttöön asetuksissa, niin voit suorittaa komentoja tällä koneella.",
+      "openSettings": "Avaa asetukset",
+      "resources": "Slurm-resurssit"
+    }
+  },
+  "backgroundHelper": {
+    "badge": {
+      "background": "Taustalla",
+      "backgroundHint": "Oleaflyn taustaprosessi suorittaa tätä tehtävää. Tehtävä palaa tänne nykyisen vaiheensa jälkeen.",
+      "movingBack": "Palaa takaisin",
+      "movingBackHint": "Tämä tehtävä palaa Oleaflyhin, kun sen nykyinen vaihe päättyy."
+    },
+    "earlierActivity": "Näytä aiemmat tapahtumat",
+    "earlierTruncated": "Tästä aiemmasta ajosta näytetään vain viimeiset {{limit}} kohdetta.",
+    "keepRunningFailed": "Asetusta ei voitu muuttaa. Yritä uudelleen."
   }
 }

@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { LibraryBig } from "lucide-react";
+import { AppWindow, GitBranch, LibraryBig } from "lucide-react";
 import { McpBrandIcon } from "@/components/ai/McpBrandIcon";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GitHubSection } from "@/components/settings/GitHubSection";
+import { GitHostingSection } from "@/components/settings/git-hosting/GitHostingSection";
 import { AlphaXivSection } from "@/components/settings/AlphaXivSection";
 import { ZoteroSection } from "@/components/settings/ZoteroSection";
 import { CitationSearchIntegrationSection } from "@/components/settings/CitationSearchIntegrationSection";
@@ -11,15 +11,17 @@ import { McpSection } from "@/components/settings/McpSection";
 import { OverleafSection } from "@/components/settings/OverleafSection";
 import {
   AlphaXivBrandIcon,
-  GitHubBrandIcon,
   OverleafBrandIcon,
   ZoteroBrandIcon,
 } from "@/components/settings/IntegrationBrandIcons";
 import { useSettingsStore } from "@/store/settings";
 
+// 0.4.8 I: loaded only when its tab opens.
+const DesktopAppsSection = lazy(() => import("@/components/settings/desktop-apps/DesktopAppsSection"));
+
 export function IntegrationsSection() {
   const { t } = useTranslation(["common", "settings"]);
-  const [tab, setTab] = useState("github");
+  const [tab, setTab] = useState("git-hosting");
   const [oleaflyMcpVisited, setOleaflyMcpVisited] = useState(false);
   const scrollTarget = useSettingsStore(
     (state) => state.settingsScrollTarget,
@@ -29,11 +31,14 @@ export function IntegrationsSection() {
   );
 
   useEffect(() => {
-    if (scrollTarget === "github") {
-      setTab("github");
+    if (scrollTarget === "git-hosting" || scrollTarget === "github") {
+      setTab("git-hosting");
       setScrollTarget(null);
     } else if (scrollTarget === "overleaf") {
       setTab("overleaf");
+      setScrollTarget(null);
+    } else if (scrollTarget === "desktop-apps") {
+      setTab("desktop-apps");
       setScrollTarget(null);
     } else if (scrollTarget === "zotero") {
       setTab("zotero");
@@ -58,12 +63,17 @@ export function IntegrationsSection() {
       className="space-y-4"
     >
       <TabsList scrollable>
-        <TabsTrigger value="github" data-testid="integrations-tab-github">
-          <GitHubBrandIcon className="mr-1.5 size-3.5" /> {"GitHub"}
+        <TabsTrigger value="git-hosting" data-testid="integrations-tab-git-hosting">
+          <GitBranch className="mr-1.5 size-3.5" />
+          {t(($) => $.settings.gitHosting.title)}
         </TabsTrigger>
         <TabsTrigger value="overleaf" data-testid="integrations-tab-overleaf">
           <OverleafBrandIcon className="mr-1.5 size-3.5 text-[#47A141]" />
           {"Overleaf"}
+        </TabsTrigger>
+        <TabsTrigger value="desktop-apps" data-testid="integrations-tab-desktop-apps">
+          <AppWindow className="mr-1.5 size-3.5" />
+          {t(($) => $.settings.integrations.desktopApps.tab)}
         </TabsTrigger>
         <TabsTrigger
           value="alphaxiv"
@@ -91,11 +101,18 @@ export function IntegrationsSection() {
           {"Oleafly MCP"}
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="github">
-        <GitHubSection />
+      <TabsContent value="git-hosting">
+        <GitHostingSection />
       </TabsContent>
       <TabsContent value="overleaf">
         <OverleafSection />
+      </TabsContent>
+      <TabsContent value="desktop-apps">
+        {tab === "desktop-apps" ? (
+          <Suspense fallback={null}>
+            <DesktopAppsSection />
+          </Suspense>
+        ) : null}
       </TabsContent>
       <TabsContent value="alphaxiv">
         <AlphaXivSection />

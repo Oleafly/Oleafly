@@ -54,19 +54,6 @@
   "branding": {
     "assistantMascot": "Mascote do assistente de IA do Oleafly"
   },
-  "browser": {
-    "address": "Buscar ou digitar uma URL",
-    "back": "Voltar",
-    "closeTab": "Fechar aba",
-    "copyUrl": "Copiar a URL",
-    "forward": "Avançar",
-    "moreOptions": "Mais opções",
-    "newTab": "Nova aba",
-    "openExternal": "Abrir no seu navegador",
-    "openTabs": "Abas abertas",
-    "reload": "Recarregar",
-    "setHomePage": "Definir como página inicial"
-  },
   "changelog": {
     "installed": "Você está nesta versão",
     "sectionItems_one": "{{count}} mudança",
@@ -466,10 +453,6 @@
       "hide": "Ocultar o assistente de IA",
       "show": "Mostrar o assistente de IA"
     },
-    "browser": {
-      "close": "Fechar o navegador ({{shortcut}})",
-      "open": "Abrir o navegador ({{shortcut}})"
-    },
     "settings": "Configurações",
     "sidebar": {
       "hide": "Ocultar a barra lateral ({{shortcut}})",
@@ -574,22 +557,14 @@
     "tryAgain": "Tentar de novo",
     "savedCopy": "Seus arquivos abertos foram salvos em {{folder}}."
   },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub: {{login}}",
-    "actions": "Ações do GitHub",
-    "connect": "Conectar o GitHub…",
-    "connectedAs": "Conectado como @{{login}}",
-    "copyRepositoryLink": "Copiar o link do repositório",
-    "openInGithub": "Abrir no GitHub",
-    "pushHint": "Envie para o GitHub para liberar estas ações",
-    "settings": "Configurações do GitHub",
-    "tooltip": "GitHub"
-  },
   "home": {
     "ariaLabel": "Início",
     "label": "Início",
     "title": "Voltar para a biblioteca",
     "tooltip": "Voltar para a biblioteca de projetos"
+  },
+  "importDestination": {
+    "scansGoTo": "As digitalizações vão para {{provider}}"
   },
   "keys": {
     "enter": "Enter",
@@ -704,8 +679,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Suas mudanças não salvas continuam abertas. Fique para resolver o problema ou encerre mesmo assim e perca-as.",
+      "descriptionReload": "{{reason}} Suas mudanças não salvas continuam abertas. Fique para resolver o problema ou recarregue mesmo assim e perca-as.",
       "descriptionRestart": "{{reason}} Suas mudanças não salvas continuam abertas. Fique para resolver o problema ou reinicie mesmo assim e perca-as.",
       "quitAnyway": "Encerrar mesmo assim",
+      "reloadAnyway": "Recarregar mesmo assim",
       "restartAnyway": "Reiniciar mesmo assim",
       "stay": "Ficar",
       "title": "Alguns arquivos não puderam ser salvos"
@@ -729,6 +706,14 @@
     "search": "Buscar no projeto",
     "sourceControl": "Controle de versão",
     "withShortcut": "{{label}} ({{shortcut}})"
+  },
+  "remoteMenu": {
+    "accountLabel": "{{login}} em {{host}}",
+    "actions": "Ações do repositório",
+    "copyRepositoryLink": "Copiar o link do repositório",
+    "openOnHost": "Abrir em {{host}}",
+    "settings": "Configurações de hospedagem Git",
+    "signedInAs": "Conectado a {{host}} como {{login}}"
   },
   "renameDialog": {
     "close": "Fechar a caixa de renomeação",
@@ -782,9 +767,9 @@
         "movedCount_other": "{{count}} projetos movidos para a Lixeira.",
         "title": "Zona de risco"
       },
-      "githubHint": "Faça backup ou sincronize um projeto entre dispositivos: conecte o GitHub e depois use <push>Enviar</push> / <pull>Receber</pull> no Controle de versão. <setup>Configurar o GitHub →</setup>",
+      "gitHostingHint": "Faça backup de um projeto ou sincronize entre dispositivos: vincule-o a um repositório Git e use <push>Enviar</push> / <pull>Receber</pull> no controle de versão. <setup>Configurar a hospedagem Git →</setup>",
       "localFirst": "O Oleafly é local-first. Todos os projetos ficam no seu disco:",
-      "plainFolders": "Cada projeto é uma pasta comum. O histórico do Git é opcional e nada sai da sua máquina, a não ser que você envie para o GitHub.",
+      "plainFolders": "Cada projeto é uma pasta comum. O histórico Git é opcional, e nada sai da sua máquina a menos que você envie para um servidor Git.",
       "recycleBin": {
         "clearAll": "Esvaziar",
         "clearFailed": "Não foi possível esvaziar a Lixeira.",
@@ -863,11 +848,12 @@
         "description": "Edite projetos com outras pessoas por um servidor de colaboração que você ou o seu grupo mantém. Adiciona uma seção Colaboração às Configurações. Desligado por padrão enquanto está em beta.",
         "label": "Colaboração em tempo real"
       },
-      "warning": "Estes recursos são experimentais e ainda estão em beta. Eles não foram totalmente testados e podem mudar, quebrar ou sumir em uma versão futura. Ligue-os só se você quiser experimentar o que está em andamento.",
-      "webBrowser": {
-        "description": "Mostra o navegador web interno (o botão no painel e o atalho dele) e deixa a IA conduzi-lo por uso do computador. Desligado por padrão enquanto está em beta. Quando desligado, não há botão de navegador e a IA não tem ferramenta de navegador.",
-        "label": "Navegador web"
-      }
+      "researchTasks": {
+        "description": "Um agente trabalha sozinho em uma cópia do projeto e deixa as alterações para você revisar. Muito instável: as execuções podem travar, falhar ou deixar alterações para resolver à mão, e usam a cota do seu provedor o tempo todo. Adiciona uma seção Pesquisa às Configurações. Ao desligar, todas as tarefas em andamento são interrompidas. Desligado por padrão. Ligue por sua conta e risco.",
+        "label": "Tarefas de pesquisa",
+        "saveFailed": "Não foi possível salvar o interruptor das tarefas de pesquisa. Tente de novo."
+      },
+      "warning": "Estes recursos são experimentais e ainda estão em beta. Eles não foram totalmente testados e podem mudar, quebrar ou sumir em uma versão futura. Ligue-os só se você quiser experimentar o que está em andamento."
     },
     "footer": {
       "followOnX": "Siga no X",
@@ -953,7 +939,8 @@
       "general": "Geral",
       "help": "Ajuda e sobre",
       "integrations": "Integrações",
-      "shortcuts": "Atalhos de teclado"
+      "shortcuts": "Atalhos de teclado",
+      "research": "Pesquisa"
     },
     "search": {
       "empty": "Nenhuma configuração encontrada",
@@ -968,8 +955,9 @@
         "experimentation": "labs, laboratório, beta, recursos antecipados, experimental",
         "general": "preferências, idioma, região, verificação ortográfica, ortografia, erros de digitação, offline, tour, comando do terminal",
         "help": "sobre, versão, atualizações, registro de alterações, novidades, documentação, suporte, ajuda, comunidade, Discord, licença, relatório de falha",
-        "integrations": "Zotero, GitHub, MCP, citações, contas, conexões",
-        "shortcuts": "atalhos de teclado, atalhos, teclas, teclado"
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hospedagem Git, aplicativos de desktop, Cua, MCP, citações, contas, conexões",
+        "shortcuts": "atalhos de teclado, atalhos, teclas, teclado",
+        "research": "pesquisa tarefas orçamento notificações manter ativo experimentos execuções research tasks"
       },
       "label": "Buscar nas configurações",
       "results_one": "{{count}} seção corresponde",
@@ -1053,7 +1041,6 @@
     "commitCount_other": "{{count}} commits",
     "initialize": "Inicializar o repositório",
     "initialized": "Git inicializado na branch {{branch}}.",
-    "linkCopied": "Link do GitHub copiado",
     "markResolved": "Marcar como resolvido",
     "mergeNeedsAttention": "Resolva os conflitos de mesclagem",
     "moreActions": "Mais ações do controle de versão",
@@ -1067,18 +1054,19 @@
     "openFile": "Abrir arquivo",
     "openFileFor": "Abrir {{path}}",
     "popStash": "Aplicar o stash mais recente",
-    "publish": "Publicar no GitHub",
+    "publishRepository": "Publicar…",
+    "publishTo": "Publicar em {{host}}",
     "published": "Publicado em {{url}}",
     "pull": "Receber do origin",
     "pullShort": "Receber",
     "push": "Fazer commit e enviar para o origin",
     "pushShort": "Enviar",
     "pushSkippedNoRemote": "⚠ Envio ignorado - nenhum remoto origin definido abaixo.",
-    "pushSkippedNoToken": "⚠ Envio ignorado - sem token do GitHub (Configurações → GitHub).",
     "refresh": "Atualizar",
     "remote": "Remoto",
     "remoteHint": "Crie um repositório novo ou vincule um existente como remoto deste projeto e depois envie.",
     "removeCredential": "Remover a credencial salva",
+    "repositoryLinkCopied": "Link do repositório copiado",
     "restoreCommit": "Restaurar versão",
     "restoreCommitDescription": "Isso substitui todos os arquivos rastreados do projeto por esta versão e remove os arquivos adicionados depois. Sua branch continua no commit atual.",
     "restoreCommitTitle": "Restaurar esta versão?",
@@ -1109,7 +1097,7 @@
     "titleRequired": "O título do commit é obrigatório.",
     "titleRequiredStatus": "Digite um título de commit antes de confirmar.",
     "unlink": "Desvincular",
-    "unlinked": "Desvinculado do GitHub.",
+    "unlinkedFrom": "Desvinculado de {{host}}.",
     "unstage": "Tirar da preparação",
     "unstageFor": "Tirar {{path}} da preparação",
     "unstageAll": "Tirar tudo da preparação",

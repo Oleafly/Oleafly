@@ -1,0 +1,59 @@
+{
+  "mainDocument": "main.tex",
+  "cases": [
+    {
+      "name": "overfull",
+      "sourceProfile": "latex",
+      "engine": "pdflatex",
+      "profile": null,
+      "anonymousReview": false,
+      "buildLog": "build-logs/overfull.log",
+      "buildStatus": "success"
+    },
+    {
+      "name": "glyph",
+      "sourceProfile": "latex",
+      "engine": "pdflatex",
+      "profile": null,
+      "anonymousReview": false,
+      "buildLog": "build-logs/glyph.log",
+      "buildStatus": "success"
+    },
+    {
+      "name": "undefined",
+      "sourceProfile": "latex",
+      "engine": "pdflatex",
+      "profile": null,
+      "anonymousReview": false,
+      "buildLog": "build-logs/undefined.log",
+      "buildStatus": "error"
+    },
+    {
+      "name": "rerun",
+      "sourceProfile": "latex",
+      "engine": "pdflatex",
+      "profile": null,
+      "anonymousReview": false,
+      "buildLog": "build-logs/rerun.log",
+      "buildStatus": "success"
+    },
+    {
+      "name": "tagging",
+      "sourceProfile": "latex",
+      "engine": "pdflatex",
+      "profile": null,
+      "anonymousReview": false,
+      "buildLog": "build-logs/tagging.log",
+      "buildStatus": "success"
+    },
+    {
+      "name": "destination",
+      "sourceProfile": "latex",
+      "engine": "pdflatex",
+      "profile": null,
+      "anonymousReview": false,
+      "buildLog": "build-logs/destination.log",
+      "buildStatus": "success"
+    }
+  ]
+}

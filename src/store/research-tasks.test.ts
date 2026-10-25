@@ -5,18 +5,25 @@ const fileMocks = vi.hoisted(() => ({
   runExternalProjectMutation: vi.fn(),
 }));
 
-vi.mock("@/lib/research-tasks", () => ({
+vi.mock("@/lib/research-tasks", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/research-tasks")>()),
   acceptResearchTaskResult: vi.fn(),
   applyResearchTask: vi.fn(),
+  approveResearchTaskPlan: vi.fn(),
   cancelResearchTask: vi.fn(),
   createResearchTask: vi.fn(),
+  deleteResearchTask: vi.fn(),
   editResearchTask: vi.fn(),
   listResearchTasks: vi.fn(),
-  listenForResearchTaskChanges: vi.fn(),
-  listenForResearchTaskEvents: vi.fn(),
+  listenForResearchTaskChanges: vi.fn(async () => () => {}),
+  listenForResearchTaskDeltas: vi.fn(async () => () => {}),
+  listenForResearchTaskEvents: vi.fn(async () => () => {}),
   loadResearchTaskEvents: vi.fn(),
+  loadResearchTaskEventsBefore: vi.fn(),
   retryResearchTask: vi.fn(),
   startResearchTask: vi.fn(),
+  // Selecting a task tells the backend which task this window shows.
+  watchResearchTask: vi.fn(async () => {}),
 }));
 
 vi.mock("@/store/files", () => ({
@@ -56,6 +63,21 @@ function task(id: string, projectId: string, createdAt = 1): ResearchTask {
     updatedAt: createdAt,
     startedAt: createdAt,
     finishedAt: createdAt,
+    brief: api.defaultBrief(`Complete ${id}`),
+    recordSlug: "",
+    recordDir: "",
+    runAfter: null,
+    keepRunningAfterQuit: false,
+    owner: "app",
+    phase: null,
+    planApproved: false,
+    stopReason: null,
+    evidence: null,
+    pendingApprovals: 0,
+    activeMs: 0,
+    todos: [],
+    reclaimRequested: false,
+    resumedFrom: null,
   };
 }
 
@@ -83,12 +105,13 @@ describe("research task store", () => {
       tasks: [],
       selectedTaskId: null,
       events: [],
-      eventsNextSequence: null,
+      eventsPreviousSequence: null,
       loading: false,
       eventsLoading: false,
       action: null,
       error: null,
-      detailOpen: false,
+      // The transcript loads and streams only while the task dialog shows it.
+      detailOpen: true,
       detailTab: null,
     });
   });
@@ -96,7 +119,7 @@ describe("research task store", () => {
   it("opens the task detail on a chosen tab and selects the task", async () => {
     const first = task("first", "paper");
     const second = task("second", "paper");
-    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [], nextSequence: null });
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({ events: [], nextSequence: null });
     useResearchTasksStore.setState({
       projectId: "paper",
       tasks: [first, second],
@@ -118,6 +141,47 @@ describe("research task store", () => {
     });
 
     await Promise.resolve();
+  });
+
+  it("folds a refreshed list in: a newer run or timestamp wins, an older copy loses and a task deleted elsewhere goes", async () => {
+    const updated = task("updated", "paper", 10);
+    const rerun = task("rerun", "paper", 10);
+    const older = task("older", "paper", 10);
+    const tie = task("tie", "paper", 10);
+    const changedMeanwhile = task("changed", "paper", 10);
+    const deletedElsewhere = task("gone", "paper", 10);
+    useResearchTasksStore.setState({
+      projectId: "paper",
+      tasks: [updated, rerun, older, tie, changedMeanwhile, deletedElsewhere],
+    });
+    const listing = deferred<ResearchTask[]>();
+    vi.mocked(api.listResearchTasks).mockReturnValue(listing.promise);
+
+    const refreshing = useResearchTasksStore.getState().refresh();
+    // A live update replaces this row while the list is on its way.
+    const live = { ...changedMeanwhile, title: "changed (live)" };
+    useResearchTasksStore.setState({
+      tasks: useResearchTasksStore.getState().tasks.map((item) => (item.id === live.id ? live : item)),
+    });
+    listing.resolve([
+      { ...updated, updatedAt: 11, title: "updated (fetched)" },
+      { ...rerun, executionGeneration: 2, updatedAt: 5, title: "rerun (fetched)" },
+      { ...older, updatedAt: 3, title: "older (fetched)" },
+      { ...tie, title: "tie (fetched)" },
+      { ...changedMeanwhile, title: "changed (fetched)" },
+    ]);
+    await refreshing;
+
+    const titles = Object.fromEntries(
+      useResearchTasksStore.getState().tasks.map((item) => [item.id, item.title]),
+    );
+    expect(titles).toEqual({
+      updated: "updated (fetched)",
+      rerun: "rerun (fetched)",
+      older: "older",
+      tie: "tie (fetched)",
+      changed: "changed (live)",
+    });
   });
 
   it("ignores a stale task list after the open project changes", async () => {
@@ -242,7 +306,7 @@ describe("research task store", () => {
     const first = task("created-in-first", "first");
     const second = task("selected-in-second", "second");
     vi.mocked(api.listResearchTasks).mockResolvedValue([second]);
-    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [], nextSequence: null });
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({ events: [], nextSequence: null });
     vi.mocked(api.createResearchTask).mockReturnValue(pending.promise);
     useResearchTasksStore.setState({ projectId: "first" });
     const creation = useResearchTasksStore.getState().createTask({
@@ -286,7 +350,7 @@ describe("research task store", () => {
   it("does not show an old project activity page after rebinding", async () => {
     const pending = deferred<TaskTranscriptPage>();
     const first = task("first-task", "first");
-    vi.mocked(api.loadResearchTaskEvents).mockReturnValue(pending.promise);
+    vi.mocked(api.loadResearchTaskEventsBefore).mockReturnValue(pending.promise);
     useResearchTasksStore.setState({ projectId: "first", tasks: [first] });
     const selection = useResearchTasksStore.getState().selectTask(first.id);
     await useResearchTasksStore.getState().bindProject(null);
@@ -297,7 +361,7 @@ describe("research task store", () => {
     await selection;
 
     expect(useResearchTasksStore.getState()).toMatchObject({
-      selectedTaskId: null, events: [], eventsNextSequence: null, eventsLoading: false,
+      selectedTaskId: null, events: [], eventsPreviousSequence: null, eventsLoading: false,
     });
   });
 
@@ -305,7 +369,7 @@ describe("research task store", () => {
     const pending = deferred<ResearchTask>();
     const current = task("current", "paper");
     vi.mocked(api.listResearchTasks).mockResolvedValue([current]);
-    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [], nextSequence: null });
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({ events: [], nextSequence: null });
     vi.mocked(api.createResearchTask).mockReturnValue(pending.promise);
     await useResearchTasksStore.getState().bindProject("paper");
     const request = useResearchTasksStore.getState().createTask({
@@ -346,7 +410,7 @@ describe("research task store", () => {
     const selected = task("selected", "paper");
     const pending = deferred<TaskTranscriptPage>();
     const event = (sequence: number): TaskTranscriptEvent => ({ taskId: selected.id, executionGeneration: 1, sequence, createdAt: sequence, event: { kind: "text", text: `Step ${sequence}` } });
-    vi.mocked(api.loadResearchTaskEvents).mockReturnValue(pending.promise);
+    vi.mocked(api.loadResearchTaskEventsBefore).mockReturnValue(pending.promise);
     useResearchTasksStore.setState({ projectId: "paper", tasks: [selected] });
     const selection = useResearchTasksStore.getState().selectTask(selected.id);
     useResearchTasksStore.getState().receiveEvent(event(2));
@@ -360,17 +424,19 @@ describe("research task store", () => {
     const selected = task("selected", "paper");
     const pending = deferred<TaskTranscriptPage>();
     const event = (sequence: number): TaskTranscriptEvent => ({ taskId: selected.id, executionGeneration: 1, sequence, createdAt: sequence, event: { kind: "text", text: `Step ${sequence}` } });
-    useResearchTasksStore.setState({ projectId: "paper", tasks: [selected], selectedTaskId: selected.id, events: [event(1)], eventsNextSequence: 1 });
-    vi.mocked(api.loadResearchTaskEvents).mockReturnValue(pending.promise);
+    // The newest rows are loaded; Load more reads the older ones before them.
+    useResearchTasksStore.setState({ projectId: "paper", tasks: [selected], selectedTaskId: selected.id, events: [event(3)], eventsPreviousSequence: 3 });
+    vi.mocked(api.loadResearchTaskEventsBefore).mockReturnValue(pending.promise);
     const loading = useResearchTasksStore.getState().loadMoreEvents();
     await useResearchTasksStore.getState().loadMoreEvents();
-    expect(api.loadResearchTaskEvents).toHaveBeenCalledOnce();
+    expect(api.loadResearchTaskEventsBefore).toHaveBeenCalledOnce();
+    expect(api.loadResearchTaskEventsBefore).toHaveBeenCalledWith(selected.id, 1, 3);
     useResearchTasksStore.getState().receiveEvent(event(2));
-    pending.resolve({ events: [event(2), event(3)], nextSequence: null });
+    pending.resolve({ events: [event(1), event(2)], nextSequence: null, previousSequence: null });
     await loading;
 
     expect(useResearchTasksStore.getState().events.map((entry) => entry.sequence)).toEqual([1, 2, 3]);
-    expect(useResearchTasksStore.getState().eventsNextSequence).toBeNull();
+    expect(useResearchTasksStore.getState().eventsPreviousSequence).toBeNull();
   });
 
   it("clears previous-run activity when a retried task starts a new execution", () => {
@@ -378,28 +444,28 @@ describe("research task store", () => {
     useResearchTasksStore.setState({
       projectId: "paper", tasks: [selected], selectedTaskId: selected.id,
       events: [{ taskId: selected.id, executionGeneration: 1, sequence: 1, event: { kind: "text", text: "previous run" }, createdAt: 1 }],
-      eventsNextSequence: 1,
+      eventsPreviousSequence: 1,
     });
-    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [], nextSequence: null });
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({ events: [], nextSequence: null });
     useResearchTasksStore.getState().receiveTask({ ...selected, status: "running", executionGeneration: 2, result: null });
     useResearchTasksStore.getState().receiveEvent({ taskId: selected.id, executionGeneration: 2, sequence: 1, event: { kind: "text", text: "new run" }, createdAt: 2 });
 
     expect(useResearchTasksStore.getState().events).toEqual([
       expect.objectContaining({ executionGeneration: 2, event: { kind: "text", text: "new run" } }),
     ]);
-    expect(useResearchTasksStore.getState().eventsNextSequence).toBeNull();
+    expect(useResearchTasksStore.getState().eventsPreviousSequence).toBeNull();
   });
 
   it("rejects old pages and task updates after a new execution starts", async () => {
     const selected = task("selected", "paper");
     const oldPage = deferred<TaskTranscriptPage>();
     const newPage = deferred<TaskTranscriptPage>();
-    vi.mocked(api.loadResearchTaskEvents).mockImplementation((_id, generation) => generation === 1 ? oldPage.promise : newPage.promise);
+    vi.mocked(api.loadResearchTaskEventsBefore).mockImplementation((_id, generation) => generation === 1 ? oldPage.promise : newPage.promise);
     useResearchTasksStore.setState({ projectId: "paper", tasks: [selected] });
     const selection = useResearchTasksStore.getState().selectTask(selected.id);
     const next = { ...selected, status: "running" as const, executionGeneration: 2, result: null };
     useResearchTasksStore.getState().receiveTask(next);
-    expect(api.loadResearchTaskEvents).toHaveBeenLastCalledWith(selected.id, 2);
+    expect(api.loadResearchTaskEventsBefore).toHaveBeenLastCalledWith(selected.id, 2, api.NEWEST_EVENTS);
     useResearchTasksStore.getState().receiveTask(selected);
     oldPage.resolve({ events: [{ taskId: selected.id, executionGeneration: 1, sequence: 1, event: { kind: "text", text: "old page" }, createdAt: 1 }], nextSequence: 1 });
     await selection;
@@ -437,12 +503,14 @@ describe("research task store", () => {
     const activity: TaskTranscriptEvent = { taskId: selected.id, executionGeneration: 2, sequence: 1, event: { kind: "text", text: "Current run" }, createdAt: 2 };
     const added = task("new-task", "paper", 3);
     vi.mocked(api.listResearchTasks).mockReturnValue(pending.promise);
-    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [activity], nextSequence: null });
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({ events: [activity], nextSequence: null });
     useResearchTasksStore.setState({ projectId: "paper", tasks: [selected] });
 
     const loading = operation === "bind"
       ? useResearchTasksStore.getState().bindProject("paper")
       : useResearchTasksStore.getState().refresh();
+    // Binding closes the dialog; the task is opened in it again.
+    useResearchTasksStore.setState({ detailOpen: true });
     useResearchTasksStore.getState().receiveTask(next);
     useResearchTasksStore.getState().receiveTask(added);
     await useResearchTasksStore.getState().selectTask(selected.id);
@@ -453,7 +521,7 @@ describe("research task store", () => {
       tasks: [added, next], selectedTaskId: selected.id,
       events: [activity], eventsLoading: false, loading: false,
     });
-    expect(api.loadResearchTaskEvents).toHaveBeenCalledOnce();
+    expect(api.loadResearchTaskEventsBefore).toHaveBeenCalledOnce();
   });
 
   it("reloads a newly discovered run and rejects its previous run's pending activity page", async () => {
@@ -462,24 +530,24 @@ describe("research task store", () => {
     const oldPage = deferred<TaskTranscriptPage>();
     const newPage = deferred<TaskTranscriptPage>();
     const activity = (generation: number): TaskTranscriptEvent => ({ taskId: selected.id, executionGeneration: generation, sequence: 1, event: { kind: "text", text: `Run ${generation}` }, createdAt: generation });
-    vi.mocked(api.loadResearchTaskEvents).mockImplementation((_id, generation) => generation === 1 ? oldPage.promise : newPage.promise);
+    vi.mocked(api.loadResearchTaskEventsBefore).mockImplementation((_id, generation) => generation === 1 ? oldPage.promise : newPage.promise);
     vi.mocked(api.listResearchTasks).mockResolvedValue([next]);
     useResearchTasksStore.setState({
       projectId: "paper", tasks: [selected], selectedTaskId: selected.id,
-      events: [activity(1)], eventsNextSequence: 1,
+      events: [activity(1)], eventsPreviousSequence: 1,
     });
     const oldLoading = useResearchTasksStore.getState().loadMoreEvents();
 
     await useResearchTasksStore.getState().refresh();
 
-    expect(api.loadResearchTaskEvents).toHaveBeenLastCalledWith(selected.id, 2);
+    expect(api.loadResearchTaskEventsBefore).toHaveBeenLastCalledWith(selected.id, 2, api.NEWEST_EVENTS);
     expect(useResearchTasksStore.getState()).toMatchObject({
       tasks: [next], selectedTaskId: selected.id,
-      events: [], eventsNextSequence: null, eventsLoading: true,
+      events: [], eventsPreviousSequence: null, eventsLoading: true,
     });
     oldPage.resolve({ events: [activity(1)], nextSequence: 2 });
     await oldLoading;
-    expect(useResearchTasksStore.getState()).toMatchObject({ events: [], eventsNextSequence: null, eventsLoading: true });
+    expect(useResearchTasksStore.getState()).toMatchObject({ events: [], eventsPreviousSequence: null, eventsLoading: true });
     newPage.resolve({ events: [activity(2)], nextSequence: null });
     await newPage.promise;
     expect(useResearchTasksStore.getState()).toMatchObject({ events: [activity(2)], eventsLoading: false });
@@ -501,7 +569,7 @@ describe("research task store", () => {
     expect(useResearchTasksStore.getState().tasks).toEqual([review]);
     await useResearchTasksStore.getState().refresh();
     expect(useResearchTasksStore.getState()).toMatchObject({ tasks: [completed], events: [activity] });
-    expect(api.loadResearchTaskEvents).not.toHaveBeenCalled();
+    expect(api.loadResearchTaskEventsBefore).not.toHaveBeenCalled();
   });
 
   it("ignores a pending refresh after leaving and rebinding the same project", async () => {
@@ -510,11 +578,12 @@ describe("research task store", () => {
     const current = task("current-task", "paper");
     const activity: TaskTranscriptEvent = { taskId: current.id, executionGeneration: 1, sequence: 1, event: { kind: "text", text: "Current binding" }, createdAt: 1 };
     vi.mocked(api.listResearchTasks).mockReturnValueOnce(pending.promise).mockResolvedValueOnce([current]);
-    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [activity], nextSequence: null });
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({ events: [activity], nextSequence: null });
     useResearchTasksStore.setState({ projectId: "paper", tasks: [first] });
     const loading = useResearchTasksStore.getState().refresh();
     await useResearchTasksStore.getState().bindProject(null);
     await useResearchTasksStore.getState().bindProject("paper");
+    useResearchTasksStore.setState({ detailOpen: true });
     await useResearchTasksStore.getState().selectTask(current.id);
     pending.resolve([{ ...first, executionGeneration: 9 }]);
     await loading;
@@ -543,7 +612,7 @@ describe("research task store", () => {
     const created = task("created", "paper", 2);
     const pending = deferred<ResearchTask>();
     vi.mocked(api.createResearchTask).mockReturnValue(pending.promise);
-    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [], nextSequence: null });
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({ events: [], nextSequence: null });
     useResearchTasksStore.setState({ projectId: "paper", tasks: [current] });
     const creation = useResearchTasksStore.getState().createTask({
       projectId: "paper", title: created.title, prompt: created.prompt,

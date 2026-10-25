@@ -12,6 +12,23 @@ export function listOllamaModels(host: string): Promise<string[]> {
   });
 }
 
+/** A pulled model and what it can do ("vision", "tools", ...); null when
+ * Ollama did not say. `remote` marks an Ollama Cloud model: the local Ollama
+ * lists it, but its requests go to another computer. */
+export interface OllamaModelInfo {
+  name: string;
+  capabilities: string[] | null;
+  remote?: boolean;
+}
+
+// Like listOllamaModels, with each model's capabilities. Older Ollama
+// versions are asked per model through /api/show, within a few seconds.
+export function listOllamaModelDetails(host: string): Promise<OllamaModelInfo[]> {
+  return invoke<OllamaModelInfo[]>("ollama_list_model_details", {
+    host: host.trim() || DEFAULT_OLLAMA_HOST,
+  });
+}
+
 // Whether an `ollama` executable exists on this machine, so the settings panel
 // can offer to start it rather than only reporting that nothing is listening.
 export function ollamaInstalled(): Promise<boolean> {

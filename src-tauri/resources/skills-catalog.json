@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-04T00:00:00Z",
+  "generatedAt": "2026-10-19T00:00:00Z",
   "packs": [
     {
       "id": "research-core",
-      "version": "2026.09.04.2452259d",
+      "version": "2026.10.19.b7a82f61",
       "kind": "bundled"
     }
   ],
@@ -23,6 +23,17 @@
         "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
         "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
       }
+    },
+    {
+      "id": "desktop-apps",
+      "name": "Desktop apps",
+      "description": "Work in desktop apps and websites the user allowed, through the desktop_apps tool. Use when the user asks to do something inside an app such as Zotero, Excel, Word, SPSS, Stata or Prism, or on a website such as a journal submission site or a library database, and no Oleafly tool or connector can do it.",
+      "phase": "tooling",
+      "license": "MIT",
+      "version": "1.0.0",
+      "bytes": 4431,
+      "files": 1,
+      "pack": "research-core"
     },
     {
       "id": "experimental-design",
@@ -96,14 +107,36 @@
       }
     },
     {
+      "id": "oleafly-cli",
+      "name": "oleafly-cli",
+      "description": "Build, diagnose and inspect an Oleafly LaTeX, Typst or Markdown project from a terminal or a coding agent with the oleafly command. Use for compile errors and build logs, the project's outline, labels and citations, word counts, exports to Word or HTML, citation lookup and bibliography cleanup, Typst versions, checkpoints, and setting up Oleafly's MCP server for an AI client.",
+      "phase": "tooling",
+      "license": "MIT",
+      "version": "1.0.0",
+      "bytes": 10116,
+      "files": 2,
+      "pack": "research-core"
+    },
+    {
       "id": "oleafly-data-analysis",
       "name": "Data analysis",
       "description": "Take data files that live in the project through to numbers, figures, and tables in the manuscript. Picks the method with the statistics skills, runs it as a saved script rather than an inline command, writes figures to figures/ and LaTeX tables to tables/, and reports effect sizes and confidence intervals in APA style.",
       "phase": "authoring",
       "license": "MIT",
-      "version": "1.0.0",
-      "bytes": 27140,
+      "version": "1.0.1",
+      "bytes": 27548,
       "files": 3,
+      "pack": "research-core"
+    },
+    {
+      "id": "oleafly-experiment-loop",
+      "name": "oleafly-experiment-loop",
+      "description": "Run a series of small, recorded experiments toward one goal inside an Oleafly research task. Use when the task is to improve a metric, tune a model or analysis, compare methods, or reproduce a result. Measures a baseline first, changes one thing per run, keeps only changes that help, records every result in the task's ledger, and writes the numbers into the manuscript with run markers.",
+      "phase": "research",
+      "license": "MIT",
+      "version": "1.0.0",
+      "bytes": 6559,
+      "files": 2,
       "pack": "research-core"
     },
     {
@@ -112,8 +145,8 @@
       "description": "Build and place publication-quality figures in an Oleafly manuscript. Use when the user wants a TikZ or pgfplots figure, a CeTZ or fletcher figure in Typst, a diagram, an architecture or pipeline drawing, a matplotlib or seaborn plot, a chart from a CSV, a multi-panel figure, subfigures, a colorblind-safe palette, correct figure sizing for a journal column, or help with captions, labels, includegraphics and cross-references.",
       "phase": "figures",
       "license": "MIT",
-      "version": "1.1.0",
-      "bytes": 21862,
+      "version": "1.1.1",
+      "bytes": 22315,
       "files": 3,
       "pack": "research-core"
     },
@@ -123,19 +156,19 @@
       "description": "Drive Oleafly's compile, diagnose, fix loop until the document builds clean. Use when a compile fails, when the log shows undefined control sequence, missing package or file not found, missing $ inserted, runaway argument, undefined citation or reference, a font that will not load, overfull hbox warnings, a bibliography that will not resolve, a Typst error, or when the user says it will not compile, the PDF is stale, or asks why the build is different on another machine.",
       "phase": "tooling",
       "license": "MIT",
-      "version": "1.1.0",
-      "bytes": 28587,
+      "version": "1.1.1",
+      "bytes": 29094,
       "files": 3,
       "pack": "research-core"
     },
     {
       "id": "oleafly-literature-sweep",
       "name": "oleafly-literature-sweep",
-      "description": "Turn a research question into an annotated reading list with provenance. Use when the user asks to find papers, survey the literature, gather background on a topic, collect sources for a section, or fill out a thin bibliography. Searches OpenAlex with literature_search, resolves canonical BibTeX with verify_citation, dedupes against the project bibliography before writing anything, and leaves behind research/reading-list.md plus one source note per paper.",
+      "description": "Turn a research question into an annotated reading list with provenance. Use when the user asks to find papers, survey the literature, gather background on a topic, collect sources for a section, or fill out a thin bibliography. Searches OpenAlex, Semantic Scholar, Crossref, arXiv and PubMed at once with literature_search, reads the strongest papers with read_paper, resolves canonical BibTeX with verify_citation, dedupes against the project bibliography before writing anything, and leaves behind research/reading-list.md plus one source note per paper.",
       "phase": "research",
       "license": "MIT",
-      "version": "1.0.0",
-      "bytes": 24286,
+      "version": "1.1.1",
+      "bytes": 27230,
       "files": 5,
       "pack": "research-core"
     },
@@ -145,8 +178,8 @@
       "description": "Build a venue-shaped manuscript skeleton inside the open Oleafly project. Use when the user wants to start a paper, set up a NeurIPS, ICML, ICLR, ACL, CVPR or AAAI submission, an IEEE or ACM conference paper, an Elsevier or Springer journal article, a PLOS, Nature or medical manuscript, an arXiv preprint or a thesis chapter, or asks for main.tex plus sections and a bibliography, or wants an existing draft reshaped to a venue layout.",
       "phase": "authoring",
       "license": "MIT",
-      "version": "1.0.0",
-      "bytes": 21968,
+      "version": "1.0.1",
+      "bytes": 22475,
       "files": 5,
       "pack": "research-core"
     },
@@ -156,8 +189,8 @@
       "description": "Run a pre-flight pass over the project before uploading to arXiv or a venue, and write a pass or fail checklist. Use when preparing an arXiv submission or a camera-ready, when checking anonymity for a double-blind venue, page limits, reference style, or supplementary material rules, when hunting undefined references, missing fonts, or figure problems that only surface at the publisher, or when building a clean source bundle to upload.",
       "phase": "submission",
       "license": "MIT",
-      "version": "1.1.0",
-      "bytes": 31965,
+      "version": "1.1.1",
+      "bytes": 32418,
       "files": 5,
       "pack": "research-core"
     },
@@ -167,8 +200,8 @@
       "description": "Draft or revise a related-work, background, or prior-art section in which every citation key already exists in the project bibliography. Use when the user asks to write related work, expand the background, group prior work by theme, position their contribution against existing work, or repair a section full of unresolved citations. Checks project_map unresolvedCites, adds verified entries before writing, and compiles until nothing is left unresolved.",
       "phase": "authoring",
       "license": "MIT",
-      "version": "1.0.0",
-      "bytes": 20301,
+      "version": "1.0.1",
+      "bytes": 20851,
       "files": 6,
       "pack": "research-core"
     },
@@ -178,8 +211,8 @@
       "description": "Entry point for research writing in Oleafly. Load this first when the user says they are writing a paper, starting a literature review, drafting related work, checking citations, preparing figures, responding to reviewers, or getting a submission ready. It sets the project layout every other research skill honours, plans the work with update_todos, and names the exact skill to load at each stage of the loop.",
       "phase": "research",
       "license": "MIT",
-      "version": "1.0.0",
-      "bytes": 30967,
+      "version": "1.0.1",
+      "bytes": 31773,
       "files": 7,
       "pack": "research-core"
     },
@@ -189,8 +222,8 @@
       "description": "Turn reviewer comments and the changes already made into a point-by-point response letter, in LaTeX or Typst and in plain text. Use when preparing a rebuttal, an author response, or a revision cover letter for a journal or conference, when mapping each reviewer point to the passage that changed, when a resubmission needs every comment answered, or when a response letter has to compile alongside the paper.",
       "phase": "review",
       "license": "MIT",
-      "version": "1.1.0",
-      "bytes": 17539,
+      "version": "1.1.1",
+      "bytes": 18001,
       "files": 5,
       "pack": "research-core"
     },
@@ -200,8 +233,8 @@
       "description": "Run a referee-grade review of the manuscript in the open project without changing a single manuscript file. Use when asked to review, referee, critique, or assess a paper, preprint, thesis chapter, or grant draft, to find unsupported claims, methods and statistics problems, missing reporting items, or figure and citation issues, or to produce a structured report with strengths, major and minor comments, line notes anchored to file and line, and scores per dimension.",
       "phase": "review",
       "license": "MIT",
-      "version": "1.0.0",
-      "bytes": 20415,
+      "version": "1.0.1",
+      "bytes": 20868,
       "files": 4,
       "pack": "research-core"
     },
@@ -211,8 +244,8 @@
       "description": "Turn the manuscript in the open project into a talk deck or a conference poster and compile it in place. Use when asked for slides, a presentation, a Beamer deck, a defense talk, a conference poster, or a PowerPoint version of a paper, when a deck has to be built for a 15 minute slot or a 45 minute seminar, or when a poster needs the right size and font scale for a printed board.",
       "phase": "communication",
       "license": "MIT",
-      "version": "1.0.0",
-      "bytes": 35482,
+      "version": "1.0.1",
+      "bytes": 35989,
       "files": 8,
       "pack": "research-core"
     },
@@ -222,8 +255,8 @@
       "description": "Audit a section claim by claim and report which statements the cited sources actually support. Use when the user asks to check the citations, verify the claims in a section, find unsupported or overstated statements, confirm nothing was fabricated, or get a manuscript ready for review or submission. Builds research/claims.md with a support level and an evidence note per claim, and reports problems rather than quietly rewriting the prose.",
       "phase": "review",
       "license": "MIT",
-      "version": "1.0.0",
-      "bytes": 18797,
+      "version": "1.0.1",
+      "bytes": 19296,
       "files": 4,
       "pack": "research-core"
     },
@@ -233,8 +266,8 @@
       "description": "Search literature and drive OpenResearch experiments through the local orx CLI, then record every run in the project so the results reach the manuscript. Use when the user mentions orx, OpenResearch, an experiment tree, a run id, or wants an experiment launched, polled, or written up.",
       "phase": "research",
       "license": "MIT",
-      "version": "1.0.0",
-      "bytes": 20828,
+      "version": "1.1.0",
+      "bytes": 21637,
       "files": 3,
       "pack": "research-core"
     },

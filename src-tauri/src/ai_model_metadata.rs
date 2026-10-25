@@ -94,6 +94,10 @@ pub struct ModelMetadata {
     pub tool_call: bool,
     #[serde(default)]
     pub reasoning: bool,
+    /// models.dev `reasoning_options`, kept as raw entries: older snapshots
+    /// lack it and newer ones may add shapes this release does not know.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_options: Option<Vec<serde_json::Value>>,
     #[serde(default)]
     pub attachment: bool,
     #[serde(default)]
@@ -412,6 +416,27 @@ fn service() -> &'static MetadataService {
 
 pub(crate) fn snapshot() -> Arc<MetadataSnapshot> {
     service().snapshot()
+}
+
+/// What a model can do, from the snapshot, else from the metadata stored
+/// with the user's configured model (local providers fill it from the
+/// server), else unknown.
+pub(crate) fn model_caps(
+    snapshot: &MetadataSnapshot,
+    stored: Option<&serde_json::Value>,
+    provider_id: &str,
+    model_id: &str,
+) -> oleafly_agent::ModelCaps {
+    if let Some(entry) = snapshot
+        .lookup(provider_id, model_id)
+        .and_then(|metadata| serde_json::to_value(metadata).ok())
+    {
+        return oleafly_agent::ModelCaps::from_metadata_json(&entry);
+    }
+    match stored {
+        Some(entry) if entry.is_object() => oleafly_agent::ModelCaps::from_metadata_json(entry),
+        _ => oleafly_agent::ModelCaps::default(),
+    }
 }
 
 #[cfg(test)]
@@ -857,5 +882,53 @@ mod tests {
         server.abort();
         assert!(error.contains("too large"));
         assert_eq!(service.status().source, MetadataSource::Bundled);
+    }
+
+    fn snapshot_with_entry(entry: serde_json::Value) -> String {
+        serde_json::json!({
+            "schemaVersion": 1,
+            "source": "models.dev",
+            "generatedAt": "2026-10-01T00:00:00.000Z",
+            "providers": { "anthropic": { "m": entry } }
+        })
+        .to_string()
+    }
+
+    #[test]
+    fn reasoning_options_survive_parsing_and_odd_shapes_do_not_reject_the_snapshot() {
+        let json = snapshot_with_entry(serde_json::json!({
+            "name": "M",
+            "reasoningOptions": [
+                {"type":"effort","values":["low","ultra"]},
+                {"type":"brand-new","x":1}
+            ]
+        }));
+        let caps = model_caps(&parse_snapshot(&json).unwrap(), None, "anthropic", "m");
+        assert_eq!(
+            caps.reasoning.efforts,
+            Some(vec![oleafly_agent::Effort::Low])
+        );
+    }
+
+    #[test]
+    fn the_bundled_snapshot_knows_opus_5_5_effort_levels() {
+        let caps = model_caps(&bundled_snapshot(), None, "anthropic", "claude-opus-5-5");
+        assert_eq!(caps.reasoning.efforts.as_ref().map(Vec::len), Some(5));
+        assert_eq!((caps.output_limit, caps.pdf), (Some(128_000), Some(true)));
+    }
+
+    #[test]
+    fn model_caps_fall_back_to_stored_provider_metadata() {
+        let caps = model_caps(
+            &MetadataSnapshot::default(),
+            Some(&serde_json::json!({"reasoning": true, "inputModalities": ["text","image"]})),
+            "ollama",
+            "qwen3:8b",
+        );
+        assert_eq!((caps.images, caps.reasoning.flag), (Some(true), Some(true)));
+        assert_eq!(
+            model_caps(&MetadataSnapshot::default(), None, "ollama", "llama3.2"),
+            oleafly_agent::ModelCaps::default()
+        );
     }
 }

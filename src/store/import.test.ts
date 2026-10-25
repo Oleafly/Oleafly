@@ -70,7 +70,10 @@ beforeEach(() => {
   mocks.convertPages.mockReset().mockImplementation((pages: PageInput[]) =>
     result(pages[0]?.items[0]?.str ?? "empty"),
   );
-  mocks.transcribePdfPages.mockReset().mockResolvedValue("transcribed locally");
+  mocks.transcribePdfPages.mockReset().mockResolvedValue({
+    text: "transcribed locally",
+    model: { label: "glm-ocr", sentTo: null },
+  });
   useImportStore.getState().close();
 });
 
@@ -170,17 +173,79 @@ describe("PDF import request identity", () => {
 
     expect(mocks.transcribePdfPages).toHaveBeenCalledWith(
       new Uint8Array([1]),
-      1,
+      [1],
       "LaTeX",
-      undefined,
+      expect.any(Function),
       expect.any(AbortSignal),
     );
     expect(useImportStore.getState().result?.tex).toBe("transcribed locally");
     expect(useImportStore.getState().scanTranscribed).toBe(true);
   });
 
+  it("transcribes a scanned PDF with the Tools model and remembers which model ran", async () => {
+    mocks.extractPagesForConvert.mockResolvedValue({ pages: [page("a"), page("b")], figures: [] });
+    mocks.convertPages.mockReturnValue({
+      ...result("scan"),
+      report: { ...result("scan").report, pages: 2, likelyScanned: true },
+    });
+    const bytes = new Uint8Array([7]);
+    mocks.transcribePdfPages.mockResolvedValue({ text: "tex", model: { label: "glm-ocr", sentTo: null } });
+    await useImportStore.getState().openWithPdf(bytes, "scan.pdf");
+
+    await useImportStore.getState().transcribeScan();
+
+    expect(mocks.transcribePdfPages).toHaveBeenCalledWith(
+      bytes,
+      [1, 2],
+      "LaTeX",
+      expect.any(Function),
+      expect.any(AbortSignal),
+    );
+    expect(useImportStore.getState().scanModel).toEqual({ label: "glm-ocr", sentTo: null });
+    expect(useImportStore.getState().result?.tex).toBe("tex");
+
+    useImportStore.getState().rerun({});
+    expect(useImportStore.getState().scanModel).toBeNull();
+  });
+
+  it.each([
+    [[2, 3] as [number, number], [2, 3]],
+    [[4, 9] as [number, number], [4, 5]],
+  ])("transcribes only the pages in the chosen range (%j)", async (pageRange, expected) => {
+    mocks.extractPagesForConvert.mockResolvedValue({
+      pages: ["a", "b", "c", "d", "e"].map(page),
+      figures: [],
+    });
+    await useImportStore.getState().openWithPdf(new Uint8Array([1]), "scan.pdf");
+    mocks.convertPages.mockReturnValue({
+      ...result("scan"),
+      report: { ...result("scan").report, likelyScanned: true },
+    });
+    useImportStore.getState().rerun({ pageRange });
+
+    await useImportStore.getState().transcribeScan();
+
+    expect(mocks.transcribePdfPages.mock.calls[0][1]).toEqual(expected);
+  });
+
+  it("shows a Mathpix failure in words, not as a raw code", async () => {
+    mocks.extractPagesForConvert.mockResolvedValue({ pages: [page("scan")], figures: [] });
+    mocks.convertPages.mockReturnValue({
+      ...result("scan"),
+      report: { ...result("scan").report, likelyScanned: true },
+    });
+    await useImportStore.getState().openWithPdf(new Uint8Array([1]), "scan.pdf");
+    mocks.transcribePdfPages.mockRejectedValueOnce('@oleafly/error:{"code":"mathpix.timed_out","params":{}}');
+
+    await useImportStore.getState().transcribeScan();
+
+    expect(useImportStore.getState().error).toBe(
+      "Mathpix didn't finish this PDF within 30 minutes. Try fewer pages.",
+    );
+  });
+
   it("cancels scanned-PDF transcription when the import view closes", async () => {
-    const transcription = deferred<string>();
+    const transcription = deferred<{ text: string; model: { label: string; sentTo: string | null } }>();
     mocks.transcribePdfPages.mockReturnValue(transcription.promise);
     mocks.extractPagesForConvert.mockResolvedValue({ pages: [page("scan")], figures: [] });
     mocks.convertPages.mockReturnValue({
@@ -194,15 +259,81 @@ describe("PDF import request identity", () => {
 
     useImportStore.getState().close();
     expect(signal.aborted).toBe(true);
-    transcription.resolve("late result");
+    transcription.resolve({ text: "late result", model: { label: "Claude Opus 5.5", sentTo: "Anthropic" } });
     await running;
 
     expect(useImportStore.getState().open).toBe(false);
     expect(useImportStore.getState().result).toBeNull();
+    expect(useImportStore.getState().scanModel).toBeNull();
+  });
+
+  it("shows how far a scan transcription is, and clears it when done", async () => {
+    const transcription = deferred<{ text: string; model: { label: string; sentTo: string | null } }>();
+    mocks.transcribePdfPages.mockReturnValue(transcription.promise);
+    mocks.extractPagesForConvert.mockResolvedValue({ pages: [page("scan")], figures: [] });
+    mocks.convertPages.mockReturnValue({
+      ...result("scan"),
+      report: { ...result("scan").report, likelyScanned: true },
+    });
+    await useImportStore.getState().openWithPdf(new Uint8Array([1]), "scan.pdf");
+    const running = useImportStore.getState().transcribeScan();
+    expect(useImportStore.getState().scanProgress).toEqual({ step: "readingPages" });
+    await vi.waitFor(() => expect(mocks.transcribePdfPages).toHaveBeenCalledOnce());
+    const report = mocks.transcribePdfPages.mock.calls[0][3] as (progress: unknown) => void;
+    report({ step: "transcribingPage", page: 1, total: 3, pdfPage: 1, model: "glm-ocr" });
+    expect(useImportStore.getState().scanProgress).toEqual({
+      step: "transcribingPage",
+      page: 1,
+      total: 3,
+      pdfPage: 1,
+      model: "glm-ocr",
+    });
+
+    transcription.resolve({ text: "tex", model: { label: "glm-ocr", sentTo: null } });
+    await running;
+    expect(useImportStore.getState()).toMatchObject({ scanProgress: null, busy: false, scanTranscribed: true });
+  });
+
+  it("cancels a scan transcription and keeps the PDF open", async () => {
+    const transcription = deferred<{ text: string; model: { label: string; sentTo: string | null } }>();
+    mocks.transcribePdfPages.mockReturnValue(transcription.promise);
+    mocks.extractPagesForConvert.mockResolvedValue({ pages: [page("scan")], figures: [] });
+    mocks.convertPages.mockReturnValue({
+      ...result("scan"),
+      report: { ...result("scan").report, likelyScanned: true },
+    });
+    await useImportStore.getState().openWithPdf(new Uint8Array([1]), "scan.pdf");
+    const running = useImportStore.getState().transcribeScan();
+    await vi.waitFor(() => expect(mocks.transcribePdfPages).toHaveBeenCalledOnce());
+    const signal = mocks.transcribePdfPages.mock.calls[0][4] as AbortSignal;
+    const report = mocks.transcribePdfPages.mock.calls[0][3] as (progress: unknown) => void;
+
+    useImportStore.getState().cancelScan();
+    expect(signal.aborted).toBe(true);
+    expect(useImportStore.getState()).toMatchObject({
+      open: true,
+      busy: false,
+      scanProgress: null,
+      error: null,
+      fileName: "scan.pdf",
+    });
+    expect(useImportStore.getState().pdfBytes).toEqual(new Uint8Array([1]));
+
+    // Whatever the stopped run still reports or returns stays out.
+    report({ step: "transcribingPage", page: 2, total: 3, model: "glm-ocr" });
+    transcription.resolve({ text: "late result", model: { label: "glm-ocr", sentTo: null } });
+    await running;
+    expect(useImportStore.getState()).toMatchObject({ scanProgress: null, scanTranscribed: false });
+    expect(useImportStore.getState().result?.tex).toBe("scan");
+
+    // The scan can be transcribed again.
+    mocks.transcribePdfPages.mockResolvedValue({ text: "second try", model: { label: "glm-ocr", sentTo: null } });
+    await useImportStore.getState().transcribeScan();
+    expect(useImportStore.getState().result?.tex).toBe("second try");
   });
 
   it("does not let a cancelled transcription replace a rerun", async () => {
-    const transcription = deferred<string>();
+    const transcription = deferred<{ text: string; model: { label: string; sentTo: string | null } }>();
     mocks.transcribePdfPages.mockReturnValue(transcription.promise);
     mocks.extractPagesForConvert.mockResolvedValue({ pages: [page("scan")], figures: [] });
     mocks.convertPages.mockReturnValue({
@@ -215,7 +346,7 @@ describe("PDF import request identity", () => {
 
     mocks.convertPages.mockReturnValue(result("fresh rerun"));
     useImportStore.getState().rerun({ columns: 2 });
-    transcription.resolve("late transcription");
+    transcription.resolve({ text: "late transcription", model: { label: "glm-ocr", sentTo: null } });
     await running;
 
     expect(useImportStore.getState().result?.tex).toBe("fresh rerun");

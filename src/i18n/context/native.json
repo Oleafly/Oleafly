@@ -1,0 +1,20 @@
+{
+  "dialog": {
+    "desktopApps": {
+      "moreItems": "Native approval dialog for an agent's desktop action. Shown inside the action's arguments where a list has more items than the dialog lists. {{count}} is how many were left out.",
+      "cut": "Native approval dialog for an agent's desktop action. Shown after a text, address, script or step that was cut short. {{count}} is how many characters were left out.",
+      "signedIn": "Native approval dialog line under the action sentence. Says the action happens in the person's own web browser, where they are signed in to their accounts.",
+      "signedInOn": "Native approval dialog line under the action sentence. Same as the previous line, with the website the action goes to. {{origin}} is a web address such as https://www.example.org."
+    },
+    "desktopAppsSettings": {
+      "app": "One line in the native confirmation for allowing agents to control an app. {{name}} is the app's display name; {{identity}} is its bundle id on macOS or the full path of its program on Windows and Linux.",
+      "more": "Last line of the native confirmation when more changes are listed than fit. {{count}} is how many were left out."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Title of a warning in a CLI agent conversation: the agent is in a mode with permission checks off and Oleafly could not switch it. {{mode}} is the agent's own name for that mode, for example Bypass permissions.",
+      "description": "Text under that warning. Says what the mode allows and where to change it."
+    }
+  }
+}

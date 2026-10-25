@@ -4,10 +4,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ dialog: vi.fn() }));
 
-vi.mock("@/store/github", () => ({
-  useGithubStore: (selector: (state: unknown) => unknown) => selector({ status: "disconnected", refresh: vi.fn() }),
+const forgeState = vi.hoisted(() => ({
+  status: "ready",
+  accounts: [] as unknown[],
+  ensureLoaded: vi.fn(async () => [] as unknown[]),
 }));
-vi.mock("@/lib/github", () => ({ githubListRepos: vi.fn(async () => []) }));
+
+vi.mock("@/store/forge-accounts", () => ({
+  useForgeAccountsStore: Object.assign(
+    (selector: (state: typeof forgeState) => unknown) => selector(forgeState),
+    { getState: () => forgeState },
+  ),
+}));
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+  forgeListRepos: vi.fn(async () => ({ repos: [], nextPage: null, searched: false })),
+}));
 vi.mock("@/features/collab/sharing/OpenLinkDialog", () => ({
   OpenLinkDialog: ({ onClose }: { onClose: () => void }) => {
     mocks.dialog();
@@ -59,7 +71,7 @@ describe("ProjectImportMenu shared project link", () => {
   it("leaves the menu as it was while live collaboration is off", async () => {
     renderMenu();
     openMenu();
-    expect(await screen.findByText("GitHub")).toBeInTheDocument();
+    expect(await screen.findByTestId("import-git")).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: enCollab.library.openLink.menu })).toBeNull();
     expect(mocks.dialog).not.toHaveBeenCalled();
   });

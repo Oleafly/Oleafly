@@ -43,13 +43,15 @@
       "command": "コマンドを確認",
       "externalTool": "外部ツールの操作を確認",
       "internet": "インターネットへのアクセスを確認",
-      "edit": "AI の編集を確認"
+      "edit": "AI の編集を確認",
+      "researchTask": "調査タスクを確認"
     },
     "headline": {
       "command": "アシスタントがこのコマンドを実行しようとしています",
       "externalTool": "アシスタントが外部ツールを使おうとしています",
       "internet": "アシスタントがインターネットにアクセスしようとしています",
-      "edit": "アシスタントがファイルを変更しようとしています"
+      "edit": "アシスタントがファイルを変更しようとしています",
+      "researchTask": "アシスタントが調査タスクを作成しようとしています"
     },
     "mcpNote": "以下の引数が、設定済みの MCP サーバーに送信されます。",
     "line": "{{line}} 行目",
@@ -69,10 +71,48 @@
     "external": {
       "title": "外部エージェントからの要求（MCP）",
       "moreWaiting_other": "ほかに {{count}} 件が待機中"
+    },
+    "researchTask": {
+      "note": "タスクはプロジェクトのコピーの中で自分で作業します。変更は、後からあなたが確認します。",
+      "title": "タイトル",
+      "goal": "目標",
+      "skills": "スキル",
+      "prompt": "指示",
+      "commands": "コマンド",
+      "commandsAsk": "実行の前に確認",
+      "network": "ネットワーク",
+      "timeBudget": "時間の予算",
+      "timeBudgetDefault": "既定",
+      "minutes_other": "{{count}} 分",
+      "planFirst": "先にプランを確認する",
+      "startNow": "今すぐ開始"
     }
   },
   "attachments": {
-    "remove": "{{name}} を削除"
+    "remove": "{{name}} を削除",
+    "processing": "{{name}} を準備しています…",
+    "failed": "{{name}} を添付できませんでした。",
+    "pages_other": "{{count}} ページ",
+    "pagesLimited": "{{count}} ページのうち、最初の {{limit}} ページだけを使います。",
+    "tooMany": "1 つのメッセージに添付できるファイルは {{max}} 個までです。",
+    "tooLarge": "{{name}} は {{limit}} を超えています。",
+    "unsupported": "{{name}} は添付できません。画像、PDF、テキストファイルを添付してください。",
+    "unreadableImage": "Oleafly は {{name}} の画像形式を読み取れません。PNG か JPEG で保存してから、もう一度添付してください。",
+    "unreadablePdf": "{{name}} を PDF として開けませんでした。",
+    "storeFailed": "このチャット用に {{name}} を保存できませんでした。",
+    "visionUnsupported": "{{model}} は画像を読み取れないため、このメッセージの画像は送信されません。",
+    "scannedPdf": "{{name}} にはテキストレイヤーがなく、{{model}} は画像を読み取れません。",
+    "dropFiles": "ドロップしてファイルを添付",
+    "dropProjectFile": "ドロップしてこのファイルに言及",
+    "open": "{{name}} を開く",
+    "saveCopy": "{{name}} のコピーを保存",
+    "saved": "{{name}} のコピーを保存しました。",
+    "saveFailed": "{{name}} を保存できませんでした。",
+    "missing": "{{name}} はもう利用できません。",
+    "sentAsText": "このモデルは {{name}} をファイルとして読み取れないため、テキストとして送信しました。",
+    "skipped": "{{name}} は送信されませんでした。",
+    "dropUnreadable": "{{names}} を読み取れませんでした。",
+    "notReplayed": "古いバージョンで保存されたファイルは再送信できません: {{names}}。"
   },
   "chat": {
     "pill": {
@@ -176,7 +216,9 @@
     "stop": "停止",
     "stopTitle": "生成を停止",
     "send": "送信",
-    "checkAgain": "もう一度確認"
+    "checkAgain": "もう一度確認",
+    "resizeHandle": "メッセージ欄のサイズを変更",
+    "resizeHint": "ドラッグでサイズを変更し、ダブルクリックで元に戻します。"
   },
   "commands": {
     "groups": {
@@ -214,10 +256,6 @@
     "files": {
       "label": "ファイル",
       "description": "次のメッセージにファイルを添付します"
-    },
-    "browser": {
-      "label": "ブラウザを表示",
-      "description": "文書の隣にブラウザを開きます"
     }
   },
   "models": {
@@ -265,7 +303,9 @@
       "minutes": "{{count}} 分前",
       "hours": "{{count}} 時間前",
       "days": "{{count}} 日前"
-    }
+    },
+    "skipped_other": "{{count}} 件のチャットを読み込めませんでした。ディスクには残っています。",
+    "openFailed": "このチャットを開けませんでした。"
   },
   "tools": {
     "approval": {
@@ -311,7 +351,6 @@
       "listAgents": "補助エージェントとその状態を一覧表示します。",
       "closeAgent": "補助エージェントを終了します。",
       "runCommand": "プロジェクトフォルダで shell コマンドを実行します。制限時間は 2 分です。",
-      "computerUse": "アシスタントのブラウザウィンドウでウェブページを開きます。",
       "toggleTheme": "ライトモードとダークモードを切り替えます。",
       "listOverleafProjects": "Overleaf のプロジェクトを一覧表示します。必要に応じて先にサインインします。",
       "importOverleafProjects": "Overleaf のプロジェクトを、コンパイラとメインファイルの設定ごとライブラリに読み込みます。"
@@ -340,8 +379,7 @@
       "latexOnly": "LaTeX プロジェクトのみ",
       "latexAndTypstOnly": "LaTeX と Typst のプロジェクトのみ",
       "pdfCaptureSetting": "PDF のページ取り込み設定が必要",
-      "chatApproval": "チャットで 1 コマンドずつ承認",
-      "browserSetting": "ウェブブラウザの設定が必要"
+      "chatApproval": "チャットで 1 コマンドずつ承認"
     },
     "sourceGroups": {
       "figure": "図",
@@ -464,18 +502,20 @@
     "resumeTask": "この作業を再開するには、調査タスクを開いてください。",
     "delegatedConversation": "この会話は、委任されたエージェントの実行に属しています。",
     "noResume": "このエージェントは保存された会話を再開できません。準備ができたら新しい会話を始めてください。",
-    "imageTooLarge": "480 KiB 未満の画像を選んでください。画像は 4 枚まで添付できます。",
     "imageReadFailed": "画像を読み取れませんでした。",
-    "removeImage": "{{name}} を削除",
     "composerAriaLabel": "CLI エージェントへのメッセージ",
     "composerPlaceholderReady": "このプロジェクトの作業をエージェントに依頼する",
     "composerPlaceholderIdle": "メッセージを送るには、会話を始めるか再接続してください",
-    "attachImage": "画像を添付",
     "startConversation": "{{agent}} との会話を始める",
     "startConversationFallback": "エージェント",
     "agentModel": "エージェントのモデル",
     "modelManaged": "モデルはエージェントが管理します",
     "stop": "停止",
+    "stopReason": {
+      "refusal": "エージェントがこの要求の続行を断りました。",
+      "maxTokens": "エージェントは出力の上限に達したため停止しました。",
+      "maxTurnRequests": "エージェントはこのやり取りの要求回数の上限に達したため停止しました。"
+    },
     "stopTitle": "エージェントを停止",
     "send": "送信",
     "connecting": "接続中",
@@ -493,8 +533,7 @@
     "roster": {
       "bridgeMissing": "「エージェントのセットアップ」でブリッジをインストールしてください",
       "cliMissing": "このコンピュータに CLI が見つかりません",
-      "unavailable": "このコンピュータでは利用できません",
-      "comingSoon": "近日対応"
+      "unavailable": "このコンピュータでは利用できません"
     },
     "messageTooLarge": "このメッセージと画像は大きすぎます。メッセージを短くするか、画像を減らしてください。",
     "terminalCommand": "エージェントがターミナルのコマンドを実行しています。",
@@ -541,7 +580,131 @@
       "skill": "スキル: {{name}}",
       "tool": "ツール: {{name}}",
       "changedFiles": "変更されたファイル",
-      "moreFiles_other": "ほか {{count}} 件のファイル"
+      "moreFiles_other": "ほか {{count}} 件のファイル",
+      "mode": "モード",
+      "effort": "推論レベル",
+      "permissionProfile": "承認モード",
+      "commits": "コミット"
+    },
+    "composerPlaceholderStart": "{{agent}} にメッセージを送って会話を始めましょう",
+    "composerPlaceholderConnecting": "今すぐ入力できます。エージェントの準備ができたら送信されます。",
+    "composerPlaceholderRunning": "次のメッセージを入力してください。エージェントが終わったら送信されます。",
+    "attachFile": "ファイルを添付",
+    "composer": {
+      "tooManyAttachments": "1 つのメッセージに添付できるファイルは 10 個までです。",
+      "imagesUnsupported": "このエージェントは画像を受け付けません。画像を外してから、もう一度お試しください。",
+      "attachmentsNotReady": "添付ファイルの準備が終わるまでお待ちください。",
+      "removeSelection": "引用 {{label}} を外す"
+    },
+    "queue": {
+      "queued": "待機中: エージェントが終わったら送信します",
+      "remove": "待機中のメッセージを削除",
+      "sendNow": "今すぐ送信",
+      "sendFailed": "このメッセージは送信されませんでした。送信し直すか、削除してください。",
+      "queuedConnecting": "待機中: エージェントの準備ができたら送信します",
+      "queuedSignIn": "待機中: サインインしたら送信します",
+      "retry": "もう一度送信",
+      "edit": "編集"
+    },
+    "slash": {
+      "commands": "エージェントのコマンド",
+      "skills": "スキル"
+    },
+    "controls": {
+      "effort": "推論レベル",
+      "mode": "モード",
+      "more": "エージェントのその他のオプション",
+      "blockedMode": "Oleafly では無効",
+      "blockedModeHint": "Oleafly は権限の確認を常に有効にしているため、このモードは使えません。"
+    },
+    "usage": {
+      "ariaLabel": "エージェントの使用状況を表示",
+      "tooltip": "この会話の使用状況",
+      "contextShare": "コンテキストウィンドウの {{percent}}% を使用",
+      "window": {
+        "fiveHour": "5 時間のセッション",
+        "weekly": "週単位、すべてのモデル",
+        "weeklyOpus": "週単位、Opus",
+        "weeklySonnet": "週単位、Sonnet",
+        "overage": "追加の使用量",
+        "other": "使用量の上限 {{id}}"
+      },
+      "costIn": "エージェントが報告した費用は {{amount}} {{currency}} です。",
+      "modelTokens": "{{model}}: {{tokens}} トークン"
+    },
+    "compaction": {
+      "running": "以前のコンテキストを要約しています",
+      "done": "以前のコンテキストを要約しました",
+      "failed": "以前のコンテキストを要約できませんでした"
+    },
+    "signIn": {
+      "inTerminal": "ターミナルで {{name}}",
+      "afterTerminal": "ターミナルでサインインを終えてから、接続し直してください。",
+      "apiKeyLabel": "{{provider}} の API キー",
+      "apiKeyPlaceholder": "API キーを貼り付け",
+      "geminiGoogle": "個人向けプランでは Google でのサインインが使えなくなりました。Gemini API キーか Vertex AI を使ってください。",
+      "noProject": "ターミナルからサインインするには、プロジェクトを開いてください。",
+      "signOut": "サインアウト",
+      "confirmTerminal": "{{agent}} は下のコマンドでサインインします。コマンドはターミナルのタブで実行されます。承認する前に内容を確認してください。",
+      "remote": "この会話は別のマシンで実行されています。エージェントへのサインインは、そのマシンで行ってください。"
+    },
+    "elicitation": {
+      "ariaLabel": "エージェントからの要求",
+      "from": "{{agent}} からの質問:",
+      "submit": "送信",
+      "decline": "断る",
+      "cancel": "キャンセル",
+      "required": "必須",
+      "invalid": "この項目を確認してください。",
+      "openUrl": "ブラウザで開く",
+      "confirmTitle": "{{host}} を開きますか？",
+      "confirmDescription": "エージェントが、このサイトでの手続きを終えるよう求めています。サイトはブラウザで開きます。",
+      "waiting": "サイトでの完了を待っています。",
+      "openFailed": "リンクをブラウザで開けませんでした。"
+    },
+    "remote": {
+      "banner": "Hermes は SSH 経由で {{host}} 上で動いています。変更はそのマシンに残ります。"
+    },
+    "history": {
+      "all": "すべての会話",
+      "title": "会話",
+      "search": "会話を検索",
+      "empty": "一致する会話はありません。",
+      "loadMore": "さらに読み込む",
+      "rename": "名前を変更",
+      "renameLabel": "会話の名前",
+      "delete": "削除",
+      "deleteTitle": "この会話を削除しますか？",
+      "deleteDescription": "Oleafly は、このプロジェクトから会話の記録と添付ファイルを削除します。",
+      "deleteFromAgent": "{{agent}} からも削除する",
+      "deleteAgentFailed": "Oleafly では削除しました。{{agent}} は自身のコピーを削除できませんでした: {{error}}",
+      "deleteRunning": "この会話を削除する前に、エージェントを停止してください。",
+      "importFind": "このプロジェクトの {{agent}} の会話を探す",
+      "imported": "Oleafly に取り込み済み",
+      "importSelected": "選択した会話を取り込む",
+      "importEmpty": "{{agent}} には、このプロジェクトの会話がほかにありません。"
+    },
+    "header": {
+      "startedAt": "開始時点: {{revision}}",
+      "startedDirty": "開始時点: {{revision}}（未コミットの変更あり）",
+      "menu": "会話の操作",
+      "fork": "会話をフォーク",
+      "forkUnsupported": "このエージェントは会話をフォークできません。",
+      "forkBusy": "フォークする前に、エージェントが終わるのを待ってください。",
+      "v2": "プロトコルプレビュー",
+      "remote": "リモート",
+      "signOutTitle": "{{agent}} からサインアウトしますか？",
+      "signOutDescription": "この操作は {{agent}} のサインイン自体を終了します。同じサインインを使うターミナルもサインアウトされ、再度サインインするまでこの会話は停止します。",
+      "signOutAccount": "{{account}} でサインイン中"
+    },
+    "commit": {
+      "button": "コミット",
+      "title": "このやり取りをコミット",
+      "message": "コミットメッセージ",
+      "files": "コミットするファイル",
+      "defaultMessage": "{{agent}} による変更",
+      "submit": "ファイルをコミット",
+      "cancel": "キャンセル"
     }
   },
   "agents": {
@@ -712,8 +875,6 @@
     "restoreFailed": "復元できませんでした: {{error}}",
     "steerFailed": "実行中のやり取りに指示を差し込めませんでした。",
     "approvalRuleSaveFailed": "プロジェクトの承認ルールを保存できませんでした。",
-    "attachmentTooLarge": "{{name}} は大きすぎます（最大 10 MB）。",
-    "attachmentReadFailed": "{{name}} を読み取れませんでした。",
     "tooManyTools": "{{enabled}} 件のツールが有効ですが、1 回の実行で使えるのは {{max}} 件までです。「ツール」で少なくとも {{excess}} 件を無効にしてからもう一度お試しください。"
   },
   "header": {
@@ -738,7 +899,28 @@
     "summaryRunWithTokens_other": "直近の実行: {{count}} ステップ、報告されたトークン {{tokens}}",
     "summaryRunNoTokens_other": "直近の実行: {{count}} ステップ、トークンの合計は不明",
     "summaryChat": "このチャット: {{steps}} ステップ、{{tokens}} トークン",
-    "summaryFallback": "AI の使用状況"
+    "summaryFallback": "AI の使用状況",
+    "context": "コンテキスト",
+    "contextUsed": "{{size}} トークン中 {{used}}",
+    "contextShare": "コンテキストウィンドウの {{percent}} を使用",
+    "contextUnknown": "このモデルのコンテキストウィンドウは不明です。",
+    "reasoning": "推論",
+    "cacheRead": "キャッシュの読み取り",
+    "cacheWrite": "キャッシュの書き込み",
+    "cost": "推定費用",
+    "budget": "プロジェクトの予算",
+    "budgetUsed": "{{limit}} 中 {{spent}}",
+    "credit": "残りのクレジット",
+    "creditOf": "{{limit}} 中 {{remaining}}",
+    "planLimits": "プランの上限",
+    "resetsAt": "{{time}}にリセット",
+    "windowWarning": "上限に近づいています",
+    "windowBlocked": "上限に達しました",
+    "refreshPlan": "プランの使用状況を更新",
+    "refreshing": "更新しています…",
+    "historyTrimmed_other": "このチャットのうち、モデルに送ったのは直近 {{count}} 回分のやり取りだけです。",
+    "empty": "このチャットにはまだ使用状況がありません。",
+    "loading": "使用状況を読み込んでいます…"
   },
   "provider": {
     "connectTitle": "続けるには AI プロバイダに接続してください",
@@ -758,7 +940,21 @@
     "projectSubtitle": "「{{project}}」で作業中",
     "noOutput": "モデルから出力が返りませんでした。設定 → AI アシスタントを確認してください。",
     "planMissing": "承認するプランはまだありません。アシスタントにプランを頼むか、プランをオフにしてください。",
-    "planUnchanged": "プランは変わっていません。"
+    "planUnchanged": "プランは変わっていません。",
+    "stillWorking": "まだ処理中です（{{seconds}} 秒）。推論モデルやローカルモデルは時間がかかることがあります。キャンセルするには「停止」をクリックしてください。",
+    "retrying": "接続に問題があります。再試行しています（{{max}} 回中 {{attempt}} 回目）…",
+    "stopped": "停止しました。",
+    "stepLimit": "ステップ数の上限に達しました。続けるには、もう一度メッセージを送ってください。",
+    "outputLimit": "回答がモデルの出力の上限に達しました。続けるには、もう一度メッセージを送ってください。",
+    "tooLargeToSave": "このチャットは長すぎて保存できません。新しいメッセージは Oleafly を閉じるまで保持されます。コピーを残すにはチャットを書き出してください。",
+    "exportChat": "チャットを書き出す",
+    "exported": "チャットを書き出しました。",
+    "exportFailed": "チャットを書き出せませんでした。",
+    "saveFailed": "このチャットの新しいメッセージを保存できませんでした。ディスクに空き容量があるか確認してください。",
+    "exportYou": "あなた",
+    "exportAssistant": "アシスタント",
+    "exportAttachments": "添付ファイル",
+    "exportTools": "使用したツール"
   },
   "followUps": {
     "steered": "実行中のやり取りに差し込みました: {{summary}}",
@@ -840,6 +1036,45 @@
     "figureAudit": "図のチェック",
     "gitReview": "Git レビュー",
     "referenceCleanup": "参考文献の整理",
-    "removeSkill": "スキル {{name}} を削除"
+    "removeSkill": "スキル {{name}} を削除",
+    "compilationRepair": "コンパイルの修正",
+    "submissionPrep": "投稿の準備",
+    "reviewerResponse": "査読への回答"
+  },
+  "effort": {
+    "label": "推論レベル",
+    "tooltip": "回答する前にモデルがどれだけ推論するか",
+    "ariaLabel": "推論レベル: {{level}}",
+    "auto": "自動",
+    "autoDescription": "モデルの既定を使う",
+    "levels": {
+      "none": "なし",
+      "minimal": "最小",
+      "low": "低",
+      "medium": "中",
+      "high": "高",
+      "xhigh": "とても高い",
+      "max": "最大"
+    }
+  },
+  "web": {
+    "label": "ウェブ",
+    "on": "このチャットではウェブ検索とページの読み取りが有効です",
+    "off": "このチャットでウェブ検索とページの読み取りを有効にする",
+    "ariaLabel": "ウェブへのアクセス",
+    "searchUnavailable": "このモデルはウェブを検索できません。有効にするには、設定で検索用のキーを追加してください。"
+  },
+  "messageActions": {
+    "edit": "メッセージを編集",
+    "regenerate": "回答を生成し直す",
+    "retry": "再試行",
+    "editingLatest": "最後のメッセージを編集しています。送信すると回答が置き換わります。",
+    "editingEarlier": "以前のメッセージを編集しています。送信するとそこから新しいチャットが始まり、このチャットは履歴に残ります。",
+    "cancelEdit": "編集をキャンセル",
+    "replaceTitle": "この回答を置き換えますか？",
+    "replaceDescription_other": "この回答は {{count}} 個のファイルを変更しました。変更はプロジェクトに残りますが、元に戻すカードは回答と一緒に消えます。",
+    "replaceConfirm": "回答を置き換える",
+    "forked": "編集したメッセージから新しいチャットを始めました。",
+    "failed": "メッセージを送信し直せませんでした。"
   }
 }

@@ -1,0 +1,47 @@
+{
+  "profile": "generic",
+  "project": {
+    "files": [
+      {
+        "hasContent": false,
+        "path": "build-logs/pandoc.log"
+      },
+      {
+        "hasContent": true,
+        "path": "main.md"
+      },
+      {
+        "hasContent": true,
+        "path": "refs.bib"
+      }
+    ],
+    "mainFile": "main.md"
+  },
+  "refs": null,
+  "report": {
+    "a11yScore": null,
+    "atsScore": null,
+    "compileScore": null,
+    "coverage": {
+      "a11y": "not_run",
+      "ats": "not_run",
+      "compile": "not_run",
+      "privacy": "unsupported",
+      "refs": "unsupported",
+      "submission": "unsupported"
+    },
+    "findings": [],
+    "hasPdf": false,
+    "privacyScore": null,
+    "refsScore": null,
+    "scores": {
+      "a11y": 100,
+      "ats": 100,
+      "compile": 100,
+      "privacy": 100,
+      "refs": 100,
+      "submission": 100
+    },
+    "submissionScore": null
+  }
+}

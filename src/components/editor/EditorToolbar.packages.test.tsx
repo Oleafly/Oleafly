@@ -22,6 +22,7 @@ vi.mock("@/features/image-to-latex", () => ({
   imageToLatex: vi.fn(async () => {}),
 }));
 
+import { imageToLatex, imageToLatexAvailable } from "@/features/image-to-latex";
 import { EditorToolbar } from "./EditorToolbar";
 
 vi.stubGlobal(
@@ -55,5 +56,18 @@ describe("EditorToolbar packages button", () => {
     useFilesStore.setState({ engine: LATEX_ENGINE, engineLoaded: false });
     render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
     expect(screen.queryByRole("button", { name: en.toolbar.latexPackages })).not.toBeInTheDocument();
+  });
+});
+
+describe("EditorToolbar image to LaTeX", () => {
+  it("takes any image, as before 0.4.8, and transcribes the chosen one", async () => {
+    vi.mocked(imageToLatexAvailable).mockResolvedValueOnce(true);
+    useFilesStore.setState({ engine: { ...LATEX_ENGINE, id: "latexmk" }, engineLoaded: true });
+    render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
+    const input = (await screen.findByTestId("image-to-latex-input")) as HTMLInputElement;
+    expect(input).toHaveAttribute("accept", "image/*");
+    const file = new File([new Uint8Array([1])], "board.gif", { type: "image/gif" });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(imageToLatex).toHaveBeenCalledWith(file);
   });
 });

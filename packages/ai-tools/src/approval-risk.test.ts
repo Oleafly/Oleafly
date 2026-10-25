@@ -31,8 +31,9 @@ describe("toolRisk", () => {
     }
   });
 
-  it("treats computer_use as a write so the per-action gate always runs", () => {
-    expect(toolRisk("computer_use")).toBe("write");
+  it("treats desktop_apps as a write so the Rust gate decides per action", () => {
+    expect(toolRisk("desktop_apps")).toBe("write");
+    expect(isReadOnlyTool("desktop_apps")).toBe(false);
   });
 
   it("classifies file mutations as write", () => {
@@ -212,7 +213,7 @@ describe("plan mode tool classification", () => {
       "preview_figure",
       "compile",
       "run_command",
-      "computer_use",
+      "desktop_apps",
       "toggle_theme",
       "remember_note",
       "forget_note",

@@ -6,6 +6,9 @@ import type {
 } from "@oleafly/pdf-to-latex";
 import { convertPages } from "@oleafly/pdf-to-latex";
 import { create } from "zustand";
+import type { ConverterProgress } from "@/features/ad-hoc-converters";
+import type { TranscriptionModelInfo } from "@/features/tools-ai/transcribe";
+import { describeError } from "@/lib/app-error";
 import { useHomeViewStore } from "@/store/home-view";
 
 let scanController: AbortController | null = null;
@@ -19,6 +22,10 @@ interface ImportState {
   figures: ExtractedFigure[];
   result: ConvertResult | null;
   scanTranscribed: boolean;
+  /** The Tools model that transcribed the scan, and where the pages went. */
+  scanModel: TranscriptionModelInfo | null;
+  /** How far a running scan transcription is; null when none runs. */
+  scanProgress: ConverterProgress | null;
   busy: boolean;
   error: string | null;
   view: "preview" | "source" | "split";
@@ -26,6 +33,8 @@ interface ImportState {
   openWithPdf: (bytes: Uint8Array, fileName: string) => Promise<void>;
   rerun: (options: ConvertOptions) => void;
   transcribeScan: () => Promise<void>;
+  /** Stops a running scan transcription and keeps the PDF open. */
+  cancelScan: () => void;
   setView: (v: "preview" | "source" | "split") => void;
   close: () => void;
 }
@@ -39,6 +48,8 @@ export const useImportStore = create<ImportState>((set, get) => ({
   figures: [],
   result: null,
   scanTranscribed: false,
+  scanModel: null,
+  scanProgress: null,
   busy: false,
   error: null,
   view: "split",
@@ -57,6 +68,8 @@ export const useImportStore = create<ImportState>((set, get) => ({
       pdfBytes: bytes,
       result: null,
       scanTranscribed: false,
+      scanModel: null,
+      scanProgress: null,
       pages: [],
       figures: [],
       options: {},
@@ -81,42 +94,70 @@ export const useImportStore = create<ImportState>((set, get) => ({
       options,
       result: convertPages(pages, options),
       scanTranscribed: false,
+      scanModel: null,
+      scanProgress: null,
       busy: false,
       error: null,
     }));
   },
   transcribeScan: async () => {
-    const { pdfBytes, result, requestGeneration, busy } = get();
+    const { pdfBytes, result, requestGeneration, busy, pages, options } = get();
     if (!pdfBytes || !result?.report.likelyScanned || busy) return;
     const controller = new AbortController();
     scanController = controller;
-    set({ busy: true, error: null });
+    set({ busy: true, error: null, scanProgress: { step: "readingPages" } });
+    const current = () =>
+      !controller.signal.aborted && get().open && get().requestGeneration === requestGeneration;
     try {
-      const { transcribePdfPages } = await import("@/features/ad-hoc-converters");
-      const tex = await transcribePdfPages(
+      const [{ selectedPages }, { transcribePdfPages }] = await Promise.all([
+        import("@/features/tools-ai/scan-estimate"),
+        import("@/features/ad-hoc-converters"),
+      ]);
+      // The pages the conversion shows: the chosen range, not the first N.
+      const numbers = selectedPages(pages.length, options.pageRange);
+      const { text, model } = await transcribePdfPages(
         pdfBytes,
-        result.report.pages,
+        numbers,
         "LaTeX",
-        undefined,
+        (progress) => {
+          if (current()) set({ scanProgress: progress });
+        },
         controller.signal,
       );
-      if (!get().open || get().requestGeneration !== requestGeneration) return;
-      set({ result: { ...result, tex }, scanTranscribed: true, busy: false });
+      if (!current()) return;
+      set({
+        result: { ...result, tex: text },
+        scanTranscribed: true,
+        scanModel: model,
+        scanProgress: null,
+        busy: false,
+      });
     } catch (error) {
       if (get().open && get().requestGeneration === requestGeneration) {
         set({
           busy: false,
+          scanProgress: null,
           error:
             error instanceof DOMException && error.name === "AbortError"
               ? null
-              : error instanceof Error
-                ? error.message
-                : String(error),
+              : describeError(error).replace(/^\[[a-z_]+\]\s*/, ""),
         });
       }
     } finally {
       if (scanController === controller) scanController = null;
     }
+  },
+  cancelScan: () => {
+    if (!scanController) return;
+    scanController.abort();
+    scanController = null;
+    // A new generation, so the stopped run cannot write into a later one.
+    set((state) => ({
+      requestGeneration: state.requestGeneration + 1,
+      busy: false,
+      scanProgress: null,
+      error: null,
+    }));
   },
   setView: (view) => set({ view }),
   close: () =>
@@ -132,6 +173,8 @@ export const useImportStore = create<ImportState>((set, get) => ({
         figures: [],
         result: null,
         scanTranscribed: false,
+        scanModel: null,
+        scanProgress: null,
         error: null,
       };
     }),

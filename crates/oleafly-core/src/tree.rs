@@ -58,46 +58,115 @@ pub fn slash_path(path: &Path) -> String {
         .join("/")
 }
 
+/// Visits every file of a project that is source, handing `visit` its path
+/// relative to `root` and its full path. Folders every other scan skips are
+/// not entered (`is_skipped_scan_directory`: dot folders such as `.venv` and
+/// `.idea`, `node_modules`, `target`, `build`, `out` and LaTeX's generated
+/// folders), and links are not followed.
+/// A folder below the root that can't be read (a root-owned Docker volume,
+/// say) is left out and the walk goes on; only the root failing is an error.
 pub fn walk_source_tree(
     root: &Path,
     label: &str,
     visit: &mut dyn FnMut(&Path, &Path) -> Result<()>,
 ) -> Result<()> {
-    walk(root, root, 0, label, visit)
+    let mut walk = Walk {
+        root,
+        label,
+        skip: &is_skipped_scan_directory,
+        visit,
+        unreadable: &mut |_| {},
+    };
+    walk.folder(root, 0)
 }
 
-fn walk(
+/// [`walk_source_tree`], handing `unreadable` the root-relative path of each
+/// folder it couldn't read.
+pub fn walk_source_tree_noting(
     root: &Path,
-    directory: &Path,
-    depth: usize,
     label: &str,
     visit: &mut dyn FnMut(&Path, &Path) -> Result<()>,
+    unreadable: &mut dyn FnMut(&Path),
 ) -> Result<()> {
-    if depth > MAX_DISCOVERY_DEPTH {
-        return Err(Error::new(
-            ErrorKind::InvalidInput,
-            format!("{label} exceeded the maximum directory depth"),
-        ));
-    }
-    for entry in std::fs::read_dir(directory)? {
-        let entry = entry?;
-        let file_type = entry.file_type()?;
-        if file_type.is_symlink() {
-            continue;
+    let mut walk = Walk {
+        root,
+        label,
+        skip: &is_skipped_scan_directory,
+        visit,
+        unreadable,
+    };
+    walk.folder(root, 0)
+}
+
+/// [`walk_source_tree`] with its own rule for the folders it leaves out.
+pub fn walk_tree_skipping(
+    root: &Path,
+    label: &str,
+    skip: &dyn Fn(&OsStr) -> bool,
+    visit: &mut dyn FnMut(&Path, &Path) -> Result<()>,
+) -> Result<()> {
+    let mut walk = Walk {
+        root,
+        label,
+        skip,
+        visit,
+        unreadable: &mut |_| {},
+    };
+    walk.folder(root, 0)
+}
+
+struct Walk<'a> {
+    root: &'a Path,
+    label: &'a str,
+    skip: &'a dyn Fn(&OsStr) -> bool,
+    visit: &'a mut dyn FnMut(&Path, &Path) -> Result<()>,
+    unreadable: &'a mut dyn FnMut(&Path),
+}
+
+impl Walk<'_> {
+    fn folder(&mut self, directory: &Path, depth: usize) -> Result<()> {
+        if depth > MAX_DISCOVERY_DEPTH {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!("{} exceeded the maximum directory depth", self.label),
+            ));
         }
-        let path = entry.path();
-        if file_type.is_dir() {
-            if !is_generated_directory(&entry.file_name()) {
-                walk(root, &path, depth + 1, label, visit)?;
+        let entries = match std::fs::read_dir(directory) {
+            Ok(entries) => entries,
+            Err(error) if depth == 0 => return Err(error.into()),
+            Err(_) => {
+                (self.unreadable)(directory.strip_prefix(self.root).unwrap_or(directory));
+                return Ok(());
             }
-        } else if file_type.is_file() {
-            let relative = path
-                .strip_prefix(root)
-                .map_err(|_| Error::new(ErrorKind::UnsafePath, "source escaped the workspace"))?;
-            visit(relative, &path)?;
+        };
+        for entry in entries {
+            let Ok(entry) = entry else {
+                continue;
+            };
+            let Ok(file_type) = entry.file_type() else {
+                continue;
+            };
+            if file_type.is_symlink() {
+                continue;
+            }
+            let path = entry.path();
+            if file_type.is_dir() {
+                if !(self.skip)(&entry.file_name()) {
+                    self.folder(&path, depth + 1)?;
+                }
+            } else if file_type.is_file() {
+                self.file(&path)?;
+            }
         }
+        Ok(())
     }
-    Ok(())
+
+    fn file(&mut self, path: &Path) -> Result<()> {
+        let relative = path
+            .strip_prefix(self.root)
+            .map_err(|_| Error::new(ErrorKind::UnsafePath, "source escaped the workspace"))?;
+        (self.visit)(relative, path)
+    }
 }
 
 #[cfg(test)]
@@ -123,6 +192,39 @@ mod tests {
         .unwrap();
 
         assert_eq!(seen, vec!["chapters/one.tex".to_string()]);
+    }
+
+    #[test]
+    fn walking_skips_what_every_other_scan_skips() {
+        let directory = TempDir::new().unwrap();
+        for kept in ["chapters", "figures"] {
+            std::fs::create_dir_all(directory.path().join(kept)).unwrap();
+            std::fs::write(directory.path().join(kept).join("part.tex"), "").unwrap();
+        }
+        std::fs::write(directory.path().join("main.tex"), "").unwrap();
+        // A Python environment, an IDE folder, latexmk output and LaTeX's
+        // generated folders hold files that are not the project's.
+        for skipped in [
+            ".venv/lib/site-packages/pkg",
+            ".idea",
+            "build",
+            "out",
+            "_minted-main",
+            "svg-inkscape",
+        ] {
+            std::fs::create_dir_all(directory.path().join(skipped)).unwrap();
+            std::fs::write(directory.path().join(skipped).join("foreign.tex"), "").unwrap();
+        }
+
+        let mut seen = Vec::new();
+        walk_source_tree(directory.path(), "source discovery", &mut |relative, _| {
+            seen.push(slash_path(relative));
+            Ok(())
+        })
+        .unwrap();
+        seen.sort();
+
+        assert_eq!(seen, ["chapters/part.tex", "figures/part.tex", "main.tex"]);
     }
 
     #[test]
@@ -164,6 +266,47 @@ mod tests {
         let file = directory.path().join("main.tex");
         std::fs::write(&file, "local").unwrap();
         assert!(!is_cloud_placeholder(&std::fs::metadata(&file).unwrap()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_unreadable_folder_is_noted_and_the_walk_goes_on() {
+        use std::os::unix::fs::PermissionsExt;
+        let directory = TempDir::new().unwrap();
+        std::fs::write(directory.path().join("main.tex"), "").unwrap();
+        let locked = directory.path().join("data/pg");
+        std::fs::create_dir_all(&locked).unwrap();
+        std::fs::write(locked.join("hidden.tex"), "").unwrap();
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
+        // Root reads anything; the case can't be made there.
+        if std::fs::read_dir(&locked).is_ok() {
+            std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+            return;
+        }
+        let mut seen = Vec::new();
+        let mut unreadable = Vec::new();
+        let walked = walk_source_tree_noting(
+            directory.path(),
+            "source discovery",
+            &mut |relative, _| {
+                seen.push(slash_path(relative));
+                Ok(())
+            },
+            &mut |folder| unreadable.push(slash_path(folder)),
+        );
+        let plain = walk_source_tree(directory.path(), "source discovery", &mut |_, _| Ok(()));
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+        walked.unwrap();
+        plain.unwrap();
+        assert_eq!(seen, ["main.tex"]);
+        assert_eq!(unreadable, ["data/pg"]);
+    }
+
+    #[test]
+    fn an_unreadable_root_is_still_an_error() {
+        let directory = TempDir::new().unwrap();
+        let missing = directory.path().join("missing");
+        assert!(walk_source_tree(&missing, "source discovery", &mut |_, _| Ok(())).is_err());
     }
 
     #[test]

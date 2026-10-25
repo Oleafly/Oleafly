@@ -53,19 +53,6 @@
   "branding": {
     "assistantMascot": "Oleafly AI assistant mascot"
   },
-  "browser": {
-    "address": "Search or enter a URL",
-    "back": "Back",
-    "closeTab": "Close tab",
-    "copyUrl": "Copy URL",
-    "forward": "Forward",
-    "moreOptions": "More options",
-    "newTab": "New tab",
-    "openExternal": "Open in your browser",
-    "openTabs": "Open tabs",
-    "reload": "Reload",
-    "setHomePage": "Set as home page"
-  },
   "changelog": {
     "installed": "You're on this version",
     "sectionItems_one": "{{count}} change",
@@ -464,10 +451,6 @@
       "hide": "Hide AI assistant",
       "show": "Show AI assistant"
     },
-    "browser": {
-      "close": "Close browser ({{shortcut}})",
-      "open": "Open browser ({{shortcut}})"
-    },
     "settings": "Settings",
     "sidebar": {
       "hide": "Hide sidebar ({{shortcut}})",
@@ -571,22 +554,14 @@
     "tryAgain": "Try again",
     "savedCopy": "Saved your open files to {{folder}}."
   },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub: {{login}}",
-    "actions": "GitHub actions",
-    "connect": "Connect GitHub…",
-    "connectedAs": "Connected as @{{login}}",
-    "copyRepositoryLink": "Copy repository link",
-    "openInGithub": "Open in GitHub",
-    "pushHint": "Push to GitHub to enable these",
-    "settings": "GitHub settings",
-    "tooltip": "GitHub"
-  },
   "home": {
     "ariaLabel": "Home",
     "label": "Home",
     "title": "Back to library",
     "tooltip": "Go back to project library"
+  },
+  "importDestination": {
+    "scansGoTo": "Scans go to {{provider}}"
   },
   "keys": {
     "enter": "Enter",
@@ -701,8 +676,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Your unsaved changes are kept open. Stay to fix the problem, or quit anyway and lose them.",
+      "descriptionReload": "{{reason}} Your unsaved changes are kept open. Stay to fix the problem, or reload anyway and lose them.",
       "descriptionRestart": "{{reason}} Your unsaved changes are kept open. Stay to fix the problem, or restart anyway and lose them.",
       "quitAnyway": "Quit anyway",
+      "reloadAnyway": "Reload anyway",
       "restartAnyway": "Restart anyway",
       "stay": "Stay",
       "title": "Some files could not be saved"
@@ -725,6 +702,14 @@
     "search": "Search Project",
     "sourceControl": "Source Control",
     "withShortcut": "{{label}} ({{shortcut}})"
+  },
+  "remoteMenu": {
+    "accountLabel": "{{login}} on {{host}}",
+    "actions": "Repository actions",
+    "copyRepositoryLink": "Copy repository link",
+    "openOnHost": "Open on {{host}}",
+    "settings": "Git hosting settings",
+    "signedInAs": "Signed in to {{host}} as {{login}}"
   },
   "renameDialog": {
     "close": "Close rename dialog",
@@ -773,9 +758,9 @@
         "movedCount_other": "Moved {{count}} projects to the Recycle Bin.",
         "title": "Danger zone"
       },
-      "githubHint": "Back up or sync a project across devices: connect GitHub, then use <push>Push</push> / <pull>Pull</pull> in Source Control. <setup>Set up GitHub →</setup>",
+      "gitHostingHint": "Back up or sync a project across devices: link it to a Git repository, then use <push>Push</push> / <pull>Pull</pull> in Source Control. <setup>Set up Git hosting →</setup>",
       "localFirst": "Oleafly is local-first. All projects live on your disk:",
-      "plainFolders": "Each project is a plain folder. Git history is optional, and nothing leaves your machine unless you push to GitHub.",
+      "plainFolders": "Each project is a plain folder. Git history is optional, and nothing leaves your machine unless you push it to a Git server.",
       "recycleBin": {
         "clearAll": "Clear all",
         "clearFailed": "Couldn't clear the Recycle Bin.",
@@ -848,11 +833,12 @@
         "description": "Edit projects with other people through a collaboration server that you or your group runs. Adds a Collaboration section to Settings. Off by default while in beta.",
         "label": "Live collaboration"
       },
-      "warning": "These features are experimental and still in beta. They are not fully tested yet and may change, break, or be removed in a future release. Turn them on only if you want to try work in progress.",
-      "webBrowser": {
-        "description": "Show the in-app web browser (its dock toggle and shortcut) and let the AI drive it with computer use. Off by default while in beta. When off, there is no browser button and the AI has no browser tool.",
-        "label": "Web browser"
-      }
+      "researchTasks": {
+        "description": "An agent works on its own in a copy of the project and leaves its changes for you to review. Highly unstable: runs can stall, fail or leave changes to sort out by hand, and they use your provider's quota the whole time. Adds a Research section to Settings. Turning it off stops every running task. Off by default. Turn it on at your own risk.",
+        "label": "Research tasks",
+        "saveFailed": "The research tasks switch could not be saved. Try again."
+      },
+      "warning": "These features are experimental and still in beta. They are not fully tested yet and may change, break, or be removed in a future release. Turn them on only if you want to try work in progress."
     },
     "footer": {
       "followOnX": "Follow on X",
@@ -936,7 +922,8 @@
       "general": "General",
       "help": "Help & About",
       "integrations": "Integrations",
-      "shortcuts": "Keyboard Shortcuts"
+      "shortcuts": "Keyboard Shortcuts",
+      "research": "Research"
     },
     "search": {
       "empty": "No settings match",
@@ -951,8 +938,9 @@
         "experimentation": "labs, beta, early features",
         "general": "preferences, locale, spell check, spelling, typos, offline, tours, terminal command",
         "help": "about, version, updates, changelog, what's new, documentation, support, community, Discord, license, crash report",
-        "integrations": "Zotero, GitHub, MCP, citations, accounts, connections",
-        "shortcuts": "keybindings, hotkeys, keys, keyboard"
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git hosting, desktop apps, Cua, MCP, citations, accounts, connections",
+        "shortcuts": "keybindings, hotkeys, keys, keyboard",
+        "research": "research tasks budget notifications keep awake experiments runs"
       },
       "label": "Search settings",
       "results_one": "{{count}} section matches",
@@ -1034,7 +1022,6 @@
     "commitCount_other": "{{count}} commits",
     "initialize": "Initialize Repository",
     "initialized": "Initialized Git on {{branch}}.",
-    "linkCopied": "GitHub link copied",
     "markResolved": "Mark resolved",
     "mergeNeedsAttention": "Resolve merge conflicts",
     "moreActions": "More Source Control actions",
@@ -1048,18 +1035,19 @@
     "openFile": "Open file",
     "openFileFor": "Open {{path}}",
     "popStash": "Apply latest stash",
-    "publish": "Publish to GitHub",
+    "publishRepository": "Publish…",
+    "publishTo": "Publish to {{host}}",
     "published": "Published to {{url}}",
     "pull": "Pull from origin",
     "pullShort": "Pull",
     "push": "Commit and push to origin",
     "pushShort": "Push",
     "pushSkippedNoRemote": "⚠ Skipped push - no remote origin set below.",
-    "pushSkippedNoToken": "⚠ Skipped push - no GitHub token (Settings → GitHub).",
     "refresh": "Refresh",
     "remote": "Remote",
     "remoteHint": "Create a new repo or link an existing one as this project's remote, then push.",
     "removeCredential": "Remove saved credential",
+    "repositoryLinkCopied": "Repository link copied",
     "restoreCommit": "Restore version",
     "restoreCommitDescription": "This replaces every tracked project file with this version and removes files added later. Your branch stays on its current commit.",
     "restoreCommitTitle": "Restore this version?",
@@ -1089,7 +1077,7 @@
     "titleRequired": "A commit title is required.",
     "titleRequiredStatus": "Enter a commit title before committing.",
     "unlink": "Unlink",
-    "unlinked": "Unlinked from GitHub.",
+    "unlinkedFrom": "Unlinked from {{host}}.",
     "unstage": "Unstage",
     "unstageFor": "Unstage {{path}}",
     "unstageAll": "Unstage all",

@@ -1,0 +1,675 @@
+{
+  "latex-accents": [
+    {
+      "from": 0,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `Antonín` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "Anton's"
+        },
+        {
+          "kind": "replace",
+          "text": "Anton"
+        },
+        {
+          "kind": "replace",
+          "text": "Antone"
+        }
+      ],
+      "to": 7
+    },
+    {
+      "from": 8,
+      "kind": "Spelling",
+      "message": "Did you mean `Dvorak`?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "Dvorak"
+        }
+      ],
+      "to": 14
+    },
+    {
+      "from": 21,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `složil` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "soil"
+        },
+        {
+          "kind": "replace",
+          "text": "spoil"
+        }
+      ],
+      "to": 27
+    },
+    {
+      "from": 43,
+      "kind": "WordChoice",
+      "message": "Could this be the negative word you intended?",
+      "rule": "WrongNegative",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "ind"
+        }
+      ],
+      "to": 46
+    },
+    {
+      "from": 47,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `Müller` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "Muller"
+        },
+        {
+          "kind": "replace",
+          "text": "Miller"
+        },
+        {
+          "kind": "replace",
+          "text": "Mallet"
+        }
+      ],
+      "to": 53
+    },
+    {
+      "from": 56,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `größer` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "grocer"
+        },
+        {
+          "kind": "replace",
+          "text": "grader"
+        },
+        {
+          "kind": "replace",
+          "text": "grater"
+        }
+      ],
+      "to": 62
+    },
+    {
+      "from": 69,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `Schön` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "Scan"
+        },
+        {
+          "kind": "replace",
+          "text": "Scion"
+        },
+        {
+          "kind": "replace",
+          "text": "Shin"
+        }
+      ],
+      "to": 74
+    },
+    {
+      "from": 79,
+      "kind": "WordChoice",
+      "message": "Could this be the negative word you intended?",
+      "rule": "WrongNegative",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "ind"
+        }
+      ],
+      "to": 82
+    },
+    {
+      "from": 83,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `ß` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "a"
+        },
+        {
+          "kind": "replace",
+          "text": "i"
+        },
+        {
+          "kind": "replace",
+          "text": "O"
+        }
+      ],
+      "to": 84
+    }
+  ],
+  "latex-citation-and-math": [],
+  "latex-emoji-section": [
+    {
+      "from": 33,
+      "kind": "Repetition",
+      "message": "Did you mean to repeat this word?",
+      "rule": "RepeatedWords",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "the"
+        }
+      ],
+      "to": 40
+    }
+  ],
+  "latex-german-shorthands": [
+    {
+      "from": 45,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `Größe` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "Grace"
+        },
+        {
+          "kind": "replace",
+          "text": "Grade"
+        },
+        {
+          "kind": "replace",
+          "text": "Grape"
+        }
+      ],
+      "to": 50
+    },
+    {
+      "from": 53,
+      "kind": "WordChoice",
+      "message": "Could this be the negative word you intended?",
+      "rule": "WrongNegative",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "ind"
+        }
+      ],
+      "to": 56
+    },
+    {
+      "from": 57,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `Übung` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "Bung"
+        },
+        {
+          "kind": "replace",
+          "text": "Bang"
+        },
+        {
+          "kind": "replace",
+          "text": "Bong"
+        }
+      ],
+      "to": 62
+    }
+  ],
+  "latex-index-and-cite-adjacent": [],
+  "latex-inline-math": [],
+  "latex-masked-equation": [],
+  "latex-optional-key-values": [],
+  "latex-preamble-and-body": [
+    {
+      "from": 72,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `typpo` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "typo"
+        },
+        {
+          "kind": "replace",
+          "text": "tempo"
+        },
+        {
+          "kind": "replace",
+          "text": "type"
+        }
+      ],
+      "to": 77
+    }
+  ],
+  "latex-verbatim-and-url": [],
+  "markdown-attributes-and-footnotes": [],
+  "markdown-citations": [],
+  "markdown-code-links-math": [],
+  "markdown-emails": [
+    {
+      "from": 0,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `Napište` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "Naive"
+        },
+        {
+          "kind": "replace",
+          "text": "Nape"
+        },
+        {
+          "kind": "replace",
+          "text": "Native"
+        }
+      ],
+      "to": 7
+    },
+    {
+      "from": 8,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `na` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "nag"
+        },
+        {
+          "kind": "replace",
+          "text": "nap"
+        },
+        {
+          "kind": "replace",
+          "text": "nay"
+        }
+      ],
+      "to": 10
+    },
+    {
+      "from": 11,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `nebo` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "near"
+        },
+        {
+          "kind": "replace",
+          "text": "neat"
+        },
+        {
+          "kind": "replace",
+          "text": "neck"
+        }
+      ],
+      "to": 15
+    },
+    {
+      "from": 18,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `dnes` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "dens"
+        },
+        {
+          "kind": "replace",
+          "text": "dies"
+        },
+        {
+          "kind": "replace",
+          "text": "dines"
+        }
+      ],
+      "to": 22
+    }
+  ],
+  "markdown-emoji-and-currency": [
+    {
+      "from": 20,
+      "kind": "Repetition",
+      "message": "Did you mean to repeat this word?",
+      "rule": "RepeatedWords",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "the"
+        }
+      ],
+      "to": 27
+    }
+  ],
+  "markdown-front-matter-and-html": [],
+  "markdown-spacing": [
+    {
+      "from": 25,
+      "kind": "Repetition",
+      "message": "Did you mean to repeat this word?",
+      "rule": "RepeatedWords",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "the"
+        }
+      ],
+      "to": 32
+    }
+  ],
+  "typst-cite-call-and-emoji": [
+    {
+      "from": 38,
+      "kind": "Repetition",
+      "message": "Did you mean to repeat this word?",
+      "rule": "RepeatedWords",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "the"
+        }
+      ],
+      "to": 45
+    }
+  ],
+  "typst-code-and-content": [
+    {
+      "from": 32,
+      "kind": "Repetition",
+      "message": "Did you mean to repeat this word?",
+      "rule": "RepeatedWords",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "the"
+        }
+      ],
+      "to": 40
+    },
+    {
+      "from": 91,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `captoin` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "captain"
+        },
+        {
+          "kind": "replace",
+          "text": "caption"
+        },
+        {
+          "kind": "replace",
+          "text": "canton"
+        }
+      ],
+      "to": 98
+    }
+  ],
+  "typst-emails-and-refs": [
+    {
+      "from": 0,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `Napište` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "Naive"
+        },
+        {
+          "kind": "replace",
+          "text": "Nape"
+        },
+        {
+          "kind": "replace",
+          "text": "Native"
+        }
+      ],
+      "to": 7
+    },
+    {
+      "from": 8,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `na` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "nag"
+        },
+        {
+          "kind": "replace",
+          "text": "nap"
+        },
+        {
+          "kind": "replace",
+          "text": "nay"
+        }
+      ],
+      "to": 10
+    },
+    {
+      "from": 27,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `nebo` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "near"
+        },
+        {
+          "kind": "replace",
+          "text": "neat"
+        },
+        {
+          "kind": "replace",
+          "text": "neck"
+        }
+      ],
+      "to": 31
+    },
+    {
+      "from": 49,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `dnes` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "dens"
+        },
+        {
+          "kind": "replace",
+          "text": "dies"
+        },
+        {
+          "kind": "replace",
+          "text": "dines"
+        }
+      ],
+      "to": 53
+    }
+  ],
+  "typst-math-and-references": [],
+  "typst-raw-labels-links": [
+    {
+      "from": 28,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `pak` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "pa"
+        },
+        {
+          "kind": "replace",
+          "text": "pack"
+        },
+        {
+          "kind": "replace",
+          "text": "pad"
+        }
+      ],
+      "to": 31
+    },
+    {
+      "from": 32,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `chiba` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "china"
+        },
+        {
+          "kind": "replace",
+          "text": "Chiba"
+        },
+        {
+          "kind": "replace",
+          "text": "chi's"
+        }
+      ],
+      "to": 37
+    },
+    {
+      "from": 38,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `tady` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "tad"
+        },
+        {
+          "kind": "replace",
+          "text": "tidy"
+        },
+        {
+          "kind": "replace",
+          "text": "tads"
+        }
+      ],
+      "to": 42
+    }
+  ],
+  "typst-unicode-escape": [
+    {
+      "from": 0,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `Un` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "Uh"
+        },
+        {
+          "kind": "replace",
+          "text": "Um"
+        },
+        {
+          "kind": "replace",
+          "text": "Up"
+        }
+      ],
+      "to": 2
+    },
+    {
+      "from": 13,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `au` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "a"
+        },
+        {
+          "kind": "replace",
+          "text": "ab"
+        },
+        {
+          "kind": "replace",
+          "text": "ac"
+        }
+      ],
+      "to": 15
+    },
+    {
+      "from": 16,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `lait` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "laid"
+        },
+        {
+          "kind": "replace",
+          "text": "lain"
+        },
+        {
+          "kind": "replace",
+          "text": "lair"
+        }
+      ],
+      "to": 20
+    },
+    {
+      "from": 21,
+      "kind": "Spelling",
+      "message": "Did you mean to spell `noir` this way?",
+      "rule": "SpellCheck",
+      "suggestions": [
+        {
+          "kind": "replace",
+          "text": "nor"
+        },
+        {
+          "kind": "replace",
+          "text": "no's"
+        },
+        {
+          "kind": "replace",
+          "text": "nail"
+        }
+      ],
+      "to": 25
+    }
+  ]
+}

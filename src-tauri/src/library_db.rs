@@ -14,7 +14,7 @@ fn db_path(root: &Path) -> PathBuf {
     root.join("library.db")
 }
 
-const SCHEMA_VERSION: i64 = 2;
+const SCHEMA_VERSION: i64 = 3;
 
 pub fn open(root: &Path) -> Result<Connection, String> {
     std::fs::create_dir_all(root).map_err(|e| format!("failed to create data dir: {e}"))?;
@@ -111,6 +111,7 @@ fn ensure_schema(conn: &Connection) -> Result<(), String> {
         CREATE INDEX IF NOT EXISTS usage_records_provider_time ON usage_records(provider_id, occurred_at_ms);
         CREATE INDEX IF NOT EXISTS usage_records_model_time ON usage_records(model_id, occurred_at_ms);
         CREATE INDEX IF NOT EXISTS usage_records_session_time ON usage_records(session_id, occurred_at_ms);
+        CREATE INDEX IF NOT EXISTS usage_records_task ON usage_records(task_id);
         CREATE TABLE IF NOT EXISTS library_migrations (
             name TEXT PRIMARY KEY,
             applied_at_ms INTEGER NOT NULL
@@ -252,6 +253,44 @@ fn chat_text(chat: &serde_json::Value) -> (String, String, String) {
     (chat_id, title, content)
 }
 
+/// Deletes every row of one project from the store and the session index.
+fn clear_project_rows(conn: &Connection, project_id: &str) -> Result<(), String> {
+    conn.execute("DELETE FROM chats WHERE project_id = ?1", [project_id])
+        .map_err(|e| format!("library chats delete failed: {e}"))?;
+    conn.execute(
+        "DELETE FROM session_index WHERE project_id = ?1",
+        [project_id],
+    )
+    .map_err(|e| format!("library index delete failed: {e}"))?;
+    Ok(())
+}
+
+/// Adds one chat's rows to the store and the session index. A chat without
+/// an id is left out (`false`).
+fn insert_chat_rows(
+    conn: &Connection,
+    project_id: &str,
+    chat: &serde_json::Value,
+) -> Result<bool, String> {
+    let (chat_id, title, content) = chat_text(chat);
+    if chat_id.is_empty() {
+        return Ok(false);
+    }
+    conn.execute(
+        "INSERT INTO chats (project_id, chat_id, title, json, updated_at_ms)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        rusqlite::params![project_id, chat_id, title, chat.to_string(), now_ms()],
+    )
+    .map_err(|e| format!("library chat insert failed: {e}"))?;
+    conn.execute(
+        "INSERT INTO session_index (project_id, chat_id, title, content)
+         VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![project_id, chat_id, title, content],
+    )
+    .map_err(|e| format!("library index insert failed: {e}"))?;
+    Ok(true)
+}
+
 /// Mirrors one project's chats JSON into the store and rebuilds its rows in
 /// the session index.
 pub fn index_project_chats(root: &Path, project_id: &str, json: &str) -> Result<(), String> {
@@ -262,55 +301,191 @@ pub fn index_project_chats(root: &Path, project_id: &str, json: &str) -> Result<
     let tx = conn
         .transaction()
         .map_err(|e| format!("library tx failed: {e}"))?;
-    tx.execute("DELETE FROM chats WHERE project_id = ?1", [project_id])
-        .map_err(|e| format!("library chats delete failed: {e}"))?;
-    tx.execute(
-        "DELETE FROM session_index WHERE project_id = ?1",
-        [project_id],
-    )
-    .map_err(|e| format!("library index delete failed: {e}"))?;
+    clear_project_rows(&tx, project_id)?;
     for chat in &chats {
-        let (chat_id, title, content) = chat_text(chat);
-        if chat_id.is_empty() {
-            continue;
-        }
-        tx.execute(
-            "INSERT INTO chats (project_id, chat_id, title, json, updated_at_ms)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
-            rusqlite::params![project_id, chat_id, title, chat.to_string(), now_ms()],
-        )
-        .map_err(|e| format!("library chat insert failed: {e}"))?;
-        tx.execute(
-            "INSERT INTO session_index (project_id, chat_id, title, content)
-             VALUES (?1, ?2, ?3, ?4)",
-            rusqlite::params![project_id, chat_id, title, content],
-        )
-        .map_err(|e| format!("library index insert failed: {e}"))?;
+        insert_chat_rows(&tx, project_id, chat)?;
     }
     tx.commit()
         .map_err(|e| format!("library commit failed: {e}"))
 }
 
-/// First-run (or recovery) indexing of every chats/<project>.json on disk.
+/// Replaces one chat's rows in the store and the session index.
+pub fn index_chat(root: &Path, project_id: &str, chat: &serde_json::Value) -> Result<(), String> {
+    let (chat_id, _, _) = chat_text(chat);
+    if chat_id.is_empty() {
+        return Err("chat has no id".into());
+    }
+    let mut conn = open(root)?;
+    let tx = conn
+        .transaction()
+        .map_err(|e| format!("library tx failed: {e}"))?;
+    tx.execute(
+        "DELETE FROM chats WHERE project_id = ?1 AND chat_id = ?2",
+        [project_id, chat_id.as_str()],
+    )
+    .map_err(|e| format!("library chats delete failed: {e}"))?;
+    tx.execute(
+        "DELETE FROM session_index WHERE project_id = ?1 AND chat_id = ?2",
+        [project_id, chat_id.as_str()],
+    )
+    .map_err(|e| format!("library index delete failed: {e}"))?;
+    insert_chat_rows(&tx, project_id, chat)?;
+    tx.commit()
+        .map_err(|e| format!("library commit failed: {e}"))
+}
+
+/// Removes one chat's rows from the store and the session index.
+pub fn drop_chat(root: &Path, project_id: &str, chat_id: &str) -> Result<(), String> {
+    let mut conn = open(root)?;
+    let tx = conn
+        .transaction()
+        .map_err(|e| format!("library tx failed: {e}"))?;
+    tx.execute(
+        "DELETE FROM chats WHERE project_id = ?1 AND chat_id = ?2",
+        [project_id, chat_id],
+    )
+    .map_err(|e| format!("library chats delete failed: {e}"))?;
+    tx.execute(
+        "DELETE FROM session_index WHERE project_id = ?1 AND chat_id = ?2",
+        [project_id, chat_id],
+    )
+    .map_err(|e| format!("library index delete failed: {e}"))?;
+    tx.commit()
+        .map_err(|e| format!("library commit failed: {e}"))
+}
+
+/// The `chat_id` of a row in `chats` that records a project's rows were
+/// built from its chats on disk, so later launches leave the project be.
+/// 0.4.7 rebuilds a project's rows from its legacy file after a downgrade,
+/// deleting every row of the project first, this one too: such a project is
+/// indexed again. A new name here indexes every project again. Chat ids
+/// never start with a dot.
+const INDEXED_MARK: &str = ".indexed-v1";
+
+/// The projects whose rows were built from their chats on disk.
+fn indexed_projects(conn: &Connection) -> Result<std::collections::HashSet<String>, String> {
+    let mut statement = conn
+        .prepare("SELECT project_id FROM chats WHERE chat_id = ?1")
+        .map_err(|e| format!("library index check failed: {e}"))?;
+    let rows = statement
+        .query_map([INDEXED_MARK], |row| row.get::<_, String>(0))
+        .map_err(|e| format!("library index check failed: {e}"))?;
+    let mut projects = std::collections::HashSet::new();
+    for row in rows {
+        projects.insert(row.map_err(|e| format!("library index check failed: {e}"))?);
+    }
+    Ok(projects)
+}
+
+/// Where a project's chats are on disk.
+enum ChatSource {
+    /// `chats/<project>/`, one file per chat.
+    Folder(PathBuf),
+    /// `chats/<project>.json`, a project 0.4.8 has not opened yet.
+    Legacy(PathBuf),
+}
+
+/// Rebuilds one project's rows from its chats on disk in one transaction,
+/// and marks the project indexed. Returns what it counts as indexed: each
+/// chat file of a folder, or a legacy file as one.
+fn reindex_project(
+    conn: &mut Connection,
+    project_id: &str,
+    source: &ChatSource,
+) -> Result<usize, String> {
+    let tx = conn
+        .transaction()
+        .map_err(|e| format!("library tx failed: {e}"))?;
+    clear_project_rows(&tx, project_id)?;
+    let mut indexed = 0;
+    match source {
+        ChatSource::Folder(folder) => {
+            let chats = std::fs::read_dir(folder)
+                .map_err(|e| format!("failed to read the chats folder: {e}"))?;
+            for chat in chats.flatten() {
+                let chat_path = chat.path();
+                let hidden = chat_path
+                    .file_name()
+                    .and_then(std::ffi::OsStr::to_str)
+                    .is_none_or(|name| name.starts_with('.'));
+                if hidden || chat_path.extension().and_then(std::ffi::OsStr::to_str) != Some("json")
+                {
+                    continue;
+                }
+                let Some(value) = std::fs::read_to_string(&chat_path)
+                    .ok()
+                    .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
+                else {
+                    continue;
+                };
+                if insert_chat_rows(&tx, project_id, &value)? {
+                    indexed += 1;
+                }
+            }
+        }
+        ChatSource::Legacy(file) => {
+            let json = std::fs::read_to_string(file)
+                .map_err(|e| format!("failed to read the chats file: {e}"))?;
+            let parsed: serde_json::Value =
+                serde_json::from_str(&json).map_err(|e| format!("chats json invalid: {e}"))?;
+            for chat in parsed.as_array().map(Vec::as_slice).unwrap_or_default() {
+                insert_chat_rows(&tx, project_id, chat)?;
+            }
+            indexed = 1;
+        }
+    }
+    tx.execute(
+        "INSERT INTO chats (project_id, chat_id, title, json, updated_at_ms)
+         VALUES (?1, ?2, '', '', ?3)",
+        rusqlite::params![project_id, INDEXED_MARK, now_ms()],
+    )
+    .map_err(|e| format!("library index mark failed: {e}"))?;
+    tx.commit()
+        .map_err(|e| format!("library commit failed: {e}"))?;
+    Ok(indexed)
+}
+
+/// Indexes the chats on disk of every project whose rows were not built from
+/// them yet: all of them in a new or rebuilt database, after that only new
+/// projects and those 0.4.7 re-indexed. A project's per-chat folder
+/// `chats/<project>/<chat>.json` (full bodies, so search covers chats the
+/// webview loads as stubs) is canonical once it exists, and the legacy
+/// `chats/<project>.json` that 0.4.8 leaves beside it is not read; a legacy
+/// file without a folder is indexed as it is. One connection, and one
+/// transaction per project.
 pub fn reindex_all(root: &Path) -> Result<usize, String> {
     let chats_dir = root.join("chats");
     let Ok(entries) = std::fs::read_dir(&chats_dir) else {
         return Ok(0);
     };
+    let mut conn = open(root)?;
+    let done = indexed_projects(&conn)?;
     let mut indexed = 0;
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.extension().and_then(std::ffi::OsStr::to_str) != Some("json") {
+        let (project_id, source) = if path.is_dir() {
+            let Some(project_id) = path.file_name().and_then(std::ffi::OsStr::to_str) else {
+                continue;
+            };
+            (project_id.to_owned(), ChatSource::Folder(path.clone()))
+        } else if path.extension().and_then(std::ffi::OsStr::to_str) == Some("json") {
+            let Some(project_id) = path.file_stem().and_then(std::ffi::OsStr::to_str) else {
+                continue;
+            };
+            if chats_dir.join(project_id).is_dir() {
+                continue;
+            }
+            (project_id.to_owned(), ChatSource::Legacy(path.clone()))
+        } else {
+            continue;
+        };
+        if done.contains(&project_id) || crate::paths::validate_project_id(&project_id).is_err() {
             continue;
         }
-        let Some(project_id) = path.file_stem().and_then(std::ffi::OsStr::to_str) else {
-            continue;
-        };
-        let Ok(json) = std::fs::read_to_string(&path) else {
-            continue;
-        };
-        if index_project_chats(root, project_id, &json).is_ok() {
-            indexed += 1;
+        // One project that cannot be read leaves the others be; it is tried
+        // again on the next launch.
+        if let Ok(count) = reindex_project(&mut conn, &project_id, &source) {
+            indexed += count;
         }
     }
     Ok(indexed)
@@ -445,6 +620,26 @@ pub fn usage_totals(root: &Path, project_id: &str) -> Result<UsageTotals, String
         },
     )
     .map_err(|e| format!("usage totals failed: {e}"))
+}
+
+/// What a research task's model calls cost so far, with the same parent
+/// dedupe as [`usage_totals`]; `None` when no record carries a cost.
+pub fn task_usage_cost(root: &Path, task_id: &str) -> Result<Option<f64>, String> {
+    let conn = open(root)?;
+    conn.query_row(
+        "SELECT SUM(estimated_cost_usd)
+         FROM usage_records u
+         WHERE task_id = ?1
+           AND estimated_cost_usd IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM usage_records parent
+               WHERE parent.record_key = u.parent_record_key
+                 AND parent.aggregation_scope = 'includes_children'
+           )",
+        [task_id],
+        |row| row.get::<_, Option<f64>>(0),
+    )
+    .map_err(|e| format!("task usage failed: {e}"))
 }
 
 pub fn budget_get(root: &Path, project_id: &str) -> Result<Option<f64>, String> {
@@ -772,6 +967,41 @@ mod tests {
             {"role":"user","content":"draw a tikz diagram"}]}
     ]"#;
 
+    /// The indexes `usage_records` has.
+    fn usage_indexes(conn: &Connection) -> Vec<String> {
+        let mut statement = conn.prepare("PRAGMA index_list(usage_records)").unwrap();
+        statement
+            .query_map([], |row| row.get::<_, String>(1))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap()
+    }
+
+    #[test]
+    fn a_task_spend_lookup_uses_an_index_on_new_and_existing_libraries() {
+        let root = temp_root("task-index");
+        let conn = open(&root).unwrap();
+        assert!(usage_indexes(&conn).contains(&"usage_records_task".to_string()));
+        // A library from before the index: same schema version 2, no index.
+        conn.execute_batch("DROP INDEX usage_records_task;")
+            .unwrap();
+        conn.pragma_update(None, "user_version", 2).unwrap();
+        drop(conn);
+        let conn = open(&root).unwrap();
+        assert!(usage_indexes(&conn).contains(&"usage_records_task".to_string()));
+        let plan: String = conn
+            .query_row(
+                "EXPLAIN QUERY PLAN SELECT SUM(estimated_cost_usd) FROM usage_records \
+                 WHERE task_id = 'task-1'",
+                [],
+                |row| row.get(3),
+            )
+            .unwrap();
+        assert!(plan.contains("usage_records_task"), "{plan}");
+        drop(conn);
+        std::fs::remove_dir_all(&root).ok();
+    }
+
     #[test]
     fn indexes_and_finds_chats_by_content() {
         let root = temp_root("fts");
@@ -813,6 +1043,100 @@ mod tests {
         assert_eq!(reindex_all(&root).unwrap(), 1);
         assert_eq!(search_chats(&root, "bibfile", 10).unwrap().len(), 1);
         std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn index_chat_replaces_only_that_chats_rows() {
+        let root = tempfile::tempdir().unwrap();
+        index_project_chats(root.path(), "proj", CHATS).unwrap();
+        index_chat(
+            root.path(),
+            "proj",
+            &serde_json::json!({"id":"chat-1","title":"Bib fixes","messages":[
+                {"role":"user","content":"natbib question"}]}),
+        )
+        .unwrap();
+        assert!(search_chats(root.path(), "bibfile", 10).unwrap().is_empty());
+        assert_eq!(search_chats(root.path(), "natbib", 10).unwrap().len(), 1);
+        assert_eq!(search_chats(root.path(), "tikz", 10).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn drop_chat_removes_its_rows() {
+        let root = tempfile::tempdir().unwrap();
+        index_project_chats(root.path(), "proj", CHATS).unwrap();
+        drop_chat(root.path(), "proj", "chat-2").unwrap();
+        assert!(search_chats(root.path(), "tikz", 10).unwrap().is_empty());
+        assert_eq!(search_chats(root.path(), "bibfile", 10).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn reindex_all_reads_per_chat_folders() {
+        let root = tempfile::tempdir().unwrap();
+        let folder = root.path().join("chats").join("proj-a");
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(
+            folder.join("chat-1.json"),
+            r#"{"id":"chat-1","title":"Bib","messages":[{"role":"user","content":"fix my bibfile"}]}"#,
+        )
+        .unwrap();
+        std::fs::write(folder.join(".chat-1.json.1.1.tmp"), "{}").unwrap();
+        std::fs::write(folder.join("broken.json"), "{oops").unwrap();
+        assert_eq!(reindex_all(root.path()).unwrap(), 1);
+        assert_eq!(search_chats(root.path(), "bibfile", 10).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_projects_chat_folder_wins_over_the_legacy_file_left_beside_it() {
+        let root = tempfile::tempdir().unwrap();
+        let chats = root.path().join("chats");
+        let folder = chats.join("proj-a");
+        std::fs::create_dir_all(&folder).unwrap();
+        // 0.4.7's array: chat-1 as it was, and chat-2, deleted since in 0.4.8.
+        std::fs::write(chats.join("proj-a.json"), CHATS).unwrap();
+        std::fs::write(
+            folder.join("chat-1.json"),
+            r#"{"id":"chat-1","title":"Bib fixes","messages":[{"role":"user","content":"fix my bibfile"}]}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            folder.join("chat-9.json"),
+            r#"{"id":"chat-9","title":"New","messages":[{"role":"user","content":"a synctex question"}]}"#,
+        )
+        .unwrap();
+        assert_eq!(reindex_all(root.path()).unwrap(), 2);
+        // Whatever order the folder and the file are listed in.
+        assert_eq!(search_chats(root.path(), "synctex", 10).unwrap().len(), 1);
+        assert!(search_chats(root.path(), "tikz", 10).unwrap().is_empty());
+        assert_eq!(search_chats(root.path(), "bibfile", 10).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn later_launches_skip_indexed_projects_until_0_4_7_rebuilds_their_rows() {
+        let root = tempfile::tempdir().unwrap();
+        let folder = root.path().join("chats").join("proj-a");
+        std::fs::create_dir_all(&folder).unwrap();
+        let chat = folder.join("chat-1.json");
+        std::fs::write(
+            &chat,
+            r#"{"id":"chat-1","title":"Bib","messages":[{"role":"user","content":"fix my bibfile"}]}"#,
+        )
+        .unwrap();
+        assert_eq!(reindex_all(root.path()).unwrap(), 1);
+        // The next launch does not read the project's files again.
+        std::fs::write(
+            &chat,
+            r#"{"id":"chat-1","title":"Bib","messages":[{"role":"user","content":"natbib now"}]}"#,
+        )
+        .unwrap();
+        assert_eq!(reindex_all(root.path()).unwrap(), 0);
+        assert!(search_chats(root.path(), "natbib", 10).unwrap().is_empty());
+        // 0.4.7, after a downgrade, rebuilt the project's rows from its
+        // legacy file: the project is indexed again from its folder.
+        index_project_chats(root.path(), "proj-a", "[]").unwrap();
+        assert_eq!(reindex_all(root.path()).unwrap(), 1);
+        assert_eq!(search_chats(root.path(), "natbib", 10).unwrap().len(), 1);
+        assert!(search_chats(root.path(), "bibfile", 10).unwrap().is_empty());
     }
 
     #[test]
@@ -863,13 +1187,11 @@ mod tests {
         use oleafly_agent::event::AgentEvent;
         let mut recorder = oleafly_agent::items::TurnRecorder::new(turn_id);
         recorder.record(&AgentEvent::TextDelta { text: text.into() });
-        recorder.record(&AgentEvent::Usage {
-            usage: oleafly_agent::Usage {
-                input,
-                output,
-                ..oleafly_agent::Usage::default()
-            },
-        });
+        recorder.record(&AgentEvent::usage(oleafly_agent::Usage {
+            input,
+            output,
+            ..oleafly_agent::Usage::default()
+        }));
         recorder.finish(false);
         recorder.into_record()
     }

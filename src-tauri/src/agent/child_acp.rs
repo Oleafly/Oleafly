@@ -91,6 +91,7 @@ impl AcpChild {
                         task_id: None,
                         owner: Some(self.owner.clone()),
                         allowed_paths: None,
+                        task_commands: None,
                     },
                     servers,
                 )
@@ -107,7 +108,11 @@ impl AcpChild {
             )
             .await?;
         if let Some(model) = &self.model_id {
-            self.runtime.set_model(&snapshot.session.id, model).await?;
+            let choice = self
+                .runtime
+                .select_model_if_offered(&snapshot.session.id, model)
+                .await?;
+            asked_model_offered(choice, &self.agent_id, model)?;
         }
         Ok(snapshot.session.id)
     }
@@ -234,6 +239,22 @@ fn event_activity(event: &crate::acp::AcpEvent) -> Option<(&'static str, Option<
         "permission_resolved" => ("tool", Some(resolved_detail(&event.data))),
         _ => return None,
     })
+}
+
+/// A delegated agent asked for a model it does not offer fails, rather than
+/// running on the agent's own default: the parent asked for that model.
+fn asked_model_offered(
+    choice: crate::acp::ModelChoice,
+    agent_id: &str,
+    model: &str,
+) -> Result<(), String> {
+    if choice == crate::acp::ModelChoice::NotOffered {
+        return Err(format!(
+            "The {agent_id} agent does not offer the model {}. Leave modelId out to use its own model, or choose one it offers.",
+            model.trim()
+        ));
+    }
+    Ok(())
 }
 
 /// The helper's activity line for a request a deny rule refused, in the app's

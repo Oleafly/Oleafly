@@ -1,0 +1,12 @@
+{
+  "mainDocument": "main.tex",
+  "cases": [
+    {
+      "name": "generic",
+      "sourceProfile": "latex",
+      "engine": "xelatex",
+      "profile": null,
+      "anonymousReview": false
+    }
+  ]
+}

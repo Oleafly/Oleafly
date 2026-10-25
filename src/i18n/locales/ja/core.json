@@ -180,7 +180,8 @@
   },
   "imageToLatex": {
     "failed": "画像から LaTeX への変換に失敗しました: {{detail}}",
-    "transcribing": "画像を文字起こししています…"
+    "transcribing": "画像を文字起こししています…",
+    "notInserted": "アクティブなファイルが変わったため、LaTeX は挿入されませんでした。コピーして、入れたい場所に貼り付けてください。"
   },
   "import": {
     "chooseOfferedProjectType": "このファイルで選べるプロジェクトの種類から 1 つ選んでください。",
@@ -567,7 +568,8 @@
       "compileFailed": "コンパイルに失敗しました",
       "compileSucceeded": "コンパイルに成功しました",
       "diagnostics_other": "{{count}} 件の診断",
-      "papers_other": "{{count}} 件の論文"
+      "papers_other": "{{count}} 件の論文",
+      "sourcesFailed_other": "{{count}} 件のソースが失敗"
     }
   },
   "ui": {
@@ -585,6 +587,8 @@
     "saveReason": "プロジェクトフォルダを使用できません"
   },
   "imageToTypst": {
-    "failed": "画像から Typst への変換に失敗しました: {{detail}}"
+    "failed": "画像から Typst への変換に失敗しました: {{detail}}",
+    "copied": "Typst のソースをコピーしました",
+    "notInserted": "アクティブなファイルが変わったため、Typst は挿入されませんでした。コピーして、入れたい場所に貼り付けてください。"
   }
 }

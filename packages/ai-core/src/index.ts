@@ -6,3 +6,8 @@ export * from "./thread-items";
 export * from "./item-views";
 export * from "./delta-queues";
 export * from "./usage";
+export * from "./effort";
+export * from "./stop-reason";
+export * from "./web";
+export * from "./attachments";
+export * from "./credit";

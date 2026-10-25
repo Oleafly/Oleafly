@@ -926,15 +926,98 @@ fn the_msi_removes_only_this_installs_verbs_and_keeps_them_across_upgrades() {
         assert_eq!(command.attribute("Before"), Some(action));
         assert_eq!(command.attribute("Sequence"), Some("execute"));
     }
-    for name in ["RegistrySearch", "CustomAction", "Custom"] {
-        assert_eq!(
-            elements
-                .iter()
-                .filter(|element| element.name == name)
-                .count(),
-            explorer_menu::VERB_KEYS.len(),
-            "{name}"
-        );
+    // One search, one removal action and one scheduled step per verb; the
+    // helper and command-line-tool steps below are counted separately.
+    let verb_searches = elements
+        .iter()
+        .filter(|element| {
+            element.name == "RegistrySearch"
+                && element
+                    .attribute("Key")
+                    .is_some_and(|key| key.ends_with(r"\command"))
+        })
+        .count();
+    let verb_actions = elements
+        .iter()
+        .filter(|element| {
+            element.name == "CustomAction"
+                && element
+                    .attribute("Id")
+                    .is_some_and(|id| id.ends_with("Verb"))
+        })
+        .count();
+    let verb_steps = elements
+        .iter()
+        .filter(|element| {
+            element.name == "Custom"
+                && element
+                    .attribute("Action")
+                    .is_some_and(|action| action.ends_with("Verb"))
+        })
+        .count();
+    assert_eq!(
+        verb_searches,
+        explorer_menu::VERB_KEYS.len(),
+        "RegistrySearch"
+    );
+    assert_eq!(verb_actions, explorer_menu::VERB_KEYS.len(), "CustomAction");
+    assert_eq!(verb_steps, explorer_menu::VERB_KEYS.len(), "Custom");
+
+    // The background helper is stopped before an upgrade or removal touches
+    // any file, the terminal command goes only on a full uninstall, and the
+    // helper's sign-in entry goes only when it points at this installation.
+    let stop = elements
+        .iter()
+        .find(|element| {
+            element.name == "Custom" && element.attribute("Action") == Some("StopOleaflyHelper")
+        })
+        .unwrap_or_else(|| panic!("no Custom runs StopOleaflyHelper"));
+    assert_eq!(stop.attribute("Before"), Some("RemoveExistingProducts"));
+    assert_eq!(stop.text, "Installed OR WIX_UPGRADE_DETECTED");
+    let stop_command = element("SetProperty", "StopOleaflyHelper");
+    assert!(stop_command
+        .attribute("Value")
+        .is_some_and(|value| value.contains("daemon stop --wait 60 --force")));
+
+    let remove_tool = elements
+        .iter()
+        .find(|element| {
+            element.name == "Custom"
+                && element.attribute("Action") == Some("RemoveOleaflyCommandLineTool")
+        })
+        .unwrap_or_else(|| panic!("no Custom runs RemoveOleaflyCommandLineTool"));
+    assert_eq!(remove_tool.attribute("Before"), Some("RemoveFiles"));
+    assert_eq!(
+        remove_tool.text,
+        r#"REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE"#
+    );
+
+    let run_search = element("RegistrySearch", "OleaflyBackgroundRunSearch");
+    assert_eq!(
+        run_search.attribute("Key"),
+        Some(r"Software\Microsoft\Windows\CurrentVersion\Run")
+    );
+    assert_eq!(run_search.attribute("Name"), Some("OleaflyBackground"));
+    let remove_run = elements
+        .iter()
+        .find(|element| {
+            element.name == "Custom"
+                && element.attribute("Action") == Some("RemoveOleaflyBackgroundRun")
+        })
+        .unwrap_or_else(|| panic!("no Custom runs RemoveOleaflyBackgroundRun"));
+    assert_eq!(remove_run.attribute("Before"), Some("InstallFinalize"));
+    assert!(remove_run
+        .text
+        .contains("OLEAFLY_BACKGROUND_RUN ~<< OLEAFLY_INSTALL_PREFIX"));
+    for id in [
+        "StopOleaflyHelper",
+        "RemoveOleaflyCommandLineTool",
+        "RemoveOleaflyBackgroundRun",
+    ] {
+        let action = element("CustomAction", id);
+        assert_eq!(action.attribute("Execute"), Some("deferred"), "{id}");
+        assert_eq!(action.attribute("Impersonate"), Some("yes"), "{id}");
+        assert_eq!(action.attribute("Return"), Some("ignore"), "{id}");
     }
 }
 

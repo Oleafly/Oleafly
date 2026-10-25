@@ -1,0 +1,1137 @@
+{
+  "autolink-in-markup": [
+    {
+      "detail": {
+        "key": "rules.figure-alt.detailTypstFigure"
+      },
+      "from": 39,
+      "id": "figure-alt",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.3",
+          "label": "Graphics",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.3-1"
+        },
+        {
+          "clause": "8.2.5.28.2",
+          "label": "Figure",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "13-004",
+          "label": "Alternative descriptions",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.1.1",
+          "label": "Non-text Content",
+          "standard": "WCAG-2.2",
+          "technique": "PDF1",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+        }
+      ],
+      "title": {
+        "key": "rules.figure-alt.title"
+      },
+      "to": 53
+    }
+  ],
+  "emoji-before-findings": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.todo-in-text.detail"
+      },
+      "from": 3,
+      "id": "todo-in-text",
+      "lens": "submission",
+      "method": "source-heuristic",
+      "severity": "warning",
+      "title": {
+        "key": "rules.todo-in-text.title"
+      },
+      "to": 7
+    },
+    {
+      "detail": {
+        "key": "rules.figure-alt.detailTypstFigure"
+      },
+      "from": 9,
+      "id": "figure-alt",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.3",
+          "label": "Graphics",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.3-1"
+        },
+        {
+          "clause": "8.2.5.28.2",
+          "label": "Figure",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "13-004",
+          "label": "Alternative descriptions",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.1.1",
+          "label": "Non-text Content",
+          "standard": "WCAG-2.2",
+          "technique": "PDF1",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+        }
+      ],
+      "title": {
+        "key": "rules.figure-alt.title"
+      },
+      "to": 23
+    },
+    {
+      "detail": {
+        "key": "rules.empty-heading.detail"
+      },
+      "from": 24,
+      "id": "empty-heading",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.4",
+          "label": "Headings",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.4.2-1"
+        },
+        {
+          "clause": "14-003",
+          "label": "Headings",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.3.1",
+          "label": "Info and Relationships",
+          "standard": "WCAG-2.2",
+          "technique": "PDF9",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF9"
+        },
+        {
+          "clause": "2.4.6",
+          "label": "Headings and Labels",
+          "standard": "WCAG-2.2",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/#pdf"
+        }
+      ],
+      "title": {
+        "key": "rules.empty-heading.title"
+      },
+      "to": 25
+    }
+  ],
+  "empty-heading-marker": [
+    {
+      "detail": {
+        "key": "rules.empty-heading.detail"
+      },
+      "from": 0,
+      "id": "empty-heading",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.4",
+          "label": "Headings",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.4.2-1"
+        },
+        {
+          "clause": "14-003",
+          "label": "Headings",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.3.1",
+          "label": "Info and Relationships",
+          "standard": "WCAG-2.2",
+          "technique": "PDF9",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF9"
+        },
+        {
+          "clause": "2.4.6",
+          "label": "Headings and Labels",
+          "standard": "WCAG-2.2",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/#pdf"
+        }
+      ],
+      "title": {
+        "key": "rules.empty-heading.title"
+      },
+      "to": 1
+    },
+    {
+      "detail": {
+        "key": "rules.empty-heading.detail"
+      },
+      "from": 12,
+      "id": "empty-heading",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.4",
+          "label": "Headings",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.4.2-1"
+        },
+        {
+          "clause": "14-003",
+          "label": "Headings",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.3.1",
+          "label": "Info and Relationships",
+          "standard": "WCAG-2.2",
+          "technique": "PDF9",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF9"
+        },
+        {
+          "clause": "2.4.6",
+          "label": "Headings and Labels",
+          "standard": "WCAG-2.2",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/#pdf"
+        }
+      ],
+      "title": {
+        "key": "rules.empty-heading.title"
+      },
+      "to": 15
+    }
+  ],
+  "figure-alt-before-0-14": [
+    {
+      "detail": {
+        "key": "rules.figure-alt.detailTypst"
+      },
+      "from": 8,
+      "id": "figure-alt",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.3",
+          "label": "Graphics",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.3-1"
+        },
+        {
+          "clause": "8.2.5.28.2",
+          "label": "Figure",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "13-004",
+          "label": "Alternative descriptions",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.1.1",
+          "label": "Non-text Content",
+          "standard": "WCAG-2.2",
+          "technique": "PDF1",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+        }
+      ],
+      "title": {
+        "key": "rules.figure-alt.title"
+      },
+      "to": 22
+    }
+  ],
+  "figure-alt-covers-image": [],
+  "figure-alt-version-prefix": [],
+  "figure-without-alt": [
+    {
+      "detail": {
+        "key": "rules.figure-alt.detailTypstFigure"
+      },
+      "from": 8,
+      "id": "figure-alt",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.3",
+          "label": "Graphics",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.3-1"
+        },
+        {
+          "clause": "8.2.5.28.2",
+          "label": "Figure",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "13-004",
+          "label": "Alternative descriptions",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.1.1",
+          "label": "Non-text Content",
+          "standard": "WCAG-2.2",
+          "technique": "PDF1",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+        }
+      ],
+      "title": {
+        "key": "rules.figure-alt.title"
+      },
+      "to": 22
+    }
+  ],
+  "heading-call-argument": [
+    {
+      "detail": {
+        "key": "rules.empty-heading.detail"
+      },
+      "from": 1,
+      "id": "empty-heading",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.4",
+          "label": "Headings",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.4.2-1"
+        },
+        {
+          "clause": "14-003",
+          "label": "Headings",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.3.1",
+          "label": "Info and Relationships",
+          "standard": "WCAG-2.2",
+          "technique": "PDF9",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF9"
+        },
+        {
+          "clause": "2.4.6",
+          "label": "Headings and Labels",
+          "standard": "WCAG-2.2",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/#pdf"
+        }
+      ],
+      "title": {
+        "key": "rules.empty-heading.title"
+      },
+      "to": 12
+    },
+    {
+      "detail": {
+        "key": "rules.empty-heading.detail"
+      },
+      "from": 41,
+      "id": "empty-heading",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.4",
+          "label": "Headings",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.4.2-1"
+        },
+        {
+          "clause": "14-003",
+          "label": "Headings",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.3.1",
+          "label": "Info and Relationships",
+          "standard": "WCAG-2.2",
+          "technique": "PDF9",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF9"
+        },
+        {
+          "clause": "2.4.6",
+          "label": "Headings and Labels",
+          "standard": "WCAG-2.2",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/#pdf"
+        }
+      ],
+      "title": {
+        "key": "rules.empty-heading.title"
+      },
+      "to": 54
+    }
+  ],
+  "heading-call-empty": [
+    {
+      "detail": {
+        "key": "rules.empty-heading.detail"
+      },
+      "from": 1,
+      "id": "empty-heading",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.4",
+          "label": "Headings",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.4.2-1"
+        },
+        {
+          "clause": "14-003",
+          "label": "Headings",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.3.1",
+          "label": "Info and Relationships",
+          "standard": "WCAG-2.2",
+          "technique": "PDF9",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF9"
+        },
+        {
+          "clause": "2.4.6",
+          "label": "Headings and Labels",
+          "standard": "WCAG-2.2",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/#pdf"
+        }
+      ],
+      "title": {
+        "key": "rules.empty-heading.title"
+      },
+      "to": 10
+    },
+    {
+      "detail": {
+        "key": "rules.empty-heading.detail"
+      },
+      "from": 27,
+      "id": "empty-heading",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.4",
+          "label": "Headings",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.4.2-1"
+        },
+        {
+          "clause": "14-003",
+          "label": "Headings",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.3.1",
+          "label": "Info and Relationships",
+          "standard": "WCAG-2.2",
+          "technique": "PDF9",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF9"
+        },
+        {
+          "clause": "2.4.6",
+          "label": "Headings and Labels",
+          "standard": "WCAG-2.2",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/#pdf"
+        }
+      ],
+      "title": {
+        "key": "rules.empty-heading.title"
+      },
+      "to": 47
+    }
+  ],
+  "heading-in-code-block": [],
+  "heading-set-rule-ignored": [],
+  "heading-with-only-label": [
+    {
+      "detail": {
+        "key": "rules.empty-heading.detail"
+      },
+      "from": 0,
+      "id": "empty-heading",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.4",
+          "label": "Headings",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.4.2-1"
+        },
+        {
+          "clause": "14-003",
+          "label": "Headings",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.3.1",
+          "label": "Info and Relationships",
+          "standard": "WCAG-2.2",
+          "technique": "PDF9",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF9"
+        },
+        {
+          "clause": "2.4.6",
+          "label": "Headings and Labels",
+          "standard": "WCAG-2.2",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/#pdf"
+        }
+      ],
+      "title": {
+        "key": "rules.empty-heading.title"
+      },
+      "to": 13
+    }
+  ],
+  "image-alt-none": [
+    {
+      "detail": {
+        "key": "rules.figure-alt.detailTypstFigure"
+      },
+      "from": 1,
+      "id": "figure-alt",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.3",
+          "label": "Graphics",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.3-1"
+        },
+        {
+          "clause": "8.2.5.28.2",
+          "label": "Figure",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "13-004",
+          "label": "Alternative descriptions",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.1.1",
+          "label": "Non-text Content",
+          "standard": "WCAG-2.2",
+          "technique": "PDF1",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+        }
+      ],
+      "title": {
+        "key": "rules.figure-alt.title"
+      },
+      "to": 26
+    }
+  ],
+  "image-alt-repeats-file-name": [
+    {
+      "detail": {
+        "key": "rules.figure-alt.detailTypstFigure"
+      },
+      "from": 1,
+      "id": "figure-alt",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.3",
+          "label": "Graphics",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.3-1"
+        },
+        {
+          "clause": "8.2.5.28.2",
+          "label": "Figure",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "13-004",
+          "label": "Alternative descriptions",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.1.1",
+          "label": "Non-text Content",
+          "standard": "WCAG-2.2",
+          "technique": "PDF1",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+        }
+      ],
+      "title": {
+        "key": "rules.figure-alt.title"
+      },
+      "to": 40
+    }
+  ],
+  "image-alt-repeats-path": [
+    {
+      "detail": {
+        "key": "rules.figure-alt.detailTypstFigure"
+      },
+      "from": 1,
+      "id": "figure-alt",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.3",
+          "label": "Graphics",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.3-1"
+        },
+        {
+          "clause": "8.2.5.28.2",
+          "label": "Figure",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "13-004",
+          "label": "Alternative descriptions",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.1.1",
+          "label": "Non-text Content",
+          "standard": "WCAG-2.2",
+          "technique": "PDF1",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+        }
+      ],
+      "title": {
+        "key": "rules.figure-alt.title"
+      },
+      "to": 39
+    }
+  ],
+  "image-blank-alt": [
+    {
+      "detail": {
+        "key": "rules.figure-alt.detailTypstFigure"
+      },
+      "from": 1,
+      "id": "figure-alt",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.3",
+          "label": "Graphics",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.3-1"
+        },
+        {
+          "clause": "8.2.5.28.2",
+          "label": "Figure",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "13-004",
+          "label": "Alternative descriptions",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.1.1",
+          "label": "Non-text Content",
+          "standard": "WCAG-2.2",
+          "technique": "PDF1",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+        }
+      ],
+      "title": {
+        "key": "rules.figure-alt.title"
+      },
+      "to": 24
+    }
+  ],
+  "image-with-alt": [],
+  "image-without-alt": [
+    {
+      "detail": {
+        "key": "rules.figure-alt.detailTypstFigure"
+      },
+      "from": 1,
+      "id": "figure-alt",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.3",
+          "label": "Graphics",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.3-1"
+        },
+        {
+          "clause": "8.2.5.28.2",
+          "label": "Figure",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "13-004",
+          "label": "Alternative descriptions",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.1.1",
+          "label": "Non-text Content",
+          "standard": "WCAG-2.2",
+          "technique": "PDF1",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+        }
+      ],
+      "title": {
+        "key": "rules.figure-alt.title"
+      },
+      "to": 15
+    }
+  ],
+  "local-paths": [
+    {
+      "detail": {
+        "key": "rules.figure-alt.detailTypstFigure"
+      },
+      "from": 1,
+      "id": "figure-alt",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.3",
+          "label": "Graphics",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.3-1"
+        },
+        {
+          "clause": "8.2.5.28.2",
+          "label": "Figure",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "13-004",
+          "label": "Alternative descriptions",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.1.1",
+          "label": "Non-text Content",
+          "standard": "WCAG-2.2",
+          "technique": "PDF1",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+        }
+      ],
+      "title": {
+        "key": "rules.figure-alt.title"
+      },
+      "to": 26
+    },
+    {
+      "detail": {
+        "key": "rules.privacy-local-path.detail"
+      },
+      "from": 8,
+      "id": "privacy-local-path",
+      "lens": "privacy",
+      "method": "source-heuristic",
+      "severity": "warning",
+      "title": {
+        "key": "rules.privacy-local-path.title",
+        "params": {
+          "path": "/Users/ana/x.png"
+        }
+      },
+      "to": 24
+    },
+    {
+      "detail": {
+        "key": "rules.figure-alt.detailTypstFigure"
+      },
+      "from": 28,
+      "id": "figure-alt",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.3",
+          "label": "Graphics",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.3-1"
+        },
+        {
+          "clause": "8.2.5.28.2",
+          "label": "Figure",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "13-004",
+          "label": "Alternative descriptions",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.1.1",
+          "label": "Non-text Content",
+          "standard": "WCAG-2.2",
+          "technique": "PDF1",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+        }
+      ],
+      "title": {
+        "key": "rules.figure-alt.title"
+      },
+      "to": 52
+    },
+    {
+      "detail": {
+        "key": "rules.privacy-local-path.detail"
+      },
+      "from": 35,
+      "id": "privacy-local-path",
+      "lens": "privacy",
+      "method": "source-heuristic",
+      "severity": "warning",
+      "title": {
+        "key": "rules.privacy-local-path.title",
+        "params": {
+          "path": "C:\\data\\y.png"
+        }
+      },
+      "to": 50
+    },
+    {
+      "detail": {
+        "key": "rules.privacy-local-path.detail"
+      },
+      "from": 63,
+      "id": "privacy-local-path",
+      "lens": "privacy",
+      "method": "source-heuristic",
+      "severity": "warning",
+      "title": {
+        "key": "rules.privacy-local-path.title",
+        "params": {
+          "path": "~/notes.typ"
+        }
+      },
+      "to": 74
+    },
+    {
+      "detail": {
+        "key": "rules.figure-alt.detailTypstFigure"
+      },
+      "from": 77,
+      "id": "figure-alt",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.3",
+          "label": "Graphics",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.3-1"
+        },
+        {
+          "clause": "8.2.5.28.2",
+          "label": "Figure",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "13-004",
+          "label": "Alternative descriptions",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.1.1",
+          "label": "Non-text Content",
+          "standard": "WCAG-2.2",
+          "technique": "PDF1",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+        }
+      ],
+      "title": {
+        "key": "rules.figure-alt.title"
+      },
+      "to": 97
+    }
+  ],
+  "math-and-escapes": [
+    {
+      "detail": {
+        "key": "rules.figure-alt.detailTypstFigure"
+      },
+      "from": 3,
+      "id": "figure-alt",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.3",
+          "label": "Graphics",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.3-1"
+        },
+        {
+          "clause": "8.2.5.28.2",
+          "label": "Figure",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "13-004",
+          "label": "Alternative descriptions",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.1.1",
+          "label": "Non-text Content",
+          "standard": "WCAG-2.2",
+          "technique": "PDF1",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+        }
+      ],
+      "title": {
+        "key": "rules.figure-alt.title"
+      },
+      "to": 17
+    }
+  ],
+  "method-chain": [],
+  "nested-content-calls": [
+    {
+      "detail": {
+        "key": "rules.figure-alt.detailTypstFigure"
+      },
+      "from": 10,
+      "id": "figure-alt",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.3",
+          "label": "Graphics",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.3-1"
+        },
+        {
+          "clause": "8.2.5.28.2",
+          "label": "Figure",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "13-004",
+          "label": "Alternative descriptions",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.1.1",
+          "label": "Non-text Content",
+          "standard": "WCAG-2.2",
+          "technique": "PDF1",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+        }
+      ],
+      "title": {
+        "key": "rules.figure-alt.title"
+      },
+      "to": 24
+    }
+  ],
+  "raw-and-comments": [],
+  "todo-lowercase": [],
+  "todo-notes": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.todo-in-text.detail"
+      },
+      "from": 0,
+      "id": "todo-in-text",
+      "lens": "submission",
+      "method": "source-heuristic",
+      "severity": "warning",
+      "title": {
+        "key": "rules.todo-in-text.title"
+      },
+      "to": 4
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.todo-in-text.detail"
+      },
+      "from": 23,
+      "id": "todo-in-text",
+      "lens": "submission",
+      "method": "source-heuristic",
+      "severity": "warning",
+      "title": {
+        "key": "rules.todo-in-text.title"
+      },
+      "to": 28
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.todo-in-text.detail"
+      },
+      "from": 33,
+      "id": "todo-in-text",
+      "lens": "submission",
+      "method": "source-heuristic",
+      "severity": "warning",
+      "title": {
+        "key": "rules.todo-in-text.title"
+      },
+      "to": 36
+    }
+  ],
+  "unc-and-tmp-paths": [
+    {
+      "detail": {
+        "key": "rules.privacy-local-path.detail"
+      },
+      "from": 15,
+      "id": "privacy-local-path",
+      "lens": "privacy",
+      "method": "source-heuristic",
+      "severity": "warning",
+      "title": {
+        "key": "rules.privacy-local-path.title",
+        "params": {
+          "path": "/tmp/refs.bib"
+        }
+      },
+      "to": 28
+    },
+    {
+      "detail": {
+        "key": "rules.privacy-local-path.detail"
+      },
+      "from": 38,
+      "id": "privacy-local-path",
+      "lens": "privacy",
+      "method": "source-heuristic",
+      "severity": "warning",
+      "title": {
+        "key": "rules.privacy-local-path.title",
+        "params": {
+          "path": "\\\\server\\share"
+        }
+      },
+      "to": 55
+    }
+  ]
+}

@@ -9,6 +9,10 @@ use std::time::Duration;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 
+// 0.4.8 I: a long-lived stdio session (Cua Driver keeps one per runtime).
+mod session;
+pub(crate) use session::{McpSessionLimits, McpStdioSession};
+
 const MAX_SERVER_NAME_BYTES: usize = 64;
 const MAX_COMMAND_BYTES: usize = 4_096;
 const MAX_ARGUMENTS: usize = 128;
@@ -160,6 +164,20 @@ struct StdioTransport {
     stderr: Option<tokio::task::JoinHandle<()>>,
     stderr_output: std::sync::Arc<tokio::sync::Mutex<Vec<u8>>>,
     containment: Option<crate::proc::ProcessTreeGuard>,
+    /// The longest line the server may write.
+    max_message_bytes: usize,
+}
+
+/// "2 MiB", "64 KiB": how a message limit reads in an error.
+fn byte_limit_label(bytes: usize) -> String {
+    const MIB: usize = 1024 * 1024;
+    if bytes >= MIB && bytes.is_multiple_of(MIB) {
+        format!("{} MiB", bytes / MIB)
+    } else if bytes >= 1024 && bytes.is_multiple_of(1024) {
+        format!("{} KiB", bytes / 1024)
+    } else {
+        format!("{bytes} byte")
+    }
 }
 
 impl Drop for StdioTransport {
@@ -264,6 +282,7 @@ impl StdioTransport {
             stderr: Some(stderr),
             stderr_output,
             containment: Some(containment),
+            max_message_bytes: MAX_STDIO_MESSAGE_BYTES,
         })
     }
 
@@ -288,39 +307,70 @@ impl StdioTransport {
         }
     }
 
+    /// One JSON message: the next line the server writes, at most
+    /// `max_message_bytes` long.
+    async fn read_message(&mut self) -> Result<serde_json::Value, McpConnectionError> {
+        let mut line = Vec::new();
+        loop {
+            let (consumed, complete, closed) = {
+                let available = self.stdout.fill_buf().await.map_err(|error| {
+                    protocol_error(&format!("could not read server output: {error}"))
+                })?;
+                if available.is_empty() {
+                    (0, false, true)
+                } else {
+                    let newline = available.iter().position(|byte| *byte == b'\n');
+                    let consumed = newline.map_or(available.len(), |position| position + 1);
+                    if line.len().saturating_add(consumed) > self.max_message_bytes {
+                        return Err(protocol_error(&format!(
+                            "server response exceeded the {} limit",
+                            byte_limit_label(self.max_message_bytes)
+                        )));
+                    }
+                    line.extend_from_slice(&available[..consumed]);
+                    (consumed, newline.is_some(), false)
+                }
+            };
+            if closed {
+                return Err(self.closed_output_error().await);
+            }
+            self.stdout.consume(consumed);
+            if complete {
+                break;
+            }
+        }
+        serde_json::from_slice(&line)
+            .map_err(|_| protocol_error("server wrote invalid JSON to stdout"))
+    }
+
+    /// Writes one message as a line and flushes it.
+    async fn write_message(
+        &mut self,
+        message: &serde_json::Value,
+    ) -> Result<(), McpConnectionError> {
+        let mut encoded = serde_json::to_vec(message)
+            .map_err(|_| protocol_error("client request could not be encoded"))?;
+        encoded.push(b'\n');
+        let stdin = self
+            .stdin
+            .as_mut()
+            .ok_or_else(|| protocol_error("server stdin is unavailable"))?;
+        stdin
+            .write_all(&encoded)
+            .await
+            .map_err(|error| protocol_error(&format!("could not write to server: {error}")))?;
+        stdin
+            .flush()
+            .await
+            .map_err(|error| protocol_error(&format!("could not flush server input: {error}")))
+    }
+
     async fn read_response(
         &mut self,
         expected_id: u64,
     ) -> Result<serde_json::Value, McpConnectionError> {
         loop {
-            let mut line = Vec::new();
-            loop {
-                let (consumed, complete, closed) = {
-                    let available = self.stdout.fill_buf().await.map_err(|error| {
-                        protocol_error(&format!("could not read server output: {error}"))
-                    })?;
-                    if available.is_empty() {
-                        (0, false, true)
-                    } else {
-                        let newline = available.iter().position(|byte| *byte == b'\n');
-                        let consumed = newline.map_or(available.len(), |position| position + 1);
-                        if line.len().saturating_add(consumed) > MAX_STDIO_MESSAGE_BYTES {
-                            return Err(protocol_error("server response exceeded the 2 MiB limit"));
-                        }
-                        line.extend_from_slice(&available[..consumed]);
-                        (consumed, newline.is_some(), false)
-                    }
-                };
-                if closed {
-                    return Err(self.closed_output_error().await);
-                }
-                self.stdout.consume(consumed);
-                if complete {
-                    break;
-                }
-            }
-            let message: serde_json::Value = serde_json::from_slice(&line)
-                .map_err(|_| protocol_error("server wrote invalid JSON to stdout"))?;
+            let message = self.read_message().await?;
             match message.get("id") {
                 Some(id) if id == &serde_json::json!(expected_id) => return Ok(message),
                 Some(_) => {
@@ -358,23 +408,7 @@ impl McpClientTransport for StdioTransport {
     > {
         Box::pin(async move {
             let id = message.get("id").and_then(serde_json::Value::as_u64);
-            let mut encoded = serde_json::to_vec(&message)
-                .map_err(|_| protocol_error("client request could not be encoded"))?;
-            encoded.push(b'\n');
-            self.stdin
-                .as_mut()
-                .ok_or_else(|| protocol_error("server stdin is unavailable"))?
-                .write_all(&encoded)
-                .await
-                .map_err(|error| protocol_error(&format!("could not write to server: {error}")))?;
-            self.stdin
-                .as_mut()
-                .ok_or_else(|| protocol_error("server stdin is unavailable"))?
-                .flush()
-                .await
-                .map_err(|error| {
-                    protocol_error(&format!("could not flush server input: {error}"))
-                })?;
+            self.write_message(&message).await?;
             match id {
                 Some(id) => self.read_response(id).await.map(Some),
                 None => Ok(None),
@@ -992,7 +1026,8 @@ fn agent_identifier_part(value: &str, fallback: &str, max_len: usize) -> String 
     }
 }
 
-fn agent_tool_name(server: &str, tool: &str) -> String {
+// 0.4.8 L: the headless agent names tools the same way (parity test).
+pub(crate) fn agent_tool_name(server: &str, tool: &str) -> String {
     use sha2::Digest as _;
 
     let server_part = agent_identifier_part(server, "server", 16);
@@ -1754,11 +1789,20 @@ where
         std::collections::BTreeMap::new()
     };
     authorize()?;
-    call_tool(transport, tool_handle, arguments, modern, headers).await
+    call_tool(
+        transport,
+        AGENT_TOOL_CALL_ID,
+        tool_handle,
+        arguments,
+        modern,
+        headers,
+    )
+    .await
 }
 
 async fn call_tool<T>(
     transport: &mut T,
+    id: u64,
     tool_handle: &str,
     arguments: serde_json::Value,
     modern: bool,
@@ -1767,6 +1811,20 @@ async fn call_tool<T>(
 where
     T: McpClientTransport,
 {
+    let request = tool_call_request(id, tool_handle, arguments, modern);
+    let response = required_response(
+        transport.send_with_headers(request, headers).await?,
+        "tools/call",
+    )?;
+    tool_call_result(&response, id, modern)
+}
+
+fn tool_call_request(
+    id: u64,
+    tool_handle: &str,
+    arguments: serde_json::Value,
+    modern: bool,
+) -> serde_json::Value {
     let mut params = serde_json::json!({
         "name": tool_handle,
         "arguments": arguments
@@ -1774,17 +1832,22 @@ where
     if modern {
         params["_meta"] = modern_request_metadata();
     }
-    let request = serde_json::json!({
+    serde_json::json!({
         "jsonrpc": "2.0",
-        "id": AGENT_TOOL_CALL_ID,
+        "id": id,
         "method": "tools/call",
         "params": params
-    });
-    let response = required_response(
-        transport.send_with_headers(request, headers).await?,
-        "tools/call",
-    )?;
-    let result = rpc_result(&response, AGENT_TOOL_CALL_ID, "tools/call")?;
+    })
+}
+
+/// The `tools/call` result, including `isError` results. A modern server
+/// must say the result is complete.
+fn tool_call_result(
+    response: &serde_json::Value,
+    id: u64,
+    modern: bool,
+) -> Result<serde_json::Value, McpConnectionError> {
+    let result = rpc_result(response, id, "tools/call")?;
     if modern && result.get("resultType").and_then(serde_json::Value::as_str) != Some("complete") {
         let detail = match result.get("resultType").and_then(serde_json::Value::as_str) {
             Some("input_required") => "tools/call requested unsupported multi-round-trip input",
@@ -3176,6 +3239,13 @@ pub async fn mcp_server_add<R: tauri::Runtime>(
 ) -> Result<McpManagedServer, String> {
     validate_command_webview(webview.label(), webview.window().label())?;
     let _guard = state.mutation.lock().await;
+    // 0.4.8 I: more power for Cua Spaces asks natively first.
+    crate::cua_driver::commands::confirm_spaces_change(
+        tauri::Manager::app_handle(&webview),
+        None,
+        &server,
+    )
+    .await?;
     let _permit = acquire_validation_slot(&state)?;
     add_server_with(&AppConfigRepository, server, connect_server)
         .await
@@ -3192,6 +3262,12 @@ pub async fn mcp_server_update<R: tauri::Runtime>(
     validate_command_webview(webview.label(), webview.window().label())?;
     let original_name = normalize_server_name(&original_name)?;
     let _guard = state.mutation.lock().await;
+    crate::cua_driver::commands::confirm_spaces_change(
+        tauri::Manager::app_handle(&webview),
+        Some(&original_name),
+        &server,
+    )
+    .await?;
     let _permit = server
         .enabled
         .then(|| acquire_validation_slot(&state))
@@ -3211,6 +3287,12 @@ pub async fn mcp_server_update_validated<R: tauri::Runtime>(
     validate_command_webview(webview.label(), webview.window().label())?;
     let original_name = normalize_server_name(&original_name)?;
     let _guard = state.mutation.lock().await;
+    crate::cua_driver::commands::confirm_spaces_change(
+        tauri::Manager::app_handle(&webview),
+        Some(&original_name),
+        &server,
+    )
+    .await?;
     let _permit = acquire_validation_slot(&state)?;
     edit_server_validated_with(&AppConfigRepository, &original_name, server, connect_server)
         .await
@@ -3227,6 +3309,12 @@ pub async fn mcp_server_set_enabled<R: tauri::Runtime>(
     validate_command_webview(webview.label(), webview.window().label())?;
     let name = normalize_server_name(&name)?;
     let _guard = state.mutation.lock().await;
+    crate::cua_driver::commands::confirm_spaces_enabled(
+        tauri::Manager::app_handle(&webview),
+        &name,
+        enabled,
+    )
+    .await?;
     let _permit = enabled
         .then(|| acquire_validation_slot(&state))
         .transpose()?;
@@ -3245,6 +3333,172 @@ pub async fn mcp_server_remove<R: tauri::Runtime>(
     let name = normalize_server_name(&name)?;
     let _guard = state.mutation.lock().await;
     remove_server_with(&AppConfigRepository, &name)
+}
+
+// 0.4.8 E: the MCP servers research tasks may use, and Oleafly's own calls
+// to a connected server (the alphaXiv literature source).
+
+fn enabled_servers_named(names: &[String]) -> Vec<McpServerConfig> {
+    if names.is_empty() {
+        return Vec::new();
+    }
+    AppConfigRepository
+        .load()
+        .map(|config| {
+            config
+                .mcp_servers
+                .into_iter()
+                .filter(|server| server.enabled && names.contains(&server.name))
+                .filter_map(|server| normalize_server_config(server).ok())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Runs a config read on the blocking pool. Reading the config takes the
+/// config lock and decrypts the secret files, which can wait seconds behind a
+/// settings save; on a runtime worker that would hold up other tasks.
+async fn read_config_off_runtime<T: Send + 'static>(
+    read: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tokio::task::spawn_blocking(read)
+        .await
+        .map_err(|error| format!("MCP settings could not be read: {error}"))?
+}
+
+/// The agent tools of the enabled servers among `names`, named as the app's
+/// agent sees them. Servers that do not answer in time are left out.
+pub(crate) async fn task_server_tools(names: &[String]) -> Vec<McpAgentServer> {
+    let names = names.to_vec();
+    let servers = read_config_off_runtime(move || Ok(enabled_servers_named(&names)))
+        .await
+        .unwrap_or_default();
+    let discoveries = futures_util::stream::iter(servers).map(|server| async move {
+        let tools = connect_server(server.clone()).await.ok()?;
+        Some((server, tools))
+    });
+    let mut discoveries = discoveries.buffer_unordered(MAX_CONCURRENT_VALIDATIONS);
+    let deadline = tokio::time::Instant::now() + AGENT_TOOL_TIMEOUT;
+    let mut connected = Vec::new();
+    loop {
+        match tokio::time::timeout_at(deadline, discoveries.next()).await {
+            Ok(Some(Some(server))) => connected.push(server),
+            Ok(Some(None)) => {}
+            Ok(None) | Err(_) => break,
+        }
+    }
+    build_agent_tool_catalog(connected)
+}
+
+/// The same servers as ACP `mcpServers` entries, for a CLI agent's session.
+pub(crate) fn task_server_specs(names: &[String]) -> Vec<serde_json::Value> {
+    let pairs = |values: &std::collections::BTreeMap<String, String>| -> Vec<serde_json::Value> {
+        values
+            .iter()
+            .map(|(name, value)| serde_json::json!({"name": name, "value": value}))
+            .collect()
+    };
+    enabled_servers_named(names)
+        .into_iter()
+        .map(|server| match &server.transport {
+            McpServerTransport::Stdio { command, args, env } => serde_json::json!({
+                "name": server.name,
+                "command": command,
+                "args": args,
+                "env": pairs(env),
+            }),
+            McpServerTransport::Remote { url, headers } => serde_json::json!({
+                "type": "http",
+                "name": server.name,
+                "url": url,
+                "headers": pairs(headers),
+            }),
+        })
+        .collect()
+}
+
+/// Calls one tool of an enabled server for Oleafly itself, with the agent
+/// tool path's deadline and redaction of the server's own values.
+pub(crate) async fn call_enabled_server_tool(
+    server_name: &str,
+    tool: &str,
+    arguments: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    let name = server_name.to_owned();
+    let server =
+        read_config_off_runtime(move || load_enabled_server(&AppConfigRepository, &name)).await?;
+    let deadline = tokio::time::Instant::now() + AGENT_TOOL_TIMEOUT;
+    let result =
+        connect_server_and_call_until(server.clone(), tool, arguments, || Ok(()), deadline)
+            .await
+            .map_err(|error| redact_server_values(&server, error.to_string()))?;
+    let matcher = server_value_matcher(&server)
+        .map_err(|_| "MCP tool result could not be returned safely.".to_string())?;
+    Ok(redact_json_value(result, matcher.as_ref()))
+}
+
+/// Every string value in `arguments`, so an error that echoes one can hide it.
+fn argument_strings(arguments: &serde_json::Value, found: &mut Vec<String>) {
+    match arguments {
+        serde_json::Value::String(text) if text.len() >= 4 => found.push(text.clone()),
+        serde_json::Value::Array(items) => {
+            items.iter().for_each(|item| argument_strings(item, found))
+        }
+        serde_json::Value::Object(map) => {
+            map.values().for_each(|item| argument_strings(item, found))
+        }
+        _ => {}
+    }
+}
+
+/// One tool call on a stdio server Oleafly starts for itself (the `cua`
+/// daemon for runs in Cua Spaces). Errors never repeat argument values.
+pub(crate) async fn call_stdio_tool(
+    command: &std::path::Path,
+    args: &[String],
+    env: &std::collections::BTreeMap<String, String>,
+    tool: &str,
+    arguments: serde_json::Value,
+    timeout: Duration,
+) -> Result<serde_json::Value, String> {
+    let mut secrets = Vec::new();
+    argument_strings(&arguments, &mut secrets);
+    let command = command.to_string_lossy();
+    connect_stdio_server_and_call_until(
+        &command,
+        args,
+        env,
+        tool,
+        arguments,
+        || Ok(()),
+        MODERN_STDIO_PROBE_TIMEOUT,
+        tokio::time::Instant::now() + timeout,
+    )
+    .await
+    .map_err(|error| {
+        let mut message = match error {
+            McpConnectionError::ToolTimeout => format!("The {tool} call timed out."),
+            other => other.to_string(),
+        };
+        for secret in &secrets {
+            message = message.replace(secret.as_str(), "[hidden]");
+        }
+        message
+    })
+}
+
+/// The name of the enabled remote server whose address starts with `prefix`.
+pub(crate) fn enabled_remote_server(prefix: &str) -> Option<String> {
+    AppConfigRepository
+        .load()
+        .ok()?
+        .mcp_servers
+        .into_iter()
+        .filter(|server| server.enabled)
+        .find(|server| {
+            matches!(&server.transport, McpServerTransport::Remote { url, .. } if url.starts_with(prefix))
+        })
+        .map(|server| server.name)
 }
 
 #[cfg(test)]
@@ -4567,6 +4821,7 @@ mod tests {
 
             let error = call_tool(
                 &mut transport,
+                AGENT_TOOL_CALL_ID,
                 "search",
                 serde_json::json!({}),
                 true,
@@ -6689,5 +6944,86 @@ mod tests {
             validate_command_webview("main", "preview").unwrap_err(),
             "MCP server settings are unavailable from this window."
         );
+    }
+
+    #[tokio::test]
+    async fn call_stdio_tool_runs_a_fixture_server() {
+        let script = concat!(
+            "const readline=require('node:readline');",
+            "const lines=readline.createInterface({input:process.stdin});",
+            "lines.on('line',(line)=>{",
+            "const message=JSON.parse(line);",
+            "if(message.method==='initialize'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,result:{protocolVersion:'2025-06-18',capabilities:{tools:{}},serverInfo:{name:'echo',version:'1'}}})+'\\n');}",
+            "if(message.method==='tools/list'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,result:{tools:[{name:'echo',inputSchema:{type:'object'}}]}})+'\\n');}",
+            "if(message.method==='tools/call'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,result:{content:[{type:'text',text:JSON.stringify(message.params.arguments)}]}})+'\\n');}",
+            "});"
+        );
+        let result = call_stdio_tool(
+            std::path::Path::new("node"),
+            &["-e".into(), script.into()],
+            &BTreeMap::new(),
+            "echo",
+            serde_json::json!({"value": 7}),
+            Duration::from_secs(20),
+        )
+        .await
+        .unwrap();
+        assert_eq!(result["content"][0]["text"], "{\"value\":7}");
+
+        let silent = "process.stdin.on('data',()=>{});";
+        let error = call_stdio_tool(
+            std::path::Path::new("node"),
+            &["-e".into(), silent.into()],
+            &BTreeMap::new(),
+            "echo",
+            serde_json::json!({}),
+            Duration::from_secs(5),
+        )
+        .await
+        .unwrap_err();
+        assert!(error.contains("timed out"), "{error}");
+    }
+
+    #[tokio::test]
+    async fn call_stdio_tool_errors_do_not_echo_arguments() {
+        let script = concat!(
+            "const readline=require('node:readline');",
+            "const lines=readline.createInterface({input:process.stdin});",
+            "lines.on('line',(line)=>{",
+            "const message=JSON.parse(line);",
+            "if(message.method==='initialize'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,result:{protocolVersion:'2025-06-18',capabilities:{tools:{}},serverInfo:{name:'deny',version:'1'}}})+'\\n');}",
+            "if(message.method==='tools/list'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,result:{tools:[{name:'deny',inputSchema:{type:'object'}}]}})+'\\n');}",
+            "if(message.method==='tools/call'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,error:{code:-32000,message:'rejected '+JSON.stringify(message.params.arguments)}})+'\\n');}",
+            "});"
+        );
+        let error = call_stdio_tool(
+            std::path::Path::new("node"),
+            &["-e".into(), script.into()],
+            &BTreeMap::new(),
+            "deny",
+            serde_json::json!({"token": "s3cr3t-value"}),
+            Duration::from_secs(20),
+        )
+        .await
+        .unwrap_err();
+        assert!(!error.contains("s3cr3t-value"), "{error}");
+    }
+
+    #[tokio::test]
+    async fn a_config_read_waiting_on_the_lock_leaves_the_runtime_free() {
+        // One runtime thread: the read only gets its answer if the task
+        // below runs while the read waits.
+        let (release, released) = std::sync::mpsc::channel::<()>();
+        let read = read_config_off_runtime(move || {
+            released
+                .recv_timeout(Duration::from_secs(5))
+                .map_err(|_| "the runtime was held up".to_string())?;
+            Ok("read")
+        });
+        let other_work = async move {
+            release.send(()).unwrap();
+        };
+        let (read, ()) = tokio::join!(read, other_work);
+        assert_eq!(read.unwrap(), "read");
     }
 }

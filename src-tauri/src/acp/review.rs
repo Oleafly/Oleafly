@@ -61,10 +61,15 @@ impl Default for ReviewHooks {
 }
 
 /// Only interactive conversations get a before-turn copy: research tasks
-/// already work on an isolated copy, and a child agent's changes belong to the
-/// parent assistant run that took its own copy.
-pub(super) fn takes_turn_copy(is_task: bool, parent_session_id: Option<&str>) -> bool {
-    !is_task && parent_session_id.is_none()
+/// already work on an isolated copy, a child agent's changes belong to the
+/// parent assistant run that took its own copy, and a remote agent changes
+/// files on another machine.
+pub(super) fn takes_turn_copy(
+    is_task: bool,
+    parent_session_id: Option<&str>,
+    remote: bool,
+) -> bool {
+    !is_task && parent_session_id.is_none() && !remote
 }
 
 pub(super) async fn begin_turn(hooks: &ReviewHooks, project_id: &str, label: &str) -> TurnBegin {

@@ -21,7 +21,8 @@
     "status": {
       "queued": "A research task that has not started yet",
       "running": "A research task that is executing now",
-      "cancelled": "A research task the user stopped before it finished"
+      "cancelled": "A research task the user stopped before it finished",
+      "planReady": "Task status: the agent wrote its plan and waits for the user to approve it."
     },
     "relative": {
       "justNow": "Timestamp for an event less than a minute old",
@@ -38,7 +39,22 @@
     },
     "composer": {
       "unavailable": "Marks an agent the user cannot pick right now",
-      "dependencyStatus": "Shows a dependency task's status in parentheses after its title"
+      "dependencyStatus": "Shows a dependency task's status in parentheses after its title",
+      "replaceText": "Question under the Start from list in the new task dialog, shown when the user picked a starter after typing their own title or instructions",
+      "keepText": "Button answering that question: keep what the user typed",
+      "replaceConfirm": "Button answering that question: replace it with the starter's text"
+    },
+    "approvals": {
+      "detailCommand": "Label above the whole command a task asks to run, in the approval request",
+      "detailRun": "Label above the details of a run a task asks to start (its name, command and variable names), in the approval request",
+      "detailMcp": "Label above the arguments a task wants to pass to a tool, in the approval request",
+      "loadFailed": "Error in the banner of requests waiting for approval, shown with a Retry button when the list could not be read"
+    },
+    "settings": {
+      "networkHint": "Line under the switch that lets commands run by research tasks reach the internet by default",
+      "loadFailed": "Error at the top of Settings, Research when the saved settings could not be read; a Retry button follows",
+      "sectionName": "Name of the Research settings card, used in the Reset to defaults button text",
+      "resetConfirm": "Confirmation text for resetting the Research settings card. The compute targets and background tasks cards are separate and are not reset"
     },
     "detail": {
       "waiting": "Button label while a start request is still in flight",
@@ -51,8 +67,23 @@
       "changeDeleted": "A file the task removed, shown lowercase and capitalized by CSS",
       "unknownTokens": "Shown instead of a token count the runtime did not report",
       "isolationWorktree": "The task ran in a separate Git worktree",
-      "isolationStaged": "The task ran in a copied staging folder"
+      "isolationStaged": "The task ran in a copied staging folder",
+      "activityGap_one": "Note in a task's Activity tab, between the first saved items and the newest live ones. {{count}} is how many items in between have not been loaded yet (here, one); a Load more button follows",
+      "activityGap_other": "Note in a task's Activity tab, between the first saved items and the newest live ones. {{count}} is how many items in between have not been loaded yet; a Load more button follows",
+      "activityMore": "The same note when the number of missing items is not known",
+      "keepRunningDesktopApps": "Shown under the disabled Keep running when Oleafly is closed checkbox of a task that uses desktop apps"
+    },
+    "progress": {
+      "costUsed": "Money spent on the model so far and the task's limit. Both amounts arrive already formatted as US dollars, such as $1.20, so do not add a currency sign.",
+      "costSpent": "Money spent on the model so far when the task has no limit. {{used}} arrives already formatted as US dollars, such as $1.20.",
+      "ledgerCapped": "Note above a task's results table when it holds only the newest rows. {{limit}} is the number of rows shown"
     }
+  },
+  "brief": {
+    "invalidStart": "Error under the Start at field of a research task when the time is in the past or more than 30 days ahead",
+    "invalidStartFormat": "Error under the Start at field when the typed text is not a date and time. {{example}} is a sample such as 2026-10-24T14:30, written with the T between date and time",
+    "startAtFormat": "Hint under the Start at field in a window that shows it as a plain text box. {{example}} is a sample such as 2026-10-24T14:30, written with the T between date and time",
+    "problemHidden": "Error shown while the Brief section of the new task dialog is folded and one of its options is wrong. Brief is that section's title"
   },
   "tools": {
     "back": "Returns from a tool page to the project library",
@@ -76,7 +107,10 @@
     "source": "Badge for editable source text, not a research citation source",
     "bundle": "Badge for an archive containing multiple converted files",
     "runsOnDevice": "Privacy note saying the conversion is local",
-    "downloadsFromArxiv": "Network disclosure for the arXiv ID workflow"
+    "downloadsFromArxiv": "Network disclosure for the arXiv ID workflow",
+    "pageRange": "Label of a text field under a chosen scanned PDF in the PDF to Markdown and PDF to Typst converters; the user types which pages to transcribe",
+    "pageRangePlaceholder": "Placeholder of that field; empty means every page",
+    "pageRangeInvalid": "Shown under that field when the text is not a page number or a range like 1-50"
   },
   "references": {
     "fieldContainerTitle": "Generic journal, book or proceedings container title",
@@ -133,5 +167,77 @@
     "against": "Uppercase heading over the argument against citing a paper",
     "forAgainst": "Toggle that reveals the for and against reasoning",
     "query": "Shows the search query derived from a paragraph"
+  },
+  "evidence": {
+    "items": {
+      "buildFailed": "Shown in the evidence checklist when the task's workspace does not compile. {{errors}} is a number of errors.",
+      "numbersMismatch": "A number in the manuscript differs from the metric recorded for the run it cites. {{value}} is the printed number, {{run}} a run id such as r002, {{recorded}} the recorded value."
+    }
+  },
+  "converterModel": {
+    "automatic": "Model menu entry that lets Oleafly choose the best installed Ollama model",
+    "mathpixModel": "Product name; keep Mathpix untranslated",
+    "sentTo": "Privacy notice: the images go to this AI provider's servers",
+    "scansSentTo": "Privacy notice: the images go to this AI provider's servers",
+    "sentToHost": "Privacy notice: images go to an Ollama server on another computer, named by host and port",
+    "scansSentToHost": "Privacy notice: images go to an Ollama server on another computer, named by host and port",
+    "pdfSentToMathpix": "Privacy notice: Mathpix receives the whole PDF file, even when only some pages are converted",
+    "transcribingHosted": "Progress message while an image is uploaded to an AI provider. {{provider}} is the provider name",
+    "estimateCost_one": "{{cost}} is a formatted US dollar amount such as $0.42. {{model}} is an AI model name",
+    "estimateCost_other": "{{cost}} is a formatted US dollar amount such as $0.42. {{model}} is an AI model name",
+    "estimateUnknown_one": "Shown when the provider's prices are unknown, so no cost is given",
+    "estimateUnknown_other": "Shown when the provider's prices are unknown, so no cost is given",
+    "transcribedWith": "{{model}} is the AI model name that read the scanned pages, such as glm-ocr",
+    "sentBadge": "Header badge after a hosted provider transcribed a scanned PDF"
+  },
+  "compute": {
+    "targets": {
+      "local": "The user's own machine as a place to run experiments",
+      "test": "Button: run the connection checks for one target (verb)",
+      "forgetHostKey": "Removes the key from Oleafly's own list only",
+      "reviewHostKey": "Button on a run target whose connection test stopped to ask about the host's key. It brings that question back",
+      "removeConfirm": "Confirmation text for removing a run target. Tasks that have not started and use it will fail when they start",
+      "perTaskSpace": "A Cua Space created for each task, deleted with the task"
+    },
+    "import": {
+      "skipped": "Error in the SSH import dialog when some hosts were added and others were not. {{hosts}} is a list of host names, {{reason}} is the first error"
+    },
+    "kind": {
+      "cuaSpace": "Product name: Cua is a tool, a Space is its sandbox; keep both"
+    },
+    "notes": {
+      "outputs": "Keep runs/<run>/outputs as written; it is a folder path"
+    },
+    "form": {
+      "addTitle": "kind is one of the compute.kind values",
+      "prelude": "Shell commands Oleafly runs on the remote machine before each run",
+      "qos": "Slurm quality of service, keep as is",
+      "gpuFlag": "The choices are literal Slurm flags and are not translated"
+    },
+    "test": {
+      "warn": "Status of one check that passed with a problem worth reading"
+    },
+    "sandbox": {
+      "windowsDescription": "AppContainer is a Windows term; keep it"
+    },
+    "brief": {
+      "runsOn": "target is a user@host:port or a Space name",
+      "loadFailed": "Error under Where runs happen in the new task dialog when the saved run targets could not be read; a Retry button follows"
+    }
+  },
+  "backgroundHelper": {
+    "badge": {
+      "background": "Short badge on a research task. The background helper, a small Oleafly process that keeps tasks running after the app closes, runs this task.",
+      "backgroundHint": "Tooltip on the In background badge. The helper is a separate Oleafly process; the task comes back to the app window after the step it is on.",
+      "movingBack": "Short badge on a research task: Oleafly asked the background helper to return this task to the app.",
+      "movingBackHint": "Tooltip on the Moving back badge."
+    },
+    "earlierActivity": "Link button in a task's activity tab. It loads what the task did in its earlier runs, before it moved between the app and the background helper or resumed.",
+    "earlierTruncated": "Note under one earlier run in a task's activity tab when the run has more items than were loaded. {{limit}} is the number of items shown",
+    "keepRunningFailed": "Error toast after the Keep running when Oleafly is closed checkbox could not be changed."
+  },
+  "converterErrors": {
+    "pdfTooManyPages": "Error shown in place of the cost confirmation when a scanned PDF has more pages than one run transcribes. {{pages}} is the page count, {{limit}} is the most pages per run (50)",
+    "outputLimit": "Error shown when the AI model stopped writing because it hit its output limit, so a scanned page or image was only partly transcribed"
   }
 }

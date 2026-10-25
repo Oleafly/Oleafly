@@ -1,0 +1,36 @@
+[package]
+name = "oleafly-online"
+version = "0.1.0"
+description = "Client, sessions and Git-bridge sync for an online LaTeX service, shared by the Oleafly app and CLI"
+license = "AGPL-3.0-or-later"
+publish = false
+edition = "2021"
+rust-version = "1.89"
+
+[features]
+# Fixture servers and builders other crates use in their own tests.
+test-support = []
+
+[dependencies]
+aes = { version = "0.9", features = ["zeroize"] }
+cbc = { version = "0.2", features = ["zeroize"] }
+futures-util = "0.3"
+oleafly-core = { path = "../oleafly-core" }
+oleafly-secrets = { path = "../oleafly-secrets" }
+rand = "0.8"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json", "stream"] }
+ring = "0.17"
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "rt", "time"] }
+url = "2.5"
+zeroize = "=1.9.0"
+zip = { version = "4", default-features = false, features = ["deflate"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = "=2.11.1"
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "rt", "rt-multi-thread", "time"] }

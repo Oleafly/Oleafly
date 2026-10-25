@@ -45,6 +45,27 @@ export async function startMockAiServer(): Promise<MockAiServer> {
       res.end(JSON.stringify({ models: [{ name: "llama3.2" }, { name: "llava" }] }));
       return;
     }
+    // Older Ollama versions list no capabilities in /api/tags, so the app
+    // asks /api/show per model to learn which ones read images.
+    if (req.method === "POST" && url.startsWith("/api/show")) {
+      let body = "";
+      req.on("data", (chunk) => (body += chunk));
+      req.on("end", () => {
+        let name = "";
+        try {
+          name = String((JSON.parse(body) as { model?: unknown }).model ?? "");
+        } catch {
+          name = "";
+        }
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(
+          JSON.stringify({
+            capabilities: name === "llava" ? ["completion", "vision"] : ["completion"],
+          }),
+        );
+      });
+      return;
+    }
     if (req.method === "GET" && url.startsWith("/v1/models")) {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({

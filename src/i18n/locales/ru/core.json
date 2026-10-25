@@ -186,7 +186,8 @@
   },
   "imageToLatex": {
     "failed": "Не удалось перевести изображение в LaTeX: {{detail}}",
-    "transcribing": "Распознаём изображение…"
+    "transcribing": "Распознаём изображение…",
+    "notInserted": "Активный файл изменился, поэтому LaTeX не вставлен. Скопируйте его и вставьте, куда нужно."
   },
   "import": {
     "chooseOfferedProjectType": "Выберите один из типов проекта, предложенных для этого файла.",
@@ -615,7 +616,11 @@
       "papers_one": "{{count}} статья",
       "papers_few": "{{count}} статьи",
       "papers_many": "{{count}} статей",
-      "papers_other": "{{count}} статьи"
+      "papers_other": "{{count}} статьи",
+      "sourcesFailed_one": "{{count}} источник с ошибкой",
+      "sourcesFailed_few": "{{count}} источника с ошибкой",
+      "sourcesFailed_many": "{{count}} источников с ошибкой",
+      "sourcesFailed_other": "{{count}} источника с ошибкой"
     }
   },
   "ui": {
@@ -633,6 +638,8 @@
     "saveReason": "папка проекта недоступна"
   },
   "imageToTypst": {
-    "failed": "Не удалось преобразовать изображение в Typst: {{detail}}"
+    "failed": "Не удалось преобразовать изображение в Typst: {{detail}}",
+    "copied": "Исходный код Typst скопирован",
+    "notInserted": "Активный файл изменился, поэтому Typst не вставлен. Скопируйте его и вставьте, куда нужно."
   }
 }

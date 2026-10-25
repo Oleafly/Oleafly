@@ -76,6 +76,7 @@ import {
 } from "@/components/editor/wysiwyg/controller";
 import { randomFraction } from "@/lib/random";
 import { collabHandBack } from "@/lib/collab-live-bridge";
+import { projectLeaveAllowed } from "@/lib/project-leave-guards";
 import { diskHash } from "@/lib/disk-hash";
 import { createEmitter } from "@/lib/emitter";
 import { readProjectSourcesBatch } from "@/lib/project-sources";
@@ -1325,6 +1326,13 @@ async function prepareProjectSwitch(
 ): Promise<{ previousProjectId: string | null } | null> {
   if (!shouldContinue()) return null;
   const previousProjectId = get().projectId;
+  if (
+    previousProjectId &&
+    previousProjectId !== targetProjectId &&
+    !(await projectLeaveAllowed({ projectId: previousProjectId, reason: "switch", targetProjectId }))
+  ) {
+    return null;
+  }
   if (previousProjectId) {
     set({ loading: true });
     try {
@@ -1477,6 +1485,17 @@ async function preloadBibliographies(
   }
 }
 
+/**
+ * The CLI-agent conversations of a project the window leaves are disconnected
+ * when idle, so they do not keep running unseen (or count toward the session
+ * limit). One mid-turn keeps working; the project's assistant shows it again.
+ */
+function releaseIdleAgents(projectId: string): void {
+  void import("@/store/acp-sessions")
+    .then(({ useAcpSessionsStore }) => useAcpSessionsStore.getState().releaseProject(projectId))
+    .catch((error: unknown) => logError("disconnect idle agents", error));
+}
+
 async function openProjectTransition(
   id: string,
   shouldContinue: () => boolean,
@@ -1485,6 +1504,9 @@ async function openProjectTransition(
 ): Promise<void> {
   const prepared = await prepareProjectSwitch(id, shouldContinue, set, get);
   if (!prepared) return;
+  if (prepared.previousProjectId && prepared.previousProjectId !== id) {
+    releaseIdleAgents(prepared.previousProjectId);
+  }
   const { seq, superseded } = beginProjectOpen(id, shouldContinue, set, get);
   try {
     await loadOpenedProject(id, seq, superseded, set, get);
@@ -1822,6 +1844,9 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   closeProject: () => enqueueProjectTransition(async () => {
     const projectId = get().projectId;
+    if (projectId && !(await projectLeaveAllowed({ projectId, reason: "close", targetProjectId: null }))) {
+      return;
+    }
     if (projectId) {
       set({ loading: true });
       try {
@@ -1851,6 +1876,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     cancelProofreading("visual");
     releaseIdleProofreadingWorker();
     useMcpApprovalStore.getState().cancelAll();
+    if (projectId) releaseIdleAgents(projectId);
     await mcpSetActiveProject(null).catch(() => {});
     invalidateWysiwygProjectSession();
     resetMutationGeneration();

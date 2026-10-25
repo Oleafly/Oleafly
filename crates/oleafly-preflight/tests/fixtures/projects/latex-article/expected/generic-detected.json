@@ -1,0 +1,1211 @@
+{
+  "profile": "generic",
+  "project": {
+    "files": [
+      {
+        "hasContent": false,
+        "path": ".env"
+      },
+      {
+        "hasContent": false,
+        "path": "figures/Diagram.PDF"
+      },
+      {
+        "hasContent": false,
+        "path": "figures/plot.png"
+      },
+      {
+        "hasContent": true,
+        "path": "keys.tex"
+      },
+      {
+        "hasContent": false,
+        "path": "main.aux"
+      },
+      {
+        "hasContent": true,
+        "path": "main.tex"
+      },
+      {
+        "hasContent": true,
+        "path": "refs.bib"
+      },
+      {
+        "hasContent": true,
+        "path": "sections/intro.tex"
+      },
+      {
+        "hasContent": true,
+        "path": "sections/method.tex"
+      }
+    ],
+    "mainFile": "main.tex"
+  },
+  "refs": {
+    "allCitedKeys": [
+      "smith2020",
+      "unknown",
+      "Smith2020",
+      "jones2019"
+    ],
+    "bibEntries": [
+      {
+        "fields": {
+          "author": "Smith, Ana",
+          "doi": "10.1234/abcd",
+          "journal": "Journal",
+          "title": "A Study of Long Things in Detail",
+          "year": "2020"
+        },
+        "key": "Smith2020",
+        "type": "article"
+      },
+      {
+        "fields": {
+          "author": "Smith, Ana",
+          "doi": "https://doi.org/10.1234/ABCD",
+          "journal": "Journal",
+          "title": "Another Paper",
+          "year": "2020"
+        },
+        "key": "smith2020",
+        "type": "article"
+      },
+      {
+        "fields": {
+          "author": "Other, O",
+          "doi": "10.5555/dup",
+          "journal": "J",
+          "title": "First Copy",
+          "year": "2020"
+        },
+        "key": "other2020",
+        "type": "article"
+      },
+      {
+        "fields": {
+          "author": "Other, O",
+          "doi": "10.5555/DUP",
+          "journal": "J",
+          "title": "Second Copy",
+          "year": "2020"
+        },
+        "key": "copy2020",
+        "type": "article"
+      },
+      {
+        "fields": {
+          "author": "Jones, Bo",
+          "note": "missing title and year"
+        },
+        "key": "jones2019",
+        "type": "misc"
+      },
+      {
+        "fields": {
+          "author": "Lee, C",
+          "booktitle": "Proc",
+          "doi": "doi.org/10.1/x",
+          "title": "Bad DOI",
+          "year": "2021"
+        },
+        "key": "malformed",
+        "type": "inproceedings"
+      },
+      {
+        "fields": {
+          "publisher": "P",
+          "title": "A Study of Long Things in Detail",
+          "year": "2019"
+        },
+        "key": "uncited",
+        "type": "book"
+      }
+    ],
+    "bibKeyDefinitions": [
+      {
+        "file": "refs.bib",
+        "from": 0,
+        "key": "Smith2020",
+        "line": 1,
+        "to": 18
+      },
+      {
+        "file": "refs.bib",
+        "from": 156,
+        "key": "smith2020",
+        "line": 8,
+        "to": 174
+      },
+      {
+        "file": "refs.bib",
+        "from": 309,
+        "key": "other2020",
+        "line": 15,
+        "to": 327
+      },
+      {
+        "file": "refs.bib",
+        "from": 434,
+        "key": "copy2020",
+        "line": 22,
+        "to": 451
+      },
+      {
+        "file": "refs.bib",
+        "from": 559,
+        "key": "jones2019",
+        "line": 29,
+        "to": 574
+      },
+      {
+        "file": "refs.bib",
+        "from": 636,
+        "key": "malformed",
+        "line": 33,
+        "to": 660
+      },
+      {
+        "file": "refs.bib",
+        "from": 770,
+        "key": "uncited",
+        "line": 40,
+        "to": 783
+      }
+    ],
+    "bibKeyDialect": "bibtex",
+    "bibKeys": [
+      "Smith2020",
+      "smith2020",
+      "other2020",
+      "copy2020",
+      "jones2019",
+      "malformed",
+      "uncited"
+    ],
+    "bibLoaded": false,
+    "definedLabels": [
+      "eq:one",
+      "eq:one",
+      "fig:early",
+      "tab:results",
+      "sec:intro",
+      "fig:plot"
+    ],
+    "duplicateDois": [
+      {
+        "doi": "10.1234/abcd",
+        "keys": [
+          "Smith2020",
+          "smith2020"
+        ]
+      },
+      {
+        "doi": "10.5555/dup",
+        "keys": [
+          "other2020",
+          "copy2020"
+        ]
+      }
+    ],
+    "duplicateLabels": [],
+    "projectFiles": [
+      ".env",
+      "figures/Diagram.PDF",
+      "figures/plot.png",
+      "keys.tex",
+      "main.aux",
+      "main.tex",
+      "refs.bib",
+      "sections/intro.tex",
+      "sections/method.tex"
+    ],
+    "unreferencedLabels": [
+      {
+        "file": "main.tex",
+        "label": "fig:early"
+      },
+      {
+        "file": "main.tex",
+        "label": "tab:results"
+      }
+    ],
+    "unresolvedBibliographies": [
+      {
+        "file": "main.tex",
+        "name": "missing"
+      }
+    ]
+  },
+  "report": {
+    "a11yScore": null,
+    "atsScore": null,
+    "compileScore": null,
+    "coverage": {
+      "a11y": "not_run",
+      "ats": "not_run",
+      "compile": "not_run",
+      "privacy": "evaluated",
+      "refs": "evaluated",
+      "submission": "partial"
+    },
+    "findings": [
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.no-glyphtounicode.detailEngineNeedsMap"
+        },
+        "file": "main.tex",
+        "id": "no-glyphtounicode",
+        "lens": "both",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.21.7",
+            "label": "Character encoding",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/"
+          },
+          {
+            "clause": "8.4.5.8",
+            "label": "Character encoding",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "10-001",
+            "label": "Character encoding",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.4.5",
+            "label": "Images of Text",
+            "standard": "WCAG-2.2",
+            "technique": "PDF7",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF7"
+          }
+        ],
+        "title": {
+          "key": "rules.no-glyphtounicode.title"
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.mathml-export-hint.detail"
+        },
+        "file": "main.tex",
+        "id": "mathml-export-hint",
+        "lens": "a11y",
+        "method": "source-heuristic",
+        "severity": "info",
+        "title": {
+          "key": "rules.mathml-export-hint.title"
+        }
+      },
+      {
+        "detail": {
+          "key": "rules.no-lang.detail"
+        },
+        "file": "main.tex",
+        "id": "no-lang",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.2",
+            "label": "Text",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.2-29"
+          },
+          {
+            "clause": "8.4.4",
+            "label": "Natural language",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "11-001",
+            "label": "Natural language",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "3.1.1",
+            "label": "Language of Page",
+            "standard": "WCAG-2.2",
+            "technique": "PDF16",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF16"
+          }
+        ],
+        "title": {
+          "key": "rules.no-lang.title"
+        }
+      },
+      {
+        "detail": {
+          "key": "rules.no-title.detail"
+        },
+        "file": "main.tex",
+        "id": "no-title",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "info",
+        "standards": [
+          {
+            "clause": "7.1",
+            "label": "Document title",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.1-9"
+          },
+          {
+            "clause": "8.11.1",
+            "label": "Metadata",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "06-003",
+            "label": "Metadata",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "2.4.2",
+            "label": "Page Titled",
+            "standard": "WCAG-2.2",
+            "technique": "PDF18",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF18"
+          }
+        ],
+        "title": {
+          "key": "rules.no-title.title"
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.reading-order-risk.detail"
+        },
+        "file": "main.tex",
+        "from": 108,
+        "id": "reading-order-risk",
+        "lens": "both",
+        "machineCheckable": false,
+        "method": "source-heuristic",
+        "severity": "info",
+        "standards": [
+          {
+            "clause": "09",
+            "label": "Reading order",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.3.2",
+            "label": "Meaningful Sequence",
+            "standard": "WCAG-2.2",
+            "technique": "PDF3",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF3"
+          }
+        ],
+        "title": {
+          "key": "rules.reading-order-risk.title"
+        },
+        "to": 128
+      },
+      {
+        "detail": {
+          "key": "rules.heading-skip.detail"
+        },
+        "file": "main.tex",
+        "from": 398,
+        "id": "heading-skip",
+        "lens": "both",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.4",
+            "label": "Headings",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.4.2-1"
+          },
+          {
+            "clause": "14-003",
+            "label": "Headings",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.3.1",
+            "label": "Info and Relationships",
+            "standard": "WCAG-2.2",
+            "technique": "PDF9",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF9"
+          },
+          {
+            "clause": "2.4.6",
+            "label": "Headings and Labels",
+            "standard": "WCAG-2.2",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/#pdf"
+          }
+        ],
+        "title": {
+          "key": "rules.heading-skip.title"
+        },
+        "to": 413
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.color-only.detail"
+        },
+        "file": "main.tex",
+        "from": 598,
+        "id": "color-only",
+        "lens": "a11y",
+        "machineCheckable": false,
+        "method": "source-heuristic",
+        "severity": "info",
+        "standards": [
+          {
+            "clause": "04",
+            "label": "Colour and contrast",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.4.1",
+            "label": "Use of Color",
+            "standard": "WCAG-2.2",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/#pdf"
+          }
+        ],
+        "title": {
+          "key": "rules.color-only.title"
+        },
+        "to": 609
+      },
+      {
+        "detail": {
+          "key": "rules.figure-alt.detail"
+        },
+        "file": "main.tex",
+        "from": 682,
+        "id": "figure-alt",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.3",
+            "label": "Graphics",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.3-1"
+          },
+          {
+            "clause": "8.2.5.28.2",
+            "label": "Figure",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "13-004",
+            "label": "Alternative descriptions",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.1.1",
+            "label": "Non-text Content",
+            "standard": "WCAG-2.2",
+            "technique": "PDF1",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+          }
+        ],
+        "title": {
+          "key": "rules.figure-alt.title"
+        },
+        "to": 712
+      },
+      {
+        "detail": {
+          "key": "rules.figure-alt.detail"
+        },
+        "file": "main.tex",
+        "from": 758,
+        "id": "figure-alt",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.3",
+            "label": "Graphics",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.3-1"
+          },
+          {
+            "clause": "8.2.5.28.2",
+            "label": "Figure",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "13-004",
+            "label": "Alternative descriptions",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.1.1",
+            "label": "Non-text Content",
+            "standard": "WCAG-2.2",
+            "technique": "PDF1",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+          }
+        ],
+        "title": {
+          "key": "rules.figure-alt.title"
+        },
+        "to": 791
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.layout-table.detailTable"
+        },
+        "file": "main.tex",
+        "from": 819,
+        "id": "layout-table",
+        "lens": "ats",
+        "method": "source-heuristic",
+        "severity": "warning",
+        "title": {
+          "key": "rules.layout-table.titleTable"
+        },
+        "to": 834
+      },
+      {
+        "detail": {
+          "key": "rules.table-header-rows.detail"
+        },
+        "file": "main.tex",
+        "from": 819,
+        "id": "table-header-rows",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.5",
+            "label": "Tables",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.5-1"
+          },
+          {
+            "clause": "15-003",
+            "label": "Tables",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.3.1",
+            "label": "Info and Relationships",
+            "standard": "WCAG-2.2",
+            "technique": "PDF6",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF6"
+          }
+        ],
+        "title": {
+          "key": "rules.table-header-rows.title"
+        },
+        "to": 834
+      },
+      {
+        "detail": {
+          "key": "rules.link-text.detail"
+        },
+        "file": "main.tex",
+        "from": 935,
+        "id": "link-text",
+        "lens": "a11y",
+        "machineCheckable": false,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.18.5",
+            "label": "Links",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.18.5-2"
+          },
+          {
+            "clause": "28-005",
+            "label": "Annotations",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "2.4.4",
+            "label": "Link Purpose (In Context)",
+            "standard": "WCAG-2.2",
+            "technique": "PDF11",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF11"
+          },
+          {
+            "clause": "2.4.4",
+            "label": "Link Purpose (In Context)",
+            "standard": "WCAG-2.2",
+            "technique": "PDF13",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF13"
+          }
+        ],
+        "title": {
+          "key": "rules.link-text.title"
+        },
+        "to": 973
+      },
+      {
+        "detail": {
+          "key": "rules.figure-alt.detail"
+        },
+        "file": "main.tex",
+        "from": 974,
+        "id": "figure-alt",
+        "lens": "a11y",
+        "machineCheckable": true,
+        "method": "source-heuristic",
+        "severity": "warning",
+        "standards": [
+          {
+            "clause": "7.3",
+            "label": "Graphics",
+            "standard": "PDF/UA-1",
+            "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+            "verapdfRule": "7.3-1"
+          },
+          {
+            "clause": "8.2.5.28.2",
+            "label": "Figure",
+            "standard": "PDF/UA-2",
+            "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+          },
+          {
+            "clause": "13-004",
+            "label": "Alternative descriptions",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.1.1",
+            "label": "Non-text Content",
+            "standard": "WCAG-2.2",
+            "technique": "PDF1",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF1"
+          }
+        ],
+        "title": {
+          "key": "rules.figure-alt.title"
+        },
+        "to": 1013
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.reading-order-risk.detail"
+        },
+        "file": "sections/intro.tex",
+        "from": 90,
+        "id": "reading-order-risk",
+        "lens": "both",
+        "machineCheckable": false,
+        "method": "source-heuristic",
+        "severity": "info",
+        "standards": [
+          {
+            "clause": "09",
+            "label": "Reading order",
+            "standard": "Matterhorn-1.1",
+            "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+          },
+          {
+            "clause": "1.3.2",
+            "label": "Meaningful Sequence",
+            "standard": "WCAG-2.2",
+            "technique": "PDF3",
+            "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF3"
+          }
+        ],
+        "title": {
+          "key": "rules.reading-order-risk.title"
+        },
+        "to": 108
+      },
+      {
+        "detail": {
+          "key": "rules.refs-duplicate-bib.detail",
+          "params": {
+            "doi": "10.5555/dup"
+          }
+        },
+        "id": "refs-duplicate-bib",
+        "lens": "refs",
+        "severity": "warning",
+        "title": {
+          "key": "rules.refs-duplicate-bib.title",
+          "params": {
+            "keys": "other2020, copy2020"
+          }
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.refs-incomplete-metadata.detail",
+          "params": {
+            "examples": "jones2019: title, year/date · uncited: author/editor"
+          }
+        },
+        "id": "refs-incomplete-metadata",
+        "lens": "refs",
+        "severity": "warning",
+        "title": {
+          "key": "rules.refs-incomplete-metadata.title",
+          "params": {
+            "count": 2
+          }
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.refs-malformed-doi.detail",
+          "params": {
+            "keys": "malformed"
+          }
+        },
+        "id": "refs-malformed-doi",
+        "lens": "refs",
+        "severity": "warning",
+        "title": {
+          "key": "rules.refs-malformed-doi.title",
+          "params": {
+            "count": 1
+          }
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.refs-duplicate-title.detail",
+          "params": {
+            "groups": "Smith2020 / uncited"
+          }
+        },
+        "id": "refs-duplicate-title",
+        "lens": "refs",
+        "severity": "warning",
+        "title": {
+          "key": "rules.refs-duplicate-title.title",
+          "params": {
+            "count": 1
+          }
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.refs-uncited-entries.detail",
+          "params": {
+            "keys": "other2020, copy2020, malformed, uncited"
+          }
+        },
+        "id": "refs-uncited-entries",
+        "lens": "refs",
+        "severity": "info",
+        "title": {
+          "key": "rules.refs-uncited-entries.title",
+          "params": {
+            "count": 4
+          }
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.refs-unreferenced-floats.detail",
+          "params": {
+            "labels": "fig:early, tab:results"
+          }
+        },
+        "id": "refs-unreferenced-floats",
+        "lens": "refs",
+        "severity": "info",
+        "title": {
+          "key": "rules.refs-unreferenced-floats.title",
+          "params": {
+            "count": 2
+          }
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.refs-duplicate-bib-key.detail",
+          "params": {
+            "places": "refs.bib:1, refs.bib:8 (smith2020)"
+          }
+        },
+        "file": "refs.bib",
+        "from": 0,
+        "id": "refs-duplicate-bib-key",
+        "lens": "refs",
+        "severity": "warning",
+        "title": {
+          "key": "rules.refs-duplicate-bib-key.title",
+          "params": {
+            "key": "Smith2020"
+          }
+        },
+        "to": 18
+      },
+      {
+        "detail": {
+          "key": "rules.refs-missing-asset.detailInclude"
+        },
+        "file": "main.tex",
+        "from": 355,
+        "id": "refs-missing-asset",
+        "lens": "refs",
+        "severity": "error",
+        "title": {
+          "key": "rules.refs-missing-asset.titleInclude",
+          "params": {
+            "file": "sections/missing"
+          }
+        },
+        "to": 379
+      },
+      {
+        "detail": {
+          "key": "rules.refs-undefined-ref.detail"
+        },
+        "file": "main.tex",
+        "from": 474,
+        "id": "refs-undefined-ref",
+        "lens": "refs",
+        "severity": "error",
+        "title": {
+          "key": "rules.refs-undefined-ref.title",
+          "params": {
+            "label": "sec:nope"
+          }
+        },
+        "to": 488
+      },
+      {
+        "detail": {
+          "key": "rules.refs-duplicate-label.detail"
+        },
+        "file": "main.tex",
+        "from": 561,
+        "id": "refs-duplicate-label",
+        "lens": "refs",
+        "severity": "warning",
+        "title": {
+          "key": "rules.refs-duplicate-label.title",
+          "params": {
+            "label": "eq:one"
+          }
+        },
+        "to": 575
+      },
+      {
+        "detail": {
+          "key": "rules.refs-missing-asset.detailImage"
+        },
+        "file": "main.tex",
+        "from": 758,
+        "id": "refs-missing-asset",
+        "lens": "refs",
+        "severity": "error",
+        "title": {
+          "key": "rules.refs-missing-asset.titleImage",
+          "params": {
+            "file": "figures/diagram"
+          }
+        },
+        "to": 791
+      },
+      {
+        "detail": {
+          "key": "rules.refs-missing-asset.detailImage"
+        },
+        "file": "main.tex",
+        "from": 974,
+        "id": "refs-missing-asset",
+        "lens": "refs",
+        "severity": "error",
+        "title": {
+          "key": "rules.refs-missing-asset.titleImage",
+          "params": {
+            "file": "/Users/ana/figs/x.png"
+          }
+        },
+        "to": 1013
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.refs-bib-missing.detail"
+        },
+        "file": "main.tex",
+        "from": 1191,
+        "id": "refs-bib-missing",
+        "lens": "refs",
+        "severity": "error",
+        "title": {
+          "key": "rules.refs-bib-missing.title",
+          "params": {
+            "file": "missing.bib"
+          }
+        },
+        "to": 1218
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.submission-absolute-path.detail"
+        },
+        "file": "main.tex",
+        "id": "submission-absolute-path",
+        "lens": "submission",
+        "severity": "error",
+        "title": {
+          "key": "rules.submission-absolute-path.title",
+          "params": {
+            "file": "main.tex"
+          }
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.submission-shell-escape.detail"
+        },
+        "file": "main.tex",
+        "id": "submission-shell-escape",
+        "lens": "submission",
+        "severity": "warning",
+        "title": {
+          "key": "rules.submission-shell-escape.title",
+          "params": {
+            "file": "main.tex"
+          }
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.submission-generated-file.detail"
+        },
+        "file": "main.aux",
+        "id": "submission-generated-file",
+        "lens": "submission",
+        "severity": "info",
+        "title": {
+          "key": "rules.submission-generated-file.title",
+          "params": {
+            "file": "main.aux"
+          }
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.submission-placeholder.detail"
+        },
+        "id": "submission-placeholder",
+        "lens": "submission",
+        "severity": "warning",
+        "title": {
+          "key": "rules.submission-placeholder.title"
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.submission-path-case.detailFigure",
+          "params": {
+            "match": "figures/Diagram.PDF"
+          }
+        },
+        "file": "main.tex",
+        "id": "submission-path-case",
+        "lens": "submission",
+        "severity": "error",
+        "title": {
+          "key": "rules.submission-path-case.title",
+          "params": {
+            "target": "figures/diagram"
+          }
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.submission-missing-project-file.detail",
+          "params": {
+            "file": "main.tex"
+          }
+        },
+        "file": "main.tex",
+        "id": "submission-missing-project-file",
+        "lens": "submission",
+        "severity": "error",
+        "title": {
+          "key": "rules.submission-missing-project-file.titleFigure",
+          "params": {
+            "target": "/Users/ana/figs/x.png"
+          }
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.submission-missing-project-file.detail",
+          "params": {
+            "file": "main.tex"
+          }
+        },
+        "file": "main.tex",
+        "id": "submission-missing-project-file",
+        "lens": "submission",
+        "severity": "error",
+        "title": {
+          "key": "rules.submission-missing-project-file.titleInclude",
+          "params": {
+            "target": "sections/missing"
+          }
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.submission-label-before-caption.detail"
+        },
+        "file": "main.tex",
+        "id": "submission-label-before-caption",
+        "lens": "refs",
+        "severity": "warning",
+        "title": {
+          "key": "rules.submission-label-before-caption.title"
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.submission-missing-caption.detail"
+        },
+        "file": "main.tex",
+        "id": "submission-missing-caption",
+        "lens": "submission",
+        "severity": "warning",
+        "title": {
+          "key": "rules.submission-missing-caption.titleFigure"
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.privacy-sensitive-file.detail"
+        },
+        "file": ".env",
+        "id": "privacy-sensitive-file",
+        "lens": "privacy",
+        "severity": "error",
+        "title": {
+          "key": "rules.privacy-sensitive-file.title",
+          "params": {
+            "file": ".env"
+          }
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.privacy-credential.detail"
+        },
+        "file": "keys.tex",
+        "id": "privacy-credential",
+        "lens": "privacy",
+        "severity": "error",
+        "title": {
+          "key": "rules.privacy-credential.title",
+          "params": {
+            "file": "keys.tex"
+          }
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.privacy-internal-comment.detail"
+        },
+        "file": "main.tex",
+        "id": "privacy-internal-comment",
+        "lens": "privacy",
+        "severity": "warning",
+        "title": {
+          "key": "rules.privacy-internal-comment.title",
+          "params": {
+            "file": "main.tex"
+          }
+        }
+      },
+      {
+        "certainty": "advisory",
+        "detail": {
+          "key": "rules.privacy-draft-artifact.detail"
+        },
+        "id": "privacy-draft-artifact",
+        "lens": "privacy",
+        "severity": "warning",
+        "title": {
+          "key": "rules.privacy-draft-artifact.title"
+        }
+      }
+    ],
+    "hasPdf": false,
+    "privacyScore": 58,
+    "refsScore": 0,
+    "scores": {
+      "a11y": 42,
+      "ats": 78,
+      "compile": 100,
+      "privacy": 58,
+      "refs": 0,
+      "submission": 20
+    },
+    "submissionScore": 20
+  }
+}

@@ -18,14 +18,15 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 aho-corasick = "1"
 oleafly-agent = { path = "../crates/oleafly-agent" }
-oleafly-cli = { path = "../crates/oleafly-cli" }
+oleafly-cli = { path = "../crates/oleafly-cli", features = ["proofread"] }
 oleafly-collab = { path = "../crates/oleafly-collab" }
 oleafly-collab-protocol = { path = "../crates/oleafly-collab-protocol" }
 oleafly-core = { path = "../crates/oleafly-core" }
 oleafly-history = { path = "../crates/oleafly-history" }
-# `unstable` unlocks the multi-webview APIs (Window::add_child) that the
-# browser window uses for its toolbar and tabs. It also makes every window's
-# webview a child webview; webview_frame.rs and webview_focus.rs cover that.
+# `unstable` unlocks the multi-webview APIs. The in-app browser that needed
+# them is gone; dropping the feature is a separate change (it changes how
+# every window hosts its webview). webview_frame.rs and webview_focus.rs cover
+# the child webview it gives every window.
 tauri = { version = "2", features = ["macos-private-api", "unstable"] }
 tokio = { version = "1", features = ["time", "sync", "macros", "process", "io-util", "fs", "net"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
@@ -39,6 +40,7 @@ sys-locale = "0.3"
 # process plugin provides `relaunch()` to restart into the new version.
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+tauri-plugin-notification = "2.4"
 tauri-plugin-single-instance = { version = "2.4.5", features = ["deep-link"] }
 tauri-plugin-deep-link = "~2.4.10"
 serde = { version = "1", features = ["derive"] }
@@ -62,11 +64,13 @@ atomicwrites = "0.4"
 sha2 = "0.10"
 # Compresses the before-turn copies kept for Undo (already used by oleafly-history).
 zstd = "0.13"
-# Async HTTP client for GitHub OAuth, repository operations, and public
+# Async HTTP client for Git hosting sign-in, repository operations, and public
 # repository metadata. These requests stay in Rust so tokens never enter the
-# webview and the CSP does not need to allow GitHub API origins.
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
+# webview and the CSP does not need to allow Git server origins. Native roots
+# so corporate certificate authorities work.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json", "stream"] }
 rand = "0.8"
+async-trait = "0.1"
 keyring-core = "1"
 ring = "0.17"
 tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
@@ -83,12 +87,25 @@ biblatex = "0.12.0"
 icu_properties = "2.2"
 statrs = "0.18.0"
 rapidfuzz = "0.5.0"
-muda = { version = "0.19", default-features = false }
+muda = { version = "0.20", default-features = false }
 notify = "8.2"
 open = "5"
 trash = "5.2.9"
 fontdb = "0.24"
 skrifa = { version = "0.48", default-features = false, features = ["std"] }
+# 0.4.8 F2
+oleafly-secrets = { path = "../crates/oleafly-secrets", features = ["keychain"] }
+oleafly-online = { path = "../crates/oleafly-online" }
+# 0.4.8 E
+oleafly-sandbox = { path = "../crates/oleafly-sandbox" }
+oleafly-research = { path = "../crates/oleafly-research" }
+# 0.4.8 D
+oleafly-acp = { path = "../crates/oleafly-acp" }
+# 0.4.8 G
+oleafly-forge = { path = "../crates/oleafly-forge" }
+# 0.4.8 F1
+oleafly-doctools = { path = "../crates/oleafly-doctools" }
+oleafly-downloads = { path = "../crates/oleafly-downloads" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-native-keyring-store = { version = "1", features = ["keychain"] }
@@ -102,8 +119,10 @@ plist = "1"
 
 [target.'cfg(windows)'.dependencies]
 windows-native-keyring-store = "1"
-webview2-com = "0.38"
-windows-core = "0.61"
+# The same versions wry uses: the controller it hands to with_webview has to
+# be the type webview_focus.rs takes.
+webview2-com = "0.39"
+windows-core = "0.62"
 windows-registry = "0.6"
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",
@@ -138,6 +157,10 @@ e2e-testing = ["dep:tauri-plugin-playwright", "oleafly-collab/e2e-hooks"]
 tauri = { version = "2", features = ["test"] }
 plist = "1"
 oleafly-server = { path = "../crates/oleafly-server", features = ["test-support"] }
+oleafly-research = { path = "../crates/oleafly-research", features = ["test-support"] }
+oleafly-downloads = { path = "../crates/oleafly-downloads", features = ["test-support"] }
+oleafly-online = { path = "../crates/oleafly-online", features = ["test-support"] }
+oleafly-forge = { path = "../crates/oleafly-forge", features = ["test-support"] }
 
 [target.'cfg(windows)'.dev-dependencies]
 windows-sys = { version = "0.61", features = [

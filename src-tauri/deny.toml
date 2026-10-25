@@ -26,12 +26,14 @@ ignore = [
   { id = "RUSTSEC-2026-0247", reason = "bitmaps is unmaintained, reached only through loro via im; no vulnerability and no upgrade in that chain" },
   { id = "RUSTSEC-2026-0248", reason = "im is unmaintained, used by loro-internal for persistent maps; no vulnerability and no upgrade in that chain" },
   { id = "RUSTSEC-2026-0251", reason = "sized-chunks is unmaintained, reached only through loro via im; no vulnerability and no upgrade in that chain" },
-  { id = "RUSTSEC-2026-0367", reason = "zip extract() keeps SUID/SGID bits on Unix; tauri-plugin-updater pins zip ^4 through 2.14 and 3.0 alpha and extracts only signature-checked update zips on Windows, and our own zip code never calls extract()" },
-  { id = "RUSTSEC-2026-0368", reason = "zip extract() writes symlinks that point outside the target; tauri-plugin-updater pins zip ^4 through 2.14 and 3.0 alpha and extracts only signature-checked update zips on Windows, and our own zip code never calls extract()" },
-  { id = "RUSTSEC-2026-0369", reason = "zip extract() sets Unix permissions through symlinks; tauri-plugin-updater pins zip ^4 through 2.14 and 3.0 alpha and extracts only signature-checked update zips on Windows, and our own zip code never calls extract()" },
+  { id = "RUSTSEC-2026-0367", reason = "zip extract() keeps SUID/SGID bits on Unix; tauri-plugin-updater pins zip ^4 through 2.14 and 3.0 alpha and extracts only signature-checked update zips on Windows, and our own zip code never calls extract(); harper-core (spelling and grammar in `oleafly lint`) links zip 8 for rule packs the CLI never loads and never calls extract()" },
+  { id = "RUSTSEC-2026-0368", reason = "zip extract() writes symlinks that point outside the target; tauri-plugin-updater pins zip ^4 through 2.14 and 3.0 alpha and extracts only signature-checked update zips on Windows, and our own zip code never calls extract(); harper-core (spelling and grammar in `oleafly lint`) links zip 8 for rule packs the CLI never loads and never calls extract()" },
+  { id = "RUSTSEC-2026-0369", reason = "zip extract() sets Unix permissions through symlinks; tauri-plugin-updater pins zip ^4 through 2.14 and 3.0 alpha and extracts only signature-checked update zips on Windows, and our own zip code never calls extract(); harper-core (spelling and grammar in `oleafly lint`) links zip 8 for rule packs the CLI never loads and never calls extract()" },
   { id = "RUSTSEC-2026-0370", reason = "zvariant is no longer released on its own (it moved into zbus 6); reached only through tauri-plugin-single-instance, which pins zbus ^5.9 through 2.5.4 and 3.0 alpha; no vulnerability" },
   { id = "RUSTSEC-2026-0371", reason = "zbus_names is no longer released on its own (it moved into zbus 6); reached only through tauri-plugin-single-instance, which pins zbus ^5.9 through 2.5.4 and 3.0 alpha; no vulnerability" },
   { id = "RUSTSEC-2026-0372", reason = "zvariant_derive is no longer released on its own (its macros moved into zbus 6); reached only through tauri-plugin-single-instance, which pins zbus ^5.9 through 2.5.4 and 3.0 alpha; no vulnerability" },
+  { id = "RUSTSEC-2025-0141", reason = "bincode is unmaintained; reached only through burn, the model behind harper-core's part-of-speech tagging (spelling and grammar in `oleafly lint`); no vulnerability and no release of that chain without it" },
+  { id = "RUSTSEC-2026-0192", reason = "ttf-parser is unmaintained; reached only through lopdf, which preflight uses to read the fonts of a built PDF and pdf-extract uses to read the text of papers; no vulnerability and no lopdf release without it" },
 ]
 
 [licenses]
@@ -53,12 +55,22 @@ allow = [
 confidence-threshold = 0.8
 exceptions = [
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-acp" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-agent" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-cli" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-collab" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-collab-protocol" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-core" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-doctools" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-downloads" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-forge" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-history" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-lint" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-online" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-preflight" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-research" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-sandbox" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-secrets" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-server" },
 ]
 

@@ -243,13 +243,7 @@ async fn download_pack(app: &AppHandle, pack: &FontPack) -> Result<(), String> {
     Ok(())
 }
 
-pub(crate) fn checksum_matches(expected: Option<&str>, actual: &[u8]) -> bool {
-    let Some(expected) = expected else {
-        return true;
-    };
-    let actual: String = actual.iter().map(|byte| format!("{byte:02x}")).collect();
-    expected.trim().eq_ignore_ascii_case(&actual)
-}
+pub(crate) use oleafly_downloads::template_packs::checksum_matches;
 
 #[tauri::command]
 pub fn list_font_components(app: AppHandle) -> Result<Vec<ComponentInfo>, String> {

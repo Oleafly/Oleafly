@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { currentLocale } from "@/i18n";
 import { Badge } from "@/components/ui/badge";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
-import type { StoredChat } from "@/store/chats";
+import { chatMessageCount, type StoredChat } from "@/store/chats";
 
 export function RecentChats({
   chats,
@@ -53,7 +53,7 @@ export function RecentChats({
       <ul className="-mx-1 flex flex-col">
         {chats.slice(0, limit).map((chat) => {
           const stale = Boolean(chat.headOid && currentHead && chat.headOid !== currentHead);
-          const count = chat.messages.length;
+          const count = chatMessageCount(chat);
           return (
             <li key={chat.id}>
               <button

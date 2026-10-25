@@ -15,6 +15,9 @@ describe("research presets", () => {
       "manuscript-review",
       "reproducibility-audit",
       "figure-audit",
+      "compilation-repair",
+      "submission-prep",
+      "reviewer-response",
       "git-review",
       "reference-cleanup",
     ]);
@@ -25,6 +28,9 @@ describe("research presets", () => {
       "Manuscript review",
       "Reproducibility audit",
       "Figure audit",
+      "Compilation repair",
+      "Submission prep",
+      "Reviewer response",
       "Git review",
       "Reference cleanup",
     ]);
@@ -56,6 +62,19 @@ describe("research presets", () => {
     expect(cliResearchPresets({ gitRepository: true }).map((preset) => preset.id)).toContain("git-review");
     const cleanup = cliResearchPresets({ gitRepository: true }).find((preset) => preset.id === "reference-cleanup");
     expect(cleanup?.action).toBe("clean-library");
+  });
+
+  it("offers compilation repair, submission prep and reviewer response with their skills", () => {
+    const presets = researchPresets();
+    const at = presets.findIndex((preset) => preset.id === "figure-audit");
+    expect(presets.slice(at + 1, at + 4).map((preset) => [preset.id, preset.skillId])).toEqual([
+      ["compilation-repair", "oleafly-latex-build"],
+      ["submission-prep", "oleafly-pre-submission"],
+      ["reviewer-response", "oleafly-response-letter"],
+    ]);
+    expect(presets.find((preset) => preset.id === "compilation-repair")?.prompt).toBe(
+      "Compile this project and fix every error until it builds cleanly",
+    );
   });
 
   it("lets the built-in assistant add the slash skill itself", () => {

@@ -1,6 +1,5 @@
-import { Children, Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { Children, Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
-  Globe,
   SlidersHorizontal,
   GitFork,
   PanelLeft,
@@ -13,12 +12,13 @@ import { useTranslation } from "react-i18next";
 import { railSections, railTabLabel, type AppContext, type RailTabContribution } from "@oleafly/registry";
 import { useSettingsStore, type RailTab } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
+import { useTerminalsStore } from "@/store/terminals";
 import { useMcpActivityStore } from "@/store/mcp-activity";
+import { useResearchTasksEnabled } from "@/store/research-tasks-flag";
 import { useCollabRail } from "@/components/collab/collab-rail";
 import { useCommentsRail } from "@/components/collab/comments-rail";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useTheme } from "@/lib/theme";
-import { toggleBrowser } from "@/lib/browser-window";
 import { BetaBadge } from "@/components/ui/beta-badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -120,6 +120,11 @@ export function SidebarViews() {
   useEffect(() => {
     if (!commentsShown && railTab === "comments") setRailTab("files");
   }, [commentsShown, railTab, setRailTab]);
+  // 0.4.8: the Research tab exists only while research tasks (experimental) are on.
+  const researchShown = useResearchTasksEnabled();
+  useEffect(() => {
+    if (!researchShown && railTab === "research") setRailTab("files");
+  }, [researchShown, railTab, setRailTab]);
 
   const select = (tab: RailTab) => {
     setRailTab(tab);
@@ -174,31 +179,27 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
   children?: ReactNode;
   overflow?: number;
 }>) {
-  const hideBrowser = overflow >= TOOLBAR_OVERFLOW.browser;
   const hideTheme = overflow >= TOOLBAR_OVERFLOW.theme;
   const hideSettings = overflow >= TOOLBAR_OVERFLOW.settings;
   const hideFork = overflow >= TOOLBAR_OVERFLOW.fork;
   const { preference, setPreference } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const pointerToggled = useRef(false);
-  const { t } = useTranslation(["shell"]);
+  const { t } = useTranslation(["shell", "workspace"]);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
   const setTerminalOpen = useSettingsStore((s) => s.setTerminalOpen);
-  const webBrowser = useSettingsStore((s) => s.webBrowser);
-  const browserOpen = useSettingsStore((s) => s.browserOpen);
+  // A program rang the bell in a terminal that was out of sight.
+  const terminalActivity = useTerminalsStore((s) => s.tabs.some((tab) => tab.bell));
+  const terminalActivityId = useId();
+  const showTerminalActivity = terminalActivity && !terminalOpen;
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const setAssistantOpen = useSettingsStore((s) => s.setAssistantOpen);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const terminalShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleTerminal));
-  const browserShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleBrowser));
   const settingsShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.openSettings));
   const terminalLabel = terminalOpen
     ? t(($) => $.shell.dock.terminal.hide, { shortcut: terminalShortcut })
     : t(($) => $.shell.dock.terminal.show, { shortcut: terminalShortcut });
-  // The browser opens in its own window; the button toggles that window.
-  const browserLabel = browserOpen
-    ? t(($) => $.shell.dock.browser.close, { shortcut: browserShortcut })
-    : t(($) => $.shell.dock.browser.open, { shortcut: browserShortcut });
   const assistantLabel = assistantOpen
     ? t(($) => $.shell.dock.assistant.hide)
     : t(($) => $.shell.dock.assistant.show);
@@ -221,21 +222,27 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
           data-testid="rail-terminal-toggle"
           aria-label={terminalLabel}
           aria-pressed={terminalOpen}
+          aria-describedby={showTerminalActivity ? terminalActivityId : undefined}
           onClick={() => setTerminalOpen(!terminalOpen)}
-          className={dockBtn(terminalOpen)}
+          className={cn(dockBtn(terminalOpen), "relative")}
         >
           <SquareTerminal className="size-4" aria-hidden />
+          {showTerminalActivity && (
+            <>
+              <span
+                data-testid="rail-terminal-activity"
+                aria-hidden
+                className="pointer-events-none absolute right-1 top-1 size-1.5 rounded-full bg-primary"
+              />
+              <span id={terminalActivityId} className="sr-only">
+                {t(($) => $.workspace.terminal.activity)}
+              </span>
+            </>
+          )}
         </Button>
       </Tooltip>
       </ToolbarAction>
       {layoutControl}
-      {webBrowser && <ToolbarAction name="browser" order={TOOLBAR_OVERFLOW.browser} hidden={hideBrowser}>
-        <Tooltip label={browserLabel} side="bottom">
-          <Button type="button" variant="ghost" size="icon" className={dockBtn(browserOpen)}
-            aria-label={browserLabel} aria-pressed={browserOpen} data-testid={hideBrowser ? undefined : "rail-browser-toggle"}
-            onClick={() => toggleBrowser()}><Globe className="size-4" aria-hidden /></Button>
-        </Tooltip>
-      </ToolbarAction>}
       <ToolbarAction name="assistant">
       <Tooltip label={assistantLabel} side="bottom">
         <Button
@@ -280,9 +287,6 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
           {Children.toArray(children).length > 0 && <DropdownMenuSeparator />}
           {onFork && hideFork && <DropdownMenuItem onSelect={onFork}>
             <GitFork className="size-4" />{t(($) => $.shell.toolbar.forkProject)}
-          </DropdownMenuItem>}
-          {webBrowser && hideBrowser && <DropdownMenuItem data-testid="rail-browser-toggle" onSelect={() => toggleBrowser()}>
-            <Globe className="size-4" />{browserLabel}
           </DropdownMenuItem>}
           {hideTheme && <DropdownMenuSub>
             <DropdownMenuSubTrigger>{themeMenuLabel(preference)}</DropdownMenuSubTrigger>

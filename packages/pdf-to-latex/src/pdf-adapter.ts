@@ -128,18 +128,74 @@ async function extractPageFigures(
   return figureNames;
 }
 
+export interface ExtractOptions {
+  /** Read only these 1-based pages, inclusive, cut to the pages that exist.
+   * `pages` then holds just them, in order. */
+  pageRange?: readonly [number, number];
+  /** `"if-text"` decodes images into PNG figures only when a page read has
+   * selectable text. A scan has none, and every page of it is one large
+   * image, so it is not PNG-encoded page by page. Default `true`. */
+  figures?: boolean | "if-text";
+  /** Checked before each page; an abort rejects with an AbortError. */
+  signal?: AbortSignal;
+}
+
+export interface ExtractedPdf {
+  pages: PageInput[];
+  figures: ExtractedFigure[];
+  /** How many pages the PDF has, whatever `pageRange` read. */
+  pageCount: number;
+}
+
+/** How many pages a PDF has, without reading any of them. */
+export async function countPdfPages(bytes: Uint8Array): Promise<number> {
+  const loadingTask = pdfjsLib.getDocument({ data: bytes.slice() });
+  try {
+    return (await loadingTask.promise).numPages;
+  } finally {
+    await loadingTask.destroy();
+  }
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+}
+
+function hasText(content: PdfTextContent): boolean {
+  return content.items.some((raw) => "str" in raw && Boolean(raw.str));
+}
+
 export async function extractPagesForConvert(
   bytes: Uint8Array,
-): Promise<{ pages: PageInput[]; figures: ExtractedFigure[] }> {
+  options: ExtractOptions = {},
+): Promise<ExtractedPdf> {
+  throwIfAborted(options.signal);
   const loadingTask = pdfjsLib.getDocument({ data: bytes.slice() });
-  const doc = await loadingTask.promise;
   const pages: PageInput[] = [];
   const figures: ExtractedFigure[] = [];
+  let pageCount = 0;
   try {
-    for (let p = 1; p <= doc.numPages; p++) {
+    const doc = await loadingTask.promise;
+    pageCount = doc.numPages;
+    const first = Math.max(1, Math.floor(options.pageRange?.[0] ?? 1));
+    const last = Math.min(pageCount, Math.floor(options.pageRange?.[1] ?? pageCount));
+    // Text first, for every page read: it decides whether figures are needed.
+    const read: { number: number; page: PdfPage; content: PdfTextContent }[] = [];
+    for (let p = first; p <= last; p++) {
+      throwIfAborted(options.signal);
       const page = await doc.getPage(p);
+      read.push({ number: p, page, content: await page.getTextContent() });
+    }
+    const wanted = options.figures ?? true;
+    const decodeFigures = wanted === "if-text" ? read.some(({ content }) => hasText(content)) : wanted;
+    for (const { number, page, content } of read) {
+      throwIfAborted(options.signal);
       const view = page.view;
-      const content = await page.getTextContent();
+      const size = { width: view[2] - view[0], height: view[3] - view[1] };
+      if (!decodeFigures && !hasText(content)) {
+        pages.push({ ...size, items: [], figureNames: [] });
+        continue;
+      }
       // getOperatorList also populates commonObjs, which holds the real face
       // names ("ABCDEF+Times-Bold") behind the internal ids getTextContent uses.
       let ops: PdfOperatorList | null = null;
@@ -149,11 +205,11 @@ export async function extractPagesForConvert(
         ops = null;
       }
       const items = readTextItems(content, makeFaceResolver(page));
-      const figureNames = await extractPageFigures(page, ops, p, figures);
-      pages.push({ width: view[2] - view[0], height: view[3] - view[1], items, figureNames });
+      const figureNames = decodeFigures ? await extractPageFigures(page, ops, number, figures) : [];
+      pages.push({ ...size, items, figureNames });
     }
   } finally {
     await loadingTask.destroy();
   }
-  return { pages, figures };
+  return { pages, figures, pageCount };
 }

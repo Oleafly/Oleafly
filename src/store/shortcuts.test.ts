@@ -80,6 +80,48 @@ describe("shortcut bindings", () => {
     }
   });
 
+  it("follows the physical backquote key on layouts that type something else there", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Linux x86_64" });
+    try {
+      const { matchesShortcut, bindingFromEvent, SHORTCUT_DEFINITIONS } = await import("@/store/shortcuts");
+      const binding = (id: string) => SHORTCUT_DEFINITIONS.find((definition) => definition.id === id)?.defaultBinding;
+      const newTerminal = binding("newTerminal");
+      const toggleTerminal = binding("toggleTerminal");
+      if (!newTerminal || !toggleTerminal) throw new Error("missing terminal bindings");
+      const backquote = { code: "Backquote", ctrlKey: true };
+
+      // UK layout: Shift+` types a not sign. German and French: a dead key.
+      expect(matchesShortcut(keyboard("\u00ac", { ...backquote, shiftKey: true }), newTerminal)).toBe(true);
+      expect(matchesShortcut(keyboard("Dead", { ...backquote, shiftKey: true }), newTerminal)).toBe(true);
+      expect(matchesShortcut(keyboard("Dead", backquote), toggleTerminal)).toBe(true);
+      // US layout and test events without a code still match by the character.
+      expect(matchesShortcut(keyboard("~", { ctrlKey: true, shiftKey: true }), newTerminal)).toBe(true);
+      expect(matchesShortcut(keyboard("`", { ctrlKey: true }), toggleTerminal)).toBe(true);
+      // Modifiers and the key itself still have to match.
+      expect(matchesShortcut(keyboard("\u00ac", backquote), newTerminal)).toBe(false);
+      expect(matchesShortcut(keyboard("\u00ac", { ...backquote, shiftKey: true }), toggleTerminal)).toBe(false);
+      expect(
+        matchesShortcut(keyboard("\u00ac", { code: "IntlBackslash", ctrlKey: true, shiftKey: true }), newTerminal),
+      ).toBe(false);
+
+      expect(bindingFromEvent(keyboard("\u00ac", { ...backquote, shiftKey: true }))).toEqual({
+        key: "~",
+        mod: true,
+        shift: true,
+        alt: false,
+      });
+      expect(bindingFromEvent(keyboard("\u00ba", backquote))).toEqual({
+        key: "`",
+        mod: true,
+        shift: false,
+        alt: false,
+      });
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
   it("records macOS Ctrl as a fixed modifier", async () => {
     const originalNavigator = globalThis.navigator;
     vi.stubGlobal("navigator", { platform: "MacIntel" });
@@ -267,7 +309,7 @@ describe("shortcut bindings", () => {
     }
   });
 
-  it("registers unused dock toggle defaults", async () => {
+  it("registers the terminal dock toggle default", async () => {
     const { SHORTCUT_DEFINITIONS, useShortcutStore } = await import(
       "@/store/shortcuts"
     );
@@ -276,16 +318,23 @@ describe("shortcut bindings", () => {
       key: "`",
       ctrl: true,
     });
-    expect(useShortcutStore.getState().bindings.toggleBrowser).toEqual({
-      key: "b",
-      ctrl: true,
-      shift: true,
-    });
     expect(
-      SHORTCUT_DEFINITIONS.map(({ id }) => id).filter((id) =>
-        ["toggleTerminal", "toggleBrowser"].includes(id),
-      ),
-    ).toEqual(["toggleTerminal", "toggleBrowser"]);
+      SHORTCUT_DEFINITIONS.map(({ id }) => id).filter((id) => id === "toggleTerminal"),
+    ).toEqual(["toggleTerminal"]);
+  });
+
+  it("drops the toggleBrowser binding 0.4.7 saved and keeps the rest", async () => {
+    localStorage.setItem(
+      "oleafly.shortcuts",
+      JSON.stringify({
+        toggleBrowser: { key: "b", ctrl: true, alt: true },
+        commandPalette: { key: "p", mod: true },
+      }),
+    );
+    const { useShortcutStore, SHORTCUT_DEFINITIONS } = await import("@/store/shortcuts");
+    expect(SHORTCUT_DEFINITIONS.map(({ id }) => id)).not.toContain("toggleBrowser");
+    expect(useShortcutStore.getState().bindings).not.toHaveProperty("toggleBrowser");
+    expect(useShortcutStore.getState().bindings.commandPalette).toEqual({ key: "p", mod: true });
   });
 
   it("opens a folder with Cmd or Ctrl+Shift+O by default, without clashing with another action", async () => {
@@ -314,6 +363,25 @@ describe("shortcut bindings", () => {
         id !== "openSettings" && sameShortcutBinding(defaultBinding, openSettings),
       ),
     ).toEqual([]);
+  });
+
+  it("registers terminal tab shortcuts that clash with nothing", async () => {
+    const { SHORTCUT_DEFINITIONS, isValidBinding, sameShortcutBinding, useShortcutStore } = await import(
+      "@/store/shortcuts"
+    );
+    const bindings = useShortcutStore.getState().bindings;
+    expect(bindings.newTerminal).toEqual({ key: "~", ctrl: true, shift: true });
+    expect(bindings.closeTerminal).toEqual({ key: "w", ctrl: true, shift: true });
+    expect(bindings.nextTerminal).toEqual({ key: "PageDown", ctrl: true });
+    expect(bindings.previousTerminal).toEqual({ key: "PageUp", ctrl: true });
+    for (const id of ["newTerminal", "closeTerminal", "nextTerminal", "previousTerminal"] as const) {
+      expect(isValidBinding(bindings[id])).toBe(true);
+      expect(
+        SHORTCUT_DEFINITIONS.filter(
+          (definition) => definition.id !== id && sameShortcutBinding(definition.defaultBinding, bindings[id]),
+        ),
+      ).toEqual([]);
+    }
   });
 
   it("toggles the PDF preview with Cmd or Ctrl+Option or Alt+P by default, without clashing with another action", async () => {
@@ -381,11 +449,6 @@ describe("shortcut bindings", () => {
     expect(stored.useShortcutStore.getState().bindings.toggleTerminal).toEqual({
       key: "`",
       ctrl: true,
-    });
-    expect(stored.useShortcutStore.getState().bindings.toggleBrowser).toEqual({
-      key: "b",
-      ctrl: true,
-      shift: true,
     });
 
     vi.resetModules();

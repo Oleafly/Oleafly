@@ -9,6 +9,7 @@ import {
   mergeToggledSkillRecord,
   parseSkillCommand,
   readSkillFile,
+  replaceSkillWithBuiltin,
   requestedSkillPrompt,
   resetSkillPreferences,
   setSkillEnabled,
@@ -193,6 +194,17 @@ describe("skills client", () => {
     await expect(updateBuiltinSkill("paper-lookup")).resolves.toEqual(ENABLED_SKILL);
     expect(mockInvoke).toHaveBeenCalledWith("skills_update_builtin", { id: "paper-lookup" });
   });
+
+  it("replaces a copy that shadows a built-in skill and reports where the copy went", async () => {
+    const replaced = {
+      record: { ...ENABLED_SKILL, id: "openresearch", source: "bundled" as const, shadowsBundled: false },
+      backupPath: "/home/me/.oleafly/skills-backup/openresearch-20261018-143000",
+    };
+    mockInvoke.mockResolvedValue(replaced);
+
+    await expect(replaceSkillWithBuiltin("openresearch")).resolves.toEqual(replaced);
+    expect(mockInvoke).toHaveBeenCalledExactlyOnceWith("skills_replace_with_builtin", { id: "openresearch" });
+  });
 });
 
 describe("project overrides", () => {
@@ -259,6 +271,15 @@ describe("project overrides", () => {
       'scripts/verify_citations.py: python3 "/skills/literature-review/scripts/verify_citations.py"',
     );
     expect(skillScriptCommands(skill({ id: "no-dir", dir: "" }))).toEqual([]);
+  });
+
+  it("skillPayload appends the alias note inside the skill block", () => {
+    const alphaxiv = skill({ id: "sweep", instructions: "Search with alphaxiv_search first." });
+    const payload = skillPayload(alphaxiv, { alphaxiv_search: "literature_search", alphaxiv_paper_content: null });
+    const note = payload.indexOf("Tool names in this skill:");
+    expect(note).toBeGreaterThan(payload.indexOf("<instructions>"));
+    expect(note).toBeLessThan(payload.indexOf("</instructions>"));
+    expect(skillPayload(alphaxiv)).not.toContain("Tool names in this skill:");
   });
 });
 
@@ -379,6 +400,22 @@ describe("progressive skill disclosure", () => {
       'scripts/arxiv_atom.py: python3 "/home/me/.oleafly/skills/paper-lookup/scripts/arxiv_atom.py"',
     );
     expect(payload).toContain("Python 3.11 or newer");
+  });
+
+  it("names what the skill's alphaXiv tools mean when the run passes aliases", async () => {
+    const sweep = skill({
+      id: "literature-sweep",
+      instructions: "Search with alphaxiv_search, then read with alphaxiv_paper_content.",
+      enabled: true,
+    });
+    const aliases = { alphaxiv_search: "literature_search", alphaxiv_paper_content: "read_paper" };
+
+    const withAliases = await createLoadSkillTools([sweep], [], aliases).load_skill.execute?.({ id: "literature-sweep" });
+    const without = await createLoadSkillTools([sweep]).load_skill.execute?.({ id: "literature-sweep" });
+
+    expect(withAliases).toContain("Tool names in this skill:");
+    expect(withAliases).toContain("literature_search");
+    expect(without).not.toContain("Tool names in this skill:");
   });
 
   it("refuses a skill that is neither enabled nor requested", async () => {

@@ -1,0 +1,11 @@
+knuth:
+  type: book
+  title: The TeXbook
+  date: 1984
+lamport:
+  type: book
+  title: LaTeX
+  date: 1994
+spare:
+  type: misc
+  title: Unused entry

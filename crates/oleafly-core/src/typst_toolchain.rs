@@ -6,9 +6,8 @@ use std::ffi::{OsStr, OsString};
 use std::fmt::{Display, Formatter};
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::sync::{mpsc, OnceLock};
-use std::time::{Duration, Instant, UNIX_EPOCH};
+use std::sync::OnceLock;
+use std::time::{Duration, UNIX_EPOCH};
 
 const CATALOG_JSON: &str = include_str!("../../../src-tauri/resources/typst-toolchain.json");
 pub const TYPST_VERSION_TIMEOUT: Duration = Duration::from_secs(5);
@@ -16,9 +15,6 @@ pub const INSTALLED_CACHE_FILE: &str = "installed.json";
 const TOOLCHAINS_DIR: &str = "toolchains";
 const MAX_VERSION_OUTPUT_BYTES: u64 = 64 * 1024;
 const MAX_CACHE_BYTES: u64 = 64 * 1024;
-const PROBE_POLL: Duration = Duration::from_millis(10);
-#[cfg(windows)]
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 static EMBEDDED: OnceLock<TypstToolchainCatalog> = OnceLock::new();
 static NO_CAPABILITIES: TypstCapabilities = TypstCapabilities {
@@ -656,47 +652,16 @@ fn sha256_file(path: &Path) -> Option<String> {
 }
 
 pub fn typst_version_of(binary: &Path, timeout: Duration) -> Option<ToolchainVersion> {
-    let mut command = Command::new(binary);
-    command
-        .arg("--version")
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null());
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        command.creation_flags(CREATE_NO_WINDOW);
-    }
-    let mut child = command.spawn().ok()?;
-    let deadline = Instant::now() + timeout;
-    let (sender, receiver) = mpsc::channel();
-    if let Some(stdout) = child.stdout.take() {
-        std::thread::spawn(move || {
-            let mut output = Vec::new();
-            let _ = stdout
-                .take(MAX_VERSION_OUTPUT_BYTES)
-                .read_to_end(&mut output);
-            let _ = sender.send(output);
-        });
-    }
-    let status = loop {
-        match child.try_wait() {
-            Ok(Some(status)) => break status,
-            Ok(None) if Instant::now() < deadline => std::thread::sleep(PROBE_POLL),
-            _ => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return None;
-            }
-        }
-    };
-    if !status.success() {
+    let output = crate::process_probe::probe_output(
+        binary,
+        &["--version"],
+        timeout,
+        MAX_VERSION_OUTPUT_BYTES,
+    )?;
+    if !output.success {
         return None;
     }
-    let output = receiver
-        .recv_timeout(deadline.saturating_duration_since(Instant::now()))
-        .ok()?;
-    parse_typst_version_output(&String::from_utf8_lossy(&output))
+    parse_typst_version_output(&String::from_utf8_lossy(&output.stdout))
 }
 
 pub fn system_typst_candidates() -> Vec<PathBuf> {

@@ -1,0 +1,10 @@
+{
+  "missing_files": [],
+  "packages": [],
+  "roles": {
+    "kapitoly/úvod.tex": "source",
+    "main.tex": "main"
+  },
+  "unused_cites": [],
+  "unused_labels": []
+}

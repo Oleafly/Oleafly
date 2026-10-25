@@ -36,6 +36,8 @@ import {
   mcpToolResult,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { createResearchTaskAiTools } from "@/lib/research-tools";
+import { primeResearchTasksFlag, useResearchTasksFlagStore } from "@/store/research-tasks-flag";
 import { useCompileStore } from "@/store/compile";
 import { supportsFigureTools } from "@/lib/document-engine";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
@@ -71,10 +73,12 @@ const MUTATING_TOOLS = new Set([
   "remember_note",
   "forget_note",
   "run_command",
-  "computer_use",
+  "research_task_create",
 ]);
 
-const ALWAYS_PROMPT_TOOLS = new Set(["run_command", "computer_use"]);
+// Asked about under every policy, "trust" included: a command runs on this
+// computer, and a research task runs for hours on the user's provider.
+const ALWAYS_PROMPT_TOOLS = new Set(["run_command", "research_task_create"]);
 
 const DENIED_BY_RULES = "This tool is denied for this project in approvals.toml.";
 const RULES_UNREADABLE = "Oleafly couldn't read the approval rules in approvals.toml, so it refused this tool.";
@@ -454,7 +458,6 @@ export function buildMcpToolRegistry(opts: {
     ...(createOleaflyTools({
       confirm: opts.confirm,
       mutationAllowed: opts.mutationAllowed,
-      alwaysConfirmComputerUse: true,
     }) as Record<string, McpToolEntry>),
     ...gateFigureTools(
       createFigureTools({
@@ -465,6 +468,7 @@ export function buildMcpToolRegistry(opts: {
     ),
     ...createSkillTools(),
     ...createMcpOnlyTools(opts.confirm, opts.mutationAllowed ?? (() => true)),
+    ...(createResearchTaskAiTools({ confirm: opts.confirm }) as Record<string, McpToolEntry>),
   };
   if (opts.readOnly) {
     for (const name of MUTATING_TOOLS) delete all[name];
@@ -631,6 +635,8 @@ function bridgeSessionIsCurrent(generation: number, session: number | null): ses
 async function buildRegistry(generation: number, session: number | null): Promise<void> {
   if (!bridgeSessionIsCurrent(generation, session)) return;
   const cfg = await getConfig();
+  // 0.4.8: the task tools follow the research tasks switch as stored.
+  primeResearchTasksFlag(cfg);
   if (!bridgeSessionIsCurrent(generation, session)) return;
   const nextRegistry = buildMcpToolRegistry({
     confirm: confirmForPolicy(cfg.mcp_approval_policy, confirm),
@@ -665,6 +671,14 @@ export async function refreshMcpRegistry(): Promise<void> {
   revokeMcpBridgeCalls();
   await rebuildRegistry();
 }
+
+// 0.4.8: the task tools come and go with the research tasks switch. A
+// session that is already serving tools registers the new list; one that
+// has not started yet builds the right list when it does.
+useResearchTasksFlagStore.subscribe((state, previous) => {
+  if (state.enabled === previous.enabled || rendererSession === null) return;
+  void rebuildRegistry().catch(() => {});
+});
 
 
 // The MCP client gets the English sentence, like every other tool error it

@@ -19,7 +19,6 @@
     "selectAll": "Seleziona tutto",
     "view": "Visualizza",
     "toggleTerminal": "Mostra o nascondi il terminale",
-    "toggleBrowser": "Mostra o nascondi il browser",
     "file": "File",
     "openFolder": "Apri cartella…",
     "openRecent": "Apri recenti",
@@ -28,15 +27,7 @@
     "minimize": "Contrai",
     "fullscreen": "Attiva o disattiva schermo intero",
     "bringAllToFront": "Porta tutto in primo piano",
-    "newTab": "Nuova scheda",
-    "openLocation": "Apri indirizzo…",
-    "closeTab": "Chiudi scheda",
-    "reloadPage": "Ricarica la pagina",
     "zenMode": "Modalità Zen"
-  },
-  "window": {
-    "browser": "Browser Oleafly",
-    "browserTitled": "{{title}} - Browser Oleafly"
   },
   "dialog": {
     "cancel": "Annulla",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Conferma l'importazione dei cookie",
-      "messageHost": "Vuoi importare i cookie di {{hostname}} dal profilo \"{{profile}}\" di {{browser}} nel browser integrato di Oleafly? I cookie importati possono farti accedere automaticamente ai siti web.",
-      "messageAll": "Vuoi importare tutti i cookie dal profilo \"{{profile}}\" di {{browser}} nel browser integrato di Oleafly? I cookie importati possono farti accedere automaticamente ai siti web.",
-      "confirm": "Importa i cookie"
+      "copyHost": "Copiare in Oleafly i cookie di {{hostname}} dal profilo \"{{profile}}\" di {{browser}}? Possono farti accedere a {{hostname}}.",
+      "copyAll": "Copiare in Oleafly tutti i cookie dal profilo \"{{profile}}\" di {{browser}}? Possono farti accedere ai siti web.",
+      "copyConfirm": "Copia i cookie"
     },
     "mcpApprove": {
       "title": "Approva lo strumento MCP",
@@ -103,6 +94,60 @@
       "confirm": "Usa il programma",
       "pickTitle": "Scegli il programma per {{name}}",
       "filter": "Programmi"
+    },
+    "desktopApps": {
+      "title": "App desktop",
+      "action": "{{agent}} vuole {{action}}.",
+      "steps": "{{agent}} vuole eseguire questi passaggi in un'app desktop:",
+      "moreSteps": "Passaggi non mostrati e non eseguiti: {{count}}",
+      "moreItems": "Elementi non mostrati: {{count}}",
+      "cut": "(caratteri non mostrati: {{count}})",
+      "signedIn": "Questa azione avviene nel tuo browser con accesso effettuato.",
+      "signedInOn": "Questa azione avviene nel tuo browser con accesso effettuato, su {{origin}}.",
+      "task": "Attività: {{title}}",
+      "app": "App: {{name}}",
+      "window": "Finestra: {{title}}",
+      "element": "Elemento: {{element}}",
+      "text": "Testo: \"{{text}}\"",
+      "address": "Indirizzo: {{url}}",
+      "allowOnce": "Consenti una volta",
+      "allowChat": "Consenti per questa chat",
+      "allowSession": "Consenti per questa sessione",
+      "allowTask": "Consenti per questa attività",
+      "deny": "Non consentire",
+      "pickedFile": "il file scelto",
+      "actions": {
+        "launchApp": "aprire un'app",
+        "click": "fare clic in un'app",
+        "doubleClick": "fare doppio clic in un'app",
+        "rightClick": "fare clic con il tasto destro in un'app",
+        "typeText": "scrivere in un'app",
+        "pressKey": "premere un tasto in un'app",
+        "hotkey": "premere una scorciatoia da tastiera in un'app",
+        "scroll": "scorrere in un'app",
+        "setValue": "modificare un campo in un'app",
+        "browserPrepare": "aprire un browser per un sito web",
+        "browserNavigate": "andare a una pagina web",
+        "browserClick": "fare clic su una pagina web",
+        "browserType": "scrivere su una pagina web",
+        "browserSelect": "scegliere un'opzione su una pagina web",
+        "runScript": "eseguire uno script Cua"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "Consentire il controllo del desktop?",
+      "message": "Gli agenti potranno usare quanto segue. Chiedono prima di ogni azione e, quando salvi, tutte le scelte \"Consenti per questa chat\" vengono cancellate:",
+      "confirm": "Consenti",
+      "enabled": "App desktop",
+      "app": "App: {{identity}} ({{name}})",
+      "more": "E altri {{count}}",
+      "site": "Sito web: {{origin}}",
+      "signedIn": "Il tuo browser con accesso effettuato su {{origin}}",
+      "scripted": "Script Cua",
+      "spacesTitle": "Dare più accesso a Cua Spaces?",
+      "spacesMessage": "Gli agenti che usano Cua Spaces potranno:",
+      "spacesChanges": "Creare ed eliminare Spaces ed eseguire comandi al loro interno",
+      "spacesSignIns": "Usare il tuo accesso a Claude Code o Codex all'interno di uno Space"
     }
   },
   "errors": {
@@ -128,5 +173,41 @@
   "cloud": {
     "connectedPage": "Sei collegato. Puoi chiudere questa scheda e tornare a Oleafly.",
     "failedPage": "L'accesso non è stato completato. Puoi chiudere questa scheda e tornare a Oleafly."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Attività pronta per la revisione",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Piano pronto da approvare",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "Un'attività richiede la tua approvazione",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Attività fermata",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Budget dell'attività esaurito",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly continua a lavorare",
+      "body": "Le attività di ricerca che hai scelto di tenere attive continuano in background. Apri Oleafly per vedere come procedono."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "I controlli dei permessi sono disattivati ({{mode}})",
+      "description": "L'agente può modificare file ed eseguire comandi senza chiedere. Oleafly non è riuscito a passare a un'altra modalità. Cambia la modalità nelle impostazioni dell'agente stesso."
+    }
   }
 }

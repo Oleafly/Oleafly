@@ -26,6 +26,8 @@ export type UsageReportFilter = {
   providerIds: string[];
   modelIds: string[];
   sessionIds: string[];
+  /** With `sessionIds`, also the sessions started under them (subagents). */
+  includeChildSessions?: boolean;
   page: number;
   pageSize: number;
 };

@@ -18,6 +18,7 @@ import type { ResearchTask } from "@/lib/research-tasks";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useAssistantRuntimeStore } from "@/store/assistant-runtime";
 import { useFilesStore } from "@/store/files";
+import { useResearchTasksStore } from "@/store/research-tasks";
 import { useSettingsStore } from "@/store/settings";
 import { i18n } from "@/i18n";
 
@@ -34,6 +35,11 @@ export function ResearchWorkspacePanel() {
     previousProjectId.current = projectId;
     setTab((current) => readSidebarView(projectId, "researchWorkspace")?.tab ?? current);
   }, [projectId]);
+  // A task opened for review from the Files rail needs the tasks tab, wherever this panel was left.
+  const taskDetailOpen = useResearchTasksStore((state) => state.detailOpen);
+  useEffect(() => {
+    if (taskDetailOpen) setTab("tasks");
+  }, [taskDetailOpen]);
   const foldersRef = useRef<HTMLDivElement>(null);
   useScrollMemory({ scrollRef: foldersRef, projectId, slot: "research.folders" });
   const [config, setConfig] = useState(knownProviderConfig);
@@ -77,6 +83,8 @@ export function ResearchWorkspacePanel() {
   })), [groups, targets]);
   const openSession = useCallback((task: ResearchTask) => {
     if (!projectId || task.runtimeId !== "acp" || !task.nativeSessionId) return;
+    // The task dialog is modal; the assistant it opens must not sit behind it.
+    useResearchTasksStore.getState().setDetailOpen(false);
     useAssistantRuntimeStore.getState().setRuntime("acp");
     useAcpSessionsStore.getState().setActive(projectId, task.nativeSessionId);
     void useAcpSessionsStore.getState().open(projectId, task.nativeSessionId).catch(() => {});
@@ -84,7 +92,7 @@ export function ResearchWorkspacePanel() {
   }, [projectId]);
   const openSettings = () => {
     const settings = useSettingsStore.getState();
-    settings.setSettingsInitialSection("ai");
+    settings.setSettingsInitialSection("research");
     settings.setSettingsOpen(true);
   };
   return (
@@ -98,7 +106,7 @@ export function ResearchWorkspacePanel() {
           variant="ghost"
           size="icon"
           className="size-6"
-          aria-label={t(($) => $.researchTools.workspace.configureAgents)}
+          aria-label={t(($) => $.researchTools.workspace.openSettings)}
           onClick={openSettings}
         >
           <Settings2 className="size-3.5" />

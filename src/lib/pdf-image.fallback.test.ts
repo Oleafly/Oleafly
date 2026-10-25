@@ -26,7 +26,7 @@ function documentWith(numPages: number) {
     render: vi.fn(() => ({ promise: Promise.resolve() })),
   };
   return {
-    promise: Promise.resolve({ numPages, getPage: () => Promise.resolve(page) }),
+    promise: Promise.resolve({ numPages, getPage: (_pageNumber: number) => Promise.resolve(page) }),
     destroy: vi.fn(async () => {}),
   };
 }
@@ -101,5 +101,62 @@ describe("pdfPageToPng recovery", () => {
     mocks.getDocument.mockImplementation(() => ({ promise: Promise.reject("bad pdf header"), destroy: vi.fn(async () => {}) }));
     await expect(pdfPageToPng(new Uint8Array([1]))).rejects.toBe("bad pdf header");
     expect(mocks.getDocument).toHaveBeenCalledOnce();
+  });
+});
+
+async function collect(pages: AsyncIterable<string>): Promise<string[]> {
+  const out: string[] = [];
+  for await (const page of pages) out.push(page);
+  return out;
+}
+
+describe("renderPages", () => {
+  it("loads the PDF once for every page and destroys it at the end", async () => {
+    const { renderPages } = await load();
+    const task = documentWith(5);
+    mocks.getDocument.mockImplementation(() => task);
+    const doc = await task.promise;
+    const getPage = vi.spyOn(doc, "getPage");
+
+    await expect(collect(renderPages(new Uint8Array([1]), [2, 4, 5], 1.6, "#ffffff"))).resolves.toEqual([
+      "data:image/png;base64,ok",
+      "data:image/png;base64,ok",
+      "data:image/png;base64,ok",
+    ]);
+    expect(mocks.getDocument).toHaveBeenCalledOnce();
+    expect(getPage.mock.calls.map(([page]) => page)).toEqual([2, 4, 5]);
+    expect(task.destroy).toHaveBeenCalledOnce();
+  });
+
+  it("destroys the document when the caller stops early", async () => {
+    const { renderPages } = await load();
+    const task = documentWith(3);
+    mocks.getDocument.mockImplementation(() => task);
+    const pages = renderPages(new Uint8Array([1]), [1, 2, 3]);
+    await pages.next();
+    expect(task.destroy).not.toHaveBeenCalled();
+    await pages.return(undefined);
+    expect(task.destroy).toHaveBeenCalledOnce();
+  });
+
+  it("never loads the PDF for no pages, and refuses a page outside it", async () => {
+    const { renderPages } = await load();
+    await expect(collect(renderPages(new Uint8Array([1]), []))).resolves.toEqual([]);
+    expect(mocks.getDocument).not.toHaveBeenCalled();
+    const task = documentWith(2);
+    mocks.getDocument.mockImplementation(() => task);
+    await expect(collect(renderPages(new Uint8Array([1]), [1, 3]))).rejects.toThrow(
+      "page 3 out of range (document has 2)",
+    );
+    expect(task.destroy).toHaveBeenCalledOnce();
+  });
+
+  it("recovers from a dead worker like a single page does", async () => {
+    const { renderPages } = await load();
+    mocks.getDocument
+      .mockImplementationOnce(() => failingTask("Worker was destroyed"))
+      .mockImplementation(() => documentWith(1));
+    await expect(collect(renderPages(new Uint8Array([1]), [1]))).resolves.toEqual(["data:image/png;base64,ok"]);
+    expect(mocks.workers).toBe(2);
   });
 });

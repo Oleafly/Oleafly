@@ -19,7 +19,6 @@
     "selectAll": "Valitse kaikki",
     "view": "Näytä",
     "toggleTerminal": "Näytä tai piilota pääte",
-    "toggleBrowser": "Näytä tai piilota selain",
     "file": "Arkisto",
     "openFolder": "Avaa kansio…",
     "openRecent": "Avaa viimeaikainen",
@@ -28,15 +27,7 @@
     "minimize": "Pienennä",
     "fullscreen": "Koko näyttö päälle tai pois",
     "bringAllToFront": "Tuo kaikki eteen",
-    "newTab": "Uusi välilehti",
-    "openLocation": "Avaa osoite…",
-    "closeTab": "Sulje välilehti",
-    "reloadPage": "Lataa sivu uudelleen",
     "zenMode": "Zen-tila"
-  },
-  "window": {
-    "browser": "Oleafly-selain",
-    "browserTitled": "{{title}} - Oleafly-selain"
   },
   "dialog": {
     "cancel": "Peruuta",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Vahvista cookieiden tuonti",
-      "messageHost": "Tuodaanko selaimen {{browser}} profiilista \"{{profile}}\" sivuston {{hostname}} cookiet Oleaflyn sisäiseen selaimeen? Tuodut cookiet voivat kirjata sinut sisään sivustoille.",
-      "messageAll": "Tuodaanko selaimen {{browser}} profiilista \"{{profile}}\" kaikki cookiet Oleaflyn sisäiseen selaimeen? Tuodut cookiet voivat kirjata sinut sisään sivustoille.",
-      "confirm": "Tuo cookiet"
+      "copyHost": "Kopioidaanko sivuston {{hostname}} cookiet Oleaflyhin selaimen {{browser}} profiilista ”{{profile}}”? Niillä voit kirjautua sivustolle {{hostname}}.",
+      "copyAll": "Kopioidaanko kaikki cookiet Oleaflyhin selaimen {{browser}} profiilista ”{{profile}}”? Niillä voit kirjautua sivustoille.",
+      "copyConfirm": "Kopioi cookiet"
     },
     "mcpApprove": {
       "title": "Hyväksy MCP-työkalu",
@@ -103,6 +94,60 @@
       "confirm": "Käytä ohjelmaa",
       "pickTitle": "Valitse ohjelma agentille {{name}}",
       "filter": "Ohjelmat"
+    },
+    "desktopApps": {
+      "title": "Työpöytäsovellukset",
+      "action": "{{agent}} haluaa {{action}}.",
+      "steps": "{{agent}} haluaa suorittaa nämä vaiheet työpöytäsovelluksessa:",
+      "moreSteps": "Näyttämättä ja suorittamatta jääneet vaiheet: {{count}}",
+      "moreItems": "Näyttämättä jääneet kohteet: {{count}}",
+      "cut": "(näyttämättä jääneet merkit: {{count}})",
+      "signedIn": "Toiminta tapahtuu omassa selaimessasi, johon olet kirjautunut.",
+      "signedInOn": "Toiminta tapahtuu omassa selaimessasi, johon olet kirjautunut, osoitteessa {{origin}}.",
+      "task": "Tehtävä: {{title}}",
+      "app": "Sovellus: {{name}}",
+      "window": "Ikkuna: {{title}}",
+      "element": "Elementti: {{element}}",
+      "text": "Teksti: ”{{text}}”",
+      "address": "Osoite: {{url}}",
+      "allowOnce": "Salli kerran",
+      "allowChat": "Salli tässä keskustelussa",
+      "allowSession": "Salli tässä istunnossa",
+      "allowTask": "Salli tässä tehtävässä",
+      "deny": "Älä salli",
+      "pickedFile": "valitsemaasi tiedostoa",
+      "actions": {
+        "launchApp": "avata sovelluksen",
+        "click": "napsauttaa sovelluksessa",
+        "doubleClick": "kaksoisnapsauttaa sovelluksessa",
+        "rightClick": "napsauttaa hiiren oikealla painikkeella sovelluksessa",
+        "typeText": "kirjoittaa sovellukseen",
+        "pressKey": "painaa näppäintä sovelluksessa",
+        "hotkey": "käyttää pikanäppäintä sovelluksessa",
+        "scroll": "vierittää sovelluksessa",
+        "setValue": "muuttaa kenttää sovelluksessa",
+        "browserPrepare": "avata selaimen sivustoa varten",
+        "browserNavigate": "siirtyä verkkosivulle",
+        "browserClick": "napsauttaa verkkosivulla",
+        "browserType": "kirjoittaa verkkosivulle",
+        "browserSelect": "valita vaihtoehdon verkkosivulla",
+        "runScript": "suorittaa Cua-skriptin"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "Sallitaanko työpöydän hallinta?",
+      "message": "Agentit voivat käyttää seuraavia. Ne kysyvät ennen jokaista toimintoa, ja tallentaminen poistaa kaikki ”Salli tässä keskustelussa” -valinnat:",
+      "confirm": "Salli",
+      "enabled": "Työpöytäsovellukset",
+      "app": "Sovellus: {{identity}} ({{name}})",
+      "more": "Ja {{count}} lisää",
+      "site": "Sivusto: {{origin}}",
+      "signedIn": "Selaimesi, jolla olet kirjautunut sivustolle {{origin}}",
+      "scripted": "Cua-skriptit",
+      "spacesTitle": "Annetaanko Cua Spacesille lisää käyttöoikeuksia?",
+      "spacesMessage": "Cua Spacesia käyttävät agentit voivat:",
+      "spacesChanges": "Luoda ja poistaa Space-ympäristöjä ja suorittaa niissä komentoja",
+      "spacesSignIns": "Käyttää Claude Code- tai Codex-kirjautumistasi Space-ympäristössä"
     }
   },
   "errors": {
@@ -128,5 +173,41 @@
   "cloud": {
     "connectedPage": "Olet yhteydessä. Voit sulkea tämän välilehden ja palata Oleaflysovellukseen.",
     "failedPage": "Kirjautuminen ei valmistunut. Voit sulkea tämän välilehden ja palata Oleaflysovellukseen."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Tehtävä on valmis tarkistettavaksi",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Suunnitelma odottaa hyväksyntää",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "Tehtävä tarvitsee hyväksyntäsi",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Tehtävä pysähtyi",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Tehtävän budjetti on käytetty",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly jatkaa työskentelyä",
+      "body": "Tutkimustehtävät, jotka merkitsit jatkumaan, jatkuvat taustalla. Avaa Oleafly, niin näet niiden etenemisen."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Lupatarkistukset ovat pois päältä ({{mode}})",
+      "description": "Agentti voi muokata tiedostoja ja suorittaa komentoja kysymättä. Oleafly ei voinut vaihtaa sitä toiseen tilaan. Vaihda tila agentin omista asetuksista."
+    }
   }
 }

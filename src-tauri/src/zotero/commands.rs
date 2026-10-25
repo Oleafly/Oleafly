@@ -251,13 +251,32 @@ pub async fn zotero_web_connect(
 ) -> Result<ZoteroAccount, String> {
     let library = library(&state);
     let account = verify_at(&library.endpoints().web, user_id.trim(), api_key.trim()).await?;
-    let mut secrets = crate::secrets::read_connector_secrets()?;
-    secrets.insert(USER_ID_SECRET.to_string(), account.user_id.clone());
-    secrets.insert(USERNAME_SECRET.to_string(), account.username.clone());
-    secrets.insert(API_KEY_SECRET.to_string(), api_key.trim().to_string());
-    crate::secrets::write_connector_secrets(&secrets)?;
+    let stored = account.clone();
+    let api_key = api_key.trim().to_string();
+    tauri::async_runtime::spawn_blocking(move || store_web_account(&stored, api_key))
+        .await
+        .map_err(|error| error.to_string())??;
     let _ = app.emit(CHANGED_EVENT, &library.status());
     Ok(account)
+}
+
+/// Saves the Zotero web account under the connector-secrets lock, so a
+/// Mathpix or connector key saved at the same time is not dropped.
+fn store_web_account(account: &ZoteroAccount, api_key: String) -> Result<(), String> {
+    crate::connectors::update_connector_secrets(|secrets| {
+        secrets.insert(USER_ID_SECRET.to_string(), account.user_id.clone());
+        secrets.insert(USERNAME_SECRET.to_string(), account.username.clone());
+        secrets.insert(API_KEY_SECRET.to_string(), api_key);
+    })
+}
+
+/// Removes the Zotero web account under the connector-secrets lock.
+fn forget_web_account() -> Result<(), String> {
+    crate::connectors::update_connector_secrets(|secrets| {
+        for name in [USER_ID_SECRET, USERNAME_SECRET, API_KEY_SECRET] {
+            secrets.remove(name);
+        }
+    })
 }
 
 #[tauri::command]
@@ -265,11 +284,9 @@ pub async fn zotero_web_disconnect(
     app: AppHandle,
     state: State<'_, ZoteroState>,
 ) -> Result<(), String> {
-    let mut secrets = crate::secrets::read_connector_secrets()?;
-    for name in [USER_ID_SECRET, USERNAME_SECRET, API_KEY_SECRET] {
-        secrets.remove(name);
-    }
-    crate::secrets::write_connector_secrets(&secrets)?;
+    tauri::async_runtime::spawn_blocking(forget_web_account)
+        .await
+        .map_err(|error| error.to_string())??;
     let _ = app.emit(CHANGED_EVENT, &library(&state).status());
     Ok(())
 }
@@ -300,4 +317,60 @@ pub async fn zotero_update_project_links(
     tauri::async_runtime::spawn_blocking(move || update_links(&path, changes))
         .await
         .map_err(|error| error.to_string())?
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::*;
+
+    #[test]
+    fn a_zotero_connect_and_a_mathpix_save_at_once_keep_both_keys() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", dir.path());
+        let (holding, held) = std::sync::mpsc::channel();
+        let (release, released) = std::sync::mpsc::channel::<()>();
+        // A Mathpix save that has read the map and not written it back yet.
+        let mathpix = std::thread::spawn(move || {
+            crate::connectors::update_connector_secrets(|secrets| {
+                holding.send(()).unwrap();
+                let _ = released.recv_timeout(Duration::from_secs(5));
+                secrets.insert("mathpix.app_id".into(), "app".into());
+            })
+        });
+        held.recv().unwrap();
+        let zotero = std::thread::spawn(|| {
+            let account = ZoteroAccount {
+                user_id: "42".into(),
+                username: "ada".into(),
+            };
+            store_web_account(&account, "zotero-key".into())
+        });
+        // Time for a writer that skips the lock to finish first.
+        std::thread::sleep(Duration::from_millis(200));
+        release.send(()).unwrap();
+        mathpix.join().unwrap().unwrap();
+        zotero.join().unwrap().unwrap();
+        let stored = crate::secrets::read_connector_secrets().unwrap();
+        assert_eq!(
+            stored.get("mathpix.app_id").map(String::as_str),
+            Some("app")
+        );
+        assert_eq!(
+            stored.get(API_KEY_SECRET).map(String::as_str),
+            Some("zotero-key")
+        );
+
+        forget_web_account().unwrap();
+        let stored = crate::secrets::read_connector_secrets().unwrap();
+        assert!(!stored.contains_key(API_KEY_SECRET));
+        assert!(!stored.contains_key(USER_ID_SECRET));
+        assert_eq!(
+            stored.get("mathpix.app_id").map(String::as_str),
+            Some("app")
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
 }

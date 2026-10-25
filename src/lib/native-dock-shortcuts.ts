@@ -4,7 +4,6 @@ import { listen } from "@tauri-apps/api/event";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
-import { toggleBrowser } from "@/lib/browser-window";
 import { toggleZenMode } from "@/lib/zen-mode";
 import {
   SHORTCUT_DEFINITIONS,
@@ -112,7 +111,6 @@ export function isNativeAcceleratorKey(key: string): boolean {
 
 export const NATIVE_MENU_SHORTCUTS: ReadonlySet<ShortcutId> = new Set([
   "toggleTerminal",
-  "toggleBrowser",
   "toggleZenMode",
   "openFolder",
   "openSettings",
@@ -160,20 +158,15 @@ export function useNativeShortcutsPaused(active: boolean): void {
   }, [active]);
 }
 
-function toggleDock(dock: "terminal" | "browser"): void {
+function toggleTerminalDock(): void {
   if (!useFilesStore.getState().projectId || useTourStore.getState().activeTourId) return;
-  if (dock === "terminal") {
-    const settings = useSettingsStore.getState();
-    settings.setTerminalOpen(!settings.terminalOpen);
-  } else {
-    toggleBrowser();
-  }
+  const settings = useSettingsStore.getState();
+  settings.setTerminalOpen(!settings.terminalOpen);
 }
 
 function syncNativeAccelerators(): Promise<void> {
   return invoke("set_dock_shortcut_accelerators", {
     terminalAccelerator: nativeAcceleratorFor("toggleTerminal"),
-    browserAccelerator: nativeAcceleratorFor("toggleBrowser"),
     openFolderAccelerator: nativeAcceleratorFor("openFolder"),
     zenModeAccelerator: nativeAcceleratorFor("toggleZenMode"),
     settingsAccelerator: nativeAcceleratorFor("openSettings"),
@@ -196,10 +189,7 @@ export async function startNativeDockShortcutBridge(): Promise<() => void> {
   });
   await sync();
   const unlistenTerminal = await listen("menu://toggle-terminal", () => {
-    toggleDock("terminal");
-  });
-  const unlistenBrowser = await listen("menu://toggle-browser", () => {
-    toggleDock("browser");
+    toggleTerminalDock();
   });
   const unlistenZen = await listen("menu://toggle-zen-mode", () => {
     toggleZenMode();
@@ -207,7 +197,6 @@ export async function startNativeDockShortcutBridge(): Promise<() => void> {
   return () => {
     unsubscribeStore();
     unlistenTerminal();
-    unlistenBrowser();
     unlistenZen();
   };
 }

@@ -38,15 +38,16 @@ Oleafly는 LaTeX, Typst 및 Markdown으로 연구 논문과 학위 논문을 쓰
 - 긴 문서를 위해 만든 편집기: 레이블, 인용 및 명령 완성, 실시간 오류 검사, 프로젝트 전체 개요, Vim 및 Emacs 키, 시각 모드, 그리고 검색할 수 있는 LaTeX 기호 236개 팔레트.
 - 자신의 컴퓨터에서 컴파일하세요. Tectonic, Typst 및 Pandoc이 내장되어 있고, 프로젝트에 전체 배포판이 필요하면 TeX Live, MacTeX, MiKTeX 또는 TinyTeX가 이어받습니다.
 - PDF를 클릭하면 소스로 이동하고 다시 돌아올 수 있으며, 오류를 고치는 동안 마지막으로 정상 컴파일된 PDF가 화면에 남아 있습니다.
-- 모든 프로젝트는 GitHub에 push할 수 있는 Git 저장소이며, Checkpoints는 컴파일에 성공할 때마다 스냅샷을 저장합니다.
+- 모든 프로젝트는 GitHub, GitLab, Gitea, Forgejo, Codeberg 또는 직접 운영하는 Git 서버에 push할 수 있는 Git 저장소이며, Checkpoints는 컴파일에 성공할 때마다 스냅샷을 저장합니다.
 - 입력하면서 Zotero 라이브러리에서 바로 인용하고, 편집기를 떠나지 않고 arXiv, Semantic Scholar, Crossref, PubMed 및 OpenAlex를 검색하세요.
 - 학술 글쓰기에 맞춘 맞춤법 및 문법 검사가 컴퓨터에서 실행됩니다.
 - Preflight는 제출하기 전에 끊어진 참조, 누락된 그림, 내장되지 않은 글꼴, 접근성 문제, 그리고 익명 심사에서 저자를 드러낼 수 있는 모든 것을 찾아냅니다.
 - TikZ, Typst 또는 Mermaid 코드로 남는 그림을 그리고, 논문, 학위 논문, 슬라이드, 포스터 및 이력서를 위한 1,700개 이상의 템플릿에서 시작하세요.
-- Word, PDF, arXiv 소스, GitHub 저장소 또는 온라인 LaTeX 서비스 계정에서 가져오세요.
+- Word, PDF, arXiv 소스, Git 저장소 또는 온라인 LaTeX 서비스 계정에서 가져오세요.
+- `oleafly` 명령으로 어떤 터미널이나 CI 작업에서든 앱과 같은 컴파일러와 설정으로 프로젝트를 빌드하고 검사하고 동기화할 수 있습니다.
 - 클라우드 동기화로 사용하는 모든 컴퓨터에 프로젝트를 유지하고, 오프라인에서도 계속 쓸 수 있습니다.
 - Claude Code, Codex 및 그 밖의 12개 에이전트가 프로젝트 안에서 작업하며, 로컬 모델을 포함해 어떤 모델이든 연결할 수도 있습니다. AI는 선택 사항이며, AI가 만드는 각 변경 사항은 검토하고 실행 취소할 수 있는 diff입니다.
-- 연구 작업은 계속 글을 쓰는 동안 프로젝트의 별도 복사본에서 문헌 검토, 근거 감사 또는 수정 작업을 실행하며, 변경된 파일 중 남길 파일은 직접 고릅니다.
+- 연구 작업은 계속 글을 쓰는 동안 프로젝트의 별도 복사본에서 문헌 검토, 근거 감사 또는 수정 작업을 실행하며, 변경된 파일 중 남길 파일은 직접 고릅니다. 이 작업은 실험 기능이며 기본적으로 꺼져 있습니다. 설정 > 실험 기능에서 켤 수 있습니다.
 
 ## 실시간으로 함께 쓰세요
 
@@ -143,8 +144,9 @@ SQLite를 사용하는 단일 Rust 바이너리로, 파일을 디스크나 S3 �
 - 모든 파일 변경은 diff로 표시됩니다. 하나씩 승인하거나, 어시스턴트가 알아서 작업하게 하거나, 도구별 규칙을 정할 수 있으며, 파일 하나 또는 한 차례 전체를 실행 취소할 수 있습니다.
 - Plan 모드는 무언가를 쓰기 전에 프로젝트를 파악합니다.
 - 문헌 검토나 수정 작업은 별도의 Git worktree에서 실행할 수 있으므로 그동안 계속 글을 쓸 수 있습니다. 변경된 파일 중 남길 파일은 직접 선택합니다.
-- 문헌 조사, 관련 연구, 주장 검증 및 심사 의견 답변서를 포함한 36개의 연구 skill이 앱에 포함되어 있습니다.
+- 문헌 조사, 관련 연구, 주장 검증 및 심사 의견 답변서를 포함한 39개의 연구 skill이 앱에 포함되어 있습니다.
 - 로컬 MCP 서버를 사용하면 외부 AI 클라이언트가 같은 프로젝트 도구를 쓸 수 있습니다. 이 서버는 127.0.0.1에서만 연결을 받습니다.
+- `oleafly mcp`는 앱이 열려 있든 닫혀 있든 Claude Code, Codex, Cursor, Gemini CLI에 stdio로 프로젝트 도구를 제공합니다.
 
 AI는 선택 사항입니다. 편집기, 컴파일러, PDF, 인용, 교정 및 검사는 모두 AI를 끈 상태에서도 작동합니다.
 
@@ -194,13 +196,15 @@ Tectonic, Typst 및 Pandoc이 앱에 포함되어 있으므로 새 프로젝트�
 
 ## Git, 이력 및 터미널
 
-모든 프로젝트는 일반 Git 저장소가 들어 있는 일반 폴더입니다. Source Control 패널에서 스테이징, diff 확인, 커밋, push, pull 및 GitHub 게시를 하거나, 터미널에도 숨겨지는 것이 없으므로 평소 쓰는 터미널을 사용하세요. Checkpoints는 컴파일에 성공할 때마다 로컬 스냅샷을 저장하므로 커밋하지 않고도 이전 상태로 되돌릴 수 있습니다.
+모든 프로젝트는 일반 Git 저장소가 들어 있는 일반 폴더입니다. Source Control 패널에서 스테이징, diff 확인, 커밋, push, pull 및 GitHub, GitLab, Gitea, Forgejo, Codeberg 또는 직접 운영하는 서버로의 게시를 하거나, 터미널에도 숨겨지는 것이 없으므로 평소 쓰는 터미널을 사용하세요. Checkpoints는 컴파일에 성공할 때마다 로컬 스냅샷을 저장하므로 커밋하지 않고도 이전 상태로 되돌릴 수 있습니다.
 
 <p align="center">
   <img src="../assets/readme/git-history.png" alt="diff, 브랜치 그래프 및 커밋 제어 기능이 있는 Oleafly Source Control 패널" width="100%" />
 </p>
 
 편집기 아래에는 프로젝트마다 최대 10개의 탭을 열 수 있는 터미널 도크가 있습니다. 출력에 있는 파일 경로를 Cmd-click(Ctrl-click)하면 그 줄에서 파일이 열립니다.
+
+`oleafly` 명령은 어떤 터미널에서든 같은 프로젝트를 다룹니다. 빌드, 변경할 때마다 다시 빌드, 제출 전 검사, 온라인 LaTeX 서비스와의 동기화를 할 수 있고, 앱을 열지 않고 Oleafly 에이전트를 실행할 수도 있습니다. 모든 명령은 스크립트와 CI를 위해 안정적인 종료 코드와 함께 JSON을 출력할 수 있습니다. 자세한 내용은 [명령줄 가이드](../cli.md)를 참고하세요.
 
 ## 그 밖의 많은 기능
 
@@ -274,21 +278,21 @@ Tools 갤러리는 beta이며 기본적으로 꺼져 있습니다. Settings > '�
 </details>
 
 <details>
-<summary>Oleafly에 포함된 36개의 연구 skill</summary>
+<summary>Oleafly에 포함된 39개의 연구 skill</summary>
 
 Skills는 Agent Skills 형식을 따르는 일반 `SKILL.md` 폴더입니다. 슬래시 명령으로 skill을 실행하거나, 직접 만든 skill을 추가하거나, 같은 컴퓨터의 호환 CLI 에이전트와 공유하세요.
 
-번들 `research-core` 팩에는 36개의 skill이 들어 있습니다. 아래 이름은 카탈로그와 프로젝트 설정에서 사용하는 ID입니다.
+번들 `research-core` 팩에는 39개의 skill이 들어 있습니다. 아래 이름은 카탈로그와 프로젝트 설정에서 사용하는 ID입니다.
 
 | 범주 | Skills |
 | --- | --- |
-| 연구 및 문헌 | `citation-management`, `exploratory-data-analysis`, `hypothesis-generation`, `literature-review`, `oleafly-literature-sweep`, `oleafly-research-loop`, `openresearch`, `paper-lookup`, `research-lookup`, `scientific-brainstorming`, `scientific-critical-thinking` |
+| 연구 및 문헌 | `citation-management`, `exploratory-data-analysis`, `hypothesis-generation`, `literature-review`, `oleafly-experiment-loop`, `oleafly-literature-sweep`, `oleafly-research-loop`, `openresearch`, `paper-lookup`, `research-lookup`, `scientific-brainstorming`, `scientific-critical-thinking` |
 | 원고 작성 및 분석 | `experimental-design`, `oleafly-data-analysis`, `oleafly-manuscript-scaffold`, `oleafly-related-work`, `scientific-writing`, `statistical-analysis`, `statistical-power`, `venue-templates` |
 | 그림 및 시각화 | `oleafly-figure-prep`, `scientific-schematics`, `scientific-visualization` |
 | 검토 및 근거 | `oleafly-response-letter`, `oleafly-review-manuscript`, `oleafly-verify-claims`, `peer-review`, `scholar-evaluation` |
 | 제출 | `oleafly-pre-submission` |
 | 커뮤니케이션 | `oleafly-slides-and-posters`, `pptx-posters`, `research-grants`, `scientific-slides` |
-| 가져오기 및 빌드 도구 | `import-refine`, `oleafly-latex-build`, `pdf-to-latex`, `template-generate` |
+| 도구 및 자동화 | `desktop-apps`, `import-refine`, `oleafly-cli`, `oleafly-latex-build`, `pdf-to-latex`, `template-generate` |
 
 </details>
 
@@ -367,6 +371,7 @@ Oleafly 계정은 필요하지 않습니다. 어디에도 로그인하지 않고
 - [AI Copilot](../AICopilot.md)
 - [Skills](../Skills.md)
 - [MCP 통합](../mcp.md)
+- [명령줄 도구](../cli.md)
 - [개발 환경 설정](../development.md)
 - [변경 로그](../../CHANGELOG.md)
 

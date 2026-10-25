@@ -1,7 +1,13 @@
+pub mod atomic;
+pub mod biber_env;
+pub mod bibkey;
 mod build;
+pub mod build_output;
 mod compile_log;
 pub mod content;
+pub mod context;
 mod detect;
+pub mod engine_spec;
 mod engine_temp;
 mod error;
 pub mod exclude;
@@ -9,9 +15,16 @@ pub mod hlc;
 pub mod ids;
 mod image_check;
 mod latexmk_env;
+pub mod linked_capture;
 pub mod locking;
 mod manifest;
+pub mod pandoc;
 pub mod portable;
+pub mod process_probe;
+pub mod sidecar;
+pub mod templates;
+pub mod tex_distro;
+pub mod tex_errors;
 mod tex_flavor;
 mod tree;
 pub mod typst_log;
@@ -32,8 +45,8 @@ pub use detect::{
 #[cfg(windows)]
 pub use engine_temp::long_path_name;
 pub use engine_temp::{
-    plain_path, tex_safe_path, EngineScratch, EngineScratchBases, PandocResourcePath,
-    ENGINE_TEMP_DIR, PANDOC_RESOURCE_PATH_VARIABLE, TEMP_DIRECTORY_VARIABLES,
+    plain_path, short_path_name, tex_safe_path, EngineScratch, EngineScratchBases,
+    PandocResourcePath, ENGINE_TEMP_DIR, PANDOC_RESOURCE_PATH_VARIABLE, TEMP_DIRECTORY_VARIABLES,
 };
 pub use error::{Error, ErrorKind, Result};
 pub use image_check::{
@@ -57,5 +70,6 @@ pub use tree::{
 };
 pub use utf8_stream::{rejoin_split_utf8_lines, Utf8StreamDecoder};
 pub use workspace::{
-    BuildLocation, DoctorCheck, DoctorReport, DoctorStatus, InitOptions, ProjectInfo, Workspace,
+    resolve_project_path, BuildLocation, DoctorCheck, DoctorReport, DoctorStatus, InitOptions,
+    ProjectInfo, Workspace,
 };
