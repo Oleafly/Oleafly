@@ -57,7 +57,19 @@ fn slow_resize_does_not_hold_the_global_session_registry() {
         .recv_timeout(std::time::Duration::from_secs(2))
         .unwrap();
     std::thread::sleep(std::time::Duration::from_millis(100));
-    let registry_available = SESSIONS.try_lock().is_ok();
+    // Other terminal tests share the registry and may hold it for a moment.
+    // A resize that kept it would hold it the whole time, so wait for it to
+    // come free instead of trusting one instant.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    let registry_available = loop {
+        if SESSIONS.try_lock().is_ok() {
+            break true;
+        }
+        if std::time::Instant::now() >= deadline {
+            break false;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    };
     drop(locked);
     resize.join().unwrap().unwrap();
     kill_terminal(&owner, &id).unwrap();

@@ -438,7 +438,7 @@ describe("edits made on disk by other programs", () => {
     expect(mocks.writeFileContent.mock.calls.at(-1)?.[4]).toBe(diskHash(call[2]));
   });
 
-  it("keeps the edit in the editor, warns once, and reloads the disk version on request", async () => {
+  it("keeps the edit in the editor, offers the changed-on-disk choice, and reloads the disk version on request", async () => {
     mocks.readFileContent.mockResolvedValue("Úvod.\nPůvodní věta.\n");
     await useFilesStore.getState().openFile("main.tex");
     mocks.writeFileContent.mockRejectedValue(CONFLICT);
@@ -449,18 +449,16 @@ describe("edits made on disk by other programs", () => {
     reportFileSaveFailure("autosave", "project", "main.tex", CONFLICT);
     reportFileSaveFailure("autosave", "project", "main.tex", CONFLICT);
     expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ content: `${buffer}x`, dirty: true });
-    expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(1);
-    const [, message, action] = mocks.toastErrorUnique.mock.calls[0];
-    expect(message).toContain("main.tex");
+    expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().changedOnDisk).toEqual(["main.tex"]);
 
     mocks.readFileContent.mockResolvedValue("Úvod.\nOpravená věta od agenta.\n");
-    action.onClick();
-    await vi.waitFor(() =>
-      expect(useFilesStore.getState().files["main.tex"]).toEqual({
-        content: "Úvod.\nOpravená věta od agenta.\n",
-        dirty: false,
-      }),
-    );
+    await useFilesStore.getState().reloadFromDisk("main.tex");
+    expect(useFilesStore.getState().files["main.tex"]).toEqual({
+      content: "Úvod.\nOpravená věta od agenta.\n",
+      dirty: false,
+    });
+    expect(useFilesStore.getState().changedOnDisk).toEqual([]);
   });
 
   it("overwrites the disk version only on an explicit save after the warning", async () => {
@@ -478,14 +476,14 @@ describe("edits made on disk by other programs", () => {
     expect(mocks.writeFileContent.mock.calls.at(-1)?.[4]).toBe(diskHash("old\n"));
     const { reportFileSaveFailure } = await import("./files");
     reportFileSaveFailure("editor save", "project", "main.tex", CONFLICT, true);
-    expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(1);
+    expect(useFilesStore.getState().changedOnDisk).toEqual(["main.tex"]);
 
     await useFilesStore.getState().saveActive({ overwrite: true });
     expect(mocks.writeFileContent.mock.calls.at(-1)).toHaveLength(4);
     expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
   });
 
-  it("shows the warning again when the user retries an action the conflict blocks", async () => {
+  it("points at the file again when the user retries an action the conflict blocks in another tab", async () => {
     mocks.readFileContent.mockResolvedValue("old\n");
     await useFilesStore.getState().openFile("main.tex");
     mocks.writeFileContent.mockRejectedValueOnce(CONFLICT);
@@ -494,7 +492,9 @@ describe("edits made on disk by other programs", () => {
     const { reportFileSaveFailure } = await import("./files");
     reportFileSaveFailure("autosave", "project", "main.tex", CONFLICT);
     reportFileSaveFailure("autosave", "project", "main.tex", CONFLICT);
-    expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(1);
+    expect(mocks.toastErrorUnique).not.toHaveBeenCalled();
+    useFilesStore.setState({ activePath: null });
+    reportFileSaveFailure("save before agent prompt", "project", "main.tex", CONFLICT, true);
     reportFileSaveFailure("save before agent prompt", "project", "main.tex", CONFLICT, true);
     expect(mocks.toastErrorUnique).toHaveBeenCalledTimes(2);
     expect(mocks.toastErrorUnique.mock.calls[1][0]).toBe(mocks.toastErrorUnique.mock.calls[0][0]);

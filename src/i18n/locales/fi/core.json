@@ -391,10 +391,8 @@
     "updatedToday": "Päivitetty tänään",
     "updatedYesterday": "Päivitetty eilen",
     "autosaveFailed": "Muutoksia ei voitu tallentaa. Ne ovat yhä editorissa.",
-    "changedOnDisk": "Tiedostoa ”{{path}}” muutettiin Oleaflyn ulkopuolella. Lataa se uudelleen tai tallenna uudelleen säilyttääksesi oman versiosi.",
     "openFileEncoding": "Tiedostoa ”{{path}}” ei voi avata, koska se ei ole UTF-8-tekstitiedosto. Jos se on tekstiä, tallenna se UTF-8-muodossa ja avaa se uudelleen.",
     "openFileFailed": "Tiedostoa ”{{path}}” ei voitu avata. Katso lisätiedot sovelluksen lokista.",
-    "reloadFromDisk": "Lataa uudelleen",
     "changedOnDiskElsewhere": "{{path}} muuttui levyllä, joten Oleafly ei tallentanut sitä. Avaa se ja valitse, kumman version pidät."
   },
   "projectDiagnostics": {

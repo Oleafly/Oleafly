@@ -1,8 +1,10 @@
 import { useTranslation } from "react-i18next";
+import { LogOut } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { Tooltip } from "@/components/ui/tooltip";
 import { ForgeBrandIcon } from "@/components/settings/git-hosting/ForgeBrandIcon";
 import { accountKey, hostLabel, kindLabel } from "@/lib/forge";
 import type { ForgeAccount } from "@/lib/tauri";
@@ -30,6 +32,10 @@ export function AccountRow({
   const { t } = useTranslation(["settings"]);
   const key = accountKey(account.base);
   const host = hostLabel(account.base);
+  const kind = kindLabel(account);
+  // The badge already names GitHub or GitLab; a server whose name differs
+  // from its kind (Codeberg, a self-hosted address) still shows it.
+  const subtitle = [host === kind ? null : host, account.name].filter(Boolean).join(" · ");
 
   return (
     <section
@@ -38,7 +44,7 @@ export function AccountRow({
         login: account.login,
         host,
       })}
-      className="flex items-start gap-3 rounded-lg border bg-background p-3"
+      className="flex items-center gap-3 rounded-lg border bg-background p-3"
     >
       <Avatar
         person={{
@@ -56,7 +62,7 @@ export function AccountRow({
           </span>
           <Badge variant="outline" size="sm" className="gap-1">
             <ForgeBrandIcon kind={account.kind} flavor={account.flavor} className="size-2.5" />
-            {kindLabel(account)}
+            {kind}
           </Badge>
           {check === "checking" ? (
             <Badge variant="muted" size="sm" className="gap-1">
@@ -75,52 +81,53 @@ export function AccountRow({
             </Badge>
           ) : null}
         </div>
-        <div className="truncate text-xs text-muted-foreground">
-          {account.name ? `${host} · ${account.name}` : host}
-        </div>
+        {subtitle ? <div className="truncate text-xs text-muted-foreground">{subtitle}</div> : null}
         {account.caFile ? (
           <div className="break-all text-xs text-muted-foreground">
             {t(($) => $.settings.gitHosting.account.caFile, { file: account.caFile })}
           </div>
         ) : null}
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {check === "signed_out" ? (
-            <Button
-              size="xs"
-              data-testid={`git-hosting-sign-in-again-${key}`}
-              disabled={busy}
-              onClick={onSignInAgain}
-            >
-              {t(($) => $.settings.gitHosting.account.signInAgain)}
-            </Button>
-          ) : null}
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        {check === "signed_out" ? (
           <Button
             size="xs"
-            variant="ghost"
-            data-testid={`git-hosting-ca-${key}`}
+            data-testid={`git-hosting-sign-in-again-${key}`}
             disabled={busy}
-            onClick={onChangeCa}
+            onClick={onSignInAgain}
           >
-            {account.caFile
-              ? t(($) => $.settings.gitHosting.account.caChange)
-              : t(($) => $.settings.gitHosting.account.caAdd)}
+            {t(($) => $.settings.gitHosting.account.signInAgain)}
           </Button>
-          {account.caFile ? (
-            <Button size="xs" variant="ghost" disabled={busy} onClick={onRemoveCa}>
-              {t(($) => $.settings.gitHosting.add.caRemove)}
-            </Button>
-          ) : null}
+        ) : null}
+        <Button
+          size="xs"
+          variant="ghost"
+          data-testid={`git-hosting-ca-${key}`}
+          disabled={busy}
+          onClick={onChangeCa}
+        >
+          {account.caFile
+            ? t(($) => $.settings.gitHosting.account.caChange)
+            : t(($) => $.settings.gitHosting.account.caAdd)}
+        </Button>
+        {account.caFile ? (
+          <Button size="xs" variant="ghost" disabled={busy} onClick={onRemoveCa}>
+            {t(($) => $.settings.gitHosting.add.caRemove)}
+          </Button>
+        ) : null}
+        <Tooltip label={t(($) => $.settings.gitHosting.account.signOut)}>
           <Button
-            size="xs"
+            size="icon"
             variant="ghost"
             data-testid={`git-hosting-sign-out-${key}`}
+            aria-label={t(($) => $.settings.gitHosting.account.signOut)}
             disabled={busy}
             onClick={onSignOut}
-            className="hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive"
+            className="size-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive [&_svg]:size-3.5"
           >
-            {t(($) => $.settings.gitHosting.account.signOut)}
+            <LogOut />
           </Button>
-        </div>
+        </Tooltip>
       </div>
     </section>
   );

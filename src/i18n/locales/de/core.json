@@ -391,10 +391,8 @@
     "updatedToday": "Heute aktualisiert",
     "updatedYesterday": "Gestern aktualisiert",
     "autosaveFailed": "Ihre Änderungen konnten nicht gespeichert werden. Sie sind noch im Editor.",
-    "changedOnDisk": "„{{path}}“ wurde außerhalb von Oleafly geändert. Lade die Datei neu oder speichere erneut, um deine Version zu behalten.",
     "openFileEncoding": "„{{path}}“ kann nicht geöffnet werden, weil es keine UTF-8-Textdatei ist. Wenn es Text ist, speichere die Datei als UTF-8 und öffne sie erneut.",
     "openFileFailed": "„{{path}}“ konnte nicht geöffnet werden. Einzelheiten stehen im Protokoll der App.",
-    "reloadFromDisk": "Neu laden",
     "changedOnDiskElsewhere": "{{path}} wurde auf dem Datenträger geändert, daher hat Oleafly die Datei nicht gespeichert. Öffnen Sie sie, um zu wählen, welche Version bleibt."
   },
   "projectDiagnostics": {

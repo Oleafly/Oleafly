@@ -400,10 +400,8 @@
     "updatedToday": "Actualizat astăzi",
     "updatedYesterday": "Actualizat ieri",
     "autosaveFailed": "Modificările nu au putut fi salvate. Sunt încă în editor.",
-    "changedOnDisk": "„{{path}}” a fost modificat în afara Oleafly. Reîncarcă-l sau salvează din nou ca să păstrezi versiunea ta.",
     "openFileEncoding": "„{{path}}” nu poate fi deschis deoarece nu este un fișier text UTF-8. Dacă este text, salvează-l în UTF-8, apoi deschide-l din nou.",
     "openFileFailed": "„{{path}}” nu a putut fi deschis. Vezi jurnalul aplicației pentru detalii.",
-    "reloadFromDisk": "Reîncarcă",
     "changedOnDiskElsewhere": "{{path}} s-a schimbat pe disc, așa că Oleafly nu l-a salvat. Deschide-l ca să alegi ce versiune păstrezi."
   },
   "projectDiagnostics": {
