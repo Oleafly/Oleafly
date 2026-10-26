@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Oleafly's MCP server is in the MCP Registry as `io.github.Oleafly/oleafly`.
+  Each release carries `oleafly.mcpb`, which installs it in Claude Desktop
+  when you open it. It runs the `oleafly` command the app installs, so you
+  need the app with Settings > Integrations > Oleafly MCP turned on.
+
 ## [0.4.8] - 2026-10-25
 
 ### Added

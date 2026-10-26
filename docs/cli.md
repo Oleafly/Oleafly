@@ -287,6 +287,11 @@ refused.
 oleafly mcp config --client claude-code --write
 ```
 
+Each release also carries `oleafly.mcpb`, a Claude Desktop extension. Open it
+and Claude Desktop installs it. It runs `oleafly mcp --bridge always` with the
+`oleafly` command the app installed, so it needs the app. The MCP Registry
+lists the same bundle as `io.github.Oleafly/oleafly`.
+
 ### `oleafly version`, `oleafly help`, `oleafly completions`, `oleafly man`
 
 ```bash

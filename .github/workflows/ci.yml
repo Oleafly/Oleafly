@@ -151,6 +151,12 @@ jobs:
       - name: Test the release notes extraction
         run: bash scripts/changelog-extract.test.sh
 
+      - name: Test the MCP bundle launcher
+        run: node --test mcpb/server/index.test.cjs
+
+      - name: Test the MCP bundle build script
+        run: bash scripts/mcpb-release.test.sh
+
       # Biome lint gate. Blocks on correctness errors; the existing a11y/style
       # backlog is reported as (non-blocking) warnings. See biome.json.
       - name: Lint
