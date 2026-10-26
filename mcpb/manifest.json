@@ -1,0 +1,48 @@
+{
+  "manifest_version": "0.3",
+  "name": "oleafly",
+  "display_name": "Oleafly",
+  "version": "0.4.8",
+  "description": "Read, edit, search and compile the LaTeX, Typst or Markdown project open in Oleafly.",
+  "long_description": "Connects your AI client to the Oleafly app on this computer. It can read, edit, search and compile the project you have open, using the client's own model, so Oleafly needs no API key for it.\n\nYou need the Oleafly app (https://oleafly.com). Open it once, then turn on Settings > Integrations > Oleafly MCP. The server listens on 127.0.0.1 only.",
+  "author": {
+    "name": "Oleafly",
+    "url": "https://oleafly.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Oleafly/Oleafly"
+  },
+  "homepage": "https://oleafly.com",
+  "documentation": "https://oleafly.com/docs/mcp/",
+  "support": "https://github.com/Oleafly/Oleafly/issues",
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.cjs",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.cjs"],
+      "env": {
+        "OLEAFLY_CLI": "${user_config.oleafly_command}"
+      }
+    }
+  },
+  "tools_generated": true,
+  "keywords": ["latex", "typst", "markdown", "research", "writing", "academic"],
+  "license": "AGPL-3.0-or-later",
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "user_config": {
+    "oleafly_command": {
+      "type": "file",
+      "title": "oleafly command",
+      "description": "Leave this empty unless Oleafly is installed somewhere unusual. Then pick the oleafly command, which is oleafly-cli inside the app.",
+      "required": false
+    }
+  }
+}
