@@ -19,8 +19,9 @@ die() {
 }
 
 check_version() {
-  [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] \
-    || die "not a release version (expected 1.2.3 without the v): $1"
+  local version="$1"
+  [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] \
+    || die "not a release version (expected 1.2.3 without the v): $version"
 }
 
 pack() {
