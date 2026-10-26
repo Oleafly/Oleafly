@@ -1,11 +1,11 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ExternalLink, GitBranch } from "lucide-react";
+import { ForgeAccountSelect } from "@/components/integrations/ForgeAccountSelect";
 import { ForgeRepoList } from "@/components/integrations/ForgeRepoList";
 import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip } from "@/components/ui/tooltip";
 import { hasRemotePassword, hostLabel, isAllowedRemoteUrl } from "@/lib/forge";
 import { logError } from "@/lib/log";
@@ -77,25 +77,13 @@ export function GitImportView({
       return (
         <section className="space-y-2">
           {accounts.length > 1 ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{t(($) => $.library.import.accountLabel)}</span>
-              <Select value={account.base} onValueChange={setAccountBase}>
-                <SelectTrigger
-                  className="h-8 w-auto min-w-48 text-xs"
-                  data-testid="project-import-account"
-                  aria-label={t(($) => $.library.import.accountLabel)}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="z-[100]">
-                  {accounts.map((item) => (
-                    <SelectItem key={item.base} value={item.base}>
-                      {`${hostLabel(item.base)} · ${item.login}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <ForgeAccountSelect
+              accounts={accounts}
+              value={account.base}
+              onValueChange={setAccountBase}
+              label={t(($) => $.library.import.accountLabel)}
+              testId="project-import-account"
+            />
           ) : null}
           <div className="h-72">
             <ForgeRepoList

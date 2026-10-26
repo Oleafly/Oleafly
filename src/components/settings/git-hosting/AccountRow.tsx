@@ -1,10 +1,9 @@
 import { useTranslation } from "react-i18next";
-import { GitBranch } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { GitHubBrandIcon } from "@/components/settings/IntegrationBrandIcons";
+import { ForgeBrandIcon } from "@/components/settings/git-hosting/ForgeBrandIcon";
 import { accountKey, hostLabel, kindLabel } from "@/lib/forge";
 import type { ForgeAccount } from "@/lib/tauri";
 import type { ForgeCheckState } from "@/store/forge-accounts";
@@ -48,14 +47,15 @@ export function AccountRow({
           imageUrl: account.avatarUrl,
         }}
         size="md"
-        fallbackIcon={account.kind === "github" ? <GitHubBrandIcon /> : <GitBranch />}
+        fallbackIcon={<ForgeBrandIcon base={account.base} kind={account.kind} flavor={account.flavor} />}
       />
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="truncate text-sm font-medium">
             {t(($) => $.settings.gitHosting.account.signedInAs, { login: account.login })}
           </span>
-          <Badge variant="outline" size="sm">
+          <Badge variant="outline" size="sm" className="gap-1">
+            <ForgeBrandIcon kind={account.kind} flavor={account.flavor} className="size-2.5" />
             {kindLabel(account)}
           </Badge>
           {check === "checking" ? (
