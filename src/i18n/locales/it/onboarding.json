@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "Due tipi di agente",
-      "content": "L'agente Oleafly usa il provider di modelli che configuri. L'agente da riga di comando, in beta, pilota un agente di programmazione già installato su questo computer."
+      "content": "L'agente Oleafly usa il provider di modelli che configuri. L'agente da riga di comando pilota un agente di programmazione già installato su questo computer."
     },
     "connectProvider": {
       "title": "Collega un provider",

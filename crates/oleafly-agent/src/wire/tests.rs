@@ -577,22 +577,185 @@ fn gemini_3_and_later_get_no_temperature_and_gemini_4_gets_a_thinking_level() {
     );
 }
 
-#[test]
-fn deepseek_turns_thinking_off_only_for_requests_with_tools() {
-    let deepseek = Resolved {
+fn deepseek() -> Resolved {
+    Resolved {
         provider_id: "deepseek".into(),
         model_id: "deepseek-flash".into(),
-        ..openai()
+        caps: ModelCaps::from_metadata_json(&json!({
+            "outputLimit": 393216,
+            "reasoning": true,
+            "reasoningOptions": [{"type":"toggle"},{"type":"effort","values":["low","high","max"]}]
+        })),
+        ..resolved(Wire::OpenAiChat {
+            base_url: "https://api.deepseek.com".into(),
+            reasoning_content: true,
+        })
+    }
+}
+
+fn reasoned_tool_turn() -> CompletionRequest {
+    let mut request = tool_turn();
+    request.messages[1].content.insert(
+        0,
+        ContentPart::Reasoning {
+            text: "main.tex holds the preamble.".into(),
+        },
+    );
+    request
+}
+
+fn thinking_fields(resolved: &Resolved, request: &CompletionRequest) -> Value {
+    let body = openai_body(resolved, request).unwrap();
+    json!({
+        "thinking": body.get("thinking"),
+        "reasoning_effort": body.get("reasoning_effort"),
+        "max_tokens": body.get("max_tokens"),
+    })
+}
+
+#[test]
+fn deepseek_sends_each_assistant_turns_reasoning_back() {
+    let body = openai_body(&deepseek(), &reasoned_tool_turn()).unwrap();
+    let assistant = &body["messages"][2];
+    assert_eq!(assistant["role"], "assistant");
+    assert_eq!(
+        assistant["reasoning_content"],
+        "main.tex holds the preamble."
+    );
+    assert_eq!(assistant["content"], "Reading it now.");
+    assert_eq!(assistant["tool_calls"][0]["id"], "call_1");
+    assert!(body["messages"][1].get("reasoning_content").is_none());
+}
+
+#[test]
+fn custom_endpoints_get_reasoning_back_only_on_hosts_that_expect_it() {
+    let custom = |base: &str| Resolved {
+        provider_id: "custom-endpoint".into(),
+        model_id: "some-model".into(),
+        ..resolved(Wire::OpenAiChat {
+            base_url: base.into(),
+            reasoning_content: true,
+        })
+    };
+    let request = reasoned_tool_turn();
+    let strict = openai_body(&custom("https://llm.example.com/v1"), &request).unwrap();
+    assert!(strict["messages"][2].get("reasoning_content").is_none());
+    for base in [
+        "https://api.moonshot.cn/v1",
+        "https://open.bigmodel.cn/api/paas/v4",
+    ] {
+        let body = openai_body(&custom(base), &request).unwrap();
+        assert_eq!(
+            body["messages"][2]["reasoning_content"], "main.tex holds the preamble.",
+            "{base}"
+        );
+    }
+}
+
+#[test]
+fn reasoning_parts_reach_only_reasoning_content_chat_wires() {
+    let request = reasoned_tool_turn();
+    let secret = "main.tex holds the preamble.";
+    let bodies = [
+        openai_body(&openai(), &request).unwrap(),
+        anthropic_body(
+            &anthropic_model("claude-opus-5-5", ModelCaps::default()),
+            &request,
+        )
+        .unwrap(),
+        google_body(&google(), &request).unwrap(),
+        openai_responses_body(&openai_responses(), &request).unwrap(),
+    ];
+    for body in bodies {
+        assert!(!body.to_string().contains(secret), "{body}");
+    }
+}
+
+#[test]
+fn deepseek_thinks_with_tools_when_every_earlier_turn_kept_its_reasoning() {
+    let mut fresh = CompletionRequest {
+        effort: Some(Effort::High),
+        ..CompletionRequest::prompt("s", "u")
+    };
+    fresh.tools = tool_turn().tools;
+    assert_eq!(
+        thinking_fields(&deepseek(), &fresh),
+        json!({"thinking": {"type": "enabled"}, "reasoning_effort": "high", "max_tokens": null})
+    );
+    let replayed = CompletionRequest {
+        effort: Some(Effort::Max),
+        ..reasoned_tool_turn()
     };
     assert_eq!(
-        openai_body(&deepseek, &tool_turn()).unwrap()["thinking"],
-        json!({ "type": "disabled" })
+        thinking_fields(&deepseek(), &replayed),
+        json!({"thinking": {"type": "enabled"}, "reasoning_effort": "max", "max_tokens": null})
     );
-    assert!(openai_body(&deepseek, &CompletionRequest::prompt("s", "u"))
-        .unwrap()
-        .get("thinking")
-        .is_none());
+}
 
+#[test]
+fn deepseek_turns_thinking_off_for_tool_runs_over_history_without_reasoning() {
+    let request = CompletionRequest {
+        effort: Some(Effort::High),
+        ..tool_turn()
+    };
+    assert_eq!(
+        thinking_fields(&deepseek(), &request),
+        json!({"thinking": {"type": "disabled"}, "reasoning_effort": null, "max_tokens": 64000})
+    );
+    let mut without_tools = request;
+    without_tools.tools.clear();
+    assert_eq!(
+        thinking_fields(&deepseek(), &without_tools)["thinking"],
+        json!({"type": "enabled"})
+    );
+}
+
+#[test]
+fn deepseek_effort_off_disables_thinking_and_lifts_the_short_default_ceiling() {
+    let off = with_effort(Effort::Off);
+    assert_eq!(
+        thinking_fields(&deepseek(), &off),
+        json!({"thinking": {"type": "disabled"}, "reasoning_effort": null, "max_tokens": 64000})
+    );
+    let capped = CompletionRequest {
+        max_tokens: Some(12_000),
+        ..with_effort(Effort::Off)
+    };
+    assert_eq!(thinking_fields(&deepseek(), &capped)["max_tokens"], 12_000);
+    let unknown_limit = Resolved {
+        caps: ModelCaps::default(),
+        ..deepseek()
+    };
+    assert_eq!(
+        thinking_fields(&unknown_limit, &off)["max_tokens"],
+        crate::wire::reasoning::FALLBACK_MAX_TOKENS
+    );
+}
+
+#[test]
+fn deepseek_effort_levels_map_the_way_deepseek_documents() {
+    for (effort, sent) in [
+        (Effort::Minimal, "low"),
+        (Effort::Low, "low"),
+        (Effort::Medium, "high"),
+        (Effort::High, "high"),
+        (Effort::Xhigh, "high"),
+        (Effort::Max, "max"),
+    ] {
+        assert_eq!(
+            thinking_fields(&deepseek(), &with_effort(effort)),
+            json!({"thinking": {"type": "enabled"}, "reasoning_effort": sent, "max_tokens": null}),
+            "{effort:?}"
+        );
+    }
+    assert_eq!(
+        thinking_fields(&deepseek(), &CompletionRequest::prompt("s", "u")),
+        json!({"thinking": {"type": "enabled"}, "reasoning_effort": null, "max_tokens": null})
+    );
+}
+
+#[test]
+fn zai_keeps_its_own_thinking_defaults() {
     let zai = Resolved {
         provider_id: "zai".into(),
         model_id: "glm-5.3".into(),
@@ -1191,7 +1354,8 @@ fn chat_providers_get_their_own_reasoning_field() {
         &with_effort(Effort::High),
     )
     .unwrap();
-    assert!(deepseek.get("reasoning_effort").is_none() && deepseek.get("reasoning").is_none());
+    assert_eq!(deepseek["reasoning_effort"], "high");
+    assert!(deepseek.get("reasoning").is_none());
     assert!(openai_body(
         &chat("mistral", "mistral-medium-latest", ModelCaps::default()),
         &with_effort(Effort::High)

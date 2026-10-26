@@ -1,6 +1,6 @@
 //! CLI-agent preferences kept in `sessions.sqlite`: the Experimental
 //! switches, how long a silent agent may run, what each agent remembers
-//! (effort, mode, the Oleafly key it is routed through), per-project
+//! (model, effort, mode, the Oleafly key it is routed through), per-project
 //! agent settings and what each agent reported about itself.
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -55,6 +55,7 @@ impl AcpPreferences {
 pub struct AgentPreferences {
     pub effort: Option<RememberedChoice>,
     pub mode: Option<RememberedChoice>,
+    pub model: Option<RememberedChoice>,
     /// The Oleafly provider whose key this agent is routed through.
     pub provider: Option<String>,
 }
@@ -62,7 +63,7 @@ pub struct AgentPreferences {
 impl AgentPreferences {
     /// Bounds what a window may store.
     pub fn normalized(mut self) -> Self {
-        for choice in [&mut self.effort, &mut self.mode] {
+        for choice in [&mut self.effort, &mut self.mode, &mut self.model] {
             if let Some(value) = choice {
                 if value.value.is_empty() || value.value.len() > MAX_CHOICE_VALUE {
                     *choice = None;
@@ -192,10 +193,15 @@ mod tests {
                 value: "plan".into(),
                 name: "P".repeat(200),
             }),
+            model: Some(RememberedChoice {
+                value: String::new(),
+                name: "Empty".into(),
+            }),
             provider: Some("bad id".into()),
         }
         .normalized();
         assert!(prefs.effort.is_none());
+        assert!(prefs.model.is_none());
         assert_eq!(prefs.mode.unwrap().name.chars().count(), 120);
         assert!(prefs.provider.is_none());
     }

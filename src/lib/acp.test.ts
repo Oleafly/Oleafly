@@ -69,4 +69,11 @@ describe("a message that failed to send", () => {
     expect(acpError("plain")).toBe("plain");
     expect(acpError(new Error("thrown"))).toBe("thrown");
   });
+
+  it("shows a coded backend error as its translated sentence, not the raw envelope", () => {
+    const envelope = '@oleafly/error:{"code":"trust.agents","params":{},"detail":null}';
+    expect(acpError(envelope)).toBe("Trust this folder to use CLI agents.");
+    expect(acpError(new Error(envelope))).toBe("Trust this folder to use CLI agents.");
+    expect(acpError({ delivered: false, message: envelope })).toBe("Trust this folder to use CLI agents.");
+  });
 });

@@ -49,11 +49,18 @@ describe("vision capability", () => {
   });
 
   it("trusts catalog metadata that lists image input for ids no pattern knows", () => {
-    expect(modelSupportsVision("deepseek", "deepseek-flash")).toBe(false);
-    expect(modelSupportsVision("deepseek", "deepseek-flash", ["text", "image"])).toBe(true);
+    expect(modelSupportsVision("mistral", "mistral-large-latest")).toBe(false);
     expect(modelSupportsVision("mistral", "mistral-large-latest", ["text", "image"])).toBe(true);
     expect(modelSupportsVision("deepseek", "deepseek-v4-pro", ["text"])).toBe(false);
     expect(modelSupportsVision("anthropic", "claude-opus-5-5", [])).toBe(true);
+  });
+
+  it("knows DeepSeek Flash reads images without metadata and V4 Pro does not", () => {
+    for (const id of ["deepseek-flash", "deepseek-v4-flash", "deepseek-v4-flash-vision-exp"]) {
+      expect(modelSupportsVision("deepseek", id), `${id} accepts images`).toBe(true);
+    }
+    expect(modelSupportsVision("deepseek", "deepseek-v4-pro")).toBe(false);
+    expect(modelSupportsVision("openrouter", "deepseek/deepseek-flash")).toBe(false);
   });
 
   it("does not claim vision for Claude 2 or Instant", () => {

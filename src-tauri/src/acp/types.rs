@@ -217,6 +217,8 @@ pub struct SessionRecord {
     /// from. Those events were counted there, not here.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fork_sequence: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hermes_profile: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

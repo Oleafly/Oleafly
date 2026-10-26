@@ -177,11 +177,15 @@
     "steered": "已介入",
     "toolOutputError": "錯誤：{{message}}",
     "errorHints": {
+      "emptyReply": "模型傳回了空白回覆。請再試一次，或{{where}}切換模型。",
       "invalidKey": "你的 API 金鑰似乎無效或已過期。請在設定 → AI 助理中更新，或{{where}}切換供應商。",
+      "invalidRequest": "供應商拒絕了請求參數。請{{where}}改用其他模型。",
       "outOfCredits": "你的 AI 供應商額度或配額已用盡。請為帳戶儲值，或{{where}}改用其他供應商（或本機 Ollama）。",
       "overloaded": "供應商的伺服器目前超載（已經重試過）。請稍候片刻再試一次，或{{where}}改用同系列的其他模型。",
       "rateLimited": "供應商正在限制請求頻率。請稍候片刻再重試，或{{where}}切換供應商。",
       "retiredModel": "供應商已淘汰或限制這個模型。請{{where}}選擇較新的模型（設定 → AI 助理會列出你的金鑰可用的模型）。",
+      "serverError": "供應商的伺服器發生錯誤。請稍候片刻再試一次，或{{where}}切換模型。",
+      "timedOut": "供應商回應時間過長。請再試一次，或{{where}}切換模型。",
       "unreachable": "無法連線到 AI 供應商。請檢查網路連線。如果你使用 Ollama，請確認它正在執行（設定 → AI 助理 → 檢查 Ollama）。",
       "where": {
         "inSettings": "在設定的 AI 助理中",

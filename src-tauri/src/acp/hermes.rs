@@ -15,6 +15,7 @@ pub(super) const HERMES_ID: &str = "hermes";
 const COMMAND_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_OUTPUT: usize = 64 * 1024;
 const PROFILE_PREFIX: &str = "oleafly-";
+const DEFAULT_PROFILE: &str = "default";
 const MAX_PROFILE: usize = 64;
 /// Settings the Nous tool gateway serves when it is on.
 const GATEWAY_KEYS: [&str; 5] = [
@@ -50,7 +51,8 @@ pub struct HermesStatus {
     pub mode: HermesMode,
     pub profile: Option<String>,
     pub exists: bool,
-    /// ready | starting | stopped | unknown
+    /// ready | starting | stopped | unknown | outdated (a Hermes without
+    /// `gateway ensure`)
     pub gateway: String,
     pub reason: Option<String>,
     pub memory: bool,
@@ -343,6 +345,15 @@ pub fn active_profile(project_id: &str, settings: &HermesSettings) -> Option<Str
     }
 }
 
+pub fn profile_tag(project_id: &str, settings: &HermesSettings) -> Option<String> {
+    match settings.mode {
+        HermesMode::Remote => None,
+        HermesMode::Default | HermesMode::Project => {
+            Some(active_profile(project_id, settings).unwrap_or_else(|| DEFAULT_PROFILE.to_owned()))
+        }
+    }
+}
+
 pub async fn status(
     hermes: &HermesProgram,
     project_id: &str,
@@ -364,22 +375,7 @@ pub async fn status(
         )
         .await
         {
-            let parsed: Option<Value> = serde_json::from_str(output.stdout.trim()).ok();
-            let state = parsed
-                .as_ref()
-                .and_then(|value| value["state"].as_str())
-                .filter(|state| matches!(*state, "ready" | "starting" | "stopped" | "unknown"));
-            gateway = match (output.code, state) {
-                (Some(0), _) => "ready".into(),
-                (_, Some(state)) => state.into(),
-                _ => "stopped".into(),
-            };
-            if gateway != "ready" {
-                reason = parsed
-                    .as_ref()
-                    .and_then(|value| value["reason_code"].as_str().or(value["reason"].as_str()))
-                    .map(|text| text.chars().take(120).collect());
-            }
+            (gateway, reason) = gateway_state(&output);
         }
     }
     let memory = match run_hermes(
@@ -408,6 +404,31 @@ pub async fn status(
         memory,
         tool_gateway: settings.tool_gateway,
     }
+}
+
+fn gateway_state(output: &HermesOutput) -> (String, Option<String>) {
+    if output.code == Some(2) && output.stderr.contains("invalid choice: 'ensure'") {
+        return ("outdated".into(), None);
+    }
+    let parsed: Option<Value> = serde_json::from_str(output.stdout.trim()).ok();
+    let state = parsed
+        .as_ref()
+        .and_then(|value| value["state"].as_str())
+        .filter(|state| matches!(*state, "ready" | "starting" | "stopped" | "unknown"));
+    let gateway: String = match (output.code, state) {
+        (Some(0), _) => "ready".into(),
+        (_, Some(state)) => state.into(),
+        _ => "stopped".into(),
+    };
+    let reason = if gateway == "ready" {
+        None
+    } else {
+        parsed
+            .as_ref()
+            .and_then(|value| value["reason_code"].as_str().or(value["reason"].as_str()))
+            .map(|text| text.chars().take(120).collect())
+    };
+    (gateway, reason)
 }
 
 /// A project-profile launch: `hermes -p <profile> acp`.
@@ -598,6 +619,9 @@ elif args[:2] == ["profile", "create"]:
             file.write("cloned from the default profile")
 elif args[:2] == ["config", "set"]:
     pass
+elif args[:2] == ["gateway", "ensure"]:
+    sys.stderr.write("usage: hermes gateway [-h] [--accept-hooks]\n                      {run,start,stop,restart,status,install,uninstall,list,setup,migrate-legacy,enroll}\n                      ...\nhermes gateway: error: argument gateway_command: invalid choice: 'ensure' (choose from 'run', 'start', 'stop', 'restart', 'status', 'install', 'uninstall', 'list', 'setup', 'migrate-legacy', 'enroll')\n")
+    sys.exit(2)
 else:
     sys.exit(2)
 "#;
@@ -753,6 +777,53 @@ else:
         .unwrap();
         assert!(saved.memory && saved.tool_gateway);
         assert_eq!(saved.profile, None);
+    }
+
+    fn answer(code: i32, stdout: &str, stderr: &str) -> HermesOutput {
+        HermesOutput {
+            code: Some(code),
+            stdout: stdout.into(),
+            stderr: stderr.into(),
+        }
+    }
+
+    #[test]
+    fn gateway_states_follow_what_hermes_answered() {
+        assert_eq!(
+            gateway_state(&answer(0, r#"{"state":"ready"}"#, "")),
+            ("ready".to_string(), None)
+        );
+        assert_eq!(
+            gateway_state(&answer(
+                1,
+                r#"{"state":"stopped","reason_code":"port_in_use"}"#,
+                ""
+            )),
+            ("stopped".to_string(), Some("port_in_use".to_string()))
+        );
+        assert_eq!(
+            gateway_state(&answer(
+                2,
+                "",
+                "hermes gateway: error: argument gateway_command: invalid choice: 'ensure' (choose from 'run', 'start')"
+            )),
+            ("outdated".to_string(), None)
+        );
+        assert_eq!(
+            gateway_state(&answer(2, "", "hermes: error: something else")),
+            ("stopped".to_string(), None)
+        );
+    }
+
+    #[tokio::test]
+    async fn a_hermes_without_gateway_ensure_asks_for_an_update_instead_of_a_stopped_gateway() {
+        let fake = FakeHermes::new();
+        let shown = status(&fake.program, "thesis", &HermesSettings::default()).await;
+        assert_eq!(shown.gateway, "outdated");
+        assert_eq!(shown.reason, None);
+        assert!(fake
+            .calls()
+            .contains(&"gateway ensure --json --timeout 10".to_string()));
     }
 
     #[tokio::test]

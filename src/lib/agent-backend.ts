@@ -10,6 +10,7 @@ import type {
 
 export type AgentContentPart =
   | { type: "text"; text: string }
+  | { type: "reasoning"; text: string }
   | { type: "image"; image: string }
   | { type: "attachment"; sha256: string; name: string; mime: string }
   | { type: "toolUse"; id: string; name: string; arguments: string; thoughtSignature?: string }
@@ -237,6 +238,7 @@ export interface AgentRunOutcome {
   stop_reason?: string | null;
   /** The run's cost with its subagents', when prices are known. */
   cost_usd?: number | null;
+  error_kind?: string | null;
 }
 
 export interface AgentRunConfig {

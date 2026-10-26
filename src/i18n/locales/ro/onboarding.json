@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "Două feluri de agent",
-      "content": "Agentul Oleafly rulează pe furnizorul de modele pe care îl configurezi. Agentul din linia de comandă, aflat în beta, folosește un agent de programare instalat deja pe acest computer."
+      "content": "Agentul Oleafly rulează pe furnizorul de modele pe care îl configurezi. Agentul din linia de comandă folosește un agent de programare instalat deja pe acest computer."
     },
     "connectProvider": {
       "title": "Conectează un furnizor",

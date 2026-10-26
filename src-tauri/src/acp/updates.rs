@@ -18,6 +18,7 @@ const MAX_HIDDEN_TEXT: usize = 64 * 1024;
 const MAX_SUMMARY: usize = 64 * 1024;
 const MAX_COMPACTIONS: usize = 8;
 const MAX_TITLE: usize = 80;
+const MAX_SYSTEM_ERROR: usize = 16 * 1024;
 const FLUSH_TICK: Duration = Duration::from_millis(100);
 
 /// A compaction the agent is reporting, merged from its updates.
@@ -116,9 +117,12 @@ fn applies_while_replaying(kind: &str) -> bool {
 }
 
 /// An update for a session other than the live one: ignored when the live
-/// session is forking or the id is a known fork, an error otherwise.
+/// session is forking or resuming or the id is one it set aside (a fork, or
+/// a session the agent opened in place of the resumed one), an error
+/// otherwise.
 fn foreign_update(session: &LiveSession, native: Option<&str>) -> Result<(), String> {
     let forked = session.forking.load(Ordering::Acquire)
+        || session.resuming.load(Ordering::Acquire)
         || native.is_some_and(|id| {
             session
                 .known_foreign
@@ -261,6 +265,14 @@ impl AcpRuntime {
         state: &mut LiveState,
         update: &Value,
     ) -> Result<(), String> {
+        let running = !state.turn_closed
+            && matches!(
+                state.record.status,
+                SessionStatus::Running | SessionStatus::Cancelling
+            );
+        if running && update["_meta"]["codex"]["threadStatus"]["type"] == "systemError" {
+            state.system_error.get_or_insert_with(String::new);
+        }
         let title = update["title"]
             .as_str()
             .map(str::trim)
@@ -295,6 +307,15 @@ impl AcpRuntime {
             )
         {
             return Ok(());
+        }
+        state.turn_output = true;
+        if kind == "agent_message_chunk" {
+            if let (Some(text), Some(held)) = (chunk_text(update), state.system_error.as_mut()) {
+                if held.len() + text.len() <= MAX_SYSTEM_ERROR {
+                    held.push_str(text);
+                }
+                return Ok(());
+            }
         }
         if matches!(kind, "agent_message_chunk" | "agent_thought_chunk") {
             if let Some(text) = chunk_text(update) {

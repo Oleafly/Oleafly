@@ -185,11 +185,15 @@
     "steered": "Ohjattu",
     "toolOutputError": "Virhe: {{message}}",
     "errorHints": {
+      "emptyReply": "Malli palautti tyhjän vastauksen. Yritä uudelleen tai vaihda mallia {{where}}.",
       "invalidKey": "API-avain vaikuttaa virheelliseltä tai vanhentuneelta. Päivitä se kohdassa Asetukset → Tekoälyavustaja tai vaihda palvelua {{where}}.",
+      "invalidRequest": "Palvelu hylkäsi pyynnön parametrit. Kokeile toista mallia {{where}}.",
       "outOfCredits": "Tekoälypalvelun saldo tai kiintiö on lopussa. Lataa tiliä tai vaihda toiseen palveluun (tai paikalliseen Ollamaan) {{where}}.",
       "overloaded": "Palvelun palvelimet ovat juuri nyt ylikuormitettuja (tätä on jo yritetty uudelleen). Odota hetki ja yritä uudelleen tai vaihda saman perheen malliin {{where}}.",
       "rateLimited": "Palvelu rajoittaa pyyntöjen määrää. Odota hetki ja yritä uudelleen tai vaihda palvelua {{where}}.",
       "retiredModel": "Palvelu on poistanut tämän mallin käytöstä tai rajoittanut sitä. Valitse uudempi malli {{where}} (Asetukset → Tekoälyavustaja listaa, mitä avaimellasi voi käyttää).",
+      "serverError": "Palvelussa tapahtui palvelinvirhe. Odota hetki ja yritä uudelleen tai vaihda mallia {{where}}.",
+      "timedOut": "Palvelu vastasi liian hitaasti. Yritä uudelleen tai vaihda mallia {{where}}.",
       "unreachable": "Tekoälypalveluun ei saatu yhteyttä. Tarkista verkkoyhteys, tai jos käytät Ollamaa, varmista että se on käynnissä (Asetukset → Tekoälyavustaja → Etsi Ollama).",
       "where": {
         "inSettings": "kohdassa Asetukset, Tekoälyavustaja",

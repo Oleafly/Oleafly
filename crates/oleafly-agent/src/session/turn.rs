@@ -54,6 +54,7 @@ where
     F: FnMut(AgentEvent) + Send,
 {
     let mut request = request;
+    drop_unsent_reasoning(resolved, &mut request.messages);
     let mut result = RunOutcome::default();
     let mut ledger = TurnLedger {
         usage: TurnUsage {
@@ -512,8 +513,8 @@ where
 
 /// The assistant message a step adds to history. Anthropic replies keep
 /// every block in stream order (thinking, cited text, server tool blocks) so
-/// the next request replays them exactly; other wires keep the text and the
-/// tool calls.
+/// the next request replays them exactly; other wires keep the reasoning,
+/// the text and the tool calls.
 /// The answer a call gets when its reply sent more calls than a turn runs.
 pub(crate) fn skipped_call_output() -> String {
     serde_json::json!({ "error": TOO_MANY_CALLS }).to_string()
@@ -560,6 +561,11 @@ pub fn assistant_message(outcome: &StreamOutcome) -> Message {
         };
     }
     let mut content = Vec::new();
+    if !outcome.reasoning.is_empty() {
+        content.push(ContentPart::Reasoning {
+            text: outcome.reasoning.clone(),
+        });
+    }
     if !outcome.text.is_empty() {
         content.push(ContentPart::text(outcome.text.clone()));
     }
@@ -574,6 +580,23 @@ pub fn assistant_message(outcome: &StreamOutcome) -> Message {
     Message {
         role: Role::Assistant,
         content,
+    }
+}
+
+fn drop_unsent_reasoning(resolved: &Resolved, messages: &mut [Message]) {
+    if matches!(
+        resolved.wire,
+        Wire::OpenAiChat {
+            reasoning_content: true,
+            ..
+        }
+    ) {
+        return;
+    }
+    for message in messages {
+        message
+            .content
+            .retain(|part| !matches!(part, ContentPart::Reasoning { .. }));
     }
 }
 
@@ -1205,6 +1228,30 @@ mod tests {
     }
 
     #[test]
+    fn an_assistant_turn_keeps_chat_reasoning_ahead_of_its_text() {
+        let outcome = StreamOutcome {
+            text: "Reading".into(),
+            reasoning: "The preamble is in main.tex.".into(),
+            tool_calls: vec![call("a")],
+            ..Default::default()
+        };
+        let message = assistant_message(&outcome);
+        assert_eq!(
+            message.content[0],
+            ContentPart::Reasoning {
+                text: "The preamble is in main.tex.".into()
+            }
+        );
+        assert!(matches!(message.content[1], ContentPart::Text { .. }));
+        assert!(matches!(message.content[2], ContentPart::ToolUse { .. }));
+        let silent = assistant_message(&StreamOutcome {
+            text: "Done".into(),
+            ..Default::default()
+        });
+        assert_eq!(silent.content, vec![ContentPart::text("Done")]);
+    }
+
+    #[test]
     fn a_tool_only_turn_carries_no_empty_text_part() {
         let outcome = StreamOutcome {
             tool_calls: vec![ToolCall {
@@ -1450,9 +1497,9 @@ mod tests {
         use std::net::{SocketAddr, TcpListener, TcpStream};
         use std::sync::Mutex;
 
-        struct Script {
-            address: SocketAddr,
-            requests: Arc<Mutex<Vec<serde_json::Value>>>,
+        pub(super) struct Script {
+            pub(super) address: SocketAddr,
+            pub(super) requests: Arc<Mutex<Vec<serde_json::Value>>>,
         }
 
         fn read_request(stream: &mut TcpStream) -> String {
@@ -1489,7 +1536,7 @@ mod tests {
 
         /// Answers one request per scripted response, in order, then stops
         /// listening (a further request fails to connect).
-        fn serve(responses: Vec<(&'static str, &'static str, String)>) -> Script {
+        pub(super) fn serve(responses: Vec<(&'static str, &'static str, String)>) -> Script {
             let listener = TcpListener::bind("127.0.0.1:0").unwrap();
             let address = listener.local_addr().unwrap();
             let requests = Arc::new(Mutex::new(Vec::new()));
@@ -1538,7 +1585,7 @@ mod tests {
             )
         }
 
-        fn text_stream(text: &str) -> String {
+        pub(super) fn text_stream(text: &str) -> String {
             format!(
                 "data: {}\n\ndata: {}\n\ndata: [DONE]\n\n",
                 json!({"choices":[{"delta":{"content":text}}]}),
@@ -1573,7 +1620,7 @@ mod tests {
             .unwrap()
         }
 
-        fn quiet_runner() -> ToolRunner {
+        pub(super) fn quiet_runner() -> ToolRunner {
             Arc::new(|_| Box::pin(async { ToolOutput::text("contents") }))
         }
 
@@ -2211,5 +2258,239 @@ mod tests {
             compaction_failure(limit, AgentError::Cancelled),
             AgentError::Cancelled
         );
+    }
+
+    mod deepseek_runs {
+        use super::suspend::{quiet_runner, serve, text_stream, Script};
+        use super::*;
+
+        fn deepseek(script: &Script) -> Resolved {
+            Resolved {
+                provider_id: "deepseek".into(),
+                model_id: "deepseek-flash".into(),
+                credential: String::new(),
+                auth: None,
+                wire: Wire::OpenAiChat {
+                    base_url: format!("http://{}", script.address),
+                    reasoning_content: true,
+                },
+                caps: crate::caps::ModelCaps::from_metadata_json(&json!({
+                    "outputLimit": 393216,
+                    "reasoning": true,
+                    "reasoningOptions": [{"type":"toggle"},{"type":"effort","values":["low","high","max"]}]
+                })),
+            }
+        }
+
+        fn chunk(value: serde_json::Value) -> String {
+            format!("data: {value}\n\n")
+        }
+
+        fn reasoned_call_stream() -> String {
+            [
+                chunk(json!({"choices":[{"delta":{"reasoning_content":"I should read it."}}]})),
+                chunk(
+                    json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_00_a","type":"function","function":{"name":"read_file","arguments":"{}"}}]}}]}),
+                ),
+                chunk(json!({"choices":[{"delta":{},"finish_reason":"tool_calls"}]})),
+                "data: [DONE]\n\n".into(),
+            ]
+            .concat()
+        }
+
+        fn out_of_capacity(text: &str) -> String {
+            [
+                chunk(json!({"choices":[{"delta":{"content":text}}]})),
+                chunk(
+                    json!({"choices":[{"delta":{"content":""},"finish_reason":"insufficient_system_resource"}],"usage":{"prompt_tokens":10,"completion_tokens":7}}),
+                ),
+                "data: [DONE]\n\n".into(),
+            ]
+            .concat()
+        }
+
+        async fn run(
+            script: &Script,
+            request: CompletionRequest,
+            retries: u32,
+        ) -> (RunOutcome, Vec<AgentEvent>) {
+            let mut events = Vec::new();
+            let outcome = tokio::time::timeout(
+                Duration::from_secs(10),
+                crate::run::run_agent_with_pipeline(
+                    &crate::build_client().unwrap(),
+                    &deepseek(script),
+                    request,
+                    &RunConfig {
+                        max_retries: retries,
+                        retry_base_ms: 1,
+                        ..RunConfig::default()
+                    },
+                    ToolPipeline::default(),
+                    None,
+                    quiet_runner(),
+                    |event| events.push(event),
+                ),
+            )
+            .await
+            .expect("the run did not finish")
+            .unwrap();
+            (outcome, events)
+        }
+
+        fn tool_request(effort: crate::effort::Effort) -> CompletionRequest {
+            CompletionRequest {
+                effort: Some(effort),
+                tools: vec![crate::tool::ToolSchema {
+                    name: "read_file".into(),
+                    description: "Read a file".into(),
+                    input_schema: json!({"type":"object","properties":{}}),
+                }],
+                ..CompletionRequest::prompt("system", "read the file")
+            }
+        }
+
+        #[tokio::test]
+        async fn a_tool_run_keeps_thinking_by_sending_the_reasoning_back() {
+            let script = serve(vec![
+                ("200 OK", "text/event-stream", reasoned_call_stream()),
+                ("200 OK", "text/event-stream", text_stream("done")),
+            ]);
+            let (outcome, _) = run(&script, tool_request(crate::effort::Effort::Max), 0).await;
+            assert_eq!(outcome.error, None);
+            assert_eq!(outcome.text, "done");
+            let requests = script.requests.lock().unwrap();
+            for request in requests.iter() {
+                assert_eq!(request["thinking"], json!({"type": "enabled"}));
+                assert_eq!(request["reasoning_effort"], "max");
+            }
+            let assistant = &requests[1]["messages"][2];
+            assert_eq!(assistant["role"], "assistant");
+            assert_eq!(assistant["reasoning_content"], "I should read it.");
+            assert_eq!(assistant["tool_calls"][0]["id"], "call_00_a");
+            assert!(matches!(
+                outcome.history[1].content[0],
+                ContentPart::Reasoning { ref text } if text == "I should read it."
+            ));
+        }
+
+        #[tokio::test]
+        async fn running_out_of_capacity_before_any_output_is_retried() {
+            let script = serve(vec![
+                ("200 OK", "text/event-stream", out_of_capacity("")),
+                ("200 OK", "text/event-stream", text_stream("finished")),
+            ]);
+            let (outcome, events) =
+                run(&script, CompletionRequest::prompt("system", "hi"), 2).await;
+            assert_eq!(outcome.error, None);
+            assert_eq!(outcome.text, "finished");
+            assert_eq!(script.requests.lock().unwrap().len(), 2);
+            assert!(events
+                .iter()
+                .any(|event| matches!(event, AgentEvent::Retry { attempt: 1, .. })));
+        }
+
+        #[tokio::test]
+        async fn running_out_of_capacity_mid_answer_fails_the_turn_as_overloaded() {
+            let script = serve(vec![(
+                "200 OK",
+                "text/event-stream",
+                out_of_capacity("The first half of the answ"),
+            )]);
+            let (outcome, _) = run(&script, CompletionRequest::prompt("system", "hi"), 2).await;
+            assert_eq!(script.requests.lock().unwrap().len(), 1);
+            assert_eq!(outcome.error_kind.as_deref(), Some("provider"));
+            let error = outcome.error.unwrap();
+            assert!(error.contains("503"), "{error}");
+            assert_eq!(outcome.usage.output, 7);
+        }
+
+        #[tokio::test]
+        async fn a_stream_of_only_keep_alives_is_retried_as_a_dropped_connection() {
+            let script = serve(vec![
+                (
+                    "200 OK",
+                    "text/event-stream",
+                    ": keep-alive\n\n: keep-alive\n\n".into(),
+                ),
+                ("200 OK", "text/event-stream", text_stream("finished")),
+            ]);
+            let (outcome, _) = run(&script, CompletionRequest::prompt("system", "hi"), 2).await;
+            assert_eq!(outcome.error, None);
+            assert_eq!(outcome.text, "finished");
+            assert_eq!(script.requests.lock().unwrap().len(), 2);
+
+            let lone = serve(vec![(
+                "200 OK",
+                "text/event-stream",
+                ": keep-alive\n\n".into(),
+            )]);
+            let (outcome, _) = run(&lone, CompletionRequest::prompt("system", "hi"), 0).await;
+            assert_eq!(outcome.error_kind.as_deref(), Some("transport"));
+        }
+
+        #[tokio::test]
+        async fn reasoning_from_history_is_dropped_on_wires_that_never_send_it() {
+            let script = serve(vec![("200 OK", "text/event-stream", text_stream("done"))]);
+            let resolved = Resolved {
+                provider_id: "openrouter".into(),
+                wire: Wire::OpenAiChat {
+                    base_url: format!("http://{}", script.address),
+                    reasoning_content: false,
+                },
+                ..deepseek(&script)
+            };
+            let history = vec![
+                Message::user("first"),
+                Message {
+                    role: Role::Assistant,
+                    content: vec![
+                        ContentPart::Reasoning {
+                            text: "long private thinking".into(),
+                        },
+                        ContentPart::text("answer"),
+                    ],
+                },
+                Message::user("second"),
+            ];
+            let outcome = tokio::time::timeout(
+                Duration::from_secs(10),
+                crate::run::run_agent(
+                    &crate::build_client().unwrap(),
+                    &resolved,
+                    CompletionRequest {
+                        messages: history,
+                        ..CompletionRequest::default()
+                    },
+                    &RunConfig {
+                        max_retries: 0,
+                        ..RunConfig::default()
+                    },
+                    quiet_runner(),
+                    |_| {},
+                ),
+            )
+            .await
+            .expect("the run did not finish")
+            .unwrap();
+            assert_eq!(outcome.text, "done");
+            assert_eq!(
+                outcome.history[1].content,
+                vec![ContentPart::text("answer")]
+            );
+        }
+
+        #[tokio::test]
+        async fn a_stream_that_ends_after_some_text_keeps_it() {
+            let script = serve(vec![(
+                "200 OK",
+                "text/event-stream",
+                chunk(json!({"choices":[{"delta":{"content":"partial"}}]})),
+            )]);
+            let (outcome, _) = run(&script, CompletionRequest::prompt("system", "hi"), 2).await;
+            assert_eq!(outcome.error, None);
+            assert_eq!(outcome.text, "partial");
+            assert_eq!(script.requests.lock().unwrap().len(), 1);
+        }
     }
 }

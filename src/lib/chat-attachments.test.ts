@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DraftAttachment } from "@/components/ai/composer/types";
-import { packChatHistory } from "@/lib/ai-context-pack";
+import { HISTORY_MSG_MAX_CHARS, packChatHistory } from "@/lib/ai-context-pack";
 import type { ChatMessage } from "@/store/chats";
 import {
   attachedFileText,
@@ -170,6 +170,36 @@ describe("history", () => {
     const { droppedTurns, messages } = await historyModelMessages(prior, "p1", ctx());
     expect(droppedTurns).toBe(6);
     expect(messages).toHaveLength(24);
+  });
+
+  it("sends each reply's saved reasoning back ahead of its text", async () => {
+    const thought: ChatMessage = {
+      role: "assistant",
+      content: "Fixed.",
+      reasoningBlocks: [
+        { id: "r1", text: "Read the log.", beforeTool: 0 },
+        { id: "r2", text: "The brace is missing.", beforeTool: 1 },
+      ],
+    };
+    const legacy: ChatMessage = { role: "assistant", content: "Old.", reasoning: "Older thinking." };
+    const { messages } = await historyModelMessages(
+      [user("fix it"), thought, user("again"), legacy, user("long"), { ...reply("x"), reasoning: "r".repeat(9_000) }],
+      "p1",
+      ctx(),
+    );
+    expect(messages[1]).toEqual({
+      role: "assistant",
+      content: [
+        { type: "reasoning", text: "Read the log.\n\nThe brace is missing." },
+        { type: "text", text: "Fixed." },
+      ],
+    });
+    expect(messages[3].content).toEqual([
+      { type: "reasoning", text: "Older thinking." },
+      { type: "text", text: "Old." },
+    ]);
+    const long = messages[5].content as { type: string; text: string }[];
+    expect(long[0].text.length).toBeLessThanOrEqual(HISTORY_MSG_MAX_CHARS);
   });
 
   it("matches the old packing for chats without attachments", async () => {

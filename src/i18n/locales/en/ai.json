@@ -185,11 +185,15 @@
     "steered": "Steered",
     "toolOutputError": "Error: {{message}}",
     "errorHints": {
+      "emptyReply": "The model sent back an empty reply. Try again, or switch models {{where}}.",
       "invalidKey": "Your API key looks invalid or expired. Update it in Settings → AI Assistant, or switch providers {{where}}.",
+      "invalidRequest": "The provider rejected this request. Try another model {{where}}.",
       "outOfCredits": "Your AI provider is out of credits or quota. Top up the account, or switch to another provider (or local Ollama) {{where}}.",
       "overloaded": "The provider's servers are overloaded right now (this was already retried). Wait a minute and try again, or switch to a sibling model {{where}}.",
       "rateLimited": "The provider is rate-limiting requests. Wait a moment and retry, or switch providers {{where}}.",
       "retiredModel": "The provider retired or restricted this model. Pick a newer model {{where}} (Settings → AI Assistant lists what your key can use).",
+      "serverError": "The provider had a server error. Wait a minute and try again, or switch models {{where}}.",
+      "timedOut": "The provider took too long to answer. Try again, or switch models {{where}}.",
       "unreachable": "Couldn't reach the AI provider. Check your connection, or if you're using Ollama, make sure it's running (Settings → AI Assistant → Check for Ollama).",
       "where": {
         "inSettings": "in Settings, AI Assistant",

@@ -12,7 +12,7 @@ vi.mock("@/lib/acp", async (original) => ({
   ...await original<typeof import("@/lib/acp")>(),
   acpCatalog: vi.fn(), acpSessions: vi.fn(), acpSnapshot: vi.fn(), acpEvents: vi.fn(),
   acpStart: vi.fn(), acpAuthenticate: vi.fn(), acpDisconnect: vi.fn(), acpReconnect: vi.fn(),
-  acpSetModel: vi.fn(), acpPrompt: vi.fn(), acpPermission: vi.fn(), acpCancel: vi.fn(),
+  acpSetModel: vi.fn(), acpPrompt: vi.fn(), acpPermission: vi.fn(), acpCancel: vi.fn(), acpCancelStart: vi.fn(),
   onAcpEvent: vi.fn(), onAcpResync: vi.fn(),
   onAcpSession: vi.fn(async () => () => {}), onAcpBufferRequest: vi.fn(async () => () => {}),
 }));
@@ -48,7 +48,7 @@ vi.mock("@/components/usage/UsageReport", () => ({
 }));
 import type { ReactNode } from "react";
 import {
-  acpAuthenticate, acpCancel, acpCatalog, acpDisconnect, acpEvents, acpPermission, acpPrompt,
+  acpAuthenticate, acpCancel, acpCancelStart, acpCatalog, acpDisconnect, acpEvents, acpPermission, acpPrompt,
   acpReconnect, acpSessions, acpSetModel, acpSnapshot, acpStart, onAcpEvent, onAcpResync,
   type AcpEvent, type AcpPermission, type AcpSnapshot,
 } from "@/lib/acp";
@@ -468,6 +468,28 @@ describe("ACP assistant acceptance", () => {
     });
     await waitFor(() => expect(ui.queryByTestId("acp-connecting")).not.toBeInTheDocument());
     expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready");
+  });
+
+  it("goes back quietly when a start from the header is cancelled", async () => {
+    useAcpSessionsStore.setState({ activeByProject: {} });
+    snapshots = {};
+    const pending = deferred<AcpSnapshot>();
+    vi.mocked(acpStart).mockReturnValueOnce(pending.promise);
+    vi.mocked(acpCancelStart).mockImplementation(async () => {
+      pending.reject("The start was cancelled.");
+      return true;
+    });
+    const ui = render(<AcpWorkspace />);
+    await waitFor(() => expect(ui.getByRole("button", { name: "New conversation" })).toBeEnabled());
+    fireEvent.click(ui.getByRole("button", { name: "New conversation" }));
+
+    const connecting = await ui.findByTestId("acp-connecting");
+    fireEvent.click(within(connecting).getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(ui.queryByTestId("acp-connecting")).not.toBeInTheDocument());
+    expect(acpCancelStart).toHaveBeenCalledExactlyOnceWith("paper");
+    expect(ui.queryByRole("alert")).toBeNull();
+    expect(ui.getByTestId("acp-start-conversation")).toBeInTheDocument();
   });
 
   it("saves the open file before the agent reads it, and holds the prompt when saving fails", async () => {

@@ -14,7 +14,7 @@ import { MessageList, type RenderedMessage } from "@/components/ai/MessageList";
 import { Shimmer } from "@/components/ai/chat-parts";
 import { liveMessageFor } from "@/components/ai/live-message";
 import {
-  acpCommitTurn, acpDisconnect, acpElicitationRespond, acpError, acpPermission, acpReadiness,
+  acpCancelStart, acpCommitTurn, acpDisconnect, acpElicitationRespond, acpError, acpPermission, acpReadiness,
   acpReconnect, acpUsable, type AcpAgentStatus, type AcpSession,
 } from "@/lib/acp";
 import { cn } from "@/lib/utils";
@@ -50,6 +50,7 @@ const CleanLibraryDialog = lazy(() =>
 );
 
 const EMPTY_PERMISSIONS: never[] = [];
+const START_CANCELLED = "The start was cancelled.";
 const EMPTY_ELICITATIONS: never[] = [];
 
 function canReconnect(session: AcpSession): boolean {
@@ -70,7 +71,10 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   const sending = useAcpSessionsStore((state) => (activeId ? (state.sending[activeId] ?? 0) > 0 : false));
   const agentId = composer?.agentId ?? null;
   const setComposer = useAcpSessionsStore((state) => state.setComposer);
-  const error = useAcpSessionsStore((state) => state.errors[projectId] ?? null);
+  const error = useAcpSessionsStore((state) => {
+    const message = state.errors[projectId] ?? null;
+    return message === START_CANCELLED ? null : message;
+  });
   // Why this conversation's last message did not go out (kept with it, not the project).
   const sessionError = useAcpSessionsStore((state) => (activeId ? state.sessionErrors[activeId] ?? null : null));
   const starting = useAcpSessionsStore((state) => state.starting[projectId] ?? false);
@@ -89,6 +93,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   const [busy, setBusy] = useState(false);
   // Connecting to the agent (reconnect, sign in); the status pill says so, unlike other actions.
   const [connecting, setConnecting] = useState(false);
+  const [cancellingStart, setCancellingStart] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const nearBottomRef = useRef(true);
   const composerRef = useRef<ChatComposerHandle>(null);
@@ -347,29 +352,43 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     return t(($) => $.ai.acp.noResume);
   };
 
+  const cancelStart = () => {
+    setCancellingStart(true);
+    acpCancelStart(projectId)
+      .catch((error_: unknown) => setError(acpError(error_)))
+      .finally(() => setCancellingStart(false));
+  };
+
   const conversationArea = () =>
     (busy || starting) && !hasMessages ? (
-      <output
+      <div
         data-testid="acp-connecting"
         className="mx-auto flex max-w-sm flex-col items-center gap-3 py-16 text-center"
       >
-        <span className="flex size-12 items-center justify-center rounded-2xl border bg-background shadow-sm">
-          {agentId ? (
-            <AgentLogo agentId={agentId} size={22} />
-          ) : (
-            <Spinner size="lg" className="text-muted-foreground" />
-          )}
-        </span>
-        <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-          <Spinner size="sm" className="text-muted-foreground" />
-          {t(($) => $.ai.acp.starting, {
-            agent: selectedAgent?.definition.name ?? t(($) => $.ai.acp.startingFallback),
-          })}
-        </span>
-        <span className="block text-xs text-muted-foreground">
-          {t(($) => $.ai.acp.startingHint)}
-        </span>
-      </output>
+        <output className="flex flex-col items-center gap-3">
+          <span className="flex size-12 items-center justify-center rounded-2xl border bg-background shadow-sm">
+            {agentId ? (
+              <AgentLogo agentId={agentId} size={22} />
+            ) : (
+              <Spinner size="lg" className="text-muted-foreground" />
+            )}
+          </span>
+          <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Spinner size="sm" className="text-muted-foreground" />
+            {t(($) => $.ai.acp.starting, {
+              agent: selectedAgent?.definition.name ?? t(($) => $.ai.acp.startingFallback),
+            })}
+          </span>
+          <span className="block text-xs text-muted-foreground">
+            {t(($) => $.ai.acp.startingHint)}
+          </span>
+        </output>
+        {starting && (
+          <Button type="button" variant="outline" size="sm" disabled={cancellingStart} onClick={cancelStart}>
+            {t(($) => $.common.actions.cancel)}
+          </Button>
+        )}
+      </div>
     ) : (
       conversationBody()
     );

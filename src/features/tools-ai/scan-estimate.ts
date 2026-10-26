@@ -1,7 +1,7 @@
 // How big a scanned-PDF run is before it starts: the page count, and for a
 // hosted model or Mathpix a rough price. Converters ask for confirmation
 // from five pages on; one run takes at most 50 pages.
-import { lookupPrice } from "@/lib/ai-pricing";
+import { lookupPrice, peakRateMultiplier } from "@/lib/ai-pricing";
 import { fitWithin } from "./image-downscale-core";
 import { destinationName, type ToolsChoiceSummary } from "./tools-choice";
 
@@ -57,7 +57,8 @@ export function imageTokens(width: number, height: number): number {
 function ratesFor(summary: ToolsChoiceSummary): { input: number; output: number } | "plan" | null {
   const cost = summary.metadata?.cost;
   if (typeof cost?.input === "number" && typeof cost.output === "number") {
-    return { input: cost.input, output: cost.output };
+    const peak = peakRateMultiplier(summary.providerId);
+    return { input: cost.input * peak, output: cost.output * peak };
   }
   const price = lookupPrice(summary.modelId);
   if (price.note === "plan") return "plan";

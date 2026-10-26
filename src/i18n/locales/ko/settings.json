@@ -163,7 +163,8 @@
           "ready": "게이트웨이 실행 중",
           "starting": "게이트웨이 시작 중",
           "stopped": "게이트웨이 중지됨",
-          "unknown": "게이트웨이 상태 알 수 없음"
+          "unknown": "게이트웨이 상태 알 수 없음",
+          "outdated": "게이트웨이를 확인하려면 Hermes를 업데이트하세요"
         },
         "refresh": "다시 확인",
         "keepsRunning": "Oleafly 연결을 끊어도 게이트웨이는 멈추지 않습니다.",

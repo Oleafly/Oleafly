@@ -1,6 +1,7 @@
 import { i18n } from "@/i18n";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { decodeAppError, describeError } from "@/lib/app-error";
 
 export interface AcpPackageDistribution {
   package: string;
@@ -317,7 +318,7 @@ export interface AcpHermesStatus {
   mode: "default" | "project" | "remote";
   profile: string | null;
   exists: boolean;
-  gateway: "ready" | "starting" | "stopped" | "unknown";
+  gateway: "ready" | "starting" | "stopped" | "unknown" | "outdated";
   reason: string | null;
   memory: boolean;
   toolGateway: boolean;
@@ -344,6 +345,7 @@ export const acpRegister = (definitionJson: string) => changedCatalog(invoke<Acp
 export const acpRemoveAgent = (agentId: string) => changedCatalog(invoke<void>("acp_remove_agent", { agentId }));
 export const acpInstall = (agentId: string) => changedCatalog(invoke<AcpAgentStatus>("acp_install", { agentId }));
 export const acpStart = (projectId: string, agentId: string) => invoke<AcpSnapshot>("acp_start", { projectId, agentId });
+export const acpCancelStart = (projectId: string) => invoke<boolean>("acp_cancel_start", { projectId });
 export const acpReconnect = (projectId: string, sessionId: string) => invoke<AcpSnapshot>("acp_reconnect", { projectId, sessionId });
 export const acpPrompt = (projectId: string, sessionId: string, input: AcpPromptInput) => invoke<AcpSnapshot>("acp_prompt", { projectId, sessionId, input });
 export const acpCancel = (projectId: string, sessionId: string) => invoke<void>("acp_cancel", { projectId, sessionId });
@@ -415,13 +417,19 @@ export const onAcpSession = (listener: (summary: AcpSessionSummary) => void) => 
 export const onAcpBufferRequest = (listener: (request: AcpBufferRequest) => void) => listen<AcpBufferRequest>("acp:buffer-request", ({ payload }) => listener(payload));
 
 export function acpError(error: unknown): string {
+  const message = errorMessage(error);
+  if (message === null) return i18n.t(($) => $.core.acp.requestFailed);
+  return decodeAppError(message) ? describeError(message) : message;
+}
+
+function errorMessage(error: unknown): string | null {
   if (typeof error === "string") return error;
   if (error instanceof Error) return error.message;
   // `acp_prompt` reports a turn that failed after the message went out as `{ delivered, message }`.
   if (error && typeof error === "object" && typeof (error as { message?: unknown }).message === "string") {
     return (error as { message: string }).message;
   }
-  return i18n.t(($) => $.core.acp.requestFailed);
+  return null;
 }
 
 /**

@@ -130,6 +130,53 @@ describe("ACP session actions", () => {
     expect(useAcpSessionsStore.getState().events.fresh.map((e) => e.sequence)).toEqual([1, 2]);
   });
 
+  it("joins a start already under way for the same agent instead of launching a second one", async () => {
+    let finish!: (value: { session: AcpSession; permissions: [] }) => void;
+    mocks.acpStart.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+
+    const first = useAcpSessionsStore.getState().start("p", "agent");
+    const second = useAcpSessionsStore.getState().start("p", "agent");
+    await vi.waitFor(() => expect(mocks.acpStart).toHaveBeenCalledTimes(1));
+    finish({ session: session("fresh"), permissions: [] });
+    await Promise.all([first, second]);
+
+    expect(mocks.acpStart).toHaveBeenCalledTimes(1);
+    expect(useAcpSessionsStore.getState()).toMatchObject({ activeByProject: { p: "fresh" }, starting: { p: false } });
+  });
+
+  it("starts another agent only after the start under way settles, and closes the one it opened", async () => {
+    let finish!: (value: { session: AcpSession; permissions: [] }) => void;
+    mocks.acpDisconnect.mockResolvedValue(undefined);
+    mocks.acpStart
+      .mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }))
+      .mockResolvedValueOnce({ session: { ...session("second"), agentId: "other" }, permissions: [] });
+
+    const first = useAcpSessionsStore.getState().start("p", "agent");
+    const second = useAcpSessionsStore.getState().start("p", "other");
+    await vi.waitFor(() => expect(mocks.acpStart).toHaveBeenCalledTimes(1));
+    finish({ session: session("first"), permissions: [] });
+    await Promise.all([first, second]);
+
+    expect(mocks.acpStart.mock.calls).toEqual([["p", "agent"], ["p", "other"]]);
+    expect(mocks.acpDisconnect).toHaveBeenCalledWith("p", "first");
+    expect(useAcpSessionsStore.getState().activeByProject.p).toBe("second");
+  });
+
+  it("queues every message sent while one conversation starts", async () => {
+    let finish!: (value: { session: AcpSession; permissions: [] }) => void;
+    mocks.acpStart.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    const draft = (text: string) => ({ text, attachments: [], mentions: [], selections: [], skill: null });
+
+    const first = useAcpSessionsStore.getState().startWithPrompt("p", "agent", draft("one"));
+    const second = useAcpSessionsStore.getState().startWithPrompt("p", "agent", draft("two"));
+    await vi.waitFor(() => expect(mocks.acpStart).toHaveBeenCalledTimes(1));
+    finish({ session: session("fresh", "connecting"), permissions: [] });
+    await Promise.all([first, second]);
+
+    expect(mocks.acpStart).toHaveBeenCalledTimes(1);
+    expect(useAcpSessionsStore.getState().queues.fresh?.map((item) => item.text)).toEqual(["one", "two"]);
+  });
+
   it("clears the starting flag when a start fails", async () => {
     mocks.acpStart.mockRejectedValue(new Error("agent not installed"));
 

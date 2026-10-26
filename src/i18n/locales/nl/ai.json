@@ -185,11 +185,15 @@
     "steered": "Bijgestuurd",
     "toolOutputError": "Fout: {{message}}",
     "errorHints": {
+      "emptyReply": "Het model gaf een leeg antwoord. Probeer het opnieuw, of kies een ander model {{where}}.",
       "invalidKey": "Je API-sleutel lijkt ongeldig of verlopen. Werk hem bij via Instellingen → AI-assistent, of wissel van provider {{where}}.",
+      "invalidRequest": "De provider weigerde de parameters van het verzoek. Probeer een ander model {{where}}.",
       "outOfCredits": "Je AI-provider heeft geen tegoed of quotum meer. Vul het account aan, of stap over op een andere provider (of het lokale Ollama) {{where}}.",
       "overloaded": "De servers van de provider zijn op dit moment overbelast (dit is al opnieuw geprobeerd). Wacht een minuut en probeer het opnieuw, of kies een verwant model {{where}}.",
       "rateLimited": "De provider beperkt het aantal verzoeken. Wacht even en probeer het opnieuw, of wissel van provider {{where}}.",
       "retiredModel": "De provider heeft dit model uitgefaseerd of beperkt. Kies een nieuwer model {{where}} (bij Instellingen → AI-assistent staat wat jouw sleutel mag gebruiken).",
+      "serverError": "De provider had een serverfout. Wacht een minuut en probeer het opnieuw, of kies een ander model {{where}}.",
+      "timedOut": "De provider deed er te lang over om te antwoorden. Probeer het opnieuw, of kies een ander model {{where}}.",
       "unreachable": "Kon de AI-provider niet bereiken. Controleer je verbinding, of zorg dat Ollama draait als je dat gebruikt (Instellingen → AI-assistent → Controleren op Ollama).",
       "where": {
         "inSettings": "bij Instellingen, AI-assistent",

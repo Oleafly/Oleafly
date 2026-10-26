@@ -34,11 +34,11 @@ impl StderrTail {
             .lock()
             .map(|value| value.iter().copied().collect())
             .unwrap_or_default();
-        let text = String::from_utf8_lossy(&bytes);
+        let text = decode_output(&bytes, output_code_page());
         let lines: Vec<&str> = text
             .lines()
             .map(str::trim)
-            .filter(|line| !line.is_empty())
+            .filter(|line| !line.is_empty() && !is_runtime_warning(line))
             .collect();
         let joined: Vec<char> = lines[lines.len().saturating_sub(MAX_TAIL_LINES)..]
             .join(" ")
@@ -51,6 +51,65 @@ impl StderrTail {
             .trim()
             .to_owned()
     }
+}
+
+pub(crate) fn decode_output(bytes: &[u8], code_page: Option<u32>) -> String {
+    bytes
+        .split(|byte| *byte == b'\n')
+        .map(|line| decode_line(line, code_page))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn decode_line(line: &[u8], code_page: Option<u32>) -> String {
+    if let Ok(text) = std::str::from_utf8(line) {
+        return text.to_owned();
+    }
+    if let Some(encoding) = code_page.and_then(code_page_encoding) {
+        let (text, _, had_errors) = encoding.decode(line);
+        if !had_errors {
+            return text.into_owned();
+        }
+    }
+    String::from_utf8_lossy(line).into_owned()
+}
+
+fn code_page_encoding(code_page: u32) -> Option<&'static encoding_rs::Encoding> {
+    use encoding_rs::*;
+    Some(match code_page {
+        936 => GBK,
+        54936 => GB18030,
+        950 => BIG5,
+        932 => SHIFT_JIS,
+        949 => EUC_KR,
+        866 => IBM866,
+        874 => WINDOWS_874,
+        1250 => WINDOWS_1250,
+        1251 => WINDOWS_1251,
+        1252 => WINDOWS_1252,
+        1253 => WINDOWS_1253,
+        1254 => WINDOWS_1254,
+        1255 => WINDOWS_1255,
+        1256 => WINDOWS_1256,
+        1257 => WINDOWS_1257,
+        1258 => WINDOWS_1258,
+        _ => return None,
+    })
+}
+
+#[cfg(windows)]
+fn output_code_page() -> Option<u32> {
+    Some(unsafe { windows_sys::Win32::Globalization::GetOEMCP() })
+}
+
+#[cfg(not(windows))]
+fn output_code_page() -> Option<u32> {
+    None
+}
+
+fn is_runtime_warning(line: &str) -> bool {
+    (line.starts_with("(node:") && line.contains("Warning"))
+        || (line.starts_with("(Use `") && line.contains("--trace-"))
 }
 
 #[cfg(test)]
@@ -83,5 +142,33 @@ mod tests {
             text.ends_with("ValueError: the model name is not valid"),
             "{text}"
         );
+    }
+
+    #[test]
+    fn output_in_a_windows_code_page_reads_as_text() {
+        let message = "'node' \u{4e0d}\u{662f}\u{5185}\u{90e8}\u{6216}\u{5916}\u{90e8}\u{547d}\u{4ee4}\u{3002}";
+        let (bytes, _, _) = encoding_rs::GBK.encode(message);
+        assert_eq!(decode_output(&bytes, Some(936)), message);
+        assert_eq!(decode_output(message.as_bytes(), Some(936)), message);
+        assert_eq!(decode_output(b"plain", None), "plain");
+        assert!(decode_output(&bytes, None).starts_with("'node' "));
+    }
+
+    #[test]
+    fn node_warnings_do_not_crowd_out_the_real_error() {
+        let tail = StderrTail::default();
+        tail.push(
+            b"(node:4242) [DEP0040] DeprecationWarning: The `punycode` module is deprecated.\n",
+        );
+        tail.push(b"(Use `node --trace-deprecation ...` to show where the warning was created)\n");
+        tail.push(
+            b"(node:98654) [DEP0180] DeprecationWarning: fs.Stats constructor is deprecated.\n",
+        );
+        tail.push(b"(Use `DeepSeek Harness --trace-deprecation ...` to show where the warning was created)\n");
+        tail.push(
+            b"(node:4242) ExperimentalWarning: CommonJS module /x/y.js is loading ES Module\n",
+        );
+        tail.push(b"Error: connect ETIMEDOUT 104.18.0.1:443\n");
+        assert_eq!(tail.text(), "Error: connect ETIMEDOUT 104.18.0.1:443");
     }
 }

@@ -40,7 +40,16 @@ export function groupControls(controls: AcpSession["controls"]): ControlGroups {
   if (!groups.mode && (controls.modes?.length ?? 0) > 0) {
     groups.mode = { kind: "legacy", modes: controls.modes ?? [], current: controls.modeId ?? null };
   }
+  if (groups.mode && repeatsEffort(groups.mode, groups.effort)) groups.mode = null;
   return groups;
+}
+
+function repeatsEffort(mode: ModeControl, effort: AcpConfigOption | null): boolean {
+  if (effort?.kind.type !== "select") return false;
+  const levels = effort.kind.options;
+  const choices = modeChoices(mode);
+  return choices.length > 0
+    && choices.every((choice) => levels.some((level) => level.value === choice.id || level.name === choice.name));
 }
 
 /** The display name of an option's current choice. */

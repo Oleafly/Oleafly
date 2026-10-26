@@ -11,6 +11,7 @@ const MAX_LINE_BYTES: usize = 256 * 1024;
 // covers `wait_runs` at its 300 s maximum and a desktop apps call waiting
 // for approval), so the server's own answer always arrives first.
 const CALL_TIMEOUT: Duration = Duration::from_secs(390);
+const SETUP_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub fn stdio_server(http: &Value) -> Result<Value, String> {
     let url = http["url"]
@@ -69,11 +70,31 @@ pub(super) fn pump(
     runtime: &tokio::runtime::Runtime,
     url: &str,
     token: &str,
-    mut reader: impl BufRead,
+    reader: impl BufRead,
     writer: &mut impl Write,
 ) -> Result<(), i32> {
+    pump_with_limits(
+        runtime,
+        url,
+        token,
+        reader,
+        writer,
+        SETUP_TIMEOUT,
+        CALL_TIMEOUT,
+    )
+}
+
+pub(super) fn pump_with_limits(
+    runtime: &tokio::runtime::Runtime,
+    url: &str,
+    token: &str,
+    mut reader: impl BufRead,
+    writer: &mut impl Write,
+    setup_limit: Duration,
+    call_limit: Duration,
+) -> Result<(), i32> {
     let client = reqwest::Client::builder()
-        .timeout(CALL_TIMEOUT)
+        .no_proxy()
         .build()
         .map_err(|_| 2)?;
     let mut line = String::new();
@@ -94,9 +115,15 @@ pub(super) fn pump(
             continue;
         };
         let id = message.get("id").cloned();
+        let limit = if message["method"] == "tools/call" {
+            call_limit
+        } else {
+            setup_limit
+        };
         let sent = runtime.block_on(async {
             let response = client
                 .post(url)
+                .timeout(limit)
                 .header("Authorization", token)
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json")

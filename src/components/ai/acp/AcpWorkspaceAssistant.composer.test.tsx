@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render as renderWithoutProviders, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as renderWithoutProviders, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const { restore } = await vi.hoisted(async () => {
@@ -15,7 +15,7 @@ vi.mock("@/lib/acp", async (original) => ({
   acpCatalog: vi.fn(), acpSessions: vi.fn(), acpSnapshot: vi.fn(), acpEvents: vi.fn(),
   acpStart: vi.fn(), acpAuthenticate: vi.fn(), acpDisconnect: vi.fn(), acpReconnect: vi.fn(),
   acpSetModel: vi.fn(), acpPrompt: vi.fn(), acpPermission: vi.fn(), acpCancel: vi.fn(),
-  acpSignInCommand: vi.fn(), acpElicitationRespond: vi.fn(),
+  acpSignInCommand: vi.fn(), acpElicitationRespond: vi.fn(), acpCancelStart: vi.fn(),
   onAcpEvent: vi.fn(), onAcpResync: vi.fn(),
   onAcpSession: vi.fn(async () => () => {}), onAcpBufferRequest: vi.fn(async () => () => {}),
 }));
@@ -44,11 +44,12 @@ vi.mock("@/components/usage/UsageReport", () => ({
 }));
 import type { ReactNode } from "react";
 import {
-  acpCatalog, acpDisconnect, acpEvents, acpPermission, acpPrompt, acpSessions, acpSignInCommand, acpSnapshot, acpStart,
+  acpCancelStart, acpCatalog, acpDisconnect, acpEvents, acpPermission, acpPrompt, acpSessions, acpSignInCommand, acpSnapshot, acpStart,
   onAcpEvent, onAcpResync, type AcpEvent, type AcpPromptInput, type AcpSnapshot,
 } from "@/lib/acp";
 import type { DraftAttachment } from "@/components/ai/composer/types";
 import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import { flushOpenFilesToDisk } from "@/lib/external-file-changes";
 import { gitIsInitialized } from "@/lib/tauri";
@@ -638,6 +639,38 @@ describe("ACP composer on the shared composer (0.4.8)", () => {
     expect(await ui.findByRole("alert")).toHaveTextContent("The agent could not start.");
     await waitFor(() => expect(composer).toHaveValue("Hello"));
     expect(acpPrompt).not.toHaveBeenCalled();
+  });
+
+  it("cancels a start that hangs and gives the first message back without an error", async () => {
+    snapshots = {};
+    useAcpSessionsStore.setState({ activeByProject: {} });
+    const started = deferred<AcpSnapshot>();
+    vi.mocked(acpStart).mockReturnValue(started.promise);
+    vi.mocked(acpCancelStart).mockImplementation(async () => {
+      started.reject("The start was cancelled.");
+      return true;
+    });
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const composer = await readyComposer(ui);
+
+    typeMessage(composer, "Hello");
+    fireEvent.keyDown(composer, { key: "Enter" });
+    const connecting = await ui.findByTestId("acp-connecting");
+    fireEvent.click(within(connecting).getByRole("button", { name: enCommon.actions.cancel }));
+
+    await waitFor(() => expect(ui.queryByTestId("acp-connecting")).toBeNull());
+    expect(acpCancelStart).toHaveBeenCalledExactlyOnceWith("paper");
+    await waitFor(() => expect(composer).toHaveValue("Hello"));
+    expect(ui.queryByRole("alert")).toBeNull();
+    expect(acpPrompt).not.toHaveBeenCalled();
+  });
+
+  it("offers no cancel while nothing is starting", async () => {
+    snapshots = {};
+    useAcpSessionsStore.setState({ activeByProject: {} });
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await readyComposer(ui);
+    expect(ui.queryByRole("button", { name: enCommon.actions.cancel })).toBeNull();
   });
 
   it("keeps typing possible while sign-in is needed but does not send", async () => {

@@ -420,10 +420,17 @@ pub fn estimate_usage_cost(
     let provider_id = event.provider_id.as_deref()?;
     let model_id = event.model_id.as_deref()?;
     let rates = snapshot.lookup(provider_id, model_id)?.cost.as_ref()?;
-    let estimated_cost_usd = estimate_cost_from_rates(event, rates)?;
+    let listed = estimate_cost_from_rates(event, rates)?;
+    let multiplier =
+        oleafly_agent::pricing::peak_price_multiplier(provider_id, event.occurred_at_ms);
+    let peak = if multiplier > 1.0 {
+        "+deepseek-peak"
+    } else {
+        ""
+    };
     Some(UsageCostEstimate {
-        estimated_cost_usd,
-        price_version: format!("model-metadata:{}", snapshot.generated_at()),
+        estimated_cost_usd: listed * multiplier,
+        price_version: format!("model-metadata:{}{peak}", snapshot.generated_at()),
     })
 }
 
@@ -1615,6 +1622,35 @@ mod tests {
         assert_eq!(
             observation.price_version.as_deref(),
             Some(expected_price_version.as_str())
+        );
+    }
+
+    #[test]
+    fn deepseek_usage_in_peak_hours_costs_double_the_listed_rate() {
+        let snapshot = crate::ai_model_metadata::bundled_snapshot();
+        let mut observation = event("event", "turn", Some(1_000_000));
+        observation.output_tokens = Some(1_000_000);
+        observation.cache_read_tokens = Some(0);
+        observation.cache_write_tokens = Some(0);
+        observation.provider_id = Some("deepseek".into());
+        observation.model_id = Some("deepseek-flash".into());
+        observation.occurred_at_ms = 1_792_981_800_000;
+        let peak = estimate_usage_cost(&snapshot, &observation).unwrap();
+        assert!((peak.estimated_cost_usd - 1.5).abs() < 1e-9, "{peak:?}");
+        assert_eq!(
+            peak.price_version,
+            format!("model-metadata:{}+deepseek-peak", snapshot.generated_at())
+        );
+
+        observation.occurred_at_ms = 1_793_412_000_000;
+        let off_peak = estimate_usage_cost(&snapshot, &observation).unwrap();
+        assert!(
+            (off_peak.estimated_cost_usd - 0.75).abs() < 1e-9,
+            "{off_peak:?}"
+        );
+        assert_eq!(
+            off_peak.price_version,
+            format!("model-metadata:{}", snapshot.generated_at())
         );
     }
 

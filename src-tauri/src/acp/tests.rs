@@ -494,7 +494,7 @@ async fn a_login_that_expires_mid_turn_asks_for_sign_in_rather_than_staying_read
 }
 
 #[tokio::test]
-async fn startup_failures_carry_the_agent_stderr() {
+async fn startup_failures_carry_the_agent_stderr_and_leave_no_conversation() {
     let temp = fixture_temp();
     let project = temp.path().join("project");
     std::fs::create_dir(&project).unwrap();
@@ -519,17 +519,7 @@ async fn startup_failures_carry_the_agent_stderr() {
         .await
         .unwrap_err();
     assert!(error.contains("missing runtime"), "{error}");
-    let record = runtime
-        .list("test-project")
-        .unwrap()
-        .into_iter()
-        .next()
-        .unwrap();
-    let events = runtime.events(&record.id, 0, 500).unwrap().events;
-    assert!(events.iter().any(|event| event.kind == "diagnostics"
-        && event.data["stderr"]
-            .as_str()
-            .is_some_and(|value| value.contains("missing runtime"))));
+    assert!(runtime.list("test-project").unwrap().is_empty());
 }
 
 #[test]
@@ -2095,6 +2085,7 @@ fn sandboxed_task_launches_keep_the_sandbox_environment() {
 }
 
 mod controls;
+mod lifecycle;
 mod live_turns;
 mod review;
 mod sessions048;

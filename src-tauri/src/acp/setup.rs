@@ -194,8 +194,9 @@ fn node_text((major, minor, patch): catalog::NodeVersion) -> String {
 }
 
 /// The Test check: never saves anything. Steps: the chosen file's rules;
-/// Node.js for Pi's script CLI; `<cli> --version` for vendor CLIs (fatal when
-/// the bridge needs the CLI); Node.js for Node.js bridges; then a real start
+/// Node.js for Pi's script CLI; the vendor CLI's version probe (`--version`,
+/// or Hermes's `acp --version`; fatal when the bridge needs the CLI); Node.js
+/// for Node.js bridges; then a real start
 /// in an empty Oleafly-owned folder with the agent's environment, no tool
 /// servers, and `initialize` answered within the limit.
 pub(crate) async fn check_agent(
@@ -299,7 +300,15 @@ pub(crate) async fn check_plan(
                         None => return failed("node_missing", None, shown),
                     }
                 }
-                match catalog::program_version(root, &cli.located, &env, limits.version).await {
+                match catalog::program_version(
+                    root,
+                    &cli.located,
+                    vendor.version_args,
+                    &env,
+                    limits.version,
+                )
+                .await
+                {
                     Ok(found) => version = Some(found),
                     Err(detail) if vendor.bridge_needs_cli => {
                         return failed("cli_missing", Some(detail), shown)
@@ -427,6 +436,7 @@ async fn start_and_initialize(
         Ok(Ok(negotiated)) => {
             let value = &negotiated.raw;
             let redactor = oleafly_acp::redact::Redactor::new(&[]);
+            super::runtime::add_login_secrets(&redactor);
             let auth_methods: Vec<_> = negotiated
                 .auth_methods
                 .iter()

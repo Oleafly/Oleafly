@@ -734,6 +734,98 @@ fn the_printed_path_is_the_line_after_the_marker() {
 }
 
 #[test]
+fn the_login_probe_reads_allowlisted_variables_past_shell_noise() {
+    let folder = TempDir::new().unwrap();
+    let shell = folder.path().join("fake-shell");
+    std::fs::write(
+        &shell,
+        "#!/bin/sh\n\
+         echo 'Last login: today'\n\
+         echo 'HTTPS_PROXY=http://noise:1'\n\
+         echo __OLEAFLY_PATH__\n\
+         echo '/login/bin:/usr/bin'\n\
+         echo __OLEAFLY_ENV__\n\
+         printf 'HTTPS_PROXY=http://127.0.0.1:7890\\000'\n\
+         printf 'MULTI=line one\\nline two\\000'\n\
+         printf 'SECRET_NOT_KEPT=x\\000'\n\
+         printf 'EQUALS=a=b\\000'\n\
+         printf 'BYTES=\\377\\376\\000'\n\
+         echo 'logout'\n\
+         printf 'TRAILING=noise'\n",
+    )
+    .unwrap();
+    std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let keep = |name: &str| name != "SECRET_NOT_KEPT";
+    let login = login_environment_within(Some(&shell), test_wait::CHILD_PATIENCE, &keep);
+    assert_eq!(
+        login.path,
+        vec![PathBuf::from("/login/bin"), PathBuf::from("/usr/bin")]
+    );
+    let names: Vec<&str> = login.env.iter().map(|(name, _)| name.as_str()).collect();
+    assert_eq!(names, ["HTTPS_PROXY", "MULTI", "EQUALS", "BYTES"]);
+    let value = |name: &str| {
+        login
+            .env
+            .iter()
+            .find(|(key, _)| key == name)
+            .map(|(_, value)| value.clone())
+            .unwrap()
+    };
+    assert_eq!(value("HTTPS_PROXY"), "http://127.0.0.1:7890");
+    assert_eq!(value("MULTI"), "line one\nline two");
+    assert_eq!(value("EQUALS"), "a=b");
+    use std::os::unix::ffi::OsStrExt;
+    assert_eq!(value("BYTES").as_bytes(), [0xff, 0xfe]);
+}
+
+#[test]
+fn a_shell_without_env_dash_zero_still_reports_its_path() {
+    let folder = TempDir::new().unwrap();
+    let shell = folder.path().join("fake-shell");
+    std::fs::write(
+        &shell,
+        "#!/bin/sh\n\
+         echo __OLEAFLY_PATH__\n\
+         echo '/only/bin'\n\
+         echo __OLEAFLY_ENV__\n\
+         echo 'env: illegal option -- 0' >&2\n",
+    )
+    .unwrap();
+    std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let login = login_environment_within(Some(&shell), test_wait::CHILD_PATIENCE, &|_| true);
+    assert_eq!(login.path, vec![PathBuf::from("/only/bin")]);
+    assert!(login.env.is_empty());
+    assert!(printed_env(b"HTTPS_PROXY=x\0", &|_| true).is_empty());
+    assert!(printed_env(b"motd __OLEAFLY_ENV__\nA=1\0", &|_| true).is_empty());
+}
+
+#[test]
+fn the_real_login_shell_prints_its_environment() {
+    let shell = Path::new("/bin/sh");
+    if !shell.is_file() {
+        return;
+    }
+    let folder = TempDir::new().unwrap();
+    let wrapper = folder.path().join("sh");
+    std::fs::write(
+        &wrapper,
+        "#!/bin/sh\nOLEAFLY_PROBE_CHECK=ok exec /bin/sh -c \"$4\"\n",
+    )
+    .unwrap();
+    std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let keep = |name: &str| name == "OLEAFLY_PROBE_CHECK";
+    let login = login_environment_within(Some(&wrapper), test_wait::CHILD_PATIENCE, &keep);
+    assert!(!login.path.is_empty());
+    assert_eq!(
+        login.env,
+        vec![(
+            "OLEAFLY_PROBE_CHECK".to_string(),
+            std::ffi::OsString::from("ok")
+        )]
+    );
+}
+
+#[test]
 fn a_folder_added_in_zshrc_counts_as_on_path() {
     let zsh = Path::new("/bin/zsh");
     if !zsh.is_file() {

@@ -282,7 +282,7 @@ impl Shared {
             }
             Err(error) => Err(RpcError {
                 code: i64::from(i32::from(error.code)),
-                message: rpc_error_message(&json!({"message": error.message})),
+                message: rpc_error_message(&json!({"message": error.message, "data": error.data})),
             }),
         }
     }
@@ -567,8 +567,9 @@ impl AcpClient {
         let notifications = route_tx.clone();
         let mut stop = shared.stop.subscribe();
         let connection_shared = shared.clone();
+        let stray = shared.stderr.clone();
         tokio::spawn(async move {
-            let transport = line_transport(stdout, stdin);
+            let transport = line_transport(stdout, stdin, move |line: &[u8]| stray.push(line));
             let _ = Client
                 .builder()
                 .without_acp_version_guard()
@@ -710,6 +711,13 @@ impl AcpClient {
         Ok((guard, receiver))
     }
 
+    fn stopped_for_time(&self) -> RpcError {
+        RpcError::local(&disconnect_message(
+            "The agent did not reply in time and was stopped.",
+            &self.shared.stderr.text(),
+        ))
+    }
+
     fn disconnected_before_reply(&self) -> RpcError {
         RpcError::local(&disconnect_message(
             "The agent disconnected before replying.",
@@ -747,9 +755,7 @@ impl AcpClient {
                 _ = tokio::time::sleep_until(end) => {
                     if Instant::now() >= (*activity.borrow()).max(started) + quiet {
                         let _ = self.shared.stop.send(true);
-                        return Err(RpcError::local(
-                            "The agent did not reply in time and was stopped.",
-                        ));
+                        return Err(self.stopped_for_time());
                     }
                 }
             }
@@ -770,9 +776,7 @@ impl AcpClient {
             Ok(Err(_)) => Err(self.disconnected_before_reply()),
             Err(_) => {
                 let _ = self.shared.stop.send(true);
-                Err(RpcError::local(
-                    "The agent did not reply in time and was stopped.",
-                ))
+                Err(self.stopped_for_time())
             }
         }
     }

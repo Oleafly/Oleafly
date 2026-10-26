@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "Two kinds of agent",
-      "content": "The Oleafly agent runs on the model provider you configure. The CLI agent, in beta, drives a coding agent already installed on this computer."
+      "content": "The Oleafly agent runs on the model provider you configure. The CLI agent drives a coding agent already installed on this computer."
     },
     "connectProvider": {
       "title": "Connect a provider",

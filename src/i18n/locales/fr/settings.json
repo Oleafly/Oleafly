@@ -165,7 +165,8 @@
           "ready": "Passerelle en marche",
           "starting": "Passerelle en démarrage",
           "stopped": "Passerelle arrêtée",
-          "unknown": "État de la passerelle inconnu"
+          "unknown": "État de la passerelle inconnu",
+          "outdated": "Mettez Hermes à jour pour vérifier la passerelle"
         },
         "refresh": "Vérifier de nouveau",
         "keepsRunning": "Déconnecter Oleafly n'arrête jamais la passerelle.",

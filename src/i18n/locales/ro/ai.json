@@ -193,11 +193,15 @@
     "steered": "Direcționat",
     "toolOutputError": "Eroare: {{message}}",
     "errorHints": {
+      "emptyReply": "Modelul a trimis un răspuns gol. Încearcă din nou sau schimbă modelul {{where}}.",
       "invalidKey": "Cheia ta API pare nevalidă sau expirată. Actualizeaz-o în Setări → Asistentul AI sau schimbă furnizorul {{where}}.",
+      "invalidRequest": "Furnizorul a respins parametrii cererii. Încearcă alt model {{where}}.",
       "outOfCredits": "Furnizorul tău AI a rămas fără credite sau fără cotă. Alimentează contul sau treci la alt furnizor (ori la Ollama local) {{where}}.",
       "overloaded": "Serverele furnizorului sunt supraîncărcate acum (s-a reîncercat deja). Așteaptă un minut și încearcă din nou sau treci la un model înrudit {{where}}.",
       "rateLimited": "Furnizorul limitează ritmul cererilor. Așteaptă puțin și reîncearcă sau schimbă furnizorul {{where}}.",
       "retiredModel": "Furnizorul a retras sau a restricționat acest model. Alege un model mai nou {{where}} (Setări → Asistentul AI arată ce poate folosi cheia ta).",
+      "serverError": "Furnizorul a avut o eroare de server. Așteaptă un minut și încearcă din nou sau schimbă modelul {{where}}.",
+      "timedOut": "Furnizorul a întârziat prea mult cu răspunsul. Încearcă din nou sau schimbă modelul {{where}}.",
       "unreachable": "Furnizorul AI nu a putut fi contactat. Verifică-ți conexiunea, iar dacă folosești Ollama, asigură-te că rulează (Setări → Asistentul AI → Caută Ollama).",
       "where": {
         "inSettings": "în Setări, Asistentul AI",

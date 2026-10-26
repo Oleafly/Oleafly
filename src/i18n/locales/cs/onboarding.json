@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "Dva druhy agenta",
-      "content": "Agent Oleafly běží na poskytovateli modelu, kterého si nastavíte. Agent z příkazové řádky, zatím v beta verzi, řídí programovacího agenta už nainstalovaného v tomto počítači."
+      "content": "Agent Oleafly běží na poskytovateli modelu, kterého si nastavíte. Agent z příkazové řádky řídí programovacího agenta už nainstalovaného v tomto počítači."
     },
     "connectProvider": {
       "title": "Připojte poskytovatele",

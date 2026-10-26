@@ -120,6 +120,8 @@ function convertPart(part: Record<string, unknown>): AgentContentPart | null {
   switch (part.type) {
     case "text":
       return part.text ? { type: "text", text: String(part.text) } : null;
+    case "reasoning":
+      return part.text ? { type: "reasoning", text: String(part.text) } : null;
     case "image":
       return { type: "image", image: String(part.image) };
     case "attachment":
@@ -153,7 +155,7 @@ export function toAgentMessages(messages: ModelMessage[]): AgentMessage[] {
   const out: AgentMessage[] = [];
   for (const message of messages) {
     const parts = partsFromContent(message.content);
-    if (!parts.length) continue;
+    if (parts.every((part) => part.type === "reasoning")) continue;
     out.push({
       role: message.role === "assistant" ? "assistant" : "user",
       content: parts,

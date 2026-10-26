@@ -93,14 +93,8 @@ pub async fn acp_start(
     let generation = runtime.owner_generation(owner.as_str());
     let project_path = crate::paths::project_dir(&project_id)?;
     super::runtime::note_launch_root(&project_path);
-    let bridge = super::admit_agent_bridge(
-        &project_id,
-        crate::research_mcp::start(app, project_id.clone(), None),
-    )
-    .await?;
-    // 0.4.8 I: desktop apps through their own bridge, when they are on.
-    let cua = crate::cua_driver::acp_bridge(&project_id, &agent_label(&runtime, &agent_id)).await;
-    let servers = agent_servers(&bridge, cua.as_ref());
+    let bridges = start_agent_bridges(app, &runtime, &project_id, &agent_id).await?;
+    let servers = bridge_servers(bridges.as_ref());
     let result = runtime
         .start_with_mcp_at_generation(
             StartSession {
@@ -114,8 +108,63 @@ pub async fn acp_start(
             Some(generation),
         )
         .await?;
-    keep_agent_bridges(&runtime, &result.session.id, bridge, cua).await?;
+    keep_bridges(&runtime, &result.session.id, bridges).await?;
     Ok(result)
+}
+
+#[tauri::command]
+pub async fn acp_cancel_start(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+) -> Result<bool, String> {
+    let owner = caller_label(&webview)?;
+    Ok(runtime.cancel_start(owner.as_str(), &project_id).await)
+}
+
+pub(super) fn takes_project_tools(agent_id: &str) -> bool {
+    agent_id != "pi"
+}
+
+type AgentBridges = (
+    crate::research_mcp::ScopedResearchMcp,
+    Option<crate::cua_driver::CuaBridge>,
+);
+
+async fn start_agent_bridges(
+    app: AppHandle,
+    runtime: &AcpRuntime,
+    project_id: &str,
+    agent_id: &str,
+) -> Result<Option<AgentBridges>, String> {
+    if !takes_project_tools(agent_id) {
+        return Ok(None);
+    }
+    let bridge = super::admit_agent_bridge(
+        project_id,
+        crate::research_mcp::start(app, project_id.to_owned(), None),
+    )
+    .await?;
+    // 0.4.8 I: desktop apps through their own bridge, when they are on.
+    let cua = crate::cua_driver::acp_bridge(project_id, &agent_label(runtime, agent_id)).await;
+    Ok(Some((bridge, cua)))
+}
+
+fn bridge_servers(bridges: Option<&AgentBridges>) -> Vec<serde_json::Value> {
+    bridges
+        .map(|(bridge, cua)| agent_servers(bridge, cua.as_ref()))
+        .unwrap_or_default()
+}
+
+async fn keep_bridges(
+    runtime: &AcpRuntime,
+    session_id: &str,
+    bridges: Option<AgentBridges>,
+) -> Result<(), String> {
+    match bridges {
+        Some((bridge, cua)) => keep_agent_bridges(runtime, session_id, bridge, cua).await,
+        None => Ok(()),
+    }
 }
 
 // 0.4.8 I: the agent's name labels its desktop apps session.
@@ -173,23 +222,16 @@ pub async fn acp_reconnect(
     if root != std::path::Path::new(&record.project_path) {
         return Err("The saved session uses a different project directory.".into());
     }
-    let bridge = super::admit_agent_bridge(
-        &project_id,
-        crate::research_mcp::start(app, project_id.clone(), None),
-    )
-    .await?;
-    // 0.4.8 I: desktop apps through their own bridge, when they are on.
-    let cua =
-        crate::cua_driver::acp_bridge(&project_id, &agent_label(&runtime, &record.agent_id)).await;
+    let bridges = start_agent_bridges(app, &runtime, &project_id, &record.agent_id).await?;
     let result = runtime
         .reconnect_with_mcp_at_generation(
             &session_id,
             Some(owner.as_str().into()),
-            agent_servers(&bridge, cua.as_ref()),
+            bridge_servers(bridges.as_ref()),
             Some(generation),
         )
         .await?;
-    keep_agent_bridges(&runtime, &session_id, bridge, cua).await?;
+    keep_bridges(&runtime, &session_id, bridges).await?;
     Ok(result)
 }
 
@@ -577,7 +619,9 @@ pub async fn acp_provider_choices(
         runtime.agent_definition(&agent_id)?;
         let supported = runtime.agent_supported_providers(&agent_id);
         let config = crate::config::read_config()?;
-        Ok(super::providers::provider_choices(&supported, &config))
+        Ok(super::providers::provider_choices(
+            &agent_id, &supported, &config,
+        ))
     })
     .await
 }
@@ -788,24 +832,18 @@ pub async fn acp_fork(
     let record = check_project(&runtime, &session_id, &project_id)?;
     runtime.assert_owner(&session_id, owner.as_str()).await?;
     let _startup = runtime.begin_startup()?;
-    let bridge = super::admit_agent_bridge(
-        &project_id,
-        crate::research_mcp::start(app, project_id.clone(), None),
-    )
-    .await?;
     // 0.4.8 I: a fork is a new session with its own desktop apps bridge.
-    let cua =
-        crate::cua_driver::acp_bridge(&project_id, &agent_label(&runtime, &record.agent_id)).await;
+    let bridges = start_agent_bridges(app, &runtime, &project_id, &record.agent_id).await?;
     let result = runtime
         .inner()
         .clone()
         .fork(
             &session_id,
             Some(owner.as_str().into()),
-            agent_servers(&bridge, cua.as_ref()),
+            bridge_servers(bridges.as_ref()),
         )
         .await?;
-    keep_agent_bridges(&runtime, &result.session.id, bridge, cua).await?;
+    keep_bridges(&runtime, &result.session.id, bridges).await?;
     Ok(result)
 }
 

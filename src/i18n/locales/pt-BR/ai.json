@@ -193,11 +193,15 @@
     "steered": "Redirecionada",
     "toolOutputError": "Erro: {{message}}",
     "errorHints": {
+      "emptyReply": "O modelo devolveu uma resposta vazia. Tente de novo ou troque de modelo {{where}}.",
       "invalidKey": "Sua chave de API parece inválida ou expirada. Atualize em Configurações → Assistente de IA ou troque de provedor {{where}}.",
+      "invalidRequest": "O provedor recusou os parâmetros da requisição. Tente outro modelo {{where}}.",
       "outOfCredits": "Seu provedor de IA ficou sem créditos ou cota. Recarregue a conta ou mude para outro provedor (ou para o Ollama local) {{where}}.",
       "overloaded": "Os servidores do provedor estão sobrecarregados agora (já tentamos de novo). Espere um minuto e tente outra vez, ou mude para um modelo parecido {{where}}.",
       "rateLimited": "O provedor está limitando a taxa de requisições. Espere um instante e tente de novo, ou troque de provedor {{where}}.",
       "retiredModel": "O provedor aposentou ou restringiu este modelo. Escolha um modelo mais novo {{where}} (Configurações → Assistente de IA lista o que a sua chave pode usar).",
+      "serverError": "O provedor teve um erro no servidor. Espere um minuto e tente de novo, ou troque de modelo {{where}}.",
+      "timedOut": "O provedor demorou demais para responder. Tente de novo ou troque de modelo {{where}}.",
       "unreachable": "Não foi possível falar com o provedor de IA. Verifique sua conexão ou, se estiver usando o Ollama, confira se ele está rodando (Configurações → Assistente de IA → Procurar o Ollama).",
       "where": {
         "inSettings": "em Configurações, Assistente de IA",

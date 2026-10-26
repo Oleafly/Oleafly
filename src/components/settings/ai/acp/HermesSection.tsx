@@ -87,6 +87,8 @@ function statusText(status: AcpHermesStatus): string {
       return i18n.t(($) => $.settings.ai.agents.hermes.status.starting);
     case "stopped":
       return i18n.t(($) => $.settings.ai.agents.hermes.status.stopped);
+    case "outdated":
+      return i18n.t(($) => $.settings.ai.agents.hermes.status.outdated);
     default:
       return i18n.t(($) => $.settings.ai.agents.hermes.status.unknown);
   }

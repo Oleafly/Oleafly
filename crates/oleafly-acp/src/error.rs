@@ -5,21 +5,42 @@ const MAX_RPC_MESSAGE_CHARS: usize = 600;
 
 /// The message of an agent's JSON-RPC error, cleaned for display.
 pub fn rpc_error_message(error: &Value) -> String {
-    let message: String = error["message"]
-        .as_str()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .unwrap_or("The agent could not complete this request.")
-        .chars()
-        .filter(|value| !value.is_control())
-        .take(MAX_RPC_MESSAGE_CHARS)
-        .collect();
-    let message = message.trim();
-    if message.is_empty() {
-        "The agent could not complete this request.".to_owned()
-    } else {
-        message.to_owned()
-    }
+    let message = clean_text(error["message"].as_str());
+    let detail = clean_text(error_detail(&error["data"]));
+    let text = match (message, detail) {
+        (Some(message), Some(detail))
+            if is_generic(&message) || detail.contains(message.as_str()) =>
+        {
+            detail
+        }
+        (Some(message), Some(detail)) if message.contains(detail.as_str()) => message,
+        (Some(message), Some(detail)) => format!("{message}: {detail}"),
+        (Some(text), None) | (None, Some(text)) => text,
+        (None, None) => return "The agent could not complete this request.".to_owned(),
+    };
+    let bounded: String = text.chars().take(MAX_RPC_MESSAGE_CHARS).collect();
+    bounded.trim().to_owned()
+}
+
+fn error_detail(data: &Value) -> Option<&str> {
+    data.as_str().or_else(|| {
+        ["details", "detail", "message", "error"]
+            .iter()
+            .find_map(|key| data[*key].as_str())
+    })
+}
+
+fn clean_text(text: Option<&str>) -> Option<String> {
+    let cleaned: String = text?.chars().filter(|value| !value.is_control()).collect();
+    let cleaned = cleaned.trim();
+    (!cleaned.is_empty()).then(|| cleaned.to_owned())
+}
+
+fn is_generic(message: &str) -> bool {
+    matches!(
+        message.trim_end_matches('.').to_lowercase().as_str(),
+        "internal error" | "internal server error" | "unknown error" | "error"
+    )
 }
 
 /// Whether stderr reads like a CLI's `--help` output (the agent did not
@@ -35,13 +56,14 @@ pub fn disconnect_message(prefix: &str, stderr_tail: &str) -> String {
     } else if reads_as_command_help(stderr_tail) {
         format!("{prefix} It answered with its command-line help, so this version does not accept the options Oleafly started it with.")
     } else {
-        format!("{prefix} It reported: {stderr_tail}")
+        format!("{prefix} Last output from the agent: {stderr_tail}")
     }
 }
 
 const AUTH_FAILURE_PHRASES: &[&str] = &[
     "failed to authenticate",
-    "authentication failed",
+    "authentication fail",
+    "incorrect api key",
     "not authenticated",
     "oauth",
     "unauthorized",
@@ -53,6 +75,9 @@ const AUTH_FAILURE_PHRASES: &[&str] = &[
     "please sign in",
     "log in again",
     "sign in again",
+    "no llm provider configured",
+    "no provider configured",
+    "no api key",
 ];
 
 /// Whether an error message says the agent needs the user to sign in.
@@ -61,6 +86,7 @@ pub fn reads_as_auth_failure(message: &str) -> bool {
     AUTH_FAILURE_PHRASES
         .iter()
         .any(|phrase| message.contains(phrase))
+        || (message.contains("api key") && message.contains("is invalid"))
 }
 
 #[derive(Clone, Debug)]
@@ -112,6 +138,13 @@ mod tests {
         ));
         assert!(reads_as_auth_failure("Please sign in again"));
         assert!(!reads_as_auth_failure("model not found"));
+        assert!(reads_as_auth_failure("Internal error: turn failed: Authentication Fails, Your api key: ****iBZW is invalid (request_id: fa74)"));
+        assert!(reads_as_auth_failure("Incorrect API key provided"));
+        assert!(!reads_as_auth_failure(
+            "The api key field is optional for local models"
+        ));
+        assert!(!reads_as_auth_failure("tool input is invalid"));
+        assert!(reads_as_auth_failure("Internal error: turn failed: llm-deepseek: no API key for provider route \"deepseek-official\"; store DEEPSEEK_API_KEY through the credentials service"));
         assert!(RpcError {
             code: -32000,
             message: "x".into()
@@ -140,7 +173,7 @@ mod tests {
         assert_eq!(disconnect_message("Gone.", ""), "Gone.");
         assert_eq!(
             disconnect_message("Gone.", "panic: boom"),
-            "Gone. It reported: panic: boom"
+            "Gone. Last output from the agent: panic: boom"
         );
         assert!(disconnect_message("Gone.", "Usage: x").contains("command-line help"));
     }

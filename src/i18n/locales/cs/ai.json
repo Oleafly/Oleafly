@@ -201,11 +201,15 @@
     "steered": "Nasměrováno",
     "toolOutputError": "Chyba: {{message}}",
     "errorHints": {
+      "emptyReply": "Model poslal prázdnou odpověď. Zkuste to znovu, nebo přepněte model {{where}}.",
       "invalidKey": "Váš klíč API vypadá neplatně nebo vypršel. Aktualizujte jej v Nastavení → Asistent AI, nebo přepněte poskytovatele {{where}}.",
+      "invalidRequest": "Poskytovatel odmítl parametry požadavku. Zkuste jiný model {{where}}.",
       "outOfCredits": "Vašemu poskytovateli AI došly kredity nebo limit. Dobijte účet, nebo přepněte na jiného poskytovatele (případně na místní Ollama) {{where}}.",
       "overloaded": "Servery poskytovatele jsou teď přetížené (požadavek už byl zopakován). Počkejte chvíli a zkuste to znovu, nebo přepněte na příbuzný model {{where}}.",
       "rateLimited": "Poskytovatel omezuje četnost požadavků. Chvíli počkejte a opakujte to, nebo přepněte poskytovatele {{where}}.",
       "retiredModel": "Poskytovatel tento model vyřadil nebo omezil. Vyberte novější model {{where}} (v Nastavení → Asistent AI je seznam toho, co váš klíč umí použít).",
+      "serverError": "Na serveru poskytovatele došlo k chybě. Počkejte chvíli a zkuste to znovu, nebo přepněte model {{where}}.",
+      "timedOut": "Poskytovatel odpovídal příliš dlouho. Zkuste to znovu, nebo přepněte model {{where}}.",
       "unreachable": "Poskytovatele AI se nepodařilo kontaktovat. Zkontrolujte připojení, a pokud používáte Ollama, ověřte, že běží (Nastavení → Asistent AI → Zkontrolovat Ollama).",
       "where": {
         "inSettings": "v Nastavení, Asistent AI",

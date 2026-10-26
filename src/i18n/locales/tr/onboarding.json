@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "İki tür ajan",
-      "content": "Oleafly ajanı, yapılandırdığınız model sağlayıcısı üzerinde çalışır. Beta aşamasındaki CLI ajanı ise bu bilgisayarda kurulu olan bir kodlama ajanını sürer."
+      "content": "Oleafly ajanı, yapılandırdığınız model sağlayıcısı üzerinde çalışır. CLI ajanı ise bu bilgisayarda kurulu olan bir kodlama ajanını sürer."
     },
     "connectProvider": {
       "title": "Bir sağlayıcı bağlayın",

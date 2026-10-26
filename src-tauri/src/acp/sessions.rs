@@ -383,6 +383,7 @@ impl AcpRuntime {
         let (page, capabilities, methods) =
             self.list_agent_sessions(project_id, agent_id, None).await?;
         let redactor = oleafly_acp::redact::Redactor::new(&[]);
+        super::runtime::add_login_secrets(&redactor);
         let known = self
             .imported_natives(project_id, agent_id, native_ids.clone())
             .await?;
@@ -467,7 +468,7 @@ impl AcpRuntime {
             // connection right behind the reply, before its id is known
             // here: they are ignored until it is.
             session.forking.store(true, Ordering::Release);
-            let _forking = Forking(&session.forking);
+            let _forking = ForeignUpdatesIgnored(&session.forking);
             let answer = session
                 .client
                 .fork_session(&native, &cwd, &servers)
@@ -621,10 +622,10 @@ impl AcpRuntime {
 }
 
 /// Clears the flag that makes a connection ignore updates for sessions it did
-/// not open, when the fork that set it ends, however it ends.
-struct Forking<'a>(&'a AtomicBool);
+/// not open, when the fork or resume that set it ends, however it ends.
+pub(super) struct ForeignUpdatesIgnored<'a>(pub(super) &'a AtomicBool);
 
-impl Drop for Forking<'_> {
+impl Drop for ForeignUpdatesIgnored<'_> {
     fn drop(&mut self) {
         self.0.store(false, Ordering::Release);
     }
