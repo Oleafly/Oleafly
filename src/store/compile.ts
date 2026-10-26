@@ -1184,7 +1184,7 @@ async function pandocPrerequisiteGate(ctx: CompileGateContext): Promise<boolean>
   return compileIdentityGate(ctx);
 }
 
-async function systemTexPrerequisiteGate(ctx: CompileGateContext): Promise<boolean> {
+function systemTexPrerequisiteGate(ctx: CompileGateContext): boolean {
   if (ctx.files.engine.capabilities.compiler_prerequisite !== "system_tex") return true;
   // A TinyTeX install may be in flight: queue this compile behind it
   // instead of failing with "latexmk not found". The engine store runs
@@ -1316,7 +1316,7 @@ async function runCompileGates(
   if (!engineLoadedGate(ctx)) return null;
   if (!typstVersionGate(ctx)) return null;
   if (!(await pandocPrerequisiteGate(ctx))) return null;
-  if (!(await systemTexPrerequisiteGate(ctx))) return null;
+  if (!systemTexPrerequisiteGate(ctx)) return null;
   if (!compileIdentityGate(ctx)) return null;
   const projectId = ctx.capturedProjectId;
   if (!projectId) {
