@@ -85,6 +85,8 @@ Read the [server guide](https://github.com/Oleafly/oleafly-server) for setup, ba
 
 Turn on cloud sync and your library projects and app settings follow you from one computer to the next. Every download is checked against its record before it replaces a file, and a file you have open with unsaved changes is never overwritten.
 
+You can sync to Dropbox, to Google Drive, or to a bucket of your own on Amazon S3, Google Cloud Storage, MinIO or another S3-compatible service.
+
 <p align="center">
   <img src="docs/assets/readme/cloud-sync-dropbox.png" alt="Oleafly Cloud sync settings with the Dropbox card and a list of what syncs" width="100%" />
 </p>

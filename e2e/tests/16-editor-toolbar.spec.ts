@@ -1,6 +1,7 @@
 import { test, expect } from "../fixtures";
 import {
   caretIn,
+  clickEditorContextPath,
   clickToolbarControl,
   editorSource,
   openProject,
@@ -114,7 +115,7 @@ test("right-click context menu offers editor actions and inserts an equation", a
   );
   await expect(tauriPage.getByText("Ask AI…")).toBeVisible({ timeout: 10_000 });
   await expect(tauriPage.getByText("Go to definition")).toBeVisible();
-  await tauriPage.getByText("Equation").click();
+  await clickEditorContextPath(tauriPage, ["Insert", "Equation"]);
   await expect(tauriPage.locator(".cm-content")).toContainText("\\begin{equation}");
   await tauriPage.click('[aria-label^="Undo ("]');
   await tauriPage.waitForFunction(

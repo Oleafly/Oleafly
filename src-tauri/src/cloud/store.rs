@@ -19,6 +19,7 @@ const DROPBOX_BLOCK: usize = 4 * 1024 * 1024;
 const MAX_ATTEMPTS: u32 = 4;
 const MAX_LIST_PAGES: usize = 1_000;
 const RPC_TIMEOUT: Duration = Duration::from_secs(60);
+const LOOKUP_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_RETRY_AFTER: Duration = Duration::from_secs(60);
 const UPLOAD_CONCURRENCY: usize = 16;
 const MAX_BATCH_ENTRIES: usize = 1_000;
@@ -40,6 +41,9 @@ pub(crate) enum StoreError {
     Rejected(String),
     Verify(String),
     Reset,
+    /// The provider won't remove a folder this large in one call; the caller
+    /// empties it piece by piece.
+    FolderTooLarge,
 }
 
 impl StoreError {
@@ -47,7 +51,9 @@ impl StoreError {
         match self {
             Self::Revoked => "cloud.revoked",
             Self::Network(_) => "cloud.network",
-            Self::Server(_) | Self::Reset | Self::Rejected(_) => "cloud.server",
+            Self::Server(_) | Self::Reset | Self::Rejected(_) | Self::FolderTooLarge => {
+                "cloud.server"
+            }
             Self::Io(_) => "cloud.local_io",
             Self::QuotaFull => "cloud.quota_full",
             Self::RateLimited => "cloud.rate_limited",
@@ -80,12 +86,17 @@ impl StoreError {
 impl fmt::Display for StoreError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Revoked => formatter.write_str("dropbox access was revoked"),
-            Self::QuotaFull => formatter.write_str("dropbox is full"),
-            Self::RateLimited => formatter.write_str("dropbox asked to slow down"),
-            Self::TrafficLimit => formatter.write_str("dropbox's upload limit was reached"),
+            Self::Revoked => formatter.write_str("cloud access was revoked"),
+            Self::QuotaFull => formatter.write_str("the cloud storage is full"),
+            Self::RateLimited => formatter.write_str("the cloud service asked to slow down"),
+            Self::TrafficLimit => {
+                formatter.write_str("the cloud service's upload limit was reached")
+            }
             Self::Conflict => formatter.write_str("the remote record changed"),
             Self::Reset => formatter.write_str("the change cursor was reset"),
+            Self::FolderTooLarge => {
+                formatter.write_str("the folder holds too many files to remove at once")
+            }
             Self::Network(message)
             | Self::Server(message)
             | Self::Io(message)
@@ -162,6 +173,30 @@ pub(crate) struct Changes {
     pub(crate) cursor: String,
 }
 
+/// Who the store belongs to, as the provider names them.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct AccountInfo {
+    /// Stable for the account, and unique across providers.
+    pub(crate) account_id: String,
+    pub(crate) email: String,
+    pub(crate) display_name: String,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct Space {
+    pub(crate) used: u64,
+    pub(crate) allocated: u64,
+}
+
+/// A revision as most providers write one: opaque, short and printable.
+fn plain_rev(rev: &str) -> bool {
+    !rev.is_empty() && rev.len() <= 256 && rev.bytes().all(|byte| byte.is_ascii_graphic())
+}
+
+/// The storage one provider offers sync. The engine works only through this,
+/// so a provider is an implementation of it plus its sign-in; see
+/// `provider.rs`. Calls with a default are optional: a provider without a
+/// change feed, a quota or server-side copies leaves them out.
 pub(crate) trait CloudStore: Send + Sync {
     async fn get(&self, remote: &str, cap: usize) -> StoreResult<Option<(Vec<u8>, String)>>;
     async fn metadata(&self, remote: &str) -> StoreResult<Option<RemoteMeta>>;
@@ -212,6 +247,33 @@ pub(crate) trait CloudStore: Send + Sync {
     async fn list(&self, remote_dir: &str) -> StoreResult<Vec<RemoteEntry>>;
     async fn latest_cursor(&self, remote_dir: &str) -> StoreResult<Option<String>>;
     async fn changes(&self, cursor: &str) -> StoreResult<Changes>;
+    async fn account(&self) -> StoreResult<AccountInfo> {
+        Err(StoreError::Server("this store has no account".into()))
+    }
+    /// Used and total bytes, or `None` when the provider has no quota to show.
+    async fn space(&self) -> StoreResult<Option<Space>> {
+        Ok(None)
+    }
+    /// Waits up to `timeout_secs` for a change after `cursor`. `None` means
+    /// the provider can't wait for changes, and sync falls back to its timer.
+    async fn wait_for_changes(
+        &self,
+        _cursor: &str,
+        _timeout_secs: u64,
+    ) -> StoreResult<Option<Waited>> {
+        Ok(None)
+    }
+    /// Whether `rev` looks like a revision this provider hands out. A manifest
+    /// entry with any other value is ignored.
+    fn valid_rev(&self, rev: &str) -> bool {
+        plain_rev(rev)
+    }
+    /// The hash a server-side copy of `local` reports, to check the copy
+    /// against. `None` means copies can't be checked, so they aren't trusted
+    /// and the file is uploaded instead.
+    async fn copy_check_hash(&self, _local: &Path) -> Option<String> {
+        None
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -288,7 +350,7 @@ pub(crate) struct Waited {
     pub(crate) backoff: Option<Duration>,
 }
 
-pub(crate) async fn wait_for_changes(cursor: &str, timeout_secs: u64) -> StoreResult<Waited> {
+async fn dropbox_wait_for_changes(cursor: &str, timeout_secs: u64) -> StoreResult<Waited> {
     let timeout = timeout_secs.clamp(30, 480);
     let response = timed_http()
         .post(format!("{}/files/list_folder/longpoll", endpoints().notify))
@@ -343,8 +405,22 @@ pub(crate) fn arg_header(value: &serde_json::Value) -> String {
     out
 }
 
-pub(crate) fn valid_rev(rev: &str) -> bool {
+fn dropbox_rev(rev: &str) -> bool {
     (9..=64).contains(&rev.len()) && rev.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+pub(crate) async fn dropbox_hash_of(path: &Path) -> Option<String> {
+    let mut file = tokio::fs::File::open(path).await.ok()?;
+    let mut hasher = DropboxContentHasher::default();
+    let mut buffer = vec![0_u8; 1024 * 1024];
+    loop {
+        let read = file.read(&mut buffer).await.ok()?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Some(hasher.finish())
 }
 
 #[derive(Default)]
@@ -387,6 +463,7 @@ enum Refusal {
     Reset,
     RateLimited,
     TrafficLimit,
+    TooManyFiles,
     Offset(u64),
     Rejected(String),
     Other(String),
@@ -404,6 +481,8 @@ fn classify(summary: &str) -> Refusal {
         Refusal::TrafficLimit
     } else if summary.contains("too_many_write_operations") {
         Refusal::RateLimited
+    } else if summary.contains("too_many_files") {
+        Refusal::TooManyFiles
     } else if summary.contains("conflict") {
         Refusal::Conflict
     } else if [
@@ -431,6 +510,7 @@ fn refusal_error(refusal: Refusal) -> StoreError {
         Refusal::Reset => StoreError::Reset,
         Refusal::RateLimited => StoreError::RateLimited,
         Refusal::TrafficLimit => StoreError::TrafficLimit,
+        Refusal::TooManyFiles => StoreError::FolderTooLarge,
         Refusal::Offset(_) => StoreError::Server("dropbox expected another upload offset".into()),
         Refusal::Rejected(summary) => StoreError::Rejected(summary),
         Refusal::Other(summary) => StoreError::Server(summary),
@@ -447,7 +527,7 @@ fn correct_offset(error: &serde_json::Value) -> Option<u64> {
     }
 }
 
-fn retry_delay(attempt: u32, retry_after: Option<Duration>) -> Duration {
+pub(crate) fn retry_delay(attempt: u32, retry_after: Option<Duration>) -> Duration {
     if let Some(after) = retry_after {
         return after.min(MAX_RETRY_AFTER);
     }
@@ -456,7 +536,7 @@ fn retry_delay(attempt: u32, retry_after: Option<Duration>) -> Duration {
     Duration::from_millis(base + jitter)
 }
 
-fn retry_after(response: &reqwest::Response) -> Option<Duration> {
+pub(crate) fn retry_after(response: &reqwest::Response) -> Option<Duration> {
     response
         .headers()
         .get(reqwest::header::RETRY_AFTER)?
@@ -468,7 +548,7 @@ fn retry_after(response: &reqwest::Response) -> Option<Duration> {
         .map(Duration::from_secs)
 }
 
-fn transient(error: &reqwest::Error) -> bool {
+pub(crate) fn transient(error: &reqwest::Error) -> bool {
     error.is_timeout() || error.is_connect() || error.is_request()
 }
 
@@ -609,6 +689,43 @@ impl DropboxStore {
                 StoreError::RateLimited
             } else {
                 StoreError::Server(format!("dropbox returned status {status}"))
+            });
+        }
+    }
+
+    /// An account call made once. A lookup that fails is reported rather than
+    /// retried, so a slow or broken reply doesn't hold up connecting or the
+    /// settings tab; an expired token is still renewed once, like every call.
+    async fn lookup(&self, route: &str, what: &str) -> StoreResult<serde_json::Value> {
+        let null = serde_json::Value::Null;
+        let call = Call {
+            url: format!("{}/{route}", self.api_base),
+            arg: None,
+            body: Body::Json(&null),
+            timeout: Some(LOOKUP_TIMEOUT),
+        };
+        let mut refreshed = false;
+        loop {
+            let response = self
+                .request(&call)
+                .send()
+                .await
+                .map_err(|error| StoreError::Network(error.to_string()))?;
+            let status = response.status();
+            if status.as_u16() == 401 {
+                if self.refreshed_once(&mut refreshed).await? {
+                    continue;
+                }
+                return Err(StoreError::Revoked);
+            }
+            let bytes = Self::read_capped(response, MAX_SMALL_BYTES).await?;
+            if !status.is_success() {
+                return Err(StoreError::Network(format!(
+                    "dropbox {what} failed with status {status}"
+                )));
+            }
+            return serde_json::from_slice(&bytes).map_err(|_| {
+                StoreError::Network(format!("dropbox {what} returned an unreadable reply"))
             });
         }
     }
@@ -764,7 +881,7 @@ impl DropboxStore {
         remote: &str,
         rev: Option<&str>,
     ) -> StoreResult<Option<reqwest::Response>> {
-        if let Some(rev) = rev.filter(|rev| valid_rev(rev)) {
+        if let Some(rev) = rev.filter(|rev| dropbox_rev(rev)) {
             match self.download(&format!("rev:{rev}")).await? {
                 Ok(response) => return Ok(Some(response)),
                 Err(Refusal::NotFound | Refusal::Rejected(_)) => {}
@@ -795,7 +912,7 @@ impl DropboxStore {
         let rev = value
             .get("rev")
             .and_then(serde_json::Value::as_str)
-            .filter(|rev| valid_rev(rev))
+            .filter(|rev| dropbox_rev(rev))
             .ok_or_else(|| StoreError::Server("dropbox upload reply had no revision".into()))?;
         if let Some(stored) = value
             .get("content_hash")
@@ -880,7 +997,7 @@ impl DropboxStore {
 
 /// What tells a file changed while it was being read: its length and the time
 /// it was last written.
-async fn file_state(path: &Path) -> StoreResult<(u64, Option<std::time::SystemTime>)> {
+pub(crate) async fn file_state(path: &Path) -> StoreResult<(u64, Option<std::time::SystemTime>)> {
     let metadata = tokio::fs::metadata(path)
         .await
         .map_err(|error| StoreError::Io(error.to_string()))?;
@@ -1171,7 +1288,7 @@ fn copied(metadata: &serde_json::Value) -> StoreResult<Copied> {
     let rev = metadata
         .get("rev")
         .and_then(serde_json::Value::as_str)
-        .filter(|rev| valid_rev(rev))
+        .filter(|rev| dropbox_rev(rev))
         .ok_or_else(|| StoreError::Server("dropbox copy reply had no revision".into()))?;
     Ok(Copied {
         rev: rev.to_string(),
@@ -1226,7 +1343,7 @@ fn remove_quietly(path: &Path) {
     let _ = std::fs::remove_file(path);
 }
 
-async fn save_body(
+pub(crate) async fn save_body(
     mut response: reqwest::Response,
     local: &Path,
     limit: u64,
@@ -1249,7 +1366,7 @@ async fn save_body(
             size += chunk.len() as u64;
             if size > limit {
                 return Err(StoreError::Verify(
-                    "a file from dropbox is larger than its record".into(),
+                    "a file from the cloud is larger than its record".into(),
                 ));
             }
             hasher.update(&chunk);
@@ -1279,6 +1396,60 @@ async fn save_body(
 }
 
 impl CloudStore for DropboxStore {
+    async fn account(&self) -> StoreResult<AccountInfo> {
+        let value = self
+            .lookup("users/get_current_account", "account lookup")
+            .await?;
+        let text = |pointer: &str| {
+            value
+                .pointer(pointer)
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_string)
+        };
+        let account_id = text("/account_id")
+            .filter(|id| !id.is_empty())
+            .ok_or_else(|| {
+                StoreError::Network("dropbox account lookup returned an unreadable reply".into())
+            })?;
+        Ok(AccountInfo {
+            account_id,
+            email: text("/email").unwrap_or_default(),
+            display_name: text("/name/display_name").unwrap_or_default(),
+        })
+    }
+
+    async fn space(&self) -> StoreResult<Option<Space>> {
+        let value = self.lookup("users/get_space_usage", "space lookup").await?;
+        let number = |pointer: &str| {
+            value
+                .pointer(pointer)
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or(0)
+        };
+        Ok(Some(Space {
+            used: number("/used"),
+            allocated: number("/allocation/allocated"),
+        }))
+    }
+
+    async fn wait_for_changes(
+        &self,
+        cursor: &str,
+        timeout_secs: u64,
+    ) -> StoreResult<Option<Waited>> {
+        dropbox_wait_for_changes(cursor, timeout_secs)
+            .await
+            .map(Some)
+    }
+
+    fn valid_rev(&self, rev: &str) -> bool {
+        dropbox_rev(rev)
+    }
+
+    async fn copy_check_hash(&self, local: &Path) -> Option<String> {
+        dropbox_hash_of(local).await
+    }
+
     async fn get(&self, remote: &str, cap: usize) -> StoreResult<Option<(Vec<u8>, String)>> {
         let Some(response) = self.download_any(remote, None).await? else {
             return Ok(None);
@@ -1294,7 +1465,7 @@ impl CloudStore for DropboxStore {
                     .and_then(serde_json::Value::as_str)
                     .map(str::to_string)
             })
-            .filter(|rev| valid_rev(rev))
+            .filter(|rev| dropbox_rev(rev))
             .ok_or_else(|| StoreError::Server("dropbox download reply had no revision".into()))?;
         let bytes = Self::read_capped(response, cap).await?;
         Ok(Some((bytes, rev)))
@@ -1312,7 +1483,7 @@ impl CloudStore for DropboxStore {
                 let rev = value
                     .get("rev")
                     .and_then(serde_json::Value::as_str)
-                    .filter(|rev| valid_rev(rev))
+                    .filter(|rev| dropbox_rev(rev))
                     .ok_or_else(|| StoreError::Server("dropbox metadata had no revision".into()))?;
                 Ok(Some(RemoteMeta {
                     rev: rev.to_string(),
@@ -1622,7 +1793,7 @@ impl CloudStore for DropboxStore {
 
 #[cfg(test)]
 mod tests {
-    use super::{arg_header, classify, valid_rev, DropboxContentHasher, Refusal};
+    use super::{arg_header, classify, dropbox_rev, plain_rev, DropboxContentHasher, Refusal};
 
     #[test]
     fn api_arg_escapes_everything_from_del_up_including_astral_characters() {
@@ -1673,9 +1844,16 @@ mod tests {
 
     #[test]
     fn revisions_must_look_like_dropbox_revisions() {
-        assert!(valid_rev("a1c10ce0dd78"));
-        assert!(!valid_rev("short"));
-        assert!(!valid_rev("../../etc"));
-        assert!(!valid_rev(&"a".repeat(65)));
+        assert!(dropbox_rev("a1c10ce0dd78"));
+        assert!(!dropbox_rev("short"));
+        assert!(!dropbox_rev("../../etc"));
+        assert!(!dropbox_rev(&"a".repeat(65)));
+        // Other providers hand out revisions of other shapes: generations,
+        // quoted ETags, opaque ids. None of them may carry a space or be empty.
+        assert!(plain_rev("1700000000000000"));
+        assert!(plain_rev("\"d41d8cd98f00b204e9800998ecf8427e\""));
+        assert!(!plain_rev(""));
+        assert!(!plain_rev("a b"));
+        assert!(!plain_rev(&"a".repeat(257)));
     }
 }

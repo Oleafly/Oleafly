@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Cloud sync works with Google Drive and S3-compatible storage as well as
+  Dropbox (#317). Choose one under Settings > Data storage > Cloud sync.
+  Google Drive keeps your projects in an Oleafly folder in My Drive. For S3
+  you enter the endpoint, the bucket and your keys; Amazon S3, Google Cloud
+  Storage with HMAC keys and MinIO all work. Before it connects, Oleafly
+  tries a few writes in the bucket. A service that ignores conditional
+  writes is turned down, because without them two computers syncing at once
+  could overwrite each other.
+- Storage usage has a bar of everything in the Oleafly data folder, split by
+  what takes the space. Below it, each part has its size: documents and code,
+  images, PDFs, Git history, build cache, the TeX distribution, AI agents,
+  research tasks, checkpoints and the rest.
+- Cut, Copy, Paste and Select all in the editor's right-click menu (#319).
+  Formatting, inserting, and import and export each moved into a submenu, so
+  the menu is much shorter. In Markdown files, type `/table` or `/equation`
+  to insert one, as LaTeX and Typst files already allowed. The Ask AI popup
+  also takes your own request next to the preset actions.
+
+### Changed
+
+- GitLab, Codeberg, Gitea and Forgejo accounts show their real logos: in the
+  add-account choices, in Settings, in the remote menu, in the publish dialog
+  and beside each repository. The publish dialog's account picker moved to
+  the bottom left, beside the button.
+- In Settings, each Git hosting account keeps its actions on the right and
+  signs out with an icon button. The server name shows only when it differs
+  from the badge.
+
+### Fixed
+
+- Open files in a library project reload when a terminal, an agent or
+  another app changes them, as files in an opened folder already did. If you
+  have unsaved edits, a bar above the editor lets you compare both versions,
+  keep yours, or reload.
+
 ## [0.4.8] - 2026-10-25
 
 ### Added

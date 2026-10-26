@@ -189,7 +189,14 @@
     "addLabel": "Přidat návěští",
     "convertLatexMath": "Převést matematiku LaTeX do formátu Typst",
     "noLatexMath": "Nejprve vyberte matematiku LaTeX.",
-    "renameFile": "Přejmenovat soubor…"
+    "renameFile": "Přejmenovat soubor…",
+    "cut": "Vyjmout",
+    "copy": "Kopírovat",
+    "paste": "Vložit",
+    "selectAll": "Vybrat vše",
+    "format": "Formátování",
+    "insert": "Vložení",
+    "importExport": "Import a export"
   },
   "shell": {
     "noFileOpenTab": "Není otevřený soubor",
@@ -330,7 +337,8 @@
     "improveWriting": "Vylepšit text",
     "fixGrammar": "Opravit gramatiku a styl",
     "expand": "Rozvést a doplnit",
-    "findReferences": "Najít reference"
+    "findReferences": "Najít reference",
+    "customPrompt": "Popište změnu…"
   },
   "versioning": {
     "dismiss": "Zavřít správu verzí",
@@ -980,6 +988,12 @@
         "groupAuto": "číslovat spolu s ostatními bibliografiemi",
         "groupNone": "číslovat samostatně",
         "groupNamed": "číslovat spolu s bibliografiemi stejného názvu"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "Tabulka",
+        "equation": "Rovnice na samostatném řádku"
       }
     },
     "wysiwyg": {

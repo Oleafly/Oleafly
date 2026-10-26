@@ -1,6 +1,6 @@
 pub mod cleanup;
 pub mod s3;
-pub mod sigv4;
+pub use oleafly_s3::sigv4;
 
 use std::fs;
 use std::io::{self, Write};

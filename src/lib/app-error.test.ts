@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { applyLocale, loadNamespace } from "@/i18n";
 import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
-import { APP_ERROR_PREFIX, decodeAppError, describeError } from "./app-error";
+import { APP_ERROR_PREFIX, decodeAppError, describeError, provideErrorParams } from "./app-error";
 
 const encoded = (payload: unknown) => `${APP_ERROR_PREFIX}${JSON.stringify(payload)}`;
 
@@ -29,7 +29,25 @@ describe("app errors", () => {
   it("finds codes of a lazily loaded namespace once that namespace is loaded", async () => {
     const value = encoded({ code: "cloud.revoked", params: {}, detail: null });
     await loadNamespace("cloud");
+    const stop = provideErrorParams("cloud", () => ({ provider: "Dropbox" }));
     expect(describeError(value)).toBe("Dropbox access was revoked. Connect again.");
+    stop();
+  });
+
+  it("fills in params an area supplies, under the backend's own", async () => {
+    await loadNamespace("cloud");
+    const stop = provideErrorParams("cloud", () => ({ provider: "Google Drive" }));
+    expect(describeError(encoded({ code: "cloud.network", params: {}, detail: null }))).toBe(
+      "Couldn't reach Google Drive. Check your connection.",
+    );
+    expect(describeError(encoded({ code: "cloud.network", params: { provider: "Dropbox" }, detail: null }))).toBe(
+      "Couldn't reach Dropbox. Check your connection.",
+    );
+    expect(describeError(encoded({ code: "project.name_conflict", params: { name: "Thesis" }, detail: null }))).toBe(
+      "A project named Thesis already exists.",
+    );
+    stop();
+    expect(describeError(encoded({ code: "cloud.network", params: {}, detail: null }))).not.toContain("Google Drive");
   });
 
   it("interpolates params", () => {

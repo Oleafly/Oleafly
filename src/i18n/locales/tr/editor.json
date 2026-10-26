@@ -189,7 +189,14 @@
     "addLabel": "Etiket ekle",
     "convertLatexMath": "LaTeX matematiğini Typst'e dönüştür",
     "noLatexMath": "Önce bir LaTeX matematik ifadesi seçin.",
-    "renameFile": "Dosyayı yeniden adlandır…"
+    "renameFile": "Dosyayı yeniden adlandır…",
+    "cut": "Kes",
+    "copy": "Kopyala",
+    "paste": "Yapıştır",
+    "selectAll": "Tümünü seç",
+    "format": "Biçim",
+    "insert": "Ekle",
+    "importExport": "İçe ve dışa aktarma"
   },
   "shell": {
     "noFileOpenTab": "Açık dosya yok",
@@ -322,7 +329,8 @@
     "improveWriting": "Yazımı iyileştir",
     "fixGrammar": "Dil bilgisini ve üslubu düzelt",
     "expand": "Genişlet ve ayrıntılandır",
-    "findReferences": "Kaynakları bul"
+    "findReferences": "Kaynakları bul",
+    "customPrompt": "Değişikliği açıklayın…"
   },
   "versioning": {
     "dismiss": "Sürüm yönetimini kapat",
@@ -952,6 +960,12 @@
         "groupAuto": "diğer kaynakçalarla birlikte numaralandır",
         "groupNone": "kendi başına numaralandır",
         "groupNamed": "aynı adlı kaynakçalarla birlikte numaralandır"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "Tablo",
+        "equation": "Blok denklem"
       }
     },
     "wysiwyg": {

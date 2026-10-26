@@ -47,7 +47,7 @@ impl Harness {
     }
 
     async fn connect(&self) {
-        let begin = view(cloud_connect_begin(true).await.unwrap());
+        let begin = view(cloud_connect_begin(None, true).await.unwrap());
         assert_eq!(begin["paste"], true);
         let done = cloud_connect_paste(text(&begin["flowId"]), "code-1".into())
             .await
@@ -236,7 +236,7 @@ fn mock_app() -> tauri::App<tauri::test::MockRuntime> {
 }
 
 async fn loopback_flow() -> Option<(String, String)> {
-    let begin = view(cloud_connect_begin(false).await.unwrap());
+    let begin = view(cloud_connect_begin(None, false).await.unwrap());
     if begin["paste"] == true {
         cloud_connect_cancel(text(&begin["flowId"]));
         return None;
@@ -264,7 +264,7 @@ async fn visit(url: String) -> u16 {
 async fn connecting_by_pasted_code_or_by_the_loopback_page_stores_the_account() {
     let harness = Harness::new().await;
 
-    let begin = view(cloud_connect_begin(true).await.unwrap());
+    let begin = view(cloud_connect_begin(None, true).await.unwrap());
     let flow = text(&begin["flowId"]);
     let auth_url = text(&begin["authUrl"]);
     assert!(auth_url.contains("code_challenge_method=S256"));
@@ -312,7 +312,7 @@ async fn connecting_by_pasted_code_or_by_the_loopback_page_stores_the_account() 
     assert_eq!(connected["lastEmail"], EMAIL);
 
     harness.fake.with(|dropbox| dropbox.omit_refresh = true);
-    let begin = view(cloud_connect_begin(true).await.unwrap());
+    let begin = view(cloud_connect_begin(None, true).await.unwrap());
     assert_eq!(
         code(
             &cloud_connect_paste(text(&begin["flowId"]), "code-3".into())
@@ -326,8 +326,8 @@ async fn connecting_by_pasted_code_or_by_the_loopback_page_stores_the_account() 
     cloud_connect_cancel(text(&begin["flowId"]));
     cloud_connect_cancel("no-such-flow".into());
 
-    let stale = text(&view(cloud_connect_begin(true).await.unwrap())["flowId"]);
-    let flow = text(&view(cloud_connect_begin(true).await.unwrap())["flowId"]);
+    let stale = text(&view(cloud_connect_begin(None, true).await.unwrap())["flowId"]);
+    let flow = text(&view(cloud_connect_begin(None, true).await.unwrap())["flowId"]);
     assert_eq!(
         code(
             &cloud_connect_paste(stale, "code-5".into())
@@ -362,7 +362,7 @@ async fn connecting_by_pasted_code_or_by_the_loopback_page_stores_the_account() 
         harness
             .fake
             .with(|dropbox| dropbox.fault("users/get_current_account", None, reply, 1));
-        let flow = text(&view(cloud_connect_begin(true).await.unwrap())["flowId"]);
+        let flow = text(&view(cloud_connect_begin(None, true).await.unwrap())["flowId"]);
         let error = cloud_connect_paste(flow, "code-7".into())
             .await
             .err()

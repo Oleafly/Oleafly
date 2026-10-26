@@ -1936,6 +1936,67 @@ export async function clickToolbarControl(page: Page, barSelector: string, menuT
   }
 }
 
+// Marks the visible editor context-menu entry whose own text is exactly
+// `label`. The shortcut hint beside a label sits in a child element, so it is
+// ignored, and "Table" never resolves to "Table from CSV/XLSX…".
+async function markEditorContextItem(page: Page, label: string): Promise<void> {
+  await page.waitForFunction(
+    `(() => {
+      document.querySelectorAll('[data-e2e-context-item]').forEach(
+        (item) => item.removeAttribute('data-e2e-context-item'),
+      );
+      const ownText = (item) => Array.from(item.childNodes)
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => node.textContent)
+        .join('')
+        .trim();
+      const item = Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]')).find(
+        (candidate) => ownText(candidate) === ${scriptValue(label)} && candidate.getClientRects().length > 0,
+      );
+      if (!item) return false;
+      item.setAttribute('data-e2e-context-item', 'true');
+      return true;
+    })()`,
+    5_000,
+  );
+}
+
+// Opens a submenu of the open editor context menu. The Tauri bridge's hover
+// only emits legacy mouse events, and Radix submenus open from pointer
+// movement or ArrowRight, so this sends both to the mounted trigger.
+export async function openEditorContextSubmenu(page: Page, label: string): Promise<void> {
+  await markEditorContextItem(page, label);
+  await page.evaluate(
+    `(() => {
+      const trigger = document.querySelector('[data-e2e-context-item="true"]');
+      if (!(trigger instanceof HTMLElement)) throw new Error(${scriptValue(`context submenu unavailable: ${label}`)});
+      trigger.focus();
+      const rect = trigger.getBoundingClientRect();
+      trigger.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true,
+        pointerType: "mouse",
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.top + rect.height / 2,
+      }));
+      trigger.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" }));
+      return true;
+    })()`,
+  );
+  await page.waitForFunction(
+    `document.querySelector('[data-e2e-context-item="true"]')?.getAttribute('data-state') === 'open'`,
+    5_000,
+  );
+}
+
+// Walks the open editor context menu: every label but the last names a
+// submenu to open, and the last is the entry to click, as in
+// ["Insert", "Heading", "Section"].
+export async function clickEditorContextPath(page: Page, path: readonly string[]): Promise<void> {
+  for (const submenu of path.slice(0, -1)) await openEditorContextSubmenu(page, submenu);
+  await markEditorContextItem(page, path[path.length - 1]);
+  await page.locator('[data-e2e-context-item="true"]').click();
+}
+
 export async function currentTheme(page: Page): Promise<"light" | "dark"> {
   return page.evaluate<"light" | "dark">(
     `document.documentElement.classList.contains('dark') ? 'dark' : 'light'`,

@@ -7,7 +7,9 @@ const mocks = vi.hoisted(() => ({
   cloud: {
     cloudState: vi.fn(),
     cloudDetails: vi.fn(),
+    cloudProviders: vi.fn(),
     cloudConnectBegin: vi.fn(),
+    cloudConnectCredentials: vi.fn(),
     cloudConnectWait: vi.fn(),
     cloudConnectPaste: vi.fn(),
     cloudConnectCancel: vi.fn(async () => undefined),
@@ -70,6 +72,7 @@ type Store = typeof import("@/store/cloud");
 function cloudState(overrides: Partial<CloudState> = {}): CloudState {
   return {
     status: "connected",
+    provider: "dropbox",
     email: "ada@uni.edu",
     displayName: null,
     deviceName: "Desk",
@@ -387,7 +390,7 @@ describe("cloud store", () => {
     write.reject('@oleafly/error:{"code":"cloud.not_connected","params":{}}');
     await pending;
     expect(store.useCloudStore.getState().state?.enabled).toBe(true);
-    expect(mocks.toast.errorUnique).toHaveBeenCalledWith("cloud-action", "Dropbox isn't connected.");
+    expect(mocks.toast.errorUnique).toHaveBeenCalledWith("cloud-action", "Cloud sync isn't connected.");
   });
 
   it("rolls back a project switch the engine refuses", async () => {
@@ -582,7 +585,8 @@ describe("cloud store", () => {
     mocks.cloud.cloudState.mockResolvedValue(cloudState({ status: "disconnected" }));
     await store.useCloudStore.getState().refresh();
     mocks.cloud.cloudConnectBegin.mockResolvedValue({ flowId: "f1", authUrl: "https://a", paste: true });
-    await store.useCloudStore.getState().beginConnect(true);
+    await store.useCloudStore.getState().beginConnect("dropbox", true);
+    expect(mocks.cloud.cloudConnectBegin).toHaveBeenCalledWith(true, "dropbox");
     store.useCloudStore.setState({ connectError: "old" });
     const paste = deferred<{ email: string }>();
     mocks.cloud.cloudConnectPaste.mockReturnValueOnce(paste.promise);
@@ -604,17 +608,112 @@ describe("cloud store", () => {
     store.useCloudStore.getState().requestSettingsImport();
     mocks.cloud.cloudConnectBegin.mockResolvedValueOnce({ flowId: "f1", authUrl: "https://a", paste: false });
     mocks.cloud.cloudConnectWait.mockRejectedValueOnce('@oleafly/error:{"code":"cloud.sign_in_cancelled","params":{}}');
-    await store.useCloudStore.getState().beginConnect(false);
+    await store.useCloudStore.getState().beginConnect("dropbox");
     expect(store.useCloudStore.getState().settingsImport).toBeNull();
     store.useCloudStore.getState().requestSettingsImport();
     mocks.cloud.cloudConnectBegin.mockResolvedValueOnce({ flowId: "f2", authUrl: "https://a", paste: false });
     mocks.cloud.cloudConnectWait.mockResolvedValueOnce({ email: "ada@uni.edu" });
     mocks.cloud.cloudState.mockResolvedValue(cloudState());
-    await store.useCloudStore.getState().beginConnect(false);
+    await store.useCloudStore.getState().beginConnect("dropbox");
     expect(store.useCloudStore.getState().settingsImport).toBe("resume");
     await vi.waitFor(() => expect(mocks.cloud.cloudSyncNow).toHaveBeenCalled());
     await vi.waitFor(() => expect(store.useCloudStore.getState().syncing).toBe(false));
     expect(mocks.cloud.cloudSettingsSync).not.toHaveBeenCalled();
+  });
+
+  it("connects Google Drive through the browser and names it in a failed sign-in", async () => {
+    mocks.cloud.cloudState.mockResolvedValue(cloudState({ status: "disconnected", provider: null }));
+    await store.useCloudStore.getState().refresh();
+    mocks.cloud.cloudConnectBegin.mockResolvedValueOnce({ flowId: "f1", authUrl: "https://accounts.google.com/o", paste: false });
+    mocks.cloud.cloudConnectWait.mockRejectedValueOnce('@oleafly/error:{"code":"cloud.sign_in_cancelled","params":{}}');
+    await store.useCloudStore.getState().beginConnect("google_drive");
+    expect(mocks.cloud.cloudConnectBegin).toHaveBeenCalledWith(false, "google_drive");
+    const { connectError, connectProvider } = store.useCloudStore.getState();
+    expect(connectProvider).toBe("google_drive");
+    const { describeError } = await import("@/lib/app-error");
+    expect(describeError(connectError)).toBe("Google Drive sign-in was cancelled.");
+    store.useCloudStore.getState().cancelConnect();
+    expect(store.useCloudStore.getState().connectProvider).toBeNull();
+  });
+
+  it("connects S3-compatible storage with keys, once, and starts a round", async () => {
+    mocks.cloud.cloudState.mockResolvedValue(cloudState({ status: "disconnected", provider: null }));
+    await store.useCloudStore.getState().refresh();
+    const done = deferred<{ email: string }>();
+    mocks.cloud.cloudConnectCredentials.mockReturnValueOnce(done.promise);
+    const config = {
+      endpoint: "https://s3.eu-west-1.amazonaws.com",
+      region: "eu-west-1",
+      bucket: "papers",
+      prefix: "oleafly",
+      pathStyle: false,
+    };
+    const first = store.useCloudStore.getState().connectWithCredentials("s3", config, "AKIA", "secret");
+    expect(store.useCloudStore.getState().connectBusy).toBe(true);
+    expect(await store.useCloudStore.getState().connectWithCredentials("s3", config, "AKIA", "secret")).toBe(false);
+    expect(mocks.cloud.cloudConnectCredentials).toHaveBeenCalledTimes(1);
+    expect(mocks.cloud.cloudConnectCredentials).toHaveBeenCalledWith("s3", config, "AKIA", "secret");
+    mocks.cloud.cloudState.mockResolvedValue(
+      cloudState({ provider: "s3", email: "papers/oleafly on s3.eu-west-1.amazonaws.com" }),
+    );
+    done.resolve({ email: "papers/oleafly on s3.eu-west-1.amazonaws.com" });
+    expect(await first).toBe(true);
+    const after = store.useCloudStore.getState();
+    expect(after.status).toBe("connected");
+    expect(after.state?.provider).toBe("s3");
+    expect(after.connectBusy).toBe(false);
+    expect(after.connectProvider).toBeNull();
+    await vi.waitFor(() => expect(mocks.cloud.cloudSyncNow).toHaveBeenCalled());
+  });
+
+  it("keeps the reason S3 keys were refused and stays disconnected", async () => {
+    mocks.cloud.cloudState.mockResolvedValue(cloudState({ status: "disconnected", provider: null }));
+    await store.useCloudStore.getState().refresh();
+    const refused = '@oleafly/error:{"code":"cloud.s3_credentials","params":{}}';
+    mocks.cloud.cloudConnectCredentials.mockRejectedValueOnce(refused);
+    const config = { endpoint: "http://minio:9000", region: "us-east-1", bucket: "b", prefix: "", pathStyle: true };
+    expect(await store.useCloudStore.getState().connectWithCredentials("s3", config, "k", "s")).toBe(false);
+    const state = store.useCloudStore.getState();
+    expect(state.connectError).toBe(refused);
+    expect(state.connectBusy).toBe(false);
+    expect(state.connectProvider).toBe("s3");
+    expect(state.status).toBe("disconnected");
+  });
+
+  it("names the connected provider in errors and toasts", async () => {
+    await connected(cloudState({ provider: "google_drive", projects: [project()] }));
+    mocks.cloud.cloudSyncNow.mockResolvedValue(report({ error: NETWORK }));
+    await store.useCloudStore.getState().syncNow(true);
+    expect(mocks.toast.errorUnique).toHaveBeenCalledWith("cloud-sync", "Couldn't reach Google Drive. Check your connection.");
+    await store.useCloudStore.getState().removeProject("thesis");
+    expect(mocks.toast.successUnique).toHaveBeenCalledWith(
+      "cloud-action",
+      "Thesis was removed from your Google Drive. It's still on this computer.",
+    );
+  });
+
+  it("tells how to end Google's access when it couldn't be reached to disconnect", async () => {
+    await connected(cloudState({ provider: "google_drive" }));
+    mocks.cloud.cloudDisconnect.mockResolvedValueOnce({ remoteRevoked: false });
+    mocks.cloud.cloudState.mockResolvedValue(cloudState({ status: "disconnected", provider: null }));
+    await store.useCloudStore.getState().disconnect();
+    expect(mocks.toast.infoUnique).toHaveBeenCalledWith(
+      "cloud-action",
+      expect.stringContaining("Third-party apps & services in your Google Account"),
+    );
+  });
+
+  it("loads the providers once and keeps a load failure to show", async () => {
+    mocks.cloud.cloudProviders.mockRejectedValueOnce("offline");
+    await store.useCloudStore.getState().loadProviders();
+    expect(store.useCloudStore.getState().providersError).toBe("offline");
+    const providers = [{ kind: "dropbox", auth: "oauth", available: true, pasteCode: true, quota: true }];
+    mocks.cloud.cloudProviders.mockResolvedValueOnce(providers);
+    await store.useCloudStore.getState().loadProviders();
+    await store.useCloudStore.getState().loadProviders();
+    expect(mocks.cloud.cloudProviders).toHaveBeenCalledTimes(2);
+    expect(store.useCloudStore.getState().providers).toEqual(providers);
+    expect(store.useCloudStore.getState().providersError).toBeNull();
   });
 });
 

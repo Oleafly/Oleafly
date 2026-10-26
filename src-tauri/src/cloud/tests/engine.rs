@@ -89,7 +89,7 @@ impl Device {
         names
     }
 
-    async fn sync(&mut self, store: &MemoryStore, cloud: ProjectId) -> RoundResult {
+    async fn sync<S: CloudStore>(&mut self, store: &S, cloud: ProjectId) -> RoundResult {
         self.sync_with(
             store,
             cloud,
@@ -101,18 +101,18 @@ impl Device {
         .await
     }
 
-    async fn sync_with(
+    async fn sync_with<S: CloudStore>(
         &mut self,
-        store: &MemoryStore,
+        store: &S,
         cloud: ProjectId,
         options: RoundOptions,
     ) -> RoundResult {
         self.try_sync(store, cloud, options).await.unwrap()
     }
 
-    async fn try_sync(
+    async fn try_sync<S: CloudStore>(
         &mut self,
-        store: &MemoryStore,
+        store: &S,
         cloud: ProjectId,
         options: RoundOptions,
     ) -> Result<RoundResult, RoundError> {
@@ -131,7 +131,7 @@ impl Device {
         Ok(result)
     }
 
-    async fn download(&mut self, store: &MemoryStore, cloud: ProjectId) {
+    async fn download<S: CloudStore>(&mut self, store: &S, cloud: ProjectId) {
         let downloaded =
             download_into(store, cloud, &self.root(), &self.dir.path().join("staging"))
                 .await
@@ -598,6 +598,90 @@ async fn a_racing_writer_fails_the_commit_and_the_retry_loses_nothing() {
     laptop.project.remote_dirty = true;
     laptop.sync(&store, cloud).await;
     assert_eq!(laptop.read("main.tex").as_deref(), Some("desk edit"));
+}
+
+// A provider that can only emulate compare-and-swap can let a manifest built
+// on an older one overwrite a newer one. The computer whose manifest was lost
+// sees its stamp missing from the new manifest's lineage and keeps its files.
+#[tokio::test]
+async fn a_manifest_written_alongside_ours_never_deletes_the_files_it_missed() {
+    let (store, cloud, mut desk, mut laptop) = paired().await;
+    laptop.write("main.tex", "laptop edit");
+    laptop.project.remote_dirty = true;
+    laptop.sync(&store, cloud).await;
+    desk.project.remote_dirty = true;
+    desk.sync(&store, cloud).await;
+    assert_eq!(desk.read("main.tex").as_deref(), Some("laptop edit"));
+    let shared = store.read(&version_remote(cloud)).unwrap();
+
+    desk.write("desk.tex", "only on the desk");
+    desk.sync(&store, cloud).await;
+    assert!(remote_version(&store, cloud)
+        .files
+        .iter()
+        .any(|file| file.path == "desk.tex"));
+
+    // The laptop's write lands as if it never saw the desk's manifest.
+    store
+        .put(&version_remote(cloud), shared, WriteMode::Overwrite)
+        .await
+        .unwrap();
+    laptop.write("laptop.tex", "only on the laptop");
+    laptop.project.remote_dirty = true;
+    laptop.sync(&store, cloud).await;
+    let raced = remote_version(&store, cloud);
+    assert!(!raced.files.iter().any(|file| file.path == "desk.tex"));
+
+    desk.project.remote_dirty = true;
+    let merged = desk.sync(&store, cloud).await;
+    assert!(merged.error.is_none(), "{:?}", merged.error);
+    assert_eq!(merged.outcome.deleted_local, 0);
+    assert_eq!(desk.read("desk.tex").as_deref(), Some("only on the desk"));
+    assert_eq!(
+        desk.read("laptop.tex").as_deref(),
+        Some("only on the laptop")
+    );
+    let healed = remote_version(&store, cloud);
+    for path in ["desk.tex", "laptop.tex", "main.tex"] {
+        assert!(healed.files.iter().any(|file| file.path == path), "{path}");
+    }
+
+    laptop.project.remote_dirty = true;
+    laptop.sync(&store, cloud).await;
+    assert_eq!(laptop.read("desk.tex").as_deref(), Some("only on the desk"));
+}
+
+#[tokio::test]
+async fn a_lineage_copied_forward_by_an_older_oleafly_still_lets_deletes_through() {
+    let (store, cloud, mut desk, mut laptop) = paired().await;
+    laptop.write("notes.md", "to be removed");
+    laptop.project.remote_dirty = true;
+    laptop.sync(&store, cloud).await;
+    desk.project.remote_dirty = true;
+    desk.sync(&store, cloud).await;
+    assert!(desk.read("notes.md").is_some());
+
+    // An older Oleafly removes the file and republishes, copying the lineage
+    // it doesn't understand without updating it.
+    let mut older = remote_version(&store, cloud);
+    older.files.retain(|file| file.path != "notes.md");
+    older.stamp = Stamp::new(
+        Hlc::from_raw(older.stamp.hlc.raw() + (1 << 16)),
+        DeviceId::new(),
+    );
+    store
+        .put(
+            &version_remote(cloud),
+            serde_json::to_vec(&older).unwrap(),
+            WriteMode::Overwrite,
+        )
+        .await
+        .unwrap();
+
+    desk.project.remote_dirty = true;
+    let applied = desk.sync(&store, cloud).await;
+    assert_eq!(applied.outcome.deleted_local, 1);
+    assert!(desk.read("notes.md").is_none());
 }
 
 #[tokio::test]
@@ -2382,4 +2466,212 @@ async fn files_that_arrive_are_agreed_on_before_the_rest_of_the_round() {
         entry.hash,
         oleafly_core::content::ContentHash::digest(b"desk edit").to_hex()
     );
+}
+
+/// The two-computer flows above, against a real S3-compatible service. They
+/// run when `OLEAFLY_S3_TEST_ENDPOINT`, `_BUCKET`, `_KEY` and `_SECRET` are
+/// set (`_REGION` and `_PATH_STYLE=0` are optional), for example with MinIO in
+/// Docker, and skip otherwise. Each run works in a fresh folder of the bucket.
+mod s3_live {
+    use super::{file_remote, now_ms, thesis, today, version_remote, Device, ProjectId};
+    use crate::cloud::engine::delete_project_folder;
+    use crate::cloud::s3::{S3Config, S3Keys, S3Store};
+    use crate::cloud::store::{CloudStore, StoreError, WriteMode};
+
+    fn env(name: &str) -> Option<String> {
+        std::env::var(format!("OLEAFLY_S3_TEST_{name}"))
+            .ok()
+            .filter(|value| !value.is_empty())
+    }
+
+    fn live_store(folder: &str) -> Option<S3Store> {
+        let config = S3Config {
+            endpoint: env("ENDPOINT")?,
+            region: env("REGION").unwrap_or_default(),
+            bucket: env("BUCKET")?,
+            prefix: format!("oleafly-test-{}/{folder}", now_ms()),
+            path_style: env("PATH_STYLE").is_none_or(|value| value != "0"),
+        };
+        let keys = S3Keys {
+            access_key_id: env("KEY")?,
+            secret_access_key: env("SECRET")?,
+        };
+        Some(S3Store::new(config, keys).unwrap())
+    }
+
+    #[tokio::test]
+    async fn a_live_bucket_passes_the_probe_and_syncs_edits_conflicts_and_deletes() {
+        let Some(store) = live_store("sync") else {
+            return;
+        };
+        store.probe().await.unwrap();
+        let cloud = ProjectId::new();
+        let mut desk = Device::new("Desk");
+        let mut laptop = Device::new("Laptop");
+        thesis(&desk);
+        let first = desk.sync(&store, cloud).await;
+        assert!(first.error.is_none(), "{:?}", first.error);
+        assert_eq!(first.outcome.uploaded, 2);
+        assert!(store
+            .metadata(&file_remote(cloud, "main.aux"))
+            .await
+            .unwrap()
+            .is_none());
+
+        laptop.download(&store, cloud).await;
+        assert_eq!(laptop.read("main.tex").as_deref(), Some("one"));
+        laptop.write("main.tex", "two from laptop");
+        laptop.write("notes/ideas.md", "new");
+        laptop.project.remote_dirty = true;
+        laptop.sync(&store, cloud).await;
+        desk.project.remote_dirty = true;
+        let pulled = desk.sync(&store, cloud).await;
+        assert!(pulled.error.is_none(), "{:?}", pulled.error);
+        assert_eq!(pulled.outcome.downloaded, 2);
+        assert_eq!(desk.read("notes/ideas.md").as_deref(), Some("new"));
+
+        desk.write("main.tex", "desk edit");
+        laptop.write("main.tex", "laptop edit");
+        laptop.sync(&store, cloud).await;
+        desk.project.remote_dirty = true;
+        let conflicted = desk.sync(&store, cloud).await;
+        assert_eq!(conflicted.outcome.conflicts, 1);
+        let copy = format!("main (Laptop {}).tex", today());
+        assert_eq!(desk.read(&copy).as_deref(), Some("laptop edit"));
+
+        desk.remove("notes/ideas.md");
+        desk.sync(&store, cloud).await;
+        laptop.project.remote_dirty = true;
+        let applied = laptop.sync(&store, cloud).await;
+        assert_eq!(applied.outcome.deleted_local, 1);
+        assert!(laptop.read("notes/ideas.md").is_none());
+
+        delete_project_folder(&store, cloud).await.unwrap();
+        assert!(store
+            .metadata(&version_remote(cloud))
+            .await
+            .unwrap()
+            .is_none());
+        assert!(store
+            .list(&format!("/projects/{cloud}"))
+            .await
+            .unwrap()
+            .is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_live_bucket_takes_a_large_file_in_parts_and_returns_it_intact() {
+        let Some(store) = live_store("large") else {
+            return;
+        };
+        let cloud = ProjectId::new();
+        let mut desk = Device::new("Desk");
+        let mut laptop = Device::new("Laptop");
+        thesis(&desk);
+        let large: String = (0..70 * 1024 * 1024 / 16)
+            .map(|index| format!("{index:015x}\n"))
+            .collect();
+        desk.write("data/large.csv", &large);
+        let uploaded = desk.sync(&store, cloud).await;
+        assert!(uploaded.error.is_none(), "{:?}", uploaded.error);
+        laptop.download(&store, cloud).await;
+        assert_eq!(
+            laptop.read("data/large.csv").map(|text| text.len()),
+            Some(large.len())
+        );
+        assert!(laptop.read("data/large.csv").as_deref() == Some(large.as_str()));
+        delete_project_folder(&store, cloud).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_live_bucket_refuses_stale_and_duplicate_record_writes() {
+        let Some(store) = live_store("cas") else {
+            return;
+        };
+        let first = store
+            .put("/record.json", b"one".to_vec(), WriteMode::Add)
+            .await
+            .unwrap();
+        assert_eq!(
+            store
+                .put("/record.json", b"two".to_vec(), WriteMode::Add)
+                .await,
+            Err(StoreError::Conflict)
+        );
+        let second = store
+            .put(
+                "/record.json",
+                b"two".to_vec(),
+                WriteMode::Update(first.clone()),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            store
+                .put("/record.json", b"three".to_vec(), WriteMode::Update(first))
+                .await,
+            Err(StoreError::Conflict)
+        );
+        assert_eq!(
+            store.delete("/record.json", Some("\"stale\"")).await,
+            Err(StoreError::Conflict)
+        );
+        store.delete("/record.json", Some(&second)).await.unwrap();
+        assert!(store.metadata("/record.json").await.unwrap().is_none());
+    }
+}
+
+/// The two-computer flow through the Drive store, against the fake Drive.
+mod drive_fake {
+    use super::{thesis, today, version_remote, Device, ProjectId};
+    use crate::cloud::engine::delete_project_folder;
+    use crate::cloud::store::CloudStore;
+    use crate::cloud::tests::fake_drive::FakeDrive;
+
+    #[tokio::test]
+    async fn two_computers_share_edits_conflicts_and_deletes_through_drive() {
+        let fake = FakeDrive::start().await;
+        let desk_store = fake.store();
+        let laptop_store = fake.store();
+        let cloud = ProjectId::new();
+        let mut desk = Device::new("Desk");
+        let mut laptop = Device::new("Laptop");
+        thesis(&desk);
+        let first = desk.sync(&desk_store, cloud).await;
+        assert!(first.error.is_none(), "{:?}", first.error);
+        assert_eq!(first.outcome.uploaded, 2);
+
+        laptop.download(&laptop_store, cloud).await;
+        assert_eq!(laptop.read("main.tex").as_deref(), Some("one"));
+        laptop.write("main.tex", "two from laptop");
+        laptop.write("notes/ideas.md", "new");
+        laptop.project.remote_dirty = true;
+        laptop.sync(&laptop_store, cloud).await;
+        desk.project.remote_dirty = true;
+        let pulled = desk.sync(&desk_store, cloud).await;
+        assert!(pulled.error.is_none(), "{:?}", pulled.error);
+        assert_eq!(pulled.outcome.downloaded, 2);
+
+        desk.write("main.tex", "desk edit");
+        laptop.write("main.tex", "laptop edit");
+        laptop.sync(&laptop_store, cloud).await;
+        desk.project.remote_dirty = true;
+        let conflicted = desk.sync(&desk_store, cloud).await;
+        assert_eq!(conflicted.outcome.conflicts, 1);
+        let copy = format!("main (Laptop {}).tex", today());
+        assert_eq!(desk.read(&copy).as_deref(), Some("laptop edit"));
+
+        desk.remove("notes/ideas.md");
+        desk.sync(&desk_store, cloud).await;
+        laptop.project.remote_dirty = true;
+        let applied = laptop.sync(&laptop_store, cloud).await;
+        assert_eq!(applied.outcome.deleted_local, 1);
+
+        delete_project_folder(&desk_store, cloud).await.unwrap();
+        assert!(laptop_store
+            .metadata(&version_remote(cloud))
+            .await
+            .unwrap()
+            .is_none());
+    }
 }

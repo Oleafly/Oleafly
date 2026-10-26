@@ -48,6 +48,24 @@ export function decodeAppError(value: unknown): AppError | null {
   }
 }
 
+const areaParams = new Map<string, () => Record<string, string>>();
+
+/** Supplies params for every code of an area (`cloud.*` names the provider in
+ * its messages). The backend's own params win over these. Returns a function
+ * that stops supplying them. */
+export function provideErrorParams(area: string, params: () => Record<string, string>): () => void {
+  areaParams.set(area, params);
+  return () => {
+    if (areaParams.get(area) === params) areaParams.delete(area);
+  };
+}
+
+function paramsOf(app: AppError): Record<string, string> {
+  const dot = app.code.indexOf(".");
+  const supplied = dot > 0 ? areaParams.get(app.code.slice(0, dot)) : undefined;
+  return supplied ? { ...supplied(), ...app.params } : app.params;
+}
+
 /** A backend or runtime error as a sentence to show, with home paths as `~`. */
 export function describeError(value: unknown): string {
   return displayText(errorSentence(value));
@@ -64,7 +82,7 @@ function errorSentence(value: unknown): string {
   const app = decodeAppError(value);
   if (app) {
     const key = errorKey(app.code);
-    const message = key ? dynamic.t(key, app.params) : i18n.t(($) => $.errors.unknown);
+    const message = key ? dynamic.t(key, paramsOf(app)) : i18n.t(($) => $.errors.unknown);
     return app.detail ? i18n.t(($) => $.errors.withDetail, { message, detail: app.detail }) : message;
   }
   if (value instanceof Error && value.message) return value.message;

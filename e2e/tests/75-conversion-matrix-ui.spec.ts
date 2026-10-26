@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { test, expect } from "../fixtures";
 import { scriptValue } from "../script-value";
 import {
+  openEditorContextSubmenu,
   openRailTab,
   pressGlobal,
   fillCommandPalette,
@@ -215,6 +216,7 @@ test("equation context menu exports a real svg image", async ({ tauriPage }) => 
       return true;
     })`,
   );
+  await openEditorContextSubmenu(tauriPage, "Import and export");
   await waitLong(tauriPage, `!!document.querySelector('[data-testid="context-export-equation-svg"]')`, 10_000);
   await shot(tauriPage, "07-equation-context-menu.png");
   mkdirSync(`${SHOTS}/07-equation`, { recursive: true });

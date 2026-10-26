@@ -1,4 +1,4 @@
-import { DropboxProviderCard } from "@/components/settings/cloud/DropboxProviderCard";
+import { CloudProviderCard } from "@/components/settings/cloud/CloudProviderCard";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useCloudStore } from "@/store/cloud";
@@ -14,23 +14,35 @@ export function CloudTab() {
   const loadError = useCloudStore((s) => s.loadError);
   const settingsImport = useCloudStore((s) => s.settingsImport);
   const refresh = useCloudStore((s) => s.refresh);
+  const providers = useCloudStore((s) => s.providers);
+  const providersError = useCloudStore((s) => s.providersError);
+  const loadProviders = useCloudStore((s) => s.loadProviders);
 
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    void loadProviders();
+  }, [refresh, loadProviders]);
 
   useEffect(() => {
     if (settingsImport === "resume") requestNav("general");
   }, [settingsImport, requestNav]);
 
-  if (!state) {
-    if (loadError) {
+  if (!state || !providers) {
+    if (loadError || providersError) {
       return (
         <div className="space-y-3 rounded-xl border bg-card p-5">
           <p role="alert" className="text-sm text-foreground">
             {t(($) => $.cloud.loadFailed)}
           </p>
-          <Button type="button" variant="outline" size="sm" onClick={() => void refresh()}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void refresh();
+              void loadProviders();
+            }}
+          >
             {t(($) => $.cloud.tryAgain)}
           </Button>
         </div>
@@ -46,7 +58,7 @@ export function CloudTab() {
 
   return (
     <div className="space-y-3">
-      <DropboxProviderCard />
+      <CloudProviderCard />
     </div>
   );
 }

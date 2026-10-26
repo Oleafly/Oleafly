@@ -797,26 +797,43 @@
         "linkedFolders_other": "{{size}} käännöstulosteita ja asetuksia {{count}} avatulle kansiolle",
         "refresh": "Päivitä tallennustilan käyttö",
         "stats": {
-          "appData": "Sovellustiedot",
-          "appDataDetail": "Resurssit ja asetukset",
-          "buildCache": "Käännösvälimuisti",
-          "buildCacheDetail": "Muodostettu tuloste",
           "files": "Tiedostot",
           "folders_one": "{{count}} kansio",
           "folders_other": "{{count}} kansiota",
-          "gitHistory": "Git-historia",
-          "gitHistoryDetail": "Paikalliset versiot",
           "images": "Kuvat",
           "pdfs": "PDF-tiedostot",
-          "projectFiles": "Projektitiedostot",
-          "projectFilesDetail": "Lähteet ja metatiedot",
           "projects": "Projektit"
         },
         "subtitle": "Projektit, esikatselut, historia ja sovellustiedot",
         "title": "Tallennustilan käyttö",
         "total": "{{size}} Oleaflyn datakansiossa",
         "unreadable_one": "{{count}} kohde jätettiin pois, koska siihen ei päästy käsiksi.",
-        "unreadable_other": "{{count}} kohdetta jätettiin pois, koska niihin ei päästy käsiksi."
+        "unreadable_other": "{{count}} kohdetta jätettiin pois, koska niihin ei päästy käsiksi.",
+        "groups": {
+          "projects": "Projektit",
+          "appData": "Sovellustiedot",
+          "elsewhere": "Muualla"
+        },
+        "parts": {
+          "documents": "Dokumentit ja koodi",
+          "images": "Kuvat",
+          "pdfs": "PDF-tiedostot",
+          "media": "Ääni ja video",
+          "data": "Datatiedostot",
+          "otherFiles": "Muut tiedostot",
+          "git": "Git-historia",
+          "build": "Käännösvälimuisti",
+          "texDistribution": "TeX-jakelu",
+          "agents": "Tekoälyagentit",
+          "researchTasks": "Tutkimustehtävät",
+          "tools": "Työkalut",
+          "checkpoints": "Tarkistuspisteet",
+          "compileCache": "Kääntäjän välimuisti",
+          "otherAppData": "Asetukset ja muut tiedot",
+          "recycleBin": "Roskakori",
+          "linkedFolders": "Avatut kansiot"
+        },
+        "other": "Muut"
       },
       "tabs": {
         "cloud": "Pilvisynkronointi",

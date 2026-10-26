@@ -149,6 +149,11 @@ impl MemoryStore {
 }
 
 impl CloudStore for MemoryStore {
+    // Copies here report Dropbox's content hash, so they're checked the same way.
+    async fn copy_check_hash(&self, local: &std::path::Path) -> Option<String> {
+        crate::cloud::store::dropbox_hash_of(local).await
+    }
+
     async fn get(&self, remote: &str, cap: usize) -> StoreResult<Option<(Vec<u8>, String)>> {
         self.enter()?;
         self.with(|inner| match inner.files.get(&remote.to_lowercase()) {

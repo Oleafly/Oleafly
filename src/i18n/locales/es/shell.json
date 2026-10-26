@@ -810,20 +810,12 @@
         "linkedFolders_other": "{{size}} de resultados de compilación y ajustes para {{count}} carpetas abiertas",
         "refresh": "Actualizar el uso de almacenamiento",
         "stats": {
-          "appData": "Datos de la aplicación",
-          "appDataDetail": "Recursos y ajustes",
-          "buildCache": "Caché de compilación",
-          "buildCacheDetail": "Salida generada",
           "files": "Archivos",
           "folders_one": "{{count}} carpeta",
           "folders_many": "{{count}} carpetas",
           "folders_other": "{{count}} carpetas",
-          "gitHistory": "Historial de Git",
-          "gitHistoryDetail": "Versiones locales",
           "images": "Imágenes",
           "pdfs": "PDF",
-          "projectFiles": "Archivos de proyecto",
-          "projectFilesDetail": "Código y metadatos",
           "projects": "Proyectos"
         },
         "subtitle": "Proyectos, vistas previas, historial y datos de la aplicación",
@@ -831,7 +823,32 @@
         "total": "{{size}} en la carpeta de datos de Oleafly",
         "unreadable_one": "Se excluyó {{count}} elemento inaccesible.",
         "unreadable_many": "Se excluyeron {{count}} elementos inaccesibles.",
-        "unreadable_other": "Se excluyeron {{count}} elementos inaccesibles."
+        "unreadable_other": "Se excluyeron {{count}} elementos inaccesibles.",
+        "groups": {
+          "projects": "Proyectos",
+          "appData": "Datos de la aplicación",
+          "elsewhere": "En otros lugares"
+        },
+        "parts": {
+          "documents": "Documentos y código",
+          "images": "Imágenes",
+          "pdfs": "PDF",
+          "media": "Audio y vídeo",
+          "data": "Archivos de datos",
+          "otherFiles": "Otros archivos",
+          "git": "Historial de Git",
+          "build": "Caché de compilación",
+          "texDistribution": "Distribución de TeX",
+          "agents": "Agentes de IA",
+          "researchTasks": "Tareas de investigación",
+          "tools": "Herramientas",
+          "checkpoints": "Puntos de control",
+          "compileCache": "Caché del compilador",
+          "otherAppData": "Ajustes y otros datos",
+          "recycleBin": "Papelera",
+          "linkedFolders": "Carpetas abiertas"
+        },
+        "other": "Otros"
       },
       "tabs": {
         "cloud": "Sincronización en la nube",

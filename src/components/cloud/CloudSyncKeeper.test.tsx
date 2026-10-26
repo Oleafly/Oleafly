@@ -51,6 +51,7 @@ const initialCloud = useCloudStore.getState();
 function cloudState(overrides: Partial<CloudState> = {}): CloudState {
   return {
     status: "connected",
+    provider: "dropbox",
     email: "ada@uni.edu",
     displayName: null,
     deviceName: "Desk",
@@ -356,6 +357,17 @@ describe("CloudSyncKeeper", () => {
       general: { language: "system" },
     });
     expect(screen.queryByTestId("cloud-settings-choice")).toBeNull();
+  });
+
+  it("names the connected provider in the settings choice", async () => {
+    mocks.cloud.cloudState.mockResolvedValue(cloudState({ provider: "google_drive" }));
+    mocks.cloud.cloudSettingsSync.mockResolvedValue({ outcome: "choose", values: { a: 1 }, stamp: "3" });
+    await mountKeeper();
+    await advance(20_000);
+    const dialog = screen.getByTestId("cloud-settings-choice");
+    expect(dialog).toHaveTextContent("Your Google Drive has settings from another computer");
+    expect(screen.getByRole("button", { name: "Use Google Drive settings" })).toBeInTheDocument();
+    expect(dialog).not.toHaveTextContent(/Dropbox/);
   });
 
   it("marks Settings while a project needs attention and clears the mark once it is fixed", async () => {

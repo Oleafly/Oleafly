@@ -823,21 +823,13 @@
         "linkedFolders_other": "{{size}} результатов сборки и настроек для {{count}} открытой папки",
         "refresh": "Обновить сведения о занятом месте",
         "stats": {
-          "appData": "Данные приложения",
-          "appDataDetail": "Ресурсы и настройки",
-          "buildCache": "Кэш сборки",
-          "buildCacheDetail": "Порождённые файлы",
           "files": "Файлы",
           "folders_one": "{{count}} папка",
           "folders_few": "{{count}} папки",
           "folders_many": "{{count}} папок",
           "folders_other": "{{count}} папки",
-          "gitHistory": "История Git",
-          "gitHistoryDetail": "Локальные версии",
           "images": "Изображения",
           "pdfs": "Файлы PDF",
-          "projectFiles": "Файлы проектов",
-          "projectFilesDetail": "Исходники и метаданные",
           "projects": "Проекты"
         },
         "subtitle": "Проекты, просмотры, история и данные приложения",
@@ -846,7 +838,32 @@
         "unreadable_one": "{{count}} недоступный элемент исключён.",
         "unreadable_few": "{{count}} недоступных элемента исключено.",
         "unreadable_many": "{{count}} недоступных элементов исключено.",
-        "unreadable_other": "{{count}} недоступного элемента исключено."
+        "unreadable_other": "{{count}} недоступного элемента исключено.",
+        "groups": {
+          "projects": "Проекты",
+          "appData": "Данные приложения",
+          "elsewhere": "В других местах"
+        },
+        "parts": {
+          "documents": "Документы и код",
+          "images": "Изображения",
+          "pdfs": "Файлы PDF",
+          "media": "Аудио и видео",
+          "data": "Файлы данных",
+          "otherFiles": "Другие файлы",
+          "git": "История Git",
+          "build": "Кэш сборки",
+          "texDistribution": "Дистрибутив TeX",
+          "agents": "Агенты ИИ",
+          "researchTasks": "Исследовательские задачи",
+          "tools": "Инструменты",
+          "checkpoints": "Контрольные точки",
+          "compileCache": "Кэш компиляции",
+          "otherAppData": "Настройки и прочие данные",
+          "recycleBin": "Корзина",
+          "linkedFolders": "Открытые папки"
+        },
+        "other": "Прочее"
       },
       "tabs": {
         "cloud": "Облачная синхронизация",
