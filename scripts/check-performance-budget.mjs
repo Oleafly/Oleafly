@@ -54,6 +54,11 @@ const limits = {
   // +1 KB for the research tasks switch at startup (the rail entry's
   // condition, the rail's re-render on it, the capped small-button radius):
   // the entry measures 4,990,252 bytes, 252 over the old ceiling.
+  // -305 KB after 0.4.8: KaTeX loads with the first formula preview and pdf.js
+  // with the first page picture, and the compile store stopped importing the
+  // editor and command modules dynamically (each such import of a module
+  // already in the entry kept every one of its exports). The entry measures
+  // 4,689,999 bytes; the ceiling stays where it is as headroom.
   largestJavaScript: 5_000_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
@@ -158,6 +163,9 @@ const limits = {
   // With both, the combined graph measures 20,950,195 bytes on macOS.
   // +20 KB for the 0.4.8-rc fixes: 21,001,072 bytes on macOS, of which
   // following file links on Cmd+click in the source editor is 586 bytes.
+  // -307 KB with the entry trim above: mermaid uses the app's KaTeX 0.18
+  // instead of bundling 0.16 (260 KB). The combined graph measures 20,696,691
+  // bytes on macOS.
   totalJavaScript: 21_020_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about

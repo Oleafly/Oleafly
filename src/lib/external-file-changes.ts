@@ -7,6 +7,7 @@ import {
 import { projectFolderAvailable } from "@/store/project-availability";
 import { useIndexStore } from "@/store/project-index";
 import { collabHoldsDocument } from "@/lib/collab-live-bridge";
+import { readFileContent } from "@/lib/tauri";
 import { isProjectIntelligencePath } from "@/lib/project-intelligence/source";
 
 export type ExternalFileChange =
@@ -151,15 +152,13 @@ function refreshExternalFile(
 ) {
   if (!file || file.dirty) return;
   const contentBeforeRead = file.content;
-  void import("@/lib/tauri").then(({ readFileContent }) => {
-    void readFileContent(projectId, path)
-      .then((content) => {
-        const current = useFilesStore.getState();
-        const latest = current.files[path];
-        if (current.projectId !== projectId || latest?.dirty) return;
-        if (latest?.content !== contentBeforeRead) return;
-        current.applyExternalReload(projectId, path, content);
-      })
-      .catch(() => {});
-  });
+  void readFileContent(projectId, path)
+    .then((content) => {
+      const current = useFilesStore.getState();
+      const latest = current.files[path];
+      if (current.projectId !== projectId || latest?.dirty) return;
+      if (latest?.content !== contentBeforeRead) return;
+      current.applyExternalReload(projectId, path, content);
+    })
+    .catch(() => {});
 }

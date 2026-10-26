@@ -18,6 +18,9 @@ overrides:
   # inline Markdown attribute parsing, fixed in 3.30.5.
   "@tiptap/core": "3.30.5"
   "rehype-katex>katex": "catalog:"
+  # Mermaid's math labels call katex.renderToString only, which 0.18 keeps;
+  # one KaTeX instead of two takes 260 KB off the bundle.
+  "mermaid>katex": "catalog:"
   nanoid@<3.3.18: "3.3.18"
   # GHSA-6g55-p6wh-862q: source map disclosure in postcss < 8.5.23.
   postcss@<8.5.23: "8.5.23"

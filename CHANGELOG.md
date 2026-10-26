@@ -14,6 +14,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when you open it. It runs the `oleafly` command the app installs, so you
   need the app with Settings > Integrations > Oleafly MCP turned on.
 
+### Changed
+
+- Oleafly loads less code when it starts. Settings, the tour guide, the
+  diagram composer and most dialogs load the first time you open them. PDF
+  page rendering loads when something first needs it, and KaTeX when you
+  first open a LaTeX or Markdown file. Once you've finished the tours, the
+  library screen loads about 2 MB less. Mermaid diagrams in chat use the
+  app's KaTeX instead of bundling an older copy.
+
 ## [0.4.8] - 2026-10-25
 
 ### Added

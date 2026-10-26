@@ -1,6 +1,5 @@
 import { completeViaBackend } from "@/lib/agent-backend";
 import { hasConfiguredProvider } from "@/lib/ai-providers";
-import { pdfPageToPng } from "@/lib/pdf-image";
 import {
   compileIsolated,
   deleteCustomTemplate,
@@ -154,6 +153,7 @@ export async function compileGeneratedTemplate(
   const log = (res.log ?? "").slice(-LOG_TAIL_CHARS);
   if (!res.has_pdf) return { png: null, log };
   const bytes = new Uint8Array(await readIsolatedPdf(scratchId));
+  const { pdfPageToPng } = await import("@/lib/pdf-image");
   const png = await pdfPageToPng(bytes, 1, 1.5, "#ffffff");
   return { png, log };
 }

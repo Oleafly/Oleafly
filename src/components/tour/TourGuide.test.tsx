@@ -37,7 +37,7 @@ vi.mock("@/lib/theme", () => ({
 }));
 
 import { measureTourPlacement, TourGuide } from "./TourGuide";
-import { START_TOUR_EVENT } from "@/lib/tour";
+import { START_TOUR_EVENT, startTour, takeUnheardTourStart } from "@/lib/tour";
 import { tourRegistry, type TourStepDefinition } from "@/lib/tours/registry";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
@@ -451,5 +451,52 @@ describe("Document watching while a project is open", () => {
       observe.mockRestore();
       useTourStore.setState({ tours });
     }
+  });
+});
+
+describe("Tour starts asked for before the guide mounts", () => {
+  // Every tour is done, so only a start that was asked for can begin one.
+  beforeEach(() => {
+    useTourStore.setState((state) => ({
+      activeTourId: null,
+      tours: {
+        ...state.tours,
+        home: { ...state.tours.home, status: "completed" },
+        workspace: { ...state.tours.workspace, status: "completed" },
+      },
+    }));
+  });
+
+  afterEach(() => {
+    takeUnheardTourStart();
+  });
+
+  it("starts the tour once the guide mounts", () => {
+    startTour("home");
+
+    render(<TourGuide />);
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(tourStep().activeTourId).toBe("home");
+  });
+
+  it("does not start a tour again that a mounted guide already started", () => {
+    const first = render(<TourGuide />);
+    act(() => {
+      startTour("home");
+      vi.advanceTimersByTime(100);
+    });
+    expect(tourStep().activeTourId).toBe("home");
+    act(() => useTourStore.getState().stop());
+    first.unmount();
+
+    render(<TourGuide />);
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(tourStep().activeTourId).toBeNull();
   });
 });

@@ -34,6 +34,8 @@
       "@oleafly/editor/cursor-height": ["./packages/editor/src/cursor-height.ts"],
       "@oleafly/editor/diagnostic-card": ["./packages/editor/src/diagnostic-card.ts"],
       "@oleafly/editor/math-render": ["./packages/editor/src/math-render.ts"],
+      "@oleafly/editor/math-render-loader": ["./packages/editor/src/math-render-loader.ts"],
+      "@oleafly/editor/typst-math-render": ["./packages/editor/src/typst-math-render.ts"],
       "@oleafly/editor/CodeMirrorEditor": ["./packages/editor/src/CodeMirrorEditor.tsx"],
       "@oleafly/editor/math-preview": ["./packages/editor/src/math-preview.ts"],
       "@oleafly/editor/prose": ["./packages/editor/src/prose.ts"],

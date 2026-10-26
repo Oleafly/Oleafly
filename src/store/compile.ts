@@ -4,8 +4,10 @@ import {
   cancelCompile,
   clearBuildDir,
   compileProject,
+  latexEngineInfo,
   readCompiledPdf,
   readFileContent,
+  tlmgrInstallMissing,
   validateCompileFingerprint,
   withEventListener,
   type CompileError,
@@ -36,6 +38,8 @@ import {
 } from "@oleafly/latex";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
+import { useEngineStore } from "@/store/engine";
+import { lintLatexText } from "@oleafly/editor";
 import { activeTypstVariant } from "@/store/typst-variant";
 import { notifyError, toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
@@ -507,10 +511,7 @@ async function mainDocumentSyntaxErrors(
   projectId: string,
   mainDoc: string,
 ): Promise<CompileError[]> {
-  const [source, { lintLatexText }] = await Promise.all([
-    readFileContent(projectId, mainDoc),
-    import("@oleafly/editor"),
-  ]);
+  const source = await readFileContent(projectId, mainDoc);
   const lineStarts = [0];
   for (let index = 0; index < source.length; index++) {
     if (source[index] === "\n") lineStarts.push(index + 1);
@@ -655,10 +656,8 @@ async function installMissingPackages(projectId: string, packages: string[]): Pr
   );
   missingPackageToasts.set(projectId, id);
   try {
-    const tauri = await import("@/lib/tauri");
-    const outcome = await tauri.tlmgrInstallMissing(packages);
-    const engineStore = await import("@/store/engine");
-    await engineStore.useEngineStore.getState().refreshPackages();
+    const outcome = await tlmgrInstallMissing(packages);
+    await useEngineStore.getState().refreshPackages();
     const path = userTreeNotice(outcome);
     missingPackageToasts.delete(projectId);
     if (path === null) toast.dismiss(id);
@@ -719,8 +718,7 @@ function maybeSuggestMissingPackages(ctx: CompileApplyContext, log: string): voi
     return;
   }
   void (async () => {
-    const tauri = await import("@/lib/tauri");
-    const info = await tauri.latexEngineInfo().catch(() => null);
+    const info = await latexEngineInfo().catch(() => null);
     if (!info?.tlmgr || !isLatexmkProject(projectId)) return;
     if (packageInstallsRunning.has(projectId)) return;
     if (!offerForAttempt(ctx, { kind: "missing-packages", projectId, packages })) return;
@@ -1191,8 +1189,7 @@ async function systemTexPrerequisiteGate(ctx: CompileGateContext): Promise<boole
   // A TinyTeX install may be in flight: queue this compile behind it
   // instead of failing with "latexmk not found". The engine store runs
   // the queued compile the moment the install lands.
-  const engineModule = await import("@/store/engine");
-  const engineStore = engineModule.useEngineStore.getState();
+  const engineStore = useEngineStore.getState();
   if (engineStore.installing) {
     engineStore.queueCompileAfterInstall(ctx.origin);
     setCompileUnavailable(
@@ -1730,7 +1727,7 @@ function pauseCompileForMissingFolder(ctx: CompileApplyContext, e: unknown): voi
       }),
     )
     .catch(() => {});
-  void import("@/lib/log").then(({ logError }) => logError("compile", e));
+  void logError("compile", e);
 }
 
 function reportMissingTypst(ctx: CompileApplyContext, version: string, e: unknown): void {
@@ -1797,7 +1794,7 @@ function handleCompileException(ctx: CompileApplyContext, e: unknown): void {
       }),
     )
     .catch(() => {});
-  void import("@/lib/log").then(({ logError }) => logError("compile", e));
+  void logError("compile", e);
 }
 
 function clearOrphanedCompilingState(
