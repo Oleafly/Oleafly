@@ -2,7 +2,7 @@ import { create } from "zustand";
 import {
   DEFAULT_APPROVAL_MODE,
   type ApprovalMode,
-} from "@oleafly/ai-tools";
+} from "@oleafly/ai-tools/approval-risk";
 import { approvalsModeGet, approvalsModeSet } from "@/lib/tauri";
 
 interface ApprovalModeState {

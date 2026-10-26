@@ -43,6 +43,7 @@
       "@oleafly/editor/document-session": ["./packages/editor/src/document-session.ts"],
       "@oleafly/editor/collaboration": ["./packages/editor/src/collaboration.ts"],
       "@oleafly/ai-tools": ["./packages/ai-tools/src/index.ts"],
+      "@oleafly/ai-tools/approval-risk": ["./packages/ai-tools/src/approval-risk.ts"],
       "@oleafly/preflight": ["./packages/preflight/src/index.ts"],
       "@oleafly/registry": ["./packages/registry/src/index.ts"],
       "@oleafly/i18n-contract": ["./packages/i18n-contract/src/index.ts"],

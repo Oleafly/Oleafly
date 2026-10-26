@@ -21,7 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   page rendering loads when something first needs it, and KaTeX when you
   first open a LaTeX or Markdown file. Once you've finished the tours, the
   library screen loads about 2 MB less. Mermaid diagrams in chat use the
-  app's KaTeX instead of bundling an older copy.
+  app's KaTeX instead of bundling an older copy. Cloud sync only loads its
+  background code on a computer connected to Dropbox, or once you open
+  Settings.
 
 ## [0.4.8] - 2026-10-25
 

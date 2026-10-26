@@ -59,6 +59,11 @@ const limits = {
   // editor and command modules dynamically (each such import of a module
   // already in the entry kept every one of its exports). The entry measures
   // 4,689,999 bytes; the ceiling stays where it is as headroom.
+  // -51 KB more: the built-in assistant toolsets register from their own
+  // chunk, and the chat's approval helpers come from
+  // @oleafly/ai-tools/approval-risk rather than the package index (a value
+  // import of an index keeps every module it re-exports in the entry). The
+  // entry measures 4,638,573 bytes.
   largestJavaScript: 5_000_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
@@ -166,6 +171,8 @@ const limits = {
   // -307 KB with the entry trim above: mermaid uses the app's KaTeX 0.18
   // instead of bundling 0.16 (260 KB). The combined graph measures 20,696,691
   // bytes on macOS.
+  // +5 KB for the toolset chunk's import and export lists: 20,702,030 bytes
+  // on macOS.
   totalJavaScript: 21_020_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
