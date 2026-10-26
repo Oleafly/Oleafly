@@ -91,7 +91,7 @@ done
 refusal="$(docker logs "$name-refused" 2>&1)"
 docker rm -f "$name-refused" >/dev/null
 [ "$code" = "2" ] || fail "with no GitHub or OpenID Connect the server should stop with code 2, not '${code:-still running}': $refusal"
-printf '%s' "$refusal" | grep -q 'No sign-in method is set up' || fail "the refusal doesn't say why: $refusal"
+grep -q 'No sign-in method is set up' <<<"$refusal" || fail "the refusal doesn't say why: $refusal"
 pass "the server refuses to start without GitHub or OpenID Connect"
 
 docker volume create "$volume" >/dev/null
@@ -132,14 +132,15 @@ pass "/readyz $ready"
 manifest="$(get /.well-known/oleafly-server)" || fail "/.well-known/oleafly-server did not answer 200"
 server_id="$(printf '%s' "$manifest" | grep -o '"server_id":"[^"]*"' | head -n 1)"
 [ -n "$server_id" ] || fail "the manifest has no server_id: $manifest"
-printf '%s' "$manifest" | grep -q '"needs_setup":true' || fail "a fresh server should need setup: $manifest"
+grep -q '"needs_setup":true' <<<"$manifest" || fail "a fresh server should need setup: $manifest"
 pass "manifest $server_id, needs_setup true"
 
 process_uids="$(docker top "$name" -eo pid,uid | awk 'NR > 1 { print $2 }' | sort -u | tr '\n' ' ')"
 [ "$process_uids" = "$uid " ] || fail "processes run as uid(s) '$process_uids', expected $uid"
 pass "the server process runs as uid $uid"
 
-docker logs "$name" 2>&1 | grep -q 'Setup code: ' || fail "the log has no Setup code line"
+server_log="$(docker logs "$name" 2>&1)"
+grep -q 'Setup code: ' <<<"$server_log" || fail "the log has no Setup code line"
 pass "the log prints a setup code"
 
 docker restart "$name" >/dev/null
