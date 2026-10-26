@@ -19,7 +19,7 @@ serde_json = "1"
 sha2 = "0.10"
 tar = "0.4"
 tokio = { version = "1", features = ["fs", "io-util", "macros", "rt", "sync", "time"] }
-zip = { version = "4", default-features = false, features = ["deflate"] }
+zip = { version = "8", default-features = false, features = ["deflate"] }
 
 [target.'cfg(not(windows))'.dependencies]
 # Streaming decoder for .tar.xz toolchains. Static linking avoids a runtime
