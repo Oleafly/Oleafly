@@ -75,7 +75,9 @@
     "shell_escape_denied_minted": "minted 需要執行另一個程式來醒目提示程式碼，但此專案封鎖了這項操作。如要允許，請點選編輯器上方橫幅中的「{{setting}}」。只有在你信任專案中的每個檔案時才這麼做。開啟後，LaTeX 可以用你的權限執行任何程式，而且它啟動的程式可能在你停止編譯後繼續執行。",
     "shell_escape_denied_pythontex": "PythonTeX 需要執行 Python，但此專案封鎖了這項操作。如要允許，請點選編輯器上方橫幅中的「{{setting}}」。只有在你信任專案中的每個檔案時才這麼做。開啟後，LaTeX 可以用你的權限執行任何程式，而且它啟動的程式可能在你停止編譯後繼續執行。",
     "shell_escape_denied_command": "此文件會執行 shell 命令，但此專案封鎖了這項操作。如要允許，請點選編輯器上方橫幅中的「{{setting}}」。只有在你信任專案中的每個檔案時才這麼做。開啟後，LaTeX 可以用你的權限執行任何程式，而且它啟動的程式可能在你停止編譯後繼續執行。",
-    "japanese_compiler_missing": "你的 TeX 發行版沒有安裝 {{compiler}}。在 TeX Live 或 TinyTeX 中執行 tlmgr install collection-langjapanese 即可加入，也可以改用其他編譯器。"
+    "japanese_compiler_missing": "你的 TeX 發行版沒有安裝 {{compiler}}。在 TeX Live 或 TinyTeX 中執行 tlmgr install collection-langjapanese 即可加入，也可以改用其他編譯器。",
+    "compiler_crashed": "編譯器在完成前崩潰了，所以記錄檔停在它中斷的位置。請再編譯一次。如果每次都崩潰，請在編譯選單中選擇其他編譯器。",
+    "compiler_crashed_font": "Tectonic 在尋找字型「{{font}}」時崩潰了，這台電腦上可能沒有安裝這個字型。請安裝該字型，或在編譯選單中選擇 XeLaTeX 或 LuaLaTeX。它們會回報缺少字型，而不會崩潰。"
   },
   "export": {
     "bibliography_unreadable": "Oleafly 無法讀取參考文獻 {{name}}。請檢查其中是否有損壞的條目，然後重新匯出。"

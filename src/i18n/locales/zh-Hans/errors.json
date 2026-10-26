@@ -75,7 +75,9 @@
     "shell_escape_denied_minted": "minted 需要运行另一个程序来高亮代码，但此项目阻止了这一操作。如需允许，请点击编辑器上方横幅中的“{{setting}}”。仅在你信任项目中的每个文件时才这样做。开启后，LaTeX 可以用你的权限运行任何程序，而且它启动的程序可能在你停止编译后继续运行。",
     "shell_escape_denied_pythontex": "PythonTeX 需要运行 Python，但此项目阻止了这一操作。如需允许，请点击编辑器上方横幅中的“{{setting}}”。仅在你信任项目中的每个文件时才这样做。开启后，LaTeX 可以用你的权限运行任何程序，而且它启动的程序可能在你停止编译后继续运行。",
     "shell_escape_denied_command": "此文档会运行 shell 命令，但此项目阻止了这一操作。如需允许，请点击编辑器上方横幅中的“{{setting}}”。仅在你信任项目中的每个文件时才这样做。开启后，LaTeX 可以用你的权限运行任何程序，而且它启动的程序可能在你停止编译后继续运行。",
-    "japanese_compiler_missing": "你的 TeX 发行版没有安装 {{compiler}}。在 TeX Live 或 TinyTeX 中运行 tlmgr install collection-langjapanese 即可添加，也可以改用其他编译器。"
+    "japanese_compiler_missing": "你的 TeX 发行版没有安装 {{compiler}}。在 TeX Live 或 TinyTeX 中运行 tlmgr install collection-langjapanese 即可添加，也可以改用其他编译器。",
+    "compiler_crashed": "编译器在完成前崩溃了，所以日志停在它中断的位置。请再编译一次。如果每次都崩溃，请在编译菜单中选择其他编译器。",
+    "compiler_crashed_font": "Tectonic 在查找字体“{{font}}”时崩溃了，这台电脑上可能没有安装这个字体。请安装该字体，或在编译菜单中选择 XeLaTeX 或 LuaLaTeX。它们会报告缺少字体，而不会崩溃。"
   },
   "export": {
     "bibliography_unreadable": "Oleafly 无法读取参考文献 {{name}}。请检查其中是否有损坏的条目，然后重新导出。"
