@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { McpManagedServer, McpServerConfig } from "@oleafly/backend-port";
 
 const mocks = vi.hoisted(() => ({
-  getConnectorKey: vi.fn(),
+  mcpAdoptAlphaXivKey: vi.fn(),
   setConnectorKey: vi.fn(),
   mcpServersList: vi.fn(),
   mcpServerAdd: vi.fn(),
@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   logError: vi.fn(),
 }));
 vi.mock("@/lib/tauri", () => ({
-  getConnectorKey: mocks.getConnectorKey,
+  mcpAdoptAlphaXivKey: mocks.mcpAdoptAlphaXivKey,
   setConnectorKey: mocks.setConnectorKey,
   mcpServersList: mocks.mcpServersList,
   mcpServerAdd: mocks.mcpServerAdd,
@@ -51,7 +51,7 @@ const expectedConfig = (key: string, name = ALPHAXIV_SERVER_NAME) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.getConnectorKey.mockResolvedValue(null);
+  mocks.mcpAdoptAlphaXivKey.mockResolvedValue(null);
   mocks.setConnectorKey.mockResolvedValue(undefined);
   mocks.mcpServersList.mockResolvedValue([]);
   mocks.mcpServerAdd.mockImplementation(async (config: McpServerConfig) => managed(config));
@@ -83,20 +83,32 @@ describe("alphaXiv connector store", () => {
     expect(useAlphaXivConnectorStore.getState().connected).toBe(false);
   });
 
-  it("moves a key saved by the old integration onto the MCP server once", async () => {
-    mocks.getConnectorKey.mockResolvedValue(" old-key ");
+  it("asks Rust to move a key saved by the old integration onto the MCP server once", async () => {
+    mocks.mcpAdoptAlphaXivKey.mockResolvedValue(managed(expectedConfig("[redacted]") as McpServerConfig));
     await useAlphaXivConnectorStore.getState().refresh();
-    expect(mocks.setConnectorKey).toHaveBeenCalledWith("alphaxiv", "");
-    expect(mocks.mcpServerAdd).toHaveBeenCalledWith(expectedConfig("old-key"));
+    expect(mocks.mcpAdoptAlphaXivKey).toHaveBeenCalledTimes(1);
+    expect(mocks.mcpServerAdd).not.toHaveBeenCalled();
+    expect(mocks.setConnectorKey).not.toHaveBeenCalled();
     expect(mocks.notifyMcpAgentToolsChanged).toHaveBeenCalledTimes(1);
-    expect(useAlphaXivConnectorStore.getState().connected).toBe(true);
+    expect(useAlphaXivConnectorStore.getState()).toMatchObject({
+      connected: true,
+      serverName: ALPHAXIV_SERVER_NAME,
+    });
+  });
+
+  it("leaves an existing server alone instead of moving an old key", async () => {
+    mocks.mcpServersList.mockResolvedValue([alphaXivServer()]);
+    await useAlphaXivConnectorStore.getState().refresh();
+    expect(mocks.mcpAdoptAlphaXivKey).not.toHaveBeenCalled();
   });
 
   it("drops an old key that alphaXiv no longer accepts and stays disconnected", async () => {
-    mocks.getConnectorKey.mockResolvedValue("old-key");
-    mocks.mcpServerAdd.mockRejectedValue(new Error("HTTP 401"));
+    mocks.mcpAdoptAlphaXivKey.mockRejectedValue(new Error("HTTP 401"));
     await useAlphaXivConnectorStore.getState().refresh();
-    expect(mocks.setConnectorKey).toHaveBeenCalledWith("alphaxiv", "");
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "move the saved alphaXiv key to its MCP server",
+      expect.any(Error),
+    );
     expect(useAlphaXivConnectorStore.getState()).toMatchObject({ connected: false, failure: null });
   });
 

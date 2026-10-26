@@ -3246,10 +3246,190 @@ pub async fn mcp_server_add<R: tauri::Runtime>(
         &server,
     )
     .await?;
+    confirm_stdio_launch(tauri::Manager::app_handle(&webview), None, &server).await?;
     let _permit = acquire_validation_slot(&state)?;
     add_server_with(&AppConfigRepository, server, connect_server)
         .await
         .map(visible_managed_server)
+}
+
+const MAX_CONFIRMED_COMMAND_CHARS: usize = 600;
+
+/// Whether saving `next` over `stored` changes the program a stdio server
+/// starts: a new stdio server, a remote one turned into stdio, or a changed
+/// command, argument or environment variable. Settings sends a marker for a
+/// stored value it keeps, so a marker counts as the stored value.
+fn stdio_launch_changes(stored: Option<&McpServerConfig>, next: &McpServerConfig) -> bool {
+    let McpServerTransport::Stdio { command, args, env } = &next.transport else {
+        return false;
+    };
+    let Some(stored) = stored else {
+        return true;
+    };
+    let McpServerTransport::Stdio {
+        command: stored_command,
+        args: stored_args,
+        env: stored_env,
+    } = &stored.transport
+    else {
+        return true;
+    };
+    // Cua Spaces' own settings change its arguments and environment, and
+    // ask natively when that gives agents more power; only a new program
+    // asks here.
+    if command == stored_command
+        && crate::cua_driver::commands::is_spaces_server(stored)
+        && crate::cua_driver::commands::is_spaces_server(next)
+    {
+        return false;
+    }
+    command != stored_command
+        || args != stored_args
+        || env.len() != stored_env.len()
+        || env.iter().any(|(key, value)| {
+            stored_env
+                .get(key)
+                .is_none_or(|stored| value != stored && value != crate::config::REDACTED)
+        })
+}
+
+fn quoted_argument(argument: &str) -> String {
+    if !argument.is_empty() && !argument.chars().any(|c| c.is_whitespace() || c == '"') {
+        return argument.to_owned();
+    }
+    format!("\"{}\"", argument.replace('"', "\\\""))
+}
+
+/// The command line a stdio server runs, as the confirmation shows it.
+fn stdio_command_line(command: &str, args: &[String]) -> String {
+    let line = std::iter::once(quoted_argument(command))
+        .chain(args.iter().map(|argument| quoted_argument(argument)))
+        .collect::<Vec<_>>()
+        .join(" ");
+    if line.chars().count() <= MAX_CONFIRMED_COMMAND_CHARS {
+        return line;
+    }
+    let mut shortened: String = line.chars().take(MAX_CONFIRMED_COMMAND_CHARS).collect();
+    shortened.push('…');
+    shortened
+}
+
+fn stdio_confirmation_message(server: &McpServerConfig) -> Option<String> {
+    let McpServerTransport::Stdio { command, args, env } = &server.transport else {
+        return None;
+    };
+    let mut message = crate::i18n::t_with(
+        "dialog.mcpCommand.message",
+        &[
+            ("name", server.name.as_str()),
+            ("command", stdio_command_line(command, args).as_str()),
+        ],
+    );
+    if !env.is_empty() {
+        let names = env
+            .keys()
+            .map(String::as_str)
+            .collect::<Vec<_>>()
+            .join(", ");
+        message.push_str("\n\n");
+        message.push_str(&crate::i18n::t_with(
+            "dialog.mcpCommand.environment",
+            &[("names", names.as_str())],
+        ));
+    }
+    Some(message)
+}
+
+/// Before a stdio MCP server is saved with a program it didn't run before,
+/// asks natively, so only the user can choose what Oleafly starts.
+/// `stored_name` is the server being edited.
+async fn confirm_stdio_launch<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    stored_name: Option<&str>,
+    next: &McpServerConfig,
+) -> Result<(), String> {
+    if !matches!(next.transport, McpServerTransport::Stdio { .. }) {
+        return Ok(());
+    }
+    let stored = match stored_name {
+        Some(name) => {
+            let name = name.to_owned();
+            tauri::async_runtime::spawn_blocking(move || {
+                AppConfigRepository.load().ok().and_then(|config| {
+                    config
+                        .mcp_servers
+                        .into_iter()
+                        .find(|server| server.name == name)
+                })
+            })
+            .await
+            .map_err(|error| error.to_string())?
+        }
+        None => None,
+    };
+    if !stdio_launch_changes(stored.as_ref(), next) {
+        return Ok(());
+    }
+    let Some(message) = stdio_confirmation_message(next) else {
+        return Ok(());
+    };
+    if crate::trust::native_confirm(
+        app,
+        "dialog.mcpCommand.title",
+        message,
+        "dialog.mcpCommand.confirm",
+    )
+    .await?
+    {
+        Ok(())
+    } else {
+        Err(crate::app_error::AppError::new("mcp.command_declined").into())
+    }
+}
+
+const ALPHAXIV_LEGACY_CONNECTOR: &str = "alphaxiv";
+const ALPHAXIV_SERVER_NAME: &str = "alphaXiv";
+const ALPHAXIV_MCP_URL: &str = "https://api.alphaxiv.org/mcp/v1";
+
+fn alphaxiv_server(api_key: &str) -> McpServerConfig {
+    McpServerConfig {
+        name: ALPHAXIV_SERVER_NAME.into(),
+        enabled: true,
+        transport: McpServerTransport::Remote {
+            url: ALPHAXIV_MCP_URL.into(),
+            headers: std::collections::BTreeMap::from([(
+                "Authorization".into(),
+                format!("Bearer {api_key}"),
+            )]),
+        },
+    }
+}
+
+/// Moves an alphaXiv key an older version saved as a connector key to an
+/// alphaXiv MCP server, so the key never passes through the webview.
+#[tauri::command]
+pub async fn mcp_adopt_alphaxiv_key<R: tauri::Runtime>(
+    webview: tauri::Webview<R>,
+    state: tauri::State<'_, McpClientState>,
+) -> Result<Option<McpManagedServer>, String> {
+    validate_command_webview(webview.label(), webview.window().label())?;
+    let _guard = state.mutation.lock().await;
+    let Some(api_key) = tauri::async_runtime::spawn_blocking(|| {
+        crate::connectors::take_connector_key(ALPHAXIV_LEGACY_CONNECTOR)
+    })
+    .await
+    .map_err(|error| error.to_string())??
+    else {
+        return Ok(None);
+    };
+    let _permit = acquire_validation_slot(&state)?;
+    add_server_with(
+        &AppConfigRepository,
+        alphaxiv_server(&api_key),
+        connect_server,
+    )
+    .await
+    .map(|server| Some(visible_managed_server(server)))
 }
 
 #[tauri::command]
@@ -3263,6 +3443,12 @@ pub async fn mcp_server_update<R: tauri::Runtime>(
     let original_name = normalize_server_name(&original_name)?;
     let _guard = state.mutation.lock().await;
     crate::cua_driver::commands::confirm_spaces_change(
+        tauri::Manager::app_handle(&webview),
+        Some(&original_name),
+        &server,
+    )
+    .await?;
+    confirm_stdio_launch(
         tauri::Manager::app_handle(&webview),
         Some(&original_name),
         &server,
@@ -3288,6 +3474,12 @@ pub async fn mcp_server_update_validated<R: tauri::Runtime>(
     let original_name = normalize_server_name(&original_name)?;
     let _guard = state.mutation.lock().await;
     crate::cua_driver::commands::confirm_spaces_change(
+        tauri::Manager::app_handle(&webview),
+        Some(&original_name),
+        &server,
+    )
+    .await?;
+    confirm_stdio_launch(
         tauri::Manager::app_handle(&webview),
         Some(&original_name),
         &server,
@@ -3521,6 +3713,125 @@ mod tests {
                 args: vec!["--stdio".into()],
                 env: BTreeMap::new(),
             },
+        }
+    }
+
+    fn with_launch(command: &str, args: &[&str], env: &[(&str, &str)]) -> McpServerConfig {
+        McpServerConfig {
+            name: "local-search".into(),
+            enabled: true,
+            transport: McpServerTransport::Stdio {
+                command: command.into(),
+                args: args.iter().map(|arg| (*arg).to_owned()).collect(),
+                env: env
+                    .iter()
+                    .map(|(key, value)| ((*key).to_owned(), (*value).to_owned()))
+                    .collect(),
+            },
+        }
+    }
+
+    #[test]
+    fn a_new_or_changed_stdio_program_asks_first() {
+        let stored = with_launch("npx", &["-y", "server"], &[("TOKEN", "secret")]);
+        assert!(stdio_launch_changes(None, &stored));
+        assert!(stdio_launch_changes(
+            Some(&remote_server("local-search")),
+            &stored
+        ));
+        assert!(stdio_launch_changes(
+            Some(&stored),
+            &with_launch("/tmp/evil", &["-y", "server"], &[("TOKEN", "secret")])
+        ));
+        assert!(stdio_launch_changes(
+            Some(&stored),
+            &with_launch("npx", &["-e", "evil"], &[("TOKEN", "secret")])
+        ));
+        assert!(stdio_launch_changes(
+            Some(&stored),
+            &with_launch(
+                "npx",
+                &["-y", "server"],
+                &[("TOKEN", "secret"), ("NODE_OPTIONS", "--require /tmp/x.js")]
+            )
+        ));
+        assert!(stdio_launch_changes(
+            Some(&stored),
+            &with_launch("npx", &["-y", "server"], &[])
+        ));
+    }
+
+    #[test]
+    fn the_same_program_or_a_remote_server_saves_without_asking() {
+        let stored = with_launch("npx", &["-y", "server"], &[("TOKEN", "secret")]);
+        assert!(!stdio_launch_changes(Some(&stored), &stored.clone()));
+        let kept_secret = with_launch(
+            "npx",
+            &["-y", "server"],
+            &[("TOKEN", crate::config::REDACTED)],
+        );
+        assert!(!stdio_launch_changes(Some(&stored), &kept_secret));
+        assert!(!stdio_launch_changes(None, &remote_server("remote")));
+        assert!(!stdio_launch_changes(
+            Some(&stored),
+            &remote_server("local-search")
+        ));
+    }
+
+    #[test]
+    fn cua_spaces_settings_ask_only_for_a_new_program() {
+        let read_only = with_launch(
+            "/opt/homebrew/bin/cua",
+            &["daemon", "mcp", "--permissions", "spaces:readonly"],
+            &[("CUA_SPACES_AGENT_CREDENTIALS_HOME", "none")],
+        );
+        let full_access = with_launch("/opt/homebrew/bin/cua", &["daemon", "mcp"], &[]);
+        assert!(!stdio_launch_changes(Some(&read_only), &full_access));
+        assert!(stdio_launch_changes(None, &full_access));
+        let elsewhere = with_launch("/tmp/cua", &["daemon", "mcp"], &[]);
+        assert!(stdio_launch_changes(Some(&read_only), &elsewhere));
+    }
+
+    #[test]
+    fn the_confirmation_names_the_command_and_only_the_variable_names() {
+        let server = with_launch(
+            "/usr/local/bin/my server",
+            &["--root", "a \"b\""],
+            &[("API_TOKEN", "do-not-show")],
+        );
+        let message = stdio_confirmation_message(&server).unwrap();
+        assert!(
+            message.contains(r#""/usr/local/bin/my server" --root "a \"b\"""#),
+            "{message}"
+        );
+        assert!(message.contains("API_TOKEN"), "{message}");
+        assert!(!message.contains("do-not-show"), "{message}");
+        let long = with_launch("node", &[&"x".repeat(5000)], &[]);
+        let line = stdio_command_line(
+            "node",
+            match &long.transport {
+                McpServerTransport::Stdio { args, .. } => args,
+                McpServerTransport::Remote { .. } => unreachable!(),
+            },
+        );
+        assert_eq!(line.chars().count(), MAX_CONFIRMED_COMMAND_CHARS + 1);
+        assert!(stdio_confirmation_message(&remote_server("remote")).is_none());
+    }
+
+    #[test]
+    fn a_legacy_alphaxiv_key_becomes_the_bearer_header() {
+        let server = alphaxiv_server("legacy-key");
+        assert_eq!(server.name, "alphaXiv");
+        assert!(server.enabled);
+        match server.transport {
+            McpServerTransport::Remote { url, headers } => {
+                assert_eq!(url, "https://api.alphaxiv.org/mcp/v1");
+                assert_eq!(
+                    headers.get("Authorization").map(String::as_str),
+                    Some("Bearer legacy-key")
+                );
+            }
+            McpServerTransport::Stdio { .. } => panic!("alphaXiv is a remote server"),
         }
     }
 

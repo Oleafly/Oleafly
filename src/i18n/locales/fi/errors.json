@@ -300,6 +300,9 @@
     "wrong_window": "Mathpix-palvelua voi käyttää vain Oleaflyn pääikkunasta.",
     "pdf_too_large_ipc": "Tämä tietokone voi lähettää Mathpixille PDF-tiedostoja enintään 16 MB. Jaa PDF ja yritä uudelleen."
   },
+  "mcp": {
+    "command_declined": "MCP-palvelinta ei tallennettu."
+  },
   "desktop_apps": {
     "not_installed": "Cua Driver -ohjelmaa ei ole asennettu. Asenna se kohdassa Asetukset → Integraatiot → Työpöytäsovellukset.",
     "too_old": "Cua Driver {{version}} on liian vanha. Päivitä versioon {{minimum}} tai uudempaan.",

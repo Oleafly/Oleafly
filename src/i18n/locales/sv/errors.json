@@ -300,6 +300,9 @@
     "wrong_window": "Mathpix kan bara användas från Oleaflys huvudfönster.",
     "pdf_too_large_ipc": "Den här datorn kan skicka PDF-filer till Mathpix på upp till 16 MB. Dela PDF:en och försök igen."
   },
+  "mcp": {
+    "command_declined": "MCP-servern sparades inte."
+  },
   "desktop_apps": {
     "not_installed": "Cua Driver är inte installerat. Installera det under Inställningar, Integrationer, Skrivbordsappar.",
     "too_old": "Cua Driver {{version}} är för gammalt. Uppdatera till {{minimum}} eller senare.",

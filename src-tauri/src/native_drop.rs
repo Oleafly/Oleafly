@@ -80,6 +80,12 @@ impl NativeDropState {
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         f(&mut drop)
     }
+
+    /// Whether `path` came from the drop the webview just took, so a command
+    /// may read it as if it had been picked in a dialog.
+    pub(crate) fn released(&self, path: &str) -> bool {
+        self.with(|drop| drop.readable(path, Instant::now()))
+    }
 }
 
 #[tauri::command]

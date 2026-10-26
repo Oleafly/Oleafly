@@ -1,12 +1,17 @@
 
 import { E2E_HOOKS } from "@/lib/e2e-flags";
-import { pickTableImportFile, registerPickedFileForE2E } from "@/lib/tauri";
 import {
-  open as openNativeDialog,
-  save as saveNativeDialog,
-  type OpenDialogOptions,
-  type OpenDialogReturn,
-  type SaveDialogOptions,
+  grantTestOpenPaths,
+  grantTestSavePath,
+  pickOpenPaths,
+  pickSaveDestination,
+  pickTableImportFile,
+  registerPickedFileForE2E,
+} from "@/lib/tauri";
+import type {
+  OpenDialogOptions,
+  OpenDialogReturn,
+  SaveDialogOptions,
 } from "@tauri-apps/plugin-dialog";
 
 interface E2eFileDialogState {
@@ -47,8 +52,11 @@ if (typeof window !== "undefined" && E2E_HOOKS) {
 /**
  * The single application boundary for native open dialogs.
  *
- * E2E replaces only the operating-system picker result. The production click,
- * import action, backend command, refresh, and conflict handling still run.
+ * The dialog runs in Rust, which records the picked paths: the commands that
+ * read outside a project accept only those. E2E replaces only the
+ * operating-system picker result and records it the same way. The production
+ * click, import action, backend command, refresh, and conflict handling still
+ * run.
  */
 export async function pickOpenPath<T extends OpenDialogOptions>(
   options?: T,
@@ -65,10 +73,13 @@ export async function pickOpenPath<T extends OpenDialogOptions>(
         else if (options?.multiple) result = paths;
         else result = paths[0] ?? null;
       }
+      if (result !== null) await grantTestOpenPaths(typeof result === "string" ? [result] : result);
       return result as OpenDialogReturn<T>;
     }
   }
-  return openNativeDialog(options);
+  const paths = await pickOpenPaths(options);
+  if (paths === null) return null as OpenDialogReturn<T>;
+  return (options?.multiple ? paths : (paths[0] ?? null)) as OpenDialogReturn<T>;
 }
 
 export async function pickTableImportPath(): Promise<string | null> {
@@ -88,18 +99,20 @@ export async function pickTableImportPath(): Promise<string | null> {
 /**
  * The single application boundary for native save dialogs.
  *
- * A DEV-only one-shot path lets native E2E inspect the artifact written by the
- * real export/download handler without attempting to automate an OS dialog.
+ * The dialog runs in Rust, which records the chosen path: the commands that
+ * write outside a project accept only that. A DEV-only one-shot path lets
+ * native E2E inspect the artifact written by the real export/download handler
+ * without attempting to automate an OS dialog; it is recorded the same way.
  */
 export async function pickSavePath(options?: SaveDialogOptions): Promise<string | null> {
   const state = e2eState();
   if (state) {
     state.saveRequests += 1;
     if (Object.hasOwn(state, "nextSavePath")) {
-      const path = state.nextSavePath;
+      const path = state.nextSavePath ?? null;
       delete state.nextSavePath;
-      return path ?? null;
+      return path === null ? null : grantTestSavePath(path);
     }
   }
-  return saveNativeDialog(options);
+  return pickSaveDestination(options);
 }

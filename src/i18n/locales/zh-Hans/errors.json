@@ -300,6 +300,9 @@
     "wrong_window": "只能在 Oleafly 主窗口中使用 Mathpix。",
     "pdf_too_large_ipc": "这台电脑最多能向 Mathpix 发送 16 MB 的 PDF。请拆分 PDF 后重试。"
   },
+  "mcp": {
+    "command_declined": "MCP 服务器未保存。"
+  },
   "desktop_apps": {
     "not_installed": "尚未安装 Cua Driver。请在“设置 → 集成 → 桌面应用”中安装。",
     "too_old": "Cua Driver {{version}} 版本过旧。请更新到 {{minimum}} 或更高版本。",

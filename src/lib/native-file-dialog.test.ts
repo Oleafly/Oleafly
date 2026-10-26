@@ -4,13 +4,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   open: vi.fn(),
   save: vi.fn(),
+  grantOpen: vi.fn(),
+  grantSave: vi.fn(),
   pickTableImportFile: vi.fn(),
   registerPickedFileForE2E: vi.fn(),
   e2eHooks: true,
 }));
 
-vi.mock("@tauri-apps/plugin-dialog", () => ({ open: mocks.open, save: mocks.save }));
+vi.mock("@tauri-apps/plugin-dialog", () => {
+  throw new Error("the dialog plugin must not be called from the webview");
+});
 vi.mock("@/lib/tauri", () => ({
+  pickOpenPaths: mocks.open,
+  pickSaveDestination: mocks.save,
+  grantTestOpenPaths: mocks.grantOpen,
+  grantTestSavePath: mocks.grantSave,
   pickTableImportFile: mocks.pickTableImportFile,
   registerPickedFileForE2E: mocks.registerPickedFileForE2E,
 }));
@@ -30,8 +38,10 @@ beforeEach(() => {
   delete window.__e2eFileDialogState;
   delete window.__e2eSetNextImportPaths;
   delete window.__e2eSetNextSavePath;
-  mocks.open.mockReset().mockResolvedValue("/native/open.tex");
+  mocks.open.mockReset().mockResolvedValue(["/native/open.tex"]);
   mocks.save.mockReset().mockResolvedValue("/native/save.pdf");
+  mocks.grantOpen.mockReset().mockImplementation(async (paths: string[]) => paths);
+  mocks.grantSave.mockReset().mockImplementation(async (path: string) => path);
   mocks.pickTableImportFile.mockReset().mockResolvedValue("/native/table.csv");
   mocks.registerPickedFileForE2E.mockReset().mockImplementation(async (path: string) => `registered:${path}`);
 });
@@ -62,6 +72,20 @@ describe("pickOpenPath", () => {
     await expect(pickOpenPath()).resolves.toBe("/native/open.tex");
     expect(mocks.open).toHaveBeenCalledTimes(1);
     expect(window.__e2eFileDialogState?.openRequests).toBe(4);
+    expect(mocks.grantOpen.mock.calls).toEqual([[["/a.tex", "/b.tex"]], [["/dir"]], [["/single.tex"]]]);
+  });
+
+  it("shapes the Rust picker's list the way the dialog plugin did", async () => {
+    mocks.e2eHooks = false;
+    const { pickOpenPath } = await load();
+    mocks.open.mockResolvedValue(["/x.tex", "/y.tex"]);
+    await expect(pickOpenPath({ multiple: true })).resolves.toEqual(["/x.tex", "/y.tex"]);
+    await expect(pickOpenPath({ directory: true, multiple: true })).resolves.toEqual(["/x.tex", "/y.tex"]);
+    await expect(pickOpenPath({ directory: true })).resolves.toBe("/x.tex");
+    mocks.open.mockResolvedValue(null);
+    await expect(pickOpenPath({ multiple: true })).resolves.toBeNull();
+    await expect(pickOpenPath()).resolves.toBeNull();
+    expect(mocks.grantOpen).not.toHaveBeenCalled();
   });
 
   it("returns null for a queued cancellation or an empty queued list", async () => {
@@ -75,6 +99,7 @@ describe("pickOpenPath", () => {
     window.__e2eSetNextImportPaths?.([]);
     await expect(pickOpenPath()).resolves.toBeNull();
     expect(mocks.open).not.toHaveBeenCalled();
+    expect(mocks.grantOpen).not.toHaveBeenCalled();
   });
 
   it("copies the queued list so later caller mutations do not leak in", async () => {
@@ -137,5 +162,6 @@ describe("pickSavePath", () => {
     await expect(pickSavePath()).resolves.toBeNull();
     await expect(pickSavePath()).resolves.toBe("/native/save.pdf");
     expect(window.__e2eFileDialogState?.saveRequests).toBe(3);
+    expect(mocks.grantSave.mock.calls).toEqual([["/tmp/export.pdf"]]);
   });
 });

@@ -1,6 +1,6 @@
 import { i18n } from "@/i18n";
 import { escapeRegExp } from "@/lib/regexp";
-import { getConnectorKey, literatureSearch as invokeLiteratureSearch } from "@/lib/tauri";
+import { connectorKeySaved, literatureSearch as invokeLiteratureSearch } from "@/lib/tauri";
 import {
   cleanField,
   decodeXmlEntities,
@@ -790,7 +790,7 @@ const SOURCE_CONNECTOR_KEYS: Partial<Record<LiteratureSource, string>> = {
 
 async function savedConnectorKey(connectorId: string): Promise<boolean> {
   try {
-    return Boolean((await getConnectorKey(connectorId))?.trim());
+    return await connectorKeySaved(connectorId);
   } catch {
     return true;
   }
