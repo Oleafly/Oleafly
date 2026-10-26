@@ -1,6 +1,6 @@
 use super::super::hermes::{project_profile_name, HermesMode, HermesSettings};
 use super::super::types::*;
-use super::{fixture_definition, fixture_temp, pending_runtime, runtime};
+use super::{fixture_definition, pending_runtime, runtime};
 use crate::acp::AcpRuntime;
 use crate::test_wait::{self, CHILD_PATIENCE};
 use oleafly_acp::controls::{ConfigKind, ConfigValue};
@@ -320,7 +320,7 @@ async fn a_resumed_conversation_never_goes_back_into_a_blocked_mode() {
 #[tokio::test]
 async fn hermes_gets_the_project_tools_back_after_a_model_change() {
     use std::os::unix::fs::PermissionsExt;
-    let temp = fixture_temp();
+    let temp = super::fixture_temp();
     let project = temp.path().join("project");
     std::fs::create_dir(&project).unwrap();
     let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();

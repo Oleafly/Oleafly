@@ -399,10 +399,13 @@ mod tests {
 
     #[test]
     fn a_diff_cut_on_the_way_in_shows_as_too_large() {
+        let root = tempfile::tempdir().unwrap();
+        let root = root.path().canonicalize().unwrap();
+        let file = root.join("refs.bib");
         let (_, locations, diffs) = permission_view(
-            Path::new("/project"),
+            &root,
             None,
-            &json!({"toolCallId": "w", "kind": "edit", "locations": [{"path": "/project/refs.bib"}], "content": [{"type": "diff", "path": "/project/refs.bib", "oldText": null, "newText": null}]}),
+            &json!({"toolCallId": "w", "kind": "edit", "locations": [{"path": file}], "content": [{"type": "diff", "path": file, "oldText": null, "newText": null}]}),
             &Redactor::new(&[]),
         );
         assert_eq!(locations, vec!["refs.bib".to_owned()]);
