@@ -737,6 +737,21 @@ jobs:
           gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false
           echo "published $TAG with all platform artifacts"
 
+  # Lists the new version in the MCP Registry and attaches oleafly.mcpb. The
+  # release is live by now, so a failure here leaves it as it is; run
+  # mcp-registry.yml by hand for the same tag to retry.
+  mcp-registry:
+    name: MCP registry
+    needs: publish
+    if: ${{ inputs.publish == true }}
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/mcp-registry.yml
+    with:
+      tag: ${{ github.event.inputs.tag || github.ref_name }}
+
   # A draft handed over for review still has to be complete, so it gets the same
   # artifact and updater-feed checks as a publish - it just never flips live.
   draft-ready:

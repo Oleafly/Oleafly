@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the menu is much shorter. In Markdown files, type `/table` or `/equation`
   to insert one, as LaTeX and Typst files already allowed. The Ask AI popup
   also takes your own request next to the preset actions.
+- Oleafly's MCP server is in the MCP Registry as `io.github.Oleafly/oleafly`.
+  Each release carries `oleafly.mcpb`, which installs it in Claude Desktop
+  when you open it. It runs the `oleafly` command the app installs, so you
+  need the app with Settings > Integrations > Oleafly MCP turned on.
 
 ### Changed
 
