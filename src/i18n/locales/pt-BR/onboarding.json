@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "Dois tipos de agente",
-      "content": "O agente do Oleafly roda no provedor de modelos que você configurar. O agente de linha de comando, em beta, conduz um agente de programação já instalado neste computador."
+      "content": "O agente do Oleafly roda no provedor de modelos que você configurar. O agente de linha de comando conduz um agente de programação já instalado neste computador."
     },
     "connectProvider": {
       "title": "Conecte um provedor",

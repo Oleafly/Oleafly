@@ -201,11 +201,15 @@
     "steered": "Skierowane",
     "toolOutputError": "Błąd: {{message}}",
     "errorHints": {
+      "emptyReply": "Model zwrócił pustą odpowiedź. Spróbuj jeszcze raz albo zmień model {{where}}.",
       "invalidKey": "Klucz API wygląda na nieprawidłowy lub wygasły. Zaktualizuj go w Ustawieniach → Asystent AI albo zmień dostawcę {{where}}.",
+      "invalidRequest": "Dostawca odrzucił parametry żądania. Spróbuj innego modelu {{where}}.",
       "outOfCredits": "Dostawca AI nie ma już środków ani limitu. Doładuj konto albo przełącz się na innego dostawcę (lub lokalnego Ollama) {{where}}.",
       "overloaded": "Serwery dostawcy są teraz przeciążone (próba została już ponowiona). Odczekaj minutę i spróbuj jeszcze raz albo przełącz się na pokrewny model {{where}}.",
       "rateLimited": "Dostawca ogranicza tempo żądań. Odczekaj chwilę i ponów albo zmień dostawcę {{where}}.",
       "retiredModel": "Dostawca wycofał lub ograniczył ten model. Wybierz nowszy model {{where}} (Ustawienia → Asystent AI pokazują, z czego może korzystać Twój klucz).",
+      "serverError": "U dostawcy wystąpił błąd serwera. Odczekaj minutę i spróbuj jeszcze raz albo zmień model {{where}}.",
+      "timedOut": "Dostawca zbyt długo nie odpowiadał. Spróbuj jeszcze raz albo zmień model {{where}}.",
       "unreachable": "Nie udało się połączyć z dostawcą AI. Sprawdź połączenie, a jeśli używasz Ollama, upewnij się, że działa (Ustawienia → Asystent AI → Sprawdź Ollama).",
       "where": {
         "inSettings": "w Ustawieniach, w sekcji Asystent AI",

@@ -185,11 +185,15 @@
     "steered": "Styrt",
     "toolOutputError": "Feil: {{message}}",
     "errorHints": {
+      "emptyReply": "Modellen sendte et tomt svar. Prøv igjen, eller bytt modell {{where}}.",
       "invalidKey": "API-nøkkelen din ser ut til å være ugyldig eller utløpt. Oppdater den under Innstillinger → AI-assistent, eller bytt leverandør {{where}}.",
+      "invalidRequest": "Leverandøren avviste parameterne i forespørselen. Prøv en annen modell {{where}}.",
       "outOfCredits": "AI-leverandøren din er tom for kreditt eller kvote. Fyll på kontoen, eller bytt til en annen leverandør (eller lokal Ollama) {{where}}.",
       "overloaded": "Serverne til leverandøren er overbelastet akkurat nå (dette er allerede forsøkt på nytt). Vent et minutt og prøv igjen, eller bytt til en beslektet modell {{where}}.",
       "rateLimited": "Leverandøren begrenser forespørslene. Vent litt og prøv igjen, eller bytt leverandør {{where}}.",
       "retiredModel": "Leverandøren har pensjonert eller begrenset denne modellen. Velg en nyere modell {{where}} (Innstillinger → AI-assistent viser hva nøkkelen din kan bruke).",
+      "serverError": "Leverandøren fikk en serverfeil. Vent et minutt og prøv igjen, eller bytt modell {{where}}.",
+      "timedOut": "Leverandøren brukte for lang tid på å svare. Prøv igjen, eller bytt modell {{where}}.",
       "unreachable": "Nådde ikke AI-leverandøren. Sjekk nettforbindelsen, og bruker du Ollama, må du sjekke at den kjører (Innstillinger → AI-assistent → Se etter Ollama).",
       "where": {
         "inSettings": "under Innstillinger, AI-assistent",

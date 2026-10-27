@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AcpSession } from "@/lib/acp";
-import { booleanOption, choice, claudeOptions, codexOptions, geminiControls, selectOption } from "./tests/ui-fixtures";
+import { booleanOption, choice, claudeOptions, codexOptions, geminiControls, piControls, selectOption } from "./tests/ui-fixtures";
 import {
   currentModeId,
   currentModelId,
@@ -49,6 +49,32 @@ describe("agent controls", () => {
     expect(groups.mode).toMatchObject({ kind: "legacy", current: "default" });
     expect(groups.mode?.kind === "legacy" && groups.mode.modes.map((mode) => mode.id)).toEqual(["default", "plan", "yolo"]);
     expect(groups.effort).toBeNull();
+  });
+
+  it("shows Pi's thinking levels once, as effort, when its modes only repeat them", () => {
+    const groups = groupControls(piControls());
+    expect(groups.effort?.id).toBe("thought_level");
+    expect(groups.mode).toBeNull();
+    expect(groups.model).toMatchObject({ kind: "config", option: { id: "model" } });
+    expect(groups.more).toEqual([]);
+  });
+
+  it("keeps modes that are not just the effort levels", () => {
+    const pi = piControls();
+    const withPlan = groupControls({
+      ...pi,
+      modes: [...(pi.modes ?? []), { id: "plan", name: "Plan", description: null, blocked: false }],
+    });
+    expect(withPlan.mode).toMatchObject({ kind: "legacy" });
+    const byName = groupControls({
+      ...pi,
+      modes: (pi.modes ?? []).map((mode) => ({ ...mode, id: `mode-${mode.id}` })),
+    });
+    expect(byName.mode).toBeNull();
+    const noEffort = groupControls({ ...pi, options: pi.options?.filter((option) => option.category !== "thought_level") });
+    expect(noEffort.mode).toMatchObject({ kind: "legacy", current: "medium" });
+    const claude = groupControls(controls(claudeOptions()));
+    expect(claude.mode).toMatchObject({ kind: "config", option: { id: "mode" } });
   });
 
   it("reports no model or mode when the agent has none", () => {

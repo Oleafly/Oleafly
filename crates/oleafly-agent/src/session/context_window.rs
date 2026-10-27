@@ -249,6 +249,7 @@ fn part_context_chars(part: &ContentPart) -> Result<usize> {
             id, name, output, ..
         } => checked_context_fields([id.as_str(), name.as_str(), output.as_str()]),
         ContentPart::Thinking { thinking, .. } => checked_chars(thinking),
+        ContentPart::Reasoning { text } => checked_chars(text),
         ContentPart::RedactedThinking { .. }
         | ContentPart::Document { .. }
         | ContentPart::Attachment { .. } => Ok(0),
@@ -498,6 +499,18 @@ mod tests {
         }]))
         .unwrap_err();
         assert!(!is_history_limit(&error));
+    }
+
+    #[test]
+    fn chat_reasoning_counts_its_text() {
+        let budget = HistoryBudget::new(&user_req(vec![ContentPart::Reasoning {
+            text: "abcdef".into(),
+        }]))
+        .unwrap();
+        let empty = HistoryBudget::new(&user_req(Vec::new()))
+            .unwrap()
+            .context_chars;
+        assert_eq!(budget.context_chars, empty + 6);
     }
 
     #[test]

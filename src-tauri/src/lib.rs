@@ -580,6 +580,7 @@ pub fn run() {
             acp::commands::acp_remove_agent,
             acp::commands::acp_install,
             acp::commands::acp_start,
+            acp::commands::acp_cancel_start,
             acp::commands::acp_reconnect,
             acp::commands::acp_prompt,
             acp::commands::acp_cancel,

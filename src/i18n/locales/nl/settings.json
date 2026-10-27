@@ -164,7 +164,8 @@
           "ready": "Gateway draait",
           "starting": "Gateway start",
           "stopped": "Gateway gestopt",
-          "unknown": "Status van de gateway onbekend"
+          "unknown": "Status van de gateway onbekend",
+          "outdated": "Werk Hermes bij om de gateway te controleren"
         },
         "refresh": "Opnieuw controleren",
         "keepsRunning": "Oleafly loskoppelen stopt de gateway nooit.",

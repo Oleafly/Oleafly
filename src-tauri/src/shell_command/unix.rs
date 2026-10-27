@@ -21,6 +21,7 @@ const SYSTEM_BIN: &str = "/usr/local/bin";
 const SHELL_PATH_TIMEOUT: Duration = Duration::from_secs(3);
 const LOGIN_PROBE_TIMEOUT: Duration = Duration::from_secs(10);
 const PATH_MARKER: &str = "__OLEAFLY_PATH__";
+const ENV_MARKER: &str = "__OLEAFLY_ENV__";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Platform {
@@ -38,6 +39,12 @@ pub(crate) struct Environment {
     pub(crate) system_directory: PathBuf,
     pub(crate) search_path: Vec<PathBuf>,
     pub(crate) shell: Option<PathBuf>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct LoginShell {
+    pub(crate) path: Vec<PathBuf>,
+    pub(crate) env: Vec<(String, std::ffi::OsString)>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -460,22 +467,51 @@ pub(crate) fn shell_path(shell: Option<&Path>, start: ShellStart) -> Vec<PathBuf
     shell_path_within(shell, start, SHELL_PATH_TIMEOUT)
 }
 
-/// The login shell's `PATH`, for the program locator's background probe.
-/// Nothing waits for it, so slow startup files (nvm, conda) get more time.
-pub(crate) fn login_shell_path(shell: Option<&Path>) -> Vec<PathBuf> {
-    shell_path_within(shell, ShellStart::Login, LOGIN_PROBE_TIMEOUT)
+/// The login shell's `PATH` and the variables `keep` accepts, for the
+/// program locator's background probe. Agent launches wait for it only
+/// briefly, so slow startup files (nvm, conda) get more time.
+pub(crate) fn login_shell_environment(
+    shell: Option<&Path>,
+    keep: &dyn Fn(&str) -> bool,
+) -> LoginShell {
+    login_environment_within(shell, LOGIN_PROBE_TIMEOUT, keep)
+}
+
+fn login_environment_within(
+    shell: Option<&Path>,
+    timeout: Duration,
+    keep: &dyn Fn(&str) -> bool,
+) -> LoginShell {
+    let script = format!("echo {PATH_MARKER}; printenv PATH; echo {ENV_MARKER}; env -0");
+    let Some(output) = run_shell(shell, ShellStart::Login, timeout, &script) else {
+        return LoginShell::default();
+    };
+    LoginShell {
+        path: printed_path(&String::from_utf8_lossy(&output)),
+        env: printed_env(&output, keep),
+    }
 }
 
 fn shell_path_within(shell: Option<&Path>, start: ShellStart, timeout: Duration) -> Vec<PathBuf> {
-    let Some(shell) = shell.filter(|shell| shell.is_absolute()) else {
-        return Vec::new();
-    };
-    let Ok(mut output) = tempfile::tempfile() else {
-        return Vec::new();
-    };
-    let Ok(stdout) = output.try_clone() else {
-        return Vec::new();
-    };
+    run_shell(
+        shell,
+        start,
+        timeout,
+        &format!("echo {PATH_MARKER}; printenv PATH"),
+    )
+    .map(|output| printed_path(&String::from_utf8_lossy(&output)))
+    .unwrap_or_default()
+}
+
+fn run_shell(
+    shell: Option<&Path>,
+    start: ShellStart,
+    timeout: Duration,
+    script: &str,
+) -> Option<Vec<u8>> {
+    let shell = shell.filter(|shell| shell.is_absolute())?;
+    let mut output = tempfile::tempfile().ok()?;
+    let stdout = output.try_clone().ok()?;
     let flags: &[&str] = match start {
         ShellStart::Interactive => &["-i"],
         ShellStart::Login => &["-i", "-l"],
@@ -483,7 +519,7 @@ fn shell_path_within(shell: Option<&Path>, start: ShellStart, timeout: Duration)
     let mut command = std::process::Command::new(shell);
     command
         .args(flags)
-        .args(["-c", &format!("echo {PATH_MARKER}; printenv PATH")])
+        .args(["-c", script])
         // An AppImage's own library folder must not leak into the user's shell.
         .env_remove("APPDIR")
         .env_remove("APPIMAGE")
@@ -501,9 +537,7 @@ fn shell_path_within(shell: Option<&Path>, start: ShellStart, timeout: Duration)
             }
         });
     }
-    let Ok(mut child) = command.spawn() else {
-        return Vec::new();
-    };
+    let mut child = command.spawn().ok()?;
     let deadline = Instant::now() + timeout;
     loop {
         match child.try_wait() {
@@ -519,15 +553,14 @@ fn shell_path_within(shell: Option<&Path>, start: ShellStart, timeout: Duration)
                 }
                 let _ = child.kill();
                 let _ = child.wait();
-                return Vec::new();
+                return None;
             }
         }
     }
-    let mut text = String::new();
-    if output.rewind().is_err() || output.read_to_string(&mut text).is_err() {
-        return Vec::new();
-    }
-    printed_path(&text)
+    let mut bytes = Vec::new();
+    output.rewind().ok()?;
+    output.read_to_end(&mut bytes).ok()?;
+    Some(bytes)
 }
 
 fn printed_path(text: &str) -> Vec<PathBuf> {
@@ -538,6 +571,50 @@ fn printed_path(text: &str) -> Vec<PathBuf> {
     };
     line.map(|line| std::env::split_paths(line).collect())
         .unwrap_or_default()
+}
+
+fn printed_env(output: &[u8], keep: &dyn Fn(&str) -> bool) -> Vec<(String, std::ffi::OsString)> {
+    use std::os::unix::ffi::OsStringExt;
+    let marker = format!("{ENV_MARKER}\n");
+    let Some(start) = line_end(output, marker.as_bytes()) else {
+        return Vec::new();
+    };
+    let mut records: Vec<&[u8]> = output[start..].split(|byte| *byte == 0).collect();
+    records.pop();
+    let mut env: Vec<(String, std::ffi::OsString)> = Vec::new();
+    for record in records {
+        let Some(equals) = record.iter().position(|byte| *byte == b'=') else {
+            continue;
+        };
+        let Ok(name) = std::str::from_utf8(&record[..equals]) else {
+            continue;
+        };
+        if name.is_empty() || !keep(name) {
+            continue;
+        }
+        env.retain(|(known, _)| known != name);
+        env.push((
+            name.to_string(),
+            std::ffi::OsString::from_vec(record[equals + 1..].to_vec()),
+        ));
+    }
+    env
+}
+
+fn line_end(output: &[u8], line: &[u8]) -> Option<usize> {
+    let mut from = 0;
+    while let Some(offset) = output
+        .get(from..)?
+        .windows(line.len())
+        .position(|window| window == line)
+    {
+        let at = from + offset;
+        if at == 0 || output[at - 1] == b'\n' {
+            return Some(at + line.len());
+        }
+        from = at + 1;
+    }
+    None
 }
 
 fn locate(environment: &Environment, record: Option<&Record>) -> (PathBuf, Existing) {

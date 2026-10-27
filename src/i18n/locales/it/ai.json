@@ -193,11 +193,15 @@
     "steered": "Indirizzato",
     "toolOutputError": "Errore: {{message}}",
     "errorHints": {
+      "emptyReply": "Il modello ha restituito una risposta vuota. Riprova oppure cambia modello {{where}}.",
       "invalidKey": "La tua chiave API sembra non valida o scaduta. Aggiornala in Impostazioni → Assistente AI, oppure cambia provider {{where}}.",
+      "invalidRequest": "Il provider ha rifiutato i parametri della richiesta. Prova un altro modello {{where}}.",
       "outOfCredits": "Il tuo provider AI ha esaurito crediti o quota. Ricarica l'account oppure passa a un altro provider (o a Ollama in locale) {{where}}.",
       "overloaded": "I server del provider sono sovraccarichi in questo momento (il tentativo è già stato ripetuto). Aspetta un minuto e riprova, oppure passa a un modello equivalente {{where}}.",
       "rateLimited": "Il provider sta limitando la frequenza delle richieste. Aspetta un momento e riprova, oppure cambia provider {{where}}.",
       "retiredModel": "Il provider ha ritirato o limitato questo modello. Scegline uno più recente {{where}} (in Impostazioni → Assistente AI trovi l'elenco di quelli utilizzabili con la tua chiave).",
+      "serverError": "Il provider ha avuto un errore del server. Aspetta un minuto e riprova, oppure cambia modello {{where}}.",
+      "timedOut": "Il provider ha impiegato troppo tempo a rispondere. Riprova oppure cambia modello {{where}}.",
       "unreachable": "Non è stato possibile raggiungere il provider AI. Controlla la connessione oppure, se usi Ollama, assicurati che sia in esecuzione (Impostazioni → Assistente AI → Cerca Ollama).",
       "where": {
         "inSettings": "nelle impostazioni, in Assistente AI",

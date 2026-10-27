@@ -58,6 +58,7 @@ pub struct Price {
     pub output_per_mtok: f64,
     pub cache_read_per_mtok: Option<f64>,
     pub cache_write_per_mtok: Option<f64>,
+    pub peak_hours: bool,
 }
 
 impl Price {
@@ -75,12 +76,24 @@ impl Price {
             output_per_mtok: rate("output")?,
             cache_read_per_mtok: rate("cacheRead"),
             cache_write_per_mtok: rate("cacheWrite"),
+            peak_hours: false,
         })
     }
 
-    /// What `usage` costs at this price. Cached tokens count at their own
-    /// rate (the input rate when the model has none).
+    pub fn for_provider(self, provider_id: &str) -> Price {
+        Price {
+            peak_hours: oleafly_agent::pricing::has_peak_hours(provider_id),
+            ..self
+        }
+    }
+
+    /// What `usage` costs at this price now. Cached tokens count at their
+    /// own rate (the input rate when the model has none).
     pub fn cost(&self, usage: &Usage) -> f64 {
+        self.cost_at(usage, oleafly_agent::pricing::now_unix_ms())
+    }
+
+    pub fn cost_at(&self, usage: &Usage, unix_ms: i64) -> f64 {
         let input = f64::from(usage.input);
         let output = f64::from(usage.output);
         let cache_read = f64::from(usage.cache_read.unwrap_or(0));
@@ -93,7 +106,12 @@ impl Price {
             + output * self.output_per_mtok
             + cache_read * self.cache_read_per_mtok.unwrap_or(self.input_per_mtok)
             + cache_write * self.cache_write_per_mtok.unwrap_or(self.input_per_mtok);
-        total / 1_000_000.0
+        let multiplier = if self.peak_hours {
+            oleafly_agent::pricing::peak_hours_multiplier(unix_ms)
+        } else {
+            1.0
+        };
+        total / 1_000_000.0 * multiplier
     }
 }
 
@@ -308,7 +326,10 @@ pub fn resolve(
     };
     let mut resolved = resolution.map_err(|error| ResolveError::Unknown(error.to_string()))?;
     let entry = model_entry(root, config, &resolved.provider_id, &resolved.model_id);
-    let price = entry.as_ref().and_then(Price::from_entry);
+    let price = entry
+        .as_ref()
+        .and_then(Price::from_entry)
+        .map(|price| price.for_provider(&resolved.provider_id));
     if let Some(entry) = &entry {
         resolved.caps = ModelCaps::from_metadata_json(entry);
     }
@@ -553,6 +574,65 @@ mod tests {
             ..Usage::default()
         };
         assert!((price.cost(&usage) - 60.0).abs() < 1e-9);
+    }
+
+    fn deepseek_flash(root: &Path) -> ResolvedProvider {
+        std::fs::create_dir_all(root.join("catalogs")).unwrap();
+        std::fs::write(
+            root.join("catalogs/model-metadata.json"),
+            r#"{"schemaVersion":1,"providers":{"deepseek":{"deepseek-flash":{
+                "outputLimit":393216,"reasoning":true,
+                "reasoningOptions":[{"type":"toggle"},{"type":"effort","values":["low","high","max"]}],
+                "cost":{"input":0.15,"output":0.6,"cacheRead":0.003}}}}}"#,
+        )
+        .unwrap();
+        let key_env = |name: &str| (name == "DEEPSEEK_API_KEY").then(|| "sk-ds".to_string());
+        resolve(
+            root,
+            &DesktopConfig::empty(),
+            &choice(Some("deepseek"), Some("deepseek-flash")),
+            &key_env,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn deepseek_runs_cost_double_in_its_peak_hours() {
+        let root = tempfile::tempdir().unwrap();
+        let price = deepseek_flash(root.path()).price.unwrap();
+        let usage = Usage {
+            input: 1_000_000,
+            output: 1_000_000,
+            cache_read: Some(0),
+            cache_write: Some(0),
+            input_semantics: InputTokenSemantics::Inclusive,
+            ..Usage::default()
+        };
+        let monday_peak = 1_792_981_800_000;
+        let saturday = 1_793_412_000_000;
+        assert!((price.cost_at(&usage, monday_peak) - 1.5).abs() < 1e-9);
+        assert!((price.cost_at(&usage, saturday) - 0.75).abs() < 1e-9);
+        let flat =
+            Price::from_entry(&serde_json::json!({"cost":{"input":0.15,"output":0.6}})).unwrap();
+        assert!((flat.cost_at(&usage, monday_peak) - 0.75).abs() < 1e-9);
+    }
+
+    #[test]
+    fn effort_none_turns_deepseek_thinking_off() {
+        let root = tempfile::tempdir().unwrap();
+        let resolved = deepseek_flash(root.path()).resolved;
+        let request = oleafly_agent::CompletionRequest {
+            effort: effort_from_arg(EffortArg::None),
+            ..oleafly_agent::CompletionRequest::prompt("s", "u")
+        };
+        let body = oleafly_agent::complete::wire_body(&resolved, &request).unwrap();
+        assert_eq!(body["thinking"], serde_json::json!({"type": "disabled"}));
+        let request = oleafly_agent::CompletionRequest {
+            effort: effort_from_arg(EffortArg::Low),
+            ..request
+        };
+        let body = oleafly_agent::complete::wire_body(&resolved, &request).unwrap();
+        assert_eq!(body["reasoning_effort"], "low");
     }
 
     #[test]

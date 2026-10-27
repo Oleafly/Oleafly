@@ -165,7 +165,8 @@
           "ready": "Pasarela en marcha",
           "starting": "Pasarela arrancando",
           "stopped": "Pasarela detenida",
-          "unknown": "Estado de la pasarela desconocido"
+          "unknown": "Estado de la pasarela desconocido",
+          "outdated": "Actualiza Hermes para comprobar la pasarela"
         },
         "refresh": "Volver a comprobar",
         "keepsRunning": "Desconectar Oleafly nunca detiene la pasarela.",

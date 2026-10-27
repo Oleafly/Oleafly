@@ -164,7 +164,8 @@
           "ready": "Gateway running",
           "starting": "Gateway starting",
           "stopped": "Gateway stopped",
-          "unknown": "Gateway status unknown"
+          "unknown": "Gateway status unknown",
+          "outdated": "Update Hermes to see the gateway status"
         },
         "refresh": "Check again",
         "keepsRunning": "Disconnecting Oleafly never stops the gateway.",

@@ -829,7 +829,9 @@ impl TaskHost for DaemonTaskHost {
             log.add_secrets([resolved.resolved.credential.clone()]);
             if let Some(entry) = &grant.model_metadata {
                 resolved.resolved.caps = oleafly_agent::ModelCaps::from_metadata_json(entry);
-                resolved.price = Price::from_entry(entry).or(resolved.price);
+                resolved.price = Price::from_entry(entry)
+                    .map(|price| price.for_provider(&resolved.resolved.provider_id))
+                    .or(resolved.price);
             }
             let usage = SpoolUsage::new(
                 &data_root,

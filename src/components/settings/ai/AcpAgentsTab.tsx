@@ -350,8 +350,10 @@ function AgentCard({
                 <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.versionLabel)}
                 </dt>
-                <dd className="mt-1 text-xs tabular-nums text-foreground">
-                  {agent.installedVersion ?? agent.definition.version}
+                <dd data-testid={`acp-agent-bridge-version-${id}`} className="mt-1 text-xs tabular-nums text-foreground">
+                  {agent.bridgeSharedWithCli
+                    ? cli?.version ?? t(($) => $.settings.ai.agents.notReported)
+                    : agent.installedVersion ?? agent.definition.version}
                 </dd>
               </div>
               <div className="min-w-0">

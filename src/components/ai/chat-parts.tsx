@@ -724,21 +724,49 @@ const ERROR_HINTS: ReadonlyArray<{
     hint: (where) => i18n.t(($) => $.ai.chat.errorHints.overloaded, { where }),
   },
   {
-    pattern: /econnrefused|failed to fetch|fetch failed|load failed|network error|not reachable|connection refused/,
+    codes: [422],
+    hint: (where) => i18n.t(($) => $.ai.chat.errorHints.invalidRequest, { where }),
+  },
+  {
+    pattern: /the request timed out/,
+    hint: (where) => i18n.t(($) => $.ai.chat.errorHints.timedOut, { where }),
+  },
+  {
+    pattern: /the model returned nothing/,
+    hint: (where) => i18n.t(($) => $.ai.chat.errorHints.emptyReply, { where }),
+  },
+  {
+    pattern: /could not reach the provider|econnrefused|failed to fetch|fetch failed|load failed|network error|not reachable|connection refused/,
     hint: () => i18n.t(($) => $.ai.chat.errorHints.unreachable),
   },
 ];
+
+function errorKindHint(
+  errorKind: string | null | undefined,
+  statusCode: number | undefined,
+  where: string,
+): string | null {
+  if (errorKind === "transport") return i18n.t(($) => $.ai.chat.errorHints.unreachable);
+  if (errorKind === "timeout") return i18n.t(($) => $.ai.chat.errorHints.timedOut, { where });
+  if (errorKind !== "provider" || statusCode === undefined || statusCode < 500) return null;
+  return statusCode === 503 || statusCode === 529
+    ? i18n.t(($) => $.ai.chat.errorHints.overloaded, { where })
+    : i18n.t(($) => $.ai.chat.errorHints.serverError, { where });
+}
 
 export function friendlyHint(
   text: string,
   statusCode?: number,
   surface: AiHintSurface = "chat",
+  errorKind?: string | null,
 ): string | null {
   const t = text.toLowerCase();
   const where =
     surface === "settings"
       ? i18n.t(($) => $.ai.chat.errorHints.where.inSettings)
       : i18n.t(($) => $.ai.chat.errorHints.where.modelMenu);
+  const byKind = errorKindHint(errorKind, statusCode, where);
+  if (byKind) return byKind;
   for (const rule of ERROR_HINTS) {
     const matched =
       (statusCode !== undefined && rule.codes?.includes(statusCode)) || rule.pattern?.test(t);
@@ -784,19 +812,28 @@ function detailedError(
   return parts.join(" ");
 }
 
-export function formatError(e: unknown, providerLabel?: string): string {
+const PROVIDER_STATUS = /\bprovider returned (\d{3})\b/i;
+const KIND_TAG = /^\[([a-z_]+)\]/;
+
+function statusInMessage(message: string): number | undefined {
+  const match = PROVIDER_STATUS.exec(message);
+  return match ? Number(match[1]) : undefined;
+}
+
+export function formatError(e: unknown, providerLabel?: string, errorKind?: string | null): string {
   const err = typeof e === "object" && e !== null
     ? e as Record<string, unknown>
     : {};
+  const message = typeof err.message === "string" ? err.message : String(e);
   const statusValue = err.statusCode ?? err.status;
-  const statusCode = typeof statusValue === "number" ? statusValue : undefined;
+  const statusCode = typeof statusValue === "number" ? statusValue : statusInMessage(message);
   const bodyMsg = responseBodyMessage(err.responseBody);
   const bodyIsExtra = Boolean(bodyMsg) && bodyMsg !== err.message;
   const who = providerLabel ? `${providerLabel}: ` : "";
   const rawDetail = rawErrorDetail(bodyMsg, bodyIsExtra, statusCode);
-  const message = typeof err.message === "string" ? err.message : String(e);
   const name = typeof err.name === "string" ? err.name : "";
-  const hint = friendlyHint(`${message} ${bodyMsg}`, statusCode);
+  const kind = errorKind ?? KIND_TAG.exec(message.trim())?.[1];
+  const hint = friendlyHint(`${message} ${bodyMsg}`, statusCode, "chat", kind);
   if (hint) return `⚠ ${who}${hint}${rawDetail}`;
   return detailedError(`⚠ ${who}`.trimEnd(), {
     name,

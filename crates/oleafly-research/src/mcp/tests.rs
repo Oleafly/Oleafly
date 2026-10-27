@@ -625,6 +625,119 @@ fn the_stdio_bridge_carries_real_tool_calls_and_reports_an_unreachable_server() 
     );
 }
 
+fn stalled_server(runtime: &tokio::runtime::Runtime) -> String {
+    let listener = runtime
+        .block_on(tokio::net::TcpListener::bind(("127.0.0.1", 0)))
+        .unwrap();
+    let address = listener.local_addr().unwrap();
+    runtime.spawn(async move {
+        let mut held = Vec::new();
+        while let Ok((socket, _)) = listener.accept().await {
+            held.push(socket);
+        }
+    });
+    format!("http://{address}/mcp")
+}
+
+#[test]
+fn the_relay_gives_up_on_a_stalled_handshake_long_before_a_tool_call_would() {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let url = stalled_server(&runtime);
+    let started = std::time::Instant::now();
+    let mut written = Vec::new();
+    super::stdio::pump_with_limits(
+        &runtime,
+        &url,
+        "Bearer t",
+        std::io::Cursor::new(
+            "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}\n",
+        ),
+        &mut written,
+        Duration::from_millis(200),
+        Duration::from_secs(60),
+    )
+    .unwrap();
+    assert!(started.elapsed() < Duration::from_secs(5));
+    let reply: Value = serde_json::from_str(String::from_utf8(written).unwrap().trim()).unwrap();
+    assert_eq!(reply["id"], 1);
+    assert!(reply["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("unavailable"));
+
+    let started = std::time::Instant::now();
+    let mut written = Vec::new();
+    super::stdio::pump_with_limits(
+        &runtime,
+        &url,
+        "Bearer t",
+        std::io::Cursor::new(
+            "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"read_file\"}}\n",
+        ),
+        &mut written,
+        Duration::from_millis(200),
+        Duration::from_millis(900),
+    )
+    .unwrap();
+    assert!(started.elapsed() >= Duration::from_millis(800));
+}
+
+#[test]
+fn the_relay_goes_straight_to_loopback_even_with_a_proxy_configured() {
+    if std::env::var_os("OLEAFLY_RELAY_PROXY_CHILD").is_none() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "mcp::tests::the_relay_goes_straight_to_loopback_even_with_a_proxy_configured",
+                "--exact",
+                "--nocapture",
+            ])
+            .env("OLEAFLY_RELAY_PROXY_CHILD", "1")
+            .env("HTTP_PROXY", "http://127.0.0.1:9")
+            .env("http_proxy", "http://127.0.0.1:9")
+            .env("ALL_PROXY", "socks5://127.0.0.1:9")
+            .env("all_proxy", "socks5://127.0.0.1:9")
+            .env_remove("NO_PROXY")
+            .env_remove("no_proxy")
+            .status()
+            .unwrap();
+        assert!(status.success());
+        return;
+    }
+    let temp = tempfile::tempdir().unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let served = runtime.block_on(bridge(temp.path(), None));
+    let entry = super::stdio_server(&served.mcp_server()).unwrap();
+    let value = |name: &str| {
+        entry["env"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|item| item["name"] == name)
+            .map(|item| item["value"].as_str().unwrap().to_owned())
+            .unwrap()
+    };
+    let mut written = Vec::new();
+    super::stdio::pump(
+        &runtime,
+        &value("OLEAFLY_MCP_URL"),
+        &value("OLEAFLY_MCP_TOKEN"),
+        std::io::Cursor::new(
+            "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{},\"clientInfo\":{\"name\":\"agent\",\"version\":\"1\"}}}\n",
+        ),
+        &mut written,
+    )
+    .unwrap();
+    let reply: Value = serde_json::from_str(String::from_utf8(written).unwrap().trim()).unwrap();
+    assert_eq!(reply["result"]["serverInfo"]["name"], "oleafly", "{reply}");
+    runtime.block_on(served.shutdown());
+}
+
 #[tokio::test]
 async fn skills_and_linked_roots_come_from_the_ports() {
     let root = tempfile::tempdir().unwrap();

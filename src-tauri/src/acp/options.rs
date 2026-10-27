@@ -1,13 +1,15 @@
-//! Changing an agent's options (mode, model, effort, fast and the rest)
-//! and remembering effort and mode for the agent's next sessions.
-use oleafly_acp::controls::{ConfigKind, ConfigValue};
+//! Changing an agent's options (mode, model, effort, fast and the rest),
+//! remembering model, effort and mode for the agent's next sessions, and
+//! putting a resumed session's choices back.
+use oleafly_acp::controls::{ConfigKind, ConfigOptionView, ConfigValue};
 use serde_json::json;
+use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use super::preferences::RememberedChoice;
 use super::runtime::{AcpRuntime, LiveSession};
-use super::types::{SessionControls, SessionSnapshot, SessionStatus};
+use super::types::{SessionControls, SessionRecord, SessionSnapshot, SessionStatus};
 
 const BUSY: &str = "Wait for this turn to finish before changing the agent's options.";
 /// How often one session is moved out of a blocked mode: an agent that keeps
@@ -103,7 +105,7 @@ impl AcpRuntime {
         )
     }
 
-    /// Remembers an effort or mode choice for the agent's next sessions.
+    /// Remembers a model, effort or mode choice for the agent's next sessions.
     fn remember_choice(
         &self,
         session: &LiveSession,
@@ -120,6 +122,7 @@ impl AcpRuntime {
         let slot = match option.category.as_deref() {
             Some("thought_level") => "effort",
             Some("mode") => "mode",
+            Some("model") => "model",
             _ => return,
         };
         let ConfigKind::Select { options, .. } = &option.kind else {
@@ -142,6 +145,7 @@ impl AcpRuntime {
         let choice = Some(RememberedChoice::new(value, name, &session.redactor));
         match slot {
             "effort" => prefs.effort = choice,
+            "model" => prefs.model = choice,
             _ => prefs.mode = choice,
         }
         let _ = self
@@ -164,6 +168,13 @@ impl AcpRuntime {
         record.controls.allows(config_id, &value)?;
         self.send_config_option(&session, config_id, &value).await?;
         self.remember_choice(&session, &record.controls, config_id, &value);
+        let model = record
+            .controls
+            .by_id(config_id)
+            .is_some_and(|option| option.category.as_deref() == Some("model"));
+        if model {
+            self.reapply_effort(&session).await;
+        }
         self.snapshot(id).await
     }
 
@@ -243,7 +254,15 @@ impl AcpRuntime {
             .operation
             .try_lock()
             .map_err(|_| "Wait for this turn to finish before changing the model.")?;
+        let record = self.copy_record(&session)?;
         self.change_model(&session, model_id).await?;
+        let name = record
+            .controls
+            .models
+            .iter()
+            .find(|model| model.model_id == model_id)
+            .map_or(model_id, |model| model.name.as_str());
+        self.remember(&session, "model", model_id, name);
         self.snapshot(id).await
     }
 
@@ -264,6 +283,12 @@ impl AcpRuntime {
     }
 
     async fn change_model(&self, session: &Arc<LiveSession>, model_id: &str) -> Result<(), String> {
+        self.switch_model(session, model_id).await?;
+        self.reapply_effort(session).await;
+        Ok(())
+    }
+
+    async fn switch_model(&self, session: &Arc<LiveSession>, model_id: &str) -> Result<(), String> {
         let record = self.copy_record(session)?;
         if record.status != SessionStatus::Ready
             || !record
@@ -302,6 +327,7 @@ impl AcpRuntime {
         }
         let native = record
             .native_session_id
+            .clone()
             .ok_or("The ACP session is not ready.")?;
         let result = session
             .client
@@ -314,22 +340,67 @@ impl AcpRuntime {
             self.release_live(session).await;
             return Err(error);
         }
-        let mut state = session
-            .state
+        {
+            let mut state = session
+                .state
+                .lock()
+                .map_err(|_| "The ACP session is unavailable.")?;
+            state.record.controls.model_id = Some(model_id.into());
+            state
+                .record
+                .controls
+                .merge(&session.redactor.value(&result));
+            let controls =
+                serde_json::to_value(&state.record.controls).map_err(|e| e.to_string())?;
+            self.emit_locked(
+                session,
+                &mut state,
+                "controls",
+                json!({"controls": controls}),
+            )?;
+        }
+        self.reattach_tools(session, &record).await;
+        Ok(())
+    }
+
+    async fn reattach_tools(&self, session: &Arc<LiveSession>, record: &SessionRecord) {
+        if record.agent_id != super::hermes::HERMES_ID
+            || record.remote.is_some()
+            || !record.capabilities.resume
+        {
+            return;
+        }
+        let Some(native) = record.native_session_id.as_deref() else {
+            return;
+        };
+        let servers = session
+            .mcp_servers
             .lock()
-            .map_err(|_| "The ACP session is unavailable.")?;
-        state.record.controls.model_id = Some(model_id.into());
-        state
-            .record
-            .controls
-            .merge(&session.redactor.value(&result));
-        let controls = serde_json::to_value(&state.record.controls).map_err(|e| e.to_string())?;
-        self.emit_locked(
-            session,
-            &mut state,
-            "controls",
-            json!({"controls": controls}),
-        )
+            .map(|servers| servers.clone())
+            .unwrap_or_default();
+        if servers.is_empty() {
+            return;
+        }
+        let cwd = super::runtime::launch_root_for(Path::new(&record.project_path))
+            .to_string_lossy()
+            .into_owned();
+        if session
+            .client
+            .resume_session(native, &cwd, &servers)
+            .await
+            .is_err()
+        {
+            if let Ok(mut state) = session.state.lock() {
+                let _ = self.emit_locked(
+                    session,
+                    &mut state,
+                    "notice",
+                    json!({"severity": "warning",
+                        "title": super::failures::coded(super::failures::HERMES_TOOLS_LOST),
+                        "description": super::failures::coded(super::failures::HERMES_TOOLS_ADVICE)}),
+                );
+            }
+        }
     }
 
     /// A task's model: kept when none is asked for or it is already
@@ -419,9 +490,132 @@ impl AcpRuntime {
         }
     }
 
-    /// A new session starts with the agent's remembered effort and (for
-    /// interactive sessions) mode, when offered, allowed and different. A
-    /// failure is noted and never fails the start.
+    fn note_preference(&self, session: &LiveSession, preference: &str, error: &str) {
+        if let Ok(mut state) = session.state.lock() {
+            let _ = self.emit_locked(
+                session,
+                &mut state,
+                "diagnostics",
+                json!({"preference": preference, "error": session.redactor.text(error)}),
+            );
+        }
+    }
+
+    async fn select_choice(
+        &self,
+        session: &Arc<LiveSession>,
+        category: &str,
+        value: &str,
+    ) -> Option<Result<(), String>> {
+        let controls = self.copy_record(session).ok()?.controls;
+        if let Some(option) = controls.by_category(category) {
+            let ConfigKind::Select {
+                current_value,
+                options,
+            } = &option.kind
+            else {
+                return None;
+            };
+            let offered = options
+                .iter()
+                .any(|choice| choice.value == value && !choice.blocked);
+            if !offered || current_value.as_deref() == Some(value) {
+                return None;
+            }
+            let config_id = option.id.clone();
+            return Some(
+                self.send_config_option(session, &config_id, &ConfigValue::Id(value.to_owned()))
+                    .await,
+            );
+        }
+        if category != "mode"
+            || controls.mode_id.as_deref() == Some(value)
+            || controls.allows_mode(value).is_err()
+        {
+            return None;
+        }
+        Some(self.send_legacy_mode(session, value).await)
+    }
+
+    async fn select_model(&self, session: &Arc<LiveSession>, model_id: &str) {
+        let wanted = self.copy_record(session).is_ok_and(|record| {
+            record.controls.model_id.as_deref() != Some(model_id)
+                && record
+                    .controls
+                    .models
+                    .iter()
+                    .any(|model| model.model_id == model_id)
+        });
+        if !wanted {
+            return;
+        }
+        if let Err(error) = self.switch_model(session, model_id).await {
+            self.note_preference(session, "model", &error);
+        }
+    }
+
+    async fn reapply_effort(&self, session: &Arc<LiveSession>) {
+        let Ok(record) = self.copy_record(session) else {
+            return;
+        };
+        let Some(effort) = self
+            .store
+            .agent_preferences(&record.agent_id)
+            .ok()
+            .and_then(|prefs| prefs.effort)
+        else {
+            return;
+        };
+        if let Some(Err(error)) = self
+            .select_choice(session, "thought_level", &effort.value)
+            .await
+        {
+            self.note_preference(session, "effort", &error);
+        }
+    }
+
+    pub(super) async fn restore_controls(
+        self: &Arc<Self>,
+        session: &Arc<LiveSession>,
+        before: &Restore,
+    ) {
+        if let Some(model) = &before.model {
+            self.select_model(session, model).await;
+        }
+        if let Some(mode) = &before.mode {
+            if let Some(Err(error)) = self.select_choice(session, "mode", mode).await {
+                self.note_preference(session, "mode", &error);
+            }
+        }
+        for (config_id, value) in &before.effort {
+            let Ok(record) = self.copy_record(session) else {
+                return;
+            };
+            let Some(ConfigKind::Select {
+                current_value,
+                options,
+            }) = record.controls.by_id(config_id).map(|option| &option.kind)
+            else {
+                continue;
+            };
+            let offered = options
+                .iter()
+                .any(|choice| &choice.value == value && !choice.blocked);
+            if !offered || current_value.as_ref() == Some(value) {
+                continue;
+            }
+            let restored = self
+                .send_config_option(session, config_id, &ConfigValue::Id(value.clone()))
+                .await;
+            if let Err(error) = restored {
+                self.note_preference(session, "effort", &error);
+            }
+        }
+    }
+
+    /// A new session starts with the agent's remembered model, effort and
+    /// (for interactive sessions) mode, when offered, allowed and different.
+    /// A failure is noted and never fails the start.
     pub(super) async fn apply_remembered(self: &Arc<Self>, session: &Arc<LiveSession>) {
         let Ok(record) = self.copy_record(session) else {
             return;
@@ -432,6 +626,9 @@ impl AcpRuntime {
         let Ok(prefs) = self.store.agent_preferences(&record.agent_id) else {
             return;
         };
+        if let Some(model) = &prefs.model {
+            self.select_model(session, &model.value).await;
+        }
         let interactive = session.task_temp.is_none();
         let wanted = [
             ("effort", "thought_level", prefs.effort.clone()),
@@ -441,45 +638,48 @@ impl AcpRuntime {
             let Some(choice) = choice else {
                 continue;
             };
-            let controls = match self.copy_record(session) {
-                Ok(record) => record.controls,
-                Err(_) => return,
-            };
-            let result = if let Some(option) = controls.by_category(category) {
-                let ConfigKind::Select {
-                    current_value,
-                    options,
-                } = &option.kind
-                else {
-                    continue;
-                };
-                let offered = options
-                    .iter()
-                    .any(|entry| entry.value == choice.value && !entry.blocked);
-                if !offered || current_value.as_deref() == Some(choice.value.as_str()) {
-                    continue;
-                }
-                let config_id = option.id.clone();
-                self.send_config_option(session, &config_id, &ConfigValue::Id(choice.value.clone()))
-                    .await
-            } else if slot == "mode" && controls.allows_mode(&choice.value).is_ok() {
-                if controls.mode_id.as_deref() == Some(choice.value.as_str()) {
-                    continue;
-                }
-                self.send_legacy_mode(session, &choice.value).await
-            } else {
-                continue;
-            };
-            if let Err(error) = result {
-                if let Ok(mut state) = session.state.lock() {
-                    let _ = self.emit_locked(
-                        session,
-                        &mut state,
-                        "diagnostics",
-                        json!({"preference": slot, "error": session.redactor.text(&error)}),
-                    );
-                }
+            if let Some(Err(error)) = self.select_choice(session, category, &choice.value).await {
+                self.note_preference(session, slot, &error);
             }
         }
     }
+}
+
+#[derive(Debug, Default)]
+pub(super) struct Restore {
+    model: Option<String>,
+    mode: Option<String>,
+    effort: Vec<(String, String)>,
+}
+
+pub(super) fn restore_values(controls: &SessionControls) -> Restore {
+    let mode = match controls.by_category("mode").map(|option| &option.kind) {
+        Some(ConfigKind::Select { current_value, .. }) => current_value.clone(),
+        _ => controls.mode_id.clone(),
+    };
+    Restore {
+        model: controls.model_id.clone(),
+        mode,
+        effort: effort_values(controls),
+    }
+}
+
+fn is_effort(option: &ConfigOptionView) -> bool {
+    option.category.as_deref() == Some("thought_level")
+        || matches!(option.id.as_str(), "effort" | "reasoning_effort")
+}
+
+fn effort_values(controls: &SessionControls) -> Vec<(String, String)> {
+    controls
+        .options
+        .iter()
+        .filter(|option| is_effort(option))
+        .filter_map(|option| match &option.kind {
+            ConfigKind::Select {
+                current_value: Some(value),
+                ..
+            } => Some((option.id.clone(), value.clone())),
+            _ => None,
+        })
+        .collect()
 }

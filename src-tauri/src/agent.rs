@@ -1718,23 +1718,30 @@ pub(crate) async fn probe_model(
     }
 }
 
-/// Whether the next step would send the model's thinking back to it, which
-/// only the Anthropic wire does.
+/// Whether the next step would send the model's thinking back to it: the
+/// Anthropic wire replays its thinking blocks, and chat wires that take
+/// `reasoning_content` replay the reasoning text.
 fn replays_reasoning(
     resolved: &oleafly_agent::Resolved,
     outcome: &oleafly_agent::StreamOutcome,
 ) -> bool {
-    matches!(resolved.wire, oleafly_agent::Wire::Anthropic { .. })
-        && oleafly_agent::assistant_message(outcome)
-            .content
+    use oleafly_agent::{ContentPart, Wire};
+    let content = oleafly_agent::assistant_message(outcome).content;
+    match resolved.wire {
+        Wire::Anthropic { .. } => content.iter().any(|part| {
+            matches!(
+                part,
+                ContentPart::Thinking { .. } | ContentPart::RedactedThinking { .. }
+            )
+        }),
+        Wire::OpenAiChat {
+            reasoning_content: true,
+            ..
+        } => content
             .iter()
-            .any(|part| {
-                matches!(
-                    part,
-                    oleafly_agent::ContentPart::Thinking { .. }
-                        | oleafly_agent::ContentPart::RedactedThinking { .. }
-                )
-            })
+            .any(|part| matches!(part, ContentPart::Reasoning { .. })),
+        _ => false,
+    }
 }
 
 /// Answers the ping and sends the model's reply back to it, as the next
@@ -2178,6 +2185,87 @@ mod probe_tests {
             (probe.verdict, probe.reason.as_str()),
             (ProbeVerdict::Blocked, PROBE_REPLAY_REASON)
         );
+    }
+
+    async fn deepseek_probe_against(
+        replies: [(StatusCode, &'static str, String); 2],
+    ) -> (ModelProbe, Vec<serde_json::Value>) {
+        let seen: SeenRequests = Arc::default();
+        let recorder = seen.clone();
+        let queue = Arc::new(Mutex::new(std::collections::VecDeque::from(replies)));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let app = Router::new().route(
+            "/chat/completions",
+            post(move |Json(request): Json<serde_json::Value>| {
+                recorder.lock().unwrap().push(request);
+                let (status, content_type, body) = queue.lock().unwrap().pop_front().unwrap_or((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    JSON,
+                    String::new(),
+                ));
+                async move { (status, [(header::CONTENT_TYPE, content_type)], body) }
+            }),
+        );
+        let task = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let resolved = oleafly_agent::Resolved {
+            provider_id: "deepseek".into(),
+            model_id: "deepseek-flash".into(),
+            credential: SECRET.into(),
+            auth: Some(SECRET.into()),
+            wire: oleafly_agent::Wire::OpenAiChat {
+                base_url: format!("http://{address}"),
+                reasoning_content: true,
+            },
+            caps: oleafly_agent::ModelCaps::from_metadata_json(&serde_json::json!({
+                "reasoning": true,
+                "reasoningOptions": [{"type":"toggle"},{"type":"effort","values":["low","high","max"]}]
+            })),
+        };
+        let client = oleafly_agent::build_client().unwrap();
+        let probe = probe_model(&client, &resolved, Duration::from_secs(5)).await;
+        task.abort();
+        let requests = seen.lock().unwrap().clone();
+        (probe, requests)
+    }
+
+    fn reasoned_ping_stream() -> String {
+        let reasoning = serde_json::json!({
+            "choices": [{ "delta": { "reasoning_content": "The user wants a ping." } }]
+        });
+        format!("data: {reasoning}\n\n{}", tool_call_stream("ping", "{}"))
+    }
+
+    #[tokio::test]
+    async fn a_reasoning_chat_model_that_rejects_its_replayed_reasoning_is_blocked() {
+        let rejected = serde_json::json!({"error":{"message":"The reasoning_content in the thinking mode must be passed back to the API."}});
+        let (probe, requests) = deepseek_probe_against([
+            (StatusCode::OK, SSE, reasoned_ping_stream()),
+            (StatusCode::BAD_REQUEST, JSON, rejected.to_string()),
+        ])
+        .await;
+        assert_eq!(probe.verdict, ProbeVerdict::Blocked, "{}", probe.reason);
+        assert_eq!(requests.len(), 2);
+        assert_eq!(
+            requests[1]["thinking"],
+            serde_json::json!({"type":"enabled"})
+        );
+        assert_eq!(
+            requests[1]["messages"][2]["reasoning_content"],
+            "The user wants a ping."
+        );
+    }
+
+    #[tokio::test]
+    async fn a_reasoning_chat_model_that_accepts_its_replayed_reasoning_is_verified() {
+        let answer = "data: {\"choices\":[{\"delta\":{\"content\":\"pong received\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n";
+        let (probe, requests) = deepseek_probe_against([
+            (StatusCode::OK, SSE, reasoned_ping_stream()),
+            (StatusCode::OK, SSE, answer.to_string()),
+        ])
+        .await;
+        assert_eq!(probe.verdict, ProbeVerdict::Verified, "{}", probe.reason);
+        assert_eq!(requests.len(), 2);
     }
 
     #[test]

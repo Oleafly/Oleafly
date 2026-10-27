@@ -1485,6 +1485,21 @@ describe("friendlyHint", () => {
     expect(friendlyHint("fetch failed")).toBe(chatCopy.errorHints.unreachable);
     expect(friendlyHint("something else entirely")).toBeNull();
   });
+
+  it("explains the run loop's own failure sentences", () => {
+    expect(friendlyHint("Could not reach the provider. error sending request")).toBe(
+      chatCopy.errorHints.unreachable,
+    );
+    expect(friendlyHint("The request timed out.")).toBe(
+      chatCopy.errorHints.timedOut.replace("{{where}}", modelMenu),
+    );
+    expect(friendlyHint("The model returned nothing.")).toBe(
+      chatCopy.errorHints.emptyReply.replace("{{where}}", modelMenu),
+    );
+    expect(friendlyHint("", 422)).toBe(
+      chatCopy.errorHints.invalidRequest.replace("{{where}}", modelMenu),
+    );
+  });
 });
 
 describe("formatError", () => {
@@ -1520,6 +1535,37 @@ describe("formatError", () => {
 
   it("describes a value that is not an error object at all", () => {
     expect(formatError("plain string")).toContain("plain string");
+  });
+
+  it("maps a run's error kind and status before reading its words", () => {
+    const where = chatCopy.errorHints.where.modelMenu;
+    const hint = (key: keyof typeof chatCopy.errorHints) =>
+      (chatCopy.errorHints[key] as string).replace("{{where}}", where);
+    expect(formatError("Could not reach the provider. dns error", "DeepSeek", "transport")).toBe(
+      `⚠ DeepSeek: ${chatCopy.errorHints.unreachable}`,
+    );
+    expect(formatError("The request timed out.", "DeepSeek", "timeout")).toBe(
+      `⚠ DeepSeek: ${hint("timedOut")}`,
+    );
+    expect(formatError("The provider returned 500. Internal error", "DeepSeek", "provider")).toBe(
+      `⚠ DeepSeek: ${hint("serverError")} (HTTP 500)`,
+    );
+    expect(
+      formatError(
+        "The provider returned 503. The provider ran out of capacity before the reply finished.",
+        "DeepSeek",
+        "provider",
+      ),
+    ).toBe(`⚠ DeepSeek: ${hint("overloaded")} (HTTP 503)`);
+    expect(formatError("The provider returned 422. Invalid Parameters", "DeepSeek", "provider")).toBe(
+      `⚠ DeepSeek: ${hint("invalidRequest")} (HTTP 422)`,
+    );
+    expect(formatError("The provider returned 401. Authentication Fails", "DeepSeek", "auth")).toBe(
+      `⚠ DeepSeek: ${hint("invalidKey")} (HTTP 401)`,
+    );
+    expect(formatError(new Error("[timeout] The request timed out."), "DeepSeek")).toBe(
+      `⚠ DeepSeek: ${hint("timedOut")}`,
+    );
   });
 });
 

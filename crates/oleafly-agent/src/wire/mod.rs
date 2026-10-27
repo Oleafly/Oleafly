@@ -16,7 +16,7 @@ pub mod server_tools;
 pub(crate) use anthropic::{anthropic_beta_header, anthropic_body};
 use reasoning::{
     chat_reasoning_fields, default_max_tokens, google_thinking_config, joined_system,
-    responses_reasoning, STREAMING_MAX_TOKENS_CAP,
+    message_reasoning, responses_reasoning, STREAMING_MAX_TOKENS_CAP,
 };
 use server_tools::{native_web, responses_web_tool};
 
@@ -112,6 +112,7 @@ fn openai_content_part(part: &ContentPart, files: bool) -> Result<Option<Value>>
         | ContentPart::ToolResult { .. }
         | ContentPart::Thinking { .. }
         | ContentPart::RedactedThinking { .. }
+        | ContentPart::Reasoning { .. }
         | ContentPart::ProviderBlock { .. } => None,
     })
 }
@@ -134,10 +135,75 @@ fn openai_visible_content(rest: &[&ContentPart], images: &[&str], files: bool) -
     })
 }
 
+fn expects_reasoning_back(base_url: &str) -> bool {
+    let Some(host) = reqwest::Url::parse(base_url)
+        .ok()
+        .and_then(|url| url.host_str().map(str::to_ascii_lowercase))
+    else {
+        return false;
+    };
+    [
+        "deepseek.com",
+        "moonshot.cn",
+        "moonshot.ai",
+        "bigmodel.cn",
+        "z.ai",
+    ]
+    .iter()
+    .any(|domain| host == *domain || host.ends_with(&format!(".{domain}")))
+}
+
+fn replays_reasoning(resolved: &Resolved) -> bool {
+    match &resolved.wire {
+        Wire::OpenAiChat {
+            base_url,
+            reasoning_content: true,
+        } => {
+            matches!(resolved.provider_id.as_str(), "deepseek" | "zai")
+                || expects_reasoning_back(base_url)
+        }
+        _ => false,
+    }
+}
+
+fn attach_reasoning(entry: &mut Value, message: &Message) {
+    let reasoning = message_reasoning(message);
+    if !reasoning.is_empty() {
+        entry["reasoning_content"] = json!(reasoning);
+    }
+}
+
+fn set_output_limit(resolved: &Resolved, req: &CompletionRequest, body: &mut Value) {
+    if resolved.provider_id == "groq" {
+        // Groq's default completion ceiling is small (1 024).
+        let ceiling = req.max_tokens.or_else(|| {
+            resolved
+                .caps
+                .output_limit
+                .map(|_| default_max_tokens(&resolved.caps, STREAMING_MAX_TOKENS_CAP))
+        });
+        if let Some(ceiling) = ceiling {
+            body["max_completion_tokens"] = json!(ceiling);
+        }
+    } else if let Some(m) = req.max_tokens {
+        body["max_tokens"] = json!(m);
+    }
+}
+
+fn set_deepseek_ceiling(resolved: &Resolved, req: &CompletionRequest, body: &mut Value) {
+    if resolved.provider_id == "deepseek"
+        && req.max_tokens.is_none()
+        && body["thinking"]["type"] == "disabled"
+    {
+        body["max_tokens"] = json!(default_max_tokens(&resolved.caps, STREAMING_MAX_TOKENS_CAP));
+    }
+}
+
 pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Result<Value> {
     let effort = effective_effort(resolved, req.effort);
     // OpenRouter parses PDFs itself; other chat providers take no files.
     let files = resolved.provider_id == "openrouter";
+    let replays_reasoning = replays_reasoning(resolved);
     let mut has_documents = false;
     let mut messages: Vec<Value> = Vec::new();
     if let Some(system) = joined_system(req) {
@@ -172,6 +238,9 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
         if !calls.is_empty() {
             entry["tool_calls"] = Value::Array(calls);
         }
+        if replays_reasoning && role == "assistant" {
+            attach_reasoning(&mut entry, message);
+        }
         messages.push(entry);
     }
 
@@ -179,34 +248,16 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
     if let Some(t) = req.temperature {
         body["temperature"] = json!(t);
     }
-    if resolved.provider_id == "groq" {
-        // Groq's default completion ceiling is small (1 024).
-        let ceiling = req.max_tokens.or_else(|| {
-            resolved
-                .caps
-                .output_limit
-                .map(|_| default_max_tokens(&resolved.caps, STREAMING_MAX_TOKENS_CAP))
-        });
-        if let Some(ceiling) = ceiling {
-            body["max_completion_tokens"] = json!(ceiling);
-        }
-    } else if let Some(m) = req.max_tokens {
-        body["max_tokens"] = json!(m);
-    }
+    set_output_limit(resolved, req, &mut body);
     for (key, value) in chat_reasoning_fields(resolved, req, effort) {
         body[key] = value;
     }
+    set_deepseek_ceiling(resolved, req, &mut body);
     if has_documents && files {
         body["plugins"] = json!([{ "id": "file-parser", "pdf": { "engine": "native" } }]);
     }
     if !req.tools.is_empty() {
         body["tools"] = openai_tools(&owned_sorted_tools(&req.tools));
-        // DeepSeek thinks by default and then answers a request that carries
-        // tools with a 400 unless every earlier turn's reasoning_content is
-        // sent back. History here keeps no reasoning, so tool runs go without.
-        if resolved.provider_id == "deepseek" {
-            body["thinking"] = json!({ "type": "disabled" });
-        }
     }
     Ok(body)
 }
@@ -304,6 +355,7 @@ pub(crate) fn openai_responses_input(messages: &[Message]) -> Result<Vec<Value>>
                 }
                 ContentPart::Thinking { .. }
                 | ContentPart::RedactedThinking { .. }
+                | ContentPart::Reasoning { .. }
                 | ContentPart::ProviderBlock { .. } => {}
             }
         }
@@ -411,6 +463,7 @@ fn google_part(part: &ContentPart) -> Result<Option<Value>> {
         ContentPart::Attachment { .. } => return Err(unresolved_attachment()),
         ContentPart::Thinking { .. }
         | ContentPart::RedactedThinking { .. }
+        | ContentPart::Reasoning { .. }
         | ContentPart::ProviderBlock { .. } => None,
     })
 }

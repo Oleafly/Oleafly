@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "Dos tipos de agente",
-      "content": "El agente de Oleafly funciona con el proveedor de modelos que configures. El agente de línea de comandos, en beta, usa un agente de programación ya instalado en este equipo."
+      "content": "El agente de Oleafly funciona con el proveedor de modelos que configures. El agente de línea de comandos usa un agente de programación ya instalado en este equipo."
     },
     "connectProvider": {
       "title": "Conecta un proveedor",

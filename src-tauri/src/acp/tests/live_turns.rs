@@ -31,7 +31,13 @@ async fn start(review: ReviewHooks) -> Harness {
     std::fs::create_dir(&project).unwrap();
     let runtime = AcpRuntime::with_review_hooks(temp.path().join("acp"), review).unwrap();
     runtime
-        .register(&serde_json::to_string(&fixture_definition(Vec::new(), temp.path())).unwrap())
+        .register(
+            &serde_json::to_string(&fixture_definition(
+                vec![String::new(), "--echo-option".into()],
+                temp.path(),
+            ))
+            .unwrap(),
+        )
         .unwrap();
     let session = runtime
         .start(StartSession {
@@ -109,7 +115,7 @@ async fn a_skill_turn_may_read_the_attached_skill_folder_and_nothing_else() {
 
     assert_eq!(
         ask(&harness, Some(skill(&folder)), Some("read"), &reference).await,
-        "selected",
+        "selected yes",
         "a read of the attached skill's own file is allowed"
     );
     let resolved = harness
@@ -127,22 +133,22 @@ async fn a_skill_turn_may_read_the_attached_skill_folder_and_nothing_else() {
             &reference.canonicalize().unwrap()
         )
         .await,
-        "selected",
+        "selected yes",
         "the folder's canonical spelling leads to the same files"
     );
     assert_eq!(
         ask(&harness, Some(skill(&folder)), Some("search"), &folder).await,
-        "selected",
+        "selected yes",
         "searching the skill folder is read-only too"
     );
     assert_eq!(
         ask(&harness, Some(skill(&folder)), Some("edit"), &reference).await,
-        "cancelled",
+        "selected no",
         "the skill folder is never written"
     );
     assert_eq!(
         ask(&harness, Some(skill(&folder)), None, &reference).await,
-        "cancelled",
+        "selected no",
         "a request that does not say it only reads is refused"
     );
     assert_eq!(
@@ -153,7 +159,7 @@ async fn a_skill_turn_may_read_the_attached_skill_folder_and_nothing_else() {
             &elsewhere.join("notes.md")
         )
         .await,
-        "cancelled",
+        "selected no",
         "other folders outside the project stay closed"
     );
     assert_eq!(
@@ -168,11 +174,11 @@ async fn a_skill_turn_may_read_the_attached_skill_folder_and_nothing_else() {
                 .join("notes.md")
         )
         .await,
-        "cancelled"
+        "selected no"
     );
     assert_eq!(
         ask(&harness, None, Some("read"), &reference).await,
-        "cancelled",
+        "selected no",
         "without an attached skill its folder is outside the project like any other"
     );
     let other_skill = harness.temp.path().join("skills").join("other-skill");
@@ -186,7 +192,7 @@ async fn a_skill_turn_may_read_the_attached_skill_folder_and_nothing_else() {
             &other_skill.join("SKILL.md")
         )
         .await,
-        "cancelled",
+        "selected no",
         "only the skill attached to this turn is readable"
     );
     #[cfg(unix)]
@@ -200,13 +206,13 @@ async fn a_skill_turn_may_read_the_attached_skill_folder_and_nothing_else() {
                 &folder.join("escape").join("notes.md")
             )
             .await,
-            "cancelled",
+            "selected no",
             "a link inside the skill folder cannot lead out of it"
         );
     }
     assert_eq!(
         ask(&harness, None, Some("read"), &reference).await,
-        "cancelled",
+        "selected no",
         "the folder is forgotten when the skill turn ends"
     );
     harness.runtime.close(&harness.id).await.unwrap();

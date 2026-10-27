@@ -165,7 +165,8 @@
           "ready": "Gateway pornit",
           "starting": "Gateway în curs de pornire",
           "stopped": "Gateway oprit",
-          "unknown": "Starea gateway-ului este necunoscută"
+          "unknown": "Starea gateway-ului este necunoscută",
+          "outdated": "Actualizează Hermes ca să verifici gateway-ul"
         },
         "refresh": "Verifică din nou",
         "keepsRunning": "Deconectarea Oleafly nu oprește niciodată gateway-ul.",

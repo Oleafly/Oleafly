@@ -4,6 +4,7 @@ use super::{
     catalog,
     coalesce::Coalescer,
     export,
+    failures::{self, coded, redacted, rpc_message},
     hermes::{self, HermesMode, HermesSettings},
     host::SessionHost,
     permission_view,
@@ -39,6 +40,7 @@ use tokio::sync::{broadcast, watch, Mutex as AsyncMutex};
 
 pub(super) const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 const PERMISSION_TIMEOUT_MS: u64 = 120_000;
+const OPEN_CARD_MS: u64 = 24 * 60 * 60 * 1000;
 const CANCEL_GRACE: Duration = Duration::from_secs(10);
 /// How long a closed session stays registered while its last turn finishes
 /// (the before-turn copy's own hooks are bounded at 10 s each).
@@ -53,9 +55,10 @@ pub(super) struct PendingPermission {
     pub(super) request: PermissionRequest,
     /// Answers the agent's request (the SDK keeps its JSON-RPC id).
     pub(super) responder: IncomingRequest,
-    /// A research task's approval queue holds the request and keeps its own
-    /// deadline, so the card's 120 s expiry does not apply to it.
-    pub(super) task_queue: bool,
+    /// The card's 120 s expiry does not apply: a research task's approval
+    /// queue holds the request and keeps its own deadline, and a
+    /// conversation's own card waits for the user until the turn ends.
+    pub(super) untimed: bool,
 }
 
 pub(super) struct PendingElicitation {
@@ -96,6 +99,9 @@ pub(super) struct LiveState {
     /// in order with its updates), and the turn may not be finished here
     /// yet: what the agent sends for the turn from now on is late.
     pub(super) turn_closed: bool,
+    pub(super) turn_output: bool,
+    pub(super) refused_paths: HashSet<String>,
+    pub(super) system_error: Option<String>,
 }
 
 /// A task agent's home, removed with its session unless it is kept (the
@@ -168,11 +174,13 @@ pub(super) struct LiveSession {
     /// Set when a question arrives during sign-in: the 180 s sign-in timer
     /// stops.
     pub(super) auth_asked: watch::Sender<bool>,
-    /// Agent session ids this connection forked; their updates are ignored.
+    /// Agent session ids this connection forked, or was given in place of
+    /// the one it resumed; their updates are ignored.
     pub(super) known_foreign: Mutex<HashSet<String>>,
     /// A fork is under way: updates for sessions this connection did not
     /// open are ignored until the new id is known.
     pub(super) forking: AtomicBool,
+    pub(super) resuming: AtomicBool,
     /// How often the session was moved out of a blocked mode.
     pub(super) mode_switches: AtomicU32,
     /// The agent provider routed through an Oleafly key, for `providers/disable`.
@@ -182,6 +190,7 @@ pub(super) struct LiveSession {
     /// Set while a handoff moves the task home away: releasing the session
     /// then leaves the home alone.
     pub(super) keep_home: AtomicBool,
+    pub(super) codex_check: Option<super::codex::ConfigCheck>,
 }
 
 /// The command a task's agent asks to run, for the approval request (at
@@ -404,7 +413,39 @@ pub struct AcpRuntime {
     /// Agents (and programs) that answered a v2 request with v1 this run.
     v1_only: Mutex<HashSet<(String, PathBuf)>>,
     pids: OnceLock<oleafly_acp::orphans::PidRegistry>,
+    pending_starts: Mutex<Vec<Arc<PendingStart>>>,
     this: Weak<AcpRuntime>,
+}
+
+struct PendingStart {
+    owner: Option<String>,
+    project_id: String,
+    record_id: String,
+    cancelled: watch::Sender<bool>,
+}
+
+struct StartTracking<'a> {
+    runtime: &'a AcpRuntime,
+    start: Arc<PendingStart>,
+}
+
+impl StartTracking<'_> {
+    fn is_cancelled(&self) -> bool {
+        *self.start.cancelled.borrow()
+    }
+
+    async fn cancelled(&self) {
+        let mut cancelled = self.start.cancelled.subscribe();
+        let _ = cancelled.wait_for(|cancelled| *cancelled).await;
+    }
+}
+
+impl Drop for StartTracking<'_> {
+    fn drop(&mut self) {
+        if let Ok(mut starts) = self.runtime.pending_starts.lock() {
+            starts.retain(|start| !Arc::ptr_eq(start, &self.start));
+        }
+    }
 }
 
 /// Why `initialize` did not finish.
@@ -445,6 +486,7 @@ impl AcpRuntime {
             buffers: OnceLock::new(),
             v1_only: Mutex::new(HashSet::new()),
             pids: OnceLock::new(),
+            pending_starts: Mutex::new(Vec::new()),
             this: this.clone(),
         });
         // Task homes left by a crash hold copies of the user's sign-in files.
@@ -892,7 +934,7 @@ impl AcpRuntime {
                     )
                     .await
                     .map(|_| ())
-                    .map_err(|error| session.redactor.text(&error.to_string())),
+                    .map_err(|error| redacted(&session.redactor, &rpc_message(&error))),
                 None => Ok(()),
             };
             if let Ok(mut state) = session.state.lock() {
@@ -903,7 +945,7 @@ impl AcpRuntime {
                         &mut state,
                         "notice",
                         json!({"severity": "warning",
-                            "title": format!("Oleafly could not stop routing this agent through your {provider} key."),
+                            "title": failures::routing(failures::UNROUTE_FAILED, &provider),
                             "description": error}),
                     );
                 }
@@ -1037,12 +1079,12 @@ impl AcpRuntime {
                 return Err("This ACP session belongs to another window or task.".into());
             }
             if !session.client.is_closed() {
-                return Err("This ACP session is already connected.".into());
+                return Err(coded(failures::ALREADY_CONNECTED));
             }
             // The agent is gone but its last turn may still be saving events.
             self.release_when_idle(&session).await;
             if self.get_live(id).await.is_ok() {
-                return Err("This ACP session is already connected.".into());
+                return Err(coded(failures::ALREADY_CONNECTED));
             }
         }
         let mut record = self.store.get(id)?;
@@ -1062,13 +1104,13 @@ impl AcpRuntime {
             && !record.capabilities.load_session
             && !record.capabilities.resume
         {
-            return Err("This agent cannot resume saved sessions. Start a new conversation to continue working.".into());
+            return Err(coded(failures::CANNOT_RESUME));
         }
         if record.native_session_id.is_some() {
             let definition = self.definition(&record.agent_id)?;
             let settings = self.hermes_settings(&definition, &record.project_id);
             if let Some(reason) = moved_target(&record, &settings) {
-                return Err(reason.into());
+                return Err(coded(reason));
             }
         }
         record.status = SessionStatus::Connecting;
@@ -1110,7 +1152,7 @@ impl AcpRuntime {
         let mut record = found.ok_or("The task's earlier agent session was not found.")?;
         let record_id = record.id.clone();
         if self.get_live(&record_id).await.is_ok() {
-            return Err("This ACP session is already connected.".into());
+            return Err(coded(failures::ALREADY_CONNECTED));
         }
         let same_task = record.task_id.is_some()
             && record.task_id == options.task_id
@@ -1214,11 +1256,9 @@ impl AcpRuntime {
             let remote = settings
                 .remote
                 .as_ref()
-                .ok_or("Set up the remote machine for Hermes in its settings first.")?;
+                .ok_or_else(|| coded(failures::REMOTE_NOT_SET_UP))?;
             remote::validate(remote)?;
-            let ssh = remote::locate_ssh().ok_or(
-                "Oleafly couldn't find ssh on this computer. Install OpenSSH, then try again.",
-            )?;
+            let ssh = remote::locate_ssh().ok_or_else(|| coded(failures::SSH_MISSING))?;
             return Ok(catalog::Launch {
                 executable: ssh,
                 args: remote::ssh_args(remote),
@@ -1264,6 +1304,11 @@ impl AcpRuntime {
                 .env
                 .push(("CLAUDE_AGENT_ACP_EXPERIMENTAL_V2".into(), "1".into()));
         }
+        if catalog::is_codex(definition) {
+            if let Ok(remembered) = self.store.agent_preferences(&definition.id) {
+                launch.env.extend(super::codex::initial_mode(&remembered));
+            }
+        }
         Ok(launch)
     }
 
@@ -1278,8 +1323,14 @@ impl AcpRuntime {
     ) -> Result<SessionSnapshot, String> {
         let _startup = self.begin_startup()?;
         if !self.owner_is_current(owner.as_deref(), generation) {
-            return Err("The window or task closed while the agent was starting.".into());
+            return Err(coded(failures::OWNER_CLOSED));
         }
+        let start = self.track_start(owner.as_deref(), &record);
+        let brand_new = record.native_session_id.is_none()
+            && self
+                .store
+                .has_user_message(&record.id)
+                .is_ok_and(|found| !found);
         let definition = self.definition(&record.agent_id)?;
         // Every task start (new, resumed or adopted) is checked: the
         // Windows sandbox switch or the agent may have changed since.
@@ -1294,37 +1345,20 @@ impl AcpRuntime {
         if remote_mode && allowed_paths.is_some() {
             return Err("Remote Hermes cannot run research tasks.".into());
         }
-        let launch = self
-            .session_launch(&definition, &record, &settings, &prefs)
-            .await?;
-        if !self.owner_is_current(owner.as_deref(), generation) {
-            return Err("The window or task closed while the agent was starting.".into());
+        if record.native_session_id.is_none() || record.hermes_profile.is_none() {
+            record.hermes_profile = (definition.id == hermes::HERMES_ID)
+                .then(|| hermes::profile_tag(&record.project_id, &settings))
+                .flatten();
         }
-        if mcp_servers.len() > 32
-            || serde_json::to_vec(&mcp_servers)
-                .map_err(|e| e.to_string())?
-                .len()
-                > 64 * 1024
-        {
-            return Err("The ACP MCP configuration is too large.".into());
-        }
-        if remote_mode {
-            let remote = settings
-                .remote
-                .as_ref()
-                .ok_or("The remote machine is not set up.")?;
-            record.remote = Some(RemoteTarget {
-                host: remote.host.clone(),
-                folder: remote.folder.clone(),
-            });
-        } else {
-            record.remote = None;
-        }
-        let launch_root = if remote_mode {
-            crate::paths::home_dir()?
-        } else {
-            launch_root_for(Path::new(&record.project_path))
+        let launch = tokio::select! {
+            launch = self.session_launch(&definition, &record, &settings, &prefs) => launch?,
+            () = start.cancelled() => return Err(coded(failures::START_CANCELLED)),
         };
+        if !self.owner_is_current(owner.as_deref(), generation) {
+            return Err(coded(failures::OWNER_CLOSED));
+        }
+        check_mcp_config(&mcp_servers)?;
+        let launch_root = place_session(&mut record, &settings, remote_mode)?;
         let mut prefer_v2 = prefs.experimental_v2
             && !remote_mode
             && !self.v1_only.lock().is_ok_and(|known| {
@@ -1346,41 +1380,32 @@ impl AcpRuntime {
                 )
                 .await?;
             let id = record.id.clone();
-            match self.initialize(&session, prefer_v2).await {
+            if start.is_cancelled() {
+                return Err(self.abandon_start(&session, brand_new).await);
+            }
+            let initialized = self.initialize(&session, prefer_v2).await;
+            if start.is_cancelled() {
+                return Err(self.abandon_start(&session, brand_new).await);
+            }
+            match initialized {
                 Ok(()) => {
                     if !self.owner_is_current(session.owner.as_deref(), generation) {
                         self.close(&id).await?;
-                        return Err(
-                            "The window or task closed while the agent was starting.".into()
-                        );
+                        return Err(coded(failures::OWNER_CLOSED));
                     }
                     return self.snapshot(&id).await;
                 }
                 Err(InitFailure::FallBackToV1) if prefer_v2 => {
-                    if let Ok(mut known) = self.v1_only.lock() {
-                        known.insert((definition.id.clone(), launch.executable.clone()));
-                    }
-                    // The v1 restart starts in the same home: a task agent's
-                    // history (an adopted home) must not go with this attempt.
-                    if let Some(home) = &session.task_temp {
-                        session.keep_home.store(true, Ordering::Release);
-                        adopt_home(&record.id, &home.0);
-                    }
-                    session.client.shutdown().await;
-                    // The respawn continues the same record: its events
-                    // number on from the ones this attempt saved.
-                    if let Ok(current) = self.copy_record(&session) {
-                        record.last_sequence = record.last_sequence.max(current.last_sequence);
-                        record.updated_at = record.updated_at.max(current.updated_at);
-                    }
-                    self.release_live(&session).await;
+                    self.ready_v1_retry(&session, &mut record, &definition, &launch)
+                        .await;
                     prefer_v2 = false;
                 }
                 Err(InitFailure::FallBackToV1) => {
-                    let error = "The agent only supports ACP version 1.".to_string();
+                    let error = coded(failures::ONLY_V1);
                     let _ = self.fail(&session, &error);
                     session.client.shutdown().await;
                     self.release_live(&session).await;
+                    self.forget_new_record(&id, brand_new);
                     return Err(error);
                 }
                 Err(InitFailure::Failed(error)) => {
@@ -1388,9 +1413,102 @@ impl AcpRuntime {
                     let _ = self.fail(&session, &error);
                     session.client.shutdown().await;
                     self.release_live(&session).await;
-                    return Err(session.redactor.text(&error));
+                    self.forget_new_record(&id, brand_new);
+                    return Err(redacted(&session.redactor, &error));
                 }
             }
+        }
+    }
+
+    async fn ready_v1_retry(
+        self: &Arc<Self>,
+        session: &Arc<LiveSession>,
+        record: &mut SessionRecord,
+        definition: &AgentDefinition,
+        launch: &catalog::Launch,
+    ) {
+        if let Ok(mut known) = self.v1_only.lock() {
+            known.insert((definition.id.clone(), launch.executable.clone()));
+        }
+        // The v1 restart starts in the same home: a task agent's
+        // history (an adopted home) must not go with this attempt.
+        if let Some(home) = &session.task_temp {
+            session.keep_home.store(true, Ordering::Release);
+            adopt_home(&record.id, &home.0);
+        }
+        session.client.shutdown().await;
+        // The respawn continues the same record: its events
+        // number on from the ones this attempt saved.
+        if let Ok(current) = self.copy_record(session) {
+            record.last_sequence = record.last_sequence.max(current.last_sequence);
+            record.updated_at = record.updated_at.max(current.updated_at);
+        }
+        self.release_live(session).await;
+    }
+
+    fn track_start(&self, owner: Option<&str>, record: &SessionRecord) -> StartTracking<'_> {
+        let start = Arc::new(PendingStart {
+            owner: owner.map(str::to_owned),
+            project_id: record.project_id.clone(),
+            record_id: record.id.clone(),
+            cancelled: watch::channel(false).0,
+        });
+        if let Ok(mut starts) = self.pending_starts.lock() {
+            starts.push(start.clone());
+        }
+        StartTracking {
+            runtime: self,
+            start,
+        }
+    }
+
+    pub async fn cancel_start(&self, owner: &str, project_id: &str) -> bool {
+        let starts: Vec<_> = self
+            .pending_starts
+            .lock()
+            .map(|starts| {
+                starts
+                    .iter()
+                    .filter(|start| {
+                        start.owner.as_deref() == Some(owner) && start.project_id == project_id
+                    })
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
+        for start in &starts {
+            start.cancelled.send_replace(true);
+            if let Ok(session) = self.get_live(&start.record_id).await {
+                session.client.request_stop();
+            }
+        }
+        !starts.is_empty()
+    }
+
+    async fn abandon_start(&self, session: &Arc<LiveSession>, brand_new: bool) -> String {
+        if let Ok(mut state) = session.state.lock() {
+            state.record.status = SessionStatus::Cancelled;
+            state.record.error = None;
+            if !brand_new {
+                let _ = self.emit_locked(
+                    session,
+                    &mut state,
+                    "status",
+                    json!({"status": "cancelled"}),
+                );
+            }
+        }
+        session.client.shutdown().await;
+        self.release_live(session).await;
+        if let Ok(record) = self.copy_record(session) {
+            self.forget_new_record(&record.id, brand_new);
+        }
+        coded(failures::START_CANCELLED)
+    }
+
+    fn forget_new_record(&self, id: &str, brand_new: bool) {
+        if brand_new {
+            let _ = self.store.delete_session(id);
         }
     }
 
@@ -1449,6 +1567,7 @@ impl AcpRuntime {
                     )?,
                     None => Redactor::new(&servers),
                 };
+                add_login_secrets(&redactor);
                 let command = build_agent_command(
                     &runtime.root,
                     &record,
@@ -1465,14 +1584,18 @@ impl AcpRuntime {
             .map_err(|_| "The agent could not be prepared.".to_string())??
         };
         let id = record.id.clone();
+        let codex_check = (allowed_paths.is_none() && catalog::is_codex(definition))
+            .then(|| super::codex::ConfigCheck::new(command.as_std(), launch_root, launch.batch));
         let host = SessionHost::new(self);
-        let client = AcpClient::spawn(command, host.clone()).await?;
+        let client = AcpClient::spawn(command, host.clone())
+            .await
+            .map_err(|error| redacted(&redactor, &rpc_message(&error)))?;
         let pid = client.pid();
         self.register_pid(pid, &launch.executable).await;
         if !self.owner_is_current(owner.as_deref(), generation) {
             client.shutdown().await;
             self.unregister_pid(pid).await;
-            return Err("The window or task closed while the agent was starting.".into());
+            return Err(coded(failures::OWNER_CLOSED));
         }
         if let Err(error) = self.store.save(record) {
             client.shutdown().await;
@@ -1499,6 +1622,9 @@ impl AcpRuntime {
                 default_title,
                 early: Vec::new(),
                 turn_closed: false,
+                turn_output: false,
+                refused_paths: HashSet::new(),
+                system_error: None,
             }),
             client,
             operation: AsyncMutex::new(()),
@@ -1514,10 +1640,12 @@ impl AcpRuntime {
             auth_asked: watch::channel(false).0,
             known_foreign: Mutex::new(HashSet::new()),
             forking: AtomicBool::new(false),
+            resuming: AtomicBool::new(false),
             mode_switches: AtomicU32::new(0),
             routed: Mutex::new(None),
             pid,
             keep_home: AtomicBool::new(false),
+            codex_check,
         });
         self.live.lock().await.insert(id, session.clone());
         // Registered: the slot is no longer a reservation.
@@ -1539,16 +1667,13 @@ impl AcpRuntime {
             .lock()
             .map_err(|_| "The ACP runtime is unavailable.")?;
         if sessions.len() + starting.len() >= MAX_LIVE_SESSIONS {
-            return Err(
-                "Eight ACP sessions are already connected. Disconnect one before starting another."
-                    .into(),
-            );
+            return Err(coded(failures::TOO_MANY_SESSIONS));
         }
         if sessions.contains_key(id) || starting.contains(id) {
-            return Err("This ACP session is already connected.".into());
+            return Err(coded(failures::ALREADY_CONNECTED));
         }
         if !self.owner_is_current(owner, generation) {
-            return Err("The window or task closed while the agent was starting.".into());
+            return Err(coded(failures::OWNER_CLOSED));
         }
         starting.insert(id.to_owned());
         Ok(SlotReservation {
@@ -1640,7 +1765,12 @@ impl AcpRuntime {
         {
             Ok(negotiated) => negotiated,
             Err(InitializeError::FallBackToV1) => return Err(InitFailure::FallBackToV1),
-            Err(error) => return Err(InitFailure::Failed(error.to_string())),
+            Err(InitializeError::NotAcp(version)) => {
+                return Err(InitFailure::Failed(failures::not_acp(version)))
+            }
+            Err(InitializeError::Rpc(error)) => {
+                return Err(InitFailure::Failed(rpc_message(&error)))
+            }
         };
         let response = &negotiated.raw;
         let capabilities = negotiated.capabilities.clone();
@@ -1694,6 +1824,7 @@ impl AcpRuntime {
                     match providers::route_agent(
                         &session.client,
                         &session.redactor,
+                        &agent_id,
                         &agent_prefs,
                         &config,
                     )
@@ -1720,6 +1851,16 @@ impl AcpRuntime {
         self.establish(session).await.map_err(InitFailure::Failed)
     }
 
+    fn never_prompted(&self, record: &SessionRecord) -> bool {
+        record.turn_id.is_none()
+            && record.forked_from.is_none()
+            && record.last_sequence > 0
+            && self
+                .store
+                .has_user_message(&record.id)
+                .is_ok_and(|found| !found)
+    }
+
     fn routing_notice(&self, session: &LiveSession, provider: Option<&str>, error: &str) {
         let Some(provider) = provider else {
             return;
@@ -1730,8 +1871,8 @@ impl AcpRuntime {
                 &mut state,
                 "notice",
                 json!({"severity": "warning",
-                    "title": format!("Oleafly could not route this agent through your {provider} key."),
-                    "description": session.redactor.text(error)}),
+                    "title": failures::routing(failures::ROUTE_FAILED, provider),
+                    "description": redacted(&session.redactor, error)}),
             );
         }
     }
@@ -1754,96 +1895,35 @@ impl AcpRuntime {
                     .clone(),
             ),
         };
-        let resuming = record.native_session_id.is_some();
+        let mut resuming = record.native_session_id.is_some();
         // `session/load` replays the conversation first; that history is
         // already stored.
         let loading = resuming && !record.capabilities.resume;
         if let Ok(mut state) = session.state.lock() {
             state.replaying = loading;
         }
+        let before = super::options::restore_values(&record.controls);
         let result = if let Some(native) = &record.native_session_id {
-            if record.capabilities.resume {
-                session
-                    .client
-                    .resume_session(native, &cwd, &mcp_servers)
-                    .await
-            } else if record.capabilities.load_session {
-                session
-                    .client
-                    .load_session(native, &cwd, &mcp_servers)
-                    .await
-            } else {
-                return Err("This agent no longer supports resuming this conversation.".into());
-            }
+            let (opened, still_resuming) = self
+                .reopen(session, &record, native, &cwd, &mcp_servers)
+                .await?;
+            resuming = still_resuming;
+            opened
         } else {
             session.client.new_session(&cwd, &mcp_servers).await
         };
         match result {
-            Ok(value) => {
-                {
-                    let mut state = session
-                        .state
-                        .lock()
-                        .map_err(|_| "The ACP session is unavailable.")?;
-                    if state.record.native_session_id.is_none() {
-                        let id = value["sessionId"]
-                            .as_str()
-                            .filter(|id| !id.is_empty() && id.len() <= 512)
-                            .ok_or("The agent returned no valid session ID.")?;
-                        state.record.native_session_id = Some(session.redactor.opaque_id(id)?);
-                    }
-                    session.redactor.validate_metadata_ids(&value)?;
-                    state.record.controls.merge(&session.redactor.value(&value));
-                    state.record.status = SessionStatus::Ready;
-                    state.record.error = None;
-                    state.replaying = false;
-                    self.emit_locked(session, &mut state, "status", json!({"status":"ready"}))?;
-                }
-                let early = session
-                    .state
-                    .lock()
-                    .map(|mut state| std::mem::take(&mut state.early))
-                    .unwrap_or_default();
-                for update in early {
-                    self.handle_update(session, &update)?;
-                }
-                if !resuming {
-                    self.apply_remembered(session).await;
-                }
-                // A session restored from the store knows its models but not
-                // the options they came from, and `session/load` returns
-                // none: setting the model it already runs makes the agent
-                // send every option, so the model, effort and mode pickers
-                // work again after a reconnect.
-                if resuming {
-                    let refresh = session.state.lock().ok().and_then(|state| {
-                        let controls = &state.record.controls;
-                        (!controls.legacy_models
-                            && controls.options.is_empty()
-                            && !controls.models.is_empty())
-                        .then(|| controls.model_id.clone())
-                        .flatten()
-                    });
-                    if let Some(model) = refresh {
-                        let _ = self
-                            .send_config_option_unchecked(
-                                session,
-                                "model",
-                                &oleafly_acp::controls::ConfigValue::Id(model),
-                            )
-                            .await;
-                    }
-                }
-                self.leave_blocked_mode(session).await;
-                Ok(())
-            }
+            Ok(value) => self.settle_open(session, &value, resuming, &before).await,
             Err(error) if error.auth_required() => {
+                if let Some(reason) = self.codex_sign_in_reason(session).await {
+                    return Err(reason);
+                }
                 let mut state = session
                     .state
                     .lock()
                     .map_err(|_| "The ACP session is unavailable.")?;
                 state.record.status = SessionStatus::AuthRequired;
-                state.record.error = Some("Sign in to this agent, then try again.".into());
+                state.record.error = Some(coded(failures::SIGN_IN));
                 state.replaying = false;
                 self.emit_locked(
                     session,
@@ -1853,8 +1933,125 @@ impl AcpRuntime {
                 )?;
                 Ok(())
             }
-            Err(error) => Err(error.to_string()),
+            Err(error) => Err(rpc_message(&error)),
         }
+    }
+
+    async fn reopen(
+        self: &Arc<Self>,
+        session: &Arc<LiveSession>,
+        record: &SessionRecord,
+        native: &str,
+        cwd: &str,
+        mcp_servers: &[Value],
+    ) -> Result<(Result<Value, RpcError>, bool), String> {
+        session.resuming.store(true, Ordering::Release);
+        let _resuming = super::sessions::ForeignUpdatesIgnored(&session.resuming);
+        let opened = if record.capabilities.resume {
+            session
+                .client
+                .resume_session(native, cwd, mcp_servers)
+                .await
+        } else if record.capabilities.load_session {
+            session.client.load_session(native, cwd, mcp_servers).await
+        } else {
+            return Err("This agent no longer supports resuming this conversation.".into());
+        };
+        match opened {
+            Ok(value) => match opened_elsewhere(native, &value) {
+                Some(other) => {
+                    if let Ok(mut known) = session.known_foreign.lock() {
+                        known.insert(other.clone());
+                    }
+                    if record.capabilities.close {
+                        let _ = tokio::time::timeout(
+                            CANCEL_GRACE,
+                            session.client.close_session(&other),
+                        )
+                        .await;
+                    }
+                    Err(coded(failures::CONVERSATION_GONE))
+                }
+                None => Ok((Ok(value), true)),
+            },
+            Err(error) if session_gone(&error) => {
+                if !self.never_prompted(record) {
+                    return Err(coded(failures::CONVERSATION_GONE));
+                }
+                if let Ok(mut state) = session.state.lock() {
+                    state.record.native_session_id = None;
+                    state.replaying = false;
+                }
+                Ok((session.client.new_session(cwd, mcp_servers).await, false))
+            }
+            Err(error) => Ok((Err(error), true)),
+        }
+    }
+
+    async fn settle_open(
+        self: &Arc<Self>,
+        session: &Arc<LiveSession>,
+        value: &Value,
+        resuming: bool,
+        before: &super::options::Restore,
+    ) -> Result<(), String> {
+        {
+            let mut state = session
+                .state
+                .lock()
+                .map_err(|_| "The ACP session is unavailable.")?;
+            if state.record.native_session_id.is_none() {
+                let id = value["sessionId"]
+                    .as_str()
+                    .filter(|id| !id.is_empty() && id.len() <= 512)
+                    .ok_or("The agent returned no valid session ID.")?;
+                state.record.native_session_id = Some(session.redactor.opaque_id(id)?);
+            }
+            session.redactor.validate_metadata_ids(value)?;
+            state.record.controls.merge(&session.redactor.value(value));
+            state.record.status = SessionStatus::Ready;
+            state.record.error = None;
+            state.replaying = false;
+            self.emit_locked(session, &mut state, "status", json!({"status":"ready"}))?;
+        }
+        let early = session
+            .state
+            .lock()
+            .map(|mut state| std::mem::take(&mut state.early))
+            .unwrap_or_default();
+        for update in early {
+            self.handle_update(session, &update)?;
+        }
+        if !resuming {
+            self.apply_remembered(session).await;
+        }
+        // A session restored from the store knows its models but not
+        // the options they came from, and `session/load` returns
+        // none: setting the model it already runs makes the agent
+        // send every option, so the model, effort and mode pickers
+        // work again after a reconnect.
+        if resuming {
+            let refresh = session.state.lock().ok().and_then(|state| {
+                let controls = &state.record.controls;
+                (!controls.legacy_models
+                    && controls.options.is_empty()
+                    && !controls.models.is_empty())
+                .then(|| controls.model_id.clone())
+                .flatten()
+            });
+            if let Some(model) = refresh {
+                let _ = self
+                    .send_config_option_unchecked(
+                        session,
+                        "model",
+                        &oleafly_acp::controls::ConfigValue::Id(model),
+                    )
+                    .await;
+            }
+            self.restore_controls(session, before).await;
+        }
+        self.leave_blocked_mode(session).await;
+        Ok(())
     }
 
     pub async fn prompt(
@@ -1958,6 +2155,9 @@ impl AcpRuntime {
             state.record.turn_id = Some(new_id());
             state.record.status = SessionStatus::Running;
             state.turn_closed = false;
+            state.turn_output = false;
+            state.system_error = None;
+            state.refused_paths.clear();
             state.record.error = None;
             state.cancelled = false;
             state.tool_calls.clear();
@@ -2007,6 +2207,7 @@ impl AcpRuntime {
             None
         };
         let cancelled_during_copy = session.state.lock().is_ok_and(|state| state.cancelled);
+        let started = now_ms();
         let result = if cancelled_during_copy {
             Err(RpcError::local("The turn was cancelled."))
         } else {
@@ -2019,7 +2220,7 @@ impl AcpRuntime {
         };
         // The message is in the transcript: a failure from here on is the
         // turn's, and sending the message again would repeat it.
-        self.finish_turn(&session, &record, result, turn_copy)
+        self.finish_turn(&session, &record, result, turn_copy, started)
             .await
             .map_err(|message| PromptFailure::Delivered {
                 delivered: true,
@@ -2034,8 +2235,12 @@ impl AcpRuntime {
         record: &SessionRecord,
         result: Result<Value, RpcError>,
         turn_copy: Option<crate::agent_turns::TurnBegin>,
+        started: u64,
     ) -> Result<SessionSnapshot, String> {
         self.expire_permissions(session).await;
+        let recovered = self
+            .silent_turn_error(session, record, &result, started)
+            .await;
         // 0.4.8 I: the agent's desktop apps session ends with its turn.
         crate::cua_driver::acp_turn_ended(&record.id);
         let changes = match &turn_copy {
@@ -2047,6 +2252,28 @@ impl AcpRuntime {
             SessionStatus::Disconnected
         } else {
             SessionStatus::Ready
+        };
+        let (cancelled, held) = session
+            .state
+            .lock()
+            .map(|state| (state.cancelled, state.system_error.clone()))
+            .unwrap_or_default();
+        let ended = result
+            .as_ref()
+            .is_ok_and(|value| value["stopReason"] == "end_turn");
+        let system_error = held
+            .filter(|_| ended && !cancelled)
+            .map(|text| super::codex::system_error_message(&text));
+        let asks_sign_in = match &result {
+            Err(error) => !cancelled && !closed && error.auth_required(),
+            Ok(_) => system_error
+                .as_deref()
+                .is_some_and(super::protocol::reads_as_auth_failure),
+        };
+        let sign_in_reason = if asks_sign_in {
+            self.codex_sign_in_reason(session).await
+        } else {
+            None
         };
         let error;
         let failed;
@@ -2066,27 +2293,48 @@ impl AcpRuntime {
             // and asked it to stop; its answer to the prompt can't undo that.
             failed = state.record.status == SessionStatus::Failed;
             let (status, stop, message) = if failed {
-                let error = state.record.error.clone().unwrap_or_else(|| {
-                    "The agent stopped before completing this turn.".to_string()
-                });
+                let error = state
+                    .record
+                    .error
+                    .clone()
+                    .unwrap_or_else(|| coded(failures::STOPPED_EARLY));
                 (SessionStatus::Failed, "error".to_string(), Some(error))
             } else {
                 (status, stop, message)
             };
+            let (status, stop, message) = self.settle_system_error(
+                session,
+                &mut state,
+                (status, stop, message),
+                system_error,
+                closed,
+                result.is_ok() && !failed,
+            )?;
+            let (status, message) =
+                match sign_in_reason.filter(|_| status == SessionStatus::AuthRequired) {
+                    Some(reason) => (live_status.clone(), Some(reason)),
+                    None => (status, message),
+                };
+            let silent = stop == "end_turn" && !state.turn_output;
+            let (stop, message) = match recovered.filter(|_| silent) {
+                Some(error) => (
+                    "error".to_string(),
+                    Some(redacted(&session.redactor, &error)),
+                ),
+                None => (stop, message),
+            };
+            if silent && message.is_none() {
+                let _ = self.emit_locked(
+                    session,
+                    &mut state,
+                    "notice",
+                    json!({"severity": "warning",
+                        "title": coded(failures::EMPTY_TURN),
+                        "description": coded(failures::EMPTY_TURN_ADVICE)}),
+                );
+            }
             if let Ok(value) = &result {
-                let now = now_ms();
-                let usage = state.record.usage.get_or_insert_with(SessionUsage::default);
-                usage.apply_prompt_response(value, now);
-                usage.redact(&session.redactor);
-                if let Some(mut counters) = prompt_usage(value) {
-                    counters.session = state.record.usage.as_ref().map(SessionUsage::without_plan);
-                    self.emit_locked(
-                        session,
-                        &mut state,
-                        "usage",
-                        serde_json::to_value(counters).map_err(|e| e.to_string())?,
-                    )?;
-                }
+                self.record_turn_usage(session, &mut state, value)?;
             }
             if let Some(changes) = changes.filter(review::worth_reporting) {
                 let data = review::turn_changes_event(state.record.turn_id.as_deref(), &changes);
@@ -2124,6 +2372,93 @@ impl AcpRuntime {
         self.snapshot(&record.id).await
     }
 
+    fn settle_system_error(
+        &self,
+        session: &LiveSession,
+        state: &mut LiveState,
+        outcome: (SessionStatus, String, Option<String>),
+        system_error: Option<String>,
+        closed: bool,
+        keep_held: bool,
+    ) -> Result<(SessionStatus, String, Option<String>), String> {
+        let (status, stop, message) = outcome;
+        let held = state.system_error.take();
+        match system_error.filter(|_| stop == "end_turn") {
+            Some(error) => {
+                let error = redacted(&session.redactor, &error);
+                let status = if !closed && super::protocol::reads_as_auth_failure(&error) {
+                    SessionStatus::AuthRequired
+                } else {
+                    status
+                };
+                Ok((status, "error".to_string(), Some(error)))
+            }
+            None => {
+                let kept =
+                    held.filter(|text| !text.trim().is_empty() && keep_held && !state.cancelled);
+                if let Some(text) = kept {
+                    self.emit_locked(
+                        session,
+                        state,
+                        "agent_message_chunk",
+                        json!({"sessionUpdate": "agent_message_chunk",
+                            "content": {"type": "text", "text": session.redactor.text(&text)}}),
+                    )?;
+                }
+                Ok((status, stop, message))
+            }
+        }
+    }
+
+    fn record_turn_usage(
+        &self,
+        session: &LiveSession,
+        state: &mut LiveState,
+        value: &Value,
+    ) -> Result<(), String> {
+        let now = now_ms();
+        let usage = state.record.usage.get_or_insert_with(SessionUsage::default);
+        usage.apply_prompt_response(value, now);
+        usage.redact(&session.redactor);
+        if let Some(mut counters) = prompt_usage(value) {
+            counters.session = state.record.usage.as_ref().map(SessionUsage::without_plan);
+            self.emit_locked(
+                session,
+                state,
+                "usage",
+                serde_json::to_value(counters).map_err(|e| e.to_string())?,
+            )?;
+        }
+        Ok(())
+    }
+
+    async fn silent_turn_error(
+        &self,
+        session: &LiveSession,
+        record: &SessionRecord,
+        result: &Result<Value, RpcError>,
+        started: u64,
+    ) -> Option<String> {
+        let ended = result
+            .as_ref()
+            .is_ok_and(|value| value["stopReason"] == "end_turn");
+        let silent = session
+            .state
+            .lock()
+            .is_ok_and(|state| !state.turn_output && !state.cancelled);
+        if record.agent_id != "pi" || !ended || !silent || record.remote.is_some() {
+            return None;
+        }
+        let native = record.native_session_id.clone()?;
+        let home = crate::paths::home_dir().ok()?;
+        tokio::task::spawn_blocking(move || {
+            super::pi_turn::last_turn_error(&home, &native, started)
+        })
+        .await
+        .ok()
+        .flatten()
+    }
+
     /// Adds a message to the running turn ("Send now"). The agent may answer
     /// that the turn already ended; the caller then sends it as a new turn.
     pub async fn steer(self: &Arc<Self>, id: &str, text: String) -> Result<SteerOutcome, String> {
@@ -2151,7 +2486,7 @@ impl AcpRuntime {
             .client
             .steer(&native, vec![json!({"type": "text", "text": text})])
             .await
-            .map_err(|error| session.redactor.text(&error.to_string()))?;
+            .map_err(|error| redacted(&session.redactor, &rpc_message(&error)))?;
         let outcome = answer["outcome"]
             .as_str()
             .or(answer["status"].as_str())
@@ -2572,9 +2907,7 @@ impl AcpRuntime {
             )
         {
             session.client.request_stop();
-            return Err(
-                "This session reached its transcript size limit. Start a new conversation.".into(),
-            );
+            return Err(coded(failures::TRANSCRIPT_FULL));
         }
         state.record.updated_at = now_ms();
         state.record.last_sequence += 1;
@@ -2600,7 +2933,7 @@ impl AcpRuntime {
             session.client.request_stop();
             state.record.last_sequence -= 1;
             state.record.status = SessionStatus::Failed;
-            state.record.error = Some("The ACP transcript could not be saved. The agent was stopped to preserve the saved history.".into());
+            state.record.error = Some(coded(failures::TRANSCRIPT_NOT_SAVED));
             return Err(state.record.error.clone().unwrap_or_default());
         }
         if changed {
@@ -2682,8 +3015,9 @@ impl AcpRuntime {
             .state
             .lock()
             .map_err(|_| "The ACP session is unavailable.")?;
+        let error = redacted(&session.redactor, error);
         state.record.status = SessionStatus::Failed;
-        state.record.error = Some(session.redactor.text(error));
+        state.record.error = Some(error.clone());
         self.emit_locked(
             session,
             &mut state,
@@ -2834,8 +3168,9 @@ impl AcpRuntime {
     }
 
     /// A `session/request_permission` from the agent. Answered at once
-    /// (outside the project, automatic answers) or kept as a card until the
-    /// user answers, the turn ends or 120 s pass.
+    /// (refused outside the project, automatic answers) or kept as a card
+    /// until the user answers or the turn ends; a helper agent's card also
+    /// expires after 120 s.
     pub(super) fn permission_requested(
         self: &Arc<Self>,
         session: &Arc<LiveSession>,
@@ -2884,6 +3219,9 @@ impl AcpRuntime {
                 .as_deref()
                 .is_some_and(|folder| skill_read_allowed(folder, policy["kind"].as_str(), &policy));
         if !in_project && !skill_read {
+            if in_turn && session.task_temp.is_none() {
+                return self.refuse_outside(session, incoming, &record, &policy);
+            }
             return incoming
                 .respond(json!({"outcome":{"outcome":"cancelled"}}))
                 .map_err(|e| e.to_string());
@@ -2944,9 +3282,12 @@ impl AcpRuntime {
             &policy,
         );
         let task_queue = task.queued.is_some();
+        let interactive = session.task_temp.is_none() && record.parent_session_id.is_none();
         if task_queue {
             request.expires_at =
                 now_ms() + oleafly_research::approvals::APPROVAL_EXPIRY.as_millis() as u64;
+        } else if interactive {
+            request.expires_at = now_ms() + OPEN_CARD_MS;
         }
         let reject_once = request
             .options
@@ -2988,7 +3329,7 @@ impl AcpRuntime {
                 PendingPermission {
                     request,
                     responder: incoming,
-                    task_queue,
+                    untimed: task_queue || interactive,
                 },
             );
             self.update_hold(session, &state);
@@ -3009,6 +3350,9 @@ impl AcpRuntime {
         if delegate == PermissionDelegate::None && record.parent_session_id.is_some() {
             return self.resolve_permission_in(session, &permission_id, None);
         }
+        if interactive {
+            return Ok(());
+        }
         let weak = Arc::downgrade(self);
         let session_id = record.id;
         tokio::spawn(async move {
@@ -3019,6 +3363,54 @@ impl AcpRuntime {
                     .await;
             }
         });
+        Ok(())
+    }
+
+    fn refuse_outside(
+        &self,
+        session: &LiveSession,
+        incoming: IncomingRequest,
+        record: &SessionRecord,
+        policy: &Value,
+    ) -> Result<(), String> {
+        let reject = incoming.params()["options"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|option| option["kind"] == "reject_once")
+            .and_then(|option| option["optionId"].as_str())
+            .filter(|id| !id.is_empty() && id.len() <= 512)
+            .map(str::to_owned);
+        let outcome = match reject {
+            Some(option) => json!({"outcome": "selected", "optionId": option}),
+            None => json!({"outcome": "cancelled"}),
+        };
+        incoming
+            .respond(json!({ "outcome": outcome }))
+            .map_err(|e| e.to_string())?;
+        let root = Path::new(&record.project_path);
+        let home = crate::paths::home_dir().ok();
+        let path = permission_view::refused_path(
+            root,
+            policy,
+            |path| permission_paths_allowed(root, &json!({"locations": [{"path": path}]})),
+            home.as_deref(),
+        )
+        .map(|path| session.redactor.text(&path));
+        let Ok(mut state) = session.state.lock() else {
+            return Ok(());
+        };
+        if !state.refused_paths.insert(path.clone().unwrap_or_default()) {
+            return Ok(());
+        }
+        let _ = self.emit_locked(
+            session,
+            &mut state,
+            "notice",
+            json!({"severity": "warning",
+                "title": coded(failures::OUTSIDE_PROJECT),
+                "description": failures::outside_project(path.as_deref())}),
+        );
         Ok(())
     }
 
@@ -3082,7 +3474,7 @@ impl AcpRuntime {
                 .permissions
                 .get(permission_id)
                 .ok_or("This permission request has expired.")?;
-            let expired = (!pending.task_queue && pending.request.expires_at <= now_ms())
+            let expired = (!pending.untimed && pending.request.expires_at <= now_ms())
                 || state.record.status != SessionStatus::Running
                 || state.record.turn_id.as_deref() != Some(&pending.request.turn_id);
             if option_id.is_some() && expired {
@@ -3205,6 +3597,45 @@ fn helper_is_running(acp_root: &Path) -> bool {
     })
 }
 
+pub(super) fn add_login_secrets(redactor: &Redactor) {
+    for secret in crate::program_locator::login_env_secrets() {
+        redactor.add_secret(&secret);
+    }
+}
+
+fn check_mcp_config(mcp_servers: &[Value]) -> Result<(), String> {
+    if mcp_servers.len() > 32
+        || serde_json::to_vec(mcp_servers)
+            .map_err(|e| e.to_string())?
+            .len()
+            > 64 * 1024
+    {
+        return Err("The ACP MCP configuration is too large.".into());
+    }
+    Ok(())
+}
+
+fn place_session(
+    record: &mut SessionRecord,
+    settings: &HermesSettings,
+    remote_mode: bool,
+) -> Result<PathBuf, String> {
+    if remote_mode {
+        let remote = settings
+            .remote
+            .as_ref()
+            .ok_or("The remote machine is not set up.")?;
+        record.remote = Some(RemoteTarget {
+            host: remote.host.clone(),
+            folder: remote.folder.clone(),
+        });
+        crate::paths::home_dir()
+    } else {
+        record.remote = None;
+        Ok(launch_root_for(Path::new(&record.project_path)))
+    }
+}
+
 /// The startup cleanup: bridge versions an update replaced and the npm
 /// cache of an earlier build. While the background helper runs, its agents
 /// may still load files from an old version, so versions stay until a
@@ -3221,17 +3652,28 @@ fn startup_cleanup(acp_root: &Path, helper_running: bool) {
 }
 
 /// Why a saved conversation can't continue where the project's agent runs
-/// now: its agent session lives on the machine it was made on.
-fn moved_target(record: &SessionRecord, settings: &HermesSettings) -> Option<&'static str> {
+/// now: its agent session lives on the machine it was made on, in the
+/// Hermes profile it was made in.
+pub(super) fn moved_target(
+    record: &SessionRecord,
+    settings: &HermesSettings,
+) -> Option<&'static str> {
     let now = settings
         .remote
         .as_ref()
         .filter(|_| settings.mode == HermesMode::Remote);
     match (&record.remote, now) {
-        (Some(_), None) => Some("This conversation ran on another machine, and Hermes now runs on this computer. Start a new conversation to continue."),
-        (None, Some(_)) => Some("This conversation ran on this computer, and Hermes now runs on another machine. Start a new conversation to continue."),
+        (Some(_), None) => Some(failures::MOVED_TO_LOCAL),
+        (None, Some(_)) => Some(failures::MOVED_TO_REMOTE),
         (Some(before), Some(now)) if before.host != now.host || before.folder != now.folder => {
-            Some("This conversation ran on another machine than the one Hermes uses now. Start a new conversation to continue.")
+            Some(failures::MOVED_MACHINE)
+        }
+        (None, None)
+            if record.hermes_profile.as_ref().is_some_and(|before| {
+                Some(before) != hermes::profile_tag(&record.project_id, settings).as_ref()
+            }) =>
+        {
+            Some(failures::MOVED_PROFILE)
         }
         _ => None,
     }
@@ -3304,7 +3746,7 @@ fn turn_outcome(
             None => (
                 live_status.clone(),
                 "error".into(),
-                Some("The agent did not report how this turn ended.".into()),
+                Some(coded(failures::NO_STOP_REASON)),
             ),
         },
         _ if cancelled => (
@@ -3319,19 +3761,38 @@ fn turn_outcome(
         Err(error) if !closed && error.auth_required() => (
             SessionStatus::AuthRequired,
             "error".into(),
-            Some(redactor.text(&error.to_string())),
+            Some(redacted(redactor, &rpc_message(error))),
         ),
         Err(error) => (
             live_status.clone(),
             "error".into(),
-            Some(redactor.text(&error.to_string())),
+            Some(redacted(redactor, &rpc_message(error))),
         ),
         _ => (
             live_status.clone(),
             "error".into(),
-            Some("The agent stopped before completing this turn.".into()),
+            Some(coded(failures::STOPPED_EARLY)),
         ),
     }
+}
+
+fn opened_elsewhere(requested: &str, answer: &Value) -> Option<String> {
+    [
+        &answer["sessionId"],
+        &answer["_meta"]["hermes"]["sessionProvenance"]["acpSessionId"],
+    ]
+    .into_iter()
+    .filter_map(Value::as_str)
+    .find(|id| !id.is_empty() && id.len() <= 512 && *id != requested)
+    .map(str::to_owned)
+}
+
+fn session_gone(error: &RpcError) -> bool {
+    let message = error.message.to_lowercase();
+    error.code == -32002
+        || message.contains("session not found")
+        || message.contains("resource not found")
+        || message.contains("session is not resumable")
 }
 
 pub(super) fn canonical_root(path: &Path) -> Result<PathBuf, String> {
@@ -4017,6 +4478,9 @@ mod handoff_tests {
             default_title: false,
             early: Vec::new(),
             turn_closed: false,
+            turn_output: false,
+            refused_paths: Default::default(),
+            system_error: None,
         };
         state.record.usage.as_mut().unwrap().updated_at = 2;
         assert!(!record_changed(&mut state));
@@ -4061,5 +4525,31 @@ mod handoff_tests {
                 "{agent}"
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod session_gone_tests {
+    use super::{session_gone, RpcError};
+
+    #[test]
+    fn every_agents_way_of_saying_the_conversation_is_gone_is_recognised() {
+        for (code, message) in [
+            (-32002, "Resource not found: 1f2e"),
+            (-32603, "Session not found"),
+            (
+                -32602,
+                "Invalid params: session is not resumable: 00000000-0000-0000-0000-000000000000",
+            ),
+        ] {
+            assert!(
+                session_gone(&RpcError::agent(code, message.into())),
+                "{message}"
+            );
+        }
+        assert!(!session_gone(&RpcError::agent(
+            -32602,
+            "Invalid params: session is already active: 1f2e".into()
+        )));
     }
 }

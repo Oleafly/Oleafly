@@ -56,6 +56,22 @@ describe("scan estimates", () => {
     );
   });
 
+  it("prices DeepSeek pages at its peak rate, double the listed off-peak one", () => {
+    const deepseek: ToolsChoiceSummary = {
+      engine: "llm",
+      providerId: "deepseek",
+      modelId: "deepseek-flash",
+      label: "DeepSeek Flash",
+      destination: { kind: "provider", providerId: "deepseek", name: "DeepSeek" },
+      metadata: { cost: { input: 0.15, output: 0.6 } } as ModelMetadata,
+    };
+    const estimate = estimateScan(sizes(10), deepseek);
+    expect((estimate as { usd: number }).usd).toBeCloseTo(
+      (((35 * 46 + PROMPT_TOKENS_PER_PAGE) * 10) / 1e6) * 0.3 + ((OUTPUT_TOKENS_PER_PAGE * 10) / 1e6) * 1.2,
+      6,
+    );
+  });
+
   it("prices Mathpix per page", () =>
     expect(estimateScan(sizes(10), mathpix)).toEqual({ kind: "cost", pages: 10, usd: 0.05 }));
 

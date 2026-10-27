@@ -59,10 +59,16 @@ fn fake_node(folder: &Path, version: &str) -> PathBuf {
     }
     #[cfg(not(windows))]
     {
-        use std::os::unix::fs::PermissionsExt;
         let path = folder.join("node");
-        std::fs::write(&path, format!("#!/bin/sh\necho {version}\n")).unwrap();
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)).unwrap();
+        crate::test_wait::write_executable(
+            &path,
+            &format!("#!/bin/sh\n[ \"$1\" = --warm-up ] && exit 0\necho {version}\n"),
+        );
+        let warmed = std::process::Command::new(&path)
+            .arg("--warm-up")
+            .status()
+            .unwrap();
+        assert!(warmed.success());
         path
     }
 }
@@ -73,6 +79,7 @@ fn pi_plan(cli: &Located, node: Option<PathBuf>) -> Plan {
         cli: Some(CliProgram {
             located: cli.clone(),
             overridden: true,
+            version: None,
         }),
         cli_rejected: Vec::new(),
         node,
