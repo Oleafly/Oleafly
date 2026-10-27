@@ -1112,6 +1112,32 @@
         "settings": {
           "show": "Zobrazit nastavení dokumentu",
           "hide": "Skrýt nastavení dokumentu"
+        },
+        "forms": {
+          "editInSource": "Upravit ve zdroji",
+          "addInSource": "Přidat ve zdroji",
+          "refused": "Formulář to sem nemůže přidat.",
+          "missing": "Chybí",
+          "notSet": "Nenastaveno",
+          "notSetDefault": "Nenastaveno (výchozí: {{value}})",
+          "defaultValue": "Výchozí: {{value}}",
+          "clear": "Vymazat",
+          "on": "Zapnuto",
+          "off": "Vypnuto",
+          "open": "Upravit „{{label}}“",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "Tato hodnota by rozbila volání. Změňte ji a zkuste to znovu.",
+          "invalidNumber": "Zadejte číslo.",
+          "between": "Zadejte číslo od {{min}} do {{max}}.",
+          "atLeast": "Zadejte číslo alespoň {{min}}.",
+          "atMost": "Zadejte číslo nejvýše {{max}}.",
+          "renderFailed": "Tento formulář se nepodařilo zobrazit. Zde je jeho zdroj:",
+          "reason": {
+            "expression": "Vypočítáno ve zdroji",
+            "kind": "Zapsáno jako hodnota jiného druhu",
+            "unknownOption": "Není na seznamu možností",
+            "locked": "Nastaveno rozbalením argumentů (..)"
+          }
         }
       },
       "table": {
@@ -1541,5 +1567,29 @@
     "keyTaken": "Varianta nemůže nastavit stejný název dvakrát.",
     "saveFailed": "Varianty se nepodařilo uložit."
   },
-  "sharedSettingsViewer": "Čtenáři ve sdíleném projektu toto nastavení nemohou měnit."
+  "sharedSettingsViewer": "Čtenáři ve sdíleném projektu toto nastavení nemohou měnit.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} (v {{path}})",
+    "diagnostic": {
+      "parseError": "Chyba TOML",
+      "schemaMissing": "Chybí schéma",
+      "schemaVersion": "Nepodporované schéma",
+      "fileTooLarge": "Soubor je příliš velký",
+      "unreadable": "Soubor nelze přečíst",
+      "invalidPackageSpec": "Neplatný balíček",
+      "missingKey": "Chybí klíč",
+      "unknownKey": "Neznámý klíč",
+      "invalidValue": "Neplatná hodnota",
+      "invalidFunction": "Neplatný název funkce",
+      "builtinName": "Vestavěný název",
+      "duplicateFunction": "Duplicitní formulář",
+      "moduleRequired": "Chybí modul",
+      "moduleNotAllowed": "Modul není v balíčku povolen",
+      "invalidModulePath": "Neplatná cesta k modulu",
+      "invalidArg": "Neplatný argument",
+      "duplicateArg": "Duplicitní argument",
+      "unknownKind": "Neznámý druh pole"
+    }
+  }
 }

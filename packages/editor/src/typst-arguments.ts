@@ -48,7 +48,8 @@ export interface NamedSlot {
 
 export interface CallArguments {
   readonly call: TextRange;
-  readonly args: TextRange;
+  // The `Args` node: parentheses and trailing blocks together.
+  readonly list: TextRange;
   readonly text: string;
   readonly parens: { readonly open: number; readonly close: number } | null;
   readonly positional: readonly ArgumentSlot[];
@@ -140,15 +141,24 @@ export function contentBody(block: SyntaxNode): TextRange | null {
   return { from: open.to, to: close.from };
 }
 
+// A depth-first walk with one cursor, so checking a call allocates no subtree copy.
 export function hasErrorNode(node: SyntaxNode): boolean {
-  let found = false;
-  node.toTree().iterate({
-    enter(ref) {
-      if (ref.type.isError) found = true;
-      return !found;
-    },
-  });
-  return found;
+  if (node.type.isError) return true;
+  const cursor = node.cursor();
+  if (!cursor.firstChild()) return false;
+  let depth = 1;
+  for (;;) {
+    if (cursor.type.isError) return true;
+    if (cursor.firstChild()) {
+      depth += 1;
+      continue;
+    }
+    while (!cursor.nextSibling()) {
+      cursor.parent();
+      depth -= 1;
+      if (depth === 0) return false;
+    }
+  }
 }
 
 export function readCallArguments(doc: SourceText, call: SyntaxNode): CallArguments | null {
@@ -156,6 +166,7 @@ export function readCallArguments(doc: SourceText, call: SyntaxNode): CallArgume
   if (!args || hasErrorNode(args)) return null;
   const close = insideParentheses(args) ? closingParenthesis(args) : null;
   if (insideParentheses(args) && !close) return null;
+  const text = doc.sliceString(call.from, call.to);
   const positional: ArgumentSlot[] = [];
   const named: NamedSlot[] = [];
   let spread = false;
@@ -167,15 +178,16 @@ export function readCallArguments(doc: SourceText, call: SyntaxNode): CallArgume
       const key = child.firstChild;
       const value = namedValue(child);
       if (!key || !value) return null;
-      named.push({ name: doc.sliceString(key.from, key.to), argument: range(child), value: range(value), type: value.name });
+      const name = text.slice(key.from - call.from, key.to - call.from);
+      named.push({ name, argument: range(child), value: range(value), type: value.name });
     } else {
       positional.push({ node: range(child), type: child.name, trailing: !close || child.from >= close.to });
     }
   }
   return {
     call: range(call),
-    args: range(args),
-    text: doc.sliceString(call.from, call.to),
+    list: range(args),
+    text,
     parens: close ? { open: args.from, close: close.from } : null,
     positional,
     named,
@@ -239,6 +251,15 @@ function namedSlot(args: CallArguments, name: string): NamedSlot | null {
   return args.named.find((slot) => slot.name === name) ?? null;
 }
 
+// The value an argument reference points at: a named argument's value, or a positional slot.
+export function argumentSlot(args: CallArguments, ref: ArgRef): { readonly node: TextRange; readonly type: string } | null {
+  if ("named" in ref) {
+    const slot = namedSlot(args, ref.named);
+    return slot ? { node: slot.value, type: slot.type } : null;
+  }
+  return args.positional[ref.positional] ?? null;
+}
+
 function parenthesised(args: CallArguments): TextRange[] {
   const items = [...args.named.map((slot) => slot.argument)];
   for (const slot of args.positional) if (!slot.trailing) items.push(slot.node);
@@ -261,7 +282,7 @@ function insertParenthesised(
   lineBreak: string,
 ): TextChange[] {
   const parens = args.parens;
-  if (!parens) return [insertion(args.args.from, `(${texts.join(", ")})`)];
+  if (!parens) return [insertion(args.list.from, `(${texts.join(", ")})`)];
   const items = parenthesised(args);
   if (items.length === 0) {
     const inner = doc.sliceString(parens.open + 1, parens.close);
@@ -325,7 +346,7 @@ function insertArgument(
   const count = args.positional.length;
   if (target.positional < count) return refuse("exists");
   if (target.positional > count) return refuse("positionGap");
-  if (edit.content) return planned(insertion(args.args.to, edit.text));
+  if (edit.content) return planned(insertion(args.list.to, edit.text));
   if (args.positional.some((slot) => slot.trailing)) return refuse("positionGap");
   const anchor = args.positional.at(-1)?.node ?? null;
   return planned(...insertParenthesised(doc, args, anchor, [edit.text], lineBreak));

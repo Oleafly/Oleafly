@@ -1084,6 +1084,32 @@
         "settings": {
           "show": "Vis dokumentindstillinger",
           "hide": "Skjul dokumentindstillinger"
+        },
+        "forms": {
+          "editInSource": "Rediger i kilden",
+          "addInSource": "Tilføj i kilden",
+          "refused": "Formularen kan ikke tilføje dette her.",
+          "missing": "Mangler",
+          "notSet": "Ikke angivet",
+          "notSetDefault": "Ikke angivet (standard: {{value}})",
+          "defaultValue": "Standard: {{value}}",
+          "clear": "Ryd",
+          "on": "Til",
+          "off": "Fra",
+          "open": "Rediger {{label}}",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "Denne værdi ville ødelægge kaldet. Ændr den, og prøv igen.",
+          "invalidNumber": "Angiv et tal.",
+          "between": "Angiv et tal fra {{min}} til {{max}}.",
+          "atLeast": "Angiv {{min}} eller mere.",
+          "atMost": "Angiv {{max}} eller mindre.",
+          "renderFailed": "Formularen kunne ikke vises. Her er dens kilde:",
+          "reason": {
+            "expression": "Beregnet i kilden",
+            "kind": "Skrevet som en anden slags værdi",
+            "unknownOption": "Ikke en af valgmulighederne",
+            "locked": "Angivet af et spread-argument"
+          }
         }
       },
       "table": {
@@ -1499,5 +1525,29 @@
     "keyTaken": "En variant kan ikke angive det samme navn to gange.",
     "saveFailed": "Varianterne kunne ikke gemmes."
   },
-  "sharedSettingsViewer": "Læsere kan ikke ændre dette i et delt projekt."
+  "sharedSettingsViewer": "Læsere kan ikke ændre dette i et delt projekt.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} (i {{path}})",
+    "diagnostic": {
+      "parseError": "TOML-fejl",
+      "schemaMissing": "Skema mangler",
+      "schemaVersion": "Skemaet understøttes ikke",
+      "fileTooLarge": "Filen er for stor",
+      "unreadable": "Filen kan ikke læses",
+      "invalidPackageSpec": "Ugyldig pakke",
+      "missingKey": "Nøgle mangler",
+      "unknownKey": "Ukendt nøgle",
+      "invalidValue": "Ugyldig værdi",
+      "invalidFunction": "Ugyldigt funktionsnavn",
+      "builtinName": "Indbygget navn",
+      "duplicateFunction": "Dubleret formular",
+      "moduleRequired": "Modul mangler",
+      "moduleNotAllowed": "Modul er ikke tilladt i en pakke",
+      "invalidModulePath": "Ugyldig modulsti",
+      "invalidArg": "Ugyldigt argument",
+      "duplicateArg": "Dubleret argument",
+      "unknownKind": "Ukendt felttype"
+    }
+  }
 }

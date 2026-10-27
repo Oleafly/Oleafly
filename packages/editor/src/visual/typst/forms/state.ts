@@ -1,9 +1,10 @@
 import { syntaxTree } from "@codemirror/language";
-import { StateEffect, StateField } from "@codemirror/state";
+import { type EditorState, StateEffect, StateField } from "@codemirror/state";
 import { type EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
+import type { Tree } from "@lezer/common";
 import { EMPTY_TYPST_FORM_CATALOG, type TypstFormCatalog, type TypstFormsPort } from "../../../typst-forms";
 import { visualPortsFacet } from "../../facets";
-import { documentBindings } from "./scope";
+import { buildFormIndex, documentBindings, FormScope } from "./scope";
 
 export const setTypstFormCatalog = StateEffect.define<TypstFormCatalog>();
 
@@ -16,6 +17,13 @@ export const typstFormsField = StateField.define<TypstFormCatalog>({
     return catalog;
   },
 });
+
+// Null when no form could match, so a build without forms runs no forms code.
+export function formScopeFor(state: EditorState, tree: Tree): FormScope | null {
+  const catalog = state.field(typstFormsField, false);
+  if (!catalog || catalog.forms.length === 0) return null;
+  return FormScope.create(buildFormIndex(catalog), documentBindings(state, tree));
+}
 
 // Keeps the field in step with the port, and tells the port which packages the document imports.
 // Catalog changes are dispatched in a microtask, never inside a view update.

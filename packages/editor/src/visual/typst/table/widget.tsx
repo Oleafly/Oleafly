@@ -1,5 +1,5 @@
 import { type EditorView, WidgetType } from "@codemirror/view";
-import { createRoot, type Root } from "react-dom/client";
+import { renderWidget, unmountWidget } from "../../react-widget";
 import type { TableDialect, TableHost } from "../../table/contexts";
 import { TableEditor } from "../../table/TableEditor";
 import type { TextRange } from "../../../typst-arguments";
@@ -7,17 +7,6 @@ import { sanitizeTypstContent } from "../../../typst-literals";
 import { typstAppendRowEdit } from "./commands";
 import type { TypstTable } from "./parse";
 import { TypstTableContext, type TypstTableInfo, TypstTableToolbar } from "./Toolbar";
-
-const roots = new WeakMap<HTMLElement, Root>();
-
-function rootFor(element: HTMLElement): Root {
-  let root = roots.get(element);
-  if (!root) {
-    root = createRoot(element);
-    roots.set(element, root);
-  }
-  return root;
-}
 
 function dialectFor(table: TypstTable): TableDialect {
   return {
@@ -59,10 +48,7 @@ export class TypstTableWidget extends WidgetType {
   }
 
   destroy(element: HTMLElement): void {
-    const root = roots.get(element);
-    if (!root) return;
-    roots.delete(element);
-    queueMicrotask(() => root.unmount());
+    unmountWidget(element);
   }
 
   ignoreEvent(event: Event): boolean {
@@ -86,7 +72,8 @@ export class TypstTableWidget extends WidgetType {
       dialect: dialectFor(this.table),
     };
     const info: TypstTableInfo = { table: this.table, removal: this.removal };
-    rootFor(element).render(
+    renderWidget(
+      element,
       <TypstTableContext.Provider value={info}>
         <TableEditor host={host} />
       </TypstTableContext.Provider>,

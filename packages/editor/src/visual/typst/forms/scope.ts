@@ -1,7 +1,12 @@
 import { type EditorState, Facet } from "@codemirror/state";
 import type { SyntaxNode, Tree } from "@lezer/common";
 import { decodeTypstString } from "../../../typst-literals";
-import type { TypstFormBinding, TypstFormCatalog, TypstFormDefinition } from "../../../typst-forms";
+import {
+  parseTypstPackageSpec,
+  type TypstFormBinding,
+  type TypstFormCatalog,
+  type TypstFormDefinition,
+} from "../../../typst-forms";
 import { BUILTIN_DISPATCH_NAMES } from "../builtins";
 import { expressionAfterHash } from "../syntax";
 
@@ -16,7 +21,6 @@ export interface ImportItem {
 }
 
 export interface TypstImport {
-  readonly from: number;
   readonly to: number;
   // null when the source is an expression, or a path that leaves the project.
   readonly source: TypstFormBinding | null;
@@ -34,8 +38,6 @@ export interface DocumentBindings {
   readonly lets: readonly TypstLet[];
   readonly packages: readonly string[];
 }
-
-const PACKAGE_SPEC = /^@[^\s/:]+\/([^\s/:]+):\d+\.\d+\.\d+$/u;
 
 function text(state: EditorState, node: { from: number; to: number }): string {
   return state.sliceDoc(node.from, node.to);
@@ -58,8 +60,8 @@ export function resolveImportPath(documentPath: string | null, importPath: strin
 }
 
 function importSource(spec: string, documentPath: string | null): { source: TypstFormBinding | null; stem: string } | null {
-  const pkg = PACKAGE_SPEC.exec(spec);
-  if (pkg) return { source: { kind: "package", spec }, stem: pkg[1] };
+  const pkg = parseTypstPackageSpec(spec);
+  if (pkg) return { source: { kind: "package", spec }, stem: pkg.name };
   if (spec.startsWith("@")) return null;
   const path = resolveImportPath(documentPath, spec);
   const stem = (spec.split("/").at(-1) ?? "").replace(/\.typ$/u, "");
@@ -82,7 +84,7 @@ function importItems(state: EditorState, statement: SyntaxNode): readonly Import
   return items;
 }
 
-function readImport(state: EditorState, hash: SyntaxNode, statement: SyntaxNode, documentPath: string | null): TypstImport {
+function readImport(state: EditorState, statement: SyntaxNode, documentPath: string | null): TypstImport {
   const items = importItems(state, statement);
   const head = statement.getChild("Import")?.nextSibling ?? null;
   const literal = head?.name === "Str" ? decodeTypstString(text(state, head)) : null;
@@ -90,7 +92,7 @@ function readImport(state: EditorState, hash: SyntaxNode, statement: SyntaxNode,
   const alias = statement.getChild("As")?.nextSibling ?? null;
   const named = alias?.name === "Ident" ? text(state, alias) : null;
   const module = named ?? (items === null ? (origin?.stem ?? null) : null);
-  return { from: hash.from, to: statement.to, source: origin?.source ?? null, module: module || null, items };
+  return { to: statement.to, source: origin?.source ?? null, module: module || null, items };
 }
 
 function patternNames(state: EditorState, pattern: SyntaxNode): string[] {
@@ -126,7 +128,7 @@ export function documentBindings(state: EditorState, tree: Tree): DocumentBindin
   for (let child = tree.topNode.firstChild; child; child = child.nextSibling) {
     if (child.name !== "Hash") continue;
     const statement = expressionAfterHash(child);
-    if (statement?.name === "ModuleImport") imports.push(readImport(state, child, statement, documentPath));
+    if (statement?.name === "ModuleImport") imports.push(readImport(state, statement, documentPath));
     else if (statement?.name === "LetBinding") {
       for (const name of letNames(state, statement)) lets.push({ to: statement.to, name });
     }
@@ -140,7 +142,6 @@ export function documentBindings(state: EditorState, tree: Tree): DocumentBindin
 }
 
 export interface FormIndex {
-  readonly empty: boolean;
   lookup(binding: TypstFormBinding, fn: string): TypstFormDefinition | null;
   functions(binding: TypstFormBinding): readonly string[];
 }
@@ -162,7 +163,6 @@ export function buildFormIndex(catalog: TypstFormCatalog): FormIndex {
     bySource.set(key, [...(bySource.get(key) ?? []), form.function]);
   }
   const index: FormIndex = {
-    empty: catalog.forms.length === 0,
     lookup: (binding, fn) => byId.get(`${bindingKey(binding)}#${fn}`) ?? null,
     functions: (binding) => bySource.get(bindingKey(binding)) ?? [],
   };
@@ -184,8 +184,7 @@ export class FormScope {
     private readonly names: ReadonlyMap<string, readonly Binding[]>,
   ) {}
 
-  static create(index: FormIndex, bindings: DocumentBindings): FormScope | null {
-    if (index.empty) return null;
+  static create(index: FormIndex, bindings: DocumentBindings): FormScope {
     let forIndex = scopeCache.get(index);
     const cached = forIndex?.get(bindings);
     if (cached) return cached;

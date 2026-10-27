@@ -1084,6 +1084,32 @@
         "settings": {
           "show": "Belge ayarlarını göster",
           "hide": "Belge ayarlarını gizle"
+        },
+        "forms": {
+          "editInSource": "Kaynakta düzenle",
+          "addInSource": "Kaynağa ekle",
+          "refused": "Form bunu buraya ekleyemez.",
+          "missing": "Eksik",
+          "notSet": "Ayarlanmadı",
+          "notSetDefault": "Ayarlanmadı (varsayılan: {{value}})",
+          "defaultValue": "Varsayılan: {{value}}",
+          "clear": "Temizle",
+          "on": "Açık",
+          "off": "Kapalı",
+          "open": "{{label}} öğesini düzenle",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "Bu değer işlev çağrısını bozar. Değiştirin ve yeniden deneyin.",
+          "invalidNumber": "Bir sayı girin.",
+          "between": "{{min}} ile {{max}} arasında bir sayı girin.",
+          "atLeast": "En az {{min}} olan bir sayı girin.",
+          "atMost": "En çok {{max}} olan bir sayı girin.",
+          "renderFailed": "Bu form gösterilemedi. Kaynağı şöyle:",
+          "reason": {
+            "expression": "Kaynakta hesaplanıyor",
+            "kind": "Farklı türde bir değer olarak yazılmış",
+            "unknownOption": "Seçeneklerden biri değil",
+            "locked": "Yayılım argümanıyla ayarlanmış"
+          }
         }
       },
       "table": {
@@ -1499,5 +1525,29 @@
     "keyTaken": "Bir varyant aynı adı iki kez ayarlayamaz.",
     "saveFailed": "Varyantlar kaydedilemedi."
   },
-  "sharedSettingsViewer": "Paylaşılan bir projede görüntüleyenler bunu değiştiremez."
+  "sharedSettingsViewer": "Paylaşılan bir projede görüntüleyenler bunu değiştiremez.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} ({{path}} konumunda)",
+    "diagnostic": {
+      "parseError": "TOML hatası",
+      "schemaMissing": "Eksik şema",
+      "schemaVersion": "Desteklenmeyen şema",
+      "fileTooLarge": "Dosya çok büyük",
+      "unreadable": "Okunamayan dosya",
+      "invalidPackageSpec": "Geçersiz paket",
+      "missingKey": "Eksik anahtar",
+      "unknownKey": "Bilinmeyen anahtar",
+      "invalidValue": "Geçersiz değer",
+      "invalidFunction": "Geçersiz işlev adı",
+      "builtinName": "Yerleşik ad",
+      "duplicateFunction": "Yinelenen form",
+      "moduleRequired": "Eksik modül",
+      "moduleNotAllowed": "Pakette modüle izin verilmiyor",
+      "invalidModulePath": "Geçersiz modül yolu",
+      "invalidArg": "Geçersiz argüman",
+      "duplicateArg": "Yinelenen argüman",
+      "unknownKind": "Bilinmeyen alan türü"
+    }
+  }
 }

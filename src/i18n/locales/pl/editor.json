@@ -1112,6 +1112,32 @@
         "settings": {
           "show": "Pokaż ustawienia dokumentu",
           "hide": "Ukryj ustawienia dokumentu"
+        },
+        "forms": {
+          "editInSource": "Edytuj w źródle",
+          "addInSource": "Dodaj w źródle",
+          "refused": "Formularz nie może tego tutaj dodać.",
+          "missing": "Brak",
+          "notSet": "Nieustawione",
+          "notSetDefault": "Nieustawione (domyślnie: {{value}})",
+          "defaultValue": "Domyślnie: {{value}}",
+          "clear": "Wyczyść",
+          "on": "Wł.",
+          "off": "Wył.",
+          "open": "Edytuj „{{label}}”",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "Ta wartość zepsuje wywołanie. Zmień ją i spróbuj ponownie.",
+          "invalidNumber": "Wpisz liczbę.",
+          "between": "Wpisz liczbę od {{min}} do {{max}}.",
+          "atLeast": "Wpisz liczbę nie mniejszą niż {{min}}.",
+          "atMost": "Wpisz liczbę nie większą niż {{max}}.",
+          "renderFailed": "Nie udało się wyświetlić tego formularza. Oto jego źródło:",
+          "reason": {
+            "expression": "Obliczane w źródle",
+            "kind": "Zapisane jako wartość innego rodzaju",
+            "unknownOption": "Spoza listy opcji",
+            "locked": "Ustawione przez rozpakowanie argumentów (..)"
+          }
         }
       },
       "table": {
@@ -1541,5 +1567,29 @@
     "keyTaken": "Wariant nie może ustawić tej samej nazwy dwa razy.",
     "saveFailed": "Nie udało się zapisać wariantów."
   },
-  "sharedSettingsViewer": "Przeglądający nie mogą tego zmieniać we współdzielonym projekcie."
+  "sharedSettingsViewer": "Przeglądający nie mogą tego zmieniać we współdzielonym projekcie.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} (w {{path}})",
+    "diagnostic": {
+      "parseError": "Błąd TOML",
+      "schemaMissing": "Brak schematu",
+      "schemaVersion": "Nieobsługiwany schemat",
+      "fileTooLarge": "Plik jest za duży",
+      "unreadable": "Nie można odczytać pliku",
+      "invalidPackageSpec": "Nieprawidłowy pakiet",
+      "missingKey": "Brak klucza",
+      "unknownKey": "Nieznany klucz",
+      "invalidValue": "Nieprawidłowa wartość",
+      "invalidFunction": "Nieprawidłowa nazwa funkcji",
+      "builtinName": "Nazwa wbudowana",
+      "duplicateFunction": "Zduplikowany formularz",
+      "moduleRequired": "Brak modułu",
+      "moduleNotAllowed": "Moduł niedozwolony w pakiecie",
+      "invalidModulePath": "Nieprawidłowa ścieżka modułu",
+      "invalidArg": "Nieprawidłowy argument",
+      "duplicateArg": "Zduplikowany argument",
+      "unknownKind": "Nieznany rodzaj pola"
+    }
+  }
 }

@@ -1070,6 +1070,32 @@
         "settings": {
           "show": "顯示文件設定",
           "hide": "隱藏文件設定"
+        },
+        "forms": {
+          "editInSource": "在原始碼中編輯",
+          "addInSource": "在原始碼中新增",
+          "refused": "表單無法在這裡新增這一項。",
+          "missing": "缺少",
+          "notSet": "未設定",
+          "notSetDefault": "未設定（預設：{{value}}）",
+          "defaultValue": "預設：{{value}}",
+          "clear": "清除",
+          "on": "開啟",
+          "off": "關閉",
+          "open": "編輯 {{label}}",
+          "chip": "{{label}}：{{summary}}",
+          "invalid": "這個值會導致呼叫出錯。請修改後再試一次。",
+          "invalidNumber": "請輸入數字。",
+          "between": "請輸入 {{min}} 到 {{max}} 之間的數字。",
+          "atLeast": "請輸入 {{min}} 以上的數字。",
+          "atMost": "請輸入 {{max}} 以下的數字。",
+          "renderFailed": "無法顯示這個表單。以下是它的原始碼：",
+          "reason": {
+            "expression": "在原始碼中計算而得",
+            "kind": "以其他類型的值撰寫",
+            "unknownOption": "不在可選項目之內",
+            "locked": "由展開引數設定"
+          }
         }
       },
       "table": {
@@ -1478,5 +1504,29 @@
     "keyTaken": "同一個變體不能設定同一個名稱兩次。",
     "saveFailed": "無法儲存變體。"
   },
-  "sharedSettingsViewer": "在共享專案中，檢視者無法變更此項目。"
+  "sharedSettingsViewer": "在共享專案中，檢視者無法變更此項目。",
+  "typstForms": {
+    "message": "{{label}}：{{detail}}",
+    "atKeyPath": "{{message}}（位於 {{path}}）",
+    "diagnostic": {
+      "parseError": "TOML 錯誤",
+      "schemaMissing": "缺少 schema",
+      "schemaVersion": "不支援的 schema",
+      "fileTooLarge": "檔案太大",
+      "unreadable": "無法讀取的檔案",
+      "invalidPackageSpec": "無效的套件",
+      "missingKey": "缺少鍵",
+      "unknownKey": "未知的鍵",
+      "invalidValue": "無效的值",
+      "invalidFunction": "無效的函式名稱",
+      "builtinName": "內建名稱",
+      "duplicateFunction": "重複的表單",
+      "moduleRequired": "缺少模組",
+      "moduleNotAllowed": "套件中不允許使用模組",
+      "invalidModulePath": "無效的模組路徑",
+      "invalidArg": "無效的引數",
+      "duplicateArg": "重複的引數",
+      "unknownKind": "未知的欄位類型"
+    }
+  }
 }

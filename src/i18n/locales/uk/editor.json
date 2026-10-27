@@ -1112,6 +1112,32 @@
         "settings": {
           "show": "Показати налаштування документа",
           "hide": "Сховати налаштування документа"
+        },
+        "forms": {
+          "editInSource": "Редагувати в коді",
+          "addInSource": "Додати в коді",
+          "refused": "Форма не може додати це сюди.",
+          "missing": "Бракує",
+          "notSet": "Не задано",
+          "notSetDefault": "Не задано (типово: {{value}})",
+          "defaultValue": "Типово: {{value}}",
+          "clear": "Очистити",
+          "on": "Увімк.",
+          "off": "Вимк.",
+          "open": "Редагувати «{{label}}»",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "Це значення зламає виклик. Змініть його й спробуйте ще раз.",
+          "invalidNumber": "Введіть число.",
+          "between": "Введіть число від {{min}} до {{max}}.",
+          "atLeast": "Введіть число не менше {{min}}.",
+          "atMost": "Введіть число не більше {{max}}.",
+          "renderFailed": "Не вдалося показати цю форму. Ось її код:",
+          "reason": {
+            "expression": "Обчислюється в коді",
+            "kind": "Записано як значення іншого виду",
+            "unknownOption": "Не входить до списку варіантів",
+            "locked": "Задано розпакуванням аргументів (..)"
+          }
         }
       },
       "table": {
@@ -1541,5 +1567,29 @@
     "keyTaken": "Варіант не може задавати ту саму назву двічі.",
     "saveFailed": "Не вдалося зберегти варіанти."
   },
-  "sharedSettingsViewer": "Читачі не можуть змінювати це в спільному проєкті."
+  "sharedSettingsViewer": "Читачі не можуть змінювати це в спільному проєкті.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} (у {{path}})",
+    "diagnostic": {
+      "parseError": "Помилка TOML",
+      "schemaMissing": "Відсутня схема",
+      "schemaVersion": "Непідтримувана схема",
+      "fileTooLarge": "Файл завеликий",
+      "unreadable": "Не вдається прочитати файл",
+      "invalidPackageSpec": "Недійсний пакет",
+      "missingKey": "Відсутній ключ",
+      "unknownKey": "Невідомий ключ",
+      "invalidValue": "Недійсне значення",
+      "invalidFunction": "Недійсна назва функції",
+      "builtinName": "Вбудована назва",
+      "duplicateFunction": "Дубльована форма",
+      "moduleRequired": "Відсутній модуль",
+      "moduleNotAllowed": "Модуль не дозволено в пакеті",
+      "invalidModulePath": "Недійсний шлях до модуля",
+      "invalidArg": "Недійсний аргумент",
+      "duplicateArg": "Дубльований аргумент",
+      "unknownKind": "Невідомий вид поля"
+    }
+  }
 }

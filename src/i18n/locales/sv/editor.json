@@ -1084,6 +1084,32 @@
         "settings": {
           "show": "Visa dokumentinställningar",
           "hide": "Dölj dokumentinställningar"
+        },
+        "forms": {
+          "editInSource": "Redigera i källkoden",
+          "addInSource": "Lägg till i källkoden",
+          "refused": "Formuläret kan inte lägga till detta här.",
+          "missing": "Saknas",
+          "notSet": "Inte angivet",
+          "notSetDefault": "Inte angivet (standard: {{value}})",
+          "defaultValue": "Standard: {{value}}",
+          "clear": "Rensa",
+          "on": "På",
+          "off": "Av",
+          "open": "Redigera {{label}}",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "Det här värdet skulle göra anropet felaktigt. Ändra det och försök igen.",
+          "invalidNumber": "Ange ett tal.",
+          "between": "Ange ett tal från {{min}} till {{max}}.",
+          "atLeast": "Ange {{min}} eller mer.",
+          "atMost": "Ange {{max}} eller mindre.",
+          "renderFailed": "Formuläret kunde inte visas. Här är dess källkod:",
+          "reason": {
+            "expression": "Beräknas i källkoden",
+            "kind": "Skrivet som en annan sorts värde",
+            "unknownOption": "Inte ett av alternativen",
+            "locked": "Anges av ett spread-argument"
+          }
         }
       },
       "table": {
@@ -1499,5 +1525,29 @@
     "keyTaken": "En variant kan inte ange samma namn två gånger.",
     "saveFailed": "Det gick inte att spara varianterna."
   },
-  "sharedSettingsViewer": "Läsare kan inte ändra det här i ett delat projekt."
+  "sharedSettingsViewer": "Läsare kan inte ändra det här i ett delat projekt.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} (i {{path}})",
+    "diagnostic": {
+      "parseError": "TOML-fel",
+      "schemaMissing": "Schema saknas",
+      "schemaVersion": "Schema som inte stöds",
+      "fileTooLarge": "Filen är för stor",
+      "unreadable": "Filen kan inte läsas",
+      "invalidPackageSpec": "Ogiltigt paket",
+      "missingKey": "Nyckel saknas",
+      "unknownKey": "Okänd nyckel",
+      "invalidValue": "Ogiltigt värde",
+      "invalidFunction": "Ogiltigt funktionsnamn",
+      "builtinName": "Inbyggt namn",
+      "duplicateFunction": "Dubblerat formulär",
+      "moduleRequired": "Modul saknas",
+      "moduleNotAllowed": "Modul är inte tillåten i ett paket",
+      "invalidModulePath": "Ogiltig modulsökväg",
+      "invalidArg": "Ogiltigt argument",
+      "duplicateArg": "Dubblerat argument",
+      "unknownKind": "Okänd fälttyp"
+    }
+  }
 }

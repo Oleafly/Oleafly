@@ -14,9 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when you open it. It runs the `oleafly` command the app installs, so you
   need the app with Settings > Integrations > Oleafly MCP turned on.
 - A CLI agent that is still starting has a Cancel button.
+- Template authors can give their own Typst functions a form. Describe the
+  arguments in `[tool.oleafly]` in a package's `typst.toml`, or in
+  `oleafly-forms.toml` at the project root, and Visual mode shows each call as
+  a card with labelled fields. Inside a paragraph, the call is a chip that
+  opens the same fields. Changing a field rewrites only that argument. A field
+  can hold text, Typst markup, a choice from a list, a number or an on/off
+  switch, and mistakes in a definition show as markers when you open the file.
 
 ### Changed
 
+- Document settings reads Typst strings the way Typst does: an unknown escape
+  such as `\q`, or a `\u{..}` that names no character, stays as written.
 - CLI agents are no longer marked beta.
 - Errors from CLI agents, such as a disconnect, a timeout, a missing Node.js
   or a refused file request, now show in your interface language instead of

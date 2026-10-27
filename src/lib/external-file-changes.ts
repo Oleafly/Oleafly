@@ -6,6 +6,7 @@ import {
 } from "@/store/files";
 import { projectFolderAvailable } from "@/store/project-availability";
 import { useIndexStore } from "@/store/project-index";
+import { formsRefreshNeeded, useTypstFormsStore } from "@/store/typst-forms";
 import { collabHoldsDocument } from "@/lib/collab-live-bridge";
 import { isProjectIntelligencePath } from "@/lib/project-intelligence/source";
 
@@ -98,6 +99,8 @@ export function applyFolderChange(change: FolderChangePayload): void {
     if (file.dirty) void detectDiskChange(change.projectId, path);
     else refreshExternalFile(change.projectId, path, file);
   }
+  const forms = useTypstFormsStore.getState();
+  if (change.rescan || formsRefreshNeeded(change.paths, forms.catalog)) void forms.refresh();
 }
 
 export function refreshOpenFilesFromDisk(projectId: string | null): void {
@@ -107,6 +110,7 @@ export function refreshOpenFilesFromDisk(projectId: string | null): void {
   for (const [path, file] of Object.entries(files.files)) {
     refreshExternalFile(projectId, path, file);
   }
+  void useTypstFormsStore.getState().refresh();
 }
 
 export async function flushOpenFilesToDisk(projectId: string, scope: string): Promise<void> {

@@ -1084,6 +1084,32 @@
         "settings": {
           "show": "Dokumenteinstellungen anzeigen",
           "hide": "Dokumenteinstellungen ausblenden"
+        },
+        "forms": {
+          "editInSource": "Im Quelltext bearbeiten",
+          "addInSource": "Im Quelltext hinzufügen",
+          "refused": "Das Formular kann das hier nicht hinzufügen.",
+          "missing": "Fehlt",
+          "notSet": "Nicht gesetzt",
+          "notSetDefault": "Nicht gesetzt (Standard: {{value}})",
+          "defaultValue": "Standard: {{value}}",
+          "clear": "Leeren",
+          "on": "Ein",
+          "off": "Aus",
+          "open": "{{label}} bearbeiten",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "Mit diesem Wert wäre der Aufruf fehlerhaft. Ändern Sie ihn und versuchen Sie es erneut.",
+          "invalidNumber": "Geben Sie eine Zahl ein.",
+          "between": "Geben Sie eine Zahl von {{min}} bis {{max}} ein.",
+          "atLeast": "Geben Sie {{min}} oder mehr ein.",
+          "atMost": "Geben Sie {{max}} oder weniger ein.",
+          "renderFailed": "Dieses Formular konnte nicht angezeigt werden. Hier ist sein Quelltext:",
+          "reason": {
+            "expression": "Im Quelltext berechnet",
+            "kind": "Als anderer Werttyp geschrieben",
+            "unknownOption": "Nicht in der Auswahl",
+            "locked": "Durch ein Spread-Argument gesetzt"
+          }
         }
       },
       "table": {
@@ -1499,5 +1525,29 @@
     "keyTaken": "Eine Variante kann denselben Namen nicht zweimal setzen.",
     "saveFailed": "Die Varianten konnten nicht gespeichert werden."
   },
-  "sharedSettingsViewer": "Betrachter können das in einem geteilten Projekt nicht ändern."
+  "sharedSettingsViewer": "Betrachter können das in einem geteilten Projekt nicht ändern.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} (in {{path}})",
+    "diagnostic": {
+      "parseError": "TOML-Fehler",
+      "schemaMissing": "Schema fehlt",
+      "schemaVersion": "Nicht unterstütztes Schema",
+      "fileTooLarge": "Datei zu groß",
+      "unreadable": "Datei nicht lesbar",
+      "invalidPackageSpec": "Ungültiges Paket",
+      "missingKey": "Schlüssel fehlt",
+      "unknownKey": "Unbekannter Schlüssel",
+      "invalidValue": "Ungültiger Wert",
+      "invalidFunction": "Ungültiger Funktionsname",
+      "builtinName": "Integrierter Name",
+      "duplicateFunction": "Doppeltes Formular",
+      "moduleRequired": "Modul fehlt",
+      "moduleNotAllowed": "Modul in einem Paket nicht erlaubt",
+      "invalidModulePath": "Ungültiger Modulpfad",
+      "invalidArg": "Ungültiges Argument",
+      "duplicateArg": "Doppeltes Argument",
+      "unknownKind": "Unbekannte Feldart"
+    }
+  }
 }

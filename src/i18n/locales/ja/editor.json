@@ -1070,6 +1070,32 @@
         "settings": {
           "show": "文書の設定を表示",
           "hide": "文書の設定を隠す"
+        },
+        "forms": {
+          "editInSource": "ソースで編集",
+          "addInSource": "ソースで追加",
+          "refused": "フォームではここに追加できません。",
+          "missing": "不足",
+          "notSet": "未設定",
+          "notSetDefault": "未設定（既定: {{value}}）",
+          "defaultValue": "既定: {{value}}",
+          "clear": "消去",
+          "on": "オン",
+          "off": "オフ",
+          "open": "{{label}} を編集",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "この値では呼び出しが壊れます。値を変更して、もう一度お試しください。",
+          "invalidNumber": "数値を入力してください。",
+          "between": "{{min}} から {{max}} までの数値を入力してください。",
+          "atLeast": "{{min}} 以上の数値を入力してください。",
+          "atMost": "{{max}} 以下の数値を入力してください。",
+          "renderFailed": "このフォームを表示できませんでした。ソースは次のとおりです:",
+          "reason": {
+            "expression": "ソース内で計算されています",
+            "kind": "別の種類の値として書かれています",
+            "unknownOption": "選択肢にない値です",
+            "locked": "スプレッド引数で指定されています"
+          }
         }
       },
       "table": {
@@ -1478,5 +1504,29 @@
     "keyTaken": "1 つのバリアントで同じ名前を 2 回設定することはできません。",
     "saveFailed": "バリアントを保存できませんでした。"
   },
-  "sharedSettingsViewer": "共有プロジェクトでは、閲覧者はこの設定を変更できません。"
+  "sharedSettingsViewer": "共有プロジェクトでは、閲覧者はこの設定を変更できません。",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}}（{{path}} 内）",
+    "diagnostic": {
+      "parseError": "TOML エラー",
+      "schemaMissing": "スキーマがありません",
+      "schemaVersion": "未対応のスキーマ",
+      "fileTooLarge": "ファイルが大きすぎます",
+      "unreadable": "読み取れないファイル",
+      "invalidPackageSpec": "不正なパッケージ",
+      "missingKey": "キーがありません",
+      "unknownKey": "不明なキー",
+      "invalidValue": "不正な値",
+      "invalidFunction": "不正な関数名",
+      "builtinName": "組み込みの名前",
+      "duplicateFunction": "重複したフォーム",
+      "moduleRequired": "モジュールがありません",
+      "moduleNotAllowed": "パッケージでは使えないモジュール",
+      "invalidModulePath": "不正なモジュールパス",
+      "invalidArg": "不正な引数",
+      "duplicateArg": "重複した引数",
+      "unknownKind": "不明なフィールドの種類"
+    }
+  }
 }

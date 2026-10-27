@@ -1098,6 +1098,32 @@
         "settings": {
           "show": "Mostrar as configurações do documento",
           "hide": "Ocultar as configurações do documento"
+        },
+        "forms": {
+          "editInSource": "Editar no código",
+          "addInSource": "Adicionar no código",
+          "refused": "O formulário não pode adicionar isso aqui.",
+          "missing": "Ausente",
+          "notSet": "Não definido",
+          "notSetDefault": "Não definido (padrão: {{value}})",
+          "defaultValue": "Padrão: {{value}}",
+          "clear": "Limpar",
+          "on": "Ligado",
+          "off": "Desligado",
+          "open": "Editar {{label}}",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "Este valor tornaria a chamada inválida. Altere o valor e tente de novo.",
+          "invalidNumber": "Digite um número.",
+          "between": "Digite um número de {{min}} a {{max}}.",
+          "atLeast": "Digite {{min}} ou mais.",
+          "atMost": "Digite {{max}} ou menos.",
+          "renderFailed": "Não foi possível mostrar este formulário. Aqui está o código dele:",
+          "reason": {
+            "expression": "Calculado no código",
+            "kind": "Escrito como outro tipo de valor",
+            "unknownOption": "Não é uma das opções",
+            "locked": "Definido por um argumento de espalhamento"
+          }
         }
       },
       "table": {
@@ -1520,5 +1546,29 @@
     "keyTaken": "Uma variante não pode definir o mesmo nome duas vezes.",
     "saveFailed": "Não foi possível salvar as variantes."
   },
-  "sharedSettingsViewer": "Leitores não podem alterar isso em um projeto compartilhado."
+  "sharedSettingsViewer": "Leitores não podem alterar isso em um projeto compartilhado.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} (em {{path}})",
+    "diagnostic": {
+      "parseError": "Erro de TOML",
+      "schemaMissing": "Esquema ausente",
+      "schemaVersion": "Esquema não compatível",
+      "fileTooLarge": "Arquivo grande demais",
+      "unreadable": "Arquivo ilegível",
+      "invalidPackageSpec": "Pacote inválido",
+      "missingKey": "Chave ausente",
+      "unknownKey": "Chave desconhecida",
+      "invalidValue": "Valor inválido",
+      "invalidFunction": "Nome de função inválido",
+      "builtinName": "Nome embutido",
+      "duplicateFunction": "Formulário duplicado",
+      "moduleRequired": "Módulo ausente",
+      "moduleNotAllowed": "Módulo não permitido em um pacote",
+      "invalidModulePath": "Caminho de módulo inválido",
+      "invalidArg": "Argumento inválido",
+      "duplicateArg": "Argumento duplicado",
+      "unknownKind": "Tipo de campo desconhecido"
+    }
+  }
 }

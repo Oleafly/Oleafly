@@ -1084,6 +1084,32 @@
         "settings": {
           "show": "Näytä dokumentin asetukset",
           "hide": "Piilota dokumentin asetukset"
+        },
+        "forms": {
+          "editInSource": "Muokkaa lähdekoodissa",
+          "addInSource": "Lisää lähdekoodiin",
+          "refused": "Lomake ei voi lisätä tätä tähän.",
+          "missing": "Puuttuu",
+          "notSet": "Ei asetettu",
+          "notSetDefault": "Ei asetettu (oletus: {{value}})",
+          "defaultValue": "Oletus: {{value}}",
+          "clear": "Tyhjennä",
+          "on": "Päällä",
+          "off": "Pois",
+          "open": "Muokkaa: {{label}}",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "Tämä arvo rikkoisi funktiokutsun. Muuta sitä ja yritä uudelleen.",
+          "invalidNumber": "Anna luku.",
+          "between": "Anna luku, joka on vähintään {{min}} ja enintään {{max}}.",
+          "atLeast": "Anna luku, joka on vähintään {{min}}.",
+          "atMost": "Anna luku, joka on enintään {{max}}.",
+          "renderFailed": "Tätä lomaketta ei voitu näyttää. Tässä sen lähdekoodi:",
+          "reason": {
+            "expression": "Lasketaan lähdekoodissa",
+            "kind": "Kirjoitettu toisenlaisena arvona",
+            "unknownOption": "Ei kuulu vaihtoehtoihin",
+            "locked": "Asetettu levitysargumentilla"
+          }
         }
       },
       "table": {
@@ -1499,5 +1525,29 @@
     "keyTaken": "Muunnelma ei voi asettaa samaa nimeä kahdesti.",
     "saveFailed": "Muunnelmia ei voitu tallentaa."
   },
-  "sharedSettingsViewer": "Katselijat eivät voi muuttaa tätä jaetussa projektissa."
+  "sharedSettingsViewer": "Katselijat eivät voi muuttaa tätä jaetussa projektissa.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} (kohdassa {{path}})",
+    "diagnostic": {
+      "parseError": "TOML-virhe",
+      "schemaMissing": "Skeema puuttuu",
+      "schemaVersion": "Tukematon skeema",
+      "fileTooLarge": "Tiedosto on liian suuri",
+      "unreadable": "Tiedostoa ei voi lukea",
+      "invalidPackageSpec": "Virheellinen paketti",
+      "missingKey": "Avain puuttuu",
+      "unknownKey": "Tuntematon avain",
+      "invalidValue": "Virheellinen arvo",
+      "invalidFunction": "Virheellinen funktion nimi",
+      "builtinName": "Sisäänrakennettu nimi",
+      "duplicateFunction": "Päällekkäinen lomake",
+      "moduleRequired": "Moduuli puuttuu",
+      "moduleNotAllowed": "Moduuli ei ole sallittu paketissa",
+      "invalidModulePath": "Virheellinen moduulin polku",
+      "invalidArg": "Virheellinen argumentti",
+      "duplicateArg": "Päällekkäinen argumentti",
+      "unknownKind": "Tuntematon kentän tyyppi"
+    }
+  }
 }

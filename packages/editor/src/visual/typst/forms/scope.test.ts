@@ -2,11 +2,12 @@ import { syntaxTree } from "@codemirror/language";
 import type { EditorState } from "@codemirror/state";
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadTypstParser } from "../../../typst";
-import { EMPTY_TYPST_FORM_CATALOG } from "../../../typst-forms";
+import { EMPTY_TYPST_FORM_CATALOG, staticTypstForms } from "../../../typst-forms";
 import { readTypstFormsFixture, typstFormsGolden } from "../../../typst-forms-test-support";
 import { calleeName, hashBefore } from "../syntax";
 import { typstState } from "../test-support";
 import { buildFormIndex, documentBindings, FormScope, resolveImportPath } from "./scope";
+import { formScopeFor } from "./state";
 
 beforeAll(async () => {
   await loadTypstParser();
@@ -15,9 +16,7 @@ beforeAll(async () => {
 const ACME = "@local/acme-report:0.1.0";
 
 function scopeOf(state: EditorState): FormScope {
-  const scope = FormScope.create(buildFormIndex(typstFormsGolden()), documentBindings(state, syntaxTree(state)));
-  if (!scope) throw new Error("the golden catalog should give a scope");
-  return scope;
+  return FormScope.create(buildFormIndex(typstFormsGolden()), documentBindings(state, syntaxTree(state)));
 }
 
 // One row per `#`-call in document order: the callee and the form id it resolves to.
@@ -117,8 +116,16 @@ describe("matching calls to forms", () => {
   });
 
   it("gives no scope for an empty catalog", () => {
-    const state = typstState(readTypstFormsFixture("project/report.typ"), { path: "report.typ" });
-    expect(FormScope.create(buildFormIndex(EMPTY_TYPST_FORM_CATALOG), documentBindings(state, syntaxTree(state)))).toBeNull();
+    const empty = typstState(readTypstFormsFixture("project/report.typ"), {
+      path: "report.typ",
+      ports: { resolveImage: async () => null, typstForms: staticTypstForms(EMPTY_TYPST_FORM_CATALOG) },
+    });
+    expect(formScopeFor(empty, syntaxTree(empty))).toBeNull();
+    const full = typstState(readTypstFormsFixture("project/report.typ"), {
+      path: "report.typ",
+      ports: { resolveImage: async () => null, typstForms: staticTypstForms(typstFormsGolden()) },
+    });
+    expect(formScopeFor(full, syntaxTree(full))).toBeInstanceOf(FormScope);
   });
 });
 

@@ -1084,6 +1084,32 @@
         "settings": {
           "show": "Documentinstellingen tonen",
           "hide": "Documentinstellingen verbergen"
+        },
+        "forms": {
+          "editInSource": "In de broncode bewerken",
+          "addInSource": "In de broncode toevoegen",
+          "refused": "Het formulier kan dit hier niet toevoegen.",
+          "missing": "Ontbreekt",
+          "notSet": "Niet ingesteld",
+          "notSetDefault": "Niet ingesteld (standaard: {{value}})",
+          "defaultValue": "Standaard: {{value}}",
+          "clear": "Wissen",
+          "on": "Aan",
+          "off": "Uit",
+          "open": "{{label}} bewerken",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "Met deze waarde zou de aanroep ongeldig worden. Wijzig de waarde en probeer het opnieuw.",
+          "invalidNumber": "Voer een getal in.",
+          "between": "Voer een getal in van {{min}} tot {{max}}.",
+          "atLeast": "Voer {{min}} of meer in.",
+          "atMost": "Voer {{max}} of minder in.",
+          "renderFailed": "Dit formulier kon niet worden getoond. Dit is de broncode ervan:",
+          "reason": {
+            "expression": "Berekend in de broncode",
+            "kind": "Geschreven als een ander soort waarde",
+            "unknownOption": "Niet een van de keuzes",
+            "locked": "Ingesteld door een spread-argument"
+          }
         }
       },
       "table": {
@@ -1499,5 +1525,29 @@
     "keyTaken": "Een variant kan dezelfde naam niet twee keer instellen.",
     "saveFailed": "Kon de varianten niet opslaan."
   },
-  "sharedSettingsViewer": "Lezers kunnen dit in een gedeeld project niet wijzigen."
+  "sharedSettingsViewer": "Lezers kunnen dit in een gedeeld project niet wijzigen.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} (in {{path}})",
+    "diagnostic": {
+      "parseError": "TOML-fout",
+      "schemaMissing": "Schema ontbreekt",
+      "schemaVersion": "Niet-ondersteund schema",
+      "fileTooLarge": "Bestand te groot",
+      "unreadable": "Bestand niet leesbaar",
+      "invalidPackageSpec": "Ongeldig pakket",
+      "missingKey": "Sleutel ontbreekt",
+      "unknownKey": "Onbekende sleutel",
+      "invalidValue": "Ongeldige waarde",
+      "invalidFunction": "Ongeldige functienaam",
+      "builtinName": "Ingebouwde naam",
+      "duplicateFunction": "Dubbel formulier",
+      "moduleRequired": "Module ontbreekt",
+      "moduleNotAllowed": "Module niet toegestaan in een pakket",
+      "invalidModulePath": "Ongeldig modulepad",
+      "invalidArg": "Ongeldig argument",
+      "duplicateArg": "Dubbel argument",
+      "unknownKind": "Onbekend veldtype"
+    }
+  }
 }

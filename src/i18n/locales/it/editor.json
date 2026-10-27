@@ -1098,6 +1098,32 @@
         "settings": {
           "show": "Mostra le impostazioni del documento",
           "hide": "Nascondi le impostazioni del documento"
+        },
+        "forms": {
+          "editInSource": "Modifica nel sorgente",
+          "addInSource": "Aggiungi nel sorgente",
+          "refused": "Il form non può aggiungere questo qui.",
+          "missing": "Mancante",
+          "notSet": "Non impostato",
+          "notSetDefault": "Non impostato (predefinito: {{value}})",
+          "defaultValue": "Predefinito: {{value}}",
+          "clear": "Cancella",
+          "on": "Attivo",
+          "off": "Inattivo",
+          "open": "Modifica {{label}}",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "Questo valore renderebbe la chiamata non valida. Cambialo e riprova.",
+          "invalidNumber": "Inserisci un numero.",
+          "between": "Inserisci un numero da {{min}} a {{max}}.",
+          "atLeast": "Inserisci {{min}} o più.",
+          "atMost": "Inserisci {{max}} o meno.",
+          "renderFailed": "Impossibile mostrare questo form. Ecco il suo sorgente:",
+          "reason": {
+            "expression": "Calcolato nel sorgente",
+            "kind": "Scritto come un altro tipo di valore",
+            "unknownOption": "Non è una delle scelte",
+            "locked": "Impostato da un argomento spread"
+          }
         }
       },
       "table": {
@@ -1520,5 +1546,29 @@
     "keyTaken": "Una variante non può impostare lo stesso nome due volte.",
     "saveFailed": "Impossibile salvare le varianti."
   },
-  "sharedSettingsViewer": "I visualizzatori non possono modificare questa impostazione in un progetto condiviso."
+  "sharedSettingsViewer": "I visualizzatori non possono modificare questa impostazione in un progetto condiviso.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} (in {{path}})",
+    "diagnostic": {
+      "parseError": "Errore TOML",
+      "schemaMissing": "Schema mancante",
+      "schemaVersion": "Schema non supportato",
+      "fileTooLarge": "File troppo grande",
+      "unreadable": "File illeggibile",
+      "invalidPackageSpec": "Pacchetto non valido",
+      "missingKey": "Chiave mancante",
+      "unknownKey": "Chiave sconosciuta",
+      "invalidValue": "Valore non valido",
+      "invalidFunction": "Nome di funzione non valido",
+      "builtinName": "Nome integrato",
+      "duplicateFunction": "Form duplicato",
+      "moduleRequired": "Modulo mancante",
+      "moduleNotAllowed": "Modulo non consentito in un pacchetto",
+      "invalidModulePath": "Percorso del modulo non valido",
+      "invalidArg": "Argomento non valido",
+      "duplicateArg": "Argomento duplicato",
+      "unknownKind": "Tipo di campo sconosciuto"
+    }
+  }
 }

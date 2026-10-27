@@ -2184,3 +2184,35 @@ export async function acceptCompletion(
     10_000,
   );
 }
+
+// Sets a Typst form field the way typing does, so React sees the change, then commits it
+// with Enter (text and number fields) or lets the change commit it (lists). The field is
+// found by its label inside the card or popover whose title matches.
+export async function setTypstFormField(
+  page: Page,
+  title: string,
+  label: string,
+  value: string,
+  commit: "change" | "enter" | "none",
+): Promise<void> {
+  const done = await page.evaluate<boolean>(
+    `(() => {
+      const form = [...document.querySelectorAll(".ofl-visual-form-card, .ofl-visual-form-popover")].find(
+        (element) => element.querySelector(".ofl-visual-form-title")?.textContent === ${scriptValue(title)},
+      );
+      const name = form && [...form.querySelectorAll("label")].find((element) => element.textContent === ${scriptValue(label)});
+      const control = name && form.querySelector("#" + CSS.escape(name.htmlFor));
+      if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement)) {
+        return false;
+      }
+      control.focus();
+      Object.getOwnPropertyDescriptor(Object.getPrototypeOf(control), "value").set.call(control, ${scriptValue(value)});
+      control.dispatchEvent(new Event(control instanceof HTMLSelectElement ? "change" : "input", { bubbles: true }));
+      if (${scriptValue(commit)} === "enter") {
+        control.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+      }
+      return true;
+    })()`,
+  );
+  if (!done) throw new Error(`setTypstFormField: no ${label} field in a form titled ${title}`);
+}

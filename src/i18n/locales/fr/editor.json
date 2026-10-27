@@ -1098,6 +1098,32 @@
         "settings": {
           "show": "Afficher les réglages du document",
           "hide": "Masquer les réglages du document"
+        },
+        "forms": {
+          "editInSource": "Modifier dans le source",
+          "addInSource": "Ajouter dans le source",
+          "refused": "Le formulaire ne peut pas ajouter cela ici.",
+          "missing": "Manquant",
+          "notSet": "Non défini",
+          "notSetDefault": "Non défini (par défaut : {{value}})",
+          "defaultValue": "Par défaut : {{value}}",
+          "clear": "Effacer",
+          "on": "Marche",
+          "off": "Arrêt",
+          "open": "Modifier {{label}}",
+          "chip": "{{label}} : {{summary}}",
+          "invalid": "Cette valeur rendrait l'appel invalide. Modifiez-la, puis réessayez.",
+          "invalidNumber": "Saisissez un nombre.",
+          "between": "Saisissez un nombre compris entre {{min}} et {{max}}.",
+          "atLeast": "Saisissez {{min}} ou plus.",
+          "atMost": "Saisissez {{max}} ou moins.",
+          "renderFailed": "Ce formulaire n'a pas pu être affiché. Voici son source :",
+          "reason": {
+            "expression": "Calculé dans le source",
+            "kind": "Écrit comme un autre type de valeur",
+            "unknownOption": "Ne fait pas partie des choix",
+            "locked": "Défini par un argument de décomposition"
+          }
         }
       },
       "table": {
@@ -1520,5 +1546,29 @@
     "keyTaken": "Une variante ne peut pas définir deux fois le même nom.",
     "saveFailed": "Impossible d'enregistrer les variantes."
   },
-  "sharedSettingsViewer": "Les lecteurs ne peuvent pas modifier ceci dans un projet partagé."
+  "sharedSettingsViewer": "Les lecteurs ne peuvent pas modifier ceci dans un projet partagé.",
+  "typstForms": {
+    "message": "{{label}} : {{detail}}",
+    "atKeyPath": "{{message}} (à {{path}})",
+    "diagnostic": {
+      "parseError": "Erreur TOML",
+      "schemaMissing": "Schéma manquant",
+      "schemaVersion": "Schéma non pris en charge",
+      "fileTooLarge": "Fichier trop volumineux",
+      "unreadable": "Fichier illisible",
+      "invalidPackageSpec": "Paquet invalide",
+      "missingKey": "Clé manquante",
+      "unknownKey": "Clé inconnue",
+      "invalidValue": "Valeur invalide",
+      "invalidFunction": "Nom de fonction invalide",
+      "builtinName": "Nom intégré",
+      "duplicateFunction": "Formulaire en double",
+      "moduleRequired": "Module manquant",
+      "moduleNotAllowed": "Module non autorisé dans un paquet",
+      "invalidModulePath": "Chemin de module invalide",
+      "invalidArg": "Argument invalide",
+      "duplicateArg": "Argument en double",
+      "unknownKind": "Type de champ inconnu"
+    }
+  }
 }

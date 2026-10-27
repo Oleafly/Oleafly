@@ -4,7 +4,7 @@
 // arrives as `null`. This module stays free of CodeMirror so the app can import it without
 // loading the Visual mode chunk.
 
-export type TypstArgRef = { readonly named: string } | { readonly positional: number };
+import type { ArgRef } from "./typst-arguments";
 
 export type TypstFormBinding =
   | { readonly kind: "package"; readonly spec: string }
@@ -30,7 +30,7 @@ export type TypstFieldKind =
   | { readonly type: "toggle"; readonly default: boolean | null };
 
 export interface TypstFormField {
-  readonly arg: TypstArgRef;
+  readonly arg: ArgRef;
   readonly label: string;
   readonly help: string | null;
   readonly placeholder: string | null;
@@ -43,14 +43,35 @@ export interface TypstFormDefinition {
   readonly function: string;
   readonly binding: TypstFormBinding;
   readonly label: string;
-  readonly summary: TypstArgRef | null;
+  readonly summary: ArgRef | null;
   readonly fields: readonly TypstFormField[];
 }
+
+// `DiagnosticCode` in the Rust parser.
+export type TypstFormDiagnosticCode =
+  | "parseError"
+  | "schemaMissing"
+  | "schemaVersion"
+  | "fileTooLarge"
+  | "unreadable"
+  | "invalidPackageSpec"
+  | "missingKey"
+  | "unknownKey"
+  | "invalidValue"
+  | "invalidFunction"
+  | "builtinName"
+  | "duplicateFunction"
+  | "moduleRequired"
+  | "moduleNotAllowed"
+  | "invalidModulePath"
+  | "invalidArg"
+  | "duplicateArg"
+  | "unknownKind";
 
 export interface TypstFormDiagnostic {
   readonly source: string;
   readonly severity: "error" | "warning";
-  readonly code: string;
+  readonly code: TypstFormDiagnosticCode;
   readonly path: string;
   readonly line: number | null;
   readonly detail: string;
@@ -61,6 +82,18 @@ export interface TypstFormCatalog {
   readonly watch: readonly string[];
   readonly forms: readonly TypstFormDefinition[];
   readonly diagnostics: readonly TypstFormDiagnostic[];
+}
+
+export interface TypstPackageSpec {
+  readonly namespace: string;
+  readonly name: string;
+  readonly version: string;
+}
+
+// `@namespace/name:major.minor.patch`, the way a form binding and an import write it.
+export function parseTypstPackageSpec(spec: string): TypstPackageSpec | null {
+  const match = /^@([^\s/:]+)\/([^\s/:]+):(\d+\.\d+\.\d+)$/u.exec(spec);
+  return match ? { namespace: match[1], name: match[2], version: match[3] } : null;
 }
 
 export const EMPTY_TYPST_FORM_CATALOG: TypstFormCatalog = { version: "", watch: [], forms: [], diagnostics: [] };

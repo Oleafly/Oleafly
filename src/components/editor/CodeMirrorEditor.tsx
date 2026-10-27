@@ -27,6 +27,8 @@ import { i18n } from "@/i18n";
 import { createPreflightLinter } from "./cm/preflight-linter";
 import { createTypstPackageHintLinter } from "./cm/typst-package-hints";
 import { createCompileErrorLinter } from "./cm/compile-error-linter";
+import { typstFormsLint } from "./cm/typst-forms-lint";
+import { typstFormsPort } from "./visual-typst-forms";
 import { imagePasteExtension } from "./cm/image-paste";
 import { projectFileLinksExtension } from "./cm/file-links";
 import { cursorSignalExtension } from "./cm/cursor-signal";
@@ -59,6 +61,7 @@ import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
 import { useEditorKeymapStore } from "@/store/editor-keymap";
 import { useCompileStore } from "@/store/compile";
+import { useTypstFormsStore } from "@/store/typst-forms";
 import { useVisualModeStore } from "@/store/visual-mode";
 import { useDictionary, isWordIgnored, ignoreWordForProject, ignoreWordGlobally } from "@/lib/dictionary";
 import { installAuxNumbers } from "@/lib/aux-numbers";
@@ -229,6 +232,7 @@ const VISUAL_PORTS: VisualPorts = {
     void openVisualFigureEditor(range);
   },
   referenceKind: (key) => referenceKindIn(useIndexStore.getState().index, key),
+  typstForms: typstFormsPort,
 };
 
 export function saveActiveFromKeymap(): void {
@@ -298,6 +302,7 @@ const HOST: EditorHost = {
     useDictionary((s) => s.global),
     useDictionary((s) => s.ignored),
     useCompileStore((s) => s.errors),
+    useTypstFormsStore((s) => s.catalog),
   ],
 };
 
@@ -369,6 +374,7 @@ export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean 
       host={HOST}
       extraExtensions={[...SHELL_EXTENSIONS, collabEditorSlot(), commentsEditorSlot()]}
       extraExtensionsForPath={(path) => {
+        if (path && /\.toml$/i.test(path)) return [typstFormsLint(path)];
         if (!path || !/\.(?:tex|latex|ltx|sty|cls|md|markdown|typ|bib)$/i.test(path)) {
           return [];
         }
