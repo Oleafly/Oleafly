@@ -1,0 +1,17 @@
+[package]
+name = "acme-report"
+version = "0.1.0"
+entrypoint = "lib.typ"
+
+[tool.oleafly]
+schema = 1
+
+[[tool.oleafly.forms]]
+function = "info-box"
+label = "First"
+fields = [{ arg = "title", kind = "text", label = "Heading" }]
+
+[[tool.oleafly.forms]]
+function = "info-box"
+label = "Second"
+fields = [{ arg = "title", kind = "text", label = "Heading" }]

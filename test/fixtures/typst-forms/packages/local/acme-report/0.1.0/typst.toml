@@ -1,0 +1,73 @@
+[package]
+name = "acme-report"
+version = "0.1.0"
+entrypoint = "lib.typ"
+authors = ["Oleafly test fixtures"]
+license = "MIT"
+description = "Placeholder report template for the Typst function forms tests."
+
+[tool.oleafly]
+schema = 1
+
+[[tool.oleafly.forms]]
+function = "cover-page"
+label = "Cover page"
+summary = "title"
+fields = [
+  { arg = "title", kind = "text", label = "Title", placeholder = "Report title", required = true },
+  { arg = "subtitle", kind = "text", label = "Subtitle", multiline = true, help = "Shown under the title." },
+  { arg = "confidential", kind = "toggle", label = "Confidential", default = false },
+]
+
+[[tool.oleafly.forms]]
+function = "info-box"
+label = "Info box"
+summary = "title"
+
+  [[tool.oleafly.forms.fields]]
+  arg = "title"
+  kind = "text"
+  label = "Heading"
+  placeholder = "Short heading"
+  required = true
+
+  [[tool.oleafly.forms.fields]]
+  arg = "tone"
+  kind = "choice"
+  label = "Tone"
+  default = "note"
+  options = [{ value = "note", label = "Note" }, { value = "risk", label = "Risk" }, "neutral"]
+
+  [[tool.oleafly.forms.fields]]
+  arg = 0
+  kind = "content"
+  label = "Text"
+
+[[tool.oleafly.forms]]
+function = "status-badge"
+label = "Status"
+summary = 0
+fields = [
+  { arg = 0, kind = "choice", label = "Status", required = true, options = [
+    { value = "draft", label = "Draft" },
+    { value = "review", label = "In review" },
+    { value = "approved", label = "Approved" },
+  ] },
+]
+
+[[tool.oleafly.forms]]
+function = "sign-off"
+label = "Sign-off"
+summary = "name"
+fields = [
+  { arg = "name", kind = "text", label = "Signed by", required = true },
+  { arg = "revision", kind = "number", label = "Revision", integer = true, min = 1 },
+  { arg = "final", kind = "toggle", label = "Final version", default = false },
+]
+
+[[tool.oleafly.forms]]
+function = "table"
+label = "Acme table"
+fields = [
+  { arg = "caption", kind = "text", label = "Caption" },
+]
