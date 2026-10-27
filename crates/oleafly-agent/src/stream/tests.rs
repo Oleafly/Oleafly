@@ -1271,7 +1271,7 @@ fn an_empty_or_null_error_field_on_a_chat_chunk_is_not_a_failure() {
 #[test]
 fn a_chat_error_frame_fails_the_stream_with_the_provider_error_not_a_dropped_connection() {
     let raw = sse(&[r#"{"error":{"message":"slot unavailable","code":503}}"#]);
-    let mut state = StreamState::new(WireKind::OpenAi);
+    let mut state = StreamState::new(Translator::new(WireKind::OpenAi));
     let mut events = Vec::new();
     state
         .push(raw.as_bytes(), &mut |event| events.push(event))
@@ -1317,4 +1317,139 @@ fn a_responses_stream_failure_keeps_its_code_and_message() {
         "event: response.failed\ndata: {\"response\":{\"error\":{\"code\":\"context_length_exceeded\",\"message\":\"Your input exceeds the limit.\"}}}\n\n",
     );
     assert!(overflow.error().unwrap().is_context_overflow());
+}
+
+fn offered(names: &[&str]) -> Vec<crate::tool::ToolSchema> {
+    names
+        .iter()
+        .map(|name| crate::tool::ToolSchema {
+            name: name.to_string(),
+            description: String::new(),
+            input_schema: serde_json::json!({ "type": "object" }),
+        })
+        .collect()
+}
+
+fn run_offering(kind: WireKind, raw: &str, tools: &[&str]) -> (Vec<AgentEvent>, Translator) {
+    let mut translator = Translator::new(kind).offering(&offered(tools));
+    let mut decoder = SseDecoder::new();
+    let mut events = Vec::new();
+    for event in decoder.push(raw).unwrap() {
+        events.extend(translator.translate(&event));
+    }
+    events.extend(translator.finish());
+    (events, translator)
+}
+
+/// What Lemonade's llama.cpp streams for Bonsai-4B when it calls a tool.
+fn text_call_stream() -> String {
+    sse(&[
+        r#"{"choices":[{"delta":{"role":"assistant","content":"{\"name\": \"ping\", "}}]}"#,
+        r#"{"choices":[{"delta":{"content":"\"arguments\": {}}"}}]}"#,
+        r#"{"choices":[{"delta":{"content":" </tool_call>"}}]}"#,
+        r#"{"choices":[{"delta":{},"finish_reason":"stop"}]}"#,
+        "[DONE]",
+    ])
+}
+
+#[test]
+fn a_tool_call_written_as_chat_text_becomes_a_tool_call() {
+    let (events, translator) = run_offering(WireKind::OpenAi, &text_call_stream(), &["ping"]);
+    assert_eq!(text_of(&events), "");
+    let calls = translator.tool_calls();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(
+        (calls[0].name.as_str(), calls[0].arguments.as_str()),
+        ("ping", "{}")
+    );
+    assert!(calls[0].id.starts_with("call_ping_"), "{}", calls[0].id);
+    assert_eq!(translator.stop_reason().as_deref(), Some("tool_calls"));
+    assert!(matches!(
+        events.as_slice(),
+        [
+            AgentEvent::ToolCallStart { .. },
+            AgentEvent::ToolCallArgsDelta { .. },
+            AgentEvent::ToolCallEnd { .. },
+            AgentEvent::Done { .. }
+        ]
+    ));
+}
+
+#[test]
+fn a_text_call_is_left_as_text_without_offered_tools_or_on_other_wires() {
+    let (events, translator) = run(WireKind::OpenAi, &text_call_stream());
+    assert_eq!(
+        text_of(&events),
+        r#"{"name": "ping", "arguments": {}} </tool_call>"#
+    );
+    assert!(translator.tool_calls().is_empty());
+
+    let (events, translator) = run_offering(WireKind::OpenAi, &text_call_stream(), &["read_file"]);
+    assert_eq!(
+        text_of(&events),
+        r#"{"name": "ping", "arguments": {}} </tool_call>"#
+    );
+    assert!(translator.tool_calls().is_empty());
+    assert_eq!(translator.stop_reason().as_deref(), Some("stop"));
+
+    let google = "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"{\\\"name\\\": \\\"ping\\\"}\"}]}}]}\n\n";
+    let (events, translator) = run_offering(WireKind::Google, google, &["ping"]);
+    assert_eq!(text_of(&events), r#"{"name": "ping"}"#);
+    assert!(translator.tool_calls().is_empty());
+}
+
+#[test]
+fn structured_calls_win_over_text_that_looks_like_one() {
+    let raw = sse(&[
+        r#"{"choices":[{"delta":{"content":"{\"name\": \"ping\", \"arguments\": {}}"}}]}"#,
+        r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_1","function":{"name":"read_file","arguments":"{}"}}]}}]}"#,
+        r#"{"choices":[{"delta":{},"finish_reason":"tool_calls"}]}"#,
+        "[DONE]",
+    ]);
+    let (events, translator) = run_offering(WireKind::OpenAi, &raw, &["ping", "read_file"]);
+    assert_eq!(text_of(&events), r#"{"name": "ping", "arguments": {}}"#);
+    let calls = translator.tool_calls();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].id, "call_1");
+    assert!(matches!(events.first(), Some(AgentEvent::TextDelta { .. })));
+}
+
+#[test]
+fn prose_streams_as_it_arrives_while_tools_are_offered() {
+    let raw = sse(&[
+        r#"{"choices":[{"delta":{"content":"Hello"}}]}"#,
+        r#"{"choices":[{"delta":{"content":" there"}}]}"#,
+    ]);
+    let mut translator = Translator::new(WireKind::OpenAi).offering(&offered(&["ping"]));
+    let mut decoder = SseDecoder::new();
+    let first: Vec<AgentEvent> = decoder
+        .push(&raw)
+        .unwrap()
+        .iter()
+        .flat_map(|event| translator.translate(event))
+        .collect();
+    assert_eq!(text_of(&first), "Hello there");
+    assert!(!translator.holds_text());
+}
+
+#[test]
+fn a_held_reply_cut_off_without_a_finish_is_still_delivered() {
+    let raw = sse(&[r#"{"choices":[{"delta":{"content":"{\"answer\": 42}"}}]}"#]);
+    let mut state =
+        StreamState::new(Translator::new(WireKind::OpenAi).offering(&offered(&["ping"])));
+    let mut events = Vec::new();
+    state
+        .push(raw.as_bytes(), &mut |event| events.push(event))
+        .unwrap();
+    assert!(state.translator.holds_text());
+    state.finish(&mut |event| events.push(event)).unwrap();
+    let outcome = finalize(
+        state.translator,
+        state.outcome,
+        &mut state.budget,
+        &mut |event| events.push(event),
+    )
+    .unwrap();
+    assert_eq!(outcome.text, r#"{"answer": 42}"#);
+    assert!(outcome.tool_calls.is_empty());
 }

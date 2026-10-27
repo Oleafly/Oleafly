@@ -26,6 +26,7 @@ pub(crate) const MAX_STREAM_TOOL_CALLS: usize = 256;
 pub(crate) const MAX_TOOL_CALLS_PER_TURN: usize = 32;
 
 pub(crate) mod anthropic_blocks;
+mod text_calls;
 mod translate;
 
 pub(crate) use anthropic_blocks::AssistantBlock;
@@ -271,7 +272,8 @@ where
         .map(Duration::from_millis)
         .unwrap_or_else(|| default_idle_timeout(resolved));
     let response = open_stream(client, resolved, req).await?;
-    let mut state = StreamState::new(WireKind::from(&resolved.wire));
+    let mut state =
+        StreamState::new(Translator::new(WireKind::from(&resolved.wire)).offering(&req.tools));
     consume_response(response, idle, &mut state, &mut on_event).await?;
     state.finish(&mut on_event)?;
     finalize(
@@ -291,9 +293,9 @@ struct StreamState {
 }
 
 impl StreamState {
-    fn new(kind: WireKind) -> Self {
+    fn new(translator: Translator) -> Self {
         Self {
-            translator: Translator::new(kind),
+            translator,
             utf8: IncrementalUtf8Decoder::default(),
             decoder: SseDecoder::new(),
             outcome: StreamOutcome::default(),
@@ -361,6 +363,7 @@ fn finalize<F: FnMut(AgentEvent)>(
         && outcome.text.is_empty()
         && outcome.reasoning.is_empty()
         && !translator.has_tool_calls()
+        && !translator.holds_text()
     {
         return Err(AgentError::Transport(
             "The connection closed before the model sent anything.".into(),

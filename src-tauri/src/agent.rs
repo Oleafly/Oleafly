@@ -2457,6 +2457,42 @@ mod probe_tests {
     }
 
     #[tokio::test]
+    async fn a_ping_written_as_reply_text_verifies_like_a_structured_one() {
+        // Bonsai-4B through Lemonade's llama.cpp writes its call as text.
+        let text_call = |text: &str| {
+            let chunk = serde_json::json!({ "choices": [{ "delta": { "content": text } }] });
+            format!(
+                "data: {chunk}\n\ndata: {{\"choices\":[{{\"delta\":{{}},\"finish_reason\":\"stop\"}}]}}\n\ndata: [DONE]\n\n"
+            )
+        };
+        for body in [
+            text_call(r#"{"name": "ping", "arguments": {}} </tool_call>"#),
+            text_call("<tool_call>\n{\"name\": \"ping\", \"arguments\": {}}\n</tool_call>"),
+        ] {
+            let (probe, _) = probe_against(
+                StatusCode::OK,
+                SSE,
+                &body,
+                Duration::ZERO,
+                Duration::from_secs(5),
+            )
+            .await;
+            assert_eq!(probe.verdict, ProbeVerdict::Verified, "{}", probe.reason);
+        }
+
+        let (probe, _) = probe_against(
+            StatusCode::OK,
+            SSE,
+            &text_call(r#"{"name": "pong", "arguments": {}} </tool_call>"#),
+            Duration::ZERO,
+            Duration::from_secs(5),
+        )
+        .await;
+        assert_eq!(probe.verdict, ProbeVerdict::Blocked);
+        assert_eq!(probe.reason, "The model answered without calling the tool.");
+    }
+
+    #[tokio::test]
     async fn running_out_of_output_before_the_call_is_reported_as_such() {
         let body = "data: {\"choices\":[{\"delta\":{\"content\":\"Let me think about\"},\"finish_reason\":\"length\"}]}\n\ndata: [DONE]\n\n";
         let (probe, _) = probe_against(

@@ -80,6 +80,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The single API key from early versions is no longer sent to a custom
   provider.
 - A base URL pasted with /chat/completions or /models on the end is trimmed.
+- Some local models, such as Bonsai-4B on Lemonade, write a tool call into
+  the reply as plain text, like `{"name": "ping", "arguments": {}} </tool_call>`.
+  Oleafly showed that text as the answer, and the tool check said the model
+  couldn't use tools. It now runs a call written this way when the call names
+  a tool Oleafly offered and has valid JSON arguments. Any other reply stays
+  text. A reply that starts like a tool call appears once it is finished
+  instead of word by word.
 
 - DeepSeek Harness couldn't open a conversation and said "The agent
   disconnected." It prints a log line on its output while a session starts,
