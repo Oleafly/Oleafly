@@ -9,6 +9,7 @@ import { getEditorView } from "@oleafly/editor";
 import { typstAutolinkEnd } from "@oleafly/editor/typst-syntax";
 import {
   renderTypstSnippet,
+  revealInDir,
   writeBytesFile,
   type TypstSnippetDiagnostic,
   type TypstSnippetRequest,
@@ -347,7 +348,7 @@ async function saveBytes(defaultName: string, filters: { name: string; extension
   await writeBytesFile(dest, bytesToBase64(bytes));
   toast.successUnique(EQUATION_EXPORT_TOAST_KEY, i18n.t(($) => $.editor.equationExport.saved, { kind }), {
     label: i18n.t(($) => $.editor.equationExport.showInFolder),
-    onClick: () => void import("@/lib/tauri").then((m) => m.revealInDir(dest)),
+    onClick: () => void revealInDir(dest),
   });
 }
 

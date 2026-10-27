@@ -4,6 +4,7 @@ import type { CheckId, PreflightEngine, PreflightReport, SubmissionProfileId } f
 import type { DocumentEngineDescriptor, TexFlavor } from "@/lib/tauri";
 import { buildProjectContext, buildRefsContext, type PreflightContextInput } from "@/lib/preflight-context";
 import { i18n } from "@/i18n";
+import { logError } from "@/lib/log";
 import { engineErrorMessage, useFilesStore } from "@/store/files";
 import { isCompileCheckpointCurrent, useCompileStore } from "@/store/compile";
 import { useIndexStore } from "@/store/project-index";
@@ -172,7 +173,7 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
       if (produced) set({ report: produced.report, pageText: produced.pageText, running: false });
     } catch (e) {
       if (!stale()) set({ running: false, error: String(e) });
-      void import("@/lib/log").then(({ logError }) => logError("preflight", e));
+      void logError("preflight", e);
     }
   },
 }));

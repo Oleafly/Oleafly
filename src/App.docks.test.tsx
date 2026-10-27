@@ -308,7 +308,7 @@ vi.mock("@/store/home-view", () => {
   return { useHomeViewStore: selectorStore(appState.home) };
 });
 vi.mock("@/store/tours", () => ({
-  useTourStore: { getState: () => ({ activeTourId: null }) },
+  useTourStore: selectorStore({ activeTourId: null, enabled: false }),
 }));
 vi.mock("@/store/git-status", () => ({
   useGitStatusStore: selectorStore({ refresh: vi.fn() }),
@@ -405,6 +405,7 @@ describe("project dock layout", () => {
       defaultView: "editor-preview",
       openInTree: false,
       vim: false,
+      versioningOpen: false,
     });
   });
 
@@ -446,6 +447,8 @@ describe("project dock layout", () => {
     const { act } = React;
     const { createRoot } = await import("react-dom/client");
     const { default: App } = await import("./App");
+    const { useSettingsStore } = await import("@/store/settings");
+    useSettingsStore.setState({ versioningOpen: true });
     const host = document.getElementById("root");
     if (!host) throw new Error("test root is unavailable");
     root = createRoot(host);

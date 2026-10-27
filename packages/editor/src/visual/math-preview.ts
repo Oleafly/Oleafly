@@ -8,9 +8,17 @@ import {
   type Transaction,
   type TransactionSpec,
 } from "@codemirror/state";
-import { EditorView, keymap, showTooltip, type Tooltip, type TooltipView } from "@codemirror/view";
+import {
+  EditorView,
+  keymap,
+  showTooltip,
+  type Tooltip,
+  type TooltipView,
+  ViewPlugin,
+} from "@codemirror/view";
 import { hasMouseDownEffect, pointerSelectionTracking, selectionAtMouseDown } from "./selection";
-import { paintTypstMath, renderMathSource, typstMathTheme } from "../math-render";
+import { loadedMathRender, loadMathRender, type MathRenderModule } from "../math-render-loader";
+import { paintTypstMath, typstMathTheme } from "../typst-math-render";
 import { type MathSourceFormat, scanMathExpressions } from "../math-source";
 import { typstMathAt } from "../math-typst";
 import { editorMessage } from "../messages";
@@ -154,14 +162,18 @@ function overlaps(left: { from: number; to: number }, right: { from: number; to:
   return left.from <= right.to && right.from <= left.to;
 }
 
-function paintMath(output: HTMLElement, target: MathPreviewTarget) {
-  const result = renderMathSource(target.body, target.display);
+function paintMathError(output: HTMLElement, message: string) {
+  const error = document.createElement("span");
+  error.className = "ofl-visual-math-tooltip-error";
+  error.setAttribute("role", "status");
+  error.textContent = message;
+  output.replaceChildren(error);
+}
+
+function paintMath(render: MathRenderModule, output: HTMLElement, target: MathPreviewTarget) {
+  const result = render.renderMathSource(target.body, target.display);
   if (result.status !== "ready") {
-    const error = document.createElement("span");
-    error.className = "ofl-visual-math-tooltip-error";
-    error.setAttribute("role", "status");
-    error.textContent = result.message ?? editorMessage("math.notRendered");
-    output.replaceChildren(error);
+    paintMathError(output, result.message ?? editorMessage("math.notRendered"));
     return;
   }
   const parsed = new DOMParser().parseFromString(result.html, "text/html");
@@ -254,8 +266,10 @@ function createTooltipView(view: EditorView, target: MathPreviewTarget): Tooltip
   const output = document.createElement("div");
   output.className = "ofl-visual-math-tooltip-output";
   const typst = view.state.facet(mathPreviewFormat) === "typst";
-  if (!typst) paintMath(output, target);
+  const render = typst ? null : loadedMathRender();
+  if (render) paintMath(render, output, target);
   let cancelTypst = () => {};
+  let destroyed = false;
 
   const menu = document.createElement("div");
   menu.className = "ofl-visual-math-tooltip-menu";
@@ -341,6 +355,11 @@ function createTooltipView(view: EditorView, target: MathPreviewTarget): Tooltip
     fittedHeight = dom.style.height;
     fitMathToTooltip(dom, output);
   };
+  const fitOnceFontsLoad = () => {
+    fit();
+    // KaTeX's fonts load on first use and change the formula's width.
+    void document.fonts?.ready.then(fit);
+  };
 
   return {
     dom,
@@ -355,15 +374,28 @@ function createTooltipView(view: EditorView, target: MathPreviewTarget): Tooltip
         });
         return;
       }
-      fit();
-      // KaTeX's fonts load on first use and change the formula's width.
-      void document.fonts?.ready.then(fit);
+      if (render) {
+        fitOnceFontsLoad();
+        return;
+      }
+      // The first formula previewed before KaTeX has loaded fills in after it.
+      void loadMathRender().then(
+        (loaded) => {
+          if (destroyed) return;
+          paintMath(loaded, output, target);
+          fitOnceFontsLoad();
+        },
+        () => {
+          if (!destroyed) paintMathError(output, editorMessage("math.notRendered"));
+        },
+      );
     },
     // Placing the tooltip is when CodeMirror caps its height.
     positioned: () => {
       if (dom.style.height !== fittedHeight) fit();
     },
     destroy: () => {
+      destroyed = true;
       cancelTypst();
       closeMenu();
     },
@@ -492,8 +524,16 @@ const escapeHidesPreview = keymap.of([
   },
 ]);
 
+// Opening an editor that previews KaTeX math starts loading KaTeX, so the
+// first preview is normally painted at once.
+const loadMathRenderEarly = ViewPlugin.define(() => {
+  void loadMathRender().catch(() => {});
+  return {};
+});
+
 export function mathPreviewTooltip(format: MathSourceFormat = "latex"): Extension {
   return [
+    format === "typst" ? [] : loadMathRenderEarly,
     mathPreviewTooltipTheme,
     mathPreviewFormat.of(format),
     pointerSelectionTracking,
