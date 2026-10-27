@@ -207,4 +207,48 @@ mod tests {
             );
         }
     }
+
+    #[tauri::command]
+    fn a_main_window_command() -> &'static str {
+        "ran"
+    }
+
+    #[test]
+    fn a_refused_call_is_rejected_with_the_window_named() {
+        let app = tauri::test::mock_builder()
+            .invoke_handler(gated(tauri::generate_handler![a_main_window_command]))
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let call = |label: &str| {
+            let window = tauri::WebviewWindowBuilder::new(&app, label, Default::default())
+                .build()
+                .unwrap();
+            tauri::test::get_ipc_response(
+                &window,
+                tauri::webview::InvokeRequest {
+                    cmd: "a_main_window_command".into(),
+                    callback: tauri::ipc::CallbackFn(0),
+                    error: tauri::ipc::CallbackFn(1),
+                    url: if cfg!(windows) {
+                        "http://tauri.localhost"
+                    } else {
+                        "tauri://localhost"
+                    }
+                    .parse()
+                    .unwrap(),
+                    body: Default::default(),
+                    headers: Default::default(),
+                    invoke_key: tauri::test::INVOKE_KEY.to_string(),
+                },
+            )
+            .map(|body| body.deserialize::<String>().unwrap())
+        };
+        assert_eq!(call(MAIN_WINDOW), Ok("ran".to_string()));
+        assert_eq!(
+            call("preview"),
+            Err(serde_json::json!(
+                "a_main_window_command isn't available in the preview window."
+            ))
+        );
+    }
 }

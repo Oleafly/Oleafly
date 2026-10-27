@@ -222,6 +222,19 @@ mod tests {
     }
 
     #[test]
+    fn a_path_from_the_drop_the_webview_took_counts_as_picked() {
+        let state = NativeDropState::default();
+        assert!(!state.released("/home/a/figure.png"));
+        state.with(|drop| {
+            drop.offer(7, paths(&["/home/a/figure.png"]));
+            drop.dropped(7, Instant::now());
+            drop.take(Instant::now());
+        });
+        assert!(state.released("/home/a/figure.png"));
+        assert!(!state.released("/home/a/.ssh/id_ed25519"));
+    }
+
+    #[test]
     fn a_new_drag_keeps_the_last_drop_readable_until_the_next_hand_over() {
         let now = Instant::now();
         let mut drop = NativeDrop::default();

@@ -6,8 +6,9 @@
 //! and record their result before handing it to the webview.
 
 use std::collections::VecDeque;
+use std::future::Future;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use serde::Deserialize;
 use tauri::{Runtime, Webview};
@@ -22,7 +23,42 @@ pub enum Access {
     Save,
 }
 
-static GRANTS: Mutex<VecDeque<(Access, PathBuf)>> = Mutex::new(VecDeque::new());
+/// Picked paths, oldest first. Once `limit` is reached the oldest goes.
+struct Grants {
+    entries: VecDeque<(Access, PathBuf)>,
+    limit: usize,
+}
+
+impl Grants {
+    const fn new(limit: usize) -> Self {
+        Self {
+            entries: VecDeque::new(),
+            limit,
+        }
+    }
+
+    fn insert(&mut self, access: Access, key: PathBuf) {
+        if self.contains(access, &key) {
+            return;
+        }
+        if self.entries.len() >= self.limit {
+            self.entries.pop_front();
+        }
+        self.entries.push_back((access, key));
+    }
+
+    fn contains(&self, access: Access, key: &Path) -> bool {
+        self.entries
+            .iter()
+            .any(|(kind, granted)| *kind == access && granted == key)
+    }
+}
+
+static GRANTS: Mutex<Grants> = Mutex::new(Grants::new(GRANT_LIMIT));
+
+fn grants() -> MutexGuard<'static, Grants> {
+    GRANTS.lock().unwrap_or_else(PoisonError::into_inner)
+}
 
 /// The form a path is compared in. A file that doesn't exist yet (a save
 /// destination) is its canonical parent plus its name.
@@ -38,31 +74,13 @@ fn grant_key(path: &Path) -> Option<PathBuf> {
 }
 
 pub fn grant(access: Access, path: &Path) {
-    let Some(key) = grant_key(path) else {
-        return;
-    };
-    let mut grants = GRANTS.lock().unwrap_or_else(PoisonError::into_inner);
-    if grants
-        .iter()
-        .any(|(kind, granted)| *kind == access && *granted == key)
-    {
-        return;
+    if let Some(key) = grant_key(path) {
+        grants().insert(access, key);
     }
-    if grants.len() >= GRANT_LIMIT {
-        grants.pop_front();
-    }
-    grants.push_back((access, key));
 }
 
 pub fn granted(access: Access, path: &Path) -> bool {
-    let Some(key) = grant_key(path) else {
-        return false;
-    };
-    GRANTS
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner)
-        .iter()
-        .any(|(kind, granted)| *kind == access && *granted == key)
+    grant_key(path).is_some_and(|key| grants().contains(access, &key))
 }
 
 /// Refuses a path the user didn't choose in Oleafly's own dialog.
@@ -92,7 +110,7 @@ pub fn require_open(source: &str) -> Result<(), String> {
     require(Access::Open, Path::new(source))
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DialogFilter {
     name: String,
@@ -123,52 +141,60 @@ pub struct SaveDialogOptions {
     can_create_directories: Option<bool>,
 }
 
-/// The dialog plugin's own handling of a default path: an existing folder
-/// opens there, anything else opens in its parent with its name filled in.
-fn with_default_path<R: Runtime>(
-    dialog: tauri_plugin_dialog::FileDialogBuilder<R>,
-    default_path: PathBuf,
-) -> tauri_plugin_dialog::FileDialogBuilder<R> {
-    let default_path: PathBuf = default_path.components().collect();
-    if default_path.is_dir() {
-        return dialog.set_directory(default_path);
-    }
-    match (default_path.parent(), default_path.file_name()) {
-        (Some(parent), Some(name)) => {
-            let dialog = if parent.components().count() > 0 {
-                dialog.set_directory(parent)
-            } else {
-                dialog
-            };
-            dialog.set_file_name(name.to_string_lossy())
+/// What a native file dialog is asked to show.
+#[derive(Debug, Default, PartialEq)]
+struct DialogSpec {
+    title: Option<String>,
+    filters: Vec<DialogFilter>,
+    directory: Option<PathBuf>,
+    file_name: Option<String>,
+    can_create_directories: Option<bool>,
+}
+
+impl DialogSpec {
+    fn new(
+        title: Option<String>,
+        filters: Vec<DialogFilter>,
+        default_path: Option<PathBuf>,
+        can_create_directories: Option<bool>,
+    ) -> Self {
+        let (directory, file_name) = default_path
+            .as_deref()
+            .map(dialog_start)
+            .unwrap_or_default();
+        Self {
+            title,
+            filters,
+            directory,
+            file_name,
+            can_create_directories,
         }
-        _ => dialog.set_directory(default_path),
     }
 }
 
-fn file_dialog<R: Runtime>(
-    webview: &Webview<R>,
-    title: Option<String>,
-    filters: Vec<DialogFilter>,
-    default_path: Option<PathBuf>,
-    can_create_directories: Option<bool>,
-) -> tauri_plugin_dialog::FileDialogBuilder<R> {
-    use tauri_plugin_dialog::DialogExt;
-    let mut dialog = webview.dialog().file();
-    if let Some(title) = title {
-        dialog = dialog.set_title(title);
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PickKind {
+    File,
+    Files,
+    Folder,
+    Folders,
+    Save,
+}
+
+/// The dialog plugin's own handling of a default path: an existing folder
+/// opens there, anything else opens in its parent with its name filled in.
+fn dialog_start(default_path: &Path) -> (Option<PathBuf>, Option<String>) {
+    let default_path: PathBuf = default_path.components().collect();
+    if default_path.is_dir() {
+        return (Some(default_path), None);
     }
-    if let Some(default_path) = default_path {
-        dialog = with_default_path(dialog, default_path);
+    match (default_path.parent(), default_path.file_name()) {
+        (Some(parent), Some(name)) => (
+            (parent.components().count() > 0).then(|| parent.to_path_buf()),
+            Some(name.to_string_lossy().into_owned()),
+        ),
+        _ => (Some(default_path), None),
     }
-    if let Some(can) = can_create_directories {
-        dialog = dialog.set_can_create_directories(can);
-    }
-    for filter in filters {
-        let extensions: Vec<&str> = filter.extensions.iter().map(String::as_str).collect();
-        dialog = dialog.add_filter(filter.name, &extensions);
-    }
-    dialog
 }
 
 fn picked_paths(selection: Option<Vec<tauri_plugin_dialog::FilePath>>) -> Option<Vec<PathBuf>> {
@@ -184,44 +210,83 @@ fn display(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
 
-/// Shows a native open dialog and records what the user picked as readable.
-#[tauri::command]
-pub async fn pick_open_paths<R: Runtime>(
-    webview: Webview<R>,
-    options: Option<OpenDialogOptions>,
-) -> Result<Option<Vec<String>>, String> {
-    let options = options.unwrap_or_default();
-    #[cfg_attr(target_os = "linux", allow(unused_mut))]
-    let mut dialog = file_dialog(
-        &webview,
+/// Shows `spec` as a native dialog and waits for the user's choice. `None`
+/// means they cancelled.
+async fn native_pick<R: Runtime>(
+    webview: &Webview<R>,
+    spec: DialogSpec,
+    kind: PickKind,
+) -> Result<Option<Vec<PathBuf>>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let mut dialog = webview.dialog().file();
+    if let Some(title) = spec.title {
+        dialog = dialog.set_title(title);
+    }
+    if let Some(directory) = spec.directory {
+        dialog = dialog.set_directory(directory);
+    }
+    if let Some(name) = spec.file_name {
+        dialog = dialog.set_file_name(name);
+    }
+    if let Some(can) = spec.can_create_directories {
+        dialog = dialog.set_can_create_directories(can);
+    }
+    for filter in spec.filters {
+        let extensions: Vec<&str> = filter.extensions.iter().map(String::as_str).collect();
+        dialog = dialog.add_filter(filter.name, &extensions);
+    }
+    // Like the dialog plugin: an open dialog gets a parent window on Windows
+    // and macOS, a save dialog on every desktop.
+    if kind == PickKind::Save || cfg!(any(windows, target_os = "macos")) {
+        dialog = dialog.set_parent(&webview.window());
+    }
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    match kind {
+        PickKind::Folders => dialog.pick_folders(move |picked| {
+            let _ = sender.send(picked_paths(picked));
+        }),
+        PickKind::Folder => dialog.pick_folder(move |picked| {
+            let _ = sender.send(picked_paths(picked.map(|path| vec![path])));
+        }),
+        PickKind::Files => dialog.pick_files(move |picked| {
+            let _ = sender.send(picked_paths(picked));
+        }),
+        PickKind::File => dialog.pick_file(move |picked| {
+            let _ = sender.send(picked_paths(picked.map(|path| vec![path])));
+        }),
+        PickKind::Save => dialog.save_file(move |picked| {
+            let _ = sender.send(picked_paths(picked.map(|path| vec![path])));
+        }),
+    }
+    receiver.await.map_err(|_| match kind {
+        PickKind::Save => "The save dialog closed unexpectedly.".to_string(),
+        _ => "The file picker closed unexpectedly.".to_string(),
+    })
+}
+
+/// Asks `pick` for an open dialog and records what the user picked as
+/// readable.
+async fn open_with<P, Fut>(
+    options: OpenDialogOptions,
+    pick: P,
+) -> Result<Option<Vec<String>>, String>
+where
+    P: FnOnce(DialogSpec, PickKind) -> Fut,
+    Fut: Future<Output = Result<Option<Vec<PathBuf>>, String>>,
+{
+    let kind = match (options.directory, options.multiple) {
+        (true, true) => PickKind::Folders,
+        (true, false) => PickKind::Folder,
+        (false, true) => PickKind::Files,
+        (false, false) => PickKind::File,
+    };
+    let spec = DialogSpec::new(
         options.title,
         options.filters,
         options.default_path,
         options.can_create_directories,
     );
-    #[cfg(any(windows, target_os = "macos"))]
-    {
-        dialog = dialog.set_parent(&webview.window());
-    }
-    let (sender, receiver) = tokio::sync::oneshot::channel();
-    match (options.directory, options.multiple) {
-        (true, true) => dialog.pick_folders(move |picked| {
-            let _ = sender.send(picked_paths(picked));
-        }),
-        (true, false) => dialog.pick_folder(move |picked| {
-            let _ = sender.send(picked_paths(picked.map(|path| vec![path])));
-        }),
-        (false, true) => dialog.pick_files(move |picked| {
-            let _ = sender.send(picked_paths(picked));
-        }),
-        (false, false) => dialog.pick_file(move |picked| {
-            let _ = sender.send(picked_paths(picked.map(|path| vec![path])));
-        }),
-    }
-    let Some(paths) = receiver
-        .await
-        .map_err(|_| "The file picker closed unexpectedly.".to_string())?
-    else {
+    let Some(paths) = pick(spec, kind).await? else {
         return Ok(None);
     };
     for path in &paths {
@@ -230,33 +295,50 @@ pub async fn pick_open_paths<R: Runtime>(
     Ok(Some(paths.iter().map(|path| display(path)).collect()))
 }
 
+/// Asks `pick` for a save dialog and records the chosen path as writable.
+async fn save_with<P, Fut>(options: SaveDialogOptions, pick: P) -> Result<Option<String>, String>
+where
+    P: FnOnce(DialogSpec, PickKind) -> Fut,
+    Fut: Future<Output = Result<Option<Vec<PathBuf>>, String>>,
+{
+    let spec = DialogSpec::new(
+        options.title,
+        options.filters,
+        options.default_path,
+        options.can_create_directories,
+    );
+    let Some(path) = pick(spec, PickKind::Save)
+        .await?
+        .and_then(|paths| paths.into_iter().next())
+    else {
+        return Ok(None);
+    };
+    grant(Access::Save, &path);
+    Ok(Some(display(&path)))
+}
+
+/// Shows a native open dialog and records what the user picked as readable.
+#[tauri::command]
+pub async fn pick_open_paths<R: Runtime>(
+    webview: Webview<R>,
+    options: Option<OpenDialogOptions>,
+) -> Result<Option<Vec<String>>, String> {
+    open_with(options.unwrap_or_default(), |spec, kind| {
+        native_pick(&webview, spec, kind)
+    })
+    .await
+}
+
 /// Shows a native save dialog and records the chosen path as writable.
 #[tauri::command]
 pub async fn pick_save_path<R: Runtime>(
     webview: Webview<R>,
     options: Option<SaveDialogOptions>,
 ) -> Result<Option<String>, String> {
-    let options = options.unwrap_or_default();
-    let dialog = file_dialog(
-        &webview,
-        options.title,
-        options.filters,
-        options.default_path,
-        options.can_create_directories,
-    )
-    .set_parent(&webview.window());
-    let (sender, receiver) = tokio::sync::oneshot::channel();
-    dialog.save_file(move |picked| {
-        let _ = sender.send(picked.and_then(|path| path.into_path().ok()));
-    });
-    let Some(path) = receiver
-        .await
-        .map_err(|_| "The save dialog closed unexpectedly.".to_string())?
-    else {
-        return Ok(None);
-    };
-    grant(Access::Save, &path);
-    Ok(Some(display(&path)))
+    save_with(options.unwrap_or_default(), |spec, kind| {
+        native_pick(&webview, spec, kind)
+    })
+    .await
 }
 
 /// E2E and dev builds can stand in for the operating-system picker (the
@@ -352,5 +434,293 @@ mod tests {
         std::fs::write(&secret, b"keep").unwrap();
         std::os::unix::fs::symlink(&secret, &picked).unwrap();
         assert!(!granted(Access::Save, &picked));
+    }
+
+    #[test]
+    fn the_oldest_grant_goes_once_the_list_is_full() {
+        let mut grants = Grants::new(2);
+        grants.insert(Access::Open, PathBuf::from("/a"));
+        grants.insert(Access::Open, PathBuf::from("/b"));
+        grants.insert(Access::Open, PathBuf::from("/a"));
+        grants.insert(Access::Save, PathBuf::from("/c"));
+        assert!(!grants.contains(Access::Open, Path::new("/a")));
+        assert!(grants.contains(Access::Open, Path::new("/b")));
+        assert!(grants.contains(Access::Save, Path::new("/c")));
+    }
+
+    #[test]
+    fn a_default_path_opens_where_the_dialog_plugin_would() {
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(dialog_start(dir.path()), (Some(dir.path().into()), None));
+        assert_eq!(
+            dialog_start(&dir.path().join("out.pdf")),
+            (Some(dir.path().into()), Some("out.pdf".into()))
+        );
+        assert_eq!(
+            dialog_start(Path::new("out.pdf")),
+            (None, Some("out.pdf".into()))
+        );
+        let up = dir.path().join("missing").join("..");
+        assert_eq!(dialog_start(&up), (Some(up.clone()), None));
+    }
+
+    #[test]
+    fn only_local_paths_come_back_from_a_pick() {
+        use tauri_plugin_dialog::FilePath;
+        let local = std::env::temp_dir().join("picked.tex");
+        let remote = FilePath::Url("https://example.com/paper.tex".parse().unwrap());
+        assert_eq!(
+            picked_paths(Some(vec![FilePath::Path(local.clone()), remote])),
+            Some(vec![local])
+        );
+        assert_eq!(picked_paths(None), None);
+    }
+
+    #[test]
+    fn an_open_pick_is_recorded_as_readable_and_handed_back() {
+        let dir = tempfile::tempdir().unwrap();
+        let first = dir.path().join("a.bib");
+        let second = dir.path().join("b.bib");
+        std::fs::write(&first, b"@a").unwrap();
+        std::fs::write(&second, b"@b").unwrap();
+        let options: OpenDialogOptions = serde_json::from_value(serde_json::json!({
+            "title": "Import bibliography",
+            "filters": [{ "name": "BibTeX", "extensions": ["bib"] }],
+            "multiple": true,
+            "defaultPath": dir.path(),
+            "canCreateDirectories": false,
+        }))
+        .unwrap();
+        let mut asked = None;
+        let picked = vec![first.clone(), second.clone()];
+        let result = tauri::async_runtime::block_on(open_with(options, |spec, kind| {
+            asked = Some((spec, kind));
+            async { Ok(Some(picked)) }
+        }))
+        .unwrap();
+        assert_eq!(
+            asked,
+            Some((
+                DialogSpec {
+                    title: Some("Import bibliography".into()),
+                    filters: vec![DialogFilter {
+                        name: "BibTeX".into(),
+                        extensions: vec!["bib".into()],
+                    }],
+                    directory: Some(dir.path().into()),
+                    file_name: None,
+                    can_create_directories: Some(false),
+                },
+                PickKind::Files,
+            ))
+        );
+        assert_eq!(result, Some(vec![display(&first), display(&second)]));
+        assert!(granted(Access::Open, &first) && granted(Access::Open, &second));
+        assert!(!granted(Access::Save, &first));
+    }
+
+    #[test]
+    fn each_open_mode_asks_for_its_own_dialog_and_a_cancel_grants_nothing() {
+        for (directory, multiple, expected) in [
+            (false, false, PickKind::File),
+            (false, true, PickKind::Files),
+            (true, false, PickKind::Folder),
+            (true, true, PickKind::Folders),
+        ] {
+            let options = OpenDialogOptions {
+                directory,
+                multiple,
+                ..Default::default()
+            };
+            let mut asked = None;
+            let result = tauri::async_runtime::block_on(open_with(options, |spec, kind| {
+                asked = Some((spec, kind));
+                async { Ok(None) }
+            }));
+            assert_eq!(result, Ok(None));
+            assert_eq!(asked, Some((DialogSpec::default(), expected)));
+        }
+    }
+
+    #[test]
+    fn a_save_pick_opens_in_the_parent_and_is_recorded_as_writable() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("report.pdf");
+        let options: SaveDialogOptions = serde_json::from_value(serde_json::json!({
+            "title": "Export PDF",
+            "defaultPath": target,
+        }))
+        .unwrap();
+        let mut asked = None;
+        let chosen = target.clone();
+        let result = tauri::async_runtime::block_on(save_with(options, |spec, kind| {
+            asked = Some((spec, kind));
+            async { Ok(Some(vec![chosen])) }
+        }))
+        .unwrap();
+        assert_eq!(
+            asked,
+            Some((
+                DialogSpec {
+                    title: Some("Export PDF".into()),
+                    directory: Some(dir.path().into()),
+                    file_name: Some("report.pdf".into()),
+                    ..Default::default()
+                },
+                PickKind::Save,
+            ))
+        );
+        assert_eq!(result, Some(display(&target)));
+        assert!(granted(Access::Save, &target));
+        assert!(!granted(Access::Open, &target));
+    }
+
+    #[test]
+    fn a_cancelled_or_failed_dialog_hands_back_nothing() {
+        let save = |answer: Result<Option<Vec<PathBuf>>, String>| {
+            tauri::async_runtime::block_on(save_with(Default::default(), |_, _| async { answer }))
+        };
+        assert_eq!(save(Ok(None)), Ok(None));
+        // A pick the dialog couldn't turn into a local path.
+        assert_eq!(save(Ok(Some(Vec::new()))), Ok(None));
+        let closed = "The save dialog closed unexpectedly.".to_string();
+        assert_eq!(save(Err(closed.clone())), Err(closed));
+        let failed = tauri::async_runtime::block_on(open_with(Default::default(), |_, _| async {
+            Err("The file picker closed unexpectedly.".to_string())
+        }));
+        assert_eq!(
+            failed,
+            Err("The file picker closed unexpectedly.".to_string())
+        );
+    }
+
+    #[test]
+    fn test_builds_can_record_a_pick_for_their_dialog_stand_ins() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("fixture.docx");
+        std::fs::write(&source, b"docx").unwrap();
+        let dest = dir.path().join("out.pdf");
+        assert_eq!(
+            grant_test_open_paths(vec![display(&source)]),
+            Ok(vec![display(&source)])
+        );
+        assert_eq!(grant_test_save_path(display(&dest)), Ok(display(&dest)));
+        assert!(granted(Access::Open, &source));
+        assert!(granted(Access::Save, &dest));
+        assert!(!granted(Access::Save, &source));
+    }
+
+    fn refused<T: std::fmt::Debug>(result: Result<T, String>, access: Access) {
+        let error = result.unwrap_err();
+        let expected = match access {
+            Access::Open => "if you pick it in Oleafly's file picker",
+            Access::Save => "if you choose it in Oleafly's save dialog",
+        };
+        assert!(error.contains(expected), "{error}");
+    }
+
+    #[test]
+    fn every_guarded_command_refuses_a_path_nobody_picked() {
+        use tauri::async_runtime::block_on;
+        use tauri::Manager;
+        let app = tauri::test::mock_app();
+        app.manage(crate::state::AppState::default());
+        let state = || app.state::<crate::state::AppState>();
+        let dir = tempfile::tempdir().unwrap();
+        let dest = display(&dir.path().join("unpicked.out"));
+        let source_path = dir.path().join("unpicked.in");
+        std::fs::write(&source_path, b"in").unwrap();
+        let source = display(&source_path);
+        let project = "guarded-command-test".to_string();
+
+        refused(
+            block_on(crate::commands::write_bytes_file(
+                dest.clone(),
+                String::new(),
+                state(),
+            )),
+            Access::Save,
+        );
+        refused(
+            block_on(crate::commands::export_project_image(
+                project.clone(),
+                dest.clone(),
+                String::new(),
+                state(),
+            )),
+            Access::Save,
+        );
+        refused(
+            block_on(crate::project::export_pdf(
+                project.clone(),
+                dest.clone(),
+                state(),
+            )),
+            Access::Save,
+        );
+        refused(
+            block_on(crate::typst_export::export_typst_document(
+                project.clone(),
+                "main.typ".into(),
+                serde_json::from_value(serde_json::json!({ "format": "pdf" })).unwrap(),
+                dest.clone(),
+                state(),
+            )),
+            Access::Save,
+        );
+        refused(
+            block_on(crate::checkpoint_backup::checkpoint_export(
+                project.clone(),
+                dest.clone(),
+                "password".into(),
+                state(),
+            )),
+            Access::Save,
+        );
+        refused(
+            crate::logsafe::export_log_archive(dest.clone(), None),
+            Access::Save,
+        );
+        refused(
+            block_on(crate::checkpoint_backup::checkpoint_import(
+                project.clone(),
+                source.clone(),
+                "password".into(),
+                state(),
+            )),
+            Access::Open,
+        );
+        refused(
+            block_on(crate::project::import_document(
+                app.handle().clone(),
+                source.clone(),
+                None,
+            )),
+            Access::Open,
+        );
+        refused(
+            block_on(crate::project::import_paths_into_project(
+                app.handle().clone(),
+                state(),
+                project.clone(),
+                String::new(),
+                vec![source.clone()],
+                None,
+            )),
+            Access::Open,
+        );
+        refused(
+            crate::research_workspace::add_research_root(
+                serde_json::from_value(serde_json::json!({
+                    "projectId": project,
+                    "path": source,
+                    "label": "Data",
+                    "role": "data",
+                }))
+                .unwrap(),
+            ),
+            Access::Open,
+        );
+        assert!(!dir.path().join("unpicked.out").exists());
     }
 }
