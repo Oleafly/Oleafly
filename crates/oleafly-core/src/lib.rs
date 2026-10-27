@@ -27,6 +27,7 @@ pub mod tex_distro;
 pub mod tex_errors;
 mod tex_flavor;
 mod tree;
+pub mod typst_forms;
 pub mod typst_log;
 pub mod typst_toolchain;
 mod utf8_stream;

@@ -218,6 +218,15 @@ impl Display for PackageSpec {
     }
 }
 
+/// Where the compiler finds `spec` in `dirs`: the package path first, then the
+/// download cache.
+pub(crate) fn package_dir(dirs: &TypstPackageDirs, spec: &PackageSpec) -> Option<PathBuf> {
+    [&dirs.package_path, &dirs.cache_path]
+        .into_iter()
+        .map(|root| root.join(spec.relative_dir()))
+        .find(|directory| directory.is_dir())
+}
+
 fn string_literals(source: &str) -> Vec<String> {
     let mut literals = Vec::new();
     let mut characters = source.chars().peekable();
@@ -416,12 +425,10 @@ pub(crate) fn vendor_into_project(
     deps_json: Option<&str>,
 ) -> Result<TypstVendorReport, String> {
     let vendor = project_root.join(VENDOR_DIR);
-    let locations = [vendor.as_path(), &app.package_path, &app.cache_path];
     let locate = |spec: &PackageSpec| {
-        locations
-            .iter()
-            .map(|root| root.join(spec.relative_dir()))
-            .find(|directory| directory.is_dir())
+        Some(vendor.join(spec.relative_dir()))
+            .filter(|directory| directory.is_dir())
+            .or_else(|| package_dir(app, spec))
     };
     let mut wanted: BTreeSet<PackageSpec> = match deps_json {
         Some(json) => specs_from_deps(json, &[&vendor, &app.package_path, &app.cache_path])?,
@@ -778,7 +785,7 @@ pub struct TypstVendorResult {
     pub project: ProjectMeta,
 }
 
-async fn blocking<T, F>(work: F) -> Result<T, String>
+pub(crate) async fn blocking<T, F>(work: F) -> Result<T, String>
 where
     T: Send + 'static,
     F: FnOnce() -> Result<T, String> + Send + 'static,

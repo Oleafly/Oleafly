@@ -127,6 +127,7 @@ mod tinytex_archive;
 mod toolchain_download;
 mod trust;
 mod typst_export;
+mod typst_forms;
 mod typst_options;
 mod typst_packages;
 mod typst_query;
@@ -988,6 +989,7 @@ pub fn run() {
             typst_packages::typst_package_settings,
             typst_packages::set_typst_vendor_packages,
             typst_packages::vendor_typst_packages,
+            typst_forms::typst_form_catalog,
             project::set_project_shell_escape,
             project::record_project_tex_spec,
             project::set_default_latex_engine,

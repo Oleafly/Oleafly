@@ -6250,6 +6250,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "tempfile",
+ "toml_edit 0.25.13+spec-1.1.0",
  "unicode-normalization",
  "uuid",
  "windows-sys 0.61.2",
