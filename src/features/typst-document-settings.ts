@@ -1,5 +1,15 @@
 import type { SyntaxNode, Tree } from "@lezer/common";
 import { loadTypstParser } from "@oleafly/editor/typst";
+import {
+  deleteArgumentSpan,
+  hasErrorNode,
+  type CallArguments,
+  type NamedSlot,
+  planNamedInsertions,
+  readCallArguments,
+  sourceText,
+} from "@oleafly/editor/typst-arguments";
+import { decodeTypstString, encodeTypstString } from "@oleafly/editor/typst-literals";
 
 export type TypstSettingKey =
   | "paper"
@@ -60,8 +70,7 @@ export interface TypstEdit {
 
 interface SetRuleInfo {
   readonly target: RuleTarget;
-  readonly node: SyntaxNode;
-  readonly args: SyntaxNode;
+  readonly arguments: CallArguments | null;
   readonly editable: boolean;
 }
 
@@ -72,17 +81,6 @@ export async function parseTypstSource(text: string): Promise<Tree> {
 
 function slice(text: string, node: { from: number; to: number }): string {
   return text.slice(node.from, node.to);
-}
-
-function hasError(node: SyntaxNode): boolean {
-  let found = false;
-  node.toTree().iterate({
-    enter(child) {
-      if (child.type.isError) found = true;
-      return !found;
-    },
-  });
-  return found;
 }
 
 function children(node: SyntaxNode): SyntaxNode[] {
@@ -107,79 +105,28 @@ function setRules(text: string, tree: Tree): SetRuleInfo[] {
   for (const node of topLevel(tree)) {
     if (node.name !== "SetRule") continue;
     const target = ruleTarget(text, node);
-    const args = node.getChild("Args");
-    if (!target || !args) continue;
-    const editable = !node.getChild("If") && !args.getChild("Spread") && !hasError(node);
-    rules.push({ target, node, args, editable });
+    if (!target || !node.getChild("Args")) continue;
+    const args = readCallArguments(sourceText(text), node);
+    const editable = !node.getChild("If") && args !== null && !args.spread && !hasErrorNode(node);
+    rules.push({ target, arguments: args, editable });
   }
   return rules;
 }
 
-function namedArguments(args: SyntaxNode, text: string): Map<string, SyntaxNode> {
-  const named = new Map<string, SyntaxNode>();
-  for (const child of children(args)) {
-    if (child.name !== "Named") continue;
-    const name = child.firstChild;
-    if (name?.name === "Ident") named.set(slice(text, name), child);
-  }
-  return named;
-}
-
-function namedValue(named: SyntaxNode): SyntaxNode | null {
-  const colon = named.getChild("Colon");
-  return colon?.nextSibling ?? null;
-}
-
-const SIMPLE_ESCAPES: ReadonlyMap<string, string> = new Map([
-  ["n", "\n"],
-  ["t", "\t"],
-  ["r", "\r"],
-]);
-
-function typstEscape(body: string, at: number): { text: string; next: number } {
-  const character = body[at];
-  if (character === "u" && body[at + 1] === "{") {
-    const close = body.indexOf("}", at);
-    if (close < 0) return { text: `\\${body.slice(at)}`, next: body.length };
-    const code = Number.parseInt(body.slice(at + 2, close), 16);
-    const valid = Number.isInteger(code) && code >= 0 && code <= 0x10ffff;
-    return { text: valid ? String.fromCodePoint(code) : "", next: close + 1 };
-  }
-  return { text: SIMPLE_ESCAPES.get(character) ?? character ?? "", next: at + 1 };
-}
-
-function unescapeTypstString(literal: string): string {
-  const body = literal.slice(1, -1);
-  let out = "";
-  let index = 0;
-  while (index < body.length) {
-    const character = body[index];
-    if (character === "\\") {
-      const escaped = typstEscape(body, index + 1);
-      out += escaped.text;
-      index = escaped.next;
-    } else {
-      out += character;
-      index += 1;
-    }
-  }
-  return out;
-}
-
-function editableValue(kind: SettingKind, value: SyntaxNode, text: string): string | null {
-  const source = slice(text, value);
+function editableValue(kind: SettingKind, slot: NamedSlot, text: string): string | null {
+  const source = slice(text, slot.value);
   switch (kind) {
     case "string":
-      return value.name === "Str" ? unescapeTypstString(source) : null;
+      return slot.type === "Str" ? decodeTypstString(source) : null;
     case "length":
-      return value.name === "Numeric" || value.name === "Auto" ? source : null;
+      return slot.type === "Numeric" || slot.type === "Auto" ? source : null;
     case "count":
-      return value.name === "Int" ? source : null;
+      return slot.type === "Int" ? source : null;
     case "bool":
-      return value.name === "Bool" ? source : null;
+      return slot.type === "Bool" ? source : null;
     case "numbering":
-      if (value.name === "None") return "none";
-      return value.name === "Str" ? unescapeTypstString(source) : null;
+      if (slot.type === "None") return "none";
+      return slot.type === "Str" ? decodeTypstString(source) : null;
   }
 }
 
@@ -194,29 +141,23 @@ function appliesTemplate(node: SyntaxNode): boolean {
   return node.name === "ShowRule" && node.getChild("Show")?.nextSibling?.name === "Colon";
 }
 
-function ruleFieldState(
-  spec: SettingSpec,
-  rule: SetRuleInfo,
-  named: ReadonlyMap<string, SyntaxNode>,
-  text: string,
-): TypstSettingState | null {
-  const argument = named.get(spec.argument);
-  const value = argument ? namedValue(argument) : null;
-  if (!argument || !value) return null;
-  if (!rule.editable) return { status: "locked", reason: "template", source: slice(text, value) };
-  const editable = editableValue(spec.kind, value, text);
+function ruleFieldState(spec: SettingSpec, rule: SetRuleInfo, text: string): TypstSettingState | null {
+  const slot = rule.arguments?.named.find((named) => named.name === spec.argument);
+  if (!slot) return null;
+  const source = slice(text, slot.value);
+  if (!rule.editable) return { status: "locked", reason: "template", source };
+  const editable = editableValue(spec.kind, slot, text);
   return editable === null
-    ? { status: "locked", reason: "expression", source: slice(text, value) }
-    : { status: "set", value: editable, from: value.from, to: value.to, named: { from: argument.from, to: argument.to } };
+    ? { status: "locked", reason: "expression", source }
+    : { status: "set", value: editable, from: slot.value.from, to: slot.value.to, named: slot.argument };
 }
 
 export function readTypstDocumentSettings(text: string, tree: Tree): TypstDocumentSettings {
   const fields = emptyFields();
   for (const rule of setRules(text, tree)) {
-    const named = namedArguments(rule.args, text);
     for (const spec of TYPST_SETTINGS) {
       if (spec.rule !== rule.target) continue;
-      const state = ruleFieldState(spec, rule, named, text);
+      const state = ruleFieldState(spec, rule, text);
       if (state) fields[spec.key] = state;
     }
   }
@@ -246,73 +187,23 @@ export function validateTypstSetting(key: TypstSettingKey, value: string): boole
   }
 }
 
-function typstString(value: string): string {
-  let out = "";
-  for (const character of value) {
-    if (character === "\\" || character === '"') out += `\\${character}`;
-    else if (character === "\n") out += String.raw`\n`;
-    else if (character === "\t") out += String.raw`\t`;
-    else out += character;
-  }
-  return `"${out}"`;
-}
-
 function serialize(spec: SettingSpec, value: string): string {
   const trimmed = value.trim();
   switch (spec.kind) {
     case "string":
-      if (spec.key === "lang") return typstString(trimmed.toLowerCase());
-      if (spec.key === "region") return typstString(trimmed.toUpperCase());
-      return typstString(trimmed);
+      if (spec.key === "lang") return encodeTypstString(trimmed.toLowerCase());
+      if (spec.key === "region") return encodeTypstString(trimmed.toUpperCase());
+      return encodeTypstString(trimmed);
     case "numbering":
-      return trimmed === "none" ? "none" : typstString(trimmed);
+      return trimmed === "none" ? "none" : encodeTypstString(trimmed);
     default:
       return trimmed;
   }
 }
 
-function lineStart(text: string, pos: number): number {
-  return text.lastIndexOf("\n", pos - 1) + 1;
-}
-
 function lineEnd(text: string, pos: number): number {
   const end = text.indexOf("\n", pos);
   return end < 0 ? text.length : end;
-}
-
-function appendArguments(text: string, args: SyntaxNode, additions: readonly string[]): TypstEdit {
-  const close = args.lastChild;
-  const closeFrom = close?.name === "RightParen" ? close.from : args.to;
-  const items = children(args).filter((child) => child.name !== "LeftParen" && child.name !== "RightParen");
-  const last = items.at(-1);
-  if (!last) return { from: closeFrom, to: closeFrom, insert: additions.join(", ") };
-  const trailingComma = last.name === "Comma";
-  const multiLine = text.slice(last.to, closeFrom).includes("\n");
-  if (multiLine) {
-    const firstItem = items[0];
-    const indentation = text.slice(lineStart(text, firstItem.from), firstItem.from);
-    const lines = additions.map((addition) => `\n${indentation}${addition}`).join(",");
-    return { from: last.to, to: last.to, insert: `${trailingComma ? "" : ","}${lines}${trailingComma ? "," : ""}` };
-  }
-  return { from: last.to, to: last.to, insert: `${trailingComma ? " " : ", "}${additions.join(", ")}` };
-}
-
-function removal(text: string, named: { from: number; to: number }): TypstEdit {
-  const after = text.slice(named.to);
-  const comma = /^\s*,/u.exec(after);
-  if (comma) {
-    let to = named.to + comma[0].length;
-    const ownLine = text.slice(lineStart(text, named.from), named.from).trim() === "";
-    const rest = text.slice(to, lineEnd(text, to));
-    if (ownLine && rest.trim() === "") {
-      return { from: lineStart(text, named.from), to: Math.min(text.length, lineEnd(text, to) + 1), insert: "" };
-    }
-    while (text[to] === " ") to += 1;
-    return { from: named.from, to, insert: "" };
-  }
-  const before = text.slice(0, named.from);
-  const previous = /,\s*$/u.exec(before);
-  return { from: previous ? previous.index : named.from, to: named.to, insert: "" };
 }
 
 function insertionPoint(text: string, tree: Tree): number {
@@ -325,9 +216,14 @@ function insertionPoint(text: string, tree: Tree): number {
   return end < text.length ? end + 1 : end;
 }
 
+interface Addition {
+  readonly name: string;
+  readonly text: string;
+}
+
 interface PlannedChanges {
   readonly edits: TypstEdit[];
-  readonly additions: Map<RuleTarget, string[]>;
+  readonly additions: Map<RuleTarget, Addition[]>;
 }
 
 function planChange(
@@ -339,7 +235,7 @@ function planChange(
 ): void {
   if (current.status === "locked") return;
   if (next === null || next === undefined || next.trim() === "") {
-    if (current.status === "set") plan.edits.push(removal(text, current.named));
+    if (current.status === "set") plan.edits.push(deleteArgumentSpan(sourceText(text), current.named));
     return;
   }
   if (!validateTypstSetting(spec.key, next)) return;
@@ -349,7 +245,7 @@ function planChange(
     return;
   }
   const list = plan.additions.get(spec.rule) ?? [];
-  list.push(`${spec.argument}: ${serialized}`);
+  list.push({ name: spec.argument, text: serialized });
   plan.additions.set(spec.rule, list);
 }
 
@@ -360,7 +256,7 @@ function lastEditableRule(rules: readonly SetRuleInfo[], target: RuleTarget): Se
   return undefined;
 }
 
-function additionEdits(text: string, tree: Tree, additions: ReadonlyMap<RuleTarget, string[]>): TypstEdit[] {
+function additionEdits(text: string, tree: Tree, additions: ReadonlyMap<RuleTarget, Addition[]>): TypstEdit[] {
   const rules = setRules(text, tree);
   const edits: TypstEdit[] = [];
   const fresh: string[] = [];
@@ -368,8 +264,9 @@ function additionEdits(text: string, tree: Tree, additions: ReadonlyMap<RuleTarg
     const list = additions.get(target);
     if (!list) continue;
     const rule = lastEditableRule(rules, target);
-    if (rule) edits.push(appendArguments(text, rule.args, list));
-    else fresh.push(`#set ${target}(${list.join(", ")})\n`);
+    const plan = rule?.arguments ? planNamedInsertions(sourceText(text), rule.arguments, list, "\n") : null;
+    if (plan?.ok) edits.push(...plan.changes);
+    else fresh.push(`#set ${target}(${list.map((entry) => `${entry.name}: ${entry.text}`).join(", ")})\n`);
   }
   if (fresh.length > 0) {
     const at = insertionPoint(text, tree);

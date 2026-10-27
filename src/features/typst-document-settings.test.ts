@@ -45,17 +45,19 @@ describe("readTypstDocumentSettings", () => {
     expect(fields.equationNumbering).toMatchObject({ status: "set", value: "none" });
   });
 
+  // Typst 0.15 keeps an unknown escape, or a \u{..} that names no character, as written,
+  // and reads the hex digits of an unclosed \u{ up to the first other character.
   it("reads escapes inside string values", async () => {
     const source = String.raw`#set text(font: "A\nB\tC\rD\u{1F600}\u{zz}E\"F\\G\qH")`;
     const { fields } = await settingsOf(`${source}\n`);
-    expect(fields.font).toMatchObject({ status: "set", value: 'A\nB\tC\rD\u{1F600}E"F\\GqH' });
+    expect(fields.font).toMatchObject({ status: "set", value: `A\nB\tC\rD\u{1F600}${String.raw`\u{zz}E"F\G\qH`}` });
   });
 
   it("keeps an unterminated or out-of-range unicode escape without hanging", async () => {
     const open = await settingsOf(`${String.raw`#set text(font: "A\u{41")`}\n`);
-    expect(open.fields.font).toMatchObject({ status: "set", value: String.raw`A\u{41` });
+    expect(open.fields.font).toMatchObject({ status: "set", value: "AA" });
     const large = await settingsOf(`${String.raw`#set text(font: "A\u{110000}B")`}\n`);
-    expect(large.fields.font).toMatchObject({ status: "set", value: "AB" });
+    expect(large.fields.font).toMatchObject({ status: "set", value: String.raw`A\u{110000}B` });
   });
 
   it("lets the last rule win and reports unset fields", async () => {

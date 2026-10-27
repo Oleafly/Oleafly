@@ -2,8 +2,9 @@ import { type EditorView, WidgetType } from "@codemirror/view";
 import { createRoot, type Root } from "react-dom/client";
 import type { TableDialect, TableHost } from "../../table/contexts";
 import { TableEditor } from "../../table/TableEditor";
-import type { TextRange } from "../syntax";
-import { sanitizeTypstCell, typstAppendRowEdit } from "./commands";
+import type { TextRange } from "../../../typst-arguments";
+import { sanitizeTypstContent } from "../../../typst-literals";
+import { typstAppendRowEdit } from "./commands";
 import type { TypstTable } from "./parse";
 import { TypstTableContext, type TypstTableInfo, TypstTableToolbar } from "./Toolbar";
 
@@ -20,7 +21,7 @@ function rootFor(element: HTMLElement): Root {
 
 function dialectFor(table: TypstTable): TableDialect {
   return {
-    sanitizeCellInput: sanitizeTypstCell,
+    sanitizeCellInput: sanitizeTypstContent,
     appendRowEdit: (state) => typstAppendRowEdit(state, table),
     Toolbar: TypstTableToolbar,
     Dialogs: null,

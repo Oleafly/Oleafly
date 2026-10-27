@@ -14,14 +14,20 @@ import { IconBraceWidget } from "../widgets/icon-brace";
 import { IndicatorWidget } from "../widgets/indicator";
 import { ItemWidget } from "../widgets/item";
 import { type Preamble, type PreambleLabels, PreambleWidget } from "../widgets/preamble";
+import { TYPST_STYLE_CALLS } from "./builtins";
 import { figureDecorations } from "./figure";
+import { typstFormsField } from "./forms/state";
 import { isTypstDisplayBody } from "../../math-source";
 import { TypstMathWidget } from "./math";
 import { typstSettingsEnd } from "./settings";
 import {
-  calleeName,
   callArguments,
   contentBody,
+  positionalArguments,
+  trailingContentBlocks,
+} from "../../typst-arguments";
+import {
+  calleeName,
   decodeTypstEscape,
   hashBefore,
   imagePath,
@@ -29,9 +35,7 @@ import {
   isClosedPair,
   labelKey,
   listDepth,
-  positionalArguments,
   referenceKey,
-  trailingContentBlocks,
 } from "./syntax";
 import { tableDecorations } from "./table/decoration";
 import { RawLanguageWidget, TypstTextWidget } from "./widgets";
@@ -52,21 +56,6 @@ export const TYPST_SETTINGS_LABELS: PreambleLabels = {
   show: "visual.typst.settings.show",
   hide: "visual.typst.settings.hide",
 };
-
-export const TYPST_STYLE_CALLS: ReadonlySet<string> = new Set([
-  "underline",
-  "strike",
-  "overline",
-  "highlight",
-  "smallcaps",
-  "emph",
-  "strong",
-  "sub",
-  "super",
-  "text",
-  "upper",
-  "lower",
-]);
 
 const SHORTHANDS: Readonly<Record<string, string>> = {
   "~": " ",
@@ -478,8 +467,11 @@ export const typstVisualField = StateField.define<TypstVisualState>({
     }
     const tree = syntaxTree(tr.state);
     const stillParsing = tree.length < tr.state.doc.length && tree.type === value.tree.type;
+    const forms = tr.startState.field(typstFormsField, false) !== tr.state.field(typstFormsField, false);
     const rebuild =
-      !stillParsing && !mousedown && (tree !== value.tree || tr.selection !== undefined || hasMouseDownEffect(tr));
+      !stillParsing &&
+      !mousedown &&
+      (tree !== value.tree || tr.selection !== undefined || hasMouseDownEffect(tr) || forms);
     if (rebuild) return { ...buildTypstDecorations(tr.state, tree), tree, mousedown };
     const decorations = tr.docChanged ? value.decorations.map(tr.changes) : value.decorations;
     if (decorations === value.decorations && mousedown === value.mousedown) return value;

@@ -6,15 +6,13 @@ import { GraphicsWidget } from "../widgets/graphics";
 import type { TypstDecorationBuilder } from "./field";
 import {
   argumentNodes,
-  calleeName,
   callArguments,
   contentBody,
-  imagePath,
-  isBlank,
   namedValue,
   positionalArguments,
   trailingContentBlocks,
-} from "./syntax";
+} from "../../typst-arguments";
+import { calleeName, imagePath, isBlank } from "./syntax";
 import { typstTableWidget } from "./table/decoration";
 
 export interface FigureIsland {

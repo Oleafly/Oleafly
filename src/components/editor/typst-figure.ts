@@ -2,14 +2,8 @@ import { TYPST_LABEL_PATTERN } from "@oleafly/editor/typst-syntax";
 import { insertTemplate, replaceRange } from "@/components/editor/cm/controller";
 import { latexGraphicsPath } from "@/components/editor/figure-import";
 import { dirname } from "@/lib/path-utils";
-import {
-  matchTypstContent,
-  typstArguments,
-  typstStringLiteral,
-  typstStringValue,
-  type TypstArgument,
-  type TypstSpan,
-} from "./typst-scan";
+import { decodeTypstString, encodeTypstString } from "@oleafly/editor/typst-literals";
+import { matchTypstContent, typstArguments, type TypstArgument, type TypstSpan } from "./typst-scan";
 import { TYPST_FIGURE_ALT_SINCE, typstVersionSupports } from "./typst-version";
 
 export type TypstFigurePlacement = "none" | "auto" | "top" | "bottom";
@@ -87,17 +81,17 @@ function extraArgs(args: readonly TypstExtraArgument[] | undefined, skip: Readon
 }
 
 function imageCallLine(fields: TypstFigureFields, alt: string | null): string {
-  const imageParts = [typstStringLiteral(fields.path)];
+  const imageParts = [encodeTypstString(fields.path)];
   if (fields.width) imageParts.push(`width: ${fields.width}`);
   const imageSkip = new Set<string>(["width", ...(alt ? ["alt"] : [])]);
   imageParts.push(...extraArgs(fields.imageArgs, imageSkip));
-  if (alt) imageParts.push(`alt: ${typstStringLiteral(alt)}`);
+  if (alt) imageParts.push(`alt: ${encodeTypstString(alt)}`);
   return `  image(${imageParts.join(", ")}),`;
 }
 
 function figureArgumentLines(fields: TypstFigureFields, alt: string | null): string[] {
   const lines: string[] = [];
-  if (alt) lines.push(`  alt: ${typstStringLiteral(alt)},`);
+  if (alt) lines.push(`  alt: ${encodeTypstString(alt)},`);
   if (fields.placement !== "none") lines.push(`  placement: ${fields.placement},`);
   const figureSkip = new Set<string>();
   if (fields.caption !== null) figureSkip.add("caption");
@@ -154,12 +148,12 @@ function parseImage(source: string, arg: TypstArgument): ParsedImage | null {
   for (const item of parsed.args) {
     const value = source.slice(item.value.from, item.value.to);
     if (item.name === null && path === null) {
-      path = typstStringValue(value);
+      path = decodeTypstString(value.trim());
       if (path === null) return null;
     } else if (item.name === "width") {
       width = value;
-    } else if (item.name === "alt" && typstStringValue(value) !== null) {
-      alt = typstStringValue(value);
+    } else if (item.name === "alt" && decodeTypstString(value.trim()) !== null) {
+      alt = decodeTypstString(value.trim());
     } else {
       imageArgs.push(argumentText(source, item));
     }
@@ -192,8 +186,8 @@ function parseFields(source: string, args: readonly TypstArgument[]): TypstFigur
       caption = value.slice(1, -1);
     } else if (arg.name === "placement" && placement === "none" && PLACEMENTS.has(value)) {
       placement = value as TypstFigurePlacement;
-    } else if (arg.name === "alt" && alt === null && typstStringValue(value) !== null) {
-      alt = typstStringValue(value);
+    } else if (arg.name === "alt" && alt === null && decodeTypstString(value.trim()) !== null) {
+      alt = decodeTypstString(value.trim());
       figureAlt = true;
     } else {
       figureArgs.push(argumentText(source, arg));

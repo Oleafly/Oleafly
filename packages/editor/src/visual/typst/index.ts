@@ -6,6 +6,8 @@ import { tableTheme } from "../table/theme";
 import { visualHighlightStyle, visualTheme } from "../theme";
 import type { VisualPorts } from "../types";
 import { typstAtomicDecorations } from "./field";
+import { typstDocumentPath } from "./forms/scope";
+import { typstFormsField, typstFormsSync } from "./forms/state";
 import { typstVisualKeymap } from "./keymap";
 import { typstMarkDecorations } from "./marks";
 import { typstMathThemeWatcher } from "./math";
@@ -20,10 +22,13 @@ export { typstFromClipboard, typstPasteHtml } from "./paste-html";
 export { leaveTypstHeading, typstVisualKeymap } from "./keymap";
 export { repaintTypstMath, TypstMathWidget } from "./math";
 
-export function typstVisualMode(ports: VisualPorts): Extension {
+export function typstVisualMode(ports: VisualPorts, path: string | null = null): Extension {
   return [
     visualModeActive.of(true),
     visualPortsFacet.of(ports),
+    typstDocumentPath.of(path),
+    typstFormsField,
+    typstFormsSync,
     EditorView.lineWrapping,
     visualTheme,
     visualHighlightStyle,
