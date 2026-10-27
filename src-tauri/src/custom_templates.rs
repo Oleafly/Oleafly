@@ -353,6 +353,7 @@ pub async fn import_template_from_path(
     path: String,
     name: String,
 ) -> Result<String, String> {
+    crate::path_grants::require_open(&path)?;
     let reserved = crate::templates::shipped_template_ids_off_thread(app).await?;
     tauri::async_runtime::spawn_blocking(move || {
         let source = PathBuf::from(&path);

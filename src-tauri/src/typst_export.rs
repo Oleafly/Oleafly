@@ -414,6 +414,7 @@ pub async fn export_typst_document(
     dest: String,
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<TypstExportResult, String> {
+    crate::path_grants::require_save(&dest)?;
     crate::sandbox::guard_export_dest(&dest)?;
     if !Path::new(&dest)
         .extension()

@@ -508,6 +508,7 @@ pub async fn acp_session_export(
     session_id: String,
     path: String,
 ) -> Result<(), String> {
+    crate::path_grants::require_save(&path)?;
     check_project(&runtime, &session_id, &project_id)?;
     let exporter = runtime.inner().clone();
     let destination = path.clone();

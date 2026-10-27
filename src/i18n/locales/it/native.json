@@ -51,6 +51,12 @@
       "title": "Approva lo strumento MCP",
       "confirm": "Usa lo strumento"
     },
+    "mcpCommand": {
+      "title": "Eseguire questo programma?",
+      "message": "Oleafly eseguirà questo comando ogni volta che avvia il server MCP {{name}}:\n\n{{command}}\n\nConsenti solo programmi di cui ti fidi.",
+      "environment": "Imposta anche queste variabili d'ambiente: {{names}}",
+      "confirm": "Consenti"
+    },
     "tableImport": {
       "title": "Scegli un foglio di calcolo da importare",
       "filter": "Fogli di calcolo"

@@ -51,6 +51,12 @@
       "title": "MCP ツールの承認",
       "confirm": "ツールを使う"
     },
+    "mcpCommand": {
+      "title": "このプログラムを実行しますか？",
+      "message": "MCP サーバー {{name}} を起動するたびに、Oleafly は次のコマンドを実行します:\n\n{{command}}\n\n信頼できるプログラムだけを許可してください。",
+      "environment": "次の環境変数も設定します: {{names}}",
+      "confirm": "許可"
+    },
     "tableImport": {
       "title": "読み込むスプレッドシートを選択",
       "filter": "スプレッドシート"

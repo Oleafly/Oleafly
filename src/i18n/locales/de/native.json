@@ -51,6 +51,12 @@
       "title": "MCP-Werkzeug freigeben",
       "confirm": "Werkzeug verwenden"
     },
+    "mcpCommand": {
+      "title": "Dieses Programm ausführen?",
+      "message": "Oleafly führt diesen Befehl jedes Mal aus, wenn es den MCP-Server {{name}} startet:\n\n{{command}}\n\nErlauben Sie nur Programme, denen Sie vertrauen.",
+      "environment": "Außerdem werden diese Umgebungsvariablen gesetzt: {{names}}",
+      "confirm": "Erlauben"
+    },
     "tableImport": {
       "title": "Tabelle zum Importieren auswählen",
       "filter": "Tabellen"

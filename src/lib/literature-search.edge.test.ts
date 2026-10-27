@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 
-const getConnectorKey = vi.hoisted(() => vi.fn(async (_id: string): Promise<string | null> => null));
-vi.mock("@/lib/tauri", () => ({ getConnectorKey, literatureSearch: vi.fn() }));
+const connectorKeySaved = vi.hoisted(() => vi.fn(async (_id: string): Promise<boolean> => false));
+vi.mock("@/lib/tauri", () => ({ connectorKeySaved, literatureSearch: vi.fn() }));
 
 import {
   LITERATURE_SOURCES,
@@ -288,7 +288,7 @@ describe("searchLiterature", () => {
 
   beforeEach(() => {
     localStorage.clear();
-    getConnectorKey.mockReset().mockResolvedValue(null);
+    connectorKeySaved.mockReset().mockResolvedValue(false);
   });
 
   afterEach(() => {
@@ -369,16 +369,16 @@ describe("searchLiterature", () => {
 
   it("uses a saved Serper key to decide whether Google Scholar runs", async () => {
     const transport = vi.fn(async () => JSON.stringify({ organic: [] }));
-    getConnectorKey.mockResolvedValueOnce("   ");
+    connectorKeySaved.mockResolvedValueOnce(false);
     const skipped = await searchLiterature({ query: "q", sources: ["google-scholar"], ignoreCache: true }, transport);
     expect(skipped.runs).toEqual([]);
-    expect(getConnectorKey).toHaveBeenCalledWith("serper");
+    expect(connectorKeySaved).toHaveBeenCalledWith("serper");
 
-    getConnectorKey.mockResolvedValueOnce("secret");
+    connectorKeySaved.mockResolvedValueOnce(true);
     const searched = await searchLiterature({ query: "q", sources: ["google-scholar"], ignoreCache: true }, transport);
     expect(searched.runs.map((run) => run.source)).toEqual(["google-scholar"]);
 
-    getConnectorKey.mockRejectedValueOnce(new Error("keychain locked"));
+    connectorKeySaved.mockRejectedValueOnce(new Error("keychain locked"));
     const attempted = await searchLiterature({ query: "q", sources: ["google-scholar"], ignoreCache: true }, transport);
     expect(attempted.runs.map((run) => run.source)).toEqual(["google-scholar"]);
   });

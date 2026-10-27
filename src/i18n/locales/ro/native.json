@@ -51,6 +51,12 @@
       "title": "Aprobă instrumentul MCP",
       "confirm": "Folosește instrumentul"
     },
+    "mcpCommand": {
+      "title": "Rulezi acest program?",
+      "message": "Oleafly va rula această comandă de fiecare dată când pornește serverul MCP {{name}}:\n\n{{command}}\n\nPermite doar programe în care ai încredere.",
+      "environment": "Setează și aceste variabile de mediu: {{names}}",
+      "confirm": "Permite"
+    },
     "tableImport": {
       "title": "Alege o foaie de calcul de importat",
       "filter": "Foi de calcul"

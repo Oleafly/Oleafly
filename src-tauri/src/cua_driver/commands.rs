@@ -460,6 +460,11 @@ fn picked_name(path: &Path) -> String {
 
 const SPACES_CREDENTIALS_ENV: &str = "CUA_SPACES_AGENT_CREDENTIALS_HOME";
 
+/// Whether `server` runs Cua Spaces (`cua daemon mcp`).
+pub(crate) fn is_spaces_server(server: &crate::config::McpServerConfig) -> bool {
+    spaces_guards(server).is_some()
+}
+
 /// A Cua Spaces server (`cua daemon mcp`), and whether each of its guards is
 /// on: read-only, and the user's agent sign-ins kept out.
 fn spaces_guards(server: &crate::config::McpServerConfig) -> Option<(bool, bool)> {

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { McpServerConfig } from "@oleafly/backend-port";
 
 const mocks = vi.hoisted(() => ({
-  getConnectorKey: vi.fn(),
+  connectorKeySaved: vi.fn(),
   setConnectorKey: vi.fn(),
   mcpServersList: vi.fn(),
   mcpServerAdd: vi.fn(),
@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   mcpServerRemove: vi.fn(),
 }));
 vi.mock("@/lib/tauri", () => ({
-  getConnectorKey: mocks.getConnectorKey,
+  connectorKeySaved: mocks.connectorKeySaved,
   setConnectorKey: mocks.setConnectorKey,
   mcpServersList: mocks.mcpServersList,
   mcpServerAdd: mocks.mcpServerAdd,
@@ -37,7 +37,7 @@ const managed = (config: McpServerConfig) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.getConnectorKey.mockResolvedValue("");
+  mocks.connectorKeySaved.mockResolvedValue(false);
   mocks.setConnectorKey.mockResolvedValue(undefined);
   mocks.mcpServersList.mockResolvedValue([]);
   mocks.mcpServerAdd.mockImplementation(async (config: McpServerConfig) => managed(config));

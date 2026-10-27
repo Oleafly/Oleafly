@@ -21,7 +21,7 @@ let userEvent: typeof import("@testing-library/user-event").default;
 
 const native = vi.hoisted(() => ({ invoke: vi.fn(), open: vi.fn(), reveal: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: native.invoke }));
-vi.mock("@tauri-apps/plugin-dialog", () => ({ open: native.open }));
+vi.mock("@/lib/native-file-dialog", () => ({ pickOpenPath: native.open }));
 vi.mock("@/lib/tauri", () => ({ revealInDir: native.reveal }));
 
 beforeAll(async () => {

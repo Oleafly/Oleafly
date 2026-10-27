@@ -80,6 +80,12 @@ impl NativeDropState {
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         f(&mut drop)
     }
+
+    /// Whether `path` came from the drop the webview just took, so a command
+    /// may read it as if it had been picked in a dialog.
+    pub(crate) fn released(&self, path: &str) -> bool {
+        self.with(|drop| drop.readable(path, Instant::now()))
+    }
 }
 
 #[tauri::command]
@@ -213,6 +219,19 @@ mod tests {
             "/home/a/figure.png",
             now + READ_LIFETIME + Duration::from_millis(1)
         ));
+    }
+
+    #[test]
+    fn a_path_from_the_drop_the_webview_took_counts_as_picked() {
+        let state = NativeDropState::default();
+        assert!(!state.released("/home/a/figure.png"));
+        state.with(|drop| {
+            drop.offer(7, paths(&["/home/a/figure.png"]));
+            drop.dropped(7, Instant::now());
+            drop.take(Instant::now());
+        });
+        assert!(state.released("/home/a/figure.png"));
+        assert!(!state.released("/home/a/.ssh/id_ed25519"));
     }
 
     #[test]

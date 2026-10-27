@@ -213,6 +213,17 @@ handles the rest:
 
 - Rust resolves user paths through the sandbox before filesystem, process, Git,
   or export operations.
+- Only the main window's own webview can call every app command. The update,
+  preview, presentation and admin console windows get the few commands their
+  view uses, and a child webview gets none (`window_commands.rs`). Each window
+  has its own capability file for plugin permissions.
+- Native open and save dialogs run in Rust (`path_grants.rs`). Exports and
+  imports outside a project accept only a path the user picked there, or on
+  Linux a path just dropped on the window.
+- Connector API keys stay in Rust. The webview can save or clear one and ask
+  whether one is saved, never read it back.
+- Saving a stdio MCP server with a new program, arguments or environment asks
+  first in a native dialog.
 - Long-lived credentials use encrypted app-managed storage.
 - MCP binds to loopback and uses a bearer token plus the normal approval model.
   Renderer sessions coordinate tools while a window is connected. The Rust
