@@ -51,6 +51,12 @@
       "title": "批准 MCP 工具",
       "confirm": "使用工具"
     },
+    "mcpCommand": {
+      "title": "要运行此程序吗？",
+      "message": "每次启动 MCP 服务器 {{name}} 时，Oleafly 都会运行下面的命令\n\n{{command}}\n\n请只允许你信任的程序。",
+      "environment": "它还会设置以下环境变量：{{names}}",
+      "confirm": "允许"
+    },
     "tableImport": {
       "title": "选择要导入的电子表格",
       "filter": "电子表格"

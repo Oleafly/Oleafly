@@ -51,6 +51,12 @@
       "title": "Zatwierdź narzędzie MCP",
       "confirm": "Użyj narzędzia"
     },
+    "mcpCommand": {
+      "title": "Uruchomić ten program?",
+      "message": "Oleafly będzie uruchamiać to polecenie za każdym razem, gdy uruchamia serwer MCP {{name}}:\n\n{{command}}\n\nZezwalaj tylko na programy, którym ufasz.",
+      "environment": "Ustawia też te zmienne środowiskowe: {{names}}",
+      "confirm": "Zezwól"
+    },
     "tableImport": {
       "title": "Wybierz arkusz kalkulacyjny do zaimportowania",
       "filter": "Arkusze kalkulacyjne"

@@ -91,6 +91,38 @@ async fn blocking<T: Send + 'static>(
         .map_err(|error| error.to_string())?
 }
 
+/// A CA file is read only when the user picked it in Oleafly's dialog or the
+/// account for `base` already trusts it.
+async fn require_picked_ca_file(base: &str, ca_file: &Option<String>) -> Result<(), String> {
+    let base = base.to_owned();
+    let ca_file = ca_file.clone();
+    blocking(move || ca_file_allowed(store, &base, ca_file.as_deref())).await
+}
+
+/// `require_picked_ca_file` against the account store `store` opens, which
+/// is opened only when the path wasn't picked.
+fn ca_file_allowed(
+    store: impl FnOnce() -> Result<ForgeStore, String>,
+    base: &str,
+    ca_file: Option<&str>,
+) -> Result<(), String> {
+    let Some(path) = ca_file.map(str::trim).filter(|path| !path.is_empty()) else {
+        return Ok(());
+    };
+    if crate::path_grants::granted(crate::path_grants::Access::Open, std::path::Path::new(path)) {
+        return Ok(());
+    }
+    let trusted = store()?
+        .account(base)
+        .ok()
+        .flatten()
+        .and_then(|account| account.ca_file);
+    if trusted.as_deref() == Some(path) {
+        return Ok(());
+    }
+    crate::path_grants::require_open(path)
+}
+
 /// A CA file the user picked: an absolute path to a readable certificate
 /// file of at most 1 MB. `None` clears it.
 pub(crate) fn checked_ca_file(ca_file: Option<String>) -> Result<Option<String>, ForgeError> {
@@ -176,6 +208,7 @@ pub async fn forge_detect(
     let base = normalized_base(&base)?;
     let host = host_label(&base);
     let fail = |error: ForgeError| app_error(&error, &host);
+    require_picked_ca_file(&base, &ca_file).await?;
     let ca_file = checked_ca_file(ca_file).map_err(fail)?;
     let http = http_for_async(ca_file).await.map_err(fail)?;
     let info = detect::detect_server(&http, &base).await.map_err(fail)?;
@@ -205,6 +238,7 @@ pub async fn forge_sign_in_token(
     let clear_ca = ca_file
         .as_deref()
         .is_some_and(|path| path.trim().is_empty());
+    require_picked_ca_file(&base, &ca_file).await?;
     let ca_file = checked_ca_file(ca_file).map_err(fail)?;
     let store = blocking(store).await?;
     // The sign-in itself trusts what the account will trust afterwards.
@@ -435,6 +469,7 @@ pub async fn forge_set_ca_file(
 ) -> Result<ForgeAccount, String> {
     let base = normalized_base(&base)?;
     let host = host_label(&base);
+    require_picked_ca_file(&base, &ca_file).await?;
     let ca_file = checked_ca_file(ca_file).map_err(|error| app_error(&error, &host))?;
     let account = blocking(move || {
         let store = store()?;
@@ -549,6 +584,61 @@ mod tests {
 
     const START: &str = r#"{"device_code":"device-code-secret","user_code":"ABCD-1234","verification_uri":"https://gitlab.example/oauth/device","expires_in":900,"interval":5}"#;
     const USER: &str = r#"{"username":"octo","name":"Octo Cat"}"#;
+
+    #[test]
+    fn a_ca_file_is_read_only_when_picked_or_already_trusted() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = ForgeStore::new(dir.path());
+        let base = "https://gitlab.example";
+        let trusted = dir.path().join("trusted.pem");
+        let picked = dir.path().join("picked.pem");
+        let planted = dir.path().join("planted.pem");
+        for file in [&trusted, &picked, &planted] {
+            std::fs::write(file, b"-----BEGIN CERTIFICATE-----").unwrap();
+        }
+        let trusted = trusted.to_string_lossy().into_owned();
+        let picked = picked.to_string_lossy().into_owned();
+        let planted = planted.to_string_lossy().into_owned();
+        store
+            .save(
+                ForgeAccount {
+                    base: base.into(),
+                    kind: ForgeKind::GitLab,
+                    flavor: None,
+                    login: "octo".into(),
+                    name: None,
+                    avatar_url: None,
+                    ca_file: Some(trusted.clone()),
+                    auth: oleafly_forge::AuthMethod::Token,
+                    added_at: 1_760_000_000_000,
+                },
+                oleafly_forge::ForgeToken {
+                    token: "glpat-test".into(),
+                    refresh: None,
+                    expires_at: None,
+                },
+            )
+            .unwrap();
+        let open = || -> Result<ForgeStore, String> { Ok(ForgeStore::new(dir.path())) };
+        let unopened = || -> Result<ForgeStore, String> { panic!("the store isn't needed") };
+
+        assert_eq!(ca_file_allowed(unopened, base, None), Ok(()));
+        assert_eq!(ca_file_allowed(unopened, base, Some("  ")), Ok(()));
+        assert_eq!(ca_file_allowed(open, base, Some(&trusted)), Ok(()));
+        let refusal = ca_file_allowed(open, base, Some(&planted)).unwrap_err();
+        assert!(refusal.contains("file picker"), "{refusal}");
+        let elsewhere = ca_file_allowed(open, "https://other.example", Some(&trusted));
+        assert!(elsewhere.is_err());
+        crate::path_grants::grant(
+            crate::path_grants::Access::Open,
+            std::path::Path::new(&picked),
+        );
+        assert_eq!(ca_file_allowed(unopened, base, Some(&picked)), Ok(()));
+        assert_eq!(
+            ca_file_allowed(|| Err("no store".to_string()), base, Some(&planted)),
+            Err("no store".to_string())
+        );
+    }
 
     #[tokio::test]
     async fn device_start_keeps_the_device_code_in_rust() {

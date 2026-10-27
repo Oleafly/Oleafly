@@ -51,6 +51,12 @@
       "title": "MCP aracını onaylayın",
       "confirm": "Aracı kullan"
     },
+    "mcpCommand": {
+      "title": "Bu program çalıştırılsın mı?",
+      "message": "Oleafly, {{name}} MCP sunucusunu her başlattığında bu komutu çalıştıracak:\n\n{{command}}\n\nYalnızca güvendiğiniz programlara izin verin.",
+      "environment": "Ayrıca şu ortam değişkenlerini ayarlar: {{names}}",
+      "confirm": "İzin ver"
+    },
     "tableImport": {
       "title": "İçe aktarılacak bir elektronik tablo seçin",
       "filter": "Elektronik tablolar"

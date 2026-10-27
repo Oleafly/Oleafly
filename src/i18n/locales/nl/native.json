@@ -51,6 +51,12 @@
       "title": "MCP-tool goedkeuren",
       "confirm": "Tool gebruiken"
     },
+    "mcpCommand": {
+      "title": "Dit programma uitvoeren?",
+      "message": "Oleafly voert deze opdracht uit telkens als het de MCP-server {{name}} start:\n\n{{command}}\n\nSta alleen programma's toe die je vertrouwt.",
+      "environment": "Het stelt ook deze omgevingsvariabelen in: {{names}}",
+      "confirm": "Toestaan"
+    },
     "tableImport": {
       "title": "Kies een spreadsheet om te importeren",
       "filter": "Spreadsheets"

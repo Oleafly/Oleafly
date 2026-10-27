@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   mathpixKeyStatus: vi.fn(),
   mathpixSaveKeys: vi.fn(),
   mathpixClearKeys: vi.fn(),
-  getConnectorKey: vi.fn(),
+  connectorKeySaved: vi.fn(),
   toastSuccess: vi.fn(),
 }));
 
@@ -19,7 +19,7 @@ vi.mock("@/lib/mathpix", () => ({
 }));
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
-  getConnectorKey: mocks.getConnectorKey,
+  connectorKeySaved: mocks.connectorKeySaved,
 }));
 vi.mock("@/lib/toast", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/toast")>()),
@@ -86,7 +86,7 @@ describe("Settings, AI, Tools", () => {
     );
     expect(screen.queryByTestId("mathpix-app-key")).not.toBeInTheDocument();
     expect(mocks.toastSuccess).toHaveBeenCalledWith(tools.mathpix.saved);
-    expect(mocks.getConnectorKey).not.toHaveBeenCalled();
+    expect(mocks.connectorKeySaved).not.toHaveBeenCalled();
     expect(document.body.innerHTML).not.toContain("KEY ");
   });
 

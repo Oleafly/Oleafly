@@ -5518,6 +5518,7 @@ pub async fn import_overleaf_project<R: tauri::Runtime>(
     name: Option<String>,
     path: String,
 ) -> Result<String, String> {
+    crate::path_grants::require_open(&path)?;
     let project_id =
         tauri::async_runtime::spawn_blocking(move || import_overleaf_project_blocking(name, &path))
             .await
@@ -6532,6 +6533,7 @@ pub async fn export_pdf(
     dest: String,
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<(), String> {
+    crate::path_grants::require_save(&dest)?;
     let staged_project = project_id.clone();
     let staged_dest = dest.clone();
     tauri::async_runtime::spawn_blocking(move || stage_exported_pdf(&staged_project, &staged_dest))
@@ -6636,6 +6638,7 @@ pub async fn export_document(
     typst_variant: Option<String>,
 ) -> Result<(), String> {
     let reveal_dest = dest.clone();
+    crate::path_grants::require_save(&dest)?;
     guard_export_dest(&dest)?;
     let worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let meta = read_meta(&project_id)?;
@@ -7057,6 +7060,7 @@ pub async fn import_document<R: tauri::Runtime>(
     path: String,
     target: Option<String>,
 ) -> Result<String, String> {
+    crate::path_grants::require_open(&path)?;
     let project_id = import_document_file(path, target).await?;
     record_tex_spec_for_new_project(&app, &project_id);
     Ok(project_id)
@@ -7924,6 +7928,7 @@ pub(crate) async fn search_project_bounded(
 /// Zip a project's source files (excluding `.oleafly`, `.git`) to `dest`.
 #[tauri::command]
 pub async fn download_project_zip(project_id: String, dest: String) -> Result<(), String> {
+    crate::path_grants::require_save(&dest)?;
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let root = paths::project_dir(&project_id)?;
@@ -8086,6 +8091,15 @@ pub async fn import_paths_into_project<R: tauri::Runtime>(
     expected_generation: Option<u64>,
 ) -> Result<ImportPathsResult, String> {
     crate::collab::suggesting::tree_change_refused(&project_id, &[&dest_dir])?;
+    {
+        use tauri::Manager;
+        let drops = app.try_state::<crate::native_drop::NativeDropState>();
+        for source in &source_paths {
+            if !drops.as_ref().is_some_and(|drops| drops.released(source)) {
+                crate::path_grants::require_open(source)?;
+            }
+        }
+    }
     let into_root = normalize_mutation_path(&dest_dir, true).is_ok_and(|dir| dir.is_empty());
     let brings_manifest = source_paths.iter().any(|source| {
         Path::new(source)
@@ -9623,6 +9637,10 @@ mod tests {
             "{\"name\": \"Imported\", \"main_doc\": \"paper.tex\"}",
         )
         .unwrap();
+        crate::path_grants::grant(
+            crate::path_grants::Access::Open,
+            &sources.join("project.json"),
+        );
         let result = super::import_paths_into_project(
             app.handle().clone(),
             app.state(),
@@ -13058,6 +13076,7 @@ mod tests {
         std::fs::write(cursor.join("leaf.txt"), "leaf").unwrap();
         let destination = data.join("existing.zip");
         std::fs::write(&destination, b"previous archive").unwrap();
+        crate::path_grants::grant(crate::path_grants::Access::Save, &destination);
 
         let error = download_project_zip(
             project_id.into(),
@@ -13091,6 +13110,7 @@ mod tests {
         std::fs::create_dir_all(&project).unwrap();
         let destination = project.join("main.tex");
         std::fs::write(&destination, "source").unwrap();
+        crate::path_grants::grant(crate::path_grants::Access::Save, &destination);
 
         let error = download_project_zip(
             project_id.into(),
@@ -17308,6 +17328,7 @@ mod tests {
         let folder = root.join("plain-tex-folder");
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+        crate::path_grants::grant(crate::path_grants::Access::Open, &folder);
 
         let created = [
             super::create_project(handle.clone(), "Blank".into()).unwrap(),

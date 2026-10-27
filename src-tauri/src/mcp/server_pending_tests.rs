@@ -198,12 +198,16 @@ fn delivered(result: Value) -> Value {
     use tauri::Manager as _;
     let app = tauri::test::mock_app();
     app.manage(McpState::default());
+    let main = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+        .build()
+        .expect("main window");
     let state = app.state::<McpState>();
     state.epoch.store(5, Ordering::Release);
     activate_test_renderer(&state, 50);
     let (mut receiver, registration) =
         register_pending(&state, 5, 50, |_| Ok(()), None).expect("pending call");
     tauri::async_runtime::block_on(crate::mcp::mcp_tool_result(
+        main.as_ref().clone(),
         app.handle().clone(),
         registration.call_id,
         result,

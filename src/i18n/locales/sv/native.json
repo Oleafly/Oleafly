@@ -51,6 +51,12 @@
       "title": "Godkänn MCP-verktyg",
       "confirm": "Använd verktyget"
     },
+    "mcpCommand": {
+      "title": "Köra det här programmet?",
+      "message": "Oleafly kör det här kommandot varje gång MCP-servern {{name}} startas:\n\n{{command}}\n\nTillåt bara program du litar på.",
+      "environment": "Den sätter också dessa miljövariabler: {{names}}",
+      "confirm": "Tillåt"
+    },
     "tableImport": {
       "title": "Välj ett kalkylblad att importera",
       "filter": "Kalkylblad"

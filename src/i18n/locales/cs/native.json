@@ -51,6 +51,12 @@
       "title": "Schválit nástroj MCP",
       "confirm": "Použít nástroj"
     },
+    "mcpCommand": {
+      "title": "Spustit tento program?",
+      "message": "Oleafly spustí tento příkaz pokaždé, když spouští MCP server {{name}}:\n\n{{command}}\n\nPovolujte jen programy, kterým důvěřujete.",
+      "environment": "Nastaví také tyto proměnné prostředí: {{names}}",
+      "confirm": "Povolit"
+    },
     "tableImport": {
       "title": "Vyberte tabulku k importu",
       "filter": "Tabulkové soubory"

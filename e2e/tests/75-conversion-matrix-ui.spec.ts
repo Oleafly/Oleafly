@@ -11,6 +11,7 @@ import {
   pressGlobal,
   fillCommandPalette,
   fillTextarea,
+  grantPickedPaths,
   replaceEditorSource,
   setEditorCaretAfter,
   setNextImportPaths,
@@ -140,6 +141,7 @@ test("html imports as a LaTeX project through the menu targets", async ({ tauriP
 test("latex paper compiles and shows the pdf preview", async ({ tauriPage }) => {
   test.setTimeout(300_000);
   await atLibrary(tauriPage);
+  await grantPickedPaths(tauriPage, [fixture("latex-paper.zip")]);
   await tauriPage.evaluate(
     `import("/src/store/files.ts").then((m) => m.useFilesStore.getState().importProject(${scriptValue(fixture("latex-paper.zip"))}))`,
   );

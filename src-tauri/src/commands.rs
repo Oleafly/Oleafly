@@ -668,17 +668,17 @@ impl MainCompile {
     }
 }
 
-/// Write base64-decoded bytes to an absolute path chosen by the user (e.g. a
-/// native "Save as" dialog). Used to export a rendered figure PNG. Mirrors the
-/// trust model of `export_pdf` (the destination comes from a user dialog).
-/// Hardened with `guard_export_dest` so a crafted IPC call cannot write to a
-/// relative path or a missing parent (same checks as PDF export).
+/// Write base64-decoded bytes to an absolute path the user chose in the native
+/// "Save as" dialog. Used to export a rendered figure PNG. A path that dialog
+/// didn't return is refused, and `guard_export_dest` rejects a relative path or
+/// a missing parent (same checks as PDF export).
 #[tauri::command]
 pub async fn write_bytes_file(
     dest: String,
     data_base64: String,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
+    crate::path_grants::require_save(&dest)?;
     let bytes = decode_b64(&data_base64)?;
     let destination = dest.clone();
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
@@ -700,6 +700,7 @@ pub async fn export_project_image(
     data_base64: String,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
+    crate::path_grants::require_save(&dest)?;
     let bytes = decode_b64(&data_base64)?;
     let destination = dest.clone();
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {

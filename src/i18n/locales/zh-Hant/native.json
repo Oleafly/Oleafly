@@ -51,6 +51,12 @@
       "title": "核准 MCP 工具",
       "confirm": "使用工具"
     },
+    "mcpCommand": {
+      "title": "要執行此程式嗎？",
+      "message": "每次啟動 MCP 伺服器 {{name}} 時，Oleafly 都會執行下面的命令\n\n{{command}}\n\n請只允許你信任的程式。",
+      "environment": "它還會設定以下環境變數：{{names}}",
+      "confirm": "允許"
+    },
     "tableImport": {
       "title": "選擇要匯入的試算表",
       "filter": "試算表"

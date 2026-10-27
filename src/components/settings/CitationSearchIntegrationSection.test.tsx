@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getConnectorKey: vi.fn(),
+  connectorKeySaved: vi.fn(),
   setConnectorKey: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/tauri", () => ({
-  getConnectorKey: mocks.getConnectorKey,
+  connectorKeySaved: mocks.connectorKeySaved,
   setConnectorKey: mocks.setConnectorKey,
 }));
 vi.mock("@/lib/toast", () => ({
@@ -32,7 +32,7 @@ async function expectAnnounced(message: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.getConnectorKey.mockResolvedValue("");
+  mocks.connectorKeySaved.mockResolvedValue(false);
   mocks.setConnectorKey.mockResolvedValue(undefined);
 });
 
@@ -65,9 +65,7 @@ describe("CitationSearchIntegrationSection", () => {
   });
 
   it("marks OpenAlex connected when only its API key is stored", async () => {
-    mocks.getConnectorKey.mockImplementation(async (id: string) =>
-      id === "openalex-api-key" ? "stored" : "",
-    );
+    mocks.connectorKeySaved.mockImplementation(async (id: string) => id === "openalex-api-key");
     render(<CitationSearchIntegrationSection />);
 
     await waitFor(() =>
@@ -88,7 +86,7 @@ describe("CitationSearchIntegrationSection", () => {
   });
 
   it("marks every source connected and offers removal when keys are stored", async () => {
-    mocks.getConnectorKey.mockResolvedValue("stored");
+    mocks.connectorKeySaved.mockResolvedValue(true);
     render(<CitationSearchIntegrationSection />);
 
     await waitFor(() =>
@@ -234,7 +232,7 @@ describe("CitationSearchIntegrationSection", () => {
 
   it("reports a failure when removing a stored credential", async () => {
     const user = userEvent.setup();
-    mocks.getConnectorKey.mockResolvedValue("stored");
+    mocks.connectorKeySaved.mockResolvedValue(true);
     mocks.setConnectorKey.mockRejectedValue(new Error("keychain locked"));
     render(<CitationSearchIntegrationSection />);
 
@@ -294,7 +292,7 @@ describe("CitationSearchIntegrationSection", () => {
   });
 
   it("treats a failed credential read as not connected", async () => {
-    mocks.getConnectorKey.mockRejectedValue(new Error("no keychain"));
+    mocks.connectorKeySaved.mockRejectedValue(new Error("no keychain"));
     render(<CitationSearchIntegrationSection />);
 
     expect(

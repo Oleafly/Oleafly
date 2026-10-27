@@ -856,6 +856,17 @@ export async function setNextSavePath(
   if (!available) throw new Error("DEV save-dialog adapter is unavailable");
 }
 
+/**
+ * Records fixture paths as if the user had picked them in Oleafly's open
+ * dialog, for specs that call an import directly instead of clicking through
+ * the picker. Rust reads files outside a project only after such a pick.
+ */
+export async function grantPickedPaths(page: Page, paths: string[]): Promise<void> {
+  await page.evaluate(
+    `import("/src/lib/tauri.ts").then((tauri) => tauri.grantTestOpenPaths(${scriptValue(paths)})).then(() => true)`,
+  );
+}
+
 // The AI assistant is its own panel now, toggled from the workspace dock
 // controls rather than living as a sidebar tab.
 export async function openAssistant(page: Page) {

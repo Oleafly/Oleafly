@@ -51,6 +51,12 @@
       "title": "Approve MCP tool",
       "confirm": "Use tool"
     },
+    "mcpCommand": {
+      "title": "Run this program?",
+      "message": "Oleafly will run this command whenever it starts the MCP server {{name}}:\n\n{{command}}\n\nOnly allow programs you trust.",
+      "environment": "It also sets these environment variables: {{names}}",
+      "confirm": "Allow"
+    },
     "tableImport": {
       "title": "Choose a spreadsheet to import",
       "filter": "Spreadsheets"

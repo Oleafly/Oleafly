@@ -3,17 +3,15 @@ import type { McpManagedServer, McpServerConfig } from "@oleafly/backend-port";
 import { logError } from "@/lib/log";
 import { notifyMcpAgentToolsChanged } from "@/lib/mcp-agent-tools";
 import {
-  getConnectorKey,
+  mcpAdoptAlphaXivKey,
   mcpServerAdd,
   mcpServerRemove,
   mcpServersList,
   mcpServerUpdateValidated,
-  setConnectorKey,
 } from "@/lib/tauri";
 
 export const ALPHAXIV_MCP_URL = "https://api.alphaxiv.org/mcp/v1";
 export const ALPHAXIV_SERVER_NAME = "alphaXiv";
-const LEGACY_CONNECTOR_KEY = "alphaxiv";
 
 export type AlphaXivFailure = "connect" | "disconnect" | null;
 
@@ -53,12 +51,11 @@ function findAlphaXivServer(servers: readonly McpManagedServer[]): McpManagedSer
   );
 }
 
+// An older version saved the key as a plain connector key. Rust moves it to
+// the MCP server, so the key never reaches the webview.
 async function adoptLegacyKey(): Promise<McpManagedServer | null> {
-  const legacy = (await getConnectorKey(LEGACY_CONNECTOR_KEY))?.trim();
-  if (!legacy) return null;
-  await setConnectorKey(LEGACY_CONNECTOR_KEY, "");
   try {
-    return await mcpServerAdd(alphaXivServerConfig(legacy));
+    return await mcpAdoptAlphaXivKey();
   } catch (error) {
     void logError("move the saved alphaXiv key to its MCP server", error);
     return null;

@@ -16,7 +16,7 @@ import {
   IntegrationCard,
   IntegrationKeyField,
 } from "@/components/settings/IntegrationCard";
-import { getConnectorKey, setConnectorKey } from "@/lib/tauri";
+import { connectorKeySaved, setConnectorKey } from "@/lib/tauri";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -84,39 +84,39 @@ export function CitationSearchIntegrationSection() {
 
   useEffect(() => {
     let cancelled = false;
-    void getConnectorKey("semantic-scholar")
-      .then((key) => {
-        if (!cancelled) setConnected(Boolean(key));
+    void connectorKeySaved("semantic-scholar")
+      .then((saved) => {
+        if (!cancelled) setConnected(saved);
       })
       .catch(() => {
         if (!cancelled) setConnected(false);
       });
-    void getConnectorKey("openalex-email")
-      .then((email) => {
-        if (!cancelled) setOpenAlexConnected(Boolean(email));
+    void connectorKeySaved("openalex-email")
+      .then((saved) => {
+        if (!cancelled) setOpenAlexConnected(saved);
       })
       .catch(() => {
         if (!cancelled) setOpenAlexConnected(false);
       });
-    void getConnectorKey("openalex-api-key")
-      .then((key) => {
-        if (!cancelled) setOpenAlexKeyConnected(Boolean(key));
+    void connectorKeySaved("openalex-api-key")
+      .then((saved) => {
+        if (!cancelled) setOpenAlexKeyConnected(saved);
       })
       .catch(() => {
         if (!cancelled) setOpenAlexKeyConnected(false);
       });
-    void getConnectorKey("serper")
-      .then((key) => {
-        if (!cancelled) setSerperConnected(Boolean(key));
+    void connectorKeySaved("serper")
+      .then((saved) => {
+        if (!cancelled) setSerperConnected(saved);
       })
       .catch(() => {
         if (!cancelled) setSerperConnected(false);
       });
     for (const connector of WEB_SEARCH_CONNECTORS) {
-      void getConnectorKey(connector)
-        .then((key) => {
+      void connectorKeySaved(connector)
+        .then((saved) => {
           if (!cancelled) {
-            setWebConnected((current) => ({ ...current, [connector]: Boolean(key) }));
+            setWebConnected((current) => ({ ...current, [connector]: saved }));
           }
         })
         .catch(() => {

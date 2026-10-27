@@ -51,6 +51,12 @@
       "title": "Hyväksy MCP-työkalu",
       "confirm": "Käytä työkalua"
     },
+    "mcpCommand": {
+      "title": "Suoritetaanko tämä ohjelma?",
+      "message": "Oleafly suorittaa tämän komennon aina, kun se käynnistää MCP-palvelimen {{name}}:\n\n{{command}}\n\nSalli vain ohjelmia, joihin luotat.",
+      "environment": "Se asettaa myös nämä ympäristömuuttujat: {{names}}",
+      "confirm": "Salli"
+    },
     "tableImport": {
       "title": "Valitse tuotava taulukkolaskentatiedosto",
       "filter": "Taulukkolaskentatiedostot"
