@@ -203,7 +203,7 @@
     "prefix": "Map in de bucket",
     "optional": "Optioneel",
     "accessKeyId": "Toegangssleutel-ID",
-    "secretAccessKey": "Geheime toegangssleutel",
+    "secretAccessKey": "Geheime sleutel",
     "pathStyle": "Adressen in padstijl gebruiken",
     "pathStyleHint": "MinIO en de meeste zelf gehoste servers hebben dit nodig."
   },
@@ -226,7 +226,7 @@
     "remote_unreadable": "Oleafly kan de kopie in je {{provider}} niet lezen, dus dit project wordt niet gesynchroniseerd.",
     "revoked": "De toegang tot {{provider}} is ingetrokken. Verbind opnieuw.",
     "s3_bucket": "Oleafly kon die bucket niet openen. Controleer de naam en of deze sleutels erin kunnen lezen en schrijven.",
-    "s3_credentials": "De dienst accepteerde die sleutels niet. Controleer de toegangssleutel-ID en de geheime toegangssleutel.",
+    "s3_credentials": "De dienst accepteerde die sleutels niet. Controleer de toegangssleutel-ID en de geheime sleutel.",
     "s3_endpoint": "Oleafly kon dat eindpunt niet bereiken. Controleer de URL en je verbinding.",
     "s3_no_conditional_writes": "Deze dienst ondersteunt geen voorwaardelijke schrijfbewerkingen. Synchronisatie heeft die nodig, zodat twee computers die tegelijk synchroniseren elkaars wijzigingen niet kunnen overschrijven. Amazon S3, Google Cloud Storage en MinIO ondersteunen ze.",
     "server": "{{provider}} had een probleem. De synchronisatie probeert het zo opnieuw.",

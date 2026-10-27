@@ -299,6 +299,59 @@ fn count_linked_folders(linked_root: &Path) -> u64 {
         .count() as u64
 }
 
+/// Adds one file to the totals and to the part of the bar it belongs to.
+fn record_file(summary: &mut LibraryStorageSummary, relative: &Path, bytes: u64) {
+    summary.file_count += 1;
+    summary.total_bytes = summary.total_bytes.saturating_add(bytes);
+    let in_projects = relative.starts_with("projects");
+    if in_projects {
+        summary.projects_bytes = summary.projects_bytes.saturating_add(bytes);
+    }
+    match classify_file(relative, in_projects) {
+        FileClass::Source(kind) => {
+            summary.source_bytes = summary.source_bytes.saturating_add(bytes);
+            let part = match kind {
+                SourceKind::Document => &mut summary.document_bytes,
+                SourceKind::Media => &mut summary.media_bytes,
+                SourceKind::Data => &mut summary.data_bytes,
+                SourceKind::Other => &mut summary.other_project_bytes,
+            };
+            *part = part.saturating_add(bytes);
+        }
+        FileClass::Image => {
+            summary.image_count += 1;
+            summary.image_bytes = summary.image_bytes.saturating_add(bytes);
+        }
+        FileClass::Pdf => {
+            summary.pdf_count += 1;
+            summary.pdf_bytes = summary.pdf_bytes.saturating_add(bytes);
+        }
+        FileClass::Git => summary.git_bytes = summary.git_bytes.saturating_add(bytes),
+        FileClass::Build => summary.build_bytes = summary.build_bytes.saturating_add(bytes),
+        FileClass::RecycleBin => {
+            summary.recycle_bin_bytes = summary.recycle_bin_bytes.saturating_add(bytes)
+        }
+        FileClass::LinkedFolders => {
+            summary.linked_folders_bytes = summary.linked_folders_bytes.saturating_add(bytes)
+        }
+        FileClass::AppData(part) => {
+            summary.app_data_bytes = summary.app_data_bytes.saturating_add(bytes);
+            let named = match part {
+                AppPart::TexDistribution => Some(&mut summary.tex_distribution_bytes),
+                AppPart::Agents => Some(&mut summary.agents_bytes),
+                AppPart::ResearchTasks => Some(&mut summary.research_tasks_bytes),
+                AppPart::Tools => Some(&mut summary.tools_bytes),
+                AppPart::Checkpoints => Some(&mut summary.checkpoints_bytes),
+                AppPart::CompileCache => Some(&mut summary.compile_cache_bytes),
+                AppPart::Other => None,
+            };
+            if let Some(named) = named {
+                *named = named.saturating_add(bytes);
+            }
+        }
+    }
+}
+
 fn scan_storage(root: &Path) -> LibraryStorageSummary {
     let mut summary = LibraryStorageSummary::default();
     if !root.is_dir() {
@@ -345,58 +398,8 @@ fn scan_storage(root: &Path) -> LibraryStorageSummary {
                 continue;
             }
 
-            let bytes = metadata.len();
-            summary.file_count += 1;
-            summary.total_bytes = summary.total_bytes.saturating_add(bytes);
             let relative = path.strip_prefix(root).unwrap_or(&path);
-            let in_projects = relative.starts_with("projects");
-            if in_projects {
-                summary.projects_bytes = summary.projects_bytes.saturating_add(bytes);
-            }
-            match classify_file(relative, in_projects) {
-                FileClass::Source(kind) => {
-                    summary.source_bytes = summary.source_bytes.saturating_add(bytes);
-                    let part = match kind {
-                        SourceKind::Document => &mut summary.document_bytes,
-                        SourceKind::Media => &mut summary.media_bytes,
-                        SourceKind::Data => &mut summary.data_bytes,
-                        SourceKind::Other => &mut summary.other_project_bytes,
-                    };
-                    *part = part.saturating_add(bytes);
-                }
-                FileClass::Image => {
-                    summary.image_count += 1;
-                    summary.image_bytes = summary.image_bytes.saturating_add(bytes);
-                }
-                FileClass::Pdf => {
-                    summary.pdf_count += 1;
-                    summary.pdf_bytes = summary.pdf_bytes.saturating_add(bytes);
-                }
-                FileClass::Git => summary.git_bytes = summary.git_bytes.saturating_add(bytes),
-                FileClass::Build => summary.build_bytes = summary.build_bytes.saturating_add(bytes),
-                FileClass::RecycleBin => {
-                    summary.recycle_bin_bytes = summary.recycle_bin_bytes.saturating_add(bytes)
-                }
-                FileClass::LinkedFolders => {
-                    summary.linked_folders_bytes =
-                        summary.linked_folders_bytes.saturating_add(bytes)
-                }
-                FileClass::AppData(part) => {
-                    summary.app_data_bytes = summary.app_data_bytes.saturating_add(bytes);
-                    let named = match part {
-                        AppPart::TexDistribution => Some(&mut summary.tex_distribution_bytes),
-                        AppPart::Agents => Some(&mut summary.agents_bytes),
-                        AppPart::ResearchTasks => Some(&mut summary.research_tasks_bytes),
-                        AppPart::Tools => Some(&mut summary.tools_bytes),
-                        AppPart::Checkpoints => Some(&mut summary.checkpoints_bytes),
-                        AppPart::CompileCache => Some(&mut summary.compile_cache_bytes),
-                        AppPart::Other => None,
-                    };
-                    if let Some(named) = named {
-                        *named = named.saturating_add(bytes);
-                    }
-                }
-            }
+            record_file(&mut summary, relative, metadata.len());
         }
     }
     summary.recycled_project_count = count_recycled_projects(&root.join("recycle-bin"));

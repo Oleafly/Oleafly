@@ -2675,3 +2675,58 @@ mod drive_fake {
             .is_none());
     }
 }
+
+mod s3_fake {
+    use super::{thesis, today, version_remote, Device, ProjectId};
+    use crate::cloud::engine::delete_project_folder;
+    use crate::cloud::store::CloudStore;
+    use crate::cloud::tests::fake_s3::FakeS3;
+
+    #[tokio::test]
+    async fn two_computers_share_edits_conflicts_and_deletes_through_a_bucket() {
+        let fake = FakeS3::start().await;
+        let desk_store = fake.store("oleafly");
+        let laptop_store = fake.store("oleafly");
+        let cloud = ProjectId::new();
+        let mut desk = Device::new("Desk");
+        let mut laptop = Device::new("Laptop");
+        thesis(&desk);
+        let first = desk.sync(&desk_store, cloud).await;
+        assert!(first.error.is_none(), "{:?}", first.error);
+        assert_eq!(first.outcome.uploaded, 2);
+
+        laptop.download(&laptop_store, cloud).await;
+        assert_eq!(laptop.read("main.tex").as_deref(), Some("one"));
+        laptop.write("main.tex", "two from laptop");
+        laptop.write("notes/ideas.md", "new");
+        laptop.project.remote_dirty = true;
+        laptop.sync(&laptop_store, cloud).await;
+        desk.project.remote_dirty = true;
+        let pulled = desk.sync(&desk_store, cloud).await;
+        assert!(pulled.error.is_none(), "{:?}", pulled.error);
+        assert_eq!(pulled.outcome.downloaded, 2);
+
+        desk.write("main.tex", "desk edit");
+        laptop.write("main.tex", "laptop edit");
+        laptop.sync(&laptop_store, cloud).await;
+        desk.project.remote_dirty = true;
+        let conflicted = desk.sync(&desk_store, cloud).await;
+        assert_eq!(conflicted.outcome.conflicts, 1);
+        let copy = format!("main (Laptop {}).tex", today());
+        assert_eq!(desk.read(&copy).as_deref(), Some("laptop edit"));
+
+        desk.remove("notes/ideas.md");
+        desk.sync(&desk_store, cloud).await;
+        laptop.project.remote_dirty = true;
+        let applied = laptop.sync(&laptop_store, cloud).await;
+        assert_eq!(applied.outcome.deleted_local, 1);
+
+        delete_project_folder(&desk_store, cloud).await.unwrap();
+        assert!(laptop_store
+            .metadata(&version_remote(cloud))
+            .await
+            .unwrap()
+            .is_none());
+        assert!(fake.with(|bucket| bucket.objects.is_empty()));
+    }
+}

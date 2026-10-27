@@ -432,7 +432,7 @@ async fn handle(
             }
         }
         ("POST", ["upload", "drive", "v3", "files"]) | ("PATCH", ["upload", "drive", "v3", "files", _]) => {
-            let target = parts.get(4).map(|id| id.to_string());
+            let target = parts.get(4).map(ToString::to_string);
             match query.get("uploadType").map(String::as_str) {
                 Some("multipart") => {
                     let content_type = headers

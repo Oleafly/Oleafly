@@ -1,21 +1,23 @@
 #![allow(clippy::await_holding_lock)]
 
 use crate::cloud::commands::{
-    cloud_connect_begin, cloud_connect_cancel, cloud_connect_paste, cloud_connect_wait,
-    cloud_details, cloud_disconnect, cloud_download_project, cloud_project_dismiss_conflicts,
-    cloud_project_remove, cloud_project_replace_remote, cloud_project_resolve_hold,
-    cloud_project_set_mode, cloud_remove_remote, cloud_set_device_name, cloud_set_enabled,
-    cloud_settings_applied, cloud_settings_defer, cloud_settings_download,
+    cloud_connect_begin, cloud_connect_cancel, cloud_connect_credentials, cloud_connect_paste,
+    cloud_connect_wait, cloud_details, cloud_disconnect, cloud_download_project,
+    cloud_project_dismiss_conflicts, cloud_project_remove, cloud_project_replace_remote,
+    cloud_project_resolve_hold, cloud_project_set_mode, cloud_remove_remote, cloud_set_device_name,
+    cloud_set_enabled, cloud_settings_applied, cloud_settings_defer, cloud_settings_download,
     cloud_settings_keep_local, cloud_settings_sync, cloud_state, cloud_sync_now,
     cloud_wait_for_changes, DirtyFile,
 };
 use crate::cloud::engine::{now_ms, project_remote, tombstone_remote, version_remote};
+use crate::cloud::provider::ProviderKind;
 use crate::cloud::settings::SETTINGS_REMOTE;
 use crate::cloud::state::ProjectState;
 use crate::cloud::store::{Endpoints, StoreError};
 use crate::cloud::tests::fake_dropbox::{
     black_hole, point_at, FakeDropbox, Pointed, Reply, DISPLAY_NAME, EMAIL,
 };
+use crate::cloud::tests::fake_s3::{FakeS3, KEY_ID, SECRET};
 use oleafly_core::content::ContentHash;
 use oleafly_core::hlc::{Hlc, Stamp};
 use oleafly_core::ids::{DeviceId, ProjectId};
@@ -1335,6 +1337,54 @@ async fn a_missing_sign_in_secret_shows_that_access_ended() {
     let backend = crate::secrets::cloud_secret_backend().backend;
     let _ = crate::secrets::delete_cloud_secret("cloud/dropbox/refresh", backend);
     harness.fake.with(|dropbox| dropbox.expire_tokens());
+    let report = sync().await;
+    assert_eq!(code_of(&report["error"]), "cloud.revoked");
+    assert_eq!(state().await["status"], "revoked");
+}
+
+#[tokio::test]
+async fn keys_for_a_bucket_connect_only_once_the_bucket_can_hold_sync() {
+    let harness = Harness::new().await;
+    let bucket = FakeS3::start().await;
+    let connect = |provider| {
+        cloud_connect_credentials(
+            provider,
+            bucket.config("oleafly"),
+            format!(" {KEY_ID} "),
+            SECRET.into(),
+        )
+    };
+    assert_eq!(
+        code(&connect(ProviderKind::Dropbox).await.err().unwrap()),
+        "cloud.server"
+    );
+    bucket.with(|bucket| bucket.ignore_conditions = true);
+    assert_eq!(
+        code(&connect(ProviderKind::S3).await.err().unwrap()),
+        "cloud.s3_no_conditional_writes"
+    );
+    assert_eq!(state().await["status"], "disconnected");
+
+    bucket.with(|bucket| bucket.ignore_conditions = false);
+    let done = view(connect(ProviderKind::S3).await.unwrap());
+    let host = bucket.base.trim_start_matches("http://");
+    assert_eq!(done["email"], format!("sync/oleafly on {host}"));
+    harness.project("alpha", "Alpha", &[("main.tex", "alpha v1")]);
+    let first = sync().await;
+    assert_eq!(first["error"], Value::Null);
+    assert_eq!(report_for(&first, "alpha")["uploaded"], 2);
+    let main = format!(
+        "oleafly{}/files/main.tex",
+        project_remote(cloud_of("alpha"))
+    );
+    assert_eq!(
+        bucket.with(|bucket| bucket.read(&main)),
+        Some(b"alpha v1".to_vec())
+    );
+
+    // Without its keys the connection can't be used until they are entered again.
+    let backend = crate::secrets::cloud_secret_backend().backend;
+    crate::secrets::delete_cloud_secret(ProviderKind::S3.secret_account(), backend).unwrap();
     let report = sync().await;
     assert_eq!(code_of(&report["error"]), "cloud.revoked");
     assert_eq!(state().await["status"], "revoked");

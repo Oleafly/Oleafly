@@ -18,7 +18,7 @@ export function ForgeBrandIcon({
   className,
 }: Readonly<Pick<ForgeAccount, "kind"> & {
   base?: string;
-  flavor?: ForgeAccount["flavor"] | null;
+  flavor?: NonNullable<ForgeAccount["flavor"]> | null;
   className?: string;
 }>) {
   if (kind === "github") return <GitHubBrandIcon className={className} />;
