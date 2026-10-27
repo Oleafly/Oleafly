@@ -1,14 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect x="0.5" y="0.5" width="47" height="47" rx="11" fill="#FFFFFF" stroke="#D0D7DE"/><svg x="8" y="8" width="32" height="32" viewBox="0 0 560 560" fill="none"><style>
-    .mark {
-      fill: #111111;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .mark {
-        fill: #f6f6f6;
-      }
-    }
-  </style>
-  <path class="mark" d="M420 280H280V140H0V0H420V280Z"/>
-  <path class="mark" d="M560 560H420V280H560V560Z"/>
-  <path class="mark" d="M140 560H0V140H140V280H280V420H140V560Z"/></svg></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect x="0.5" y="0.5" width="47" height="47" rx="11" fill="#FFFFFF" stroke="#D0D7DE"/><svg x="8" y="8" width="32" height="32" viewBox="0 0 560 560" fill="#111111"><path d="M420 280H280V140H0V0H420V280Z"/><path d="M560 560H420V280H560V560Z"/><path d="M140 560H0V140H140V280H280V420H140V560Z"/></svg></svg>
