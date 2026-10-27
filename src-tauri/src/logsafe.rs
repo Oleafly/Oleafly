@@ -159,6 +159,7 @@ fn validate_archive_dest(dest: &std::path::Path) -> Result<(), String> {
 /// requested from the settings UI.
 #[tauri::command(async)]
 pub fn export_log_archive(dest: String, include_sensitive: Option<bool>) -> Result<(), String> {
+    crate::path_grants::require_save(&dest)?;
     let path = std::path::Path::new(&dest);
     validate_archive_dest(path)?;
     export_archive_to(path, include_sensitive.unwrap_or(false))

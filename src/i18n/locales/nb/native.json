@@ -51,6 +51,12 @@
       "title": "Godkjenn MCP-verktøy",
       "confirm": "Bruk verktøyet"
     },
+    "mcpCommand": {
+      "title": "Kjøre dette programmet?",
+      "message": "Oleafly kjører denne kommandoen hver gang MCP-serveren {{name}} startes:\n\n{{command}}\n\nTillat bare programmer du stoler på.",
+      "environment": "Den setter også disse miljøvariablene: {{names}}",
+      "confirm": "Tillat"
+    },
     "tableImport": {
       "title": "Velg et regneark å importere",
       "filter": "Regneark"

@@ -2,8 +2,9 @@
 
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { setTypstMathHost } from "../math-render";
+import { loadMathRender } from "../math-render-loader";
 import { loadTypstParser, typstLanguage } from "../typst";
 import {
   hideMathPreview,
@@ -16,6 +17,11 @@ import {
 } from "./math-preview";
 
 let mounted: EditorView | null = null;
+
+// KaTeX loads on first use; these tests check the tooltip once it has.
+beforeAll(async () => {
+  await loadMathRender();
+});
 
 afterEach(() => {
   mounted?.destroy();
@@ -505,5 +511,41 @@ describe("math preview tooltip interactions", () => {
     view.dispatch({ selection: { anchor: INLINE_CURSOR } });
     expect(preview(view.state).target).not.toBeNull();
     expect(preview(view.state).tooltip).toBeNull();
+  });
+});
+
+describe("math preview before KaTeX has loaded", () => {
+  it("fills the formula in once KaTeX has loaded", async () => {
+    vi.resetModules();
+    const { EditorState: FreshState } = await import("@codemirror/state");
+    const { EditorView: FreshView } = await import("@codemirror/view");
+    const fresh = await import("./math-preview");
+    const loader = await import("../math-render-loader");
+    expect(loader.loadedMathRender()).toBeNull();
+
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    const view = new FreshView({
+      state: FreshState.create({
+        doc: INLINE,
+        selection: { anchor: INLINE_CURSOR },
+        extensions: [fresh.mathPreviewTooltip("latex")],
+      }),
+      parent,
+    });
+    try {
+      const created = view.state.field(fresh.mathPreviewTooltipField).tooltip?.create(view);
+      const output = created?.dom.querySelector(".ofl-visual-math-tooltip-output");
+      expect(output?.childElementCount).toBe(0);
+
+      created?.mount?.(view);
+      await loader.loadMathRender();
+      await Promise.resolve();
+
+      expect(output?.querySelector(".katex")).not.toBeNull();
+      expect(output?.querySelector(".ofl-visual-math-tooltip-error")).toBeNull();
+    } finally {
+      view.destroy();
+    }
   });
 });

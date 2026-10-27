@@ -1614,7 +1614,7 @@ export interface BackendPort {
     yearTo?: number | null;
     openAccessOnly?: boolean;
 }) => Promise<string>;
-  getConnectorKey: (connectorId: string) => Promise<string | null>;
+  connectorKeySaved: (connectorId: string) => Promise<boolean>;
   setConnectorKey: (connectorId: string, value: string) => Promise<void>;
   zoteroVerify: (userId: string, apiKey: string) => Promise<ZoteroAccount>;
   zoteroLibraryBibtex: () => Promise<ZoteroLibraryExport>;

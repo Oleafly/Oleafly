@@ -14,6 +14,7 @@ overrides:
   decode-uri-component@<0.5.0: 0.5.0
   '@tiptap/core': 3.30.5
   rehype-katex>katex: 0.18.7
+  mermaid>katex: 0.18.7
   nanoid@<3.3.18: 3.3.18
   postcss@<8.5.23: 8.5.23
   undici@<7.29.0: 7.29.0
@@ -10212,7 +10213,7 @@ snapshots:
       dayjs: 1.11.21
       dompurify: 3.4.17
       es-toolkit: 1.50.0
-      katex: 0.16.47
+      katex: 0.18.7
       khroma: 2.1.0
       marked: 16.4.2
       roughjs: 4.6.6

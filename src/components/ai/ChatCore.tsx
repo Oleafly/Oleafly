@@ -23,7 +23,7 @@ import {
   planModeTools,
   toolRisk,
   type ApprovalMode,
-} from "@oleafly/ai-tools";
+} from "@oleafly/ai-tools/approval-risk";
 import { windowFlushScheduler } from "@/lib/agent-stream-scheduler";
 import { useAgentTurnsStore, type QueuedFollowUp } from "@/store/agent-turns";
 import { useAssistantOutputsStore } from "@/store/assistant-outputs";
@@ -84,7 +84,7 @@ import { TurnChangesCard } from "@/components/ai/turns/TurnChangesCard";
 import { agentProbeModel, agentWebSearchReady, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, type AppConfig, type CustomProvider, type GitFileChange, type McpAgentServer, type ModelProbe, type Persona, type EngineFeature, type StoredModel, type ToolDecision } from "@/lib/tauri";
 import { checkProjectBudget } from "@/lib/ai-budget";
 import { listOllamaModels } from "@/lib/ollama";
-import { registry, type AiToolsetContribution } from "@oleafly/registry";
+import type { AiToolsetContribution } from "@oleafly/registry";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
 import {
   modelSupportsVision,
@@ -209,7 +209,7 @@ import {
   type StoredChat,
 } from "@/store/chats";
 import { objectKey } from "@/lib/react-key";
-import { registerAiToolsets } from "@/contributions/ai-toolsets";
+import { loadAiToolsets, useAiToolsets } from "@/contributions/load-ai-toolsets";
 import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
 import { AssistantHome } from "@/components/ai/home/AssistantHome";
 import { RecentChats } from "@/components/ai/home/RecentChats";
@@ -240,8 +240,6 @@ import {
   useMcpAgentTools,
 } from "@/lib/mcp-agent-tools";
 import { resolveResearchToolAliases } from "@/lib/research-tool-aliases";
-
-registerAiToolsets();
 import { useAgentTodoStore, type AgentTodo } from "@/store/agent-todos";
 import { useAgentMemoryStore } from "@/store/agent-memory";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
@@ -1280,6 +1278,7 @@ export function ChatCore() {
       }),
     [mcpAgentToolsQuery.data],
   );
+  const aiToolsets = useAiToolsets();
   const toolManagerAvailability = useMemo(() => {
     const additions: RuntimeToolset[] = [
       { id: "research-workspace", source: { kind: "project" }, tools: createResearchWorkspaceTools(projectId) },
@@ -1289,7 +1288,7 @@ export function ChatCore() {
         : []),
     ];
     return resolveAvailableTools({
-      toolsets: registry.aiToolsets,
+      toolsets: aiToolsets,
       mode: "chat",
       createOpts: {
         confirm: () => Promise.resolve(false),
@@ -1304,6 +1303,7 @@ export function ChatCore() {
     });
   }, [
     projectId,
+    aiToolsets,
     availableMcpToolsets,
     availableSkillTools,
     documentEngine.capabilities.features,
@@ -2130,6 +2130,14 @@ export function ChatCore() {
         return;
       }
     }
+    let runToolsets: readonly AiToolsetContribution[];
+    try {
+      runToolsets = await loadAiToolsets();
+    } catch (error) {
+      cancelSendPreparation();
+      void logError("load the assistant tools", error);
+      return;
+    }
     const skillCommand = parseSkillCommand(text, runSkills);
     const requestedSkillIds = skillCommand ? [skillCommand.skill.id] : [];
     const runText = skillCommand
@@ -2175,7 +2183,7 @@ export function ChatCore() {
     const enabledToolCount = Object.keys(
       filterResolvedTools(
         resolveAvailableTools({
-          toolsets: registry.aiToolsets,
+          toolsets: runToolsets,
           mode: "chat",
           createOpts: {
             confirm: () => Promise.resolve(false),
@@ -2610,7 +2618,7 @@ USER_CUSTOM_INSTRUCTIONS`
         : []),
     ];
     const resolvedToolsForRun = resolveAvailableTools({
-      toolsets: registry.aiToolsets,
+      toolsets: runToolsets,
       mode: "chat",
       createOpts: {
         confirm,

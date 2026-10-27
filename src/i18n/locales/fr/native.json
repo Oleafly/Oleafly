@@ -51,6 +51,12 @@
       "title": "Autoriser l'outil MCP",
       "confirm": "Utiliser l'outil"
     },
+    "mcpCommand": {
+      "title": "Exécuter ce programme ?",
+      "message": "Oleafly exécutera cette commande chaque fois qu'il démarre le serveur MCP {{name}} :\n\n{{command}}\n\nN'autorisez que des programmes de confiance.",
+      "environment": "Elle définit aussi ces variables d'environnement : {{names}}",
+      "confirm": "Autoriser"
+    },
     "tableImport": {
       "title": "Choisir un tableur à importer",
       "filter": "Tableurs"

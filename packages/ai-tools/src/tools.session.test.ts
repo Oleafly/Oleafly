@@ -492,8 +492,36 @@ describe("run_command", () => {
       output: "ok\n",
       exit_code: 0,
       status: "completed",
+      truncated: false,
       timed_out: false,
     });
+  });
+
+  it("puts the exit status ahead of the output and keeps the truncated flag", async () => {
+    const opts = execOptions({
+      execCommand: vi.fn(async () => ({
+        ...execResult,
+        output: "x".repeat(300_000),
+        exit_code: 2,
+        status: "Failed with exit code 2",
+        truncated: true,
+      })),
+    });
+    const result = (await createOleaflyTools(makeHost(), opts).run_command.execute({
+      command: "make",
+    })) as Record<string, unknown>;
+    // Context packing may keep only the head of an oversized result, so the
+    // status fields must come before the long output.
+    expect(Object.keys(result)).toEqual([
+      "exec",
+      "command",
+      "exit_code",
+      "status",
+      "timed_out",
+      "truncated",
+      "output",
+    ]);
+    expect(result).toMatchObject({ exit_code: 2, truncated: true });
   });
 
   it("uses the run's own owner when none is given", async () => {

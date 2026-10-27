@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "update",
+  "description": "The update window: it checks for the update, opens release notes and closes itself. Downloads and installs go through the app's own update commands.",
+  "windows": ["update"],
+  "permissions": [
+    "core:default",
+    "core:webview:allow-set-webview-zoom",
+    "core:window:allow-close",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-title",
+    "core:window:allow-start-dragging",
+    "shell:allow-open",
+    "os:default",
+    "updater:allow-check"
+  ]
+}

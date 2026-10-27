@@ -791,11 +791,8 @@ fn saving_keys_checks_them_with_a_free_app_token_first() {
     assert!(!serde_json::to_string(&key_status())
         .unwrap()
         .contains("sk-secret-123"));
-    // The generic connector command never hands the key out.
-    assert_eq!(
-        crate::connectors::get_connector_key(APP_KEY_ACCOUNT.into()).unwrap(),
-        None
-    );
+    // The generic connector command doesn't even report the key as saved.
+    assert!(!crate::connectors::connector_key_saved(APP_KEY_ACCOUNT.into()).unwrap());
     clear_keys().unwrap();
     assert_eq!(
         key_status(),

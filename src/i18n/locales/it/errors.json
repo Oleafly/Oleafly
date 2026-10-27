@@ -370,6 +370,9 @@
     "wrong_window": "Mathpix si può usare solo dalla finestra principale di Oleafly.",
     "pdf_too_large_ipc": "Questo computer può inviare a Mathpix PDF fino a 16 MB. Dividi il PDF e riprova."
   },
+  "mcp": {
+    "command_declined": "Il server MCP non è stato salvato."
+  },
   "desktop_apps": {
     "not_installed": "Cua Driver non è installato. Installalo da Impostazioni, Integrazioni, App desktop.",
     "too_old": "Cua Driver {{version}} è troppo vecchio. Aggiornalo alla versione {{minimum}} o successiva.",

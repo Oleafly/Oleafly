@@ -564,6 +564,39 @@ export const pickTableImportFile = () => invoke<string | null>("pick_table_impor
 export const registerPickedFileForE2E = (path: string) =>
   invoke<string>("register_picked_file_for_e2e", { path });
 
+export interface FileDialogFilter {
+  name: string;
+  extensions: string[];
+}
+
+export interface OpenPathOptions {
+  title?: string;
+  filters?: FileDialogFilter[];
+  multiple?: boolean;
+  directory?: boolean;
+  defaultPath?: string;
+  canCreateDirectories?: boolean;
+}
+
+export interface SavePathOptions {
+  title?: string;
+  filters?: FileDialogFilter[];
+  defaultPath?: string;
+  canCreateDirectories?: boolean;
+}
+
+/** Native open dialog run by Rust, which records the picks as readable. */
+export const pickOpenPaths = (options?: OpenPathOptions) =>
+  invoke<string[] | null>("pick_open_paths", { options: options ?? null });
+/** Native save dialog run by Rust, which records the choice as writable. */
+export const pickSaveDestination = (options?: SavePathOptions) =>
+  invoke<string | null>("pick_save_path", { options: options ?? null });
+/** E2E and dev builds only: records a path a test chose in place of a dialog. */
+export const grantTestOpenPaths = (paths: string[]) =>
+  invoke<string[]>("grant_test_open_paths", { paths });
+export const grantTestSavePath = (path: string) =>
+  invoke<string>("grant_test_save_path", { path });
+
 export interface AdHocArtifact {
   path: string;
   dataBase64: string;
@@ -1389,8 +1422,9 @@ export const literatureSearch = (
     yearTo: options.yearTo ?? null,
     openAccessOnly: options.openAccessOnly ?? false,
   });
-export const getConnectorKey = (connectorId: string) =>
-  invoke<string | null>("get_connector_key", { connectorId });
+/** Whether a key is saved; the key itself never leaves Rust. */
+export const connectorKeySaved = (connectorId: string) =>
+  invoke<boolean>("connector_key_saved", { connectorId });
 export const setConnectorKey = (connectorId: string, value: string) =>
   invoke<void>("set_connector_key", { connectorId, value });
 export const zoteroVerify = (userId: string, apiKey: string) =>
@@ -1464,6 +1498,9 @@ export const mcpImportSource = (sourceTool: McpImportSourceTool) =>
 export const mcpServersList = () => invoke<McpManagedServer[]>("mcp_servers_list");
 export const mcpServerAdd = (server: McpServerConfig) =>
   invoke<McpManagedServer>("mcp_server_add", { server });
+/** Moves an alphaXiv key saved by an older version to its MCP server, in Rust. */
+export const mcpAdoptAlphaXivKey = () =>
+  invoke<McpManagedServer | null>("mcp_adopt_alphaxiv_key");
 export const mcpServerUpdate = (originalName: string, server: McpServerConfig) =>
   invoke<McpManagedServer>("mcp_server_update", { originalName, server });
 export const mcpServerUpdateValidated = (originalName: string, server: McpServerConfig) =>

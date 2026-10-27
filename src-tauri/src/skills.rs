@@ -2132,6 +2132,7 @@ pub async fn skills_list(
 
 #[tauri::command]
 pub async fn skills_add(app: tauri::AppHandle, source_path: String) -> Result<SkillRecord, String> {
+    crate::path_grants::require_open(&source_path)?;
     let pack_root = app_pack_root(&app);
     off_ui_thread("add the skill", move || {
         add(

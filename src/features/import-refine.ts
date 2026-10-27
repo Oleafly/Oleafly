@@ -1,6 +1,5 @@
 import { modelSupportsVision } from "@oleafly/ai-core";
 import { hasConfiguredProvider, pickActiveProvider } from "@/lib/ai-providers";
-import { pdfPageToPng } from "@/lib/pdf-image";
 import { getConfig } from "@/lib/tauri";
 import { handoffToAssistant } from "@/features/assistant-handoff";
 import { useImportStore } from "@/store/import";
@@ -52,6 +51,7 @@ export async function refineWithAi(): Promise<void> {
   const images: string[] = [];
   for (let p = 1; p <= pages; p++) {
     try {
+      const { pdfPageToPng } = await import("@/lib/pdf-image");
       images.push(await pdfPageToPng(pdfBytes, p, 1.5, "#ffffff"));
     } catch {
       break;
