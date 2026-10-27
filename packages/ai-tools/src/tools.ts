@@ -1180,13 +1180,15 @@ export function createOleaflyTools(
           }
           return {
             // Structured so the exec card renders command, output, and status;
-            // the model also reads the flat fields.
+            // the model also reads the flat fields. Output goes last so a
+            // head-only preview of an oversized result keeps the status.
             exec: true,
             command: result.command,
-            output: result.output,
             exit_code: result.exit_code,
             status: result.status,
             timed_out: result.timed_out,
+            truncated: result.truncated,
+            output: result.output,
           };
         } catch (e) {
           return { error: String(e) };
