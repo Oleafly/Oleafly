@@ -104,6 +104,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the font and the line Tectonic had reached, and suggests installing the
   font or switching to XeLaTeX or LuaLaTeX. Other compiler crashes show an error
   too, in the app and from the `oleafly` command.
+- The assistant saw only the start of a long command's output, without the
+  exit code, and missed the error at the end. It now gets the exit code and
+  the start and end of the output, and an error printed after a long log is
+  kept.
 
 ## [0.4.8] - 2026-10-25
 
