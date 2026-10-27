@@ -20,7 +20,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { Tooltip } from "@/components/ui/tooltip";
 import { celebrate } from "@/lib/confetti";
-import { START_TOUR_EVENT } from "@/lib/tour";
+import { START_TOUR_EVENT, takeUnheardTourStart } from "@/lib/tour";
 import { exitZenMode } from "@/lib/zen-mode";
 import { useZenStore } from "@/store/zen";
 import { evaluateTour, missingTargetFallback } from "@/lib/tours/coordinator";
@@ -1279,6 +1279,7 @@ export function TourGuide() {
   useEffect(() => {
     let pendingFrame: number | null = null;
     const manualStart = (event: Event) => {
+      event.preventDefault();
       const requested = event instanceof CustomEvent ? event.detail : undefined;
       const requestedId = isTourAvailable(requested) ? requested : undefined;
       if (requested !== undefined && !requestedId) return;
@@ -1304,8 +1305,15 @@ export function TourGuide() {
       });
     };
     window.addEventListener(START_TOUR_EVENT, manualStart);
+    // A start asked for before this mounted. Taken a frame later, so a cleanup
+    // that runs first (StrictMode, a context change) leaves it for the next run.
+    const replay = requestAnimationFrame(() => {
+      const unheard = takeUnheardTourStart();
+      if (unheard) manualStart(unheard);
+    });
     return () => {
       window.removeEventListener(START_TOUR_EVENT, manualStart);
+      cancelAnimationFrame(replay);
       if (pendingFrame !== null) cancelAnimationFrame(pendingFrame);
     };
   }, [assistantOpen, chatFloating, diagramOpen, projectId, settingsOpen]);

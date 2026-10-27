@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { isTauri } from "@tauri-apps/api/core";
+import { open as openUrl } from "@tauri-apps/plugin-shell";
 import {
   latexEngineInfo,
   installTinytex,
@@ -222,10 +223,7 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
         detail || i18n.t(($) => $.core.tinytex.installFailed),
         {
           label: i18n.t(($) => $.core.tinytex.installGuide),
-          onClick: () =>
-            void import("@tauri-apps/plugin-shell").then((m) =>
-              m.open("https://yihui.org/tinytex/"),
-            ),
+          onClick: () => void openUrl("https://yihui.org/tinytex/"),
         },
       );
     } finally {

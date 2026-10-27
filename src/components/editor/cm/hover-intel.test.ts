@@ -2,7 +2,7 @@
 
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/intelligence.json" with { type: "json" };
 import type {
   ProjectDefinition,
@@ -45,7 +45,13 @@ vi.mock("./hover-math", async (importOriginal) => ({
   ...enclosing,
 }));
 
+import { loadMathRender } from "@oleafly/editor/math-render-loader";
 import { clearProjectHoverIntel, hoverIntel, kindNoun, projectHoverCard } from "./hover-intel";
+
+// KaTeX loads on first use; these cards are checked once it has.
+beforeAll(async () => {
+  await loadMathRender();
+});
 
 const hover = en.hover;
 const kinds = en.symbolKind;

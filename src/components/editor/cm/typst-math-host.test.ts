@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/tauri", () => ({ renderTypstSnippet: mocks.renderTypstSnippet }));
-vi.mock("@oleafly/editor/math-render", () => ({ setTypstMathHost: mocks.setTypstMathHost }));
+vi.mock("@oleafly/editor/typst-math-render", () => ({ setTypstMathHost: mocks.setTypstMathHost }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.state } }));
 vi.mock("@/lib/app-error", () => ({ describeError: (error: unknown) => `described: ${String(error)}` }));
 

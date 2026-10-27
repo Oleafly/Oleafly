@@ -61,6 +61,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only offered your OpenAI key, the only kind it accepts.
 - Codex can use your own Codex CLI when it is at least as new as the one its
   bridge bundles, and starts in the mode you last picked.
+- Oleafly loads less code when it starts. Settings, the tour guide, the
+  diagram composer and most dialogs load the first time you open them. PDF
+  page rendering loads when something first needs it, and KaTeX when you
+  first open a LaTeX or Markdown file. Once you've finished the tours, the
+  library screen loads about 2 MB less. Mermaid diagrams in chat use the
+  app's KaTeX instead of bundling an older copy. Cloud sync only loads its
+  background code on a computer connected to Dropbox, Google Drive or an S3
+  bucket, or once you open Settings.
 
 
 - GitLab, Codeberg, Gitea and Forgejo accounts show their real logos: in the
@@ -129,6 +137,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the font and the line Tectonic had reached, and suggests installing the
   font or switching to XeLaTeX or LuaLaTeX. Other compiler crashes show an error
   too, in the app and from the `oleafly` command.
+- The assistant saw only the start of a long command's output, without the
+  exit code, and missed the error at the end. It now gets the exit code and
+  the start and end of the output, and an error printed after a long log is
+  kept.
 
 
 - Open files in a library project reload when a terminal, an agent or

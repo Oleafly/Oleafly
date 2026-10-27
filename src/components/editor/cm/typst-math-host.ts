@@ -1,4 +1,4 @@
-import { setTypstMathHost, type TypstMathOutcome } from "@oleafly/editor/math-render";
+import { setTypstMathHost, type TypstMathOutcome } from "@oleafly/editor/typst-math-render";
 import { describeError } from "@/lib/app-error";
 import { renderTypstSnippet } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";

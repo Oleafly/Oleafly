@@ -38,7 +38,6 @@ import { completeText } from "@/lib/agent-backend";
 import { hasConfiguredProvider } from "@/lib/ai-providers";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
-import { pdfPageToPng } from "@/lib/pdf-image";
 import { insertAtCursor } from "@/components/editor/cm/controller";
 import { diagramCodeExtensions, diagramLanguageExtensions } from "@/components/diagram/code-extensions";
 import { useFullscreen } from "@/lib/use-fullscreen";
@@ -141,7 +140,10 @@ const HOST: DiagramHost = {
   compileIsolated: (projectId, source) =>
     compileIsolated(projectId, source, useSettingsStore.getState().offline),
   readIsolatedPdf,
-  pdfToPng: pdfPageToPng,
+  pdfToPng: async (...args) => {
+    const { pdfPageToPng } = await import("@/lib/pdf-image");
+    return pdfPageToPng(...args);
+  },
   listFiles,
   writeFileContent: async (projectId, path, content) => {
     assertSharedWritable(projectId);

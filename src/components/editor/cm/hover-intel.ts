@@ -5,7 +5,11 @@ import {
   hoverTooltip,
   type DecorationSet,
 } from "@codemirror/view";
-import { renderMathSource } from "@oleafly/editor/math-render";
+import {
+  loadedMathRender,
+  loadMathRender,
+  type MathRenderModule,
+} from "@oleafly/editor/math-render-loader";
 import { auxNumberFor, type LabelNumber } from "@/lib/aux-numbers";
 import { basename } from "@/lib/path-utils";
 import { isImagePath } from "@/lib/image-mime";
@@ -309,15 +313,21 @@ export function projectHoverCard(view: EditorView, position: number) {
       title.className = "cm-code-hover-title";
       title.textContent = info.title;
       const extras = info.extras;
-      if (extras?.math) {
-        const rendered = renderMathSource(extras.math, true);
-        if (rendered.status === "ready") {
-          const math = dom.appendChild(document.createElement("div"));
+      const source = extras?.math;
+      if (source) {
+        const paintMath = (render: MathRenderModule) => {
+          const rendered = render.renderMathSource(source, true);
+          if (rendered.status !== "ready") return;
+          const math = document.createElement("div");
           math.className = "cm-code-hover-math";
           // renderMathSource output is KaTeX HTML already sanitized
           // against SAFE_KATEX_ELEMENTS with trust disabled.
           math.innerHTML = rendered.html;
-        }
+          title.after(math);
+        };
+        const render = loadedMathRender();
+        if (render) paintMath(render);
+        else void loadMathRender().then(paintMath, () => {});
       }
       if (info.detail) {
         const detail = dom.appendChild(document.createElement("div"));
