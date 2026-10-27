@@ -601,16 +601,11 @@ fn the_shell_path_is_read_without_waiting_on_background_jobs() {
     let folder = TempDir::new().unwrap();
     let shell = folder.path().join("fake-shell");
     let background = folder.path().join("background.pid");
-    std::fs::write(
-        &shell,
-        format!(
+    test_wait::write_executable(&shell, &format!(
             "#!/bin/sh\n(sleep {} & echo $! > '{}')\necho 'Welcome back'\necho '/opt/tools:/home/me/.local/bin'\n",
             2 * test_wait::CHILD_PATIENCE.as_secs(),
             background.display()
-        ),
-    )
-    .unwrap();
-    std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
+        ));
     let started = Instant::now();
     assert_eq!(
         shell_path_within(Some(&shell), ShellStart::Login, test_wait::CHILD_PATIENCE),
@@ -628,8 +623,7 @@ fn the_shell_path_is_read_without_waiting_on_background_jobs() {
     }
 
     let slow = folder.path().join("slow-shell");
-    std::fs::write(&slow, "#!/bin/sh\nsleep 5\necho /never\n").unwrap();
-    std::fs::set_permissions(&slow, std::fs::Permissions::from_mode(0o755)).unwrap();
+    test_wait::write_executable(&slow, "#!/bin/sh\nsleep 5\necho /never\n");
     let started = Instant::now();
     assert!(
         shell_path_within(Some(&slow), ShellStart::Login, Duration::from_millis(200)).is_empty()
@@ -638,16 +632,14 @@ fn the_shell_path_is_read_without_waiting_on_background_jobs() {
 
     let stuck = folder.path().join("stuck-shell");
     let pid_file = folder.path().join("helper.pid");
-    std::fs::write(
+    test_wait::write_executable(
         &stuck,
-        format!(
+        &format!(
             "#!/bin/sh\nsleep {} &\necho $! > '{}'\nwait\n",
             4 * test_wait::CHILD_PATIENCE.as_secs(),
             pid_file.display()
         ),
-    )
-    .unwrap();
-    std::fs::set_permissions(&stuck, std::fs::Permissions::from_mode(0o755)).unwrap();
+    );
     // The probe kills the stuck shell when its timeout runs out, and on a
     // loaded machine that can be before the shell has written helper.pid.
     // Nothing writes it once the probe returns, so retry with a longer timeout.
@@ -689,7 +681,7 @@ fn the_shell_path_is_read_without_waiting_on_background_jobs() {
 fn the_probe_starts_the_shell_the_way_a_terminal_does() {
     let folder = TempDir::new().unwrap();
     let shell = folder.path().join("fake-shell");
-    std::fs::write(
+    test_wait::write_executable(
         &shell,
         "#!/bin/sh\n\
          path=/usr/bin\n\
@@ -703,9 +695,7 @@ fn the_probe_starts_the_shell_the_way_a_terminal_does() {
          echo __OLEAFLY_PATH__\n\
          echo \"$path\"\n\
          echo 'logout'\n",
-    )
-    .unwrap();
-    std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
+    );
     assert_eq!(
         shell_path_within(
             Some(&shell),
@@ -737,7 +727,7 @@ fn the_printed_path_is_the_line_after_the_marker() {
 fn the_login_probe_reads_allowlisted_variables_past_shell_noise() {
     let folder = TempDir::new().unwrap();
     let shell = folder.path().join("fake-shell");
-    std::fs::write(
+    test_wait::write_executable(
         &shell,
         "#!/bin/sh\n\
          echo 'Last login: today'\n\
@@ -752,9 +742,7 @@ fn the_login_probe_reads_allowlisted_variables_past_shell_noise() {
          printf 'BYTES=\\377\\376\\000'\n\
          echo 'logout'\n\
          printf 'TRAILING=noise'\n",
-    )
-    .unwrap();
-    std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
+    );
     let keep = |name: &str| name != "SECRET_NOT_KEPT";
     let login = login_environment_within(Some(&shell), test_wait::CHILD_PATIENCE, &keep);
     assert_eq!(
@@ -782,16 +770,14 @@ fn the_login_probe_reads_allowlisted_variables_past_shell_noise() {
 fn a_shell_without_env_dash_zero_still_reports_its_path() {
     let folder = TempDir::new().unwrap();
     let shell = folder.path().join("fake-shell");
-    std::fs::write(
+    test_wait::write_executable(
         &shell,
         "#!/bin/sh\n\
          echo __OLEAFLY_PATH__\n\
          echo '/only/bin'\n\
          echo __OLEAFLY_ENV__\n\
          echo 'env: illegal option -- 0' >&2\n",
-    )
-    .unwrap();
-    std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
+    );
     let login = login_environment_within(Some(&shell), test_wait::CHILD_PATIENCE, &|_| true);
     assert_eq!(login.path, vec![PathBuf::from("/only/bin")]);
     assert!(login.env.is_empty());
@@ -807,12 +793,10 @@ fn the_real_login_shell_prints_its_environment() {
     }
     let folder = TempDir::new().unwrap();
     let wrapper = folder.path().join("sh");
-    std::fs::write(
+    test_wait::write_executable(
         &wrapper,
         "#!/bin/sh\nOLEAFLY_PROBE_CHECK=ok exec /bin/sh -c \"$4\"\n",
-    )
-    .unwrap();
-    std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755)).unwrap();
+    );
     let keep = |name: &str| name == "OLEAFLY_PROBE_CHECK";
     let login = login_environment_within(Some(&wrapper), test_wait::CHILD_PATIENCE, &keep);
     assert!(!login.path.is_empty());
@@ -840,15 +824,13 @@ fn a_folder_added_in_zshrc_counts_as_on_path() {
     )
     .unwrap();
     let shell = folder.path().join("zsh");
-    std::fs::write(
+    test_wait::write_executable(
         &shell,
-        format!(
+        &format!(
             "#!/bin/sh\nZDOTDIR='{}' exec /bin/zsh \"$@\"\n",
             dotfiles.display()
         ),
-    )
-    .unwrap();
-    std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
+    );
     for start in [ShellStart::Interactive, ShellStart::Login] {
         let path = shell_path_within(Some(&shell), start, test_wait::CHILD_PATIENCE);
         assert!(

@@ -954,15 +954,12 @@ fn version_probe_cli(folder: &Path, stem: &str, unix: &str, windows: &str) -> Lo
     }
     #[cfg(not(windows))]
     {
-        use std::os::unix::fs::PermissionsExt;
         let _ = windows;
         let path = folder.join(stem);
-        std::fs::write(
+        crate::test_wait::write_executable(
             &path,
-            format!("#!/bin/sh\n[ \"$1\" = --warm-up ] && exit 0\n{unix}\n"),
-        )
-        .unwrap();
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)).unwrap();
+            &format!("#!/bin/sh\n[ \"$1\" = --warm-up ] && exit 0\n{unix}\n"),
+        );
         let warmed = std::process::Command::new(&path)
             .arg("--warm-up")
             .status()

@@ -70,6 +70,24 @@ pub(crate) fn exactly(expected: &str) -> impl Fn(&str) -> Option<()> + '_ {
     move |text| (text == expected).then_some(())
 }
 
+#[cfg(unix)]
+pub(crate) fn write_executable(script: &Path, contents: &str) {
+    use std::io::Write as _;
+    let mut writer = std::process::Command::new("sh")
+        .args(["-c", "cat > \"$1\" && chmod 755 \"$1\"", "sh"])
+        .arg(script)
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    writer
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(contents.as_bytes())
+        .unwrap();
+    assert!(writer.wait().unwrap().success());
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
