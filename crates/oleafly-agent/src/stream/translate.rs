@@ -215,6 +215,11 @@ impl Translator {
         let Ok(value) = serde_json::from_str::<Value>(&event.data) else {
             return self.decode_failure(&event.data);
         };
+        if let Some(error) = chat_stream_error(&value) {
+            self.done = true;
+            self.error = Some(error);
+            return Vec::new();
+        }
         let mut out = Vec::new();
 
         if let Some(usage) = value.get("usage").filter(|u| u.is_object()) {
@@ -795,6 +800,39 @@ fn responses_stream_error(code: Option<&str>, message: String) -> AgentError {
         format!("{message} ({code})")
     };
     AgentError::provider(status, message)
+}
+
+/// A chat stream chunk that carries a failure in place of a delta, as local
+/// servers send mid-stream: `{"error":{"message":"…","code":500}}` or
+/// `{"error":"…"}`. A numeric `code` in the 4xx or 5xx range is the status;
+/// anything else is a server fault.
+fn chat_stream_error(value: &Value) -> Option<AgentError> {
+    let error = value.get("error")?;
+    let text = |key: &str| {
+        error
+            .get(key)
+            .and_then(|found| found.as_str())
+            .map(str::trim)
+            .filter(|found| !found.is_empty())
+            .map(str::to_string)
+    };
+    let message = match error {
+        Value::String(message) => Some(message.trim().to_string()).filter(|m| !m.is_empty())?,
+        Value::Object(fields) if !fields.is_empty() => text("message")
+            .or_else(|| text("type"))
+            .unwrap_or_else(|| "The model server's stream failed.".to_string()),
+        _ => return None,
+    };
+    let status = error
+        .get("code")
+        .and_then(|code| {
+            code.as_u64()
+                .or_else(|| code.as_str().and_then(|code| code.trim().parse().ok()))
+        })
+        .and_then(|code| u16::try_from(code).ok())
+        .filter(|code| (400..=599).contains(code))
+        .unwrap_or(500);
+    Some(AgentError::provider(status, message))
 }
 
 fn anthropic_stream_error(kind: &str, message: String) -> AgentError {

@@ -192,6 +192,30 @@ describe("ResearchWorkspacePanel integration", () => {
     expect(native.invoke).not.toHaveBeenCalledWith("research_task_start", expect.anything());
   }, 15_000);
 
+  it("offers a key-less custom provider's enabled models, and no model it does not list", async () => {
+    const config = {
+      ai_provider: "lemonade", ai_model: "gpt-4o-mini", ai_keys: {},
+      ai_custom_providers: [{ id: "lemonade", name: "Lemonade", baseURL: "http://localhost:13305/v1", keyOptional: true }],
+      ai_provider_models: { lemonade: [
+        { id: "Qwen3-4B", name: "Qwen3 4B", enabled: true, source: "fetched" },
+        { id: "Disabled-1B", name: "Disabled 1B", enabled: false, source: "fetched" },
+      ] },
+    } as unknown as AppConfig;
+    native.invoke.mockImplementation(async (command) => {
+      if (command === "get_config") return config;
+      if (command === "acp_catalog") return [];
+      if (command === "research_task_list") return [];
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    useFilesStore.setState({ projectId: "paper" });
+    mount();
+    await waitFor(() => expect(page().getByRole("button", { name: enResearchTools.tasks.panel.newTask })).toBeEnabled());
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.panel.newTask }));
+    openSelect(enResearchTools.tasks.composer.agentLabel);
+    await waitFor(() => expect(page().getByRole("option", { name: /Qwen3 4B/ })).toBeInTheDocument());
+    expect(page().queryByRole("option", { name: /Disabled 1B|gpt-4o-mini/ })).not.toBeInTheDocument();
+  });
+
   it("shows a provider-settings failure while keeping an installed task-capable CLI available", async () => {
     native.invoke.mockImplementation(async (command) => {
       if (command === "get_config") throw new Error("Settings file unavailable");

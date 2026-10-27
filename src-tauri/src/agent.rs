@@ -1591,7 +1591,16 @@ const PROBE_TOOL: &str = "ping";
 // Thinking counts toward the output limit, so the probe leaves room for it.
 const PROBE_MAX_OUTPUT_TOKENS: u32 = 2_048;
 const PROBE_TIMEOUT: Duration = Duration::from_secs(30);
+// A local or custom server loads a model on its first request, which can take
+// minutes on modest hardware.
+const SELF_HOSTED_PROBE_TIMEOUT: Duration = Duration::from_secs(120);
 const PROBE_TIMEOUT_REASON: &str = "The model did not answer before the probe timed out.";
+const PROBE_UNREACHABLE_REASON: &str = "The provider could not be reached.";
+const PROBE_UNREADABLE_REASON: &str = "The provider sent a response the assistant could not read.";
+const PROBE_UNCONFIGURED_REASON: &str = "The provider is not configured for this model.";
+const PROBE_CANCELLED_REASON: &str = "The probe was cancelled before the model answered.";
+const PROBE_REJECTED_PREFIX: &str = "The provider rejected the credential with HTTP ";
+const PROBE_STATUS_PREFIX: &str = "The provider answered the probe with HTTP ";
 const PROBE_VERIFIED_REASON: &str = "The model called the ping tool.";
 const PROBE_OUTPUT_LIMIT_REASON: &str = "The model ran out of output before calling the tool.";
 const PROBE_REPLAY_REASON: &str = "The model could not reuse its own reasoning on the next step.";
@@ -1613,7 +1622,19 @@ pub async fn agent_probe_model(
     let resolved = oleafly_agent::provider::resolve_for_probe(&projected, &provider_id, &model_id)
         .map_err(|e| e.to_string())?;
     let client = state.client()?;
-    let probe = probe_model(&client, &resolved, PROBE_TIMEOUT).await;
+    probe_and_record(&client, &resolved, probe_timeout(&resolved)).await
+}
+
+/// Probes the model and stores the verdict. A probe that could not tell is an
+/// error and stores nothing, so the model stays untested and is probed again.
+async fn probe_and_record(
+    client: &reqwest::Client,
+    resolved: &oleafly_agent::Resolved,
+    timeout: Duration,
+) -> Result<ModelProbe, String> {
+    let probe = probe_model(client, resolved, timeout)
+        .await
+        .map_err(|error| probe_failure_message(&error))?;
     let stored = probe.clone();
     let probe_key = crate::config::model_probe_key(&resolved.provider_id, &resolved.model_id);
     tauri::async_runtime::spawn_blocking(move || {
@@ -1625,6 +1646,14 @@ pub async fn agent_probe_model(
     .await
     .map_err(|e| e.to_string())??;
     Ok(probe)
+}
+
+fn probe_timeout(resolved: &oleafly_agent::Resolved) -> Duration {
+    if resolved.is_self_hosted() {
+        SELF_HOSTED_PROBE_TIMEOUT
+    } else {
+        PROBE_TIMEOUT
+    }
 }
 
 #[tauri::command]
@@ -1685,42 +1714,44 @@ fn probe_request(timeout: Duration) -> CompletionRequest {
     }
 }
 
+/// Probes the model. Only an outcome that says something about the model is
+/// a verdict; a timeout or a provider that failed to answer is an error.
 pub(crate) async fn probe_model(
     client: &reqwest::Client,
     resolved: &oleafly_agent::Resolved,
     timeout: Duration,
-) -> ModelProbe {
+) -> Result<ModelProbe, oleafly_agent::AgentError> {
     let request = probe_request(timeout);
     let outcome = tokio::time::timeout(
         timeout,
         oleafly_agent::stream_completion(client, resolved, &request, |_| {}),
     )
-    .await;
+    .await
+    .map_err(|_| oleafly_agent::AgentError::Timeout)?;
     let (verdict, reason) = match outcome {
-        Err(_) => (ProbeVerdict::Blocked, PROBE_TIMEOUT_REASON.to_string()),
-        Ok(Err(error)) => (ProbeVerdict::Blocked, probe_error_reason(&error)),
-        Ok(Ok(outcome)) => {
+        Err(error) => (ProbeVerdict::Blocked, blocking_probe_reason(error)?),
+        Ok(outcome) => {
             let judged = judge_probe_outcome(&outcome.tool_calls, outcome.stop_reason.as_deref());
             if judged.0 == ProbeVerdict::Verified && replays_reasoning(resolved, &outcome) {
-                match probe_follow_up(client, resolved, &request, &outcome, timeout).await {
-                    Ok(()) => judged,
-                    Err(reason) => (ProbeVerdict::Blocked, reason),
+                match probe_follow_up(client, resolved, &request, &outcome, timeout).await? {
+                    None => judged,
+                    Some(reason) => (ProbeVerdict::Blocked, reason),
                 }
             } else {
                 judged
             }
         }
     };
-    ModelProbe {
+    Ok(ModelProbe {
         verdict,
         reason,
         probed_at: unix_time_ms(),
-    }
+    })
 }
 
 /// Whether the next step would send the model's thinking back to it: the
-/// Anthropic wire replays its thinking blocks, and chat wires that take
-/// `reasoning_content` replay the reasoning text.
+/// Anthropic wire replays its thinking blocks, and chat wires replay the
+/// reasoning text for the providers that expect it.
 fn replays_reasoning(
     resolved: &oleafly_agent::Resolved,
     outcome: &oleafly_agent::StreamOutcome,
@@ -1734,28 +1765,29 @@ fn replays_reasoning(
                 ContentPart::Thinking { .. } | ContentPart::RedactedThinking { .. }
             )
         }),
-        Wire::OpenAiChat {
-            reasoning_content: true,
-            ..
-        } => content
-            .iter()
-            .any(|part| matches!(part, ContentPart::Reasoning { .. })),
+        Wire::OpenAiChat { .. } => {
+            oleafly_agent::replays_reasoning(resolved)
+                && content
+                    .iter()
+                    .any(|part| matches!(part, ContentPart::Reasoning { .. }))
+        }
         _ => false,
     }
 }
 
 /// Answers the ping and sends the model's reply back to it, as the next
-/// step of a run would. Fails when the provider dropped the replayed
-/// thinking because it no longer matched.
+/// step of a run would. The reason is set when the provider dropped the
+/// replayed thinking because it no longer matched, or refused it; the error
+/// is a follow-up that never got an answer.
 async fn probe_follow_up(
     client: &reqwest::Client,
     resolved: &oleafly_agent::Resolved,
     first: &CompletionRequest,
     outcome: &oleafly_agent::StreamOutcome,
     timeout: Duration,
-) -> Result<(), String> {
+) -> Result<Option<String>, oleafly_agent::AgentError> {
     let Some(call) = outcome.tool_calls.first() else {
-        return Err(PROBE_REPLAY_REASON.into());
+        return Ok(Some(PROBE_REPLAY_REASON.into()));
     };
     let mut request = first.clone();
     request
@@ -1775,18 +1807,14 @@ async fn probe_follow_up(
     )
     .await;
     match next {
-        Err(_) => Err(PROBE_TIMEOUT_REASON.into()),
-        Ok(Err(error)) => Err(probe_error_reason(&error)),
+        Err(_) => Err(oleafly_agent::AgentError::Timeout),
+        Ok(Err(error)) => blocking_probe_reason(error).map(Some),
         Ok(Ok(next)) => {
             let dropped = next.input_transformations.iter().any(|entry| {
                 entry.get("reason").and_then(serde_json::Value::as_str)
                     == Some("prefix_binding_mismatch")
             });
-            if dropped {
-                Err(PROBE_REPLAY_REASON.into())
-            } else {
-                Ok(())
-            }
+            Ok(dropped.then(|| PROBE_REPLAY_REASON.to_string()))
         }
     }
 }
@@ -1796,18 +1824,77 @@ fn probe_error_reason(error: &oleafly_agent::AgentError) -> String {
     match error {
         AgentError::Timeout => PROBE_TIMEOUT_REASON.into(),
         AgentError::Provider { status, .. } if error.kind() == "auth" => {
-            format!("The provider rejected the credential with HTTP {status}.")
+            format!("{PROBE_REJECTED_PREFIX}{status}.")
         }
-        AgentError::Provider { status, .. } => {
-            format!("The provider answered the probe with HTTP {status}.")
-        }
-        AgentError::Transport(_) => "The provider could not be reached.".into(),
-        AgentError::Decode(_) => {
-            "The provider sent a response the assistant could not read.".into()
-        }
-        AgentError::NotConfigured(_) => "The provider is not configured for this model.".into(),
-        AgentError::Cancelled => "The probe was cancelled before the model answered.".into(),
+        AgentError::Provider { status, .. } => format!("{PROBE_STATUS_PREFIX}{status}."),
+        AgentError::Transport(_) => PROBE_UNREACHABLE_REASON.into(),
+        AgentError::Decode(_) => PROBE_UNREADABLE_REASON.into(),
+        AgentError::NotConfigured(_) => PROBE_UNCONFIGURED_REASON.into(),
+        AgentError::Cancelled => PROBE_CANCELLED_REASON.into(),
     }
+}
+
+/// The error a failed probe returns to the webview, tagged like the other
+/// agent commands. It carries the plain reason, never the provider's own
+/// message, which can echo the credential.
+fn probe_failure_message(error: &oleafly_agent::AgentError) -> String {
+    format!("[{}] {}", error.kind(), probe_error_reason(error))
+}
+
+fn probe_status_is_transient(status: u16) -> bool {
+    matches!(status, 401 | 403 | 404 | 408 | 429) || status >= 500
+}
+
+/// Whether a failed probe request says nothing about the model: the provider
+/// was slow, unreachable, busy, or refused the credential or the address.
+/// Anything else the provider rejected about the request itself (HTTP 400,
+/// say, for a tool it does not take) is a verdict on the model.
+fn probe_error_is_transient(error: &oleafly_agent::AgentError) -> bool {
+    use oleafly_agent::AgentError;
+    match error {
+        AgentError::Provider { status, .. } => probe_status_is_transient(*status),
+        AgentError::Timeout
+        | AgentError::Transport(_)
+        | AgentError::Decode(_)
+        | AgentError::NotConfigured(_)
+        | AgentError::Cancelled => true,
+    }
+}
+
+/// The reason a failed probe request blocks the model, or the error itself
+/// when it says nothing about the model and must not become a verdict.
+fn blocking_probe_reason(
+    error: oleafly_agent::AgentError,
+) -> Result<String, oleafly_agent::AgentError> {
+    if probe_error_is_transient(&error) {
+        Err(error)
+    } else {
+        Ok(probe_error_reason(&error))
+    }
+}
+
+/// Whether a stored `Blocked` reason is one a failed attempt used to leave
+/// behind. Builds before this saved such attempts as verdicts.
+pub(crate) fn is_transient_probe_reason(reason: &str) -> bool {
+    if [
+        PROBE_TIMEOUT_REASON,
+        PROBE_UNREACHABLE_REASON,
+        PROBE_UNREADABLE_REASON,
+        PROBE_UNCONFIGURED_REASON,
+        PROBE_CANCELLED_REASON,
+    ]
+    .contains(&reason)
+    {
+        return true;
+    }
+    if reason.starts_with(PROBE_REJECTED_PREFIX) {
+        return true;
+    }
+    reason
+        .strip_prefix(PROBE_STATUS_PREFIX)
+        .and_then(|rest| rest.strip_suffix('.'))
+        .and_then(|status| status.parse::<u16>().ok())
+        .is_some_and(probe_status_is_transient)
 }
 
 fn probe_arguments_are_valid(arguments: &str) -> bool {
@@ -2051,6 +2138,24 @@ mod probe_tests {
         )
     }
 
+    async fn try_probe_against(
+        status: StatusCode,
+        content_type: &'static str,
+        body: &str,
+        delay: Duration,
+        timeout: Duration,
+    ) -> (
+        Result<ModelProbe, oleafly_agent::AgentError>,
+        Vec<serde_json::Value>,
+    ) {
+        let (resolved, seen, server) = serve(status, content_type, body, delay).await;
+        let client = oleafly_agent::build_client().unwrap();
+        let probe = probe_model(&client, &resolved, timeout).await;
+        server.abort();
+        let requests = seen.lock().unwrap().clone();
+        (probe, requests)
+    }
+
     async fn probe_against(
         status: StatusCode,
         content_type: &'static str,
@@ -2058,12 +2163,8 @@ mod probe_tests {
         delay: Duration,
         timeout: Duration,
     ) -> (ModelProbe, Vec<serde_json::Value>) {
-        let (resolved, seen, server) = serve(status, content_type, body, delay).await;
-        let client = oleafly_agent::build_client().unwrap();
-        let probe = probe_model(&client, &resolved, timeout).await;
-        server.abort();
-        let requests = seen.lock().unwrap().clone();
-        (probe, requests)
+        let (probe, requests) = try_probe_against(status, content_type, body, delay, timeout).await;
+        (probe.expect("the probe reached a verdict"), requests)
     }
 
     type SeenHeaders = Arc<Mutex<Vec<axum::http::HeaderMap>>>;
@@ -2105,7 +2206,9 @@ mod probe_tests {
             caps: oleafly_agent::ModelCaps::default(),
         };
         let client = oleafly_agent::build_client().unwrap();
-        let probe = probe_model(&client, &resolved, Duration::from_secs(5)).await;
+        let probe = probe_model(&client, &resolved, Duration::from_secs(5))
+            .await
+            .expect("the probe reached a verdict");
         task.abort();
         let requests = seen.lock().unwrap().clone();
         let headers = seen_headers.lock().unwrap().clone();
@@ -2223,7 +2326,9 @@ mod probe_tests {
             })),
         };
         let client = oleafly_agent::build_client().unwrap();
-        let probe = probe_model(&client, &resolved, Duration::from_secs(5)).await;
+        let probe = probe_model(&client, &resolved, Duration::from_secs(5))
+            .await
+            .expect("the probe reached a verdict");
         task.abort();
         let requests = seen.lock().unwrap().clone();
         (probe, requests)
@@ -2455,11 +2560,11 @@ mod probe_tests {
     }
 
     #[tokio::test]
-    async fn a_provider_error_blocks_without_echoing_the_credential() {
+    async fn a_provider_that_refuses_the_request_blocks_without_echoing_the_credential() {
         let body =
             format!("{{\"error\":{{\"message\":\"Incorrect API key provided: {SECRET}\"}}}}");
         let (probe, _) = probe_against(
-            StatusCode::UNAUTHORIZED,
+            StatusCode::BAD_REQUEST,
             JSON,
             &body,
             Duration::ZERO,
@@ -2470,33 +2575,54 @@ mod probe_tests {
         assert_eq!(probe.verdict, ProbeVerdict::Blocked);
         assert_eq!(
             probe.reason,
-            "The provider rejected the credential with HTTP 401."
+            "The provider answered the probe with HTTP 400."
         );
         assert!(!probe.reason.contains(SECRET));
-
-        let (server_error, _) = probe_against(
-            StatusCode::BAD_GATEWAY,
-            JSON,
-            &body,
-            Duration::ZERO,
-            Duration::from_secs(5),
-        )
-        .await;
-        assert_eq!(
-            server_error.reason,
-            "The provider answered the probe with HTTP 502."
-        );
-        assert!(!server_error.reason.contains(SECRET));
     }
 
     #[tokio::test]
-    async fn a_silent_provider_blocks_on_timeout() {
+    async fn a_failing_or_unwelcoming_provider_is_an_error_without_the_credential() {
+        let body =
+            format!("{{\"error\":{{\"message\":\"Incorrect API key provided: {SECRET}\"}}}}");
+        for (status, expected) in [
+            (
+                StatusCode::UNAUTHORIZED,
+                "[auth] The provider rejected the credential with HTTP 401.",
+            ),
+            (
+                StatusCode::FORBIDDEN,
+                "[auth] The provider rejected the credential with HTTP 403.",
+            ),
+            (
+                StatusCode::NOT_FOUND,
+                "[provider] The provider answered the probe with HTTP 404.",
+            ),
+            (
+                StatusCode::TOO_MANY_REQUESTS,
+                "[provider] The provider answered the probe with HTTP 429.",
+            ),
+            (
+                StatusCode::BAD_GATEWAY,
+                "[provider] The provider answered the probe with HTTP 502.",
+            ),
+        ] {
+            let (probe, _) =
+                try_probe_against(status, JSON, &body, Duration::ZERO, Duration::from_secs(5))
+                    .await;
+            let message = probe_failure_message(&probe.expect_err("no verdict"));
+            assert_eq!(message, expected);
+            assert!(!message.contains(SECRET));
+        }
+    }
+
+    #[tokio::test]
+    async fn a_silent_provider_times_out_without_a_verdict() {
         // The provider stays silent far longer than the probe waits, so a probe
         // that ignored its timeout could not finish inside the bound below,
         // however slow the machine is.
         let silence = crate::test_wait::CHILD_PATIENCE;
         let started = std::time::Instant::now();
-        let (probe, _) = probe_against(
+        let (probe, _) = try_probe_against(
             StatusCode::OK,
             SSE,
             &tool_call_stream("ping", "{}"),
@@ -2505,13 +2631,12 @@ mod probe_tests {
         )
         .await;
 
-        assert_eq!(probe.verdict, ProbeVerdict::Blocked);
-        assert_eq!(probe.reason, PROBE_TIMEOUT_REASON);
+        assert_eq!(probe.unwrap_err(), oleafly_agent::AgentError::Timeout);
         assert!(started.elapsed() < silence);
     }
 
     #[test]
-    fn an_unreachable_provider_blocks_with_a_plain_reason() {
+    fn an_unreachable_provider_gets_a_plain_reason() {
         let reason = probe_error_reason(&oleafly_agent::AgentError::Transport(format!(
             "connection refused for {SECRET}"
         )));
@@ -2519,6 +2644,213 @@ mod probe_tests {
         assert_eq!(
             probe_error_reason(&oleafly_agent::AgentError::Decode("bad".into())),
             "The provider sent a response the assistant could not read."
+        );
+    }
+
+    #[test]
+    fn only_answers_that_say_something_about_the_model_become_verdicts() {
+        use oleafly_agent::AgentError;
+        let unresolved = [
+            AgentError::Timeout,
+            AgentError::Transport("refused".into()),
+            AgentError::Decode("<html>".into()),
+            AgentError::NotConfigured("no key".into()),
+            AgentError::Cancelled,
+            AgentError::provider(401, "no"),
+            AgentError::provider(403, "no"),
+            AgentError::provider(404, "no"),
+            AgentError::provider(408, "no"),
+            AgentError::provider(429, "slow down"),
+            AgentError::provider(500, "boom"),
+            AgentError::provider(503, "loading"),
+            AgentError::provider(529, "overloaded"),
+        ];
+        for error in unresolved {
+            assert!(probe_error_is_transient(&error), "{error:?}");
+            assert_eq!(blocking_probe_reason(error.clone()), Err(error.clone()));
+            // What an older build stored for such a failure is recognised.
+            assert!(
+                is_transient_probe_reason(&probe_error_reason(&error)),
+                "{error:?}"
+            );
+        }
+        for status in [400, 405, 409, 413, 422] {
+            let error = AgentError::provider(status, "no tools");
+            assert!(!probe_error_is_transient(&error), "{status}");
+            let reason = blocking_probe_reason(error).unwrap();
+            assert_eq!(
+                reason,
+                format!("The provider answered the probe with HTTP {status}.")
+            );
+            assert!(!is_transient_probe_reason(&reason), "{status}");
+        }
+    }
+
+    #[test]
+    fn a_stored_verdict_about_the_model_is_never_taken_for_a_failed_attempt() {
+        let call = |name: &str, arguments: &str| oleafly_agent::ToolCall {
+            id: "call_1".into(),
+            name: name.into(),
+            arguments: arguments.into(),
+            thought_signature: None,
+        };
+        let mut reasons = vec![
+            PROBE_VERIFIED_REASON.to_string(),
+            PROBE_OUTPUT_LIMIT_REASON.to_string(),
+            PROBE_REPLAY_REASON.to_string(),
+            judge_probe_calls(&[]).1,
+            judge_probe_calls(&[call("read_file", "{}")]).1,
+            judge_probe_calls(&[call(PROBE_TOOL, "{oops")]).1,
+            judge_probe_calls(&[call(PROBE_TOOL, "{}"), call(PROBE_TOOL, "{}")]).1,
+        ];
+        reasons.push("The provider answered the probe with HTTP 400.".into());
+        reasons.push("The provider answered the probe with HTTP nonsense.".into());
+        for reason in reasons {
+            assert!(!is_transient_probe_reason(&reason), "{reason}");
+        }
+        for reason in [
+            "The provider rejected the credential with HTTP 401.",
+            "The provider answered the probe with HTTP 404.",
+            "The provider answered the probe with HTTP 429.",
+            "The provider answered the probe with HTTP 503.",
+        ] {
+            assert!(is_transient_probe_reason(reason), "{reason}");
+        }
+    }
+
+    fn resolved_for(provider_id: &str, base_url: &str) -> oleafly_agent::Resolved {
+        oleafly_agent::Resolved {
+            provider_id: provider_id.into(),
+            model_id: "probe-model".into(),
+            credential: SECRET.into(),
+            auth: Some(SECRET.into()),
+            wire: oleafly_agent::Wire::OpenAiChat {
+                base_url: base_url.into(),
+                reasoning_content: false,
+            },
+            caps: oleafly_agent::ModelCaps::default(),
+        }
+    }
+
+    #[test]
+    fn local_and_custom_servers_get_a_longer_probe_window_than_hosted_catalog_ones() {
+        assert_eq!(
+            probe_timeout(&resolved_for("openai", "https://api.openai.com/v1")),
+            Duration::from_secs(30)
+        );
+        for (provider, base_url) in [
+            ("lemonade", "http://localhost:13305/v1"),
+            ("lab", "https://gateway.example.com/v1"),
+            ("groq", "http://127.0.0.1:9000/v1"),
+        ] {
+            assert_eq!(
+                probe_timeout(&resolved_for(provider, base_url)),
+                Duration::from_secs(120),
+                "{provider}"
+            );
+        }
+        let request = probe_request(SELF_HOSTED_PROBE_TIMEOUT);
+        assert_eq!(request.timeout_ms, Some(120_000));
+        assert_eq!(request.idle_timeout_ms, Some(120_000));
+    }
+
+    #[tokio::test]
+    async fn a_custom_provider_does_not_pay_for_a_reasoning_replay_it_never_gets() {
+        let (mut resolved, seen, server) =
+            serve(StatusCode::OK, SSE, &reasoned_ping_stream(), Duration::ZERO).await;
+        let oleafly_agent::Wire::OpenAiChat { base_url, .. } = resolved.wire.clone() else {
+            unreachable!("the fixture serves a chat wire");
+        };
+        resolved.wire = oleafly_agent::Wire::OpenAiChat {
+            base_url,
+            reasoning_content: true,
+        };
+        assert!(!oleafly_agent::replays_reasoning(&resolved));
+        let client = oleafly_agent::build_client().unwrap();
+
+        let probe = probe_model(&client, &resolved, Duration::from_secs(5))
+            .await
+            .unwrap();
+        server.abort();
+
+        assert_eq!(probe.verdict, ProbeVerdict::Verified, "{}", probe.reason);
+        assert_eq!(seen.lock().unwrap().len(), 1);
+    }
+
+    /// Runs `body` with the app data folder pointing at a fresh temp dir.
+    fn with_data_dir<T>(body: impl std::future::Future<Output = T>) -> T {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", dir.path());
+        let _guard = DataDirGuard;
+        crate::config::write_config(&AppConfig::default()).unwrap();
+        tauri::async_runtime::block_on(body)
+    }
+
+    fn stored_probes() -> BTreeMap<String, ModelProbe> {
+        crate::config::read_config().unwrap().ai_model_probes
+    }
+
+    #[test]
+    fn a_refused_connection_is_an_error_and_stores_no_verdict() {
+        let (result, stored) = with_data_dir(async {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let address = listener.local_addr().unwrap();
+            drop(listener);
+            let resolved = resolved_for("lemonade", &format!("http://{address}/v1"));
+            let client = oleafly_agent::build_client().unwrap();
+            let result = probe_and_record(&client, &resolved, Duration::from_secs(5)).await;
+            (result, stored_probes())
+        });
+
+        assert_eq!(
+            result.unwrap_err(),
+            "[transport] The provider could not be reached."
+        );
+        assert!(stored.is_empty());
+    }
+
+    #[test]
+    fn a_timed_out_probe_is_an_error_and_stores_no_verdict() {
+        let (result, stored) = with_data_dir(async {
+            let (resolved, _, server) = serve(
+                StatusCode::OK,
+                SSE,
+                &tool_call_stream("ping", "{}"),
+                crate::test_wait::CHILD_PATIENCE,
+            )
+            .await;
+            let client = oleafly_agent::build_client().unwrap();
+            let result = probe_and_record(&client, &resolved, Duration::from_millis(300)).await;
+            server.abort();
+            (result, stored_probes())
+        });
+
+        assert_eq!(
+            result.unwrap_err(),
+            "[timeout] The model did not answer before the probe timed out."
+        );
+        assert!(stored.is_empty());
+    }
+
+    #[test]
+    fn a_model_that_answers_without_the_tool_is_blocked_and_the_verdict_is_stored() {
+        let body = "data: {\"choices\":[{\"delta\":{\"content\":\"pong\"}}]}\n\ndata: [DONE]\n\n";
+        let (result, stored) = with_data_dir(async {
+            let (resolved, _, server) = serve(StatusCode::OK, SSE, body, Duration::ZERO).await;
+            let client = oleafly_agent::build_client().unwrap();
+            let result = probe_and_record(&client, &resolved, Duration::from_secs(5)).await;
+            server.abort();
+            (result, stored_probes())
+        });
+
+        let probe = result.unwrap();
+        assert_eq!(probe.verdict, ProbeVerdict::Blocked);
+        assert_eq!(probe.reason, "The model answered without calling the tool.");
+        assert_eq!(stored.len(), 1);
+        assert_eq!(
+            stored[&crate::config::model_probe_key("gateway", "probe-model")],
+            probe
         );
     }
 

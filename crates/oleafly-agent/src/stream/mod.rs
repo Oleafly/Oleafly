@@ -201,7 +201,7 @@ impl StreamBudget {
 }
 
 fn default_idle_timeout(resolved: &Resolved) -> Duration {
-    if resolved.is_local_endpoint() {
+    if resolved.is_self_hosted() {
         LOCAL_STREAM_IDLE_TIMEOUT
     } else {
         DEFAULT_STREAM_IDLE_TIMEOUT

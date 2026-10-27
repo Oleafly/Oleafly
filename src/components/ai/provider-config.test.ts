@@ -70,6 +70,80 @@ describe("deriveProviderState", () => {
   });
 });
 
+describe("deriveProviderState and custom providers", () => {
+  const lemonade = { id: "lemonade", name: "Lemonade", baseURL: "http://localhost:13305/v1", keyOptional: true };
+  const customs = (list: object[]) => list as unknown as AppConfig["ai_custom_providers"];
+
+  it("is ready with a key, ready for a key-less custom provider, and not ready for neither", async () => {
+    const { deriveProviderState } = await loadModule();
+    expect(deriveProviderState(config()).ready).toBe(true);
+    expect(deriveProviderState(config({ ai_keys: {} })).ready).toBe(false);
+    expect(deriveProviderState(config({ ai_keys: { openai: "  " } })).ready).toBe(false);
+    const keyless = deriveProviderState(
+      config({ ai_provider: "lemonade", ai_model: "qwen", ai_keys: {}, ai_custom_providers: customs([lemonade]) }),
+    );
+    expect(keyless).toMatchObject({ provider: "lemonade", model: "qwen", apiKey: "", ready: true });
+    const gated = deriveProviderState(
+      config({
+        ai_provider: "gateway",
+        ai_keys: {},
+        ai_custom_providers: customs([{ id: "gateway", name: "Gateway", baseURL: "https://gw.example/v1" }]),
+      }),
+    );
+    expect(gated.ready).toBe(false);
+  });
+
+  it("agrees with pickActiveProvider when the saved provider has no key", async () => {
+    const { deriveProviderState } = await loadModule();
+    const { pickActiveProvider } = await import("@/lib/ai-providers");
+    const cases = [
+      config({ ai_provider: "anthropic", ai_keys: {}, ai_custom_providers: customs([lemonade]) }),
+      config({ ai_provider: "anthropic", ai_keys: { groq: "gsk" }, ai_custom_providers: customs([lemonade]) }),
+      config({
+        ai_provider: "anthropic",
+        ai_keys: {},
+        ai_custom_providers: customs([lemonade]),
+        ai_provider_models: { lemonade: [{ id: "qwen", name: "qwen", enabled: true, source: "fetched" }] },
+      }),
+    ];
+    for (const cfg of cases) {
+      const picked = pickActiveProvider(cfg);
+      const state = deriveProviderState(cfg);
+      expect({ provider: state.provider, model: state.model, apiKey: state.apiKey }).toEqual({
+        provider: picked.providerId,
+        model: picked.modelId,
+        apiKey: picked.credential,
+      });
+    }
+    expect(deriveProviderState(cases[0])).toMatchObject({ provider: "lemonade", ready: true });
+    expect(deriveProviderState(cases[2])).toMatchObject({ provider: "lemonade", model: "qwen" });
+  });
+
+  it("has no model for a custom provider with an empty list, not another provider's default", async () => {
+    const { deriveProviderState } = await loadModule();
+    const state = deriveProviderState(
+      config({ ai_provider: "lemonade", ai_model: "", ai_keys: {}, ai_custom_providers: customs([lemonade]) }),
+    );
+    expect(state.model).toBe("");
+  });
+
+  it("does not hand the legacy single key to a custom provider", async () => {
+    const { deriveProviderState } = await loadModule();
+    const state = deriveProviderState(
+      config({
+        ai_provider: "lemonade",
+        ai_model: "qwen",
+        ai_keys: {},
+        ai_api_key: "sk-old-openai",
+        ai_custom_providers: customs([lemonade]),
+      }),
+    );
+    expect(state.apiKey).toBe("");
+    expect(state.keysMap).toEqual({});
+    expect(state.ready).toBe(true);
+  });
+});
+
 describe("provider config cache", () => {
   beforeEach(() => {
     getConfig.mockReset();

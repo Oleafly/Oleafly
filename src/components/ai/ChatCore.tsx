@@ -188,7 +188,7 @@ import { toast } from "@/lib/toast";
 import { WorkspaceBanner } from "@/components/ui/workspace-banner";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
-import { mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
+import { isProviderConfigured, mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
 import {
   configuredModelGroups,
   configuredProviders as listConfiguredProviders,
@@ -1113,7 +1113,6 @@ export function ChatCore() {
   const [model, setModel] = useState(initialProvider?.state.model ?? "gpt-4o");
   const [providerConfigReady, setProviderConfigReady] = useState(initialProvider !== null);
   const [providerConfigError, setProviderConfigError] = useState(false);
-  const [apiKey, setApiKey] = useState(initialProvider?.state.apiKey ?? "");
   // So the switcher can offer every provider the user has set up, not just the default one.
   const [keysMap, setKeysMap] = useState<Record<string, string>>(
     () => initialProvider?.state.keysMap ?? {},
@@ -1128,6 +1127,10 @@ export function ChatCore() {
   const [customProviders, setCustomProviders] = useState<CustomProvider[]>(
     () => initialProvider?.state.customProviders ?? [],
   );
+  // Whether the active provider can take a request: a key or host, or a custom
+  // provider that needs none. Derived from the provider on screen, so a model
+  // switch, a new chat and a config change all keep it right.
+  const providerReady = isProviderConfigured(provider, keysMap, customProviders);
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [modelProbes, setModelProbes] = useState<Record<string, ModelProbe>>(() =>
     mergeModelProbes({}, initialProvider?.cfg.ai_model_probes),
@@ -1442,7 +1445,6 @@ export function ChatCore() {
       });
       setCustomProviders(next.customProviders);
       setProvider(next.provider);
-      setApiKey(next.apiKey);
       setModel(next.model);
       setProviderConfigReady(true);
       setProviderConfigError(false);
@@ -1478,9 +1480,8 @@ export function ChatCore() {
     (pid: string, mid: string) => {
       setProvider(pid);
       setModel(mid);
-      setApiKey(keysMap[pid] || "");
     },
-    [keysMap]
+    []
   );
 
   // Providers the user has set up (a non-empty key/host, or a custom
@@ -1761,9 +1762,8 @@ export function ChatCore() {
       const { providerId, modelId } = pickActiveProvider(cfg);
       setProvider(providerId);
       setModel(modelId);
-      setApiKey(keysMap[providerId] || "");
     }
-  }, [setActiveChat, keysMap, setMessages, cancelEdit]);
+  }, [setActiveChat, setMessages, cancelEdit]);
 
   const newChat = useCallback(() => {
     if (streaming || sendPreparingRef.current || runOwnerRef.current) return;
@@ -2045,8 +2045,8 @@ export function ChatCore() {
   // What the model picker holds now. The follow-up queued during a run is sent
   // from that run's own `send`, a closure from when the run started, so `send`
   // reads the picked model here and not from its closure.
-  const pickedModelRef = useRef({ provider, model, providerModelsMap, apiKey, activeProviderName });
-  pickedModelRef.current = { provider, model, providerModelsMap, apiKey, activeProviderName };
+  const pickedModelRef = useRef({ provider, model, providerModelsMap, providerReady, activeProviderName });
+  pickedModelRef.current = { provider, model, providerModelsMap, providerReady, activeProviderName };
 
   const send = useCallback(async (
     text: string,
@@ -2063,7 +2063,7 @@ export function ChatCore() {
       web?: boolean;
     },
   ) => {
-    const { provider, model, providerModelsMap, apiKey, activeProviderName } = pickedModelRef.current;
+    const { provider, model, providerModelsMap, providerReady, activeProviderName } = pickedModelRef.current;
     const sendComposerId = composerIdRef.current;
     const draft = draftAttachments(sendComposerId);
     // Attachments still being prepared hold the message back.
@@ -2090,7 +2090,7 @@ export function ChatCore() {
       return;
     }
     if (!engineLoaded) return;
-    if (!apiKey) { openAISettings(); return; }
+    if (!providerReady) { openAISettings(); return; }
     if (sendPreparingRef.current) return;
     sendPreparingRef.current = true;
     setApprovalModeLocked(true);
@@ -3344,7 +3344,7 @@ ${sandboxedCustom}`;
   const actionsEnabled = Boolean(
     projectId &&
       activeChatId &&
-      apiKey &&
+      providerReady &&
       engineLoaded &&
       !streaming &&
       !approvalModeLocked &&
@@ -3712,16 +3712,16 @@ ${sandboxedCustom}`;
   // user already typed instead of clobbering it.
   useEffect(() => {
     if (!handoffPending || streaming || !providerConfigReady) return;
-    if (handoffAutoSend && apiKey && !engineLoaded) return;
+    if (handoffAutoSend && providerReady && !engineLoaded) return;
     const h = useAgentHandoffStore.getState().consume();
     if (!h) return;
     if (h.images.length) pendingImagesRef.current.push(...h.images);
-    if (h.autoSend && apiKey) {
+    if (h.autoSend && providerReady) {
       void send(h.prompt);
       return;
     }
     setInput(appendHandoffPrompt(inputRef.current, h.prompt));
-  }, [handoffPending, handoffAutoSend, streaming, providerConfigReady, apiKey, engineLoaded, send, setInput]);
+  }, [handoffPending, handoffAutoSend, streaming, providerConfigReady, providerReady, engineLoaded, send, setInput]);
 
   const prevProjectIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
@@ -3925,7 +3925,7 @@ ${sandboxedCustom}`;
       data-tour="ai-assistant"
       data-tour-ready={providerConfigReady ? "true" : "false"}
       data-tour-config-error={providerConfigError ? "true" : "false"}
-      data-tour-configured={apiKey ? "true" : "false"}
+      data-tour-configured={providerReady ? "true" : "false"}
       data-tour-has-usage={hasUsage ? "true" : "false"}
       data-tour-has-restore={
         renderedMessages.some(
@@ -4018,7 +4018,7 @@ ${sandboxedCustom}`;
           </>
         }
       >
-        {apiKey && activeChat?.headOid && currentHead && activeChat.headOid !== currentHead && (
+        {providerReady && activeChat?.headOid && currentHead && activeChat.headOid !== currentHead && (
           <InfoHint message={t(($) => $.ai.header.staleChatHint)} />
         )}
       </AssistantShellHeader>
@@ -4030,11 +4030,11 @@ ${sandboxedCustom}`;
         </WorkspaceBanner>
       )}
 
-      {!providerConfigReady && !apiKey && (
+      {!providerConfigReady && !providerReady && (
         <div data-testid="ai-provider-loading" className="min-h-0 flex-1" />
       )}
 
-      {providerConfigReady && !apiKey && (
+      {providerConfigReady && !providerReady && (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <OleaflyAssistantMascot />
           <div className="space-y-1">
@@ -4056,7 +4056,7 @@ ${sandboxedCustom}`;
         </div>
       )}
 
-      {apiKey && (
+      {providerReady && (
         <>
           <div className="relative min-h-0 flex-1">
           <ChatMinimap scrollRef={scrollRef} messages={messages} visible={showMinimap} />

@@ -165,6 +165,9 @@ pub(crate) fn run_refusal(
     let probe = probes.get(&model_probe_key(provider_id, model_id));
     let resolution = resolve_trust(registry.catalog_trust(provider_id, model_id), probe);
     match resolution.trust {
+        // A probe only checks tool calls, so its verdict says nothing about a
+        // run that offers no tools.
+        ModelTrust::Blocked if !has_tools && resolution.source == Some(TrustSource::Probe) => None,
         ModelTrust::Blocked => Some(format!(
             "{BLOCKED_RUN_PREFIX}{}",
             resolution.blocked_reason.unwrap_or_default()
@@ -886,6 +889,69 @@ mod tests {
                 "This model is blocked for the assistant: This preview model's thinking output breaks the assistant loop."
                     .into()
             )
+        );
+    }
+
+    #[test]
+    fn a_probe_block_refuses_runs_with_tools_but_not_tool_less_ones() {
+        let registry = parse_registry(BUNDLED_REGISTRY).unwrap();
+        let snapshot = crate::ai_model_metadata::bundled_snapshot();
+        let probes = BTreeMap::from([
+            (
+                model_probe_key("openai", "gpt-4o"),
+                probe(
+                    ProbeVerdict::Blocked,
+                    "The model answered without calling the tool.",
+                ),
+            ),
+            (
+                model_probe_key("my-gateway", "local-model"),
+                probe(
+                    ProbeVerdict::Blocked,
+                    "The model sent a malformed tool call.",
+                ),
+            ),
+            (
+                model_probe_key("google", "gemini-3-flash-preview"),
+                probe(
+                    ProbeVerdict::Blocked,
+                    "The model answered without calling the tool.",
+                ),
+            ),
+        ]);
+        let refusal = |provider: &str, model: &str, has_tools: bool| {
+            run_refusal(&registry, provider, model, &probes, &snapshot, has_tools)
+        };
+
+        for (provider, model, reason) in [
+            (
+                "openai",
+                "gpt-4o",
+                "The model answered without calling the tool.",
+            ),
+            (
+                "my-gateway",
+                "local-model",
+                "The model sent a malformed tool call.",
+            ),
+        ] {
+            assert_eq!(
+                refusal(provider, model, true),
+                Some(format!("{BLOCKED_RUN_PREFIX}{reason}"))
+            );
+            assert_eq!(refusal(provider, model, false), None);
+        }
+
+        // A catalog block still refuses every run, whatever a probe said.
+        let catalog_reason =
+            "This model is blocked for the assistant: This preview model's thinking output breaks the assistant loop.";
+        assert_eq!(
+            refusal("google", "gemini-3-flash-preview", true),
+            Some(catalog_reason.into())
+        );
+        assert_eq!(
+            refusal("google", "gemini-3-flash-preview", false),
+            Some(catalog_reason.into())
         );
     }
 

@@ -55,13 +55,41 @@ pub fn model_probe_key(provider_id: &str, model_id: &str) -> String {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+#[serde(from = "RawCustomProvider")]
 pub struct CustomProvider {
     pub id: String,
     pub name: String,
     #[serde(rename = "baseURL", default)]
     pub base_url: String,
-    #[serde(default)]
+    #[serde(rename = "keyOptional")]
     pub key_optional: bool,
+}
+
+/// A custom provider as it arrives. The webview and the saved file say
+/// `keyOptional`. Earlier builds wrote `key_optional`, and an object the
+/// webview spread from one of those can carry both spellings, which one serde
+/// field would reject as a duplicate. They are read apart and joined.
+#[derive(Deserialize)]
+struct RawCustomProvider {
+    id: String,
+    name: String,
+    #[serde(rename = "baseURL", default)]
+    base_url: String,
+    #[serde(rename = "keyOptional", default)]
+    key_optional: bool,
+    #[serde(rename = "key_optional", default)]
+    legacy_key_optional: bool,
+}
+
+impl From<RawCustomProvider> for CustomProvider {
+    fn from(raw: RawCustomProvider) -> Self {
+        Self {
+            id: raw.id,
+            name: raw.name,
+            base_url: raw.base_url,
+            key_optional: raw.key_optional || raw.legacy_key_optional,
+        }
+    }
 }
 
 // 0.4.8 H: Tools model
@@ -373,7 +401,10 @@ fn read_config_unlocked() -> Result<AppConfig, String> {
         || cfg.ai_keys.values().any(|v| !v.is_empty())
         || !cfg.mcp_token.is_empty()
         || has_plaintext_mcp_server_secrets(&cfg);
-    let hydrated = hydrate_secrets(cfg)?;
+    let unflagged = custom_providers_without_key_flag(&s);
+    let mut hydrated = hydrate_secrets(cfg)?;
+    mark_keyless_custom_providers_optional(&mut hydrated, &unflagged);
+    drop_transient_probe_verdicts(&mut hydrated);
     if needs_migrate {
         let _ = persist_without_plaintext_secrets_unlocked(&hydrated);
     }
@@ -1099,6 +1130,68 @@ fn drop_probes_for_moved_endpoints(config: &mut AppConfig, stored: &AppConfig) {
         .retain(|key, _| !doomed.iter().any(|prefix| key.starts_with(prefix)));
 }
 
+/// Ids of the custom providers whose saved entry has no `keyOptional` field.
+/// Builds before it read and wrote the flag as `key_optional`, which the
+/// settings view never set, so those entries say nothing about the key.
+fn custom_providers_without_key_flag(source: &str) -> Vec<String> {
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(source) else {
+        return Vec::new();
+    };
+    value
+        .get("ai_custom_providers")
+        .and_then(serde_json::Value::as_array)
+        .map(|entries| {
+            entries
+                .iter()
+                .filter(|entry| entry.get("keyOptional").is_none())
+                .filter_map(|entry| entry.get("id")?.as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// An entry from an older build with no stored key could only ever work
+/// without one, so it becomes key-optional. An entry that states the flag
+/// keeps it: a key-needing provider whose key is missing (settings copied to
+/// another machine, say) should ask for the key, not send requests without it.
+fn mark_keyless_custom_providers_optional(config: &mut AppConfig, unflagged: &[String]) {
+    for provider in &mut config.ai_custom_providers {
+        if !unflagged.contains(&provider.id) {
+            continue;
+        }
+        let has_key = config
+            .ai_keys
+            .get(&provider.id)
+            .is_some_and(|key| !key.trim().is_empty());
+        if !has_key {
+            provider.key_optional = true;
+        }
+    }
+}
+
+/// Drops `Blocked` verdicts that only recorded a failed attempt (a timeout, an
+/// unreachable or busy provider). Older builds saved those as verdicts, which
+/// left a model that was merely slow to load blocked for good.
+fn drop_transient_probe_verdicts(config: &mut AppConfig) {
+    config.ai_model_probes.retain(|_, probe| {
+        probe.verdict != ProbeVerdict::Blocked
+            || !crate::agent::is_transient_probe_reason(&probe.reason)
+    });
+}
+
+fn is_known_provider(custom: &[CustomProvider], id: &str) -> bool {
+    oleafly_agent::provider::catalog_entry(id).is_some() || custom.iter().any(|c| c.id == id)
+}
+
+/// A deleted custom provider leaves its list-refresh stamp behind; only the
+/// catalog providers and the current custom ones keep theirs.
+fn drop_stamps_for_removed_providers(config: &mut AppConfig) {
+    let custom = &config.ai_custom_providers;
+    config
+        .ai_model_lists_refreshed_at
+        .retain(|id, _| is_known_provider(custom, id));
+}
+
 #[tauri::command]
 pub async fn set_config(config: AppConfig) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || set_config_blocking(config))
@@ -1119,6 +1212,7 @@ fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     drop_keys_for_moved_endpoints(&mut config, &stored, &restored);
     keep_newer_model_trust_records(&mut config, &stored);
     drop_probes_for_moved_endpoints(&mut config, &stored);
+    drop_stamps_for_removed_providers(&mut config);
     keep_cli_settings(&mut config, &stored);
     config.mcp_servers = stored.mcp_servers;
     config.typst_default_version = stored.typst_default_version;
@@ -1162,6 +1256,9 @@ fn keep_newer_model_trust_records(config: &mut AppConfig, stored: &AppConfig) {
         }
     }
     for (provider, refreshed_at) in &stored.ai_model_lists_refreshed_at {
+        if !is_known_provider(&config.ai_custom_providers, provider) {
+            continue;
+        }
         let incoming_is_newer = config
             .ai_model_lists_refreshed_at
             .get(provider)
@@ -2560,6 +2657,344 @@ mod tests {
             persisted.ai_model_probes[&model_probe_key("openai", "gpt-4o")],
             probe(ProbeVerdict::Verified, 40)
         );
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn a_custom_provider_keeps_the_names_the_webview_uses() {
+        let source = serde_json::json!({
+            "id": "lemonade",
+            "name": "Lemonade",
+            "baseURL": "http://localhost:13305/v1",
+            "keyOptional": true
+        });
+        let provider: CustomProvider = serde_json::from_value(source.clone()).unwrap();
+        assert!(provider.key_optional);
+        assert_eq!(serde_json::to_value(&provider).unwrap(), source);
+
+        // Files written by earlier builds say `key_optional`.
+        let older: CustomProvider = serde_json::from_value(serde_json::json!({
+            "id": "lab",
+            "name": "Lab",
+            "baseURL": "http://lab.test/v1",
+            "key_optional": true
+        }))
+        .unwrap();
+        assert!(older.key_optional);
+        let json = serde_json::to_string(&older).unwrap();
+        assert!(json.contains("\"keyOptional\":true"));
+        assert!(!json.contains("key_optional"));
+    }
+
+    #[test]
+    fn a_custom_provider_carrying_both_spellings_still_loads() {
+        // The webview spreads the object an older build wrote, so a save can
+        // hand over `key_optional` and `keyOptional` together.
+        let provider = |legacy: Option<bool>, current: Option<bool>| -> CustomProvider {
+            let mut object = serde_json::json!({
+                "id": "lab",
+                "name": "Lab",
+                "baseURL": "http://lab.test/v1"
+            });
+            if let Some(value) = legacy {
+                object["key_optional"] = value.into();
+            }
+            if let Some(value) = current {
+                object["keyOptional"] = value.into();
+            }
+            serde_json::from_value(object).unwrap()
+        };
+
+        assert!(provider(Some(false), Some(true)).key_optional);
+        assert!(provider(Some(true), Some(false)).key_optional);
+        assert!(provider(Some(true), None).key_optional);
+        assert!(provider(None, Some(true)).key_optional);
+        assert!(!provider(Some(false), Some(false)).key_optional);
+        assert!(!provider(None, None).key_optional);
+
+        let config: AppConfig = serde_json::from_value(serde_json::json!({
+            "ai_custom_providers": [{
+                "id": "lab",
+                "name": "Lab",
+                "baseURL": "http://lab.test/v1",
+                "key_optional": false,
+                "keyOptional": true
+            }]
+        }))
+        .unwrap();
+        assert_eq!(custom_provider_names(&config), vec![("lab", true)]);
+    }
+
+    fn custom_provider_names(config: &AppConfig) -> Vec<(&str, bool)> {
+        config
+            .ai_custom_providers
+            .iter()
+            .map(|provider| (provider.id.as_str(), provider.key_optional))
+            .collect()
+    }
+
+    #[test]
+    fn a_saved_key_less_provider_stays_key_optional_through_the_webview_round_trip() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        write_config(&AppConfig::default()).unwrap();
+        // Exactly what the settings view sends for a server added without a key.
+        let incoming: AppConfig = serde_json::from_value(serde_json::json!({
+            "ai_custom_providers": [{
+                "id": "lemonade",
+                "name": "Lemonade",
+                "baseURL": "http://localhost:13305/v1",
+                "keyOptional": true
+            }]
+        }))
+        .unwrap();
+
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
+
+        let on_disk: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(config_path().unwrap()).unwrap())
+                .unwrap();
+        assert_eq!(on_disk["ai_custom_providers"][0]["keyOptional"], true);
+        assert_eq!(
+            custom_provider_names(&read_config().unwrap()),
+            vec![("lemonade", true)]
+        );
+        let visible = serde_json::to_value(get_config_blocking().unwrap()).unwrap();
+        assert_eq!(visible["ai_custom_providers"][0]["keyOptional"], true);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn a_provider_with_no_stored_key_loads_as_key_optional_and_one_with_a_key_does_not() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        secrets::write_ai_secrets(&HashMap::from([(
+            "keyed".to_string(),
+            "sk-real".to_string(),
+        )]))
+        .unwrap();
+        // A file the way earlier builds left it: every flag saved as false.
+        std::fs::write(
+            config_path().unwrap(),
+            serde_json::json!({
+                "ai_custom_providers": [
+                    {"id": "lemonade", "name": "Lemonade", "baseURL": "http://localhost:13305/v1", "key_optional": false},
+                    {"id": "keyed", "name": "Keyed", "baseURL": "https://api.keyed.test/v1", "key_optional": false}
+                ]
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let loaded = read_config().unwrap();
+        assert_eq!(
+            custom_provider_names(&loaded),
+            vec![("lemonade", true), ("keyed", false)]
+        );
+        let visible = serde_json::to_value(get_config_blocking().unwrap()).unwrap();
+        assert_eq!(visible["ai_custom_providers"][0]["keyOptional"], true);
+        assert_eq!(visible["ai_custom_providers"][1]["keyOptional"], false);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn a_stated_key_flag_survives_a_missing_key() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        // Settings restored on another machine without their secrets.
+        std::fs::write(
+            config_path().unwrap(),
+            serde_json::json!({
+                "ai_custom_providers": [
+                    {"id": "corp", "name": "Corp", "baseURL": "https://gw.corp.test/v1", "keyOptional": false},
+                    {"id": "lemonade", "name": "Lemonade", "baseURL": "http://localhost:13305/v1", "keyOptional": true}
+                ]
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            custom_provider_names(&read_config().unwrap()),
+            vec![("corp", false), ("lemonade", true)]
+        );
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn a_save_keeps_the_key_flag_the_settings_view_states() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        write_config(&AppConfig::default()).unwrap();
+        let mut keyed = custom("keyed", "https://api.keyed.test/v1");
+        keyed.key_optional = false;
+        tauri::async_runtime::block_on(set_config(AppConfig {
+            ai_custom_providers: vec![custom("lemonade", "http://localhost:13305/v1"), keyed],
+            ai_keys: HashMap::from([("keyed".to_string(), "sk-real".to_string())]),
+            ..AppConfig::default()
+        }))
+        .unwrap();
+
+        // The file now states both flags, so loading it guesses nothing: a
+        // provider that needs a key and has none asks for one.
+        let stored = read_config().unwrap();
+        assert_eq!(
+            custom_provider_names(&stored),
+            vec![("lemonade", false), ("keyed", false)]
+        );
+        // The key stays out of the config file and the keyed provider still has it.
+        assert_eq!(
+            stored.ai_keys.get("keyed").map(String::as_str),
+            Some("sk-real")
+        );
+        let on_disk = std::fs::read_to_string(config_path().unwrap()).unwrap();
+        assert!(!on_disk.contains("sk-real"));
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn deleting_a_custom_provider_forgets_its_list_refresh_stamp() {
+        let stored = AppConfig {
+            ai_custom_providers: vec![custom("local-lab", "http://lab.test/v1")],
+            ai_model_lists_refreshed_at: BTreeMap::from([
+                ("local-lab".to_string(), 30),
+                ("openai".to_string(), 20),
+            ]),
+            ..AppConfig::default()
+        };
+        // The settings copy no longer lists the provider and does not carry
+        // its stamp either.
+        let mut incoming = AppConfig {
+            ai_model_lists_refreshed_at: BTreeMap::from([("openai".to_string(), 25)]),
+            ..AppConfig::default()
+        };
+
+        keep_newer_model_trust_records(&mut incoming, &stored);
+        drop_stamps_for_removed_providers(&mut incoming);
+
+        assert_eq!(
+            incoming.ai_model_lists_refreshed_at,
+            BTreeMap::from([("openai".to_string(), 25)])
+        );
+
+        // A stale copy that still carries the stamp loses it too, while a
+        // provider that is still there keeps its own.
+        let mut stale = AppConfig {
+            ai_custom_providers: vec![custom("kept", "http://kept.test/v1")],
+            ai_model_lists_refreshed_at: BTreeMap::from([
+                ("local-lab".to_string(), 30),
+                ("kept".to_string(), 7),
+                ("openai".to_string(), 25),
+            ]),
+            ..AppConfig::default()
+        };
+        keep_newer_model_trust_records(&mut stale, &stored);
+        drop_stamps_for_removed_providers(&mut stale);
+        assert_eq!(
+            stale.ai_model_lists_refreshed_at,
+            BTreeMap::from([("kept".to_string(), 7), ("openai".to_string(), 25)])
+        );
+    }
+
+    #[test]
+    fn deleting_a_custom_provider_through_set_config_removes_its_stamp_from_the_file() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        write_config(&AppConfig {
+            ai_custom_providers: vec![custom("local-lab", "http://lab.test/v1")],
+            ai_model_lists_refreshed_at: BTreeMap::from([
+                ("local-lab".to_string(), 30),
+                ("openai".to_string(), 20),
+            ]),
+            ..AppConfig::default()
+        })
+        .unwrap();
+        let mut incoming = get_config_blocking().unwrap();
+        incoming.ai_custom_providers.clear();
+
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
+
+        assert_eq!(
+            read_config().unwrap().ai_model_lists_refreshed_at,
+            BTreeMap::from([("openai".to_string(), 20)])
+        );
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn loading_forgets_blocked_verdicts_that_were_only_a_failed_attempt() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        let with_reason = |verdict, reason: &str| ModelProbe {
+            verdict,
+            reason: reason.into(),
+            probed_at: 5,
+        };
+        write_config(&AppConfig {
+            ai_model_probes: BTreeMap::from([
+                (
+                    "lab/timed-out".to_string(),
+                    with_reason(
+                        ProbeVerdict::Blocked,
+                        "The model did not answer before the probe timed out.",
+                    ),
+                ),
+                (
+                    "lab/refused".to_string(),
+                    with_reason(ProbeVerdict::Blocked, "The provider could not be reached."),
+                ),
+                (
+                    "lab/loading".to_string(),
+                    with_reason(
+                        ProbeVerdict::Blocked,
+                        "The provider answered the probe with HTTP 503.",
+                    ),
+                ),
+                (
+                    "lab/key".to_string(),
+                    with_reason(
+                        ProbeVerdict::Blocked,
+                        "The provider rejected the credential with HTTP 401.",
+                    ),
+                ),
+                (
+                    "lab/no-tools".to_string(),
+                    with_reason(
+                        ProbeVerdict::Blocked,
+                        "The model answered without calling the tool.",
+                    ),
+                ),
+                (
+                    "lab/bad-request".to_string(),
+                    with_reason(
+                        ProbeVerdict::Blocked,
+                        "The provider answered the probe with HTTP 400.",
+                    ),
+                ),
+                (
+                    "lab/fine".to_string(),
+                    with_reason(ProbeVerdict::Verified, "The model called the ping tool."),
+                ),
+            ]),
+            ..AppConfig::default()
+        })
+        .unwrap();
+
+        let kept: Vec<String> = read_config().unwrap().ai_model_probes.into_keys().collect();
+
+        assert_eq!(kept, vec!["lab/bad-request", "lab/fine", "lab/no-tools"]);
         std::fs::remove_dir_all(dir).ok();
     }
 

@@ -235,18 +235,28 @@
       "addDescription": "OpenAI 互換のエンドポイントを、そのベース URL で接続します。",
       "addTitle": "カスタムプロバイダを追加",
       "baseUrlLabel": "ベース URL",
-      "baseUrlNote": "保存済みの API キーが、この新しいアドレスに送信されます。",
+      "baseUrlNote": "保存済みの API キーは、新しいアドレスには送信されません。入力し直すか、新しいサーバーにキーが不要な場合は空欄のままにしてください。",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "{{url}} が API キーを拒否しました。",
+        "rejected": "{{url}} からモデルの一覧が返されませんでした。ローカルのサーバーの多くは、http://localhost:13305/v1 のように、アドレスの末尾に /v1 が必要です。",
+        "timeout": "{{url}} からモデルの一覧を取得するのに時間がかかりすぎました。",
+        "unreachable": "{{url}} に接続できませんでした。サーバーが起動していること、アドレスが正しいことを確認してください。",
+        "unreadable": "{{url}} は応答しましたが、一覧にモデルがありませんでした。サーバーにモデルがダウンロードされているか確認してください。"
+      },
       "editDescription": "名前またはベース URL を変更します。",
       "editTitle": "カスタムプロバイダを編集",
       "errors": {
         "addFailed": "そのプロバイダを追加できませんでした。",
+        "baseUrlCredentials": "キーは URL ではなく、API キーの欄に入力してください。",
         "baseUrlHost": "URL にホストが含まれていません。",
         "baseUrlInvalid": "完全な URL を入力してください。例: https://api.example.com/v1 または http://localhost:1234/v1。",
         "baseUrlProtocol": "https:// を使ってください。ローカルのサーバーであれば http:// でもかまいません。",
+        "baseUrlQuery": "? とそれ以降のすべてを削除してください。",
         "baseUrlRequired": "ベース URL は必須です。",
         "idFormat": "小文字の英字、数字、ハイフンのみを使ってください。例: acme。",
         "idRequired": "ID は必須です。",
+        "idTooLong": "64 文字以内にしてください。",
         "nameRequired": "名前は必須です。",
         "saveFailed": "そのプロバイダを保存できませんでした。"
       },
@@ -257,7 +267,9 @@
       "keyPlaceholder": "不要な場合は空欄のままにしてください",
       "keyPlaceholderStored": "新しく入力しない限り、保存済みのキーが使われます",
       "namePlaceholder": "Acme",
-      "submitAdd": "プロバイダを追加"
+      "saveAnyway": "そのまま保存",
+      "submitAdd": "プロバイダを追加",
+      "submitAddAnyway": "モデルなしで追加"
     },
     "instructions": {
       "capabilitiesTitle": "エージェントの機能",
@@ -423,11 +435,13 @@
       "messages": {
         "keyRemoved": "{{provider}} のキーを削除しました。",
         "keyRemovedAccessDisabled": "{{provider}} のキーを削除しました。AI の利用は無効になっています。",
-        "keySavedAddModels": "{{provider}} のキーを保存しました。モデルは下から手動で追加してください。",
         "keySavedCheckedOnUse": "{{provider}} のキーを保存しました。初回利用時に確認されます。",
+        "keySavedModelsNotListed": "{{provider}} のキーを保存しましたが、モデルは一覧に表示されませんでした。{{reason}}",
         "ollamaConnected": "Ollama に接続しました · {{model}}",
         "preferencesReset": "AI アシスタントの設定を既定に戻しました。",
         "providerAdded": "{{provider}} を追加しました。",
+        "providerAddedAt": "{{provider}} を {{url}} に追加しました。",
+        "providerAddedWithoutModels": "{{provider}} をモデルなしで追加しました。モデルは下で名前を指定して追加してください。",
         "providerConnected": "{{provider}} に接続しました。",
         "providerUpdated": "{{provider}} を更新しました。",
         "providerUpdatedWithoutModels": "{{provider}} を更新しました。モデルの一覧は更新できませんでした。"

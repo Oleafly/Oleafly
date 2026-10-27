@@ -47,6 +47,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Custom providers that need no API key, such as a local Lemonade, LM Studio
+  or llama.cpp server, stopped working after the first save. Oleafly lost the
+  "no key needed" setting when it saved, so every request failed with "No API
+  key is set". It now keeps the setting and repairs providers saved by
+  earlier versions.
+- With a key-less custom provider selected, the assistant showed "Connect a
+  provider", and picking one of its models in the chat hid the message box.
+- Adding a custom provider now fetches its model list first and tells you
+  what went wrong if that fails, for example that the server isn't running or
+  the key was refused. An address entered without /v1, like
+  `http://localhost:13305`, is saved as `http://localhost:13305/v1` when that
+  is where the models are. You can still add a provider that lists no models
+  and type the model names yourself.
+- When a custom provider had no models, requests went to another provider you
+  had set up, which could be a cloud one, without any sign. Now the assistant
+  says the provider needs a model.
+- A model that took a while to load on its first request, or a server that
+  was briefly unreachable, got marked as unable to use tools until you
+  checked it again. Now only the model's actual answer decides that. Local
+  and custom servers get two minutes to answer the check, and models that
+  were blocked this way get checked again.
+- When you changed a custom provider's address, the dialog said the saved key
+  would be sent to the new one, but Oleafly removed it. The dialog now says
+  the key stays behind: enter it again, or leave it blank for a server that
+  needs no key.
+- Custom providers now appear in the inline edit model picker. Research tasks
+  and the Tools converters work with custom providers that need no key, and
+  Image to LaTeX works offline with one running on your computer.
+- If a local server sends an error partway through a reply, Oleafly shows
+  that error instead of "The connection closed".
+- The single API key from early versions is no longer sent to a custom
+  provider.
+- A base URL pasted with /chat/completions or /models on the end is trimmed.
+
 - DeepSeek Harness couldn't open a conversation and said "The agent
   disconnected." It prints a log line on its output while a session starts,
   and Oleafly closed the connection at the first line that wasn't a protocol

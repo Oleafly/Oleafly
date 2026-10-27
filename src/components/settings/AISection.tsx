@@ -14,6 +14,7 @@ import {
 } from "@/lib/tauri";
 import { defaultModel, getProvider, supportsModelDiscovery } from "@/lib/ai-providers";
 import {
+  clearModelListThrottle,
   enabledModels,
   mergeFetchedModels,
   pickActiveModel,
@@ -52,7 +53,14 @@ import {
   normalizeBaseURL,
   type AddCustomProviderInput,
   type CustomProviderEditTarget,
+  type CustomProviderSubmitResult,
 } from "./ai/AddCustomProviderDialog";
+import {
+  describeModelListFailure,
+  discoverCustomModels,
+  type CustomModelDiscovery,
+} from "./ai/custom-provider-discovery";
+import { MATHPIX_TOOLS_PROVIDER } from "@/features/tools-ai/tools-choice";
 import { editableKeys, mergeKeyChanges, withKey, withoutKey } from "./ai-keys";
 import { agentErrorKind } from "@/lib/agent-backend";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
@@ -83,6 +91,19 @@ async function discoverModels(args: {
     return { ok: false, reason: agentErrorKind(error) === "auth" ? "invalid-key" : "unreachable" };
   }
 }
+
+function customDiscoveryResult(res: CustomModelDiscovery): DiscoveryResult {
+  if (res.ok) return { ok: true, models: res.models };
+  return { ok: false, reason: res.failure === "auth" ? "invalid-key" : "unreachable" };
+}
+
+// Ids that already mean something else to the app.
+const RESERVED_PROVIDER_IDS = new Set([MATHPIX_TOOLS_PROVIDER]);
+
+// Lists a provider's new address under an id no saved provider can have
+// (user ids take no underscore), so Rust neither sends nor refuses for the
+// key that stays with the old address.
+const ADDRESS_CHECK_SUFFIX = "__address-check";
 
 const DEFAULT_CFG: AppConfig = {
   github_token: "",
@@ -223,9 +244,17 @@ export function AISection() {
   useEffect(() => {
     void getConfig().then((c) => {
       // One-time migration from the old single ai_api_key field to the per-provider map.
+      // That key belonged to a hosted catalog provider, never to a host
+      // address or a server the user added.
       const merged: Record<string, string> = { ...c.ai_keys };
       const legacy = c.ai_provider || "openai";
-      if (Object.keys(merged).length === 0 && c.ai_api_key) {
+      const legacyProvider = getProvider(legacy);
+      if (
+        Object.keys(merged).length === 0 &&
+        c.ai_api_key &&
+        legacyProvider &&
+        !legacyProvider.isHost
+      ) {
         merged[legacy] = c.ai_api_key;
       }
       const next: AppConfig = { ...DEFAULT_CFG, ...c, ai_keys: merged };
@@ -372,12 +401,22 @@ export function AISection() {
     try {
       const custom = cfg.ai_custom_providers.find((c) => c.id === id);
       const provider = getProvider(id);
-      const res = await discoverModels({
-        providerId: id,
-        key: value,
-        baseURL: custom?.baseURL,
-        isCustom: Boolean(custom),
-      });
+      // The key is checked against the saved address; a wrong address is
+      // fixed in the edit dialog, so /v1 is not tried here.
+      const customRes: CustomModelDiscovery | null = custom
+        ? await discoverCustomModels({
+            providerId: id,
+            baseURL: normalizeBaseURL(custom.baseURL),
+            savedBaseURL: normalizeBaseURL(custom.baseURL),
+            key: value,
+            tryVersioned: false,
+          })
+        : null;
+      const res: DiscoveryResult = customRes
+        ? customDiscoveryResult(customRes)
+        : await discoverModels({ providerId: id, key: value });
+      // A gateway may guard /models but still take the key for chat, so a
+      // custom provider keeps the key and says what the list check got.
       if (!res.ok && res.reason === "invalid-key" && !custom) {
         setStatus((s) => ({ ...s, [id]: "error" }));
         setErrorMsg((m) => ({ ...m, [id]: t(($) => $.settings.ai.section.errors.invalidKey) }));
@@ -412,13 +451,17 @@ export function AISection() {
       const validatedText = validated
         ? t(($) => $.settings.ai.section.messages.providerConnected, { provider: label })
         : t(($) => $.settings.ai.section.messages.keySavedCheckedOnUse, { provider: label });
-      setMsg({
-        ok: true,
-        text:
-          custom && !res.ok
-            ? t(($) => $.settings.ai.section.messages.keySavedAddModels, { provider: custom.name })
-            : validatedText,
-      });
+      if (custom && customRes && !customRes.ok) {
+        setMsg({
+          ok: false,
+          text: t(($) => $.settings.ai.section.messages.keySavedModelsNotListed, {
+            provider: custom.name,
+            reason: describeModelListFailure(customRes.failure, customRes.baseURL),
+          }),
+        });
+      } else {
+        setMsg({ ok: true, text: validatedText });
+      }
     } catch (e) {
       setStatus((s) => ({ ...s, [id]: "error" }));
       setErrorMsg((m) => ({ ...m, [id]: describeError(e) }));
@@ -427,18 +470,33 @@ export function AISection() {
     }
   };
 
-  // Adds a user-defined OpenAI-compatible provider. Discovery is attempted
-  // but never blocks the save - a custom base that doesn't expose /models
-  // just starts with an empty model list for manual entry.
+  // Adds a user-defined OpenAI-compatible provider once its model list
+  // answers, at the corrected address when only /v1 did. When nothing is
+  // listed the dialog says why, and submitting again (`force`) saves it with
+  // an empty list for manual entry, since some gateways have no /models.
   const addCustomProvider = async (
-    input: AddCustomProviderInput
-  ): Promise<{ ok: boolean; message?: string }> => {
+    input: AddCustomProviderInput,
+    options?: { force?: boolean },
+  ): Promise<CustomProviderSubmitResult> => {
     const { id, name, apiKey } = input;
-    const baseURL = normalizeBaseURL(input.baseURL);
-    if (getProvider(id) || cfg.ai_custom_providers.some((c) => c.id === id)) {
+    const enteredURL = normalizeBaseURL(input.baseURL);
+    if (
+      getProvider(id) ||
+      RESERVED_PROVIDER_IDS.has(id) ||
+      cfg.ai_custom_providers.some((c) => c.id === id)
+    ) {
       return { ok: false, message: t(($) => $.settings.ai.section.errors.providerIdInUse) };
     }
-    const res = await discoverModels({ providerId: id, key: apiKey, baseURL, isCustom: true });
+    const res = await discoverCustomModels({ providerId: id, baseURL: enteredURL, key: apiKey });
+    if (!res.ok && !options?.force) {
+      return {
+        ok: false,
+        canForce: true,
+        message: describeModelListFailure(res.failure, res.baseURL),
+      };
+    }
+    // Discovery's address is the entered one unless only /v1 answered.
+    const baseURL = res.baseURL;
     const models: StoredModel[] = res.ok ? mergeFetchedModels([], res.models) : [];
     const customProvider: CustomProvider = { id, name, baseURL, keyOptional: !apiKey };
     const nextKeys = apiKey ? { ...cfg.ai_keys, [id]: apiKey } : cfg.ai_keys;
@@ -460,34 +518,58 @@ export function AISection() {
         setKeys((k) => ({ ...k, [id]: apiKey }));
       }
       setOpenProviders((m) => ({ ...m, [id]: true }));
-      setMsg({ ok: true, text: t(($) => $.settings.ai.section.messages.providerAdded, { provider: name }) });
+      let text = t(($) => $.settings.ai.section.messages.providerAdded, { provider: name });
+      if (!res.ok) {
+        text = t(($) => $.settings.ai.section.messages.providerAddedWithoutModels, { provider: name });
+      } else if (baseURL !== enteredURL) {
+        text = t(($) => $.settings.ai.section.messages.providerAddedAt, { provider: name, url: baseURL });
+      }
+      setMsg({ ok: res.ok, text });
       return { ok: true };
     } catch (e) {
       return { ok: false, message: describeError(e) };
     }
   };
 
+  // Saves a rename even while the server is down, but a new address or key
+  // has to list models first, or be confirmed with `force`.
   const editCustomProvider = async (
-    input: AddCustomProviderInput
-  ): Promise<{ ok: boolean; message?: string }> => {
+    input: AddCustomProviderInput,
+    options?: { force?: boolean },
+  ): Promise<CustomProviderSubmitResult> => {
     const { id, name, apiKey } = input;
     const current = cfg.ai_custom_providers.find((c) => c.id === id);
     if (!current) return { ok: false, message: t(($) => $.settings.ai.section.errors.providerGone) };
-    const baseURL = normalizeBaseURL(input.baseURL);
-    const urlChanged = baseURL !== normalizeBaseURL(current.baseURL);
-    const res = await discoverModels({
-      providerId: id,
-      key: apiKey || undefined,
-      baseURL: urlChanged ? baseURL : undefined,
-      isCustom: true,
+    const enteredURL = normalizeBaseURL(input.baseURL);
+    // Compared as stored: Rust drops the key when the saved address changes
+    // at all, even when only a pasted endpoint path is trimmed.
+    const savedURL = current.baseURL.trim();
+    const hadKey = (cfg.ai_keys[id] ?? "").trim().length > 0;
+    // Moving without typing a key means the new server needs none; the saved
+    // key stays behind, so the check must not borrow it either.
+    const leavesKeyBehind = hadKey && !apiKey && enteredURL !== savedURL;
+    const discovery = await discoverCustomModels({
+      providerId: leavesKeyBehind ? `${id}${ADDRESS_CHECK_SUFFIX}` : id,
+      baseURL: enteredURL,
+      savedBaseURL: leavesKeyBehind ? undefined : savedURL,
+      key: apiKey,
     });
+    if (!discovery.ok && (enteredURL !== savedURL || apiKey) && !options?.force) {
+      return {
+        ok: false,
+        canForce: true,
+        message: describeModelListFailure(discovery.failure, discovery.baseURL),
+      };
+    }
+    const res = customDiscoveryResult(discovery);
+    const baseURL = discovery.baseURL;
     const existingModels = cfg.ai_provider_models[id] ?? [];
     const mergedModels = mergeFetchedModels(existingModels, res.ok ? res.models : null);
     const nextProvider: CustomProvider = {
       ...current,
       name,
       baseURL,
-      keyOptional: apiKey ? false : current.keyOptional,
+      keyOptional: apiKey ? false : current.keyOptional || leavesKeyBehind,
     };
     const nextKeys = apiKey ? { ...cfg.ai_keys, [id]: apiKey } : cfg.ai_keys;
     const nextModel =
@@ -554,16 +636,20 @@ export function AISection() {
       const nextKeys = withoutKey(cfg.ai_keys, id);
       const nextModels = { ...cfg.ai_provider_models };
       delete nextModels[id];
+      const nextStamps = { ...cfg.ai_model_lists_refreshed_at };
+      delete nextStamps[id];
       const wasActive = cfg.ai_provider === id;
       const next: AppConfig = {
         ...cfg,
         ai_custom_providers: cfg.ai_custom_providers.filter((c) => c.id !== id),
         ai_provider_models: nextModels,
+        ai_model_lists_refreshed_at: nextStamps,
         ai_keys: nextKeys,
         ai_provider: wasActive ? "" : cfg.ai_provider,
         ai_model: wasActive ? "" : cfg.ai_model,
       };
       await persist(next);
+      clearModelListThrottle(id);
       setKeys(editableKeys(nextKeys));
     } catch (e) {
       setMsg({ ok: false, text: describeError(e) });

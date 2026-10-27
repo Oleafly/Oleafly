@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { defaultModel } from "@/lib/ai-providers";
 import { defaultBrief, type ResearchTask, type ResearchTaskDraft } from "./research-tasks";
 
 const native = vi.hoisted(() => ({ invoke: vi.fn() }));
@@ -87,6 +88,27 @@ describe("research starter task integration", () => {
     });
   });
 
+  it("runs on a key-less custom provider, saved or fallen back to, with its own model", async () => {
+    const lemonade = { id: "lemonade", name: "Lemonade", baseURL: "http://localhost:13305/v1", keyOptional: true };
+    const models = { lemonade: [{ id: "off", enabled: false }, { id: "Qwen3-4B", enabled: true }] };
+    const configs = [
+      { ai_provider: "lemonade", ai_model: "Qwen3-4B", ai_custom_providers: [lemonade], ai_provider_models: models },
+      { ai_provider: "openai", ai_model: "gpt-4o", ai_keys: {}, ai_custom_providers: [lemonade], ai_provider_models: models },
+    ];
+    for (const config of configs) {
+      native.invoke.mockReset();
+      native.invoke.mockImplementation(async (command, args) => {
+        if (command === "research_task_list") return [];
+        if (command === "get_config") return config;
+        if (command === "research_task_create") return args.draft;
+        throw new Error(`Unexpected command: ${command}`);
+      });
+      await ensureResearchStarterTask(input(`lemonade-${config.ai_provider}`));
+      const [, args] = native.invoke.mock.calls.find(([command]) => command === "research_task_create") ?? [];
+      expect((args as { draft: ResearchTaskDraft }).draft).toMatchObject({ agentId: "lemonade", modelId: "Qwen3-4B" });
+    }
+  });
+
   it("recognizes a persisted starter on reload without duplicating it or requiring provider settings", async () => {
     native.invoke.mockResolvedValue([{ ...input(), status: "queued" }]);
     await ensureResearchStarterTask(input());
@@ -104,7 +126,7 @@ describe("research starter task integration", () => {
     const drafts = native.invoke.mock.calls.filter(([command]) => command === "research_task_create").map(([, args]) => args.draft as ResearchTaskDraft);
     expect(drafts).toHaveLength(2);
     expect(drafts.map((draft) => draft.projectId).sort()).toEqual(["first", "second"]);
-    for (const draft of drafts) expect(draft).toMatchObject({ prompt: input().prompt, runtimeId: "builtin", agentId: "openai", modelId: "" });
+    for (const draft of drafts) expect(draft).toMatchObject({ prompt: input().prompt, runtimeId: "builtin", agentId: "openai", modelId: defaultModel("openai") });
   });
 
   it("retries an ambiguous task-save failure on the existing project and reuses the task already persisted", async () => {

@@ -755,7 +755,7 @@ fn endpoint_locality_controls_the_default_idle_timeout_independently_of_auth() {
         caps: crate::caps::ModelCaps::default(),
     };
     let cloud = Resolved {
-        provider_id: "remote-keyless-server".into(),
+        provider_id: "groq".into(),
         credential: String::new(),
         auth: None,
         wire: Wire::OpenAiChat {
@@ -767,6 +767,45 @@ fn endpoint_locality_controls_the_default_idle_timeout_independently_of_auth() {
 
     assert_eq!(default_idle_timeout(&local), Duration::from_secs(360));
     assert_eq!(default_idle_timeout(&cloud), Duration::from_secs(120));
+}
+
+#[test]
+fn a_custom_provider_on_a_lan_host_gets_the_self_hosted_idle_timeout() {
+    let custom = |base_url: &str| Resolved {
+        provider_id: "lemonade".into(),
+        model_id: "Qwen3-8B".into(),
+        credential: String::new(),
+        auth: None,
+        wire: Wire::OpenAiChat {
+            base_url: base_url.into(),
+            reasoning_content: true,
+        },
+        caps: crate::caps::ModelCaps::default(),
+    };
+    for base_url in [
+        "http://box.lan:8080/v1",
+        "http://box.local:13305/v1",
+        "http://100.64.12.5:8080/v1",
+        "http://host.docker.internal:1234/v1",
+    ] {
+        let resolved = custom(base_url);
+        assert!(!resolved.is_local_endpoint(), "{base_url}");
+        assert_eq!(
+            default_idle_timeout(&resolved),
+            Duration::from_secs(360),
+            "{base_url}"
+        );
+    }
+
+    // A hosted catalog provider keeps the cloud default.
+    let hosted = Resolved {
+        provider_id: "openai".into(),
+        wire: Wire::OpenAiResponses {
+            base_url: crate::provider::OPENAI_BASE.into(),
+        },
+        ..custom("http://unused")
+    };
+    assert_eq!(default_idle_timeout(&hosted), Duration::from_secs(120));
 }
 
 #[test]
@@ -1122,6 +1161,135 @@ fn made_up_call_ids_differ_from_one_stream_to_the_next() {
     let (_, first) = run(WireKind::OpenAi, chat);
     let (_, second) = run(WireKind::OpenAi, chat);
     assert_ne!(first.tool_calls()[0].id, second.tool_calls()[0].id);
+}
+
+#[test]
+fn a_chat_error_frame_ends_the_stream_with_the_servers_message_and_status() {
+    // llama.cpp, LM Studio and Lemonade report a failure as a frame of its own.
+    let raw = sse(&[
+        r#"{"choices":[{"delta":{"content":"partial"}}]}"#,
+        r#"{"error":{"message":"Model failed to load: out of memory","type":"server_error","code":500}}"#,
+    ]);
+    let (events, mut translator) = run(WireKind::OpenAi, &raw);
+    assert_eq!(text_of(&events), "partial");
+    assert!(!events.iter().any(|e| matches!(e, AgentEvent::Done { .. })));
+    let error = translator
+        .take_error()
+        .expect("the error frame is terminal");
+    assert!(
+        matches!(error, AgentError::Provider { status: 500, .. }),
+        "{error:?}"
+    );
+    assert!(error.retryable());
+    assert!(
+        error
+            .to_string()
+            .contains("Model failed to load: out of memory"),
+        "{error}"
+    );
+}
+
+#[test]
+fn a_chat_error_frame_takes_its_status_from_a_numeric_code() {
+    let (_, bad_request) = run(
+        WireKind::OpenAi,
+        &sse(&[
+            r#"{"error":{"code":400,"message":"the request exceeds the available context size, try increasing it","type":"exceed_context_size_error"}}"#,
+        ]),
+    );
+    let error = bad_request.error().expect("a stream error");
+    assert!(
+        matches!(error, AgentError::Provider { status: 400, .. }),
+        "{error:?}"
+    );
+    assert!(!error.retryable());
+    assert!(error.is_context_overflow());
+
+    let (_, textual_code) = run(
+        WireKind::OpenAi,
+        &sse(&[r#"{"error":{"message":"Slow down.","code":"503"}}"#]),
+    );
+    assert_eq!(textual_code.error().unwrap().status(), Some(503));
+
+    for code in [
+        r#""code":"invalid_request""#,
+        r#""code":200"#,
+        r#""code":0"#,
+        r#""code":70000"#,
+        r#""code":null"#,
+        r#""type":"server_error""#,
+    ] {
+        let (_, other) = run(
+            WireKind::OpenAi,
+            &sse(&[&format!(r#"{{"error":{{"message":"boom",{code}}}}}"#)]),
+        );
+        assert_eq!(other.error().unwrap().status(), Some(500), "{code}");
+    }
+}
+
+#[test]
+fn a_chat_error_frame_may_be_a_plain_string() {
+    let (events, translator) = run(
+        WireKind::OpenAi,
+        &sse(&[r#"{"error":"The model has crashed without additional information."}"#]),
+    );
+    assert!(events.is_empty());
+    let error = translator.error().expect("a stream error");
+    assert!(
+        matches!(error, AgentError::Provider { status: 500, .. }),
+        "{error:?}"
+    );
+    assert!(error
+        .to_string()
+        .contains("The model has crashed without additional information."));
+
+    // An error object with no message still says what the server called it.
+    let (_, typed) = run(
+        WireKind::OpenAi,
+        &sse(&[r#"{"error":{"type":"overloaded_error"}}"#]),
+    );
+    assert!(typed
+        .error()
+        .unwrap()
+        .to_string()
+        .contains("overloaded_error"));
+}
+
+#[test]
+fn an_empty_or_null_error_field_on_a_chat_chunk_is_not_a_failure() {
+    let raw = sse(&[
+        r#"{"error":null,"choices":[{"delta":{"content":"a"}}]}"#,
+        r#"{"error":"","choices":[{"delta":{"content":"b"}}]}"#,
+        r#"{"error":{},"choices":[{"delta":{"content":"c"},"finish_reason":"stop"}]}"#,
+        "[DONE]",
+    ]);
+    let (events, translator) = run(WireKind::OpenAi, &raw);
+    assert!(translator.error().is_none());
+    assert_eq!(text_of(&events), "abc");
+}
+
+#[test]
+fn a_chat_error_frame_fails_the_stream_with_the_provider_error_not_a_dropped_connection() {
+    let raw = sse(&[r#"{"error":{"message":"slot unavailable","code":503}}"#]);
+    let mut state = StreamState::new(WireKind::OpenAi);
+    let mut events = Vec::new();
+    state
+        .push(raw.as_bytes(), &mut |event| events.push(event))
+        .unwrap();
+    assert!(state.translator.error().is_some());
+    state.finish(&mut |event| events.push(event)).unwrap();
+
+    let error = finalize(
+        state.translator,
+        state.outcome,
+        &mut state.budget,
+        &mut |event| events.push(event),
+    )
+    .unwrap_err();
+    assert!(
+        matches!(&error, AgentError::Provider { status: 503, message, .. } if message == "slot unavailable"),
+        "{error:?}"
+    );
 }
 
 #[test]

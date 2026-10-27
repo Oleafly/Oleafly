@@ -301,6 +301,43 @@ describe("explicit choices", () => {
     expect(mocks.listOllamaModelDetails).toHaveBeenCalledWith("http://192.168.1.9:11434");
   });
 
+  describe("a custom provider", () => {
+    const customConfig = (baseURL: string, overrides: Partial<AppConfig> = {}) =>
+      config({
+        ai_tools_model: { provider: "lab", model: "qwen-vl" },
+        ai_custom_providers: [{ id: "lab", name: "Lab server", baseURL, keyOptional: true }],
+        ai_provider_models: { lab: [stored("qwen-vl", true, { name: "Qwen VL", metadata: opusMetadata })] },
+        ...overrides,
+      });
+
+    it("on this computer works in Offline mode and keeps the local image and reply limits", async () => {
+      useSettingsStore.setState({ offline: true });
+      for (const baseURL of ["http://localhost:13305/v1", "http://127.0.0.1:1234/v1"]) {
+        mocks.getConfig.mockResolvedValue(customConfig(baseURL));
+        const model = await resolveToolsModel("image");
+        expect(model).toMatchObject({
+          engine: "llm",
+          providerId: "lab",
+          modelId: "qwen-vl",
+          hosted: false,
+          destination: { kind: "device" },
+        });
+        expect(model.engine === "llm" && toolsMaxTokens({ hosted: model.hosted })).toBe(12000);
+      }
+      expect(mocks.listOllamaModelDetails).not.toHaveBeenCalled();
+    });
+
+    it("on another computer is hosted: Offline mode refuses it and the hosted limits apply", async () => {
+      mocks.getConfig.mockResolvedValue(customConfig("https://gw.example/v1"));
+      await expect(resolveToolsModel("image")).resolves.toMatchObject({
+        hosted: true,
+        destination: { kind: "provider", providerId: "lab", name: "Lab server" },
+      });
+      useSettingsStore.setState({ offline: true });
+      await expect(resolveToolsModel("image")).rejects.toThrow(errors.offline);
+    });
+  });
+
   it("Mathpix needs saved keys and reads images only", async () => {
     mocks.getConfig.mockResolvedValue(config({ ai_tools_model: { provider: "mathpix", model: "mathpix" } }));
     await expect(resolveToolsModel("image")).resolves.toEqual({
@@ -400,6 +437,37 @@ describe("the editor's fallback to the assistant's model", () => {
     await expect(resolveToolsModel("image", editor)).rejects.toThrow(
       researchTools.converterErrors.ollamaUnavailable,
     );
+  });
+
+  it("leaves a custom assistant provider with no model out of the fallback", async () => {
+    mocks.listOllamaModelDetails.mockRejectedValue(new Error("connection refused"));
+    mocks.getConfig.mockResolvedValue(
+      config({
+        ai_provider: "lab",
+        ai_model: "",
+        ai_custom_providers: [{ id: "lab", name: "Lab server", baseURL: "http://localhost:1234/v1", keyOptional: true }],
+      }),
+    );
+    await expect(resolveToolsModel("image", editor)).rejects.toThrow(researchTools.converterErrors.ollamaUnavailable);
+  });
+
+  it("uses a key-less assistant on this computer, even in Offline mode", async () => {
+    useSettingsStore.setState({ offline: true });
+    mocks.listOllamaModelDetails.mockRejectedValue(new Error("connection refused"));
+    mocks.getConfig.mockResolvedValue(
+      config({
+        ai_provider: "lab",
+        ai_model: "qwen-vl",
+        ai_custom_providers: [{ id: "lab", name: "Lab server", baseURL: "http://localhost:1234/v1", keyOptional: true }],
+        ai_provider_models: { lab: [stored("qwen-vl", true, { metadata: opusMetadata })] },
+      }),
+    );
+    await expect(resolveToolsModel("image", editor)).resolves.toMatchObject({
+      providerId: "lab",
+      hosted: false,
+      destination: { kind: "device" },
+      assistantFallback: true,
+    });
   });
 
   it("does not hide other errors behind the assistant's model", async () => {
