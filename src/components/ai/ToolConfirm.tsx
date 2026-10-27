@@ -11,7 +11,8 @@ import { isAutoApprovable } from "@/store/mcp-approvals";
 import type { McpApprovalDetails } from "@/lib/mcp-agent-tools";
 import { useDisplayPath, useDisplayText } from "@/lib/display-path";
 import { basename } from "@/lib/path-utils";
-import { toolRisk, type ResearchTaskApprovalDetails } from "@oleafly/ai-tools";
+import type { ResearchTaskApprovalDetails } from "@oleafly/ai-tools";
+import { toolRisk } from "@oleafly/ai-tools/approval-risk";
 
 export function firstChangedLine(oldText: string, newText: string): number {
   const a = oldText.split("\n");

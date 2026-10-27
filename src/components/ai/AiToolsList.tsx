@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { toolRisk, type ToolRisk } from "@oleafly/ai-tools";
+import { toolRisk, type ToolRisk } from "@oleafly/ai-tools/approval-risk";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";

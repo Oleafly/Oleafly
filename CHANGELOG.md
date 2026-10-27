@@ -44,6 +44,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only offered your OpenAI key, the only kind it accepts.
 - Codex can use your own Codex CLI when it is at least as new as the one its
   bridge bundles, and starts in the mode you last picked.
+- Oleafly loads less code when it starts. Settings, the tour guide, the
+  diagram composer and most dialogs load the first time you open them. PDF
+  page rendering loads when something first needs it, and KaTeX when you
+  first open a LaTeX or Markdown file. Once you've finished the tours, the
+  library screen loads about 2 MB less. Mermaid diagrams in chat use the
+  app's KaTeX instead of bundling an older copy. Cloud sync only loads its
+  background code on a computer connected to Dropbox, or once you open
+  Settings.
 
 ### Fixed
 

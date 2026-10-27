@@ -52,7 +52,6 @@ import { refineAvailable, refineWithAi } from "@/features/import-refine";
 import { LatexSourceViewer } from "@/components/import/LatexSourceViewer";
 import { cn, isMac } from "@/lib/utils";
 import { formatNumber } from "@/lib/intl";
-import { pdfPageToPng } from "@/lib/pdf-image";
 import { notifyError, toast } from "@/lib/toast";
 import { isNativeFileDrop, takeNativeDrop } from "@/lib/native-drop";
 import { useFullscreen } from "@/lib/use-fullscreen";
@@ -260,6 +259,7 @@ function PagePreviews() {
     void (async () => {
       for (let p = 1; p <= Math.min(pageCount || 1, 40); p++) {
         try {
+          const { pdfPageToPng } = await import("@/lib/pdf-image");
           const url = await pdfPageToPng(pdfBytes, p, 1.5, "#ffffff");
           if (cancelled) return;
           setPngs((prev) => [...prev, { page: p, url }]);

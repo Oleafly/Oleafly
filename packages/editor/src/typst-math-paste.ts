@@ -1,6 +1,6 @@
 import { type EditorState, type Extension, Prec, StateEffect, StateField, type Transaction } from "@codemirror/state";
 import { EditorView, keymap, showTooltip, type Tooltip, type TooltipView } from "@codemirror/view";
-import { typstMathVersion } from "./math-render";
+import { typstMathVersion } from "./typst-math-render";
 import { insideTypstMath, typstMathAt } from "./math-typst";
 import { editorMessage } from "./messages";
 
