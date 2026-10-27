@@ -7,7 +7,13 @@ use oleafly_acp::controls::{ConfigKind, ConfigValue};
 use serde_json::{json, Value};
 use std::{path::Path, sync::Arc, time::Duration};
 
-const GONE: &str = "The agent no longer has this conversation. Start a new one.";
+const GONE: &str = "acp.start.conversation_gone";
+
+fn gone(error: &str) -> bool {
+    crate::app_error::code(error).as_deref() == Some(GONE)
+        && crate::app_error::english_error(error)
+            == "The agent no longer has this conversation. Start a new one."
+}
 
 fn requests(root: &Path) -> Vec<Value> {
     std::fs::read_to_string(root.join("requests.jsonl"))
@@ -84,7 +90,7 @@ async fn a_resume_that_opens_another_session_is_refused_before_any_prompt() {
         .reconnect(&id, Some("fixture-window".into()))
         .await
         .unwrap_err();
-    assert_eq!(error, GONE);
+    assert!(gone(&error), "{error}");
     let sent = requests(temp.path());
     let resumed = after(&sent, "session/resume");
     assert!(resumed
@@ -95,7 +101,7 @@ async fn a_resume_that_opens_another_session_is_refused_before_any_prompt() {
         .any(|request| request["method"] == "session/close"
             && request["params"]["sessionId"] == "fixture-other"));
     let record = runtime.record(&id).unwrap();
-    assert_eq!(record.error.as_deref(), Some(GONE));
+    assert!(gone(record.error.as_deref().unwrap()));
     assert_eq!(record.native_session_id.as_deref(), Some("fixture-native"));
     assert!(!serde_json::to_string(&runtime.events_all(&id).unwrap())
         .unwrap()
@@ -117,9 +123,16 @@ fn a_conversation_made_in_another_hermes_profile_is_not_resumed() {
         hermes_profile: Some("default".into()),
         ..SessionRecord::default()
     };
-    assert!(moved_target(&in_default, &project)
-        .unwrap()
-        .contains("Hermes profile"));
+    assert_eq!(
+        moved_target(&in_default, &project),
+        Some("acp.start.moved_profile")
+    );
+    assert!(
+        crate::app_error::english_error(&crate::acp::failures::coded(
+            moved_target(&in_default, &project).unwrap()
+        ))
+        .contains("Hermes profile")
+    );
     assert_eq!(moved_target(&in_default, &default), None);
     let in_project = SessionRecord {
         hermes_profile: Some(project_profile_name("thesis")),
@@ -178,7 +191,7 @@ async fn a_conversation_with_turns_the_agent_lost_is_reported_plainly() {
         .reconnect(&id, Some("fixture-window".into()))
         .await
         .unwrap_err();
-    assert_eq!(error, GONE);
+    assert!(gone(&error), "{error}");
     assert!(after(&requests(temp.path()), "session/load")
         .iter()
         .all(|request| request["method"] != "session/new"));
@@ -468,8 +481,16 @@ async fn a_turn_that_ends_without_a_reply_says_so() {
     assert_eq!(after_empty.len(), 1, "{after_empty:?}");
     assert_eq!(after_empty[0]["severity"], "warning");
     assert_eq!(
-        after_empty[0]["title"],
+        crate::app_error::code(after_empty[0]["title"].as_str().unwrap()).as_deref(),
+        Some("acp.notice.empty_turn")
+    );
+    assert_eq!(
+        crate::app_error::english_error(after_empty[0]["title"].as_str().unwrap()),
         "The agent ended its turn without replying."
+    );
+    assert_eq!(
+        crate::app_error::english_error(after_empty[0]["description"].as_str().unwrap()),
+        "Check the agent's model and sign-in, then try again."
     );
     runtime
         .prompt(&id, "Hello".into(), Vec::new())
@@ -641,7 +662,14 @@ async fn a_start_stuck_before_the_agent_answers_can_be_cancelled() {
         .expect("the start ends soon after it is cancelled")
         .unwrap()
         .unwrap_err();
-    assert_eq!(error, "The start was cancelled.");
+    assert!(crate::acp::failures::is_code(
+        &error,
+        crate::acp::failures::START_CANCELLED
+    ));
+    assert_eq!(
+        crate::app_error::english_error(&error),
+        "The start was cancelled."
+    );
     #[cfg(unix)]
     tokio::time::timeout(Duration::from_secs(5), async {
         while unsafe { libc::kill(pid, 0) } == 0 {

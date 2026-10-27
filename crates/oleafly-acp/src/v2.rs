@@ -31,9 +31,7 @@ pub fn initialize_params_v2(options: &ClientOptions) -> Value {
 /// part of the v2 baseline; `session/load` does not exist in v2.
 pub fn parse_initialize_v2(response: &Value) -> Result<Negotiated, InitializeError> {
     if response.get("protocolVersion").and_then(Value::as_u64) != Some(2) {
-        return Err(InitializeError::NotAcp(
-            "This agent does not support ACP version 2.".into(),
-        ));
+        return Err(InitializeError::NotAcp(2));
     }
     let caps = &response["capabilities"];
     let session = &caps["session"];

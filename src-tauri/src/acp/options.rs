@@ -396,8 +396,8 @@ impl AcpRuntime {
                     &mut state,
                     "notice",
                     json!({"severity": "warning",
-                        "title": "Hermes lost the project tools when its model changed.",
-                        "description": "Reconnect to restore them."}),
+                        "title": super::failures::coded(super::failures::HERMES_TOOLS_LOST),
+                        "description": super::failures::coded(super::failures::HERMES_TOOLS_ADVICE)}),
                 );
             }
         }

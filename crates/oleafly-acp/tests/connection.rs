@@ -2,7 +2,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use oleafly_acp::{AcpClient, ClientHost, IncomingRequest, NullHost, TurnTiming};
+use oleafly_acp::{AcpClient, ClientHost, ErrorKind, IncomingRequest, NullHost, TurnTiming};
 use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, DuplexStream};
 use tokio::sync::mpsc;
@@ -284,6 +284,11 @@ async fn a_request_past_its_deadline_stops_the_agent() {
         error.message,
         "The agent did not reply in time and was stopped. Last output from the agent: Error: connect ETIMEDOUT 104.18.0.1:443"
     );
+    assert_eq!(error.kind, Some(ErrorKind::TimedOutStopped));
+    assert_eq!(
+        error.output.as_deref(),
+        Some("Error: connect ETIMEDOUT 104.18.0.1:443")
+    );
     tokio::time::timeout(Duration::from_secs(10), async {
         while !client.is_closed() {
             tokio::time::sleep(Duration::from_millis(10)).await;
@@ -455,6 +460,10 @@ async fn a_closed_agent_fails_pending_requests_with_the_disconnect_message() {
         "{}",
         error.message
     );
+    assert!(matches!(
+        error.kind,
+        Some(ErrorKind::Disconnected | ErrorKind::DisconnectedBeforeReply)
+    ));
 }
 
 #[tokio::test]
@@ -615,6 +624,7 @@ async fn inactivity_stops_a_silent_turn() {
         error.message,
         "The agent sent nothing for 20 minutes, so Oleafly stopped it. Reconnect to continue."
     );
+    assert_eq!(error.kind, Some(ErrorKind::Silent { minutes: 20 }));
 }
 
 #[tokio::test(start_paused = true)]
@@ -877,6 +887,7 @@ async fn a_turn_that_only_cancels_keeps_the_agent_running_past_its_limit() {
     agent.next().await;
     let error = waiting.await.unwrap().unwrap_err();
     assert_eq!(error.message, "The agent did not reply in time.");
+    assert_eq!(error.kind, Some(ErrorKind::TimedOut));
     let cancel = agent.next().await;
     assert_eq!(cancel["method"], "session/cancel");
     assert_eq!(cancel["params"]["sessionId"], "s1");

@@ -24,4 +24,4 @@ pub use client::{
     AcpClient, ClientHost, ClientInfo, ClientOptions, IncomingRequest, InitializeError, Negotiated,
     NullHost, ProtocolVersion, TurnTiming,
 };
-pub use error::RpcError;
+pub use error::{ErrorKind, RpcError};

@@ -75,7 +75,11 @@ fn decode_line(line: &[u8], code_page: Option<u32>) -> String {
 }
 
 fn code_page_encoding(code_page: u32) -> Option<&'static encoding_rs::Encoding> {
-    use encoding_rs::*;
+    use encoding_rs::{
+        BIG5, EUC_KR, GB18030, GBK, IBM866, SHIFT_JIS, WINDOWS_1250, WINDOWS_1251, WINDOWS_1252,
+        WINDOWS_1253, WINDOWS_1254, WINDOWS_1255, WINDOWS_1256, WINDOWS_1257, WINDOWS_1258,
+        WINDOWS_874,
+    };
     Some(match code_page {
         936 => GBK,
         54936 => GB18030,

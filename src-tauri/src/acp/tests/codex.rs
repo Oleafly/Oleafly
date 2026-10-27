@@ -138,32 +138,42 @@ fn a_sign_in_error_says_what_codex_actually_needs() {
         name: "DeepSeek".into(),
         env_key: Some("DEEPSEEK_API_KEY".into()),
     };
+    let english = |reason: Option<String>| reason.and_then(|text| crate::app_error::english(&text));
+    let setup = sign_in_reason(
+        Some("Error loading config.toml: bad".into()),
+        Some("OpenAI".into()),
+        Some(deepseek.clone()),
+    );
     assert_eq!(
-        sign_in_reason(
-            Some("Error loading config.toml: bad".into()),
-            Some("OpenAI".into()),
-            Some(deepseek.clone()),
-        )
-        .as_deref(),
+        crate::app_error::code(setup.as_deref().unwrap()).as_deref(),
+        Some("acp.session.codex_setup")
+    );
+    assert_eq!(
+        english(setup).as_deref(),
         Some("Codex reported a problem with its setup:\nError loading config.toml: bad")
     );
     assert_eq!(
-        sign_in_reason(None, Some("OpenAI".into()), Some(deepseek.clone())).as_deref(),
+        english(sign_in_reason(
+            None,
+            Some("OpenAI".into()),
+            Some(deepseek.clone())
+        ))
+        .as_deref(),
         Some("Your OpenAI key was rejected.")
     );
     assert_eq!(
-        sign_in_reason(None, None, Some(deepseek)).as_deref(),
+        english(sign_in_reason(None, None, Some(deepseek))).as_deref(),
         Some("Codex uses the DeepSeek provider from its config.toml. Check that DEEPSEEK_API_KEY is set and valid, then reconnect.")
     );
     assert_eq!(
-        sign_in_reason(
+        english(sign_in_reason(
             None,
             None,
             Some(ConfigProvider {
                 name: "ollama".into(),
                 env_key: None,
             })
-        )
+        ))
         .as_deref(),
         Some("Codex uses the ollama provider from its config.toml. Check its settings, then reconnect.")
     );
@@ -192,7 +202,7 @@ fn a_system_error_body_is_unwrapped_to_its_message() {
     );
     assert_eq!(system_error_message("{\"detail\": 1}"), "{\"detail\": 1}");
     assert_eq!(
-        system_error_message(" \n "),
+        crate::app_error::english_error(&system_error_message(" \n ")),
         "Codex stopped this turn with an error."
     );
     assert_eq!(
@@ -324,7 +334,7 @@ mod live {
             "`wire_api = \"chat\"` is no longer supported.",
         ])
         .await;
-        let error = started.unwrap_err();
+        let error = crate::app_error::english_error(&started.unwrap_err());
         assert!(
             error.starts_with("Codex reported a problem with its setup:"),
             "{error}"
@@ -341,6 +351,7 @@ mod live {
             .prompt(&id, "auth-required".into(), Vec::new())
             .await
             .unwrap_err();
+        let error = crate::app_error::english_error(&error);
         assert!(error.contains("unknown model provider"), "{error}");
         assert_eq!(
             runtime.snapshot(&id).await.unwrap().session.status,

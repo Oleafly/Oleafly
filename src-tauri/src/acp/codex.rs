@@ -4,15 +4,16 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use super::catalog;
+use super::failures;
 use super::preferences::AgentPreferences;
 use super::runtime::{AcpRuntime, LiveSession};
+use crate::app_error::AppError;
 
 const CHECK_LIMIT: Duration = Duration::from_secs(2);
 const CHECK_ARGS: [&str; 3] = ["cli", "features", "list"];
 const CONFIG_LIMIT: u64 = 256 * 1024;
 const MAX_ERROR: usize = 2000;
 const MAX_NAME: usize = 64;
-const SYSTEM_ERROR: &str = "Codex stopped this turn with an error.";
 
 #[derive(Clone, Debug)]
 pub(super) struct ConfigCheck {
@@ -134,22 +135,28 @@ pub(super) fn sign_in_reason(
     provider: Option<ConfigProvider>,
 ) -> Option<String> {
     if let Some(lines) = failure {
-        return Some(format!("Codex reported a problem with its setup:\n{lines}"));
+        return Some(
+            AppError::new("acp.session.codex_setup")
+                .param("output", lines)
+                .into(),
+        );
     }
     if let Some(label) = routed {
-        return Some(format!("Your {label} key was rejected."));
+        return Some(
+            AppError::new("acp.session.codex_key_rejected")
+                .param("provider", label)
+                .into(),
+        );
     }
     let provider = provider?;
-    Some(match provider.env_key {
-        Some(key) => format!(
-            "Codex uses the {} provider from its config.toml. Check that {key} is set and valid, then reconnect.",
-            provider.name
-        ),
-        None => format!(
-            "Codex uses the {} provider from its config.toml. Check its settings, then reconnect.",
-            provider.name
-        ),
-    })
+    Some(
+        match provider.env_key {
+            Some(key) => AppError::new("acp.session.codex_provider_key").param("env_key", key),
+            None => AppError::new("acp.session.codex_provider"),
+        }
+        .param("provider", provider.name)
+        .into(),
+    )
 }
 
 pub(super) fn system_error_message(text: &str) -> String {
@@ -171,7 +178,7 @@ pub(super) fn system_error_message(text: &str) -> String {
         .collect();
     let message = message.trim();
     if message.is_empty() {
-        SYSTEM_ERROR.to_owned()
+        failures::coded(failures::CODEX_TURN_ERROR)
     } else {
         message.to_owned()
     }
@@ -216,7 +223,7 @@ impl AcpRuntime {
         .await
         .ok()
         .flatten()?;
-        Some(session.redactor.text(&reason))
+        Some(failures::redacted(&session.redactor, &reason))
     }
 }
 

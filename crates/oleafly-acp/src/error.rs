@@ -89,10 +89,45 @@ pub fn reads_as_auth_failure(message: &str) -> bool {
         || (message.contains("api key") && message.contains("is invalid"))
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ErrorKind {
+    Disconnected,
+    DisconnectedBeforeReply,
+    TimedOutStopped,
+    TimedOut,
+    Silent { minutes: u64 },
+    SpawnFailed { kind: String, path: String },
+    NotConnected,
+}
+
+impl ErrorKind {
+    fn message(&self, output: &str) -> String {
+        match self {
+            Self::Disconnected => disconnect_message("The agent disconnected.", output),
+            Self::DisconnectedBeforeReply => {
+                disconnect_message("The agent disconnected before replying.", output)
+            }
+            Self::TimedOutStopped => {
+                disconnect_message("The agent did not reply in time and was stopped.", output)
+            }
+            Self::TimedOut => "The agent did not reply in time.".into(),
+            Self::Silent { minutes } => format!(
+                "The agent sent nothing for {minutes} minutes, so Oleafly stopped it. Reconnect to continue."
+            ),
+            Self::SpawnFailed { kind, path } => format!(
+                "The agent could not be started. Check its installation and executable permissions. ({kind}: {path})"
+            ),
+            Self::NotConnected => "The agent is disconnected.".into(),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct RpcError {
     pub code: i64,
     pub message: String,
+    pub kind: Option<ErrorKind>,
+    pub output: Option<String>,
 }
 
 impl RpcError {
@@ -101,7 +136,38 @@ impl RpcError {
         Self {
             code: -32603,
             message: message.into(),
+            kind: None,
+            output: None,
         }
+    }
+
+    pub fn agent(code: i64, message: String) -> Self {
+        Self {
+            code,
+            message,
+            kind: None,
+            output: None,
+        }
+    }
+
+    pub fn connection(kind: ErrorKind, output: &str) -> Self {
+        let quotes = matches!(
+            kind,
+            ErrorKind::Disconnected
+                | ErrorKind::DisconnectedBeforeReply
+                | ErrorKind::TimedOutStopped
+        );
+        let output = if quotes { output } else { "" };
+        Self {
+            code: -32603,
+            message: kind.message(output),
+            kind: Some(kind),
+            output: (!output.is_empty()).then(|| output.to_owned()),
+        }
+    }
+
+    pub fn command_help(&self) -> bool {
+        self.output.as_deref().is_some_and(reads_as_command_help)
     }
 
     pub fn auth_required(&self) -> bool {
@@ -120,6 +186,12 @@ impl std::fmt::Display for RpcError {
 }
 
 impl std::error::Error for RpcError {}
+
+impl From<RpcError> for String {
+    fn from(error: RpcError) -> Self {
+        error.message
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -145,11 +217,64 @@ mod tests {
         ));
         assert!(!reads_as_auth_failure("tool input is invalid"));
         assert!(reads_as_auth_failure("Internal error: turn failed: llm-deepseek: no API key for provider route \"deepseek-official\"; store DEEPSEEK_API_KEY through the credentials service"));
-        assert!(RpcError {
-            code: -32000,
-            message: "x".into()
+        assert!(RpcError::agent(-32000, "x".into()).auth_required());
+    }
+
+    #[test]
+    fn connection_failures_keep_their_english_message_and_their_kind() {
+        let cases = [
+            (ErrorKind::Disconnected, "", "The agent disconnected."),
+            (
+                ErrorKind::DisconnectedBeforeReply,
+                "panic: boom",
+                "The agent disconnected before replying. Last output from the agent: panic: boom",
+            ),
+            (
+                ErrorKind::TimedOutStopped,
+                "Usage: agent [OPTIONS]",
+                "The agent did not reply in time and was stopped. It answered with its command-line help, so this version does not accept the options Oleafly started it with.",
+            ),
+            (ErrorKind::TimedOut, "ignored", "The agent did not reply in time."),
+            (
+                ErrorKind::Silent { minutes: 20 },
+                "",
+                "The agent sent nothing for 20 minutes, so Oleafly stopped it. Reconnect to continue.",
+            ),
+            (
+                ErrorKind::SpawnFailed {
+                    kind: "NotFound".into(),
+                    path: "/bin/agent".into(),
+                },
+                "",
+                "The agent could not be started. Check its installation and executable permissions. (NotFound: /bin/agent)",
+            ),
+            (ErrorKind::NotConnected, "", "The agent is disconnected."),
+        ];
+        for (kind, output, message) in cases {
+            let error = RpcError::connection(kind.clone(), output);
+            assert_eq!(error.message, message);
+            assert_eq!(error.kind, Some(kind));
+            assert_eq!(error.code, -32603);
+            assert_eq!(error.to_string(), message);
         }
-        .auth_required());
+        let quoted = RpcError::connection(ErrorKind::Disconnected, "Usage: agent");
+        assert_eq!(quoted.output.as_deref(), Some("Usage: agent"));
+        assert!(quoted.command_help());
+        let unquoted = RpcError::connection(ErrorKind::TimedOut, "panic: boom");
+        assert_eq!(unquoted.output, None);
+        assert!(!unquoted.command_help());
+        assert_eq!(RpcError::local("x").kind, None);
+        assert_eq!(String::from(RpcError::local("plain")), "plain");
+    }
+
+    #[test]
+    fn a_quoted_sign_in_failure_still_asks_for_sign_in() {
+        let error = RpcError::connection(
+            ErrorKind::DisconnectedBeforeReply,
+            "Error: Please sign in again",
+        );
+        assert!(error.auth_required());
+        assert!(!error.method_not_found());
     }
 
     #[test]

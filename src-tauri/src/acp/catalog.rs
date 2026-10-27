@@ -718,9 +718,6 @@ pub(crate) struct Plan {
     pub node: Option<PathBuf>,
 }
 
-const CHOSEN_PROGRAM_MISSING: &str =
-    "The program chosen for this agent is missing. Choose it again in Settings.";
-
 pub(crate) fn plan(root: &Path, definition: &AgentDefinition, program: Option<&Path>) -> Plan {
     locator::wait_for_login_probe();
     let vendor = vendor_cli(definition);
@@ -902,8 +899,8 @@ fn resolve_launch(
     validate(definition)?;
     let args = definition_args(definition);
     if let Some(program) = program {
-        let located =
-            locator::locate_path(program).map_err(|_| CHOSEN_PROGRAM_MISSING.to_string())?;
+        let located = locator::locate_path(program)
+            .map_err(|_| super::failures::coded(super::failures::CHOSEN_PROGRAM_MISSING))?;
         return Ok(launch_program(located, args, node));
     }
     if let Some(receipt) = read_receipt(root, definition) {
@@ -913,7 +910,7 @@ fn resolve_launch(
             return Ok(Launch {
                 executable: node
                     .map(Path::to_path_buf)
-                    .ok_or("Install Node.js to run this agent.")?,
+                    .ok_or_else(|| super::failures::coded(super::failures::NODE_NEEDED))?,
                 args: argv,
                 version: Some(receipt.version),
                 managed: true,
@@ -958,8 +955,6 @@ fn resolve_launch(
     )
 }
 
-const NOT_INSTALLED: &str =
-    "This agent isn't installed yet. Install it, or choose its program in Settings.";
 const BRIDGE_MANIFEST_DEPTH: usize = 6;
 const BRIDGE_MANIFEST_LIMIT: u64 = 512 * 1024;
 
@@ -1023,15 +1018,13 @@ fn current_bridge(
         match launch.version.as_deref() {
             Some(found) if older_npm_version(found, pinned) => {
                 outdated.get_or_insert_with(|| {
-                    format!(
-                        "{package} {found} on this computer is too old. Oleafly needs {pinned} or newer. Install the bridge in Settings."
-                    )
+                    super::failures::bridge_outdated(package, found, pinned)
                 });
             }
             _ => return Ok(launch),
         }
     }
-    Err(outdated.unwrap_or_else(|| NOT_INSTALLED.into()))
+    Err(outdated.unwrap_or_else(|| super::failures::coded(super::failures::NOT_INSTALLED)))
 }
 
 /// Environment for a non-sandboxed agent: Node.js first on the search path;
@@ -1871,8 +1864,7 @@ fn sign_in_hint(
         );
     }
     if definition.id == "claude" && claude_gateway {
-        return "Claude Code uses a custom API endpoint. Check ANTHROPIC_BASE_URL and ANTHROPIC_AUTH_TOKEN in your shell profile or Claude Code's settings.json, then reconnect."
-            .into();
+        return super::failures::coded(super::failures::CLAUDE_GATEWAY);
     }
     let (Some(vendor), Some(command)) = (vendor, command) else {
         return "Use the agent's CLI sign-in, or choose a sign-in method after connecting.".into();
@@ -1948,12 +1940,8 @@ async fn node_major_reason(
     };
     match detected {
         Some((major, _, _)) if major >= required => None,
-        Some((major, _, _)) => Some(format!(
-            "This agent needs Node.js {required} or newer. The detected version is {major}."
-        )),
-        None => Some(format!(
-            "Install Node.js {required} or newer to run this agent."
-        )),
+        Some((major, _, _)) => Some(super::failures::node_outdated(required, major)),
+        None => Some(super::failures::node_missing(required)),
     }
 }
 
@@ -2096,14 +2084,12 @@ pub async fn check_node(root: &Path, required: u32) -> Result<(), String> {
         locator::locate_native("node")
     })
     .await?
-    .ok_or_else(|| format!("Install Node.js {required} or newer to run this agent."))?;
+    .ok_or_else(|| super::failures::node_missing(required))?;
     let major = node_version(root, &node.path)
         .await
         .map_or(0, |(major, _, _)| major);
     if major < required {
-        return Err(format!(
-            "This agent needs Node.js {required} or newer. The detected version is {major}."
-        ));
+        return Err(super::failures::node_outdated(required, major));
     }
     Ok(())
 }
@@ -2585,7 +2571,6 @@ const NPM_NETWORK_CODES: [&str; 12] = [
     "SELF_SIGNED_CERT_IN_CHAIN",
     "DEPTH_ZERO_SELF_SIGNED_CERT",
 ];
-const NPM_NETWORK_ADVICE: &str = "Check your network connection, proxy or npm registry setting.";
 const NPM_INSTALL_LIMIT: Duration = Duration::from_secs(15 * 60);
 const NPM_INSTALL_FLAGS: [&str; 10] = [
     "install",
@@ -2836,9 +2821,10 @@ fn npm_install_message(failure: CommandFailure, host: &str) -> String {
     match failure {
         CommandFailure::Failed(Some(lines)) => {
             if let Some(code) = npm_network_code(&lines) {
-                return format!(
-                    "Oleafly couldn't reach the npm registry at {host} ({code}). {NPM_NETWORK_ADVICE}"
-                );
+                return crate::app_error::AppError::new(super::failures::NPM_UNREACHABLE)
+                    .param("host", host)
+                    .param("code", code)
+                    .into();
             }
             let kept: Vec<&str> = lines.lines().filter(|line| !npm_log_line(line)).collect();
             if kept.is_empty() {
@@ -2847,9 +2833,9 @@ fn npm_install_message(failure: CommandFailure, host: &str) -> String {
                 kept.join("\n")
             }
         }
-        CommandFailure::TimedOut => {
-            format!("Installing from {host} took too long and was stopped. {NPM_NETWORK_ADVICE}")
-        }
+        CommandFailure::TimedOut => crate::app_error::AppError::new(super::failures::NPM_TIMED_OUT)
+            .param("host", host)
+            .into(),
         other => other.install_message(),
     }
 }

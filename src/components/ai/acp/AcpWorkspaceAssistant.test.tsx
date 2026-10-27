@@ -53,6 +53,7 @@ import {
   type AcpEvent, type AcpPermission, type AcpSnapshot,
 } from "@/lib/acp";
 import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
+import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import { acpComposerId, useAcpSessionsStore } from "@/store/acp-sessions";
 import { useComposerDrafts } from "@/store/composer-drafts";
 import { useSettingsStore } from "@/store/settings";
@@ -476,7 +477,7 @@ describe("ACP assistant acceptance", () => {
     const pending = deferred<AcpSnapshot>();
     vi.mocked(acpStart).mockReturnValueOnce(pending.promise);
     vi.mocked(acpCancelStart).mockImplementation(async () => {
-      pending.reject("The start was cancelled.");
+      pending.reject(`${APP_ERROR_PREFIX}${JSON.stringify({ code: "acp.start.cancelled", params: {}, detail: null })}`);
       return true;
     });
     const ui = render(<AcpWorkspace />);
@@ -595,6 +596,25 @@ describe("ACP assistant acceptance", () => {
     expect(settings.settingsOpen).toBe(true);
     expect(settings.settingsInitialSection).toBe("ai");
     expect(settings.settingsScrollTarget).toBe("ai-agents");
+  });
+
+  it("shows a saved conversation's coded error as a sentence, and an older plain one as written", async () => {
+    const coded = `${APP_ERROR_PREFIX}${JSON.stringify({
+      code: "acp.session.no_reply_with_output",
+      params: { output: "panic: boom" },
+      detail: null,
+    })}`;
+    snapshots.saved = { session: session("saved", { status: "disconnected", error: coded }), permissions: [] };
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const alert = await ui.findByRole("alert");
+    expect(alert).toHaveTextContent("The agent disconnected before replying. Last output from the agent: panic: boom");
+    expect(alert).not.toHaveTextContent(APP_ERROR_PREFIX);
+    cleanup();
+
+    useAcpSessionsStore.setState({ sessions: {}, errors: {} });
+    snapshots.saved = { session: session("saved", { status: "disconnected", error: "The agent disconnected." }), permissions: [] };
+    const plain = render(<AcpWorkspaceAssistant projectId="paper" />);
+    expect(await plain.findByRole("alert")).toHaveTextContent("The agent disconnected.");
   });
 
   it("does not offer expired approvals or reconnect a task conversation outside the task lifecycle", async () => {

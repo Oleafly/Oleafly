@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - CLI agents are no longer marked beta.
+- Errors from CLI agents, such as a disconnect, a timeout, a missing Node.js
+  or a refused file request, now show in your interface language instead of
+  English, with the agent's own last output kept as it was.
 - DeepSeek thinks during assistant runs again. Oleafly now keeps each reply's
   reasoning and sends it back, which DeepSeek requires once tools are in use,
   and the effort menu offers Off, Low, High and Max for DeepSeek models.

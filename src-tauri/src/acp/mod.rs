@@ -5,6 +5,7 @@ mod coalesce;
 mod codex;
 pub mod commands;
 mod export;
+pub(crate) mod failures;
 pub(crate) mod hermes;
 mod host;
 mod options;

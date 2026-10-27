@@ -929,6 +929,6 @@ pub async fn acp_test_remote_hermes(
     crate::paths::project_dir(&project_id)?;
     crate::trust::require_trusted(&project_id, crate::trust::Capability::ExternalAgents)?;
     let ssh = super::remote::locate_ssh()
-        .ok_or("Oleafly couldn't find ssh on this computer. Install OpenSSH, then try again.")?;
+        .ok_or_else(|| super::failures::coded(super::failures::SSH_MISSING))?;
     super::remote::test_connection(&ssh, &remote).await
 }

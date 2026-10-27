@@ -15,8 +15,9 @@ import { Shimmer } from "@/components/ai/chat-parts";
 import { liveMessageFor } from "@/components/ai/live-message";
 import {
   acpCancelStart, acpCommitTurn, acpDisconnect, acpElicitationRespond, acpError, acpPermission, acpReadiness,
-  acpReconnect, acpUsable, type AcpAgentStatus, type AcpSession,
+  acpReconnect, acpStartCancelled, acpUsable, type AcpAgentStatus, type AcpSession,
 } from "@/lib/acp";
+import { errorText } from "@/lib/app-error";
 import { cn } from "@/lib/utils";
 import {
   acpComposerId, attachAcpListeners, isDelegatedSession, useAcpSessionView, useAcpSessionsStore,
@@ -50,7 +51,6 @@ const CleanLibraryDialog = lazy(() =>
 );
 
 const EMPTY_PERMISSIONS: never[] = [];
-const START_CANCELLED = "The start was cancelled.";
 const EMPTY_ELICITATIONS: never[] = [];
 
 function canReconnect(session: AcpSession): boolean {
@@ -71,10 +71,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   const sending = useAcpSessionsStore((state) => (activeId ? (state.sending[activeId] ?? 0) > 0 : false));
   const agentId = composer?.agentId ?? null;
   const setComposer = useAcpSessionsStore((state) => state.setComposer);
-  const error = useAcpSessionsStore((state) => {
-    const message = state.errors[projectId] ?? null;
-    return message === START_CANCELLED ? null : message;
-  });
+  const error = useAcpSessionsStore((state) => state.errors[projectId] ?? null);
   // Why this conversation's last message did not go out (kept with it, not the project).
   const sessionError = useAcpSessionsStore((state) => (activeId ? state.sessionErrors[activeId] ?? null : null));
   const starting = useAcpSessionsStore((state) => state.starting[projectId] ?? false);
@@ -132,7 +129,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   );
   const perform = useCallback(async (action: () => Promise<void>) => {
     setError(null); setBusy(true);
-    try { await action(); } catch (error_) { setError(acpError(error_)); }
+    try { await action(); } catch (error_) { if (!acpStartCancelled(error_)) setError(acpError(error_)); }
     finally { setBusy(false); }
   }, [setError]);
   const performConnecting = useCallback(async (action: () => Promise<void>) => {
@@ -419,7 +416,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
         <ErrorState
           size="compact"
           className="mx-3 my-2 rounded-md border border-destructive/40 p-2"
-          message={error ?? sessionError ?? session?.error}
+          message={error ?? sessionError ?? (session?.error ? errorText(session.error) : undefined)}
         />
       )}
       {session?.status === "auth_required" && (

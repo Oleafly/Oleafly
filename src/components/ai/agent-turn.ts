@@ -121,7 +121,7 @@ function convertPart(part: Record<string, unknown>): AgentContentPart | null {
     case "text":
       return part.text ? { type: "text", text: String(part.text) } : null;
     case "reasoning":
-      return part.text ? { type: "reasoning", text: String(part.text) } : null;
+      return typeof part.text === "string" && part.text ? { type: "reasoning", text: part.text } : null;
     case "image":
       return { type: "image", image: String(part.image) };
     case "attachment":

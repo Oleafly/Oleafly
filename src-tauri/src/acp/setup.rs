@@ -7,7 +7,7 @@ use super::{
 };
 use crate::app_error::AppError;
 use crate::program_locator::{self as locator, Located, ProgramKind, RejectReason};
-use oleafly_acp::{AcpClient, InitializeError, NullHost};
+use oleafly_acp::{AcpClient, ErrorKind, InitializeError, NullHost};
 use serde_json::Value;
 use std::{
     collections::HashSet,
@@ -416,7 +416,13 @@ async fn start_and_initialize(
         .envs(launch.env.iter().map(|(name, value)| (name, value)));
     let client = match AcpClient::spawn(command, Arc::new(NullHost)).await {
         Ok(client) => client,
-        Err(error) => return failed("start_failed", Some(error), shown),
+        Err(error) => {
+            return failed(
+                "start_failed",
+                Some(super::failures::rpc_message(&error)),
+                shown,
+            )
+        }
     };
     let options = super::runtime::client_options(false, false);
     let reply = tokio::time::timeout(limit, client.initialize(&options)).await;
@@ -424,11 +430,17 @@ async fn start_and_initialize(
         Err(_) => failed("timeout", None, shown),
         Ok(Err(InitializeError::Rpc(error))) => {
             let exited = client.is_closed()
-                || error.message.starts_with("The agent disconnected")
-                || error.message.starts_with("The agent is disconnected");
+                || matches!(
+                    error.kind,
+                    Some(
+                        ErrorKind::Disconnected
+                            | ErrorKind::DisconnectedBeforeReply
+                            | ErrorKind::NotConnected
+                    )
+                );
             failed(
                 if exited { "exited" } else { "not_acp" },
-                Some(error.message),
+                Some(super::failures::rpc_message(&error)),
                 shown,
             )
         }

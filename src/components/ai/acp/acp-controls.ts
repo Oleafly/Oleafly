@@ -21,19 +21,7 @@ export interface ControlGroups {
 export function groupControls(controls: AcpSession["controls"]): ControlGroups {
   const options = (controls.options ?? []).filter((option) => option.kind.type !== "unsupported");
   const groups: ControlGroups = { model: null, modelConfig: [], effort: null, mode: null, more: [] };
-  for (const option of options) {
-    if (option.category === "model" && option.kind.type === "select" && !groups.model) {
-      groups.model = { kind: "config", option };
-    } else if (option.category === "model_config") {
-      groups.modelConfig.push(option);
-    } else if (option.category === "thought_level" && !groups.effort) {
-      groups.effort = option;
-    } else if (option.category === "mode" && option.kind.type === "select" && !groups.mode) {
-      groups.mode = { kind: "config", option };
-    } else {
-      groups.more.push(option);
-    }
-  }
+  for (const option of options) placeOption(groups, option);
   if (!groups.model && controls.models.length > 0) {
     groups.model = { kind: "legacy", models: controls.models, current: controls.modelId };
   }
@@ -42,6 +30,20 @@ export function groupControls(controls: AcpSession["controls"]): ControlGroups {
   }
   if (groups.mode && repeatsEffort(groups.mode, groups.effort)) groups.mode = null;
   return groups;
+}
+
+function placeOption(groups: ControlGroups, option: AcpConfigOption) {
+  if (option.category === "model" && option.kind.type === "select" && !groups.model) {
+    groups.model = { kind: "config", option };
+  } else if (option.category === "model_config") {
+    groups.modelConfig.push(option);
+  } else if (option.category === "thought_level" && !groups.effort) {
+    groups.effort = option;
+  } else if (option.category === "mode" && option.kind.type === "select" && !groups.mode) {
+    groups.mode = { kind: "config", option };
+  } else {
+    groups.more.push(option);
+  }
 }
 
 function repeatsEffort(mode: ModeControl, effort: AcpConfigOption | null): boolean {

@@ -1,7 +1,7 @@
 import { i18n } from "@/i18n";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { decodeAppError, describeError } from "@/lib/app-error";
+import { decodeAppError, errorText } from "@/lib/app-error";
 
 export interface AcpPackageDistribution {
   package: string;
@@ -334,7 +334,24 @@ export interface AcpSessionSummary {
 }
 export interface AcpBufferRequest { requestId: string; projectId: string; path: string }
 
-export const acpCatalog = (probe = false) => invoke<AcpAgentStatus[]>("acp_catalog", { probe });
+export const ACP_START_CANCELLED = "acp.start.cancelled";
+
+function optionalText(text: string | null): string | null {
+  return text === null ? null : errorText(text);
+}
+
+function decodedStatus(status: AcpAgentStatus): AcpAgentStatus {
+  if (!status) return status;
+  return { ...status, reason: optionalText(status.reason), signInHint: optionalText(status.signInHint) };
+}
+
+function decodedCheck(check: AcpAgentCheck): AcpAgentCheck {
+  if (!check) return check;
+  return { ...check, detail: optionalText(check.detail) };
+}
+
+export const acpCatalog = (probe = false) => invoke<AcpAgentStatus[]>("acp_catalog", { probe })
+  .then((statuses) => (Array.isArray(statuses) ? statuses.map(decodedStatus) : statuses));
 export const acpRegistrySearch = (query: string) => invoke<AcpRegistryEntry[]>("acp_registry_search", { query });
 async function changedCatalog<T>(promise: Promise<T>): Promise<T> {
   const result = await promise;
@@ -343,7 +360,7 @@ async function changedCatalog<T>(promise: Promise<T>): Promise<T> {
 }
 export const acpRegister = (definitionJson: string) => changedCatalog(invoke<AcpDefinition>("acp_register", { definitionJson }));
 export const acpRemoveAgent = (agentId: string) => changedCatalog(invoke<void>("acp_remove_agent", { agentId }));
-export const acpInstall = (agentId: string) => changedCatalog(invoke<AcpAgentStatus>("acp_install", { agentId }));
+export const acpInstall = (agentId: string) => changedCatalog(invoke<AcpAgentStatus>("acp_install", { agentId }).then(decodedStatus));
 export const acpStart = (projectId: string, agentId: string) => invoke<AcpSnapshot>("acp_start", { projectId, agentId });
 export const acpCancelStart = (projectId: string) => invoke<boolean>("acp_cancel_start", { projectId });
 export const acpReconnect = (projectId: string, sessionId: string) => invoke<AcpSnapshot>("acp_reconnect", { projectId, sessionId });
@@ -366,11 +383,11 @@ export const acpEvents = (projectId: string, sessionId: string, after = 0, limit
 
 // CLI agent setup (#84)
 /** Tests an agent program without saving it: `path`, or the current resolution when omitted. */
-export const acpCheckAgent = (agentId: string, path: string | null = null) => invoke<AcpAgentCheck>("acp_check_agent", { agentId, path });
+export const acpCheckAgent = (agentId: string, path: string | null = null) => invoke<AcpAgentCheck>("acp_check_agent", { agentId, path }).then(decodedCheck);
 /** Opens a native file dialog; resolves to the chosen path or null when cancelled. */
 export const acpPickAgentProgram = (agentId: string) => invoke<string | null>("acp_pick_agent_program", { agentId });
 /** Saves (or clears with null) the program the user chose for an agent. */
-export const acpSetAgentProgram = (agentId: string, path: string | null) => changedCatalog(invoke<AcpAgentStatus>("acp_set_agent_program", { agentId, path }));
+export const acpSetAgentProgram = (agentId: string, path: string | null) => changedCatalog(invoke<AcpAgentStatus>("acp_set_agent_program", { agentId, path }).then(decodedStatus));
 
 // CLI agent conversations (#84)
 /** Writes the conversation as JSON to `path`. */
@@ -419,7 +436,12 @@ export const onAcpBufferRequest = (listener: (request: AcpBufferRequest) => void
 export function acpError(error: unknown): string {
   const message = errorMessage(error);
   if (message === null) return i18n.t(($) => $.core.acp.requestFailed);
-  return decodeAppError(message) ? describeError(message) : message;
+  return errorText(message);
+}
+
+export function acpStartCancelled(error: unknown): boolean {
+  const message = errorMessage(error);
+  return message !== null && decodeAppError(message)?.code === ACP_START_CANCELLED;
 }
 
 function errorMessage(error: unknown): string | null {

@@ -153,11 +153,8 @@ fn expects_reasoning_back(base_url: &str) -> bool {
     .any(|domain| host == *domain || host.ends_with(&format!(".{domain}")))
 }
 
-pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Result<Value> {
-    let effort = effective_effort(resolved, req.effort);
-    // OpenRouter parses PDFs itself; other chat providers take no files.
-    let files = resolved.provider_id == "openrouter";
-    let replays_reasoning = match &resolved.wire {
+fn replays_reasoning(resolved: &Resolved) -> bool {
+    match &resolved.wire {
         Wire::OpenAiChat {
             base_url,
             reasoning_content: true,
@@ -166,7 +163,47 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
                 || expects_reasoning_back(base_url)
         }
         _ => false,
-    };
+    }
+}
+
+fn attach_reasoning(entry: &mut Value, message: &Message) {
+    let reasoning = message_reasoning(message);
+    if !reasoning.is_empty() {
+        entry["reasoning_content"] = json!(reasoning);
+    }
+}
+
+fn set_output_limit(resolved: &Resolved, req: &CompletionRequest, body: &mut Value) {
+    if resolved.provider_id == "groq" {
+        // Groq's default completion ceiling is small (1 024).
+        let ceiling = req.max_tokens.or_else(|| {
+            resolved
+                .caps
+                .output_limit
+                .map(|_| default_max_tokens(&resolved.caps, STREAMING_MAX_TOKENS_CAP))
+        });
+        if let Some(ceiling) = ceiling {
+            body["max_completion_tokens"] = json!(ceiling);
+        }
+    } else if let Some(m) = req.max_tokens {
+        body["max_tokens"] = json!(m);
+    }
+}
+
+fn set_deepseek_ceiling(resolved: &Resolved, req: &CompletionRequest, body: &mut Value) {
+    if resolved.provider_id == "deepseek"
+        && req.max_tokens.is_none()
+        && body["thinking"]["type"] == "disabled"
+    {
+        body["max_tokens"] = json!(default_max_tokens(&resolved.caps, STREAMING_MAX_TOKENS_CAP));
+    }
+}
+
+pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Result<Value> {
+    let effort = effective_effort(resolved, req.effort);
+    // OpenRouter parses PDFs itself; other chat providers take no files.
+    let files = resolved.provider_id == "openrouter";
+    let replays_reasoning = replays_reasoning(resolved);
     let mut has_documents = false;
     let mut messages: Vec<Value> = Vec::new();
     if let Some(system) = joined_system(req) {
@@ -202,10 +239,7 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
             entry["tool_calls"] = Value::Array(calls);
         }
         if replays_reasoning && role == "assistant" {
-            let reasoning = message_reasoning(message);
-            if !reasoning.is_empty() {
-                entry["reasoning_content"] = json!(reasoning);
-            }
+            attach_reasoning(&mut entry, message);
         }
         messages.push(entry);
     }
@@ -214,29 +248,11 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
     if let Some(t) = req.temperature {
         body["temperature"] = json!(t);
     }
-    if resolved.provider_id == "groq" {
-        // Groq's default completion ceiling is small (1 024).
-        let ceiling = req.max_tokens.or_else(|| {
-            resolved
-                .caps
-                .output_limit
-                .map(|_| default_max_tokens(&resolved.caps, STREAMING_MAX_TOKENS_CAP))
-        });
-        if let Some(ceiling) = ceiling {
-            body["max_completion_tokens"] = json!(ceiling);
-        }
-    } else if let Some(m) = req.max_tokens {
-        body["max_tokens"] = json!(m);
-    }
+    set_output_limit(resolved, req, &mut body);
     for (key, value) in chat_reasoning_fields(resolved, req, effort) {
         body[key] = value;
     }
-    if resolved.provider_id == "deepseek"
-        && req.max_tokens.is_none()
-        && body["thinking"]["type"] == "disabled"
-    {
-        body["max_tokens"] = json!(default_max_tokens(&resolved.caps, STREAMING_MAX_TOKENS_CAP));
-    }
+    set_deepseek_ceiling(resolved, req, &mut body);
     if has_documents && files {
         body["plugins"] = json!([{ "id": "file-parser", "pdf": { "engine": "native" } }]);
     }

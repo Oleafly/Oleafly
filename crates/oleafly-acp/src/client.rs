@@ -18,7 +18,7 @@ use tokio::time::Instant;
 
 use crate::capabilities::{initialize_params, parse_initialize, AgentCapabilities, AuthMethod};
 use crate::controls::{set_config_option_params, ConfigValue};
-use crate::error::{disconnect_message, rpc_error_message, RpcError};
+use crate::error::{rpc_error_message, ErrorKind, RpcError};
 use crate::limits::{MAX_FRAME, MAX_PENDING, REQUEST_TIMEOUT};
 use crate::process::{contain_process_tree, isolate_process_tree, StderrTail};
 use crate::transport::{line_transport, DROPPED_UPDATE_METHOD};
@@ -102,14 +102,14 @@ impl IncomingRequest {
         }
         self.responder
             .respond(result)
-            .map_err(|_| RpcError::local("The agent is disconnected."))
+            .map_err(|_| RpcError::connection(ErrorKind::NotConnected, ""))
     }
 
     pub fn reject(self, code: i64, message: &str) -> Result<(), RpcError> {
         let code = i32::try_from(code).unwrap_or(-32603);
         self.responder
             .respond_with_error(agent_client_protocol::Error::new(code, message))
-            .map_err(|_| RpcError::local("The agent is disconnected."))
+            .map_err(|_| RpcError::connection(ErrorKind::NotConnected, ""))
     }
 
     /// Resolves when the agent sends `$/cancel_request` for this request.
@@ -164,7 +164,7 @@ pub struct ClientOptions {
 pub enum InitializeError {
     Rpc(RpcError),
     /// The program answered, but not as an ACP agent this client supports.
-    NotAcp(String),
+    NotAcp(u16),
     /// The agent answered a v2 request with v1: start it again with v1.
     FallBackToV1,
 }
@@ -173,7 +173,9 @@ impl std::fmt::Display for InitializeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Rpc(error) => write!(f, "{error}"),
-            Self::NotAcp(message) => write!(f, "{message}"),
+            Self::NotAcp(version) => {
+                write!(f, "This agent does not support ACP version {version}.")
+            }
             Self::FallBackToV1 => write!(f, "The agent only supports ACP version 1."),
         }
     }
@@ -217,10 +219,10 @@ enum Routed {
         token: u64,
         result: Result<Value, agent_client_protocol::Error>,
     },
-    /// The connection ended with this message. It is queued behind what the
+    /// The connection ended with this error. It is queued behind what the
     /// agent sent before, so replies and updates already received are
     /// handled first; pending requests fail only then.
-    Closed(String),
+    Closed(RpcError),
 }
 
 type Pending = Mutex<HashMap<u64, oneshot::Sender<Result<Value, RpcError>>>>;
@@ -275,15 +277,15 @@ impl Shared {
                 if agent_client_protocol::is_incoming_transport_closed(&error)
                     || self.is_closed() =>
             {
-                Err(RpcError::local(&disconnect_message(
-                    "The agent disconnected before replying.",
+                Err(RpcError::connection(
+                    ErrorKind::DisconnectedBeforeReply,
                     &self.stderr.text(),
-                )))
+                ))
             }
-            Err(error) => Err(RpcError {
-                code: i64::from(i32::from(error.code)),
-                message: rpc_error_message(&json!({"message": error.message, "data": error.data})),
-            }),
+            Err(error) => Err(RpcError::agent(
+                i64::from(i32::from(error.code)),
+                rpc_error_message(&json!({"message": error.message, "data": error.data})),
+            )),
         }
     }
 
@@ -389,29 +391,28 @@ impl Shared {
 
     /// Ends the connection. The close is queued behind everything the agent
     /// sent before it: the consumer hands those to the host first, then
-    /// fails every pending request (and v2 turn) with `message` and tells
+    /// fails every pending request (and v2 turn) with `error` and tells
     /// the host once.
-    fn close_with(self: &Arc<Self>, message: &str) {
+    fn close_with(self: &Arc<Self>, error: RpcError) {
         self.closed.send_replace(true);
         let _ = self.stop.send(true);
         if !self.closed_routed.swap(true, Ordering::AcqRel) {
             let route = self.route.clone();
             let shared = self.clone();
-            let message = message.to_owned();
             tokio::spawn(async move {
-                if let Err(unsent) = route.send(Routed::Closed(message)).await {
+                if let Err(unsent) = route.send(Routed::Closed(error)).await {
                     // No consumer is left to drain them.
-                    if let Routed::Closed(message) = unsent.0 {
-                        shared.fail_pending(&message);
+                    if let Routed::Closed(error) = unsent.0 {
+                        shared.fail_pending(&error);
                     }
                 }
             });
         }
     }
 
-    /// Fails every pending request with `message` and ends every v2 turn
+    /// Fails every pending request with `error` and ends every v2 turn
     /// still waiting (its prompt sees the disconnect).
-    fn fail_pending(&self, message: &str) {
+    fn fail_pending(&self, error: &RpcError) {
         self.drained.store(true, Ordering::Release);
         let drained: Vec<_> = self
             .pending
@@ -419,7 +420,7 @@ impl Shared {
             .map(|mut pending| pending.drain().collect())
             .unwrap_or_default();
         for (_, sender) in drained {
-            let _ = sender.send(Err(RpcError::local(message)));
+            let _ = sender.send(Err(error.clone()));
         }
         if let Ok(mut waiters) = self.turn_waiters.lock() {
             waiters.clear();
@@ -446,7 +447,7 @@ impl AcpClient {
     pub async fn spawn(
         mut command: tokio::process::Command,
         host: Arc<dyn ClientHost>,
-    ) -> Result<Arc<AcpClient>, String> {
+    ) -> Result<Arc<AcpClient>, RpcError> {
         command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -455,29 +456,36 @@ impl AcpClient {
         isolate_process_tree(&mut command);
         let program = command.as_std().get_program().to_owned();
         let mut child = command.spawn().map_err(|error| {
-            format!(
-                "The agent could not be started. Check its installation and executable permissions. ({:?}: {})",
-                error.kind(),
-                std::path::Path::new(&program).display()
+            RpcError::connection(
+                ErrorKind::SpawnFailed {
+                    kind: format!("{:?}", error.kind()),
+                    path: std::path::Path::new(&program).display().to_string(),
+                },
+                "",
             )
         })?;
-        let pid = child.id().ok_or("The agent process has no ID.")?;
+        let pid = child
+            .id()
+            .ok_or_else(|| RpcError::local("The agent process has no ID."))?;
         let guard = match contain_process_tree(pid) {
             Ok(guard) => guard,
             Err(_) => {
                 let _ = child.kill().await;
-                return Err("The agent process could not be contained.".into());
+                return Err(RpcError::local("The agent process could not be contained."));
             }
         };
-        let stdin = child.stdin.take().ok_or("The agent has no input stream.")?;
+        let stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| RpcError::local("The agent has no input stream."))?;
         let stdout = child
             .stdout
             .take()
-            .ok_or("The agent has no output stream.")?;
+            .ok_or_else(|| RpcError::local("The agent has no output stream."))?;
         let mut stderr = child
             .stderr
             .take()
-            .ok_or("The agent has no error stream.")?;
+            .ok_or_else(|| RpcError::local("The agent has no error stream."))?;
         let client = Self::connect(stdout, stdin, host, Some(pid));
         let shared = client.shared.clone();
         let tail = shared.stderr.clone();
@@ -510,8 +518,8 @@ impl AcpClient {
             let _ = child.start_kill();
             let _ = tokio::time::timeout(Duration::from_secs(5), child.wait()).await;
             diagnostics.abort();
-            shared.close_with(&disconnect_message(
-                "The agent disconnected.",
+            shared.close_with(RpcError::connection(
+                ErrorKind::Disconnected,
                 &shared.stderr.text(),
             ));
             shared.exited.send_replace(true);
@@ -599,8 +607,8 @@ impl AcpClient {
                 })
                 .await;
             connection_shared.finished.send_replace(true);
-            connection_shared.close_with(&disconnect_message(
-                "The agent disconnected.",
+            connection_shared.close_with(RpcError::connection(
+                ErrorKind::Disconnected,
                 &connection_shared.stderr.text(),
             ));
         });
@@ -619,8 +627,8 @@ impl AcpClient {
                     Routed::Reply { token, result } => {
                         consumer.route_reply(host.as_ref(), token, result);
                     }
-                    Routed::Closed(message) => {
-                        consumer.fail_pending(&message);
+                    Routed::Closed(error) => {
+                        consumer.fail_pending(&error);
                         host.on_disconnected();
                         break;
                     }
@@ -639,8 +647,8 @@ impl AcpClient {
         match ready {
             Ok(Ok(value)) => value
                 .clone()
-                .ok_or_else(|| RpcError::local("The agent is disconnected.")),
-            _ => Err(RpcError::local("The agent is disconnected.")),
+                .ok_or_else(|| RpcError::connection(ErrorKind::NotConnected, "")),
+            _ => Err(RpcError::connection(ErrorKind::NotConnected, "")),
         }
     }
 
@@ -661,7 +669,7 @@ impl AcpClient {
         turn_of: Option<&str>,
     ) -> Result<(PendingGuard, oneshot::Receiver<Result<Value, RpcError>>), RpcError> {
         if self.shared.is_closed() {
-            return Err(RpcError::local("The agent is disconnected."));
+            return Err(RpcError::connection(ErrorKind::NotConnected, ""));
         }
         let size = serde_json::to_vec(&params)
             .map_err(|_| RpcError::local("This ACP request could not be encoded."))?
@@ -692,7 +700,7 @@ impl AcpClient {
         // The close was handled while this request was being registered:
         // nothing will answer or fail it.
         if self.shared.drained.load(Ordering::Acquire) {
-            return Err(RpcError::local("The agent is disconnected."));
+            return Err(RpcError::connection(ErrorKind::NotConnected, ""));
         }
         // Known before the request goes out, so the reply can't beat it.
         if let (Some(session), Ok(mut turns)) = (turn_of, self.shared.turn_replies.lock()) {
@@ -707,22 +715,19 @@ impl AcpClient {
                 let _ = route.send(Routed::Reply { token, result }).await;
                 Ok(())
             })
-            .map_err(|_| RpcError::local("The agent is disconnected."))?;
+            .map_err(|_| RpcError::connection(ErrorKind::NotConnected, ""))?;
         Ok((guard, receiver))
     }
 
     fn stopped_for_time(&self) -> RpcError {
-        RpcError::local(&disconnect_message(
-            "The agent did not reply in time and was stopped.",
-            &self.shared.stderr.text(),
-        ))
+        RpcError::connection(ErrorKind::TimedOutStopped, &self.shared.stderr.text())
     }
 
     fn disconnected_before_reply(&self) -> RpcError {
-        RpcError::local(&disconnect_message(
-            "The agent disconnected before replying.",
+        RpcError::connection(
+            ErrorKind::DisconnectedBeforeReply,
             &self.shared.stderr.text(),
-        ))
+        )
     }
 
     /// Like [`Self::request`], but `quiet` is how long the agent may send
@@ -783,7 +788,7 @@ impl AcpClient {
 
     pub fn notify(&self, method: &str, params: Value) -> Result<(), RpcError> {
         if self.shared.is_closed() {
-            return Err(RpcError::local("The agent is disconnected."));
+            return Err(RpcError::connection(ErrorKind::NotConnected, ""));
         }
         let size = serde_json::to_vec(&params)
             .map_err(|_| RpcError::local("This ACP request could not be encoded."))?
@@ -798,12 +803,12 @@ impl AcpClient {
             .connection
             .borrow()
             .clone()
-            .ok_or_else(|| RpcError::local("The agent is disconnected."))?;
+            .ok_or_else(|| RpcError::connection(ErrorKind::NotConnected, ""))?;
         let message = UntypedMessage::new(method, params)
             .map_err(|_| RpcError::local("This ACP request could not be encoded."))?;
         connection
             .send_notification(message)
-            .map_err(|_| RpcError::local("The agent is disconnected."))
+            .map_err(|_| RpcError::connection(ErrorKind::NotConnected, ""))
     }
 
     /// Negotiates the protocol and records what the agent can do.
@@ -1096,11 +1101,12 @@ impl AcpClient {
                 let end = started + limit;
                 if now >= end {
                     self.turn_timed_out(session, stop_on_timeout);
-                    return Err(RpcError::local(if stop_on_timeout {
-                        "The agent did not reply in time and was stopped."
+                    let kind = if stop_on_timeout {
+                        ErrorKind::TimedOutStopped
                     } else {
-                        "The agent did not reply in time."
-                    }));
+                        ErrorKind::TimedOut
+                    };
+                    return Err(RpcError::connection(kind, ""));
                 }
                 wake = Some(wake.map_or(end, |wake| wake.min(end)));
             }
@@ -1109,14 +1115,12 @@ impl AcpClient {
                 let end = last + limit;
                 if now >= end && !stop_on_timeout {
                     self.turn_timed_out(session, false);
-                    return Err(RpcError::local("The agent did not reply in time."));
+                    return Err(RpcError::connection(ErrorKind::TimedOut, ""));
                 }
                 if now >= end {
                     let _ = self.shared.stop.send(true);
                     let minutes = (limit.as_secs() / 60).max(1);
-                    return Err(RpcError::local(&format!(
-                        "The agent sent nothing for {minutes} minutes, so Oleafly stopped it. Reconnect to continue."
-                    )));
+                    return Err(RpcError::connection(ErrorKind::Silent { minutes }, ""));
                 }
                 wake = Some(wake.map_or(end, |wake| wake.min(end)));
             }

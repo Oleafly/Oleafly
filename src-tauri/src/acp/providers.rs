@@ -10,6 +10,7 @@ use oleafly_acp::providers::{parse_list, ProviderRoute, PROVIDERS_LIST, PROVIDER
 use oleafly_acp::redact::Redactor;
 use oleafly_acp::AcpClient;
 
+use super::failures;
 use super::preferences::AgentPreferences;
 use crate::config::AppConfig;
 
@@ -106,8 +107,6 @@ pub(super) fn oleafly_routes(
     (!routes.is_empty()).then_some((routes, key))
 }
 
-const CODEX_ONLY_OPENAI: &str = "Codex can only use an OpenAI key.";
-
 pub(super) fn agent_routes(
     agent_id: &str,
     provider: &str,
@@ -192,7 +191,7 @@ pub(super) async fn route_agent(
     let listed = client
         .request(PROVIDERS_LIST, serde_json::json!({}), REQUEST_TIMEOUT)
         .await
-        .map_err(|error| redactor.text(&error.to_string()))?;
+        .map_err(|error| failures::redacted(redactor, &failures::rpc_message(&error)))?;
     let providers = parse_list(&listed);
     let mut supported: Vec<String> = providers
         .iter()
@@ -207,10 +206,10 @@ pub(super) async fn route_agent(
         });
     };
     if agent_id == "codex" && provider != "openai" {
-        return Err(CODEX_ONLY_OPENAI.into());
+        return Err(failures::coded(failures::CODEX_OPENAI_ONLY));
     }
     let (routes, key) = agent_routes(agent_id, provider, config)
-        .ok_or("There is no saved key for this provider.")?;
+        .ok_or_else(|| failures::coded(failures::NO_SAVED_KEY))?;
     let (target, chosen) = providers
         .iter()
         .find_map(|agent| {
@@ -221,7 +220,7 @@ pub(super) async fn route_agent(
                     .map(|route| (agent.provider_id.clone(), route.clone()))
             })
         })
-        .ok_or("This agent cannot use this kind of key.")?;
+        .ok_or_else(|| failures::coded(failures::KEY_KIND_UNSUPPORTED))?;
     redactor.add_secret(&key);
     let route = ProviderRoute {
         provider_id: target.clone(),
@@ -233,7 +232,7 @@ pub(super) async fn route_agent(
         .request(PROVIDERS_SET, route.params(), REQUEST_TIMEOUT)
         .await;
     drop(route);
-    result.map_err(|error| redactor.text(&error.to_string()))?;
+    result.map_err(|error| failures::redacted(redactor, &failures::rpc_message(&error)))?;
     Ok(Routed {
         provider: Some(provider.to_owned()),
         agent_provider: Some(target),
@@ -472,7 +471,10 @@ mod tests {
         .err()
         .unwrap();
         client.shutdown().await;
-        assert_eq!(error, "Codex can only use an OpenAI key.");
+        assert_eq!(
+            crate::app_error::english(&error).as_deref(),
+            Some("Codex can only use an OpenAI key.")
+        );
         let requests = std::fs::read_to_string(temp.path().join("requests.jsonl")).unwrap();
         assert!(!requests.contains(PROVIDERS_SET));
     }

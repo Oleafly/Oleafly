@@ -49,6 +49,7 @@ import {
 } from "@/lib/acp";
 import type { DraftAttachment } from "@/components/ai/composer/types";
 import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
+import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import { flushOpenFilesToDisk } from "@/lib/external-file-changes";
@@ -647,7 +648,7 @@ describe("ACP composer on the shared composer (0.4.8)", () => {
     const started = deferred<AcpSnapshot>();
     vi.mocked(acpStart).mockReturnValue(started.promise);
     vi.mocked(acpCancelStart).mockImplementation(async () => {
-      started.reject("The start was cancelled.");
+      started.reject(`${APP_ERROR_PREFIX}${JSON.stringify({ code: "acp.start.cancelled", params: {}, detail: null })}`);
       return true;
     });
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);

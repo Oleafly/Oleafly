@@ -535,9 +535,10 @@ fn managed_node_receipts_put_the_script_before_agent_arguments() {
             assert!(launch.managed);
             assert_eq!(launch.version, Some(definition.version));
         }
-        None => assert!(resolve(temp.path(), &definition)
-            .unwrap_err()
-            .contains("Install Node.js")),
+        None => assert!(crate::app_error::english_error(
+            &resolve(temp.path(), &definition).unwrap_err()
+        )
+        .contains("Install Node.js")),
     }
 }
 
@@ -661,7 +662,7 @@ async fn installed_commands_report_unmanaged_status_without_running_the_file() {
     std::fs::remove_file(executable).unwrap();
     let missing = status(temp.path(), definition, false).await;
     assert!(!missing.installed);
-    assert!(missing.reason.unwrap().contains("isn't installed"));
+    assert!(crate::app_error::english_error(&missing.reason.unwrap()).contains("isn't installed"));
 }
 
 #[tokio::test]
@@ -1412,9 +1413,7 @@ if (settings.fail) process.exit(2);
             let definition = definition(true, None);
             settings(&root, invalid);
             assert!(
-                install(&data, &definition)
-                    .await
-                    .unwrap_err()
+                crate::app_error::english_error(&install(&data, &definition).await.unwrap_err())
                     .contains(error),
                 "{error}"
             );
@@ -1581,7 +1580,12 @@ async fn an_agent_pinning_a_newer_node_cannot_be_installed() {
     };
     let blocked = status(temp.path(), definition.clone(), false).await;
     assert!(!blocked.can_install);
-    assert!(blocked.reason.unwrap().contains("Node.js 999"));
+    let reason = blocked.reason.unwrap();
+    assert!(matches!(
+        crate::app_error::code(&reason).as_deref(),
+        Some("acp.start.node_missing" | "acp.start.node_outdated")
+    ));
+    assert!(crate::app_error::english_error(&reason).contains("Node.js 999"));
     definition.distribution.npx.as_mut().unwrap().node_major = Some(1);
     let allowed = status(temp.path(), definition, false).await;
     assert!(allowed.can_install);
@@ -1876,12 +1880,21 @@ fn npm_failure(stderr: &str) -> CommandFailure {
 #[test]
 fn npm_network_failures_name_the_registry_and_say_what_to_check() {
     let advice = "Check your network connection, proxy or npm registry setting.";
+    let english = |failure: String| crate::app_error::english_error(&failure);
+    let refused = npm_install_message(npm_failure(REFUSED_NPM_OUTPUT), "127.0.0.1");
     assert_eq!(
-        npm_install_message(npm_failure(REFUSED_NPM_OUTPUT), "127.0.0.1"),
+        crate::app_error::code(&refused).as_deref(),
+        Some("acp.install.npm_unreachable")
+    );
+    assert_eq!(
+        english(refused),
         format!("Oleafly couldn't reach the npm registry at 127.0.0.1 (ECONNREFUSED). {advice}")
     );
     assert_eq!(
-        npm_install_message(npm_failure(TIMED_OUT_NPM_OUTPUT), "registry.npmmirror.com"),
+        english(npm_install_message(
+            npm_failure(TIMED_OUT_NPM_OUTPUT),
+            "registry.npmmirror.com"
+        )),
         format!(
             "Oleafly couldn't reach the npm registry at registry.npmmirror.com (FETCH_ERROR). {advice}"
         )
@@ -1896,12 +1909,17 @@ fn npm_network_failures_name_the_registry_and_say_what_to_check() {
         ("npm error code CERT_HAS_EXPIRED\n", "CERT_HAS_EXPIRED"),
     ] {
         assert_eq!(
-            npm_install_message(npm_failure(output), "registry.npmjs.org"),
+            english(npm_install_message(npm_failure(output), "registry.npmjs.org")),
             format!("Oleafly couldn't reach the npm registry at registry.npmjs.org ({code}). {advice}"),
             "{output}"
         );
     }
     let timed_out = npm_install_message(CommandFailure::TimedOut, "registry.npmmirror.com");
+    assert_eq!(
+        crate::app_error::code(&timed_out).as_deref(),
+        Some("acp.install.npm_timed_out")
+    );
+    let timed_out = english(timed_out);
     assert!(timed_out.contains("registry.npmmirror.com"), "{timed_out}");
     assert!(timed_out.ends_with(advice), "{timed_out}");
     assert_eq!(
@@ -2226,7 +2244,9 @@ fn a_chosen_program_wins_over_the_managed_install_for_agents_oleafly_starts_dire
         &definition,
         Some(&temp.path().join("gone.exe")),
     );
-    assert!(missing.launch.unwrap_err().contains("Choose it again"));
+    assert!(
+        crate::app_error::english_error(&missing.launch.unwrap_err()).contains("Choose it again")
+    );
 }
 
 #[test]
@@ -2550,7 +2570,7 @@ fn claude_gateway_users_are_sent_to_their_endpoint_settings_not_to_anthropic_sig
 #[test]
 fn the_claude_gateway_hint_names_the_variables_and_never_their_values() {
     let claude = builtin("claude");
-    let gateway = sign_in_hint(&claude, None, true);
+    let gateway = crate::app_error::english_error(&sign_in_hint(&claude, None, true));
     assert_eq!(
         gateway,
         "Claude Code uses a custom API endpoint. Check ANTHROPIC_BASE_URL and ANTHROPIC_AUTH_TOKEN in your shell profile or Claude Code's settings.json, then reconnect."
@@ -2690,7 +2710,11 @@ fn a_global_pi_bridge_older_than_the_pin_is_not_used_and_the_managed_install_is_
     assert_eq!(launch.version.as_deref(), Some("0.0.20"));
     let error = current_bridge(&pi, [launch]).unwrap_err();
     assert_eq!(
-        error,
+        crate::app_error::code(&error).as_deref(),
+        Some("acp.start.bridge_outdated")
+    );
+    assert_eq!(
+        crate::app_error::english_error(&error),
         "pi-acp 0.0.20 on this computer is too old. Oleafly needs 0.0.34 or newer. Install the bridge in Settings."
     );
 
@@ -2713,7 +2737,7 @@ fn a_global_pi_bridge_older_than_the_pin_is_not_used_and_the_managed_install_is_
         "a bridge whose version can't be read is still used"
     );
     assert_eq!(
-        current_bridge(&pi, []).unwrap_err(),
+        crate::app_error::english_error(&current_bridge(&pi, []).unwrap_err()),
         "This agent isn't installed yet. Install it, or choose its program in Settings."
     );
     let gemini = Launch {
