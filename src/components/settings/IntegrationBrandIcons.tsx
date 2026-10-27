@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
-type BrandIconProps = Readonly<{ className?: string }>;
+export type BrandIconProps = Readonly<{ className?: string }>;
 
-function BrandSvg({
+export function BrandSvg({
   className,
   viewBox,
   children,
@@ -126,22 +126,6 @@ export function PubMedBrandIcon({ className }: BrandIconProps) {
   return (
     <BrandSvg className={className} viewBox="0 0 24 24">
       <path d="M8.23 7.982l.006-1.005C7.846 1.417 5.096 0 5.096 0l.048 2.291C3.73 1.056 2.6 1.444 2.6 1.444l.118 15.307s4.218-1.796 5.428 5.505C10.238 13.535 21.401 24 21.401 24V9S10.52-.18 8.231 7.982zm9.79 9.941l-1.046-5.232-1.904 4.507h-.96l-1.72-4.301-1.046 5.04H9.321l2.093-9.39h.802l2.491 5.543 2.508-5.557h.869l2.075 9.39h-2.138z" />
-    </BrandSvg>
-  );
-}
-
-export function DropboxBrandIcon({ className }: BrandIconProps) {
-  return (
-    <BrandSvg className={className} viewBox="0 0 24 24">
-      <path d="M6 1.807L0 5.629l6 3.822 6.001-3.822L6 1.807zM18 1.807l-6 3.822 6 3.822 6-3.822-6-3.822zM0 13.274l6 3.822 6.001-3.822L6 9.452l-6 3.822zM18 9.452l-6 3.822 6 3.822 6-3.822-6-3.822zM6 18.371l6.001 3.822 6-3.822-6-3.822L6 18.371z" />
-    </BrandSvg>
-  );
-}
-
-export function GoogleDriveBrandIcon({ className }: BrandIconProps) {
-  return (
-    <BrandSvg className={className} viewBox="0 0 24 24">
-      <path d="M12.01 1.485c-2.082 0-3.754.02-3.743.047.01.02 1.708 3.001 3.774 6.62l3.76 6.574h3.76c2.081 0 3.753-.02 3.742-.047-.005-.02-1.708-3.001-3.775-6.62l-3.76-6.574zm-4.76 1.73a789.828 789.861 0 0 0-3.63 6.319L0 15.868l1.89 3.298 1.885 3.297 3.62-6.335 3.618-6.33-1.88-3.287C8.1 4.704 7.255 3.22 7.25 3.214zm2.259 12.653-.203.348c-.114.198-.96 1.672-1.88 3.287a423.93 423.948 0 0 1-1.698 2.97c-.01.026 3.24.042 7.222.042h7.244l1.796-3.157c.992-1.734 1.85-3.23 1.906-3.323l.104-.167h-7.249z" />
     </BrandSvg>
   );
 }

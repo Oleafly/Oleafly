@@ -54,11 +54,17 @@ const limits = {
   // +1 KB for the research tasks switch at startup (the rail entry's
   // condition, the rail's re-render on it, the capped small-button radius):
   // the entry measures 4,990,252 bytes, 252 over the old ceiling.
-  largestJavaScript: 5_000_000,
+  // +10 KB for the editor's right-click menu (Cut, Copy, Paste and Select all
+  // through the clipboard plugin, the submenus), the Ask AI popup's own
+  // request, Markdown's /table and /equation, and the GitLab, Codeberg, Gitea
+  // and Forgejo logos the remote menu shows (4.2 KB of it). The Dropbox and
+  // Google Drive logos moved to the Cloud tab and left the entry. It measures
+  // 5,004,520 bytes, against 4,994,984 on CI for its base.
+  largestJavaScript: 5_010_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
   // asset becomes the largest.
-  entryJavaScript: 5_000_000,
+  entryJavaScript: 5_010_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
@@ -158,7 +164,11 @@ const limits = {
   // With both, the combined graph measures 20,950,195 bytes on macOS.
   // +20 KB for the 0.4.8-rc fixes: 21,001,072 bytes on macOS, of which
   // following file links on Cmd+click in the source editor is 586 bytes.
-  totalJavaScript: 21_020_000,
+  // +20 KB for Google Drive and S3-compatible cloud sync (the provider cards,
+  // the S3 form, the provider choice in the Cloud tab), the storage bar in
+  // Settings and the entry growth above: 21,030,056 bytes on macOS, against
+  // 21,003,946 on CI for its base.
+  totalJavaScript: 21_040_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
   // 851 KB with 0.4.8's strings; keep narrow headroom so a namespace

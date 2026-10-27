@@ -41,6 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   signs out with an icon button. The server name shows only when it differs
   from the badge.
 
+### Security
+
+- Updated zstd, the compression library behind file history and the file
+  snapshots taken during agent turns, from 0.13.3 to 0.14.3. It fixes four
+  security advisories in how zstd handles memory (RUSTSEC-2026-0391,
+  RUSTSEC-2026-0398, RUSTSEC-2026-0403 and RUSTSEC-2026-0410).
+
 ### Fixed
 
 - Open files in a library project reload when a terminal, an agent or
