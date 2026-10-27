@@ -47,13 +47,33 @@ impl From<AppError> for String {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct Envelope {
     code: String,
     #[serde(default)]
     params: BTreeMap<String, String>,
     #[serde(default)]
     detail: Option<String>,
+}
+
+fn envelope(text: &str) -> Option<Envelope> {
+    serde_json::from_str(text.strip_prefix(PREFIX)?).ok()
+}
+
+#[cfg(test)]
+pub(crate) fn code(text: &str) -> Option<String> {
+    envelope(text).map(|envelope| envelope.code)
+}
+
+pub(crate) fn map_values(text: &str, map: impl Fn(&str) -> String) -> String {
+    let Some(mut envelope) = envelope(text) else {
+        return map(text);
+    };
+    for value in envelope.params.values_mut() {
+        *value = map(value);
+    }
+    envelope.detail = envelope.detail.as_deref().map(&map);
+    serde_json::to_string(&envelope).map_or_else(|_| map(text), |json| format!("{PREFIX}{json}"))
 }
 
 fn english_template(key: &str) -> Option<&'static str> {
@@ -76,7 +96,7 @@ fn interpolate<'a>(template: &str, params: impl IntoIterator<Item = (&'a str, &'
 }
 
 pub(crate) fn english(text: &str) -> Option<String> {
-    let envelope: Envelope = serde_json::from_str(text.strip_prefix(PREFIX)?).ok()?;
+    let envelope = envelope(text)?;
     let template = english_template(&envelope.code)?;
     let message = interpolate(
         template,
@@ -235,6 +255,27 @@ mod tests {
         let mut bare = Value::String(read_only_main());
         assert!(english_tool_result(&mut bare));
         assert_eq!(bare, READ_ONLY_MAIN);
+    }
+
+    #[test]
+    fn values_are_mapped_inside_an_envelope_and_plain_text_is_mapped_whole() {
+        let text: String = AppError::new("acp.session.disconnected_with_output")
+            .param("output", "token sk-secret\"}")
+            .detail("sk-secret")
+            .into();
+        let mapped = map_values(&text, |value| value.replace("sk-secret", "[gone]"));
+        assert_eq!(
+            code(&mapped).as_deref(),
+            Some("acp.session.disconnected_with_output")
+        );
+        let parsed = envelope(&mapped).unwrap();
+        assert_eq!(parsed.params["output"], "token [gone]\"}");
+        assert_eq!(parsed.detail.as_deref(), Some("[gone]"));
+        assert_eq!(
+            map_values("plain sk-secret", |value| value.to_uppercase()),
+            "PLAIN SK-SECRET"
+        );
+        assert_eq!(code("plain"), None);
     }
 
     #[test]

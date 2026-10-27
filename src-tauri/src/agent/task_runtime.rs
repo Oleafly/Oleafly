@@ -558,7 +558,10 @@ impl TaskRuntimeAdapter for AcpTaskAdapter {
                 token: cancel.clone(),
                 done,
             };
-            adapter.run_task(context, cancel, events).await
+            adapter
+                .run_task(context, cancel, events)
+                .await
+                .map_err(|error| crate::app_error::english_error(&error))
         })
     }
 
@@ -1235,8 +1238,12 @@ mod tests {
             .unwrap()
             .unwrap();
         let error = result.unwrap_err();
+        assert!(crate::acp::failures::is_code(
+            &error,
+            crate::acp::failures::OWNER_CLOSED
+        ));
         assert!(
-            error.contains("closed while the agent was starting"),
+            crate::app_error::english_error(&error).contains("closed while the agent was starting"),
             "{error}"
         );
         assert!(runtime.list(&project_id).unwrap().is_empty());

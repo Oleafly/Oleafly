@@ -437,6 +437,17 @@ impl Store {
         Ok(u64::try_from(copied).unwrap_or(0))
     }
 
+    pub fn has_user_message(&self, id: &str) -> Result<bool, String> {
+        self.lock()?
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM events WHERE session_id=?1
+                 AND event LIKE '%\"kind\":\"user_message\"%')",
+                [id],
+                |row| row.get(0),
+            )
+            .map_err(|e| e.to_string())
+    }
+
     pub fn delete_session(&self, id: &str) -> Result<(), String> {
         let mut db = self.lock()?;
         let tx = db.transaction().map_err(|e| e.to_string())?;

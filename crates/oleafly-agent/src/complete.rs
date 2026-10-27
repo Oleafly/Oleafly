@@ -582,11 +582,19 @@ pub async fn complete(
 
     let body: Value =
         serde_json::from_slice(&raw).map_err(|e| AgentError::Decode(e.to_string()))?;
+    completion_from_body(resolved, &body)
+}
+
+fn completion_from_body(resolved: &Resolved, body: &Value) -> Result<CompletionResponse> {
+    let stop_reason = blocking_stop_reason(&resolved.wire, body);
+    if let Some(error) = crate::stream::out_of_capacity(stop_reason.as_deref()) {
+        return Err(error);
+    }
     let (text, usage) = match &resolved.wire {
-        Wire::OpenAiResponses { .. } => parse_openai_responses(&body)?,
-        Wire::OpenAiChat { .. } => parse_openai(&body)?,
-        Wire::Anthropic { .. } => parse_anthropic(&body)?,
-        Wire::Google { .. } => parse_google(&body)?,
+        Wire::OpenAiResponses { .. } => parse_openai_responses(body)?,
+        Wire::OpenAiChat { .. } => parse_openai(body)?,
+        Wire::Anthropic { .. } => parse_anthropic(body)?,
+        Wire::Google { .. } => parse_google(body)?,
     };
 
     Ok(CompletionResponse {
@@ -594,7 +602,7 @@ pub async fn complete(
         usage,
         provider_id: resolved.provider_id.clone(),
         model_id: resolved.model_id.clone(),
-        stop_reason: blocking_stop_reason(&resolved.wire, &body),
+        stop_reason,
     })
 }
 
@@ -1047,6 +1055,29 @@ mod tests {
             json!({"candidates":[{"finishReason":"MAX_TOKENS","content":{"parts":[]}}]}),
         );
         assert!(is_output_limit_stop(cut_google.as_deref()));
+    }
+
+    #[test]
+    fn a_blocking_reply_cut_short_by_provider_capacity_is_a_retryable_503() {
+        let resolved = Resolved {
+            provider_id: "deepseek".into(),
+            model_id: "deepseek-flash".into(),
+            credential: String::new(),
+            auth: None,
+            wire: Wire::OpenAiChat {
+                base_url: "https://api.deepseek.com".into(),
+                reasoning_content: true,
+            },
+            caps: crate::caps::ModelCaps::default(),
+        };
+        let cut = json!({"choices":[{"message":{"content":"half a summ"},"finish_reason":"insufficient_system_resource"}]});
+        let error = completion_from_body(&resolved, &cut).unwrap_err();
+        assert_eq!(error.status(), Some(503));
+        assert!(error.retryable());
+        let whole = json!({"choices":[{"message":{"content":"summary"},"finish_reason":"stop"}]});
+        let response = completion_from_body(&resolved, &whole).unwrap();
+        assert_eq!(response.text, "summary");
+        assert_eq!(response.stop_reason.as_deref(), Some("stop"));
     }
 
     #[test]

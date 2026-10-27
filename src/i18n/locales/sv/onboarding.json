@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "Två sorters agent",
-      "content": "Oleafly-agenten körs på den modelleverantör du konfigurerar. CLI-agenten, som är i beta, styr en kodagent som redan är installerad på den här datorn."
+      "content": "Oleafly-agenten körs på den modelleverantör du konfigurerar. CLI-agenten styr en kodagent som redan är installerad på den här datorn."
     },
     "connectProvider": {
       "title": "Anslut en leverantör",

@@ -12,6 +12,7 @@ rust-version = "1.88"
 agent-client-protocol = { version = "=3.4.0", default-features = false, features = ["unstable_protocol_v2"] }
 agent-client-protocol-schema = { version = "=1.12.0", default-features = false }
 base64 = "0.23"
+encoding_rs = "0.8"
 futures = "0.3"
 oleafly-core = { path = "../oleafly-core" }
 oleafly-sandbox = { path = "../oleafly-sandbox" }
@@ -23,6 +24,9 @@ zeroize = "=1.9.0"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Globalization"] }
 
 [dev-dependencies]
 agent-client-protocol-schema = { version = "=1.12.0", default-features = false, features = ["unstable_session_fork", "unstable_llm_providers", "unstable_end_turn_token_usage", "unstable_protocol_v2"] }

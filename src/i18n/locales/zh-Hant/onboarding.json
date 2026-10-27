@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "兩種代理程式",
-      "content": "Oleafly 代理程式會在你設定的模型供應商上執行。CLI 代理程式目前為 Beta，會驅動這台電腦上已安裝的程式設計代理程式。"
+      "content": "Oleafly 代理程式會在你設定的模型供應商上執行。CLI 代理程式會驅動這台電腦上已安裝的程式設計代理程式。"
     },
     "connectProvider": {
       "title": "連接供應商",

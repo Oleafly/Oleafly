@@ -258,28 +258,30 @@ fn sign_in_hints_name_the_vendor_command_and_stay_specific_for_api_key_agents() 
     assert_eq!(
         sign_in_hint(
             &by_id("opencode"),
-            Some(&installed("opencode", "opencode auth login"))
+            Some(&installed("opencode", "opencode auth login")),
+            false
         ),
         "Run opencode auth login in your terminal, then reconnect."
     );
     assert_eq!(
         sign_in_hint(
             &by_id("pi"),
-            Some(&installed("pi", r"& 'D:\Tools\Agents\Pi\pi.cmd'"))
+            Some(&installed("pi", r"& 'D:\Tools\Agents\Pi\pi.cmd'")),
+            false
         ),
         r"Run & 'D:\Tools\Agents\Pi\pi.cmd' in your terminal and sign in with /login, then reconnect."
     );
     assert_eq!(
-        sign_in_hint(&by_id("pi"), None),
+        sign_in_hint(&by_id("pi"), None, false),
         "Run pi in your terminal and sign in with /login, then reconnect."
     );
     assert_eq!(
-        sign_in_hint(&by_id("kimi"), None),
+        sign_in_hint(&by_id("kimi"), None, false),
         "Install Kimi Code, run kimi login in your terminal, then reconnect."
     );
-    assert!(sign_in_hint(&by_id("deepseek"), None).contains("DEEPSEEK_API_KEY"));
-    assert!(sign_in_hint(&by_id("pi"), None).contains("/login"));
-    assert!(sign_in_hint(&by_id("gemini"), None).contains("workspace trust"));
+    assert!(sign_in_hint(&by_id("deepseek"), None, false).contains("DEEPSEEK_API_KEY"));
+    assert!(sign_in_hint(&by_id("pi"), None, false).contains("/login"));
+    assert!(sign_in_hint(&by_id("gemini"), None, false).contains("workspace trust"));
 }
 
 #[test]
@@ -533,9 +535,10 @@ fn managed_node_receipts_put_the_script_before_agent_arguments() {
             assert!(launch.managed);
             assert_eq!(launch.version, Some(definition.version));
         }
-        None => assert!(resolve(temp.path(), &definition)
-            .unwrap_err()
-            .contains("Install Node.js")),
+        None => assert!(crate::app_error::english_error(
+            &resolve(temp.path(), &definition).unwrap_err()
+        )
+        .contains("Install Node.js")),
     }
 }
 
@@ -659,7 +662,7 @@ async fn installed_commands_report_unmanaged_status_without_running_the_file() {
     std::fs::remove_file(executable).unwrap();
     let missing = status(temp.path(), definition, false).await;
     assert!(!missing.installed);
-    assert!(missing.reason.unwrap().contains("isn't installed"));
+    assert!(crate::app_error::english_error(&missing.reason.unwrap()).contains("isn't installed"));
 }
 
 #[tokio::test]
@@ -951,11 +954,17 @@ fn version_probe_cli(folder: &Path, stem: &str, unix: &str, windows: &str) -> Lo
     }
     #[cfg(not(windows))]
     {
-        use std::os::unix::fs::PermissionsExt;
         let _ = windows;
         let path = folder.join(stem);
-        std::fs::write(&path, format!("#!/bin/sh\n{unix}\n")).unwrap();
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)).unwrap();
+        crate::test_wait::write_executable(
+            &path,
+            &format!("#!/bin/sh\n[ \"$1\" = --warm-up ] && exit 0\n{unix}\n"),
+        );
+        let warmed = std::process::Command::new(&path)
+            .arg("--warm-up")
+            .status()
+            .unwrap();
+        assert!(warmed.success());
         Located {
             path,
             kind: ProgramKind::Native,
@@ -983,9 +992,15 @@ async fn a_failed_version_probe_describes_the_probe_rather_than_an_installation(
         .unwrap()
         .to_string_lossy()
         .into_owned();
-    let error = program_version(&root, &silent, &env, Duration::from_secs(10))
-        .await
-        .unwrap_err();
+    let error = program_version(
+        &root,
+        &silent,
+        &["--version"],
+        &env,
+        Duration::from_secs(10),
+    )
+    .await
+    .unwrap_err();
     no_install_wording(&error);
     assert!(error.contains(&format!("{name} --version")), "{error}");
 
@@ -1001,9 +1016,15 @@ async fn a_failed_version_probe_describes_the_probe_rather_than_an_installation(
         .unwrap()
         .to_string_lossy()
         .into_owned();
-    let error = program_version(&root, &slow, &env, Duration::from_millis(500))
-        .await
-        .unwrap_err();
+    let error = program_version(
+        &root,
+        &slow,
+        &["--version"],
+        &env,
+        Duration::from_millis(500),
+    )
+    .await
+    .unwrap_err();
     no_install_wording(&error);
     assert!(error.contains(&format!("{name} --version")), "{error}");
     assert!(error.contains("in time"), "{error}");
@@ -1016,9 +1037,15 @@ async fn a_failed_version_probe_describes_the_probe_rather_than_an_installation(
         }),
         kind: ProgramKind::Native,
     };
-    let error = program_version(&root, &missing, &env, Duration::from_secs(10))
-        .await
-        .unwrap_err();
+    let error = program_version(
+        &root,
+        &missing,
+        &["--version"],
+        &env,
+        Duration::from_secs(10),
+    )
+    .await
+    .unwrap_err();
     no_install_wording(&error);
     assert!(error.contains("missing-cli"), "{error}");
 
@@ -1029,7 +1056,7 @@ async fn a_failed_version_probe_describes_the_probe_rather_than_an_installation(
         "echo 'node: not found' >&2; exit 127",
         "echo 'node' is not recognized 1>&2\r\nexit /b 9009",
     );
-    let error = program_version(&root, &loud, &env, Duration::from_secs(10))
+    let error = program_version(&root, &loud, &["--version"], &env, Duration::from_secs(10))
         .await
         .unwrap_err();
     let printed = if cfg!(windows) {
@@ -1056,15 +1083,18 @@ const args = process.argv.slice(2);
 const npm = path.basename(process.argv[1]) === 'npm-cli.js';
 fs.appendFileSync(path.join(root, 'invocations.jsonl'), JSON.stringify({npm, args}) + '\n');
 if (npm) {
-  assert.deepEqual(args.slice(0, 7), ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--save-exact', '--registry=https://registry.npmjs.org', '--prefix']);
-  assert.equal(args[8], '@oleafly-fixture/agent@1.2.3');
-  assert.equal(process.cwd(), fs.realpathSync(args[7]));
-  assert.equal(process.env.npm_config_userconfig, path.join(args[7], 'empty-npmrc'));
-  assert.equal(JSON.parse(fs.readFileSync(path.join(args[7], 'package.json'))).private, true);
+  assert.deepEqual(args.slice(0, 10), ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--save-exact', '--fetch-retries=1', '--fetch-retry-mintimeout=2000', '--fetch-retry-maxtimeout=10000', '--fetch-timeout=60000', '--prefix']);
+  assert.equal(args[11], '@oleafly-fixture/agent@1.2.3');
+  assert.equal(process.cwd(), fs.realpathSync(args[10]));
+  assert.equal(process.env.npm_config_userconfig, path.join(args[10], 'empty-npmrc'));
+  assert.equal(process.env.npm_config_registry, 'https://registry.npmmirror.com/');
+  assert.equal(process.env.npm_config_proxy, 'http://127.0.0.1:7890');
+  assert.equal(process.env.npm_config_script_shell, undefined);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(args[10], 'package.json'))).private, true);
   const cache = process.env.npm_config_cache;
   fs.mkdirSync(path.join(cache, '_cacache'), {recursive: true});
   fs.writeFileSync(path.join(cache, '_cacache', 'tarball'), 'x'.repeat(1024));
-  const packageRoot = path.join(args[7], 'node_modules/@oleafly-fixture/agent');
+  const packageRoot = path.join(args[10], 'node_modules/@oleafly-fixture/agent');
   fs.mkdirSync(packageRoot, {recursive: true});
   if (settings.manifest !== null) fs.writeFileSync(path.join(packageRoot, 'package.json'), typeof settings.manifest === 'string' ? settings.manifest : JSON.stringify(settings.manifest));
   for (const [name, content] of Object.entries(settings.files || {})) {
@@ -1085,6 +1115,7 @@ if (npm) {
   fs.writeFileSync(executable, '#!/bin/sh\nprintf "%s\\n" "$@"\n', {mode: 0o700});
   if (settings.layout !== 'missing') fs.symlinkSync(settings.layout === 'escaped' ? path.join(root, 'outside') : executable, path.join(bin, 'catalog-agent'));
 }
+if (settings.stderr) fs.writeSync(2, settings.stderr);
 if (settings.fail) process.exit(2);
 "#;
 
@@ -1134,11 +1165,22 @@ if (settings.fail) process.exit(2);
             ),
         );
         std::fs::write(root.join("outside"), b"outside fixture must stay unchanged").unwrap();
+        std::fs::write(
+            root.join("user-npmrc"),
+            "registry=https://registry.npmmirror.com/\nproxy=http://127.0.0.1:7890\nscript-shell=/bin/false\n",
+        )
+        .unwrap();
+        let mut child = tokio::process::Command::new(std::env::current_exe().unwrap());
+        for key in NPM_NETWORK_KEYS {
+            let variable = format!("npm_config_{}", key.replace('-', "_"));
+            child.env_remove(&variable);
+            child.env_remove(variable.to_ascii_uppercase());
+        }
         // The child test runs a whole fixture install, several Node processes
         // in turn.
         let output = tokio::time::timeout(
             test_wait::CHILD_PATIENCE * 4,
-            tokio::process::Command::new(std::env::current_exe().unwrap())
+            child
                 .args([
                     "--exact",
                     &format!("acp::catalog::catalog_tests::managed_install::{name}"),
@@ -1146,6 +1188,7 @@ if (settings.fail) process.exit(2);
                 ])
                 .env("PATH", &bin)
                 .env(FIXTURE_ROOT, &root)
+                .env("npm_config_userconfig", root.join("user-npmrc"))
                 .kill_on_drop(true)
                 .output(),
         )
@@ -1351,6 +1394,14 @@ if (settings.fail) process.exit(2);
                 json!({"manifest": null, "fail": true}),
                 "installation failed",
             ),
+            (
+                json!({
+                    "manifest": null,
+                    "fail": true,
+                    "stderr": "npm error code ECONNREFUSED\nnpm error A complete log of this run can be found in: /tmp/x/_logs/x-debug-0.log\n"
+                }),
+                "couldn't reach the npm registry at registry.npmmirror.com (ECONNREFUSED)",
+            ),
         ]
         .into_iter()
         .enumerate()
@@ -1359,9 +1410,7 @@ if (settings.fail) process.exit(2);
             let definition = definition(true, None);
             settings(&root, invalid);
             assert!(
-                install(&data, &definition)
-                    .await
-                    .unwrap_err()
+                crate::app_error::english_error(&install(&data, &definition).await.unwrap_err())
                     .contains(error),
                 "{error}"
             );
@@ -1528,7 +1577,12 @@ async fn an_agent_pinning_a_newer_node_cannot_be_installed() {
     };
     let blocked = status(temp.path(), definition.clone(), false).await;
     assert!(!blocked.can_install);
-    assert!(blocked.reason.unwrap().contains("Node.js 999"));
+    let reason = blocked.reason.unwrap();
+    assert!(matches!(
+        crate::app_error::code(&reason).as_deref(),
+        Some("acp.start.node_missing" | "acp.start.node_outdated")
+    ));
+    assert!(crate::app_error::english_error(&reason).contains("Node.js 999"));
     definition.distribution.npx.as_mut().unwrap().node_major = Some(1);
     let allowed = status(temp.path(), definition, false).await;
     assert!(allowed.can_install);
@@ -1602,6 +1656,299 @@ fn a_node_crash_report_keeps_the_error_line_the_tail_would_drop() {
     }
 }
 
+fn npm_env(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<OsString> {
+    let pairs: Vec<(String, String)> = pairs
+        .iter()
+        .map(|(name, value)| (name.to_string(), value.to_string()))
+        .collect();
+    move |name: &str| {
+        pairs
+            .iter()
+            .find(|(key, _)| key == name)
+            .map(|(_, value)| OsString::from(value))
+    }
+}
+
+fn npm_files(files: Vec<(PathBuf, &str)>) -> impl Fn(&Path) -> Option<String> {
+    let files: Vec<(PathBuf, String)> = files
+        .into_iter()
+        .map(|(path, text)| (path, text.to_string()))
+        .collect();
+    move |path: &Path| {
+        files
+            .iter()
+            .find(|(known, _)| known == path)
+            .map(|(_, text)| text.clone())
+    }
+}
+
+fn npm_setting<'a>(network: &'a NpmNetwork, name: &str) -> Option<&'a str> {
+    network
+        .env
+        .iter()
+        .find(|(key, _)| key == name)
+        .map(|(_, value)| value.as_str())
+}
+
+#[test]
+fn npm_installs_take_only_network_settings_from_the_users_npm_config() {
+    let home = PathBuf::from("/home/r");
+    let global = PathBuf::from("/opt/node/etc/npmrc");
+    let read = npm_files(vec![
+        (
+            home.join(".npmrc"),
+            "; a registry mirror\n\
+             registry = \"https://registry.npmmirror.com/\"\n\
+             proxy=http://127.0.0.1:7890 # clash\n\
+             https-proxy=${CLASH_PROXY}\n\
+             script-shell=/bin/evil\n\
+             ignore-scripts=false\n\
+             //registry.npmmirror.com/:_authToken=npm-secret-token\n\
+             [section]\n\
+             registry=https://ignored.example/\n",
+        ),
+        (
+            global.clone(),
+            "cafile=~/certs/ca.pem\nstrict-ssl=false\nregistry=https://global.example/\nnoproxy=corp.example\n",
+        ),
+    ]);
+    let global_text = global.to_string_lossy().into_owned();
+    let env = npm_env(&[
+        ("CLASH_PROXY", "http://127.0.0.1:7891"),
+        ("npm_config_globalconfig", &global_text),
+    ]);
+    let network = npm_network(&env, &read, Some(&home), None, None);
+    assert_eq!(network.registry, "https://registry.npmmirror.com/");
+    assert_eq!(network.host(), "registry.npmmirror.com");
+    assert_eq!(
+        npm_setting(&network, "npm_config_registry"),
+        Some("https://registry.npmmirror.com/")
+    );
+    assert_eq!(
+        npm_setting(&network, "npm_config_proxy"),
+        Some("http://127.0.0.1:7890")
+    );
+    assert_eq!(
+        npm_setting(&network, "npm_config_https_proxy"),
+        Some("http://127.0.0.1:7891")
+    );
+    assert_eq!(
+        npm_setting(&network, "npm_config_noproxy"),
+        Some("corp.example,127.0.0.1,localhost,::1")
+    );
+    assert_eq!(
+        npm_setting(&network, "npm_config_cafile").map(PathBuf::from),
+        Some(home.join("certs").join("ca.pem"))
+    );
+    assert_eq!(
+        npm_setting(&network, "npm_config_strict_ssl"),
+        Some("false")
+    );
+    assert_eq!(network.env.len(), 6, "{:?}", network.env);
+}
+
+#[test]
+fn npm_registries_must_be_https_or_loopback_http() {
+    let home = PathBuf::from("/home/r");
+    for (registry, accepted) in [
+        ("https://registry.npmmirror.com", true),
+        ("http://localhost:4873/", true),
+        ("http://127.0.0.1:4873", true),
+        ("http://[::1]:4873/", true),
+        ("http://registry.npmmirror.com/", false),
+        ("http://192.168.1.10:4873/", false),
+        ("ftp://registry.npmjs.org/", false),
+        ("registry.npmmirror.com", false),
+        ("${UNSET_REGISTRY}", false),
+    ] {
+        let text = format!("registry={registry}\n");
+        let read = npm_files(vec![(home.join(".npmrc"), text.as_str())]);
+        let network = npm_network(&npm_env(&[]), &read, Some(&home), None, None);
+        let expected = if accepted {
+            registry
+        } else {
+            "https://registry.npmjs.org"
+        };
+        assert_eq!(network.registry, expected, "{registry}");
+        assert_eq!(npm_setting(&network, "npm_config_registry"), Some(expected));
+    }
+
+    let empty = npm_network(&npm_env(&[]), &|_| None, Some(&home), None, None);
+    assert_eq!(empty.registry, "https://registry.npmjs.org");
+    assert_eq!(empty.host(), "registry.npmjs.org");
+    assert_eq!(
+        empty.env,
+        [(
+            "npm_config_registry".to_string(),
+            "https://registry.npmjs.org".to_string()
+        )]
+    );
+
+    let read = npm_files(vec![(
+        home.join(".npmrc"),
+        "registry=https://registry.npmmirror.com/\n",
+    )]);
+    let env = npm_env(&[("npm_config_registry", "https://env.example/")]);
+    assert_eq!(
+        npm_network(&env, &read, Some(&home), None, None).registry,
+        "https://env.example/"
+    );
+    let custom = PathBuf::from("/elsewhere/npmrc");
+    let custom_text = custom.to_string_lossy().into_owned();
+    let read = npm_files(vec![(custom.clone(), "registry=https://custom.example/\n")]);
+    let env = npm_env(&[("npm_config_userconfig", &custom_text)]);
+    assert_eq!(
+        npm_network(&env, &read, Some(&home), None, None).registry,
+        "https://custom.example/"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn the_global_and_builtin_npmrc_files_follow_npms_own_layout() {
+    let read = npm_files(vec![
+        (
+            PathBuf::from("/usr/local/lib/node_modules/npm/npmrc"),
+            "prefix=/opt/brew\n",
+        ),
+        (
+            PathBuf::from("/opt/brew/etc/npmrc"),
+            "registry=https://from-global.example/\n",
+        ),
+        (
+            PathBuf::from("/opt/node/etc/npmrc"),
+            "registry=https://default-prefix.example/\n",
+        ),
+    ]);
+    let network = npm_network(
+        &npm_env(&[]),
+        &read,
+        None,
+        Some(Path::new("/opt/node/bin/node")),
+        Some(Path::new("/usr/local/lib/node_modules/npm/bin/npm-cli.js")),
+    );
+    assert_eq!(network.registry, "https://from-global.example/");
+    let network = npm_network(
+        &npm_env(&[]),
+        &read,
+        None,
+        Some(Path::new("/opt/node/bin/node")),
+        None,
+    );
+    assert_eq!(network.registry, "https://default-prefix.example/");
+}
+
+const REFUSED_NPM_OUTPUT: &str = "npm error code ECONNREFUSED
+npm error syscall connect
+npm error errno ECONNREFUSED
+npm error FetchError: request to http://127.0.0.1:9/pi-acp failed, reason: connect ECONNREFUSED 127.0.0.1:9
+npm error     at ClientRequest.<anonymous> (/Users/r/.hermes/node/lib/node_modules/npm/node_modules/minipass-fetch/lib/index.js:130:14)
+npm error     at ClientRequest.emit (node:events:514:20)
+npm error     at emitErrorEvent (node:_http_client:114:11)
+npm error     at _destroy (node:_http_client:1169:9)
+npm error     at onSocketNT (node:_http_client:1190:5)
+npm error     at process.processTicksAndRejections (node:internal/process/task_queues:91:21) {
+npm error   code: 'ECONNREFUSED',
+npm error   errno: 'ECONNREFUSED',
+npm error   syscall: 'connect',
+npm error   address: '127.0.0.1',
+npm error   port: 9,
+npm error   type: 'system',
+npm error   requiredBy: '.'
+npm error }
+npm error
+npm error If you are behind a proxy, please make sure that the 'proxy' config is set properly.  See: 'npm help config'
+npm error A complete log of this run can be found in: /tmp/install-1/npm-cache/_logs/2026-10-26T16_14_29_422Z-debug-0.log
+";
+
+const TIMED_OUT_NPM_OUTPUT: &str = "npm error code FETCH_ERROR
+npm error errno FETCH_ERROR
+npm error network timeout at: http://127.0.0.1:18999/pi-acp
+npm error A complete log of this run can be found in: /tmp/install-1/npm-cache/_logs/2026-10-26T16_26_16_722Z-debug-0.log
+";
+
+fn npm_failure(stderr: &str) -> CommandFailure {
+    CommandFailure::Failed(failure_lines(
+        &PipeCapture::default(),
+        &trailing_lines(stderr),
+    ))
+}
+
+#[test]
+fn npm_network_failures_name_the_registry_and_say_what_to_check() {
+    let advice = "Check your network connection, proxy or npm registry setting.";
+    let english = |failure: String| crate::app_error::english_error(&failure);
+    let refused = npm_install_message(npm_failure(REFUSED_NPM_OUTPUT), "127.0.0.1");
+    assert_eq!(
+        crate::app_error::code(&refused).as_deref(),
+        Some("acp.install.npm_unreachable")
+    );
+    assert_eq!(
+        english(refused),
+        format!("Oleafly couldn't reach the npm registry at 127.0.0.1 (ECONNREFUSED). {advice}")
+    );
+    assert_eq!(
+        english(npm_install_message(
+            npm_failure(TIMED_OUT_NPM_OUTPUT),
+            "registry.npmmirror.com"
+        )),
+        format!(
+            "Oleafly couldn't reach the npm registry at registry.npmmirror.com (FETCH_ERROR). {advice}"
+        )
+    );
+    for (output, code) in [
+        ("npm error code ETIMEDOUT\nnpm error syscall connect\n", "ETIMEDOUT"),
+        ("npm error code ENOTFOUND\nnpm error network request to https://registry.npmjs.org/pi-acp failed, reason: getaddrinfo ENOTFOUND registry.npmjs.org\n", "ENOTFOUND"),
+        ("npm error code EAI_AGAIN\n", "EAI_AGAIN"),
+        ("npm error code ECONNRESET\nnpm error network aborted\n", "ECONNRESET"),
+        ("npm error code UNABLE_TO_GET_ISSUER_CERT_LOCALLY\nnpm error errno UNABLE_TO_GET_ISSUER_CERT_LOCALLY\nnpm error request to https://registry.npmjs.org/pi-acp failed, reason: unable to get local issuer certificate\n", "UNABLE_TO_GET_ISSUER_CERT_LOCALLY"),
+        ("npm error code SELF_SIGNED_CERT_IN_CHAIN\n", "SELF_SIGNED_CERT_IN_CHAIN"),
+        ("npm error code CERT_HAS_EXPIRED\n", "CERT_HAS_EXPIRED"),
+    ] {
+        assert_eq!(
+            english(npm_install_message(npm_failure(output), "registry.npmjs.org")),
+            format!("Oleafly couldn't reach the npm registry at registry.npmjs.org ({code}). {advice}"),
+            "{output}"
+        );
+    }
+    let timed_out = npm_install_message(CommandFailure::TimedOut, "registry.npmmirror.com");
+    assert_eq!(
+        crate::app_error::code(&timed_out).as_deref(),
+        Some("acp.install.npm_timed_out")
+    );
+    let timed_out = english(timed_out);
+    assert!(timed_out.contains("registry.npmmirror.com"), "{timed_out}");
+    assert!(timed_out.ends_with(advice), "{timed_out}");
+    assert_eq!(
+        npm_install_message(CommandFailure::NotStarted("NotFound: node".into()), "x"),
+        "The installation command could not be started (NotFound: node)."
+    );
+}
+
+#[test]
+fn other_npm_failures_keep_their_lines_without_the_deleted_debug_log() {
+    let not_found = "npm error code E404\n\
+         npm error 404 Not Found - GET https://registry.npmmirror.com/@nope%2fagent - Not found\n\
+         npm error A complete log of this run can be found in: /tmp/install-1/npm-cache/_logs/x-debug-0.log\n";
+    assert_eq!(
+        npm_install_message(npm_failure(not_found), "registry.npmmirror.com"),
+        "npm error code E404\nnpm error 404 Not Found - GET https://registry.npmmirror.com/@nope%2fagent - Not found"
+    );
+    let older = "npm ERR! code E404\n\
+         npm ERR! A complete log of this run can be found in:\n\
+         npm ERR!     /tmp/install-1/npm-cache/_logs/2026-10-26T16_14_29_422Z-debug-0.log\n";
+    assert_eq!(
+        npm_install_message(npm_failure(older), "registry.npmjs.org"),
+        "npm ERR! code E404"
+    );
+    let only_log =
+        "npm error A complete log of this run can be found in: /tmp/x/_logs/x-debug-0.log\n";
+    assert_eq!(
+        npm_install_message(npm_failure(only_log), "registry.npmjs.org"),
+        INSTALL_FAILED
+    );
+}
+
 fn vendor(id: &str) -> VendorCli {
     vendor_cli(&builtins().into_iter().find(|agent| agent.id == id).unwrap()).unwrap()
 }
@@ -1613,7 +1960,82 @@ fn cli(path: &Path, kind: ProgramKind, overridden: bool) -> CliProgram {
             kind,
         },
         overridden,
+        version: None,
     }
+}
+
+#[test]
+fn codex_gets_a_cli_at_least_as_new_as_the_one_its_bridge_bundles() {
+    let temp = tempfile::tempdir().unwrap();
+    let codex = temp.path().join("codex");
+    let found = |version: Option<&str>| CliProgram {
+        version: version.map(str::to_owned),
+        ..cli(&codex, ProgramKind::Native, false)
+    };
+    let handed = Some(("CODEX_PATH".to_string(), codex.clone().into_os_string()));
+    assert_eq!(CODEX_BUNDLED_CLI, "0.160.1");
+    for version in ["0.162.1", "0.160.1", "1.0.0", "0.161.0-alpha.1"] {
+        assert_eq!(
+            cli_handoff(&vendor("codex"), Some(&found(Some(version)))),
+            handed,
+            "{version}"
+        );
+    }
+    for version in [
+        Some("0.159.9"),
+        Some("0.160.1-alpha.2"),
+        Some("latest"),
+        None,
+    ] {
+        assert_eq!(
+            cli_handoff(&vendor("codex"), Some(&found(version))),
+            None,
+            "{version:?}"
+        );
+    }
+    let claude = temp.path().join("claude");
+    assert_eq!(
+        cli_handoff(
+            &vendor("claude"),
+            Some(&CliProgram {
+                version: Some("99.0.0".into()),
+                ..cli(&claude, ProgramKind::Native, false)
+            })
+        ),
+        None
+    );
+}
+
+#[tokio::test]
+async fn a_probed_cli_version_is_known_until_the_program_changes() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("acp");
+    let env = locator::child_env(&[], &[]);
+    let codex = version_probe_cli(
+        temp.path(),
+        "codex",
+        "echo codex-cli 0.162.1",
+        "echo codex-cli 0.162.1",
+    );
+    assert_eq!(known_cli_version(&codex.path), None);
+    let version = program_version(
+        &root,
+        &codex,
+        vendor("codex").version_args,
+        &env,
+        Duration::from_secs(10),
+    )
+    .await
+    .unwrap();
+    assert_eq!(version, "0.162.1");
+    assert_eq!(known_cli_version(&codex.path).as_deref(), Some("0.162.1"));
+    let mut file = std::fs::OpenOptions::new()
+        .append(true)
+        .open(&codex.path)
+        .unwrap();
+    writeln!(file).unwrap();
+    drop(file);
+    assert_eq!(known_cli_version(&codex.path), None);
 }
 
 #[test]
@@ -1819,7 +2241,9 @@ fn a_chosen_program_wins_over_the_managed_install_for_agents_oleafly_starts_dire
         &definition,
         Some(&temp.path().join("gone.exe")),
     );
-    assert!(missing.launch.unwrap_err().contains("Choose it again"));
+    assert!(
+        crate::app_error::english_error(&missing.launch.unwrap_err()).contains("Choose it again")
+    );
 }
 
 #[test]
@@ -1846,7 +2270,8 @@ fn a_chosen_cli_is_handed_to_the_bridge_and_the_bridge_stays_the_same() {
                 path: chosen.clone(),
                 kind: ProgramKind::Native
             },
-            overridden: true
+            overridden: true,
+            version: None
         })
     );
     if let Ok(launch) = plan.launch {
@@ -2043,4 +2468,301 @@ fn sandboxed_launches_see_resolved_paths() {
     assert_eq!(resolved.args[0], real.to_string_lossy());
     assert_eq!(resolved.args[1], "--acp");
     assert_eq!(resolved.entry, Some(real));
+}
+
+fn builtin(id: &str) -> AgentDefinition {
+    builtins().into_iter().find(|agent| agent.id == id).unwrap()
+}
+
+#[test]
+fn claude_uses_the_bridge_that_bundles_claude_code_2_1_309() {
+    let claude = builtin("claude");
+    assert_eq!(claude.version, "0.95.0");
+    let npx = claude.distribution.npx.unwrap();
+    assert_eq!(npx.package, "@agentclientprotocol/claude-agent-acp@0.95.0");
+    assert_eq!(npx.node_major, Some(22));
+}
+
+#[test]
+fn every_bridge_pin_is_the_version_the_catalog_shows() {
+    for definition in builtins() {
+        if let Some(npx) = &definition.distribution.npx {
+            let (_, version) = package_parts(&npx.package, true).unwrap();
+            assert_eq!(version, definition.version, "{}", definition.id);
+        }
+    }
+}
+
+#[test]
+fn a_slow_registry_link_gets_fifteen_minutes_while_a_dead_one_still_fails_fast() {
+    assert_eq!(NPM_INSTALL_LIMIT, Duration::from_secs(15 * 60));
+    assert!(NPM_INSTALL_FLAGS.contains(&"--fetch-timeout=60000"));
+    assert!(NPM_INSTALL_FLAGS.contains(&"--fetch-retries=1"));
+}
+
+fn claude_settings(folder: &Path, text: &str) {
+    std::fs::create_dir_all(folder).unwrap();
+    std::fs::write(folder.join("settings.json"), text).unwrap();
+}
+
+#[test]
+fn claude_gateway_users_are_sent_to_their_endpoint_settings_not_to_anthropic_sign_in() {
+    let home = tempfile::tempdir().unwrap();
+    let home = home.path();
+    let nothing = |_: &str| None::<OsString>;
+    assert!(!claude_uses_gateway(&nothing, Some(home)));
+    assert!(!claude_uses_gateway(&nothing, None));
+    for name in ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"] {
+        let env = move |key: &str| (key == name).then(|| OsString::from("https://gateway.test"));
+        assert!(claude_uses_gateway(&env, Some(home)), "{name}");
+    }
+    let api_key_only = |key: &str| (key == "ANTHROPIC_API_KEY").then(|| OsString::from("sk-ant"));
+    assert!(!claude_uses_gateway(&api_key_only, Some(home)));
+    let blank = |key: &str| (key == "ANTHROPIC_BASE_URL").then(OsString::new);
+    assert!(!claude_uses_gateway(&blank, Some(home)));
+
+    let folder = home.join(".claude");
+    claude_settings(
+        &folder,
+        r#"{"env":{"ANTHROPIC_BASE_URL":"https://api.deepseek.com/anthropic","ANTHROPIC_AUTH_TOKEN":"sk-secret-1234"}}"#,
+    );
+    assert!(claude_uses_gateway(&nothing, Some(home)));
+    claude_settings(
+        &folder,
+        r#"{"env":{"ANTHROPIC_AUTH_TOKEN":"sk-secret-1234"}}"#,
+    );
+    assert!(claude_uses_gateway(&nothing, Some(home)));
+    claude_settings(&folder, r#"{"apiKeyHelper":"~/bin/gateway-key.sh"}"#);
+    assert!(claude_uses_gateway(&nothing, Some(home)));
+    claude_settings(
+        &folder,
+        r#"{"model":"opus","env":{"ANTHROPIC_MODEL":"opus"}}"#,
+    );
+    assert!(!claude_uses_gateway(&nothing, Some(home)));
+    claude_settings(&folder, "{ not json");
+    assert!(!claude_uses_gateway(&nothing, Some(home)));
+
+    let custom = home.join("claude-config");
+    claude_settings(
+        &custom,
+        r#"{"env":{"ANTHROPIC_BASE_URL":"https://api.z.ai/api/anthropic"}}"#,
+    );
+    let config_dir = {
+        let custom = custom.clone();
+        move |key: &str| (key == "CLAUDE_CONFIG_DIR").then(|| custom.clone().into_os_string())
+    };
+    assert!(claude_uses_gateway(&config_dir, Some(home)));
+
+    let padded = format!(
+        r#"{{"env":{{"ANTHROPIC_BASE_URL":"https://gateway.test"}},"padding":"{}"}}"#,
+        "x".repeat(CLAUDE_SETTINGS_LIMIT as usize)
+    );
+    claude_settings(&custom, &padded);
+    assert!(
+        !claude_uses_gateway(&config_dir, Some(home)),
+        "an oversized settings file is not read"
+    );
+}
+
+#[test]
+fn the_claude_gateway_hint_names_the_variables_and_never_their_values() {
+    let claude = builtin("claude");
+    let gateway = crate::app_error::english_error(&sign_in_hint(&claude, None, true));
+    assert_eq!(
+        gateway,
+        "Claude Code uses a custom API endpoint. Check ANTHROPIC_BASE_URL and ANTHROPIC_AUTH_TOKEN in your shell profile or Claude Code's settings.json, then reconnect."
+    );
+    assert!(!gateway.contains("auth login"));
+    assert!(sign_in_hint(&claude, None, false).contains("claude auth login"));
+    assert_eq!(
+        sign_in_hint(&builtin("codex"), None, true),
+        sign_in_hint(&builtin("codex"), None, false),
+        "only Claude Code reads the Anthropic gateway settings"
+    );
+}
+
+#[test]
+fn hermes_reports_its_version_through_acp_without_the_update_check() {
+    assert_eq!(vendor("hermes").version_args, ["acp", "--version"]);
+    for id in [
+        "claude", "codex", "gemini", "pi", "opencode", "deepseek", "kimi",
+    ] {
+        assert_eq!(vendor(id).version_args, ["--version"], "{id}");
+    }
+    assert_eq!(parse_cli_version("0.20.5\n").as_deref(), Some("0.20.5"));
+    assert_eq!(
+        parse_cli_version("Hermes Agent v0.20.5 (2026.8.19) · upstream bc47fcd3\n").as_deref(),
+        Some("0.20.5")
+    );
+}
+
+#[tokio::test]
+async fn the_version_probe_runs_the_arguments_the_vendor_names() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("acp");
+    let env = locator::child_env(&[], &[]);
+    let hermes = version_probe_cli(
+        temp.path(),
+        "hermes",
+        r#"if [ "$1 $2" = "acp --version" ]; then echo 0.20.5; exit 0; fi; sleep 20"#,
+        "if \"%~1 %~2\"==\"acp --version\" (echo 0.20.5& exit /b 0)\r\nping -n 21 127.0.0.1 >nul",
+    );
+    let name = hermes
+        .path
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    let version = program_version(
+        &root,
+        &hermes,
+        vendor("hermes").version_args,
+        &env,
+        Duration::from_secs(10),
+    )
+    .await
+    .unwrap();
+    assert_eq!(version, "0.20.5");
+    let error = program_version(
+        &root,
+        &hermes,
+        &["--version"],
+        &env,
+        Duration::from_millis(500),
+    )
+    .await
+    .unwrap_err();
+    assert!(error.contains(&format!("{name} --version")), "{error}");
+    let silent = version_probe_cli(temp.path(), "quiet-hermes", "exit 3", "exit /b 3");
+    let name = silent
+        .path
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    let error = program_version(
+        &root,
+        &silent,
+        &["acp", "--version"],
+        &env,
+        Duration::from_secs(10),
+    )
+    .await
+    .unwrap_err();
+    assert!(error.contains(&format!("{name} acp --version")), "{error}");
+}
+
+#[test]
+fn npm_versions_compare_by_release_then_prerelease() {
+    for (found, pinned, older) in [
+        ("0.0.20", "0.0.34", true),
+        ("0.0.28", "0.0.34", true),
+        ("0.0.34", "0.0.34", false),
+        ("0.0.35", "0.0.34", false),
+        ("0.0.34-rc.1", "0.0.34", true),
+        ("0.0.34", "0.0.34-rc.1", false),
+        ("0.93.0", "0.95.0", true),
+        ("1.0.0", "0.95.0", false),
+        ("0.100.0", "0.95.0", false),
+        ("not-a-version", "0.0.34", false),
+        ("", "0.0.34", false),
+    ] {
+        assert_eq!(
+            older_npm_version(found, pinned),
+            older,
+            "{found} < {pinned}"
+        );
+    }
+}
+
+fn global_bridge(prefix: &Path, name: &str, version: &str) -> PathBuf {
+    let root = prefix.join("lib").join("node_modules");
+    let package = root.join(name);
+    std::fs::create_dir_all(package.join("dist")).unwrap();
+    std::fs::write(
+        package.join("package.json"),
+        format!(r#"{{"name":"{name}","version":"{version}","bin":{{"{name}":"dist/index.js"}}}}"#),
+    )
+    .unwrap();
+    std::fs::write(
+        package.join("dist").join("package.json"),
+        r#"{"type":"module"}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        package.join("dist").join("index.js"),
+        "#!/usr/bin/env node\n",
+    )
+    .unwrap();
+    root
+}
+
+#[test]
+fn a_global_pi_bridge_older_than_the_pin_is_not_used_and_the_managed_install_is_offered() {
+    let temp = tempfile::tempdir().unwrap();
+    let pi = builtin("pi");
+    let node = temp.path().join("node");
+    let old = global_bridge(&temp.path().join("old"), "pi-acp", "0.0.20");
+    let launch = existing_npm_launch_in(&pi, &[], Some(&node), vec![old]).unwrap();
+    assert_eq!(launch.version.as_deref(), Some("0.0.20"));
+    let error = current_bridge(&pi, [launch]).unwrap_err();
+    assert_eq!(
+        crate::app_error::code(&error).as_deref(),
+        Some("acp.start.bridge_outdated")
+    );
+    assert_eq!(
+        crate::app_error::english_error(&error),
+        "pi-acp 0.0.20 on this computer is too old. Oleafly needs 0.0.34 or newer. Install the bridge in Settings."
+    );
+
+    let fresh = global_bridge(&temp.path().join("fresh"), "pi-acp", "0.0.34");
+    let current = existing_npm_launch_in(&pi, &[], Some(&node), vec![fresh]).unwrap();
+    let old_again = global_bridge(&temp.path().join("old-again"), "pi-acp", "0.0.20");
+    let stale = existing_npm_launch_in(&pi, &[], Some(&node), vec![old_again]).unwrap();
+    let chosen = current_bridge(&pi, [stale, current.clone()]).unwrap();
+    assert_eq!(
+        chosen.entry, current.entry,
+        "a current copy further on is used"
+    );
+
+    let unknown = Launch {
+        version: None,
+        ..current.clone()
+    };
+    assert!(
+        current_bridge(&pi, [unknown]).is_ok(),
+        "a bridge whose version can't be read is still used"
+    );
+    assert_eq!(
+        crate::app_error::english_error(&current_bridge(&pi, []).unwrap_err()),
+        "This agent isn't installed yet. Install it, or choose its program in Settings."
+    );
+    let gemini = Launch {
+        version: Some("0.50.0".into()),
+        ..current
+    };
+    assert!(
+        current_bridge(&builtin("gemini"), [gemini]).is_ok(),
+        "Gemini's bridge is the user's own CLI"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_bridge_found_by_name_reports_the_version_of_its_package() {
+    let temp = tempfile::tempdir().unwrap();
+    let prefix = temp.path().join("prefix");
+    let root = global_bridge(&prefix, "pi-acp", "0.0.20");
+    std::fs::create_dir_all(prefix.join("bin")).unwrap();
+    let link = prefix.join("bin").join("pi-acp");
+    std::os::unix::fs::symlink(root.join("pi-acp").join("dist").join("index.js"), &link).unwrap();
+    let located = Located {
+        path: link,
+        kind: ProgramKind::Native,
+    };
+    assert_eq!(
+        bridge_package_version("pi-acp", &located).as_deref(),
+        Some("0.0.20")
+    );
+    assert_eq!(bridge_package_version("other-acp", &located), None);
 }

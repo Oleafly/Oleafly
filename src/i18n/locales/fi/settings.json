@@ -164,7 +164,8 @@
           "ready": "Gateway on käynnissä",
           "starting": "Gateway käynnistyy",
           "stopped": "Gateway on pysäytetty",
-          "unknown": "Gatewayn tila on tuntematon"
+          "unknown": "Gatewayn tila on tuntematon",
+          "outdated": "Päivitä Hermes, jotta gatewayn voi tarkistaa"
         },
         "refresh": "Tarkista uudelleen",
         "keepsRunning": "Gateway jää käyntiin, vaikka Oleafly katkaisee yhteyden.",

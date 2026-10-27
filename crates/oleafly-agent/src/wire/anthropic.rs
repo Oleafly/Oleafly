@@ -109,6 +109,7 @@ fn message_blocks(message: &Message) -> Result<Vec<Value>> {
             ContentPart::RedactedThinking { data } => {
                 blocks.push(json!({ "type": "redacted_thinking", "data": data }));
             }
+            ContentPart::Reasoning { .. } => {}
             ContentPart::ProviderBlock {
                 wire: ProviderWire::Anthropic,
                 block,

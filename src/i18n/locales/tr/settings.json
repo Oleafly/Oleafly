@@ -164,7 +164,8 @@
           "ready": "Ağ geçidi çalışıyor",
           "starting": "Ağ geçidi başlıyor",
           "stopped": "Ağ geçidi durdu",
-          "unknown": "Ağ geçidi durumu bilinmiyor"
+          "unknown": "Ağ geçidi durumu bilinmiyor",
+          "outdated": "Ağ geçidini denetlemek için Hermes'i güncelleyin"
         },
         "refresh": "Yeniden denetle",
         "keepsRunning": "Oleafly bağlantısını kesmek ağ geçidini hiçbir zaman durdurmaz.",

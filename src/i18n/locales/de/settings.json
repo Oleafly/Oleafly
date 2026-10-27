@@ -164,7 +164,8 @@
           "ready": "Gateway läuft",
           "starting": "Gateway startet",
           "stopped": "Gateway gestoppt",
-          "unknown": "Gateway-Status unbekannt"
+          "unknown": "Gateway-Status unbekannt",
+          "outdated": "Aktualisieren Sie Hermes, um das Gateway zu prüfen"
         },
         "refresh": "Erneut prüfen",
         "keepsRunning": "Wenn Oleafly die Verbindung trennt, wird das Gateway nie gestoppt.",

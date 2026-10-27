@@ -146,9 +146,10 @@ Prefer a chat assistant? Connect a hosted provider, any OpenAI-compatible endpoi
 - Every file change is a diff. Approve each one, let the assistant work on its own, or set rules per tool, and undo a single file or a whole turn.
 - Plan mode maps the project before anything gets written.
 - A literature review or a revision pass can run in its own Git worktree while you keep writing. You choose which changed files to keep.
-- 39 research skills ship with the app, including literature sweeps, related work, claim checks and response letters.
+- 39 research skills ship with the app, including literature sweeps, related work, claim checks and response letters. `npx skills add Oleafly/Oleafly` installs them in Claude Code, Codex and other agents too.
 - A local MCP server lets an outside AI client use the same project tools. It listens on 127.0.0.1 only.
 - `oleafly mcp` gives Claude Code, Codex, Cursor and Gemini CLI the project tools over stdio, with the app open or closed.
+- Each release includes `oleafly.mcpb`. Open it and Claude Desktop installs Oleafly as an extension. The MCP Registry lists it as `io.github.Oleafly/oleafly`.
 
 AI is optional. The editor, compiler, PDF, citations, proofreading and checks all work with it off.
 

@@ -2,7 +2,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use oleafly_acp::{AcpClient, ClientHost, IncomingRequest, NullHost, TurnTiming};
+use oleafly_acp::{AcpClient, ClientHost, ErrorKind, IncomingRequest, NullHost, TurnTiming};
 use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, DuplexStream};
 use tokio::sync::mpsc;
@@ -276,10 +276,18 @@ async fn a_request_past_its_deadline_stops_the_agent() {
         })
     };
     agent.next().await;
+    agent
+        .send_raw("Error: connect ETIMEDOUT 104.18.0.1:443\n")
+        .await;
     let error = waiting.await.unwrap().unwrap_err();
     assert_eq!(
         error.message,
-        "The agent did not reply in time and was stopped."
+        "The agent did not reply in time and was stopped. Last output from the agent: Error: connect ETIMEDOUT 104.18.0.1:443"
+    );
+    assert_eq!(error.kind, Some(ErrorKind::TimedOutStopped));
+    assert_eq!(
+        error.output.as_deref(),
+        Some("Error: connect ETIMEDOUT 104.18.0.1:443")
     );
     tokio::time::timeout(Duration::from_secs(10), async {
         while !client.is_closed() {
@@ -309,11 +317,111 @@ async fn a_request_larger_than_the_frame_is_refused_before_sending() {
 }
 
 #[tokio::test]
-async fn invalid_json_from_the_agent_disconnects_once() {
+async fn log_lines_on_the_agents_stdout_do_not_end_the_session() {
+    let host = Arc::new(RecordingHost::default());
+    let (client, mut agent) = connect(host.clone());
+    let waiting = {
+        let client = client.clone();
+        tokio::spawn(async move { client.new_session("/project", &[]).await })
+    };
+    let request = agent.next().await;
+    agent
+        .send_raw("[llm-deepseek-account] model listing from https://api.deepseek.com/models loaded 2 model(s), skipped 0 row(s)\n")
+        .await;
+    agent
+        .send_raw("{\"level\":30,\"msg\":\"connected to oleafly-research\"}\n")
+        .await;
+    agent
+        .send_raw("Warning: \u{4e0d}\u{652f}\u{6301}\r\n")
+        .await;
+    agent
+        .send(json!({"jsonrpc": "2.0", "id": request["id"], "result": {"sessionId": "s1"}}))
+        .await;
+    let session = waiting.await.unwrap().unwrap();
+    assert_eq!(session["sessionId"], "s1");
+    assert!(!client.is_closed());
+    assert!(!host.log().contains(&"disconnected".to_string()));
+    let tail = client.stderr_tail();
+    assert!(
+        tail.contains("model listing from https://api.deepseek.com/models"),
+        "{tail}"
+    );
+    assert!(tail.contains("connected to oleafly-research"), "{tail}");
+}
+
+#[tokio::test]
+async fn a_disconnect_after_stdout_noise_quotes_it() {
+    let host = Arc::new(RecordingHost::default());
+    let (client, mut agent) = connect(host);
+    let waiting = {
+        let client = client.clone();
+        tokio::spawn(async move { client.new_session("/project", &[]).await })
+    };
+    agent.next().await;
+    agent.send_raw("Error: DEEPSEEK_API_KEY is not set\n").await;
+    drop(agent);
+    let error = waiting.await.unwrap().unwrap_err();
+    assert!(
+        error.message.contains("DEEPSEEK_API_KEY is not set"),
+        "{}",
+        error.message
+    );
+}
+
+#[tokio::test]
+async fn an_internal_error_keeps_the_agents_details_and_asks_for_setup() {
+    let host = Arc::new(RecordingHost::default());
+    let (client, mut agent) = connect(host);
+    let waiting = {
+        let client = client.clone();
+        tokio::spawn(async move { client.new_session("/project", &[]).await })
+    };
+    let request = agent.next().await;
+    agent
+        .send(json!({"jsonrpc": "2.0", "id": request["id"], "error": {
+            "code": -32603,
+            "message": "Internal error",
+            "data": {"details": "No LLM provider configured. Run `hermes model` to select a provider, or `hermes setup` for first-time setup."},
+        }}))
+        .await;
+    let error = waiting.await.unwrap().unwrap_err();
+    assert_eq!(
+        error.message,
+        "No LLM provider configured. Run `hermes model` to select a provider, or `hermes setup` for first-time setup."
+    );
+    assert!(error.auth_required());
+}
+
+#[tokio::test]
+async fn an_error_with_its_own_message_adds_a_plain_text_detail() {
+    let host = Arc::new(RecordingHost::default());
+    let (client, mut agent) = connect(host);
+    let waiting = {
+        let client = client.clone();
+        tokio::spawn(async move { client.new_session("/project", &[]).await })
+    };
+    let request = agent.next().await;
+    agent
+        .send(json!({"jsonrpc": "2.0", "id": request["id"], "error": {
+            "code": -32602,
+            "message": "Invalid params",
+            "data": "cwd must be an absolute path",
+        }}))
+        .await;
+    let error = waiting.await.unwrap().unwrap_err();
+    assert_eq!(
+        error.message,
+        "Invalid params: cwd must be an absolute path"
+    );
+    assert!(!error.auth_required());
+}
+
+#[tokio::test]
+async fn an_agent_that_closes_its_output_disconnects_once() {
     let host = Arc::new(RecordingHost::default());
     let (client, mut agent) = connect(host.clone());
     agent.send_raw("not json\n").await;
-    agent.send_raw("still not json\n").await;
+    drop(agent);
     tokio::time::timeout(Duration::from_secs(5), async {
         while !host.log().contains(&"disconnected".to_string()) {
             tokio::time::sleep(Duration::from_millis(10)).await;
@@ -352,6 +460,10 @@ async fn a_closed_agent_fails_pending_requests_with_the_disconnect_message() {
         "{}",
         error.message
     );
+    assert!(matches!(
+        error.kind,
+        Some(ErrorKind::Disconnected | ErrorKind::DisconnectedBeforeReply)
+    ));
 }
 
 #[tokio::test]
@@ -512,6 +624,7 @@ async fn inactivity_stops_a_silent_turn() {
         error.message,
         "The agent sent nothing for 20 minutes, so Oleafly stopped it. Reconnect to continue."
     );
+    assert_eq!(error.kind, Some(ErrorKind::Silent { minutes: 20 }));
 }
 
 #[tokio::test(start_paused = true)]
@@ -774,6 +887,7 @@ async fn a_turn_that_only_cancels_keeps_the_agent_running_past_its_limit() {
     agent.next().await;
     let error = waiting.await.unwrap().unwrap_err();
     assert_eq!(error.message, "The agent did not reply in time.");
+    assert_eq!(error.kind, Some(ErrorKind::TimedOut));
     let cancel = agent.next().await;
     assert_eq!(cancel["method"], "session/cancel");
     assert_eq!(cancel["params"]["sessionId"], "s1");

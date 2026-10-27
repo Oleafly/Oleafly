@@ -1,4 +1,5 @@
 import type { AcpEvent } from "@/lib/acp";
+import { errorText } from "@/lib/app-error";
 import { turnChangesFrom } from "@/lib/agent-turns";
 import type { ChatMessage, ToolDiff, ToolEntry } from "@/store/chats";
 import type { RenderedMessage } from "@/components/ai/MessageList";
@@ -283,7 +284,7 @@ function applyTurnEnd(state: ProjectionState, event: AcpEvent) {
   const terminal = event.kind === "turn_complete" || TERMINAL_STATUSES.has(text(data.status));
   if (!terminal) return;
   closeTurn(state, event.turnId);
-  const error = text(data.error);
+  const error = errorText(text(data.error));
   if (error.trim() && !alreadySaid(state.rows, event.turnId, error)) {
     appendRow(state, event, "error", noticed({ role: "assistant", content: "" }, displayText(error)));
     return;
@@ -310,8 +311,8 @@ function noticeText(title: string, description: string): string {
 }
 
 function applyNotice(state: ProjectionState, event: AcpEvent) {
-  const title = displayText(text(event.data.title));
-  const description = displayText(text(event.data.description));
+  const title = displayText(errorText(text(event.data.title)));
+  const description = displayText(errorText(text(event.data.description)));
   const notice = noticeText(title, description);
   if (!notice) return false;
   appendRow(state, event, "notice", { role: "assistant", content: "", notices: [notice] });

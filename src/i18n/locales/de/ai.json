@@ -185,11 +185,15 @@
     "steered": "Eingelenkt",
     "toolOutputError": "Fehler: {{message}}",
     "errorHints": {
+      "emptyReply": "Das Modell hat eine leere Antwort gesendet. Versuchen Sie es erneut oder wechseln Sie das Modell {{where}}.",
       "invalidKey": "Ihr API-Schlüssel wirkt ungültig oder abgelaufen. Aktualisieren Sie ihn unter Einstellungen → KI-Assistent oder wechseln Sie den Anbieter {{where}}.",
+      "invalidRequest": "Der Anbieter hat die Parameter der Anfrage abgelehnt. Versuchen Sie ein anderes Modell {{where}}.",
       "outOfCredits": "Ihr KI-Anbieter hat kein Guthaben oder Kontingent mehr. Laden Sie das Konto auf oder wechseln Sie zu einem anderen Anbieter (oder zum lokalen Ollama) {{where}}.",
       "overloaded": "Die Server des Anbieters sind gerade überlastet (es wurde bereits erneut versucht). Warten Sie eine Minute und versuchen Sie es noch einmal oder wechseln Sie zu einem verwandten Modell {{where}}.",
       "rateLimited": "Der Anbieter begrenzt die Anfragerate. Warten Sie einen Moment und versuchen Sie es erneut oder wechseln Sie den Anbieter {{where}}.",
       "retiredModel": "Der Anbieter hat dieses Modell eingestellt oder eingeschränkt. Wählen Sie ein neueres Modell {{where}} (unter Einstellungen → KI-Assistent steht, was Ihr Schlüssel nutzen darf).",
+      "serverError": "Beim Anbieter ist ein Serverfehler aufgetreten. Warten Sie eine Minute und versuchen Sie es erneut oder wechseln Sie das Modell {{where}}.",
+      "timedOut": "Der Anbieter hat zu lange für die Antwort gebraucht. Versuchen Sie es erneut oder wechseln Sie das Modell {{where}}.",
       "unreachable": "Der KI-Anbieter war nicht erreichbar. Prüfen Sie Ihre Verbindung, und falls Sie Ollama nutzen, ob es läuft (Einstellungen → KI-Assistent → Nach Ollama suchen).",
       "where": {
         "inSettings": "unter Einstellungen, KI-Assistent",

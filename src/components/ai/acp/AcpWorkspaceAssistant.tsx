@@ -14,9 +14,10 @@ import { MessageList, type RenderedMessage } from "@/components/ai/MessageList";
 import { Shimmer } from "@/components/ai/chat-parts";
 import { liveMessageFor } from "@/components/ai/live-message";
 import {
-  acpCommitTurn, acpDisconnect, acpElicitationRespond, acpError, acpPermission, acpReadiness,
-  acpReconnect, acpUsable, type AcpAgentStatus, type AcpSession,
+  acpCancelStart, acpCommitTurn, acpDisconnect, acpElicitationRespond, acpError, acpPermission, acpReadiness,
+  acpReconnect, acpStartCancelled, acpUsable, type AcpAgentStatus, type AcpSession,
 } from "@/lib/acp";
+import { errorText } from "@/lib/app-error";
 import { cn } from "@/lib/utils";
 import {
   acpComposerId, attachAcpListeners, isDelegatedSession, useAcpSessionView, useAcpSessionsStore,
@@ -89,6 +90,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   const [busy, setBusy] = useState(false);
   // Connecting to the agent (reconnect, sign in); the status pill says so, unlike other actions.
   const [connecting, setConnecting] = useState(false);
+  const [cancellingStart, setCancellingStart] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const nearBottomRef = useRef(true);
   const composerRef = useRef<ChatComposerHandle>(null);
@@ -127,7 +129,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   );
   const perform = useCallback(async (action: () => Promise<void>) => {
     setError(null); setBusy(true);
-    try { await action(); } catch (error_) { setError(acpError(error_)); }
+    try { await action(); } catch (error_) { if (!acpStartCancelled(error_)) setError(acpError(error_)); }
     finally { setBusy(false); }
   }, [setError]);
   const performConnecting = useCallback(async (action: () => Promise<void>) => {
@@ -347,29 +349,43 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     return t(($) => $.ai.acp.noResume);
   };
 
+  const cancelStart = () => {
+    setCancellingStart(true);
+    acpCancelStart(projectId)
+      .catch((error_: unknown) => setError(acpError(error_)))
+      .finally(() => setCancellingStart(false));
+  };
+
   const conversationArea = () =>
     (busy || starting) && !hasMessages ? (
-      <output
+      <div
         data-testid="acp-connecting"
         className="mx-auto flex max-w-sm flex-col items-center gap-3 py-16 text-center"
       >
-        <span className="flex size-12 items-center justify-center rounded-2xl border bg-background shadow-sm">
-          {agentId ? (
-            <AgentLogo agentId={agentId} size={22} />
-          ) : (
-            <Spinner size="lg" className="text-muted-foreground" />
-          )}
-        </span>
-        <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-          <Spinner size="sm" className="text-muted-foreground" />
-          {t(($) => $.ai.acp.starting, {
-            agent: selectedAgent?.definition.name ?? t(($) => $.ai.acp.startingFallback),
-          })}
-        </span>
-        <span className="block text-xs text-muted-foreground">
-          {t(($) => $.ai.acp.startingHint)}
-        </span>
-      </output>
+        <output className="flex flex-col items-center gap-3">
+          <span className="flex size-12 items-center justify-center rounded-2xl border bg-background shadow-sm">
+            {agentId ? (
+              <AgentLogo agentId={agentId} size={22} />
+            ) : (
+              <Spinner size="lg" className="text-muted-foreground" />
+            )}
+          </span>
+          <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Spinner size="sm" className="text-muted-foreground" />
+            {t(($) => $.ai.acp.starting, {
+              agent: selectedAgent?.definition.name ?? t(($) => $.ai.acp.startingFallback),
+            })}
+          </span>
+          <span className="block text-xs text-muted-foreground">
+            {t(($) => $.ai.acp.startingHint)}
+          </span>
+        </output>
+        {starting && (
+          <Button type="button" variant="outline" size="sm" disabled={cancellingStart} onClick={cancelStart}>
+            {t(($) => $.common.actions.cancel)}
+          </Button>
+        )}
+      </div>
     ) : (
       conversationBody()
     );
@@ -400,7 +416,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
         <ErrorState
           size="compact"
           className="mx-3 my-2 rounded-md border border-destructive/40 p-2"
-          message={error ?? sessionError ?? session?.error}
+          message={error ?? sessionError ?? (session?.error ? errorText(session.error) : undefined)}
         />
       )}
       {session?.status === "auth_required" && (

@@ -146,9 +146,10 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 - 每次文件更改都是一个 diff。你可以逐个批准，让助手自主工作，或按工具设置规则，也可以撤销单个文件或整轮更改。
 - Plan 模式会在写入任何内容之前先绘制项目地图。
 - 文献综述或修订可以在独立的 Git worktree 中运行，你可以继续写作。由你选择保留哪些更改过的文件。
-- 应用随附 39 个研究技能，包括文献检索、相关工作、主张核查和审稿回复信。
+- 应用随附 39 个研究技能，包括文献检索、相关工作、主张核查和审稿回复信。运行 `npx skills add Oleafly/Oleafly`，也可以把它们装进 Claude Code、Codex 等智能体。
 - 本地 MCP 服务器让外部 AI 客户端可以使用相同的项目工具。它只监听 127.0.0.1。
 - `oleafly mcp` 通过 stdio 为 Claude Code、Codex、Cursor 和 Gemini CLI 提供项目工具，无论应用是否打开。
+- 每个版本都附带 `oleafly.mcpb`。打开它，Claude Desktop 就会把 Oleafly 安装为扩展。MCP Registry 中的名称是 `io.github.Oleafly/oleafly`。
 
 AI 是可选的。关闭 AI 时，编辑器、编译器、PDF、引文、校对和检查都照常工作。
 

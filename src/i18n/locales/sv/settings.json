@@ -164,7 +164,8 @@
           "ready": "Gatewayen körs",
           "starting": "Gatewayen startar",
           "stopped": "Gatewayen har stoppats",
-          "unknown": "Gatewayens status är okänd"
+          "unknown": "Gatewayens status är okänd",
+          "outdated": "Uppdatera Hermes för att kontrollera gatewayen"
         },
         "refresh": "Kontrollera igen",
         "keepsRunning": "Gatewayen stoppas aldrig när Oleafly kopplar från.",

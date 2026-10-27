@@ -62,7 +62,7 @@ const PRICES: Record<string, ModelPrice> = {
   "meta-llama/llama-3.3-70b-instruct": { inputPerMTok: 0.1, outputPerMTok: 0.3 },
   // DeepSeek (peak-hour cache-miss rates; off-peak is half)
   "deepseek-flash": { inputPerMTok: 0.3, outputPerMTok: 1.2 },
-  "deepseek-v4-flash": { inputPerMTok: 0.44, outputPerMTok: 1.32 },
+  "deepseek-v4-flash": { inputPerMTok: 0.3, outputPerMTok: 1.2 },
   "deepseek-v4-pro": { inputPerMTok: 1.32, outputPerMTok: 3.96 },
   // Mistral
   "mistral-large-latest": { inputPerMTok: 0.5, outputPerMTok: 1.5 },
@@ -97,6 +97,10 @@ const PRICES: Record<string, ModelPrice> = {
 };
 
 const DEFAULT_PRICE: ModelPrice = { inputPerMTok: 1, outputPerMTok: 3, note: "estimate" };
+
+export function peakRateMultiplier(providerId: string): number {
+  return providerId === "deepseek" ? 2 : 1;
+}
 
 export function lookupPrice(modelId: string): ModelPrice {
   if (!modelId) return DEFAULT_PRICE;

@@ -165,7 +165,8 @@
           "ready": "Gateway in esecuzione",
           "starting": "Gateway in avvio",
           "stopped": "Gateway fermo",
-          "unknown": "Stato del gateway sconosciuto"
+          "unknown": "Stato del gateway sconosciuto",
+          "outdated": "Aggiorna Hermes per controllare il gateway"
         },
         "refresh": "Controlla di nuovo",
         "keepsRunning": "Scollegare Oleafly non ferma mai il gateway.",

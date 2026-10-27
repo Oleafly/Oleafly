@@ -77,6 +77,97 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Each release carries `oleafly.mcpb`, which installs it in Claude Desktop
   when you open it. It runs the `oleafly` command the app installs, so you
   need the app with Settings > Integrations > Oleafly MCP turned on.
+- A CLI agent that is still starting has a Cancel button.
+
+### Changed
+
+- CLI agents are no longer marked beta.
+- Errors from CLI agents, such as a disconnect, a timeout, a missing Node.js
+  or a refused file request, now show in your interface language instead of
+  English, with the agent's own last output kept as it was.
+- DeepSeek thinks during assistant runs again. Oleafly now keeps each reply's
+  reasoning and sends it back, which DeepSeek requires once tools are in use,
+  and the effort menu offers Off, Low, High and Max for DeepSeek models.
+  Chats saved before this change keep thinking off for tool runs.
+- Cost estimates, budgets and research task spending limits count DeepSeek's
+  peak rates, which are double the off-peak rates on weekdays from 01:00 to
+  04:00 and 06:00 to 10:00 UTC.
+- Agents started from the Dock, Finder or Start menu get the proxy settings,
+  API keys and endpoints you set in your shell profile, such as
+  `HTTPS_PROXY`, `ANTHROPIC_BASE_URL` or `DEEPSEEK_API_KEY`. A value Oleafly
+  already has wins, keys are hidden in transcripts and errors, and traffic to
+  Oleafly's own tool servers skips the proxy. Research tasks get the proxy
+  settings but not the keys.
+- Installing an agent bridge uses the registry, proxy and certificate
+  settings from your `.npmrc`. An unreachable registry fails within about a
+  minute and the message names it, and large bridges get 15 minutes to
+  download.
+- Claude Code's bridge is now 0.95.0.
+- "Let agents use my Oleafly API keys" can send Claude Code through a
+  DeepSeek or Z.ai key, using their Anthropic-compatible endpoints. Codex is
+  only offered your OpenAI key, the only kind it accepts.
+- Codex can use your own Codex CLI when it is at least as new as the one its
+  bridge bundles, and starts in the mode you last picked.
+
+### Fixed
+
+- DeepSeek Harness couldn't open a conversation and said "The agent
+  disconnected." It prints a log line on its output while a session starts,
+  and Oleafly closed the connection at the first line that wasn't a protocol
+  message. Oleafly now skips such lines and shows them with the agent's other
+  output if something goes wrong.
+- DeepSeek Harness is found in its usual install folder on macOS and Windows
+  when `dsh` isn't on your PATH, and a missing or rejected DeepSeek key now
+  shows its sign-in steps.
+- Pressing Enter or New conversation while an agent was starting launched a
+  second copy and left the first one running. Messages sent during a start
+  now wait for it.
+- Hermes with no model provider set up said only "Internal error". Oleafly
+  shows Hermes's own message and its setup steps. Picking a model no longer
+  removes Oleafly's research tools from Hermes, a conversation from another
+  Hermes profile says so when you reopen it, and Settings shows the installed
+  Hermes version even when GitHub is slow or unreachable.
+- Pi gave a blank reply when its model provider failed. Oleafly now shows
+  the provider's error, and any agent that ends a turn without replying says
+  so. Pi no longer shows two pickers with the same choices, and an older
+  `pi-acp` on your PATH isn't used.
+- Claude Code disconnected when it asked to write a file larger than about
+  half a megabyte. The permission card now opens without the preview.
+- Reopening a conversation that never got a message failed with Claude Code
+  and DeepSeek Harness. It now starts again.
+- After reconnecting, Codex went back to its default mode and model, and
+  Claude Code to its default effort. Oleafly now restores the model, mode
+  and effort the conversation had, and remembers the model you pick.
+- Codex asked you to sign in when the real problem was its `config.toml` or
+  a rejected key from another provider. Oleafly now shows Codex's own error
+  or names the provider and its key variable. Failed Codex turns no longer
+  look like normal replies.
+- Claude Code users with their own API endpoint were told to sign in to
+  Anthropic, and the account line read "Signed in with Not logged in".
+- Permission requests expired after two minutes. They now wait for you, and
+  a request for a file outside the project is refused with a note naming it.
+- A failed start left an empty conversation in History.
+- Hermes couldn't reach Oleafly's research tools behind an HTTP proxy, and a
+  stalled tool server could hold up a start for minutes.
+- Agent errors on Windows set to a language without UTF-8 output came out
+  garbled, Node.js warnings could hide the real error, and a timed-out start
+  dropped the agent's last output.
+- Some agent errors, such as asking you to trust the folder, showed as raw
+  codes.
+- On DeepSeek, a reply cut short when DeepSeek ran out of capacity now
+  retries or shows an error, long tool calls were cut off at about 8,000
+  tokens, and timeouts, server errors, rejected requests and empty replies
+  now come with a hint. DeepSeek Flash is treated as reading images.
+
+### Fixed
+
+- When Tectonic crashed while looking for a font that isn't installed, the
+  build failed with nothing in the error list, and only the last line of the
+  log said the compiler had crashed. Tectonic 0.17 does this on some
+  documents instead of reporting the missing font. The error list now names
+  the font and the line Tectonic had reached, and suggests installing the
+  font or switching to XeLaTeX or LuaLaTeX. Other compiler crashes show an error
+  too, in the app and from the `oleafly` command.
 
 ### Changed
 

@@ -12,7 +12,7 @@
 //!   form `canonicalize` produces, which Node.js cannot start a script from.
 
 use std::collections::{HashMap, HashSet};
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, Instant};
@@ -53,6 +53,46 @@ const SHIM_LIMIT: u64 = 64 * 1024;
 const REJECTED_LIMIT: usize = 8;
 /// cmd.exe cannot start a script whose path is longer than this.
 const CMD_PATH_LIMIT: usize = 260;
+const LOGIN_ENV_NAMES: &[&str] = &[
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "NO_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "all_proxy",
+    "no_proxy",
+    "NODE_EXTRA_CA_CERTS",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+    "REQUESTS_CA_BUNDLE",
+    "ANTHROPIC_*",
+    "OPENAI_*",
+    "CLAUDE_CODE_*",
+    "CODEX_HOME",
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+    "GOOGLE_CLOUD_PROJECT",
+    "DEEPSEEK_API_KEY",
+    "MOONSHOT_API_KEY",
+    "KIMI_API_KEY",
+    "ZHIPUAI_API_KEY",
+    "ZAI_API_KEY",
+    "GLM_API_KEY",
+    "DASHSCOPE_API_KEY",
+    "QWEN_API_KEY",
+    "MINIMAX_API_KEY",
+    "MINIMAX_CN_API_KEY",
+    "OPENROUTER_API_KEY",
+    "PI_CODING_AGENT_DIR",
+    "HERMES_HOME",
+];
+const LOOPBACK_HOSTS: [&str; 3] = ["127.0.0.1", "localhost", "::1"];
+const QUIET_DEFAULTS: [(&str, &str); 2] =
+    [("NODE_NO_WARNINGS", "1"), ("PYTHONIOENCODING", "utf-8")];
+const SECRET_SUFFIXES: [&str; 3] = ["_KEY", "_TOKEN", "_SECRET"];
+#[cfg(unix)]
+const LOGIN_PROBE_WAIT: Duration = Duration::from_secs(3);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ProgramKind {
@@ -154,7 +194,11 @@ static LOCATED: Mutex<Option<LocateCache>> = Mutex::new(None);
 #[cfg(unix)]
 static LOGIN_PATH: Mutex<Option<Vec<PathBuf>>> = Mutex::new(None);
 #[cfg(unix)]
-static PROBING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static LOGIN_ENV: Mutex<Option<Vec<(String, OsString)>>> = Mutex::new(None);
+#[cfg(unix)]
+static PROBING: Mutex<bool> = Mutex::new(false);
+#[cfg(unix)]
+static PROBED: std::sync::Condvar = std::sync::Condvar::new();
 
 /// Directories searched for programs, in order. Never waits for the login-shell
 /// probe.
@@ -232,23 +276,57 @@ fn clear_caches() {
 
 #[cfg(unix)]
 fn spawn_login_probe() {
-    use std::sync::atomic::Ordering;
-    if PROBING.swap(true, Ordering::SeqCst) {
-        return;
+    {
+        let mut probing = lock(&PROBING);
+        if *probing {
+            return;
+        }
+        *probing = true;
     }
     let spawned = std::thread::Builder::new()
         .name("oleafly-login-path".into())
         .spawn(|| {
             let shell = login_shell();
-            let path = crate::shell_command::unix::login_shell_path(shell.as_deref());
-            if !path.is_empty() {
-                *lock(&LOGIN_PATH) = Some(path);
+            let login =
+                crate::shell_command::unix::login_shell_environment(shell.as_deref(), &|name| {
+                    login_env_name(name, false)
+                });
+            if !login.path.is_empty() {
+                *lock(&LOGIN_PATH) = Some(login.path);
+                *lock(&LOGIN_ENV) = Some(login.env);
                 clear_caches();
             }
-            PROBING.store(false, Ordering::SeqCst);
+            finish_probe();
         });
     if spawned.is_err() {
-        PROBING.store(false, Ordering::SeqCst);
+        finish_probe();
+    }
+}
+
+#[cfg(unix)]
+fn finish_probe() {
+    *lock(&PROBING) = false;
+    PROBED.notify_all();
+}
+
+pub(crate) fn wait_for_login_probe() {
+    #[cfg(unix)]
+    wait_while_probing(&PROBING, &PROBED, LOGIN_PROBE_WAIT);
+}
+
+#[cfg(unix)]
+fn wait_while_probing(probing: &Mutex<bool>, probed: &std::sync::Condvar, limit: Duration) {
+    let deadline = Instant::now() + limit;
+    let mut running = lock(probing);
+    while *running {
+        let left = deadline.saturating_duration_since(Instant::now());
+        if left.is_zero() {
+            return;
+        }
+        running = match probed.wait_timeout(running, left) {
+            Ok((guard, _)) => guard,
+            Err(poisoned) => poisoned.into_inner().0,
+        };
     }
 }
 
@@ -432,6 +510,7 @@ const UNIX_HOME_FOLDERS: &[&str] = &[
     ".local/share/fnm/aliases/default/bin",
     "Library/Application Support/fnm/aliases/default/bin",
     ".fnm/aliases/default/bin",
+    "Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin",
 ];
 
 const UNIX_SYSTEM_FOLDERS: &[&str] = &[
@@ -440,6 +519,7 @@ const UNIX_SYSTEM_FOLDERS: &[&str] = &[
     "/opt/local/bin",
     "/usr/bin",
     "/home/linuxbrew/.linuxbrew/bin",
+    "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin",
 ];
 
 /// (variable, folder below it) pairs for Windows installers and version
@@ -462,6 +542,10 @@ const WINDOWS_FOLDERS: &[(&str, &str)] = &[
     ("LOCALAPPDATA", "hermes\\bin"),
     ("HERMES_HOME", "bin"),
     ("LOCALAPPDATA", "pi-node\\current"),
+    (
+        "LOCALAPPDATA",
+        "Programs\\DeepSeek Harness\\resources\\runtime\\cli\\bin",
+    ),
     ("USERPROFILE", ".npm-global"),
 ];
 
@@ -626,6 +710,22 @@ impl EnvironmentBlocks {
             .filter(|value| !value.is_empty())
             .or_else(|| Self::value(&self.user, name).map(OsString::from))
             .or_else(|| Self::value(&self.machine, name).map(OsString::from))
+    }
+
+    pub(crate) fn login_env(&self, process: Lookup<'_>) -> Vec<(String, OsString)> {
+        let mut env: Vec<(String, OsString)> = Vec::new();
+        for (name, value) in self.user.iter().chain(self.machine.iter()) {
+            if !login_env_name(name, true)
+                || env
+                    .iter()
+                    .any(|(known, _)| same_env_name(known, name, true))
+            {
+                continue;
+            }
+            let expanded = expand_percent(value, &|name| self.lookup(process, name));
+            env.push((name.clone(), OsString::from(expanded)));
+        }
+        env
     }
 
     /// The machine `Path` then the user `Path`, each expanded once.
@@ -1126,8 +1226,10 @@ pub(crate) fn child_search_path(prepend: &[PathBuf], append: &[PathBuf]) -> OsSt
     std::env::join_paths(&dirs).unwrap_or_else(|_| std::env::var_os("PATH").unwrap_or_default())
 }
 
-/// Environment every non-sandboxed agent-related child gets: the search path
-/// and, on Windows, a cmd.exe that never runs programs from its working folder.
+/// Environment every non-sandboxed agent-related child gets: the search path,
+/// on Windows a cmd.exe that never runs programs from its working folder, the
+/// user's network and provider settings the app process lacks, no proxy for
+/// loopback, and quiet Node.js and UTF-8 Python output.
 pub(crate) fn child_env(prepend: &[PathBuf], append: &[PathBuf]) -> Vec<(String, OsString)> {
     let mut env = vec![("PATH".to_string(), child_search_path(prepend, append))];
     if cfg!(windows) {
@@ -1136,7 +1238,145 @@ pub(crate) fn child_env(prepend: &[PathBuf], append: &[PathBuf]) -> Vec<(String,
             OsString::from("1"),
         ));
     }
+    let process = |name: &str| std::env::var_os(name);
+    env.extend(agent_env(&process, &captured_env(), cfg!(windows)));
     env
+}
+
+pub(crate) fn login_env_name(name: &str, windows: bool) -> bool {
+    LOGIN_ENV_NAMES
+        .iter()
+        .any(|pattern| match pattern.strip_suffix('*') {
+            Some(prefix) => {
+                name.len() > prefix.len()
+                    && name
+                        .get(..prefix.len())
+                        .is_some_and(|start| same_env_name(start, prefix, windows))
+            }
+            None => same_env_name(name, pattern, windows),
+        })
+}
+
+pub(crate) fn shell_supplied_env_name(name: &str) -> bool {
+    let windows = cfg!(windows);
+    login_env_name(name, windows)
+        || QUIET_DEFAULTS
+            .iter()
+            .any(|(quiet, _)| same_env_name(name, quiet, windows))
+}
+
+fn same_env_name(left: &str, right: &str, windows: bool) -> bool {
+    if windows {
+        left.eq_ignore_ascii_case(right)
+    } else {
+        left == right
+    }
+}
+
+#[cfg(unix)]
+fn captured_env() -> Vec<(String, OsString)> {
+    lock(&LOGIN_ENV).clone().unwrap_or_default()
+}
+
+#[cfg(windows)]
+fn captured_env() -> Vec<(String, OsString)> {
+    windows::read_environment().login_env(&|name| std::env::var_os(name))
+}
+
+pub(crate) fn agent_env(
+    process: Lookup<'_>,
+    captured: &[(String, OsString)],
+    windows: bool,
+) -> Vec<(String, OsString)> {
+    let mut env: Vec<(String, OsString)> = Vec::new();
+    for (name, value) in captured {
+        if !login_env_name(name, windows)
+            || process(name).is_some()
+            || env
+                .iter()
+                .any(|(known, _)| same_env_name(known, name, windows))
+        {
+            continue;
+        }
+        env.push((name.clone(), value.clone()));
+    }
+    let spellings: &[&str] = if windows {
+        &["NO_PROXY"]
+    } else {
+        &["NO_PROXY", "no_proxy"]
+    };
+    for name in spellings {
+        let added = env
+            .iter()
+            .position(|(known, _)| same_env_name(known, name, windows));
+        let existing = match added {
+            Some(index) => Some(env.remove(index).1),
+            None => process(name),
+        };
+        env.push((
+            (*name).to_string(),
+            with_loopback_no_proxy(existing.as_deref()),
+        ));
+    }
+    for (name, value) in QUIET_DEFAULTS {
+        if process(name).is_none() {
+            env.push((name.to_string(), OsString::from(value)));
+        }
+    }
+    env
+}
+
+pub(crate) fn with_loopback_no_proxy(existing: Option<&OsStr>) -> OsString {
+    let text = existing
+        .map(|value| value.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let mut entries: Vec<&str> = text
+        .split(',')
+        .map(str::trim)
+        .filter(|entry| !entry.is_empty())
+        .collect();
+    for host in LOOPBACK_HOSTS {
+        if !entries.iter().any(|entry| entry.eq_ignore_ascii_case(host)) {
+            entries.push(host);
+        }
+    }
+    OsString::from(entries.join(","))
+}
+
+pub(crate) fn host_env() -> impl Fn(&str) -> Option<OsString> {
+    let captured = captured_env();
+    let windows = cfg!(windows);
+    move |name: &str| {
+        std::env::var_os(name).or_else(|| {
+            captured
+                .iter()
+                .find(|(known, _)| same_env_name(known, name, windows))
+                .map(|(_, value)| value.clone())
+        })
+    }
+}
+
+pub(crate) fn login_env_secrets() -> Vec<String> {
+    secret_values(&captured_env())
+}
+
+pub(crate) fn secret_values(env: &[(String, OsString)]) -> Vec<String> {
+    env.iter()
+        .filter_map(|(name, value)| {
+            let upper = name.to_ascii_uppercase();
+            let value = value.to_str()?;
+            if SECRET_SUFFIXES.iter().any(|suffix| upper.ends_with(suffix)) {
+                return Some(value.to_owned());
+            }
+            if !upper.ends_with("_PROXY") {
+                return None;
+            }
+            reqwest::Url::parse(value)
+                .ok()
+                .and_then(|url| url.password().map(str::to_owned))
+                .filter(|password| !password.is_empty())
+        })
+        .collect()
 }
 
 /// Whether a working folder is a network (UNC) path, where cmd.exe cannot run.

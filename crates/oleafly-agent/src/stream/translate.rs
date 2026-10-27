@@ -8,7 +8,7 @@ use crate::event::AgentEvent;
 use crate::provider::Wire;
 use crate::sse::SseEvent;
 use crate::stream::anthropic_blocks::{AnthropicBlocks, AssistantBlock};
-use crate::stream::{ToolCall, MAX_STREAM_TOOL_CALLS};
+use crate::stream::{out_of_capacity, ToolCall, MAX_STREAM_TOOL_CALLS};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WireKind {
@@ -142,6 +142,14 @@ impl Translator {
         self.refusal_category.clone()
     }
 
+    pub(crate) fn ended_without_finishing(&self) -> bool {
+        self.kind == WireKind::OpenAi && !self.done && self.stop_reason.is_none()
+    }
+
+    pub(crate) fn has_tool_calls(&self) -> bool {
+        !self.open.is_empty() || !self.finished.is_empty()
+    }
+
     fn start_call(&mut self, index: i64, id: String, name: String) -> Vec<AgentEvent> {
         if self.open.contains_key(&index) {
             return Vec::new();
@@ -233,6 +241,9 @@ impl Translator {
         };
         if let Some(reason) = choice.get("finish_reason").and_then(|r| r.as_str()) {
             self.stop_reason = Some(reason.to_string());
+            if let Some(error) = out_of_capacity(Some(reason)) {
+                self.error = Some(error);
+            }
         }
 
         if let Some(delta) = choice.get("delta") {

@@ -6127,6 +6127,7 @@ dependencies = [
  "agent-client-protocol",
  "agent-client-protocol-schema",
  "base64 0.23.1",
+ "encoding_rs",
  "futures",
  "libc",
  "oleafly-core",
@@ -6136,6 +6137,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "url",
+ "windows-sys 0.61.2",
  "zeroize",
 ]
 

@@ -166,7 +166,8 @@
           "ready": "Brama działa",
           "starting": "Brama się uruchamia",
           "stopped": "Brama zatrzymana",
-          "unknown": "Stan bramy nieznany"
+          "unknown": "Stan bramy nieznany",
+          "outdated": "Zaktualizuj Hermes, aby sprawdzić bramę"
         },
         "refresh": "Sprawdź ponownie",
         "keepsRunning": "Rozłączenie Oleafly nigdy nie zatrzymuje bramy.",

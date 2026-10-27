@@ -7,7 +7,7 @@ use super::{
 };
 use crate::app_error::AppError;
 use crate::program_locator::{self as locator, Located, ProgramKind, RejectReason};
-use oleafly_acp::{AcpClient, InitializeError, NullHost};
+use oleafly_acp::{AcpClient, ErrorKind, InitializeError, NullHost};
 use serde_json::Value;
 use std::{
     collections::HashSet,
@@ -194,8 +194,9 @@ fn node_text((major, minor, patch): catalog::NodeVersion) -> String {
 }
 
 /// The Test check: never saves anything. Steps: the chosen file's rules;
-/// Node.js for Pi's script CLI; `<cli> --version` for vendor CLIs (fatal when
-/// the bridge needs the CLI); Node.js for Node.js bridges; then a real start
+/// Node.js for Pi's script CLI; the vendor CLI's version probe (`--version`,
+/// or Hermes's `acp --version`; fatal when the bridge needs the CLI); Node.js
+/// for Node.js bridges; then a real start
 /// in an empty Oleafly-owned folder with the agent's environment, no tool
 /// servers, and `initialize` answered within the limit.
 pub(crate) async fn check_agent(
@@ -299,7 +300,15 @@ pub(crate) async fn check_plan(
                         None => return failed("node_missing", None, shown),
                     }
                 }
-                match catalog::program_version(root, &cli.located, &env, limits.version).await {
+                match catalog::program_version(
+                    root,
+                    &cli.located,
+                    vendor.version_args,
+                    &env,
+                    limits.version,
+                )
+                .await
+                {
                     Ok(found) => version = Some(found),
                     Err(detail) if vendor.bridge_needs_cli => {
                         return failed("cli_missing", Some(detail), shown)
@@ -407,7 +416,13 @@ async fn start_and_initialize(
         .envs(launch.env.iter().map(|(name, value)| (name, value)));
     let client = match AcpClient::spawn(command, Arc::new(NullHost)).await {
         Ok(client) => client,
-        Err(error) => return failed("start_failed", Some(error), shown),
+        Err(error) => {
+            return failed(
+                "start_failed",
+                Some(super::failures::rpc_message(&error)),
+                shown,
+            )
+        }
     };
     let options = super::runtime::client_options(false, false);
     let reply = tokio::time::timeout(limit, client.initialize(&options)).await;
@@ -415,11 +430,17 @@ async fn start_and_initialize(
         Err(_) => failed("timeout", None, shown),
         Ok(Err(InitializeError::Rpc(error))) => {
             let exited = client.is_closed()
-                || error.message.starts_with("The agent disconnected")
-                || error.message.starts_with("The agent is disconnected");
+                || matches!(
+                    error.kind,
+                    Some(
+                        ErrorKind::Disconnected
+                            | ErrorKind::DisconnectedBeforeReply
+                            | ErrorKind::NotConnected
+                    )
+                );
             failed(
                 if exited { "exited" } else { "not_acp" },
-                Some(error.message),
+                Some(super::failures::rpc_message(&error)),
                 shown,
             )
         }
@@ -427,6 +448,7 @@ async fn start_and_initialize(
         Ok(Ok(negotiated)) => {
             let value = &negotiated.raw;
             let redactor = oleafly_acp::redact::Redactor::new(&[]);
+            super::runtime::add_login_secrets(&redactor);
             let auth_methods: Vec<_> = negotiated
                 .auth_methods
                 .iter()

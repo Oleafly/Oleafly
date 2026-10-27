@@ -304,6 +304,13 @@ fn known_windows_folders_cover_installers_version_managers_and_agents() {
         local.join("hermes").join("bin"),
         PathBuf::from(r"E:\hermes").join("bin"),
         local.join("pi-node").join("current"),
+        local
+            .join("Programs")
+            .join("DeepSeek Harness")
+            .join("resources")
+            .join("runtime")
+            .join("cli")
+            .join("bin"),
         home.join(".npm-global"),
         PathBuf::from(r"D:\npm-prefix"),
     ] {
@@ -339,6 +346,8 @@ fn known_unix_folders_cover_version_managers_and_system_prefixes() {
         "/usr/bin",
         "/home/linuxbrew/.linuxbrew/bin",
         "/opt/npm/bin",
+        "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin",
+        "/home/r/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin",
     ] {
         assert!(dirs.contains(&PathBuf::from(expected)), "{expected}");
     }
@@ -463,8 +472,305 @@ fn child_env_carries_the_search_path() {
     assert!(env
         .iter()
         .any(|(name, value)| name == "NoDefaultCurrentDirectoryInExePath" && value == "1"));
-    #[cfg(not(windows))]
-    assert_eq!(env.len(), 1);
+    let no_proxy = env
+        .iter()
+        .find(|(name, _)| name == "NO_PROXY")
+        .map(|(_, value)| value.to_string_lossy().into_owned())
+        .expect("NO_PROXY is always set");
+    assert!(no_proxy.split(',').any(|entry| entry == "127.0.0.1"));
+    assert_eq!(
+        env.iter().filter(|(name, _)| name == "PATH").count(),
+        1,
+        "{env:?}"
+    );
+}
+
+fn exact_env(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<OsString> {
+    let pairs: Vec<(String, String)> = pairs
+        .iter()
+        .map(|(name, value)| (name.to_string(), value.to_string()))
+        .collect();
+    move |name: &str| {
+        pairs
+            .iter()
+            .find(|(key, _)| key == name)
+            .map(|(_, value)| OsString::from(value))
+    }
+}
+
+fn captured(pairs: &[(&str, &str)]) -> Vec<(String, OsString)> {
+    pairs
+        .iter()
+        .map(|(name, value)| (name.to_string(), OsString::from(value)))
+        .collect()
+}
+
+fn value_of<'a>(env: &'a [(String, OsString)], name: &str) -> Option<&'a str> {
+    env.iter()
+        .rev()
+        .find(|(key, _)| key == name)
+        .and_then(|(_, value)| value.to_str())
+}
+
+#[test]
+fn the_login_allowlist_covers_proxies_certificates_and_provider_settings() {
+    for name in [
+        "HTTP_PROXY",
+        "https_proxy",
+        "ALL_PROXY",
+        "no_proxy",
+        "NODE_EXTRA_CA_CERTS",
+        "SSL_CERT_FILE",
+        "SSL_CERT_DIR",
+        "REQUESTS_CA_BUNDLE",
+        "ANTHROPIC_BASE_URL",
+        "ANTHROPIC_AUTH_TOKEN",
+        "OPENAI_BASE_URL",
+        "CLAUDE_CODE_USE_BEDROCK",
+        "CODEX_HOME",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+        "GOOGLE_CLOUD_PROJECT",
+        "DEEPSEEK_API_KEY",
+        "MOONSHOT_API_KEY",
+        "KIMI_API_KEY",
+        "ZHIPUAI_API_KEY",
+        "ZAI_API_KEY",
+        "GLM_API_KEY",
+        "DASHSCOPE_API_KEY",
+        "QWEN_API_KEY",
+        "MINIMAX_API_KEY",
+        "MINIMAX_CN_API_KEY",
+        "OPENROUTER_API_KEY",
+        "PI_CODING_AGENT_DIR",
+        "HERMES_HOME",
+    ] {
+        assert!(login_env_name(name, false), "{name}");
+    }
+    for name in [
+        "PATH",
+        "HOME",
+        "SHELL",
+        "AWS_SECRET_ACCESS_KEY",
+        "GITHUB_TOKEN",
+        "ANTHROPIC_",
+        "Http_Proxy",
+        "anthropic_base_url",
+        "NODE_OPTIONS",
+        "LD_PRELOAD",
+    ] {
+        assert!(!login_env_name(name, false), "{name}");
+    }
+    assert!(login_env_name("Http_Proxy", true));
+    assert!(login_env_name("anthropic_base_url", true));
+    assert!(!login_env_name("Path", true));
+}
+
+#[test]
+fn login_variables_fill_only_what_the_app_process_lacks() {
+    let process = exact_env(&[
+        ("HTTPS_PROXY", "http://process:1"),
+        ("DEEPSEEK_API_KEY", "sk-process-value"),
+    ]);
+    let login = captured(&[
+        ("HTTPS_PROXY", "http://login:2"),
+        ("https_proxy", "http://login:2"),
+        ("ANTHROPIC_BASE_URL", "https://api.deepseek.com/anthropic"),
+        ("ANTHROPIC_AUTH_TOKEN", "sk-login-token-1234"),
+        ("DEEPSEEK_API_KEY", "sk-login-value"),
+        ("PATH", "/login/bin"),
+        ("AWS_SECRET_ACCESS_KEY", "not-allowlisted"),
+    ]);
+    let env = agent_env(&process, &login, false);
+    assert_eq!(value_of(&env, "HTTPS_PROXY"), None);
+    assert_eq!(value_of(&env, "https_proxy"), Some("http://login:2"));
+    assert_eq!(
+        value_of(&env, "ANTHROPIC_BASE_URL"),
+        Some("https://api.deepseek.com/anthropic")
+    );
+    assert_eq!(
+        value_of(&env, "ANTHROPIC_AUTH_TOKEN"),
+        Some("sk-login-token-1234")
+    );
+    assert_eq!(value_of(&env, "DEEPSEEK_API_KEY"), None);
+    assert_eq!(value_of(&env, "PATH"), None);
+    assert_eq!(value_of(&env, "AWS_SECRET_ACCESS_KEY"), None);
+
+    let empty = exact_env(&[("HTTPS_PROXY", "")]);
+    let env = agent_env(
+        &empty,
+        &captured(&[("HTTPS_PROXY", "http://login:2")]),
+        false,
+    );
+    assert_eq!(value_of(&env, "HTTPS_PROXY"), None);
+}
+
+#[test]
+fn windows_login_variables_ignore_case_and_never_repeat_a_name() {
+    let process = env(&[("http_proxy", "http://process:1")]);
+    let login = captured(&[
+        ("HTTP_PROXY", "http://registry:2"),
+        ("Https_Proxy", "http://user:3"),
+        ("HTTPS_PROXY", "http://machine:4"),
+    ]);
+    let env = agent_env(&process, &login, true);
+    let names: Vec<&str> = env.iter().map(|(name, _)| name.as_str()).collect();
+    assert!(!names
+        .iter()
+        .any(|name| name.eq_ignore_ascii_case("HTTP_PROXY")));
+    assert_eq!(
+        names
+            .iter()
+            .filter(|name| name.eq_ignore_ascii_case("HTTPS_PROXY"))
+            .count(),
+        1,
+        "{names:?}"
+    );
+    assert_eq!(value_of(&env, "Https_Proxy"), Some("http://user:3"));
+    assert_eq!(
+        names
+            .iter()
+            .filter(|name| name.eq_ignore_ascii_case("NO_PROXY"))
+            .count(),
+        1,
+        "{names:?}"
+    );
+}
+
+#[test]
+fn loopback_hosts_are_appended_to_no_proxy_once() {
+    assert_eq!(with_loopback_no_proxy(None), "127.0.0.1,localhost,::1");
+    assert_eq!(
+        with_loopback_no_proxy(Some(std::ffi::OsStr::new(""))),
+        "127.0.0.1,localhost,::1"
+    );
+    assert_eq!(
+        with_loopback_no_proxy(Some(std::ffi::OsStr::new("corp.example, .internal"))),
+        "corp.example,.internal,127.0.0.1,localhost,::1"
+    );
+    assert_eq!(
+        with_loopback_no_proxy(Some(std::ffi::OsStr::new("LOCALHOST,127.0.0.1"))),
+        "LOCALHOST,127.0.0.1,::1"
+    );
+}
+
+#[test]
+fn every_agent_launch_bypasses_the_proxy_for_loopback_in_both_spellings() {
+    let process = exact_env(&[("no_proxy", "corp.example")]);
+    let login = captured(&[
+        ("NO_PROXY", ".internal"),
+        ("HTTP_PROXY", "http://127.0.0.1:7890"),
+    ]);
+    let env = agent_env(&process, &login, false);
+    assert_eq!(
+        value_of(&env, "NO_PROXY"),
+        Some(".internal,127.0.0.1,localhost,::1")
+    );
+    assert_eq!(
+        value_of(&env, "no_proxy"),
+        Some("corp.example,127.0.0.1,localhost,::1")
+    );
+    assert_eq!(env.iter().filter(|(name, _)| name == "NO_PROXY").count(), 1);
+    let bare = agent_env(&exact_env(&[]), &[], false);
+    assert_eq!(value_of(&bare, "NO_PROXY"), Some("127.0.0.1,localhost,::1"));
+    assert_eq!(value_of(&bare, "no_proxy"), Some("127.0.0.1,localhost,::1"));
+}
+
+#[test]
+fn node_warnings_and_python_encoding_have_quiet_defaults_the_user_can_override() {
+    let env = agent_env(&exact_env(&[]), &[], false);
+    assert_eq!(value_of(&env, "NODE_NO_WARNINGS"), Some("1"));
+    assert_eq!(value_of(&env, "PYTHONIOENCODING"), Some("utf-8"));
+    let set = exact_env(&[("NODE_NO_WARNINGS", "0"), ("PYTHONIOENCODING", "gbk")]);
+    let env = agent_env(&set, &[], false);
+    assert_eq!(value_of(&env, "NODE_NO_WARNINGS"), None);
+    assert_eq!(value_of(&env, "PYTHONIOENCODING"), None);
+}
+
+#[test]
+fn captured_keys_tokens_and_secrets_are_the_values_to_redact() {
+    let secrets = secret_values(&captured(&[
+        ("DEEPSEEK_API_KEY", "sk-deepseek-1234"),
+        ("ANTHROPIC_AUTH_TOKEN", "token-abcdef"),
+        ("OPENAI_CLIENT_SECRET", "secret-abcdef"),
+        ("ANTHROPIC_BASE_URL", "https://api.deepseek.com/anthropic"),
+        ("HTTPS_PROXY", "http://127.0.0.1:7890"),
+    ]));
+    assert_eq!(
+        secrets,
+        ["sk-deepseek-1234", "token-abcdef", "secret-abcdef"]
+    );
+}
+
+#[test]
+fn a_password_inside_a_proxy_address_is_redacted_too() {
+    let secrets = secret_values(&captured(&[
+        (
+            "HTTPS_PROXY",
+            "http://alice:s3cret-pass@proxy.example.cn:7890",
+        ),
+        ("all_proxy", "socks5://bob:hunter22@127.0.0.1:7891"),
+        ("HTTP_PROXY", "http://127.0.0.1:7890"),
+    ]));
+    assert_eq!(secrets, ["s3cret-pass", "hunter22"]);
+}
+
+#[test]
+fn registry_login_variables_come_from_the_user_block_first_and_expand_once() {
+    let blocks = EnvironmentBlocks {
+        machine: vec![
+            ("Path".into(), r"C:\WINDOWS".into()),
+            ("HTTPS_PROXY".into(), "http://machine:1".into()),
+            ("SSL_CERT_FILE".into(), r"%ProgramData%\certs\ca.pem".into()),
+            ("SystemRoot".into(), r"C:\WINDOWS".into()),
+        ],
+        user: vec![
+            ("https_proxy".into(), "http://user:2".into()),
+            ("DEEPSEEK_API_KEY".into(), "sk-user-value".into()),
+            ("TEMP".into(), r"%USERPROFILE%\Temp".into()),
+        ],
+    };
+    let process = env(&[("ProgramData", r"C:\ProgramData")]);
+    let login = blocks.login_env(&process);
+    assert_eq!(
+        login,
+        captured(&[
+            ("https_proxy", "http://user:2"),
+            ("DEEPSEEK_API_KEY", "sk-user-value"),
+            ("SSL_CERT_FILE", r"C:\ProgramData\certs\ca.pem"),
+        ])
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_launch_waits_for_the_login_probe_but_never_longer_than_its_limit() {
+    use std::sync::{Arc, Condvar, Mutex};
+    let state = Arc::new((Mutex::new(true), Condvar::new()));
+    let finisher = state.clone();
+    let started = Instant::now();
+    let worker = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(100));
+        *finisher.0.lock().unwrap() = false;
+        finisher.1.notify_all();
+    });
+    wait_while_probing(&state.0, &state.1, Duration::from_secs(20));
+    let waited = started.elapsed();
+    worker.join().unwrap();
+    assert!(waited >= Duration::from_millis(90), "{waited:?}");
+    assert!(waited < Duration::from_secs(10), "{waited:?}");
+
+    let stuck = (Mutex::new(true), Condvar::new());
+    let started = Instant::now();
+    wait_while_probing(&stuck.0, &stuck.1, Duration::from_millis(150));
+    let waited = started.elapsed();
+    assert!(waited >= Duration::from_millis(140), "{waited:?}");
+    assert!(waited < Duration::from_secs(5), "{waited:?}");
+
+    let idle = (Mutex::new(false), Condvar::new());
+    let started = Instant::now();
+    wait_while_probing(&idle.0, &idle.1, Duration::from_secs(20));
+    assert!(started.elapsed() < Duration::from_secs(1));
 }
 
 #[test]

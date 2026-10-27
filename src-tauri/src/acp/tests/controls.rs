@@ -69,7 +69,7 @@ async fn a_new_session_gets_the_remembered_effort_and_mode() {
                     value: "plan".into(),
                     name: "Plan".into(),
                 }),
-                provider: None,
+                ..Default::default()
             },
         )
         .await
@@ -93,6 +93,128 @@ async fn a_new_session_gets_the_remembered_effort_and_mode() {
         .count();
     assert_eq!(sets, 2);
     runtime.close(&snapshot.session.id).await.unwrap();
+}
+
+fn choice(value: &str, name: &str) -> Option<RememberedChoice> {
+    Some(RememberedChoice {
+        value: value.into(),
+        name: name.into(),
+    })
+}
+
+fn config_sets(root: &std::path::Path) -> Vec<(String, String)> {
+    std::fs::read_to_string(root.join("requests.jsonl"))
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+        .filter(|request| request["method"] == "session/set_config_option")
+        .map(|request| {
+            (
+                request["params"]["configId"].as_str().unwrap().to_owned(),
+                request["params"]["value"].as_str().unwrap().to_owned(),
+            )
+        })
+        .collect()
+}
+
+async fn codex_like(
+    prefs: AgentPreferences,
+) -> (
+    tempfile::TempDir,
+    std::sync::Arc<AcpRuntime>,
+    SessionSnapshot,
+) {
+    let temp = fixture_temp();
+    let project = temp.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    runtime
+        .register(
+            &serde_json::to_string(&fixture_definition(
+                vec!["--codex-options".into(), "--record-requests".into()],
+                temp.path(),
+            ))
+            .unwrap(),
+        )
+        .unwrap();
+    runtime
+        .set_agent_preferences("fixture-agent", prefs)
+        .await
+        .unwrap();
+    let snapshot = runtime
+        .start(StartSession {
+            project_id: "test-project".into(),
+            project_path: project,
+            agent_id: "fixture-agent".into(),
+            owner: Some("fixture-window".into()),
+            ..StartSession::default()
+        })
+        .await
+        .unwrap();
+    (temp, runtime, snapshot)
+}
+
+#[tokio::test]
+async fn a_new_session_gets_the_remembered_model_before_the_effort_it_offers() {
+    let (temp, runtime, snapshot) = codex_like(AgentPreferences {
+        model: choice("gpt-other", "GPT other"),
+        effort: choice("high", "High"),
+        mode: choice("read-only", "Read-only"),
+        ..Default::default()
+    })
+    .await;
+    assert_eq!(current(&snapshot, "model").as_deref(), Some("gpt-other"));
+    assert_eq!(
+        current(&snapshot, "reasoning_effort").as_deref(),
+        Some("high")
+    );
+    assert_eq!(current(&snapshot, "mode").as_deref(), Some("read-only"));
+    assert_eq!(
+        config_sets(temp.path()),
+        [
+            ("model".to_owned(), "gpt-other".to_owned()),
+            ("reasoning_effort".to_owned(), "high".to_owned()),
+            ("mode".to_owned(), "read-only".to_owned()),
+        ]
+    );
+    runtime.close(&snapshot.session.id).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_model_change_is_remembered_and_brings_back_the_remembered_effort() {
+    let (_temp, runtime, snapshot) = codex_like(AgentPreferences {
+        effort: choice("high", "High"),
+        ..Default::default()
+    })
+    .await;
+    let id = snapshot.session.id.clone();
+    assert_eq!(current(&snapshot, "reasoning_effort"), None);
+    let changed = runtime
+        .set_config_option(&id, "model", ConfigValue::Id("gpt-other".into()))
+        .await
+        .unwrap();
+    assert_eq!(current(&changed, "model").as_deref(), Some("gpt-other"));
+    assert_eq!(
+        current(&changed, "reasoning_effort").as_deref(),
+        Some("high")
+    );
+    assert_eq!(
+        runtime.agent_preferences("fixture-agent").unwrap().model,
+        choice("gpt-other", "GPT other")
+    );
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_legacy_model_change_is_remembered() {
+    let (_temp, runtime, session) = runtime(vec!["--legacy-modes".into()]).await;
+    let id = session.session.id.clone();
+    runtime.set_model(&id, "fixture-second").await.unwrap();
+    assert_eq!(
+        runtime.agent_preferences("fixture-agent").unwrap().model,
+        choice("fixture-second", "Second model")
+    );
+    runtime.close(&id).await.unwrap();
 }
 
 #[tokio::test]

@@ -8,6 +8,7 @@ pub mod event;
 pub mod items;
 pub mod message;
 pub mod models;
+pub mod pricing;
 pub mod provider;
 pub mod run;
 pub mod session;

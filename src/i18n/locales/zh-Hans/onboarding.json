@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "两种代理",
-      "content": "Oleafly 代理运行于你配置的模型提供商。CLI 代理尚处于测试阶段，可驱动本机已安装的编码代理。"
+      "content": "Oleafly 代理运行于你配置的模型提供商。CLI 代理可驱动本机已安装的编码代理。"
     },
     "connectProvider": {
       "title": "连接提供商",

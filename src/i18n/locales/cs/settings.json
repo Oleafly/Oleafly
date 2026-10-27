@@ -166,7 +166,8 @@
           "ready": "Brána běží",
           "starting": "Brána se spouští",
           "stopped": "Brána je zastavená",
-          "unknown": "Stav brány není známý"
+          "unknown": "Stav brány není známý",
+          "outdated": "Pro kontrolu brány aktualizujte Hermes"
         },
         "refresh": "Zkontrolovat znovu",
         "keepsRunning": "Odpojení Oleafly bránu nikdy nezastaví.",
