@@ -66,13 +66,21 @@ describe("pickOpenPath", () => {
     window.__e2eSetNextImportPaths?.(["/dir", "/other"]);
     await expect(pickOpenPath({ directory: true })).resolves.toBe("/dir");
 
+    window.__e2eSetNextImportPaths?.(["/folder", "/second"]);
+    await expect(pickOpenPath({ directory: true, multiple: true })).resolves.toBe("/folder");
+
     window.__e2eSetNextImportPaths?.(["/single.tex", "/ignored.tex"]);
     await expect(pickOpenPath()).resolves.toBe("/single.tex");
 
     await expect(pickOpenPath()).resolves.toBe("/native/open.tex");
     expect(mocks.open).toHaveBeenCalledTimes(1);
-    expect(window.__e2eFileDialogState?.openRequests).toBe(4);
-    expect(mocks.grantOpen.mock.calls).toEqual([[["/a.tex", "/b.tex"]], [["/dir"]], [["/single.tex"]]]);
+    expect(window.__e2eFileDialogState?.openRequests).toBe(5);
+    expect(mocks.grantOpen.mock.calls).toEqual([
+      [["/a.tex", "/b.tex"]],
+      [["/dir"]],
+      [["/folder"]],
+      [["/single.tex"]],
+    ]);
   });
 
   it("shapes the Rust picker's list the way the dialog plugin did", async () => {

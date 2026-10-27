@@ -49,6 +49,28 @@ if (typeof window !== "undefined" && E2E_HOOKS) {
   };
 }
 
+/** The E2E stand-in's answer in the dialog's shape: a folder or single pick
+ * returns the first path, a multiple pick returns them all. */
+function e2eOpenResult(
+  paths: string[] | null,
+  options?: OpenDialogOptions,
+): string | string[] | null {
+  if (paths === null) return null;
+  if (options?.multiple && !options.directory) return paths;
+  return paths[0] ?? null;
+}
+
+/** Takes the one-shot E2E pick and records it the way a real pick is. */
+async function takeE2eOpenPick(
+  state: E2eFileDialogState,
+  options?: OpenDialogOptions,
+): Promise<string | string[] | null> {
+  const result = e2eOpenResult(state.nextImportPaths ?? null, options);
+  delete state.nextImportPaths;
+  if (result !== null) await grantTestOpenPaths(typeof result === "string" ? [result] : result);
+  return result;
+}
+
 /**
  * The single application boundary for native open dialogs.
  *
@@ -65,16 +87,7 @@ export async function pickOpenPath<T extends OpenDialogOptions>(
   if (state) {
     state.openRequests += 1;
     if (Object.hasOwn(state, "nextImportPaths")) {
-      const paths = state.nextImportPaths ?? null;
-      delete state.nextImportPaths;
-      let result: string | string[] | null = null;
-      if (paths !== null) {
-        if (options?.directory) result = paths[0] ?? null;
-        else if (options?.multiple) result = paths;
-        else result = paths[0] ?? null;
-      }
-      if (result !== null) await grantTestOpenPaths(typeof result === "string" ? [result] : result);
-      return result as OpenDialogReturn<T>;
+      return (await takeE2eOpenPick(state, options)) as OpenDialogReturn<T>;
     }
   }
   const paths = await pickOpenPaths(options);
