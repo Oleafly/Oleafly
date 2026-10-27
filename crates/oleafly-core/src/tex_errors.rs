@@ -1,5 +1,6 @@
 //! TeX log errors and Pandoc diagnostics, shared by the app and the CLI so
 //! both report the same file, line and plain-English explanation.
+use std::collections::BTreeMap;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -22,6 +23,9 @@ pub struct CompileError {
     pub source_line: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub code: Option<String>,
+    /// Values the app fills into the translated text for `code`.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub params: BTreeMap<String, String>,
 }
 
 // A TeX log token after `(` looks like an input file if it carries a path
@@ -271,7 +275,84 @@ pub fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
             });
         }
     }
+    out.extend(compiler_crash_error(&lines));
     out
+}
+
+/// The crash note `engine_spec::compiler_crash_note` appends, as an error.
+/// Tectonic 0.17 segfaults on some lookups of a font that isn't installed
+/// (where XeTeX reports the missing font), and its last output is then the
+/// "Requested font" trace for that font. When anything came after the trace,
+/// the crash is reported without naming a font.
+fn compiler_crash_error(lines: &[&str]) -> Option<CompileError> {
+    let crash = lines
+        .iter()
+        .position(|line| line.starts_with(crate::engine_spec::COMPILER_CRASH_LINE))?;
+    let last = lines[..crash]
+        .iter()
+        .rposition(|line| !line.trim().is_empty());
+    let Some((font, file, line)) = last.and_then(|index| requested_font(lines, index)) else {
+        let note = lines[crash].strip_prefix("error: ").unwrap_or(lines[crash]);
+        return Some(CompileError {
+            message: note.trim_end().to_owned(),
+            kind: "error".into(),
+            explanation: Some("The compiler crashed before it finished, so the log ends where it stopped. Try building again. If it crashes every time, build with another compiler.".into()),
+            code: Some("tex.compiler_crashed".into()),
+            ..Default::default()
+        });
+    };
+    Some(CompileError {
+        line,
+        file,
+        message: format!("Tectonic crashed while looking for the font \"{font}\""),
+        kind: "error".into(),
+        explanation: Some(format!("Tectonic crashed while looking for the font \"{font}\", which probably isn't installed on this computer. Install the font, or build with XeLaTeX or LuaLaTeX. They report a missing font instead of crashing.")),
+        code: Some("tex.compiler_crashed_font".into()),
+        params: BTreeMap::from([("font".to_owned(), font)]),
+        ..Default::default()
+    })
+}
+
+/// The font a `Requested font "…" at …pt` trace on `lines[index]` names, and
+/// the `warning: file:line:` it was reported under. Tectonic sometimes breaks
+/// the line after that prefix.
+fn requested_font(lines: &[&str], index: usize) -> Option<(String, Option<String>, Option<u32>)> {
+    const TRACE: &str = "Requested font \"";
+    let text = lines[index];
+    let at = text.find(TRACE)?;
+    let request = &text[at + TRACE.len()..];
+    let font = font_display_name(&request[..request.find('"')?])?;
+    let prefix = match text[..at].trim() {
+        "" => index.checked_sub(1).map_or("", |previous| lines[previous]),
+        prefix => prefix,
+    };
+    // stdout comes first in the log and may not end in a newline, so the
+    // first warning can share a line with the end of the engine's output.
+    let (file, line) = prefix
+        .rfind("warning: ")
+        .map(|start| prefix[start + "warning: ".len()..].trim())
+        .and_then(|location| location.strip_suffix(':'))
+        .and_then(|location| location.rsplit_once(':'))
+        .and_then(|(file, line)| Some((file.to_owned(), line.parse::<u32>().ok()?)))
+        .map_or((None, None), |(file, line)| (Some(file), Some(line)));
+    Some((font, file, line))
+}
+
+/// `Name/B:features` names an installed font; `[path/file.otf:0]/OT` a file.
+fn font_display_name(request: &str) -> Option<String> {
+    let name = match request.strip_prefix('[') {
+        Some(file) => {
+            let path = file.split(']').next().unwrap_or(file);
+            let path = path
+                .rsplit_once(':')
+                .filter(|(_, index)| !index.is_empty() && index.bytes().all(|b| b.is_ascii_digit()))
+                .map_or(path, |(path, _)| path);
+            path.rsplit(['/', '\\']).next().unwrap_or(path)
+        }
+        None => request.split(['/', ':']).next().unwrap_or(request),
+    };
+    let name = name.trim();
+    (!name.is_empty()).then(|| name.to_owned())
 }
 
 /// Warnings and errors Pandoc (and the Tectonic it drives) printed.
@@ -546,6 +627,127 @@ mod tests {
             .as_deref()
             .unwrap()
             .contains("clearpage"));
+    }
+
+    // What Tectonic 0.17 printed before it segfaulted looking up a font that
+    // isn't installed: stdout, then stderr, then the supervisor's crash note.
+    const FONT_CRASH: &str = concat!(
+        "note: Running TeX ...\n",
+        "(main.tex (FiraMono.sty (fontspec.sty (fontspec.cfg))))",
+        "warning: FiraMono.sty:96: \n",
+        "Requested font \"[FiraMono-Regular.otf]/OT\" at 9.99997pt\n",
+        "warning: FiraMono.sty:96: Requested font \"[FiraMono-Bold.otf]/OT:script=latn;language=dflt;\" at 10.00003pt\n",
+        "warning: main.tex:5: \n",
+        "Requested font \"Fira Sans Light\" at 9.99997pt\n",
+        "\nerror: the compiler crashed (SIGSEGV) before it finished, so this log ends early",
+    );
+
+    #[test]
+    fn a_crash_during_a_font_lookup_names_the_font_and_its_line() {
+        let errors = parse_tex_log_errors(FONT_CRASH);
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        let crash = &errors[0];
+        assert_eq!(crash.kind, "error");
+        assert_eq!(crash.code.as_deref(), Some("tex.compiler_crashed_font"));
+        assert_eq!(
+            crash.params.get("font").map(String::as_str),
+            Some("Fira Sans Light")
+        );
+        assert_eq!(crash.file.as_deref(), Some("main.tex"));
+        assert_eq!(crash.line, Some(5));
+        assert_eq!(
+            crash.message,
+            "Tectonic crashed while looking for the font \"Fira Sans Light\""
+        );
+        assert!(crash
+            .explanation
+            .as_deref()
+            .unwrap()
+            .contains("\"Fira Sans Light\""));
+    }
+
+    #[test]
+    fn the_crash_note_the_supervisor_writes_is_recognized() {
+        #[cfg(unix)]
+        let status = {
+            use std::os::unix::process::ExitStatusExt;
+            std::process::ExitStatus::from_raw(libc::SIGSEGV)
+        };
+        #[cfg(windows)]
+        let status = {
+            use std::os::windows::process::ExitStatusExt;
+            std::process::ExitStatus::from_raw(0xC000_0005)
+        };
+        let note = crate::engine_spec::compiler_crash_note(&status).unwrap();
+        // The engine's stdout, with no newline before the stderr that follows.
+        let log = format!(
+            "(main.tex (fontspec.sty))warning: main.tex:5: Requested font \"Fira Sans Light\" at 10pt\n{note}"
+        );
+        let errors = parse_tex_log_errors(&log);
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert_eq!(errors[0].code.as_deref(), Some("tex.compiler_crashed_font"));
+        assert_eq!(errors[0].line, Some(5));
+    }
+
+    #[test]
+    fn font_names_lose_xetex_style_and_feature_suffixes() {
+        let crash = |request: &str| {
+            let log = format!(
+                "warning: a.tex:1: Requested font \"{request}\" at 10pt\nerror: the compiler crashed (SIGSEGV) before it finished, so this log ends early\n"
+            );
+            parse_tex_log_errors(&log)[0].params.get("font").cloned()
+        };
+        assert_eq!(crash("Helvetica/B/AAT").as_deref(), Some("Helvetica"));
+        assert_eq!(
+            crash("Source Sans Pro Light:mapping=tex-text;").as_deref(),
+            Some("Source Sans Pro Light")
+        );
+        assert_eq!(
+            crash("[fonts/Cochineal-Roman.otf:0]/OT").as_deref(),
+            Some("Cochineal-Roman.otf")
+        );
+        assert_eq!(
+            crash("[C:\\Fonts\\My Font.ttf]").as_deref(),
+            Some("My Font.ttf")
+        );
+    }
+
+    #[test]
+    fn a_crash_after_other_output_does_not_blame_a_font() {
+        let log = FONT_CRASH.replace(
+            "\nerror: the compiler",
+            "warning: main.tex:9: Overfull \\hbox in paragraph\n\nerror: the compiler",
+        );
+        let errors = parse_tex_log_errors(&log);
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert_eq!(errors[0].code.as_deref(), Some("tex.compiler_crashed"));
+        assert!(errors[0].params.is_empty());
+        assert_eq!(errors[0].line, None);
+        assert_eq!(
+            errors[0].message,
+            "the compiler crashed (SIGSEGV) before it finished, so this log ends early"
+        );
+        assert!(errors[0]
+            .explanation
+            .as_deref()
+            .unwrap()
+            .contains("crashed before it finished"));
+    }
+
+    #[test]
+    fn a_crash_inside_appended_engine_output_is_still_reported() {
+        let log =
+            format!("This is the file log\n{ENGINE_OUTPUT_MARKER}\n{FONT_CRASH}\n[Oleafly] note\n");
+        let errors = parse_tex_log_errors(&log);
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert_eq!(errors[0].code.as_deref(), Some("tex.compiler_crashed_font"));
+    }
+
+    #[test]
+    fn a_log_without_a_crash_note_has_no_crash_error() {
+        let log = FONT_CRASH.replace("error: the compiler crashed", "the compiler crashed");
+        assert!(parse_tex_log_errors(&log).is_empty());
+        assert!(parse_tex_log_errors("Requested font \"X\" at 10pt\n").is_empty());
     }
 
     #[test]

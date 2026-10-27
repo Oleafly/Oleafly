@@ -3640,6 +3640,36 @@ mod tests {
 
     #[cfg(unix)]
     #[tokio::test]
+    async fn a_compiler_that_crashes_looking_up_a_font_gets_an_error_naming_it() {
+        let root = tempfile::tempdir().unwrap();
+        let script = "printf '(main.tex (fontspec.sty))'; printf 'warning: main.tex:5: \\nRequested font \"Fira Sans Light\" at 9.99997pt\\n' >&2; kill -SEGV $$";
+        let args = vec!["-c".to_string(), script.to_string()];
+        let (log, code) = run_supervised_process(
+            Path::new("/bin/sh"),
+            &args,
+            root.path(),
+            None,
+            std::time::Duration::from_secs(10),
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(code, None);
+        let errors = LATEX_ENGINE.parse_errors(&log);
+        assert_eq!(errors.len(), 1, "{log}");
+        assert_eq!(errors[0].code.as_deref(), Some("tex.compiler_crashed_font"));
+        assert_eq!(
+            errors[0].params.get("font").map(String::as_str),
+            Some("Fira Sans Light")
+        );
+        assert_eq!(
+            (errors[0].file.as_deref(), errors[0].line),
+            (Some("main.tex"), Some(5))
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
     async fn stop_ends_the_wait_for_another_builds_lock() {
         use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
         let root = tempfile::tempdir().unwrap();

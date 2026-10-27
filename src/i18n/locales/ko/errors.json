@@ -75,7 +75,9 @@
     "shell_escape_denied_minted": "minted가 코드를 강조 표시하려면 다른 프로그램을 실행해야 하지만, 이 프로젝트에서는 차단되어 있습니다. 허용하려면 편집기 위 배너에서 \"{{setting}}\"을 클릭하세요. 프로젝트의 모든 파일을 신뢰할 때만 그렇게 하세요. 그러면 LaTeX가 사용자 권한으로 어떤 프로그램이든 실행할 수 있으며, LaTeX가 시작한 프로그램은 컴파일을 중지한 후에도 계속 실행될 수 있습니다.",
     "shell_escape_denied_pythontex": "PythonTeX가 Python을 실행해야 하지만, 이 프로젝트에서는 차단되어 있습니다. 허용하려면 편집기 위 배너에서 \"{{setting}}\"을 클릭하세요. 프로젝트의 모든 파일을 신뢰할 때만 그렇게 하세요. 그러면 LaTeX가 사용자 권한으로 어떤 프로그램이든 실행할 수 있으며, LaTeX가 시작한 프로그램은 컴파일을 중지한 후에도 계속 실행될 수 있습니다.",
     "shell_escape_denied_command": "이 문서는 shell 명령을 실행하지만, 이 프로젝트에서는 차단되어 있습니다. 허용하려면 편집기 위 배너에서 \"{{setting}}\"을 클릭하세요. 프로젝트의 모든 파일을 신뢰할 때만 그렇게 하세요. 그러면 LaTeX가 사용자 권한으로 어떤 프로그램이든 실행할 수 있으며, LaTeX가 시작한 프로그램은 컴파일을 중지한 후에도 계속 실행될 수 있습니다.",
-    "japanese_compiler_missing": "이 TeX 배포판에는 {{compiler}} 컴파일러가 설치되어 있지 않습니다. TeX Live나 TinyTeX에서는 tlmgr install collection-langjapanese로 추가할 수 있습니다. 다른 컴파일러를 선택해도 됩니다."
+    "japanese_compiler_missing": "이 TeX 배포판에는 {{compiler}} 컴파일러가 설치되어 있지 않습니다. TeX Live나 TinyTeX에서는 tlmgr install collection-langjapanese로 추가할 수 있습니다. 다른 컴파일러를 선택해도 됩니다.",
+    "compiler_crashed": "컴파일러가 끝나기 전에 비정상 종료되어 로그가 멈춘 지점에서 끝납니다. 다시 컴파일해 보세요. 매번 비정상 종료되면 컴파일 메뉴에서 다른 컴파일러를 고르세요.",
+    "compiler_crashed_font": "Tectonic이 \"{{font}}\" 글꼴을 찾다가 비정상 종료되었습니다. 이 컴퓨터에 해당 글꼴이 설치되어 있지 않을 가능성이 큽니다. 글꼴을 설치하거나 컴파일 메뉴에서 XeLaTeX 또는 LuaLaTeX를 고르세요. 이 컴파일러들은 비정상 종료 대신 글꼴이 없다고 알려 줍니다."
   },
   "export": {
     "bibliography_unreadable": "Oleafly에서 참고문헌 {{name}} 파일을 읽지 못했습니다. 깨진 항목이 있는지 확인한 뒤 다시 내보내세요."

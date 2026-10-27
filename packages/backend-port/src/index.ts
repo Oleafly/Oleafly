@@ -95,6 +95,7 @@ export interface CompileError {
     hints?: string[];
     source_line?: string | null;
     code?: string | null;
+    params?: Record<string, string>;
 }
 export type LogSeverity = "error" | "warning" | "info" | "typesetting";
 export type LogCategory =

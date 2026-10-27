@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when you open it. It runs the `oleafly` command the app installs, so you
   need the app with Settings > Integrations > Oleafly MCP turned on.
 
+### Fixed
+
+- When Tectonic crashed while looking for a font that isn't installed, the
+  build failed with nothing in the error list, and only the last line of the
+  log said the compiler had crashed. Tectonic 0.17 does this on some
+  documents instead of reporting the missing font. The error list now names
+  the font and the line Tectonic had reached, and suggests installing the
+  font or switching to XeLaTeX or LuaLaTeX. Other compiler crashes show an error
+  too, in the app and from the `oleafly` command.
+
 ## [0.4.8] - 2026-10-25
 
 ### Added

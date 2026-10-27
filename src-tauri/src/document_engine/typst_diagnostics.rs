@@ -34,6 +34,7 @@ fn compile_error(diagnostic: TypstDiagnostic) -> CompileError {
         hints: diagnostic.hints,
         source_line: None,
         code: None,
+        params: Default::default(),
     }
 }
 
