@@ -144,9 +144,10 @@ Lieber ein Chat-Assistent? Verbinde einen gehosteten Anbieter, einen beliebigen 
 - Jede Dateiänderung ist ein Diff. Gib jede einzeln frei, lass den Assistenten selbstständig arbeiten oder lege Regeln pro Werkzeug fest, und mache eine einzelne Datei oder einen ganzen Durchlauf rückgängig.
 - Im Plan mode erfasst der Assistent das Projekt, bevor irgendetwas geschrieben wird.
 - Eine Literaturübersicht oder eine Überarbeitung kann in einem eigenen Git-Worktree laufen, während du weiterschreibst. Du entscheidest, welche geänderten Dateien du behältst.
-- 39 Skills für die Forschung werden mit der App ausgeliefert, darunter Literatursichtung, verwandte Arbeiten, Prüfung von Behauptungen und Antwortschreiben an Gutachter:innen.
+- 39 Skills für die Forschung werden mit der App ausgeliefert, darunter Literatursichtung, verwandte Arbeiten, Prüfung von Behauptungen und Antwortschreiben an Gutachter:innen. `npx skills add Oleafly/Oleafly` installiert sie auch in Claude Code, Codex und anderen Agenten.
 - Ein lokaler MCP-Server lässt einen externen KI-Client dieselben Projektwerkzeuge nutzen. Er lauscht nur auf 127.0.0.1.
 - `oleafly mcp` stellt Claude Code, Codex, Cursor und Gemini CLI die Projektwerkzeuge über stdio bereit, ob die App offen ist oder nicht.
+- Jede Version enthält `oleafly.mcpb`. Öffne die Datei, und Claude Desktop installiert Oleafly als Erweiterung. Die MCP Registry führt sie als `io.github.Oleafly/oleafly`.
 
 KI ist optional. Editor, Compiler, PDF, Zitate, Korrektur und Prüfungen funktionieren alle auch mit ausgeschalteter KI.
 

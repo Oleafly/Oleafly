@@ -144,9 +144,10 @@ Vous préférez un assistant de chat ? Connectez un fournisseur hébergé, n'imp
 - Chaque modification de fichier est un diff. Approuvez-les une par une, laissez l'assistant travailler seul ou définissez des règles par outil, et annulez un seul fichier ou tout un tour.
 - Le mode Plan cartographie le projet avant que quoi que ce soit ne soit écrit.
 - Une revue de littérature ou une passe de révision peut s'exécuter dans son propre worktree Git pendant que vous continuez à écrire. Vous choisissez les fichiers modifiés à conserver.
-- L'application inclut 39 skills de recherche, dont l'exploration de la littérature, les travaux connexes, la vérification des affirmations et les lettres de réponse aux évaluateurs.
+- L'application inclut 39 skills de recherche, dont l'exploration de la littérature, les travaux connexes, la vérification des affirmations et les lettres de réponse aux évaluateurs. `npx skills add Oleafly/Oleafly` les installe aussi dans Claude Code, Codex et d'autres agents.
 - Un serveur MCP local permet à un client IA externe d'utiliser les mêmes outils de projet. Il n'écoute que sur 127.0.0.1.
 - `oleafly mcp` donne à Claude Code, Codex, Cursor et Gemini CLI les outils du projet via stdio, que l'application soit ouverte ou fermée.
+- Chaque version inclut `oleafly.mcpb`. Ouvrez-le et Claude Desktop installe Oleafly comme extension. Le registre MCP le référence sous `io.github.Oleafly/oleafly`.
 
 L'IA est facultative. L'éditeur, le compilateur, le PDF, les citations, la relecture et les vérifications fonctionnent tous quand elle est désactivée.
 
