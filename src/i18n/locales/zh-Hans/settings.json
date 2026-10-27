@@ -163,7 +163,8 @@
           "ready": "网关正在运行",
           "starting": "网关正在启动",
           "stopped": "网关已停止",
-          "unknown": "网关状态未知"
+          "unknown": "网关状态未知",
+          "outdated": "请更新 Hermes 以检查网关"
         },
         "refresh": "重新检查",
         "keepsRunning": "断开 Oleafly 的连接永远不会停止网关。",

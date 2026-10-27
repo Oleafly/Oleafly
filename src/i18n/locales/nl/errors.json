@@ -75,7 +75,9 @@
     "shell_escape_denied_minted": "minted moet een ander programma uitvoeren om code te markeren, en dit project blokkeert dat. Om dit toe te staan, klik je op \"{{setting}}\" in de balk boven de editor. Doe dit alleen als je elk bestand in het project vertrouwt. LaTeX kan dan elk programma uitvoeren met jouw rechten, en een programma dat het start, kan blijven draaien nadat je het compileren hebt gestopt.",
     "shell_escape_denied_pythontex": "PythonTeX moet Python uitvoeren, en dit project blokkeert dat. Om dit toe te staan, klik je op \"{{setting}}\" in de balk boven de editor. Doe dit alleen als je elk bestand in het project vertrouwt. LaTeX kan dan elk programma uitvoeren met jouw rechten, en een programma dat het start, kan blijven draaien nadat je het compileren hebt gestopt.",
     "shell_escape_denied_command": "Dit document voert een shell-opdracht uit, en dit project blokkeert dat. Om dit toe te staan, klik je op \"{{setting}}\" in de balk boven de editor. Doe dit alleen als je elk bestand in het project vertrouwt. LaTeX kan dan elk programma uitvoeren met jouw rechten, en een programma dat het start, kan blijven draaien nadat je het compileren hebt gestopt.",
-    "japanese_compiler_missing": "{{compiler}} is niet geïnstalleerd in je TeX-distributie. Voer tlmgr install collection-langjapanese uit om het toe te voegen aan TeX Live of TinyTeX, of kies een andere compiler."
+    "japanese_compiler_missing": "{{compiler}} is niet geïnstalleerd in je TeX-distributie. Voer tlmgr install collection-langjapanese uit om het toe te voegen aan TeX Live of TinyTeX, of kies een andere compiler.",
+    "compiler_crashed": "De compiler is gecrasht voordat hij klaar was, dus het logboek eindigt waar hij stopte. Probeer opnieuw te compileren. Crasht hij elke keer, kies dan een andere compiler in het compileermenu.",
+    "compiler_crashed_font": "Tectonic is gecrasht bij het zoeken naar het lettertype \"{{font}}\", dat waarschijnlijk niet op deze computer is geïnstalleerd. Installeer het lettertype, of kies XeLaTeX of LuaLaTeX in het compileermenu. Die melden een ontbrekend lettertype in plaats van te crashen."
   },
   "export": {
     "bibliography_unreadable": "Oleafly kon de bibliografie {{name}} niet lezen. Kijk of er een beschadigd item in staat en exporteer daarna opnieuw."
@@ -195,6 +197,74 @@
       "declined": "Het programma is niet gewijzigd.",
       "check_running": "Er loopt al een test voor deze agent.",
       "main_window": "Wijzig de programma's van agents in het hoofdvenster."
+    },
+    "start": {
+      "cancelled": "Het starten is geannuleerd.",
+      "owner_closed": "Het venster of de taak is gesloten terwijl de agent aan het starten was.",
+      "already_connected": "Deze ACP-sessie is al verbonden.",
+      "session_limit": "Er zijn al acht ACP-sessies verbonden. Koppel er een los voordat je een nieuwe start.",
+      "v1_only": "De agent ondersteunt alleen ACP-versie 1.",
+      "unsupported_version": "Deze agent ondersteunt ACP-versie {{version}} niet.",
+      "cannot_resume": "Deze agent kan bewaarde sessies niet hervatten. Begin een nieuw gesprek om verder te werken.",
+      "conversation_gone": "De agent heeft dit gesprek niet meer. Begin een nieuw gesprek.",
+      "not_installed": "Deze agent is nog niet geïnstalleerd. Installeer hem, of kies zijn programma bij Instellingen.",
+      "program_missing": "Het programma dat voor deze agent is gekozen, ontbreekt. Kies het opnieuw bij Instellingen.",
+      "node_needed": "Installeer Node.js om deze agent uit te voeren.",
+      "node_missing": "Installeer Node.js {{required}} of nieuwer om deze agent uit te voeren.",
+      "node_outdated": "Deze agent heeft Node.js {{required}} of nieuwer nodig. De gevonden versie is {{major}}.",
+      "bridge_outdated": "{{package}} {{found}} op deze computer is te oud. Oleafly heeft {{pinned}} of nieuwer nodig. Installeer de bridge bij Instellingen.",
+      "spawn_failed": "De agent kon niet worden gestart. Controleer de installatie en de uitvoerrechten. ({{kind}}: {{path}})",
+      "remote_not_set_up": "Stel eerst de externe machine in bij de Hermes-instellingen.",
+      "ssh_missing": "Oleafly kon ssh niet vinden op deze computer. Installeer OpenSSH en probeer het opnieuw.",
+      "moved_to_local": "Dit gesprek draaide op een andere machine en Hermes draait nu op deze computer. Begin een nieuw gesprek om verder te gaan.",
+      "moved_to_remote": "Dit gesprek draaide op deze computer en Hermes draait nu op een andere machine. Begin een nieuw gesprek om verder te gaan.",
+      "moved_machine": "Dit gesprek draaide op een andere machine dan die Hermes nu gebruikt. Begin een nieuw gesprek om verder te gaan.",
+      "moved_profile": "Dit gesprek draaide in een ander Hermes-profiel. Zet het project terug op dat profiel of begin een nieuw gesprek."
+    },
+    "session": {
+      "disconnected": "De agent heeft de verbinding verbroken.",
+      "disconnected_with_output": "De agent heeft de verbinding verbroken. Laatste uitvoer van de agent: {{output}}",
+      "disconnected_command_help": "De agent heeft de verbinding verbroken. Hij antwoordde met zijn opdrachtregelhulp, dus deze versie accepteert de opties niet waarmee Oleafly hem heeft gestart.",
+      "no_reply": "De agent heeft de verbinding verbroken voordat hij antwoordde.",
+      "no_reply_with_output": "De agent heeft de verbinding verbroken voordat hij antwoordde. Laatste uitvoer van de agent: {{output}}",
+      "no_reply_command_help": "De agent heeft de verbinding verbroken voordat hij antwoordde. Hij antwoordde met zijn opdrachtregelhulp, dus deze versie accepteert de opties niet waarmee Oleafly hem heeft gestart.",
+      "timed_out_stopped": "De agent antwoordde niet op tijd en is gestopt.",
+      "timed_out_stopped_with_output": "De agent antwoordde niet op tijd en is gestopt. Laatste uitvoer van de agent: {{output}}",
+      "timed_out_stopped_command_help": "De agent antwoordde niet op tijd en is gestopt. Hij antwoordde met zijn opdrachtregelhulp, dus deze versie accepteert de opties niet waarmee Oleafly hem heeft gestart.",
+      "timed_out": "De agent antwoordde niet op tijd.",
+      "silent": "De agent heeft {{minutes}} min. niets gestuurd, dus Oleafly heeft hem gestopt. Verbind opnieuw om verder te gaan.",
+      "not_connected": "De agent is niet verbonden.",
+      "sign_in": "Meld je aan bij deze agent en probeer het opnieuw.",
+      "claude_gateway": "Claude Code gebruikt een aangepast API-endpoint. Controleer ANTHROPIC_BASE_URL en ANTHROPIC_AUTH_TOKEN in je shell-profiel of in de settings.json van Claude Code en verbind daarna opnieuw.",
+      "codex_setup": "Codex meldde een probleem met zijn configuratie:\n{{output}}",
+      "codex_key_rejected": "Je sleutel voor {{provider}} is geweigerd.",
+      "codex_provider_key": "Codex gebruikt de provider {{provider}} uit zijn config.toml. Controleer of {{env_key}} is ingesteld en geldig is, en verbind daarna opnieuw.",
+      "codex_provider": "Codex gebruikt de provider {{provider}} uit zijn config.toml. Controleer de instellingen van die provider en verbind daarna opnieuw.",
+      "transcript_not_saved": "Het ACP-transcript kon niet worden opgeslagen. De agent is gestopt om de opgeslagen geschiedenis te bewaren.",
+      "transcript_full": "Het transcript van deze sessie heeft de maximale grootte bereikt. Begin een nieuw gesprek."
+    },
+    "turn": {
+      "no_stop_reason": "De agent heeft niet gemeld hoe deze beurt is geëindigd.",
+      "stopped_early": "De agent is gestopt voordat deze beurt klaar was.",
+      "codex_error": "Codex heeft deze beurt met een fout beëindigd."
+    },
+    "notice": {
+      "empty_turn": "De agent heeft zijn beurt beëindigd zonder te antwoorden.",
+      "empty_turn_advice": "Controleer het model en de aanmelding van de agent en probeer het opnieuw.",
+      "outside_project": "Oleafly heeft een verzoek buiten dit project geweigerd.",
+      "outside_project_path": "De agent wilde {{path}} gebruiken. Agents kunnen alleen bestanden binnen het project gebruiken.",
+      "outside_project_rule": "Agents kunnen alleen bestanden binnen het project gebruiken.",
+      "hermes_tools_lost": "Hermes is de projecttools kwijtgeraakt toen zijn model veranderde.",
+      "hermes_tools_advice": "Verbind opnieuw om ze terug te krijgen.",
+      "route_failed": "Oleafly kon deze agent niet omleiden via je sleutel voor {{provider}}.",
+      "unroute_failed": "Oleafly kon niet stoppen met het omleiden van deze agent via je sleutel voor {{provider}}.",
+      "codex_openai_only": "Codex kan alleen een OpenAI-sleutel gebruiken.",
+      "no_saved_key": "Er is geen sleutel opgeslagen voor deze provider.",
+      "key_kind_unsupported": "Deze agent kan dit soort sleutel niet gebruiken."
+    },
+    "install": {
+      "npm_unreachable": "Oleafly kon het npm-register op {{host}} niet bereiken ({{code}}). Controleer je netwerkverbinding, je proxy of je instelling voor het npm-register.",
+      "npm_timed_out": "Installeren vanaf {{host}} duurde te lang en is gestopt. Controleer je netwerkverbinding, je proxy of je instelling voor het npm-register."
     }
   },
   "typst_toolchain": {

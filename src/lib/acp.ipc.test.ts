@@ -10,6 +10,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 
 import * as acp from "./acp";
+import { APP_ERROR_PREFIX } from "./app-error";
 import type { AcpHermesSettings, AcpPreferences, AcpPromptInput, AcpRemoteHermes } from "./acp";
 
 const catalogEvents = new EventTarget();
@@ -176,5 +177,38 @@ describe("CLI agent IPC", () => {
     expect(acp.acpError("The agent stopped.")).toBe("The agent stopped.");
     expect(acp.acpError(new Error("Connection lost."))).toBe("Connection lost.");
     expect(acp.acpError({ code: 7 })).toMatch(/\S/);
+    expect(acp.acpError({ delivered: true, message: coded("acp.session.timed_out") })).toBe("The agent did not reply in time.");
+  });
+
+  it("knows a cancelled start by its code", () => {
+    expect(acp.acpStartCancelled(coded("acp.start.cancelled"))).toBe(true);
+    expect(acp.acpStartCancelled(new Error(coded("acp.start.cancelled")))).toBe(true);
+    expect(acp.acpStartCancelled(coded("acp.start.owner_closed"))).toBe(false);
+    expect(acp.acpStartCancelled("The start was cancelled.")).toBe(false);
+    expect(acp.acpStartCancelled(undefined)).toBe(false);
+  });
+
+  it("shows coded agent reasons, sign-in hints and check details as sentences", async () => {
+    const status = {
+      reason: coded("acp.start.node_outdated", { required: "20", major: "18" }),
+      signInHint: coded("acp.session.claude_gateway"),
+    };
+    mocks.invoke.mockResolvedValueOnce([status, { reason: "Plain reason.", signInHint: null }]);
+    const [first, second] = await acp.acpCatalog();
+    expect(first.reason).toBe("This agent needs Node.js 20 or newer. The detected version is 18.");
+    expect(first.signInHint).toMatch(/^Claude Code uses a custom API endpoint\./);
+    expect(second).toMatchObject({ reason: "Plain reason.", signInHint: null });
+    mocks.invoke.mockResolvedValueOnce(status);
+    expect((await acp.acpInstall("claude")).reason).toBe("This agent needs Node.js 20 or newer. The detected version is 18.");
+    mocks.invoke.mockResolvedValueOnce(status);
+    expect((await acp.acpSetAgentProgram("claude", null)).signInHint).toMatch(/^Claude Code/);
+    mocks.invoke.mockResolvedValueOnce({ ok: false, code: "start_failed", detail: coded("acp.start.spawn_failed", { kind: "NotFound", path: "agent" }) });
+    expect((await acp.acpCheckAgent("claude")).detail).toBe(
+      "The agent could not be started. Check its installation and executable permissions. (NotFound: agent)",
+    );
   });
 });
+
+function coded(code: string, params: Record<string, string> = {}): string {
+  return `${APP_ERROR_PREFIX}${JSON.stringify({ code, params, detail: null })}`;
+}

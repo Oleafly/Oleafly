@@ -75,7 +75,9 @@
     "shell_escape_denied_minted": "minted:n täytyy suorittaa toinen ohjelma koodin korostamiseksi, ja tämä projekti estää sen. Jos haluat sallia sen, napsauta \"{{setting}}\" editorin yläpuolella olevassa ilmoituspalkissa. Tee näin vain, jos luotat jokaiseen projektin tiedostoon. LaTeX voi silloin suorittaa mitä tahansa ohjelmaa sinun oikeuksillasi, ja sen käynnistämä ohjelma voi jäädä käyntiin, vaikka pysäyttäisit käännöksen.",
     "shell_escape_denied_pythontex": "PythonTeX:n täytyy suorittaa Python, ja tämä projekti estää sen. Jos haluat sallia sen, napsauta \"{{setting}}\" editorin yläpuolella olevassa ilmoituspalkissa. Tee näin vain, jos luotat jokaiseen projektin tiedostoon. LaTeX voi silloin suorittaa mitä tahansa ohjelmaa sinun oikeuksillasi, ja sen käynnistämä ohjelma voi jäädä käyntiin, vaikka pysäyttäisit käännöksen.",
     "shell_escape_denied_command": "Tämä dokumentti suorittaa shell-komennon, ja tämä projekti estää sen. Jos haluat sallia sen, napsauta \"{{setting}}\" editorin yläpuolella olevassa ilmoituspalkissa. Tee näin vain, jos luotat jokaiseen projektin tiedostoon. LaTeX voi silloin suorittaa mitä tahansa ohjelmaa sinun oikeuksillasi, ja sen käynnistämä ohjelma voi jäädä käyntiin, vaikka pysäyttäisit käännöksen.",
-    "japanese_compiler_missing": "{{compiler}} ei ole asennettuna TeX-jakeluusi. Lisää se TeX Liveen tai TinyTeXiin komennolla tlmgr install collection-langjapanese tai valitse toinen kääntäjä."
+    "japanese_compiler_missing": "{{compiler}} ei ole asennettuna TeX-jakeluusi. Lisää se TeX Liveen tai TinyTeXiin komennolla tlmgr install collection-langjapanese tai valitse toinen kääntäjä.",
+    "compiler_crashed": "Kääntäjä kaatui ennen kuin se valmistui, joten loki päättyy kohtaan, jossa se pysähtyi. Yritä kääntää uudelleen. Jos se kaatuu joka kerta, valitse käännösvalikosta toinen kääntäjä.",
+    "compiler_crashed_font": "Tectonic kaatui etsiessään fonttia \"{{font}}\", joka ei luultavasti ole asennettuna tähän tietokoneeseen. Asenna fontti tai valitse käännösvalikosta XeLaTeX tai LuaLaTeX. Ne ilmoittavat puuttuvasta fontista kaatumisen sijaan."
   },
   "export": {
     "bibliography_unreadable": "Oleafly ei voinut lukea lähdeluettelotiedostoa {{name}}. Tarkista, onko siinä virheellinen merkintä, ja vie sitten uudelleen."
@@ -195,6 +197,74 @@
       "declined": "Ohjelmaa ei vaihdettu.",
       "check_running": "Tämän agentin testi on jo käynnissä.",
       "main_window": "Vaihda agenttien ohjelmia pääikkunasta."
+    },
+    "start": {
+      "cancelled": "Käynnistys peruttiin.",
+      "owner_closed": "Ikkuna tai tehtävä sulkeutui agentin käynnistyessä.",
+      "already_connected": "Tämä ACP-istunto on jo yhdistetty.",
+      "session_limit": "Kahdeksan ACP-istuntoa on jo yhdistettynä. Katkaise yksi yhteys ennen kuin käynnistät uuden.",
+      "v1_only": "Agentti tukee vain ACP:n versiota 1.",
+      "unsupported_version": "Tämä agentti ei tue ACP:n versiota {{version}}.",
+      "cannot_resume": "Tämä agentti ei voi jatkaa tallennettuja istuntoja. Aloita uusi keskustelu, niin voit jatkaa työtä.",
+      "conversation_gone": "Agentilla ei ole enää tätä keskustelua. Aloita uusi.",
+      "not_installed": "Tätä agenttia ei ole vielä asennettu. Asenna se tai valitse sen ohjelma asetuksissa.",
+      "program_missing": "Tälle agentille valittu ohjelma puuttuu. Valitse se uudelleen asetuksissa.",
+      "node_needed": "Asenna Node.js, jotta tämä agentti voi toimia.",
+      "node_missing": "Asenna Node.js {{required}} tai uudempi, jotta tämä agentti voi toimia.",
+      "node_outdated": "Tämä agentti tarvitsee Node.js:n version {{required}} tai uudemman. Havaittu versio on {{major}}.",
+      "bridge_outdated": "Tämän koneen {{package}} {{found}} on liian vanha. Oleafly tarvitsee version {{pinned}} tai uudemman. Asenna silta asetuksissa.",
+      "spawn_failed": "Agenttia ei voitu käynnistää. Tarkista sen asennus ja suoritusoikeudet. ({{kind}}: {{path}})",
+      "remote_not_set_up": "Määritä ensin etäkone Hermes-asetuksissa.",
+      "ssh_missing": "Oleafly ei löytänyt ssh:ta tältä koneelta. Asenna OpenSSH ja yritä uudelleen.",
+      "moved_to_local": "Tämä keskustelu toimi toisella koneella, ja Hermes toimii nyt tällä koneella. Aloita uusi keskustelu, niin voit jatkaa.",
+      "moved_to_remote": "Tämä keskustelu toimi tällä koneella, ja Hermes toimii nyt toisella koneella. Aloita uusi keskustelu, niin voit jatkaa.",
+      "moved_machine": "Tämä keskustelu toimi eri koneella kuin se, jota Hermes nyt käyttää. Aloita uusi keskustelu, niin voit jatkaa.",
+      "moved_profile": "Tämä keskustelu toimi toisessa Hermes-profiilissa. Vaihda projekti takaisin siihen profiiliin tai aloita uusi keskustelu."
+    },
+    "session": {
+      "disconnected": "Agentin yhteys katkesi.",
+      "disconnected_with_output": "Agentin yhteys katkesi. Agentin viimeinen tuloste: {{output}}",
+      "disconnected_command_help": "Agentin yhteys katkesi. Agentti tulosti komentorivin ohjeensa, joten tämä versio ei hyväksy valitsimia, joilla Oleafly sen käynnisti.",
+      "no_reply": "Agentin yhteys katkesi ennen vastausta.",
+      "no_reply_with_output": "Agentin yhteys katkesi ennen vastausta. Agentin viimeinen tuloste: {{output}}",
+      "no_reply_command_help": "Agentin yhteys katkesi ennen vastausta. Agentti tulosti komentorivin ohjeensa, joten tämä versio ei hyväksy valitsimia, joilla Oleafly sen käynnisti.",
+      "timed_out_stopped": "Agentti ei vastannut ajoissa, joten se pysäytettiin.",
+      "timed_out_stopped_with_output": "Agentti ei vastannut ajoissa, joten se pysäytettiin. Agentin viimeinen tuloste: {{output}}",
+      "timed_out_stopped_command_help": "Agentti ei vastannut ajoissa, joten se pysäytettiin. Agentti tulosti komentorivin ohjeensa, joten tämä versio ei hyväksy valitsimia, joilla Oleafly sen käynnisti.",
+      "timed_out": "Agentti ei vastannut ajoissa.",
+      "silent": "Agentti ei lähettänyt mitään {{minutes}} minuuttiin, joten Oleafly pysäytti sen. Yhdistä uudelleen, niin voit jatkaa.",
+      "not_connected": "Agentin yhteys on katkennut.",
+      "sign_in": "Kirjaudu tähän agenttiin ja yritä sitten uudelleen.",
+      "claude_gateway": "Claude Code käyttää mukautettua API-päätepistettä. Tarkista ANTHROPIC_BASE_URL ja ANTHROPIC_AUTH_TOKEN shell-profiilistasi tai Claude Coden settings.json-tiedostosta ja yhdistä sitten uudelleen.",
+      "codex_setup": "Codex ilmoitti ongelmasta määrityksissään:\n{{output}}",
+      "codex_key_rejected": "Palvelun {{provider}} avaimesi hylättiin.",
+      "codex_provider_key": "Codex käyttää palvelua {{provider}}, joka on määritetty sen config.toml-tiedostossa. Tarkista, että {{env_key}} on asetettu ja kelvollinen, ja yhdistä sitten uudelleen.",
+      "codex_provider": "Codex käyttää palvelua {{provider}}, joka on määritetty sen config.toml-tiedostossa. Tarkista palvelun asetukset ja yhdistä sitten uudelleen.",
+      "transcript_not_saved": "ACP-tapahtumalokia ei voitu tallentaa. Agentti pysäytettiin, jotta tallennettu historia säilyy.",
+      "transcript_full": "Tämän istunnon tapahtumaloki on saavuttanut kokorajansa. Aloita uusi keskustelu."
+    },
+    "turn": {
+      "no_stop_reason": "Agentti ei ilmoittanut, miten tämä vuoro päättyi.",
+      "stopped_early": "Agentti pysähtyi ennen kuin sai tämän vuoron valmiiksi.",
+      "codex_error": "Codex keskeytti tämän vuoron virheen vuoksi."
+    },
+    "notice": {
+      "empty_turn": "Agentti päätti vuoronsa vastaamatta.",
+      "empty_turn_advice": "Tarkista agentin malli ja kirjautuminen ja yritä sitten uudelleen.",
+      "outside_project": "Oleafly hylkäsi pyynnön, joka kohdistui tämän projektin ulkopuolelle.",
+      "outside_project_path": "Agentti pyysi lupaa käyttää kohdetta {{path}}. Agentit voivat käyttää vain projektin sisällä olevia tiedostoja.",
+      "outside_project_rule": "Agentit voivat käyttää vain projektin sisällä olevia tiedostoja.",
+      "hermes_tools_lost": "Hermes menetti projektin työkalut, kun sen malli vaihtui.",
+      "hermes_tools_advice": "Palauta ne yhdistämällä uudelleen.",
+      "route_failed": "Oleafly ei voinut ohjata tämän agentin pyyntöjä palvelun {{provider}} avaimesi kautta.",
+      "unroute_failed": "Oleafly ei voinut lopettaa tämän agentin pyyntöjen ohjaamista palvelun {{provider}} avaimesi kautta.",
+      "codex_openai_only": "Codex voi käyttää vain OpenAI-avainta.",
+      "no_saved_key": "Tälle palvelulle ei ole tallennettua avainta.",
+      "key_kind_unsupported": "Tämä agentti ei voi käyttää tämäntyyppistä avainta."
+    },
+    "install": {
+      "npm_unreachable": "Oleafly ei saanut yhteyttä npm-rekisteriin osoitteessa {{host}} ({{code}}). Tarkista verkkoyhteys, välityspalvelin tai npm-rekisterin asetus.",
+      "npm_timed_out": "Asennus osoitteesta {{host}} kesti liian kauan, joten se pysäytettiin. Tarkista verkkoyhteys, välityspalvelin tai npm-rekisterin asetus."
     }
   },
   "typst_toolchain": {

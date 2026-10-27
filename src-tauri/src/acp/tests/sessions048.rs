@@ -150,7 +150,10 @@ async fn starting_sessions_count_toward_the_limit_and_free_their_place() {
     let Err(error) = runtime.reserve_slot("starting-8", None, None).await else {
         panic!("the ninth start is refused");
     };
-    assert!(error.starts_with("Eight ACP sessions"), "{error}");
+    assert!(
+        crate::app_error::english_error(&error).starts_with("Eight ACP sessions"),
+        "{error}"
+    );
     assert!(runtime
         .reserve_slot("starting-0", None, None)
         .await
@@ -377,7 +380,14 @@ async fn a_conversation_made_on_another_machine_is_not_resumed_here() {
         .reconnect(&id, Some("fixture-window".into()))
         .await
         .unwrap_err();
-    assert!(error.contains("another machine"), "{error}");
+    assert_eq!(
+        crate::app_error::code(&error).as_deref(),
+        Some("acp.start.moved_to_local")
+    );
+    assert!(
+        crate::app_error::english_error(&error).contains("another machine"),
+        "{error}"
+    );
 }
 
 /// A task's workspace as the scheduler makes it: `<task>/<generation>`, with

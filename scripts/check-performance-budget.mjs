@@ -54,6 +54,10 @@ const limits = {
   // +1 KB for the research tasks switch at startup (the rail entry's
   // condition, the rail's re-render on it, the capped small-button radius):
   // the entry measures 4,990,252 bytes, 252 over the old ceiling.
+  // +10 KB in #338 for the 70 English strings of the coded agent errors
+  // (English catalogs stay in the entry so every key has its fallback before
+  // first paint) and the DeepSeek reasoning and agent start changes: the
+  // entry measured 5,002,640 bytes.
   // -305 KB after 0.4.8: KaTeX loads with the first formula preview and pdf.js
   // with the first page picture, and the compile store stopped importing the
   // editor and command modules dynamically (each such import of a module
@@ -63,12 +67,12 @@ const limits = {
   // chunk, and the chat's approval helpers come from
   // @oleafly/ai-tools/approval-risk rather than the package index (a value
   // import of an index keeps every module it re-exports in the entry). The
-  // entry measures 4,638,573 bytes.
-  largestJavaScript: 5_000_000,
+  // entry measures 4,638,573 bytes before #338 and 4,646,817 bytes with it.
+  largestJavaScript: 5_010_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
   // asset becomes the largest.
-  entryJavaScript: 5_000_000,
+  entryJavaScript: 5_010_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.

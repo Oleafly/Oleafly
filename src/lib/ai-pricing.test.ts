@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PROVIDERS } from "@/lib/ai-providers";
-import { estimateUsd, formatUsd, lookupPrice } from "./ai-pricing";
+import { estimateUsd, formatUsd, lookupPrice, peakRateMultiplier } from "./ai-pricing";
 
 describe("lookupPrice", () => {
   it("knows gpt-4o-mini", () => {
@@ -48,6 +48,19 @@ describe("lookupPrice", () => {
         expect(lookupPrice(model.id).note, `${provider.id} ${model.id}`).not.toBe("estimate");
       }
     }
+  });
+
+  it("bills the retired DeepSeek V4 Flash ids at the Flash peak price", () => {
+    const flash = lookupPrice("deepseek-flash");
+    expect(flash).toMatchObject({ inputPerMTok: 0.3, outputPerMTok: 1.2 });
+    expect(lookupPrice("deepseek-v4-flash")).toMatchObject(flash);
+    expect(lookupPrice("deepseek-v4-flash-vision-exp")).toMatchObject(flash);
+    expect(lookupPrice("deepseek-v4-pro")).toMatchObject({ inputPerMTok: 1.32, outputPerMTok: 3.96 });
+  });
+
+  it("doubles only DeepSeek's listed rates in its peak hours", () => {
+    expect(peakRateMultiplier("deepseek")).toBe(2);
+    expect(peakRateMultiplier("openai")).toBe(1);
   });
 
   it("keeps pricing the older Claude ids people may have saved", () => {

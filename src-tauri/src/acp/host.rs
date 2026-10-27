@@ -8,6 +8,15 @@ use serde_json::Value;
 
 use super::runtime::{AcpRuntime, LiveSession};
 
+fn shows_auth_status(params: &Value) -> bool {
+    let status = if params["authStatus"].is_object() {
+        &params["authStatus"]
+    } else {
+        params
+    };
+    status["kind"] != "none"
+}
+
 pub(super) struct SessionHost {
     runtime: Weak<AcpRuntime>,
     session: OnceLock<Weak<LiveSession>>,
@@ -104,7 +113,9 @@ impl ClientHost for SessionHost {
             oleafly_acp::elicitation::ELICITATION_COMPLETE => {
                 runtime.elicitation_completed(&session, &params);
             }
-            "_auth/status_update" => runtime.auth_status_update(&session, &params),
+            "_auth/status_update" if shows_auth_status(&params) => {
+                runtime.auth_status_update(&session, &params);
+            }
             _ => {}
         }
     }

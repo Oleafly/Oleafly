@@ -75,7 +75,9 @@
     "shell_escape_denied_minted": "minted potřebuje ke zvýraznění kódu spustit jiný program a tento projekt to blokuje. Chcete-li to povolit, klikněte na „{{setting}}“ v pruhu nad editorem. Udělejte to jen tehdy, pokud důvěřujete každému souboru v projektu. LaTeX pak může spouštět libovolné programy s vašimi oprávněními a program, který spustí, může běžet i poté, co kompilaci zastavíte.",
     "shell_escape_denied_pythontex": "PythonTeX potřebuje spustit Python a tento projekt to blokuje. Chcete-li to povolit, klikněte na „{{setting}}“ v pruhu nad editorem. Udělejte to jen tehdy, pokud důvěřujete každému souboru v projektu. LaTeX pak může spouštět libovolné programy s vašimi oprávněními a program, který spustí, může běžet i poté, co kompilaci zastavíte.",
     "shell_escape_denied_command": "Tento dokument spouští příkaz shell a tento projekt to blokuje. Chcete-li to povolit, klikněte na „{{setting}}“ v pruhu nad editorem. Udělejte to jen tehdy, pokud důvěřujete každému souboru v projektu. LaTeX pak může spouštět libovolné programy s vašimi oprávněními a program, který spustí, může běžet i poté, co kompilaci zastavíte.",
-    "japanese_compiler_missing": "{{compiler}} není ve vaší distribuci TeXu nainstalován. Přidejte ho do TeX Live nebo TinyTeX příkazem tlmgr install collection-langjapanese, nebo zvolte jiný překladač."
+    "japanese_compiler_missing": "{{compiler}} není ve vaší distribuci TeXu nainstalován. Přidejte ho do TeX Live nebo TinyTeX příkazem tlmgr install collection-langjapanese, nebo zvolte jiný překladač.",
+    "compiler_crashed": "Překladač spadl dřív, než kompilaci dokončil, takže protokol končí tam, kde se zastavil. Zkuste kompilovat znovu. Pokud spadne pokaždé, vyberte v nabídce kompilace jiný překladač.",
+    "compiler_crashed_font": "Tectonic spadl při hledání písma „{{font}}“, které na tomto počítači nejspíš není nainstalované. Nainstalujte písmo, nebo v nabídce kompilace vyberte XeLaTeX či LuaLaTeX. Ty chybějící písmo nahlásí a nespadnou."
   },
   "export": {
     "bibliography_unreadable": "Oleafly nedokázal přečíst soubor bibliografie {{name}}. Zkontrolujte, zda neobsahuje poškozený záznam, a pak exportujte znovu."
@@ -195,6 +197,74 @@
       "declined": "Program nebyl změněn.",
       "check_running": "Test tohoto agenta už probíhá.",
       "main_window": "Programy agentů měňte v hlavním okně."
+    },
+    "start": {
+      "cancelled": "Spuštění bylo zrušeno.",
+      "owner_closed": "Během spouštění agenta se zavřelo okno nebo úloha.",
+      "already_connected": "Tato relace ACP je už připojená.",
+      "session_limit": "Už je připojeno osm relací ACP. Než spustíte další, jednu odpojte.",
+      "v1_only": "Agent podporuje jen ACP verze 1.",
+      "unsupported_version": "Tento agent nepodporuje ACP verze {{version}}.",
+      "cannot_resume": "Tento agent neumí obnovit uložené relace. Chcete-li pokračovat v práci, začněte novou konverzaci.",
+      "conversation_gone": "Agent už tuto konverzaci nemá. Začněte novou.",
+      "not_installed": "Tento agent ještě není nainstalovaný. Nainstalujte ho, nebo vyberte jeho program v Nastavení.",
+      "program_missing": "Program vybraný pro tohoto agenta chybí. Vyberte ho znovu v Nastavení.",
+      "node_needed": "Ke spuštění tohoto agenta nainstalujte Node.js.",
+      "node_missing": "Ke spuštění tohoto agenta nainstalujte Node.js {{required}} nebo novější.",
+      "node_outdated": "Tento agent potřebuje Node.js {{required}} nebo novější. Zjištěná verze je {{major}}.",
+      "bridge_outdated": "Verze {{package}} {{found}} v tomto počítači je příliš stará. Oleafly potřebuje verzi {{pinned}} nebo novější. Nainstalujte most v Nastavení.",
+      "spawn_failed": "Agenta se nepodařilo spustit. Zkontrolujte jeho instalaci a oprávnění ke spuštění. ({{kind}}: {{path}})",
+      "remote_not_set_up": "Nejdřív nastavte vzdálený počítač v nastavení Hermes.",
+      "ssh_missing": "Oleafly v tomto počítači nemůže najít ssh. Nainstalujte OpenSSH a zkuste to znovu.",
+      "moved_to_local": "Tato konverzace běžela na jiném počítači a Hermes teď běží na tomto počítači. Chcete-li pokračovat, začněte novou konverzaci.",
+      "moved_to_remote": "Tato konverzace běžela na tomto počítači a Hermes teď běží na jiném počítači. Chcete-li pokračovat, začněte novou konverzaci.",
+      "moved_machine": "Tato konverzace běžela na jiném počítači, než který Hermes používá teď. Chcete-li pokračovat, začněte novou konverzaci.",
+      "moved_profile": "Tato konverzace běžela v jiném profilu Hermes. Přepněte projekt zpět na ten profil, nebo začněte novou konverzaci."
+    },
+    "session": {
+      "disconnected": "Agent se odpojil.",
+      "disconnected_with_output": "Agent se odpojil. Poslední výstup agenta: {{output}}",
+      "disconnected_command_help": "Agent se odpojil. Vypsal nápovědu příkazové řádky, takže tato verze nepřijímá volby, se kterými ho Oleafly spustil.",
+      "no_reply": "Agent se odpojil dřív, než odpověděl.",
+      "no_reply_with_output": "Agent se odpojil dřív, než odpověděl. Poslední výstup agenta: {{output}}",
+      "no_reply_command_help": "Agent se odpojil dřív, než odpověděl. Vypsal nápovědu příkazové řádky, takže tato verze nepřijímá volby, se kterými ho Oleafly spustil.",
+      "timed_out_stopped": "Agent neodpověděl včas a byl zastaven.",
+      "timed_out_stopped_with_output": "Agent neodpověděl včas a byl zastaven. Poslední výstup agenta: {{output}}",
+      "timed_out_stopped_command_help": "Agent neodpověděl včas a byl zastaven. Vypsal nápovědu příkazové řádky, takže tato verze nepřijímá volby, se kterými ho Oleafly spustil.",
+      "timed_out": "Agent neodpověděl včas.",
+      "silent": "Agent {{minutes}} min nic neposlal, proto ho Oleafly zastavil. Chcete-li pokračovat, znovu se připojte.",
+      "not_connected": "Agent je odpojený.",
+      "sign_in": "Přihlaste se k tomuto agentovi a zkuste to znovu.",
+      "claude_gateway": "Claude Code používá vlastní koncový bod API. Zkontrolujte ANTHROPIC_BASE_URL a ANTHROPIC_AUTH_TOKEN v profilu shellu nebo v souboru settings.json pro Claude Code a pak se znovu připojte.",
+      "codex_setup": "Codex nahlásil problém se svým nastavením:\n{{output}}",
+      "codex_key_rejected": "Váš klíč pro {{provider}} byl odmítnut.",
+      "codex_provider_key": "Codex používá poskytovatele {{provider}} ze svého config.toml. Zkontrolujte, že je proměnná {{env_key}} nastavená a platná, a pak se znovu připojte.",
+      "codex_provider": "Codex používá poskytovatele {{provider}} ze svého config.toml. Zkontrolujte jeho nastavení a pak se znovu připojte.",
+      "transcript_not_saved": "Přepis ACP se nepodařilo uložit. Agent byl zastaven, aby se uložená historie zachovala.",
+      "transcript_full": "Tato relace dosáhla limitu velikosti přepisu. Začněte novou konverzaci."
+    },
+    "turn": {
+      "no_stop_reason": "Agent nenahlásil, jak tento tah skončil.",
+      "stopped_early": "Agent se zastavil dřív, než tento tah dokončil.",
+      "codex_error": "Codex tento tah ukončil s chybou."
+    },
+    "notice": {
+      "empty_turn": "Agent ukončil svůj tah bez odpovědi.",
+      "empty_turn_advice": "Zkontrolujte model a přihlášení agenta a zkuste to znovu.",
+      "outside_project": "Oleafly odmítl požadavek mimo tento projekt.",
+      "outside_project_path": "Agent chtěl použít {{path}}. Agenti mohou používat jen soubory uvnitř projektu.",
+      "outside_project_rule": "Agenti mohou používat jen soubory uvnitř projektu.",
+      "hermes_tools_lost": "Hermes po změně modelu přišel o nástroje projektu.",
+      "hermes_tools_advice": "Chcete-li je obnovit, znovu se připojte.",
+      "route_failed": "Oleafly nemohl přesměrovat požadavky tohoto agenta přes váš klíč pro {{provider}}.",
+      "unroute_failed": "Oleafly nemohl zrušit přesměrování požadavků tohoto agenta přes váš klíč pro {{provider}}.",
+      "codex_openai_only": "Codex může použít jen klíč OpenAI.",
+      "no_saved_key": "Pro tohoto poskytovatele není uložený žádný klíč.",
+      "key_kind_unsupported": "Tento agent nemůže použít tento druh klíče."
+    },
+    "install": {
+      "npm_unreachable": "Oleafly se nemohl spojit s registrem npm na adrese {{host}} ({{code}}). Zkontrolujte připojení k síti, proxy nebo nastavení registru npm.",
+      "npm_timed_out": "Instalace z {{host}} trvala příliš dlouho a byla zastavena. Zkontrolujte připojení k síti, proxy nebo nastavení registru npm."
     }
   },
   "typst_toolchain": {

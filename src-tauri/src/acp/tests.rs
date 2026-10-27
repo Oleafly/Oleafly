@@ -456,11 +456,7 @@ fn a_cli_that_prints_its_usage_is_not_quoted_back_at_the_reader() {
 
 #[test]
 fn an_agents_wording_decides_whether_a_failure_needs_a_sign_in() {
-    assert!(protocol::RpcError {
-        code: -32000,
-        message: "Authentication required".into(),
-    }
-    .auth_required());
+    assert!(protocol::RpcError::agent(-32000, "Authentication required".into()).auth_required());
     assert!(protocol::RpcError::local(
         "Internal error: Failed to authenticate: OAuth session expired and could not be refreshed"
     )
@@ -494,7 +490,7 @@ async fn a_login_that_expires_mid_turn_asks_for_sign_in_rather_than_staying_read
 }
 
 #[tokio::test]
-async fn startup_failures_carry_the_agent_stderr() {
+async fn startup_failures_carry_the_agent_stderr_and_leave_no_conversation() {
     let temp = fixture_temp();
     let project = temp.path().join("project");
     std::fs::create_dir(&project).unwrap();
@@ -519,17 +515,7 @@ async fn startup_failures_carry_the_agent_stderr() {
         .await
         .unwrap_err();
     assert!(error.contains("missing runtime"), "{error}");
-    let record = runtime
-        .list("test-project")
-        .unwrap()
-        .into_iter()
-        .next()
-        .unwrap();
-    let events = runtime.events(&record.id, 0, 500).unwrap().events;
-    assert!(events.iter().any(|event| event.kind == "diagnostics"
-        && event.data["stderr"]
-            .as_str()
-            .is_some_and(|value| value.contains("missing runtime"))));
+    assert!(runtime.list("test-project").unwrap().is_empty());
 }
 
 #[test]
@@ -1310,7 +1296,7 @@ async fn cancellation_reaps_processes_and_releases_resources_when_persistence_fa
     let database = rusqlite::Connection::open(temp.path().join("acp/sessions.sqlite")).unwrap();
     database.execute_batch("CREATE TRIGGER reject_event BEFORE INSERT ON events BEGIN SELECT RAISE(FAIL, 'fixture journal unavailable'); END;").unwrap();
     let error = runtime.cancel(&id).await.unwrap_err();
-    assert!(error.contains("could not be saved"));
+    assert!(crate::app_error::english_error(&error).contains("could not be saved"));
     assert_eq!(dropped.load(std::sync::atomic::Ordering::SeqCst), 1);
     // The child is signalled during cancel and reaped by its own task, so a
     // loaded runner can still be tearing it down when cancel returns.
@@ -1914,7 +1900,7 @@ async fn a_chosen_program_replaces_the_command_an_agent_starts_with() {
         Some(missing.to_string_lossy().as_ref())
     );
     assert!(!status.installed);
-    assert!(status.reason.unwrap().contains("Choose it again"));
+    assert!(crate::app_error::english_error(&status.reason.unwrap()).contains("Choose it again"));
     let check = runtime.check_agent("fixture-agent", None).await.unwrap();
     assert_eq!(check.code, "not_found", "{check:?}");
     runtime.save_agent_program("fixture-agent", None).unwrap();
@@ -2095,6 +2081,7 @@ fn sandboxed_task_launches_keep_the_sandbox_environment() {
 }
 
 mod controls;
+mod lifecycle;
 mod live_turns;
 mod review;
 mod sessions048;

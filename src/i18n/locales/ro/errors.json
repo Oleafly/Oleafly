@@ -75,7 +75,9 @@
     "shell_escape_denied_minted": "minted trebuie să ruleze alt program pentru a evidenția codul, iar acest proiect blochează asta. Ca să permiți asta, dă clic pe „{{setting}}” în bannerul de deasupra editorului. Fă asta doar dacă ai încredere în fiecare fișier din proiect. LaTeX va putea apoi rula orice program cu permisiunile tale, iar un program pornit de el poate continua să ruleze după ce oprești compilarea.",
     "shell_escape_denied_pythontex": "PythonTeX trebuie să ruleze Python, iar acest proiect blochează asta. Ca să permiți asta, dă clic pe „{{setting}}” în bannerul de deasupra editorului. Fă asta doar dacă ai încredere în fiecare fișier din proiect. LaTeX va putea apoi rula orice program cu permisiunile tale, iar un program pornit de el poate continua să ruleze după ce oprești compilarea.",
     "shell_escape_denied_command": "Acest document rulează o comandă shell, iar acest proiect blochează asta. Ca să permiți asta, dă clic pe „{{setting}}” în bannerul de deasupra editorului. Fă asta doar dacă ai încredere în fiecare fișier din proiect. LaTeX va putea apoi rula orice program cu permisiunile tale, iar un program pornit de el poate continua să ruleze după ce oprești compilarea.",
-    "japanese_compiler_missing": "{{compiler}} nu este instalat în distribuția ta TeX. Rulează tlmgr install collection-langjapanese ca să-l adaugi în TeX Live sau TinyTeX, sau alege alt compilator."
+    "japanese_compiler_missing": "{{compiler}} nu este instalat în distribuția ta TeX. Rulează tlmgr install collection-langjapanese ca să-l adaugi în TeX Live sau TinyTeX, sau alege alt compilator.",
+    "compiler_crashed": "Compilatorul s-a închis neașteptat înainte să termine, așa că jurnalul se încheie în punctul în care s-a oprit. Încearcă să compilezi din nou. Dacă se închide de fiecare dată, alege alt compilator din meniul de compilare.",
+    "compiler_crashed_font": "Tectonic s-a închis neașteptat în timp ce căuta fontul „{{font}}”, care probabil nu este instalat pe acest computer. Instalează fontul sau alege XeLaTeX ori LuaLaTeX din meniul de compilare. Acestea semnalează un font lipsă în loc să se închidă neașteptat."
   },
   "export": {
     "bibliography_unreadable": "Oleafly nu a putut citi bibliografia {{name}}. Verifică dacă are o intrare defectă, apoi exportă din nou."
@@ -195,6 +197,74 @@
       "declined": "Programul nu a fost schimbat.",
       "check_running": "Un test pentru acest agent rulează deja.",
       "main_window": "Schimbă programele agenților din fereastra principală."
+    },
+    "start": {
+      "cancelled": "Pornirea a fost anulată.",
+      "owner_closed": "Fereastra sau sarcina s-a închis în timp ce agentul pornea.",
+      "already_connected": "Această sesiune ACP este deja conectată.",
+      "session_limit": "Opt sesiuni ACP sunt deja conectate. Deconectează una înainte să pornești alta.",
+      "v1_only": "Agentul acceptă doar versiunea 1 a protocolului ACP.",
+      "unsupported_version": "Acest agent nu acceptă versiunea {{version}} a protocolului ACP.",
+      "cannot_resume": "Acest agent nu poate relua sesiunile salvate. Pornește o conversație nouă ca să continui lucrul.",
+      "conversation_gone": "Agentul nu mai are această conversație. Pornește una nouă.",
+      "not_installed": "Acest agent nu este încă instalat. Instalează-l sau alege-i programul din Setări.",
+      "program_missing": "Programul ales pentru acest agent lipsește. Alege-l din nou din Setări.",
+      "node_needed": "Instalează Node.js ca să rulezi acest agent.",
+      "node_missing": "Instalează Node.js {{required}} sau o versiune mai nouă ca să rulezi acest agent.",
+      "node_outdated": "Acest agent are nevoie de Node.js {{required}} sau de o versiune mai nouă. Versiunea detectată este {{major}}.",
+      "bridge_outdated": "{{package}} {{found}} de pe acest computer este prea vechi. Oleafly are nevoie de {{pinned}} sau de o versiune mai nouă. Instalează puntea din Setări.",
+      "spawn_failed": "Agentul nu a putut fi pornit. Verifică-i instalarea și permisiunile de executare. ({{kind}}: {{path}})",
+      "remote_not_set_up": "Configurează mai întâi computerul de la distanță pentru Hermes, din setările lui.",
+      "ssh_missing": "Oleafly nu a găsit ssh pe acest computer. Instalează OpenSSH, apoi încearcă din nou.",
+      "moved_to_local": "Această conversație a rulat pe alt computer, iar Hermes rulează acum pe acest computer. Pornește o conversație nouă ca să continui.",
+      "moved_to_remote": "Această conversație a rulat pe acest computer, iar Hermes rulează acum pe alt computer. Pornește o conversație nouă ca să continui.",
+      "moved_machine": "Această conversație a rulat pe alt computer decât cel pe care îl folosește acum Hermes. Pornește o conversație nouă ca să continui.",
+      "moved_profile": "Această conversație a rulat în alt profil Hermes. Comută proiectul înapoi pe acel profil sau pornește o conversație nouă."
+    },
+    "session": {
+      "disconnected": "Agentul s-a deconectat.",
+      "disconnected_with_output": "Agentul s-a deconectat. Ultima ieșire a agentului: {{output}}",
+      "disconnected_command_help": "Agentul s-a deconectat. A afișat ajutorul din linia de comandă, așa că această versiune nu acceptă opțiunile cu care l-a pornit Oleafly.",
+      "no_reply": "Agentul s-a deconectat înainte să răspundă.",
+      "no_reply_with_output": "Agentul s-a deconectat înainte să răspundă. Ultima ieșire a agentului: {{output}}",
+      "no_reply_command_help": "Agentul s-a deconectat înainte să răspundă. A afișat ajutorul din linia de comandă, așa că această versiune nu acceptă opțiunile cu care l-a pornit Oleafly.",
+      "timed_out_stopped": "Agentul nu a răspuns la timp și a fost oprit.",
+      "timed_out_stopped_with_output": "Agentul nu a răspuns la timp și a fost oprit. Ultima ieșire a agentului: {{output}}",
+      "timed_out_stopped_command_help": "Agentul nu a răspuns la timp și a fost oprit. A afișat ajutorul din linia de comandă, așa că această versiune nu acceptă opțiunile cu care l-a pornit Oleafly.",
+      "timed_out": "Agentul nu a răspuns la timp.",
+      "silent": "Agentul nu a trimis nimic timp de {{minutes}} min, așa că Oleafly l-a oprit. Reconectează-te ca să continui.",
+      "not_connected": "Agentul este deconectat.",
+      "sign_in": "Autentifică-te la acest agent, apoi încearcă din nou.",
+      "claude_gateway": "Claude Code folosește un punct de acces API personalizat. Verifică ANTHROPIC_BASE_URL și ANTHROPIC_AUTH_TOKEN în profilul shell sau în settings.json din Claude Code, apoi reconectează-te.",
+      "codex_setup": "Codex a raportat o problemă cu configurarea lui:\n{{output}}",
+      "codex_key_rejected": "Cheia ta {{provider}} a fost respinsă.",
+      "codex_provider_key": "Codex folosește furnizorul {{provider}} din fișierul lui config.toml. Verifică dacă variabila {{env_key}} este setată și validă, apoi reconectează-te.",
+      "codex_provider": "Codex folosește furnizorul {{provider}} din fișierul lui config.toml. Verifică setările acestuia, apoi reconectează-te.",
+      "transcript_not_saved": "Transcrierea ACP nu a putut fi salvată. Agentul a fost oprit ca să se păstreze istoricul salvat.",
+      "transcript_full": "Această sesiune a atins limita de dimensiune a transcrierii. Pornește o conversație nouă."
+    },
+    "turn": {
+      "no_stop_reason": "Agentul nu a raportat cum s-a încheiat acest schimb.",
+      "stopped_early": "Agentul s-a oprit înainte să termine acest schimb.",
+      "codex_error": "Codex a oprit acest schimb cu o eroare."
+    },
+    "notice": {
+      "empty_turn": "Agentul a încheiat schimbul fără să răspundă.",
+      "empty_turn_advice": "Verifică modelul și autentificarea agentului, apoi încearcă din nou.",
+      "outside_project": "Oleafly a refuzat o cerere din afara acestui proiect.",
+      "outside_project_path": "Agentul a cerut să folosească {{path}}. Agenții pot folosi doar fișiere din proiect.",
+      "outside_project_rule": "Agenții pot folosi doar fișiere din proiect.",
+      "hermes_tools_lost": "Hermes a pierdut instrumentele proiectului când i s-a schimbat modelul.",
+      "hermes_tools_advice": "Reconectează-te ca să le restabilești.",
+      "route_failed": "Oleafly nu a putut direcționa acest agent prin cheia ta {{provider}}.",
+      "unroute_failed": "Oleafly nu a putut opri direcționarea acestui agent prin cheia ta {{provider}}.",
+      "codex_openai_only": "Codex poate folosi doar o cheie OpenAI.",
+      "no_saved_key": "Nu există nicio cheie salvată pentru acest furnizor.",
+      "key_kind_unsupported": "Acest agent nu poate folosi acest tip de cheie."
+    },
+    "install": {
+      "npm_unreachable": "Oleafly nu a putut contacta registrul npm de la {{host}} ({{code}}). Verifică conexiunea la rețea, proxy-ul sau setarea registrului npm.",
+      "npm_timed_out": "Instalarea de la {{host}} a durat prea mult și a fost oprită. Verifică conexiunea la rețea, proxy-ul sau setarea registrului npm."
     }
   },
   "typst_toolchain": {

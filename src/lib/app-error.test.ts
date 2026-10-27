@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { flattenCatalog, SUPPORTED_LOCALES } from "@oleafly/i18n-contract";
 import { applyLocale, loadNamespace } from "@/i18n";
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
-import { APP_ERROR_PREFIX, decodeAppError, describeError } from "./app-error";
+import { APP_ERROR_PREFIX, decodeAppError, describeError, errorText } from "./app-error";
 
 const encoded = (payload: unknown) => `${APP_ERROR_PREFIX}${JSON.stringify(payload)}`;
 
@@ -99,6 +101,34 @@ describe("app errors", () => {
     const japanese = describeError(value);
     expect(japanese).toContain("figures/plot.png");
     expect(japanese).not.toMatch(/errors:|\{\{|os error/);
+  });
+
+  it("turns a coded message into a sentence and leaves plain text alone", () => {
+    expect(errorText(encoded({ code: "acp.start.cancelled", params: {}, detail: null }))).toBe("The start was cancelled.");
+    expect(errorText("The agent disconnected.")).toBe("The agent disconnected.");
+    expect(errorText("")).toBe("");
+  });
+
+  it("has every CLI agent failure in every locale, with its values filled in", async () => {
+    const acpKeys = [...flattenCatalog(enErrors.acp)].filter(([key]) => !key.startsWith("program."));
+    expect(acpKeys.length).toBeGreaterThan(50);
+    const params = {
+      version: "2", required: "20", major: "18", package: "pi-acp", found: "0.0.1", pinned: "0.0.34",
+      kind: "NotFound", path: "agent-bin", output: "panic-boom", minutes: "20", provider: "DeepSeek",
+      env_key: "DEEPSEEK_API_KEY", host: "registry.npmjs.org", code: "ECONNREFUSED",
+    };
+    const fallback = describeError(encoded({ code: "acp.nope", params: {}, detail: null }));
+    for (const locale of SUPPORTED_LOCALES) {
+      await applyLocale(locale);
+      for (const [key, english] of acpKeys) {
+        const message = describeError(encoded({ code: `acp.${key}`, params, detail: null }));
+        expect(message, `${locale} ${key}`).not.toBe(fallback);
+        expect(message, `${locale} ${key}`).not.toMatch(/errors:|\{\{|@oleafly/);
+        for (const [name, value] of Object.entries(params)) {
+          if (english.includes(`{{${name}}}`)) expect(message, `${locale} ${key}`).toContain(value);
+        }
+      }
+    }
   });
 
   it("follows the active locale", async () => {

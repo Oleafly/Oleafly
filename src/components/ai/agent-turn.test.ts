@@ -80,6 +80,27 @@ describe("message conversion", () => {
     ]);
   });
 
+  it("keeps an assistant turn's reasoning so a thinking model can see it again", () => {
+    const messages = [
+      {
+        role: "assistant",
+        content: [
+          { type: "reasoning", text: "The preamble is in main.tex." },
+          { type: "text", text: "Done." },
+        ],
+      },
+    ] as unknown as ModelMessage[];
+    expect(toAgentMessages(messages)).toEqual([
+      {
+        role: "assistant",
+        content: [
+          { type: "reasoning", text: "The preamble is in main.tex." },
+          { type: "text", text: "Done." },
+        ],
+      },
+    ]);
+  });
+
   it("drops turns that carry nothing the provider can use", () => {
     const messages = [
       { role: "user", content: "" },

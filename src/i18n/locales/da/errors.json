@@ -75,7 +75,9 @@
     "shell_escape_denied_minted": "minted skal køre et andet program for at fremhæve kode, og dette projekt blokerer det. Hvis du vil tillade det, skal du klikke på \"{{setting}}\" i banneret over editoren. Gør det kun, hvis du stoler på alle filer i projektet. LaTeX kan derefter køre ethvert program med dine rettigheder, og et program, det starter, kan blive ved med at køre, efter du har stoppet kompileringen.",
     "shell_escape_denied_pythontex": "PythonTeX skal køre Python, og dette projekt blokerer det. Hvis du vil tillade det, skal du klikke på \"{{setting}}\" i banneret over editoren. Gør det kun, hvis du stoler på alle filer i projektet. LaTeX kan derefter køre ethvert program med dine rettigheder, og et program, det starter, kan blive ved med at køre, efter du har stoppet kompileringen.",
     "shell_escape_denied_command": "Dette dokument kører en shell-kommando, og dette projekt blokerer det. Hvis du vil tillade det, skal du klikke på \"{{setting}}\" i banneret over editoren. Gør det kun, hvis du stoler på alle filer i projektet. LaTeX kan derefter køre ethvert program med dine rettigheder, og et program, det starter, kan blive ved med at køre, efter du har stoppet kompileringen.",
-    "japanese_compiler_missing": "{{compiler}} er ikke installeret i din TeX-distribution. Kør tlmgr install collection-langjapanese for at tilføje det i TeX Live eller TinyTeX, eller vælg en anden kompilator."
+    "japanese_compiler_missing": "{{compiler}} er ikke installeret i din TeX-distribution. Kør tlmgr install collection-langjapanese for at tilføje det i TeX Live eller TinyTeX, eller vælg en anden kompilator.",
+    "compiler_crashed": "Kompilatoren gik ned, før den var færdig, så loggen slutter der, hvor den stoppede. Prøv at kompilere igen. Hvis den går ned hver gang, så vælg en anden kompilator i kompileringsmenuen.",
+    "compiler_crashed_font": "Tectonic gik ned under søgningen efter skrifttypen \"{{font}}\", som sandsynligvis ikke er installeret på denne computer. Installer skrifttypen, eller vælg XeLaTeX eller LuaLaTeX i kompileringsmenuen. De melder en manglende skrifttype i stedet for at gå ned."
   },
   "export": {
     "bibliography_unreadable": "Oleafly kunne ikke læse litteraturlistefilen {{name}}. Tjek, om den har en defekt post, og eksporter så igen."
@@ -195,6 +197,74 @@
       "declined": "Programmet blev ikke ændret.",
       "check_running": "Der kører allerede en test af denne agent.",
       "main_window": "Skift agenternes programmer fra hovedvinduet."
+    },
+    "start": {
+      "cancelled": "Starten blev annulleret.",
+      "owner_closed": "Vinduet eller opgaven blev lukket, mens agenten startede.",
+      "already_connected": "Denne ACP-session er allerede forbundet.",
+      "session_limit": "Der er allerede otte forbundne ACP-sessioner. Afbryd forbindelsen til én af dem, før du starter en ny.",
+      "v1_only": "Agenten understøtter kun ACP-version 1.",
+      "unsupported_version": "Denne agent understøtter ikke ACP-version {{version}}.",
+      "cannot_resume": "Denne agent kan ikke genoptage gemte sessioner. Start en ny samtale for at arbejde videre.",
+      "conversation_gone": "Agenten har ikke længere denne samtale. Start en ny.",
+      "not_installed": "Denne agent er ikke installeret endnu. Installer den, eller vælg dens program under Indstillinger.",
+      "program_missing": "Det program, der er valgt til denne agent, mangler. Vælg det igen under Indstillinger.",
+      "node_needed": "Installer Node.js for at køre denne agent.",
+      "node_missing": "Installer Node.js {{required}} eller nyere for at køre denne agent.",
+      "node_outdated": "Denne agent kræver Node.js {{required}} eller nyere. Den fundne version er {{major}}.",
+      "bridge_outdated": "{{package}} {{found}} på denne computer er for gammel. Oleafly kræver {{pinned}} eller nyere. Installer broen under Indstillinger.",
+      "spawn_failed": "Agenten kunne ikke startes. Tjek dens installation og kørselsrettigheder. ({{kind}}: {{path}})",
+      "remote_not_set_up": "Sæt først fjernmaskinen op i indstillingerne for Hermes.",
+      "ssh_missing": "Oleafly kunne ikke finde ssh på denne computer. Installer OpenSSH, og prøv igen.",
+      "moved_to_local": "Denne samtale kørte på en anden maskine, og Hermes kører nu på denne computer. Start en ny samtale for at fortsætte.",
+      "moved_to_remote": "Denne samtale kørte på denne computer, og Hermes kører nu på en anden maskine. Start en ny samtale for at fortsætte.",
+      "moved_machine": "Denne samtale kørte på en anden maskine end den, Hermes bruger nu. Start en ny samtale for at fortsætte.",
+      "moved_profile": "Denne samtale kørte i en anden Hermes-profil. Skift projektet tilbage til den profil, eller start en ny samtale."
+    },
+    "session": {
+      "disconnected": "Agenten afbrød forbindelsen.",
+      "disconnected_with_output": "Agenten afbrød forbindelsen. Seneste output fra agenten: {{output}}",
+      "disconnected_command_help": "Agenten afbrød forbindelsen. Den svarede med sin kommandolinjehjælp, så denne version accepterer ikke de parametre, Oleafly startede den med.",
+      "no_reply": "Agenten afbrød forbindelsen, før den svarede.",
+      "no_reply_with_output": "Agenten afbrød forbindelsen, før den svarede. Seneste output fra agenten: {{output}}",
+      "no_reply_command_help": "Agenten afbrød forbindelsen, før den svarede. Den svarede med sin kommandolinjehjælp, så denne version accepterer ikke de parametre, Oleafly startede den med.",
+      "timed_out_stopped": "Agenten svarede ikke i tide og blev stoppet.",
+      "timed_out_stopped_with_output": "Agenten svarede ikke i tide og blev stoppet. Seneste output fra agenten: {{output}}",
+      "timed_out_stopped_command_help": "Agenten svarede ikke i tide og blev stoppet. Den svarede med sin kommandolinjehjælp, så denne version accepterer ikke de parametre, Oleafly startede den med.",
+      "timed_out": "Agenten svarede ikke i tide.",
+      "silent": "Agenten sendte intet i {{minutes}} min., så Oleafly stoppede den. Opret forbindelse igen for at fortsætte.",
+      "not_connected": "Agenten er ikke forbundet.",
+      "sign_in": "Log ind på denne agent, og prøv igen.",
+      "claude_gateway": "Claude Code bruger et brugerdefineret API-endepunkt. Tjek ANTHROPIC_BASE_URL og ANTHROPIC_AUTH_TOKEN i din shell-profil eller i settings.json til Claude Code, og opret så forbindelse igen.",
+      "codex_setup": "Codex rapporterede et problem med sin opsætning:\n{{output}}",
+      "codex_key_rejected": "Din nøgle til {{provider}} blev afvist.",
+      "codex_provider_key": "Codex bruger udbyderen {{provider}} fra sin config.toml. Tjek, at {{env_key}} er sat og gyldig, og opret så forbindelse igen.",
+      "codex_provider": "Codex bruger udbyderen {{provider}} fra sin config.toml. Tjek udbyderens indstillinger, og opret så forbindelse igen.",
+      "transcript_not_saved": "ACP-udskriften kunne ikke gemmes. Agenten blev stoppet for at bevare den gemte historik.",
+      "transcript_full": "Udskriften for denne session har nået sin maksimale størrelse. Start en ny samtale."
+    },
+    "turn": {
+      "no_stop_reason": "Agenten oplyste ikke, hvordan denne tur sluttede.",
+      "stopped_early": "Agenten stoppede, før denne tur var færdig.",
+      "codex_error": "Codex stoppede denne tur med en fejl."
+    },
+    "notice": {
+      "empty_turn": "Agenten afsluttede sin tur uden at svare.",
+      "empty_turn_advice": "Tjek agentens model og login, og prøv igen.",
+      "outside_project": "Oleafly afviste en forespørgsel uden for dette projekt.",
+      "outside_project_path": "Agenten bad om at bruge {{path}}. Agenter kan kun bruge filer i projektet.",
+      "outside_project_rule": "Agenter kan kun bruge filer i projektet.",
+      "hermes_tools_lost": "Hermes mistede projektværktøjerne, da dens model blev skiftet.",
+      "hermes_tools_advice": "Opret forbindelse igen for at gendanne dem.",
+      "route_failed": "Oleafly kunne ikke omdirigere denne agent gennem din nøgle til {{provider}}.",
+      "unroute_failed": "Oleafly kunne ikke stoppe omdirigeringen af denne agent gennem din nøgle til {{provider}}.",
+      "codex_openai_only": "Codex kan kun bruge en OpenAI-nøgle.",
+      "no_saved_key": "Der er ingen gemt nøgle til denne udbyder.",
+      "key_kind_unsupported": "Denne agent kan ikke bruge denne type nøgle."
+    },
+    "install": {
+      "npm_unreachable": "Oleafly kunne ikke få forbindelse til npm-registret på {{host}} ({{code}}). Tjek din netværksforbindelse, din proxy eller din indstilling for npm-registret.",
+      "npm_timed_out": "Installationen fra {{host}} tog for lang tid og blev stoppet. Tjek din netværksforbindelse, din proxy eller din indstilling for npm-registret."
     }
   },
   "typst_toolchain": {

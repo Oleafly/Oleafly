@@ -237,3 +237,29 @@ export function geminiControls(): AcpSession["controls"] {
     legacyModels: true,
   };
 }
+
+export function piControls(): AcpSession["controls"] {
+  const models = [
+    ["openai-codex/gpt-5.3-codex-spark", "openai-codex/GPT-5.3 Codex Spark"],
+    ["openai-codex/gpt-5.4", "openai-codex/GPT-5.4"],
+    ["openai-codex/gpt-5.4-mini", "openai-codex/GPT-5.4 mini"],
+    ["openai-codex/gpt-5.5", "openai-codex/GPT-5.5"],
+    ["openai-codex/gpt-5.6-luna", "openai-codex/GPT-5.6 Luna"],
+    ["openai-codex/gpt-5.6-sol", "openai-codex/GPT-5.6 Sol"],
+    ["openai-codex/gpt-5.6-terra", "openai-codex/GPT-5.6 Terra"],
+    ["openai-codex/gpt-6-astra", "openai-codex/GPT-6 Astra"],
+  ];
+  const levels = ["off", "minimal", "low", "medium", "high", "xhigh"];
+  return {
+    models: models.map(([modelId, name]) => ({ modelId, name })),
+    modelId: "openai-codex/gpt-5.5",
+    modelConfigId: "model",
+    options: [
+      selectOption("model", "Model", "model", "openai-codex/gpt-5.5", models.map(([value, name]) => choice(value, name))),
+      selectOption("thought_level", "Thinking", "thought_level", "medium", levels.map((level) => choice(level, `Thinking: ${level}`))),
+    ],
+    modes: levels.map((level) => ({ id: level, name: `Thinking: ${level}`, description: null, blocked: false })),
+    modeId: "medium",
+    legacyModels: false,
+  };
+}

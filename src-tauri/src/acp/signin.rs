@@ -224,36 +224,8 @@ impl AcpRuntime {
                 (launch.executable.to_string_lossy().into_owned(), args)
             }
         };
-        let mut env = BTreeMap::new();
-        for (name, value) in &launch.env {
-            if name.eq_ignore_ascii_case("PATH") {
-                continue;
-            }
-            let value = value
-                .clone()
-                .into_string()
-                .map_err(|_| "This agent's environment cannot be shown in a terminal.")?;
-            env.insert(name.clone(), value);
-        }
-        for (name, value) in &method.env {
-            if name.eq_ignore_ascii_case("PATH") {
-                continue;
-            }
-            if env_name_blocked(name) {
-                return Err(if env_name_ok(name) {
-                    format!("This agent's sign-in sets {name}, which Oleafly does not allow.")
-                } else {
-                    "This agent's sign-in sets a variable that Oleafly does not allow.".into()
-                });
-            }
-            env.insert(name.clone(), value.clone());
-        }
-        env.retain(|name, value| {
-            env_name_ok(name) && !value.contains('\0') && value.len() <= MAX_ENV_VALUE
-        });
-        if env.len() > MAX_ENV {
-            return Err("This agent's environment cannot be shown in a terminal.".into());
-        }
+        let handoff = catalog::vendor_cli(&definition).and_then(|vendor| vendor.cli_env);
+        let env = terminal_env(&launch.env, handoff, &method.env)?;
         Ok(TerminalSignIn {
             title: format!("Sign in to {}", definition.name),
             program,
@@ -499,6 +471,47 @@ impl AcpRuntime {
 
 /// The launch a terminal sign-in starts from: with a project in Hermes's
 /// project mode, the project's profile (`hermes -p oleafly-<project> …`).
+fn terminal_env(
+    launch_env: &[(String, std::ffi::OsString)],
+    handoff: Option<&str>,
+    method_env: &BTreeMap<String, String>,
+) -> Result<BTreeMap<String, String>, String> {
+    let mut env = BTreeMap::new();
+    for (name, value) in launch_env {
+        if name.eq_ignore_ascii_case("PATH")
+            || (crate::program_locator::shell_supplied_env_name(name)
+                && handoff.is_none_or(|handoff| !name.eq_ignore_ascii_case(handoff)))
+        {
+            continue;
+        }
+        let value = value
+            .clone()
+            .into_string()
+            .map_err(|_| "This agent's environment cannot be shown in a terminal.")?;
+        env.insert(name.clone(), value);
+    }
+    for (name, value) in method_env {
+        if name.eq_ignore_ascii_case("PATH") {
+            continue;
+        }
+        if env_name_blocked(name) {
+            return Err(if env_name_ok(name) {
+                format!("This agent's sign-in sets {name}, which Oleafly does not allow.")
+            } else {
+                "This agent's sign-in sets a variable that Oleafly does not allow.".into()
+            });
+        }
+        env.insert(name.clone(), value.clone());
+    }
+    env.retain(|name, value| {
+        env_name_ok(name) && !value.contains('\0') && value.len() <= MAX_ENV_VALUE
+    });
+    if env.len() > MAX_ENV {
+        return Err("This agent's environment cannot be shown in a terminal.".into());
+    }
+    Ok(env)
+}
+
 fn sign_in_profile(
     launch: &mut catalog::Launch,
     definition: &super::types::AgentDefinition,
@@ -647,6 +660,38 @@ mod tests {
             .env
             .keys()
             .any(|name| name.eq_ignore_ascii_case("PATH")));
+    }
+
+    #[test]
+    fn the_terminal_gets_no_variables_its_own_login_shell_already_sets() {
+        let launch: Vec<(String, std::ffi::OsString)> = [
+            ("PATH", "/bin"),
+            ("HTTPS_PROXY", "http://user:pass@127.0.0.1:7890"),
+            ("NO_PROXY", "127.0.0.1,localhost,::1"),
+            ("ANTHROPIC_AUTH_TOKEN", "sk-secret-123456789"),
+            ("DEEPSEEK_API_KEY", "sk-deepseek-123456789"),
+            ("NODE_NO_WARNINGS", "1"),
+            ("PYTHONIOENCODING", "utf-8"),
+            ("CLAUDE_CODE_EXECUTABLE", "/Users/me/.local/bin/claude"),
+            ("OLEAFLY_CLI", "/Applications/Oleafly.app/oleafly"),
+        ]
+        .iter()
+        .map(|(name, value)| (name.to_string(), value.into()))
+        .collect();
+        let env = terminal_env(
+            &launch,
+            Some("CLAUDE_CODE_EXECUTABLE"),
+            &BTreeMap::from([("CLAUDE_CODE_ENTRYPOINT".into(), "cli".into())]),
+        )
+        .unwrap();
+        assert_eq!(
+            env.keys().map(String::as_str).collect::<Vec<_>>(),
+            vec![
+                "CLAUDE_CODE_ENTRYPOINT",
+                "CLAUDE_CODE_EXECUTABLE",
+                "OLEAFLY_CLI"
+            ]
+        );
     }
 
     #[tokio::test]

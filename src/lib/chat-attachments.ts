@@ -6,7 +6,7 @@ import type {
   DraftAttachment,
   StoredAttachmentRef,
 } from "@/components/ai/composer/types";
-import { HISTORY_MSG_MAX_CHARS, packChatHistoryInfo } from "@/lib/ai-context-pack";
+import { HISTORY_MSG_MAX_CHARS, packChatHistoryInfo, truncateText } from "@/lib/ai-context-pack";
 import type { AttachmentPart, FilePart, ModelMessage, TextPart } from "@/lib/chat-types";
 import type { AttachmentMeta, ChatMessage } from "@/store/chats";
 
@@ -166,6 +166,23 @@ export function skippedAttachmentNote(attachments: readonly AttachmentMeta[]): s
   return `[Attachments from this message are not sent again: ${attachments.map(describe).join(", ")}.]`;
 }
 
+function replyReasoning(message: ChatMessage): string {
+  const blocks = (message.reasoningBlocks ?? []).map((block) => block.text).filter(Boolean);
+  return blocks.length > 0 ? blocks.join("\n\n") : (message.reasoning ?? "");
+}
+
+function assistantMessage(message: ChatMessage, content: string): ModelMessage {
+  const reasoning = replyReasoning(message);
+  if (!reasoning) return { role: "assistant", content };
+  return {
+    role: "assistant",
+    content: [
+      { type: "reasoning", text: truncateText(reasoning, HISTORY_MSG_MAX_CHARS) },
+      { type: "text", text: content },
+    ],
+  };
+}
+
 /** One prior turn as a model message; a user turn with stored attachments sends them again when `resend`. */
 async function historyMessage(
   message: ChatMessage,
@@ -174,7 +191,7 @@ async function historyMessage(
   scope: string | null,
   ctx: AttachmentModelContext,
 ): Promise<ModelMessage> {
-  if (message.role === "assistant") return { role: "assistant", content };
+  if (message.role === "assistant") return assistantMessage(message, content);
   const attachments = message.attachments ?? [];
   if (attachments.length === 0) return { role: "user", content };
   const files = resend

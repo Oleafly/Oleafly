@@ -125,16 +125,16 @@ describe("refine availability", () => {
   });
 
   it("uses the stored model's catalog metadata for ids no pattern knows", async () => {
-    const flash = { providerId: "deepseek", modelId: "deepseek-flash", credential: "k" };
-    vi.mocked(pickActiveProvider).mockReturnValueOnce(flash).mockReturnValueOnce(flash);
+    const pro = { providerId: "deepseek", modelId: "deepseek-v4-pro", credential: "k" };
+    vi.mocked(pickActiveProvider).mockReturnValueOnce(pro).mockReturnValueOnce(pro);
     await expect(refineAvailable()).resolves.toBe(false);
 
     mocks.getConfig.mockResolvedValueOnce({
       ai_provider_models: {
         deepseek: [
           {
-            id: "deepseek-flash",
-            name: "DeepSeek Flash",
+            id: "deepseek-v4-pro",
+            name: "DeepSeek V4 Pro",
             enabled: true,
             source: "fetched",
             metadata: { inputModalities: ["text", "image"] },

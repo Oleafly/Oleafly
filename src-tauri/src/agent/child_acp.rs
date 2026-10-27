@@ -159,7 +159,7 @@ impl AcpChild {
         if result.is_err() || token.is_cancelled() {
             self.close().await;
         }
-        result
+        result.map_err(|error| crate::app_error::english_error(&error))
     }
 
     async fn run_connected(

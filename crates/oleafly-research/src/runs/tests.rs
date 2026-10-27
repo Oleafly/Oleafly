@@ -719,10 +719,13 @@ async fn a_run_that_never_answers_holds_up_only_itself() {
         crate::model::RunState::Succeeded,
     )
     .await;
-    assert_eq!(
-        run_state(&manager, &fixture.task.id, &stuck.run_id),
-        crate::model::RunState::Running
-    );
+    run_becomes(
+        &manager,
+        &fixture.task.id,
+        &stuck.run_id,
+        crate::model::RunState::Running,
+    )
+    .await;
 }
 
 #[tokio::test(flavor = "multi_thread")]

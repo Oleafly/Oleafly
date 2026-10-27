@@ -3166,7 +3166,7 @@ ${sandboxedCustom}`;
         useAgentTurnsStore.getState().finishTurn(runChatId, outcome.stopped_at_cap);
       }
       if (outcome.error) {
-        const displayError = formatError(outcome.error, activeProviderName);
+        const displayError = formatError(outcome.error, activeProviderName, outcome.error_kind);
         updateRunLast((m) => ({
           ...m,
           content: (m.content ? `${m.content}\n\n` : "") + displayError,

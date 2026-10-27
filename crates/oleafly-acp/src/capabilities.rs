@@ -106,12 +106,8 @@ pub fn parse_initialize(
         (ProtocolVersion::V1, Some(1)) => Ok(parse_v1(response)),
         (ProtocolVersion::V2, Some(2)) => crate::v2::parse_initialize_v2(response),
         (ProtocolVersion::V2, Some(1)) => Err(InitializeError::FallBackToV1),
-        (ProtocolVersion::V1, _) => Err(InitializeError::NotAcp(
-            "This agent does not support ACP version 1.".into(),
-        )),
-        (ProtocolVersion::V2, _) => Err(InitializeError::NotAcp(
-            "This agent does not support ACP version 2.".into(),
-        )),
+        (ProtocolVersion::V1, _) => Err(InitializeError::NotAcp(1)),
+        (ProtocolVersion::V2, _) => Err(InitializeError::NotAcp(2)),
     }
 }
 
@@ -386,8 +382,12 @@ mod tests {
         );
         assert!(matches!(
             parse_initialize(&json!({"protocolVersion": 2}), ProtocolVersion::V1),
-            Err(InitializeError::NotAcp(message)) if message == "This agent does not support ACP version 1."
+            Err(InitializeError::NotAcp(1))
         ));
+        assert_eq!(
+            InitializeError::NotAcp(1).to_string(),
+            "This agent does not support ACP version 1."
+        );
         assert!(matches!(
             parse_initialize(&json!({}), ProtocolVersion::V1),
             Err(InitializeError::NotAcp(_))

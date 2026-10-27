@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { aiAgentsTarget } from "@/components/settings/ai-settings-navigation";
-import { acpDisconnect, acpError, acpUsable } from "@/lib/acp";
+import { acpDisconnect, acpError, acpStartCancelled, acpUsable } from "@/lib/acp";
 import { isDelegatedSession, useAcpSessionView, useAcpSessionsStore } from "@/store/acp-sessions";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -97,7 +97,7 @@ function AcpWorkspaceActions({ projectId }: Readonly<{ projectId: string }>) {
     try {
       await action();
     } catch (error_) {
-      setError(projectId, acpError(error_));
+      if (!acpStartCancelled(error_)) setError(projectId, acpError(error_));
     } finally {
       setBusy(false);
     }

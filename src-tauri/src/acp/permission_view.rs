@@ -103,7 +103,7 @@ fn proposed_diffs(content: &[Value]) -> Vec<ProposedDiff> {
             let old_text = item["oldText"].as_str();
             let new_text = item["newText"].as_str();
             let size = old_text.map_or(0, str::len) + new_text.map_or(0, str::len);
-            let oversized = size > remaining;
+            let oversized = size > remaining || new_text.is_none();
             if !oversized {
                 remaining -= size;
             }
@@ -209,6 +209,34 @@ pub(super) fn names_paths(policy: &Value) -> bool {
     policy["locations"]
         .as_array()
         .is_some_and(|paths| !paths.is_empty())
+}
+
+pub(super) fn refused_path(
+    root: &Path,
+    policy: &Value,
+    inside: impl Fn(&str) -> bool,
+    home: Option<&Path>,
+) -> Option<String> {
+    let raw = policy["locations"]
+        .as_array()?
+        .iter()
+        .filter_map(|location| location["path"].as_str())
+        .find(|path| *path != UNTRACKED_PATH && !inside(path))?;
+    let shown = display_path(root, raw);
+    if shown != raw {
+        return Some(shown);
+    }
+    let from_home = home
+        .and_then(|home| Path::new(raw).strip_prefix(home).ok())
+        .and_then(slash_path)
+        .map(|rest| {
+            if rest == "." {
+                "~".to_owned()
+            } else {
+                format!("~/{rest}")
+            }
+        });
+    Some(from_home.unwrap_or_else(|| raw.to_owned()))
 }
 
 /// `raw` relative to the project root with `/` separators when it is inside
@@ -370,6 +398,22 @@ mod tests {
     }
 
     #[test]
+    fn a_diff_cut_on_the_way_in_shows_as_too_large() {
+        let root = tempfile::tempdir().unwrap();
+        let root = root.path().canonicalize().unwrap();
+        let file = root.join("refs.bib");
+        let (_, locations, diffs) = permission_view(
+            &root,
+            None,
+            &json!({"toolCallId": "w", "kind": "edit", "locations": [{"path": file}], "content": [{"type": "diff", "path": file, "oldText": null, "newText": null}]}),
+            &Redactor::new(&[]),
+        );
+        assert_eq!(locations, vec!["refs.bib".to_owned()]);
+        assert_eq!(diffs.len(), 1);
+        assert!(diffs[0].truncated);
+    }
+
+    #[test]
     fn one_whole_file_diff_over_budget_is_marked_truncated() {
         let root = Path::new("/project");
         let mut calls = HashMap::new();
@@ -397,6 +441,62 @@ mod tests {
         );
         assert_eq!(display_path(&root, "sub/./file.tex"), "sub/file.tex");
         assert_eq!(display_path(&root, &root.to_string_lossy()), ".");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_refused_path_is_shown_from_home_or_as_the_agent_wrote_it() {
+        let root = Path::new("/project");
+        let home = Some(Path::new("/home/me"));
+        let inside = |path: &str| path.starts_with("/project/");
+        let policy = json!({"locations": [
+            {"path": "/project/a.tex"},
+            {"path": "/home/me/notes/todo.md"},
+            {"path": "/etc/passwd"}
+        ]});
+        assert_eq!(
+            refused_path(root, &policy, inside, home).as_deref(),
+            Some("~/notes/todo.md")
+        );
+        assert_eq!(
+            refused_path(
+                root,
+                &json!({"locations": [{"path": "/etc/passwd"}]}),
+                inside,
+                home
+            )
+            .as_deref(),
+            Some("/etc/passwd")
+        );
+        assert_eq!(
+            refused_path(
+                root,
+                &json!({"locations": [{"path": "../outside.tex"}]}),
+                inside,
+                home
+            )
+            .as_deref(),
+            Some("../outside.tex")
+        );
+        assert_eq!(
+            refused_path(
+                root,
+                &json!({"locations": [{"path": "/home/me"}]}),
+                inside,
+                home
+            )
+            .as_deref(),
+            Some("~")
+        );
+        assert_eq!(
+            refused_path(
+                root,
+                &json!({"locations": [{"path": UNTRACKED_PATH}]}),
+                inside,
+                home
+            ),
+            None
+        );
     }
 
     #[test]

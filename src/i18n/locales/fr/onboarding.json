@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "Deux types d'agent",
-      "content": "L'agent Oleafly s'appuie sur le fournisseur de modèles que vous configurez. L'agent en ligne de commande, en bêta, pilote un agent de développement déjà installé sur cet ordinateur."
+      "content": "L'agent Oleafly s'appuie sur le fournisseur de modèles que vous configurez. L'agent en ligne de commande pilote un agent de développement déjà installé sur cet ordinateur."
     },
     "connectProvider": {
       "title": "Connecter un fournisseur",

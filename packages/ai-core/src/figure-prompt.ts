@@ -52,5 +52,6 @@ export function modelSupportsVision(
   if (/gemma3(?!(?::|[-_])?1b\b)/.test(m)) return true;
   if (/^glm-[\d.]+v\b/.test(m)) return true;
   if (provider === "xai" && /vision|grok-[4-9]/.test(m)) return true;
+  if (provider === "deepseek" && /^deepseek-(?:flash|v4-flash)/.test(m)) return true;
   return false;
 }

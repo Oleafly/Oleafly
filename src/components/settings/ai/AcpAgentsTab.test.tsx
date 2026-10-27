@@ -529,6 +529,57 @@ describe("ACP agent setup acceptance", () => {
   });
 });
 
+describe("ACP bridge version", () => {
+  const hermes = (version: string | null) =>
+    agent("hermes", {
+      definition: {
+        ...agent().definition,
+        id: "hermes",
+        name: "Hermes Agent",
+        version: "0.22.2",
+        builtin: true,
+        distribution: { command: { executable: "hermes", args: ["acp"] } },
+      },
+      installed: true,
+      executable: "/Users/ada/.local/bin/hermes",
+      installedVersion: null,
+      canInstall: false,
+      cli: { command: "hermes", displayName: "Hermes Agent", path: "/Users/ada/.local/bin/hermes", version, signInCommand: "hermes setup" },
+      bridgeSharedWithCli: true,
+    });
+
+  async function bridgeVersion(id: string) {
+    const ui = render(<AcpAgentsTab projectId="paper" />);
+    const card = await expandAgent(ui, id);
+    fireEvent.click(within(card).getByTestId(`acp-agent-bridge-details-${id}-toggle`));
+    return within(card).getByTestId(`acp-agent-bridge-version-${id}`);
+  }
+
+  it("shows the version the agent's own CLI reported, not the catalog pin", async () => {
+    catalog = [hermes("0.20.5")];
+    const version = await bridgeVersion("hermes");
+    expect(version).toHaveTextContent("0.20.5");
+    expect(version).not.toHaveTextContent("0.22.2");
+  });
+
+  it("says the version was not reported when the CLI gave none", async () => {
+    catalog = [hermes(null)];
+    expect(await bridgeVersion("hermes")).toHaveTextContent(copy.notReported);
+  });
+
+  it("keeps the pinned version for a bridge Oleafly installs", async () => {
+    catalog = [
+      agent("claude", {
+        definition: { ...agent().definition, id: "claude", name: "Claude Code", version: "0.95.0", builtin: true },
+        installed: false,
+        executable: null,
+        cli: { command: "claude", displayName: "Claude Code", path: null, version: null, signInCommand: "claude auth login" },
+      }),
+    ];
+    expect(await bridgeVersion("claude")).toHaveTextContent("0.95.0");
+  });
+});
+
 const piCli: AcpCliStatus = {
   command: "pi", displayName: "Pi", path: null, version: null, signInCommand: "pi", source: null, rejected: [],
 };

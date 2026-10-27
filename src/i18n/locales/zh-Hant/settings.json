@@ -163,7 +163,8 @@
           "ready": "閘道正在執行",
           "starting": "閘道正在啟動",
           "stopped": "閘道已停止",
-          "unknown": "閘道狀態不明"
+          "unknown": "閘道狀態不明",
+          "outdated": "請更新 Hermes 以檢查閘道"
         },
         "refresh": "重新檢查",
         "keepsRunning": "中斷 Oleafly 的連線絕不會停止閘道。",

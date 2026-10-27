@@ -75,7 +75,9 @@
     "shell_escape_denied_minted": "minted 需要執行另一個程式來醒目提示程式碼，但此專案封鎖了這項操作。如要允許，請點選編輯器上方橫幅中的「{{setting}}」。只有在你信任專案中的每個檔案時才這麼做。開啟後，LaTeX 可以用你的權限執行任何程式，而且它啟動的程式可能在你停止編譯後繼續執行。",
     "shell_escape_denied_pythontex": "PythonTeX 需要執行 Python，但此專案封鎖了這項操作。如要允許，請點選編輯器上方橫幅中的「{{setting}}」。只有在你信任專案中的每個檔案時才這麼做。開啟後，LaTeX 可以用你的權限執行任何程式，而且它啟動的程式可能在你停止編譯後繼續執行。",
     "shell_escape_denied_command": "此文件會執行 shell 命令，但此專案封鎖了這項操作。如要允許，請點選編輯器上方橫幅中的「{{setting}}」。只有在你信任專案中的每個檔案時才這麼做。開啟後，LaTeX 可以用你的權限執行任何程式，而且它啟動的程式可能在你停止編譯後繼續執行。",
-    "japanese_compiler_missing": "你的 TeX 發行版沒有安裝 {{compiler}}。在 TeX Live 或 TinyTeX 中執行 tlmgr install collection-langjapanese 即可加入，也可以改用其他編譯器。"
+    "japanese_compiler_missing": "你的 TeX 發行版沒有安裝 {{compiler}}。在 TeX Live 或 TinyTeX 中執行 tlmgr install collection-langjapanese 即可加入，也可以改用其他編譯器。",
+    "compiler_crashed": "編譯器在完成前崩潰了，所以記錄檔停在它中斷的位置。請再編譯一次。如果每次都崩潰，請在編譯選單中選擇其他編譯器。",
+    "compiler_crashed_font": "Tectonic 在尋找字型「{{font}}」時崩潰了，這台電腦上可能沒有安裝這個字型。請安裝該字型，或在編譯選單中選擇 XeLaTeX 或 LuaLaTeX。它們會回報缺少字型，而不會崩潰。"
   },
   "export": {
     "bibliography_unreadable": "Oleafly 無法讀取參考文獻 {{name}}。請檢查其中是否有損壞的條目，然後重新匯出。"
@@ -195,6 +197,74 @@
       "declined": "程式未變更。",
       "check_running": "這個代理程式的測試已在執行中。",
       "main_window": "請在主視窗中變更代理程式所用的程式。"
+    },
+    "start": {
+      "cancelled": "已取消啟動。",
+      "owner_closed": "代理程式啟動期間，視窗或任務已關閉。",
+      "already_connected": "這個 ACP 工作階段已連線。",
+      "session_limit": "已有 8 個 ACP 工作階段處於連線狀態。請先中斷其中一個連線，再啟動新的工作階段。",
+      "v1_only": "這個代理程式只支援 ACP 版本 1。",
+      "unsupported_version": "這個代理程式不支援 ACP 版本 {{version}}。",
+      "cannot_resume": "這個代理程式無法接續已儲存的工作階段。請開始新的對話以繼續工作。",
+      "conversation_gone": "代理程式已不再保有這段對話。請開始新的對話。",
+      "not_installed": "這個代理程式尚未安裝。請安裝它，或在設定中選擇它的程式。",
+      "program_missing": "為這個代理程式選擇的程式已不存在。請在設定中重新選擇。",
+      "node_needed": "請安裝 Node.js 以執行這個代理程式。",
+      "node_missing": "請安裝 Node.js {{required}} 或以上版本以執行這個代理程式。",
+      "node_outdated": "這個代理程式需要 Node.js {{required}} 或以上版本。偵測到的版本為 {{major}}。",
+      "bridge_outdated": "這台電腦上的 {{package}} {{found}} 版本太舊。Oleafly 需要 {{pinned}} 或以上版本。請在設定中安裝橋接程式。",
+      "spawn_failed": "無法啟動代理程式。請檢查它的安裝狀態與執行權限。（{{kind}}：{{path}}）",
+      "remote_not_set_up": "請先在 Hermes 的設定中完成遠端機器的設定。",
+      "ssh_missing": "Oleafly 在這台電腦上找不到 ssh。請安裝 OpenSSH，然後再試一次。",
+      "moved_to_local": "這段對話先前在另一台機器上執行，而 Hermes 現在在這台電腦上執行。請開始新的對話以繼續。",
+      "moved_to_remote": "這段對話先前在這台電腦上執行，而 Hermes 現在在另一台機器上執行。請開始新的對話以繼續。",
+      "moved_machine": "這段對話執行時所在的機器，與 Hermes 目前使用的機器不同。請開始新的對話以繼續。",
+      "moved_profile": "這段對話先前在另一個 Hermes 設定檔中執行。請將專案切換回該設定檔，或開始新的對話。"
+    },
+    "session": {
+      "disconnected": "代理程式已中斷連線。",
+      "disconnected_with_output": "代理程式已中斷連線。代理程式的最後輸出：{{output}}",
+      "disconnected_command_help": "代理程式已中斷連線。它回傳了命令列說明，表示這個版本不接受 Oleafly 啟動它時使用的選項。",
+      "no_reply": "代理程式在回覆前中斷了連線。",
+      "no_reply_with_output": "代理程式在回覆前中斷了連線。代理程式的最後輸出：{{output}}",
+      "no_reply_command_help": "代理程式在回覆前中斷了連線。它回傳了命令列說明，表示這個版本不接受 Oleafly 啟動它時使用的選項。",
+      "timed_out_stopped": "代理程式未及時回覆，已被停止。",
+      "timed_out_stopped_with_output": "代理程式未及時回覆，已被停止。代理程式的最後輸出：{{output}}",
+      "timed_out_stopped_command_help": "代理程式未及時回覆，已被停止。它回傳了命令列說明，表示這個版本不接受 Oleafly 啟動它時使用的選項。",
+      "timed_out": "代理程式未及時回覆。",
+      "silent": "代理程式已有 {{minutes}} 分鐘沒有傳送任何內容，因此 Oleafly 已將它停止。請重新連線以繼續。",
+      "not_connected": "代理程式目前未連線。",
+      "sign_in": "請登入這個代理程式，然後再試一次。",
+      "claude_gateway": "Claude Code 使用了自訂 API 端點。請檢查 shell 設定檔或 Claude Code 的 settings.json 中的 ANTHROPIC_BASE_URL 和 ANTHROPIC_AUTH_TOKEN，然後重新連線。",
+      "codex_setup": "Codex 回報它的設定有問題，輸出如下\n{{output}}",
+      "codex_key_rejected": "你的 {{provider}} 金鑰遭到拒絕。",
+      "codex_provider_key": "Codex 使用它 config.toml 中的 {{provider}} 供應商。請檢查 {{env_key}} 是否已設定且有效，然後重新連線。",
+      "codex_provider": "Codex 使用它 config.toml 中的 {{provider}} 供應商。請檢查該供應商的設定，然後重新連線。",
+      "transcript_not_saved": "無法儲存 ACP 對話記錄。為了保護已儲存的歷史記錄，代理程式已停止。",
+      "transcript_full": "這個工作階段的對話記錄已達大小上限。請開始新的對話。"
+    },
+    "turn": {
+      "no_stop_reason": "代理程式沒有回報這一輪是如何結束的。",
+      "stopped_early": "代理程式在完成這一輪之前就停止了。",
+      "codex_error": "Codex 因發生錯誤而停止了這一輪。"
+    },
+    "notice": {
+      "empty_turn": "代理程式沒有回覆就結束了這一輪。",
+      "empty_turn_advice": "請檢查代理程式的模型與登入狀態，然後再試一次。",
+      "outside_project": "Oleafly 拒絕了一個超出這個專案範圍的要求。",
+      "outside_project_path": "代理程式要求使用 {{path}}。代理程式只能使用專案內的檔案。",
+      "outside_project_rule": "代理程式只能使用專案內的檔案。",
+      "hermes_tools_lost": "Hermes 在模型變更時失去了專案工具。",
+      "hermes_tools_advice": "請重新連線以恢復這些工具。",
+      "route_failed": "Oleafly 無法透過你的 {{provider}} 金鑰轉送這個代理程式的要求。",
+      "unroute_failed": "Oleafly 無法停止透過你的 {{provider}} 金鑰轉送這個代理程式的要求。",
+      "codex_openai_only": "Codex 只能使用 OpenAI 金鑰。",
+      "no_saved_key": "這個供應商沒有已儲存的金鑰。",
+      "key_kind_unsupported": "這個代理程式無法使用這類金鑰。"
+    },
+    "install": {
+      "npm_unreachable": "Oleafly 無法連線到位於 {{host}} 的 npm 註冊庫（{{code}}）。請檢查網路連線、代理伺服器或 npm 註冊庫設定。",
+      "npm_timed_out": "從 {{host}} 安裝花費的時間太長，已停止。請檢查網路連線、代理伺服器或 npm 註冊庫設定。"
     }
   },
   "typst_toolchain": {

@@ -211,6 +211,7 @@ enum LineFrame {
     Line(String),
     /// A message in Oleafly's reserved namespace, ignored.
     Skip,
+    Stray(Vec<u8>),
     Truncated {
         bytes: usize,
         message: Value,
@@ -251,7 +252,9 @@ async fn read_line_frame<R: AsyncBufRead + Unpin>(
         return Ok(None);
     };
     if bytes.len() <= MAX_FRAME {
-        let method = checked_envelope(&bytes)?;
+        let Ok(method) = checked_envelope(&bytes) else {
+            return Ok(Some(LineFrame::Stray(bytes)));
+        };
         if method
             .as_deref()
             .is_some_and(|method| method.starts_with("_oleafly/"))
@@ -270,10 +273,75 @@ async fn read_line_frame<R: AsyncBufRead + Unpin>(
             message,
         })),
         Some(None) => Ok(Some(LineFrame::Dropped { bytes: bytes.len() })),
-        None => Err(RpcError::local(
+        None => match oversized_permission(&bytes) {
+            Some(message) => Ok(Some(LineFrame::Truncated {
+                bytes: bytes.len(),
+                message,
+            })),
+            None => oversized_other(bytes),
+        },
+    }
+}
+
+fn oversized_other(bytes: Vec<u8>) -> Result<Option<LineFrame>, RpcError> {
+    match checked_envelope(&bytes) {
+        Ok(_) => Err(RpcError::local(
             "The agent sent an ACP message larger than 1 MiB.",
         )),
+        Err(_) => Ok(Some(LineFrame::Stray(bytes))),
     }
+}
+
+fn oversized_permission(bytes: &[u8]) -> Option<Value> {
+    let message: Value = serde_json::from_slice(bytes).ok()?;
+    if message["jsonrpc"] != "2.0"
+        || message["method"] != "session/request_permission"
+        || message.get("id").is_none_or(Value::is_null)
+    {
+        return None;
+    }
+    let params = &message["params"];
+    let call = &params["toolCall"];
+    let mut kept = serde_json::Map::new();
+    for key in ["toolCallId", "title", "kind", "status"] {
+        if let Some(text) = call[key].as_str().filter(|text| text.len() <= 1024) {
+            kept.insert(key.into(), Value::String(text.to_owned()));
+        }
+    }
+    let diff_paths: Vec<&str> = call["content"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|item| item["type"] == "diff")
+        .filter_map(|item| item["path"].as_str())
+        .collect();
+    let mut paths: Vec<&str> = Vec::new();
+    for path in crate::paths::permission_paths(call).chain(diff_paths.iter().copied()) {
+        if path.len() <= 4096 && !paths.contains(&path) && paths.len() < 64 {
+            paths.push(path);
+        }
+    }
+    kept.insert(
+        "locations".into(),
+        Value::Array(paths.iter().map(|path| json!({"path": path})).collect()),
+    );
+    kept.insert(
+        "content".into(),
+        Value::Array(
+            diff_paths
+                .iter()
+                .take(64)
+                .map(|path| json!({"type": "diff", "path": path, "oldText": null, "newText": null}))
+                .collect(),
+        ),
+    );
+    let cut = json!({
+        "jsonrpc": "2.0",
+        "id": message["id"],
+        "method": "session/request_permission",
+        "params": {"sessionId": params["sessionId"], "toolCall": kept, "options": params["options"]},
+    });
+    (serde_json::to_vec(&cut).ok()?.len() < MAX_FRAME / 2).then_some(cut)
 }
 
 fn dropped_notice(bytes: usize) -> String {
@@ -282,27 +350,30 @@ fn dropped_notice(bytes: usize) -> String {
 }
 
 /// The incoming half: agent lines, each checked, cut or dropped as above.
-/// The first unreadable or invalid line ends the stream with an error.
-pub(crate) fn incoming_lines<R>(
+/// The first unreadable line ends the stream with an error.
+pub(crate) fn incoming_lines<R, F>(
     stdout: R,
+    on_stray: F,
 ) -> impl Stream<Item = io::Result<String>> + Send + 'static
 where
     R: AsyncRead + Send + Unpin + 'static,
+    F: FnMut(&[u8]) + Send + 'static,
 {
     futures::stream::unfold(
-        Some((BufReader::new(stdout), VecDeque::<String>::new())),
+        Some((BufReader::new(stdout), VecDeque::<String>::new(), on_stray)),
         |state| async move {
-            let (mut reader, mut queued) = state?;
+            let (mut reader, mut queued, mut on_stray) = state?;
             loop {
                 if let Some(line) = queued.pop_front() {
-                    return Some((Ok(line), Some((reader, queued))));
+                    return Some((Ok(line), Some((reader, queued, on_stray))));
                 }
                 match read_line_frame(&mut reader).await {
                     Ok(None) => return None,
                     Ok(Some(LineFrame::Line(line))) => {
-                        return Some((Ok(line), Some((reader, queued))));
+                        return Some((Ok(line), Some((reader, queued, on_stray))));
                     }
                     Ok(Some(LineFrame::Skip)) => {}
+                    Ok(Some(LineFrame::Stray(bytes))) => on_stray(&bytes),
                     Ok(Some(LineFrame::Truncated { bytes, message })) => {
                         queued.push_back(message.to_string());
                         queued.push_back(dropped_notice(bytes));
@@ -353,9 +424,10 @@ where
 }
 
 /// The SDK transport over an agent's stdout and stdin.
-pub(crate) fn line_transport<R, W>(
+pub(crate) fn line_transport<R, W, F>(
     stdout: R,
     stdin: W,
+    on_stray: F,
 ) -> Lines<
     impl Sink<String, Error = io::Error> + Send + 'static,
     impl Stream<Item = io::Result<String>> + Send + 'static,
@@ -363,8 +435,9 @@ pub(crate) fn line_transport<R, W>(
 where
     R: AsyncRead + Send + Unpin + 'static,
     W: AsyncWrite + Send + Unpin + 'static,
+    F: FnMut(&[u8]) + Send + 'static,
 {
-    Lines::new(outgoing_lines(stdin), incoming_lines(stdout))
+    Lines::new(outgoing_lines(stdin), incoming_lines(stdout, on_stray))
 }
 
 #[cfg(test)]
