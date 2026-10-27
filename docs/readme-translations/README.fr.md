@@ -119,22 +119,22 @@ Choisissez un agent dans le catalogue et il travaille dans votre projet, avec la
 <div align="center">
 <table>
   <tr>
-    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/anthropic" alt="" width="40" height="40" /><br />Claude&nbsp;Code</td>
-    <td align="center" valign="top" width="135"><img src="https://api.iconify.design/logos:openai-icon.svg" alt="" width="40" height="40" /><br />Codex&nbsp;CLI</td>
-    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/googlegemini" alt="" width="40" height="40" /><br />Gemini&nbsp;CLI</td>
-    <td align="center" valign="top" width="135"><img src="https://pi.dev/favicon.svg" alt="" width="40" height="40" /><br />Pi</td>
-    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/opencode" alt="" width="40" height="40" /><br />OpenCode</td>
-    <td align="center" valign="top" width="135"><img src="https://openclaw.ai/favicon.svg" alt="" width="40" height="40" /><br />OpenClaw</td>
-    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/cline" alt="" width="40" height="40" /><br />Cline</td>
+    <td align="center" valign="top" width="135"><img src="../assets/readme/agents/claude-code.svg" alt="" width="40" height="40" /><br />Claude&nbsp;Code</td>
+    <td align="center" valign="top" width="135"><img src="../assets/readme/agents/codex.svg" alt="" width="40" height="40" /><br />Codex&nbsp;CLI</td>
+    <td align="center" valign="top" width="135"><img src="../assets/readme/agents/gemini-cli.svg" alt="" width="40" height="40" /><br />Gemini&nbsp;CLI</td>
+    <td align="center" valign="top" width="135"><img src="../assets/readme/agents/pi.svg" alt="" width="40" height="40" /><br />Pi</td>
+    <td align="center" valign="top" width="135"><img src="../assets/readme/agents/opencode.svg" alt="" width="40" height="40" /><br />OpenCode</td>
+    <td align="center" valign="top" width="135"><img src="../assets/readme/agents/openclaw.svg" alt="" width="40" height="40" /><br />OpenClaw</td>
+    <td align="center" valign="top" width="135"><img src="../assets/readme/agents/cline.svg" alt="" width="40" height="40" /><br />Cline</td>
   </tr>
   <tr>
-    <td align="center" valign="top" width="135"><img src="https://hermes-agent.nousresearch.com/favicon.ico" alt="" width="40" height="40" /><br />Hermes&nbsp;Agent</td>
-    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/codebuddy" alt="" width="40" height="40" /><br />CodeBuddy</td>
-    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/kimi" alt="" width="40" height="40" /><br />Kimi&nbsp;Code</td>
-    <td align="center" valign="top" width="135"><img src="https://grok.com/images/favicon.svg" alt="" width="40" height="40" /><br />Grok&nbsp;Build</td>
-    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/cursor" alt="" width="40" height="40" /><br />Cursor</td>
-    <td align="center" valign="top" width="135"><img src="https://cdn.simpleicons.org/deepseek" alt="" width="40" height="40" /><br />DeepSeek Harness</td>
-    <td align="center" valign="top" width="135"><img src="https://qoder.com/favIcon.svg" alt="" width="40" height="40" /><br />Qoder</td>
+    <td align="center" valign="top" width="135"><img src="../assets/readme/agents/hermes-agent.svg" alt="" width="40" height="40" /><br />Hermes&nbsp;Agent</td>
+    <td align="center" valign="top" width="135"><img src="../assets/readme/agents/codebuddy.svg" alt="" width="40" height="40" /><br />CodeBuddy</td>
+    <td align="center" valign="top" width="135"><img src="../assets/readme/agents/kimi-code.svg" alt="" width="40" height="40" /><br />Kimi&nbsp;Code</td>
+    <td align="center" valign="top" width="135"><img src="../assets/readme/agents/grok.svg" alt="" width="40" height="40" /><br />Grok&nbsp;Build</td>
+    <td align="center" valign="top" width="135"><img src="../assets/readme/agents/cursor.svg" alt="" width="40" height="40" /><br />Cursor</td>
+    <td align="center" valign="top" width="135"><img src="../assets/readme/agents/deepseek-harness.png" alt="" width="40" height="40" /><br />DeepSeek Harness</td>
+    <td align="center" valign="top" width="135"><img src="../assets/readme/agents/qoder.svg" alt="" width="40" height="40" /><br />Qoder</td>
   </tr>
 </table>
 </div>
@@ -146,9 +146,10 @@ Vous préférez un assistant de chat ? Connectez un fournisseur hébergé, n'imp
 - Chaque modification de fichier est un diff. Approuvez-les une par une, laissez l'assistant travailler seul ou définissez des règles par outil, et annulez un seul fichier ou tout un tour.
 - Le mode Plan cartographie le projet avant que quoi que ce soit ne soit écrit.
 - Une revue de littérature ou une passe de révision peut s'exécuter dans son propre worktree Git pendant que vous continuez à écrire. Vous choisissez les fichiers modifiés à conserver.
-- L'application inclut 39 skills de recherche, dont l'exploration de la littérature, les travaux connexes, la vérification des affirmations et les lettres de réponse aux évaluateurs.
+- L'application inclut 39 skills de recherche, dont l'exploration de la littérature, les travaux connexes, la vérification des affirmations et les lettres de réponse aux évaluateurs. `npx skills add Oleafly/Oleafly` les installe aussi dans Claude Code, Codex et d'autres agents.
 - Un serveur MCP local permet à un client IA externe d'utiliser les mêmes outils de projet. Il n'écoute que sur 127.0.0.1.
 - `oleafly mcp` donne à Claude Code, Codex, Cursor et Gemini CLI les outils du projet via stdio, que l'application soit ouverte ou fermée.
+- Chaque version inclut `oleafly.mcpb`. Ouvrez-le et Claude Desktop installe Oleafly comme extension. Le registre MCP le référence sous `io.github.Oleafly/oleafly`.
 
 L'IA est facultative. L'éditeur, le compilateur, le PDF, les citations, la relecture et les vérifications fonctionnent tous quand elle est désactivée.
 

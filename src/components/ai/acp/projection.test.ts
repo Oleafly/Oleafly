@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { applyLocale } from "@/i18n";
+import zhErrors from "@/i18n/locales/zh-Hans/errors.json" with { type: "json" };
 import type { AcpEvent } from "@/lib/acp";
+import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
 import { createAcpProjector, projectAcpEvents } from "./projection";
 
@@ -536,5 +539,68 @@ describe("ACP projection details", () => {
   it("records the turn of every row", () => {
     const rows = projectAcpEvents([chunk(1, "Hello")], false);
     expect(rows[0].msg.turnId).toBe("turn-1");
+  });
+});
+
+describe("ACP failures Oleafly reports", () => {
+  const coded = (code: string, params: Record<string, string> = {}) =>
+    `${APP_ERROR_PREFIX}${JSON.stringify({ code, params, detail: null })}`;
+
+  afterEach(async () => {
+    resetDisplayHomes();
+    await applyLocale("en");
+  });
+
+  it("shows a coded turn error and a coded notice in the app's language", async () => {
+    await applyLocale("zh-Hans");
+    const rows = projectAcpEvents([
+      chunk(1, "Reading the manuscript."),
+      event(2, "notice", {
+        severity: "warning",
+        title: coded("acp.notice.outside_project"),
+        description: coded("acp.notice.outside_project_path", { path: "/etc/hosts" }),
+      }),
+      event(3, "turn_complete", { stopReason: "error", error: coded("acp.session.silent", { minutes: "20" }) }),
+    ], false);
+
+    const notice = `${zhErrors.acp.notice.outside_project}: ${zhErrors.acp.notice.outside_project_path.replace("{{path}}", "/etc/hosts")}`;
+    expect(rows[1].msg.notices).toEqual([notice]);
+    expect(rows[2].msg.content).toBe(zhErrors.acp.session.silent.replace("{{minutes}}", "20"));
+    expect(JSON.stringify(rows)).not.toContain(APP_ERROR_PREFIX);
+  });
+
+  it("shows paths in a coded error with the home folder as ~", () => {
+    setDisplayHomes(["/Users/ada"]);
+    const rows = projectAcpEvents([
+      event(1, "status", {
+        status: "failed",
+        error: coded("acp.start.spawn_failed", { kind: "NotFound", path: "/Users/ada/bin/agent" }),
+      }),
+    ], false);
+    expect(rows[0].msg.content).toBe(
+      "The agent could not be started. Check its installation and executable permissions. (NotFound: ~/bin/agent)",
+    );
+  });
+
+  it("says a coded failure once when the status repeats it", () => {
+    const failure = coded("acp.session.no_reply_with_output", { output: "panic: boom" });
+    const rows = projectAcpEvents([
+      chunk(1, "Working on it"),
+      event(2, "turn_complete", { stopReason: "error", error: failure }),
+      event(3, "status", { status: "disconnected", error: failure }),
+    ], false);
+    expect(rows.map((row) => row.msg.content)).toEqual([
+      "Working on it",
+      "The agent disconnected before replying. Last output from the agent: panic: boom",
+    ]);
+  });
+
+  it("passes plain errors and notices from older records through unchanged", () => {
+    const rows = projectAcpEvents([
+      event(1, "notice", { severity: "warning", title: "The agent ended its turn without replying.", description: "Check the agent's model and sign-in, then try again." }),
+      event(2, "turn_complete", { stopReason: "error", error: "The agent did not reply in time and was stopped." }),
+    ], false);
+    expect(rows[0].msg.notices).toEqual(["The agent ended its turn without replying.: Check the agent's model and sign-in, then try again."]);
+    expect(rows[1].msg.content).toBe("The agent did not reply in time and was stopped.");
   });
 });

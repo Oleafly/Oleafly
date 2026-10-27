@@ -87,12 +87,22 @@ pub async fn start_configured(app: AppHandle, _preferred_port: u16) -> Result<u1
     Ok(port)
 }
 
+/// The MCP bridge lives in the main window; no other webview may drive it.
+fn require_bridge_webview<R: tauri::Runtime>(webview: &tauri::Webview<R>) -> Result<(), String> {
+    match crate::caller::own_window_label(webview).as_deref() {
+        Some("main") => Ok(()),
+        _ => Err("The MCP bridge only runs in the main window.".into()),
+    }
+}
+
 #[tauri::command]
 pub async fn mcp_set_active_project(
+    webview: tauri::Webview,
     app: AppHandle,
     project_id: Option<String>,
     renderer_session: u64,
 ) -> Result<(), String> {
+    require_bridge_webview(&webview)?;
     let state = app.state::<McpState>();
     let _lifecycle = state.lifecycle.lock().await;
     if !server::renderer_session_is_fresh(&state, renderer_session) {
@@ -108,26 +118,42 @@ pub async fn mcp_set_active_project(
 }
 
 #[tauri::command]
-pub async fn mcp_begin_renderer_session(app: AppHandle) -> Result<u64, String> {
+pub async fn mcp_begin_renderer_session(
+    webview: tauri::Webview,
+    app: AppHandle,
+) -> Result<u64, String> {
+    require_bridge_webview(&webview)?;
     server::begin_renderer_session(&app).await
 }
 
 #[tauri::command]
-pub async fn mcp_renderer_heartbeat(app: AppHandle, renderer_session: u64) -> Result<(), String> {
+pub async fn mcp_renderer_heartbeat(
+    webview: tauri::Webview,
+    app: AppHandle,
+    renderer_session: u64,
+) -> Result<(), String> {
+    require_bridge_webview(&webview)?;
     server::renderer_heartbeat(&app, renderer_session).await
 }
 
 #[tauri::command]
-pub async fn mcp_end_renderer_session(app: AppHandle, renderer_session: u64) -> Result<(), String> {
+pub async fn mcp_end_renderer_session(
+    webview: tauri::Webview,
+    app: AppHandle,
+    renderer_session: u64,
+) -> Result<(), String> {
+    require_bridge_webview(&webview)?;
     server::end_renderer_session(&app, renderer_session).await
 }
 
 #[tauri::command]
 pub async fn mcp_register_tools(
+    webview: tauri::Webview,
     app: AppHandle,
     tools: Vec<ToolMeta>,
     renderer_session: u64,
 ) -> Result<(), String> {
+    require_bridge_webview(&webview)?;
     if tools.is_empty() {
         return Err("MCP tool registration must contain at least one tool".into());
     }
@@ -174,11 +200,13 @@ pub async fn mcp_register_tools(
 
 #[tauri::command]
 pub async fn mcp_tool_result<R: tauri::Runtime>(
+    webview: tauri::Webview<R>,
     app: AppHandle<R>,
     call_id: u64,
     result: Value,
     renderer_session: u64,
 ) -> Result<(), String> {
+    require_bridge_webview(&webview)?;
     server::deliver_renderer_result(&app.state::<McpState>(), call_id, result, renderer_session);
     Ok(())
 }
@@ -353,8 +381,34 @@ pub async fn mcp_regenerate_token(app: AppHandle) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{configured_start_candidate, finish_disable};
+    use super::{configured_start_candidate, finish_disable, require_bridge_webview};
     use std::sync::atomic::{AtomicBool, Ordering};
+
+    #[test]
+    fn only_the_main_window_drives_the_bridge() {
+        let app = tauri::test::mock_builder()
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let main = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .unwrap();
+        let preview = tauri::WebviewWindowBuilder::new(&app, "preview", Default::default())
+            .build()
+            .unwrap();
+        let child = main
+            .as_ref()
+            .window()
+            .add_child(
+                tauri::webview::WebviewBuilder::new("main-child", Default::default()),
+                tauri::LogicalPosition::new(0, 0),
+                tauri::LogicalSize::new(400, 600),
+            )
+            .unwrap();
+
+        assert!(require_bridge_webview(main.as_ref()).is_ok());
+        assert!(require_bridge_webview(preview.as_ref()).is_err());
+        assert!(require_bridge_webview(&child).is_err());
+    }
 
     #[test]
     fn disabled_intent_is_persisted_even_when_stop_cleanup_fails() {

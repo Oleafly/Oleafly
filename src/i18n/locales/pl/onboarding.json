@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "Dwa rodzaje agenta",
-      "content": "Agent Oleafly działa na skonfigurowanym dostawcy modeli. Agent wiersza poleceń, w wersji beta, steruje agentem programistycznym zainstalowanym już na tym komputerze."
+      "content": "Agent Oleafly działa na skonfigurowanym dostawcy modeli. Agent wiersza poleceń steruje agentem programistycznym zainstalowanym już na tym komputerze."
     },
     "connectProvider": {
       "title": "Podłącz dostawcę",

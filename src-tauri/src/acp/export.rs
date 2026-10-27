@@ -63,7 +63,9 @@ fn relative_text(text: &str, roots: &[String]) -> String {
 fn exported_event(event: &super::types::AcpEvent, roots: &[String]) -> super::types::AcpEvent {
     fn walk(value: &mut Value, roots: &[String]) {
         match value {
-            Value::String(text) => *text = relative_text(text, roots),
+            Value::String(text) => {
+                *text = relative_text(&crate::app_error::english_error(text), roots)
+            }
             Value::Array(values) => values.iter_mut().for_each(|value| walk(value, roots)),
             Value::Object(values) => values.values_mut().for_each(|value| walk(value, roots)),
             _ => {}
@@ -159,6 +161,9 @@ fn exported_session(session: &SessionRecord) -> Result<Value, String> {
     if let Some(object) = value.as_object_mut() {
         object.shift_remove("projectPath");
         object.shift_remove("remote");
+        if let Some(Value::String(error)) = object.get_mut("error") {
+            *error = crate::app_error::english_error(error);
+        }
     }
     Ok(value)
 }
@@ -243,6 +248,45 @@ mod tests {
             &roots,
         );
         assert!(diagnostics.data.get("stderr").is_none());
+    }
+
+    #[test]
+    fn coded_failures_are_exported_as_english_sentences() {
+        let roots = project_spellings("/Users/me/thesis", "/Users/me/thesis", None);
+        let failure: String = crate::app_error::AppError::new("acp.start.spawn_failed")
+            .param("kind", "NotFound")
+            .param("path", "/Users/me/thesis/bin/agent")
+            .into();
+        let notice = exported_event(
+            &event(
+                "notice",
+                json!({"title": super::super::failures::coded(super::super::failures::EMPTY_TURN),
+                    "description": "plain words"}),
+            ),
+            &roots,
+        );
+        assert_eq!(
+            notice.data["title"],
+            "The agent ended its turn without replying."
+        );
+        assert_eq!(notice.data["description"], "plain words");
+        let ended = exported_event(
+            &event("status", json!({"status": "failed", "error": failure})),
+            &roots,
+        );
+        assert_eq!(
+            ended.data["error"],
+            "The agent could not be started. Check its installation and executable permissions. (NotFound: bin/agent)"
+        );
+        let session = exported_session(&SessionRecord {
+            error: Some(failure),
+            ..SessionRecord::default()
+        })
+        .unwrap();
+        assert!(session["error"]
+            .as_str()
+            .unwrap()
+            .starts_with("The agent could not be started."));
     }
 
     #[test]

@@ -54,6 +54,9 @@ pub enum ContentPart {
     RedactedThinking {
         data: String,
     },
+    Reasoning {
+        text: String,
+    },
     /// A block only one wire understands (server tool calls, their results,
     /// cited text), replayed verbatim on that wire and skipped on others.
     ProviderBlock {
@@ -260,6 +263,22 @@ mod tests {
             })
             .unwrap()["thinking"],
             ""
+        );
+    }
+
+    #[test]
+    fn a_reasoning_part_round_trips_apart_from_anthropic_thinking() {
+        let part: ContentPart =
+            serde_json::from_str(r#"{"type":"reasoning","text":"checked the units"}"#).unwrap();
+        assert_eq!(
+            part,
+            ContentPart::Reasoning {
+                text: "checked the units".into()
+            }
+        );
+        assert_eq!(
+            serde_json::to_value(&part).unwrap(),
+            serde_json::json!({"type":"reasoning","text":"checked the units"})
         );
     }
 

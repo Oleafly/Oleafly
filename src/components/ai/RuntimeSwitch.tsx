@@ -4,16 +4,14 @@ import {
   useAssistantRuntimeStore,
   type AssistantRuntime,
 } from "@/store/assistant-runtime";
-import { BetaBadge } from "@/components/ui/beta-badge";
 import { cn } from "@/lib/utils";
 
 const RUNTIMES: ReadonlyArray<{
   value: AssistantRuntime;
   labelKey: "builtIn" | "cli";
-  beta?: boolean;
 }> = [
   { value: "built-in", labelKey: "builtIn" },
-  { value: "acp", labelKey: "cli", beta: true },
+  { value: "acp", labelKey: "cli" },
 ];
 
 export function RuntimeSwitch() {
@@ -30,7 +28,7 @@ export function RuntimeSwitch() {
       className="flex shrink-0 items-center rounded-md bg-muted p-0.5"
       aria-label={t(($) => $.ai.runtime.ariaLabel)}
     >
-      {RUNTIMES.map(({ value, labelKey, beta }) => (
+      {RUNTIMES.map(({ value, labelKey }) => (
         <button
           key={value}
           type="button"
@@ -45,7 +43,6 @@ export function RuntimeSwitch() {
           )}
         >
           <span>{labels[labelKey]}</span>
-          {beta ? <BetaBadge className="leading-[0.8125rem]" /> : null}
         </button>
       ))}
     </fieldset>

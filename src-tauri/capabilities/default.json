@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default capabilities for the Oleafly main, update, preview, and presentation windows.",
-  "windows": ["main", "update", "preview", "presentation", "presenter"],
+  "description": "The main window. Native file dialogs run in Rust, so the dialog plugin is not exposed to any window.",
+  "windows": ["main"],
   "permissions": [
     "core:default",
     "core:webview:allow-create-webview-window",
@@ -23,11 +23,6 @@
     "os:default",
     "clipboard-manager:allow-read-text",
     "clipboard-manager:allow-write-text",
-    "dialog:allow-open",
-    "dialog:allow-save",
-    "dialog:allow-ask",
-    "dialog:allow-message",
-    "updater:allow-check",
-    "process:allow-restart"
+    "updater:allow-check"
   ]
 }

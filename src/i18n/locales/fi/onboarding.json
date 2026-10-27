@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "Kahdenlaisia agentteja",
-      "content": "Oleafly-agentti toimii määritetyllä mallipalvelulla. Beta-vaiheessa oleva komentoriviagentti ohjaa tälle koneelle jo asennettua koodiagenttia."
+      "content": "Oleafly-agentti toimii määritetyllä mallipalvelulla. Komentoriviagentti ohjaa tälle koneelle jo asennettua koodiagenttia."
     },
     "connectProvider": {
       "title": "Yhdistä palvelu",

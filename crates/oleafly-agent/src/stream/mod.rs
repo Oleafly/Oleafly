@@ -42,6 +42,17 @@ pub fn is_output_limit_stop(reason: Option<&str>) -> bool {
     })
 }
 
+pub(crate) fn out_of_capacity(reason: Option<&str>) -> Option<AgentError> {
+    reason
+        .is_some_and(|reason| reason.trim() == "insufficient_system_resource")
+        .then(|| {
+            AgentError::provider(
+                503,
+                "The provider ran out of capacity before the reply finished.",
+            )
+        })
+}
+
 /// The model declined to answer.
 pub fn is_refusal_stop(reason: Option<&str>) -> bool {
     reason.is_some_and(|reason| {
@@ -345,6 +356,15 @@ fn finalize<F: FnMut(AgentEvent)>(
 ) -> Result<StreamOutcome> {
     if let Some(error) = translator.take_error() {
         return Err(error);
+    }
+    if translator.ended_without_finishing()
+        && outcome.text.is_empty()
+        && outcome.reasoning.is_empty()
+        && !translator.has_tool_calls()
+    {
+        return Err(AgentError::Transport(
+            "The connection closed before the model sent anything.".into(),
+        ));
     }
     for agent_event in translator.finish() {
         budget.observe(&agent_event)?;

@@ -283,6 +283,21 @@ function sentUserMessage(before: number, sessionId: string): boolean {
   return events.some((event) => event.sequence > before && event.kind === "user_message");
 }
 
+const startsUnderWay = new Map<string, { agentId: string; done: Promise<void> }>();
+
+function singleStart(projectId: string, agentId: string, launch: () => Promise<void>): Promise<void> {
+  const current = startsUnderWay.get(projectId);
+  if (current?.agentId === agentId) return current.done;
+  const done: Promise<void> = (current?.done ?? Promise.resolve())
+    .catch(() => {})
+    .then(launch)
+    .finally(() => {
+      if (startsUnderWay.get(projectId)?.done === done) startsUnderWay.delete(projectId);
+    });
+  startsUnderWay.set(projectId, { agentId, done });
+  return done;
+}
+
 export const useAcpSessionsStore = create<AcpState>((set, get) => ({
   catalog: [], sessions: {}, activeByProject: {}, events: {}, permissions: {}, elicitations: {}, composers: {},
   queues: {}, watched: {}, sending: {}, earlierLoaded: {}, errors: {}, sessionErrors: {}, starting: {},
@@ -319,7 +334,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     return { activeByProject, ...withoutEvents(state, previous), ...leftQueue(state, previous) };
   }),
   setComposer: (projectId, patch) => set((state) => ({ composers: { ...state.composers, [projectId]: { ...EMPTY_COMPOSER, ...state.composers[projectId], ...patch } } })),
-  start: async (projectId, agentId) => {
+  start: (projectId, agentId) => singleStart(projectId, agentId, async () => {
     set((state) => ({ starting: { ...state.starting, [projectId]: true } }));
     try {
       const openId = get().activeByProject[projectId];
@@ -343,7 +358,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     } finally {
       set((state) => ({ starting: { ...state.starting, [projectId]: false } }));
     }
-  },
+  }),
   open: async (projectId, id) => {
     get().setActive(projectId, id);
     const snapshot = await acpSnapshot(projectId, id);

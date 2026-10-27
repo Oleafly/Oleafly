@@ -887,3 +887,58 @@ async fn a_message_delivered_in_a_turn_that_fails_is_reported_as_delivered() {
     );
     runtime.close(&id).await.unwrap();
 }
+
+#[tokio::test]
+async fn a_turn_the_agent_marks_as_a_system_error_ends_as_an_error_not_a_reply() {
+    let (_temp, runtime, session) = runtime(Vec::new()).await;
+    let id = session.session.id.clone();
+    let body = r#"{"error": {"message": "The 'gpt-x' model is not supported with this provider.", "type": "invalid_request_error"}}"#;
+    let error = runtime
+        .prompt(&id, format!("system-error:{body}"), Vec::new())
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        "The 'gpt-x' model is not supported with this provider."
+    );
+    let events = runtime.events_all(&id).unwrap();
+    assert_eq!(texts(&events), "");
+    let complete = events
+        .iter()
+        .rev()
+        .find(|event| event.kind == "turn_complete")
+        .unwrap();
+    assert_eq!(complete.data["stopReason"], "error");
+    assert_eq!(complete.data["error"], json!(error));
+    let snapshot = runtime.snapshot(&id).await.unwrap();
+    assert_eq!(snapshot.session.status, SessionStatus::Ready);
+    runtime
+        .prompt(&id, "after the error".into(), Vec::new())
+        .await
+        .unwrap();
+    assert!(texts(&runtime.events_all(&id).unwrap()).contains("Fixture answer: after the error"));
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_system_error_that_reads_as_a_rejected_key_asks_for_sign_in() {
+    let (_temp, runtime, session) = runtime(Vec::new()).await;
+    let id = session.session.id.clone();
+    let error = runtime
+        .prompt(
+            &id,
+            "system-error:unexpected status 401 Unauthorized: Incorrect API key provided".into(),
+            Vec::new(),
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        "unexpected status 401 Unauthorized: Incorrect API key provided"
+    );
+    assert_eq!(
+        runtime.snapshot(&id).await.unwrap().session.status,
+        SessionStatus::AuthRequired
+    );
+    runtime.close(&id).await.unwrap();
+}

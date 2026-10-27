@@ -19,6 +19,7 @@ interface RunOutcome {
   stopped_at_cap: boolean;
   error: string | null;
   stop_reason?: string | null;
+  error_kind?: string | null;
 }
 
 interface HarnessOptions {
@@ -42,6 +43,9 @@ interface HarnessOptions {
     ) => void;
     onRetry?: (attempt: number, max: number) => void;
     onNotice?: (code: string, detail: string | null) => void;
+    onReasoningStart?: () => void;
+    onReasoningDelta?: (chunk: string) => void;
+    onReasoningEnd?: () => void;
   };
 }
 
@@ -386,7 +390,8 @@ vi.mock("@/components/ai/chat-parts", async () => {
       mocks.shimmerText = text;
       return null;
     },
-    formatError: (error: unknown) => String(error),
+    formatError: (error: unknown, _label?: string, kind?: string | null) =>
+      kind ? `[${kind}] ${String(error)}` : String(error),
     formatToolOutput: (output: unknown) =>
       typeof output === "string" ? output : JSON.stringify(output),
   };
@@ -2005,6 +2010,48 @@ describe("ChatCore message actions", () => {
       { role: "user", content: "Tidy the bibliography" },
     ]);
     await completeRun(1, "Tidied again.");
+  });
+
+  it("hands the run's error kind to the error text", async () => {
+    await renderChat();
+    sendFromComposer("Summarise the draft");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await completeRun(0, "", {
+      error: "Could not reach the provider. error sending request",
+      error_kind: "transport",
+    });
+    expect(savedMessages().at(-1)).toMatchObject({
+      content: "[transport] Could not reach the provider. error sending request",
+      failed: true,
+    });
+  });
+
+  it("sends a reply's reasoning back with it on the next turn", async () => {
+    await renderChat();
+    sendFromComposer("Fix the build");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    act(() => {
+      const handlers = mocks.runs[0].options.handlers;
+      handlers.onReasoningStart?.();
+      handlers.onReasoningDelta?.("The brace is missing.");
+      handlers.onReasoningEnd?.();
+    });
+    await completeRun(0, "Fixed.");
+
+    sendFromComposer("Thanks");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    expect(plainTranscript(mocks.runs[1].options.messages)).toEqual([
+      { role: "user", content: "Fix the build" },
+      {
+        role: "assistant",
+        content: [
+          { type: "reasoning", text: "The brace is missing." },
+          { type: "text", text: "Fixed." },
+        ],
+      },
+      { role: "user", content: "Thanks" },
+    ]);
+    await completeRun(1, "You're welcome.");
   });
 
   it("retries a failed reply", async () => {

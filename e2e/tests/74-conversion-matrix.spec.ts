@@ -12,6 +12,7 @@ import {
   compileAndProbe,
   createBlankProject,
   evaluateLong,
+  grantPickedPaths,
   readProjectText,
   setNextSavePath,
   waitLong,
@@ -57,6 +58,7 @@ async function goHome(page: Page) {
 
 /** Import a file as a project of the given kind through the real feature. */
 async function importFile(page: Page, path: string, target?: "latex" | "markdown" | "typst") {
+  await grantPickedPaths(page, [path]);
   await page.evaluate(
     `import("/src/features/project-import.ts").then((m) =>
       m.importSelectedFile(${scriptValue(path)}, ${scriptValue(target ?? null)}))`,
@@ -113,6 +115,7 @@ async function convertTable(page: Page, path: string, target: "latex" | "typst")
 test.describe("LaTeX project exports (registry routes)", () => {
   test("imports the paper zip and compiles it", async ({ tauriPage }) => {
     test.setTimeout(300_000);
+    await grantPickedPaths(tauriPage, [fixture("latex-paper.zip")]);
     await tauriPage.evaluate(
       `import("/src/store/files.ts").then((m) => m.useFilesStore.getState().importProject(${scriptValue(fixture("latex-paper.zip"))}))`,
     );

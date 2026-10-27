@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "Twee soorten agent",
-      "content": "De Oleafly-agent draait op de modelprovider die je instelt. De CLI-agent, nog in bèta, bestuurt een codeeragent die al op deze computer staat."
+      "content": "De Oleafly-agent draait op de modelprovider die je instelt. De CLI-agent bestuurt een codeeragent die al op deze computer staat."
     },
     "connectProvider": {
       "title": "Een provider verbinden",

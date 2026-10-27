@@ -49,7 +49,16 @@ ignore_cancel = False
 credential = ""
 pid_file = sys.argv[1] if len(sys.argv) > 1 else ""
 protocol = 1
-options = {"mode": argument("--start-mode") or "default", "model": "opus", "effort": "default", "fast": False}
+codex = "--codex-options" in sys.argv
+options = {"mode": argument("--start-mode") or ("agent" if codex else "default"), "model": "gpt-default" if codex else "opus",
+           "effort": "medium" if codex else "default", "fast": False}
+
+if sys.argv[-3:] == ["cli", "features", "list"]:
+    if argument("--codex-config-error"):
+        print("Error loading config.toml: " + argument("--codex-config-error"), file=sys.stderr, flush=True)
+        sys.exit(1)
+    print("undo stable false", flush=True)
+    sys.exit(0)
 
 if "--record-launch-count" in sys.argv:
     with open(declared_root / "launches.log", "a") as log:
@@ -86,13 +95,29 @@ def claude_options():
         {"id": "fast", "name": "Fast mode", "category": "model_config", "type": "boolean", "currentValue": options["fast"]},
     ]
 
+def codex_options():
+    listed = [
+        {"id": "mode", "name": "Approval Preset", "category": "mode", "type": "select", "currentValue": options["mode"],
+         "options": [{"value": "read-only", "name": "Read-only"}, {"value": "workspace-write", "name": "Workspace access"},
+                     {"value": "agent", "name": "Auto review"}, {"value": "agent-full-access", "name": "Full access"}]},
+        {"id": "model", "name": "Model", "category": "model", "type": "select", "currentValue": options["model"],
+         "options": [{"value": "gpt-default", "name": "GPT default"}, {"value": "gpt-other", "name": "GPT other"}]},
+    ]
+    if options["model"] != "gpt-default":
+        listed.append({"id": "reasoning_effort", "name": "Reasoning effort", "category": "thought_level", "type": "select",
+                       "currentValue": options["effort"],
+                       "options": [{"value": "low", "name": "Low"}, {"value": "medium", "name": "Medium"}, {"value": "high", "name": "High"}]})
+    return listed
+
 def session_result():
+    if codex:
+        return {"sessionId": native_id, "configOptions": codex_options()}
     if "--claude-options" in sys.argv:
         return {"sessionId": native_id, "configOptions": claude_options()}
     if "--legacy-modes" in sys.argv:
         return {"sessionId": native_id,
                 "modes": {"currentModeId": options["mode"], "availableModes": [{"id": "default", "name": "Default"}, {"id": "plan", "name": "Plan"}, {"id": "yolo", "name": "YOLO"}]},
-                "models": {"currentModelId": "fixture-model", "availableModels": [{"modelId": "fixture-model", "name": "Fixture model"}]}}
+                "models": {"currentModelId": "fixture-model", "availableModels": [{"modelId": "fixture-model", "name": "Fixture model"}, {"modelId": "fixture-second", "name": "Second model"}]}}
     return None
 
 def auth_methods():
@@ -185,9 +210,20 @@ for line in sys.stdin:
             send(around)
     elif method == "session/close":
         result(request, {})
+    elif method in ("session/resume", "session/load") and "--resume-not-found" in sys.argv:
+        missing = params.get("sessionId")
+        send({"id": request["id"], "error": {"code": -32002, "message": "Resource not found: " + str(missing), "data": {"uri": missing}}})
+    elif method == "session/resume" and "--resume-other-id" in sys.argv:
+        native_id = "fixture-other"
+        update("usage_update", used=10, size=1000)
+        result(request, {"_meta": {"hermes": {"sessionProvenance": {"acpSessionId": native_id}}},
+                         "configOptions": [{"id": "model-selector", "name": "Model", "type": "select", "category": "model", "currentValue": "fixture-model", "options": [{"value": "fixture-model", "name": "Fixture model"}]}]})
+        update("available_commands_update", availableCommands=[{"name": "help", "description": "List commands"}])
     elif method == "session/resume":
         native_id = params.get("sessionId", native_id)
         result(request, session_result() or {"configOptions": [{"id": "model-selector", "name": "Model", "type": "select", "category": "model", "currentValue": "fixture-model", "options": [{"value": "fixture-model", "name": "Fixture model"}]}]})
+    elif method == "session/set_model":
+        result(request, {})
     elif method == "session/set_mode":
         options["mode"] = params.get("modeId")
         result(request, {})
@@ -218,7 +254,7 @@ for line in sys.stdin:
         if "--record-mcp-servers" in sys.argv:
             (declared_root / "mcp-servers.json").write_text(json.dumps(servers))
         if "--record-launch" in sys.argv:
-            (declared_root / "launch.json").write_text(json.dumps({"cwd": params.get("cwd"), "processCwd": os.getcwd(), "path": os.environ.get("PATH", ""), "noCwdSearch": os.environ.get("NoDefaultCurrentDirectoryInExePath")}))
+            (declared_root / "launch.json").write_text(json.dumps({"cwd": params.get("cwd"), "processCwd": os.getcwd(), "path": os.environ.get("PATH", ""), "noCwdSearch": os.environ.get("NoDefaultCurrentDirectoryInExePath"), "initialMode": os.environ.get("INITIAL_AGENT_MODE")}))
         if servers and servers[0].get("headers"):
             credential = servers[0]["headers"][0]["value"].removeprefix("Bearer ")
         if not authenticated:
@@ -249,6 +285,10 @@ for line in sys.stdin:
         result(request, {"models": {"currentModelId": "fixture-model", "availableModels": [{"modelId": "fixture-model", "name": "Fixture model"}]}})
     elif method == "session/set_config_option" and "--refuse-mode" in sys.argv and params.get("configId") == "mode":
         send({"id": request["id"], "error": {"code": -32602, "message": "The mode cannot change"}})
+    elif method == "session/set_config_option" and codex:
+        key = "effort" if params["configId"] == "reasoning_effort" else params["configId"]
+        options[key] = params.get("value")
+        result(request, {"configOptions": codex_options()})
     elif method == "session/set_config_option" and ("--claude-options" in sys.argv):
         value = params.get("value")
         options[params["configId"]] = value
@@ -333,7 +373,27 @@ for line in sys.stdin:
             update("config_option_update", configOptions=claude_options())
             result(request, {"stopReason": "end_turn"})
             continue
+        if prompt.startswith("system-error:"):
+            update("session_info_update", _meta={"codex": {"threadStatus": {"type": "active", "activeFlags": []}}})
+            update("session_info_update", _meta={"codex": {"threadStatus": {"type": "systemError"}}})
+            update("agent_message_chunk", content={"type": "text", "text": prompt.split(":", 1)[1] + "\n\n"})
+            result(request, {"stopReason": "end_turn"})
+            continue
+        if prompt == "auth-required":
+            send({"id": request["id"], "error": {"code": -32000, "message": "Authentication required"}})
+            continue
+        if prompt == "empty-turn":
+            result(request, {"stopReason": "end_turn"})
+            continue
+        if prompt.startswith("auth-status:"):
+            kind = prompt.split(":", 1)[1]
+            label = "Not logged in" if kind == "none" else "Claude Max"
+            send({"method": "_auth/status_update", "params": {"authStatus": {"kind": kind, "label": label}}})
+            update("agent_message_chunk", content={"type": "text", "text": "Status sent."})
+            result(request, {"stopReason": "end_turn"})
+            continue
         if prompt == "outside-events":
+            update("agent_message_chunk", content={"type": "text", "text": "Done."})
             result(request, {"stopReason": "end_turn"})
             update("session_info_update", title="Agent title")
             update("notice", severity="warning", title="Heads up", description="d" * 5000)
@@ -439,7 +499,9 @@ for line in sys.stdin:
             result(pending_prompt, {"stopReason": "cancelled"})
             pending_prompt = None
     elif request.get("id") == "permission-wire" and pending_prompt:
-        update("agent_message_chunk", content={"type": "text", "text": "Permission outcome: " + request["result"]["outcome"]["outcome"]})
+        outcome = request["result"]["outcome"]
+        echoed = " " + str(outcome.get("optionId")) if "--echo-option" in sys.argv and outcome["outcome"] == "selected" else ""
+        update("agent_message_chunk", content={"type": "text", "text": "Permission outcome: " + outcome["outcome"] + echoed})
         result(pending_prompt, {"stopReason": "end_turn"})
         pending_prompt = None
     elif method:

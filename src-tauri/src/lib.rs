@@ -73,6 +73,7 @@ mod open_request;
 mod os_trash;
 mod overleaf;
 mod pandoc_citations;
+mod path_grants;
 mod paths;
 mod proc;
 mod process_identity;
@@ -141,6 +142,7 @@ mod web_process;
 mod webview_focus;
 #[cfg(any(target_os = "macos", test))]
 mod webview_frame;
+mod window_commands;
 mod window_frame;
 mod worktree_lock;
 mod zotero;
@@ -177,6 +179,7 @@ where
     F: Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static,
 {
     let handler = collab::switch::gated(handler);
+    let handler = window_commands::gated(handler);
     move |invoke| {
         let command = invoke.message.command().to_string();
         let _traced = crate::stall_trace::watch(|| format!("command {command}"));
@@ -581,6 +584,7 @@ pub fn run() {
             acp::commands::acp_remove_agent,
             acp::commands::acp_install,
             acp::commands::acp_start,
+            acp::commands::acp_cancel_start,
             acp::commands::acp_reconnect,
             acp::commands::acp_prompt,
             acp::commands::acp_cancel,
@@ -912,6 +916,10 @@ pub fn run() {
             project::pick_table_import_file,
             settings_file::pick_settings_file,
             project::register_picked_file_for_e2e,
+            path_grants::pick_open_paths,
+            path_grants::pick_save_path,
+            path_grants::grant_test_open_paths,
+            path_grants::grant_test_save_path,
             project::append_app_log,
             project::read_app_log,
             project::has_pandoc,
@@ -944,7 +952,7 @@ pub fn run() {
             stats::stats_confidence_interval,
             literature::literature_search,
             literature::literature_arxiv_lookup,
-            connectors::get_connector_key,
+            connectors::connector_key_saved,
             connectors::set_connector_key,
             zotero::zotero_verify,
             zotero::zotero_library_bibtex,
@@ -1085,6 +1093,7 @@ pub fn run() {
             mcp::mcp_regenerate_token,
             mcp::client::mcp_servers_list,
             mcp::client::mcp_server_add,
+            mcp::client::mcp_adopt_alphaxiv_key,
             mcp::client::mcp_server_update,
             mcp::client::mcp_server_update_validated,
             mcp::client::mcp_server_remove,

@@ -384,6 +384,9 @@ pub fn args_without_bundle<T: AsRef<OsStr> + Clone>(args: &[T]) -> Vec<T> {
     out
 }
 
+/// How the line `compiler_crash_note` writes begins, for log parsers.
+pub const COMPILER_CRASH_LINE: &str = "error: the compiler crashed (";
+
 /// A line naming the signal or exception that killed a compiler.
 #[cfg(unix)]
 pub fn compiler_crash_note(status: &std::process::ExitStatus) -> Option<String> {
@@ -398,7 +401,7 @@ pub fn compiler_crash_note(status: &std::process::ExitStatus) -> Option<String> 
         _ => return None,
     };
     Some(format!(
-        "\nerror: the compiler crashed ({name}) before it finished, so this log ends early"
+        "\n{COMPILER_CRASH_LINE}{name}) before it finished, so this log ends early"
     ))
 }
 
@@ -406,7 +409,7 @@ pub fn compiler_crash_note(status: &std::process::ExitStatus) -> Option<String> 
 pub fn compiler_crash_note(status: &std::process::ExitStatus) -> Option<String> {
     let code = status.code()? as u32;
     (code & 0xF000_0000 == 0xC000_0000).then(|| {
-        format!("\nerror: the compiler crashed (exception 0x{code:08X}) before it finished, so this log ends early")
+        format!("\n{COMPILER_CRASH_LINE}exception 0x{code:08X}) before it finished, so this log ends early")
     })
 }
 

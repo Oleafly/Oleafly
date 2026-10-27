@@ -609,6 +609,39 @@ describe("compile output lifecycle", () => {
     );
   });
 
+  it("names the font a crashed Tectonic was looking for", async () => {
+    const message = "the compiler crashed (SIGSEGV) before it finished, so this log ends early";
+    mocks.compileProject.mockResolvedValue({
+      ok: false, has_pdf: false, log: "", synctex_path: null, out_dir: null, compile_time_ms: 1,
+      errors: [
+        {
+          line: 5,
+          file: "main.tex",
+          message,
+          kind: "error",
+          explanation: "English explanation from the compiler",
+          code: "tex.compiler_crashed_font",
+          params: { font: "Fira Sans Light" },
+        },
+        {
+          line: null,
+          file: null,
+          message,
+          kind: "error",
+          explanation: "English explanation from the compiler",
+          code: "tex.compiler_crashed",
+        },
+      ],
+    });
+    await useCompileStore.getState().recompile();
+    const [font, generic] = useCompileStore.getState().errors;
+    expect(font.explanation).toBe(
+      enErrors.tex.compiler_crashed_font.replace("{{font}}", "Fira Sans Light"),
+    );
+    expect(font.line).toBe(5);
+    expect(generic.explanation).toBe(enErrors.tex.compiler_crashed);
+  });
+
   it("keeps the compiler's explanation for an error code the app does not know", async () => {
     mocks.files.engine = { ...LATEX_ENGINE, id: "latexmk" };
     mocks.compileProject.mockResolvedValue({

@@ -259,6 +259,7 @@ pub async fn checkpoint_export(
     password: String,
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<(), String> {
+    crate::path_grants::require_save(&dest)?;
     require_active_project(&project_id)?;
     let operation = crate::checkpoints::checkpoint_operation_lock(&project_id)?;
     let _compile = state.compile_lock.lock().await;
@@ -287,6 +288,7 @@ pub async fn checkpoint_import(
     password: String,
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<(), String> {
+    crate::path_grants::require_open(&source)?;
     require_active_project(&project_id)?;
     crate::checkpoint_publication::cancel_project_publications(&project_id);
     let operation = crate::checkpoints::checkpoint_operation_lock(&project_id)?;

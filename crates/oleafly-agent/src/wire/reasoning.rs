@@ -5,6 +5,7 @@ use serde_json::{json, Map, Value};
 use crate::caps::{BudgetRange, ModelCaps};
 use crate::complete::CompletionRequest;
 use crate::effort::{google_budget_model, openai_reasoning_id, Effort};
+use crate::message::{ContentPart, Message, Role};
 use crate::provider::Resolved;
 
 pub(crate) const STREAMING_MAX_TOKENS_CAP: u32 = 64_000;
@@ -175,8 +176,68 @@ pub(crate) fn chat_reasoning_fields(
                 vec![("reasoning", Value::Object(reasoning))]
             }
         }
+        "deepseek" => deepseek_thinking(req, effort),
         _ => Vec::new(),
     }
+}
+
+pub(crate) fn message_reasoning(message: &Message) -> String {
+    message
+        .content
+        .iter()
+        .filter_map(|part| match part {
+            ContentPart::Reasoning { text } if !text.is_empty() => Some(text.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
+fn sends_chat_content(message: &Message) -> bool {
+    message.content.iter().any(|part| {
+        matches!(
+            part,
+            ContentPart::Text { .. }
+                | ContentPart::Image { .. }
+                | ContentPart::Document { .. }
+                | ContentPart::Attachment { .. }
+                | ContentPart::ToolUse { .. }
+        )
+    })
+}
+
+fn replays_every_reasoning(messages: &[Message]) -> bool {
+    messages
+        .iter()
+        .filter(|message| message.role == Role::Assistant && sends_chat_content(message))
+        .all(|message| !message_reasoning(message).is_empty())
+}
+
+fn deepseek_reasoning_effort(requested: Effort) -> &'static str {
+    match requested {
+        Effort::Off | Effort::Minimal | Effort::Low => "low",
+        Effort::Medium | Effort::High | Effort::Xhigh => "high",
+        Effort::Max => "max",
+    }
+}
+
+fn deepseek_thinking(
+    req: &CompletionRequest,
+    effort: Option<Effort>,
+) -> Vec<(&'static str, Value)> {
+    let off = effort == Some(Effort::Off)
+        || (!req.tools.is_empty() && !replays_every_reasoning(&req.messages));
+    if off {
+        return vec![("thinking", json!({ "type": "disabled" }))];
+    }
+    let mut fields = vec![("thinking", json!({ "type": "enabled" }))];
+    if let (Some(_), Some(requested)) = (effort, req.effort) {
+        fields.push((
+            "reasoning_effort",
+            json!(deepseek_reasoning_effort(requested)),
+        ));
+    }
+    fields
 }
 
 /// Gemini's `thinkingBudget` for an effort: off is 0, low a small budget,

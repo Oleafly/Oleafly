@@ -193,11 +193,15 @@
     "steered": "Réorienté",
     "toolOutputError": "Erreur : {{message}}",
     "errorHints": {
+      "emptyReply": "Le modèle a renvoyé une réponse vide. Réessayez, ou changez de modèle {{where}}.",
       "invalidKey": "Votre clé API semble invalide ou expirée. Mettez-la à jour dans Paramètres → Assistant IA, ou changez de fournisseur {{where}}.",
+      "invalidRequest": "Le fournisseur a refusé les paramètres de la requête. Essayez un autre modèle {{where}}.",
       "outOfCredits": "Votre fournisseur d'IA n'a plus de crédits ni de quota. Rechargez le compte, ou passez à un autre fournisseur (ou à un Ollama local) {{where}}.",
       "overloaded": "Les serveurs du fournisseur sont surchargés en ce moment (la requête a déjà été relancée). Attendez une minute et réessayez, ou choisissez un modèle voisin {{where}}.",
       "rateLimited": "Le fournisseur limite le débit des requêtes. Patientez un instant et réessayez, ou changez de fournisseur {{where}}.",
       "retiredModel": "Le fournisseur a retiré ou restreint ce modèle. Choisissez un modèle plus récent {{where}} (Paramètres → Assistant IA liste ce que votre clé peut utiliser).",
+      "serverError": "Le fournisseur a rencontré une erreur serveur. Attendez une minute et réessayez, ou changez de modèle {{where}}.",
+      "timedOut": "Le fournisseur a mis trop de temps à répondre. Réessayez, ou changez de modèle {{where}}.",
       "unreachable": "Impossible de joindre le fournisseur d'IA. Vérifiez votre connexion ou, si vous utilisez Ollama, assurez-vous qu'il tourne (Paramètres → Assistant IA → Rechercher Ollama).",
       "where": {
         "inSettings": "dans Paramètres, Assistant IA",

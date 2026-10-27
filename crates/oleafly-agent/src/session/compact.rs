@@ -200,7 +200,9 @@ fn render_message(message: &Message, text_cap: usize) -> Option<String> {
             ContentPart::Image { .. } => {
                 Some(format!("{speaker}: [image omitted from summary input]"))
             }
-            ContentPart::Thinking { .. } | ContentPart::RedactedThinking { .. } => None,
+            ContentPart::Thinking { .. }
+            | ContentPart::RedactedThinking { .. }
+            | ContentPart::Reasoning { .. } => None,
             ContentPart::Document { name, .. } => Some(format!(
                 "{speaker}: [document \"{name}\" omitted from summary input]"
             )),
@@ -467,6 +469,7 @@ fn message_size(message: &Message) -> usize {
             ContentPart::ToolUse { arguments, .. } => arguments.len(),
             ContentPart::ToolResult { output, .. } => output.len(),
             ContentPart::Thinking { thinking, .. } => thinking.len(),
+            ContentPart::Reasoning { text } => text.len(),
             ContentPart::ProviderBlock { block, .. } => {
                 serde_json::to_string(block).map_or(0, |text| text.len())
             }
@@ -1204,6 +1207,25 @@ mod tests {
         assert!(transcript.contains("Assistant: [web_search: \"q\"]"));
         assert!(transcript.contains("Assistant: Reading."));
         assert!(transcript.contains("Assistant called tool read_file with no arguments"));
+    }
+
+    #[test]
+    fn chat_reasoning_stays_out_of_the_summary_and_on_the_kept_tail() {
+        let mut request = history_with_thinking_tail();
+        request.messages[22].content.insert(
+            0,
+            ContentPart::Reasoning {
+                text: "weighing the options".into(),
+            },
+        );
+        let transcript = summary_transcript(&request.messages, SUMMARY_INPUT_CHAR_BUDGET);
+        assert!(!transcript.contains("weighing the options"));
+        apply_compaction(&mut request, "summary".into(), &caps());
+        assert!(request
+            .messages
+            .iter()
+            .flat_map(|message| &message.content)
+            .any(|part| matches!(part, ContentPart::Reasoning { text } if text == "weighing the options")));
     }
 
     #[test]

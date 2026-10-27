@@ -13,7 +13,7 @@ use std::{
     path::{Component, Path, PathBuf},
     process::Stdio,
     sync::Mutex,
-    time::Duration,
+    time::{Duration, SystemTime},
 };
 
 const REGISTRY: &str = "https://cdn.agentclientprotocol.com/registry/v1/latest/registry.json";
@@ -58,7 +58,8 @@ pub struct Launch {
     /// network path.
     pub needs_local_folder: bool,
     /// Environment for a non-sandboxed launch: the search path, Windows
-    /// hardening and the hand-off of the CLI Oleafly found to the bridge.
+    /// hardening, the user's network and provider settings, and the hand-off
+    /// of the CLI Oleafly found to the bridge.
     pub env: Vec<(String, OsString)>,
 }
 
@@ -103,14 +104,16 @@ enum BuiltinDist {
     },
 }
 
+const CODEX_BUNDLED_CLI: &str = "0.160.1";
+
 const BUILTINS: &[Builtin] = &[
     Builtin {
         id: "claude",
         name: "Claude Code",
         description: "Uses the agent's own CLI account and permissions.",
-        version: "0.93.0",
+        version: "0.95.0",
         dist: BuiltinDist::Bridge {
-            package: "@agentclientprotocol/claude-agent-acp@0.93.0",
+            package: "@agentclientprotocol/claude-agent-acp@0.95.0",
             cmd: "claude-agent-acp",
             args: &[],
             node: 22,
@@ -703,6 +706,7 @@ pub(crate) fn program_role(definition: &AgentDefinition) -> ProgramRole {
 pub(crate) struct CliProgram {
     pub located: Located,
     pub overridden: bool,
+    pub version: Option<String>,
 }
 
 /// Everything Oleafly resolves about an agent before starting anything.
@@ -714,19 +718,20 @@ pub(crate) struct Plan {
     pub node: Option<PathBuf>,
 }
 
-const CHOSEN_PROGRAM_MISSING: &str =
-    "The program chosen for this agent is missing. Choose it again in Settings.";
-
 pub(crate) fn plan(root: &Path, definition: &AgentDefinition, program: Option<&Path>) -> Plan {
+    locator::wait_for_login_probe();
     let vendor = vendor_cli(definition);
     let role = program_role(definition);
     let node = locator::locate_native("node").map(|located| located.path);
     let launch_program = program.filter(|_| role == ProgramRole::Launch);
     let cli_program = program.filter(|_| role == ProgramRole::Cli);
-    let (cli, cli_rejected) = match &vendor {
+    let (mut cli, cli_rejected) = match &vendor {
         Some(vendor) => resolve_cli(vendor, cli_program, launch_program),
         None => (None, Vec::new()),
     };
+    if let Some(cli) = cli.as_mut() {
+        cli.version = known_cli_version(&cli.located.path);
+    }
     let launch =
         resolve_launch(root, definition, launch_program, node.as_deref()).map(|mut launch| {
             // A bridge handed a `.cmd` CLI starts it through cmd.exe.
@@ -764,6 +769,7 @@ fn resolve_cli(
                 Some(CliProgram {
                     located,
                     overridden: true,
+                    version: None,
                 }),
                 Vec::new(),
             ),
@@ -789,6 +795,7 @@ fn resolve_cli(
         found.map(|located| CliProgram {
             located,
             overridden: false,
+            version: None,
         }),
         rejected,
     )
@@ -892,8 +899,8 @@ fn resolve_launch(
     validate(definition)?;
     let args = definition_args(definition);
     if let Some(program) = program {
-        let located =
-            locator::locate_path(program).map_err(|_| CHOSEN_PROGRAM_MISSING.to_string())?;
+        let located = locator::locate_path(program)
+            .map_err(|_| super::failures::coded(super::failures::CHOSEN_PROGRAM_MISSING))?;
         return Ok(launch_program(located, args, node));
     }
     if let Some(receipt) = read_receipt(root, definition) {
@@ -903,7 +910,7 @@ fn resolve_launch(
             return Ok(Launch {
                 executable: node
                     .map(Path::to_path_buf)
-                    .ok_or("Install Node.js to run this agent.")?,
+                    .ok_or_else(|| super::failures::coded(super::failures::NODE_NEEDED))?,
                 args: argv,
                 version: Some(receipt.version),
                 managed: true,
@@ -932,13 +939,92 @@ fn resolve_launch(
                 .iter()
                 .find_map(|name| locator::locate(name).0)
         });
-    if let Some(located) = found {
-        return Ok(launch_program(located, args, node));
+    let by_name = found.map(|located| {
+        let version = bridge_package(definition)
+            .and_then(|(package, _)| bridge_package_version(package, &located));
+        Launch {
+            version,
+            ..launch_program(located, args.clone(), node)
+        }
+    });
+    current_bridge(
+        definition,
+        by_name
+            .into_iter()
+            .chain(std::iter::once_with(|| existing_npm_launch(definition, &args, node)).flatten()),
+    )
+}
+
+const BRIDGE_MANIFEST_DEPTH: usize = 6;
+const BRIDGE_MANIFEST_LIMIT: u64 = 512 * 1024;
+
+fn bridge_package(definition: &AgentDefinition) -> Option<(&str, &str)> {
+    let package = definition.distribution.npx.as_ref()?;
+    package_parts(&package.package, true).ok()
+}
+
+fn npm_release(value: &str) -> Option<((u64, u64, u64), bool)> {
+    let release = value.split('+').next()?;
+    let (numbers, pre) = release
+        .split_once('-')
+        .map_or((release, false), |(numbers, _)| (numbers, true));
+    let mut parts = numbers.split('.').map(|part| part.parse::<u64>().ok());
+    let triple = (parts.next()??, parts.next()??, parts.next()??);
+    parts.next().is_none().then_some((triple, pre))
+}
+
+fn older_npm_version(found: &str, pinned: &str) -> bool {
+    match (npm_release(found), npm_release(pinned)) {
+        (Some((found, found_pre)), Some((pinned, pinned_pre))) => {
+            found < pinned || (found == pinned && found_pre && !pinned_pre)
+        }
+        _ => false,
     }
-    if let Some(launch) = existing_npm_launch(definition, &args, node) {
-        return Ok(launch);
+}
+
+fn bridge_manifest(path: &Path) -> Option<Value> {
+    let metadata = std::fs::metadata(path).ok()?;
+    if !metadata.is_file() || metadata.len() > BRIDGE_MANIFEST_LIMIT {
+        return None;
     }
-    Err("This agent isn't installed yet. Install it, or choose its program in Settings.".into())
+    serde_json::from_slice(&std::fs::read(path).ok()?).ok()
+}
+
+fn bridge_package_version(package: &str, located: &Located) -> Option<String> {
+    let start = match located.kind {
+        ProgramKind::Script => locator::npm_shim_target(&located.path)?.script,
+        ProgramKind::Native => located.path.clone(),
+    };
+    let real = start.canonicalize().ok()?;
+    real.ancestors()
+        .skip(1)
+        .take(BRIDGE_MANIFEST_DEPTH)
+        .filter_map(|folder| bridge_manifest(&folder.join("package.json")))
+        .find(|manifest| manifest["name"].as_str() == Some(package))
+        .and_then(|manifest| manifest["version"].as_str().map(str::to_owned))
+}
+
+fn current_bridge(
+    definition: &AgentDefinition,
+    candidates: impl IntoIterator<Item = Launch>,
+) -> Result<Launch, String> {
+    let checked = bridge_package(definition)
+        .filter(|_| !vendor_cli(definition).is_some_and(|vendor| vendor.shares_bridge));
+    let mut outdated = None;
+    for launch in candidates {
+        let Some((package, pinned)) = checked else {
+            return Ok(launch);
+        };
+        match launch.version.as_deref() {
+            Some(found) if older_npm_version(found, pinned) => {
+                outdated.get_or_insert_with(|| {
+                    super::failures::bridge_outdated(package, found, pinned)
+                });
+            }
+            _ => return Ok(launch),
+        }
+    }
+    Err(outdated.unwrap_or_else(|| super::failures::coded(super::failures::NOT_INSTALLED)))
 }
 
 /// Environment for a non-sandboxed agent: Node.js first on the search path;
@@ -958,6 +1044,9 @@ pub(crate) fn launch_env(
         prepend.push(folder.to_path_buf());
     }
     let mut env = locator::child_env(&prepend, &append);
+    if let Some(variable) = vendor.and_then(|vendor| vendor.cli_env) {
+        env.retain(|(name, _)| !name.eq_ignore_ascii_case(variable));
+    }
     if let Some(handoff) = vendor.and_then(|vendor| cli_handoff(vendor, cli)) {
         env.push(handoff);
     }
@@ -990,16 +1079,17 @@ pub(crate) fn search_path_folders(
 }
 
 /// The variable that tells a bridge where the vendor CLI is: Pi always when
-/// the CLI was found; Claude Code and Codex only when the user chose one
-/// (otherwise their bridges use the CLI they bundle). Claude's SDK cannot
-/// start a `.cmd`, so it gets a shim's script or nothing.
+/// the CLI was found; Claude Code only when the user chose one, and Codex
+/// also when the CLI found last reported a version at least as new as the
+/// one its bridge bundles (otherwise their bridges use the CLI they bundle).
+/// Claude's SDK cannot start a `.cmd`, so it gets a shim's script or nothing.
 pub(crate) fn cli_handoff(
     vendor: &VendorCli,
     cli: Option<&CliProgram>,
 ) -> Option<(String, OsString)> {
     let variable = vendor.cli_env?;
     let cli = cli?;
-    if vendor.cli_env_needs_override && !cli.overridden {
+    if vendor.cli_env_needs_override && !cli.overridden && !newer_than_bundled(vendor, cli) {
         return None;
     }
     let path = match cli.located.kind {
@@ -1008,6 +1098,15 @@ pub(crate) fn cli_handoff(
         ProgramKind::Script => locator::npm_shim_target(&cli.located.path)?.script,
     };
     Some((variable.into(), locator::child_path(&path).into_os_string()))
+}
+
+fn newer_than_bundled(vendor: &VendorCli, cli: &CliProgram) -> bool {
+    match (vendor.bundled_cli, cli.version.as_deref()) {
+        (Some(bundled), Some(found)) => {
+            npm_release(found).is_some() && !older_npm_version(found, bundled)
+        }
+        _ => false,
+    }
 }
 
 pub(super) fn npm_roots_from(
@@ -1060,9 +1159,18 @@ fn existing_npm_launch(
     args: &[String],
     node: Option<&Path>,
 ) -> Option<Launch> {
+    existing_npm_launch_in(definition, args, node, npm_global_roots(node))
+}
+
+fn existing_npm_launch_in(
+    definition: &AgentDefinition,
+    args: &[String],
+    node: Option<&Path>,
+    roots: Vec<PathBuf>,
+) -> Option<Launch> {
     let package = definition.distribution.npx.as_ref()?;
     let (name, _) = package_parts(&package.package, true).ok()?;
-    for root in npm_global_roots(node) {
+    for root in roots {
         let package_root = root.join(name);
         let manifest_path = package_root.join("package.json");
         if manifest_path
@@ -1366,13 +1474,15 @@ pub(crate) struct VendorCli {
     pub(crate) cli_env: Option<&'static str>,
     /// Other names the CLI may be installed under.
     pub(crate) alternates: &'static [&'static str],
-    /// Set the variable only for a CLI the user chose; otherwise the bridge
-    /// uses the CLI it bundles.
+    /// Set the variable only for a CLI the user chose, or one at least as
+    /// new as `bundled_cli`; otherwise the bridge uses the CLI it bundles.
     pub(crate) cli_env_needs_override: bool,
     /// The bridge can start a Windows `.cmd`/`.bat` CLI.
     pub(crate) cli_env_accepts_script: bool,
     /// The bridge cannot work without the vendor CLI.
     pub(crate) bridge_needs_cli: bool,
+    pub(crate) version_args: &'static [&'static str],
+    pub(crate) bundled_cli: Option<&'static str>,
 }
 
 impl VendorCli {
@@ -1391,6 +1501,8 @@ impl VendorCli {
             cli_env_needs_override: false,
             cli_env_accepts_script: false,
             bridge_needs_cli: false,
+            version_args: &["--version"],
+            bundled_cli: None,
         }
     }
 }
@@ -1408,6 +1520,8 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
             cli_env_needs_override: true,
             cli_env_accepts_script: false,
             bridge_needs_cli: false,
+            version_args: &["--version"],
+            bundled_cli: None,
         },
     ),
     (
@@ -1422,6 +1536,8 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
             cli_env_needs_override: true,
             cli_env_accepts_script: true,
             bridge_needs_cli: false,
+            version_args: &["--version"],
+            bundled_cli: Some(CODEX_BUNDLED_CLI),
         },
     ),
     (
@@ -1440,6 +1556,8 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
             cli_env_needs_override: false,
             cli_env_accepts_script: true,
             bridge_needs_cli: true,
+            version_args: &["--version"],
+            bundled_cli: None,
         },
     ),
     (
@@ -1453,7 +1571,10 @@ const VENDOR_CLIS: &[(&str, VendorCli)] = &[
     ("cline", VendorCli::shared("cline", "Cline", "cline auth")),
     (
         "hermes",
-        VendorCli::shared("hermes", "Hermes Agent", "hermes setup"),
+        VendorCli {
+            version_args: &["acp", "--version"],
+            ..VendorCli::shared("hermes", "Hermes Agent", "hermes setup")
+        },
     ),
     (
         "codebuddy",
@@ -1521,12 +1642,14 @@ pub(crate) fn probe_folder(root: &Path) -> Result<locator::ProbeDir, String> {
         .map_err(|_| "Oleafly couldn't create a working folder for the check.".to_string())
 }
 
-/// Runs `<program> --version` the way a bridge would start it: `.cmd` and
-/// `.bat` through Rust's cmd.exe launch, in an empty Oleafly-owned folder,
-/// with the agent's environment.
+/// Runs `<program> <args>` (the vendor's version arguments, `--version` for
+/// most) the way a bridge would start it: `.cmd` and `.bat` through Rust's
+/// cmd.exe launch, in an empty Oleafly-owned folder, with the agent's
+/// environment.
 pub(crate) async fn program_version(
     root: &Path,
     program: &Located,
+    args: &[&str],
     env: &[(String, OsString)],
     limit: Duration,
 ) -> Result<String, String> {
@@ -1536,19 +1659,60 @@ pub(crate) async fn program_version(
     }
     let mut command = tokio::process::Command::new(&program.path);
     command
-        .arg("--version")
+        .args(args)
         .current_dir(probe.path())
         .envs(env.iter().map(|(name, value)| (name, value)));
-    let output = run_bounded(command, limit).await.map_err(|failure| {
-        failure.version_message(
-            &program
-                .path
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy(),
-        )
-    })?;
-    parse_cli_version(&output).ok_or_else(|| "It didn't report a version.".to_string())
+    let file = program
+        .path
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy();
+    let output = run_bounded(command, limit)
+        .await
+        .map_err(|failure| failure.version_message(&file, &format!("{file} {}", args.join(" "))))?;
+    let version =
+        parse_cli_version(&output).ok_or_else(|| "It didn't report a version.".to_string())?;
+    note_cli_version(&program.path, &version);
+    Ok(version)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct CliStamp {
+    len: u64,
+    modified: Option<SystemTime>,
+}
+
+static CLI_VERSIONS: Mutex<Option<HashMap<PathBuf, (CliStamp, String)>>> = Mutex::new(None);
+
+fn cli_stamp(path: &Path) -> Option<CliStamp> {
+    let metadata = std::fs::metadata(path).ok()?;
+    Some(CliStamp {
+        len: metadata.len(),
+        modified: metadata.modified().ok(),
+    })
+}
+
+fn note_cli_version(path: &Path, version: &str) {
+    let Some(stamp) = cli_stamp(path) else {
+        return;
+    };
+    if let Ok(mut known) = CLI_VERSIONS.lock() {
+        let known = known.get_or_insert_with(HashMap::new);
+        if known.len() >= 64 && !known.contains_key(path) {
+            known.clear();
+        }
+        known.insert(path.to_path_buf(), (stamp, version.to_owned()));
+    }
+}
+
+pub(crate) fn known_cli_version(path: &Path) -> Option<String> {
+    let stamp = cli_stamp(path)?;
+    let known = CLI_VERSIONS.lock().ok()?;
+    known
+        .as_ref()?
+        .get(path)
+        .filter(|(seen, _)| *seen == stamp)
+        .map(|(_, version)| version.clone())
 }
 
 const STATUS_VERSION_LIMIT: Duration = Duration::from_secs(5);
@@ -1635,7 +1799,48 @@ fn cli_status(
     }
 }
 
-fn sign_in_hint(definition: &AgentDefinition, cli: Option<&CliStatus>) -> String {
+const CLAUDE_GATEWAY_VARIABLES: [&str; 2] = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"];
+const CLAUDE_SETTINGS_LIMIT: u64 = 1024 * 1024;
+
+fn claude_settings(path: &Path) -> Option<Value> {
+    let metadata = std::fs::metadata(path).ok()?;
+    if !metadata.is_file() || metadata.len() > CLAUDE_SETTINGS_LIMIT {
+        return None;
+    }
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)
+        .ok()?
+        .take(CLAUDE_SETTINGS_LIMIT)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    serde_json::from_slice(&bytes).ok()
+}
+
+fn claude_uses_gateway(env: &dyn Fn(&str) -> Option<OsString>, home: Option<&Path>) -> bool {
+    let present = |name: &str| env(name).is_some_and(|value| !value.is_empty());
+    if CLAUDE_GATEWAY_VARIABLES.iter().any(|name| present(name)) {
+        return true;
+    }
+    let folder = env("CLAUDE_CONFIG_DIR")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| home.map(|home| home.join(".claude")));
+    let Some(settings) = folder.and_then(|folder| claude_settings(&folder.join("settings.json")))
+    else {
+        return false;
+    };
+    let set = |value: Option<&Value>| value.is_some_and(|value| !value.is_null() && value != "");
+    CLAUDE_GATEWAY_VARIABLES
+        .iter()
+        .any(|name| set(settings.get("env").and_then(|env| env.get(name))))
+        || set(settings.get("apiKeyHelper"))
+}
+
+fn sign_in_hint(
+    definition: &AgentDefinition,
+    cli: Option<&CliStatus>,
+    claude_gateway: bool,
+) -> String {
     let vendor = vendor_cli(definition);
     let command = cli.map(|cli| cli.sign_in_command.clone()).or_else(|| {
         vendor
@@ -1657,6 +1862,9 @@ fn sign_in_hint(definition: &AgentDefinition, cli: Option<&CliStatus>) -> String
             "Run {} in your terminal and sign in with /login, then reconnect.",
             command.as_deref().unwrap_or("pi")
         );
+    }
+    if definition.id == "claude" && claude_gateway {
+        return super::failures::coded(super::failures::CLAUDE_GATEWAY);
     }
     let (Some(vendor), Some(command)) = (vendor, command) else {
         return "Use the agent's CLI sign-in, or choose a sign-in method after connecting.".into();
@@ -1732,12 +1940,8 @@ async fn node_major_reason(
     };
     match detected {
         Some((major, _, _)) if major >= required => None,
-        Some((major, _, _)) => Some(format!(
-            "This agent needs Node.js {required} or newer. The detected version is {major}."
-        )),
-        None => Some(format!(
-            "Install Node.js {required} or newer to run this agent."
-        )),
+        Some((major, _, _)) => Some(super::failures::node_outdated(required, major)),
+        None => Some(super::failures::node_missing(required)),
     }
 }
 
@@ -1746,6 +1950,7 @@ struct StatusFacts {
     plan: Plan,
     install_reason: Option<String>,
     reachable: bool,
+    claude_gateway: bool,
 }
 
 impl StatusFacts {
@@ -1760,6 +1965,11 @@ impl StatusFacts {
             install_reason: install_reason(definition),
             reachable,
             plan,
+            claude_gateway: definition.id == "claude"
+                && claude_uses_gateway(
+                    &locator::host_env(),
+                    crate::paths::home_dir().ok().as_deref(),
+                ),
         }
     }
 }
@@ -1794,6 +2004,7 @@ pub async fn status_with(
             },
             install_reason: None,
             reachable: true,
+            claude_gateway: false,
         },
     };
     let vendor = vendor_cli(&definition);
@@ -1815,9 +2026,17 @@ pub async fn status_with(
                 .as_ref()
                 .map(|launch| launch.env.clone())
                 .unwrap_or_else(|_| locator::child_env(&[], &[]));
-            program_version(root, &cli.located, &env, STATUS_VERSION_LIMIT)
-                .await
-                .ok()
+            program_version(
+                root,
+                &cli.located,
+                vendor
+                    .as_ref()
+                    .map_or(&["--version"][..], |vendor| vendor.version_args),
+                &env,
+                STATUS_VERSION_LIMIT,
+            )
+            .await
+            .ok()
         }
         _ => None,
     };
@@ -1840,7 +2059,11 @@ pub async fn status_with(
         managed: resolved.as_ref().is_some_and(|v| v.managed),
         can_install: facts.install_reason.is_none() && node_reason.is_none(),
         reason,
-        sign_in_hint: Some(sign_in_hint(&definition, cli.as_ref())),
+        sign_in_hint: Some(sign_in_hint(
+            &definition,
+            cli.as_ref(),
+            facts.claude_gateway,
+        )),
         task_unavailable_reason: task_unavailable_reason(&definition),
         cli,
         bridge_shared_with_cli: vendor.as_ref().is_some_and(|vendor| vendor.shares_bridge),
@@ -1856,16 +2079,17 @@ pub async fn status_with(
 
 /// Fails unless Node.js `required` or newer is installed.
 pub async fn check_node(root: &Path, required: u32) -> Result<(), String> {
-    let node = blocking(|| locator::locate_native("node"))
-        .await?
-        .ok_or_else(|| format!("Install Node.js {required} or newer to run this agent."))?;
+    let node = blocking(|| {
+        locator::wait_for_login_probe();
+        locator::locate_native("node")
+    })
+    .await?
+    .ok_or_else(|| super::failures::node_missing(required))?;
     let major = node_version(root, &node.path)
         .await
         .map_or(0, |(major, _, _)| major);
     if major < required {
-        return Err(format!(
-            "This agent needs Node.js {required} or newer. The detected version is {major}."
-        ));
+        return Err(super::failures::node_outdated(required, major));
     }
     Ok(())
 }
@@ -2125,15 +2349,26 @@ impl CommandFailure {
         }
     }
 
-    /// The same failure for `<file> --version`.
-    fn version_message(self, file: &str) -> String {
+    /// The same failure for a version probe, `command` being `<file> <args>`.
+    fn version_message(self, file: &str, command: &str) -> String {
         match self {
             Self::NotStarted(what) => format!("Oleafly couldn't start {file} ({what})."),
             Self::Lost(message) => message.into(),
-            Self::TimedOut => format!("{file} --version didn't finish in time and was stopped."),
-            Self::Failed(lines) => lines
-                .unwrap_or_else(|| format!("{file} --version failed without printing anything.")),
+            Self::TimedOut => format!("{command} didn't finish in time and was stopped."),
+            Self::Failed(lines) => {
+                lines.unwrap_or_else(|| format!("{command} failed without printing anything."))
+            }
         }
+    }
+}
+
+pub(crate) async fn failure_output(
+    command: tokio::process::Command,
+    duration: Duration,
+) -> Option<String> {
+    match run_bounded(command, duration).await {
+        Err(CommandFailure::Failed(lines)) => lines,
+        _ => None,
     }
 }
 
@@ -2312,20 +2547,330 @@ pub fn extract(bytes: &[u8], zip_format: bool, destination: &Path) -> Result<(),
     Ok(())
 }
 
+const NPM_REGISTRY: &str = "https://registry.npmjs.org";
+const NPM_NETWORK_KEYS: [&str; 6] = [
+    "registry",
+    "proxy",
+    "https-proxy",
+    "noproxy",
+    "cafile",
+    "strict-ssl",
+];
+const NPMRC_LIMIT: u64 = 256 * 1024;
+const NPM_NETWORK_CODES: [&str; 12] = [
+    "ECONNREFUSED",
+    "ETIMEDOUT",
+    "ENOTFOUND",
+    "EAI_AGAIN",
+    "ECONNRESET",
+    "ENETUNREACH",
+    "EHOSTUNREACH",
+    "FETCH_ERROR",
+    "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+    "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+    "SELF_SIGNED_CERT_IN_CHAIN",
+    "DEPTH_ZERO_SELF_SIGNED_CERT",
+];
+const NPM_INSTALL_LIMIT: Duration = Duration::from_secs(15 * 60);
+const NPM_INSTALL_FLAGS: [&str; 10] = [
+    "install",
+    "--ignore-scripts",
+    "--no-audit",
+    "--no-fund",
+    "--save-exact",
+    "--fetch-retries=1",
+    "--fetch-retry-mintimeout=2000",
+    "--fetch-retry-maxtimeout=10000",
+    "--fetch-timeout=60000",
+    "--prefix",
+];
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct NpmNetwork {
+    registry: String,
+    env: Vec<(String, String)>,
+}
+
+impl NpmNetwork {
+    fn host(&self) -> String {
+        reqwest::Url::parse(&self.registry)
+            .ok()
+            .and_then(|url| url.host_str().map(str::to_owned))
+            .unwrap_or_else(|| self.registry.clone())
+    }
+}
+
+fn npm_env_name(key: &str) -> String {
+    format!("npm_config_{}", key.replace('-', "_"))
+}
+
+fn npm_env_setting(env: &dyn Fn(&str) -> Option<OsString>, key: &str) -> Option<String> {
+    let name = npm_env_name(key);
+    env(&name)
+        .or_else(|| env(&name.to_ascii_uppercase()))
+        .and_then(|value| value.into_string().ok())
+}
+
+fn read_npmrc(path: &Path) -> Option<String> {
+    let metadata = std::fs::metadata(path).ok()?;
+    if !metadata.is_file() || metadata.len() > NPMRC_LIMIT {
+        return None;
+    }
+    std::fs::read(path)
+        .ok()
+        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+}
+
+fn npmrc_value(raw: &str) -> String {
+    let raw = raw.trim();
+    let quoted = raw.len() >= 2
+        && ((raw.starts_with('"') && raw.ends_with('"'))
+            || (raw.starts_with('\'') && raw.ends_with('\'')));
+    if quoted {
+        if let Ok(value) = serde_json::from_str::<String>(raw) {
+            return value;
+        }
+        return raw[1..raw.len() - 1].to_owned();
+    }
+    let mut value = String::new();
+    let mut escaped = false;
+    for character in raw.chars() {
+        if escaped {
+            if !matches!(character, ';' | '#' | '\\') {
+                value.push('\\');
+            }
+            value.push(character);
+            escaped = false;
+            continue;
+        }
+        match character {
+            '\\' => escaped = true,
+            ';' | '#' => break,
+            _ => value.push(character),
+        }
+    }
+    if escaped {
+        value.push('\\');
+    }
+    value.trim().to_owned()
+}
+
+fn npmrc_expand(value: &str, env: &dyn Fn(&str) -> Option<OsString>) -> Option<String> {
+    let mut expanded = String::new();
+    let mut rest = value;
+    while let Some(start) = rest.find("${") {
+        expanded.push_str(&rest[..start]);
+        let after = &rest[start + 2..];
+        let end = after.find('}')?;
+        let (name, optional) = match after[..end].strip_suffix('?') {
+            Some(name) => (name, true),
+            None => (&after[..end], false),
+        };
+        match env(name).and_then(|value| value.into_string().ok()) {
+            Some(value) => expanded.push_str(&value),
+            None if optional => {}
+            None => return None,
+        }
+        rest = &after[end + 1..];
+    }
+    expanded.push_str(rest);
+    Some(expanded)
+}
+
+fn npmrc_settings(text: &str, env: &dyn Fn(&str) -> Option<OsString>) -> HashMap<String, String> {
+    let mut settings = HashMap::new();
+    for line in text.lines().map(str::trim) {
+        if line.starts_with('[') {
+            break;
+        }
+        if line.is_empty() || line.starts_with(';') || line.starts_with('#') {
+            continue;
+        }
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+        let key = key.trim().to_ascii_lowercase().replace('_', "-");
+        if !(NPM_NETWORK_KEYS.contains(&key.as_str()) || key == "prefix") {
+            continue;
+        }
+        match npmrc_expand(&npmrc_value(value), env) {
+            Some(value) => settings.insert(key, value),
+            None => settings.remove(&key),
+        };
+    }
+    settings
+}
+
+fn npmrc_file(
+    read: &dyn Fn(&Path) -> Option<String>,
+    path: Option<&Path>,
+    env: &dyn Fn(&str) -> Option<OsString>,
+) -> HashMap<String, String> {
+    path.and_then(read)
+        .map(|text| npmrc_settings(&text, env))
+        .unwrap_or_default()
+}
+
+fn default_npm_prefix(node: Option<&Path>) -> Option<PathBuf> {
+    let folder = node?.parent()?;
+    if cfg!(windows) {
+        Some(folder.to_path_buf())
+    } else {
+        folder.parent().map(Path::to_path_buf)
+    }
+}
+
+fn accepted_registry(value: &str) -> Option<String> {
+    let value = value.trim();
+    let url = reqwest::Url::parse(value).ok()?;
+    let host = url.host_str()?;
+    let loopback = host.eq_ignore_ascii_case("localhost")
+        || host
+            .trim_start_matches('[')
+            .trim_end_matches(']')
+            .parse::<std::net::IpAddr>()
+            .is_ok_and(|address| address.is_loopback());
+    match url.scheme() {
+        "https" => Some(value.to_owned()),
+        "http" if loopback => Some(value.to_owned()),
+        _ => None,
+    }
+}
+
+fn npm_network(
+    env: &dyn Fn(&str) -> Option<OsString>,
+    read: &dyn Fn(&Path) -> Option<String>,
+    home: Option<&Path>,
+    node: Option<&Path>,
+    npm_cli: Option<&Path>,
+) -> NpmNetwork {
+    let user_file = npm_env_setting(env, "userconfig")
+        .map(PathBuf::from)
+        .or_else(|| home.map(|home| home.join(".npmrc")));
+    let user = npmrc_file(read, user_file.as_deref(), env);
+    let builtin_file = npm_cli
+        .and_then(Path::parent)
+        .and_then(Path::parent)
+        .map(|root| root.join("npmrc"));
+    let builtin = npmrc_file(read, builtin_file.as_deref(), env);
+    let prefix = npm_env_setting(env, "prefix")
+        .or_else(|| user.get("prefix").cloned())
+        .or_else(|| builtin.get("prefix").cloned())
+        .map(PathBuf::from)
+        .or_else(|| default_npm_prefix(node));
+    let global_file = npm_env_setting(env, "globalconfig")
+        .map(PathBuf::from)
+        .or_else(|| prefix.map(|prefix| prefix.join("etc").join("npmrc")));
+    let global = npmrc_file(read, global_file.as_deref(), env);
+    let value = |key: &str| {
+        npm_env_setting(env, key)
+            .or_else(|| {
+                [&user, &global, &builtin]
+                    .into_iter()
+                    .find_map(|file| file.get(key).cloned())
+            })
+            .filter(|value| !value.is_empty() && !value.chars().any(char::is_control))
+    };
+    let registry = value("registry")
+        .and_then(|registry| accepted_registry(&registry))
+        .unwrap_or_else(|| NPM_REGISTRY.to_owned());
+    let mut settings = vec![(npm_env_name("registry"), registry.clone())];
+    for key in ["proxy", "https-proxy"] {
+        if let Some(proxy) = value(key) {
+            settings.push((npm_env_name(key), proxy));
+        }
+    }
+    if let Some(noproxy) = value("noproxy") {
+        let merged = locator::with_loopback_no_proxy(Some(std::ffi::OsStr::new(&noproxy)));
+        settings.push((
+            npm_env_name("noproxy"),
+            merged.to_string_lossy().into_owned(),
+        ));
+    }
+    if let Some(cafile) = value("cafile") {
+        let cafile = locator::expand_tilde(Path::new(&cafile), home);
+        settings.push((
+            npm_env_name("cafile"),
+            cafile.to_string_lossy().into_owned(),
+        ));
+    }
+    if let Some(strict) = value("strict-ssl").filter(|value| value == "true" || value == "false") {
+        settings.push((npm_env_name("strict-ssl"), strict));
+    }
+    NpmNetwork {
+        registry,
+        env: settings,
+    }
+}
+
+fn npm_network_code(text: &str) -> Option<&str> {
+    text.split(|character: char| !(character.is_ascii_alphanumeric() || character == '_'))
+        .find(|token| {
+            NPM_NETWORK_CODES.contains(token)
+                || token.starts_with("CERT_")
+                || token.starts_with("ERR_TLS_")
+        })
+}
+
+fn npm_log_line(line: &str) -> bool {
+    line.contains("complete log of this run")
+        || (line.contains("_logs") && line.trim_end().ends_with(".log"))
+}
+
+fn npm_install_message(failure: CommandFailure, host: &str) -> String {
+    match failure {
+        CommandFailure::Failed(Some(lines)) => {
+            if let Some(code) = npm_network_code(&lines) {
+                return crate::app_error::AppError::new(super::failures::NPM_UNREACHABLE)
+                    .param("host", host)
+                    .param("code", code)
+                    .into();
+            }
+            let kept: Vec<&str> = lines.lines().filter(|line| !npm_log_line(line)).collect();
+            if kept.is_empty() {
+                INSTALL_FAILED.into()
+            } else {
+                kept.join("\n")
+            }
+        }
+        CommandFailure::TimedOut => crate::app_error::AppError::new(super::failures::NPM_TIMED_OUT)
+            .param("host", host)
+            .into(),
+        other => other.install_message(),
+    }
+}
+
 /// The programs an install runs, found off the async runtime.
 struct InstallTools {
     reason: Option<String>,
     node: Option<PathBuf>,
     npm_cli: Option<PathBuf>,
+    npm: Option<NpmNetwork>,
     uv: Option<PathBuf>,
 }
 
 impl InstallTools {
     fn find(definition: &AgentDefinition) -> Self {
+        locator::wait_for_login_probe();
+        let node = locator::locate_native("node").map(|located| located.path);
+        let npm_cli = definition.distribution.npx.as_ref().and_then(|_| npm_cli());
+        let npm = definition.distribution.npx.as_ref().map(|_| {
+            let real_node = node
+                .as_deref()
+                .map(|node| node.canonicalize().unwrap_or_else(|_| node.to_path_buf()));
+            npm_network(
+                &locator::host_env(),
+                &read_npmrc,
+                crate::paths::home_dir().ok().as_deref(),
+                real_node.as_deref(),
+                npm_cli.as_deref(),
+            )
+        });
         Self {
             reason: install_reason(definition),
-            node: locator::locate_native("node").map(|located| located.path),
-            npm_cli: definition.distribution.npx.as_ref().and_then(|_| npm_cli()),
+            node,
+            npm_cli,
+            npm,
             uv: locator::locate_native("uv").map(|located| located.path),
         }
     }
@@ -2370,18 +2915,11 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
             .await
             .map_err(|_| "The package manifest could not be written.")?;
         let node = tools.node.ok_or("Node.js was not found.")?;
+        let network = tools.npm.ok_or("npm was not found.")?;
         let mut command = tokio::process::Command::new(&node);
         command
             .arg(tools.npm_cli.ok_or("npm was not found.")?)
-            .args([
-                "install",
-                "--ignore-scripts",
-                "--no-audit",
-                "--no-fund",
-                "--save-exact",
-                "--registry=https://registry.npmjs.org",
-                "--prefix",
-            ])
+            .args(NPM_INSTALL_FLAGS)
             .arg(locator::child_path(&temporary))
             .arg(&package.package)
             .current_dir(locator::child_path(&temporary))
@@ -2392,7 +2930,8 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
                     .into_iter()
                     .collect::<Vec<_>>(),
                 &[],
-            ));
+            ))
+            .envs(network.env.iter().map(|(name, value)| (name, value)));
         command.env(
             "npm_config_userconfig",
             locator::child_path(&temporary.join("empty-npmrc")),
@@ -2409,7 +2948,9 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
         let cache = temporary.join("npm-cache");
         command.env("npm_config_cache", locator::child_path(&cache));
         command.env("npm_config_update_notifier", "false");
-        let installed = bounded_command(command, Duration::from_secs(300)).await;
+        let installed = run_bounded(command, NPM_INSTALL_LIMIT)
+            .await
+            .map_err(|failure| npm_install_message(failure, &network.host()));
         let _ = tokio::fs::remove_dir_all(&cache).await;
         installed?;
         let (name, _) = package_parts(&package.package, true)?;

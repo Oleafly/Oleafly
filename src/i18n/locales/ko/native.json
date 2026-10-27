@@ -51,6 +51,12 @@
       "title": "MCP 도구 승인",
       "confirm": "도구 사용"
     },
+    "mcpCommand": {
+      "title": "이 프로그램을 실행할까요?",
+      "message": "MCP 서버 {{name}}을(를) 시작할 때마다 Oleafly가 이 명령을 실행합니다:\n\n{{command}}\n\n신뢰할 수 있는 프로그램만 허용하세요.",
+      "environment": "다음 환경 변수도 설정합니다: {{names}}",
+      "confirm": "허용"
+    },
     "tableImport": {
       "title": "가져올 스프레드시트 선택",
       "filter": "스프레드시트"

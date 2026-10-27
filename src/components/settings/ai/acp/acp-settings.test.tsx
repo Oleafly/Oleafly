@@ -351,6 +351,14 @@ describe("Hermes for this project", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("The status check failed.");
   });
 
+  it("asks for a newer Hermes when it cannot report its gateway", async () => {
+    vi.mocked(acpHermesSettings).mockResolvedValue(hermes());
+    vi.mocked(acpHermesStatus).mockResolvedValue(status({ gateway: "outdated" }));
+    render(<HermesSection projectId="paper" />);
+    expect(await screen.findByText("Update Hermes to see the gateway status")).toBeInTheDocument();
+    expect(screen.queryByText("Gateway stopped")).toBeNull();
+  });
+
   it("tests a remote Hermes connection", async () => {
     vi.mocked(acpHermesSettings).mockResolvedValue(hermes());
     vi.mocked(acpHermesStatus).mockResolvedValue(status());

@@ -11,6 +11,7 @@ pub fn get_research_workspace(project_id: String) -> Result<ResearchWorkspace, S
 
 #[tauri::command]
 pub fn add_research_root(request: AddResearchRootRequest) -> Result<ResearchWorkspace, String> {
+    crate::path_grants::require_open(&request.path)?;
     roots::add_root(request)
 }
 

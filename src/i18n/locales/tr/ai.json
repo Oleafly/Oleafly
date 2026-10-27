@@ -185,11 +185,15 @@
     "steered": "Yönlendirildi",
     "toolOutputError": "Hata: {{message}}",
     "errorHints": {
+      "emptyReply": "Model boş bir yanıt gönderdi. Tekrar deneyin ya da {{where}} başka bir modele geçin.",
       "invalidKey": "API anahtarınız geçersiz veya süresi dolmuş görünüyor. Ayarlar → Yapay zeka asistanı bölümünden güncelleyin ya da {{where}} sağlayıcı değiştirin.",
+      "invalidRequest": "Sağlayıcı isteğin parametrelerini reddetti. {{where}} başka bir model deneyin.",
       "outOfCredits": "Yapay zeka sağlayıcınızın kredisi veya kotası bitti. Hesabı doldurun ya da {{where}} başka bir sağlayıcıya (veya yerel Ollama'ya) geçin.",
       "overloaded": "Sağlayıcının sunucuları şu anda aşırı yüklü (bu istek zaten yeniden denendi). Bir dakika bekleyip tekrar deneyin ya da {{where}} benzer bir modele geçin.",
       "rateLimited": "Sağlayıcı istekleri hız sınırına takıyor. Biraz bekleyip yeniden deneyin ya da {{where}} sağlayıcı değiştirin.",
       "retiredModel": "Sağlayıcı bu modeli kaldırdı veya kısıtladı. {{where}} daha yeni bir model seçin (Ayarlar → Yapay zeka asistanı, anahtarınızın kullanabileceklerini listeler).",
+      "serverError": "Sağlayıcıda bir sunucu hatası oluştu. Bir dakika bekleyip tekrar deneyin ya da {{where}} başka bir modele geçin.",
+      "timedOut": "Sağlayıcı yanıt vermekte çok gecikti. Tekrar deneyin ya da {{where}} başka bir modele geçin.",
       "unreachable": "Yapay zeka sağlayıcısına ulaşılamadı. Bağlantınızı denetleyin. Ollama kullanıyorsanız çalıştığından emin olun (Ayarlar → Yapay zeka asistanı → Ollama'yı denetle).",
       "where": {
         "inSettings": "Ayarlar'daki Yapay zeka asistanı bölümünden",

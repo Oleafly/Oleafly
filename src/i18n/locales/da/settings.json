@@ -164,7 +164,8 @@
           "ready": "Gatewayen kører",
           "starting": "Gatewayen starter",
           "stopped": "Gatewayen er stoppet",
-          "unknown": "Gatewayens status er ukendt"
+          "unknown": "Gatewayens status er ukendt",
+          "outdated": "Opdater Hermes for at tjekke gatewayen"
         },
         "refresh": "Tjek igen",
         "keepsRunning": "Gatewayen stopper aldrig, når Oleafly afbryder forbindelsen.",

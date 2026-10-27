@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "To slags agenter",
-      "content": "Oleafly-agenten kører hos den modeludbyder, du konfigurerer. CLI-agenten, som er i beta, styrer en kodeagent, der allerede er installeret på denne computer."
+      "content": "Oleafly-agenten kører hos den modeludbyder, du konfigurerer. CLI-agenten styrer en kodeagent, der allerede er installeret på denne computer."
     },
     "connectProvider": {
       "title": "Forbind en udbyder",

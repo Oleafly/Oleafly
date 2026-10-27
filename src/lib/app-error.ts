@@ -71,6 +71,10 @@ export function describeError(value: unknown): string {
   return displayText(errorSentence(value));
 }
 
+export function errorText(text: string): string {
+  return decodeAppError(text) ? describeError(text) : text;
+}
+
 function errorKey(code: string): string | null {
   const dot = code.indexOf(".");
   const keys = [`errors:${code}`];

@@ -208,6 +208,15 @@ function ollamaChoices(id: string, caps: ReasoningCaps): ProviderChoices {
   return { wire, base: [] };
 }
 
+function deepSeekChoices(id: string, caps: ReasoningCaps): ProviderChoices {
+  const wire: EffortLevel[] = ["none", "low", "high", "max"];
+  if (caps.efforts !== null) {
+    return { wire, base: caps.toggle ? [...caps.efforts, "none"] : [...caps.efforts] };
+  }
+  if (startsWithAny(id, ["deepseek-flash", "deepseek-v4"])) return { wire, base: [...wire] };
+  return { wire, base: [] };
+}
+
 function providerChoices(providerId: string, id: string, caps: ReasoningCaps): ProviderChoices {
   switch (providerId) {
     case "anthropic":
@@ -224,6 +233,8 @@ function providerChoices(providerId: string, id: string, caps: ReasoningCaps): P
       return openRouterChoices(caps);
     case "ollama":
       return ollamaChoices(id, caps);
+    case "deepseek":
+      return deepSeekChoices(id, caps);
     default:
       return { wire: [], base: [] };
   }

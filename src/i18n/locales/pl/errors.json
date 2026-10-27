@@ -75,7 +75,9 @@
     "shell_escape_denied_minted": "minted musi uruchomić inny program, aby wyróżnić kod, a ten projekt to blokuje. Aby na to zezwolić, kliknij \"{{setting}}\" na pasku nad edytorem. Rób to tylko wtedy, gdy ufasz każdemu plikowi w projekcie. LaTeX będzie mógł wtedy uruchamiać dowolne programy z twoimi uprawnieniami, a uruchomiony przez niego program może działać dalej po zatrzymaniu kompilacji.",
     "shell_escape_denied_pythontex": "PythonTeX musi uruchomić Pythona, a ten projekt to blokuje. Aby na to zezwolić, kliknij \"{{setting}}\" na pasku nad edytorem. Rób to tylko wtedy, gdy ufasz każdemu plikowi w projekcie. LaTeX będzie mógł wtedy uruchamiać dowolne programy z twoimi uprawnieniami, a uruchomiony przez niego program może działać dalej po zatrzymaniu kompilacji.",
     "shell_escape_denied_command": "Ten dokument uruchamia polecenie shell, a ten projekt to blokuje. Aby na to zezwolić, kliknij \"{{setting}}\" na pasku nad edytorem. Rób to tylko wtedy, gdy ufasz każdemu plikowi w projekcie. LaTeX będzie mógł wtedy uruchamiać dowolne programy z twoimi uprawnieniami, a uruchomiony przez niego program może działać dalej po zatrzymaniu kompilacji.",
-    "japanese_compiler_missing": "{{compiler}} nie jest zainstalowany w Twojej dystrybucji TeX. Dodaj go do TeX Live lub TinyTeX poleceniem tlmgr install collection-langjapanese albo wybierz inny kompilator."
+    "japanese_compiler_missing": "{{compiler}} nie jest zainstalowany w Twojej dystrybucji TeX. Dodaj go do TeX Live lub TinyTeX poleceniem tlmgr install collection-langjapanese albo wybierz inny kompilator.",
+    "compiler_crashed": "Kompilator uległ awarii przed zakończeniem pracy, więc dziennik kończy się w miejscu, w którym się zatrzymał. Spróbuj skompilować ponownie. Jeśli awaria powtarza się za każdym razem, wybierz inny kompilator w menu kompilacji.",
+    "compiler_crashed_font": "Tectonic uległ awarii podczas wyszukiwania czcionki \"{{font}}\", która prawdopodobnie nie jest zainstalowana na tym komputerze. Zainstaluj czcionkę albo wybierz XeLaTeX lub LuaLaTeX w menu kompilacji. Zgłaszają one brak czcionki zamiast ulegać awarii."
   },
   "export": {
     "bibliography_unreadable": "Oleafly nie mógł odczytać bibliografii {{name}}. Sprawdź, czy nie ma w niej uszkodzonego wpisu, a potem wyeksportuj ponownie."
@@ -195,6 +197,74 @@
       "declined": "Program nie został zmieniony.",
       "check_running": "Test tego agenta już trwa.",
       "main_window": "Zmieniaj programy agentów w oknie głównym."
+    },
+    "start": {
+      "cancelled": "Uruchamianie zostało anulowane.",
+      "owner_closed": "Okno lub zadanie zostało zamknięte podczas uruchamiania agenta.",
+      "already_connected": "Ta sesja ACP jest już połączona.",
+      "session_limit": "Połączonych jest już osiem sesji ACP. Rozłącz jedną, zanim uruchomisz kolejną.",
+      "v1_only": "Agent obsługuje tylko ACP w wersji 1.",
+      "unsupported_version": "Ten agent nie obsługuje ACP w wersji {{version}}.",
+      "cannot_resume": "Ten agent nie może wznawiać zapisanych sesji. Rozpocznij nową rozmowę, aby kontynuować pracę.",
+      "conversation_gone": "Agent nie ma już tej rozmowy. Rozpocznij nową.",
+      "not_installed": "Ten agent nie jest jeszcze zainstalowany. Zainstaluj go albo wybierz jego program w Ustawieniach.",
+      "program_missing": "Brakuje programu wybranego dla tego agenta. Wybierz go ponownie w Ustawieniach.",
+      "node_needed": "Zainstaluj Node.js, aby uruchomić tego agenta.",
+      "node_missing": "Zainstaluj Node.js w wersji {{required}} lub nowszej, aby uruchomić tego agenta.",
+      "node_outdated": "Ten agent wymaga Node.js w wersji {{required}} lub nowszej. Wykryta wersja to {{major}}.",
+      "bridge_outdated": "Wersja {{package}} {{found}} na tym komputerze jest za stara. Oleafly potrzebuje wersji {{pinned}} lub nowszej. Zainstaluj mostek w Ustawieniach.",
+      "spawn_failed": "Nie udało się uruchomić agenta. Sprawdź jego instalację i uprawnienia do wykonywania. ({{kind}}: {{path}})",
+      "remote_not_set_up": "Najpierw skonfiguruj zdalną maszynę w ustawieniach Hermes.",
+      "ssh_missing": "Oleafly nie może znaleźć ssh na tym komputerze. Zainstaluj OpenSSH i spróbuj jeszcze raz.",
+      "moved_to_local": "Ta rozmowa działała na innej maszynie, a Hermes działa teraz na tym komputerze. Rozpocznij nową rozmowę, aby kontynuować.",
+      "moved_to_remote": "Ta rozmowa działała na tym komputerze, a Hermes działa teraz na innej maszynie. Rozpocznij nową rozmowę, aby kontynuować.",
+      "moved_machine": "Ta rozmowa działała na innej maszynie niż ta, której Hermes używa teraz. Rozpocznij nową rozmowę, aby kontynuować.",
+      "moved_profile": "Ta rozmowa działała w innym profilu Hermes. Przełącz projekt z powrotem na tamten profil albo rozpocznij nową rozmowę."
+    },
+    "session": {
+      "disconnected": "Agent się rozłączył.",
+      "disconnected_with_output": "Agent się rozłączył. Ostatnie dane wyjściowe agenta: {{output}}",
+      "disconnected_command_help": "Agent się rozłączył. Wyświetlił pomoc wiersza poleceń, więc ta wersja nie akceptuje opcji, z którymi uruchomił go Oleafly.",
+      "no_reply": "Agent rozłączył się przed odpowiedzią.",
+      "no_reply_with_output": "Agent rozłączył się przed odpowiedzią. Ostatnie dane wyjściowe agenta: {{output}}",
+      "no_reply_command_help": "Agent rozłączył się przed odpowiedzią. Wyświetlił pomoc wiersza poleceń, więc ta wersja nie akceptuje opcji, z którymi uruchomił go Oleafly.",
+      "timed_out_stopped": "Agent nie odpowiedział na czas i został zatrzymany.",
+      "timed_out_stopped_with_output": "Agent nie odpowiedział na czas i został zatrzymany. Ostatnie dane wyjściowe agenta: {{output}}",
+      "timed_out_stopped_command_help": "Agent nie odpowiedział na czas i został zatrzymany. Wyświetlił pomoc wiersza poleceń, więc ta wersja nie akceptuje opcji, z którymi uruchomił go Oleafly.",
+      "timed_out": "Agent nie odpowiedział na czas.",
+      "silent": "Agent nic nie wysłał przez {{minutes}} min, więc Oleafly go zatrzymał. Połącz ponownie, aby kontynuować.",
+      "not_connected": "Agent jest rozłączony.",
+      "sign_in": "Zaloguj się do tego agenta i spróbuj jeszcze raz.",
+      "claude_gateway": "Claude Code używa niestandardowego punktu końcowego API. Sprawdź ANTHROPIC_BASE_URL i ANTHROPIC_AUTH_TOKEN w profilu shell lub w pliku settings.json programu Claude Code, a potem połącz ponownie.",
+      "codex_setup": "Codex zgłosił problem ze swoją konfiguracją:\n{{output}}",
+      "codex_key_rejected": "Twój klucz dla {{provider}} został odrzucony.",
+      "codex_provider_key": "Codex używa dostawcy {{provider}} ze swojego pliku config.toml. Sprawdź, czy zmienna {{env_key}} jest ustawiona i prawidłowa, a potem połącz ponownie.",
+      "codex_provider": "Codex używa dostawcy {{provider}} ze swojego pliku config.toml. Sprawdź jego ustawienia, a potem połącz ponownie.",
+      "transcript_not_saved": "Nie udało się zachować zapisu ACP. Agent został zatrzymany, aby chronić zapisaną historię.",
+      "transcript_full": "Ta sesja osiągnęła limit rozmiaru zapisu. Rozpocznij nową rozmowę."
+    },
+    "turn": {
+      "no_stop_reason": "Agent nie zgłosił, jak zakończyła się ta tura.",
+      "stopped_early": "Agent zatrzymał się przed zakończeniem tej tury.",
+      "codex_error": "Codex przerwał tę turę z powodu błędu."
+    },
+    "notice": {
+      "empty_turn": "Agent zakończył turę bez odpowiedzi.",
+      "empty_turn_advice": "Sprawdź model agenta i logowanie, a potem spróbuj jeszcze raz.",
+      "outside_project": "Oleafly odrzucił żądanie spoza tego projektu.",
+      "outside_project_path": "Agent poprosił o dostęp do {{path}}. Agenci mogą używać tylko plików wewnątrz projektu.",
+      "outside_project_rule": "Agenci mogą używać tylko plików wewnątrz projektu.",
+      "hermes_tools_lost": "Hermes stracił narzędzia projektu po zmianie modelu.",
+      "hermes_tools_advice": "Połącz ponownie, aby je przywrócić.",
+      "route_failed": "Oleafly nie mógł przekierować żądań tego agenta przez Twój klucz dla {{provider}}.",
+      "unroute_failed": "Oleafly nie mógł wyłączyć przekierowania żądań tego agenta przez Twój klucz dla {{provider}}.",
+      "codex_openai_only": "Codex może używać tylko klucza OpenAI.",
+      "no_saved_key": "Brak zapisanego klucza dla tego dostawcy.",
+      "key_kind_unsupported": "Ten agent nie może używać tego rodzaju klucza."
+    },
+    "install": {
+      "npm_unreachable": "Oleafly nie może połączyć się z rejestrem npm pod adresem {{host}} ({{code}}). Sprawdź połączenie z siecią, serwer proxy lub ustawienie rejestru npm.",
+      "npm_timed_out": "Instalacja z {{host}} trwała za długo i została zatrzymana. Sprawdź połączenie z siecią, serwer proxy lub ustawienie rejestru npm."
     }
   },
   "typst_toolchain": {
@@ -299,6 +369,9 @@
     "cancelled": "Konwersja w Mathpix została zatrzymana.",
     "wrong_window": "Mathpix można używać tylko z głównego okna Oleafly.",
     "pdf_too_large_ipc": "Ten komputer może wysyłać do Mathpix pliki PDF o rozmiarze do 16 MB. Podziel plik PDF i spróbuj ponownie."
+  },
+  "mcp": {
+    "command_declined": "Serwer MCP nie został zapisany."
   },
   "desktop_apps": {
     "not_installed": "Cua Driver nie jest zainstalowany. Zainstaluj go w sekcji Ustawienia → Integracje → Aplikacje na komputerze.",

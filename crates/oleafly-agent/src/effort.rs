@@ -146,6 +146,7 @@ pub fn effort_choices(provider_id: &str, model_id: &str, caps: &ModelCaps) -> Ve
         "groq" => (all, groq_base(&id, reasoning)),
         "openrouter" => (all, reasoning.efforts.clone().unwrap_or_default()),
         "ollama" => (all, ollama_base(&id, reasoning)),
+        "deepseek" => deepseek_levels(&id, reasoning),
         _ => (Vec::new(), Vec::new()),
     };
     let mut choices: Vec<Effort> = base
@@ -252,6 +253,22 @@ fn groq_base(id: &str, reasoning: &ReasoningCaps) -> Vec<Effort> {
     }
 }
 
+fn deepseek_levels(id: &str, reasoning: &ReasoningCaps) -> (Vec<Effort>, Vec<Effort>) {
+    let wire = vec![Off, Low, High, Max];
+    let base = match &reasoning.efforts {
+        Some(efforts) => {
+            let mut base = efforts.clone();
+            if reasoning.toggle {
+                base.push(Off);
+            }
+            base
+        }
+        None if starts_with_any(id, &["deepseek-flash", "deepseek-v4"]) => wire.clone(),
+        None => Vec::new(),
+    };
+    (wire, base)
+}
+
 fn ollama_base(id: &str, reasoning: &ReasoningCaps) -> Vec<Effort> {
     match &reasoning.efforts {
         Some(efforts) => efforts.clone(),
@@ -350,7 +367,25 @@ mod tests {
                 reasoning_content: true,
             },
         );
-        assert_eq!(effective_effort(&deepseek, Some(Effort::High)), None);
+        assert_eq!(effective_effort(&deepseek, Some(Effort::High)), Some(High));
+        assert_eq!(effective_effort(&deepseek, Some(Effort::Off)), Some(Off));
+        assert_eq!(
+            effective_effort(&deepseek, Some(Effort::Medium)),
+            Some(High)
+        );
+        assert_eq!(
+            effective_effort(&deepseek, Some(Effort::Minimal)),
+            Some(Low)
+        );
+        let zai = resolved(
+            "zai",
+            "glm-5.3",
+            Wire::OpenAiChat {
+                base_url: "https://api.z.ai/api/coding/paas/v4".into(),
+                reasoning_content: true,
+            },
+        );
+        assert_eq!(effective_effort(&zai, Some(Effort::High)), None);
         let opus = resolved(
             "anthropic",
             "claude-opus-5-5",

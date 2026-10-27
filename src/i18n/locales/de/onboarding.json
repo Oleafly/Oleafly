@@ -186,7 +186,7 @@
     },
     "runtime": {
       "title": "Zwei Arten von Agent",
-      "content": "Der Oleafly-Agent läuft bei dem Modellanbieter, den Sie einrichten. Der CLI-Agent, noch in der Beta, steuert einen Coding-Agenten, der schon auf diesem Computer installiert ist."
+      "content": "Der Oleafly-Agent läuft bei dem Modellanbieter, den Sie einrichten. Der CLI-Agent steuert einen Coding-Agenten, der schon auf diesem Computer installiert ist."
     },
     "connectProvider": {
       "title": "Einen Anbieter verbinden",

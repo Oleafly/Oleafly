@@ -6,6 +6,7 @@ use super::{
 use serde_json::{json, Value};
 use std::{
     collections::BTreeMap,
+    ffi::{OsStr, OsString},
     io::Write,
     path::{Path, PathBuf},
 };
@@ -22,13 +23,58 @@ const TASK_ENV: [&str; 6] = [
     "CLAUDE_AGENT_ACP_EXPERIMENTAL_V2",
 ];
 
+const TASK_NETWORK_ENV: [&str; 10] = [
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "all_proxy",
+    "NODE_EXTRA_CA_CERTS",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+    "REQUESTS_CA_BUNDLE",
+];
+
+const TASK_CERTIFICATE_FILES: [&str; 3] =
+    ["NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE", "REQUESTS_CA_BUNDLE"];
+
+const TASK_DEFAULTS: [(&str, &str); 2] = [("NODE_NO_WARNINGS", "1"), ("PYTHONIOENCODING", "utf-8")];
+
 /// The environment a sandboxed agent starts with on top of the sandbox's
-/// fixed one: [`TASK_ENV`] from the launch and the project's Git hardening.
-/// Never a reserved variable (`PATH`, `HOME`, …).
+/// fixed one: [`TASK_ENV`] from the launch, the user's proxy and certificate
+/// settings (never API keys), no proxy for loopback, quiet Node.js and UTF-8
+/// Python output, and the project's Git hardening. Never a reserved variable
+/// (`PATH`, `HOME`, …).
 pub(super) fn task_env(
     launch: &Launch,
     project_id: &str,
     root: &Path,
+) -> Result<BTreeMap<String, String>, String> {
+    task_env_with(
+        launch,
+        project_id,
+        root,
+        &crate::program_locator::host_env(),
+        cfg!(windows),
+    )
+}
+
+fn launch_value(launch: &Launch, name: &str) -> Option<OsString> {
+    launch
+        .env
+        .iter()
+        .rev()
+        .find(|(key, _)| key == name)
+        .map(|(_, value)| value.clone())
+}
+
+fn task_env_with(
+    launch: &Launch,
+    project_id: &str,
+    root: &Path,
+    host: &dyn Fn(&str) -> Option<OsString>,
+    windows: bool,
 ) -> Result<BTreeMap<String, String>, String> {
     let mut env = BTreeMap::new();
     for (name, value) in &launch.env {
@@ -38,6 +84,35 @@ pub(super) fn task_env(
         if let Some(value) = value.to_str() {
             env.insert(name.clone(), value.to_owned());
         }
+    }
+    let spelled = |env: &BTreeMap<String, String>, name: &str| {
+        windows && env.keys().any(|known| known.eq_ignore_ascii_case(name))
+    };
+    for name in TASK_NETWORK_ENV {
+        if spelled(&env, name) {
+            continue;
+        }
+        let value = launch_value(launch, name).or_else(|| host(name));
+        if let Some(value) = value.as_deref().and_then(OsStr::to_str) {
+            env.insert(name.to_owned(), value.to_owned());
+        }
+    }
+    let no_proxy: &[&str] = if windows {
+        &["NO_PROXY"]
+    } else {
+        &["NO_PROXY", "no_proxy"]
+    };
+    for name in no_proxy {
+        let existing = launch_value(launch, name).or_else(|| host(name));
+        let merged = crate::program_locator::with_loopback_no_proxy(existing.as_deref());
+        env.insert((*name).to_owned(), merged.to_string_lossy().into_owned());
+    }
+    for (name, default) in TASK_DEFAULTS {
+        let value = launch_value(launch, name)
+            .or_else(|| host(name))
+            .and_then(|value| value.into_string().ok())
+            .unwrap_or_else(|| default.to_owned());
+        env.insert(name.to_owned(), value);
     }
     if let Some(hardening) = crate::trust::git_restriction(project_id, root)? {
         for (name, value) in hardening {
@@ -68,7 +143,7 @@ fn python_venv_root(executable: &Path) -> Option<PathBuf> {
         .then(|| root.to_path_buf())
 }
 
-/// The package folder of the Pi CLI a bridge is handed: the nearest
+/// The package folder of the CLI a bridge is handed (Pi, Codex): the nearest
 /// ancestor with a `package.json`, else the CLI's own folder.
 fn pi_package_root(command: &Path) -> Option<PathBuf> {
     let real = command
@@ -83,6 +158,20 @@ fn pi_package_root(command: &Path) -> Option<PathBuf> {
 }
 
 pub fn runtime_reads(root: &Path, definition: &AgentDefinition, launch: &Launch) -> Vec<PathBuf> {
+    runtime_reads_with(
+        root,
+        definition,
+        launch,
+        &crate::program_locator::host_env(),
+    )
+}
+
+fn runtime_reads_with(
+    root: &Path,
+    definition: &AgentDefinition,
+    launch: &Launch,
+    host: &dyn Fn(&str) -> Option<OsString>,
+) -> Vec<PathBuf> {
     let mut paths = vec![launch.executable.clone()];
     if launch.managed {
         paths.push(
@@ -142,12 +231,21 @@ pub fn runtime_reads(root: &Path, definition: &AgentDefinition, launch: &Launch)
         }
     }
     paths.extend(python_venv_root(&launch.executable));
-    if let Some((_, pi)) = launch
+    for (_, cli) in launch
         .env
         .iter()
-        .find(|(name, _)| name == "PI_ACP_PI_COMMAND")
+        .filter(|(name, _)| name == "PI_ACP_PI_COMMAND" || name == "CODEX_PATH")
     {
-        paths.extend(pi_package_root(Path::new(pi)));
+        paths.extend(pi_package_root(Path::new(cli)));
+    }
+    for name in TASK_CERTIFICATE_FILES {
+        if let Some(file) = launch_value(launch, name)
+            .or_else(|| host(name))
+            .map(PathBuf::from)
+            .filter(|file| file.is_absolute() && file.is_file())
+        {
+            paths.push(file);
+        }
     }
     paths.sort();
     paths.dedup();
@@ -264,10 +362,23 @@ mod tests {
         }
     }
 
+    fn host(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<OsString> {
+        let pairs: Vec<(String, String)> = pairs
+            .iter()
+            .map(|(name, value)| (name.to_string(), value.to_string()))
+            .collect();
+        move |name: &str| {
+            pairs
+                .iter()
+                .find(|(key, _)| key == name)
+                .map(|(_, value)| OsString::from(value))
+        }
+    }
+
     #[test]
-    fn task_env_keeps_only_the_hand_off_variables() {
+    fn task_env_keeps_only_the_hand_off_network_and_quiet_output_variables() {
         let temp = tempfile::tempdir().unwrap();
-        let env = task_env(
+        let env = task_env_with(
             &launch(
                 Path::new("/bin/agent"),
                 vec![
@@ -276,19 +387,98 @@ mod tests {
                     ("PATH", "/usr/bin"),
                     ("LANG", "C"),
                     ("OPENAI_API_KEY", "sk-secret-123456789"),
+                    ("ANTHROPIC_AUTH_TOKEN", "sk-login-token-1234"),
+                    ("https_proxy", "http://login:7890"),
+                    ("NO_PROXY", "corp.example,127.0.0.1,localhost,::1"),
                 ],
             ),
             "project",
             temp.path(),
+            &host(&[
+                ("HTTPS_PROXY", "http://127.0.0.1:7890"),
+                ("ALL_PROXY", "socks5://127.0.0.1:7891"),
+                ("NODE_EXTRA_CA_CERTS", "/etc/corp-ca.pem"),
+                ("DEEPSEEK_API_KEY", "sk-host-123456789"),
+                ("PYTHONIOENCODING", "gbk"),
+            ]),
+            false,
         )
         .unwrap();
+        let get = |name: &str| env.get(name).map(String::as_str);
+        assert_eq!(get("PI_ACP_PI_COMMAND"), Some("/outside/pi"));
+        assert_eq!(get("HTTPS_PROXY"), Some("http://127.0.0.1:7890"));
+        assert_eq!(get("https_proxy"), Some("http://login:7890"));
+        assert_eq!(get("ALL_PROXY"), Some("socks5://127.0.0.1:7891"));
+        assert_eq!(get("NODE_EXTRA_CA_CERTS"), Some("/etc/corp-ca.pem"));
         assert_eq!(
-            env.get("PI_ACP_PI_COMMAND").map(String::as_str),
-            Some("/outside/pi")
+            get("NO_PROXY"),
+            Some("corp.example,127.0.0.1,localhost,::1")
         );
-        for dropped in ["HOME", "PATH", "LANG", "OPENAI_API_KEY"] {
+        assert_eq!(get("no_proxy"), Some("127.0.0.1,localhost,::1"));
+        assert_eq!(get("NODE_NO_WARNINGS"), Some("1"));
+        assert_eq!(get("PYTHONIOENCODING"), Some("gbk"));
+        for dropped in [
+            "HOME",
+            "PATH",
+            "LANG",
+            "OPENAI_API_KEY",
+            "ANTHROPIC_AUTH_TOKEN",
+            "DEEPSEEK_API_KEY",
+            "HTTP_PROXY",
+        ] {
             assert!(!env.contains_key(dropped), "{dropped}");
         }
+    }
+
+    #[test]
+    fn windows_task_env_sets_each_network_variable_once() {
+        let temp = tempfile::tempdir().unwrap();
+        let env = task_env_with(
+            &launch(Path::new("/bin/agent"), vec![]),
+            "project",
+            temp.path(),
+            &|name: &str| {
+                name.eq_ignore_ascii_case("HTTPS_PROXY")
+                    .then(|| OsString::from("http://127.0.0.1:7890"))
+            },
+            true,
+        )
+        .unwrap();
+        let names: Vec<&String> = env.keys().collect();
+        for name in ["HTTPS_PROXY", "NO_PROXY"] {
+            assert_eq!(
+                names
+                    .iter()
+                    .filter(|key| key.eq_ignore_ascii_case(name))
+                    .count(),
+                1,
+                "{names:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn task_runtime_reads_include_a_certificate_bundle_the_task_is_told_about() {
+        let temp = tempfile::tempdir().unwrap();
+        let bundle = temp.path().join("corp-ca.pem");
+        std::fs::write(&bundle, "-----BEGIN CERTIFICATE-----").unwrap();
+        let folder = temp.path().join("certs");
+        std::fs::create_dir_all(&folder).unwrap();
+        let definition = crate::acp::catalog::builtins().remove(0);
+        let bundle_text = bundle.to_string_lossy().into_owned();
+        let folder_text = folder.to_string_lossy().into_owned();
+        let reads = runtime_reads_with(
+            temp.path(),
+            &definition,
+            &launch(Path::new("/bin/sh"), Vec::new()),
+            &host(&[
+                ("NODE_EXTRA_CA_CERTS", &bundle_text),
+                ("SSL_CERT_DIR", &folder_text),
+                ("REQUESTS_CA_BUNDLE", "/missing/ca.pem"),
+            ]),
+        );
+        assert!(reads.contains(&bundle), "{reads:?}");
+        assert!(!reads.contains(&folder), "{reads:?}");
     }
 
     #[test]
@@ -328,6 +518,27 @@ mod tests {
         );
         let package = package.canonicalize().unwrap();
         assert!(reads.iter().any(|path| path == &package));
+    }
+
+    #[test]
+    fn runtime_reads_include_the_codex_cli_handed_to_the_bridge() {
+        let temp = tempfile::tempdir().unwrap();
+        let package = temp.path().join("lib/node_modules/@openai/codex");
+        std::fs::create_dir_all(package.join("bin")).unwrap();
+        std::fs::write(package.join("package.json"), "{}").unwrap();
+        let cli = package.join("bin").join("codex.js");
+        std::fs::write(&cli, "").unwrap();
+        let definition = crate::acp::catalog::builtins().remove(0);
+        let reads = runtime_reads(
+            temp.path(),
+            &definition,
+            &launch(
+                Path::new("/bin/sh"),
+                vec![("CODEX_PATH", cli.to_str().unwrap())],
+            ),
+        );
+        let package = package.canonicalize().unwrap();
+        assert!(reads.iter().any(|path| path == &package), "{reads:?}");
     }
 
     #[test]
