@@ -1098,7 +1098,8 @@
           "off": "Aus",
           "open": "{{label}} bearbeiten",
           "chip": "{{label}}: {{summary}}",
-          "invalid": "Mit diesem Wert wäre der Aufruf fehlerhaft. Ändern Sie ihn und versuchen Sie es erneut.",
+          "invalid": "Typst kann diesen Text nicht lesen. Ein einzelnes $, *, _ oder ` beginnt eine Formel oder Formatierung. Schließen Sie es oder setzen Sie ein \\ davor.",
+          "readOnly": "Dieses Dokument lässt sich gerade nicht bearbeiten.",
           "invalidNumber": "Geben Sie eine Zahl ein.",
           "between": "Geben Sie eine Zahl von {{min}} bis {{max}} ein.",
           "atLeast": "Geben Sie {{min}} oder mehr ein.",
@@ -1108,7 +1109,7 @@
             "expression": "Im Quelltext berechnet",
             "kind": "Als anderer Werttyp geschrieben",
             "unknownOption": "Nicht in der Auswahl",
-            "locked": "Durch ein Spread-Argument gesetzt"
+            "locked": "Gesperrt, weil der Aufruf auch Werte aus \"..\" übernimmt"
           }
         }
       },

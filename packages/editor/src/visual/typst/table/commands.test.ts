@@ -225,6 +225,18 @@ describe("Typst table alignment and borders", () => {
       "#table(columns: 2, [a], [b])",
     );
   });
+
+  it("removes a comma-first stroke line with its comma", () => {
+    expect(
+      run("#table(\n  stroke: none\n  , columns: 2\n  , [a], [b]\n)", (state, table) => typstBordersEdit(state, table, true)),
+    ).toBe("#table(\n  columns: 2\n  , [a], [b]\n)");
+  });
+
+  it("replaces a stroke value written after a comment", () => {
+    expect(
+      run("#table(columns: 2, stroke: /* thin */ 0.5pt, [a], [b])", (state, table) => typstBordersEdit(state, table, false)),
+    ).toBe("#table(columns: 2, stroke: /* thin */ none, [a], [b])");
+  });
 });
 
 describe("removing a Typst table", () => {

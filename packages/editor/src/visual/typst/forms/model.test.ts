@@ -1,12 +1,13 @@
 import { syntaxTree } from "@codemirror/language";
 import type { SyntaxNode } from "@lezer/common";
 import { beforeAll, describe, expect, it } from "vitest";
+import { installEnglishEditorMessages } from "../../../test-messages";
 import { loadTypstParser } from "../../../typst";
 import type { TypstFormDefinition } from "../../../typst-forms";
 import { typstFormsGolden } from "../../../typst-forms-test-support";
 import { hashBefore } from "../syntax";
 import { typstState } from "../test-support";
-import { type FieldState, readFormCall } from "./model";
+import { type FieldState, numberProblem, readFormCall } from "./model";
 
 beforeAll(async () => {
   await loadTypstParser();
@@ -87,5 +88,29 @@ describe("reading a form call", () => {
     ['#acme.table(caption: "c")', "table", null],
   ])("summarises %s", (doc, fn, summary) => {
     expect(read(doc, fn)?.summary).toBe(summary);
+  });
+});
+
+describe("summaries and number checks", () => {
+  it("shows a toggle summary as On or Off, not true or false", () => {
+    installEnglishEditorMessages();
+    const signOff = form("sign-off");
+    const byFinal = { ...signOff, summary: { named: "final" } } as TypstFormDefinition;
+    const state = typstState('#sign-off(name: "D", final: true)');
+    let summary: string | null | undefined;
+    syntaxTree(state).iterate({
+      enter(ref) {
+        const hash = ref.name === "FuncCall" ? hashBefore(ref.node) : null;
+        if (hash && summary === undefined) summary = readFormCall(state.doc, hash, ref.node, byFinal)?.summary;
+      },
+    });
+    expect(summary).toBe("On");
+  });
+
+  it("refuses an integer the source can't hold exactly", () => {
+    const kind = { type: "number", integer: true, min: null, max: null, step: null, default: null } as const;
+    expect(numberProblem(kind, 9_007_199_254_740_991)).toBeNull();
+    expect(numberProblem(kind, 9_007_199_254_740_993)).toBe("number");
+    expect(numberProblem({ ...kind, integer: false }, 1e16)).toBeNull();
   });
 });

@@ -2,7 +2,7 @@ import { TYPST_LABEL_PATTERN } from "@oleafly/editor/typst-syntax";
 import { insertTemplate, replaceRange } from "@/components/editor/cm/controller";
 import { latexGraphicsPath } from "@/components/editor/figure-import";
 import { dirname } from "@/lib/path-utils";
-import { decodeTypstString, encodeTypstString } from "@oleafly/editor/typst-literals";
+import { decodeTypstString, encodeTypstString, sanitizeTypstContent } from "@oleafly/editor/typst-literals";
 import { matchTypstContent, typstArguments, type TypstArgument, type TypstSpan } from "./typst-scan";
 import { TYPST_FIGURE_ALT_SINCE, typstVersionSupports } from "./typst-version";
 
@@ -57,23 +57,8 @@ export function sanitizeTypstLabel(label: string): string {
   return LABEL_WHOLE.test(replaced) ? replaced : "label";
 }
 
-function bracketsBalanced(text: string): boolean {
-  let depth = 0;
-  for (let index = 0; index < text.length; index++) {
-    const character = text[index];
-    if (character === "\\") index += 1;
-    else if (character === "[") depth += 1;
-    else if (character === "]") {
-      depth -= 1;
-      if (depth < 0) return false;
-    }
-  }
-  return depth === 0;
-}
-
 export function typstCaptionContent(caption: string): string {
-  const flat = caption.replaceAll(/\r?\n/gu, " ");
-  return bracketsBalanced(flat) ? flat : flat.replaceAll(/(?<!\\)([[\]])/gu, String.raw`\$1`);
+  return sanitizeTypstContent(caption.replaceAll(/\r?\n/gu, " "));
 }
 
 function extraArgs(args: readonly TypstExtraArgument[] | undefined, skip: ReadonlySet<string>): string[] {

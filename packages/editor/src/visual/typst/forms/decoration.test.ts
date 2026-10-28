@@ -1,8 +1,11 @@
+import { Compartment, EditorState } from "@codemirror/state";
 import { beforeAll, describe, expect, it } from "vitest";
-import { loadTypstParser } from "../../../typst";
+import { loadTypstParser, typstLanguage } from "../../../typst";
 import { staticTypstForms } from "../../../typst-forms";
 import { readTypstFormsFixture, typstFormsGolden } from "../../../typst-forms-test-support";
+import { parsedState } from "../../test-document";
 import type { VisualPorts } from "../../types";
+import { typstVisualMode } from "../index";
 import { TypstTableWidget } from "../table/widget";
 import { rangeOf, typstState, widgetsOf } from "../test-support";
 import { TypstFormChipWidget } from "./chip";
@@ -88,5 +91,18 @@ describe("form decorations", () => {
     const after = cards(EDGE).filter((card) => card.text.includes("After the let"));
     expect(after).toEqual([]);
     expect(cards(EDGE).some((card) => card.text.includes("Before the let"))).toBe(true);
+  });
+});
+
+describe("a document that moves", () => {
+  it("resolves its relative imports again from its new folder", () => {
+    const doc = '#import "template/memo.typ": memo-header\n\n#memo-header(to: "Ops", subject: "Plan")\n';
+    const visual = new Compartment();
+    const before = parsedState(
+      EditorState.create({ doc, extensions: [typstLanguage(), visual.of(typstVisualMode(ports(), "drafts/report.typ"))] }),
+    );
+    expect(widgetsOf(before, TypstFormCardWidget)).toEqual([]);
+    const after = before.update({ effects: visual.reconfigure(typstVisualMode(ports(), "report.typ")) }).state;
+    expect(widgetsOf(after, TypstFormCardWidget).map((found) => found.widget.call.definition.function)).toEqual(["memo-header"]);
   });
 });

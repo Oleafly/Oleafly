@@ -1112,7 +1112,8 @@
           "off": "Desactivado",
           "open": "Editar {{label}}",
           "chip": "{{label}}: {{summary}}",
-          "invalid": "Este valor rompería la llamada. Cámbialo y vuelve a intentarlo.",
+          "invalid": "Typst no puede leer este texto. Un $, *, _ o ` suelto inicia una fórmula o un formato. Ciérralo o escribe \\ delante.",
+          "readOnly": "Este documento no se puede editar ahora mismo.",
           "invalidNumber": "Escribe un número.",
           "between": "Escribe un número de {{min}} a {{max}}.",
           "atLeast": "Escribe {{min}} o más.",
@@ -1122,7 +1123,7 @@
             "expression": "Calculado en el código",
             "kind": "Escrito como otro tipo de valor",
             "unknownOption": "No es una de las opciones",
-            "locked": "Definido por un argumento de propagación"
+            "locked": "Bloqueado porque la llamada también recibe valores de \"..\""
           }
         }
       },

@@ -19,6 +19,11 @@ const ENCODED: Readonly<Record<string, string>> = {
 const INTEGER = /^(-?)\s*(0x[\da-f]+|0o[0-7]+|0b[01]+|\d+)$/iu;
 const FLOAT = /^-?\s*(?:\d+\.\d*|\.\d+|\d+)(?:e[+-]?\d+)?$/iu;
 
+const NEWLINE = /[\n\v\f\r\u0085\u2028\u2029]/u;
+const ID_START = /[\p{XID_Start}_]/u;
+const ID_CONTINUE = /[\p{XID_Continue}_-]/u;
+const URL_CHARACTER = /[\dA-Za-z!#$%&*+,\-./:;=?@_~']/u;
+
 // The escape that starts with the backslash at `body[index]`: what it stands for and how
 // many characters it spans. An unknown escape keeps its backslash, as in Typst.
 function readEscape(body: string, index: number): { readonly text: string; readonly length: number } | null {
@@ -64,42 +69,186 @@ export function encodeTypstString(value: string): string {
   return `${literal}"`;
 }
 
-function bracketsBalanced(text: string): boolean {
-  let depth = 0;
-  for (let index = 0; index < text.length; index++) {
-    const character = text[index];
-    if (character === "\\") index += 1;
-    else if (character === "[") depth += 1;
-    else if (character === "]") {
-      depth -= 1;
-      if (depth < 0) return false;
-    }
-  }
-  return depth === 0;
+type Mode = "markup" | "code" | "math";
+
+// A delimiter the content scan is inside: a `[` in markup, a `(` or `{` in code, or a `$` equation.
+interface Frame {
+  readonly mode: Mode;
+  readonly close: string;
+  readonly at: number;
 }
 
+function lineCommentEnd(text: string, from: number): number {
+  let index = from;
+  while (index < text.length && !NEWLINE.test(text[index])) index += 1;
+  return index;
+}
+
+// Block comments nest, as in Typst's lexer. One that never closes runs to the end.
+function blockCommentEnd(text: string, from: number): number {
+  let depth = 1;
+  let index = from + 2;
+  while (index < text.length && depth > 0) {
+    if (text.startsWith("*/", index)) {
+      depth -= 1;
+      index += 2;
+    } else if (text.startsWith("/*", index)) {
+      depth += 1;
+      index += 2;
+    } else {
+      index += 1;
+    }
+  }
+  return depth > 0 ? text.length : index;
+}
+
+// Raw text ends at the next run of as many backticks as opened it; two backticks are empty raw.
+function rawEnd(text: string, from: number): number {
+  let ticks = 0;
+  while (text[from + ticks] === "`") ticks += 1;
+  if (ticks === 2) return from + 2;
+  let found = 0;
+  for (let index = from + ticks; index < text.length; index += 1) {
+    found = text[index] === "`" ? found + 1 : 0;
+    if (found === ticks) return index + 1;
+  }
+  return text.length;
+}
+
+function stringEnd(text: string, from: number): number {
+  let index = from + 1;
+  while (index < text.length) {
+    if (text[index] === '"') return index + 1;
+    index += text[index] === BACKSLASH ? 2 : 1;
+  }
+  return text.length;
+}
+
+// A link takes URL characters and balanced brackets, minus trailing punctuation, as in Typst's lexer.
+function linkEnd(text: string, from: number): number {
+  const open: string[] = [];
+  let index = from + (text.startsWith("https://", from) ? 8 : 7);
+  for (; index < text.length; index += 1) {
+    const character = text[index];
+    if (character === "[" || character === "(") open.push(character);
+    else if (character === "]" || character === ")") {
+      if (open.pop() !== (character === "]" ? "[" : "(")) break;
+    } else if (!URL_CHARACTER.test(character)) break;
+  }
+  while ("!,.:;?'".includes(text[index - 1])) index -= 1;
+  return index;
+}
+
+// Where the comment, escape, raw text, string or link at `index` ends, or null when none starts
+// there. Each is lexed in the modes Typst lexes it in, so the brackets inside never count.
+function tokenEnd(text: string, index: number, mode: Mode): number | null {
+  const character = text[index];
+  if (text.startsWith("//", index)) return lineCommentEnd(text, index);
+  if (text.startsWith("/*", index)) return blockCommentEnd(text, index);
+  if (character === BACKSLASH && mode !== "code") return index + 2;
+  if (character === "`" && mode !== "math") return rawEnd(text, index);
+  if (character === '"' && mode !== "markup") return stringEnd(text, index);
+  const link = mode === "markup" && character === "h" && /^https?:\/\//u.test(text.slice(index, index + 8));
+  return link ? linkEnd(text, index) : null;
+}
+
+function identifierEnd(text: string, from: number): number {
+  let index = from;
+  while (index < text.length) {
+    const character = String.fromCodePoint(text.codePointAt(index) as number);
+    if (!(index === from ? ID_START : ID_CONTINUE).test(character)) break;
+    index += character.length;
+  }
+  return index;
+}
+
+function opened(frames: Frame[], mode: Mode, close: string, at: number): number {
+  frames.push({ mode, close, at });
+  return at + 1;
+}
+
+// The code after a `#`: a `(..)` or `{..}` expression, a string, or a name with its fields,
+// whose directly following `(` arguments are code and `[` body is markup.
+function embeddedCode(text: string, from: number, frames: Frame[]): number {
+  if (text[from] === '"') return stringEnd(text, from);
+  if (text[from] === "{") return opened(frames, "code", "}", from);
+  let index = identifierEnd(text, from);
+  while (text[index] === "." && identifierEnd(text, index + 1) > index + 1) index = identifierEnd(text, index + 1);
+  if (text[index] === "(") return opened(frames, "code", ")", index);
+  return text[index] === "[" ? opened(frames, "markup", "]", index) : index;
+}
+
+function openerOf(mode: Mode, character: string): { readonly mode: Mode; readonly close: string } | null {
+  if (character === "$" && mode !== "math") return { mode: "math", close: "$" };
+  if (character === "[" && mode !== "math") return { mode: "markup", close: "]" };
+  if (mode !== "code") return null;
+  if (character === "(") return { mode: "code", close: ")" };
+  return character === "{" ? { mode: "code", close: "}" } : null;
+}
+
+// The brackets Typst would leave unmatched in this markup: one scan that follows markup, code
+// and math, steps over escapes, comments, raw text, strings and links, and pairs each `]` with
+// the nearest open `[`. A trailing backslash is counted as an unpaired escape.
+function unmatchedBrackets(markup: string): { readonly brackets: number[]; readonly trailingEscape: boolean } {
+  const frames: Frame[] = [];
+  const brackets: number[] = [];
+  let index = 0;
+  while (index < markup.length) {
+    const frame = frames.at(-1);
+    const mode = frame?.mode ?? "markup";
+    const end = tokenEnd(markup, index, mode);
+    if (end !== null) {
+      index = end;
+      continue;
+    }
+    const character = markup[index];
+    const opener = openerOf(mode, character);
+    index += 1;
+    if (frame?.close === character) frames.pop();
+    else if (character === "#" && mode !== "code") index = embeddedCode(markup, index, frames);
+    else if (opener) frames.push({ ...opener, at: index - 1 });
+    else if (character === "]" && !frame) brackets.push(index - 1);
+  }
+  for (const frame of frames) if (frame.close === "]") brackets.push(frame.at);
+  brackets.sort((a, b) => a - b);
+  return { brackets, trailingEscape: index > markup.length };
+}
+
+// Content is kept verbatim except for the brackets Typst would leave unmatched, which are
+// escaped, and a trailing backslash, which is doubled so it can't escape the closing `]`.
 export function sanitizeTypstContent(markup: string): string {
-  return bracketsBalanced(markup) ? markup : markup.replaceAll(/(?<!\\)([[\]])/gu, String.raw`\$1`);
+  const { brackets, trailingEscape } = unmatchedBrackets(markup);
+  let out = "";
+  let from = 0;
+  for (const at of brackets) {
+    out += `${markup.slice(from, at)}${BACKSLASH}`;
+    from = at;
+  }
+  out += markup.slice(from);
+  return trailingEscape ? `${out}${BACKSLASH}` : out;
 }
 
 export function decodeTypstNumber(source: string, integer: boolean): number | null {
   const text = source.trim();
   const whole = INTEGER.exec(text);
   if (whole) {
-    const digits = whole[2].toLowerCase();
-    const magnitude = digits.length > 2 && /^0[xob]/u.test(digits) ? Number(digits) : Number.parseInt(digits, 10);
+    const magnitude = Number(whole[2].toLowerCase());
     const value = whole[1] ? -magnitude : magnitude;
-    return Number.isSafeInteger(value) ? value : null;
+    if (Number.isSafeInteger(value)) return value;
+    // A float field reads an integer literal past 2^53 as the nearest float.
+    return integer || !Number.isFinite(value) ? null : value;
   }
   if (integer || !FLOAT.test(text)) return null;
   const value = Number(text.replaceAll(/\s/gu, ""));
   return Number.isFinite(value) ? value : null;
 }
 
+// Float fields write the number the way it is typed, except that from 1e15 up it is written
+// with an exponent: a run of 16 or more digits is a Typst integer, and past i64 an error.
 export function encodeTypstNumber(value: number, integer: boolean): string | null {
   if (!Number.isFinite(value)) return null;
   if (integer) return Number.isSafeInteger(value) ? String(value) : null;
-  return String(value).replace("e+", "e");
+  return (Math.abs(value) >= 1e15 ? value.toExponential() : String(value)).replace("e+", "e");
 }
 
 export function decodeTypstBool(source: string): boolean | null {

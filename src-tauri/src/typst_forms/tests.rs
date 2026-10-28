@@ -223,6 +223,74 @@ fn a_project_file_linked_from_outside_the_project_is_not_read() {
 }
 
 #[test]
+fn only_the_exact_file_name_is_read() {
+    let data = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let dirs = TypstPackageDirs::app(data.path());
+    write(&project.path().join("Oleafly-Forms.toml"), PROJECT);
+    let read = catalog(project.path(), &dirs, &[]);
+    assert!(read.forms.is_empty(), "{:?}", ids(&read));
+    assert!(read.diagnostics.is_empty());
+    assert_eq!(read.watch, [PROJECT_FORMS_FILE]);
+    assert_eq!(
+        read,
+        catalog(tempfile::tempdir().unwrap().path(), &dirs, &[])
+    );
+}
+
+#[test]
+fn a_package_name_with_capitals_gets_its_forms() {
+    let data = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let dirs = TypstPackageDirs::for_project(data.path(), project.path(), true);
+    let spec = "@local/AcmeReport:1.0.0";
+    install(&dirs.package_path, spec, PACKAGE);
+    let read = catalog(project.path(), &dirs, &[spec]);
+    assert!(
+        ids(&read).contains(&"pkg:@local/AcmeReport:1.0.0#cover-page"),
+        "{:?}",
+        ids(&read)
+    );
+    assert_eq!(codes(&read), [(spec, DiagnosticCode::BuiltinName)]);
+    assert_eq!(
+        read.watch,
+        [
+            PROJECT_FORMS_FILE,
+            "typst-packages/local/AcmeReport/1.0.0/typst.toml"
+        ]
+    );
+}
+
+#[test]
+fn typst_before_0_12_reads_only_its_own_package_folders() {
+    let capabilities = oleafly_core::typst_toolchain::capabilities_for;
+    let data = Path::new("/home/me/.local/share");
+    let cache = Path::new("/home/me/.cache");
+    let typst_own = TypstPackageDirs {
+        package_path: data.join("typst").join("packages"),
+        cache_path: cache.join("typst").join("packages"),
+    };
+    for vendor in [false, true] {
+        let configured =
+            TypstPackageDirs::for_project(Path::new("/data"), Path::new("/project"), vendor);
+        let pick = |version: &str, data: Option<&Path>, cache: Option<&Path>| {
+            compiler_package_dirs(
+                configured.clone(),
+                capabilities(version),
+                data.map(Path::to_path_buf),
+                cache.map(Path::to_path_buf),
+            )
+        };
+        for version in ["0.12.0", "0.13.1", "0.15.1"] {
+            assert_eq!(pick(version, Some(data), Some(cache)), configured);
+        }
+        assert_eq!(pick("0.11.1", Some(data), Some(cache)), typst_own);
+        assert_eq!(pick("0.11.1", None, Some(cache)), configured);
+        assert_eq!(pick("0.11.1", Some(data), None), configured);
+    }
+}
+
+#[test]
 fn requests_are_read_once_each_in_the_order_asked() {
     let data = tempfile::tempdir().unwrap();
     let project = tempfile::tempdir().unwrap();
@@ -316,4 +384,34 @@ fn the_command_reads_a_library_project_like_its_compile() {
     assert_eq!(read.watch, [PROJECT_FORMS_FILE, VENDORED_ACME]);
 
     assert!(catalog_blocking("forms-missing", &packages).is_err());
+}
+
+#[test]
+fn the_command_skips_folders_typst_0_11_never_reads() {
+    let library = crate::collab::testing::TempLibrary::new();
+    let root = library_project(&library, "forms-typst-0-11", "main.typ");
+    let mut meta = crate::project::read_meta("forms-typst-0-11").unwrap();
+    meta.set_typst_version_pin(Some("0.11.1".into()));
+    crate::typst_packages::set_vendor_flag(&mut meta, true);
+    crate::project::write_meta_at(&root.join("project.json"), &meta).unwrap();
+    let app = TypstPackageDirs::app(&crate::paths::oleafly_root().unwrap());
+    install(&app.package_path, ACME, &renamed("From the app folder"));
+    install(
+        &root.join(crate::typst_packages::VENDOR_DIR),
+        ACME,
+        &renamed("Vendored"),
+    );
+
+    // The real data and cache folders are only read, and hold no such package
+    // unless someone installed one by hand.
+    let read = catalog_blocking("forms-typst-0-11", &[ACME.to_owned()]).unwrap();
+    assert!(ids(&read).contains(&"mod:template/memo.typ#memo-header"));
+    assert!(
+        read.forms
+            .iter()
+            .all(|form| form.label != "Vendored" && form.label != "From the app folder"),
+        "{:?}",
+        ids(&read)
+    );
+    assert_eq!(read.watch, [PROJECT_FORMS_FILE]);
 }

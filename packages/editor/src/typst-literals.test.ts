@@ -95,8 +95,58 @@ describe("Typst content markup", () => {
     ["open [ only", String.raw`open \[ only`],
     [String.raw`already \] escaped`, String.raw`already \] escaped`],
     ["*bold* and #emph[x]", "*bold* and #emph[x]"],
+    // Only the brackets Typst leaves unmatched are escaped.
+    ["See #emph[this] and note 3]", String.raw`See #emph[this] and note 3\]`],
+    ["[a] ] [b", String.raw`[a] \] \[b`],
+    [String.raw`a \\] b`, String.raw`a \\\] b`],
+    ["Price 5\\", "Price 5\\\\"],
+    ["C:\\dir\\\\", "C:\\dir\\\\"],
+    // Raw text, strings in code, math, comments and links are left as written.
+    ["use `]` here ]", String.raw`use ${"`]`"} here \]`],
+    ["```\n]]\n``` [", "```\n]]\n``` \\["],
+    ['#badge("]") and #badge("[")', '#badge("]") and #badge("[")'],
+    ['[ #badge("]") ]', '[ #badge("]") ]'],
+    ["$[0, 1)$ and $(0, 1]$ ]", String.raw`$[0, 1)$ and $(0, 1]$ \]`],
+    ["a [b // ]\n c] d", "a [b // ]\n c] d"],
+    ["/* ] */ ]", String.raw`/* ] */ \]`],
+    ["[https://example.com]", "[https://example.com]"],
+    ["see https://example.com/a] here", String.raw`see https://example.com/a\] here`],
   ])("sanitizes %j", (markup, expected) => {
     expect(sanitizeTypstContent(markup)).toBe(expected);
+  });
+
+  // Each part parses on its own as balanced markup; stray brackets and a trailing backslash are
+  // what the sanitizer has to fix.
+  const PARTS = [
+    "word", "*bold*", "_em_", "`]`", "```\n]]\n```", "`` ``", String.raw`\]`, String.raw`\\`, String.raw`\#`,
+    '#badge("]")', '#f("a]b", x: [c])', "#emph[in]", "#f[a][b]", '#a.b("[")', "$[0, 1)$", '$ "]" $', "$ #box[x] $",
+    "// note ]\n", "/* ] [ */", "https://x.com/[a]", "#(1 + (2))", '#{ "]" }', "[nested [text]]", "\n",
+    '#link("https://x.com")[site]', "#f(/* ) */ 1)", "#f(`)`)",
+  ];
+
+  function wrapsCleanly(content: string): boolean {
+    const doc = `#box[${content}]`;
+    const tree = parser.parse(doc);
+    const block = tree.topNode.getChild("FuncCall")?.getChild("Args")?.getChild("ContentBlock");
+    return !hasErrorNode(tree.topNode) && block?.from === 4 && block.to === doc.length;
+  }
+
+  it("keeps 2,000 random bodies whole inside brackets, and verbatim when nothing is unmatched", () => {
+    const random = seeded(345);
+    for (let round = 0; round < 2_000; round += 1) {
+      let strays = false;
+      const parts = Array.from({ length: 1 + Math.floor(random() * 8) }, () => {
+        if (random() >= 0.2) return PARTS[Math.floor(random() * PARTS.length)];
+        strays = true;
+        return random() < 0.5 ? "[" : "]";
+      });
+      const trailing = random() < 0.1;
+      const markup = `${parts.join(" ")}${trailing ? " \\" : ""}`;
+      const sanitized = sanitizeTypstContent(markup);
+      expect(wrapsCleanly(sanitized), JSON.stringify(sanitized)).toBe(true);
+      expect(sanitizeTypstContent(sanitized)).toBe(sanitized);
+      if (!strays && !trailing) expect(sanitized).toBe(markup);
+    }
   });
 });
 
@@ -112,6 +162,10 @@ describe("Typst numbers and booleans", () => {
     ["-2.5e3", false, -2500],
     [".5", false, 0.5],
     ["7", false, 7],
+    // A float field reads an integer literal past 2^53 as the nearest float.
+    ["10000000000000000", false, 1e16],
+    ["99999999999999999999", false, 1e20],
+    ["-9007199254740993", false, -9_007_199_254_740_992],
   ])("decodes %s (integer %s)", (source, integer, value) => {
     expect(decodeTypstNumber(source, integer)).toBe(value);
   });
@@ -122,6 +176,7 @@ describe("Typst numbers and booleans", () => {
     ["50%", false],
     ["x", false],
     ["99999999999999999999", true],
+    ["9007199254740993", true],
     ["", false],
   ])("refuses %s (integer %s)", (source, integer) => {
     expect(decodeTypstNumber(source, integer)).toBeNull();
@@ -135,9 +190,33 @@ describe("Typst numbers and booleans", () => {
     [1e21, false, "1e21"],
     [1e-7, false, "1e-7"],
     [5, false, "5"],
+    // Float fields keep the typed form, and never write 16 or more digits that read as an integer.
+    [1e16, false, "1e16"],
+    [-2.5e17, false, "-2.5e17"],
+    [123_456_789_012_345_680, false, "1.2345678901234568e17"],
+    [1e15, false, "1e15"],
+    [1e-6, false, "0.000001"],
+    [1000, false, "1000"],
+    [0.001, false, "0.001"],
+    [1234.5, false, "1234.5"],
+    [0.05, false, "0.05"],
   ])("encodes %s (integer %s)", (value, integer, source) => {
     expect(encodeTypstNumber(value, integer)).toBe(source);
     expect(decodeTypstNumber(source, integer)).toBe(value);
+  });
+
+  it("writes float values the parser reads back as the same float or a short integer", () => {
+    for (let exponent = -9; exponent <= 22; exponent += 1) {
+      for (const mantissa of [1, 1.5, 7.25, 9.999]) {
+        const value = mantissa * 10 ** exponent;
+        const literal = encodeTypstNumber(value, false) as string;
+        const tree = parser.parse(`#f(${literal})`);
+        const kind = tree.topNode.getChild("FuncCall")?.getChild("Args")?.getChild("LeftParen")?.nextSibling?.name;
+        expect(hasErrorNode(tree.topNode), literal).toBe(false);
+        expect(kind === "Float" || (kind === "Int" && literal.length < 16), literal).toBe(true);
+        expect(decodeTypstNumber(literal, false), literal).toBe(value);
+      }
+    }
   });
 
   it.each([

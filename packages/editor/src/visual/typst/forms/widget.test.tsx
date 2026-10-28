@@ -16,7 +16,7 @@ import { parsedView } from "../../test-document";
 import { typstVisualMode } from "../index";
 import { history } from "@codemirror/commands";
 
-const created = vi.hoisted(() => ({ count: 0 }));
+const created = vi.hoisted(() => ({ count: 0, renders: 0 }));
 
 vi.mock("react-dom/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-dom/client")>();
@@ -24,7 +24,13 @@ vi.mock("react-dom/client", async (importOriginal) => {
     ...actual,
     createRoot: (...args: Parameters<typeof actual.createRoot>) => {
       created.count += 1;
-      return actual.createRoot(...args);
+      const root = actual.createRoot(...args);
+      const render = root.render.bind(root);
+      root.render = (node) => {
+        created.renders += 1;
+        render(node);
+      };
+      return root;
     },
   };
 });
@@ -150,6 +156,23 @@ describe("the form card", () => {
     } as unknown as TypstFormCatalog;
     const editor = await mount(DOC, { catalog: broken });
     expect(editor.dom.querySelector(".ofl-visual-form-error pre")?.textContent).toContain('#info-box(title: "Key result"');
+    error.mockRestore();
+  });
+
+  it("shows raw source when reading the call fails, without breaking the editor's update", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const golden = typstFormsGolden();
+    const broken = {
+      ...golden,
+      forms: golden.forms.map((form) =>
+        form.function === "info-box"
+          ? { ...form, fields: form.fields.map((field) => (field.label === "Tone" ? { ...field, kind: { type: "date" } } : field)) }
+          : form,
+      ),
+    } as unknown as TypstFormCatalog;
+    const editor = await mount(DOC, { catalog: broken });
+    expect(card(editor).querySelector("pre.ofl-visual-form-source")?.textContent).toContain('#info-box(title: "Key result"');
+    expect(card(editor, 1).querySelector(".ofl-visual-form-title")?.textContent).toBe("Sign-off");
     error.mockRestore();
   });
 
@@ -317,5 +340,86 @@ describe("editing card fields", () => {
     });
     expect(editor.state.selection.main.head).toBe(editor.state.doc.length);
     expect(transactions).not.toHaveBeenCalled();
+  });
+});
+
+describe("form cards in the app", () => {
+  it("labels the card as a group whose keys the app's shortcuts leave alone", async () => {
+    const editor = await mount();
+    const box = card(editor);
+    expect(box.getAttribute("role")).toBe("group");
+    expect(box.getAttribute("aria-label")).toBe("Info box");
+    expect(box.hasAttribute("data-ofl-visual-form")).toBe(true);
+  });
+
+  it("keeps focus on a clicked switch or button, where WebKit would move it into the document", async () => {
+    const editor = await mount();
+    const signOff = card(editor, 1);
+    const toggle = signOff.querySelector<HTMLInputElement>("[role='switch']")!;
+    expect(fireEvent.mouseDown(toggle)).toBe(false);
+    expect(document.activeElement).toBe(toggle);
+    const clear = Array.from(signOff.querySelectorAll("button")).find((button) => button.textContent === "Clear")!;
+    expect(fireEvent.mouseDown(clear)).toBe(false);
+    expect(document.activeElement).toBe(clear);
+    expect(fireEvent.mouseDown(signOff.querySelector(".ofl-visual-form-title")!)).toBe(false);
+    expect(fireEvent.mouseDown(input(signOff, "Signed by"))).toBe(true);
+  });
+
+  it("doesn't redraw a card that typing above only moved, and still reveals its source", async () => {
+    const editor = await mount();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const before = created.renders;
+    for (const letter of "Hello ") {
+      await act(async () => {
+        editor.dispatch({ changes: { from: ACME.length, insert: letter } });
+      });
+    }
+    expect(created.renders).toBe(before);
+    await act(async () => {
+      fireEvent.click(card(editor).querySelector(".ofl-visual-form-reveal")!);
+    });
+    const text = editor.state.doc.toString();
+    expect(editor.state.selection.main.from).toBe(text.indexOf("#info-box"));
+    expect(editor.state.selection.main.to).toBe(text.indexOf("[Deliveries rose.]") + "[Deliveries rose.]".length);
+  });
+
+  it("undoes the last commit from inside the field", async () => {
+    const editor = await mount();
+    const heading = input(card(editor), "Heading");
+    heading.focus();
+    await act(async () => {
+      fireEvent.change(heading, { target: { value: "New result" } });
+      fireEvent.keyDown(heading, { key: "Enter" });
+    });
+    await settle();
+    expect(editor.state.doc.toString()).toContain('"New result"');
+    await act(async () => {
+      fireEvent.keyDown(input(card(editor), "Heading"), { key: "z", ctrlKey: true });
+    });
+    expect(editor.state.doc.toString()).toBe(DOC);
+    expect(input(card(editor), "Heading").value).toBe("Key result");
+  });
+
+  it("undoes from a card's own buttons too", async () => {
+    const editor = await mount();
+    const heading = input(card(editor), "Heading");
+    await act(async () => {
+      fireEvent.change(heading, { target: { value: "New result" } });
+      fireEvent.keyDown(heading, { key: "Enter" });
+    });
+    await settle();
+    const reveal = card(editor).querySelector<HTMLButtonElement>(".ofl-visual-form-reveal")!;
+    reveal.focus();
+    await act(async () => {
+      fireEvent.keyDown(reveal, { key: "z", ctrlKey: true });
+    });
+    expect(editor.state.doc.toString()).toBe(DOC);
+  });
+
+  it("offers no way to the source in a read-only document", async () => {
+    const editor = await mount(DOC, { readOnly: true });
+    expect(card(editor).querySelector(".ofl-visual-form-reveal")).toBeNull();
   });
 });

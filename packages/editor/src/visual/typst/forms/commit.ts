@@ -18,11 +18,14 @@ import {
 } from "./model";
 import { formScopeFor } from "./state";
 
-export type CommitResult = { readonly ok: true } | { readonly ok: false; readonly reason: "stale" | "invalid" | "refused" };
+export type CommitResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly reason: "stale" | "invalid" | "refused" | "readOnly" };
 
 const STALE: CommitResult = { ok: false, reason: "stale" };
 const INVALID: CommitResult = { ok: false, reason: "invalid" };
 const REFUSED: CommitResult = { ok: false, reason: "refused" };
+const READ_ONLY: CommitResult = { ok: false, reason: "readOnly" };
 
 // The form call whose `#` sits at `anchor` in the current state, read against the current catalog.
 export function formCallAt(state: EditorState, anchor: number): { model: FormCallModel; call: SyntaxNode } | null {
@@ -78,7 +81,7 @@ function parsesCleanly(state: EditorState, changes: readonly TextChange[], call:
 
 // Writes one field's edit as one undoable transaction, after finding the call again.
 export function commitFieldEdit(view: EditorView, anchor: number, definitionId: string, field: number, edit: FieldEdit): CommitResult {
-  if (view.state.readOnly) return REFUSED;
+  if (view.state.readOnly) return READ_ONLY;
   const found = formCallAt(view.state, anchor);
   if (found?.model.definition.id !== definitionId) return STALE;
   const { model, call } = found;
@@ -91,6 +94,8 @@ export function commitFieldEdit(view: EditorView, anchor: number, definitionId: 
   const plan = planArgumentEdit(view.state.doc, model.args, planned, view.state.lineBreak);
   if (!plan.ok) return plan.reason === "stale" ? STALE : REFUSED;
   if (!parsesCleanly(view.state, plan.changes, call, anchor)) return INVALID;
+  const before = view.state.doc;
   view.dispatch({ changes: [...plan.changes], userEvent: "input.form" });
-  return { ok: true };
+  // An edit lock can filter the change out before the document turns read-only.
+  return plan.changes.length > 0 && view.state.doc === before ? READ_ONLY : { ok: true };
 }

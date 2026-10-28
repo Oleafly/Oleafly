@@ -766,3 +766,137 @@ fn the_version_follows_every_source() {
     assert_ne!(missing.version, empty.version);
     assert_eq!(assemble_catalog(Vec::new()).version.len(), 64);
 }
+
+#[test]
+fn package_manifests_must_be_toml_1_0_because_typst_reads_them() {
+    // TOML 1.1 lets an inline table span lines and end with a comma. Typst
+    // reads typst.toml as TOML 1.0 and refuses the package over either, but
+    // it never reads oleafly-forms.toml.
+    let cases = [
+        (
+            "fields = [\n  { arg = \"title\", kind = \"text\",\n    label = \"Heading\" },\n]\n",
+            Some(7),
+        ),
+        (
+            "fields = [{ arg = \"title\", kind = \"text\", label = \"Heading\", }]\n",
+            Some(6),
+        ),
+    ];
+    for (fields, line) in cases {
+        let manifest = format!(
+            "[tool.oleafly]\nschema = 1\n\n[[tool.oleafly.forms]]\nfunction = \"info-box\"\n{fields}"
+        );
+        let (forms, diagnostics) = parse_package_forms(&manifest, SPEC);
+        assert!(forms.is_empty(), "{fields}");
+        assert_eq!(
+            found(&diagnostics),
+            [(DiagnosticCode::ParseError, "", line)],
+            "{fields}"
+        );
+        assert!(
+            diagnostics[0].detail.starts_with(
+                "Typst reads typst.toml as TOML 1.0, and this file is not valid TOML 1.0: "
+            ),
+            "{}",
+            diagnostics[0].detail
+        );
+
+        let (forms, diagnostics) = parse_project_forms(&project(&format!(
+            "[[tool.oleafly.forms]]\nmodule = \"lib.typ\"\nfunction = \"info-box\"\n{fields}"
+        )));
+        assert_eq!(functions(&forms), ["info-box"], "{fields}");
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    }
+}
+
+#[test]
+fn identifiers_follow_the_typst_lexer() {
+    // The virama in नमस्ते and a combining accent are XID_Continue but not
+    // alphanumeric. A superscript digit is the other way round.
+    for name in ["नमस्ते", "cafe\u{301}", "_draft", "info-box", "x1"] {
+        assert!(is_identifier(name), "{name}");
+    }
+    for name in ["x²", "1x", "-x", "a.b", "a b", "", "let"] {
+        assert!(!is_identifier(name), "{name}");
+    }
+
+    let text = "[tool.oleafly]\nschema = 1\n\n[[tool.oleafly.forms]]\nfunction = \"नमस्ते\"\nfields = [{ arg = \"cafe\u{301}\", kind = \"text\", label = \"Café\" }]\n\n[[tool.oleafly.forms]]\nfunction = \"x²\"\nfields = [{ arg = \"x\", kind = \"text\", label = \"X\" }]\n";
+    let (forms, diagnostics) = parse_package_forms(text, SPEC);
+    assert_eq!(functions(&forms), ["नमस्ते"]);
+    assert_eq!(forms[0].fields[0].arg, ArgRef::Named("cafe\u{301}".into()));
+    assert_eq!(
+        found(&diagnostics),
+        [(
+            DiagnosticCode::InvalidFunction,
+            "tool.oleafly.forms[1].function",
+            Some(9)
+        )]
+    );
+}
+
+#[test]
+fn a_dropped_form_does_not_claim_its_function() {
+    let form = |module: &str, label: &str| {
+        format!(
+            "[[tool.oleafly.forms]]\n{module}function = \"info-box\"\nlabel = \"{label}\"\nfields = [{{ arg = \"title\", kind = \"text\", label = \"Heading\" }}]\n\n"
+        )
+    };
+    for (scope, module) in [("package", ""), ("project", "module = \"lib.typ\"\n")] {
+        let text = project(
+            &[
+                form(module, ""),
+                form(module, "Info box"),
+                form(module, "Third"),
+            ]
+            .concat(),
+        );
+        let (forms, diagnostics) = match scope {
+            "package" => parse_package_forms(&text, SPEC),
+            _ => parse_project_forms(&text),
+        };
+        assert_eq!(functions(&forms), ["info-box"], "{scope}");
+        assert_eq!(forms[0].label, "Info box", "{scope}");
+        let offset = u32::from(!module.is_empty());
+        assert_eq!(
+            found(&diagnostics),
+            [
+                (
+                    DiagnosticCode::InvalidValue,
+                    "tool.oleafly.forms[0].label",
+                    Some(6 + offset)
+                ),
+                (
+                    DiagnosticCode::DuplicateFunction,
+                    "tool.oleafly.forms[2].function",
+                    Some(15 + 3 * offset)
+                ),
+            ],
+            "{scope}"
+        );
+    }
+}
+
+#[test]
+fn a_package_module_points_to_the_package_manifest() {
+    let text = project(
+        r#"[[tool.oleafly.forms]]
+module = "@preview/cetz:0.3.4"
+function = "canvas"
+fields = [{ arg = 0, kind = "content", label = "Body" }]
+"#,
+    );
+    let (forms, diagnostics) = parse_project_forms(&text);
+    assert!(forms.is_empty());
+    assert_eq!(
+        found(&diagnostics),
+        [(
+            DiagnosticCode::InvalidModulePath,
+            "tool.oleafly.forms[0].module",
+            Some(5)
+        )]
+    );
+    assert_eq!(
+        diagnostics[0].detail,
+        "module \"@preview/cetz:0.3.4\" names a package. A package's forms go in that package's typst.toml."
+    );
+}

@@ -17,7 +17,7 @@ import { type Preamble, type PreambleLabels, PreambleWidget } from "../widgets/p
 import { BUILTIN_DISPATCH_NAMES, TYPST_STYLE_CALLS } from "./builtins";
 import { figureDecorations } from "./figure";
 import { formDecorations } from "./forms/decoration";
-import type { FormScope } from "./forms/scope";
+import { type FormScope, typstDocumentPath } from "./forms/scope";
 import { formScopeFor, typstFormsField } from "./forms/state";
 import { isTypstDisplayBody } from "../../math-source";
 import { TypstMathWidget } from "./math";
@@ -472,9 +472,11 @@ export const typstVisualField = StateField.define<TypstVisualState>({
     }
     const tree = syntaxTree(tr.state);
     const stillParsing = tree.length < tr.state.doc.length && tree.type === value.tree.type;
+    // A renamed or moved document resolves its relative imports from its new folder.
     const forms =
       tr.startState.field(typstFormsField, false) !== tr.state.field(typstFormsField, false) ||
-      tr.startState.readOnly !== tr.state.readOnly;
+      tr.startState.readOnly !== tr.state.readOnly ||
+      tr.startState.facet(typstDocumentPath) !== tr.state.facet(typstDocumentPath);
     const rebuild =
       !stillParsing &&
       !mousedown &&

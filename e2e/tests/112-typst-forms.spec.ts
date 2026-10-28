@@ -5,6 +5,7 @@ import {
   createProjectFromTemplate,
   editorSource,
   expectCompiledPdfContains,
+  replaceEditorLiteral,
   replaceEditorSource,
   setTypstFormField,
   writeProjectText,
@@ -38,6 +39,21 @@ async function openMainDocument(page: Page) {
 
 async function saveActiveFile(page: Page) {
   await page.evaluate(`import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().saveActive())`);
+}
+
+// The report imports @local/acme-report, and Visual mode asks for its forms. Until the catalog
+// has been read with that package, a check that no forms show proves nothing.
+async function waitForReportCatalog(page: Page) {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          `import("/src/store/typst-forms.ts").then(({ useTypstFormsStore }) =>
+            useTypstFormsStore.getState().loadedWith?.includes("@local/acme-report:0.1.0") === true)`,
+        ),
+      { timeout: 30_000 },
+    )
+    .toBe(true);
 }
 
 // Edits the definitions the way a user does: in the editor, then saved. A library project has
@@ -98,11 +114,15 @@ test("editing oleafly-forms.toml updates the cards and marks a broken definition
   await expect(formTitle("Team memo")).toBeVisible({ timeout: 30_000 });
   await expect(formTitle("Memo header")).toBeHidden();
 
-  await editFormsFile(
-    tauriPage,
-    fixture("project/oleafly-forms.toml").replace('kind = "text", label = "To"', 'kind = "date", label = "To"'),
-  );
-  await expect(tauriPage.locator(".cm-editor .cm-lintRange-error").first()).toBeVisible({ timeout: 30_000 });
+  // Autosave writes the edits here. The reload that follows marks the broken field, and after
+  // the fix clears the marker, with no further typing.
+  await openFormsFile(tauriPage);
+  await expect.poll(() => editorSource(tauriPage), { timeout: 10_000 }).toContain('label = "Team memo"');
+  const markers = tauriPage.locator(".cm-editor .cm-lintRange-error");
+  await replaceEditorLiteral(tauriPage, 'kind = "text", label = "To"', 'kind = "date", label = "To"');
+  await expect(markers.first()).toBeVisible({ timeout: 30_000 });
+  await replaceEditorLiteral(tauriPage, 'kind = "date", label = "To"', 'kind = "text", label = "To"');
+  await expect(markers).toHaveCount(0, { timeout: 30_000 });
 });
 
 test("a Typst project without definitions shows no forms", async ({ tauriPage }) => {
@@ -110,6 +130,7 @@ test("a Typst project without definitions shows no forms", async ({ tauriPage })
   await replaceEditorSource(tauriPage, fixture("project/report.typ"));
   await openVisual(tauriPage);
   await expect(tauriPage.locator(".cm-content .ofl-visual-typst-heading-1").first()).toBeVisible();
+  await waitForReportCatalog(tauriPage);
   await expect(tauriPage.locator(".cm-content .ofl-visual-form-card, .cm-content .ofl-visual-form-chip")).toHaveCount(0);
   await expect(tauriPage.locator(".cm-content")).toContainText("#acme.cover-page(");
 });

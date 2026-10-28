@@ -1112,7 +1112,8 @@
           "off": "Oprit",
           "open": "Editează {{label}}",
           "chip": "{{label}}: {{summary}}",
-          "invalid": "Această valoare ar strica apelul de funcție. Schimbă valoarea și încearcă din nou.",
+          "invalid": "Typst nu poate citi acest text. Un $, *, _ sau ` singur începe o formulă sau o formatare. Închide-l sau scrie \\ în fața lui.",
+          "readOnly": "Acest document nu poate fi editat momentan.",
           "invalidNumber": "Introdu un număr.",
           "between": "Introdu un număr între {{min}} și {{max}}.",
           "atLeast": "Introdu {{min}} sau mai mult.",
@@ -1122,7 +1123,7 @@
             "expression": "Calculat în sursă",
             "kind": "Scris ca un alt tip de valoare",
             "unknownOption": "Nu face parte dintre opțiuni",
-            "locked": "Setat de un argument spread"
+            "locked": "Blocat, fiindcă apelul de funcție primește valori și din \"..\""
           }
         }
       },

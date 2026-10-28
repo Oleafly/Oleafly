@@ -164,12 +164,17 @@ pub(crate) struct PackageSpec {
     pub(crate) version: String,
 }
 
+/// A namespace or name, by Typst's `is_ident`: XID_Start or `_`, then
+/// XID_Continue, `_` or `-`, so `@local/AcmeReport:1.0.0` is one. None of
+/// those is `/`, `\`, `:` or `.`, so each part stays one path component.
 fn valid_identifier(value: &str) -> bool {
-    !value.is_empty()
-        && value.len() <= 128
-        && !value.starts_with('-')
-        && value.bytes().all(|byte| {
-            byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'-' | b'_')
+    let mut characters = value.chars();
+    value.len() <= 128
+        && characters
+            .next()
+            .is_some_and(|first| unicode_ident::is_xid_start(first) || first == '_')
+        && characters.all(|character| {
+            unicode_ident::is_xid_continue(character) || character == '_' || character == '-'
         })
 }
 

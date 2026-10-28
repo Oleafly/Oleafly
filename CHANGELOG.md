@@ -20,7 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a card with labelled fields. Inside a paragraph, the call is a chip that
   opens the same fields. Changing a field rewrites only that argument. A field
   can hold text, Typst markup, a choice from a list, a number or an on/off
-  switch, and mistakes in a definition show as markers when you open the file.
+  switch. Mistakes in `oleafly-forms.toml`, or in the `typst.toml` of a
+  package vendored into the project, show as markers when you open the file.
 
 ### Changed
 
@@ -56,6 +57,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- In Typst document settings, clearing two values of one `#set` rule, or
+  clearing one and setting another, could leave a broken rule such as
+  `#set par(` without its closing parenthesis. Clearing a value on the line
+  after a `//` comment, or in a rule written with its commas first, could
+  break the rule too.
+- In a Typst table cell, one bracket without its pair turned every bracket in
+  the cell into plain text, and a cell that ended in `\` broke the table. Now
+  only the bracket without a pair is escaped. No borders also works when the
+  table's `stroke` value comes after a comment.
+- In a Visual mode table cell, Ctrl+Z (Cmd+Z on macOS) undid the document
+  instead of your typing in the cell, and Ctrl+B or Ctrl+I added bold or
+  italic markup somewhere else in the text.
+- Vendor packages skipped a package whose name has capital letters or other
+  letters Typst allows, such as `@local/AcmeReport:1.0.0`.
 - DeepSeek Harness couldn't open a conversation and said "The agent
   disconnected." It prints a log line on its output while a session starts,
   and Oleafly closed the connection at the first line that wasn't a protocol

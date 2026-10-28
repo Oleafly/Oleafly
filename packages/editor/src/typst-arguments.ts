@@ -44,6 +44,8 @@ export interface NamedSlot {
   readonly argument: TextRange;
   readonly value: TextRange;
   readonly type: string;
+  // The commas on either side in the tree, past any comments; null at either end of the list.
+  readonly commas: { readonly before: TextRange | null; readonly after: TextRange | null };
 }
 
 export interface CallArguments {
@@ -75,6 +77,7 @@ export type ArgumentPlan =
   | { readonly ok: false; readonly reason: ArgumentRefusal };
 
 const SKIPPED = new Set(["LeftParen", "RightParen", "Comma", "LineComment", "BlockComment"]);
+const COMMENTS = new Set(["LineComment", "BlockComment"]);
 const LINE_REST = /^[ \t]*(?:\/\/[^\n]*)?$/u;
 
 function range(node: TextRange): TextRange {
@@ -139,9 +142,10 @@ export function namedArgument(doc: SourceText, args: SyntaxNode, name: string): 
   return null;
 }
 
+// The expression after the colon. A comment there (`title: /* c */ "Q3"`) is a sibling in the tree.
 export function namedValue(named: SyntaxNode): SyntaxNode | null {
-  const colon = named.getChild("Colon");
-  const value = colon?.nextSibling ?? null;
+  let value = named.getChild("Colon")?.nextSibling ?? null;
+  while (value && COMMENTS.has(value.name)) value = value.nextSibling;
   return value && !value.type.isError ? value : null;
 }
 
@@ -196,6 +200,13 @@ export function hasErrorNode(node: SyntaxNode): boolean {
   }
 }
 
+// The comma next to a parenthesised argument, past any comments, or null when the list ends there.
+function adjacentComma(node: SyntaxNode, side: "prevSibling" | "nextSibling"): TextRange | null {
+  let sibling = node[side];
+  while (sibling && COMMENTS.has(sibling.name)) sibling = sibling[side];
+  return sibling?.name === "Comma" ? range(sibling) : null;
+}
+
 export function readCallArguments(doc: SourceText, call: SyntaxNode): CallArguments | null {
   const args = callArguments(call);
   if (!args || hasErrorNode(args)) return null;
@@ -214,7 +225,8 @@ export function readCallArguments(doc: SourceText, call: SyntaxNode): CallArgume
       const value = namedValue(child);
       if (!key || !value) return null;
       const name = text.slice(key.from - call.from, key.to - call.from);
-      named.push({ name, argument: range(child), value: range(value), type: value.name });
+      const commas = { before: adjacentComma(child, "prevSibling"), after: adjacentComma(child, "nextSibling") };
+      named.push({ name, argument: range(child), value: range(value), type: value.name, commas });
     } else {
       positional.push({ node: range(child), type: child.name, trailing: !close || child.from >= close.to });
     }
@@ -254,6 +266,8 @@ function lineBreakLength(doc: SourceText, pos: number): number {
   return doc.sliceString(pos, Math.min(doc.length, pos + 2)) === "\r\n" ? 2 : 1;
 }
 
+// Finds the separators in the text, not the tree, so it suits a table row: a span of several
+// cells in a call without comments. A single named argument goes through `namedRemoval`.
 export function deleteArgumentSpan(doc: SourceText, span: TextRange): TextChange {
   const indent = lineStartIndent(doc, span.from);
   const after = afterSeparator(doc, span.to);
@@ -268,6 +282,71 @@ export function deleteArgumentSpan(doc: SourceText, span: TextRange): TextChange
   const comma = commaBefore(doc, span.from);
   if (comma !== null) return { from: comma, to: span.to, insert: "" };
   return { from: span.from, to: after.comma ? after.end : span.to, insert: "" };
+}
+
+function blank(doc: SourceText, from: number, to: number): boolean {
+  return /^[ \t]*$/u.test(doc.sliceString(from, to));
+}
+
+function spacesAfter(doc: SourceText, pos: number): number {
+  return pos + (/^[ \t]*/u.exec(doc.sliceString(pos, doc.lineAt(pos).to))?.[0].length ?? 0);
+}
+
+function spacesBefore(doc: SourceText, pos: number): number {
+  const before = doc.sliceString(doc.lineAt(pos).from, pos);
+  let start = before.length;
+  while (start > 0 && (before[start - 1] === " " || before[start - 1] === "\t")) start -= 1;
+  return pos - (before.length - start);
+}
+
+// A cut that leaves only spaces on its lines takes the whole lines. One that ends its line takes
+// the spaces before it too, so the line keeps no trailing spaces.
+function tidiedCut(doc: SourceText, from: number, to: number): TextChange {
+  const first = doc.lineAt(from);
+  const last = doc.lineAt(to);
+  if (!blank(doc, to, last.to)) return { from, to, insert: "" };
+  if (blank(doc, first.from, from) && last.to < doc.length) {
+    return { from: first.from, to: last.to + lineBreakLength(doc, last.to), insert: "" };
+  }
+  return { from: spacesBefore(doc, from), to: last.to, insert: "" };
+}
+
+// In a gap of whitespace and comments, where its last comment ends when one of them is a line
+// comment. A cut that took that comment's line break would pull what follows into the comment.
+function lineCommentGapEnd(gap: string): number | null {
+  let index = 0;
+  let end = 0;
+  let line = false;
+  while (index < gap.length) {
+    const next = skippedEnd(gap, index);
+    if (next === null) return null;
+    if (!/\s/u.test(gap[index])) {
+      line ||= gap.startsWith("//", index);
+      end = next;
+    }
+    index = next;
+  }
+  return line ? end : null;
+}
+
+// Removes a named argument with one of the commas the tree puts next to it: the one after it when
+// another argument follows or none comes before, otherwise the one before it, so a trailing comma
+// stays. A comment between the argument and its comma goes with it; a line comment between the
+// comma before and the argument stays, with that comma. An argument alone on its lines takes them.
+function namedRemoval(doc: SourceText, slot: NamedSlot, close: number): TextChange {
+  const { argument } = slot;
+  const { before, after } = slot.commas;
+  if (after && (!before || !/^\s*$/u.test(doc.sliceString(after.to, close)))) {
+    return tidiedCut(doc, argument.from, spacesAfter(doc, after.to));
+  }
+  const end = after ? after.to : argument.to;
+  if (!before) return tidiedCut(doc, argument.from, end);
+  if (lineStartIndent(doc, argument.from) !== null && blank(doc, end, doc.lineAt(end).to)) {
+    return tidiedCut(doc, argument.from, end);
+  }
+  const comment = lineCommentGapEnd(doc.sliceString(before.to, argument.from));
+  if (comment === null) return tidiedCut(doc, before.from, argument.to);
+  return tidiedCut(doc, Math.max(doc.lineAt(argument.from).from, before.to + comment), end);
 }
 
 function refuse(reason: ArgumentRefusal): ArgumentPlan {
@@ -306,6 +385,22 @@ function lineIndent(doc: SourceText, pos: number): string {
   return /^[ \t]*/u.exec(doc.sliceString(line.from, pos))?.[0] ?? "";
 }
 
+// A call whose first argument shares the `(` line is still laid out one argument per line when
+// the new ones follow an argument on a later line, or `)` has a line of its own.
+function spansLines(doc: SourceText, parens: { readonly open: number; readonly close: number }, anchor: TextRange | null): boolean {
+  if (!anchor) return false;
+  return doc.lineAt(anchor.from).from !== doc.lineAt(parens.open).from || lineStartIndent(doc, parens.close) !== null;
+}
+
+// The indent of the first argument that starts a line, or of the anchor's line when none does.
+function laterIndent(doc: SourceText, items: readonly TextRange[], anchor: TextRange): string {
+  for (const item of items) {
+    const indent = lineStartIndent(doc, item.from);
+    if (indent !== null) return indent;
+  }
+  return lineIndent(doc, anchor.from);
+}
+
 // Adds arguments to the parenthesised list, after `anchor` (or first when it is null),
 // following the call's layout: one line, or one argument per line with the existing indent.
 // It never plans two insertions at one position, so any applier gets the same text.
@@ -326,8 +421,9 @@ function insertParenthesised(
     return [{ from: parens.open + 1, to, insert: joined }];
   }
   const first = items[0];
-  if (!doc.sliceString(parens.open + 1, first.from).includes("\n")) return [insertOnOneLine(doc, parens.close, items, anchor, joined)];
-  const indent = lineIndent(doc, first.from);
+  const opensLine = doc.sliceString(parens.open + 1, first.from).includes("\n");
+  if (!opensLine && !spansLines(doc, parens, anchor)) return [insertOnOneLine(doc, parens.close, items, anchor, joined)];
+  const indent = opensLine ? lineIndent(doc, first.from) : laterIndent(doc, items, anchor as TextRange);
   const separator = `,${lineBreak}${indent}`;
   const newLine = `${lineBreak}${indent}${texts.join(separator)}`;
   if (!anchor) return [insertion(parens.open + 1, `${newLine},`)];
@@ -418,18 +514,11 @@ export function planArgumentEdit(
   const refusal = refusalFor(doc, args);
   if (refusal) return refuse(refusal);
   if ("insert" in edit) return insertArgument(doc, args, edit, lineBreak);
-  const target = "replace" in edit ? edit.replace : edit.remove;
-  let span: TextRange;
-  if ("named" in target) {
-    const slot = namedSlot(args, target.named);
-    if (!slot) return refuse("missing");
-    span = "replace" in edit ? slot.value : slot.argument;
-  } else {
-    const slot = args.positional[target.positional];
-    if ("remove" in edit) return refuse("notRemovable");
-    if (!slot) return refuse("missing");
-    span = slot.node;
+  if ("remove" in edit) {
+    if (!("named" in edit.remove)) return refuse("notRemovable");
+    const slot = namedSlot(args, edit.remove.named);
+    return slot ? planned(namedRemoval(doc, slot, args.parens?.close ?? args.list.to)) : refuse("missing");
   }
-  if ("replace" in edit) return planned({ from: span.from, to: span.to, insert: edit.text });
-  return planned(deleteArgumentSpan(doc, span));
+  const slot = argumentSlot(args, edit.replace);
+  return slot ? planned({ from: slot.node.from, to: slot.node.to, insert: edit.text }) : refuse("missing");
 }

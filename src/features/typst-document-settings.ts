@@ -1,15 +1,18 @@
 import type { SyntaxNode, Tree } from "@lezer/common";
-import { loadTypstParser } from "@oleafly/editor/typst";
+import { loadTypstParser, typstTools } from "@oleafly/editor/typst";
 import {
-  deleteArgumentSpan,
+  type ArgumentPlan,
   hasErrorNode,
   type CallArguments,
   type NamedSlot,
+  planArgumentEdit,
   planNamedInsertions,
   readCallArguments,
   sourceText,
+  type TextRange,
 } from "@oleafly/editor/typst-arguments";
 import { decodeTypstString, encodeTypstString } from "@oleafly/editor/typst-literals";
+import { composeSettingSteps, type SettingsStep } from "./document-settings";
 
 export type TypstSettingKey =
   | "paper"
@@ -225,69 +228,146 @@ function namedText(addition: Addition): string {
   return `${addition.name}: ${addition.text}`;
 }
 
-interface PlannedChanges {
-  readonly edits: TypstEdit[];
-  readonly additions: Map<RuleTarget, Addition[]>;
+// What changes in one existing rule, which is found again by its place among the top-level set rules.
+interface RulePlan {
+  readonly index: number;
+  readonly target: RuleTarget;
+  readonly replacements: Addition[];
+  readonly removals: string[];
+  readonly additions: Addition[];
+}
+
+interface SettingsPlan {
+  readonly rules: Map<number, RulePlan>;
+  // Arguments for elements with no editable rule, written as new rules.
+  readonly fresh: Map<RuleTarget, Addition[]>;
+}
+
+function rulePlan(plan: SettingsPlan, rules: readonly SetRuleInfo[], index: number): RulePlan | null {
+  const rule = rules[index];
+  if (!rule) return null;
+  const known = plan.rules.get(index);
+  if (known) return known;
+  const created: RulePlan = { index, target: rule.target, replacements: [], removals: [], additions: [] };
+  plan.rules.set(index, created);
+  return created;
+}
+
+function ruleHolding(rules: readonly SetRuleInfo[], range: TextRange): number {
+  return rules.findIndex(({ arguments: args }) => args !== null && args.call.from <= range.from && range.to <= args.call.to);
+}
+
+function lastEditableRule(rules: readonly SetRuleInfo[], target: RuleTarget): number {
+  for (let index = rules.length - 1; index >= 0; index--) {
+    if (rules[index].target === target && rules[index].editable) return index;
+  }
+  return -1;
+}
+
+function addFresh(fresh: Map<RuleTarget, Addition[]>, target: RuleTarget, additions: readonly Addition[]): void {
+  fresh.set(target, [...(fresh.get(target) ?? []), ...additions]);
 }
 
 function planChange(
   text: string,
+  rules: readonly SetRuleInfo[],
   spec: SettingSpec,
   next: string | null | undefined,
   current: TypstSettingState,
-  plan: PlannedChanges,
+  plan: SettingsPlan,
 ): void {
   if (current.status === "locked") return;
   if (next === null || next === undefined || next.trim() === "") {
-    if (current.status === "set") plan.edits.push(deleteArgumentSpan(sourceText(text), current.named));
+    if (current.status === "set") rulePlan(plan, rules, ruleHolding(rules, current.named))?.removals.push(spec.argument);
     return;
   }
   if (!validateTypstSetting(spec.key, next)) return;
-  const serialized = serialize(spec, next);
+  const addition = { name: spec.argument, text: serialize(spec, next) };
   if (current.status === "set") {
-    if (slice(text, current) !== serialized) plan.edits.push({ from: current.from, to: current.to, insert: serialized });
+    if (slice(text, current) !== addition.text) rulePlan(plan, rules, ruleHolding(rules, current.named))?.replacements.push(addition);
     return;
   }
-  const list = plan.additions.get(spec.rule) ?? [];
-  list.push({ name: spec.argument, text: serialized });
-  plan.additions.set(spec.rule, list);
+  const rule = rulePlan(plan, rules, lastEditableRule(rules, spec.rule));
+  if (rule) rule.additions.push(addition);
+  else addFresh(plan.fresh, spec.rule, [addition]);
 }
 
-function lastEditableRule(rules: readonly SetRuleInfo[], target: RuleTarget): SetRuleInfo | undefined {
-  for (let index = rules.length - 1; index >= 0; index--) {
-    if (rules[index].target === target && rules[index].editable) return rules[index];
-  }
-  return undefined;
+// Parses the text a step is given, which is what the steps before it left. The parser is
+// loaded, because the tree the edits start from came from it.
+function treeReader(text: string, tree: Tree): (current: string) => Tree {
+  let last = { text, tree };
+  return (current) => {
+    if (current !== last.text) {
+      const parser = typstTools()?.typstParser;
+      if (!parser) throw new Error("The Typst parser is not loaded");
+      last = { text: current, tree: parser.parse(current) };
+    }
+    return last.tree;
+  };
 }
 
-function additionEdits(text: string, tree: Tree, additions: ReadonlyMap<RuleTarget, Addition[]>): TypstEdit[] {
-  const rules = setRules(text, tree);
-  const edits: TypstEdit[] = [];
-  const fresh: string[] = [];
-  for (const target of RULE_ORDER) {
-    const list = additions.get(target);
-    if (!list) continue;
-    const rule = lastEditableRule(rules, target);
-    const plan = rule?.arguments ? planNamedInsertions(sourceText(text), rule.arguments, list, "\n") : null;
-    if (plan?.ok) edits.push(...plan.changes);
-    else fresh.push(`#set ${target}(${list.map(namedText).join(", ")})\n`);
-  }
-  if (fresh.length > 0) {
-    const at = insertionPoint(text, tree);
-    const lead = at > 0 && text[at - 1] !== "\n" ? "\n" : "";
-    edits.push({ from: at, to: at, insert: `${lead}${fresh.join("")}` });
-  }
-  return edits;
+function changesOf(plan: ArgumentPlan | null): TypstEdit[] {
+  return plan?.ok ? [...plan.changes] : [];
 }
 
+// One rule's edits, as steps that each read the rule again from the text the step before left:
+// each cleared argument, then the new values, then the added arguments, placed against what is left.
+function ruleSteps(plan: RulePlan, treeOf: (current: string) => Tree, fresh: Map<RuleTarget, Addition[]>): SettingsStep[] {
+  const read = (current: string): CallArguments | null => {
+    const rule = setRules(current, treeOf(current))[plan.index];
+    return rule?.target === plan.target && rule.editable ? rule.arguments : null;
+  };
+  const steps: SettingsStep[] = plan.removals.map((name) => (current) => {
+    const args = read(current);
+    return changesOf(args && planArgumentEdit(sourceText(current), args, { remove: { named: name } }, "\n"));
+  });
+  if (plan.replacements.length > 0) {
+    steps.push((current) => {
+      const args = read(current);
+      if (!args) return [];
+      const doc = sourceText(current);
+      return plan.replacements.flatMap(({ name, text }) => changesOf(planArgumentEdit(doc, args, { replace: { named: name }, text }, "\n")));
+    });
+  }
+  if (plan.additions.length > 0) {
+    steps.push((current) => {
+      const args = read(current);
+      const added = args ? planNamedInsertions(sourceText(current), args, plan.additions, "\n") : null;
+      if (added?.ok) return [...added.changes];
+      addFresh(fresh, plan.target, plan.additions);
+      return [];
+    });
+  }
+  return steps;
+}
+
+function freshRulesStep(fresh: ReadonlyMap<RuleTarget, Addition[]>, treeOf: (current: string) => Tree): SettingsStep {
+  return (current) => {
+    const lines = RULE_ORDER.flatMap((target) => {
+      const list = fresh.get(target);
+      return list ? [`#set ${target}(${list.map(namedText).join(", ")})\n`] : [];
+    });
+    if (lines.length === 0) return [];
+    const at = insertionPoint(current, treeOf(current));
+    const lead = at > 0 && current[at - 1] !== "\n" ? "\n" : "";
+    return [{ from: at, to: at, insert: `${lead}${lines.join("")}` }];
+  };
+}
+
+// The edits are composed from steps, so none is planned against text another one changes, and
+// splicing them into the string or dispatching them to CodeMirror gives the same document.
 export function typstSettingsEdits(text: string, tree: Tree, changes: TypstSettingChanges): TypstEdit[] {
   const { fields } = readTypstDocumentSettings(text, tree);
-  const plan: PlannedChanges = { edits: [], additions: new Map() };
+  const rules = setRules(text, tree);
+  const plan: SettingsPlan = { rules: new Map(), fresh: new Map() };
   for (const spec of TYPST_SETTINGS) {
-    if (Object.hasOwn(changes, spec.key)) planChange(text, spec, changes[spec.key], fields[spec.key], plan);
+    if (Object.hasOwn(changes, spec.key)) planChange(text, rules, spec, changes[spec.key], fields[spec.key], plan);
   }
-  const edits = [...plan.edits, ...additionEdits(text, tree, plan.additions)];
-  return edits.sort((left, right) => left.from - right.from);
+  const treeOf = treeReader(text, tree);
+  const steps = [...plan.rules.values()]
+    .sort((left, right) => left.index - right.index)
+    .flatMap((rule) => ruleSteps(rule, treeOf, plan.fresh));
+  return composeSettingSteps(text, [...steps, freshRulesStep(plan.fresh, treeOf)]);
 }
 
 export function applyTypstEdits(text: string, edits: readonly TypstEdit[]): string {

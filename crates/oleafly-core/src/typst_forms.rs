@@ -190,7 +190,7 @@ pub enum Severity {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum DiagnosticCode {
-    /// The text isn't valid TOML.
+    /// The text isn't valid TOML, or a package manifest isn't valid TOML 1.0.
     ParseError,
     /// `[tool.oleafly]` has no `schema`, or the project file has no `[tool.oleafly]`.
     SchemaMissing,
@@ -212,7 +212,8 @@ pub enum DiagnosticCode {
     InvalidFunction,
     /// `function` is a name the built-in widgets dispatch on. Kept.
     BuiltinName,
-    /// A second form for the same function (and module). The first is kept.
+    /// A second valid form for the same function (and module). The first is
+    /// kept. A form dropped for its own errors claims no name.
     DuplicateFunction,
     ModuleRequired,
     ModuleNotAllowed,
@@ -249,7 +250,7 @@ pub struct FormDiagnostic {
 }
 
 /// The forms in a package's `typst.toml`, under `[tool.oleafly]`. A manifest
-/// without that section has none and no diagnostics.
+/// Typst can read that has no such section has none and no diagnostics.
 pub fn parse_package_forms(text: &str, spec: &str) -> (Vec<FormDefinition>, Vec<FormDiagnostic>) {
     parse(text, Scope::Package(spec))
 }
@@ -461,20 +462,35 @@ fn describe(arg: &ArgRef) -> String {
     }
 }
 
-/// One Typst identifier: hyphens allowed, no dots, not a keyword.
+/// One Typst identifier, by the lexer's rule: XID_Start or `_`, then
+/// XID_Continue, `_` or `-`. No dots, and not a keyword.
 fn is_identifier(name: &str) -> bool {
     let mut characters = name.chars();
     characters
         .next()
-        .is_some_and(|first| first.is_alphabetic() || first == '_')
-        && characters
-            .all(|character| character.is_alphanumeric() || character == '_' || character == '-')
+        .is_some_and(|first| unicode_ident::is_xid_start(first) || first == '_')
+        && characters.all(|character| {
+            unicode_ident::is_xid_continue(character) || character == '_' || character == '-'
+        })
         && !KEYWORDS.contains(&name)
+}
+
+/// A parser's message on one line, without its final full stop.
+fn one_line(message: &str) -> String {
+    message
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .trim_end_matches('.')
+        .to_owned()
 }
 
 fn module_path_problem(path: &str) -> Option<&'static str> {
     if path.is_empty() {
         Some("is empty.")
+    } else if path.starts_with('@') {
+        // Typst and the editor read any `@` import as a package spec.
+        Some("names a package. A package's forms go in that package's typst.toml.")
     } else if path.contains('\\') {
         Some("uses a backslash. Separate folders with /.")
     } else if path.starts_with('/') {
@@ -539,19 +555,33 @@ impl Checker<'_> {
         let document = match Document::parse(text) {
             Ok(document) => document,
             Err(error) => {
-                let message = error.message().split_whitespace().collect::<Vec<_>>();
                 self.report(
                     DiagnosticCode::ParseError,
                     "",
                     start(error.span()),
-                    format!(
-                        "This is not valid TOML: {}.",
-                        message.join(" ").trim_end_matches('.')
-                    ),
+                    format!("This is not valid TOML: {}.", one_line(error.message())),
                 );
                 return Vec::new();
             }
         };
+        // toml_edit reads TOML 1.1. Typst reads typst.toml with a TOML 1.0
+        // parser and refuses the package over, say, a newline or a trailing
+        // comma in an inline table, so a manifest has to pass that one too.
+        if let Some(error) = matches!(scope, Scope::Package(_))
+            .then(|| text.parse::<toml::Table>().err())
+            .flatten()
+        {
+            self.report(
+                DiagnosticCode::ParseError,
+                "",
+                start(error.span()),
+                format!(
+                    "Typst reads typst.toml as TOML 1.0, and this file is not valid TOML 1.0: {}.",
+                    one_line(error.message())
+                ),
+            );
+            return Vec::new();
+        }
         let path = "tool.oleafly";
         let Some(item) = document.get("tool").and_then(|tool| tool.get("oleafly")) else {
             if scope == Scope::Project {
@@ -653,25 +683,6 @@ impl Checker<'_> {
         self.unknown_keys(node, path, |key| FORM_KEYS.contains(&key), None);
         let module = self.module(node, path, scope);
         let function = self.function(node, path);
-        if let Some((function, slot)) = &function {
-            let identity = match scope {
-                Scope::Package(_) => Some((None, function.clone())),
-                Scope::Project => module
-                    .clone()
-                    .map(|module| (Some(module), function.clone())),
-            };
-            if identity.is_some_and(|identity| !seen.insert(identity)) {
-                let what = match &module {
-                    Some(module) => format!("{function} from {module}"),
-                    None => function.clone(),
-                };
-                self.fault(
-                    DiagnosticCode::DuplicateFunction,
-                    slot,
-                    format!("{what} already has a form earlier in this file, and the first one is used."),
-                );
-            }
-        }
         let label = node.slot(path, "label").and_then(|slot| self.label(&slot));
         let summary = node
             .slot(path, "summary")
@@ -692,7 +703,24 @@ impl Checker<'_> {
         if self.errors > errors {
             return None;
         }
-        let (function, _) = function?;
+        let (function, slot) = function?;
+        // Only a form that is kept claims its name, so a broken first copy
+        // doesn't block a fixed one further down. Past the check above, a
+        // project form always has its module and a package form never does.
+        if !seen.insert((module.clone(), function.clone())) {
+            let what = match &module {
+                Some(module) => format!("{function} from {module}"),
+                None => function.clone(),
+            };
+            self.fault(
+                DiagnosticCode::DuplicateFunction,
+                &slot,
+                format!(
+                    "{what} already has a form earlier in this file, and the first one is used."
+                ),
+            );
+            return None;
+        }
         let binding = match scope {
             Scope::Package(spec) => FormBinding::Package {
                 spec: spec.to_owned(),

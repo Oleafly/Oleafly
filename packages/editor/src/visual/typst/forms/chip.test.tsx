@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { history } from "@codemirror/commands";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { fireEvent } from "@testing-library/react";
@@ -12,6 +13,7 @@ import { staticTypstForms } from "../../../typst-forms";
 import { typstFormsGolden } from "../../../typst-forms-test-support";
 import { parsedView } from "../../test-document";
 import { typstVisualMode } from "../index";
+import { placementFor } from "./chip";
 
 const ACME = '#import "@local/acme-report:0.1.0": *\n';
 const DOC = `${ACME}The plan is #status-badge("review") for now, and #info-box[b] is inline too.`;
@@ -43,6 +45,7 @@ async function mount(doc = DOC): Promise<EditorView> {
           doc,
           selection: EditorSelection.cursor(0),
           extensions: [
+            history(),
             typstLanguage(),
             typstVisualMode({ resolveImage: async () => null, typstForms: staticTypstForms(typstFormsGolden()) }, "report.typ"),
           ],
@@ -152,5 +155,98 @@ describe("form chips", () => {
     });
     await settle();
     expect(popover()).toBeNull();
+  });
+});
+
+describe("the chip's popover", () => {
+  it("opens below the chip, above it when there is more room there, and inside the window", () => {
+    const viewport = { width: 800, height: 600 };
+    const panel = { width: 420, height: 200 };
+    expect(placementFor({ top: 100, bottom: 118, left: 50 }, panel, viewport)).toEqual({ top: 124, left: 50, maxHeight: 420 });
+    expect(placementFor({ top: 500, bottom: 518, left: 700 }, panel, viewport)).toEqual({ top: 294, left: 374, maxHeight: 420 });
+    expect(placementFor({ top: 100, bottom: 118, left: 50 }, { width: 420, height: 300 }, { width: 300, height: 200 }).top).toBe(6);
+  });
+
+  it("focuses the first field rather than Edit in source", async () => {
+    const editor = await mount();
+    await act(async () => {
+      fireEvent.click(chips(editor)[1]);
+    });
+    expect(document.activeElement).toBe(popover()!.querySelector(".ofl-visual-form-fields input"));
+  });
+
+  it("keeps Tab and Shift-Tab inside the popover", async () => {
+    const editor = await mount();
+    await act(async () => {
+      fireEvent.click(chips(editor)[1]);
+    });
+    const controls = Array.from(popover()!.querySelectorAll<HTMLElement>("input, select, textarea, button"));
+    const last = controls[controls.length - 1];
+    last.focus();
+    fireEvent.keyDown(last, { key: "Tab" });
+    expect(document.activeElement).toBe(controls[0]);
+    fireEvent.keyDown(controls[0], { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(last);
+  });
+
+  it("stays open with the draft and its message when the draft can't be written", async () => {
+    const editor = await mount();
+    await act(async () => {
+      fireEvent.click(chips(editor)[1]);
+    });
+    const text = popover()!.querySelector("textarea")!;
+    text.focus();
+    await act(async () => {
+      fireEvent.change(text, { target: { value: "Costs reached $5 million" } });
+    });
+    await act(async () => {
+      fireEvent.mouseDown(document.body);
+    });
+    await settle();
+    await settle();
+    expect(popover()).not.toBeNull();
+    expect(popover()!.querySelector("textarea")!.value).toBe("Costs reached $5 million");
+    expect(popover()!.querySelector("output")?.textContent).toContain("Typst can't read this text");
+    expect(editor.state.doc.toString()).toBe(DOC);
+  });
+
+  it("closes on Escape even after focus has left it", async () => {
+    const editor = await mount();
+    await act(async () => {
+      fireEvent.click(chips(editor)[0]);
+    });
+    const outside = document.body.appendChild(document.createElement("button"));
+    outside.focus();
+    await act(async () => {
+      fireEvent.keyDown(outside, { key: "Escape" });
+    });
+    expect(popover()).toBeNull();
+  });
+
+  it("is named by what the chip shows, and marked as part of the form", async () => {
+    const editor = await mount();
+    expect(chips(editor)[0].getAttribute("aria-label")).toBe("Edit Status: In review");
+    await act(async () => {
+      fireEvent.click(chips(editor)[0]);
+    });
+    expect(popover()!.closest("[data-ofl-visual-form]")).not.toBeNull();
+  });
+
+  it("undoes in the document from a popover button the fields don't own", async () => {
+    const editor = await mount();
+    await act(async () => {
+      fireEvent.click(chips(editor)[0]);
+    });
+    await act(async () => {
+      fireEvent.change(popover()!.querySelector("select")!, { target: { value: "approved" } });
+    });
+    await settle();
+    expect(editor.state.doc.toString()).toBe(DOC.replace('"review"', '"approved"'));
+    const reveal = popover()!.querySelector<HTMLButtonElement>(".ofl-visual-form-reveal")!;
+    reveal.focus();
+    await act(async () => {
+      fireEvent.keyDown(reveal, { key: "z", metaKey: true });
+    });
+    expect(editor.state.doc.toString()).toBe(DOC);
   });
 });

@@ -1098,7 +1098,8 @@
           "off": "Av",
           "open": "Redigera {{label}}",
           "chip": "{{label}}: {{summary}}",
-          "invalid": "Det här värdet skulle göra anropet felaktigt. Ändra det och försök igen.",
+          "invalid": "Typst kan inte läsa den här texten. Ett enstaka $, *, _ eller ` startar matematik eller formatering. Stäng det eller skriv \\ framför det.",
+          "readOnly": "Det här dokumentet kan inte redigeras just nu.",
           "invalidNumber": "Ange ett tal.",
           "between": "Ange ett tal från {{min}} till {{max}}.",
           "atLeast": "Ange {{min}} eller mer.",
@@ -1108,7 +1109,7 @@
             "expression": "Beräknas i källkoden",
             "kind": "Skrivet som en annan sorts värde",
             "unknownOption": "Inte ett av alternativen",
-            "locked": "Anges av ett spread-argument"
+            "locked": "Låst eftersom anropet också hämtar värden från \"..\""
           }
         }
       },

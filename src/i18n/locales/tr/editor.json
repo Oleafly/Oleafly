@@ -1098,7 +1098,8 @@
           "off": "Kapalı",
           "open": "{{label}} öğesini düzenle",
           "chip": "{{label}}: {{summary}}",
-          "invalid": "Bu değer işlev çağrısını bozar. Değiştirin ve yeniden deneyin.",
+          "invalid": "Typst bu metni okuyamıyor. Tek başına bir $, *, _ veya ` matematik ya da biçimlendirme başlatır. Kapatın veya önüne \\ yazın.",
+          "readOnly": "Bu belge şu anda düzenlenemiyor.",
           "invalidNumber": "Bir sayı girin.",
           "between": "{{min}} ile {{max}} arasında bir sayı girin.",
           "atLeast": "En az {{min}} olan bir sayı girin.",
@@ -1108,7 +1109,7 @@
             "expression": "Kaynakta hesaplanıyor",
             "kind": "Farklı türde bir değer olarak yazılmış",
             "unknownOption": "Seçeneklerden biri değil",
-            "locked": "Yayılım argümanıyla ayarlanmış"
+            "locked": "İşlev çağrısı \"..\" üzerinden de değer aldığı için kilitli"
           }
         }
       },

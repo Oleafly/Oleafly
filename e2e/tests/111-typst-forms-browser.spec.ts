@@ -57,10 +57,46 @@ test.describe("Typst function forms in Visual mode", () => {
     await page.locator(".ofl-visual-form-chip-button").click();
     const popover = page.locator(".ofl-visual-form-popover");
     await expect(popover).toBeVisible();
+    // Focus lands on the field, which a panel still hidden for measuring could not take.
+    await expect(popover.getByLabel("Status", { exact: true })).toBeFocused();
     await popover.getByLabel("Status", { exact: true }).selectOption("approved");
     await expect.poll(() => source(page)).toContain('#badge("approved")');
     await page.keyboard.press("Escape");
     await expect(popover).toBeHidden();
+    await expect(page.locator(".ofl-visual-form-chip-button")).toBeFocused();
+  });
+
+  test("keeps keys typed after a click on a card out of the document", async ({ page }) => {
+    await open(page);
+    const before = await source(page);
+    const signOff = card(page, "Sign-off");
+    await signOff.locator(".ofl-visual-form-title").click();
+    await page.keyboard.type("Z");
+    // The click turns the switch on and Space, which reaches the switch and not the text, turns it off.
+    await signOff.getByLabel("Final version", { exact: true }).click();
+    await expect.poll(() => source(page)).toContain("final: true)");
+    await page.keyboard.press("Space");
+    await expect.poll(() => source(page)).toBe(before);
+  });
+
+  test("reads a number field's text itself and never clears it for bad input", async ({ page }) => {
+    await open(page);
+    const revision = card(page, "Sign-off").getByLabel("Revision", { exact: true });
+    await revision.fill("2,5");
+    await revision.press("Enter");
+    await expect(card(page, "Sign-off").locator(".ofl-visual-form-problem")).toHaveText("Enter a number.");
+    await revision.fill("4");
+    await revision.press("ArrowUp");
+    await revision.press("Enter");
+    await expect.poll(() => source(page)).toContain("revision: 5,");
+  });
+
+  test("stacks labels above their controls in a narrow pane", async ({ page }) => {
+    await page.setViewportSize({ width: 560, height: 900 });
+    await open(page);
+    const title = card(page, "Cover page").getByLabel("Title", { exact: true });
+    const box = await title.boundingBox();
+    expect(box?.width ?? 0).toBeGreaterThan(150);
   });
 
   test("scrolls a 300-card report without console errors", async ({ page }) => {

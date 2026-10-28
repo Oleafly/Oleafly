@@ -1098,7 +1098,8 @@
           "off": "Off",
           "open": "Edit {{label}}",
           "chip": "{{label}}: {{summary}}",
-          "invalid": "This value would break the call. Change it and try again.",
+          "invalid": "Typst can't read this text. A single $, *, _ or ` starts math or formatting. Close it, or type \\ in front of it.",
+          "readOnly": "This document can't be edited right now.",
           "invalidNumber": "Enter a number.",
           "between": "Enter a number from {{min}} to {{max}}.",
           "atLeast": "Enter {{min}} or more.",
@@ -1108,7 +1109,7 @@
             "expression": "Computed in the source",
             "kind": "Written as a different kind of value",
             "unknownOption": "Not one of the choices",
-            "locked": "Set by a spread argument"
+            "locked": "Locked because the call also takes values from \"..\""
           }
         }
       },

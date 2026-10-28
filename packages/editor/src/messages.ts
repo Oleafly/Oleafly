@@ -93,6 +93,7 @@ export const EDITOR_MESSAGE_KEYS = [
   "visual.typst.forms.open",
   "visual.typst.forms.chip",
   "visual.typst.forms.invalid",
+  "visual.typst.forms.readOnly",
   "visual.typst.forms.invalidNumber",
   "visual.typst.forms.between",
   "visual.typst.forms.atLeast",

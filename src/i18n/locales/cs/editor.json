@@ -1126,7 +1126,8 @@
           "off": "Vypnuto",
           "open": "Upravit „{{label}}“",
           "chip": "{{label}}: {{summary}}",
-          "invalid": "Tato hodnota by rozbila volání. Změňte ji a zkuste to znovu.",
+          "invalid": "Typst tomuto textu nerozumí. Samotný znak $, *, _ nebo ` zahajuje matematiku nebo formátování. Uzavřete ho, nebo napište \\ před něj.",
+          "readOnly": "Tento dokument nelze momentálně upravit.",
           "invalidNumber": "Zadejte číslo.",
           "between": "Zadejte číslo od {{min}} do {{max}}.",
           "atLeast": "Zadejte číslo alespoň {{min}}.",
@@ -1136,7 +1137,7 @@
             "expression": "Vypočítáno ve zdroji",
             "kind": "Zapsáno jako hodnota jiného druhu",
             "unknownOption": "Není na seznamu možností",
-            "locked": "Nastaveno rozbalením argumentů (..)"
+            "locked": "Uzamčeno, protože volání přebírá hodnoty také z \"..\""
           }
         }
       },

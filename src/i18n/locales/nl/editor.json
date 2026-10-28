@@ -1098,7 +1098,8 @@
           "off": "Uit",
           "open": "{{label}} bewerken",
           "chip": "{{label}}: {{summary}}",
-          "invalid": "Met deze waarde zou de aanroep ongeldig worden. Wijzig de waarde en probeer het opnieuw.",
+          "invalid": "Typst kan deze tekst niet lezen. Een losse $, *, _ of ` begint wiskunde of opmaak. Sluit het af, of typ \\ ervoor.",
+          "readOnly": "Dit document kan op dit moment niet worden bewerkt.",
           "invalidNumber": "Voer een getal in.",
           "between": "Voer een getal in van {{min}} tot {{max}}.",
           "atLeast": "Voer {{min}} of meer in.",
@@ -1108,7 +1109,7 @@
             "expression": "Berekend in de broncode",
             "kind": "Geschreven als een ander soort waarde",
             "unknownOption": "Niet een van de keuzes",
-            "locked": "Ingesteld door een spread-argument"
+            "locked": "Vergrendeld omdat de aanroep ook waarden uit \"..\" overneemt"
           }
         }
       },

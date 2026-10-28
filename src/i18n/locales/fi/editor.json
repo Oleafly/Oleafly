@@ -1098,7 +1098,8 @@
           "off": "Pois",
           "open": "Muokkaa: {{label}}",
           "chip": "{{label}}: {{summary}}",
-          "invalid": "Tämä arvo rikkoisi funktiokutsun. Muuta sitä ja yritä uudelleen.",
+          "invalid": "Typst ei pysty lukemaan tätä tekstiä. Yksittäinen merkki $, *, _ tai ` aloittaa matematiikan tai muotoilun. Sulje se tai kirjoita \\ sen eteen.",
+          "readOnly": "Tätä dokumenttia ei voi muokata juuri nyt.",
           "invalidNumber": "Anna luku.",
           "between": "Anna luku, joka on vähintään {{min}} ja enintään {{max}}.",
           "atLeast": "Anna luku, joka on vähintään {{min}}.",
@@ -1108,7 +1109,7 @@
             "expression": "Lasketaan lähdekoodissa",
             "kind": "Kirjoitettu toisenlaisena arvona",
             "unknownOption": "Ei kuulu vaihtoehtoihin",
-            "locked": "Asetettu levitysargumentilla"
+            "locked": "Lukittu, koska funktiokutsu saa arvoja myös \"..\"-merkinnän kautta"
           }
         }
       },

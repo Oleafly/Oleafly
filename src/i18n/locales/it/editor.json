@@ -1112,7 +1112,8 @@
           "off": "Inattivo",
           "open": "Modifica {{label}}",
           "chip": "{{label}}: {{summary}}",
-          "invalid": "Questo valore renderebbe la chiamata non valida. Cambialo e riprova.",
+          "invalid": "Typst non riesce a leggere questo testo. Un $, *, _ o ` singolo avvia la modalità matematica o una formattazione. Chiudilo, oppure digita \\ davanti.",
+          "readOnly": "Questo documento non può essere modificato al momento.",
           "invalidNumber": "Inserisci un numero.",
           "between": "Inserisci un numero da {{min}} a {{max}}.",
           "atLeast": "Inserisci {{min}} o più.",
@@ -1122,7 +1123,7 @@
             "expression": "Calcolato nel sorgente",
             "kind": "Scritto come un altro tipo di valore",
             "unknownOption": "Non è una delle scelte",
-            "locked": "Impostato da un argomento spread"
+            "locked": "Bloccato perché la chiamata riceve valori anche da \"..\""
           }
         }
       },

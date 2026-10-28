@@ -5,12 +5,13 @@
 
 use std::collections::BTreeSet;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use oleafly_core::typst_forms::{
     assemble_catalog, FormCatalog, SourceOrigin, SourceRead, SourceText, MAX_FORMS_FILE_BYTES,
     PROJECT_FORMS_FILE,
 };
+use oleafly_core::typst_toolchain::TypstCapabilities;
 
 use crate::typst_packages::{package_dir, PackageSpec, TypstPackageDirs};
 
@@ -23,9 +24,13 @@ pub(crate) fn read_sources(
     dirs: &TypstPackageDirs,
     packages: &[String],
 ) -> Vec<SourceRead> {
-    let project_file = match crate::sandbox::resolve_within(project_root, PROJECT_FORMS_FILE) {
-        Ok(path) => read_text(&path),
-        Err(error) => SourceText::Unreadable(error),
+    let project_file = match has_entry_named(project_root, PROJECT_FORMS_FILE) {
+        Ok(true) => match crate::sandbox::resolve_within(project_root, PROJECT_FORMS_FILE) {
+            Ok(path) => read_text(&path),
+            Err(error) => SourceText::Unreadable(error),
+        },
+        Ok(false) => SourceText::Missing,
+        Err(error) => SourceText::Unreadable(error.to_string()),
     };
     let mut sources = vec![SourceRead {
         origin: SourceOrigin::ProjectFile,
@@ -49,6 +54,15 @@ pub(crate) fn read_sources(
         });
     }
     sources
+}
+
+/// Whether `directory` has an entry named exactly `name`. NTFS and APFS would
+/// also open a mis-cased `Oleafly-Forms.toml`, which the watch list, the lint
+/// and Linux never see, so only the exact name counts.
+fn has_entry_named(directory: &Path, name: &str) -> std::io::Result<bool> {
+    Ok(std::fs::read_dir(directory)?
+        .flatten()
+        .any(|entry| entry.file_name() == name))
 }
 
 /// A vendored package is watched at its place in the project, whether or not
@@ -99,6 +113,30 @@ fn read_text(path: &Path) -> SourceText {
     }
 }
 
+/// The folders a compile with `capabilities` reads packages from. Typst before
+/// 0.12 takes no `--package-path` and ignores `TYPST_PACKAGE_PATH`, so it reads
+/// only its own data folder, then its cache, and never a vendored folder. With
+/// no home folder that version finds no packages at all, so the app's folders
+/// stay.
+fn compiler_package_dirs(
+    dirs: TypstPackageDirs,
+    capabilities: &TypstCapabilities,
+    data_dir: Option<PathBuf>,
+    cache_dir: Option<PathBuf>,
+) -> TypstPackageDirs {
+    if capabilities.supports_flag("--package-path") {
+        return dirs;
+    }
+    let packages = |root: PathBuf| root.join("typst").join("packages");
+    match (data_dir, cache_dir) {
+        (Some(data), Some(cache)) => TypstPackageDirs {
+            package_path: packages(data),
+            cache_path: packages(cache),
+        },
+        _ => dirs,
+    }
+}
+
 /// The catalog for a project, read the way its compiles see packages. A
 /// project that doesn't build with Typst has an empty one.
 fn catalog_blocking(project_id: &str, packages: &[String]) -> Result<FormCatalog, String> {
@@ -106,7 +144,19 @@ fn catalog_blocking(project_id: &str, packages: &[String]) -> Result<FormCatalog
     let meta = crate::project::read_meta(project_id)?;
     let root = crate::project_location::locate(project_id)?.root;
     Ok(match crate::typst_packages::for_compile(&meta, &root)? {
-        Some(dirs) => assemble_catalog(read_sources(&root, &dirs, packages)),
+        Some(configured) => {
+            // The version the compile resolves, without running it.
+            let version = meta
+                .typst_version_pin()
+                .map_or_else(crate::typst_toolchain::default_version, str::to_owned);
+            let dirs = compiler_package_dirs(
+                configured,
+                oleafly_core::typst_toolchain::capabilities_for(&version),
+                dirs::data_dir(),
+                dirs::cache_dir(),
+            );
+            assemble_catalog(read_sources(&root, &dirs, packages))
+        }
         None => assemble_catalog(Vec::new()),
     })
 }

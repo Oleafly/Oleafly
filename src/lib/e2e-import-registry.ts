@@ -54,6 +54,7 @@ const registry: Record<string, () => Promise<unknown>> = !E2E_HOOKS ? {} : {
   "/src/store/research-tasks.ts": () => import("@/store/research-tasks"),
   "/src/store/settings.ts": () => import("@/store/settings"),
   "/src/store/tours.ts": () => import("@/store/tours"),
+  "/src/store/typst-forms.ts": () => import("@/store/typst-forms"),
   "/src/store/visual-mode.ts": () => import("@/store/visual-mode"),
   "/packages/editor/src/bibtex-linter.ts": () => import("../../packages/editor/src/bibtex-linter"),
   "/packages/editor/src/controller.ts": () => import("../../packages/editor/src/controller"),

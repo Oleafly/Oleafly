@@ -1,4 +1,5 @@
 import type { SyntaxNode } from "@lezer/common";
+import { editorMessage } from "../../../messages";
 import {
   type ArgRef,
   argumentSlot,
@@ -85,8 +86,9 @@ export function canClear(field: TypstFormField, state: FieldState): boolean {
   return state.status === "value" && !field.required && "named" in field.arg;
 }
 
+// An integer beyond 2^53 can't be written back exactly, so it counts as no number at all.
 export function numberProblem(kind: Extract<TypstFieldKind, { type: "number" }>, value: number): NumberProblem | null {
-  if (!Number.isFinite(value) || (kind.integer && !Number.isInteger(value))) return "number";
+  if (!Number.isFinite(value) || (kind.integer && !Number.isSafeInteger(value))) return "number";
   if ((kind.min !== null && value < kind.min) || (kind.max !== null && value > kind.max)) return "range";
   return null;
 }
@@ -171,6 +173,7 @@ function summaryOf(definition: TypstFormDefinition, fields: readonly FieldState[
     const chosen = state.value.value;
     return kind.options.find((option) => option.value === chosen)?.label ?? chosen;
   }
+  if (state.value.type === "toggle") return editorMessage(state.value.value ? "visual.typst.forms.on" : "visual.typst.forms.off");
   return String(state.value.value);
 }
 

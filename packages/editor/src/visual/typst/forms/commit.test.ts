@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { history, undo } from "@codemirror/commands";
-import { EditorState } from "@codemirror/state";
+import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { loadTypstParser, typstLanguage } from "../../../typst";
@@ -23,7 +23,7 @@ afterEach(() => {
   for (const view of views.splice(0)) view.destroy();
 });
 
-function viewOf(body: string, readOnly = false): EditorView {
+function viewOf(body: string, readOnly = false, extra: Extension[] = []): EditorView {
   const view = new EditorView({
     state: EditorState.create({
       doc: `${ACME}${body}`,
@@ -32,6 +32,7 @@ function viewOf(body: string, readOnly = false): EditorView {
         typstLanguage(),
         typstVisualMode({ resolveImage: async () => null, typstForms: staticTypstForms(typstFormsGolden()) }, "report.typ"),
         EditorState.readOnly.of(readOnly),
+        extra,
       ],
     }),
   });
@@ -116,8 +117,18 @@ describe("committing a field", () => {
     const view = viewOf('#info-box(title: "a")[b]', true);
     expect(commitFieldEdit(view, anchorOf(view), "pkg:@local/acme-report:0.1.0#info-box", 0, set("text", "x"))).toEqual({
       ok: false,
-      reason: "refused",
+      reason: "readOnly",
     });
+  });
+
+  it("reports a change an edit lock filtered out instead of claiming it was written", () => {
+    const body = '#info-box(title: "a")[b]';
+    const view = viewOf(body, false, [EditorState.transactionFilter.of((tr) => (tr.docChanged ? [] : tr))]);
+    expect(commitFieldEdit(view, anchorOf(view), "pkg:@local/acme-report:0.1.0#info-box", 0, set("text", "x"))).toEqual({
+      ok: false,
+      reason: "readOnly",
+    });
+    expect(view.state.doc.toString()).toBe(`${ACME}${body}`);
   });
 
   it("finds the form call at an anchor and nothing elsewhere", () => {

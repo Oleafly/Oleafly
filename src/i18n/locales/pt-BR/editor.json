@@ -1112,7 +1112,8 @@
           "off": "Desligado",
           "open": "Editar {{label}}",
           "chip": "{{label}}: {{summary}}",
-          "invalid": "Este valor tornaria a chamada inválida. Altere o valor e tente de novo.",
+          "invalid": "O Typst não consegue ler este texto. Um $, *, _ ou ` solto inicia o modo matemático ou uma formatação. Feche-o ou digite \\ antes dele.",
+          "readOnly": "Este documento não pode ser editado no momento.",
           "invalidNumber": "Digite um número.",
           "between": "Digite um número de {{min}} a {{max}}.",
           "atLeast": "Digite {{min}} ou mais.",
@@ -1122,7 +1123,7 @@
             "expression": "Calculado no código",
             "kind": "Escrito como outro tipo de valor",
             "unknownOption": "Não é uma das opções",
-            "locked": "Definido por um argumento de espalhamento"
+            "locked": "Travado porque a chamada também recebe valores de \"..\""
           }
         }
       },

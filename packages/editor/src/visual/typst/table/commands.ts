@@ -91,6 +91,11 @@ function addNamedArgument(state: EditorState, table: TypstTable, name: string, v
   return plan.ok ? [...plan.changes] : [];
 }
 
+function removeNamedArgument(state: EditorState, table: TypstTable, name: string): ChangeSpec[] {
+  const plan = planArgumentEdit(state.doc, table.arguments, { remove: { named: name } }, state.lineBreak);
+  return plan.ok ? [...plan.changes] : [];
+}
+
 function columnsChange(state: EditorState, table: TypstTable, next: string[] | number): ChangeSpec[] {
   const columns = table.columns;
   const count = typeof next === "number" ? next : next.length;
@@ -198,7 +203,8 @@ export function typstAlignmentEdit(
 export function typstBordersEdit(state: EditorState, table: TypstTable, bordered: boolean): TableEdit | null {
   if (bordered === table.bordered && (bordered || table.stroke)) return null;
   if (bordered) {
-    return table.stroke ? { changes: [deleteArgumentSpan(state.doc, table.stroke.named)], selection: null } : null;
+    const changes = table.stroke ? removeNamedArgument(state, table, "stroke") : [];
+    return changes.length > 0 ? { changes, selection: null } : null;
   }
   const changes = table.stroke
     ? [{ from: table.stroke.value.from, to: table.stroke.value.to, insert: "none" }]

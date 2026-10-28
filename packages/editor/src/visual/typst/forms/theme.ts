@@ -1,14 +1,20 @@
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { editorColor } from "../../../color-roles";
 
 const UI_FONT = "var(--font-sans, ui-sans-serif, system-ui, sans-serif)";
 const MONO = "var(--ofl-visual-mono, var(--font-mono, ui-monospace, Menlo, monospace))";
+// The editor's own surface, which a colour theme can set apart from the app's light or dark mode.
+const TEXT = editorColor("text");
+const SURFACE = editorColor("background");
 // Opaque mixes, so text and edges keep their contrast on the card's own tint.
-const SECONDARY = "color-mix(in oklch, var(--foreground) 66%, var(--background))";
-const EDGE = "color-mix(in oklch, var(--foreground) 30%, var(--background))";
-const EDGE_HOVER = "color-mix(in oklch, var(--foreground) 48%, var(--background))";
-const BUTTON_FILL = "color-mix(in oklch, var(--foreground) 5%, var(--background))";
-const HOVER_TINT = "color-mix(in oklch, var(--foreground) 8%, transparent)";
+const SECONDARY = `color-mix(in oklch, ${TEXT} 66%, ${SURFACE})`;
+const EDGE = `color-mix(in oklch, ${TEXT} 30%, ${SURFACE})`;
+const EDGE_HOVER = `color-mix(in oklch, ${TEXT} 48%, ${SURFACE})`;
+const BUTTON_FILL = `color-mix(in oklch, ${TEXT} 5%, ${SURFACE})`;
+const PANEL = `color-mix(in oklch, ${TEXT} 4%, ${SURFACE})`;
+const CHIP = `color-mix(in oklch, ${TEXT} 9%, ${SURFACE})`;
+const HOVER_TINT = `color-mix(in oklch, ${TEXT} 8%, transparent)`;
 const CONTROL_HEIGHT = "28px";
 
 // Focus and selection show as a border colour change or a background tint, never an
@@ -19,17 +25,21 @@ export const typstFormsThemeSpec = {
     padding: "10px 12px 12px",
     border: `1px solid ${EDGE}`,
     borderRadius: "8px",
-    backgroundColor: "var(--ofl-visual-panel)",
+    backgroundColor: PANEL,
     fontFamily: UI_FONT,
     fontSize: "13px",
     lineHeight: "1.45",
-    color: "var(--foreground)",
+    color: TEXT,
     cursor: "default",
+    // The narrow layout below follows the card's own width, not the window's.
+    containerType: "inline-size",
   },
   ".ofl-visual-form-header": {
     display: "flex",
+    flexWrap: "wrap",
     alignItems: "center",
-    gap: "8px",
+    columnGap: "8px",
+    rowGap: "4px",
     minHeight: "24px",
     marginBottom: "10px",
     minWidth: "0",
@@ -37,8 +47,13 @@ export const typstFormsThemeSpec = {
   ".ofl-visual-form-title": {
     fontWeight: "600",
     whiteSpace: "nowrap",
+    minWidth: "0",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
   ".ofl-visual-form-summary": {
+    // Shortens before the header wraps, so only the button moves to a second line.
+    flex: "1 1 6em",
     color: SECONDARY,
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -49,7 +64,8 @@ export const typstFormsThemeSpec = {
     marginLeft: "auto",
   },
   ".ofl-visual-form-popover .ofl-visual-form-fields": {
-    gridTemplateColumns: "max-content minmax(0, 1fr) auto",
+    // A long label wraps instead of squeezing its input to nothing.
+    gridTemplateColumns: "fit-content(45%) minmax(0, 1fr) auto",
   },
   ".ofl-visual-form-fields": {
     display: "grid",
@@ -58,6 +74,18 @@ export const typstFormsThemeSpec = {
     columnGap: "10px",
     rowGap: "8px",
     alignItems: "start",
+  },
+  // In a narrow card or popover each label sits above its control, so the control keeps its width.
+  "@container (max-width: 30em)": {
+    ".ofl-visual-form-fields, .ofl-visual-form-popover .ofl-visual-form-fields": {
+      gridTemplateColumns: "minmax(0, 1fr) auto",
+      rowGap: "4px",
+    },
+    ".ofl-visual-form-label": {
+      gridColumn: "1 / -1",
+      minHeight: "0",
+      marginTop: "4px",
+    },
   },
   ".ofl-visual-form-field": {
     display: "contents",
@@ -97,7 +125,7 @@ export const typstFormsThemeSpec = {
     padding: "3px 8px",
     border: `1px solid ${EDGE}`,
     borderRadius: "6px",
-    backgroundColor: "var(--background)",
+    backgroundColor: SURFACE,
     color: "inherit",
     font: "inherit",
     outline: "none",
@@ -109,7 +137,7 @@ export const typstFormsThemeSpec = {
   "select.ofl-visual-form-input[data-unset]": {
     color: SECONDARY,
   },
-  "input[type='number'].ofl-visual-form-input": {
+  ".ofl-visual-form-number": {
     flex: "0 1 10em",
   },
   ".ofl-visual-form-input:hover": {
@@ -132,7 +160,7 @@ export const typstFormsThemeSpec = {
     flexShrink: "0",
     border: "none",
     borderRadius: "999px",
-    backgroundColor: "color-mix(in oklch, var(--foreground) 30%, var(--background))",
+    backgroundColor: EDGE,
     cursor: "pointer",
     outline: "none",
     transition: "background-color 120ms ease",
@@ -152,15 +180,15 @@ export const typstFormsThemeSpec = {
     backgroundColor: "var(--primary)",
   },
   ".ofl-visual-form-switch:checked::after": {
-    backgroundColor: "var(--primary-foreground, var(--background))",
+    backgroundColor: "var(--primary-foreground, #ffffff)",
     transform: "translateX(12px)",
   },
   ".ofl-visual-form-switch:focus-visible": {
-    backgroundColor: "color-mix(in oklch, var(--foreground) 45%, var(--background))",
+    backgroundColor: `color-mix(in oklch, ${TEXT} 45%, ${SURFACE})`,
     outline: "none",
   },
   ".ofl-visual-form-switch:checked:focus-visible": {
-    backgroundColor: "color-mix(in oklch, var(--primary) 80%, var(--foreground))",
+    backgroundColor: `color-mix(in oklch, var(--primary) 80%, ${TEXT})`,
   },
   ".ofl-visual-form-switch:disabled": {
     opacity: "0.6",
@@ -173,7 +201,7 @@ export const typstFormsThemeSpec = {
     border: `1px solid ${EDGE}`,
     borderRadius: "5px",
     backgroundColor: BUTTON_FILL,
-    color: "var(--foreground)",
+    color: "inherit",
     font: "inherit",
     fontSize: "12px",
     whiteSpace: "nowrap",
@@ -216,7 +244,8 @@ export const typstFormsThemeSpec = {
     padding: "2px 6px",
     borderRadius: "4px",
     border: `1px solid ${EDGE}`,
-    backgroundColor: "var(--ofl-visual-chip)",
+    // The popover sits outside the editor, where the Visual chip tint isn't defined.
+    backgroundColor: `var(--ofl-visual-chip, ${CHIP})`,
     fontFamily: MONO,
     fontSize: "12px",
     whiteSpace: "pre-wrap",
@@ -227,7 +256,7 @@ export const typstFormsThemeSpec = {
     padding: "8px 12px",
     border: `1px solid ${EDGE}`,
     borderRadius: "8px",
-    backgroundColor: "var(--muted)",
+    backgroundColor: PANEL,
     color: SECONDARY,
     fontFamily: UI_FONT,
     fontSize: "12px",
@@ -236,7 +265,7 @@ export const typstFormsThemeSpec = {
     padding: "0 5px",
     border: `1px solid ${EDGE}`,
     borderRadius: "4px",
-    backgroundColor: "var(--ofl-visual-chip)",
+    backgroundColor: `var(--ofl-visual-chip, ${CHIP})`,
     color: "inherit",
     fontFamily: UI_FONT,
     fontSize: "0.85em",
@@ -246,7 +275,7 @@ export const typstFormsThemeSpec = {
     verticalAlign: "baseline",
   },
   ".ofl-visual-form-chip-button:hover": {
-    backgroundColor: "var(--ofl-visual-chip-hover)",
+    backgroundColor: `var(--ofl-visual-chip-hover, ${EDGE})`,
   },
   ".ofl-visual-form-chip-button:focus-visible, .ofl-visual-form-chip-button[aria-expanded='true']": {
     borderColor: "var(--primary)",
@@ -267,12 +296,13 @@ export const typstFormsThemeSpec = {
     border: `1px solid ${EDGE_HOVER}`,
     borderRadius: "8px",
     boxShadow: "0 10px 28px -8px rgba(0, 0, 0, 0.35)",
-    // A touch of foreground keeps it at least as light as a card in a dark theme.
-    backgroundColor: "color-mix(in oklch, var(--foreground) 6%, var(--background))",
-    color: "var(--popover-foreground, var(--foreground))",
+    // A touch of the text colour keeps it at least as light as a card in a dark theme.
+    backgroundColor: `color-mix(in oklch, ${TEXT} 6%, ${SURFACE})`,
+    color: TEXT,
     fontFamily: UI_FONT,
     fontSize: "13px",
     lineHeight: "1.45",
+    containerType: "inline-size",
   },
 } as const;
 

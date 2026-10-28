@@ -265,6 +265,7 @@ import { useTourStore } from "@/store/tours";
 import { useSettingsStore } from "@/store/settings";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
+import { useTypstFormsStore } from "@/store/typst-forms";
 
 const initialFiles = useFilesStore.getState();
 const initialCompile = useCompileStore.getState();
@@ -945,5 +946,73 @@ describe("automatic compile", () => {
     edit("changed");
     act(() => vi.advanceTimersByTime(5000));
     expect(useCompileStore.getState().recompile).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("Visual-mode forms", () => {
+  function formField(draft: boolean) {
+    const content = document.createElement("div");
+    content.className = "cm-content";
+    const card = document.createElement("div");
+    card.setAttribute("data-ofl-visual-form", "");
+    const field = document.createElement("input");
+    if (draft) field.setAttribute("data-ofl-form-draft", "");
+    card.append(field);
+    content.append(card);
+    document.body.append(content);
+    mocks.getEditorView.mockReturnValue({ contentDOM: content, requestMeasure: vi.fn() });
+    field.focus();
+    return { field, remove: () => content.remove() };
+  }
+
+  it("leaves history keys in a form to the form", async () => {
+    await renderApp();
+    const { field, remove } = formField(false);
+    const event = keydown(field, { key: "z", ctrlKey: true });
+    expect(event.defaultPrevented).toBe(false);
+    expect(mocks.editorUndo).not.toHaveBeenCalled();
+    remove();
+  });
+
+  it("sends menu undo in a form to a field's draft, and otherwise to the document", async () => {
+    mocks.tauri = true;
+    const execCommand = vi.fn(() => true);
+    Object.defineProperty(document, "execCommand", { value: execCommand, configurable: true });
+    await renderApp();
+    await waitFor(() => expect(mocks.listeners.has("menu://undo")).toBe(true));
+    const draft = formField(true);
+    emit("menu://undo", null);
+    expect(execCommand.mock.calls).toEqual([["undo"]]);
+    draft.remove();
+    const clean = formField(false);
+    emit("menu://redo", null);
+    expect(mocks.editorRedo).toHaveBeenCalledOnce();
+    expect(execCommand).toHaveBeenCalledOnce();
+    clean.remove();
+  });
+
+  it("keeps the sidebar shortcut out of a chip's popover", async () => {
+    await renderApp();
+    const popover = document.createElement("div");
+    popover.setAttribute("data-ofl-visual-form", "");
+    const field = document.createElement("input");
+    popover.append(field);
+    document.body.append(popover);
+    field.focus();
+    const before = useSettingsStore.getState().showTree;
+    keydown(field, { key: "b", ctrlKey: true });
+    expect(useSettingsStore.getState().showTree).toBe(before);
+    popover.remove();
+  });
+
+  it("reloads the forms after a project state change lands", async () => {
+    mocks.tauri = true;
+    const refresh = vi.fn(async () => undefined);
+    useTypstFormsStore.setState({ refresh });
+    await renderApp();
+    await waitFor(() => expect(mocks.listeners.has("project-state-changed")).toBe(true));
+    emit("project-state-changed", { projectId: "p1" });
+    await waitFor(() => expect(refresh).toHaveBeenCalledOnce());
   });
 });

@@ -1,3 +1,5 @@
+import { EditorState } from "@codemirror/state";
+import { hasErrorNode } from "@oleafly/editor/typst-arguments";
 import { describe, expect, it } from "vitest";
 import {
   applyTypstEdits,
@@ -12,9 +14,20 @@ async function settingsOf(text: string) {
   return readTypstDocumentSettings(text, await parseTypstSource(text));
 }
 
+// The dialog splices the edits into the text when the main file isn't the active tab, and
+// dispatches them to CodeMirror when it is. Both must give the same document.
 async function edited(text: string, changes: TypstSettingChanges): Promise<string> {
   const edits = typstSettingsEdits(text, await parseTypstSource(text), changes);
-  return applyTypstEdits(text, edits);
+  const spliced = applyTypstEdits(text, edits);
+  const dispatched = EditorState.create({ doc: text }).update({ changes: edits }).state.doc.toString();
+  expect(dispatched, "a CodeMirror transaction should give the spliced text").toBe(spliced);
+  return spliced;
+}
+
+async function editedCleanly(text: string, changes: TypstSettingChanges): Promise<string> {
+  const after = await edited(text, changes);
+  expect(hasErrorNode((await parseTypstSource(after)).topNode), `the edited file should parse:\n${after}`).toBe(false);
+  return after;
 }
 
 const PAPER = [
@@ -160,6 +173,54 @@ describe("typstSettingsEdits", () => {
     expect(await edited(text, { paper: null, columns: "3", fontSize: "11pt", lang: "fr", justify: "true", headingNumbering: "" })).toBe(
       '#set par(justify: true)\n#set page(columns: 3)\n#set text(size: 11pt, lang: "fr")\n#set heading()\n',
     );
+  });
+
+  it("clears the last two arguments of a rule", async () => {
+    expect(await editedCleanly("#set par(justify: true, leading: 0.65em)\n= Intro\n", { justify: null, leading: null })).toBe(
+      "#set par()\n= Intro\n",
+    );
+    expect(await editedCleanly('#set text(font: "A", size: 11pt, lang: "de")\n= Intro\n', { fontSize: null, lang: null })).toBe(
+      '#set text(font: "A")\n= Intro\n',
+    );
+  });
+
+  it("clears the only argument of a rule and adds another", async () => {
+    expect(await editedCleanly("#set par(justify: true)\n= Intro\n", { justify: null, leading: "0.7em" })).toBe(
+      "#set par(leading: 0.7em)\n= Intro\n",
+    );
+    expect(await editedCleanly("#set par(\n  justify: true,\n)\n= Intro\n", { justify: null, leading: "0.7em" })).toBe(
+      "#set par(leading: 0.7em)\n= Intro\n",
+    );
+  });
+
+  it("clears the last argument of a multi-line rule and adds another", async () => {
+    const bare = '#set text(\n  font: "Libertinus Serif",\n  size: 11pt\n)\n= Intro\n';
+    expect(await editedCleanly(bare, { fontSize: null, lang: "fr" })).toBe(
+      '#set text(\n  font: "Libertinus Serif",\n  lang: "fr",\n)\n= Intro\n',
+    );
+    const trailing = '#set page(\n  paper: "a4",\n  columns: 2,\n)\n= Intro\n';
+    expect(await editedCleanly(trailing, { columns: null, margin: "2cm" })).toBe(
+      '#set page(\n  paper: "a4",\n  margin: 2cm,\n)\n= Intro\n',
+    );
+  });
+
+  it("clears an argument next to a comment or a comma-first line", async () => {
+    expect(await editedCleanly('#set text(size: 11pt, // body text,\n  lang: "de")\n', { lang: null })).toBe(
+      "#set text(size: 11pt, // body text,\n)\n",
+    );
+    expect(await editedCleanly('#set page(\n  paper: "a4"\n  , columns: 2\n)\n', { paper: null })).toBe(
+      "#set page(\n  columns: 2\n)\n",
+    );
+    expect(await editedCleanly("#set par(justify: true /* why */, leading: 0.6em)\n", { justify: null })).toBe(
+      "#set par(leading: 0.6em)\n",
+    );
+  });
+
+  it("edits several rules and adds new ones in one pass", async () => {
+    const text = '#import "lib.typ": conf\n#set text(size: 11pt, lang: "de")\n#set par(justify: true)\n#set text(region: "AT")\n= Intro\n';
+    expect(
+      await editedCleanly(text, { fontSize: null, lang: "fr", region: null, font: "A", justify: null, leading: "0.6em", paper: "a5" }),
+    ).toBe('#import "lib.typ": conf\n#set page(paper: "a5")\n#set text(lang: "fr")\n#set par(leading: 0.6em)\n#set text(font: "A")\n= Intro\n');
   });
 
   it("only extends the last editable rule for an element", async () => {

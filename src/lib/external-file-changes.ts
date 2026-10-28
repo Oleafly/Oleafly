@@ -6,7 +6,7 @@ import {
 } from "@/store/files";
 import { projectFolderAvailable } from "@/store/project-availability";
 import { useIndexStore } from "@/store/project-index";
-import { formsRefreshNeeded, useTypstFormsStore } from "@/store/typst-forms";
+import { formsChangeNeedsRefresh, useTypstFormsStore } from "@/store/typst-forms";
 import { collabHoldsDocument } from "@/lib/collab-live-bridge";
 import { isProjectIntelligencePath } from "@/lib/project-intelligence/source";
 
@@ -30,6 +30,7 @@ export function applyExternalFileChange(
   const files = useFilesStore.getState();
   if (!payload.projectId) return;
   if (payload.projectId !== files.projectId) return;
+  refreshFormsAfter(payload);
   if (applyKnownExternalChange(files, payload.projectId, payload.change)) return;
   void files.refreshTree();
   if (payload.change?.kind === "create") return;
@@ -99,8 +100,19 @@ export function applyFolderChange(change: FolderChangePayload): void {
     if (file.dirty) void detectDiskChange(change.projectId, path);
     else refreshExternalFile(change.projectId, path, file);
   }
-  const forms = useTypstFormsStore.getState();
-  if (change.rescan || formsRefreshNeeded(change.paths, forms.catalog)) void forms.refresh();
+  if (change.rescan || formsChangeNeedsRefresh(change.paths)) void useTypstFormsStore.getState().refresh();
+}
+
+function changePaths(change: ExternalFileChange | undefined): string[] {
+  if (!change) return [];
+  return change.kind === "rename" ? [change.from, change.to] : [change.path];
+}
+
+// Another window or an assistant tool wrote to disk. A change that names no path may have
+// touched anything.
+function refreshFormsAfter(payload: ExternalFileChangePayload): void {
+  const paths = [...(payload.paths ?? []), ...changePaths(payload.change)];
+  if (paths.length === 0 || formsChangeNeedsRefresh(paths)) void useTypstFormsStore.getState().refresh();
 }
 
 export function refreshOpenFilesFromDisk(projectId: string | null): void {

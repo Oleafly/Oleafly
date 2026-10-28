@@ -1098,7 +1098,8 @@
           "off": "Fra",
           "open": "Rediger {{label}}",
           "chip": "{{label}}: {{summary}}",
-          "invalid": "Denne værdi ville ødelægge kaldet. Ændr den, og prøv igen.",
+          "invalid": "Typst kan ikke læse denne tekst. Et enkelt $, *, _ eller ` starter matematik eller formatering. Luk det, eller skriv \\ foran det.",
+          "readOnly": "Dette dokument kan ikke redigeres lige nu.",
           "invalidNumber": "Angiv et tal.",
           "between": "Angiv et tal fra {{min}} til {{max}}.",
           "atLeast": "Angiv {{min}} eller mere.",
@@ -1108,7 +1109,7 @@
             "expression": "Beregnet i kilden",
             "kind": "Skrevet som en anden slags værdi",
             "unknownOption": "Ikke en af valgmulighederne",
-            "locked": "Angivet af et spread-argument"
+            "locked": "Låst, fordi kaldet også henter værdier fra \"..\""
           }
         }
       },

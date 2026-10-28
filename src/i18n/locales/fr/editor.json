@@ -1112,7 +1112,8 @@
           "off": "Arrêt",
           "open": "Modifier {{label}}",
           "chip": "{{label}} : {{summary}}",
-          "invalid": "Cette valeur rendrait l'appel invalide. Modifiez-la, puis réessayez.",
+          "invalid": "Typst ne peut pas lire ce texte. Un $, *, _ ou ` isolé active le mode maths ou une mise en forme. Fermez-le, ou tapez \\ devant.",
+          "readOnly": "Ce document ne peut pas être modifié pour le moment.",
           "invalidNumber": "Saisissez un nombre.",
           "between": "Saisissez un nombre compris entre {{min}} et {{max}}.",
           "atLeast": "Saisissez {{min}} ou plus.",
@@ -1122,7 +1123,7 @@
             "expression": "Calculé dans le source",
             "kind": "Écrit comme un autre type de valeur",
             "unknownOption": "Ne fait pas partie des choix",
-            "locked": "Défini par un argument de décomposition"
+            "locked": "Verrouillé, car l'appel reçoit aussi des valeurs de \"..\""
           }
         }
       },

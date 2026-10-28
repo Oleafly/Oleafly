@@ -10,6 +10,7 @@ import {
   type ArgRef,
   type ArgumentEdit,
   type CallArguments,
+  hasErrorNode,
   planArgumentEdit,
   readCallArguments,
   sourceText,
@@ -120,6 +121,24 @@ describe("reading call arguments", () => {
     expect(args.positional).toEqual([]);
   });
 
+  it("reads a named value past a comment after the colon", () => {
+    const doc = '#info-box(title: /* heading */ "Q3")[x]';
+    const args = argumentsOf(doc, "info-box");
+    expect(args.named.map((slot) => [slot.name, slot.type, doc.slice(slot.value.from, slot.value.to)])).toEqual([
+      ["title", "Str", '"Q3"'],
+    ]);
+  });
+
+  it("records the commas next to each named argument, past comments", () => {
+    const doc = "#f(a: 1 /* x */, b: 2, // c\n  c: 3)";
+    const commas = argumentsOf(doc, "f").named.map(({ commas: { before, after } }) => [before?.from ?? null, after?.from ?? null]);
+    expect(commas).toEqual([
+      [null, doc.indexOf(", b")],
+      [doc.indexOf(", b"), doc.indexOf(", //")],
+      [doc.indexOf(", //"), null],
+    ]);
+  });
+
   it("reads trailing blocks without parentheses", () => {
     const args = argumentsOf("#f[a][b]", "f");
     expect(args.parens).toBeNull();
@@ -164,6 +183,7 @@ describe("replacing an argument", () => {
       '#acme.sign-off(\n  name: "A", // c\n  revision: 3,\n)',
     ],
     ['Ünïcödé 😀 text #f(a: "x") tail', "f", named("a"), '"ÿ 😀"', 'Ünïcödé 😀 text #f(a: "ÿ 😀") tail'],
+    ['#info-box(title: /* heading */ "Q3")[x]', "info-box", named("title"), '"Q4"', '#info-box(title: /* heading */ "Q4")[x]'],
   ])("%j", (doc, callee, ref, text, expected) => {
     expect(edited(doc, callee, { replace: ref, text })).toBe(expected);
   });
@@ -198,6 +218,11 @@ describe("inserting an argument", () => {
     ["#f(\n  a: 1,)", named("c"), "3", "#f(\n  a: 1,\n  c: 3,)"],
     ["#f(\n  a: 1, b: 2,\n)", named("c"), "3", "#f(\n  a: 1, b: 2,\n  c: 3,\n)"],
     ['#f(\n  "p",\n  a: 1,\n)', named("c"), "3", '#f(\n  c: 3,\n  "p",\n  a: 1,\n)'],
+    // The first argument shares the `(` line, but the call is laid out one argument per line.
+    ['#info-box(title: "Q3",\n  tone: "note",\n)[Body]', named("summary"), '"x"', '#info-box(title: "Q3",\n  tone: "note",\n  summary: "x",\n)[Body]'],
+    ["#f(a: 1,\n  b: 2)", named("c"), "3", "#f(a: 1,\n  b: 2,\n  c: 3)"],
+    ["#f(x: 1,\n  [a], [b],\n)", named("c"), "3", "#f(x: 1,\n  c: 3,\n  [a], [b],\n)"],
+    ['#f(a: 1, "p",\n)', named("c"), "3", '#f(a: 1, c: 3, "p",\n)'],
   ])("%j gets %j", (doc, ref, text, expected) => {
     const callee = doc.slice(1, doc.search(/[([]/u));
     expect(edited(doc, callee, { insert: ref, text, content: false })).toBe(expected);
@@ -249,6 +274,19 @@ describe("removing an argument", () => {
     ["#f(\n  a: 1,\n  b: 2,\n)", "a", "#f(\n  b: 2,\n)"],
     ["#f(\n  a: 1,\n  b: 2\n)", "b", "#f(\n  a: 1,\n)"],
     ["#f(\r\n  a: 1,\r\n  b: 2,\r\n)", "a", "#f(\r\n  b: 2,\r\n)"],
+    // The separators come from the tree, so comments and comma-first layouts keep the call whole.
+    ["#f(a: 1 /* x */, b: 2)", "a", "#f(b: 2)"],
+    ['#f(size: 11pt, // body text,\n  lang: "de")', "lang", "#f(size: 11pt, // body text,\n)"],
+    ['#f(\n  paper: "a4"\n  , columns: 2\n)', "paper", "#f(\n  columns: 2\n)"],
+    ['#f(\n  paper: "a4"\n  , columns: 2\n)', "columns", '#f(\n  paper: "a4"\n)'],
+    ["#f(\n  a: 1\n  , b: 2\n  , c: 3\n)", "b", "#f(\n  a: 1\n  , c: 3\n)"],
+    ["#f(a: 1, b: 2,)", "b", "#f(a: 1,)"],
+    ["#f(a: 1,)", "a", "#f()"],
+    ["#f(\n  a: 1,\n  b: 2)", "b", "#f(\n  a: 1)"],
+    ["#f(\n  a: 1, b: 2,\n  c: 3,\n)", "b", "#f(\n  a: 1,\n  c: 3,\n)"],
+    ["#f(\n  a: 1,\n  b: 2, // why\n)", "b", "#f(\n  a: 1,\n  // why\n)"],
+    ["#f(\n  a: 1, // why\n  b: 2\n)", "a", "#f(\n  // why\n  b: 2\n)"],
+    ["#f(\n  a: 1,\n  b: (\n    1,\n  ),\n  c: 3,\n)", "b", "#f(\n  a: 1,\n  c: 3,\n)"],
   ])("%j without %s", (doc, name, expected) => {
     expect(edited(doc, "f", { remove: named(name) })).toBe(expected);
   });
@@ -256,6 +294,83 @@ describe("removing an argument", () => {
   it("refuses positional and missing arguments", () => {
     expect(refusal('#f("a")', "f", { remove: positional(0) })).toBe("notRemovable");
     expect(refusal("#f(a: 1)", "f", { remove: named("b") })).toBe("missing");
+  });
+});
+
+describe("edits to random call layouts", () => {
+  const SEPARATORS = [", ", ",", " , ", ", /* c */ ", " /* c */, ", ",  "];
+  const COMMENTS = ["", " // note", " // note,", " /* x */"];
+  const STYLES = ["own", "firstOnOpen", "commaFirst", "closeOnLast"] as const;
+
+  function seeded(seed: number): () => number {
+    let state = seed;
+    return () => {
+      state = (state * 1_103_515_245 + 12_345) % 2_147_483_648;
+      return state / 2_147_483_648;
+    };
+  }
+
+  function multiLine(items: readonly string[], style: (typeof STYLES)[number], comma: boolean, nl: string, pick: <T>(list: readonly T[]) => T) {
+    const last = items.length - 1;
+    const commaAfter = (index: number) => (index < last || comma ? "," : "");
+    switch (style) {
+      case "own":
+        return `${nl}${items.map((item, index) => `  ${item}${commaAfter(index)}${pick(COMMENTS)}`).join(nl)}${nl}`;
+      case "firstOnOpen":
+        return `${items.map((item, index) => `${index ? "  " : ""}${item}${commaAfter(index)}`).join(nl)}${nl}`;
+      case "commaFirst":
+        return `${nl}  ${items.join(`${nl}  , `)}${nl}`;
+      case "closeOnLast":
+        return `${nl}${items.map((item, index) => `  ${item}${index < last ? "," : ""}`).join(nl)}`;
+    }
+  }
+
+  // A call with up to four named and two positional arguments, on one line or several.
+  function randomCall(random: () => number): { text: string; nl: string } {
+    const pick = <T,>(list: readonly T[]): T => list[Math.floor(random() * list.length)];
+    const items = ["a", "b", "c", "d"].slice(0, Math.floor(random() * 5)).map((name) => `${name}: ${pick(["1", '"s"', "true", "(1, 2)", "[x]"])}`);
+    for (let count = Math.floor(random() * 3); count > 0; count -= 1) {
+      items.splice(Math.floor(random() * (items.length + 1)), 0, pick(['"p"', "2", "[q]"]));
+    }
+    const nl = random() < 0.2 ? "\r\n" : "\n";
+    const comma = random() < 0.5;
+    let inner: string;
+    if (items.length === 0) inner = pick(["", " ", `${nl}  // c${nl}`]);
+    else if (random() < 0.5) inner = items.map((item, index) => (index < items.length - 1 ? `${item}${pick(SEPARATORS)}` : item)).join("") + (comma ? "," : "");
+    else inner = multiLine(items, pick(STYLES), comma, nl, pick);
+    return { text: `#f(${inner})${random() < 0.3 ? "[body]" : ""}`, nl };
+  }
+
+  it("keeps 2,000 calls whole when an argument is removed, inserted or replaced", () => {
+    const random = seeded(345);
+    for (let round = 0; round < 2_000; round += 1) {
+      const { text, nl } = randomCall(random);
+      const doc = `Intro ${nl}${text}${nl}tail`;
+      if (hasErrorNode(parser.parse(doc).topNode)) continue;
+      const args = readCallArguments(sourceText(doc), findCall(doc, "f"));
+      if (!args) continue;
+      const names = args.named.map((slot) => slot.name);
+      const edits: ArgumentEdit[] = [
+        ...names.map((name) => ({ remove: named(name) })),
+        ...names.map((name) => ({ replace: named(name), text: "9" })),
+        { insert: named("z"), text: "9", content: false },
+        { insert: positional(args.positional.length), text: '"n"', content: false },
+      ];
+      for (const edit of edits) {
+        const plan = planArgumentEdit(sourceText(doc), args, edit, nl);
+        if (!plan.ok) continue;
+        const after = applyChanges(doc, plan.changes);
+        const shape = `${JSON.stringify(doc)} ${JSON.stringify(edit)}:\n${JSON.stringify(after)}`;
+        expect(hasErrorNode(parser.parse(after).topNode), shape).toBe(false);
+        expect(after.startsWith(doc.slice(0, args.call.from)) && after.endsWith(doc.slice(args.call.to)), shape).toBe(true);
+        if (nl === "\r\n") expect(/(?<!\r)\n/u.test(after), shape).toBe(false);
+        const removed = "remove" in edit && "named" in edit.remove ? edit.remove.named : null;
+        if (removed !== null) {
+          const reread = readCallArguments(sourceText(after), findCall(after, "f"));
+          expect(reread?.named.map((slot) => slot.name), shape).toEqual(names.filter((name) => name !== removed));
+        }
+      }
+    }
   });
 });
 

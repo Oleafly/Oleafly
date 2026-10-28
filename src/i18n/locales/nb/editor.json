@@ -1098,7 +1098,8 @@
           "off": "Av",
           "open": "Rediger {{label}}",
           "chip": "{{label}}: {{summary}}",
-          "invalid": "Denne verdien vil ødelegge funksjonskallet. Endre den og prøv igjen.",
+          "invalid": "Typst kan ikke lese denne teksten. Et enkelt $, *, _ eller ` starter matematikk eller formatering. Lukk det eller skriv \\ foran det.",
+          "readOnly": "Dette dokumentet kan ikke redigeres akkurat nå.",
           "invalidNumber": "Skriv inn et tall.",
           "between": "Skriv inn et tall fra {{min}} til {{max}}.",
           "atLeast": "Skriv inn {{min}} eller mer.",
@@ -1108,7 +1109,7 @@
             "expression": "Beregnet i kilden",
             "kind": "Skrevet som en annen type verdi",
             "unknownOption": "Ikke ett av valgene",
-            "locked": "Angitt av et spredningsargument"
+            "locked": "Låst fordi funksjonskallet også henter verdier fra \"..\""
           }
         }
       },
