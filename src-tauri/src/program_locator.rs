@@ -1305,18 +1305,22 @@ pub(crate) fn agent_env(
     } else {
         &["NO_PROXY", "no_proxy"]
     };
+    // Tools disagree on which spelling they read first, so both get one list
+    // with the user's entries from either spelling.
+    let mut existing = Vec::new();
     for name in spellings {
         let added = env
             .iter()
             .position(|(known, _)| same_env_name(known, name, windows));
-        let existing = match added {
+        existing.push(match added {
             Some(index) => Some(env.remove(index).1),
             None => process(name),
-        };
-        env.push((
-            (*name).to_string(),
-            with_loopback_no_proxy(existing.as_deref()),
-        ));
+        });
+    }
+    let existing: Vec<Option<&OsStr>> = existing.iter().map(Option::as_deref).collect();
+    let merged = merged_no_proxy(&existing);
+    for name in spellings {
+        env.push(((*name).to_string(), merged.clone()));
     }
     for (name, value) in QUIET_DEFAULTS {
         if process(name).is_none() {
@@ -1327,17 +1331,25 @@ pub(crate) fn agent_env(
 }
 
 pub(crate) fn with_loopback_no_proxy(existing: Option<&OsStr>) -> OsString {
-    let text = existing
+    merged_no_proxy(&[existing])
+}
+
+/// The entries of every value, each once, then the loopback hosts.
+pub(crate) fn merged_no_proxy(values: &[Option<&OsStr>]) -> OsString {
+    let texts: Vec<String> = values
+        .iter()
+        .flatten()
         .map(|value| value.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    let mut entries: Vec<&str> = text
-        .split(',')
-        .map(str::trim)
-        .filter(|entry| !entry.is_empty())
         .collect();
-    for host in LOOPBACK_HOSTS {
-        if !entries.iter().any(|entry| entry.eq_ignore_ascii_case(host)) {
-            entries.push(host);
+    let mut entries: Vec<&str> = Vec::new();
+    let listed = texts.iter().flat_map(|text| text.split(',')).map(str::trim);
+    for entry in listed.chain(LOOPBACK_HOSTS) {
+        if !entry.is_empty()
+            && !entries
+                .iter()
+                .any(|known| known.eq_ignore_ascii_case(entry))
+        {
+            entries.push(entry);
         }
     }
     OsString::from(entries.join(","))

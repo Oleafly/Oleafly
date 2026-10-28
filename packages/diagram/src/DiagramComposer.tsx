@@ -358,6 +358,12 @@ export function DiagramComposer({
     insertTarget !== null && (hasDrawing || (insertTarget.language === language && code.trim() !== ""));
 
   const typstVersion = useCallback(() => host.typstContext?.()?.typstVersion ?? null, [host]);
+  // A webview's window.confirm may answer with a Promise, which isn't a yes.
+  const ask = useCallback(
+    (message: string): Promise<boolean> =>
+      host.confirm ? host.confirm(message) : Promise.resolve(window.confirm(message) === true),
+    [host],
+  );
 
   const writeCode = useCallback(
     (m: DiagramModel, id: DiagramLanguageId = languageRef.current) =>
@@ -473,7 +479,7 @@ export function DiagramComposer({
     const drawing = currentDrawing();
     const handWritten = syncRef.current.codeDirty && !syncRef.current.canvasAhead;
     const loses = handWritten && (!drawing || notes.some((item) => item.kind !== "approximated"));
-    if (loses && !window.confirm(t("confirm.switchLanguage", { from: lang.name, to: diagramLanguage(next).name }))) return;
+    if (loses && !(await ask(t("confirm.switchLanguage", { from: lang.name, to: diagramLanguage(next).name })))) return;
     if (codeTimerRef.current) {
       clearTimeout(codeTimerRef.current);
       codeTimerRef.current = null;
@@ -487,7 +493,7 @@ export function DiagramComposer({
     setModel(converted);
     setCode(diagramLanguage(next).write(converted, { typstVersion: typstVersion() }));
     resetPreview();
-  }, [lang, currentDrawing, notes, t, typstVersion, resetPreview]);
+  }, [lang, currentDrawing, notes, t, typstVersion, resetPreview, ask]);
 
   const lastRequest = useRef(languageRequest);
   useEffect(() => {
@@ -606,12 +612,12 @@ export function DiagramComposer({
         const existing = new Set(files.map((f) => f.path));
         const clash = paths.filter((p) => existing.has(p));
         if (clash.length === 0) return true;
-        return window.confirm(t("confirm.overwrite", { files: clash.join(", ") }));
+        return await ask(t("confirm.overwrite", { files: clash.join(", ") }));
       } catch {
         return true;
       }
     },
-    [host, t],
+    [host, ask, t],
   );
 
   const canvasOwnsCode = shouldWriteCode(syncRef.current, hasDrawing);

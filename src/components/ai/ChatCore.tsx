@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, useRef, useEffect, useLayoutEffect, useCallba
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
+import { confirmAction } from "@/store/confirm-dialog";
 import { formatNumber } from "@/lib/intl";
 import type { AssistantContent, ModelMessage, ToolSet } from "@/lib/chat-types";
 import { appendStepText, runAgentHarness, toAgentMessages } from "./agent-turn";
@@ -3683,7 +3684,7 @@ ${sandboxedCustom}`;
       if (!projectId || !message.id || !message.checkpointOid || restoringCheckpoint) return;
       if (
         !isLatest &&
-        !window.confirm(i18n.t(($) => $.ai.conversation.restoreConfirm))
+        !(await confirmAction({ message: i18n.t(($) => $.ai.conversation.restoreConfirm) }))
       ) {
         return;
       }

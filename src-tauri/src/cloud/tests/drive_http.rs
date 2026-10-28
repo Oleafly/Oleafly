@@ -1,7 +1,20 @@
 use super::fake_drive::{FakeDrive, PERMISSION_ID};
 use crate::cloud::store::{BatchFile, CloudStore, StoreError, TokenRefresher, WriteMode};
+use oleafly_core::content::ContentHash;
+use std::io::Write;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
+
+const MIB: usize = 1024 * 1024;
+
+/// Bytes with no short period, so a piece read from the wrong offset can't
+/// match by chance.
+fn pattern(len: usize, seed: u8) -> Vec<u8> {
+    (0..len as u32)
+        .map(|index| (index.wrapping_mul(2_654_435_761) >> 24) as u8 ^ seed)
+        .collect()
+}
 
 #[tokio::test]
 async fn records_are_created_once_read_listed_and_trashed() {
@@ -208,6 +221,177 @@ async fn large_files_go_up_in_pieces_and_come_back_whole() {
         .unwrap();
     assert_eq!(fetched.hash, large.hash);
     assert_eq!(std::fs::read(&back).unwrap(), bytes);
+}
+
+#[tokio::test]
+async fn a_download_runs_past_the_request_timeout_while_bytes_keep_coming() {
+    let fake = FakeDrive::start().await;
+    let directory = tempfile::tempdir().unwrap();
+    let bytes = pattern(64 * 1024, 0);
+    let rev = fake
+        .store()
+        .put(
+            "/projects/p/files/data.bin",
+            bytes.clone(),
+            WriteMode::Overwrite,
+        )
+        .await
+        .unwrap();
+    // Eight pieces a quarter second apart take longer than a small request
+    // may, and none waits long enough to look stalled.
+    fake.with(|drive| drive.media_pace = Some((8 * 1024, Duration::from_millis(250))));
+    let store = fake.store_timed(Duration::from_secs(1), Duration::from_secs(3));
+    let back = directory.path().join("back.bin");
+    let fetched = store
+        .fetch_to("/projects/p/files/data.bin", Some(&rev), &back, u64::MAX)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(fetched.hash, ContentHash::digest(&bytes));
+    assert_eq!(std::fs::read(&back).unwrap(), bytes);
+
+    // One that stops sending fails instead of hanging, and leaves nothing.
+    fake.with(|drive| drive.media_pace = Some((8 * 1024, Duration::from_secs(5))));
+    let store = fake.store_timed(Duration::from_secs(1), Duration::from_millis(300));
+    let stalled = directory.path().join("stalled.bin");
+    assert!(matches!(
+        store
+            .fetch_to("/projects/p/files/data.bin", Some(&rev), &stalled, u64::MAX)
+            .await,
+        Err(StoreError::Network(_))
+    ));
+    assert!(!stalled.exists());
+}
+
+#[tokio::test]
+async fn a_slow_upload_piece_gets_time_for_its_size_not_the_request_timeout() {
+    let fake = FakeDrive::start().await;
+    let directory = tempfile::tempdir().unwrap();
+    let local = directory.path().join("large.bin");
+    let bytes = pattern(6 * MIB, 0);
+    std::fs::write(&local, &bytes).unwrap();
+    // Drive takes longer to answer the piece than a small request may take,
+    // and longer than a download may go without a byte.
+    fake.with(|drive| drive.piece_delay = Some(Duration::from_millis(2500)));
+    let store = fake.store_timed(Duration::from_secs(1), Duration::from_secs(1));
+    let uploaded = store
+        .put_path("/projects/p/files/large.bin", &local)
+        .await
+        .unwrap();
+    assert_eq!(uploaded.hash, ContentHash::digest(&bytes));
+    assert_eq!(
+        fake.with(|drive| drive.content("projects/p/files/large.bin")),
+        Some(bytes)
+    );
+}
+
+#[tokio::test]
+async fn a_piece_sent_again_is_read_from_the_offset_drive_reports() {
+    let fake = FakeDrive::start().await;
+    let store = fake.store();
+    let directory = tempfile::tempdir().unwrap();
+    let local = directory.path().join("data.bin");
+    let total = 13 * MIB + 5;
+    let bytes = pattern(total, 0);
+    std::fs::write(&local, &bytes).unwrap();
+    fake.with(|drive| {
+        drive.piece_faults.extend([
+            // Drive persists 3 MiB of the first piece and asks for the rest.
+            (3 * MIB, 308),
+            // It keeps 1 MiB of the next one, then fails.
+            (MIB, 503),
+            // The third lands whole.
+            (usize::MAX, 308),
+            // The last lands too, but its reply is lost.
+            (usize::MAX, 503),
+        ]);
+    });
+    let uploaded = store
+        .put_path("/projects/p/files/data.bin", &local)
+        .await
+        .unwrap();
+    assert_eq!(uploaded.size, total as u64);
+    assert_eq!(uploaded.hash, ContentHash::digest(&bytes));
+    fake.with(|drive| {
+        assert_eq!(
+            drive.pieces,
+            [
+                (0, 8 * MIB),
+                (3 * MIB, 8 * MIB),
+                (4 * MIB, 8 * MIB),
+                (12 * MIB, MIB + 5)
+            ]
+        );
+        assert_eq!(drive.content("projects/p/files/data.bin"), Some(bytes));
+        let copies = drive
+            .files
+            .values()
+            .filter(|file| file.name == "data.bin")
+            .count();
+        assert_eq!(copies, 1);
+    });
+}
+
+#[tokio::test]
+async fn a_file_that_changes_size_while_it_goes_up_fails_and_drive_keeps_the_old_one() {
+    let fake = FakeDrive::start().await;
+    let store = fake.store();
+    let directory = tempfile::tempdir().unwrap();
+    let local = directory.path().join("data.bin");
+    let first = pattern(13 * MIB, 0);
+    std::fs::write(&local, &first).unwrap();
+    store
+        .put_path("/projects/p/files/data.bin", &local)
+        .await
+        .unwrap();
+    let second = pattern(13 * MIB, 0x5a);
+
+    // Cut short once the first piece is up: the next piece can't be read.
+    std::fs::write(&local, &second).unwrap();
+    let cut = local.clone();
+    fake.with(|drive| {
+        drive.after_piece = Some(Box::new(move || {
+            let file = std::fs::OpenOptions::new().write(true).open(cut).unwrap();
+            file.set_len(9 * MIB as u64).unwrap();
+        }));
+    });
+    assert!(matches!(
+        store.put_path("/projects/p/files/data.bin", &local).await,
+        Err(StoreError::Io(_))
+    ));
+
+    // Grown once the first piece is up: the last piece is never sent.
+    std::fs::write(&local, &second).unwrap();
+    let grown = local.clone();
+    fake.with(|drive| {
+        drive.after_piece = Some(Box::new(move || {
+            let mut file = std::fs::OpenOptions::new()
+                .append(true)
+                .open(grown)
+                .unwrap();
+            file.write_all(b"more").unwrap();
+        }));
+    });
+    assert!(matches!(
+        store.put_path("/projects/p/files/data.bin", &local).await,
+        Err(StoreError::Io(_))
+    ));
+    assert_eq!(
+        fake.with(|drive| drive.content("projects/p/files/data.bin")),
+        Some(first)
+    );
+
+    // Left alone, it goes up.
+    std::fs::write(&local, &second).unwrap();
+    let uploaded = store
+        .put_path("/projects/p/files/data.bin", &local)
+        .await
+        .unwrap();
+    assert_eq!(uploaded.hash, ContentHash::digest(&second));
+    assert_eq!(
+        fake.with(|drive| drive.content("projects/p/files/data.bin")),
+        Some(second)
+    );
 }
 
 #[tokio::test]

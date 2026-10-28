@@ -13,6 +13,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KIT } from "@/components/diagram/diagram-kit";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { WindowControls } from "@/components/layout/WindowControls";
+import { confirmAction } from "@/store/confirm-dialog";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
@@ -145,6 +146,7 @@ const HOST: DiagramHost = {
     return pdfPageToPng(...args);
   },
   listFiles,
+  confirm: (message) => confirmAction({ message }),
   writeFileContent: async (projectId, path, content) => {
     assertSharedWritable(projectId);
     if (await writeSharedText(projectId, path, content)) return {};

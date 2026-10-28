@@ -11,6 +11,7 @@ import { ThemeProvider } from "@/lib/theme";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { appQueryClient } from "@/lib/query";
 import { Toaster } from "@/components/ui/sonner";
+import { ConfirmHost } from "@/components/ui/confirm-host";
 import { appendAppLog } from "@/lib/tauri";
 import { loadDisplayHomes } from "@/lib/display-path";
 import { logError } from "@/lib/log";
@@ -249,6 +250,7 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
       <AppZoom />
       <App />
       <Toaster />
+      <ConfirmHost />
       <DevContextMenu />
       <IndexKeeper />
       <ZoteroKeeper />

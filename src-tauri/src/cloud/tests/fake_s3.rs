@@ -1,16 +1,19 @@
 //! A small S3-compatible service for the S3 store's tests: signatures checked
-//! against one key pair, conditional writes, listings split into pages,
-//! multipart uploads, and failures on demand. Path-style addressing only, as
-//! MinIO and most self-hosted servers use.
+//! against one key pair, conditional writes, user metadata, listings split
+//! into pages, multipart uploads, slow replies, and failures on demand.
+//! Path-style addressing only, as MinIO and most self-hosted servers use.
 
 use crate::cloud::s3::{S3Config, S3Keys, S3Store};
-use axum::body::Bytes;
+use axum::body::{Body, Bytes};
 use axum::extract::State;
-use axum::http::{HeaderMap, Method, StatusCode, Uri};
+use axum::http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
+use futures_util::StreamExt;
 use oleafly_s3::sigv4::{self, Credentials, Request};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::time::Duration;
+use tokio::sync::Notify;
 
 pub(crate) const BUCKET: &str = "sync";
 pub(crate) const KEY_ID: &str = "AKIAFAKEFAKEFAKE";
@@ -44,12 +47,25 @@ impl Canned {
 /// One uploaded part's bytes and ETag.
 type Part = (Vec<u8>, String);
 
+/// An object's user metadata, `x-amz-meta-*` and `x-goog-meta-*` headers.
+type Marks = Vec<(String, String)>;
+
+/// Keeps the first request that starts with `prefix` waiting: `arrived` is
+/// notified when it comes in, and it goes on once `release` is.
+pub(crate) struct Hold {
+    pub(crate) prefix: String,
+    pub(crate) arrived: Arc<Notify>,
+    pub(crate) release: Arc<Notify>,
+}
+
 #[derive(Default)]
 pub(crate) struct Bucket {
     /// Object key to its bytes and ETag.
     pub(crate) objects: BTreeMap<String, (Vec<u8>, String)>,
-    /// Upload id to the object key and its parts by number.
-    pub(crate) uploads: BTreeMap<String, (String, BTreeMap<u32, Part>)>,
+    /// Object key to the metadata it was written with.
+    pub(crate) marks: BTreeMap<String, Marks>,
+    /// Upload id to the object key, its parts by number, and its metadata.
+    pub(crate) uploads: BTreeMap<String, (String, BTreeMap<u32, Part>, Marks)>,
     next: u64,
     /// Most entries one listing page holds; zero means S3's 1,000.
     pub(crate) page_size: usize,
@@ -65,6 +81,13 @@ pub(crate) struct Bucket {
     pub(crate) refuse_part: Option<u32>,
     /// Completing a multipart upload answers 200 with an error inside.
     pub(crate) fail_completion: bool,
+    /// A conditional completion answers 501, while conditional writes work.
+    pub(crate) refuse_conditional_completion: bool,
+    /// Object downloads go out this many bytes at a time, this far apart.
+    pub(crate) trickle: Option<(usize, Duration)>,
+    /// Writes are answered this long after they arrive.
+    pub(crate) slow_writes: Option<Duration>,
+    pub(crate) hold: Option<Hold>,
     pub(crate) canned: VecDeque<Canned>,
     /// `METHOD key?query` of every request that got past the signature check.
     pub(crate) requests: Vec<String>,
@@ -80,10 +103,12 @@ impl Bucket {
         self.objects.get(key).map(|(bytes, _)| bytes.clone())
     }
 
+    /// Replaces the object, as a write without metadata does.
     pub(crate) fn put(&mut self, key: &str, bytes: &[u8]) -> String {
         let etag = self.etag();
         self.objects
             .insert(key.to_string(), (bytes.to_vec(), etag.clone()));
+        self.marks.remove(key);
         etag
     }
 
@@ -271,6 +296,13 @@ fn signed_correctly(method: &Method, uri: &Uri, headers: &HeaderMap, body: &[u8]
     expected.authorization == authorization
 }
 
+/// The object key a request names, after the bucket.
+fn key_of(uri: &Uri) -> (String, String) {
+    let path = uri.path().trim_start_matches('/');
+    let (name, raw_key) = path.split_once('/').unwrap_or((path, ""));
+    (name.to_string(), percent_decode(raw_key))
+}
+
 async fn handle(
     State(shared): State<Arc<Mutex<Bucket>>>,
     method: Method,
@@ -281,18 +313,47 @@ async fn handle(
     if !signed_correctly(&method, &uri, &headers, &body) {
         return xml_error(403, "SignatureDoesNotMatch");
     }
-    let mut bucket = shared.lock().unwrap_or_else(PoisonError::into_inner);
-    let path = uri.path().trim_start_matches('/');
-    let (name, raw_key) = path.split_once('/').unwrap_or((path, ""));
+    let (_, key) = key_of(&uri);
+    let line = match uri.query() {
+        Some(query) => format!("{method} {key}?{query}"),
+        None => format!("{method} {key}"),
+    };
+    let held = {
+        let mut bucket = shared.lock().unwrap_or_else(PoisonError::into_inner);
+        bucket.hold.take_if(|hold| line.starts_with(&hold.prefix))
+    };
+    if let Some(hold) = held {
+        hold.arrived.notify_one();
+        hold.release.notified().await;
+    }
+    let (response, pause) = {
+        let mut bucket = shared.lock().unwrap_or_else(PoisonError::into_inner);
+        let pause = bucket.slow_writes.filter(|_| method == Method::PUT);
+        (
+            respond(&mut bucket, &method, &uri, &headers, &body, line),
+            pause,
+        )
+    };
+    if let Some(pause) = pause {
+        tokio::time::sleep(pause).await;
+    }
+    response
+}
+
+fn respond(
+    bucket: &mut Bucket,
+    method: &Method,
+    uri: &Uri,
+    headers: &HeaderMap,
+    body: &Bytes,
+    line: String,
+) -> Response {
+    let (name, key) = key_of(uri);
     if name != BUCKET || bucket.missing {
         return xml_error(404, "NoSuchBucket");
     }
-    let key = percent_decode(raw_key);
-    let query = query_map(&uri);
-    bucket.requests.push(match uri.query() {
-        Some(query) => format!("{method} {key}?{query}"),
-        None => format!("{method} {key}"),
-    });
+    let query = query_map(uri);
+    bucket.requests.push(line);
     if let Some(canned) = bucket.canned.pop_front() {
         let mut response = xml_error(canned.status, canned.code);
         if let Some(after) = canned.retry_after {
@@ -302,24 +363,33 @@ async fn handle(
         }
         return response;
     }
-    let header = |name: &str| headers.get(name).and_then(|value| value.to_str().ok());
-    match method {
-        Method::GET if key.is_empty() => list(&bucket, &query),
+    match *method {
+        Method::GET if key.is_empty() => list(bucket, &query),
         Method::GET => match bucket.objects.get(&key) {
-            Some((bytes, etag)) => {
-                (StatusCode::OK, [("etag", etag.clone())], bytes.clone()).into_response()
-            }
+            Some((bytes, etag)) => match bucket.trickle {
+                Some((size, gap)) => trickled(bytes, etag, size, gap),
+                None => (StatusCode::OK, [("etag", etag.clone())], bytes.clone()).into_response(),
+            },
             None => xml_error(404, "NoSuchKey"),
         },
         Method::HEAD => match bucket.objects.get(&key) {
-            Some((bytes, etag)) => (
-                StatusCode::OK,
-                [
-                    ("etag", etag.clone()),
-                    ("content-length", bytes.len().to_string()),
-                ],
-            )
-                .into_response(),
+            Some((bytes, etag)) => {
+                let mut response = (
+                    StatusCode::OK,
+                    [
+                        ("etag", etag.clone()),
+                        ("content-length", bytes.len().to_string()),
+                    ],
+                )
+                    .into_response();
+                for (name, value) in bucket.marks.get(&key).into_iter().flatten() {
+                    response.headers_mut().insert(
+                        HeaderName::from_bytes(name.as_bytes()).unwrap(),
+                        HeaderValue::from_str(value).unwrap(),
+                    );
+                }
+                response
+            }
             None => StatusCode::NOT_FOUND.into_response(),
         },
         Method::PUT if query.contains_key("uploadId") => {
@@ -332,7 +402,7 @@ async fn handle(
             }
             let etag = bucket.etag();
             match bucket.uploads.get_mut(&query["uploadId"]) {
-                Some((_, parts)) => {
+                Some((_, parts, _)) => {
                     parts.insert(number, (body.to_vec(), etag.clone()));
                     (StatusCode::OK, [("etag", etag)]).into_response()
                 }
@@ -340,35 +410,27 @@ async fn handle(
             }
         }
         Method::PUT => {
-            let if_match = header("if-match");
-            let if_none_match = header("if-none-match");
-            if bucket.refuse_conditions && (if_match.is_some() || if_none_match.is_some()) {
-                return xml_error(501, "NotImplemented");
+            if let Some(refused) = refused(bucket, &key, headers) {
+                return refused;
             }
-            let current = bucket.objects.get(&key).map(|(_, etag)| etag.as_str());
-            let stale = match (if_none_match, if_match) {
-                (Some("*"), _) => current.is_some(),
-                (_, Some(wanted)) if !bucket.ignore_if_match => current != Some(wanted),
-                _ => false,
-            };
-            if stale && !bucket.ignore_conditions {
-                return xml_error(412, "PreconditionFailed");
-            }
-            let etag = bucket.put(&key, &body);
+            let etag = bucket.put(&key, body);
+            bucket.marks.insert(key, marks_of(headers));
             (StatusCode::OK, [("etag", etag)]).into_response()
         }
         Method::POST if query.contains_key("uploads") => {
-            let id = format!("upload-{}", bucket.uploads.len() + 1);
-            bucket
-                .uploads
-                .insert(id.clone(), (key.clone(), BTreeMap::new()));
+            let id = format!("upload-{}", bucket.next + 1);
+            bucket.next += 1;
+            bucket.uploads.insert(
+                id.clone(),
+                (key.clone(), BTreeMap::new(), marks_of(headers)),
+            );
             format!(
                 "<InitiateMultipartUploadResult><Bucket>{BUCKET}</Bucket><Key>{key}</Key><UploadId>{id}</UploadId></InitiateMultipartUploadResult>"
             )
             .into_response()
         }
         Method::POST if query.contains_key("uploadId") => {
-            complete(&mut bucket, &query["uploadId"], &key, &body)
+            complete(bucket, &query["uploadId"], &key, headers, body)
         }
         Method::DELETE if query.contains_key("uploadId") => {
             bucket.uploads.remove(&query["uploadId"]);
@@ -376,18 +438,88 @@ async fn handle(
         }
         Method::DELETE => {
             bucket.objects.remove(&key);
+            bucket.marks.remove(&key);
             StatusCode::NO_CONTENT.into_response()
         }
         _ => xml_error(405, "MethodNotAllowed"),
     }
 }
 
-fn complete(bucket: &mut Bucket, id: &str, key: &str, body: &[u8]) -> Response {
+fn marks_of(headers: &HeaderMap) -> Marks {
+    headers
+        .iter()
+        .filter(|(name, _)| {
+            name.as_str().starts_with("x-amz-meta-") || name.as_str().starts_with("x-goog-meta-")
+        })
+        .filter_map(|(name, value)| Some((name.to_string(), value.to_str().ok()?.to_string())))
+        .collect()
+}
+
+/// The answer to a write whose condition doesn't hold, or `None` to go on.
+fn refused(bucket: &Bucket, key: &str, headers: &HeaderMap) -> Option<Response> {
+    let header = |name: &str| headers.get(name).and_then(|value| value.to_str().ok());
+    let (if_match, if_none_match) = (header("if-match"), header("if-none-match"));
+    if bucket.refuse_conditions && (if_match.is_some() || if_none_match.is_some()) {
+        return Some(xml_error(501, "NotImplemented"));
+    }
+    if bucket.ignore_conditions {
+        return None;
+    }
+    let current = bucket.objects.get(key).map(|(_, etag)| etag.as_str());
+    match (if_none_match, if_match) {
+        (Some("*"), _) if current.is_some() => Some(xml_error(412, "PreconditionFailed")),
+        // AWS answers a write against a version of a key that is gone so.
+        (_, Some(_)) if current.is_none() && !bucket.ignore_if_match => {
+            Some(xml_error(404, "NoSuchKey"))
+        }
+        (_, Some(wanted)) if current != Some(wanted) && !bucket.ignore_if_match => {
+            Some(xml_error(412, "PreconditionFailed"))
+        }
+        _ => None,
+    }
+}
+
+/// The object, sent `size` bytes at a time with `gap` before each piece.
+fn trickled(bytes: &[u8], etag: &str, size: usize, gap: Duration) -> Response {
+    let pieces: Vec<Bytes> = bytes
+        .chunks(size.max(1))
+        .map(Bytes::copy_from_slice)
+        .collect();
+    let stream = futures_util::stream::iter(pieces).then(move |piece| async move {
+        tokio::time::sleep(gap).await;
+        Ok::<_, std::io::Error>(piece)
+    });
+    (
+        StatusCode::OK,
+        [("etag", etag.to_string())],
+        Body::from_stream(stream),
+    )
+        .into_response()
+}
+
+fn complete(
+    bucket: &mut Bucket,
+    id: &str,
+    key: &str,
+    headers: &HeaderMap,
+    body: &[u8],
+) -> Response {
     if bucket.fail_completion {
         return "<Error><Code>InternalError</Code><Message>try again</Message></Error>"
             .into_response();
     }
-    let Some((upload_key, parts)) = bucket.uploads.remove(id) else {
+    let conditional = headers.contains_key("if-match") || headers.contains_key("if-none-match");
+    if bucket.refuse_conditional_completion && conditional {
+        return xml_error(501, "NotImplemented");
+    }
+    if !bucket.uploads.contains_key(id) {
+        return xml_error(404, "NoSuchUpload");
+    }
+    // A refused completion leaves the upload open, to retry or abandon.
+    if let Some(refused) = refused(bucket, key, headers) {
+        return refused;
+    }
+    let Some((upload_key, parts, marks)) = bucket.uploads.remove(id) else {
         return xml_error(404, "NoSuchUpload");
     };
     let manifest = String::from_utf8_lossy(body).into_owned();
@@ -420,6 +552,7 @@ fn complete(bucket: &mut Bucket, id: &str, key: &str, body: &[u8]) -> Response {
     bucket
         .objects
         .insert(key.to_string(), (bytes, etag.clone()));
+    bucket.marks.insert(key.to_string(), marks);
     format!(
         "<CompleteMultipartUploadResult><Key>{key}</Key><ETag>{}</ETag></CompleteMultipartUploadResult>",
         etag.replace('"', "&quot;")

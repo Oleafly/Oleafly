@@ -282,6 +282,28 @@ fn file_remote(cloud: ProjectId, portable: &str) -> String {
     format!("{}/files/{portable}", project_remote(cloud))
 }
 
+/// What a round's uploads replace. A store that keeps one version of each
+/// file (S3) writes an upload only over the version named here, so a round
+/// that lost the race to another computer can't replace what that computer
+/// published. Set around `put_paths`, since a `BatchFile` doesn't carry it;
+/// stores that keep every revision ignore it.
+#[derive(Clone, Debug)]
+pub(crate) struct UploadBases {
+    /// The manifest the round builds on, and its revision, or `None` while
+    /// the project has none.
+    pub(crate) manifest: String,
+    pub(crate) manifest_rev: Option<String>,
+    pub(crate) device: String,
+    /// Each upload's remote path: `Update` with the version the manifest
+    /// holds, `Add` for a file it doesn't hold, `Overwrite` for a record
+    /// without a revision.
+    pub(crate) files: BTreeMap<String, WriteMode>,
+}
+
+tokio::task_local! {
+    pub(crate) static UPLOAD_BASES: UploadBases;
+}
+
 pub(crate) fn tombstone_remote(cloud: ProjectId) -> String {
     format!("/removed/{cloud}.json")
 }
@@ -3037,8 +3059,18 @@ impl<S: CloudStore> Round<'_, S> {
                 bytes += queue[end].size;
                 end += 1;
             }
-            let stop = self
-                .upload_chunk(&queue[next..end], &mut run, meter.as_ref(), &sources)
+            let bases = upload_bases(
+                self.cloud,
+                &queue[next..end],
+                view,
+                publisher.rev.clone(),
+                publisher.context.device,
+            );
+            let stop = UPLOAD_BASES
+                .scope(
+                    bases,
+                    self.upload_chunk(&queue[next..end], &mut run, meter.as_ref(), &sources),
+                )
                 .await;
             self.hold_without_copies(&queue[..end], &mut run);
             next = end;
@@ -3237,6 +3269,35 @@ fn publisher_for<'a, S: CloudStore>(
         extra: remote
             .map(|remote| remote.version.extra.clone())
             .unwrap_or_default(),
+    }
+}
+
+fn upload_bases(
+    cloud: ProjectId,
+    jobs: &[&UploadJob],
+    view: &RemoteView,
+    manifest_rev: Option<String>,
+    device: DeviceId,
+) -> UploadBases {
+    let files = jobs
+        .iter()
+        .map(|job| {
+            let mode = match view.usable.get(&job.key) {
+                // After a case-only rename the file goes to a key of its own.
+                Some(record) if record.path == job.path => record
+                    .rev
+                    .clone()
+                    .map_or(WriteMode::Overwrite, WriteMode::Update),
+                _ => WriteMode::Add,
+            };
+            (file_remote(cloud, &job.path), mode)
+        })
+        .collect();
+    UploadBases {
+        manifest: version_remote(cloud),
+        manifest_rev,
+        device: device.to_string(),
+        files,
     }
 }
 
