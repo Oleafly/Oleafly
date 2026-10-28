@@ -145,6 +145,9 @@ jobs:
       - name: Test the collaboration change check
         run: bash scripts/ci/collab-changes.test.sh
 
+      - name: Test the server web change check
+        run: bash scripts/ci/server-web-changes.test.sh
+
       - name: Test the e2e spec selection
         run: bash scripts/e2e-specs.test.sh
 
@@ -365,11 +368,6 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - name: Server with browser access
-        run: |
-          cargo clippy -p oleafly-server --all-targets --features web -- -D warnings
-          cargo test -p oleafly-server --all-targets --features web --no-fail-fast
-
       - name: Install minimum supported Rust toolchain
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
         with:
@@ -406,6 +404,36 @@ jobs:
 
       - name: Check the CLI and online import against their Rust 1.89 MSRV
         run: cargo +1.89.0 check -p oleafly-cli -p oleafly-online --all-targets
+
+  server-web:
+    name: Server with browser access
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check whether the server or the browser app changed
+        id: changes
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: bash scripts/ci/server-web-changes.sh "$EVENT" "$BASE" "$GITHUB_SHA" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Install Rust toolchain
+        if: steps.changes.outputs.run == 'true'
+        uses: ./.github/actions/rust-toolchain
+
+      - name: Cache Rust build
+        if: steps.changes.outputs.run == 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> src-tauri/target
+
+      - name: Clippy and tests with browser access
+        if: steps.changes.outputs.run == 'true'
+        run: |
+          cargo clippy -p oleafly-server --all-targets --features web -- -D warnings
+          cargo test -p oleafly-server --all-targets --features web --no-fail-fast
 
   rust-windows:
     name: Rust checks (Windows)
