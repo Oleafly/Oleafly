@@ -43,3 +43,8 @@ crates/oleafly-preflight/tests/fixtures/** text eol=lf
 crates/oleafly-preflight/tests/fixtures/projects/*/project/** -text
 crates/oleafly-preflight/tests/fixtures/pdf/** binary
 crates/oleafly-lint/tests/fixtures/** text eol=lf
+
+# SyncTeX golden files: the native search's answers, compared byte for byte
+# on every platform and read by the browser app's tests.
+crates/oleafly-synctex/tests/fixtures/synctex/*.expected.json text eol=lf
+crates/oleafly-synctex/tests/fixtures/synctex/*.gz binary

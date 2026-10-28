@@ -78,6 +78,18 @@ at the pinned tag.
 | toml_edit, roxmltree | MIT OR Apache-2.0 |
 | anstream, anstyle | MIT OR Apache-2.0 |
 
+## Browser app (Rust crates compiled to WebAssembly)
+
+The browser app that the collaboration server serves runs the desktop's
+SyncTeX code compiled to WebAssembly (`oleafly_synctex.wasm`). These crates
+are compiled into it:
+
+| Crate | License |
+|---|---|
+| flate2, with miniz_oxide | MIT OR Apache-2.0 (miniz_oxide: MIT OR Zlib OR Apache-2.0) |
+| serde, serde_json | MIT OR Apache-2.0 |
+| unicode-normalization | MIT OR Apache-2.0 |
+
 ## Frontend (JavaScript / npm, bundled into the app)
 
 | Package | License |

@@ -6,6 +6,7 @@ use std::time::Duration;
 use futures_util::{SinkExt, StreamExt};
 use loro::{ExportMode, LoroDoc, VersionVector};
 use oleafly_collab::doc::{NodeKind, ProjectDoc};
+use oleafly_collab::settings::{Setting, SettingValue, Settings};
 use oleafly_collab_protocol::frames::ServerFrame;
 use oleafly_collab_protocol::ids::SharedProjectId;
 use oleafly_collab_protocol::projects::ProjectRole;
@@ -124,6 +125,30 @@ impl Browser {
         }
         if marked {
             request = request.header("X-Requested-With", "oleafly-web");
+        }
+        request.send().await.expect("request")
+    }
+
+    pub async fn put(
+        &self,
+        path: &str,
+        origin: Option<&str>,
+        marked: bool,
+        headers: &[(&str, &str)],
+        body: Vec<u8>,
+    ) -> reqwest::Response {
+        let mut request = reqwest::Client::new()
+            .put(format!("{}{path}", self.base))
+            .header(COOKIE, self.jar.header())
+            .body(body);
+        if let Some(origin) = origin {
+            request = request.header(ORIGIN, origin);
+        }
+        if marked {
+            request = request.header("X-Requested-With", "oleafly-web");
+        }
+        for (name, value) in headers {
+            request = request.header(*name, *value);
         }
         request.send().await.expect("request")
     }
@@ -335,6 +360,13 @@ pub fn project_doc() -> (ProjectDoc, String, String) {
             "",
         )
         .expect("figure");
+    let compile: Settings = [
+        SettingValue::parse(Setting::MainDoc, &main).expect("a main file"),
+        SettingValue::parse(Setting::Engine, "latex").expect("an engine"),
+    ]
+    .into_iter()
+    .collect();
+    doc.set_settings(&compile).expect("compile settings");
     (doc, main, figure)
 }
 

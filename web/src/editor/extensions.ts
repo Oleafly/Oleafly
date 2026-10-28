@@ -2,11 +2,31 @@ import type { Extension } from "@codemirror/state";
 import { EditorView, type KeyBinding } from "@codemirror/view";
 import { peerHue } from "@/features/collab/live/peer-hue";
 import { type RemoteCursor, type RemoteCursorSource, remoteCursors } from "@/features/collab/live/remote-cursors";
-import type { EditorBridge } from "../controller";
+import type { EditorBridge, ProjectActions } from "../controller";
 import { useWeb, type WebState } from "../store";
 import { type OverlaySource, overlayDecorations } from "./decorations";
 
-export const WEB_EDITOR_KEYMAP: KeyBinding[] = [{ key: "Mod-s", run: () => true, preventDefault: true }];
+/** Mod-s compiles, as saving does in the app; Mod-Shift-j shows the cursor's line in the PDF. */
+export function webEditorKeymap(actions: Pick<ProjectActions, "compile" | "showInPdf">): KeyBinding[] {
+  return [
+    {
+      key: "Mod-s",
+      run: () => {
+        actions.compile();
+        return true;
+      },
+      preventDefault: true,
+    },
+    {
+      key: "Mod-Shift-j",
+      run: () => {
+        void actions.showInPdf();
+        return true;
+      },
+      preventDefault: true,
+    },
+  ];
+}
 
 export function peerCursors(state: WebState): RemoteCursor[] {
   const self = state.me?.accountId ?? null;

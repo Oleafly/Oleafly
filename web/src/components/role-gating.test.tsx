@@ -35,6 +35,11 @@ function actions(): ProjectActions {
     sendChat: vi.fn(async () => undefined),
     deleteChat: vi.fn(async () => undefined),
     clearChat: vi.fn(async () => undefined),
+    compile: vi.fn(),
+    toggleLog: vi.fn(),
+    showInPdf: vi.fn(async () => undefined),
+    openFromPdf: vi.fn(async () => undefined),
+    openLocation: vi.fn(),
   };
 }
 

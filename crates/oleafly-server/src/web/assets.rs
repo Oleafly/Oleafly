@@ -5,6 +5,7 @@ use axum::http::{header, HeaderMap, HeaderValue, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
 use oleafly_collab_protocol::page::{document_in, status, Tone};
 
+use crate::error::ServerError;
 use crate::routes::auth::found;
 use crate::state::AppState;
 use crate::web::WebOn;
@@ -14,7 +15,6 @@ use crate::web::WebOn;
 #[allow_missing = true]
 struct Dist;
 
-pub const CONTENT_SECURITY_POLICY: &str = "default-src 'self'; connect-src 'self'; img-src 'self' data: blob: https:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'";
 pub const IMMUTABLE: &str = "public, max-age=31536000, immutable";
 pub const NO_CACHE: &str = "no-cache";
 const INDEX: &str = "index.html";
@@ -60,11 +60,25 @@ pub fn content_type(path: &str) -> &'static str {
     }
 }
 
-pub fn secure(headers: &mut HeaderMap) {
-    headers.insert(
-        header::CONTENT_SECURITY_POLICY,
-        HeaderValue::from_static(CONTENT_SECURITY_POLICY),
-    );
+pub fn content_security_policy(connect: &[String]) -> String {
+    let mut sources = String::from("'self'");
+    for origin in connect {
+        sources.push(' ');
+        sources.push_str(origin);
+    }
+    format!("default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src {sources}; img-src 'self' data: blob: https:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'")
+}
+
+pub fn policy(connect: &[String]) -> Result<HeaderValue, ServerError> {
+    HeaderValue::from_str(&content_security_policy(connect)).map_err(|_| {
+        ServerError::Internal(
+            "the browser app's content security policy is not a valid header".to_string(),
+        )
+    })
+}
+
+pub fn secure(headers: &mut HeaderMap, policy: &HeaderValue) {
+    headers.insert(header::CONTENT_SECURITY_POLICY, policy.clone());
     headers.insert(
         header::X_CONTENT_TYPE_OPTIONS,
         HeaderValue::from_static("nosniff"),
@@ -81,16 +95,17 @@ fn respond(
     body: Cow<'static, [u8]>,
     kind: &'static str,
     cache: &'static str,
+    policy: &HeaderValue,
 ) -> Response {
     let mut response = (status_code, body.into_owned()).into_response();
     let headers = response.headers_mut();
     headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(kind));
     headers.insert(header::CACHE_CONTROL, HeaderValue::from_static(cache));
-    secure(headers);
+    secure(headers, policy);
     response
 }
 
-fn placeholder() -> Response {
+fn placeholder(policy: &HeaderValue) -> Response {
     let title = "The browser app is not in this build";
     let page = document_in(
         "en",
@@ -106,29 +121,31 @@ fn placeholder() -> Response {
         Cow::Owned(page.into_bytes()),
         "text/html; charset=utf-8",
         "no-store",
+        policy,
     )
 }
 
-fn missing() -> Response {
+fn missing(policy: &HeaderValue) -> Response {
     respond(
         StatusCode::NOT_FOUND,
         Cow::Borrowed(b"Not found."),
         "text/plain; charset=utf-8",
         "no-store",
+        policy,
     )
 }
 
-fn index_of(files: &dyn Files) -> Response {
+fn index_of(files: &dyn Files, policy: &HeaderValue) -> Response {
     match files.read(INDEX) {
-        Some(bytes) => respond(StatusCode::OK, bytes, content_type(INDEX), NO_CACHE),
-        None => placeholder(),
+        Some(bytes) => respond(StatusCode::OK, bytes, content_type(INDEX), NO_CACHE, policy),
+        None => placeholder(policy),
     }
 }
 
-pub fn serve(files: &dyn Files, path: &str) -> Response {
+pub fn serve(files: &dyn Files, path: &str, policy: &HeaderValue) -> Response {
     let path = path.trim_start_matches('/');
     if path.is_empty() || path == INDEX {
-        return index_of(files);
+        return index_of(files, policy);
     }
     let unsafe_path = path
         .split('/')
@@ -136,7 +153,7 @@ pub fn serve(files: &dyn Files, path: &str) -> Response {
         || path.contains('\\')
         || path.chars().any(char::is_control);
     if unsafe_path {
-        return missing();
+        return missing(policy);
     }
     if let Some(bytes) = files.read(path) {
         let cache = if path.starts_with(ASSETS) {
@@ -144,13 +161,13 @@ pub fn serve(files: &dyn Files, path: &str) -> Response {
         } else {
             NO_CACHE
         };
-        return respond(StatusCode::OK, bytes, content_type(path), cache);
+        return respond(StatusCode::OK, bytes, content_type(path), cache, policy);
     }
     let named = path.rsplit('/').next().unwrap_or(path);
     if named.contains('.') {
-        return missing();
+        return missing(policy);
     }
-    index_of(files)
+    index_of(files, policy)
 }
 
 pub async fn home(_on: WebOn, State(state): State<AppState>, uri: Uri) -> Response {
@@ -161,12 +178,12 @@ pub async fn home(_on: WebOn, State(state): State<AppState>, uri: Uri) -> Respon
     found(&target)
 }
 
-pub async fn index(_on: WebOn) -> Response {
-    serve(&Embedded, "")
+pub async fn index(_on: WebOn, State(state): State<AppState>) -> Response {
+    serve(&Embedded, "", &state.web_policy)
 }
 
-pub async fn file(_on: WebOn, Path(path): Path<String>) -> Response {
-    serve(&Embedded, &path)
+pub async fn file(_on: WebOn, State(state): State<AppState>, Path(path): Path<String>) -> Response {
+    serve(&Embedded, &path, &state.web_policy)
 }
 
 #[cfg(test)]
@@ -194,6 +211,14 @@ mod tests {
         ]))
     }
 
+    fn mirror() -> Vec<String> {
+        vec!["https://mirrors.example.org".to_string()]
+    }
+
+    fn served(files: &dyn Files, path: &str) -> Response {
+        serve(files, path, &policy(&mirror()).unwrap())
+    }
+
     fn header_of(response: &Response, name: header::HeaderName) -> &str {
         response
             .headers()
@@ -205,17 +230,17 @@ mod tests {
     #[test]
     fn hashed_assets_are_cached_for_a_year_and_the_page_never() {
         let files = built();
-        let script = serve(&files, "assets/index-1a2b3c.js");
+        let script = served(&files, "assets/index-1a2b3c.js");
         assert_eq!(script.status(), StatusCode::OK);
         assert_eq!(header_of(&script, header::CACHE_CONTROL), IMMUTABLE);
         assert_eq!(
             header_of(&script, header::CONTENT_TYPE),
             "text/javascript; charset=utf-8"
         );
-        let worker = serve(&files, "assets/pdf.worker-9f8e.mjs");
+        let worker = served(&files, "assets/pdf.worker-9f8e.mjs");
         assert_eq!(header_of(&worker, header::CACHE_CONTROL), IMMUTABLE);
         for path in ["", "index.html", "/"] {
-            let page = serve(&files, path);
+            let page = served(&files, path);
             assert_eq!(page.status(), StatusCode::OK, "{path}");
             assert_eq!(header_of(&page, header::CACHE_CONTROL), NO_CACHE);
             assert_eq!(
@@ -229,7 +254,7 @@ mod tests {
     fn app_routes_get_the_page_and_missing_files_do_not() {
         let files = built();
         for route in ["projects", "p/abc", "settings/people"] {
-            let page = serve(&files, route);
+            let page = served(&files, route);
             assert_eq!(page.status(), StatusCode::OK, "{route}");
             assert_eq!(header_of(&page, header::CACHE_CONTROL), NO_CACHE);
         }
@@ -241,7 +266,7 @@ mod tests {
             "assets//x.js",
         ] {
             assert_eq!(
-                serve(&files, missing).status(),
+                served(&files, missing).status(),
                 StatusCode::NOT_FOUND,
                 "{missing}"
             );
@@ -252,10 +277,10 @@ mod tests {
     fn every_answer_carries_the_browser_app_security_headers() {
         let files = built();
         for path in ["", "assets/index-1a2b3c.js", "projects", "assets/gone.js"] {
-            let response = serve(&files, path);
+            let response = served(&files, path);
             assert_eq!(
                 header_of(&response, header::CONTENT_SECURITY_POLICY),
-                CONTENT_SECURITY_POLICY
+                content_security_policy(&mirror())
             );
             assert_eq!(
                 header_of(&response, header::X_CONTENT_TYPE_OPTIONS),
@@ -264,18 +289,38 @@ mod tests {
             assert_eq!(header_of(&response, header::X_FRAME_OPTIONS), "DENY");
             assert_eq!(header_of(&response, header::REFERRER_POLICY), "same-origin");
         }
-        assert!(CONTENT_SECURITY_POLICY.contains("frame-ancestors 'none'"));
-        assert!(CONTENT_SECURITY_POLICY.contains("img-src 'self' data: blob: https:"));
+    }
+
+    #[test]
+    fn the_policy_lets_webassembly_compile_and_names_the_configured_origins() {
+        assert_eq!(
+            content_security_policy(&[]),
+            "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; img-src 'self' data: blob: https:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+        );
+        let listed = content_security_policy(&[
+            "https://mirrors.example.org".to_string(),
+            "http://localhost:5173".to_string(),
+        ]);
+        assert!(
+            listed.contains(
+                "; connect-src 'self' https://mirrors.example.org http://localhost:5173;"
+            ),
+            "{listed}"
+        );
+        assert_eq!(
+            policy(&mirror()).unwrap().to_str().unwrap(),
+            content_security_policy(&mirror())
+        );
     }
 
     #[test]
     fn without_a_built_app_the_page_explains_how_to_get_one() {
         let empty = Fake(HashMap::new());
-        let response = serve(&empty, "");
+        let response = served(&empty, "");
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(header_of(&response, header::CACHE_CONTROL), "no-store");
         assert_eq!(
-            serve(&empty, "projects").status(),
+            served(&empty, "projects").status(),
             StatusCode::SERVICE_UNAVAILABLE
         );
     }

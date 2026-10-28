@@ -1,6 +1,17 @@
 import type { CollabCommentMember, CollabCommentThread } from "@oleafly/backend-port";
-import { getEditorView, gotoRange } from "@oleafly/editor";
+import type { BrowserEngine, SynctexHit, SyncTexOpener } from "@oleafly/compile-port";
+import {
+  getEditorView,
+  gotoLine,
+  gotoRange,
+  selectWordNearLine,
+  waitForEditorDocument,
+  type WordContext,
+} from "@oleafly/editor";
 import { ApiError, type WebApi } from "./api";
+import { CompileRunner } from "./compile/runner";
+import { forwardSync } from "./compile/sync";
+import { projectFileFor } from "./compile/target";
 import { type GatewayListener, type SocketFactory, WebGateway } from "./gateway";
 import { FileOverlays, type OverlaySnapshot, type PlacedRange } from "./overlays";
 import type {
@@ -14,7 +25,7 @@ import type {
 } from "./protocol";
 import { abilitiesFor, effectiveMode } from "./roles";
 import { WebDocumentSession } from "./session";
-import { mergeChat, mergePeople, useWeb } from "./store";
+import { mergeChat, mergePeople, patchCompile, useWeb } from "./store";
 
 export class OfflineError extends Error {
   constructor() {
@@ -44,6 +55,13 @@ export interface ProjectActions {
   sendChat(body: string): Promise<void>;
   deleteChat(id: string): Promise<void>;
   clearChat(): Promise<void>;
+  compile(): void;
+  toggleLog(): void;
+  /** Shows the cursor's line in the PDF. */
+  showInPdf(): Promise<void>;
+  /** Opens the source a click in the PDF points at. */
+  openFromPdf(page: number, x: number, y: number, word?: string, context?: WordContext): Promise<void>;
+  openLocation(path: string, line: number): void;
 }
 
 export interface EditorBridge {
@@ -60,6 +78,8 @@ export interface ControllerOptions {
   setTimer?: (run: () => void, ms: number) => () => void;
   random?: () => number;
   settleMs?: number;
+  engines?: () => Promise<readonly BrowserEngine[]>;
+  openSyncTex?: SyncTexOpener;
 }
 
 interface Entry {
@@ -68,7 +88,9 @@ interface Entry {
   stop: () => void;
 }
 
-type PendingReveal = { kind: "thread" | "suggestion"; fileId: string; id: string };
+type PendingReveal =
+  | { kind: "thread" | "suggestion"; fileId: string; id: string }
+  | { kind: "line"; fileId: string; line: number; word?: string; context?: WordContext };
 
 const SETTLE_MS = 3_000;
 const PRESENCE_MS = 150;
@@ -83,7 +105,6 @@ function pickMainFile(files: readonly WebFile[]): WebFile | null {
   const sorted = [...texts].sort((a, b) => a.path.split("/").length - b.path.split("/").length || a.path.localeCompare(b.path));
   return sorted.find((file) => /\.(?:tex|typ|md)$/iu.test(file.path)) ?? sorted[0] ?? null;
 }
-
 function remember(key: string, value: string): boolean {
   try {
     localStorage.setItem(key, value);
@@ -103,6 +124,7 @@ function recall(key: string): string | null {
 
 export class ProjectController implements ProjectActions, EditorBridge {
   readonly gateway: WebGateway;
+  readonly compiler: CompileRunner;
   private readonly projectId: string;
   private readonly options: ControllerOptions;
   private readonly entries = new Map<string, Entry>();
@@ -114,6 +136,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
   private greeted = false;
   private stopped = false;
   private reveal: PendingReveal | null = null;
+  private lineReveals = 0;
   private presenceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(projectId: string, options: ControllerOptions) {
@@ -126,6 +149,17 @@ export class ProjectController implements ProjectActions, EditorBridge {
       setTimer: options.setTimer,
       random: options.random,
       probe: () => this.probe(),
+    });
+    this.compiler = new CompileRunner({
+      api: options.api,
+      projectId,
+      engines: options.engines,
+      openSyncTex: options.openSyncTex,
+      openText: (path) => {
+        const session = this.sessionFor(path);
+        return session?.phase === "open" ? session.text() : null;
+      },
+      setTimer: options.setTimer,
     });
   }
 
@@ -156,6 +190,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
     }
     if (this.stopped) return;
     this.gateway.start();
+    void this.compiler.start();
   }
 
   stop(): void {
@@ -167,6 +202,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
     }
     this.entries.clear();
     this.gateway.stop();
+    this.compiler.stop();
   }
 
   sessionFor(path: string): WebDocumentSession | null {
@@ -354,6 +390,44 @@ export class ProjectController implements ProjectActions, EditorBridge {
     this.chat({ action: "clear" });
   }
 
+  compile(): void {
+    void this.compiler.compile();
+  }
+
+  toggleLog(): void {
+    patchCompile({ logOpen: !useWeb.getState().compile.logOpen });
+  }
+
+  async showInPdf(): Promise<void> {
+    const path = useWeb.getState().activePath;
+    const index = path ? await this.compiler.syncIndex() : null;
+    if (!path || !index) return;
+    useWeb.setState(useWeb.getState().view === "source" ? { view: "pdf", side: "pdf" } : { side: "pdf" });
+    try {
+      await forwardSync(index, path);
+    } catch {
+      this.compiler.dropSyncIndex();
+    }
+  }
+
+  async openFromPdf(page: number, x: number, y: number, word?: string, context?: WordContext): Promise<void> {
+    const index = await this.compiler.syncIndex();
+    let hit: SynctexHit | null = null;
+    try {
+      hit = index ? await index.inverse(page, x, y) : null;
+    } catch {
+      this.compiler.dropSyncIndex();
+    }
+    if (!hit || this.stopped) return;
+    const file = projectFileFor(hit.file, useWeb.getState().files);
+    if (file) this.revealIn({ kind: "line", fileId: file.fileId, line: hit.line, word, context });
+  }
+
+  openLocation(path: string, line: number): void {
+    const file = projectFileFor(path, useWeb.getState().files);
+    if (file) this.revealIn({ kind: "line", fileId: file.fileId, line });
+  }
+
   private send(frame: ClientFrame): void {
     if (!this.gateway.send(frame)) throw new OfflineError();
   }
@@ -419,7 +493,10 @@ export class ProjectController implements ProjectActions, EditorBridge {
       self: () => useWeb.getState().me?.accountId ?? null,
       suggesting: () => this.suggesting(),
     });
-    const stopEdits = session.onEdit((edit) => overlays?.edit(edit));
+    const stopEdits = session.onEdit((edit) => {
+      overlays?.edit(edit);
+      if (edit.local) this.compiler.edited();
+    });
     const stopOverlays = overlays.subscribe(() => {
       this.notifyOverlays();
       this.revealPending();
@@ -457,6 +534,16 @@ export class ProjectController implements ProjectActions, EditorBridge {
     if (!target) return;
     const entry = this.entries.get(target.fileId);
     if (entry?.session.phase !== "open" || useWeb.getState().activeFileId !== target.fileId) return;
+    if (target.kind === "line") {
+      this.reveal = null;
+      const ticket = ++this.lineReveals;
+      // The editor swaps in the file after it opens, so wait for it to show it.
+      void waitForEditorDocument(entry.session.path).then((view) => {
+        if (!view || ticket !== this.lineReveals || this.stopped) return;
+        if (!target.word || !selectWordNearLine(target.line, target.word, target.context)) gotoLine(target.line);
+      });
+      return;
+    }
     const range =
       target.kind === "thread" ? entry.overlays.threadRange(target.id) : entry.overlays.suggestionRange(target.id);
     if (!range) return;
@@ -506,6 +593,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
           roleChanged: this.greeted && info.role !== state.role ? info.role : state.roleChanged,
           features: info.features,
           people: mergePeople(state.people, info.people),
+          compileSettings: info.compile,
         });
         this.syncFiles(info.files);
         if (!this.greeted) {
@@ -545,6 +633,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
       },
       chat: (messages) => useWeb.setState({ chat: mergeChat(useWeb.getState().chat, messages) }),
       output: (items) => useWeb.setState({ output: items }),
+      compile: (settings) => useWeb.setState({ compileSettings: settings }),
       access: (role) => {
         const state = useWeb.getState();
         if (role === state.role) return;

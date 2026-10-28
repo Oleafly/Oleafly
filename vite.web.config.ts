@@ -11,6 +11,8 @@ export const WEB_ALIASES: Record<string, string> = {
   "@": path.resolve(repo, "./src"),
   "@oleafly/latex": path.resolve(repo, "./packages/latex/src"),
   "@oleafly/backend-port": path.resolve(repo, "./packages/backend-port/src"),
+  "@oleafly/compile-port/testing": path.resolve(repo, "./packages/compile-port/src/testing.ts"),
+  "@oleafly/compile-port": path.resolve(repo, "./packages/compile-port/src"),
   "@oleafly/editor": path.resolve(repo, "./packages/editor/src"),
   "@oleafly/i18n-contract": path.resolve(repo, "./packages/i18n-contract/src"),
   "@oleafly/preview": path.resolve(repo, "./packages/preview/src"),

@@ -100,6 +100,25 @@
     "download": "Download",
     "zoom": "{{percent}}%"
   },
+  "compile": {
+    "action": "Compile",
+    "hint": "Compile the project in this browser ({{shortcut}})",
+    "running": "Compiling",
+    "compiledHere": "Compiled in your browser in {{seconds}} s",
+    "failedNoPdf": "The compile stopped before it made a PDF.",
+    "couldNotRun": "The compile couldn't run.",
+    "emptyReady": "Compile the project to see its PDF here.",
+    "shareFailed": "Only you can see this PDF. It couldn't be shared with the project.",
+    "showLog": "Show the log",
+    "hideLog": "Hide the log",
+    "logTitle": "Compile log",
+    "problems": "Errors: {{errors}} · Warnings: {{warnings}}",
+    "noProblems": "No errors or warnings.",
+    "showRawLog": "Full log",
+    "showProblems": "Problems",
+    "showInPdf": "Show in PDF",
+    "showInPdfHint": "Show this line in the PDF ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "No comments or suggestions",
     "emptyCanComment": "Select text in the source and choose Comment to start a thread.",

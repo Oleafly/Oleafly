@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LoadingState } from "@/components/ui/empty";
 import { socketUrl, type WebApi, type WebMe } from "../api";
+import { browserEngines } from "../compile/engines";
+import { openSyncTex } from "../compile/synctex";
 import { ProjectController } from "../controller";
 import { editorMessage, installPackageMessages } from "../i18n/packages";
 import { mergePeople, resetWebState } from "../store";
@@ -23,7 +25,12 @@ export default function ProjectScreen({
 
   useEffect(() => {
     resetWebState({ me, projectId, people: mergePeople({}, [me]) });
-    const next = new ProjectController(projectId, { api, socketUrl: socketUrl(projectId) });
+    const next = new ProjectController(projectId, {
+      api,
+      socketUrl: socketUrl(projectId),
+      engines: browserEngines,
+      openSyncTex,
+    });
     setController(next);
     void next.start();
     return () => {

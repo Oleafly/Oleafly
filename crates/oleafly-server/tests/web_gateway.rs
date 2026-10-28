@@ -114,6 +114,10 @@ async fn the_hello_names_the_role_features_files_and_people_then_chat_output_and
         names.contains(&"Bob Smith") && names.contains(&"Alice Chen"),
         "{names:?}"
     );
+    assert_eq!(
+        hello["compile"],
+        json!({ "main_doc": shared.main, "engine": "latex" })
+    );
     assert_eq!(next_web(&mut socket).await.expect("chat")["t"], "chat");
     let output = next_web(&mut socket).await.expect("output");
     assert_eq!(output, json!({ "t": "output", "items": [] }));
@@ -865,6 +869,57 @@ async fn a_new_compile_is_announced_to_open_browsers() {
     assert_eq!(
         output["items"][0]["compiledBy"],
         Value::String(stage.bob.tokens.account_id.to_string())
+    );
+}
+
+async fn frames_until_remote(socket: &mut WebSocket) -> Vec<Value> {
+    let mut before = Vec::new();
+    loop {
+        let frame = next_web(socket).await.expect("a frame");
+        if frame["t"] == "remote" {
+            return before;
+        }
+        before.push(frame);
+    }
+}
+
+#[tokio::test]
+async fn a_compile_setting_changed_in_the_app_reaches_every_browser_once() {
+    let (stage, shared, mut viewer, _browser) = alice_in(ProjectRole::Viewer).await;
+    let owner_browser = browser_sign_in(&stage.server, "github", "/web/").await;
+    let mut owner = web_socket(&stage.server, &owner_browser, shared.project).await;
+    let mut desktop = Desktop::open(&stage, &stage.bob, &shared, DESKTOP_PEER).await;
+    opened(&mut viewer, &shared.main).await;
+    until(&mut owner, "hello").await;
+    desktop
+        .doc
+        .get_map(oleafly_collab::settings::SETTINGS)
+        .insert("engine", "typst")
+        .expect("engine");
+    desktop.doc.commit();
+    let update = desktop
+        .doc
+        .export(loro::ExportMode::updates(&desktop.sent))
+        .expect("update");
+    assert!(matches!(
+        desktop.send(&stage.bob, &update).await,
+        ServerFrame::Ack { .. }
+    ));
+    let expected =
+        json!({ "t": "compile", "settings": { "main_doc": shared.main, "engine": "typst" } });
+    assert_eq!(until(&mut viewer, "compile").await, expected);
+    assert_eq!(until(&mut owner, "compile").await, expected);
+    for text in ["% one\n", "% two\n"] {
+        assert!(matches!(
+            desktop.type_at(&stage.bob, &shared.main, 0, text).await,
+            ServerFrame::Ack { .. }
+        ));
+    }
+    let mut later = frames_until_remote(&mut viewer).await;
+    later.extend(frames_until_remote(&mut viewer).await);
+    assert!(
+        later.iter().all(|frame| frame["t"] != "compile"),
+        "{later:?}"
     );
 }
 

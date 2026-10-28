@@ -3,6 +3,11 @@ import { TextOperation } from "../../src/features/collab/live/ot.ts";
 export type Role = "owner" | "editor" | "reviewer" | "commenter" | "viewer";
 export type Mode = "editing" | "suggesting";
 export type Wire = (number | string)[];
+export type OutputKind = "pdf" | "synctex";
+
+export const REQUESTED_WITH = "oleafly-web";
+export const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
+const OUTPUT_KINDS: readonly OutputKind[] = ["pdf", "synctex"];
 
 export interface Account {
   accountId: string;
@@ -65,10 +70,25 @@ export interface ChatMessage {
 }
 
 export interface Output {
+  kind: OutputKind;
   bytes: Uint8Array;
   compiledBy: string;
   compiledAt: number;
   mainFile: string;
+}
+
+export interface OutputItem {
+  kind: OutputKind;
+  size: number;
+  compiledBy: string;
+  compiledAt: number;
+  mainFile: string;
+}
+
+export interface RequestHeaders {
+  origin?: string;
+  host?: string;
+  "x-requested-with"?: string | string[];
 }
 
 export class Refusal extends Error {
@@ -119,6 +139,31 @@ export function canComment(role: Role): boolean {
   return role !== "viewer";
 }
 
+export function requestedByTheApp(headers: RequestHeaders): boolean {
+  return headers["x-requested-with"] === REQUESTED_WITH && !!headers.host && headers.origin === `http://${headers.host}`;
+}
+
+const PDF_MARKER = [0x25, 0x50, 0x44, 0x46, 0x2d];
+
+function looksLike(kind: OutputKind, bytes: Uint8Array): boolean {
+  if (kind === "synctex") return bytes[0] === 0x1f && bytes[1] === 0x8b;
+  const head = bytes.subarray(0, 1024);
+  for (let at = 0; at + PDF_MARKER.length <= head.length; at += 1) {
+    if (PDF_MARKER.every((byte, index) => head[at + index] === byte)) return true;
+  }
+  return false;
+}
+
+export function outputItem(output: Output): OutputItem {
+  return {
+    kind: output.kind,
+    size: output.bytes.length,
+    compiledBy: output.compiledBy,
+    compiledAt: output.compiledAt,
+    mainFile: output.mainFile,
+  };
+}
+
 export interface ChangeResult {
   op: TextOperation;
   rev: number;
@@ -136,7 +181,8 @@ export class MockProject {
   readonly suggestions = new Map<string, Suggestion>();
   readonly threads = new Map<string, Thread>();
   readonly chat: ChatMessage[] = [];
-  output: Output | null = null;
+  readonly compile: Record<string, string> = {};
+  readonly outputs = new Map<OutputKind, Output>();
 
   constructor(projectId: string, title: string, owner: string) {
     this.projectId = projectId;
@@ -153,6 +199,30 @@ export class MockProject {
 
   addBlob(fileId: string, path: string, blob: string): void {
     this.files.set(fileId, { fileId, path, kind: "blob", text: "", rev: 0, history: [], blob });
+  }
+
+  texts(): { fileId: string; path: string; text: string }[] {
+    return [...this.files.values()]
+      .filter((file) => file.kind === "text")
+      .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
+      .map((file) => ({ fileId: file.fileId, path: file.path, text: file.text }));
+  }
+
+  storeOutput(kind: string, bytes: Uint8Array, compiledBy: string, mainFile: string | null): Output {
+    const known = OUTPUT_KINDS.find((entry) => entry === kind);
+    if (!known || !mainFile?.trim() || bytes.length > MAX_OUTPUT_BYTES || !looksLike(known, bytes)) {
+      throw new Refusal("bad_request");
+    }
+    const output = { kind: known, bytes, compiledBy, compiledAt: Date.now(), mainFile: mainFile.trim() };
+    this.outputs.set(known, output);
+    return output;
+  }
+
+  outputItems(): OutputItem[] {
+    return OUTPUT_KINDS.flatMap((kind) => {
+      const output = this.outputs.get(kind);
+      return output ? [outputItem(output)] : [];
+    });
   }
 
   text(fileId: string): MockFile {

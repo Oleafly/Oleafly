@@ -1,5 +1,6 @@
 use oleafly_collab::comments::CommentThread;
 use oleafly_collab::ot::TextOperation;
+use oleafly_collab::settings::Settings;
 use oleafly_collab_protocol::ids::{AccountId, CommentId, DeviceId};
 use oleafly_collab_protocol::outputs::{OutputKind, ProjectOutput};
 use oleafly_collab_protocol::projects::ProjectRole;
@@ -14,6 +15,14 @@ pub struct WebFile {
     pub kind: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hash: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WebText {
+    pub file_id: String,
+    pub path: String,
+    pub text: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -75,6 +84,10 @@ pub enum Outgoing {
         features: WebFeatures,
         files: Vec<WebFile>,
         members: Vec<WebMember>,
+        compile: Settings,
+    },
+    Compile {
+        settings: Settings,
     },
     Opened {
         file_id: String,
@@ -311,6 +324,7 @@ pub fn parse(text: &str) -> Parsed {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use oleafly_collab::settings::{Setting, SettingValue};
     use serde_json::json;
 
     fn incoming(value: Value) -> Parsed {
@@ -417,6 +431,28 @@ mod tests {
         assert_eq!(
             error,
             json!({ "t": "error", "code": "not_ready", "message": "Later.", "reqId": "r" })
+        );
+        let main = "01920000-0000-7000-8000-0000000000f1";
+        let settings: Settings = [
+            SettingValue::parse(Setting::MainDoc, main).unwrap(),
+            SettingValue::parse(Setting::Engine, "latex").unwrap(),
+        ]
+        .into_iter()
+        .collect();
+        let compile = serde_json::to_value(Outgoing::Compile { settings }).unwrap();
+        assert_eq!(
+            compile,
+            json!({ "t": "compile", "settings": { "main_doc": main, "engine": "latex" } })
+        );
+        let text = serde_json::to_value(WebText {
+            file_id: "f".into(),
+            path: "main.tex".into(),
+            text: "Hi".into(),
+        })
+        .unwrap();
+        assert_eq!(
+            text,
+            json!({ "fileId": "f", "path": "main.tex", "text": "Hi" })
         );
         let done = serde_json::to_value(Outgoing::Done { req_id: "r".into() }).unwrap();
         assert_eq!(done, json!({ "t": "done", "reqId": "r" }));

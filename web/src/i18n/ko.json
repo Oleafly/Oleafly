@@ -100,6 +100,25 @@
     "download": "다운로드",
     "zoom": "{{percent}}%"
   },
+  "compile": {
+    "action": "컴파일",
+    "hint": "이 브라우저에서 프로젝트 컴파일 ({{shortcut}})",
+    "running": "컴파일 중",
+    "compiledHere": "내 브라우저에서 {{seconds}}초 만에 컴파일함",
+    "failedNoPdf": "PDF가 만들어지기 전에 컴파일이 멈췄습니다.",
+    "couldNotRun": "컴파일을 실행하지 못했습니다.",
+    "emptyReady": "프로젝트를 컴파일하면 여기에 PDF가 나타납니다.",
+    "shareFailed": "이 PDF는 나만 볼 수 있습니다. 프로젝트와 공유하지 못했습니다.",
+    "showLog": "로그 보기",
+    "hideLog": "로그 숨기기",
+    "logTitle": "컴파일 로그",
+    "problems": "오류: {{errors}} · 경고: {{warnings}}",
+    "noProblems": "오류나 경고가 없습니다.",
+    "showRawLog": "전체 로그",
+    "showProblems": "문제",
+    "showInPdf": "PDF에서 보기",
+    "showInPdfHint": "이 줄을 PDF에서 보기 ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "댓글이나 제안이 없습니다",
     "emptyCanComment": "소스에서 텍스트를 선택하고 댓글을 눌러 스레드를 시작하세요.",

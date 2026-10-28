@@ -100,6 +100,25 @@
     "download": "Télécharger",
     "zoom": "{{percent}} %"
   },
+  "compile": {
+    "action": "Compiler",
+    "hint": "Compiler le projet dans ce navigateur ({{shortcut}})",
+    "running": "Compilation en cours",
+    "compiledHere": "Compilé dans votre navigateur en {{seconds}} s",
+    "failedNoPdf": "La compilation s'est arrêtée avant de produire un PDF.",
+    "couldNotRun": "La compilation n'a pas pu démarrer.",
+    "emptyReady": "Compilez le projet pour voir son PDF ici.",
+    "shareFailed": "Vous seul voyez ce PDF. Il n'a pas pu être partagé avec le projet.",
+    "showLog": "Afficher le journal",
+    "hideLog": "Masquer le journal",
+    "logTitle": "Journal de compilation",
+    "problems": "Erreurs : {{errors}} · Avertissements : {{warnings}}",
+    "noProblems": "Aucune erreur ni aucun avertissement.",
+    "showRawLog": "Journal complet",
+    "showProblems": "Problèmes",
+    "showInPdf": "Voir dans le PDF",
+    "showInPdfHint": "Voir cette ligne dans le PDF ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "Aucun commentaire ni suggestion",
     "emptyCanComment": "Sélectionnez du texte dans la source et choisissez Commenter pour lancer une discussion.",

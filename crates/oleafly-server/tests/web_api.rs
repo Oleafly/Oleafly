@@ -3,14 +3,20 @@
 mod people;
 mod web_support;
 
+use oleafly_collab_protocol::frames::ServerFrame;
 use oleafly_collab_protocol::outputs::MAIN_FILE_HEADER;
 use oleafly_collab_protocol::projects::ProjectRole;
 use oleafly_server::blobs::sha256_hex;
-use people::put_bytes;
+use oleafly_server::config::DEFAULT_WEB_CONNECT_SRC;
+use oleafly_server::test_support::TestServer;
+use people::{call, grant, put_bytes};
 use reqwest::header::{CONTENT_TYPE, LOCATION};
-use reqwest::StatusCode;
-use serde_json::Value;
-use web_support::{browser_sign_in, share_doc_project, web_stage};
+use reqwest::{Method, StatusCode};
+use serde_json::{json, Value};
+use web_support::{
+    browser_sign_in, share_doc_project, until, web_config, web_socket, web_stage, Browser, Desktop,
+    DESKTOP_PEER, MAIN_TEXT,
+};
 
 fn header(response: &reqwest::Response, name: &str) -> String {
     response
@@ -205,6 +211,14 @@ async fn the_app_page_carries_its_security_headers_and_the_bare_path_moves_to_th
         let policy = header(&page, "content-security-policy");
         assert!(policy.contains("default-src 'self'"), "{policy}");
         assert!(
+            policy.contains("script-src 'self' 'wasm-unsafe-eval';"),
+            "{policy}"
+        );
+        assert!(
+            policy.contains(&format!("connect-src 'self' {DEFAULT_WEB_CONNECT_SRC};")),
+            "{policy}"
+        );
+        assert!(
             policy.contains("img-src 'self' data: blob: https:"),
             "{policy}"
         );
@@ -256,4 +270,273 @@ async fn the_project_landing_page_offers_the_browser_only_when_it_is_on() {
         .await
         .expect("html");
     assert!(!page.contains("Open in browser"), "{page}");
+}
+
+#[tokio::test]
+async fn the_page_policy_names_the_origins_the_server_is_set_to_allow() {
+    let mut config = web_config();
+    config.web_connect_src = vec![
+        "https://mirror.example.org".to_string(),
+        "http://localhost:5173".to_string(),
+    ];
+    let server = TestServer::start(config).await;
+    let page = reqwest::Client::new()
+        .get(format!("{}/web/", server.url()))
+        .send()
+        .await
+        .expect("page");
+    let policy = header(&page, "content-security-policy");
+    assert!(
+        policy.contains("; connect-src 'self' https://mirror.example.org http://localhost:5173;"),
+        "{policy}"
+    );
+    assert!(policy.contains("'wasm-unsafe-eval'"), "{policy}");
+    assert!(!policy.contains(DEFAULT_WEB_CONNECT_SRC), "{policy}");
+}
+
+const ABSTRACT: &str = "01920000-0000-7000-8000-0000000000e2";
+
+fn texts_of(project: impl std::fmt::Display) -> String {
+    format!("/web/api/projects/{project}/texts")
+}
+
+#[tokio::test]
+async fn every_text_file_comes_back_in_one_answer_sorted_by_path() {
+    let stage = web_stage().await;
+    let shared = share_doc_project(&stage, ProjectRole::Commenter).await;
+    let mut desktop = Desktop::open(&stage, &stage.bob, &shared, DESKTOP_PEER).await;
+    let tree = desktop.doc.get_tree("tree");
+    let node = tree.create(loro::TreeParentId::Root).expect("a new file");
+    let meta = tree.get_meta(node).expect("meta");
+    meta.insert("id", ABSTRACT).expect("id");
+    meta.insert("name", "abstract.tex").expect("name");
+    meta.insert("kind", "text").expect("kind");
+    assert!(matches!(
+        desktop
+            .type_at(&stage.bob, ABSTRACT, 0, "We study sea ice.\n")
+            .await,
+        ServerFrame::Ack { .. }
+    ));
+    let browser = browser_sign_in(&stage.server, "github2", "/web/").await;
+    let answer = browser.get(&texts_of(shared.project)).await;
+    assert_eq!(answer.status(), StatusCode::OK);
+    assert_eq!(header(&answer, "cache-control"), "no-store");
+    assert_eq!(header(&answer, "x-content-type-options"), "nosniff");
+    let body: Value = answer.json().await.expect("json");
+    assert_eq!(
+        body,
+        json!({ "files": [
+            { "fileId": ABSTRACT, "path": "abstract.tex", "text": "We study sea ice.\n" },
+            { "fileId": shared.main, "path": "main.tex", "text": MAIN_TEXT },
+        ] })
+    );
+}
+
+#[tokio::test]
+async fn texts_need_a_session_and_an_active_project_the_caller_is_in() {
+    let stage = web_stage().await;
+    let shared = share_doc_project(&stage, ProjectRole::Viewer).await;
+    let anonymous = reqwest::Client::new()
+        .get(format!(
+            "{}{}",
+            stage.server.url(),
+            texts_of(shared.project)
+        ))
+        .send()
+        .await
+        .expect("request");
+    assert_eq!(anonymous.status(), StatusCode::UNAUTHORIZED);
+    let bob = browser_sign_in(&stage.server, "github", "/web/").await;
+    let alice = browser_sign_in(&stage.server, "github2", "/web/").await;
+    let pending = people::create_project(&stage.server, &stage.alice, "Alice only").await;
+    let outsider = bob.get(&texts_of(pending.project_id)).await;
+    assert_eq!(outsider.status(), StatusCode::NOT_FOUND);
+    let not_shared = alice.get(&texts_of(pending.project_id)).await;
+    assert_eq!(not_shared.status(), StatusCode::NOT_FOUND);
+    let body: Value = not_shared.json().await.expect("json");
+    assert_eq!(body["code"], "project_not_shared");
+    assert_eq!(
+        alice.get(&texts_of(shared.project)).await.status(),
+        StatusCode::OK
+    );
+    let archived = call(
+        &stage.server,
+        Method::POST,
+        &format!("/api/v1/projects/{}/archive", shared.project),
+        stage.bob.token(),
+        None,
+    )
+    .await;
+    assert_eq!(archived.status(), StatusCode::NO_CONTENT);
+    let owner = bob.get(&texts_of(shared.project)).await;
+    assert_eq!(owner.status(), StatusCode::NOT_FOUND);
+    let body: Value = owner.json().await.expect("json");
+    assert_eq!(body["code"], "archived");
+    assert_eq!(
+        alice.get(&texts_of(shared.project)).await.status(),
+        StatusCode::NOT_FOUND
+    );
+}
+
+fn output_of(project: impl std::fmt::Display, kind: &str) -> String {
+    format!("/web/api/projects/{project}/output/{kind}")
+}
+
+async fn upload(
+    browser: &Browser,
+    path: &str,
+    main: Option<&str>,
+    bytes: Vec<u8>,
+) -> reqwest::Response {
+    let headers: Vec<(&str, &str)> = main
+        .map(|main| (MAIN_FILE_HEADER, main))
+        .into_iter()
+        .collect();
+    browser
+        .put(path, Some(&browser.base), true, &headers, bytes)
+        .await
+}
+
+#[tokio::test]
+async fn an_editor_in_the_browser_stores_a_pdf_and_its_synctex_and_open_browsers_hear_of_it() {
+    let stage = web_stage().await;
+    let shared = share_doc_project(&stage, ProjectRole::Editor).await;
+    let alice = browser_sign_in(&stage.server, "github2", "/web/").await;
+    let bob = browser_sign_in(&stage.server, "github", "/web/").await;
+    let mut watching = web_socket(&stage.server, &bob, shared.project).await;
+    assert_eq!(until(&mut watching, "output").await["items"], json!([]));
+    let pdf = b"%PDF-1.7\nfrom the browser".to_vec();
+    let stored = upload(
+        &alice,
+        &output_of(shared.project, "pdf"),
+        Some("chapters/one%20two.tex"),
+        pdf.clone(),
+    )
+    .await;
+    assert_eq!(stored.status(), StatusCode::OK);
+    assert_eq!(header(&stored, "cache-control"), "no-store");
+    let body: Value = stored.json().await.expect("json");
+    assert_eq!(body["kind"], "pdf");
+    assert_eq!(body["size"], pdf.len());
+    assert_eq!(body["mainFile"], "chapters/one two.tex");
+    assert_eq!(
+        body["compiledBy"],
+        Value::String(stage.alice.tokens.account_id.to_string())
+    );
+    assert!(body["compiledAt"].as_i64().is_some());
+    let heard = until(&mut watching, "output").await;
+    assert_eq!(heard["items"], json!([body]));
+    let synctex = vec![0x1f, 0x8b, 8, 0, 1, 2, 3, 4];
+    let stored = upload(
+        &alice,
+        &output_of(shared.project, "synctex"),
+        Some("main.tex"),
+        synctex.clone(),
+    )
+    .await;
+    assert_eq!(stored.status(), StatusCode::OK);
+    let heard = until(&mut watching, "output").await;
+    let kinds: Vec<&str> = heard["items"]
+        .as_array()
+        .expect("items")
+        .iter()
+        .filter_map(|item| item["kind"].as_str())
+        .collect();
+    assert_eq!(kinds, ["pdf", "synctex"]);
+    let served = bob.get(&output_of(shared.project, "pdf")).await;
+    assert_eq!(served.status(), StatusCode::OK);
+    assert_eq!(served.bytes().await.expect("bytes").to_vec(), pdf);
+    let served = bob.get(&output_of(shared.project, "synctex")).await;
+    assert_eq!(header(&served, "content-type"), "application/gzip");
+    assert_eq!(served.bytes().await.expect("bytes").to_vec(), synctex);
+}
+
+#[tokio::test]
+async fn the_browser_upload_keeps_the_app_routes_rules_and_needs_the_app_marker() {
+    let mut config = web_config();
+    config.limits.max_file_mb = 1;
+    let stage = people::stage_with(config).await;
+    let shared = share_doc_project(&stage, ProjectRole::Viewer).await;
+    let alice = browser_sign_in(&stage.server, "github2", "/web/").await;
+    let pdf = || b"%PDF-1.7\nx".to_vec();
+    let path = output_of(shared.project, "pdf");
+    for role in [
+        ProjectRole::Viewer,
+        ProjectRole::Reviewer,
+        ProjectRole::Commenter,
+    ] {
+        if role != ProjectRole::Viewer {
+            let granted = grant(
+                &stage.server,
+                &stage.bob,
+                shared.project,
+                &stage.alice,
+                role,
+            )
+            .await;
+            assert_eq!(granted.status(), StatusCode::OK);
+        }
+        let refused = upload(&alice, &path, Some("main.tex"), pdf()).await;
+        assert_eq!(refused.status(), StatusCode::FORBIDDEN, "{role:?}");
+        let body: Value = refused.json().await.expect("json");
+        assert_eq!(body["code"], "forbidden", "{role:?}");
+    }
+    let bob = browser_sign_in(&stage.server, "github", "/web/").await;
+    let named = [(MAIN_FILE_HEADER, "main.tex")];
+    for (origin, marked) in [
+        (Some(bob.base.as_str()), false),
+        (None, true),
+        (Some("https://evil.example"), true),
+    ] {
+        let refused = bob.put(&path, origin, marked, &named, pdf()).await;
+        assert_eq!(
+            refused.status(),
+            StatusCode::FORBIDDEN,
+            "{origin:?} {marked}"
+        );
+        let body: Value = refused.json().await.expect("json");
+        assert_eq!(body["code"], "cross_site", "{origin:?} {marked}");
+    }
+    let anonymous = reqwest::Client::new()
+        .put(format!("{}{path}", stage.server.url()))
+        .header("origin", stage.server.url())
+        .header("x-requested-with", "oleafly-web")
+        .header(MAIN_FILE_HEADER, "main.tex")
+        .body(pdf())
+        .send()
+        .await
+        .expect("request");
+    assert_eq!(anonymous.status(), StatusCode::UNAUTHORIZED);
+    let mut too_large = pdf();
+    too_large.resize(2 * 1024 * 1024, b' ');
+    for (kind, main, bytes) in [
+        ("pdf", None, pdf()),
+        ("pdf", Some("main.tex"), b"<html>not a pdf</html>".to_vec()),
+        ("synctex", Some("main.tex"), b"SyncTeX Version:1\n".to_vec()),
+        ("pdf", Some("main.tex"), too_large),
+        ("html", Some("main.tex"), pdf()),
+    ] {
+        let size = bytes.len();
+        let refused = upload(&bob, &output_of(shared.project, kind), main, bytes).await;
+        assert_eq!(
+            refused.status(),
+            StatusCode::BAD_REQUEST,
+            "{kind} {main:?} {size}"
+        );
+    }
+    let listed = bob
+        .json(&format!("/web/api/projects/{}/output", shared.project))
+        .await;
+    assert_eq!(listed["items"], json!([]));
+    let archived = call(
+        &stage.server,
+        Method::POST,
+        &format!("/api/v1/projects/{}/archive", shared.project),
+        stage.bob.token(),
+        None,
+    )
+    .await;
+    assert_eq!(archived.status(), StatusCode::NO_CONTENT);
+    let refused = upload(&bob, &path, Some("main.tex"), pdf()).await;
+    assert_eq!(refused.status(), StatusCode::CONFLICT);
 }

@@ -1,3 +1,4 @@
+use axum::body::Body;
 use axum::extract::rejection::PathRejection;
 use axum::extract::{Path, State};
 use axum::http::{header, HeaderMap, HeaderName, HeaderValue, StatusCode};
@@ -8,25 +9,27 @@ use oleafly_collab_protocol::ids::{AccountId, SharedProjectId};
 use oleafly_collab_protocol::outputs::{encode_main_file, OutputKind, MAIN_FILE_HEADER};
 use oleafly_collab_protocol::projects::{ProjectRole, ProjectStatus};
 use rusqlite::{params, Connection};
+use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::error::ServerError;
 use crate::members;
 use crate::outputs;
 use crate::projects;
+use crate::routes::outputs::{project_and_kind, store_upload};
 use crate::routes::projects::{access, project_and_hash};
 use crate::routes::{path_id, ClientIp};
 use crate::security_log::{self, NewSecurityEvent};
 use crate::settings;
 use crate::state::AppState;
-use crate::web::frames::WebOutput;
+use crate::web::frames::{WebOutput, WebText};
 use crate::web::room::Hub;
-use crate::web::{cross_site, pending_core, requested_by_the_app, signed_in, WebOn, WebUser};
+use crate::web::{changing, pending_core, Refusal, WebOn, WebUser};
 use crate::web_sessions;
 
 const BLOB_POLICY: &str = "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox";
 
-fn answer(value: Value) -> Response {
+fn answer(value: impl Serialize) -> Response {
     let mut response = Json(value).into_response();
     let headers = response.headers_mut();
     headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
@@ -173,6 +176,45 @@ pub async fn project(
     })))
 }
 
+#[derive(Serialize)]
+struct Texts {
+    files: Vec<WebText>,
+}
+
+fn not_opened(refusal: Refusal) -> ServerError {
+    let (status, code) = match refusal.code.as_str() {
+        "project_too_large" => (StatusCode::CONFLICT, "project_too_large"),
+        "server_busy" => (StatusCode::SERVICE_UNAVAILABLE, "server_busy"),
+        _ => (StatusCode::INTERNAL_SERVER_ERROR, "server"),
+    };
+    ServerError::Refused {
+        status,
+        code,
+        message: refusal.message,
+    }
+}
+
+pub async fn texts(
+    State(state): State<AppState>,
+    user: WebUser,
+    path: Result<Path<String>, PathRejection>,
+) -> Result<Response, ServerError> {
+    let project: SharedProjectId = path_id(path)?;
+    let account = user.caller.account_id;
+    state
+        .db
+        .read(move |conn| active_access(conn, project, account).map(drop))
+        .await?;
+    let room = state.web.room(project);
+    let texts = match room.ready(&state).await {
+        Ok(_) => room.texts().await,
+        Err(refusal) => Err(refusal),
+    };
+    Hub::linger(room);
+    let files = texts.map_err(not_opened)?;
+    Ok(answer(Texts { files }))
+}
+
 pub fn sniffed(bytes: &[u8]) -> &'static str {
     let start = &bytes[..bytes.len().min(512)];
     let text = String::from_utf8_lossy(start).to_ascii_lowercase();
@@ -306,18 +348,32 @@ pub async fn output(
     Ok((headers, room.send(opened.reader).await?).into_response())
 }
 
+pub async fn put_output(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    path: Result<Path<(String, String)>, PathRejection>,
+    body: Body,
+) -> Result<Response, ServerError> {
+    let user = changing(&state, &headers).await?;
+    let (project, kind) = project_and_kind(path)?;
+    let stored = store_upload(
+        &state,
+        user.caller.account_id,
+        project,
+        kind,
+        &headers,
+        body,
+    )
+    .await?;
+    Ok(answer(WebOutput::from(stored)))
+}
+
 pub async fn sign_out(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
     headers: HeaderMap,
 ) -> Result<Response, ServerError> {
-    if !state.config.web {
-        return Err(ServerError::NotFound);
-    }
-    if !requested_by_the_app(&headers, &state.config) {
-        return Err(cross_site());
-    }
-    let user = signed_in(&state, &headers).await?;
+    let user = changing(&state, &headers).await?;
     let (account, device) = (user.caller.account_id, user.caller.device_id);
     let now = state.clock.now_ms();
     state

@@ -67,6 +67,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   uploads the PDF and its SyncTeX file to the server, at most once a minute,
   so people reading the project in a browser see the newest PDF and who
   compiled it.
+- In the browser, click a word in the compiled PDF to open the source line
+  it came from, or press Show in PDF (Ctrl+Shift+J, or Cmd+Shift+J on a Mac)
+  to find the line you're on in the PDF. It works with the PDF and SyncTeX
+  file the app uploads, whichever computer compiled them.
+- Oleafly Server sends the browser app a project's compile settings, and the
+  text of all its files in one request. An owner or editor can upload a PDF
+  and SyncTeX file from the browser, with the same checks as an upload from
+  the app. `OLEAFLY_WEB_CONNECT_SRC` lists the sites the browser app may
+  download from, by default `https://mirrors.oleafly.com`.
 - Oleafly Server can let anyone sign up. With `OLEAFLY_OPEN_SIGNUP=true`,
   anyone who signs in with one of the server's sign-in options gets an
   account, and each account gets 100 MB of storage, 50 shared projects and

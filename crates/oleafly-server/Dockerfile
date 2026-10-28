@@ -6,6 +6,27 @@ ARG RUNTIME_IMAGE=gcr.io/distroless/static-debian13:latest@sha256:58133991db0665
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0 AS xx
 
+# The browser app's SyncTeX is the desktop's Rust, built to WebAssembly here
+# so the web stage needs only Node. WebAssembly is the same on every
+# platform, so this runs once on the build machine. The path remapping
+# matches scripts/build-synctex-wasm.mjs.
+FROM --platform=$BUILDPLATFORM rust:${RUST_VERSION}-alpine${ALPINE_VERSION} AS synctex-wasm
+RUN rustup target add wasm32-unknown-unknown
+WORKDIR /src
+COPY Cargo.toml Cargo.lock ./
+COPY vendor ./vendor
+COPY crates ./crates
+COPY src-tauri/Cargo.toml ./src-tauri/Cargo.toml
+COPY src-tauri/src ./src-tauri/src
+ENV CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS="--remap-path-prefix=/usr/local/cargo=/cargo --remap-path-prefix=/src=/oleafly"
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,target=/build/target,sharing=locked \
+    find crates -type f -exec touch {} + \
+    && cargo build --locked -p oleafly-synctex-wasm --target wasm32-unknown-unknown --profile wasm-release --target-dir /build/target \
+    && mkdir -p /out \
+    && cp /build/target/wasm32-unknown-unknown/wasm-release/oleafly_synctex_wasm.wasm /out/oleafly_synctex.wasm
+
 FROM --platform=$BUILDPLATFORM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS web
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 WORKDIR /src
@@ -18,9 +39,11 @@ RUN --mount=type=cache,target=/pnpm-store,sharing=locked \
 COPY tsconfig.json vite.config.ts vite.web.config.ts ./
 COPY e2e/vite-client-without-transport.ts ./e2e/vite-client-without-transport.ts
 COPY scripts/production-hook-audit.mjs ./scripts/production-hook-audit.mjs
+COPY scripts/build-synctex-wasm.mjs ./scripts/build-synctex-wasm.mjs
 COPY src ./src
 COPY web ./web
-RUN pnpm web:build
+COPY --from=synctex-wasm /out/oleafly_synctex.wasm ./web/src/synctex/oleafly_synctex.wasm
+RUN OLEAFLY_SYNCTEX_WASM_PREBUILT=1 pnpm web:build
 
 FROM --platform=$BUILDPLATFORM rust:${RUST_VERSION}-alpine${ALPINE_VERSION} AS build
 COPY --from=xx / /

@@ -100,6 +100,25 @@
     "download": "Pobierz",
     "zoom": "{{percent}}%"
   },
+  "compile": {
+    "action": "Skompiluj",
+    "hint": "Skompiluj projekt w tej przeglądarce ({{shortcut}})",
+    "running": "Kompilowanie",
+    "compiledHere": "Skompilowano w przeglądarce w {{seconds}} s",
+    "failedNoPdf": "Kompilacja zatrzymała się, zanim powstał plik PDF.",
+    "couldNotRun": "Nie udało się uruchomić kompilacji.",
+    "emptyReady": "Skompiluj projekt, aby zobaczyć tutaj jego plik PDF.",
+    "shareFailed": "Tylko Ty widzisz ten plik PDF. Nie udało się go udostępnić w projekcie.",
+    "showLog": "Pokaż dziennik",
+    "hideLog": "Ukryj dziennik",
+    "logTitle": "Dziennik kompilacji",
+    "problems": "Błędy: {{errors}} · Ostrzeżenia: {{warnings}}",
+    "noProblems": "Brak błędów i ostrzeżeń.",
+    "showRawLog": "Pełny dziennik",
+    "showProblems": "Problemy",
+    "showInPdf": "Pokaż w PDF",
+    "showInPdfHint": "Pokaż ten wiersz w pliku PDF ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "Brak komentarzy i sugestii",
     "emptyCanComment": "Zaznacz tekst w źródle i wybierz Skomentuj, aby rozpocząć wątek.",

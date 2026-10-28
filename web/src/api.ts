@@ -1,6 +1,8 @@
 import {
+  type CollabOutputInfo,
   type CollabProjectRole,
   parseFeatures,
+  parseOutput,
   parseFile,
   parsePerson,
   parseRole,
@@ -10,6 +12,7 @@ import {
 } from "./protocol";
 
 export const API_BASE = "/web/api";
+export const MAIN_FILE_HEADER = "X-Oleafly-Main-File";
 export const SIGN_IN_PATH = "/web/sign-in";
 
 export class ApiError extends Error {
@@ -43,12 +46,24 @@ export interface WebProjectDetail {
   people: WebPerson[];
 }
 
+export interface WebText {
+  fileId: string;
+  path: string;
+  text: string;
+}
+
+export type OutputKind = "pdf" | "synctex";
+
 export interface WebApi {
   me(): Promise<WebMe | null>;
   projects(): Promise<WebProjectSummary[]>;
   project(projectId: string): Promise<WebProjectDetail>;
+  /** The text of every text file, for a compile. */
+  texts(projectId: string, signal?: AbortSignal): Promise<WebText[]>;
   blob(projectId: string, hash: string): Promise<Blob>;
-  output(projectId: string, kind: "pdf" | "synctex"): Promise<Uint8Array | null>;
+  output(projectId: string, kind: OutputKind): Promise<Uint8Array | null>;
+  /** Shares a compiled output with the project; owners and editors only. */
+  putOutput(projectId: string, kind: OutputKind, bytes: Uint8Array, mainFile: string): Promise<CollabOutputInfo | null>;
   signOut(): Promise<void>;
 }
 
@@ -82,6 +97,20 @@ export function parseProjects(value: unknown): WebProjectSummary[] {
   const items = Array.isArray(value) ? value : record(value).projects;
   if (!Array.isArray(items)) return [];
   return items.map(parseSummary).filter((entry): entry is WebProjectSummary => entry !== null);
+}
+
+export function parseTexts(value: unknown): WebText[] {
+  const items = record(value).files;
+  if (!Array.isArray(items)) return [];
+  return items.flatMap((item: unknown) => {
+    const raw = record(item);
+    const fileId = raw.fileId;
+    const path = raw.path;
+    const text = raw.text;
+    return typeof fileId === "string" && typeof path === "string" && path !== "" && typeof text === "string"
+      ? [{ fileId, path, text }]
+      : [];
+  });
 }
 
 export function parseProjectDetail(value: unknown, projectId: string): WebProjectDetail {
@@ -136,6 +165,15 @@ export function createWebApi(fetcher: Fetcher = (input, init) => fetch(input, in
     async project(projectId) {
       return parseProjectDetail(await (await get(`/projects/${encodeURIComponent(projectId)}`)).json(), projectId);
     },
+    async texts(projectId, signal) {
+      const response = await fetcher(`${API_BASE}/projects/${encodeURIComponent(projectId)}/texts`, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+        signal,
+      });
+      if (!response.ok) throw await failure(response);
+      return parseTexts(await response.json());
+    },
     async blob(projectId, hash) {
       const response = await get(`/projects/${encodeURIComponent(projectId)}/blobs/${encodeURIComponent(hash)}`);
       return await response.blob();
@@ -147,6 +185,20 @@ export function createWebApi(fetcher: Fetcher = (input, init) => fetch(input, in
       if (response.status === 404) return null;
       if (!response.ok) throw await failure(response);
       return new Uint8Array(await response.arrayBuffer());
+    },
+    async putOutput(projectId, kind, bytes, mainFile) {
+      const response = await fetcher(outputUrl(projectId, kind), {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          [MAIN_FILE_HEADER]: encodeURIComponent(mainFile),
+          "X-Requested-With": "oleafly-web",
+        },
+        body: new Blob([bytes as BlobPart], { type: kind === "pdf" ? "application/pdf" : "application/gzip" }),
+      });
+      if (!response.ok) throw await failure(response);
+      return parseOutput(await response.json());
     },
     async signOut() {
       const response = await fetcher(`${API_BASE}/sign-out`, {
@@ -164,6 +216,6 @@ export function socketUrl(projectId: string, location: Pick<Location, "protocol"
   return `${scheme}://${location.host}/web/ws?project=${encodeURIComponent(projectId)}`;
 }
 
-export function outputUrl(projectId: string, kind: "pdf" | "synctex"): string {
+export function outputUrl(projectId: string, kind: OutputKind): string {
   return `${API_BASE}/projects/${encodeURIComponent(projectId)}/output/${kind}`;
 }

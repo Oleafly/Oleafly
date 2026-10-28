@@ -8,6 +8,8 @@ export interface RoleAbilities {
   resolve: boolean;
   chat: boolean;
   clearChat: boolean;
+  /** Shares a PDF compiled in this browser with the project. */
+  share: boolean;
 }
 
 export function abilitiesFor(role: CollabProjectRole, features: WebFeatures): RoleAbilities {
@@ -22,6 +24,7 @@ export function abilitiesFor(role: CollabProjectRole, features: WebFeatures): Ro
     resolve: manages && features.suggestions,
     chat: talks && features.chat,
     clearChat: role === "owner" && features.chat,
+    share: manages,
   };
 }
 

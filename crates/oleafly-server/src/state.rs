@@ -63,6 +63,8 @@ pub struct AppState {
     pub transfers: Transfers,
     #[cfg(feature = "web")]
     pub web: Arc<crate::web::Hub>,
+    #[cfg(feature = "web")]
+    pub web_policy: axum::http::HeaderValue,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -150,6 +152,8 @@ impl AppState {
             config.sign_in.requests_burst,
             config.sign_in.requests_per_minute,
         ));
+        #[cfg(feature = "web")]
+        let web_policy = crate::web::assets::policy(&config.web_connect_src)?;
         Ok(AppState {
             config: Arc::new(config),
             db: database,
@@ -172,6 +176,8 @@ impl AppState {
             transfers: Transfers::with_budget(transfer_budget),
             #[cfg(feature = "web")]
             web: Arc::new(crate::web::Hub::default()),
+            #[cfg(feature = "web")]
+            web_policy,
         })
     }
 

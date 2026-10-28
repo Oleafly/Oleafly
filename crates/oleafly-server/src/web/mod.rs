@@ -37,10 +37,13 @@ pub fn router() -> Router<AppState> {
         .route("/web/api/projects", get(api::projects))
         .route("/web/api/projects/{project}", get(api::project))
         .route("/web/api/projects/{project}/blobs/{hash}", get(api::blob))
+        .route("/web/api/projects/{project}/texts", get(api::texts))
         .route("/web/api/projects/{project}/output", get(api::outputs))
         .route(
             "/web/api/projects/{project}/output/{kind}",
-            get(api::output),
+            get(api::output)
+                .put(api::put_output)
+                .layer(axum::middleware::map_response(crate::transfers::retry_soon)),
         )
         .route("/web/api/sign-out", post(api::sign_out))
         .route("/web/api/{*rest}", any(api::unknown))
@@ -147,6 +150,18 @@ pub async fn signed_in(state: &AppState, headers: &HeaderMap) -> Result<WebUser,
         .read(move |conn| web_sessions::resolve(conn, &checked, now))
         .await?;
     Ok(WebUser { caller, token })
+}
+
+/// The signed-in session behind a browser request that changes something. It
+/// has to carry the app's marker and come from this server's origin.
+pub async fn changing(state: &AppState, headers: &HeaderMap) -> Result<WebUser, ServerError> {
+    if !state.config.web {
+        return Err(ServerError::NotFound);
+    }
+    if !requested_by_the_app(headers, &state.config) {
+        return Err(cross_site());
+    }
+    signed_in(state, headers).await
 }
 
 pub fn same_origin(headers: &HeaderMap, config: &ServerConfig) -> bool {

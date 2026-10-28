@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TextOperation } from "../../src/features/collab/live/ot.ts";
-import { mapPosition, minimalPdf, MockProject, Refusal } from "./mock-state.ts";
+import { mapPosition, minimalPdf, MockProject, Refusal, requestedByTheApp } from "./mock-state.ts";
 
 function project(text = "Hello world") {
   const mock = new MockProject("p", "Demo", "olive");
@@ -67,6 +67,45 @@ describe("mock project", () => {
     expect(mock.moveToCurrent("f", 0, 6, 1)).toBe(9);
     expect(() => mock.addThread("f", 3, 3, "cora", "x")).toThrow(Refusal);
     expect(() => mock.message("cora", "  ")).toThrow(Refusal);
+  });
+
+  it("lists every text file sorted by path", () => {
+    const mock = project("Main");
+    mock.addText("b", "chapters/b.tex", "B");
+    mock.addText("a", "abstract.tex", "A");
+    mock.addBlob("fig", "figures/plot.png", "hash");
+    expect(mock.texts()).toEqual([
+      { fileId: "a", path: "abstract.tex", text: "A" },
+      { fileId: "b", path: "chapters/b.tex", text: "B" },
+      { fileId: "f", path: "main.tex", text: "Main" },
+    ]);
+  });
+
+  it("stores a PDF and a gzipped SyncTeX and refuses anything else", () => {
+    const mock = project();
+    const pdf = minimalPdf(["Hi"]);
+    const synctex = new Uint8Array([0x1f, 0x8b, 8, 0, 1]);
+    expect(mock.storeOutput("synctex", synctex, "eddie", "main.tex").kind).toBe("synctex");
+    expect(mock.storeOutput("pdf", pdf, "eddie", " main.tex ").mainFile).toBe("main.tex");
+    expect(mock.outputItems()).toEqual([
+      expect.objectContaining({ kind: "pdf", size: pdf.length, compiledBy: "eddie", mainFile: "main.tex" }),
+      expect.objectContaining({ kind: "synctex", size: synctex.length }),
+    ]);
+    const text = new TextEncoder().encode("<html>");
+    expect(() => mock.storeOutput("pdf", text, "eddie", "main.tex")).toThrow(Refusal);
+    expect(() => mock.storeOutput("synctex", text, "eddie", "main.tex")).toThrow(Refusal);
+    expect(() => mock.storeOutput("html", pdf, "eddie", "main.tex")).toThrow(Refusal);
+    expect(() => mock.storeOutput("pdf", pdf, "eddie", null)).toThrow(Refusal);
+    expect(mock.outputs.get("pdf")?.bytes).toBe(pdf);
+  });
+
+  it("takes a change only from the web app on the same origin", () => {
+    const host = "localhost:1430";
+    const marked = { host, origin: `http://${host}`, "x-requested-with": "oleafly-web" };
+    expect(requestedByTheApp(marked)).toBe(true);
+    expect(requestedByTheApp({ ...marked, "x-requested-with": undefined })).toBe(false);
+    expect(requestedByTheApp({ ...marked, origin: "https://evil.example" })).toBe(false);
+    expect(requestedByTheApp({ ...marked, origin: undefined })).toBe(false);
   });
 
   it("writes a PDF with a valid cross-reference table", () => {

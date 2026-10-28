@@ -1,3 +1,4 @@
+import { createFakeEngine } from "@oleafly/compile-port/testing";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError, type WebApi, type WebProjectDetail } from "./api";
 import { OfflineError, ProjectController } from "./controller";
@@ -17,8 +18,10 @@ function fakeApi(project: WebApi["project"] = vi.fn(async () => DETAIL)): WebApi
     me: vi.fn(async () => ({ accountId: "me", name: "Me", avatarUrl: null, login: null, email: null })),
     projects: vi.fn(async () => []),
     project,
+    texts: vi.fn(async () => []),
     blob: vi.fn(),
     output: vi.fn(async () => null),
+    putOutput: vi.fn(async () => null),
     signOut: vi.fn(async () => undefined),
   };
 }
@@ -292,4 +295,71 @@ describe("ProjectController", () => {
     expect(useWeb.getState().activePath).toBeNull();
     expect(context.server.current.frames("open")).toEqual([{ t: "open", fileId: "f-main" }]);
   });
+
+  it("takes the compile settings from hello and later compile frames", async () => {
+    const context = await started("viewer");
+    context.server.current.emit(hello("viewer", { compile: { main_doc: "f-main", engine: "latex" } }));
+    expect(useWeb.getState().compileSettings).toEqual({ main_doc: "f-main", engine: "latex" });
+    context.server.current.emit({ t: "compile", settings: { engine: "typst" } });
+    expect(useWeb.getState().compileSettings).toEqual({ engine: "typst" });
+    context.controller.stop();
+  });
+
+  it("opens the file and line a click in the PDF points at, and a log entry's line", async () => {
+    resetWebState({ me: { accountId: "me", name: "Me", avatarUrl: null, login: null, email: null } });
+    const api = fakeApi();
+    api.texts = vi.fn(async () => [{ fileId: "f-main", path: "main.tex", text: "Hello world\n" }]);
+    const inverse = vi.fn(async () => ({ file: "/Users/ana/thesis/refs.bib", line: 2, column: 0 }));
+    const server = new FakeServer();
+    const controller = new ProjectController("p1", {
+      api,
+      socketUrl: "wss://collab.test/web/ws?project=p1",
+      createSocket: server.factory,
+      setTimer: new ManualTimers().setTimer,
+      random: () => 0.5,
+      engines: async () => [createFakeEngine()],
+      openSyncTex: async () => ({ forward: async () => null, inverse, dispose: () => {} }),
+    });
+    await controller.start();
+    server.current.emit(hello("viewer"));
+    await vi.waitFor(() => expect(useWeb.getState().compile.ready).toBe(true));
+    await controller.compiler.compile();
+    await controller.openFromPdf(1, 80, 90);
+    expect(inverse).toHaveBeenCalledWith(1, 80, 90);
+    expect(useWeb.getState().activeFileId).toBe("f-refs");
+    controller.openLocation("./main.tex", 1);
+    expect(useWeb.getState().activeFileId).toBe("f-main");
+    controller.openLocation("/usr/share/texmf/article.cls", 3);
+    expect(useWeb.getState().activeFileId).toBe("f-main");
+    controller.stop();
+  });
+
+  it("recompiles after this browser's own edits, not a co-author's", async () => {
+    resetWebState({ me: { accountId: "me", name: "Me", avatarUrl: null, login: null, email: null } });
+    const api = fakeApi();
+    api.texts = vi.fn(async () => [{ fileId: "f-main", path: "main.tex", text: "Hello world" }]);
+    const server = new FakeServer();
+    const timers = new ManualTimers();
+    const controller = new ProjectController("p1", {
+      api,
+      socketUrl: "wss://collab.test/web/ws?project=p1",
+      createSocket: server.factory,
+      setTimer: timers.setTimer,
+      random: () => 0.5,
+      engines: async () => [createFakeEngine()],
+    });
+    await controller.start();
+    server.current.emit(hello("viewer"));
+    server.current.emit({ t: "opened", fileId: "f-main", rev: 1, text: "Hello world" });
+    await flush();
+    await vi.waitFor(() => expect(useWeb.getState().compile.ready).toBe(true));
+    await controller.compiler.compile();
+    const compiling = () => timers.delays.filter((ms) => ms === 1_200).length;
+    server.current.emit({ t: "remote", fileId: "f-main", rev: 2, op: [11, "!"], length: 12 });
+    await flush();
+    expect(controller.sessionFor("main.tex")?.text()).toBe("Hello world!");
+    expect(compiling()).toBe(0);
+    controller.stop();
+  });
 });
+

@@ -5,7 +5,7 @@ use axum::http::{header, HeaderMap, HeaderName, HeaderValue};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
-use oleafly_collab_protocol::ids::SharedProjectId;
+use oleafly_collab_protocol::ids::{AccountId, SharedProjectId};
 use oleafly_collab_protocol::outputs::{
     decode_main_file, encode_main_file, OutputKind, ProjectOutput, MAIN_FILE_HEADER,
     MAX_MAIN_FILE_CHARS,
@@ -33,7 +33,7 @@ pub fn router() -> Router<AppState> {
         .layer(axum::middleware::map_response(crate::transfers::retry_soon))
 }
 
-fn project_and_kind(
+pub(crate) fn project_and_kind(
     path: Result<Path<(String, String)>, PathRejection>,
 ) -> Result<(SharedProjectId, OutputKind), ServerError> {
     let Path((project, kind)) =
@@ -103,10 +103,21 @@ async fn put_output(
     body: Body,
 ) -> Result<Json<ProjectOutput>, ServerError> {
     let (project, kind) = project_and_kind(path)?;
-    let main_file = main_file(&headers)?;
+    let stored = store_upload(&state, auth.account_id, project, kind, &headers, body).await?;
+    Ok(Json(stored))
+}
+
+pub(crate) async fn store_upload(
+    state: &AppState,
+    account: AccountId,
+    project: SharedProjectId,
+    kind: OutputKind,
+    headers: &HeaderMap,
+    body: Body,
+) -> Result<ProjectOutput, ServerError> {
+    let main_file = main_file(headers)?;
     let limit = megabytes(state.config.limits.max_file_mb);
-    content_length_within(&headers, limit)?;
-    let account = auth.account_id;
+    content_length_within(headers, limit)?;
     let owner = state
         .db
         .call(move |conn| {
@@ -124,10 +135,10 @@ async fn put_output(
         .transfers
         .hold(
             account,
-            declared_length(&headers).unwrap_or(limit).min(limit),
+            declared_length(headers).unwrap_or(limit).min(limit),
         )
         .await?;
-    let Some(bytes) = state.transfers.read_body(body, &headers, limit).await? else {
+    let Some(bytes) = state.transfers.read_body(body, headers, limit).await? else {
         return Err(ServerError::BadRequest(format!(
             "This file is larger than the server allows ({} MB).",
             state.config.limits.max_file_mb
@@ -146,10 +157,10 @@ async fn put_output(
         main_file,
         storage: Storage::for_upload(owner, account, state.config.quotas.storage_mb),
     };
-    let stored = outputs::store(&state, new, bytes, state.clock.now_ms()).await?;
+    let stored = outputs::store(state, new, bytes, state.clock.now_ms()).await?;
     #[cfg(feature = "web")]
-    crate::web::output_changed(&state, project).await;
-    Ok(Json(stored))
+    crate::web::output_changed(state, project).await;
+    Ok(stored)
 }
 
 async fn get_output(

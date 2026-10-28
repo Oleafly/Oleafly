@@ -100,6 +100,25 @@
     "download": "下載",
     "zoom": "{{percent}}%"
   },
+  "compile": {
+    "action": "編譯",
+    "hint": "在這個瀏覽器中編譯專案 ({{shortcut}})",
+    "running": "正在編譯",
+    "compiledHere": "已在你的瀏覽器中編譯，耗時 {{seconds}} 秒",
+    "failedNoPdf": "編譯在產生 PDF 之前就停止了。",
+    "couldNotRun": "無法執行編譯。",
+    "emptyReady": "編譯專案後，PDF 會顯示在這裡。",
+    "shareFailed": "只有你能看到這個 PDF。它無法分享到專案中。",
+    "showLog": "顯示記錄",
+    "hideLog": "隱藏記錄",
+    "logTitle": "編譯記錄",
+    "problems": "錯誤：{{errors}} · 警告：{{warnings}}",
+    "noProblems": "沒有錯誤或警告。",
+    "showRawLog": "完整記錄",
+    "showProblems": "問題",
+    "showInPdf": "在 PDF 中顯示",
+    "showInPdfHint": "在 PDF 中顯示這一行 ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "沒有評論或建議",
     "emptyCanComment": "在原始碼中選取文字，然後選擇「評論」即可開始討論。",

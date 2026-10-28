@@ -100,6 +100,25 @@
     "download": "Stáhnout",
     "zoom": "{{percent}} %"
   },
+  "compile": {
+    "action": "Zkompilovat",
+    "hint": "Zkompilovat projekt v tomto prohlížeči ({{shortcut}})",
+    "running": "Probíhá kompilace",
+    "compiledHere": "Zkompilováno ve vašem prohlížeči za {{seconds}} s",
+    "failedNoPdf": "Kompilace se zastavila dřív, než vzniklo PDF.",
+    "couldNotRun": "Kompilaci se nepodařilo spustit.",
+    "emptyReady": "Zkompilujte projekt a jeho PDF se zobrazí tady.",
+    "shareFailed": "Toto PDF vidíte jen vy. Nepodařilo se ho sdílet s projektem.",
+    "showLog": "Zobrazit protokol",
+    "hideLog": "Skrýt protokol",
+    "logTitle": "Protokol kompilace",
+    "problems": "Chyby: {{errors}} · Varování: {{warnings}}",
+    "noProblems": "Žádné chyby ani varování.",
+    "showRawLog": "Celý protokol",
+    "showProblems": "Problémy",
+    "showInPdf": "Ukázat v PDF",
+    "showInPdfHint": "Ukázat tento řádek v PDF ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "Žádné komentáře ani návrhy",
     "emptyCanComment": "Vyberte text ve zdroji a zvolte Komentovat, tím založíte vlákno.",

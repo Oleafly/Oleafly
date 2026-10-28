@@ -6350,6 +6350,7 @@ dependencies = [
  "icu_properties",
  "libc",
  "oleafly-core",
+ "oleafly-synctex",
  "rand 0.8.7",
  "rapidfuzz",
  "serde",
@@ -6358,7 +6359,6 @@ dependencies = [
  "sha2 0.10.9",
  "tempfile",
  "tokio",
- "unicode-normalization",
 ]
 
 [[package]]
@@ -6577,6 +6577,25 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
+]
+
+[[package]]
+name = "oleafly-synctex"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "serde",
+ "unicode-normalization",
+]
+
+[[package]]
+name = "oleafly-synctex-wasm"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "oleafly-synctex",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

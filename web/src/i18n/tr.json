@@ -100,6 +100,25 @@
     "download": "İndir",
     "zoom": "%{{percent}}"
   },
+  "compile": {
+    "action": "Derle",
+    "hint": "Projeyi bu tarayıcıda derleyin ({{shortcut}})",
+    "running": "Derleniyor",
+    "compiledHere": "Tarayıcınızda {{seconds}} sn içinde derlendi",
+    "failedNoPdf": "Derleme, PDF oluşmadan durdu.",
+    "couldNotRun": "Derleme çalıştırılamadı.",
+    "emptyReady": "PDF'ini burada görmek için projeyi derleyin.",
+    "shareFailed": "Bu PDF'i yalnızca siz görüyorsunuz. Projeyle paylaşılamadı.",
+    "showLog": "Günlüğü göster",
+    "hideLog": "Günlüğü gizle",
+    "logTitle": "Derleme günlüğü",
+    "problems": "Hatalar: {{errors}} · Uyarılar: {{warnings}}",
+    "noProblems": "Hata ya da uyarı yok.",
+    "showRawLog": "Tüm günlük",
+    "showProblems": "Sorunlar",
+    "showInPdf": "PDF'te göster",
+    "showInPdfHint": "Bu satırı PDF'te göster ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "Yorum ya da öneri yok",
     "emptyCanComment": "Bir konu başlatmak için kaynakta metin seçin ve Yorum yap düğmesine tıklayın.",

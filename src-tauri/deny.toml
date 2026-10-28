@@ -73,6 +73,8 @@ exceptions = [
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-sandbox" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-secrets" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-server" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-synctex" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-synctex-wasm" },
 ]
 
 [bans]

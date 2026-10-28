@@ -7,7 +7,7 @@ import { abilitiesFor, canWithdraw, effectiveMode } from "./roles";
 const ALL = { comments: true, suggestions: true, chat: true };
 
 describe("parseServerFrame", () => {
-  it("reads hello with roles, features, files and people", () => {
+  it("reads hello with roles, features, files, people and compile settings", () => {
     expect(
       parseServerFrame(
         JSON.stringify({
@@ -21,6 +21,7 @@ describe("parseServerFrame", () => {
             { path: "no-id.tex" },
           ],
           people: [{ account_id: "u1", display_name: "Ana" }],
+          compile: { main_doc: "a", engine: "latex", typst_reproducible: true },
         }),
       ),
     ).toEqual({
@@ -33,7 +34,17 @@ describe("parseServerFrame", () => {
         { fileId: "c", path: "sec", kind: "dir", blob: null },
       ],
       people: [{ accountId: "u1", name: "Ana", avatarUrl: null, login: null }],
+      compile: { main_doc: "a", engine: "latex" },
     });
+  });
+
+  it("reads compile settings frames and an older hello without them", () => {
+    expect(parseServerFrame('{"t":"compile","settings":{"engine":"typst","main_doc":"m"}}')).toEqual({
+      t: "compile",
+      settings: { engine: "typst", main_doc: "m" },
+    });
+    expect(parseServerFrame('{"t":"compile","settings":[]}')).toEqual({ t: "compile", settings: {} });
+    expect(parseServerFrame('{"t":"hello","role":"viewer","files":[]}')).toMatchObject({ t: "hello", compile: {} });
   });
 
   it("reads the document frames and drops malformed ones", () => {
@@ -120,8 +131,15 @@ describe("roles", () => {
       resolve: true,
       chat: true,
       clearChat: true,
+      share: true,
     });
-    expect(abilitiesFor("editor", ALL)).toMatchObject({ edit: true, chooseMode: true, resolve: true, clearChat: false });
+    expect(abilitiesFor("editor", ALL)).toMatchObject({
+      edit: true,
+      chooseMode: true,
+      resolve: true,
+      clearChat: false,
+      share: true,
+    });
     expect(abilitiesFor("reviewer", ALL)).toMatchObject({
       edit: true,
       chooseMode: false,
@@ -129,16 +147,23 @@ describe("roles", () => {
       comment: true,
       resolve: false,
       chat: true,
+      share: false,
     });
-    expect(abilitiesFor("commenter", ALL)).toMatchObject({ edit: false, comment: true, resolve: false, chat: true });
-    expect(abilitiesFor("viewer", ALL)).toMatchObject({ edit: false, comment: false, chat: false });
-    expect(abilitiesFor("unknown", ALL)).toMatchObject({ edit: false, comment: false, chat: false });
+    expect(abilitiesFor("commenter", ALL)).toMatchObject({ edit: false, comment: true, resolve: false, chat: true, share: false });
+    expect(abilitiesFor("viewer", ALL)).toMatchObject({ edit: false, comment: false, chat: false, share: false });
+    expect(abilitiesFor("unknown", ALL)).toMatchObject({ edit: false, comment: false, chat: false, share: false });
   });
 
   it("turns abilities off with the server features", () => {
     const off = { comments: false, suggestions: false, chat: false };
     expect(abilitiesFor("reviewer", off)).toMatchObject({ edit: false, comment: false, chat: false });
-    expect(abilitiesFor("owner", off)).toMatchObject({ edit: true, chooseMode: false, resolve: false, clearChat: false });
+    expect(abilitiesFor("owner", off)).toMatchObject({
+      edit: true,
+      chooseMode: false,
+      resolve: false,
+      clearChat: false,
+      share: true,
+    });
   });
 
   it("works out the mode each role edits in", () => {

@@ -7,6 +7,7 @@ import {
   type CollabEditMode,
   type CollabOutputInfo,
   type CollabProjectRole,
+  type CompileSettings,
   parseServerFrame,
   type ServerFrame,
   type SuggestionsFrame,
@@ -39,6 +40,7 @@ export interface HelloInfo {
   features: WebFeatures;
   files: WebFile[];
   people: WebPerson[];
+  compile: CompileSettings;
 }
 
 export interface GatewayListener {
@@ -49,6 +51,7 @@ export interface GatewayListener {
   suggestions?(frame: SuggestionsFrame): void;
   chat?(messages: CollabChatMessage[]): void;
   output?(items: CollabOutputInfo[]): void;
+  compile?(settings: CompileSettings): void;
   access?(role: CollabProjectRole): void;
   error?(code: string, message: string): void;
   state?(state: GatewayState, end: GatewayEnd | null): void;
@@ -322,6 +325,9 @@ export class WebGateway {
       case "output":
         listener.output?.(frame.items);
         return;
+      case "compile":
+        listener.compile?.(frame.settings);
+        return;
       case "access":
         listener.access?.(frame.role);
         return;
@@ -343,6 +349,7 @@ export class WebGateway {
       features: frame.features,
       files: frame.files,
       people: frame.people,
+      compile: frame.compile,
     });
     const waiting = this.waiting;
     this.waiting = [];
