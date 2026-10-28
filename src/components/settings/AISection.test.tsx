@@ -10,7 +10,10 @@ import type { AppConfig, ProviderModel } from "@/lib/tauri";
 import type { SkillEntry } from "@/lib/skills";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import type { AddCustomProviderDialogProps } from "./ai/AddCustomProviderDialog";
+import type {
+  AddCustomProviderDialogProps,
+  CustomProviderSubmitResult,
+} from "./ai/AddCustomProviderDialog";
 import type { ProvidersTabProps } from "./ai/ProvidersTab";
 import type { AcpAgentsTabProps } from "./ai/AcpAgentsTab";
 import { AISection } from "./AISection";
@@ -920,7 +923,7 @@ describe("AISection custom provider editing", () => {
     expect(screen.getByText(providerUpdated("Lab"))).toBeInTheDocument();
   });
 
-  it("changes the base URL without the key and keeps the stored key", async () => {
+  it("changes the base URL without the key and checks it without the stored key", async () => {
     configFixture = {
       ...configuredAiConfig(),
       ai_keys: { ...configuredAiConfig().ai_keys, "local-lab": "__stored__" },
@@ -939,15 +942,17 @@ describe("AISection custom provider editing", () => {
     });
 
     expect(result).toEqual({ ok: true });
+    // Rust drops a saved key when its address moves, so the new address is
+    // checked without it and the provider saves as needing none.
     expect(mockInvoke).toHaveBeenCalledWith("agent_list_models", {
-      providerId: "local-lab",
+      providerId: "local-lab__address-check",
       key: null,
       baseUrl: "http://127.0.0.1:9100/v1",
     });
     const written = lastConfigWrite();
     expect(written.ai_custom_providers[0].id).toBe("local-lab");
     expect(written.ai_custom_providers[0].baseURL).toBe("http://127.0.0.1:9100/v1");
-    expect(written.ai_keys["local-lab"]).toBe("__stored__");
+    expect(written.ai_custom_providers[0].keyOptional).toBe(true);
   });
 
   it("keeps the saved base URL out of the listing call when only the name changes", async () => {
@@ -1061,6 +1066,7 @@ describe("AISection custom provider editing", () => {
 });
 
 const aiSection = enSettings.ai.section;
+const customProvider = enSettings.ai.customProvider;
 
 async function readySection() {
   renderSection();
@@ -1111,11 +1117,11 @@ describe("AISection provider messages", () => {
     expect(captured.providersTab?.errorMsg.openai).toBe(aiSection.errors.invalidKey);
   });
 
-  it("saves a custom provider key that no model list confirms", async () => {
+  it("saves a custom provider key that no model list confirms, and says why", async () => {
     mockInvoke.mockImplementation(async (command) => {
       if (command === "get_config") return configFixture;
       if (command === "set_config") return undefined;
-      if (command === "agent_list_models") throw new Error("[network] refused");
+      if (command === "agent_list_models") throw new Error("[transport] refused");
       if (command === "mcp_servers_list") return [];
       if (command === "skills_list") return skillsFixture;
       return undefined;
@@ -1130,11 +1136,84 @@ describe("AISection provider messages", () => {
       await captured.providersTab?.validateAndSave("local-lab");
     });
 
+    const reason = customProvider.discovery.unreachable.replace(
+      "{{url}}",
+      "http://127.0.0.1:9000/v1",
+    );
     expect(
       screen.getByText(
-        aiSection.messages.keySavedAddModels.replace("{{provider}}", "Local Lab"),
+        aiSection.messages.keySavedModelsNotListed
+          .replace("{{provider}}", "Local Lab")
+          .replace("{{reason}}", reason),
       ),
     ).toBeInTheDocument();
+    expect(lastConfigWrite().ai_keys["local-lab"]).toBe("sk-lab");
+  });
+
+  it("keeps a custom provider key its model list refused, and says so", async () => {
+    mockInvoke.mockImplementation(async (command) => {
+      if (command === "get_config") return configFixture;
+      if (command === "set_config") return undefined;
+      if (command === "agent_list_models") throw new Error("[auth] The provider returned 401.");
+      if (command === "mcp_servers_list") return [];
+      if (command === "skills_list") return skillsFixture;
+      return undefined;
+    });
+    await readySection();
+
+    act(() => captured.providersTab?.setKeys((keys) => ({ ...keys, "local-lab": "sk-gated" })));
+    await waitFor(() => expect(captured.providersTab?.keys["local-lab"]).toBe("sk-gated"));
+    await act(async () => {
+      await captured.providersTab?.validateAndSave("local-lab");
+    });
+
+    // A gateway can guard /models and still take the key for chat.
+    expect(lastConfigWrite().ai_keys["local-lab"]).toBe("sk-gated");
+    const reason = customProvider.discovery.auth.replace("{{url}}", "http://127.0.0.1:9000/v1");
+    expect(
+      screen.getByText(
+        aiSection.messages.keySavedModelsNotListed
+          .replace("{{provider}}", "Local Lab")
+          .replace("{{reason}}", reason),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("moves a provider to a key-less server without its saved key", async () => {
+    configFixture = {
+      ...configuredAiConfig(),
+      ai_keys: { ...configuredAiConfig().ai_keys, "local-lab": "__stored__" },
+      ai_custom_providers: [
+        { id: "local-lab", name: "Local Lab", baseURL: "https://gw.lab.test/v1", keyOptional: false },
+      ],
+    };
+    listedModels = [{ id: "Bonsai-8B-gguf", name: "Bonsai-8B-gguf", trust: "untested" }];
+    await readySection();
+
+    act(() => captured.providersTab?.onEditCustomProvider("local-lab"));
+    let result: CustomProviderSubmitResult | undefined;
+    await act(async () => {
+      result = await captured.dialog?.onSubmit({
+        id: "local-lab",
+        name: "Local Lab",
+        baseURL: "http://localhost:13305/v1",
+        apiKey: "",
+      });
+    });
+
+    expect(result).toEqual({ ok: true });
+    // The new address is checked under an id no saved key belongs to.
+    expect(mockInvoke).toHaveBeenCalledWith("agent_list_models", {
+      providerId: "local-lab__address-check",
+      key: null,
+      baseUrl: "http://localhost:13305/v1",
+    });
+    expect(lastConfigWrite().ai_custom_providers[0]).toEqual({
+      id: "local-lab",
+      name: "Local Lab",
+      baseURL: "http://localhost:13305/v1",
+      keyOptional: true,
+    });
   });
 
   it("refuses a custom provider id that is already taken", async () => {
@@ -1174,6 +1253,102 @@ describe("AISection provider messages", () => {
     ).toBeInTheDocument();
   });
 
+  it("adds a local server entered without /v1 at the address that lists its models", async () => {
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command === "get_config") return configFixture;
+      if (command === "set_config") return undefined;
+      if (command === "agent_list_models") {
+        const { baseUrl } = args as { baseUrl: string | null };
+        if (baseUrl === "http://localhost:13305/v1") {
+          return [{ id: "Bonsai-8B-gguf", name: "Bonsai-8B-gguf", trust: "untested" }];
+        }
+        throw new Error("[provider] The provider returned 404. Not Found");
+      }
+      if (command === "mcp_servers_list") return [];
+      if (command === "skills_list") return skillsFixture;
+      return undefined;
+    });
+    await readySection();
+
+    let result: CustomProviderSubmitResult | undefined;
+    await act(async () => {
+      result = await captured.dialog?.onSubmit({
+        id: "lemonade",
+        name: "Lemonade",
+        baseURL: "http://localhost:13305/",
+        apiKey: "",
+      });
+    });
+
+    expect(result).toEqual({ ok: true });
+    const written = lastConfigWrite();
+    expect(written.ai_custom_providers.at(-1)).toEqual({
+      id: "lemonade",
+      name: "Lemonade",
+      baseURL: "http://localhost:13305/v1",
+      keyOptional: true,
+    });
+    expect(written.ai_provider_models.lemonade.map((model) => model.id)).toEqual(["Bonsai-8B-gguf"]);
+    expect(
+      screen.getByText(
+        aiSection.messages.providerAddedAt
+          .replace("{{provider}}", "Lemonade")
+          .replace("{{url}}", "http://localhost:13305/v1"),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says why a new provider listed nothing and adds it only when asked again", async () => {
+    mockInvoke.mockImplementation(async (command) => {
+      if (command === "get_config") return configFixture;
+      if (command === "set_config") return undefined;
+      if (command === "agent_list_models") throw new Error("[transport] connection refused");
+      if (command === "mcp_servers_list") return [];
+      if (command === "skills_list") return skillsFixture;
+      return undefined;
+    });
+    await readySection();
+    const input = { id: "lemonade", name: "Lemonade", baseURL: "http://localhost:13305/v1", apiKey: "" };
+
+    let result: CustomProviderSubmitResult | undefined;
+    await act(async () => {
+      result = await captured.dialog?.onSubmit(input);
+    });
+    expect(result).toEqual({
+      ok: false,
+      canForce: true,
+      message: customProvider.discovery.unreachable.replace("{{url}}", "http://localhost:13305/v1"),
+    });
+    expect(mockInvoke.mock.calls.some(([command]) => command === "set_config")).toBe(false);
+
+    await act(async () => {
+      result = await captured.dialog?.onSubmit(input, { force: true });
+    });
+    expect(result).toEqual({ ok: true });
+    expect(lastConfigWrite().ai_provider_models.lemonade).toEqual([]);
+    expect(
+      screen.getByText(
+        aiSection.messages.providerAddedWithoutModels.replace("{{provider}}", "Lemonade"),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("refuses the id the Tools converters already use", async () => {
+    await readySection();
+
+    let result: CustomProviderSubmitResult | undefined;
+    await act(async () => {
+      result = await captured.dialog?.onSubmit({
+        id: "mathpix",
+        name: "My Mathpix",
+        baseURL: "http://127.0.0.1:9100/v1",
+        apiKey: "",
+      });
+    });
+
+    expect(result).toEqual({ ok: false, message: aiSection.errors.providerIdInUse });
+  });
+
   it("reports a custom provider that disappeared before the edit landed", async () => {
     await readySection();
 
@@ -1203,17 +1378,29 @@ describe("AISection provider messages", () => {
     await readySection();
 
     act(() => captured.providersTab?.onEditCustomProvider("local-lab"));
-    let result: { ok: boolean; message?: string } | undefined;
+    const input = {
+      id: "local-lab",
+      name: "Local Lab",
+      baseURL: "http://127.0.0.1:9500/v1",
+      apiKey: "",
+    };
+    let result: CustomProviderSubmitResult | undefined;
     await act(async () => {
-      result = await captured.dialog?.onSubmit({
-        id: "local-lab",
-        name: "Local Lab",
-        baseURL: "http://127.0.0.1:9500/v1",
-        apiKey: "",
-      });
+      result = await captured.dialog?.onSubmit(input);
     });
 
+    expect(result).toEqual({
+      ok: false,
+      canForce: true,
+      message: customProvider.discovery.rejected.replace("{{url}}", "http://127.0.0.1:9500/v1"),
+    });
+    expect(mockInvoke.mock.calls.some(([command]) => command === "set_config")).toBe(false);
+
+    await act(async () => {
+      result = await captured.dialog?.onSubmit(input, { force: true });
+    });
     expect(result).toEqual({ ok: true });
+    expect(lastConfigWrite().ai_custom_providers[0].baseURL).toBe("http://127.0.0.1:9500/v1");
     expect(
       screen.getByText(
         aiSection.messages.providerUpdatedWithoutModels.replace(
@@ -1337,7 +1524,13 @@ describe("AISection model and provider management", () => {
   });
 
   it("removes a custom provider with its key and models", async () => {
-    configFixture = { ...configuredAiConfig(), ai_provider: "local-lab", ai_model: "research-model", ai_keys: { "local-lab": "__stored__" } };
+    configFixture = {
+      ...configuredAiConfig(),
+      ai_provider: "local-lab",
+      ai_model: "research-model",
+      ai_keys: { "local-lab": "__stored__" },
+      ai_model_lists_refreshed_at: { "local-lab": 1_700_000_000_000 },
+    };
     await readySection();
 
     await act(async () => {
@@ -1348,6 +1541,7 @@ describe("AISection model and provider management", () => {
     expect(written.ai_custom_providers).toEqual([]);
     expect(written.ai_provider_models).not.toHaveProperty("local-lab");
     expect(written.ai_keys).not.toHaveProperty("local-lab");
+    expect(written.ai_model_lists_refreshed_at).not.toHaveProperty("local-lab");
     expect(written).toMatchObject({ ai_provider: "", ai_model: "" });
   });
 

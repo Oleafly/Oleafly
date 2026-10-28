@@ -2,8 +2,10 @@
 // small: the editor toolbar imports it on startup to decide whether to show
 // Image to LaTeX/Typst. Nothing here talks to a model.
 import {
+  effectiveProviderKeys,
   getProvider,
   hasConfiguredProvider,
+  isProviderConfigured,
   modelSupportsVision,
 } from "@oleafly/ai-core";
 import { i18n } from "@/i18n";
@@ -119,9 +121,7 @@ export function toolsProviderName(cfg: Pick<AppConfig, "ai_custom_providers">, p
 
 /** Whether a provider has a key (or needs none), as the backend decides. */
 export function toolsProviderConfigured(cfg: AppConfig, providerId: string): boolean {
-  if ((cfg.ai_keys?.[providerId] ?? "").trim()) return true;
-  if (cfg.ai_provider === providerId && (cfg.ai_api_key ?? "").trim()) return true;
-  return Boolean(cfg.ai_custom_providers?.find((custom) => custom.id === providerId)?.keyOptional);
+  return isProviderConfigured(providerId, effectiveProviderKeys(cfg), cfg.ai_custom_providers);
 }
 
 /** Where the Tools send images with the current choice, or with `providerId`. */

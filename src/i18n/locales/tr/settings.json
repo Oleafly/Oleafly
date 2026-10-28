@@ -236,18 +236,28 @@
       "addDescription": "OpenAI uyumlu her uç noktayı temel URL'siyle bağlayın.",
       "addTitle": "Özel sağlayıcı ekle",
       "baseUrlLabel": "Temel URL",
-      "baseUrlNote": "Kayıtlı API anahtarınız bu yeni adrese gönderilecek.",
+      "baseUrlNote": "Kayıtlı API anahtarı yeni bir adrese gönderilmez. Yeniden girin ya da yeni sunucu anahtar gerektirmiyorsa alanı boş bırakın.",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "{{url}} API anahtarını reddetti.",
+        "rejected": "{{url}} bir model listesi döndürmedi. Yerel sunucuların çoğunda adresin sonunda /v1 gerekir, örneğin http://localhost:13305/v1.",
+        "timeout": "{{url}} adresinin modelleri listelemesi çok uzun sürdü.",
+        "unreachable": "{{url}} adresine ulaşılamadı. Sunucunun çalıştığını ve adresin doğru olduğunu kontrol edin.",
+        "unreadable": "{{url}} yanıt verdi ama hiçbir model listelemedi. Sunucuda indirilmiş bir model olup olmadığını kontrol edin."
+      },
       "editDescription": "Adı veya temel URL'yi değiştirin.",
       "editTitle": "Özel sağlayıcıyı düzenle",
       "errors": {
         "addFailed": "Bu sağlayıcı eklenemedi.",
+        "baseUrlCredentials": "Anahtarı URL'ye değil, API anahtarı alanına girin.",
         "baseUrlHost": "URL'de ana makine adı eksik.",
         "baseUrlInvalid": "Tam bir URL girin, örneğin https://api.example.com/v1 veya http://localhost:1234/v1.",
         "baseUrlProtocol": "https:// kullanın, yerel bir sunucu içinse http://.",
+        "baseUrlQuery": "? işaretini ve ardındaki her şeyi kaldırın.",
         "baseUrlRequired": "Temel URL zorunludur.",
         "idFormat": "Yalnızca küçük harf, rakam ve kısa çizgi kullanın, örneğin acme.",
         "idRequired": "Kimlik zorunludur.",
+        "idTooLong": "En fazla 64 karakter kullanın.",
         "nameRequired": "Ad zorunludur.",
         "saveFailed": "Bu sağlayıcı kaydedilemedi."
       },
@@ -258,7 +268,9 @@
       "keyPlaceholder": "Gerekmiyorsa boş bırakın",
       "keyPlaceholderStored": "Yeni bir anahtar girmedikçe kayıtlı anahtar kalır",
       "namePlaceholder": "Acme",
-      "submitAdd": "Sağlayıcı ekle"
+      "saveAnyway": "Yine de kaydet",
+      "submitAdd": "Sağlayıcı ekle",
+      "submitAddAnyway": "Modelsiz ekle"
     },
     "instructions": {
       "capabilitiesTitle": "Ajan yetenekleri",
@@ -425,11 +437,13 @@
       "messages": {
         "keyRemoved": "{{provider}} anahtarı kaldırıldı.",
         "keyRemovedAccessDisabled": "{{provider}} anahtarı kaldırıldı. Yapay zeka erişimi devre dışı.",
-        "keySavedAddModels": "{{provider}} anahtarı kaydedildi. Modelleri aşağıdan elle ekleyin.",
         "keySavedCheckedOnUse": "{{provider}} anahtarı kaydedildi. İlk kullanımda denetlenir.",
+        "keySavedModelsNotListed": "{{provider}} anahtarı kaydedildi ama hiç model listelenmedi. {{reason}}",
         "ollamaConnected": "Ollama bağlandı · {{model}}",
         "preferencesReset": "Yapay zeka asistanı tercihleri varsayılanlarına döndürüldü.",
         "providerAdded": "{{provider}} eklendi.",
+        "providerAddedAt": "{{provider}} {{url}} adresine eklendi.",
+        "providerAddedWithoutModels": "{{provider}} modelsiz eklendi. Aşağıdan bir modeli adıyla ekleyin.",
         "providerConnected": "{{provider}} bağlandı.",
         "providerUpdated": "{{provider}} güncellendi.",
         "providerUpdatedWithoutModels": "{{provider}} güncellendi. Model listesi yenilenemedi."

@@ -236,18 +236,28 @@
       "addDescription": "Connect any OpenAI-compatible endpoint by its base URL.",
       "addTitle": "Add custom provider",
       "baseUrlLabel": "Base URL",
-      "baseUrlNote": "Your saved API key will be sent to this new address.",
+      "baseUrlNote": "The saved API key is not sent to a new address. Enter it again, or leave it blank if the new server needs no key.",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "{{url}} refused the API key.",
+        "rejected": "{{url}} did not return a model list. Most local servers need /v1 at the end of the address, like http://localhost:13305/v1.",
+        "timeout": "{{url}} took too long to list its models.",
+        "unreachable": "Could not reach {{url}}. Check that the server is running and the address is right.",
+        "unreadable": "{{url}} answered but listed no models. Check that the server has a model downloaded."
+      },
       "editDescription": "Change the name or base URL.",
       "editTitle": "Edit custom provider",
       "errors": {
         "addFailed": "Could not add that provider.",
+        "baseUrlCredentials": "Put the key in the API key field, not in the URL.",
         "baseUrlHost": "The URL is missing a host.",
         "baseUrlInvalid": "Enter a full URL, e.g. https://api.example.com/v1 or http://localhost:1234/v1.",
         "baseUrlProtocol": "Use https://, or http:// for a local server.",
+        "baseUrlQuery": "Remove the ? and everything after it.",
         "baseUrlRequired": "Base URL is required.",
         "idFormat": "Use lowercase letters, digits, and dashes only, e.g. acme.",
         "idRequired": "ID is required.",
+        "idTooLong": "Use 64 characters or fewer.",
         "nameRequired": "Name is required.",
         "saveFailed": "Could not save that provider."
       },
@@ -258,7 +268,9 @@
       "keyPlaceholder": "Leave blank if none is required",
       "keyPlaceholderStored": "Saved key stays unless you enter a new one",
       "namePlaceholder": "Acme",
-      "submitAdd": "Add provider"
+      "saveAnyway": "Save anyway",
+      "submitAdd": "Add provider",
+      "submitAddAnyway": "Add without models"
     },
     "instructions": {
       "capabilitiesTitle": "Agent capabilities",
@@ -425,11 +437,13 @@
       "messages": {
         "keyRemoved": "{{provider}} key removed.",
         "keyRemovedAccessDisabled": "{{provider}} key removed. AI access is disabled.",
-        "keySavedAddModels": "{{provider}} key saved. Add models manually below.",
         "keySavedCheckedOnUse": "{{provider}} key saved. It is checked on first use.",
+        "keySavedModelsNotListed": "{{provider}} key saved, but no models were listed. {{reason}}",
         "ollamaConnected": "Ollama connected · {{model}}",
         "preferencesReset": "AI Assistant preferences restored to their defaults.",
         "providerAdded": "{{provider}} added.",
+        "providerAddedAt": "{{provider}} added at {{url}}.",
+        "providerAddedWithoutModels": "{{provider}} added without models. Add a model by name below.",
         "providerConnected": "{{provider}} connected.",
         "providerUpdated": "{{provider}} updated.",
         "providerUpdatedWithoutModels": "{{provider}} updated. Its model list could not be refreshed."

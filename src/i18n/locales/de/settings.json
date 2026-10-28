@@ -236,18 +236,28 @@
       "addDescription": "Verbinden Sie jeden OpenAI-kompatiblen Endpunkt über seine Basis-URL.",
       "addTitle": "Eigenen Anbieter hinzufügen",
       "baseUrlLabel": "Basis-URL",
-      "baseUrlNote": "Ihr gespeicherter API-Schlüssel wird an diese neue Adresse gesendet.",
+      "baseUrlNote": "Der gespeicherte API-Schlüssel wird nicht an eine neue Adresse gesendet. Geben Sie ihn erneut ein oder lassen Sie das Feld leer, wenn der neue Server keinen Schlüssel benötigt.",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "{{url}} hat den API-Schlüssel abgelehnt.",
+        "rejected": "{{url}} hat keine Modellliste zurückgegeben. Die meisten lokalen Server brauchen am Ende der Adresse /v1, z. B. http://localhost:13305/v1.",
+        "timeout": "{{url}} hat zu lange gebraucht, um seine Modelle aufzulisten.",
+        "unreachable": "{{url}} ist nicht erreichbar. Prüfen Sie, ob der Server läuft und die Adresse stimmt.",
+        "unreadable": "{{url}} hat geantwortet, aber keine Modelle aufgelistet. Prüfen Sie, ob auf dem Server ein Modell heruntergeladen ist."
+      },
       "editDescription": "Name oder Basis-URL ändern.",
       "editTitle": "Eigenen Anbieter bearbeiten",
       "errors": {
         "addFailed": "Dieser Anbieter konnte nicht hinzugefügt werden.",
+        "baseUrlCredentials": "Tragen Sie den Schlüssel in das Feld API-Schlüssel ein, nicht in die URL.",
         "baseUrlHost": "In der URL fehlt der Host.",
         "baseUrlInvalid": "Geben Sie eine vollständige URL ein, z. B. https://api.example.com/v1 oder http://localhost:1234/v1.",
         "baseUrlProtocol": "Verwenden Sie https:// oder http:// für einen lokalen Server.",
+        "baseUrlQuery": "Entfernen Sie das ? und alles, was danach folgt.",
         "baseUrlRequired": "Die Basis-URL ist erforderlich.",
         "idFormat": "Verwenden Sie nur Kleinbuchstaben, Ziffern und Bindestriche, z. B. acme.",
         "idRequired": "Die ID ist erforderlich.",
+        "idTooLong": "Verwenden Sie höchstens 64 Zeichen.",
         "nameRequired": "Der Name ist erforderlich.",
         "saveFailed": "Dieser Anbieter konnte nicht gespeichert werden."
       },
@@ -258,7 +268,9 @@
       "keyPlaceholder": "Leer lassen, wenn keiner nötig ist",
       "keyPlaceholderStored": "Der gespeicherte Schlüssel bleibt, bis Sie einen neuen eingeben",
       "namePlaceholder": "Acme",
-      "submitAdd": "Anbieter hinzufügen"
+      "saveAnyway": "Trotzdem speichern",
+      "submitAdd": "Anbieter hinzufügen",
+      "submitAddAnyway": "Ohne Modelle hinzufügen"
     },
     "instructions": {
       "capabilitiesTitle": "Fähigkeiten des Agenten",
@@ -425,11 +437,13 @@
       "messages": {
         "keyRemoved": "Schlüssel von {{provider}} entfernt.",
         "keyRemovedAccessDisabled": "Schlüssel von {{provider}} entfernt. Der KI-Zugriff ist deaktiviert.",
-        "keySavedAddModels": "Schlüssel von {{provider}} gespeichert. Fügen Sie unten von Hand Modelle hinzu.",
         "keySavedCheckedOnUse": "Schlüssel von {{provider}} gespeichert. Er wird beim ersten Einsatz geprüft.",
+        "keySavedModelsNotListed": "Schlüssel von {{provider}} gespeichert, aber es wurden keine Modelle aufgelistet. {{reason}}",
         "ollamaConnected": "Ollama verbunden · {{model}}",
         "preferencesReset": "Die Einstellungen des KI-Assistenten wurden auf die Standards zurückgesetzt.",
         "providerAdded": "{{provider}} hinzugefügt.",
+        "providerAddedAt": "{{provider}} unter {{url}} hinzugefügt.",
+        "providerAddedWithoutModels": "{{provider}} ohne Modelle hinzugefügt. Fügen Sie unten ein Modell über seinen Namen hinzu.",
         "providerConnected": "{{provider}} verbunden.",
         "providerUpdated": "{{provider}} aktualisiert.",
         "providerUpdatedWithoutModels": "{{provider}} aktualisiert. Die Modellliste konnte nicht aufgefrischt werden."

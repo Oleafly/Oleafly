@@ -195,6 +195,20 @@ describe("ResearchTasksPanel lifecycle", () => {
     expect(api.loadResearchTaskEventsBefore).toHaveBeenLastCalledWith(older.id, 1, api.NEWEST_EVENTS);
   });
 
+  it("names a task's custom provider from the settings when no agent option lists it", async () => {
+    const onLab = { ...task("lab"), agentId: "lemonade", modelId: "Qwen3-4B" };
+    vi.mocked(api.listResearchTasks).mockResolvedValue([onLab]);
+    const customProviders = [{ id: "lemonade", name: "Lemonade" }];
+    const view = render(<ResearchTasksPanel projectId="paper" agents={[]} customProviders={customProviders} />);
+    await page().findByRole("button", { name: /Task lab/ });
+    openTask("Task lab");
+    await waitFor(() => expect(within(page().getByRole("dialog")).getByTestId("task-agent-chip")).toHaveAttribute("title", "Lemonade · Qwen3-4B"));
+    closeDetail();
+    view.rerender(<ResearchTasksPanel projectId="paper" agents={[]} />);
+    openTask("Task lab");
+    await waitFor(() => expect(within(page().getByRole("dialog")).getByTestId("task-agent-chip")).toHaveAttribute("title", "lemonade · Qwen3-4B"));
+  });
+
   it("passes only previewed selections through the project mutation boundary and reports completion", async () => {
     const current = task("review");
     const completed = { ...current, status: "completed" as const };

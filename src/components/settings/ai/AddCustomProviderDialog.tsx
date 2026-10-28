@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
+import { trimEndpointPath } from "./custom-provider-discovery";
 
 export interface AddCustomProviderInput {
   id: string;
@@ -29,22 +30,57 @@ export interface CustomProviderEditTarget {
   hasStoredKey: boolean;
 }
 
+export interface CustomProviderSubmitResult {
+  ok: boolean;
+  message?: string;
+  /** The save stopped because no models were listed; submitting again with
+   * `force` saves the provider anyway. */
+  canForce?: boolean;
+}
+
 export interface AddCustomProviderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (input: AddCustomProviderInput) => Promise<{ ok: boolean; message?: string }>;
+  onSubmit: (
+    input: AddCustomProviderInput,
+    options?: { force?: boolean },
+  ) => Promise<CustomProviderSubmitResult>;
   editing?: CustomProviderEditTarget | null;
 }
 
 const EMPTY: AddCustomProviderInput = { id: "", name: "", baseURL: "", apiKey: "" };
 
+// Matches the longest provider id the Rust side accepts.
+const MAX_ID_LENGTH = 64;
+
 type FieldErrors = Partial<Record<"id" | "name" | "baseURL" | "apiKey", string>>;
 
 export function normalizeBaseURL(url: string): string {
-  const trimmed = url.trim();
-  let end = trimmed.length;
-  while (end > 0 && trimmed[end - 1] === "/") end -= 1;
-  return trimmed.slice(0, end);
+  return trimEndpointPath(url);
+}
+
+function baseURLError(raw: string): string | undefined {
+  const baseURL = raw.trim();
+  if (!baseURL) return i18n.t(($) => $.settings.ai.customProvider.errors.baseUrlRequired);
+  let parsed: URL;
+  try {
+    parsed = new URL(baseURL);
+  } catch {
+    return i18n.t(($) => $.settings.ai.customProvider.errors.baseUrlInvalid);
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    return i18n.t(($) => $.settings.ai.customProvider.errors.baseUrlProtocol);
+  }
+  if (!parsed.hostname) return i18n.t(($) => $.settings.ai.customProvider.errors.baseUrlHost);
+  // The agent appends its own paths, so a query string would end up in the
+  // middle of every request URL, and credentials would sit in config.json.
+  if (parsed.username || parsed.password) {
+    return i18n.t(($) => $.settings.ai.customProvider.errors.baseUrlCredentials);
+  }
+  if (parsed.search || parsed.hash) {
+    return i18n.t(($) => $.settings.ai.customProvider.errors.baseUrlQuery);
+  }
+  return undefined;
 }
 
 function validate(form: AddCustomProviderInput, editing: CustomProviderEditTarget | null): FieldErrors {
@@ -54,35 +90,26 @@ function validate(form: AddCustomProviderInput, editing: CustomProviderEditTarge
     if (!id) errors.id = i18n.t(($) => $.settings.ai.customProvider.errors.idRequired);
     else if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) {
       errors.id = i18n.t(($) => $.settings.ai.customProvider.errors.idFormat);
+    } else if (id.length > MAX_ID_LENGTH) {
+      errors.id = i18n.t(($) => $.settings.ai.customProvider.errors.idTooLong);
     }
   }
   if (!form.name.trim()) {
     errors.name = i18n.t(($) => $.settings.ai.customProvider.errors.nameRequired);
   }
-  const baseURL = form.baseURL.trim();
-  if (!baseURL) {
-    errors.baseURL = i18n.t(($) => $.settings.ai.customProvider.errors.baseUrlRequired);
-  } else {
-    try {
-      const parsed = new URL(baseURL);
-      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-        errors.baseURL = i18n.t(($) => $.settings.ai.customProvider.errors.baseUrlProtocol);
-      } else if (!parsed.hostname) {
-        errors.baseURL = i18n.t(($) => $.settings.ai.customProvider.errors.baseUrlHost);
-      }
-    } catch {
-      errors.baseURL = i18n.t(($) => $.settings.ai.customProvider.errors.baseUrlInvalid);
-    }
-  }
+  const urlError = baseURLError(form.baseURL);
+  if (urlError) errors.baseURL = urlError;
   return errors;
 }
 
-function baseURLWillResendKey(
+// A saved key stays with its address: Rust drops it when the saved address
+// changes at all, so this compares against the address exactly as stored.
+function baseURLNeedsKeyAgain(
   form: AddCustomProviderInput,
   editing: CustomProviderEditTarget | null,
 ): boolean {
   if (!editing?.hasStoredKey) return false;
-  return normalizeBaseURL(form.baseURL) !== normalizeBaseURL(editing.baseURL);
+  return normalizeBaseURL(form.baseURL) !== editing.baseURL.trim();
 }
 
 export function AddCustomProviderDialog({
@@ -96,6 +123,8 @@ export function AddCustomProviderDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  // Set after a save found no models; the next submit saves anyway.
+  const [forceReady, setForceReady] = useState(false);
   const editingId = editing?.id ?? "";
   const editingName = editing?.name ?? "";
   const editingBaseURL = editing?.baseURL ?? "";
@@ -109,12 +138,14 @@ export function AddCustomProviderDialog({
     );
     setError("");
     setFieldErrors({});
+    setForceReady(false);
   }, [open, editingId, editingName, editingBaseURL]);
 
   const reset = () => {
     setForm(EMPTY);
     setError("");
     setFieldErrors({});
+    setForceReady(false);
     setBusy(false);
   };
 
@@ -126,6 +157,7 @@ export function AddCustomProviderDialog({
   const setField = (key: keyof AddCustomProviderInput) => (value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
     setFieldErrors((e) => ({ ...e, [key]: undefined }));
+    setForceReady(false);
   };
 
   const submit = async () => {
@@ -135,13 +167,15 @@ export function AddCustomProviderDialog({
     setBusy(true);
     setError("");
     try {
-      const res = await onSubmit({
+      const input: AddCustomProviderInput = {
         id: form.id.trim(),
         name: form.name.trim(),
         baseURL: form.baseURL.trim(),
         apiKey: form.apiKey.trim(),
-      });
+      };
+      const res = forceReady ? await onSubmit(input, { force: true }) : await onSubmit(input);
       if (!res.ok) {
+        setForceReady(Boolean(res.canForce));
         setError(
           res.message ??
             (editing
@@ -156,11 +190,20 @@ export function AddCustomProviderDialog({
     }
   };
 
-  const keyLabel =
-    editing?.hasStoredKey
-      ? t(($) => $.settings.ai.customProvider.keyLabelKeepSaved)
-      : t(($) => $.settings.ai.customProvider.keyLabel);
-  const showKeyResendNote = baseURLWillResendKey(form, editing);
+  const showKeyResendNote = baseURLNeedsKeyAgain(form, editing);
+  // The saved key only stays while the address does.
+  const keepsSavedKey = Boolean(editing?.hasStoredKey) && !showKeyResendNote;
+  const keyLabel = keepsSavedKey
+    ? t(($) => $.settings.ai.customProvider.keyLabelKeepSaved)
+    : t(($) => $.settings.ai.customProvider.keyLabel);
+  let submitLabel = editing
+    ? t(($) => $.common.actions.save)
+    : t(($) => $.settings.ai.customProvider.submitAdd);
+  if (forceReady) {
+    submitLabel = editing
+      ? t(($) => $.settings.ai.customProvider.saveAnyway)
+      : t(($) => $.settings.ai.customProvider.submitAddAnyway);
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -261,7 +304,7 @@ export function AddCustomProviderDialog({
               value={form.apiKey}
               onChange={(e) => setField("apiKey")(e.target.value)}
               placeholder={
-                editing?.hasStoredKey
+                keepsSavedKey
                   ? t(($) => $.settings.ai.customProvider.keyPlaceholderStored)
                   : t(($) => $.settings.ai.customProvider.keyPlaceholder)
               }
@@ -274,7 +317,11 @@ export function AddCustomProviderDialog({
               </p>
             )}
           </div>
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {error && (
+            <p data-testid="custom-provider-error" className="text-xs text-destructive">
+              {error}
+            </p>
+          )}
         </div>
         <DialogFooter>
           <Button
@@ -283,9 +330,7 @@ export function AddCustomProviderDialog({
             onClick={() => void submit()}
           >
             {busy ? <Spinner size="sm" /> : null}
-            {editing
-              ? t(($) => $.common.actions.save)
-              : t(($) => $.settings.ai.customProvider.submitAdd)}
+            {submitLabel}
             <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[0.625rem] text-current">{"↵"}</Kbd>
           </Button>
         </DialogFooter>

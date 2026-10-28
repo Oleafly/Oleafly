@@ -382,4 +382,61 @@ describe("research tasks an agent creates without everything set", () => {
       builtinTaskAgent({ ai_provider: "openai", ai_model: "gpt-test", ai_keys: { anthropic: "__stored__" } } as never),
     ).resolves.toEqual({ agentId: "anthropic", modelId: defaultModel("anthropic") });
   });
+
+  describe("with a key-less custom provider", () => {
+    const lemonade = { id: "lemonade", name: "Lemonade", baseURL: "http://localhost:13305/v1", keyOptional: true };
+
+    it("runs on it without any API key", async () => {
+      await expect(
+        builtinTaskAgent({
+          ai_provider: "lemonade",
+          ai_model: "Qwen3-4B",
+          ai_keys: {},
+          ai_custom_providers: [lemonade],
+        } as never),
+      ).resolves.toEqual({ agentId: "lemonade", modelId: "Qwen3-4B" });
+    });
+
+    it("falls back to it, with its own first enabled model, when the saved provider has no key", async () => {
+      await expect(
+        builtinTaskAgent({
+          ai_provider: "openai",
+          ai_model: "gpt-test",
+          ai_keys: {},
+          ai_custom_providers: [lemonade],
+          ai_provider_models: { lemonade: [{ id: "off", name: "off", enabled: false }, { id: "Qwen3-4B", name: "Qwen3-4B", enabled: true }] },
+        } as never),
+      ).resolves.toEqual({ agentId: "lemonade", modelId: "Qwen3-4B" });
+    });
+
+    it("asks for a model, not a key, when its list is empty", async () => {
+      const refused = builtinTaskAgent({
+        ai_provider: "lemonade",
+        ai_model: "",
+        ai_keys: {},
+        ai_custom_providers: [lemonade],
+      } as never);
+      await expect(refused).rejects.toThrow("No model is chosen for lemonade");
+      await expect(refused).rejects.not.toThrow("No AI provider has an API key");
+    });
+
+    it("creates the task through the tool instead of refusing for a missing key", async () => {
+      mocks.getConfig.mockResolvedValue({
+        ai_provider: "lemonade",
+        ai_model: "Qwen3-4B",
+        ai_keys: {},
+        ai_custom_providers: [lemonade],
+      });
+      mocks.createResearchTask.mockResolvedValue(task("t1", { title: "Survey" }));
+      mocks.startResearchTask.mockResolvedValue(task("t1", { title: "Survey", status: "running" }));
+      const tools = createResearchTaskAiTools();
+
+      const res = await tools.research_task_create.execute({ title: "Survey", prompt: "Find papers" });
+
+      expect(res).not.toHaveProperty("error");
+      expect(mocks.createResearchTask).toHaveBeenCalledWith(
+        expect.objectContaining({ runtimeId: "builtin", agentId: "lemonade", modelId: "Qwen3-4B" }),
+      );
+    });
+  });
 });

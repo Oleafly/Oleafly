@@ -4,7 +4,9 @@ import {
   getProvider,
   defaultModel,
   credentialMeta,
+  effectiveProviderKeys,
   hasConfiguredProvider,
+  isProviderConfigured,
   mergeCustomProviders,
   pickActiveProvider,
 } from "./providers";
@@ -24,10 +26,11 @@ describe("ai-providers", () => {
     expect(getProvider("does-not-exist")).toBeUndefined();
   });
 
-  it("defaultModel returns the provider's first model, or a safe fallback", () => {
+  it("defaultModel returns the provider's first model, and nothing for a provider the catalog lacks", () => {
     const first = getProvider("openai")?.models[0]?.id;
     expect(defaultModel("openai")).toBe(first);
-    expect(defaultModel("does-not-exist")).toBe("gpt-4o-mini");
+    // A custom provider has no preset model; borrowing another provider's would be sent to its endpoint.
+    expect(defaultModel("does-not-exist")).toBe("");
   });
 
   it("credentialMeta asks for a host URL for local Ollama, an API key otherwise", () => {
@@ -126,6 +129,94 @@ describe("custom providers", () => {
     });
     expect(r.providerId).toBe("local-llm");
     expect(r.credential).toBe("");
+  });
+});
+
+describe("active provider with custom providers", () => {
+  const lemonade = { id: "lemonade", name: "Lemonade", baseURL: "http://localhost:13305/v1", keyOptional: true };
+  const model = (id: string, enabled = true) => ({ id, enabled });
+
+  it("never gives the legacy single key to a custom provider or an Ollama host", () => {
+    const custom = pickActiveProvider({
+      ai_provider: "lemonade",
+      ai_model: "qwen",
+      ai_api_key: "sk-old-openai",
+      ai_custom_providers: [lemonade],
+    });
+    expect(custom).toEqual({ providerId: "lemonade", modelId: "qwen", credential: "" });
+    expect(effectiveProviderKeys({ ai_provider: "lemonade", ai_api_key: "sk-old-openai" })).toEqual({});
+    expect(effectiveProviderKeys({ ai_provider: "ollama", ai_api_key: "sk-old-openai" })).toEqual({});
+    expect(effectiveProviderKeys({ ai_provider: "groq", ai_api_key: "gsk-legacy" })).toEqual({ groq: "gsk-legacy" });
+  });
+
+  it("has no model of its own until its list has one", () => {
+    expect(pickActiveProvider({ ai_provider: "lemonade", ai_custom_providers: [lemonade] })).toEqual({
+      providerId: "lemonade",
+      modelId: "",
+      credential: "",
+    });
+  });
+
+  it("drops a saved model the custom provider does not list", () => {
+    const r = pickActiveProvider({
+      ai_provider: "lemonade",
+      ai_model: "gpt-4o-mini",
+      ai_custom_providers: [lemonade],
+      ai_provider_models: { lemonade: [model("qwen", false), model("llama"), model("phi")] },
+    });
+    expect(r.modelId).toBe("llama");
+    const kept = pickActiveProvider({
+      ai_provider: "lemonade",
+      ai_model: "phi",
+      ai_custom_providers: [lemonade],
+      ai_provider_models: { lemonade: [model("llama"), model("phi")] },
+    });
+    expect(kept.modelId).toBe("phi");
+  });
+
+  it("keeps a saved model of a custom provider whose list is empty or not fetched", () => {
+    const base = { ai_provider: "lemonade", ai_model: "typed-by-hand", ai_custom_providers: [lemonade] };
+    expect(pickActiveProvider(base).modelId).toBe("typed-by-hand");
+    expect(pickActiveProvider({ ...base, ai_provider_models: { lemonade: [model("off", false)] } }).modelId).toBe(
+      "typed-by-hand",
+    );
+  });
+
+  it("uses the fallback provider's catalog default if it is enabled, else its first enabled model", () => {
+    const groq = getProvider("groq")?.models.map((m) => m.id) ?? [];
+    const base = { ai_provider: "openai", ai_model: "gpt-4o", ai_keys: { groq: "gsk-x" } };
+    expect(pickActiveProvider(base).modelId).toBe(defaultModel("groq"));
+    expect(
+      pickActiveProvider({ ...base, ai_provider_models: { groq: [model("a"), model(groq[0]), model("b")] } }).modelId,
+    ).toBe(groq[0]);
+    expect(
+      pickActiveProvider({ ...base, ai_provider_models: { groq: [model(groq[0], false), model("a"), model("b")] } })
+        .modelId,
+    ).toBe("a");
+  });
+
+  it("falls back to the key-optional provider's own first enabled model", () => {
+    const r = pickActiveProvider({
+      ai_provider: "openai",
+      ai_model: "gpt-4o",
+      ai_custom_providers: [lemonade],
+      ai_provider_models: { lemonade: [model("qwen", false), model("llama")] },
+    });
+    expect(r).toEqual({ providerId: "lemonade", modelId: "llama", credential: "" });
+  });
+});
+
+describe("isProviderConfigured", () => {
+  const local = { id: "local", name: "Local", baseURL: "http://127.0.0.1:8080", keyOptional: true };
+  const gated = { id: "gated", name: "Gated", baseURL: "https://gw.example/v1" };
+
+  it("needs a non-blank key or host, or a key-optional custom provider", () => {
+    expect(isProviderConfigured("groq", { groq: "gsk" })).toBe(true);
+    expect(isProviderConfigured("groq", { groq: "   " })).toBe(false);
+    expect(isProviderConfigured("groq", {})).toBe(false);
+    expect(isProviderConfigured("local", {}, [local, gated])).toBe(true);
+    expect(isProviderConfigured("gated", {}, [local, gated])).toBe(false);
+    expect(isProviderConfigured("gated", { gated: "k" }, [local, gated])).toBe(true);
   });
 });
 

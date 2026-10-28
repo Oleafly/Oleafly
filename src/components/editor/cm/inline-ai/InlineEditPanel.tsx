@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getConfig, setConfig as saveConfig, type AppConfig } from "@/lib/tauri";
 import {
-  PROVIDERS,
+  effectiveProviderKeys,
   hasConfiguredProvider,
   pickActiveProvider,
 } from "@/lib/ai-providers";
+import { configuredModelGroups } from "@/lib/ai-model-groups";
 import { runInlineCompletion } from "@/lib/ai-inline";
 import { logError } from "@/lib/log";
 import { useInlineEditStore } from "@/store/inlineEdit";
@@ -198,38 +199,28 @@ export function InlineEditPanel() {
   };
 
   const selectModel = async (providerId: string, modelId: string) => {
-    const current = config ?? (await getConfig());
+    // The panel's copy can be older than the saved settings; change only the model.
+    const current = await getConfig();
     const next = { ...current, ai_provider: providerId, ai_model: modelId };
     setConfig(next);
     await saveConfig(next);
     window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: next }));
   };
 
-  const keys = { ...config?.ai_keys };
-  if (config?.ai_api_key && config.ai_provider && !keys[config.ai_provider]) {
-    keys[config.ai_provider] = config.ai_api_key;
-  }
   const active = config ? pickActiveProvider(config) : null;
-  const modelGroups = PROVIDERS.filter((provider) => (keys[provider.id] ?? "").trim()).map(
-    (provider) => {
-      const available =
-        provider.id === "ollama" && ollamaModels.length > 0
-          ? ollamaModels.map((id) => ({ id, name: id }))
-          : [...provider.models];
-      if (
-        active?.providerId === provider.id &&
-        active.modelId &&
-        !available.some((model) => model.id === active.modelId)
-      ) {
-        available.push({ id: active.modelId, name: active.modelId });
-      }
-      return {
-        id: provider.id,
-        name: provider.name,
-        models: available,
-      };
-    },
-  );
+  const modelGroups = config
+    ? configuredModelGroups(
+        {
+          keys: effectiveProviderKeys(config),
+          customProviders: config.ai_custom_providers ?? [],
+          providerModels: config.ai_provider_models ?? {},
+        },
+        {
+          liveOllama: ollamaModels,
+          keep: active ? { providerId: active.providerId, modelId: active.modelId } : undefined,
+        },
+      )
+    : [];
 
   const renderPanel = () => {
     if (session.phase === "withdrawn") {
