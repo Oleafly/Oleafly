@@ -104,6 +104,7 @@ paths it expects to change. Trust prompts are answered through
 | Go to line in a long book | jumps across the 6,200-line book at four editor widths in a real browser land each target within two rows of the middle, keep every line number beside its line, and never hit CodeMirror's measure-loop limit | 92, `controller.test.ts` |
 | Unified editor intelligence | one real multi-file project proves Source/Visual structure, resolved references, resolved citations, LaTeX completion, citation completion, grammar, spelling, live inline math and the integrated PDF controls all agree on the same project revision | 58 |
 | File tree row actions | real `More actions for …` three-dot controls activate rename, copy, set-main, delete, and nested create/import actions | 26, 54 |
+| File tree delete confirmation | Delete asks in the app's own dialog with `window.confirm` left as the dialog plugin installs it; Cancel keeps the file, Delete removes it, and a second question where the folder has no trash is answered too | 26 |
 | File tree collision handling | rename/move conflict, Cancel, Keep both, Replace, content preservation | 26 |
 | File tree drag-and-drop | move into folder and collision-safe Keep both flow | 26 |
 | File/folder import | real header + row import actions; DEV-only picker-result seam supplies exact external paths; root files, row files, recursive folders, binary/text byte equality, exact nested destination, reopen persistence | 54 |
