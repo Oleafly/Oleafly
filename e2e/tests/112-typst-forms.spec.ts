@@ -23,10 +23,30 @@ async function openVisual(page: Page) {
   await expect(page.locator(".cm-editor.ofl-visual-parsed")).toBeVisible({ timeout: 20_000 });
 }
 
+// The scripts below name fixed files, so no test value is ever pasted into code.
 async function openFormsFile(page: Page) {
   await page.evaluate(
     `import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().openFile("oleafly-forms.toml"))`,
   );
+}
+
+async function openMainDocument(page: Page) {
+  await page.evaluate(
+    `import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().openFile(useFilesStore.getState().mainDoc))`,
+  );
+}
+
+async function saveActiveFile(page: Page) {
+  await page.evaluate(`import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().saveActive())`);
+}
+
+// Edits the definitions the way a user does: in the editor, then saved. A library project has
+// no folder watcher, so a file written behind the editor's back reloads nothing; saving does.
+async function editFormsFile(page: Page, text: string) {
+  await openFormsFile(page);
+  await expect.poll(() => editorSource(page), { timeout: 10_000 }).toContain("[tool.oleafly]");
+  await replaceEditorSource(page, text);
+  await saveActiveFile(page);
 }
 
 async function writeFixtureProject(page: Page) {
@@ -73,20 +93,15 @@ test("editing oleafly-forms.toml updates the cards and marks a broken definition
     tauriPage.locator(".cm-content .ofl-visual-form-card .ofl-visual-form-title").filter({ hasText: text });
   await expect(formTitle("Memo header")).toBeVisible({ timeout: 30_000 });
 
-  await writeProjectText(
-    tauriPage,
-    "oleafly-forms.toml",
-    fixture("project/oleafly-forms.toml").replace('label = "Memo header"', 'label = "Team memo"'),
-  );
+  await editFormsFile(tauriPage, fixture("project/oleafly-forms.toml").replace('label = "Memo header"', 'label = "Team memo"'));
+  await openMainDocument(tauriPage);
   await expect(formTitle("Team memo")).toBeVisible({ timeout: 30_000 });
   await expect(formTitle("Memo header")).toBeHidden();
 
-  await writeProjectText(
+  await editFormsFile(
     tauriPage,
-    "oleafly-forms.toml",
     fixture("project/oleafly-forms.toml").replace('kind = "text", label = "To"', 'kind = "date", label = "To"'),
   );
-  await openFormsFile(tauriPage);
   await expect(tauriPage.locator(".cm-editor .cm-lintRange-error").first()).toBeVisible({ timeout: 30_000 });
 });
 
