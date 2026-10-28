@@ -102,6 +102,19 @@ describe("configured model groups", () => {
     expect(unchanged[0].models).toHaveLength(1);
   });
 
+  it("keeps nothing for a blank active model, so no phantom row appears", () => {
+    const withCustom = source({
+      customProviders: [lmStudio],
+      providerModels: { lmstudio: [stored("qwen")] },
+    });
+    for (const modelId of ["", "  "]) {
+      const groups = configuredModelGroups(withCustom, { keep: { providerId: "lmstudio", modelId } });
+      expect(groups).toEqual([{ id: "lmstudio", name: "LM Studio", models: [{ id: "qwen", name: "QWEN" }] }]);
+    }
+    const empty = source({ customProviders: [lmStudio], providerModels: { lmstudio: [] } });
+    expect(configuredModelGroups(empty, { keep: { providerId: "lmstudio", modelId: "" } })).toEqual([]);
+  });
+
   it("include filters models and toModel decorates them", () => {
     const metadata = {
       name: "Vision",

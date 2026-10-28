@@ -189,7 +189,14 @@
     "addLabel": "Add label",
     "convertLatexMath": "Convert LaTeX math to Typst",
     "noLatexMath": "Select some LaTeX math first.",
-    "renameFile": "Rename file…"
+    "renameFile": "Rename file…",
+    "cut": "Cut",
+    "copy": "Copy",
+    "paste": "Paste",
+    "selectAll": "Select all",
+    "format": "Format",
+    "insert": "Insert",
+    "importExport": "Import and export"
   },
   "shell": {
     "noFileOpenTab": "No file open",
@@ -322,7 +329,8 @@
     "improveWriting": "Improve Writing",
     "fixGrammar": "Fix Grammar & Style",
     "expand": "Expand & Elaborate",
-    "findReferences": "Find References"
+    "findReferences": "Find References",
+    "customPrompt": "Describe the change…"
   },
   "versioning": {
     "dismiss": "Dismiss versioning",
@@ -952,6 +960,12 @@
         "groupAuto": "number with the other bibliographies",
         "groupNone": "number on its own",
         "groupNamed": "number with bibliographies of the same name"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "Table",
+        "equation": "Display equation"
       }
     },
     "wysiwyg": {

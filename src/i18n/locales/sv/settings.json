@@ -236,18 +236,28 @@
       "addDescription": "Anslut valfri slutpunkt som är kompatibel med OpenAI via dess bas-URL.",
       "addTitle": "Lägg till egen leverantör",
       "baseUrlLabel": "Bas-URL",
-      "baseUrlNote": "Din sparade API-nyckel skickas till den här nya adressen.",
+      "baseUrlNote": "Den sparade API-nyckeln skickas inte till en ny adress. Ange den igen eller lämna fältet tomt om den nya servern inte behöver någon nyckel.",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "{{url}} avvisade API-nyckeln.",
+        "rejected": "{{url}} returnerade ingen modellista. De flesta lokala servrar behöver /v1 i slutet av adressen, t.ex. http://localhost:13305/v1.",
+        "timeout": "{{url}} tog för lång tid på sig att lista sina modeller.",
+        "unreachable": "Det gick inte att nå {{url}}. Kontrollera att servern körs och att adressen stämmer.",
+        "unreadable": "{{url}} svarade men listade inga modeller. Kontrollera att servern har en modell nedladdad."
+      },
       "editDescription": "Ändra namnet eller bas-URL:en.",
       "editTitle": "Redigera egen leverantör",
       "errors": {
         "addFailed": "Det gick inte att lägga till den leverantören.",
+        "baseUrlCredentials": "Skriv nyckeln i fältet API-nyckel, inte i URL:en.",
         "baseUrlHost": "URL:en saknar en värd.",
         "baseUrlInvalid": "Ange en fullständig URL, t.ex. https://api.example.com/v1 eller http://localhost:1234/v1.",
         "baseUrlProtocol": "Använd https://, eller http:// för en lokal server.",
+        "baseUrlQuery": "Ta bort ? och allt som kommer efter.",
         "baseUrlRequired": "Bas-URL krävs.",
         "idFormat": "Använd bara små bokstäver, siffror och bindestreck, t.ex. acme.",
         "idRequired": "ID krävs.",
+        "idTooLong": "Använd högst 64 tecken.",
         "nameRequired": "Namn krävs.",
         "saveFailed": "Det gick inte att spara den leverantören."
       },
@@ -258,7 +268,9 @@
       "keyPlaceholder": "Lämna tomt om ingen krävs",
       "keyPlaceholderStored": "Den sparade nyckeln blir kvar om du inte anger en ny",
       "namePlaceholder": "Acme",
-      "submitAdd": "Lägg till leverantör"
+      "saveAnyway": "Spara ändå",
+      "submitAdd": "Lägg till leverantör",
+      "submitAddAnyway": "Lägg till utan modeller"
     },
     "instructions": {
       "capabilitiesTitle": "Agentens förmågor",
@@ -425,11 +437,13 @@
       "messages": {
         "keyRemoved": "Nyckeln för {{provider}} är borttagen.",
         "keyRemovedAccessDisabled": "Nyckeln för {{provider}} är borttagen. AI-åtkomsten är avstängd.",
-        "keySavedAddModels": "Nyckeln för {{provider}} är sparad. Lägg till modeller manuellt nedan.",
         "keySavedCheckedOnUse": "Nyckeln för {{provider}} är sparad. Den kontrolleras vid första användningen.",
+        "keySavedModelsNotListed": "Nyckeln för {{provider}} är sparad, men inga modeller listades. {{reason}}",
         "ollamaConnected": "Ollama anslutet · {{model}}",
         "preferencesReset": "Inställningarna för AI-assistenten är återställda till standard.",
         "providerAdded": "{{provider}} är tillagd.",
+        "providerAddedAt": "{{provider}} är tillagd på {{url}}.",
+        "providerAddedWithoutModels": "{{provider}} är tillagd utan modeller. Lägg till en modell med namn nedan.",
         "providerConnected": "{{provider}} är ansluten.",
         "providerUpdated": "{{provider}} är uppdaterad.",
         "providerUpdatedWithoutModels": "{{provider}} är uppdaterad. Dess modellista kunde inte uppdateras."

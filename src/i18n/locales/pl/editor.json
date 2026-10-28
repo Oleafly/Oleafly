@@ -189,7 +189,14 @@
     "addLabel": "Dodaj etykietę",
     "convertLatexMath": "Konwertuj wzory LaTeX na Typst",
     "noLatexMath": "Najpierw zaznacz wzór LaTeX.",
-    "renameFile": "Zmień nazwę pliku…"
+    "renameFile": "Zmień nazwę pliku…",
+    "cut": "Wytnij",
+    "copy": "Kopiuj",
+    "paste": "Wklej",
+    "selectAll": "Zaznacz wszystko",
+    "format": "Formatowanie",
+    "insert": "Wstaw",
+    "importExport": "Import i eksport"
   },
   "shell": {
     "noFileOpenTab": "Nie otwarto pliku",
@@ -330,7 +337,8 @@
     "improveWriting": "Ulepsz tekst",
     "fixGrammar": "Popraw gramatykę i styl",
     "expand": "Rozwiń i uszczegółów",
-    "findReferences": "Znajdź odwołania"
+    "findReferences": "Znajdź odwołania",
+    "customPrompt": "Opisz zmianę…"
   },
   "versioning": {
     "dismiss": "Zamknij wersjonowanie",
@@ -980,6 +988,12 @@
         "groupAuto": "numeracja wspólna z innymi bibliografiami",
         "groupNone": "numeracja osobna",
         "groupNamed": "numeracja wspólna z bibliografiami o tej samej nazwie"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "Tabela",
+        "equation": "Wzór wyeksponowany"
       }
     },
     "wysiwyg": {

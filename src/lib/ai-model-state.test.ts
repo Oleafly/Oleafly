@@ -395,6 +395,11 @@ describe("choosing the active model after a key is saved", () => {
     expect(pickActiveModel([], "glm-5.2")).toBe("glm-5.2");
   });
 
+  it("picks no model for a custom provider that has none and no catalog default", () => {
+    expect(pickActiveModel([], "")).toBe("");
+    expect(pickActiveModel([stored("mixtral-local")], "")).toBe("mixtral-local");
+  });
+
   it("replaces a selected model removed by live discovery with an enabled survivor", () => {
     const models = [stored("disabled", false), stored("available")];
     expect(reconcileActiveModel(models, "deprecated", "catalog-default")).toBe("available");

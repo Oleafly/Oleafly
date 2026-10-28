@@ -619,7 +619,7 @@ fn store_errors_carry_their_codes_messages_and_round_rules() {
         (
             StoreError::Revoked,
             "cloud.revoked",
-            "dropbox access was revoked",
+            "cloud access was revoked",
             true,
         ),
         (
@@ -643,13 +643,13 @@ fn store_errors_carry_their_codes_messages_and_round_rules() {
         (
             StoreError::QuotaFull,
             "cloud.quota_full",
-            "dropbox is full",
+            "the cloud storage is full",
             false,
         ),
         (
             StoreError::RateLimited,
             "cloud.rate_limited",
-            "dropbox asked to slow down",
+            "the cloud service asked to slow down",
             true,
         ),
         (

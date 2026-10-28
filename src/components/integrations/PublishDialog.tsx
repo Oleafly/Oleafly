@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { GitBranch, Github, Lock, X } from "lucide-react";
+import { GitBranch, Lock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ForgeAccountSelect } from "@/components/integrations/ForgeAccountSelect";
 import { ForgeRepoList } from "@/components/integrations/ForgeRepoList";
+import { ForgeBrandIcon } from "@/components/settings/git-hosting/ForgeBrandIcon";
 import { useForgeAccountsStore } from "@/store/forge-accounts";
 import {
   forgeCreateRepo,
@@ -69,7 +70,11 @@ function replaceRemote(projectId: string, url: string) {
 }
 
 function AccountIcon({ account }: Readonly<{ account: ForgeAccount | null }>) {
-  return account?.kind === "github" ? <Github className="size-4" /> : <GitBranch className="size-4" />;
+  return account ? (
+    <ForgeBrandIcon base={account.base} kind={account.kind} flavor={account.flavor} className="size-4" />
+  ) : (
+    <GitBranch className="size-4" />
+  );
 }
 
 /** Publish a project: create a repository on a Git hosting account, link one
@@ -393,6 +398,24 @@ export function PublishDialog({
     </div>
   );
 
+  // Bottom left, beside the tab's action button.
+  const renderAccountPicker = (target: ForgeAccount) =>
+    accounts.length > 1 ? (
+      <ForgeAccountSelect
+        accounts={accounts}
+        value={target.base}
+        onValueChange={(value) => {
+          setAccountBase(value);
+          setSelected(null);
+          setReplaceTarget(null);
+          setSecretsPrompt(null);
+        }}
+        label={t(($) => $.library.github.accountLabel)}
+        testId="publish-account"
+        className="min-w-0 max-w-[60%]"
+      />
+    ) : null;
+
   const renderNew = (target: ForgeAccount) => (
     <div className="flex h-full flex-col">
       <div className="space-y-3">
@@ -425,14 +448,17 @@ export function PublishDialog({
           />
         </label>
       </div>
-      <Button
-        className="mt-auto ml-auto px-5"
-        disabled={visibleBusy || !repoName.trim()}
-        onClick={() => void publishNew()}
-      >
-        {visibleBusy ? <Spinner /> : <AccountIcon account={target} />}
-        {t(($) => $.library.github.createAndPush)}
-      </Button>
+      <div className="mt-auto flex items-center gap-2 pt-3">
+        {renderAccountPicker(target)}
+        <Button
+          className="ml-auto px-5"
+          disabled={visibleBusy || !repoName.trim()}
+          onClick={() => void publishNew()}
+        >
+          {visibleBusy ? <Spinner /> : <AccountIcon account={target} />}
+          {t(($) => $.library.github.createAndPush)}
+        </Button>
+      </div>
     </div>
   );
 
@@ -447,18 +473,21 @@ export function PublishDialog({
           disabled={visibleBusy}
         />
       </div>
-      <Tooltip label={t(($) => $.library.github.linkHint)}>
-        <Button
-          className="w-full"
-          disabled={visibleBusy || !selected}
-          onClick={() => {
-            if (selected) void linkAndPush("existing", selected.cloneUrl);
-          }}
-        >
-          {visibleBusy ? <Spinner /> : <GitBranch className="size-4" />}
-          {t(($) => $.library.github.linkAndPush)}
-        </Button>
-      </Tooltip>
+      <div className="flex items-center gap-2">
+        {renderAccountPicker(target)}
+        <Tooltip label={t(($) => $.library.github.linkHint)} className="ml-auto">
+          <Button
+            className="px-5"
+            disabled={visibleBusy || !selected}
+            onClick={() => {
+              if (selected) void linkAndPush("existing", selected.cloneUrl);
+            }}
+          >
+            {visibleBusy ? <Spinner /> : <AccountIcon account={target} />}
+            {t(($) => $.library.github.linkAndPush)}
+          </Button>
+        </Tooltip>
+      </div>
     </div>
   );
 
@@ -536,36 +565,6 @@ export function PublishDialog({
           </Button>
         </Tooltip>
       </div>
-
-      {accounts.length > 1 && account && shownTab !== "url" ? (
-        <div className="flex shrink-0 items-center gap-2 px-4">
-          <span className="text-xs text-muted-foreground">{t(($) => $.library.github.accountLabel)}</span>
-          <Select
-            value={account.base}
-            onValueChange={(value) => {
-              setAccountBase(value);
-              setSelected(null);
-              setReplaceTarget(null);
-              setSecretsPrompt(null);
-            }}
-          >
-            <SelectTrigger
-              className="h-8 w-auto min-w-48 text-xs"
-              data-testid="publish-account"
-              aria-label={t(($) => $.library.github.accountLabel)}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="z-[100]">
-              {accounts.map((item) => (
-                <SelectItem key={item.base} value={item.base}>
-                  {`${hostLabel(item.base)} · ${item.login}`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : null}
 
       <Tabs
         value={shownTab}

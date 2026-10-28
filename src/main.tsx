@@ -23,6 +23,14 @@ import { initializeDesktopI18n, syncLocaleFromConfig } from "@/i18n/desktop";
 import { readCachedPreference } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
 import { useTypstMigrationStore } from "@/store/typst-migration";
+import { useRenameStore } from "@/store/rename";
+import { useFileRenameStore } from "@/store/file-rename";
+import { useCitationStore } from "@/store/citation";
+import { useZoteroDialogStore } from "@/store/zotero-dialogs";
+import { useTableImportStore } from "@/store/table-import";
+import { useFigureDialogStore } from "@/store/figure-dialog";
+import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
+import { mountOnFirstOpen } from "@/lib/mount-on-first-open";
 import { registerContributions } from "@/contributions";
 import { installDesktopViewportGuard } from "@/lib/desktop-viewport";
 import { installSelectAllRouting } from "@/lib/select-all";
@@ -113,26 +121,52 @@ const UpdateWindow = lazy(() =>
 const PreviewWindow = lazy(() =>
   import("@/components/preview/PreviewWindow").then((module) => ({ default: module.PreviewWindow })),
 );
-const RenameDialog = lazy(() =>
-  import("@/components/layout/RenameDialog").then((module) => ({ default: module.RenameDialog })),
+const RenameDialog = mountOnFirstOpen(
+  lazy(() =>
+    import("@/components/layout/RenameDialog").then((module) => ({ default: module.RenameDialog })),
+  ),
+  () => useRenameStore((state) => state.sym !== null),
 );
-const FileRenameDialog = lazy(() =>
-  import("@/components/layout/FileRenameDialog").then((module) => ({ default: module.FileRenameDialog })),
+const FileRenameDialog = mountOnFirstOpen(
+  lazy(() =>
+    import("@/components/layout/FileRenameDialog").then((module) => ({ default: module.FileRenameDialog })),
+  ),
+  () => useFileRenameStore((state) => state.target !== null),
 );
+// Mounted from the start: it runs the reference updates for renamed files.
 const FileReferencesDialog = lazy(() =>
   import("@/components/files/FileReferencesDialog").then((module) => ({ default: module.FileReferencesDialog })),
 );
-const AddCitationDialog = lazy(() =>
-  import("@/components/layout/AddCitationDialog").then((module) => ({ default: module.AddCitationDialog })),
+const AddCitationDialog = mountOnFirstOpen(
+  lazy(() =>
+    import("@/components/layout/AddCitationDialog").then((module) => ({ default: module.AddCitationDialog })),
+  ),
+  () => useCitationStore((state) => state.open),
 );
-const ZoteroDialogs = lazy(() =>
-  import("@/components/zotero/ZoteroDialogs").then((module) => ({ default: module.ZoteroDialogs })),
+const ZoteroDialogs = mountOnFirstOpen(
+  lazy(() =>
+    import("@/components/zotero/ZoteroDialogs").then((module) => ({ default: module.ZoteroDialogs })),
+  ),
+  () =>
+    useZoteroDialogStore(
+      (state) =>
+        state.bulk !== null ||
+        state.bibliographyChoice !== null ||
+        state.handEdits !== null ||
+        state.handList !== null,
+    ),
 );
-const TableImportDialog = lazy(() =>
-  import("@/components/editor/TableImportDialog").then((module) => ({ default: module.TableImportDialog })),
+const TableImportDialog = mountOnFirstOpen(
+  lazy(() =>
+    import("@/components/editor/TableImportDialog").then((module) => ({ default: module.TableImportDialog })),
+  ),
+  () => useTableImportStore((state) => state.open),
 );
-const FigureDialog = lazy(() =>
-  import("@/components/editor/FigureDialog").then((module) => ({ default: module.FigureDialog })),
+const FigureDialog = mountOnFirstOpen(
+  lazy(() =>
+    import("@/components/editor/FigureDialog").then((module) => ({ default: module.FigureDialog })),
+  ),
+  () => useFigureDialogStore((state) => state.open),
 );
 const PresentationWindow = lazy(() =>
   import("@/components/presentation/PresentationWindow").then((module) => ({ default: module.PresentationWindow })),
@@ -148,8 +182,11 @@ function TypstMigrationHost() {
   const open = useTypstMigrationStore((state) => state.open);
   return open ? <TypstMigrationDialog /> : null;
 }
-const TypstDocumentPanels = lazy(() =>
-  import("@/components/editor/TypstDocumentPanels").then((module) => ({ default: module.TypstDocumentPanels })),
+const TypstDocumentPanels = mountOnFirstOpen(
+  lazy(() =>
+    import("@/components/editor/TypstDocumentPanels").then((module) => ({ default: module.TypstDocumentPanels })),
+  ),
+  () => useTypstDocumentPanelStore((state) => state.panel !== null),
 );
 
 // Dev builds only; the conditional import keeps devtools out of the bundle.

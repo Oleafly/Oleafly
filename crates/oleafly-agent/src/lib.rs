@@ -44,6 +44,7 @@ pub use tools::orchestrator::{
 };
 pub use tools::parallel::ToolGate;
 pub use tools::registry::{ParallelPolicy, RegisteredTool, ToolExposure, ToolRegistry};
+pub use wire::replays_reasoning;
 pub use wire::server_tools::{native_web, NativeWeb};
 
 use std::time::Duration;

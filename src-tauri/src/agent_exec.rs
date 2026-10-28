@@ -597,23 +597,80 @@ pub fn agent_exec_cwd(project_id: String) -> Result<String, String> {
         .ok_or_else(|| "project path is not valid UTF-8".to_string())
 }
 
-async fn read_stream_bounded<R>(reader: &mut R, retained: &mut Vec<u8>, limit: usize)
+/// Keeps the start and the end of one output stream. The end, where commands
+/// print their errors and summaries, gets two thirds of the room.
+struct StreamCapture {
+    head: Vec<u8>,
+    tail: VecDeque<u8>,
+    len: usize,
+    head_limit: usize,
+    tail_limit: usize,
+}
+
+impl StreamCapture {
+    fn new(limit: usize) -> Self {
+        let head_limit = limit / 3;
+        Self {
+            head: Vec::with_capacity(head_limit),
+            tail: VecDeque::new(),
+            len: 0,
+            head_limit,
+            tail_limit: limit - head_limit,
+        }
+    }
+
+    fn push(&mut self, bytes: &[u8]) {
+        self.len = self.len.saturating_add(bytes.len());
+        let to_head = self
+            .head_limit
+            .saturating_sub(self.head.len())
+            .min(bytes.len());
+        self.head.extend_from_slice(&bytes[..to_head]);
+        self.tail.extend(&bytes[to_head..]);
+        let excess = self.tail.len().saturating_sub(self.tail_limit);
+        self.tail.drain(..excess);
+    }
+
+    /// The stream cut to `budget` bytes (at most the capture's limit), with a
+    /// note where the middle was dropped.
+    fn into_bytes(self, budget: usize) -> Vec<u8> {
+        let tail = Vec::from(self.tail);
+        let mut out = self.head;
+        if self.len <= budget {
+            out.extend_from_slice(&tail);
+            return out;
+        }
+        let keep_tail = (budget - budget / 3).min(tail.len());
+        let keep_head = (budget - keep_tail).min(out.len());
+        out.truncate(keep_head);
+        let dropped = self.len - keep_head - keep_tail;
+        out.extend_from_slice(
+            format!("\n… [truncated {dropped} bytes from the middle] …\n").as_bytes(),
+        );
+        out.extend_from_slice(&tail[tail.len() - keep_tail..]);
+        out
+    }
+}
+
+async fn capture_stream<R>(reader: &mut R, capture: &mut StreamCapture)
 where
     R: tokio::io::AsyncRead + Unpin,
 {
-    let retained_limit = limit.saturating_add(1);
     let mut chunk = [0u8; 8192];
     loop {
         match reader.read(&mut chunk).await {
             Ok(0) | Err(_) => break,
-            Ok(read) => {
-                let remaining = retained_limit.saturating_sub(retained.len());
-                if remaining > 0 {
-                    retained.extend_from_slice(&chunk[..read.min(remaining)]);
-                }
-            }
+            Ok(read) => capture.push(&chunk[..read]),
         }
     }
+}
+
+/// Splits the output budget between stdout and stderr. A stream that fits in
+/// half of it is kept whole and the other gets the rest, so a long build log
+/// on stdout cannot crowd out the error printed on stderr.
+fn split_output_budget(stdout_len: usize, stderr_len: usize, budget: usize) -> (usize, usize) {
+    let stderr_budget = stderr_len.min(budget - stdout_len.min(budget / 2));
+    (budget - stderr_budget, stderr_budget)
 }
 
 async fn execute_command(
@@ -733,17 +790,17 @@ async fn execute_command_with_timeout(
 
     let mut stdout = child.stdout.take();
     let mut stderr = child.stderr.take();
-    let mut stdout_bytes = Vec::with_capacity(MAX_OUTPUT_BYTES + 1);
-    let mut stderr_bytes = Vec::with_capacity(MAX_OUTPUT_BYTES + 1);
+    let mut stdout_capture = StreamCapture::new(MAX_OUTPUT_BYTES);
+    let mut stderr_capture = StreamCapture::new(MAX_OUTPUT_BYTES);
     let read_streams = async {
         let read_stdout = async {
             if let Some(out) = stdout.as_mut() {
-                read_stream_bounded(out, &mut stdout_bytes, MAX_OUTPUT_BYTES).await;
+                capture_stream(out, &mut stdout_capture).await;
             }
         };
         let read_stderr = async {
             if let Some(err) = stderr.as_mut() {
-                read_stream_bounded(err, &mut stderr_bytes, MAX_OUTPUT_BYTES).await;
+                capture_stream(err, &mut stderr_capture).await;
             }
         };
         tokio::join!(read_stdout, read_stderr);
@@ -775,16 +832,12 @@ async fn execute_command_with_timeout(
     };
 
     let exit_code = status.and_then(|s| s.code());
-    let mut combined = stdout_bytes;
-    combined.extend(stderr_bytes);
-    let truncated = combined.len() > MAX_OUTPUT_BYTES;
-    if truncated {
-        combined.truncate(MAX_OUTPUT_BYTES);
-    }
-    let mut output = String::from_utf8_lossy(&combined).to_string();
-    if truncated {
-        output.push_str("\n… output truncated");
-    }
+    let truncated = stdout_capture.len.saturating_add(stderr_capture.len) > MAX_OUTPUT_BYTES;
+    let (stdout_budget, stderr_budget) =
+        split_output_budget(stdout_capture.len, stderr_capture.len, MAX_OUTPUT_BYTES);
+    let mut combined = stdout_capture.into_bytes(stdout_budget);
+    combined.extend(stderr_capture.into_bytes(stderr_budget));
+    let output = String::from_utf8_lossy(&combined).into_owned();
 
     Ok(ExecResult {
         command: command.to_string(),
@@ -1876,11 +1929,83 @@ mod tests {
             }
         });
 
-        let mut retained = Vec::new();
-        read_stream_bounded(&mut reader, &mut retained, 1024).await;
+        let mut capture = StreamCapture::new(1024);
+        capture_stream(&mut reader, &mut capture).await;
         write.await.unwrap();
 
-        assert_eq!(retained.len(), 1025);
+        assert_eq!(capture.len, 64 * 1024);
+        assert_eq!(capture.head.len() + capture.tail.len(), 1024);
+    }
+
+    #[test]
+    fn a_long_stream_keeps_its_start_and_end() {
+        let mut capture = StreamCapture::new(300);
+        capture.push(b"START");
+        for _ in 0..100 {
+            capture.push(&[b'x'; 100]);
+        }
+        capture.push(b"END");
+
+        let text = String::from_utf8(capture.into_bytes(300)).unwrap();
+
+        assert!(text.starts_with("START"), "{text}");
+        assert!(text.ends_with("END"), "{text}");
+        assert!(
+            text.contains("[truncated 9708 bytes from the middle]"),
+            "{text}"
+        );
+    }
+
+    #[test]
+    fn a_stream_within_its_budget_is_kept_whole() {
+        let stream = b"0123456789".repeat(25);
+        let mut capture = StreamCapture::new(300);
+        for chunk in stream.chunks(7) {
+            capture.push(chunk);
+        }
+
+        assert_eq!(capture.into_bytes(300), stream);
+    }
+
+    #[test]
+    fn a_short_stream_keeps_all_of_its_share_of_the_output() {
+        // A long build log on stdout must not crowd out the error on stderr.
+        assert_eq!(split_output_budget(1_000, 40, 100), (60, 40));
+        assert_eq!(split_output_budget(40, 1_000, 100), (40, 60));
+        assert_eq!(split_output_budget(1_000, 1_000, 100), (50, 50));
+        assert_eq!(split_output_budget(30, 40, 100), (60, 40));
+    }
+
+    #[cfg(not(windows))]
+    #[tokio::test(flavor = "current_thread")]
+    async fn oversized_stdout_keeps_its_end_and_stderr() {
+        let root = test_root("oversized-output");
+        let cwd = root.join("projects/proj");
+        let command = "head -c 307200 /dev/zero | tr '\\0' x; printf 'stdout-end\\n'; printf 'fatal: boom\\n' >&2; exit 3";
+        let state = AgentExecState::default();
+        let token = state.authorize("proj", command, "run-oversized").unwrap();
+
+        let result = execute_command(
+            &state,
+            &root,
+            "proj",
+            &cwd,
+            command.into(),
+            "run-oversized",
+            &token,
+        )
+        .await;
+
+        std::fs::remove_dir_all(&root).ok();
+        let exec = result.unwrap();
+        let skip = exec.output.chars().count().saturating_sub(200);
+        let end: String = exec.output.chars().skip(skip).collect();
+        assert!(exec.truncated);
+        assert_eq!(exec.exit_code, Some(3));
+        assert!(exec.output.starts_with("xxx"));
+        assert!(exec.output.contains("stdout-end\n"), "{end:?}");
+        assert!(exec.output.ends_with("fatal: boom\n"), "{end:?}");
+        assert!(exec.output.len() <= MAX_OUTPUT_BYTES + 100);
     }
 
     #[cfg(not(windows))]

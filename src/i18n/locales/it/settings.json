@@ -237,18 +237,28 @@
       "addDescription": "Collega qualsiasi endpoint compatibile con OpenAI tramite il suo URL di base.",
       "addTitle": "Aggiungi un provider personalizzato",
       "baseUrlLabel": "URL di base",
-      "baseUrlNote": "La chiave API salvata verrà inviata a questo nuovo indirizzo.",
+      "baseUrlNote": "La chiave API salvata non viene inviata a un nuovo indirizzo. Inseriscila di nuovo, oppure lascia il campo vuoto se il nuovo server non richiede una chiave.",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "{{url}} ha rifiutato la chiave API.",
+        "rejected": "{{url}} non ha restituito un elenco di modelli. La maggior parte dei server locali richiede /v1 alla fine dell'indirizzo, come http://localhost:13305/v1.",
+        "timeout": "{{url}} ha impiegato troppo tempo a elencare i suoi modelli.",
+        "unreachable": "Impossibile raggiungere {{url}}. Controlla che il server sia in esecuzione e che l'indirizzo sia corretto.",
+        "unreadable": "{{url}} ha risposto ma non ha elencato alcun modello. Controlla che sul server sia stato scaricato un modello."
+      },
       "editDescription": "Cambia il nome o l'URL di base.",
       "editTitle": "Modifica il provider personalizzato",
       "errors": {
         "addFailed": "Non è stato possibile aggiungere quel provider.",
+        "baseUrlCredentials": "Inserisci la chiave nel campo Chiave API, non nell'URL.",
         "baseUrlHost": "All'URL manca l'host.",
         "baseUrlInvalid": "Inserisci un URL completo, ad esempio https://api.example.com/v1 oppure http://localhost:1234/v1.",
         "baseUrlProtocol": "Usa https://, oppure http:// per un server locale.",
+        "baseUrlQuery": "Rimuovi il ? e tutto ciò che lo segue.",
         "baseUrlRequired": "L'URL di base è obbligatorio.",
         "idFormat": "Usa solo lettere minuscole, cifre e trattini, ad esempio acme.",
         "idRequired": "L'ID è obbligatorio.",
+        "idTooLong": "Usa al massimo 64 caratteri.",
         "nameRequired": "Il nome è obbligatorio.",
         "saveFailed": "Non è stato possibile salvare quel provider."
       },
@@ -259,7 +269,9 @@
       "keyPlaceholder": "Lasciala vuota se non serve",
       "keyPlaceholderStored": "La chiave salvata resta finché non ne inserisci una nuova",
       "namePlaceholder": "Acme",
-      "submitAdd": "Aggiungi il provider"
+      "saveAnyway": "Salva comunque",
+      "submitAdd": "Aggiungi il provider",
+      "submitAddAnyway": "Aggiungi senza modelli"
     },
     "instructions": {
       "capabilitiesTitle": "Capacità dell'agente",
@@ -427,11 +439,13 @@
       "messages": {
         "keyRemoved": "Chiave di {{provider}} rimossa.",
         "keyRemovedAccessDisabled": "Chiave di {{provider}} rimossa. L'accesso all'AI è disattivato.",
-        "keySavedAddModels": "Chiave di {{provider}} salvata. Aggiungi i modelli manualmente qui sotto.",
         "keySavedCheckedOnUse": "Chiave di {{provider}} salvata. Viene verificata al primo utilizzo.",
+        "keySavedModelsNotListed": "Chiave di {{provider}} salvata, ma non è stato elencato alcun modello. {{reason}}",
         "ollamaConnected": "Ollama collegato · {{model}}",
         "preferencesReset": "Preferenze dell'assistente AI riportate ai valori predefiniti.",
         "providerAdded": "{{provider}} aggiunto.",
+        "providerAddedAt": "{{provider}} aggiunto a {{url}}.",
+        "providerAddedWithoutModels": "{{provider}} aggiunto senza modelli. Aggiungi un modello per nome qui sotto.",
         "providerConnected": "{{provider}} collegato.",
         "providerUpdated": "{{provider}} aggiornato.",
         "providerUpdatedWithoutModels": "{{provider}} aggiornato. Non è stato possibile aggiornare il suo elenco di modelli."

@@ -174,7 +174,7 @@ export default function CloudSyncKeeper() {
         pause = window.setTimeout(resolve, ms);
       });
 
-    const checkDropbox = async (failures: number) => {
+    const checkCloud = async (failures: number) => {
       try {
         const result = await cloudWaitForChanges();
         if (result.changes && !stopped) {
@@ -188,11 +188,11 @@ export default function CloudSyncKeeper() {
       }
     };
 
-    const watchDropbox = async (failures: number) => {
+    const watchCloud = async (failures: number) => {
       if (stopped) return;
-      const next = await checkDropbox(failures);
+      const next = await checkCloud(failures);
       if (next.wait > 0 && !stopped) await sleep(next.wait);
-      void watchDropbox(next.failures);
+      void watchCloud(next.failures);
     };
 
     const stopWatchingRounds = useCloudStore.subscribe((state, previous) => {
@@ -215,7 +215,7 @@ export default function CloudSyncKeeper() {
     const onOnline = () => soon();
 
     schedule(delay());
-    void watchDropbox(0);
+    void watchCloud(0);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("online", onOnline);
     return () => {

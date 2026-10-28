@@ -823,21 +823,13 @@
         "linkedFolders_other": "{{size}} výstupu sestavení a nastavení pro {{count}} otevřených složek",
         "refresh": "Obnovit využití úložiště",
         "stats": {
-          "appData": "Data aplikace",
-          "appDataDetail": "Prostředky a nastavení",
-          "buildCache": "Mezipaměť sestavení",
-          "buildCacheDetail": "Vygenerovaný výstup",
           "files": "Soubory",
           "folders_one": "{{count}} složka",
           "folders_few": "{{count}} složky",
           "folders_many": "{{count}} složky",
           "folders_other": "{{count}} složek",
-          "gitHistory": "Historie Git",
-          "gitHistoryDetail": "Místní verze",
           "images": "Obrázky",
           "pdfs": "Soubory PDF",
-          "projectFiles": "Soubory projektů",
-          "projectFilesDetail": "Zdroje a metadata",
           "projects": "Projekty"
         },
         "subtitle": "Projekty, náhledy, historie a data aplikace",
@@ -846,7 +838,32 @@
         "unreadable_one": "{{count}} nepřístupná položka byla vynechána.",
         "unreadable_few": "{{count}} nepřístupné položky byly vynechány.",
         "unreadable_many": "{{count}} nepřístupné položky bylo vynecháno.",
-        "unreadable_other": "{{count}} nepřístupných položek bylo vynecháno."
+        "unreadable_other": "{{count}} nepřístupných položek bylo vynecháno.",
+        "groups": {
+          "projects": "Projekty",
+          "appData": "Data aplikace",
+          "elsewhere": "Jinde"
+        },
+        "parts": {
+          "documents": "Dokumenty a kód",
+          "images": "Obrázky",
+          "pdfs": "Soubory PDF",
+          "media": "Zvuk a video",
+          "data": "Datové soubory",
+          "otherFiles": "Další soubory",
+          "git": "Historie Git",
+          "build": "Mezipaměť sestavení",
+          "texDistribution": "Distribuce TeXu",
+          "agents": "Agenti AI",
+          "researchTasks": "Výzkumné úlohy",
+          "tools": "Nástroje",
+          "checkpoints": "Záchytné body",
+          "compileCache": "Mezipaměť kompilace",
+          "otherAppData": "Nastavení a další data",
+          "recycleBin": "Koš",
+          "linkedFolders": "Otevřené složky"
+        },
+        "other": "Ostatní"
       },
       "tabs": {
         "cloud": "Synchronizace v cloudu",

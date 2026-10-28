@@ -117,6 +117,10 @@ pub(crate) struct ProjectState {
     pub(crate) meta_base: Option<serde_json::Value>,
     #[serde(default)]
     pub(crate) remote_rev: Option<String>,
+    /// The stamp of the manifest `base` agrees with, to tell a manifest that
+    /// followed it from one written alongside it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) base_manifest: Option<oleafly_core::hlc::Stamp>,
     #[serde(default = "dirty_by_default")]
     pub(crate) remote_dirty: bool,
     #[serde(default)]
@@ -158,6 +162,7 @@ impl Default for ProjectState {
             base: BTreeMap::new(),
             meta_base: None,
             remote_rev: None,
+            base_manifest: None,
             remote_dirty: true,
             last_synced_ms: 0,
             last_error: None,

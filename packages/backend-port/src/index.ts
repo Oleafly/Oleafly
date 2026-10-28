@@ -460,6 +460,18 @@ export interface LibraryStorageSummary {
     unreadable_entries: number;
     linked_folders_bytes: number;
     linked_folder_count: number;
+    /** `source_bytes` split by kind of file. */
+    document_bytes: number;
+    media_bytes: number;
+    data_bytes: number;
+    other_project_bytes: number;
+    /** The named parts of `app_data_bytes`. */
+    tex_distribution_bytes: number;
+    agents_bytes: number;
+    research_tasks_bytes: number;
+    tools_bytes: number;
+    checkpoints_bytes: number;
+    compile_cache_bytes: number;
 }
 export interface RecycledProjectInfo {
     id: string;

@@ -189,7 +189,14 @@
     "addLabel": "Label hinzufügen",
     "convertLatexMath": "LaTeX-Formeln in Typst umwandeln",
     "noLatexMath": "Wählen Sie zuerst LaTeX-Formeln aus.",
-    "renameFile": "Datei umbenennen…"
+    "renameFile": "Datei umbenennen…",
+    "cut": "Ausschneiden",
+    "copy": "Kopieren",
+    "paste": "Einfügen",
+    "selectAll": "Alles auswählen",
+    "format": "Format",
+    "insert": "Element einfügen",
+    "importExport": "Import und Export"
   },
   "shell": {
     "noFileOpenTab": "Keine Datei geöffnet",
@@ -322,7 +329,8 @@
     "improveWriting": "Text verbessern",
     "fixGrammar": "Grammatik & Stil korrigieren",
     "expand": "Ausbauen & ausführen",
-    "findReferences": "Referenzen suchen"
+    "findReferences": "Referenzen suchen",
+    "customPrompt": "Änderung beschreiben…"
   },
   "versioning": {
     "dismiss": "Versionierung schließen",
@@ -952,6 +960,12 @@
         "groupAuto": "gemeinsam mit den anderen Literaturverzeichnissen nummerieren",
         "groupNone": "eigenständig nummerieren",
         "groupNamed": "gemeinsam mit gleichnamigen Literaturverzeichnissen nummerieren"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "Tabelle",
+        "equation": "Abgesetzte Formel"
       }
     },
     "wysiwyg": {

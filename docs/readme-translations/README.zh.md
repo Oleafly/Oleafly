@@ -85,6 +85,8 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 
 开启云同步后，你的项目库项目和应用设置会从一台电脑跟随你到另一台电脑。每次下载在替换文件之前都会与对应记录核对，你打开着且有未保存更改的文件永远不会被覆盖。
 
+你可以同步到 Dropbox、Google Drive，或者你自己在 Amazon S3、Google Cloud Storage、MinIO 或其他兼容 S3 的服务上的存储桶。
+
 <p align="center">
   <img src="../assets/readme/cloud-sync-dropbox.png" alt="Oleafly 云同步设置，显示 Dropbox 卡片和同步内容列表" width="100%" />
 </p>

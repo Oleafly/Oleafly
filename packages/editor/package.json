@@ -14,6 +14,8 @@
     "./diagnostic-card": "./src/diagnostic-card.ts",
     "./latex-analysis": "./src/latex-analysis.ts",
     "./math-render": "./src/math-render.ts",
+    "./math-render-loader": "./src/math-render-loader.ts",
+    "./typst-math-render": "./src/typst-math-render.ts",
     "./math-source": "./src/math-source.ts",
     "./math-preview": "./src/math-preview.ts",
     "./latex-to-typst-math": "./src/latex-to-typst-math.ts",

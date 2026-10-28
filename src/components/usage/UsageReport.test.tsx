@@ -13,6 +13,9 @@ import {
 import { useFilesStore } from "@/store/files";
 import { UsageReport, UsageReportDialog } from "./UsageReport";
 
+const configMocks = vi.hoisted(() => ({ getConfigCached: vi.fn(async (): Promise<unknown> => ({})) }));
+vi.mock("@/lib/config-cache", () => ({ getConfigCached: () => configMocks.getConfigCached() }));
+
 const toastSuccess = vi.fn();
 vi.mock("@/lib/toast", () => ({
   toast: {
@@ -304,6 +307,25 @@ describe("UsageReport", () => {
 });
 
 describe("UsageReportDialog", () => {
+  it("names a custom provider from the saved settings, and keeps its id if they cannot be read", async () => {
+    const result = report();
+    result.byProvider = [{ ...result.byProject[0], key: "lemonade" }];
+    configMocks.getConfigCached.mockResolvedValueOnce({
+      ai_custom_providers: [{ id: "lemonade", name: "Lemonade (local)", baseURL: "http://localhost:13305/v1" }],
+    });
+    renderDialog(vi.fn(async (_filter: UsageReportFilter) => result));
+    fireEvent.click(screen.getByRole("button", { name: "Open usage" }));
+    const providers = await screen.findByRole("heading", { name: "Providers" });
+    await waitFor(() => expect(within(providers.closest("section") as HTMLElement).getByText("Lemonade (local)")).toBeVisible());
+    cleanup();
+
+    configMocks.getConfigCached.mockRejectedValueOnce(new Error("settings unavailable"));
+    renderDialog(vi.fn(async (_filter: UsageReportFilter) => result));
+    fireEvent.click(screen.getByRole("button", { name: "Open usage" }));
+    const again = await screen.findByRole("heading", { name: "Providers" });
+    expect(within(again.closest("section") as HTMLElement).getByText("lemonade")).toBeVisible();
+  });
+
   it("offers recorded choices in app selects and applies them", async () => {
     const result = report();
     result.byRuntime = [{ ...result.byProject[0], key: "built-in" }];

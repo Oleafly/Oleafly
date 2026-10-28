@@ -2824,3 +2824,129 @@ describe("ChatCore chats, runs and what each keeps", () => {
     }
   });
 });
+
+describe("ChatCore key-less custom providers", () => {
+  const LEMONADE = {
+    id: "lemonade",
+    name: "Lemonade",
+    baseURL: "http://localhost:13305/v1",
+    keyOptional: true,
+  };
+
+  function configureCustom(overrides: Record<string, unknown> = {}) {
+    mocks.getConfig.mockResolvedValue({
+      ai_provider: "lemonade",
+      ai_model: "Qwen3-4B",
+      ai_api_key: "",
+      ai_keys: {},
+      ai_provider_models: {
+        lemonade: [
+          { id: "Qwen3-4B", name: "Qwen3 4B", enabled: true, source: "fetched" },
+          { id: "Llama-3.2-1B", name: "Llama 3.2 1B", enabled: true, source: "fetched" },
+        ],
+      },
+      ai_model_probes: {},
+      ai_custom_providers: [LEMONADE],
+      ai_system_prompt: "",
+      ai_personas: [],
+      ...overrides,
+    });
+  }
+
+  function override(index: number) {
+    return (mocks.runs[index].options as unknown as { providerOverride?: { provider_id: string; model_id: string } })
+      .providerOverride;
+  }
+
+  function pickedGroups() {
+    return (mocks.modelSelectorProps as unknown as { groups: Array<{ id: string; models: Array<{ id: string }> }> })
+      .groups;
+  }
+
+  it("shows the composer and sends without opening Settings when the active provider needs no key", async () => {
+    configureCustom();
+    const rendered = await renderChat();
+
+    expect(rendered.container.querySelector('[data-tour="ai-connect-provider"]')).toBeNull();
+    expect(rendered.getByRole("button", { name: "AI model" })).toBeTruthy();
+    sendFromComposer("Hello from a local server");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(override(0)).toEqual({ provider_id: "lemonade", model_id: "Qwen3-4B" });
+    expect(useSettingsStore.getState().settingsOpen).toBe(false);
+    await completeRun(0, "Hi.");
+  });
+
+  it("still asks to connect a provider when the active custom provider needs a key it lacks", async () => {
+    configureCustom({ ai_provider_models: {}, ai_custom_providers: [{ ...LEMONADE, keyOptional: false }] });
+    const rendered = render(createElement(QueryClientProvider, { client: createAppQueryClient() }, createElement(ChatCore)));
+    await waitFor(() => expect(rendered.container.querySelector('[data-tour="ai-connect-provider"]')).not.toBeNull());
+    expect(rendered.container.querySelector("[data-chat-composer]")).toBeNull();
+    expect(rendered.container.querySelector('[data-tour-configured="false"]')).not.toBeNull();
+  });
+
+  it("keeps the composer and the model picker when a keyed provider switches to a key-less custom model and back", async () => {
+    configureCustom({
+      ai_provider: "groq",
+      ai_model: "openai/gpt-oss-120b",
+      ai_keys: { groq: "gsk-test" },
+    });
+    const rendered = await renderChat();
+    expect(mocks.modelSelectorProps?.modelId).toBe("openai/gpt-oss-120b");
+    expect(pickedGroups().map((group) => group.id)).toEqual(["groq", "lemonade"]);
+
+    act(() => mocks.modelSelectorProps?.onChange?.("lemonade", "Llama-3.2-1B"));
+    expect(rendered.getByRole("button", { name: "AI model" })).toBeTruthy();
+    expect(composerBox()).toBeTruthy();
+    expect(rendered.container.querySelector('[data-tour-configured="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-tour="ai-connect-provider"]')).toBeNull();
+    sendFromComposer("On the local model");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(override(0)).toEqual({ provider_id: "lemonade", model_id: "Llama-3.2-1B" });
+    expect(useSettingsStore.getState().settingsOpen).toBe(false);
+    await completeRun(0, "Local answer.");
+
+    act(() => mocks.modelSelectorProps?.onChange?.("groq", "openai/gpt-oss-120b"));
+    expect(composerBox()).toBeTruthy();
+    sendFromComposer("Back on the hosted model");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    expect(override(1)).toEqual({ provider_id: "groq", model_id: "openai/gpt-oss-120b" });
+    await completeRun(1, "Hosted answer.");
+  });
+
+  it("returns to the configured key-less provider with the composer intact on a new chat", async () => {
+    configureCustom();
+    const rendered = await renderChat();
+    act(() => mocks.modelSelectorProps?.onChange?.("lemonade", "Llama-3.2-1B"));
+    expect(mocks.modelSelectorProps?.modelId).toBe("Llama-3.2-1B");
+
+    fireEvent.click(rendered.getByRole("button", { name: enAi.header.newChat }));
+
+    expect(mocks.modelSelectorProps?.modelId).toBe("Qwen3-4B");
+    expect(composerBox()).toBeTruthy();
+    expect(rendered.container.querySelector('[data-tour-configured="true"]')).not.toBeNull();
+  });
+
+  it("does not list a model the custom provider never had when the saved one is the old default", async () => {
+    configureCustom({ ai_model: "gpt-4o-mini" });
+    await renderChat();
+
+    expect(mocks.modelSelectorProps?.modelId).toBe("Qwen3-4B");
+    expect(pickedGroups().find((group) => group.id === "lemonade")?.models.map((model) => model.id)).toEqual([
+      "Qwen3-4B",
+      "Llama-3.2-1B",
+    ]);
+  });
+
+  it("sends the provider's own choice, not a borrowed model, when its list is empty", async () => {
+    configureCustom({ ai_model: "", ai_provider_models: {} });
+    await renderChat();
+
+    expect(mocks.modelSelectorProps?.modelId ?? "").toBe("");
+    expect(pickedGroups().find((group) => group.id === "lemonade")?.models).toEqual([]);
+    sendFromComposer("Whatever model you have");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(override(0)).toEqual({ provider_id: "lemonade", model_id: "" });
+    await completeRun(0, "Done.");
+  });
+});

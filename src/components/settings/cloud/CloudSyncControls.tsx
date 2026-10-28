@@ -6,7 +6,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { useDismiss } from "@/components/ui/use-dismiss";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { describeError } from "@/lib/app-error";
-import { useCloudStore } from "@/store/cloud";
+import { useCloudProviderName, useCloudStore } from "@/store/cloud";
 import { Check, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -133,6 +133,7 @@ export function CloudSyncControls() {
   const setEnabled = useCloudStore((s) => s.setEnabled);
   const autoSync = useCloudStore((s) => s.autoSync);
   const setAutoSync = useCloudStore((s) => s.setAutoSync);
+  const provider = useCloudProviderName();
 
   if (!state) return null;
 
@@ -141,14 +142,14 @@ export function CloudSyncControls() {
       <SettingsToggleRow
         testId="cloud-sync-enabled"
         label={t(($) => $.cloud.syncOnThisComputer)}
-        description={t(($) => $.cloud.syncOnHelp)}
+        description={t(($) => $.cloud.syncOnHelp, { provider })}
         checked={state.enabled}
         onChange={(on) => void setEnabled(on)}
       />
       <SettingsToggleRow
         testId="cloud-sync-auto"
         label={t(($) => $.cloud.auto.label)}
-        description={t(($) => $.cloud.auto.description)}
+        description={t(($) => $.cloud.auto.description, { provider })}
         checked={autoSync}
         disabled={!state.enabled}
         onChange={setAutoSync}

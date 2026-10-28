@@ -103,6 +103,16 @@ const storageSummary = {
   unreadable_entries: 0,
   linked_folders_bytes: 0,
   linked_folder_count: 0,
+  document_bytes: 2,
+  media_bytes: 0,
+  data_bytes: 1,
+  other_project_bytes: 1,
+  tex_distribution_bytes: 0,
+  agents_bytes: 0,
+  research_tasks_bytes: 0,
+  tools_bytes: 0,
+  checkpoints_bytes: 0,
+  compile_cache_bytes: 0,
 };
 
 const recycled = {

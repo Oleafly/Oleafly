@@ -71,13 +71,19 @@ describe("AddCustomProviderDialog", () => {
     );
   });
 
-  it("submits a base URL change without the key when one is stored", async () => {
+  // The saved key stays with its old address (Rust drops it when the
+  // address moves): the dialog says so, and a blank key means none is needed.
+  it("moves a provider that has a key with or without typing it again", async () => {
     const onSubmit = vi.fn().mockResolvedValue({ ok: true });
     render(
       <AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} editing={ACME} />,
     );
 
-    fill("custom-provider-baseurl", "https://api.acme.test/v2");
+    fill("custom-provider-baseurl", "http://localhost:13305/v1");
+    expect(screen.getByLabelText(enSettings.ai.customProvider.keyLabel)).toBeInTheDocument();
+    expect(screen.getByTestId("custom-provider-baseurl-note")).toHaveTextContent(
+      enSettings.ai.customProvider.baseUrlNote,
+    );
     fireEvent.click(screen.getByTestId("custom-provider-submit"));
 
     expect(screen.queryByTestId("custom-provider-key-error")).not.toBeInTheDocument();
@@ -85,13 +91,87 @@ describe("AddCustomProviderDialog", () => {
       expect(onSubmit).toHaveBeenCalledWith({
         id: "acme",
         name: "Acme",
-        baseURL: "https://api.acme.test/v2",
+        baseURL: "http://localhost:13305/v1",
         apiKey: "",
       }),
     );
   });
 
-  it("shows a note that the saved key will be sent, only while the URL differs and a key is stored", () => {
+  it("counts a trimmed endpoint path as a new address", () => {
+    render(
+      <AddCustomProviderDialog
+        open
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+        editing={{ ...ACME, baseURL: "https://api.acme.test/v1/chat/completions" }}
+      />,
+    );
+    // The form shows the stored address; trimming it on save moves the provider.
+    expect(screen.getByTestId("custom-provider-baseurl-note")).toBeInTheDocument();
+  });
+
+  it("offers to save anyway when no models were listed, until a field changes", async () => {
+    const onSubmit = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, canForce: true, message: "Could not reach it." })
+      .mockResolvedValueOnce({ ok: false, canForce: true, message: "Could not reach it." })
+      .mockResolvedValue({ ok: true });
+    const onOpenChange = vi.fn();
+    render(<AddCustomProviderDialog open onOpenChange={onOpenChange} onSubmit={onSubmit} />);
+
+    fill("custom-provider-id", "lemonade");
+    fill("custom-provider-name", "Lemonade");
+    fill("custom-provider-baseurl", "http://localhost:13305");
+    fireEvent.click(screen.getByTestId("custom-provider-submit"));
+
+    expect(await screen.findByTestId("custom-provider-error")).toHaveTextContent("Could not reach it.");
+    expect(screen.getByTestId("custom-provider-submit")).toHaveTextContent(
+      enSettings.ai.customProvider.submitAddAnyway,
+    );
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+
+    fill("custom-provider-baseurl", "http://localhost:13305/v1");
+    expect(screen.getByTestId("custom-provider-submit")).toHaveTextContent(
+      enSettings.ai.customProvider.submitAdd,
+    );
+    fireEvent.click(screen.getByTestId("custom-provider-submit"));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2));
+    expect(onSubmit.mock.calls[1]).toHaveLength(1);
+
+    fireEvent.click(await screen.findByText(enSettings.ai.customProvider.submitAddAnyway));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(3));
+    expect(onSubmit.mock.calls[2][1]).toEqual({ force: true });
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+  });
+
+  it("refuses a base URL with credentials or a query string", () => {
+    render(<AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} />);
+    fill("custom-provider-id", "acme");
+    fill("custom-provider-name", "Acme");
+
+    fill("custom-provider-baseurl", "https://user:secret@api.acme.test/v1");
+    fireEvent.click(screen.getByTestId("custom-provider-submit"));
+    expect(screen.getByTestId("custom-provider-baseurl-error")).toHaveTextContent(
+      enSettings.ai.customProvider.errors.baseUrlCredentials,
+    );
+
+    fill("custom-provider-baseurl", "https://api.acme.test/v1?api-version=2");
+    fireEvent.click(screen.getByTestId("custom-provider-submit"));
+    expect(screen.getByTestId("custom-provider-baseurl-error")).toHaveTextContent(
+      enSettings.ai.customProvider.errors.baseUrlQuery,
+    );
+  });
+
+  it("refuses an id longer than the backend accepts", () => {
+    render(<AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} />);
+    fill("custom-provider-id", "a".repeat(65));
+    fireEvent.click(screen.getByTestId("custom-provider-submit"));
+    expect(screen.getByTestId("custom-provider-id-error")).toHaveTextContent(
+      enSettings.ai.customProvider.errors.idTooLong,
+    );
+  });
+
+  it("shows a note that the saved key is not sent, only while the URL differs and a key is stored", () => {
     const { rerender } = render(
       <AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} editing={ACME} />,
     );
@@ -178,6 +258,9 @@ describe("AddCustomProviderDialog", () => {
 
   it("normalizes trailing slashes in base URLs", () => {
     expect(normalizeBaseURL(" https://api.acme.test/v1// ")).toBe("https://api.acme.test/v1");
+    expect(normalizeBaseURL("http://localhost:1234/v1/chat/completions")).toBe(
+      "http://localhost:1234/v1",
+    );
     expect(normalizeBaseURL("http://localhost:1234")).toBe("http://localhost:1234");
     expect(normalizeBaseURL("")).toBe("");
     expect(normalizeBaseURL("   ")).toBe("");

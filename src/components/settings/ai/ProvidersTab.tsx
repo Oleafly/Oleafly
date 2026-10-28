@@ -590,6 +590,7 @@ export function ProvidersTab({
                     refreshedAt={cfg.ai_model_lists_refreshed_at?.[p.id]}
                     probes={cfg.ai_model_probes}
                     discoverable={supportsModelDiscovery(p.id, isCustom)}
+                    baseURL={isCustom ? p.baseURL : undefined}
                   />
                 )}
               </div>

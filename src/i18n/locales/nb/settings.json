@@ -236,18 +236,28 @@
       "addDescription": "Koble til et hvilket som helst OpenAI-kompatibelt endepunkt med basis-URL-en.",
       "addTitle": "Legg til egen leverandør",
       "baseUrlLabel": "Basis-URL",
-      "baseUrlNote": "Den lagrede API-nøkkelen din blir sendt til denne nye adressen.",
+      "baseUrlNote": "Den lagrede API-nøkkelen sendes ikke til en ny adresse. Skriv den inn på nytt, eller la feltet stå tomt hvis den nye serveren ikke trenger noen nøkkel.",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "{{url}} avviste API-nøkkelen.",
+        "rejected": "{{url}} returnerte ingen modelliste. De fleste lokale servere trenger /v1 på slutten av adressen, for eksempel http://localhost:13305/v1.",
+        "timeout": "{{url}} brukte for lang tid på å vise modellene sine.",
+        "unreachable": "Kunne ikke nå {{url}}. Sjekk at serveren kjører og at adressen er riktig.",
+        "unreadable": "{{url}} svarte, men oppga ingen modeller. Sjekk at det er lastet ned en modell på serveren."
+      },
       "editDescription": "Endre navnet eller basis-URL-en.",
       "editTitle": "Rediger egen leverandør",
       "errors": {
         "addFailed": "Kunne ikke legge til den leverandøren.",
+        "baseUrlCredentials": "Skriv nøkkelen i feltet API-nøkkel, ikke i URL-en.",
         "baseUrlHost": "URL-en mangler et vertsnavn.",
         "baseUrlInvalid": "Skriv inn en full URL, for eksempel https://api.example.com/v1 eller http://localhost:1234/v1.",
         "baseUrlProtocol": "Bruk https://, eller http:// for en lokal server.",
+        "baseUrlQuery": "Fjern ? og alt som står etter.",
         "baseUrlRequired": "Basis-URL er påkrevd.",
         "idFormat": "Bruk bare små bokstaver, tall og bindestrek, for eksempel acme.",
         "idRequired": "ID er påkrevd.",
+        "idTooLong": "Bruk 64 tegn eller færre.",
         "nameRequired": "Navn er påkrevd.",
         "saveFailed": "Kunne ikke lagre den leverandøren."
       },
@@ -258,7 +268,9 @@
       "keyPlaceholder": "La stå tom hvis ingen kreves",
       "keyPlaceholderStored": "Den lagrede nøkkelen blir stående til du skriver inn en ny",
       "namePlaceholder": "Acme",
-      "submitAdd": "Legg til leverandør"
+      "saveAnyway": "Lagre likevel",
+      "submitAdd": "Legg til leverandør",
+      "submitAddAnyway": "Legg til uten modeller"
     },
     "instructions": {
       "capabilitiesTitle": "Hva agenten kan",
@@ -425,11 +437,13 @@
       "messages": {
         "keyRemoved": "Nøkkelen til {{provider}} er fjernet.",
         "keyRemovedAccessDisabled": "Nøkkelen til {{provider}} er fjernet. AI-tilgangen er slått av.",
-        "keySavedAddModels": "Nøkkelen til {{provider}} er lagret. Legg til modeller manuelt nedenfor.",
         "keySavedCheckedOnUse": "Nøkkelen til {{provider}} er lagret. Den sjekkes første gang den brukes.",
+        "keySavedModelsNotListed": "Nøkkelen til {{provider}} er lagret, men ingen modeller ble listet opp. {{reason}}",
         "ollamaConnected": "Ollama er tilkoblet · {{model}}",
         "preferencesReset": "Innstillingene for AI-assistenten er tilbakestilt til standard.",
         "providerAdded": "{{provider}} er lagt til.",
+        "providerAddedAt": "{{provider}} er lagt til på {{url}}.",
+        "providerAddedWithoutModels": "{{provider}} er lagt til uten modeller. Legg til en modell med navn nedenfor.",
         "providerConnected": "{{provider}} er tilkoblet.",
         "providerUpdated": "{{provider}} er oppdatert.",
         "providerUpdatedWithoutModels": "{{provider}} er oppdatert. Modellisten kunne ikke oppdateres."

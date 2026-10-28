@@ -22,6 +22,7 @@ oleafly-cli = { path = "../crates/oleafly-cli", features = ["proofread"] }
 oleafly-collab = { path = "../crates/oleafly-collab" }
 oleafly-collab-protocol = { path = "../crates/oleafly-collab-protocol" }
 oleafly-core = { path = "../crates/oleafly-core" }
+oleafly-s3 = { path = "../crates/oleafly-s3" }
 oleafly-history = { path = "../crates/oleafly-history" }
 # `unstable` unlocks the multi-webview APIs. The in-app browser that needed
 # them is gone; dropping the feature is a separate change (it changes how
@@ -34,6 +35,7 @@ tauri-plugin-shell = "2"
 tauri-plugin-playwright = { version = "0.4", optional = true }
 tauri-plugin-dialog = "2"
 tauri-plugin-os = "2"
+tauri-plugin-clipboard-manager = "2"
 sys-locale = "0.3"
 # In-app auto-update: checks the GitHub Releases `latest.json`, verifies the
 # minisign signature against the pubkey in tauri.conf.json, and installs. The
@@ -76,6 +78,7 @@ rand = "0.8"
 async-trait = "0.1"
 keyring-core = "1"
 ring = "0.17"
+roxmltree = "0.20"
 tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
 argon2 = "0.5"
 aes = { version = "0.9", features = ["zeroize"] }

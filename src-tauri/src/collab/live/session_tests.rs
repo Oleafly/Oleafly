@@ -365,6 +365,9 @@ fn a_panic_in_desktop_work_on_the_document_marks_it_damaged_and_leaves_it_unpois
 
 #[test]
 fn opening_a_project_after_its_session_ended_says_why() {
+    // Keeping a local copy of the project whose access ended names it after
+    // the library's projects, so the test needs a library of its own.
+    let _library = crate::collab::testing::TempLibrary::new();
     let _turn = write::rig::live_turn();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()

@@ -784,24 +784,41 @@
         "linkedFolders_other": "{{count}} 个已打开文件夹的构建输出和设置共占用 {{size}}。",
         "refresh": "刷新存储用量",
         "stats": {
-          "appData": "应用数据",
-          "appDataDetail": "包含素材和设置。",
-          "buildCache": "编译缓存",
-          "buildCacheDetail": "生成的输出文件。",
           "files": "文件",
           "folders_other": "{{count}} 个文件夹",
-          "gitHistory": "Git 历史记录",
-          "gitHistoryDetail": "本地版本。",
           "images": "图片",
           "pdfs": "PDF 文件",
-          "projectFiles": "项目文件",
-          "projectFilesDetail": "源码和元数据。",
           "projects": "项目"
         },
         "subtitle": "项目、预览、历史记录和应用数据",
         "title": "存储占用",
         "total": "Oleafly 数据文件夹共占用 {{size}}。",
-        "unreadable_other": "已排除 {{count}} 个无法访问的项目。"
+        "unreadable_other": "已排除 {{count}} 个无法访问的项目。",
+        "groups": {
+          "projects": "项目",
+          "appData": "应用数据",
+          "elsewhere": "其他位置"
+        },
+        "parts": {
+          "documents": "文档和代码",
+          "images": "图片",
+          "pdfs": "PDF 文件",
+          "media": "音频和视频",
+          "data": "数据文件",
+          "otherFiles": "其他文件",
+          "git": "Git 历史记录",
+          "build": "编译缓存",
+          "texDistribution": "TeX 发行版",
+          "agents": "AI 代理",
+          "researchTasks": "研究任务",
+          "tools": "工具",
+          "checkpoints": "检查点",
+          "compileCache": "编译器缓存",
+          "otherAppData": "设置和其他数据",
+          "recycleBin": "回收站",
+          "linkedFolders": "已打开的文件夹"
+        },
+        "other": "其他"
       },
       "tabs": {
         "cloud": "云同步",

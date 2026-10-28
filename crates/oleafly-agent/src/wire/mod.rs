@@ -153,7 +153,10 @@ fn expects_reasoning_back(base_url: &str) -> bool {
     .any(|domain| host == *domain || host.ends_with(&format!(".{domain}")))
 }
 
-fn replays_reasoning(resolved: &Resolved) -> bool {
+/// Whether the next request sends the model's reasoning text back to it.
+/// Chat wires that take `reasoning_content` do so only for providers known to
+/// require it, not for every endpoint that accepts the field.
+pub fn replays_reasoning(resolved: &Resolved) -> bool {
     match &resolved.wire {
         Wire::OpenAiChat {
             base_url,

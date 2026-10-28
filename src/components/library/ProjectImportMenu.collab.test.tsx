@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ dialog: vi.fn() }));
 
@@ -44,6 +44,13 @@ function openMenu() {
 function renderMenu() {
   return render(<ProjectImportMenu trigger={() => <button type="button">{"Open import menu"}</button>} />);
 }
+
+// The menu adds the shared link item once the collaboration surfaces load
+// lazily. Load them here, so the menu waits on rendering, not on compiling
+// the module graph, which can take seconds on a busy machine.
+beforeAll(async () => {
+  await import("@/features/collab/sharing/surfaces");
+}, 60_000);
 
 beforeEach(() => {
   vi.clearAllMocks();

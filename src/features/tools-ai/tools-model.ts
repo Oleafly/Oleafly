@@ -36,7 +36,7 @@ export interface ResolvedLlm {
   modelId: string;
   label: string;
   /** Not a model Ollama runs here: hosted API limits apply. Ollama Cloud
-   * models are hosted. */
+   * models are hosted; a custom provider on this computer is not. */
   hosted: boolean;
   /** Where the input goes (privacy). */
   destination: ToolsDestination;
@@ -246,7 +246,11 @@ async function resolveLocal(task: ToolsTask, cfg: AppConfig, explicit: string): 
 }
 
 function resolveHosted(task: ToolsTask, cfg: AppConfig, choice: ToolsModelChoice): ResolvedLlm {
-  if (useSettingsStore.getState().offline) throw offlineError();
+  // A custom provider on this computer sends nothing off it: Offline mode does
+  // not apply, and it keeps the local image and reply limits.
+  const destination = toolsDestination(cfg, choice.provider);
+  const onDevice = destination.kind === "device";
+  if (!onDevice && useSettingsStore.getState().offline) throw offlineError();
   // Keys and model switches live under Providers and keys, not Tools.
   if (!toolsProviderConfigured(cfg, choice.provider)) {
     throw new ToolsModelError(
@@ -284,8 +288,8 @@ function resolveHosted(task: ToolsTask, cfg: AppConfig, choice: ToolsModelChoice
     providerId: choice.provider,
     modelId: choice.model,
     label,
-    hosted: true,
-    destination: toolsDestination(cfg, choice.provider),
+    hosted: !onDevice,
+    destination,
     ...(entry?.metadata ? { metadata: entry.metadata } : {}),
     profile: ocrProfileFor(choice.model),
   };
@@ -294,7 +298,8 @@ function resolveHosted(task: ToolsTask, cfg: AppConfig, choice: ToolsModelChoice
 /** The assistant's own model, when it is not Ollama and can do the task. */
 function assistantFallbackModel(task: ToolsTask, cfg: AppConfig): ResolvedLlm | null {
   const { providerId, modelId } = pickActiveProvider(cfg);
-  if (providerId === LOCAL_TOOLS_PROVIDER) return null;
+  // No model chosen yet (a custom provider with an empty list): nothing to send images to.
+  if (providerId === LOCAL_TOOLS_PROVIDER || !modelId) return null;
   try {
     return { ...resolveHosted(task, cfg, { provider: providerId, model: modelId }), assistantFallback: true };
   } catch {

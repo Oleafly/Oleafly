@@ -44,6 +44,8 @@ export interface ResearchTaskAgentOption {
 export interface ResearchTasksPanelProps {
   projectId: string | null;
   agents: ResearchTaskAgentOption[];
+  /** The user's own providers, so a task on one shows its name when no agent option lists it. */
+  customProviders?: readonly { id: string; name: string }[];
   onOpenSession?: (task: ResearchTask) => void;
   onApplied?: (task: ResearchTask) => void;
 }
@@ -186,6 +188,7 @@ function matchesFilter(task: ResearchTask, filter: TaskFilter): boolean {
 export function ResearchTasksPanel({
   projectId,
   agents,
+  customProviders,
   onOpenSession,
   onApplied,
 }: Readonly<ResearchTasksPanelProps>) {
@@ -287,7 +290,10 @@ export function ResearchTasksPanel({
 
   const agentNameFor = (task: ResearchTask) =>
     agentNames.get(`${task.runtimeId}:${task.agentId}`) ??
-    (task.runtimeId === "acp" ? undefined : getProvider(task.agentId)?.name);
+    (task.runtimeId === "acp"
+      ? undefined
+      : (getProvider(task.agentId)?.name ??
+        customProviders?.find((provider) => provider.id === task.agentId)?.name));
   const modelNames = useMemo(() => {
     const names = new Map<string, string>();
     for (const agent of agents) {

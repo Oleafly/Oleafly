@@ -189,7 +189,14 @@
     "addLabel": "Aggiungi etichetta",
     "convertLatexMath": "Converti la matematica LaTeX in Typst",
     "noLatexMath": "Seleziona prima della matematica LaTeX.",
-    "renameFile": "Rinomina file…"
+    "renameFile": "Rinomina file…",
+    "cut": "Taglia",
+    "copy": "Copia",
+    "paste": "Incolla",
+    "selectAll": "Seleziona tutto",
+    "format": "Formato",
+    "insert": "Inserisci",
+    "importExport": "Importa ed esporta"
   },
   "shell": {
     "noFileOpenTab": "Nessun file aperto",
@@ -326,7 +333,8 @@
     "improveWriting": "Migliora la scrittura",
     "fixGrammar": "Correggi grammatica e stile",
     "expand": "Amplia e approfondisci",
-    "findReferences": "Trova i riferimenti"
+    "findReferences": "Trova i riferimenti",
+    "customPrompt": "Descrivi la modifica…"
   },
   "versioning": {
     "dismiss": "Chiudi le versioni",
@@ -966,6 +974,12 @@
         "groupAuto": "numera insieme alle altre bibliografie",
         "groupNone": "numera da sola",
         "groupNamed": "numera insieme alle bibliografie con lo stesso nome"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "Tabella",
+        "equation": "Equazione in display"
       }
     },
     "wysiwyg": {

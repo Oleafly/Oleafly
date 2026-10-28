@@ -823,21 +823,13 @@
         "linkedFolders_other": "{{size}} danych kompilacji i ustawień dla {{count}} otwartego folderu",
         "refresh": "Odśwież zajętość miejsca",
         "stats": {
-          "appData": "Dane aplikacji",
-          "appDataDetail": "Zasoby i ustawienia",
-          "buildCache": "Pamięć podręczna kompilacji",
-          "buildCacheDetail": "Wygenerowane wyniki",
           "files": "Pliki",
           "folders_one": "{{count}} folder",
           "folders_few": "{{count}} foldery",
           "folders_many": "{{count}} folderów",
           "folders_other": "{{count}} folderu",
-          "gitHistory": "Historia Git",
-          "gitHistoryDetail": "Wersje lokalne",
           "images": "Obrazy",
           "pdfs": "Pliki PDF",
-          "projectFiles": "Pliki projektów",
-          "projectFilesDetail": "Źródła i metadane",
           "projects": "Projekty"
         },
         "subtitle": "Projekty, podglądy, historia i dane aplikacji",
@@ -846,7 +838,32 @@
         "unreadable_one": "Pominięto {{count}} niedostępny element.",
         "unreadable_few": "Pominięto {{count}} niedostępne elementy.",
         "unreadable_many": "Pominięto {{count}} niedostępnych elementów.",
-        "unreadable_other": "Pominięto {{count}} niedostępnego elementu."
+        "unreadable_other": "Pominięto {{count}} niedostępnego elementu.",
+        "groups": {
+          "projects": "Projekty",
+          "appData": "Dane aplikacji",
+          "elsewhere": "W innych miejscach"
+        },
+        "parts": {
+          "documents": "Dokumenty i kod",
+          "images": "Obrazy",
+          "pdfs": "Pliki PDF",
+          "media": "Audio i wideo",
+          "data": "Pliki danych",
+          "otherFiles": "Inne pliki",
+          "git": "Historia Git",
+          "build": "Pamięć podręczna kompilacji",
+          "texDistribution": "Dystrybucja TeX",
+          "agents": "Agenci AI",
+          "researchTasks": "Zadania badawcze",
+          "tools": "Narzędzia",
+          "checkpoints": "Punkty kontrolne",
+          "compileCache": "Pamięć podręczna kompilatora",
+          "otherAppData": "Ustawienia i inne dane",
+          "recycleBin": "Kosz",
+          "linkedFolders": "Otwarte foldery"
+        },
+        "other": "Inne"
       },
       "tabs": {
         "cloud": "Synchronizacja w chmurze",

@@ -236,18 +236,28 @@
       "addDescription": "Forbind et hvilket som helst OpenAI-kompatibelt endepunkt ud fra dets grund-URL.",
       "addTitle": "Tilføj egen udbyder",
       "baseUrlLabel": "Grund-URL",
-      "baseUrlNote": "Din gemte API-nøgle bliver sendt til denne nye adresse.",
+      "baseUrlNote": "Din gemte API-nøgle bliver ikke sendt til en ny adresse. Indtast den igen, eller lad feltet stå tomt, hvis den nye server ikke har brug for en nøgle.",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "{{url}} afviste API-nøglen.",
+        "rejected": "{{url}} returnerede ingen modelliste. De fleste lokale servere kræver /v1 til sidst i adressen, for eksempel http://localhost:13305/v1.",
+        "timeout": "{{url}} brugte for lang tid på at vise sine modeller.",
+        "unreachable": "Kunne ikke nå {{url}}. Tjek, at serveren kører, og at adressen er rigtig.",
+        "unreadable": "{{url}} svarede, men viste ingen modeller. Tjek, at der er hentet en model til serveren."
+      },
       "editDescription": "Ret navnet eller grund-URL'en.",
       "editTitle": "Rediger egen udbyder",
       "errors": {
         "addFailed": "Den udbyder kunne ikke tilføjes.",
+        "baseUrlCredentials": "Skriv nøglen i feltet API-nøgle, ikke i URL'en.",
         "baseUrlHost": "URL'en mangler et værtsnavn.",
         "baseUrlInvalid": "Indtast en fuld URL, for eksempel https://api.example.com/v1 eller http://localhost:1234/v1.",
         "baseUrlProtocol": "Brug https:// eller http:// til en lokal server.",
+        "baseUrlQuery": "Fjern ? og alt, der står efter det.",
         "baseUrlRequired": "Grund-URL er påkrævet.",
         "idFormat": "Brug kun små bogstaver, tal og bindestreger, for eksempel acme.",
         "idRequired": "Id er påkrævet.",
+        "idTooLong": "Brug højst 64 tegn.",
         "nameRequired": "Navn er påkrævet.",
         "saveFailed": "Den udbyder kunne ikke gemmes."
       },
@@ -258,7 +268,9 @@
       "keyPlaceholder": "Lad feltet stå tomt, hvis ingen er nødvendig",
       "keyPlaceholderStored": "Den gemte nøgle bliver, medmindre du indtaster en ny",
       "namePlaceholder": "Acme",
-      "submitAdd": "Tilføj udbyderen"
+      "saveAnyway": "Gem alligevel",
+      "submitAdd": "Tilføj udbyderen",
+      "submitAddAnyway": "Tilføj uden modeller"
     },
     "instructions": {
       "capabilitiesTitle": "Agentens evner",
@@ -425,11 +437,13 @@
       "messages": {
         "keyRemoved": "Nøglen til {{provider}} er fjernet.",
         "keyRemovedAccessDisabled": "Nøglen til {{provider}} er fjernet. AI-adgang er slået fra.",
-        "keySavedAddModels": "Nøglen til {{provider}} er gemt. Tilføj modeller manuelt nedenfor.",
         "keySavedCheckedOnUse": "Nøglen til {{provider}} er gemt. Den bliver tjekket, første gang den bruges.",
+        "keySavedModelsNotListed": "Nøglen til {{provider}} er gemt, men der blev ikke vist nogen modeller. {{reason}}",
         "ollamaConnected": "Ollama er forbundet · {{model}}",
         "preferencesReset": "Indstillingerne for AI-assistenten er gendannet til standarderne.",
         "providerAdded": "{{provider}} er tilføjet.",
+        "providerAddedAt": "{{provider}} er tilføjet på {{url}}.",
+        "providerAddedWithoutModels": "{{provider}} er tilføjet uden modeller. Tilføj en model ud fra dens navn nedenfor.",
         "providerConnected": "{{provider}} er forbundet.",
         "providerUpdated": "{{provider}} er opdateret.",
         "providerUpdatedWithoutModels": "{{provider}} er opdateret. Dens modelliste kunne ikke opdateres."

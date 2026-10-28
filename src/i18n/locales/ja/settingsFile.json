@@ -20,9 +20,9 @@
     "imported": "設定を読み込みました。",
     "unchanged": "設定はすでに {{name}} と同じです。",
     "applyFailed": "一部の設定を保存できませんでした。もう一度読み込んでください。",
-    "cloudEmpty": "Dropbox にはまだ Oleafly の設定がありません。先に別のコンピューターでクラウド同期をオンにしてください。",
-    "cloudLoadFailed": "Dropbox から設定を読み込めませんでした。",
-    "cloudUnreadable": "Dropbox にある設定を読み取れませんでした。"
+    "cloudEmpty": "{{provider}} にはまだ Oleafly の設定がありません。先に別のコンピューターでクラウド同期をオンにしてください。",
+    "cloudLoadFailed": "{{provider}} から設定を読み込めませんでした。",
+    "cloudUnreadable": "{{provider}} にある設定を読み取れませんでした。"
   },
   "confirm": {
     "title": "設定を置き換えますか？",
@@ -30,7 +30,7 @@
     "changes": "変更される設定: {{count}} 件",
     "ignored": "認識できないため、次の項目はスキップします:",
     "action": "読み込む",
-    "cloudDescription": "Dropbox の設定で現在の設定を置き換えます。含まれていない項目はそのままです。"
+    "cloudDescription": "{{provider}} の設定で現在の設定を置き換えます。含まれていない項目はそのままです。"
   },
   "error": {
     "title": "{{name}} は読み込まれませんでした",
@@ -59,5 +59,5 @@
   },
   "importFromLocal": "このデバイスからインポート",
   "importFromCloud": "クラウドからインポート",
-  "cloudSource": "Dropbox"
+  "cloudSource": "{{provider}}"
 }

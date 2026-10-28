@@ -23,7 +23,7 @@ import {
   planModeTools,
   toolRisk,
   type ApprovalMode,
-} from "@oleafly/ai-tools";
+} from "@oleafly/ai-tools/approval-risk";
 import { windowFlushScheduler } from "@/lib/agent-stream-scheduler";
 import { useAgentTurnsStore, type QueuedFollowUp } from "@/store/agent-turns";
 import { useAssistantOutputsStore } from "@/store/assistant-outputs";
@@ -84,7 +84,7 @@ import { TurnChangesCard } from "@/components/ai/turns/TurnChangesCard";
 import { agentProbeModel, agentWebSearchReady, approvalsList, approvalsSet, gitHeadOid, gitLog, gitShow, gitStatus, readFileContent, type AppConfig, type CustomProvider, type GitFileChange, type McpAgentServer, type ModelProbe, type Persona, type EngineFeature, type StoredModel, type ToolDecision } from "@/lib/tauri";
 import { checkProjectBudget } from "@/lib/ai-budget";
 import { listOllamaModels } from "@/lib/ollama";
-import { registry, type AiToolsetContribution } from "@oleafly/registry";
+import type { AiToolsetContribution } from "@oleafly/registry";
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
 import {
   modelSupportsVision,
@@ -188,7 +188,7 @@ import { toast } from "@/lib/toast";
 import { WorkspaceBanner } from "@/components/ui/workspace-banner";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
-import { mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
+import { isProviderConfigured, mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
 import {
   configuredModelGroups,
   configuredProviders as listConfiguredProviders,
@@ -209,7 +209,7 @@ import {
   type StoredChat,
 } from "@/store/chats";
 import { objectKey } from "@/lib/react-key";
-import { registerAiToolsets } from "@/contributions/ai-toolsets";
+import { loadAiToolsets, useAiToolsets } from "@/contributions/load-ai-toolsets";
 import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
 import { AssistantHome } from "@/components/ai/home/AssistantHome";
 import { RecentChats } from "@/components/ai/home/RecentChats";
@@ -240,8 +240,6 @@ import {
   useMcpAgentTools,
 } from "@/lib/mcp-agent-tools";
 import { resolveResearchToolAliases } from "@/lib/research-tool-aliases";
-
-registerAiToolsets();
 import { useAgentTodoStore, type AgentTodo } from "@/store/agent-todos";
 import { useAgentMemoryStore } from "@/store/agent-memory";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
@@ -1113,7 +1111,6 @@ export function ChatCore() {
   const [model, setModel] = useState(initialProvider?.state.model ?? "gpt-4o");
   const [providerConfigReady, setProviderConfigReady] = useState(initialProvider !== null);
   const [providerConfigError, setProviderConfigError] = useState(false);
-  const [apiKey, setApiKey] = useState(initialProvider?.state.apiKey ?? "");
   // So the switcher can offer every provider the user has set up, not just the default one.
   const [keysMap, setKeysMap] = useState<Record<string, string>>(
     () => initialProvider?.state.keysMap ?? {},
@@ -1128,6 +1125,10 @@ export function ChatCore() {
   const [customProviders, setCustomProviders] = useState<CustomProvider[]>(
     () => initialProvider?.state.customProviders ?? [],
   );
+  // Whether the active provider can take a request: a key or host, or a custom
+  // provider that needs none. Derived from the provider on screen, so a model
+  // switch, a new chat and a config change all keep it right.
+  const providerReady = isProviderConfigured(provider, keysMap, customProviders);
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [modelProbes, setModelProbes] = useState<Record<string, ModelProbe>>(() =>
     mergeModelProbes({}, initialProvider?.cfg.ai_model_probes),
@@ -1277,6 +1278,7 @@ export function ChatCore() {
       }),
     [mcpAgentToolsQuery.data],
   );
+  const aiToolsets = useAiToolsets();
   const toolManagerAvailability = useMemo(() => {
     const additions: RuntimeToolset[] = [
       { id: "research-workspace", source: { kind: "project" }, tools: createResearchWorkspaceTools(projectId) },
@@ -1286,7 +1288,7 @@ export function ChatCore() {
         : []),
     ];
     return resolveAvailableTools({
-      toolsets: registry.aiToolsets,
+      toolsets: aiToolsets,
       mode: "chat",
       createOpts: {
         confirm: () => Promise.resolve(false),
@@ -1301,6 +1303,7 @@ export function ChatCore() {
     });
   }, [
     projectId,
+    aiToolsets,
     availableMcpToolsets,
     availableSkillTools,
     documentEngine.capabilities.features,
@@ -1442,7 +1445,6 @@ export function ChatCore() {
       });
       setCustomProviders(next.customProviders);
       setProvider(next.provider);
-      setApiKey(next.apiKey);
       setModel(next.model);
       setProviderConfigReady(true);
       setProviderConfigError(false);
@@ -1478,9 +1480,8 @@ export function ChatCore() {
     (pid: string, mid: string) => {
       setProvider(pid);
       setModel(mid);
-      setApiKey(keysMap[pid] || "");
     },
-    [keysMap]
+    []
   );
 
   // Providers the user has set up (a non-empty key/host, or a custom
@@ -1761,9 +1762,8 @@ export function ChatCore() {
       const { providerId, modelId } = pickActiveProvider(cfg);
       setProvider(providerId);
       setModel(modelId);
-      setApiKey(keysMap[providerId] || "");
     }
-  }, [setActiveChat, keysMap, setMessages, cancelEdit]);
+  }, [setActiveChat, setMessages, cancelEdit]);
 
   const newChat = useCallback(() => {
     if (streaming || sendPreparingRef.current || runOwnerRef.current) return;
@@ -2045,8 +2045,8 @@ export function ChatCore() {
   // What the model picker holds now. The follow-up queued during a run is sent
   // from that run's own `send`, a closure from when the run started, so `send`
   // reads the picked model here and not from its closure.
-  const pickedModelRef = useRef({ provider, model, providerModelsMap, apiKey, activeProviderName });
-  pickedModelRef.current = { provider, model, providerModelsMap, apiKey, activeProviderName };
+  const pickedModelRef = useRef({ provider, model, providerModelsMap, providerReady, activeProviderName });
+  pickedModelRef.current = { provider, model, providerModelsMap, providerReady, activeProviderName };
 
   const send = useCallback(async (
     text: string,
@@ -2063,7 +2063,7 @@ export function ChatCore() {
       web?: boolean;
     },
   ) => {
-    const { provider, model, providerModelsMap, apiKey, activeProviderName } = pickedModelRef.current;
+    const { provider, model, providerModelsMap, providerReady, activeProviderName } = pickedModelRef.current;
     const sendComposerId = composerIdRef.current;
     const draft = draftAttachments(sendComposerId);
     // Attachments still being prepared hold the message back.
@@ -2090,7 +2090,7 @@ export function ChatCore() {
       return;
     }
     if (!engineLoaded) return;
-    if (!apiKey) { openAISettings(); return; }
+    if (!providerReady) { openAISettings(); return; }
     if (sendPreparingRef.current) return;
     sendPreparingRef.current = true;
     setApprovalModeLocked(true);
@@ -2129,6 +2129,14 @@ export function ChatCore() {
         toast.error(i18n.t(($) => $.ai.toasts.skillsLoadFailed));
         return;
       }
+    }
+    let runToolsets: readonly AiToolsetContribution[];
+    try {
+      runToolsets = await loadAiToolsets();
+    } catch (error) {
+      cancelSendPreparation();
+      void logError("load the assistant tools", error);
+      return;
     }
     const skillCommand = parseSkillCommand(text, runSkills);
     const requestedSkillIds = skillCommand ? [skillCommand.skill.id] : [];
@@ -2175,7 +2183,7 @@ export function ChatCore() {
     const enabledToolCount = Object.keys(
       filterResolvedTools(
         resolveAvailableTools({
-          toolsets: registry.aiToolsets,
+          toolsets: runToolsets,
           mode: "chat",
           createOpts: {
             confirm: () => Promise.resolve(false),
@@ -2610,7 +2618,7 @@ USER_CUSTOM_INSTRUCTIONS`
         : []),
     ];
     const resolvedToolsForRun = resolveAvailableTools({
-      toolsets: registry.aiToolsets,
+      toolsets: runToolsets,
       mode: "chat",
       createOpts: {
         confirm,
@@ -3344,7 +3352,7 @@ ${sandboxedCustom}`;
   const actionsEnabled = Boolean(
     projectId &&
       activeChatId &&
-      apiKey &&
+      providerReady &&
       engineLoaded &&
       !streaming &&
       !approvalModeLocked &&
@@ -3712,16 +3720,16 @@ ${sandboxedCustom}`;
   // user already typed instead of clobbering it.
   useEffect(() => {
     if (!handoffPending || streaming || !providerConfigReady) return;
-    if (handoffAutoSend && apiKey && !engineLoaded) return;
+    if (handoffAutoSend && providerReady && !engineLoaded) return;
     const h = useAgentHandoffStore.getState().consume();
     if (!h) return;
     if (h.images.length) pendingImagesRef.current.push(...h.images);
-    if (h.autoSend && apiKey) {
+    if (h.autoSend && providerReady) {
       void send(h.prompt);
       return;
     }
     setInput(appendHandoffPrompt(inputRef.current, h.prompt));
-  }, [handoffPending, handoffAutoSend, streaming, providerConfigReady, apiKey, engineLoaded, send, setInput]);
+  }, [handoffPending, handoffAutoSend, streaming, providerConfigReady, providerReady, engineLoaded, send, setInput]);
 
   const prevProjectIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
@@ -3925,7 +3933,7 @@ ${sandboxedCustom}`;
       data-tour="ai-assistant"
       data-tour-ready={providerConfigReady ? "true" : "false"}
       data-tour-config-error={providerConfigError ? "true" : "false"}
-      data-tour-configured={apiKey ? "true" : "false"}
+      data-tour-configured={providerReady ? "true" : "false"}
       data-tour-has-usage={hasUsage ? "true" : "false"}
       data-tour-has-restore={
         renderedMessages.some(
@@ -4018,7 +4026,7 @@ ${sandboxedCustom}`;
           </>
         }
       >
-        {apiKey && activeChat?.headOid && currentHead && activeChat.headOid !== currentHead && (
+        {providerReady && activeChat?.headOid && currentHead && activeChat.headOid !== currentHead && (
           <InfoHint message={t(($) => $.ai.header.staleChatHint)} />
         )}
       </AssistantShellHeader>
@@ -4030,11 +4038,11 @@ ${sandboxedCustom}`;
         </WorkspaceBanner>
       )}
 
-      {!providerConfigReady && !apiKey && (
+      {!providerConfigReady && !providerReady && (
         <div data-testid="ai-provider-loading" className="min-h-0 flex-1" />
       )}
 
-      {providerConfigReady && !apiKey && (
+      {providerConfigReady && !providerReady && (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <OleaflyAssistantMascot />
           <div className="space-y-1">
@@ -4056,7 +4064,7 @@ ${sandboxedCustom}`;
         </div>
       )}
 
-      {apiKey && (
+      {providerReady && (
         <>
           <div className="relative min-h-0 flex-1">
           <ChatMinimap scrollRef={scrollRef} messages={messages} visible={showMinimap} />

@@ -51,6 +51,7 @@ const initialCloud = useCloudStore.getState();
 function cloudState(overrides: Partial<CloudState> = {}): CloudState {
   return {
     status: "connected",
+    provider: "dropbox",
     email: "ada@uni.edu",
     displayName: null,
     deviceName: "Desk",
@@ -358,6 +359,17 @@ describe("CloudSyncKeeper", () => {
     expect(screen.queryByTestId("cloud-settings-choice")).toBeNull();
   });
 
+  it("names the connected provider in the settings choice", async () => {
+    mocks.cloud.cloudState.mockResolvedValue(cloudState({ provider: "google_drive" }));
+    mocks.cloud.cloudSettingsSync.mockResolvedValue({ outcome: "choose", values: { a: 1 }, stamp: "3" });
+    await mountKeeper();
+    await advance(20_000);
+    const dialog = screen.getByTestId("cloud-settings-choice");
+    expect(dialog).toHaveTextContent("Your Google Drive has settings from another computer");
+    expect(screen.getByRole("button", { name: "Use Google Drive settings" })).toBeInTheDocument();
+    expect(dialog).not.toHaveTextContent(/Dropbox/);
+  });
+
   it("marks Settings while a project needs attention and clears the mark once it is fixed", async () => {
     mocks.cloud.cloudState.mockResolvedValue(cloudState({ projects: [heldProject()] }));
     await mountKeeper();
@@ -448,9 +460,30 @@ describe("CloudSyncHost", () => {
     vi.useRealTimers();
   });
 
-  it("loads the keeper at start without syncing yet", async () => {
+  it("loads the keeper at start when this computer has an account, without syncing yet", async () => {
     render(<CloudSyncHost />);
-    await waitFor(() => expect(mocks.cloud.cloudState).toHaveBeenCalled());
+    await waitFor(() => expect(useCloudStore.getState().status).toBe("connected"));
+    expect(mocks.cloud.cloudState).toHaveBeenCalledTimes(2);
     expect(mocks.cloud.cloudSyncNow).not.toHaveBeenCalled();
+  });
+
+  it("waits for Settings to load the keeper when no account is connected", async () => {
+    mocks.cloud.cloudState.mockResolvedValue(cloudState({ status: "disconnected", enabled: false }));
+    render(<CloudSyncHost />);
+    await waitFor(() => expect(mocks.cloud.cloudState).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(useCloudStore.getState().status).toBe("unknown");
+
+    act(() => useSettingsStore.setState({ settingsOpen: true }));
+    await waitFor(() => expect(useCloudStore.getState().status).toBe("disconnected"));
+    expect(mocks.cloud.cloudState).toHaveBeenCalledTimes(2);
+  });
+
+  it("loads the keeper when the account check fails", async () => {
+    mocks.cloud.cloudState.mockRejectedValueOnce(new Error("no backend"));
+    render(<CloudSyncHost />);
+    await waitFor(() => expect(useCloudStore.getState().status).toBe("connected"));
   });
 });

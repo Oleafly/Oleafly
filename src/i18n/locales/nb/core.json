@@ -391,10 +391,8 @@
     "updatedToday": "Oppdatert i dag",
     "updatedYesterday": "Oppdatert i går",
     "autosaveFailed": "Kunne ikke lagre endringene. De er fortsatt i redigeringsprogrammet.",
-    "changedOnDisk": "«{{path}}» ble endret utenfor Oleafly. Last inn filen på nytt, eller lagre igjen for å beholde din versjon.",
     "openFileEncoding": "«{{path}}» kan ikke åpnes fordi det ikke er en UTF-8-tekstfil. Hvis det er tekst, lagrer du den som UTF-8 og åpner den på nytt.",
     "openFileFailed": "Kunne ikke åpne «{{path}}». Se appens logg for detaljer.",
-    "reloadFromDisk": "Last inn på nytt",
     "changedOnDiskElsewhere": "{{path}} ble endret på disken, så Oleafly lagret den ikke. Åpne den for å velge hvilken versjon du vil beholde."
   },
   "projectDiagnostics": {

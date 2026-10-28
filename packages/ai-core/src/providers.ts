@@ -172,8 +172,10 @@ export function getProvider(id: string): AIProvider | undefined {
   return PROVIDER_BY_ID[id];
 }
 
+/** The catalog's first model for a provider, or "" for one the catalog does not
+ * list (a custom provider has no preset model; the backend chooses from its list). */
 export function defaultModel(providerId: string): string {
-  return getProvider(providerId)?.models[0]?.id ?? "gpt-4o-mini";
+  return getProvider(providerId)?.models[0]?.id ?? "";
 }
 
 export function credentialMeta(providerId: string): { label: string; placeholder: string } {
@@ -208,6 +210,39 @@ export interface AIConfigLike {
   ai_api_key?: string;
   ai_keys?: Record<string, string>;
   ai_custom_providers?: CustomProviderLike[];
+  ai_provider_models?: Record<string, readonly { id: string; enabled: boolean }[] | undefined>;
+}
+
+/** The saved per-provider keys, with the legacy single `ai_api_key` folded into
+ * the saved provider. Only a catalog provider that takes a key gets it: a custom
+ * endpoint or an Ollama host never receives a key that was typed for another service. */
+export function effectiveProviderKeys(cfg: AIConfigLike): Record<string, string> {
+  const saved = cfg.ai_provider || "openai";
+  const keys = { ...cfg.ai_keys };
+  const catalog = getProvider(saved);
+  if (cfg.ai_api_key && catalog && !catalog.isHost && !keys[saved]) keys[saved] = cfg.ai_api_key;
+  return keys;
+}
+
+/** Whether a provider can take a request: a saved key or host, or a custom
+ * provider that needs no key (an unauthenticated local server). */
+export function isProviderConfigured(
+  providerId: string,
+  keys: Readonly<Record<string, string>>,
+  customs: readonly CustomProviderLike[] = [],
+): boolean {
+  if ((keys[providerId] ?? "").trim().length > 0) return true;
+  return customs.some((custom) => custom.id === providerId && Boolean(custom.keyOptional));
+}
+
+// The model a provider runs when the saved one does not apply: its catalog
+// default if that is enabled, else its first enabled stored model. With nothing
+// stored (or nothing enabled) the catalog default, "" for a custom provider.
+function fallbackModel(cfg: AIConfigLike, providerId: string): string {
+  const catalogDefault = defaultModel(providerId);
+  const enabled = (cfg.ai_provider_models?.[providerId] ?? []).filter((model) => model.enabled);
+  if (enabled.length === 0 || enabled.some((model) => model.id === catalogDefault)) return catalogDefault;
+  return enabled[0].id;
 }
 
 export function pickActiveProvider(cfg: AIConfigLike): {
@@ -216,23 +251,30 @@ export function pickActiveProvider(cfg: AIConfigLike): {
   credential: string;
 } {
   const saved = cfg.ai_provider || "openai";
-  const keys = { ...cfg.ai_keys };
-  if (cfg.ai_api_key && !keys[saved]) keys[saved] = cfg.ai_api_key;
+  const keys = effectiveProviderKeys(cfg);
   // A custom provider with keyOptional is "configured" just by existing, even
   // before any key/host value has been typed (e.g. an unauthenticated local
   // server).
-  const keyOptionalIds = (cfg.ai_custom_providers ?? [])
-    .filter((c) => c.keyOptional)
-    .map((c) => c.id);
-  const configured = [...new Set([...Object.keys(keys), ...keyOptionalIds])].find(
-    (k) => (keys[k] ?? "").trim() || keyOptionalIds.includes(k)
+  const customs = cfg.ai_custom_providers ?? [];
+  const keyOptionalIds = customs.filter((c) => c.keyOptional).map((c) => c.id);
+  const configured = [...new Set([...Object.keys(keys), ...keyOptionalIds])].find((k) =>
+    isProviderConfigured(k, keys, customs)
   );
-  const providerId =
-    (keys[saved] ?? "").trim() || keyOptionalIds.includes(saved) ? saved : configured ?? saved;
+  const providerId = isProviderConfigured(saved, keys, customs) ? saved : configured ?? saved;
   const credential = keys[providerId] ?? "";
-  const modelId =
-    providerId === saved && cfg.ai_model ? cfg.ai_model : defaultModel(providerId);
-  return { providerId, modelId, credential };
+  return { providerId, modelId: activeModelFor(cfg, saved, providerId), credential };
+}
+
+// The saved model when it still belongs to the active provider. A custom
+// provider's list is what the backend enforces ("Model X is not enabled"), so a
+// saved model it no longer lists (or never did, such as one left over from
+// another provider) gives way to the provider's own default.
+function activeModelFor(cfg: AIConfigLike, saved: string, providerId: string): string {
+  if (providerId !== saved || !cfg.ai_model) return fallbackModel(cfg, providerId);
+  if (getProvider(providerId)) return cfg.ai_model;
+  const enabled = (cfg.ai_provider_models?.[providerId] ?? []).filter((model) => model.enabled);
+  if (enabled.length === 0 || enabled.some((model) => model.id === cfg.ai_model)) return cfg.ai_model;
+  return fallbackModel(cfg, providerId);
 }
 
 export function hasConfiguredProvider(cfg: AIConfigLike): boolean {

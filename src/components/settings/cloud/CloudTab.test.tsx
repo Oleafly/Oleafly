@@ -3,13 +3,15 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import type { CloudProject, CloudState } from "@/lib/cloud";
+import type { CloudProject, CloudProviderInfo, CloudState } from "@/lib/cloud";
 
 const mocks = vi.hoisted(() => ({
   cloud: {
     cloudState: vi.fn(),
     cloudDetails: vi.fn(),
+    cloudProviders: vi.fn(),
     cloudConnectBegin: vi.fn(),
+    cloudConnectCredentials: vi.fn(),
     cloudConnectWait: vi.fn(),
     cloudConnectPaste: vi.fn(),
     cloudConnectCancel: vi.fn(async () => undefined),
@@ -82,6 +84,12 @@ function project(overrides: Partial<CloudProject>): CloudProject {
 
 const UNREADABLE = '@oleafly/error:{"code":"cloud.remote_unreadable","params":{}}';
 
+const PROVIDERS: CloudProviderInfo[] = [
+  { kind: "dropbox", auth: "oauth", available: true, pasteCode: true, quota: true },
+  { kind: "google_drive", auth: "oauth", available: true, pasteCode: false, quota: true },
+  { kind: "s3", auth: "credentials", available: true, pasteCode: false, quota: false },
+];
+
 function holdReport() {
   return {
     localId: "thesis",
@@ -101,6 +109,7 @@ function holdReport() {
 function cloudState(overrides: Partial<CloudState> = {}): CloudState {
   return {
     status: "connected",
+    provider: "dropbox",
     email: "ada@uni.edu",
     displayName: "Ada",
     deviceName: "Desk",
@@ -138,7 +147,8 @@ beforeEach(() => {
   useCloudStore.setState({ autoSync: true });
   useFilesStore.setState({ refreshProjects: mocks.refreshProjects });
   mocks.cloud.cloudSyncNow.mockResolvedValue({ projects: [], lastSyncedMs: 1, error: null });
-  serve(cloudState({ status: "disconnected", email: null }));
+  mocks.cloud.cloudProviders.mockResolvedValue(PROVIDERS);
+  serve(cloudState({ status: "disconnected", provider: null, email: null }));
 });
 
 describe("CloudTab", () => {
@@ -146,13 +156,14 @@ describe("CloudTab", () => {
     let begin!: (value: unknown) => void;
     mocks.cloud.cloudConnectBegin.mockReturnValue(new Promise((resolve) => (begin = resolve)));
     render(<CloudTab />);
-    const provider = await screen.findByTestId("cloud-provider-dropbox");
-    expect(provider).toHaveTextContent("Git history and checkpoints don't sync yet.");
-    expect(provider).toHaveTextContent("AI chats, passwords and keys never leave this computer.");
-    expect(provider).not.toHaveTextContent(/skills|templates/i);
-    await userEvent.click(screen.getByRole("button", { name: /Connect Dropbox/ }));
-    expect(mocks.cloud.cloudConnectBegin).toHaveBeenCalledWith(false);
-    expect(screen.getByTestId("cloud-connect")).toBeDisabled();
+    const chooser = await screen.findByTestId("cloud-chooser");
+    expect(chooser).toHaveTextContent("Git history and checkpoints don't sync yet.");
+    expect(chooser).toHaveTextContent("AI chats, passwords and keys never leave this computer.");
+    expect(chooser).not.toHaveTextContent(/skills|templates/i);
+    await userEvent.click(screen.getByRole("button", { name: "Dropbox" }));
+    expect(mocks.cloud.cloudConnectBegin).toHaveBeenCalledWith(false, "dropbox");
+    expect(screen.getByTestId("cloud-provider-option-dropbox")).toBeDisabled();
+    expect(screen.getByTestId("cloud-provider-option-s3")).toBeDisabled();
     mocks.cloud.cloudConnectWait.mockReturnValue(new Promise(() => {}));
     await act(async () => begin({ flowId: "f1", authUrl: "https://www.dropbox.com/oauth2/authorize", paste: false }));
     expect(await screen.findByTestId("cloud-connect-panel")).toBeInTheDocument();
@@ -165,10 +176,10 @@ describe("CloudTab", () => {
     let pasteBegin!: (value: unknown) => void;
     mocks.cloud.cloudConnectBegin.mockReturnValueOnce(new Promise((resolve) => (pasteBegin = resolve)));
     render(<CloudTab />);
-    await userEvent.click(await screen.findByRole("button", { name: /Connect Dropbox/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Dropbox" }));
     await screen.findByTestId("cloud-connect-panel");
     await userEvent.click(screen.getByText(/Paste a code instead/));
-    expect(mocks.cloud.cloudConnectBegin).toHaveBeenLastCalledWith(true);
+    expect(mocks.cloud.cloudConnectBegin).toHaveBeenLastCalledWith(true, "dropbox");
     expect(screen.getByTestId("cloud-connect-panel")).toBeInTheDocument();
     expect(screen.getByLabelText(/Code from Dropbox/)).toBeDisabled();
     await act(async () => pasteBegin({ flowId: "f2", authUrl: "https://b", paste: true }));
@@ -237,7 +248,7 @@ describe("CloudTab", () => {
     expect(within(alert).queryByRole("button")).toBeNull();
     expect(screen.getByText("Access ended")).toBeInTheDocument();
     await userEvent.click(within(banner).getByRole("button", { name: "Connect again" }));
-    expect(mocks.cloud.cloudConnectBegin).toHaveBeenCalledWith(false);
+    expect(mocks.cloud.cloudConnectBegin).toHaveBeenCalledWith(false, "dropbox");
     expect(mocks.cloud.cloudDetails).not.toHaveBeenCalled();
   });
 
@@ -257,7 +268,7 @@ describe("CloudTab", () => {
     render(<CloudTab />);
     const auto = await screen.findByRole("switch", { name: "Sync automatically" });
     expect(auto).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByTestId("cloud-sync-auto")).toHaveTextContent(/as soon as another computer changes your Dropbox/);
+    expect(screen.getByTestId("cloud-sync-auto")).toHaveTextContent(/soon after another computer changes your Dropbox/);
     await userEvent.click(auto);
     expect(useCloudStore.getState().autoSync).toBe(false);
     expect(localStorage.getItem("oleafly.cloudSync.auto")).toBe("off");
@@ -483,10 +494,10 @@ describe("CloudTab", () => {
     expect(dialog).toHaveTextContent("Your projects stay on this computer and in your Dropbox.");
     expect(mocks.cloud.cloudDisconnect).not.toHaveBeenCalled();
     useCloudStore.setState({ syncError: "boom", lastReport: { projects: [], lastSyncedMs: 1, error: null } });
-    serve(cloudState({ status: "disconnected" }));
+    serve(cloudState({ status: "disconnected", provider: null }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Disconnect" }));
     expect(mocks.cloud.cloudDisconnect).toHaveBeenCalledTimes(1);
-    await screen.findByRole("button", { name: /Connect Dropbox/ });
+    await screen.findByRole("button", { name: "Dropbox" });
     expect(useCloudStore.getState().syncError).toBeNull();
     expect(useCloudStore.getState().lastReport).toBeNull();
   });
@@ -693,5 +704,189 @@ describe("CloudTab", () => {
     await userEvent.click(within(notice).getByRole("button", { name: "Use this computer's settings" }));
     expect(mocks.cloud.cloudSettingsKeepLocal).toHaveBeenCalledWith({});
     await waitFor(() => expect(screen.queryByTestId("cloud-settings-problem")).toBeNull());
+  });
+});
+
+const S3_LABEL = "papers/oleafly on s3.eu-west-1.amazonaws.com";
+
+async function openS3Form() {
+  await userEvent.click(await screen.findByRole("button", { name: "S3-compatible storage" }));
+  return screen.getByTestId("cloud-s3-form");
+}
+
+async function fillS3Form(form: HTMLElement, endpoint = "https://s3.eu-west-1.amazonaws.com") {
+  await userEvent.type(within(form).getByLabelText("Endpoint URL"), endpoint);
+  const region = within(form).getByLabelText("Region");
+  await userEvent.clear(region);
+  await userEvent.type(region, "eu-west-1");
+  await userEvent.type(within(form).getByLabelText("Bucket"), "papers");
+  await userEvent.type(within(form).getByLabelText("Access key ID"), "AKIAEXAMPLE");
+  await userEvent.type(within(form).getByLabelText("Secret access key"), "s3cret");
+}
+
+describe("CloudTab providers", () => {
+  it("offers every provider with a line about it, and disables one this build can't connect", async () => {
+    mocks.cloud.cloudProviders.mockResolvedValue([PROVIDERS[0], { ...PROVIDERS[1], available: false }, PROVIDERS[2]]);
+    render(<CloudTab />);
+    const group = await screen.findByRole("group", { name: "Choose where to sync" });
+    const options = within(group).getAllByRole("button");
+    expect(options.map((option) => option.getAttribute("data-testid"))).toEqual([
+      "cloud-provider-option-dropbox",
+      "cloud-provider-option-google_drive",
+      "cloud-provider-option-s3",
+    ]);
+    expect(within(group).getByRole("button", { name: "Dropbox" })).toHaveAccessibleDescription(
+      "Sign in with your Dropbox account.",
+    );
+    const drive = within(group).getByRole("button", { name: "Google Drive" });
+    expect(drive).toBeDisabled();
+    expect(drive).toHaveAccessibleDescription("Not available in this build");
+    expect(within(group).getByRole("button", { name: "S3-compatible storage" })).toBeEnabled();
+    expect(screen.getByTestId("cloud-chooser")).toHaveTextContent(
+      "Back up your Library projects to your own cloud storage",
+    );
+    expect(screen.getByRole("button", { name: "About cloud sync" })).toBeInTheDocument();
+  });
+
+  it("starts the Google Drive sign-in in the browser without a paste option", async () => {
+    mocks.cloud.cloudConnectBegin.mockResolvedValue({ flowId: "g1", authUrl: "https://accounts.google.com/o", paste: false });
+    mocks.cloud.cloudConnectWait.mockReturnValue(new Promise(() => {}));
+    render(<CloudTab />);
+    await userEvent.click(await screen.findByRole("button", { name: "Google Drive" }));
+    expect(mocks.cloud.cloudConnectBegin).toHaveBeenCalledWith(false, "google_drive");
+    const panel = await screen.findByTestId("cloud-connect-panel");
+    expect(mocks.open).toHaveBeenCalledWith("https://accounts.google.com/o");
+    expect(panel).toHaveTextContent("Waiting for Google Drive");
+    expect(panel).toHaveTextContent("Browser didn't open? Open Google Drive");
+    expect(within(panel).queryByText(/Paste a code instead/)).toBeNull();
+    await userEvent.click(within(panel).getByRole("button", { name: "Cancel" }));
+    expect(mocks.cloud.cloudConnectCancel).toHaveBeenCalledWith("g1");
+    expect(await screen.findByRole("group", { name: "Choose where to sync" })).toBeInTheDocument();
+  });
+
+  it("names Google Drive throughout its connected card", async () => {
+    serve(
+      cloudState({ provider: "google_drive", quotaFull: true }),
+      { used: 1_288_490_189, allocated: 2_147_483_648 },
+      [project({ localId: null, cloudId: "c-notes", name: "Notes", mode: "download" })],
+    );
+    render(<CloudTab />);
+    const card = await screen.findByTestId("cloud-provider-google_drive");
+    expect(within(card).getByRole("heading", { name: "Google Drive" })).toBeInTheDocument();
+    expect(await screen.findByRole("progressbar", { name: "Google Drive storage" })).toBeInTheDocument();
+    expect(screen.getByText("Google Drive full")).toBeInTheDocument();
+    expect(screen.getByTestId("cloud-quota-full")).toHaveTextContent("Your Google Drive is full.");
+    await waitFor(() => expect(screen.getByTestId("cloud-projects")).toHaveTextContent("1 only in Google Drive"));
+    await userEvent.click(screen.getByTestId("cloud-advanced-toggle"));
+    expect(await screen.findByTestId("cloud-disconnect-row")).toHaveTextContent("Disconnect Google Drive");
+    expect(card).not.toHaveTextContent(/Dropbox|\{\{/);
+    expect(screen.queryByTestId("cloud-provider-dropbox")).toBeNull();
+  });
+
+  it("keeps Connect off until the S3 form is complete and the endpoint is an http(s) URL", async () => {
+    render(<CloudTab />);
+    const form = await openS3Form();
+    expect(form).toHaveTextContent("Works with Amazon S3, Google Cloud Storage with HMAC keys, MinIO");
+    expect(within(form).getByLabelText("Region")).toHaveValue("us-east-1");
+    expect(within(form).getByLabelText(/Folder in the bucket/)).toHaveValue("oleafly");
+    expect(within(form).getByLabelText("Secret access key")).toHaveAttribute("type", "password");
+    expect(within(form).getByRole("checkbox", { name: "Use path-style addresses" })).toBeChecked();
+    const connect = within(form).getByTestId("cloud-s3-connect");
+    expect(connect).toBeDisabled();
+    await fillS3Form(form, "s3.eu-west-1.amazonaws.com");
+    await userEvent.click(within(form).getByLabelText("Bucket"));
+    expect(within(form).getByLabelText("Endpoint URL")).toHaveAccessibleDescription(
+      "Enter a URL that starts with https:// or http://.",
+    );
+    expect(connect).toBeDisabled();
+    const endpoint = within(form).getByLabelText("Endpoint URL");
+    await userEvent.clear(endpoint);
+    await userEvent.type(endpoint, "ftp://files.example.com");
+    expect(connect).toBeDisabled();
+    await userEvent.clear(endpoint);
+    await userEvent.type(endpoint, "http://minio.local:9000");
+    expect(connect).toBeEnabled();
+    expect(within(form).queryByText("Enter a URL that starts with https:// or http://.")).toBeNull();
+    await userEvent.clear(within(form).getByLabelText("Bucket"));
+    expect(connect).toBeDisabled();
+    expect(mocks.cloud.cloudConnectCredentials).not.toHaveBeenCalled();
+  });
+
+  it("connects S3-compatible storage and shows the bucket without a storage ring", async () => {
+    let finish!: (value: unknown) => void;
+    mocks.cloud.cloudConnectCredentials.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    render(<CloudTab />);
+    const form = await openS3Form();
+    await fillS3Form(form);
+    await userEvent.click(within(form).getByRole("checkbox", { name: "Use path-style addresses" }));
+    await userEvent.click(within(form).getByTestId("cloud-s3-connect"));
+    expect(mocks.cloud.cloudConnectCredentials).toHaveBeenCalledWith(
+      "s3",
+      {
+        endpoint: "https://s3.eu-west-1.amazonaws.com",
+        region: "eu-west-1",
+        bucket: "papers",
+        prefix: "oleafly",
+        pathStyle: false,
+      },
+      "AKIAEXAMPLE",
+      "s3cret",
+    );
+    expect(within(form).getByTestId("cloud-s3-connect")).toBeDisabled();
+    expect(within(form).getByRole("button", { name: "Cancel" })).toBeDisabled();
+    serve(cloudState({ provider: "s3", email: S3_LABEL, lastEmail: S3_LABEL }), null);
+    await act(async () => finish({ email: S3_LABEL }));
+    const card = await screen.findByTestId("cloud-provider-s3");
+    expect(within(card).getByRole("heading", { name: "S3-compatible storage" })).toBeInTheDocument();
+    expect(within(card).getByTestId("cloud-account-email")).toHaveTextContent(S3_LABEL);
+    await waitFor(() => expect(mocks.cloud.cloudDetails).toHaveBeenCalled());
+    expect(screen.queryByTestId("cloud-storage")).toBeNull();
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(card).not.toHaveTextContent(/Dropbox|\{\{/);
+  });
+
+  it.each([
+    ["cloud.s3_endpoint", "Oleafly couldn't reach that endpoint. Check the URL and your connection."],
+    ["cloud.s3_credentials", "The service didn't accept those keys. Check the access key ID and secret access key."],
+    ["cloud.s3_bucket", "Oleafly couldn't open that bucket. Check the name, and check that these keys can read and write to it."],
+    [
+      "cloud.s3_no_conditional_writes",
+      "This service doesn't support conditional writes. Sync needs them so two computers syncing at once can't overwrite each other's changes. Amazon S3, Google Cloud Storage and MinIO support them.",
+    ],
+  ])("shows what went wrong when S3 refuses with %s", async (code, message) => {
+    mocks.cloud.cloudConnectCredentials.mockRejectedValueOnce(`@oleafly/error:{"code":"${code}","params":{}}`);
+    render(<CloudTab />);
+    const form = await openS3Form();
+    await fillS3Form(form);
+    await userEvent.click(within(form).getByTestId("cloud-s3-connect"));
+    expect(await within(form).findByRole("alert")).toHaveTextContent(message);
+    expect(within(form).getByTestId("cloud-s3-connect")).toBeEnabled();
+    expect(screen.queryByTestId("cloud-provider-s3")).toBeNull();
+  });
+
+  it("goes back to the providers when the S3 form is cancelled", async () => {
+    render(<CloudTab />);
+    const form = await openS3Form();
+    await userEvent.click(within(form).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByTestId("cloud-s3-form")).toBeNull();
+    expect(screen.getByRole("group", { name: "Choose where to sync" })).toBeInTheDocument();
+  });
+
+  it("asks for the S3 keys again when their access ended", async () => {
+    serve(cloudState({ status: "revoked", provider: "s3", email: S3_LABEL }));
+    render(<CloudTab />);
+    const banner = await screen.findByTestId("cloud-revoked");
+    expect(banner).toHaveTextContent("S3-compatible storage access ended.");
+    await userEvent.click(within(banner).getByRole("button", { name: "Connect again" }));
+    expect(mocks.cloud.cloudConnectBegin).not.toHaveBeenCalled();
+    expect(screen.getByTestId("cloud-s3-form")).toBeInTheDocument();
+  });
+
+  it("offers Try again when the providers can't be loaded", async () => {
+    mocks.cloud.cloudProviders.mockRejectedValueOnce("offline");
+    render(<CloudTab />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't load cloud sync. Try again.");
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("group", { name: "Choose where to sync" })).toBeInTheDocument();
   });
 });

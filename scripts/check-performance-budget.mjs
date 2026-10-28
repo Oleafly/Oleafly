@@ -54,6 +54,26 @@ const limits = {
   // +1 KB for the research tasks switch at startup (the rail entry's
   // condition, the rail's re-render on it, the capped small-button radius):
   // the entry measures 4,990,252 bytes, 252 over the old ceiling.
+  // +10 KB in #338 for the 70 English strings of the coded agent errors
+  // (English catalogs stay in the entry so every key has its fallback before
+  // first paint) and the DeepSeek reasoning and agent start changes: the
+  // entry measured 5,002,640 bytes.
+  // -305 KB after 0.4.8: KaTeX loads with the first formula preview and pdf.js
+  // with the first page picture, and the compile store stopped importing the
+  // editor and command modules dynamically (each such import of a module
+  // already in the entry kept every one of its exports). The entry measures
+  // 4,689,999 bytes; the ceiling stays where it is as headroom.
+  // -51 KB more: the built-in assistant toolsets register from their own
+  // chunk, and the chat's approval helpers come from
+  // @oleafly/ai-tools/approval-risk rather than the package index (a value
+  // import of an index keeps every module it re-exports in the entry). The
+  // entry measures 4,638,573 bytes before #338 and 4,646,817 bytes with it.
+  // About 10 KB of that headroom goes to the editor's right-click menu (Cut,
+  // Copy, Paste and Select all through the clipboard plugin, the submenus),
+  // the Ask AI popup's own request, Markdown's /table and /equation, and the
+  // GitLab, Codeberg, Gitea and Forgejo logos the remote menu shows (4.2 KB of
+  // it). The Dropbox and Google Drive logos moved to the Cloud tab and left the
+  // entry. The entry measures 4,657,262 bytes with them.
   largestJavaScript: 5_010_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
@@ -158,6 +178,15 @@ const limits = {
   // With both, the combined graph measures 20,950,195 bytes on macOS.
   // +20 KB for the 0.4.8-rc fixes: 21,001,072 bytes on macOS, of which
   // following file links on Cmd+click in the source editor is 586 bytes.
+  // -307 KB with the entry trim above: mermaid uses the app's KaTeX 0.18
+  // instead of bundling 0.16 (260 KB). The combined graph measures 20,696,691
+  // bytes on macOS.
+  // +5 KB for the toolset chunk's import and export lists: 20,702,030 bytes
+  // on macOS.
+  // The headroom also covers Google Drive and S3-compatible cloud sync (the
+  // provider cards, the S3 form, the provider choice in the Cloud tab), the
+  // storage bar in Settings and the entry growth above: 20,738,409 bytes on
+  // macOS.
   totalJavaScript: 21_020_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about

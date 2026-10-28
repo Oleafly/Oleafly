@@ -17,7 +17,7 @@ import type { CloudProgress, CloudProject, CloudState } from "@/lib/cloud";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatList, formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
 import { cn } from "@/lib/utils";
-import { cloudErrorCode, remoteBusyKey, useCloudStore } from "@/store/cloud";
+import { cloudErrorCode, remoteBusyKey, useCloudProviderName, useCloudStore } from "@/store/cloud";
 import {
   ChevronRight,
   CloudOff,
@@ -68,27 +68,33 @@ function relative(t: CloudTranslate, timestamp: number, now: number): string {
   });
 }
 
-function remoteStatus(t: CloudTranslate, project: CloudProject): string {
+function remoteStatus(t: CloudTranslate, project: CloudProject, provider: string): string {
   if (project.recycled) return t(($) => $.cloud.row.recycled);
-  if (project.pendingFiles === null) return t(($) => $.cloud.row.onlyInDropbox);
+  if (project.pendingFiles === null) return t(($) => $.cloud.row.onlyInCloud, { provider });
   return project.uploadingFrom
     ? t(($) => $.cloud.row.stillUploading, { device: project.uploadingFrom })
     : t(($) => $.cloud.row.stillUploadingUnknown);
 }
 
-function rowStatus(t: CloudTranslate, project: CloudProject, now: number, resumedAt?: number): string {
-  if (project.mode === "download") return remoteStatus(t, project);
+function rowStatus(
+  t: CloudTranslate,
+  project: CloudProject,
+  provider: string,
+  now: number,
+  resumedAt?: number,
+): string {
+  if (project.mode === "download") return remoteStatus(t, project, provider);
   if (project.mode === "held") return t(($) => $.cloud.row.held);
   if (project.mode === "pause") return t(($) => $.cloud.row.paused);
   if (project.mode === "removed") {
     return project.removedBy
-      ? t(($) => $.cloud.row.removed, { device: project.removedBy })
-      : t(($) => $.cloud.row.removedUnknown);
+      ? t(($) => $.cloud.row.removed, { device: project.removedBy, provider })
+      : t(($) => $.cloud.row.removedUnknown, { provider });
   }
   if (resumedAt !== undefined && project.lastSyncedMs < resumedAt) return t(($) => $.cloud.row.waitingToSync);
   return project.lastSyncedMs > 0
     ? t(($) => $.cloud.row.synced, { time: relative(t, project.lastSyncedMs, now) })
-    : t(($) => $.cloud.row.waiting);
+    : t(($) => $.cloud.row.waiting, { provider });
 }
 
 function transferText(t: CloudTranslate, progress: CloudProgress): string {
@@ -120,6 +126,7 @@ function TransferLine({ progress }: Readonly<{ progress: CloudProgress }>) {
 
 function summaryLine(
   t: CloudTranslate,
+  provider: string,
   local: readonly CloudProject[],
   cloudOnly: number,
   remote: RemoteListState,
@@ -129,16 +136,17 @@ function summaryLine(
   const parts = [
     synced > 0 ? t(($) => $.cloud.projects.synced, { count: synced }) : null,
     paused > 0 ? t(($) => $.cloud.projects.paused, { count: paused }) : null,
-    cloudOnly > 0 ? t(($) => $.cloud.projects.onlyInDropbox, { count: cloudOnly }) : null,
+    cloudOnly > 0 ? t(($) => $.cloud.projects.onlyInCloud, { count: cloudOnly, provider }) : null,
   ].filter((part): part is string => part !== null);
   if (parts.length > 0) return formatList(parts, { type: "unit", style: "short" });
-  if (remote === "loading") return t(($) => $.cloud.projects.checking);
-  if (remote === "failed") return t(($) => $.cloud.projects.checkFailed);
+  if (remote === "loading") return t(($) => $.cloud.projects.checking, { provider });
+  if (remote === "failed") return t(($) => $.cloud.projects.checkFailed, { provider });
   return t(($) => $.cloud.projects.none);
 }
 
 function statusLine(
   t: CloudTranslate,
+  provider: string,
   state: CloudState,
   syncing: boolean,
   syncError: string | null,
@@ -152,7 +160,7 @@ function statusLine(
     return {
       text:
         code === "cloud.network"
-          ? t(($) => $.cloud.projects.offline)
+          ? t(($) => $.cloud.projects.offline, { provider })
           : describeError(problem),
       problem: true,
     };
@@ -168,26 +176,27 @@ function statusLine(
 
 function confirmCopy(
   t: CloudTranslate,
+  provider: string,
   pending: PendingConfirm,
 ): { title: string; description: string; confirmLabel: string } {
   const name = pending.project.name;
   switch (pending.kind) {
     case "remove":
       return {
-        title: t(($) => $.cloud.confirm.removeTitle, { name }),
-        description: t(($) => $.cloud.confirm.removeDescription),
-        confirmLabel: t(($) => $.cloud.confirm.removeAction),
+        title: t(($) => $.cloud.confirm.removeTitle, { name, provider }),
+        description: t(($) => $.cloud.confirm.removeDescription, { provider }),
+        confirmLabel: t(($) => $.cloud.confirm.removeAction, { provider }),
       };
     case "removeRemote":
       return {
-        title: t(($) => $.cloud.confirm.removeTitle, { name }),
-        description: t(($) => $.cloud.confirm.removeRemoteDescription),
-        confirmLabel: t(($) => $.cloud.confirm.removeAction),
+        title: t(($) => $.cloud.confirm.removeTitle, { name, provider }),
+        description: t(($) => $.cloud.confirm.removeRemoteDescription, { provider }),
+        confirmLabel: t(($) => $.cloud.confirm.removeAction, { provider }),
       };
     case "replace":
       return {
-        title: t(($) => $.cloud.confirm.replaceTitle, { name }),
-        description: t(($) => $.cloud.confirm.replaceDescription),
+        title: t(($) => $.cloud.confirm.replaceTitle, { name, provider }),
+        description: t(($) => $.cloud.confirm.replaceDescription, { provider }),
         confirmLabel: t(($) => $.cloud.confirm.replaceAction),
       };
     case "deleteHeld": {
@@ -195,14 +204,14 @@ function confirmCopy(
       if (pending.project.hold?.kind === "remoteDelete") {
         return {
           title: t(($) => $.cloud.confirm.deleteHereTitle),
-          description: t(($) => $.cloud.confirm.deleteHereDescription, { count, name }),
+          description: t(($) => $.cloud.confirm.deleteHereDescription, { count, name, provider }),
           confirmLabel: t(($) => $.cloud.confirm.deleteHereAction),
         };
       }
       return {
-        title: t(($) => $.cloud.confirm.deleteTitle),
-        description: t(($) => $.cloud.confirm.deleteDescription, { count, name }),
-        confirmLabel: t(($) => $.cloud.confirm.deleteAction),
+        title: t(($) => $.cloud.confirm.deleteTitle, { provider }),
+        description: t(($) => $.cloud.confirm.deleteDescription, { count, name, provider }),
+        confirmLabel: t(($) => $.cloud.confirm.deleteAction, { provider }),
       };
     }
   }
@@ -262,6 +271,7 @@ function RowMenu({
   onRemove,
 }: Readonly<{ project: CloudProject; busyKey: string; onRemove: () => void }>) {
   const { t } = useTranslation(["cloud"]);
+  const provider = useCloudProviderName();
   const busy = useCloudStore((s) => s.busyProjects.includes(busyKey) || s.downloading.includes(project.cloudId));
   return (
     <DropdownMenu>
@@ -285,7 +295,7 @@ function RowMenu({
           onSelect={onRemove}
         >
           <CloudOff aria-hidden className="size-4" />
-          {t(($) => $.cloud.row.remove)}
+          {t(($) => $.cloud.row.remove, { provider })}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -297,6 +307,7 @@ function HeldNotice({ project, onDelete }: Readonly<{ project: CloudProject; onD
   const localId = project.localId as string;
   const busy = useCloudStore((s) => s.busyProjects.includes(localId));
   const resolveHold = useCloudStore((s) => s.resolveHold);
+  const provider = useCloudProviderName();
   const hold = project.hold;
   if (!hold) return null;
   const remote = hold.kind === "remoteDelete";
@@ -310,7 +321,7 @@ function HeldNotice({ project, onDelete }: Readonly<{ project: CloudProject; onD
         <>
           <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void resolveHold(localId, "restore")}>
             {busy ? <Spinner /> : null}
-            {remote ? t(($) => $.cloud.row.putBackInDropbox) : t(($) => $.cloud.row.putBack)}
+            {remote ? t(($) => $.cloud.row.putBackInCloud, { provider }) : t(($) => $.cloud.row.putBack)}
           </Button>
           <Button
             type="button"
@@ -320,14 +331,14 @@ function HeldNotice({ project, onDelete }: Readonly<{ project: CloudProject; onD
             onClick={onDelete}
             className="text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive"
           >
-            {remote ? t(($) => $.cloud.row.deleteHere) : t(($) => $.cloud.row.deleteToo)}
+            {remote ? t(($) => $.cloud.row.deleteHere) : t(($) => $.cloud.row.deleteToo, { provider })}
           </Button>
         </>
       }
     >
       {remote
-        ? t(($) => $.cloud.row.heldRemoteMessage, { count: hold.count, total: hold.total })
-        : t(($) => $.cloud.row.heldMessage, { count: hold.count, total: hold.total })}
+        ? t(($) => $.cloud.row.heldRemoteMessage, { count: hold.count, total: hold.total, provider })
+        : t(($) => $.cloud.row.heldMessage, { count: hold.count, total: hold.total, provider })}
     </CloudNotice>
   );
 }
@@ -475,6 +486,7 @@ function ProjectRow({
   onConfirm,
 }: Readonly<{ project: CloudProject; now: number; onConfirm: (pending: PendingConfirm) => void }>) {
   const { t } = useTranslation(["cloud"]);
+  const provider = useCloudProviderName();
   const connected = useCloudStore((s) => s.status === "connected");
   const local = project.localId !== null && project.mode !== "download";
   const removable = isRemovable(project, local, connected);
@@ -495,7 +507,7 @@ function ProjectRow({
           {transferring ? (
             <TransferLine progress={progress} />
           ) : (
-            <p className="text-xs text-muted-foreground">{rowStatus(t, project, now, resumedAt)}</p>
+            <p className="text-xs text-muted-foreground">{rowStatus(t, project, provider, now, resumedAt)}</p>
           )}
           {project.error && !unreadable ? (
             <p className="break-words text-xs text-destructive">{describeError(project.error)}</p>
@@ -524,18 +536,21 @@ function ProjectRow({
 function RemoteListStatus({ state }: Readonly<{ state: RemoteListState }>) {
   const { t } = useTranslation(["cloud"]);
   const retryDetails = useCloudStore((s) => s.retryDetails);
+  const provider = useCloudProviderName();
   if (state === "loading") {
     return (
       <li data-testid="cloud-remote-loading" className="flex items-center gap-2 px-3 py-2.5 text-xs text-muted-foreground">
         <Spinner size="sm" />
-        {t(($) => $.cloud.projects.checking)}
+        {t(($) => $.cloud.projects.checking, { provider })}
       </li>
     );
   }
   if (state !== "failed") return null;
   return (
     <li data-testid="cloud-remote-error" className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 text-xs">
-      <span className="min-w-0 flex-1 basis-48 text-destructive">{t(($) => $.cloud.projects.checkFailed)}</span>
+      <span className="min-w-0 flex-1 basis-48 text-destructive">
+        {t(($) => $.cloud.projects.checkFailed, { provider })}
+      </span>
       <Button type="button" size="sm" variant="outline" onClick={() => void retryDetails()}>
         {t(($) => $.cloud.tryAgain)}
       </Button>
@@ -599,6 +614,7 @@ export function CloudProjectsCard() {
   const removeProject = useCloudStore((s) => s.removeProject);
   const removeRemote = useCloudStore((s) => s.removeRemote);
   const replaceRemote = useCloudStore((s) => s.replaceRemote);
+  const provider = useCloudProviderName();
   const now = useNow();
   const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
   const [defaultOpen] = useState(() => state?.projects.some(needsAttention) ?? false);
@@ -609,10 +625,10 @@ export function CloudProjectsCard() {
   const known = new Set(local.map((project) => project.cloudId).filter(Boolean));
   const cloudOnly = remote.filter((project) => project.mode === "download" && !known.has(project.cloudId));
   const downloadable = cloudOnly.filter((project) => !project.recycled).length;
-  const status = statusLine(t, state, syncing, syncError, now);
+  const status = statusLine(t, provider, state, syncing, syncError, now);
   const settled = remoteList === "ready" || remoteList === "idle";
   const empty = local.length === 0 && cloudOnly.length === 0 && settled;
-  const copy = confirm ? confirmCopy(t, confirm) : null;
+  const copy = confirm ? confirmCopy(t, provider, confirm) : null;
 
   const confirmAction = () => {
     if (!confirm) return;
@@ -636,7 +652,7 @@ export function CloudProjectsCard() {
         title={t(($) => $.cloud.projects.title)}
         description={
           <>
-            <span className="block truncate">{summaryLine(t, local, cloudOnly.length, remoteList)}</span>
+            <span className="block truncate">{summaryLine(t, provider, local, cloudOnly.length, remoteList)}</span>
             <span
               data-testid="cloud-sync-status"
               className={cn("flex items-center gap-1.5", status.problem && "text-amber-700 dark:text-amber-300")}

@@ -7211,6 +7211,9 @@ mod tests {
 
     #[test]
     fn link_addresses_with_a_password_are_refused() {
+        // Setting a remote takes the project's worktree lock first, and the
+        // lock looks for a restore marker in the library.
+        let _library = crate::collab::testing::TempLibrary::new();
         let refused = super::git_set_remote_sync(
             "no-such-project".into(),
             "https://u:pw@host.org/x.git".into(),

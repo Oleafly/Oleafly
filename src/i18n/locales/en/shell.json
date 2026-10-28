@@ -797,26 +797,43 @@
         "linkedFolders_other": "{{size}} of build output and settings for {{count}} opened folders",
         "refresh": "Refresh storage usage",
         "stats": {
-          "appData": "App data",
-          "appDataDetail": "Assets and settings",
-          "buildCache": "Build cache",
-          "buildCacheDetail": "Generated output",
           "files": "Files",
           "folders_one": "{{count}} folder",
           "folders_other": "{{count}} folders",
-          "gitHistory": "Git history",
-          "gitHistoryDetail": "Local versions",
           "images": "Images",
           "pdfs": "PDFs",
-          "projectFiles": "Project files",
-          "projectFilesDetail": "Sources and metadata",
           "projects": "Projects"
         },
         "subtitle": "Projects, previews, history, and app data",
         "title": "Storage usage",
         "total": "{{size}} across the Oleafly data folder",
         "unreadable_one": "{{count}} inaccessible item was excluded.",
-        "unreadable_other": "{{count}} inaccessible items were excluded."
+        "unreadable_other": "{{count}} inaccessible items were excluded.",
+        "groups": {
+          "projects": "Projects",
+          "appData": "App data",
+          "elsewhere": "Elsewhere"
+        },
+        "parts": {
+          "documents": "Documents and code",
+          "images": "Images",
+          "pdfs": "PDFs",
+          "media": "Audio and video",
+          "data": "Data files",
+          "otherFiles": "Other files",
+          "git": "Git history",
+          "build": "Build cache",
+          "texDistribution": "TeX distribution",
+          "agents": "AI agents",
+          "researchTasks": "Research tasks",
+          "tools": "Tools",
+          "checkpoints": "Checkpoints",
+          "compileCache": "Compile cache",
+          "otherAppData": "Settings and other data",
+          "recycleBin": "Recycle Bin",
+          "linkedFolders": "Opened folders"
+        },
+        "other": "Other"
       },
       "tabs": {
         "cloud": "Cloud sync",

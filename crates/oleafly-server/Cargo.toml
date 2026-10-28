@@ -25,6 +25,7 @@ loro = "=1.16.2"
 oleafly-collab-protocol = { path = "../oleafly-collab-protocol" }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }
 ring = "0.17"
+oleafly-s3 = { path = "../oleafly-s3" }
 rusqlite = { version = "0.32", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

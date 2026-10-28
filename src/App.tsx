@@ -14,7 +14,6 @@ import {
   useRef,
   useState,
   type KeyboardEventHandler,
-  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -89,6 +88,10 @@ import { applyAppTypography } from "@/lib/app-typography";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 import { useTypstFormsStore } from "@/store/typst-forms";
+import { AVAILABLE_TOUR_IDS } from "@/lib/tours/registry";
+import { START_TOUR_EVENT } from "@/lib/tour";
+import { useDiagramComposerStore } from "@/store/diagram-composer";
+import { mountOnFirstOpen } from "@/lib/mount-on-first-open";
 import { useZenStore } from "@/store/zen";
 import { exitZenMode } from "@/lib/zen-mode";
 import {
@@ -172,33 +175,74 @@ import {
   type ExternalFileChangePayload,
 } from "@/lib/external-file-changes";
 
-const SettingsModal = lazy(() =>
-  import("@/components/layout/SettingsModal").then((m) => ({ default: m.SettingsModal })),
+// The tour guide has work while a tour runs, while one can start on its own,
+// and once anything asks for a tour: startTour keeps a request nobody heard,
+// and the guide replays it when it mounts.
+function useTourGuideWanted(): boolean {
+  const wanted = useTourStore(
+    (state) =>
+      state.activeTourId !== null ||
+      (state.enabled && AVAILABLE_TOUR_IDS.some((id) => state.tours[id].status === "pending")),
+  );
+  const [requested, setRequested] = useState(false);
+  useEffect(() => {
+    const request = () => setRequested(true);
+    window.addEventListener(START_TOUR_EVENT, request);
+    return () => window.removeEventListener(START_TOUR_EVENT, request);
+  }, []);
+  return wanted || requested;
+}
+
+const SettingsModal = mountOnFirstOpen(
+  lazy(() =>
+    import("@/components/layout/SettingsModal").then((m) => ({ default: m.SettingsModal })),
+  ),
+  () => useSettingsStore((s) => s.settingsOpen),
 );
-const DiagramComposer = lazy(() =>
-  import("@/components/diagram/DiagramComposer").then((m) => ({ default: m.DiagramComposer })),
+const DiagramComposer = mountOnFirstOpen(
+  lazy(() =>
+    import("@/components/diagram/DiagramComposer").then((m) => ({ default: m.DiagramComposer })),
+  ),
+  () => useHomeViewStore((s) => s.page === "diagram-composer"),
 );
-const DiagramComposerChooserHost = lazy(() =>
-  import("@/components/diagram/composer-chooser/DiagramComposerChooser").then((m) => ({
-    default: m.DiagramComposerChooserHost,
-  })),
+const DiagramComposerChooserHost = mountOnFirstOpen(
+  lazy(() =>
+    import("@/components/diagram/composer-chooser/DiagramComposerChooser").then((m) => ({
+      default: m.DiagramComposerChooserHost,
+    })),
+  ),
+  () => useDiagramComposerStore((s) => s.chooserOpen),
 );
 const CopilotOverlay = lazy(() =>
   import("@/components/ai/CopilotOverlay").then((m) => ({ default: m.CopilotOverlay })),
 );
-const WordCountModal = lazy(() =>
-  import("@/components/editor/WordCountModal").then((m) => ({ default: m.WordCountModal })),
+const WordCountModal = mountOnFirstOpen(
+  lazy(() =>
+    import("@/components/editor/WordCountModal").then((m) => ({ default: m.WordCountModal })),
+  ),
+  () => useSettingsStore((s) => s.wordCountOpen),
 );
-const VersioningModal = lazy(() =>
-  import("@/components/editor/VersioningModal").then((m) => ({
-    default: m.VersioningModal,
-  })),
+const VersioningModal = mountOnFirstOpen(
+  lazy(() =>
+    import("@/components/editor/VersioningModal").then((m) => ({
+      default: m.VersioningModal,
+    })),
+  ),
+  () => useSettingsStore((s) => s.versioningOpen),
 );
-const HotkeysModal = lazy(() =>
-  import("@/components/editor/HotkeysModal").then((m) => ({ default: m.HotkeysModal })),
+const HotkeysModal = mountOnFirstOpen(
+  lazy(() =>
+    import("@/components/editor/HotkeysModal").then((m) => ({ default: m.HotkeysModal })),
+  ),
+  () => useSettingsStore((s) => s.hotkeysOpen),
 );
-const TourGuide = lazy(() =>
-  import("@/components/tour/TourGuide").then((m) => ({ default: m.TourGuide })),
+const TourGuide = mountOnFirstOpen(
+  lazy(() => import("@/components/tour/TourGuide").then((m) => ({ default: m.TourGuide }))),
+  useTourGuideWanted,
+);
+// The language service has nothing to do before a project opens.
+const LanguageServiceRuntime = mountOnFirstOpen(LanguageServiceRuntimeBoundary, () =>
+  useFilesStore((s) => s.projectId !== null),
 );
 const StatsToolView = lazy(() =>
   import("@/components/tools/StatsToolView").then((m) => ({ default: m.StatsToolView })),
@@ -231,11 +275,6 @@ const WorkspaceSidebar = memo(Sidebar);
 const WorkspaceEditor = memo(Editor);
 const WorkspacePreview = memo(PreviewPane);
 const WorkspaceAssistant = memo(ChatPanel);
-
-// fallback must stay null - a visible one blocks the whole screen (these mount unconditionally, closed by default).
-function LazyModals({ children }: Readonly<{ children: ReactNode }>) {
-  return <Suspense fallback={null}>{children}</Suspense>;
-}
 
 // One-chunk-fetch placeholder for the lazy editor/preview surfaces: quiet,
 // centered, and shaped like the boot progress card so loading reads as one
@@ -907,14 +946,12 @@ function AppContent() {
             <CopilotOverlay />
           </Suspense>
         )}
-        <LazyModals>
-          <SettingsModal />
-          <CiteOleaflyDialog />
-          <HotkeysModal />
-          <DiagramComposer />
-          <DiagramComposerChooserHost />
-          <TourGuide />
-        </LazyModals>
+        <SettingsModal />
+        <CiteOleaflyDialog />
+        <HotkeysModal />
+        <DiagramComposer />
+        <DiagramComposerChooserHost />
+        <TourGuide />
       </ThemeProvider>
     );
   }
@@ -1174,19 +1211,15 @@ function AppContent() {
         )}
         {zen && <ZenSession />}
         {zen && <ZenCompileCorner />}
-        <LazyModals>
-          <CiteOleaflyDialog />
-          <WordCountModal />
-          <VersioningModal />
-          <HotkeysModal />
-          <TourGuide />
-        </LazyModals>
+        <CiteOleaflyDialog />
+        <WordCountModal />
+        <VersioningModal />
+        <HotkeysModal />
+        <TourGuide />
         </div>
-        <LazyModals>
-          <SettingsModal />
-          <DiagramComposer />
-          <DiagramComposerChooserHost />
-        </LazyModals>
+        <SettingsModal />
+        <DiagramComposer />
+        <DiagramComposerChooserHost />
         {projectToolOpen && (
           <Suspense fallback={null}>
             <div className="fixed inset-0 z-[70]">
@@ -1410,7 +1443,7 @@ export default function App() {
       <ErrorBoundary
         fallback={<LanguageServiceRuntimeUnavailable />}
       >
-        <LanguageServiceRuntimeBoundary />
+        <LanguageServiceRuntime />
       </ErrorBoundary>
       <AutoCompileKeeper />
       <ProjectAvailabilityKeeper />

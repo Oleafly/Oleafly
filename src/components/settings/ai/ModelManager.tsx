@@ -32,6 +32,7 @@ import {
   agentRefreshModelMetadata,
 } from "@/lib/tauri";
 import { agentErrorKind } from "@/lib/agent-backend";
+import { describeModelListFailure, modelListFailureOf } from "./custom-provider-discovery";
 import { formatDate, formatRelativeTime } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { staleTimes } from "@/lib/query";
@@ -47,6 +48,8 @@ export interface ModelManagerProps {
   refreshedAt?: number;
   probes?: Record<string, ModelProbe>;
   discoverable?: boolean;
+  /** A custom provider's address, named in refresh errors. */
+  baseURL?: string;
 }
 
 const NOTICE_MS = 4000;
@@ -57,7 +60,11 @@ type Notice =
   | { kind: "unreadable" }
   | { kind: "changed"; added: number; removed: number };
 
-type RefreshError = "" | "invalidKey" | "unreachable";
+type RefreshError =
+  | { kind: "" }
+  | { kind: "invalidKey" }
+  | { kind: "unreachable" }
+  | { kind: "described"; text: string };
 
 type AddError = "" | "empty" | "spaces" | "duplicate";
 
@@ -82,6 +89,7 @@ export function ModelManager({
   refreshedAt,
   probes,
   discoverable = true,
+  baseURL,
 }: Readonly<ModelManagerProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const [newId, setNewId] = useState("");
@@ -94,7 +102,7 @@ export function ModelManager({
   const [now, setNow] = useState(() => Date.now());
   const [clock, setClock] = useState(() => Date.now());
   const [refreshing, setRefreshing] = useState(false);
-  const [refreshError, setRefreshError] = useState<RefreshError>("");
+  const [refreshError, setRefreshError] = useState<RefreshError>({ kind: "" });
   const modelsRef = useRef(models);
   modelsRef.current = models;
   const applyRef = useRef({ onChange, onRefreshed });
@@ -111,7 +119,7 @@ export function ModelManager({
       if (modelListThrottledUntil(providerId, now) > 0) return;
       setThrottledUntil(throttleModelListRefresh(providerId, now));
       setNotice(null);
-      setRefreshError("");
+      setRefreshError({ kind: "" });
       setRefreshing(true);
       try {
         const fetched = await agentListModels({ providerId, key: apiKey || undefined });
@@ -128,12 +136,23 @@ export function ModelManager({
         else apply.onChange(merged);
       } catch (e) {
         void logError("refresh provider models", e);
-        if (trigger === "auto") {
+        // A failed list changed nothing. A custom server is often local and
+        // just not started yet, so it may be tried again right away; a hosted
+        // provider keeps the throttle after a manual try, as it may be the
+        // one limiting requests.
+        if (trigger === "auto" || baseURL) {
           clearModelListThrottle(providerId);
           setThrottledUntil(0);
-          return;
         }
-        setRefreshError(agentErrorKind(e) === "auth" ? "invalidKey" : "unreachable");
+        if (trigger === "auto") return;
+        if (baseURL) {
+          setRefreshError({
+            kind: "described",
+            text: describeModelListFailure(modelListFailureOf(e), baseURL),
+          });
+        } else {
+          setRefreshError({ kind: agentErrorKind(e) === "auth" ? "invalidKey" : "unreachable" });
+        }
       } finally {
         const remaining = MIN_SPIN_MS - (Date.now() - now);
         if (remaining > 0) {
@@ -142,7 +161,7 @@ export function ModelManager({
         setRefreshing(false);
       }
     },
-    [apiKey, providerId],
+    [apiKey, baseURL, providerId],
   );
 
   useEffect(() => {
@@ -179,6 +198,17 @@ export function ModelManager({
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
     return () => window.clearInterval(timer);
   }, [refreshedAt]);
+
+  const refreshErrorText = (error: RefreshError): string => {
+    switch (error.kind) {
+      case "described":
+        return error.text;
+      case "invalidKey":
+        return t(($) => $.settings.ai.models.invalidKey);
+      default:
+        return t(($) => $.settings.ai.models.unreachable);
+    }
+  };
 
   const throttled = throttledUntil > 0;
   const throttleSecondsLeft = Math.max(1, Math.ceil((throttledUntil - clock) / 1000));
@@ -283,11 +313,9 @@ export function ModelManager({
         </div>
       </div>
 
-      {refreshError && (
-        <p className="text-[0.6875rem] text-destructive">
-          {refreshError === "invalidKey"
-            ? t(($) => $.settings.ai.models.invalidKey)
-            : t(($) => $.settings.ai.models.unreachable)}
+      {refreshError.kind !== "" && (
+        <p data-testid={`ai-refresh-error-${providerId}`} className="text-[0.6875rem] text-destructive">
+          {refreshErrorText(refreshError)}
         </p>
       )}
       {notice && (

@@ -6,6 +6,7 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
+import { ForgeBrandIcon } from "@/components/settings/git-hosting/ForgeBrandIcon";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { logError } from "@/lib/log";
@@ -133,6 +134,12 @@ export function ForgeRepoList({
           onClick={() => onSelect(repo)}
           className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-xs focus-visible:bg-accent disabled:opacity-60"
         >
+          <ForgeBrandIcon
+            base={account.base}
+            kind={account.kind}
+            flavor={account.flavor}
+            className="size-3.5 shrink-0 text-muted-foreground"
+          />
           <span className="min-w-0 flex-1 truncate font-mono">{repo.fullName}</span>
           {repo.private ? (
             <Tooltip label={t(($) => $.library.import.privateRepository)} side="top">

@@ -63,6 +63,7 @@ import { openEnvironmentCompletion } from "./latex-environments";
 import { latexPairInputHandler, latexPairKeymap } from "./latex-pairs";
 import { typstEditing } from "./typst-editing";
 import { typstSlashCompletions } from "./typst-snippets";
+import { markdownSlashCompletions } from "./markdown-snippets";
 import { typstMathPaste } from "./typst-math-paste";
 import { isVendoredTypstPackagePath } from "./typst-syntax";
 import {
@@ -766,15 +767,18 @@ function sourceToolsForPath(
     ];
   }
 
+  const popupSources = isMarkdownDocumentPath(path)
+    ? [...gatedCompletionSources, markdownSlashCompletions]
+    : gatedCompletionSources;
   return [
     ...mathPreviewExtensions,
     ...(ghostCompletionEnabled && ghostCompletionSources.length > 0
       ? [ghostCompletion(ghostCompletionSources, completionSyntax)]
       : []),
-    ...(gatedCompletionSources.length > 0
+    ...(popupSources.length > 0
       ? [
           autocompletion({
-            override: gatedCompletionSources,
+            override: popupSources,
             activateOnTyping: autocompleteWhileTyping,
             closeOnBlur: true,
           }),

@@ -810,20 +810,12 @@
         "linkedFolders_other": "{{size}} de saída de compilação e configurações para {{count}} pastas abertas",
         "refresh": "Atualizar o uso de armazenamento",
         "stats": {
-          "appData": "Dados do aplicativo",
-          "appDataDetail": "Recursos e configurações",
-          "buildCache": "Cache de compilação",
-          "buildCacheDetail": "Saída gerada",
           "files": "Arquivos",
           "folders_one": "{{count}} pasta",
           "folders_many": "{{count}} pastas",
           "folders_other": "{{count}} pastas",
-          "gitHistory": "Histórico do Git",
-          "gitHistoryDetail": "Versões locais",
           "images": "Imagens",
           "pdfs": "PDFs",
-          "projectFiles": "Arquivos de projeto",
-          "projectFilesDetail": "Código e metadados",
           "projects": "Projetos"
         },
         "subtitle": "Projetos, prévias, histórico e dados do aplicativo",
@@ -831,7 +823,32 @@
         "total": "{{size}} na pasta de dados do Oleafly",
         "unreadable_one": "{{count}} item inacessível ficou de fora.",
         "unreadable_many": "{{count}} itens inacessíveis ficaram de fora.",
-        "unreadable_other": "{{count}} itens inacessíveis ficaram de fora."
+        "unreadable_other": "{{count}} itens inacessíveis ficaram de fora.",
+        "groups": {
+          "projects": "Projetos",
+          "appData": "Dados do aplicativo",
+          "elsewhere": "Em outros locais"
+        },
+        "parts": {
+          "documents": "Documentos e código",
+          "images": "Imagens",
+          "pdfs": "PDFs",
+          "media": "Áudio e vídeo",
+          "data": "Arquivos de dados",
+          "otherFiles": "Outros arquivos",
+          "git": "Histórico do Git",
+          "build": "Cache de compilação",
+          "texDistribution": "Distribuição TeX",
+          "agents": "Agentes de IA",
+          "researchTasks": "Tarefas de pesquisa",
+          "tools": "Ferramentas",
+          "checkpoints": "Pontos de verificação",
+          "compileCache": "Cache do compilador",
+          "otherAppData": "Configurações e outros dados",
+          "recycleBin": "Lixeira",
+          "linkedFolders": "Pastas abertas"
+        },
+        "other": "Outros"
       },
       "tabs": {
         "cloud": "Sincronização na nuvem",
