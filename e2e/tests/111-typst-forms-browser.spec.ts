@@ -68,7 +68,7 @@ test.describe("Typst function forms in Visual mode", () => {
     const scroller = page.locator(".cm-scroller");
     for (let step = 0; step < 12; step += 1) {
       await scroller.evaluate((element) => element.scrollBy(0, 1_600));
-      await page.waitForTimeout(50);
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
     }
     await expect(page.locator(".ofl-visual-form-card").first()).toBeVisible();
     expect(errors).toEqual([]);
@@ -89,9 +89,13 @@ test.describe("Typst function forms in Visual mode", () => {
     test(`card and popover shots (${theme})`, async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 900 });
       await open(page, `?theme=${theme}`);
-      await card(page, "Info box").nth(1).screenshot({ path: test.info().outputPath(`card-${theme}.png`) });
+      const shot = card(page, "Info box").nth(1);
+      await expect(shot).toBeVisible();
+      await shot.screenshot({ path: test.info().outputPath(`card-${theme}.png`) });
       await page.locator(".ofl-visual-form-chip-button").click();
-      await page.locator(".ofl-visual-form-popover").screenshot({ path: test.info().outputPath(`popover-${theme}.png`) });
+      const popover = page.locator(".ofl-visual-form-popover");
+      await expect(popover).toBeVisible();
+      await popover.screenshot({ path: test.info().outputPath(`popover-${theme}.png`) });
     });
   }
 });

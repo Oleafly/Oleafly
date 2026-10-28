@@ -52,17 +52,23 @@ export type NumberProblem = "number" | "range";
 
 const LITERALS = new Set(["Str", "Int", "Float", "Bool", "None", "Auto", "Numeric", "ContentBlock"]);
 
-const BLOCK_LAYOUT = /^(\n)([ \t]*)([\s\S]*?)(\n[ \t]*)$/u;
-
 // Every slot lies inside the call, whose text `CallArguments` already holds.
 function sourceOf(args: CallArguments, node: TextRange): string {
   return args.text.slice(node.from - args.call.from, node.to - args.call.from);
 }
 
+// A body that opens with a line break and closes with one followed only by indentation.
+function splitBlock(body: string): { open: string; indent: string; rest: string; close: string } | null {
+  const last = body.lastIndexOf("\n");
+  if (!body.startsWith("\n") || last === 0 || !/^[ \t]*$/u.test(body.slice(last + 1))) return null;
+  const indent = /^[ \t]*/u.exec(body.slice(1, last))?.[0] ?? "";
+  return { open: "\n", indent, rest: body.slice(1 + indent.length, last), close: body.slice(last) };
+}
+
 function blockBody(body: string): { text: string; layout: BlockLayout | null } {
-  const match = BLOCK_LAYOUT.exec(body);
-  if (!match) return { text: body, layout: null };
-  const [, open, indent, rest, close] = match;
+  const parts = splitBlock(body);
+  if (!parts) return { text: body, layout: null };
+  const { open, indent, rest, close } = parts;
   const lines = `${indent}${rest}`.split("\n");
   if (!lines.every((line) => line.startsWith(indent) || line.trim() === "")) return { text: body, layout: null };
   return { text: lines.map((line) => line.slice(indent.length)).join("\n"), layout: { open, indent, close } };
@@ -85,43 +91,59 @@ export function numberProblem(kind: Extract<TypstFieldKind, { type: "number" }>,
   return null;
 }
 
-function literalState(field: TypstFormField, args: CallArguments, slot: { node: TextRange; type: string }): FieldState {
-  const source = sourceOf(args, slot.node);
-  const readonly = (reason: ReadOnlyReason): FieldState => ({ status: "readonly", source, node: slot.node, reason });
-  const found = (next: FieldValue, written: "str" | "content" | "literal", layout: BlockLayout | null = null): FieldState => ({
-    status: "value",
-    value: next,
-    node: slot.node,
-    written,
-    layout,
-  });
-  const literal = LITERALS.has(slot.type) || (slot.type === "Unary" && decodeTypstNumber(source, false) !== null);
-  if (!literal) return readonly("expression");
-  const kind = field.kind;
-  const text = slot.type === "Str" ? decodeTypstString(source) : null;
+interface LiteralValue {
+  readonly value: FieldValue;
+  readonly written: "str" | "content" | "literal";
+  readonly layout?: BlockLayout | null;
+}
+
+function stringValue(type: string, source: string): string | null {
+  return type === "Str" ? decodeTypstString(source) : null;
+}
+
+function contentValue(type: string, source: string): LiteralValue | ReadOnlyReason {
+  if (type === "ContentBlock") {
+    const body = blockBody(source.slice(1, -1));
+    return { value: { type: "content", value: body.text }, written: "content", layout: body.layout };
+  }
+  const text = stringValue(type, source);
+  return text === null ? "kind" : { value: { type: "content", value: text }, written: "str" };
+}
+
+function choiceValue(kind: Extract<TypstFieldKind, { type: "choice" }>, type: string, source: string): LiteralValue | ReadOnlyReason {
+  const text = stringValue(type, source);
+  if (text === null) return "kind";
+  return kind.options.some((option) => option.value === text) ? { value: { type: "choice", value: text }, written: "str" } : "unknownOption";
+}
+
+// What a literal argument holds for a field of this kind, or why the form can't edit it.
+function literalValue(kind: TypstFieldKind, type: string, source: string): LiteralValue | ReadOnlyReason {
   switch (kind.type) {
-    case "text":
-      return text === null ? readonly("kind") : found({ type: "text", value: text }, "str");
+    case "text": {
+      const text = stringValue(type, source);
+      return text === null ? "kind" : { value: { type: "text", value: text }, written: "str" };
+    }
     case "content":
-      if (slot.type === "ContentBlock") {
-        const body = blockBody(source.slice(1, -1));
-        return found({ type: "content", value: body.text }, "content", body.layout);
-      }
-      return text === null ? readonly("kind") : found({ type: "content", value: text }, "str");
+      return contentValue(type, source);
     case "choice":
-      if (text === null) return readonly("kind");
-      return kind.options.some((option) => option.value === text)
-        ? found({ type: "choice", value: text }, "str")
-        : readonly("unknownOption");
+      return choiceValue(kind, type, source);
     case "number": {
       const number = decodeTypstNumber(source, kind.integer);
-      return number === null ? readonly("kind") : found({ type: "number", value: number }, "literal");
+      return number === null ? "kind" : { value: { type: "number", value: number }, written: "literal" };
     }
     case "toggle": {
       const bool = decodeTypstBool(source);
-      return bool === null ? readonly("kind") : found({ type: "toggle", value: bool }, "literal");
+      return bool === null ? "kind" : { value: { type: "toggle", value: bool }, written: "literal" };
     }
   }
+}
+
+function literalState(field: TypstFormField, args: CallArguments, slot: { node: TextRange; type: string }): FieldState {
+  const source = sourceOf(args, slot.node);
+  const literal = LITERALS.has(slot.type) || (slot.type === "Unary" && decodeTypstNumber(source, false) !== null);
+  const read = literal ? literalValue(field.kind, slot.type, source) : "expression";
+  if (typeof read === "string") return { status: "readonly", source, node: slot.node, reason: read };
+  return { status: "value", value: read.value, node: slot.node, written: read.written, layout: read.layout ?? null };
 }
 
 function fieldState(field: TypstFormField, args: CallArguments): FieldState {

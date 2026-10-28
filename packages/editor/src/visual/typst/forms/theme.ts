@@ -254,6 +254,10 @@ export const typstFormsThemeSpec = {
   },
   ".ofl-visual-form-popover": {
     position: "fixed",
+    // The chip sets top and left; these undo the browser's centring of an open <dialog>.
+    right: "auto",
+    bottom: "auto",
+    margin: "0",
     zIndex: "60",
     width: "min(420px, calc(100vw - 16px))",
     maxHeight: "min(70vh, 520px)",

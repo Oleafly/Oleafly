@@ -76,10 +76,45 @@ export type ArgumentPlan =
 
 const SKIPPED = new Set(["LeftParen", "RightParen", "Comma", "LineComment", "BlockComment"]);
 const LINE_REST = /^[ \t]*(?:\/\/[^\n]*)?$/u;
-const COMMA_AFTER = /^(?:\s|\/\/[^\n]*|\/\*[\s\S]*?\*\/)*,/u;
 
 function range(node: TextRange): TextRange {
   return { from: node.from, to: node.to };
+}
+
+// Where the block comment opening at `from` ends. Block comments nest, as in Typst's lexer.
+function blockCommentEnd(text: string, from: number): number | null {
+  let depth = 0;
+  let index = from;
+  while (index < text.length - 1) {
+    const pair = text.slice(index, index + 2);
+    if (pair === "/*") depth += 1;
+    else if (pair === "*/") depth -= 1;
+    index += pair === "/*" || pair === "*/" ? 2 : 1;
+    if (depth === 0) return index;
+  }
+  return null;
+}
+
+// Where the whitespace or comment starting at `index` ends, or null when neither starts there.
+function skippedEnd(text: string, index: number): number | null {
+  if (/\s/u.test(text[index])) return index + 1;
+  if (text.startsWith("//", index)) {
+    const end = text.indexOf("\n", index);
+    return end < 0 ? text.length : end;
+  }
+  return text.startsWith("/*", index) ? blockCommentEnd(text, index) : null;
+}
+
+// The length of `text` up to and including a comma that only whitespace and comments precede.
+function commaLength(text: string): number | null {
+  let index = 0;
+  while (index < text.length) {
+    if (text[index] === ",") return index + 1;
+    const next = skippedEnd(text, index);
+    if (next === null) return null;
+    index = next;
+  }
+  return null;
 }
 
 export function callArguments(call: SyntaxNode): SyntaxNode | null {
@@ -261,7 +296,7 @@ export function argumentSlot(args: CallArguments, ref: ArgRef): { readonly node:
 }
 
 function parenthesised(args: CallArguments): TextRange[] {
-  const items = [...args.named.map((slot) => slot.argument)];
+  const items = args.named.map((slot) => slot.argument);
   for (const slot of args.positional) if (!slot.trailing) items.push(slot.node);
   return items.sort((a, b) => a.from - b.from);
 }
@@ -282,27 +317,49 @@ function insertParenthesised(
   lineBreak: string,
 ): TextChange[] {
   const parens = args.parens;
-  if (!parens) return [insertion(args.list.from, `(${texts.join(", ")})`)];
+  const joined = texts.join(", ");
+  if (!parens) return [insertion(args.list.from, `(${joined})`)];
   const items = parenthesised(args);
   if (items.length === 0) {
     const inner = doc.sliceString(parens.open + 1, parens.close);
     const to = /^\s*$/u.test(inner) ? parens.close : parens.open + 1;
-    return [{ from: parens.open + 1, to, insert: texts.join(", ") }];
+    return [{ from: parens.open + 1, to, insert: joined }];
   }
   const first = items[0];
-  const multiline = doc.sliceString(parens.open + 1, first.from).includes("\n");
+  if (!doc.sliceString(parens.open + 1, first.from).includes("\n")) return [insertOnOneLine(doc, parens.close, items, anchor, joined)];
   const indent = lineIndent(doc, first.from);
-  const newLine = `${lineBreak}${indent}${texts.join(`,${lineBreak}${indent}`)}`;
-  const joined = texts.join(", ");
-  if (!anchor) return [multiline ? insertion(parens.open + 1, `${newLine},`) : insertion(first.from, `${joined}, `)];
+  const separator = `,${lineBreak}${indent}`;
+  const newLine = `${lineBreak}${indent}${texts.join(separator)}`;
+  if (!anchor) return [insertion(parens.open + 1, `${newLine},`)];
+  return insertOnOwnLines(doc, parens.close, anchor, newLine, joined);
+}
+
+function insertOnOneLine(
+  doc: SourceText,
+  close: number,
+  items: readonly TextRange[],
+  anchor: TextRange | null,
+  joined: string,
+): TextChange {
+  if (!anchor) return insertion(items[0].from, `${joined}, `);
+  const comma = commaLength(doc.sliceString(anchor.to, close));
+  if (comma === null) return insertion(anchor.to, `, ${joined}`);
   const last = anchor.to >= (items.at(-1) as TextRange).to;
-  const comma = COMMA_AFTER.exec(doc.sliceString(anchor.to, parens.close));
-  const after = comma ? anchor.to + comma[0].length : anchor.to;
-  if (!multiline) return [comma ? insertion(after, last ? ` ${joined}` : ` ${joined},`) : insertion(anchor.to, `, ${joined}`)];
+  return insertion(anchor.to + comma, last ? ` ${joined}` : ` ${joined},`);
+}
+
+// One argument per line: the new ones go on lines of their own after `anchor`, unless the
+// anchor's comma is followed by more on the same line.
+function insertOnOwnLines(doc: SourceText, close: number, anchor: TextRange, newLine: string, joined: string): TextChange[] {
+  const comma = commaLength(doc.sliceString(anchor.to, close));
+  const after = anchor.to + (comma ?? 0);
   const line = doc.lineAt(after);
-  const closeOnLine = parens.close <= line.to;
-  const ownLine = LINE_REST.test(doc.sliceString(after, closeOnLine ? parens.close : line.to));
-  if (comma) return [ownLine ? insertion(closeOnLine ? after : line.to, `${newLine},`) : insertion(after, ` ${joined},`)];
+  const closeOnLine = close <= line.to;
+  const ownLine = LINE_REST.test(doc.sliceString(after, closeOnLine ? close : line.to));
+  if (comma !== null) {
+    if (!ownLine) return [insertion(after, ` ${joined},`)];
+    return [insertion(closeOnLine ? after : line.to, `${newLine},`)];
+  }
   if (closeOnLine || !ownLine || line.to === anchor.to) return [insertion(anchor.to, `,${newLine}`)];
   return [insertion(anchor.to, ","), insertion(line.to, newLine)];
 }

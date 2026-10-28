@@ -80,7 +80,7 @@ function parsesCleanly(state: EditorState, changes: readonly TextChange[], call:
 export function commitFieldEdit(view: EditorView, anchor: number, definitionId: string, field: number, edit: FieldEdit): CommitResult {
   if (view.state.readOnly) return REFUSED;
   const found = formCallAt(view.state, anchor);
-  if (!found || found.model.definition.id !== definitionId) return STALE;
+  if (found?.model.definition.id !== definitionId) return STALE;
   const { model, call } = found;
   const definitionField = model.definition.fields[field];
   const state = model.fields[field];

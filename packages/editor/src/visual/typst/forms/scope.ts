@@ -122,7 +122,7 @@ const bindingsCache = new WeakMap<Tree, { path: string | null; bindings: Documen
 export function documentBindings(state: EditorState, tree: Tree): DocumentBindings {
   const documentPath = state.facet(typstDocumentPath);
   const cached = bindingsCache.get(tree);
-  if (cached && cached.path === documentPath) return cached.bindings;
+  if (cached?.path === documentPath) return cached.bindings;
   const imports: TypstImport[] = [];
   const lets: TypstLet[] = [];
   for (let child = tree.topNode.firstChild; child; child = child.nextSibling) {
@@ -177,6 +177,26 @@ type Binding =
 
 const scopeCache = new WeakMap<FormIndex, WeakMap<DocumentBindings, FormScope>>();
 
+// The names an import brings in, each with the path to the item it names.
+function importedItems(index: FormIndex, entry: TypstImport): readonly ImportItem[] {
+  if (entry.items !== "all") return entry.items ?? [];
+  const declared = entry.source ? index.functions(entry.source) : [];
+  return declared.map((fn) => ({ local: fn, path: [fn] }));
+}
+
+// Every binding of each name, in document order.
+function boundNames(index: FormIndex, bindings: DocumentBindings): Map<string, Binding[]> {
+  const names = new Map<string, Binding[]>();
+  const bind = (name: string, binding: Binding) => names.set(name, [...(names.get(name) ?? []), binding]);
+  for (const entry of bindings.imports) {
+    if (entry.module) bind(entry.module, { to: entry.to, kind: "module", source: entry.source });
+    for (const item of importedItems(index, entry)) bind(item.local, { to: entry.to, kind: "item", source: entry.source, path: item.path });
+  }
+  for (const entry of bindings.lets) bind(entry.name, { to: entry.to, kind: "shadow" });
+  for (const list of names.values()) list.sort((a, b) => a.to - b.to);
+  return names;
+}
+
 // Resolves a `#`-call's callee to the form it reaches through the document's own bindings.
 export class FormScope {
   private constructor(
@@ -186,27 +206,15 @@ export class FormScope {
 
   static create(index: FormIndex, bindings: DocumentBindings): FormScope {
     let forIndex = scopeCache.get(index);
-    const cached = forIndex?.get(bindings);
-    if (cached) return cached;
-    const names = new Map<string, Binding[]>();
-    const bind = (name: string, binding: Binding) => names.set(name, [...(names.get(name) ?? []), binding]);
-    for (const entry of bindings.imports) {
-      if (entry.module) bind(entry.module, { to: entry.to, kind: "module", source: entry.source });
-      if (entry.items === "all") {
-        const declared = entry.source ? index.functions(entry.source) : [];
-        for (const fn of declared) bind(fn, { to: entry.to, kind: "item", source: entry.source, path: [fn] });
-      } else {
-        for (const item of entry.items ?? []) bind(item.local, { to: entry.to, kind: "item", source: entry.source, path: item.path });
-      }
-    }
-    for (const entry of bindings.lets) bind(entry.name, { to: entry.to, kind: "shadow" });
-    for (const list of names.values()) list.sort((a, b) => a.to - b.to);
-    const scope = new FormScope(index, names);
     if (!forIndex) {
       forIndex = new WeakMap();
       scopeCache.set(index, forIndex);
     }
-    forIndex.set(bindings, scope);
+    let scope = forIndex.get(bindings);
+    if (!scope) {
+      scope = new FormScope(index, boundNames(index, bindings));
+      forIndex.set(bindings, scope);
+    }
     return scope;
   }
 
@@ -222,7 +230,7 @@ export class FormScope {
 
   resolve(callee: string, at: number): TypstFormDefinition | null {
     const parts = callee.split(".");
-    if (parts.length > 2 || parts.some((part) => part === "")) return null;
+    if (parts.length > 2 || parts.includes("")) return null;
     if (parts.length === 1 && BUILTIN_DISPATCH_NAMES.has(callee)) return null;
     const binding = this.active(parts[0], at);
     if (!binding || binding.kind === "shadow" || !binding.source) return null;

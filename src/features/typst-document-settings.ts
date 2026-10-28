@@ -221,6 +221,10 @@ interface Addition {
   readonly text: string;
 }
 
+function namedText(addition: Addition): string {
+  return `${addition.name}: ${addition.text}`;
+}
+
 interface PlannedChanges {
   readonly edits: TypstEdit[];
   readonly additions: Map<RuleTarget, Addition[]>;
@@ -266,7 +270,7 @@ function additionEdits(text: string, tree: Tree, additions: ReadonlyMap<RuleTarg
     const rule = lastEditableRule(rules, target);
     const plan = rule?.arguments ? planNamedInsertions(sourceText(text), rule.arguments, list, "\n") : null;
     if (plan?.ok) edits.push(...plan.changes);
-    else fresh.push(`#set ${target}(${list.map((entry) => `${entry.name}: ${entry.text}`).join(", ")})\n`);
+    else fresh.push(`#set ${target}(${list.map(namedText).join(", ")})\n`);
   }
   if (fresh.length > 0) {
     const at = insertionPoint(text, tree);

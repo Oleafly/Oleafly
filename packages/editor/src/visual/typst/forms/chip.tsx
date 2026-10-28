@@ -30,7 +30,7 @@ const Popover: FC<{ readonly host: FormHost; readonly anchor: HTMLElement; onClo
     return element;
   }, [host.view]);
   const [placement, setPlacement] = useState<Placement>(() => placementFor(anchor));
-  const panel = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDialogElement>(null);
 
   useLayoutEffect(() => {
     document.body.appendChild(container);
@@ -69,15 +69,15 @@ const Popover: FC<{ readonly host: FormHost; readonly anchor: HTMLElement; onClo
   }, []);
 
   return createPortal(
-    <div
+    <dialog
       ref={panel}
       className="ofl-visual-form-popover"
-      role="dialog"
+      open
       aria-label={host.model.definition.label}
       style={{ top: placement.top, left: placement.left }}
     >
       <FormBody host={host} />
-    </div>,
+    </dialog>,
     container,
   );
 };

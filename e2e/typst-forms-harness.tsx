@@ -32,11 +32,11 @@ function largeReport(cards: number): string {
   return sections.join("\n");
 }
 
-const DOCUMENTS: Record<string, () => string> = {
-  report: () => report,
-  "edge-cases": () => edgeCases,
-  large: () => largeReport(300),
-};
+const DOCUMENTS = new Map<string, () => string>([
+  ["report", () => report],
+  ["edge-cases", () => edgeCases],
+  ["large", () => largeReport(300)],
+]);
 
 const port = staticTypstForms(catalog);
 const emptyPort = staticTypstForms(EMPTY_TYPST_FORM_CATALOG);
@@ -54,7 +54,7 @@ function showSource(): void {
 }
 
 function mount(): void {
-  const doc = view?.state.doc.toString() ?? DOCUMENTS[documentSelect.value]();
+  const doc = view?.state.doc.toString() ?? DOCUMENTS.get(documentSelect.value)?.() ?? report;
   view?.destroy();
   const ports = {
     resolveImage: async () => null,

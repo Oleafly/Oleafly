@@ -23,9 +23,9 @@ async function openVisual(page: Page) {
   await expect(page.locator(".cm-editor.ofl-visual-parsed")).toBeVisible({ timeout: 20_000 });
 }
 
-async function openFile(page: Page, path: string) {
+async function openFormsFile(page: Page) {
   await page.evaluate(
-    `import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().openFile(${JSON.stringify(path)}))`,
+    `import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().openFile("oleafly-forms.toml"))`,
   );
 }
 
@@ -68,24 +68,25 @@ test("editing oleafly-forms.toml updates the cards and marks a broken definition
   await createProjectFromTemplate(tauriPage, "blank-typst", `E2E Typst forms file ${RUN}`);
   await writeFixtureProject(tauriPage);
   await openVisual(tauriPage);
-  const memo = tauriPage.locator(".cm-content .ofl-visual-form-card .ofl-visual-form-title").filter({ hasText: "Memo header" });
-  await expect(memo).toHaveCount(1, { timeout: 30_000 });
+  // The bridge's count() ignores filter(), so a title is checked through its visibility.
+  const formTitle = (text: string) =>
+    tauriPage.locator(".cm-content .ofl-visual-form-card .ofl-visual-form-title").filter({ hasText: text });
+  await expect(formTitle("Memo header")).toBeVisible({ timeout: 30_000 });
 
   await writeProjectText(
     tauriPage,
     "oleafly-forms.toml",
     fixture("project/oleafly-forms.toml").replace('label = "Memo header"', 'label = "Team memo"'),
   );
-  await expect(
-    tauriPage.locator(".cm-content .ofl-visual-form-card .ofl-visual-form-title").filter({ hasText: "Team memo" }),
-  ).toHaveCount(1, { timeout: 30_000 });
+  await expect(formTitle("Team memo")).toBeVisible({ timeout: 30_000 });
+  await expect(formTitle("Memo header")).toBeHidden();
 
   await writeProjectText(
     tauriPage,
     "oleafly-forms.toml",
     fixture("project/oleafly-forms.toml").replace('kind = "text", label = "To"', 'kind = "date", label = "To"'),
   );
-  await openFile(tauriPage, "oleafly-forms.toml");
+  await openFormsFile(tauriPage);
   await expect(tauriPage.locator(".cm-editor .cm-lintRange-error").first()).toBeVisible({ timeout: 30_000 });
 });
 

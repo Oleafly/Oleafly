@@ -125,7 +125,7 @@ export function staticTypstForms(initial: TypstFormCatalog): StaticTypstForms {
     },
     set(next) {
       catalog = next;
-      for (const listener of [...listeners]) listener();
+      for (const listener of Array.from(listeners)) listener();
     },
     wanted: () => wanted,
   };

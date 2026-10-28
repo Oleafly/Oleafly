@@ -33,7 +33,7 @@ export const useTypstFormsStore = create<TypstFormsStore>((set, get) => ({
     const wanted = get().wanted;
     const added = packages.filter((spec) => !wanted.includes(spec));
     if (added.length === 0) return;
-    set({ wanted: [...wanted, ...new Set(added)].sort() });
+    set({ wanted: [...wanted, ...new Set(added)].sort((a, b) => a.localeCompare(b)) });
     cancelWant();
     wantTimer = setTimeout(() => {
       wantTimer = null;

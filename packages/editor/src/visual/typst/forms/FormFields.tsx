@@ -281,17 +281,15 @@ const FieldRow: FC<{
         )}
         {field.help && <div className="ofl-visual-form-hint">{field.help}</div>}
         {problem === "refused" && (
-          <div className="ofl-visual-form-problem" role="status">
+          <output className="ofl-visual-form-problem">
             {editorMessage("visual.typst.forms.refused")}
             <button type="button" className="ofl-visual-form-action" onClick={() => onReveal(callRange)}>
               {editorMessage("visual.typst.forms.addInSource")}
             </button>
-          </div>
+          </output>
         )}
         {problem && problem !== "refused" && (
-          <div className="ofl-visual-form-problem" role="status">
-            {problemMessage(problem, field)}
-          </div>
+          <output className="ofl-visual-form-problem">{problemMessage(problem, field)}</output>
         )}
       </div>
       <div className="ofl-visual-form-actions">

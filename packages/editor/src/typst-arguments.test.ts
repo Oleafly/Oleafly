@@ -192,6 +192,8 @@ describe("inserting an argument", () => {
     ["#f(\n  a: 1,\n  b: 2\n)", named("c"), "3", "#f(\n  a: 1,\n  b: 2,\n  c: 3\n)"],
     ["#f(\n  a: 1, // keep\n)", named("c"), "3", "#f(\n  a: 1, // keep\n  c: 3,\n)"],
     ["#f(\n  a: 1 // keep\n)", named("c"), "3", "#f(\n  a: 1, // keep\n  c: 3\n)"],
+    ["#f(\n  a: 1 // keep, really\n)", named("c"), "3", "#f(\n  a: 1, // keep, really\n  c: 3\n)"],
+    ["#f(a: 1 /* x /* y */, z */)", named("c"), "3", "#f(a: 1, c: 3 /* x /* y */, z */)"],
     ["#f(\n  a: 1)", named("c"), "3", "#f(\n  a: 1,\n  c: 3)"],
     ["#f(\n  a: 1,)", named("c"), "3", "#f(\n  a: 1,\n  c: 3,)"],
     ["#f(\n  a: 1, b: 2,\n)", named("c"), "3", "#f(\n  a: 1, b: 2,\n  c: 3,\n)"],
