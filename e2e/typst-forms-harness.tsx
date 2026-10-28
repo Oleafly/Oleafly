@@ -32,11 +32,12 @@ function largeReport(cards: number): string {
   return sections.join("\n");
 }
 
-const DOCUMENTS = new Map<string, () => string>([
-  ["report", () => report],
-  ["edge-cases", () => edgeCases],
-  ["large", () => largeReport(300)],
-]);
+// The document picker's value, mapped to the text it loads.
+function documentText(name: string): string {
+  if (name === "edge-cases") return edgeCases;
+  if (name === "large") return largeReport(300);
+  return report;
+}
 
 const port = staticTypstForms(catalog);
 const emptyPort = staticTypstForms(EMPTY_TYPST_FORM_CATALOG);
@@ -54,7 +55,7 @@ function showSource(): void {
 }
 
 function mount(): void {
-  const doc = view?.state.doc.toString() ?? DOCUMENTS.get(documentSelect.value)?.() ?? report;
+  const doc = view?.state.doc.toString() ?? documentText(documentSelect.value);
   view?.destroy();
   const ports = {
     resolveImage: async () => null,
