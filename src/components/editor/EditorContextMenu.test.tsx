@@ -223,6 +223,7 @@ describe("EditorContextMenu", () => {
     expect(formatting.formatWithLanguageService).toHaveBeenCalledWith(view, "selection");
   });
 
+  // Opens the menu once per item, 17 times; that takes over a second here and more on a loaded Windows runner.
   it("writes Typst markup from the Typst menu", () => {
     openMenu(engineWithProfile("typst"), true);
 
@@ -259,7 +260,7 @@ describe("EditorContextMenu", () => {
     expect(typstCommands.insertTypstTable).toHaveBeenCalledWith(3, 3);
     expect(controller.wrapSelection).not.toHaveBeenCalled();
     expect(latexCommands.insertBold).not.toHaveBeenCalled();
-  });
+  }, 15_000);
 
   it("jumps to the PDF from the Typst menu only when the project can sync", () => {
     const typst = { ...engineWithProfile("typst"), id: "typst", source_extensions: ["typ"] } as DocumentEngineDescriptor;
