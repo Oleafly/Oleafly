@@ -181,6 +181,30 @@ describe("Typst live preview in the compile store", () => {
     expect(typstLivePreviewWanted()).toBe(false);
   });
 
+  it("leaves a Calepin document to its own compiler, though it is Typst source", async () => {
+    autoCompileOn();
+    const calepin = {
+      ...TYPST_ENGINE,
+      id: "calepin",
+      label: "Calepin",
+      capabilities: { ...TYPST_ENGINE.capabilities, compiler_prerequisite: null },
+    } as unknown as DocumentEngineDescriptor;
+    mocks.files.engine = calepin;
+    expect(typstLivePreviewWanted()).toBe(false);
+    useCompileStore.setState({
+      livePreview: { projectId: "project", enabled: true, status: "on", message: null },
+    });
+    mocks.compileProject.mockResolvedValue(failure());
+    await useCompileStore.getState().recompile();
+    expect(mocks.compileLive).not.toHaveBeenCalled();
+    expect(mocks.compileProject).toHaveBeenCalledOnce();
+    const bytes = new Uint8Array([3]);
+    mocks.readCompiledPdf.mockResolvedValue(bytes.buffer);
+    expect(
+      await applyTypstLiveResult({ projectId: "project", mainDocument: "main.typ", projectRevision: 3, result: success(bytes, 60) }),
+    ).toBe(false);
+  });
+
   it("drops the old per-project live preview flags and follows auto compile alone", () => {
     localStorage.setItem("oleafly:compile:typst-live:project", "1");
     localStorage.setItem("oleafly:compile:typst-live:other", "1");

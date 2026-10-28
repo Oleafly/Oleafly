@@ -5,6 +5,11 @@ consume the descriptor's capabilities instead of guessing from filename
 extensions. Rust owns process execution, artifact paths, diagnostics, and
 engine-specific policy.
 
+There are five engines: [LaTeX](#latex) (bundled Tectonic, or
+[latexmk](#latexmk-system-tex-compatibility) with a system TeX),
+[Typst](#typst), [Markdown](#markdown) through Pandoc, and [Quarto](#quarto)
+and [Calepin](#calepin) for documents that run R, Python or Julia code.
+
 <div align="center">
   <img src="assets/readme/compile-engines.png" alt="Oleafly Engines settings showing LaTeX, Typst, Markdown, and managed TeX distributions" width="100%" />
 </div>
@@ -223,10 +228,67 @@ records.
 - Packaged builds include Pandoc. The app records a clear prerequisite state,
   and Settings can repair a missing development copy.
 
+## Quarto
+
+- Compiles `.qmd` and `.Rmd` documents with Quarto 1.10.19 or the Quarto on
+  your computer. Oleafly looks for `quarto` on `PATH` and in the usual install
+  folders first, then for the copy it downloaded.
+- Settings > Engines > Quarto can download Quarto into
+  `~/.oleafly/toolchains/quarto/1.10.19` after you click the download button.
+  The download exists for Apple silicon Macs, Linux on x86-64 and ARM, and
+  64-bit Windows. On other computers, install Quarto yourself. The archive is
+  checked against a pinned size and SHA-256 before anything is unpacked, and
+  only links that stay inside the install are accepted.
+- The first format the document declares that Oleafly can show decides the
+  output: `pdf`, `typst` and `beamer` give a PDF in the build folder, and
+  `html`, `revealjs` and `dashboard` give an HTML page that opens in the
+  browser. An extension format counts by the last part of its name, so
+  `acm-pdf` gives a PDF. Other formats, such as `docx`, are skipped. `.Rmd`
+  files that only name an R Markdown `output:` map to the matching Quarto
+  format. A `_quarto.yml` or `_metadata.yml` between the document and the
+  project root is read when the document declares nothing. With no format
+  Oleafly can show, the document builds HTML.
+- Quarto runs R through knitr and Python or Julia through Jupyter with your own
+  installs. Oleafly passes the R and Python it found as `QUARTO_R` and
+  `QUARTO_PYTHON` unless you set them yourself.
+- Code is off until you allow it for the project. The consent is the one
+  latexmk uses for shell escape: per project and per computer. With code off,
+  Quarto renders with `--no-execute`. R starts without the project's
+  `.Rprofile` and `.Renviron`, and Python does not import from the current
+  folder. Filters, shortcodes, `_extensions`, pre and post render scripts and
+  inline R code still run code under `--no-execute`, so a project that has any
+  of them does not compile until you allow code.
+- Errors and warnings from Quarto, the YAML validator, knitr (with the chunk's
+  file and first line), Jupyter (with the exception and the cell's code) and
+  the LaTeX step appear in the log pane.
+- DOCX and HTML exports run Quarto again into a temporary folder. HTML exports
+  embed their resources so the file stands alone.
+
+## Calepin
+
+- Compiles Typst documents that import `/.calepin/calepin.typ` with Calepin
+  0.0.61 or the Calepin on your computer. Oleafly looks in `PATH`,
+  `~/.cargo/bin` and `~/.local/bin` first, and downloads Calepin the same way
+  as Quarto, for the same computers, into
+  `~/.oleafly/toolchains/calepin/0.0.61`.
+- Calepin needs Typst 0.15 or newer. Oleafly passes its bundled Typst with
+  `--set executables.typst=...` and the R it found with
+  `--set executables.rscript=...`, and sets `CALEPIN_PYTHON` unless the
+  project has its own `.venv`.
+- Calepin has no mode that skips code. With code off, Oleafly renders the
+  results Calepin stored in `.calepin/` with plain Typst, which runs nothing,
+  and the log says so. With nothing stored the compile stops and offers to
+  allow code.
+- A chunk whose language is missing renders as a short note and the document
+  still builds. Typst diagnostics keep their file and line. Calepin's own
+  errors and warnings, such as a failed chunk, appear without a line.
+- The command line `oleaflyc` does not build Quarto or Calepin projects yet and
+  says so.
+
 ## Sidecar and supply-chain policy
 
-- Tectonic, Biber, Pandoc, Typst, TexLab, and Tinymist versions are pinned by
-  manifests or release metadata.
+- Tectonic, Biber, Pandoc, Typst, TexLab, Tinymist, Quarto, and Calepin
+  versions are pinned by manifests or release metadata.
 - Fetch scripts and runtime installers verify SHA-256 before extraction and
   reject unexpected archive members. TinyTeX pins a canonical manifest naming
   the upstream assets it accepts: Windows x64, a universal macOS archive,
@@ -241,6 +303,11 @@ records.
 ## Engineering anchors
 
 - `src-tauri/src/document_engine.rs`: descriptors and dispatch.
+- `src-tauri/src/document_engine/quarto.rs` and `calepin.rs`: the two code
+  engines, their trust rules and log parsers.
+- `src-tauri/src/notebook_toolchain.rs` and
+  `src-tauri/resources/notebook-toolchains.json`: Quarto and Calepin
+  detection, pinned downloads, and the R, Python and Julia check.
 - `src-tauri/src/latex_engine.rs`: optional tagged LaTeX path.
 - `scripts/fetch-tectonic.sh`, `scripts/fetch-typst.sh`, and
   `scripts/fetch-language-servers.mjs`: pinned acquisition.

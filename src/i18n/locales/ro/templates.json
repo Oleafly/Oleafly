@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "Arată doar șabloanele de CV pe care sistemele de recrutare le pot citi fără greșeli: o singură coloană, fonturi standard și text selectabil (fără cuvinte incluse în imagini).",
       "atsFriendly": "Compatibil cu sistemele de recrutare",
       "offlineTooltip": "Arată doar șabloanele care se compilează fără descărcări: fonturile și pachetele lor sunt deja incluse, așa că funcționează fără conexiune la internet.",

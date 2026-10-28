@@ -44,7 +44,8 @@
     "folder_holds_templates": "Esta carpeta contiene las plantillas propias de Oleafly. Elige en su lugar la carpeta de la plantilla."
   },
   "settings": {
-    "locale_unsupported": "El idioma {{locale}} no está disponible."
+    "locale_unsupported": "El idioma {{locale}} no está disponible.",
+    "app_icon_unsupported": "El icono de la aplicación {{icon}} no está disponible."
   },
   "literature": {
     "query_empty": "La consulta de búsqueda no puede estar vacía.",
@@ -146,7 +147,8 @@
     "shell_escape": "Confía en esta carpeta antes de permitir shell escape.",
     "broad_folder": "Oleafly no puede confiar en toda la carpeta {{name}}. Elige una carpeta más pequeña.",
     "declined": "No se confió en la carpeta.",
-    "unavailable": "Oleafly no pudo comprobar si esta carpeta es de confianza."
+    "unavailable": "Oleafly no pudo comprobar si esta carpeta es de confianza.",
+    "notebook": "Confía en esta carpeta para compilar con Quarto o Calepin."
   },
   "open_folder": {
     "not_absolute": "Usa la ruta completa de la carpeta.",
@@ -335,7 +337,18 @@
     "browser_sign_in_failed": "El inicio de sesión de tu navegador no funcionó. Puede que haya caducado. Inicia sesión directamente."
   },
   "collab": {
-    "turned_off": "La colaboración en tiempo real está desactivada. Actívala en Ajustes, en Experimentación."
+    "suggestion_role": "Tu rol en este proyecto no permite sugerencias."
+  },
+  "notebook": {
+    "code_needed": "{{engine}} tiene que ejecutar código para generar este documento, y el código está desactivado en este proyecto. Permite el código en este proyecto para compilarlo.",
+    "quarto_missing": "Quarto no está instalado. Instálalo desde Ajustes > Motores > Quarto y vuelve a compilar.",
+    "calepin_missing": "Calepin no está instalado. Instálalo desde Ajustes > Motores > Calepin y vuelve a compilar.",
+    "not_offered": "Oleafly no puede descargar {{tool}} para este equipo. Instálalo por tu cuenta y vuelve a compilar.",
+    "busy": "{{tool}} todavía se está instalando. Inténtalo de nuevo cuando termine.",
+    "install_unverified": "{{tool}} se descargó, pero no superó la verificación de integridad. Vuelve a instalarlo.",
+    "unknown_tool": "Oleafly no conoce ninguna herramienta llamada {{tool}}.",
+    "not_managed": "Oleafly solo puede quitar {{tool}} si lo descargó él mismo.",
+    "no_html_output": "Todavía no hay salida HTML. Compila primero el documento."
   },
   "attachments": {
     "too_large": "Este archivo supera los {{max}} MB. Adjunta un archivo más pequeño.",

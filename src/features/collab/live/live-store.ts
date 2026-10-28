@@ -41,7 +41,7 @@ import {
 } from "@/lib/tauri-collab";
 import { useFilesStore } from "@/store/files";
 import { collabErrorCode } from "../errors";
-import { isReadOnlyProjectRole } from "../roles";
+import { canEditProjectRole } from "../roles";
 import { heldStatus } from "../sharing/sync-state";
 import { peerHue } from "./peer-hue";
 
@@ -85,9 +85,17 @@ export interface LiveMemberChange extends CollabLiveMembers {
   byName: string;
 }
 
+export type RoleNoticeKind = "viewer" | "commenter" | "reviewer";
+
 export interface AccessNotice {
-  kind: "viewer" | "removed";
+  kind: RoleNoticeKind | "removed";
   byName: string;
+}
+
+function roleNoticeKind(role: CollabProjectRole): RoleNoticeKind | null {
+  if (canEditProjectRole(role)) return null;
+  if (role === "reviewer" || role === "commenter") return role;
+  return "viewer";
 }
 
 export interface CollabLiveStoreState {
@@ -262,13 +270,13 @@ function refusalReason(code: CollabErrorCode): CollabLiveEndedReason {
 }
 
 function holdEditors(projectId: string): void {
-  useCollabEditorGate.setState({ projectId, viewer: false, connecting: true });
+  useCollabEditorGate.setState({ projectId, viewer: false, locked: false, connecting: true });
 }
 
 function releaseEditors(projectId: string): void {
   const gate = useCollabEditorGate.getState();
   if (gate.projectId === projectId && gate.connecting) {
-    useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false, connecting: false });
   }
 }
 
@@ -431,9 +439,10 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     const changed = before !== payload.role;
     const by = takeOwnChange("role_changed");
     let notice = state.accessNotice;
-    if (changed && before !== null && !isReadOnlyProjectRole(before) && isReadOnlyProjectRole(payload.role)) {
-      notice = { kind: "viewer", byName: changedBy(by) };
-    } else if (changed && !isReadOnlyProjectRole(payload.role) && notice?.kind === "viewer") {
+    const kind = roleNoticeKind(payload.role);
+    if (changed && before !== null && kind !== null) {
+      notice = { kind, byName: changedBy(by) };
+    } else if (changed && kind === null && notice !== null && notice.kind !== "removed") {
       notice = null;
     }
     store.setState({ role: payload.role, accessNotice: notice });

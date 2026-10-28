@@ -3,9 +3,7 @@ import { decodeAppError } from "@/lib/app-error";
 import type { CollabErrorCode } from "@/lib/tauri";
 import { isCollabCommandError } from "@/lib/tauri-collab";
 
-// What the backend's switch says when Live collaboration is off and a command
-// is refused before it runs, as one of the app's own errors.
-const SWITCH_OFF = "collab.turned_off";
+const ROLE_REFUSED = "collab.suggestion_role";
 
 export const COLLAB_ERROR_CODES = [
   "unreachable",
@@ -45,10 +43,17 @@ export const COLLAB_ERROR_CODES = [
   "server_removed",
   "share_in_progress",
   "cancelled",
-  "turned_off",
   "cloud_synced",
   "owner_away",
   "wrong_server",
+  "suggestion_not_found",
+  "suggestion_not_yours",
+  "suggestion_role",
+  "chat_role",
+  "history_unavailable",
+  "account_storage_full",
+  "too_many_projects",
+  "too_many_uploads",
 ] as const satisfies readonly CollabErrorCode[];
 
 type UnlistedCode = Exclude<CollabErrorCode, (typeof COLLAB_ERROR_CODES)[number]>;
@@ -65,13 +70,11 @@ const CONFLICT_MESSAGES: Readonly<Record<CollabErrorContext, () => string>> = {
 
 export function collabErrorCode(error: unknown): CollabErrorCode {
   if (isCollabCommandError(error)) return error.code;
-  if (decodeAppError(error)?.code === SWITCH_OFF) return "turned_off";
+  if (decodeAppError(error)?.code === ROLE_REFUSED) return "suggestion_role";
   return "internal";
 }
 
 export function collabErrorMessage(code: CollabErrorCode, context?: CollabErrorContext): string {
-  // The switch's own message already lives with the app's other errors.
-  if (code === "turned_off") return i18n.t(($) => $.errors.collab.turned_off);
   if (context && (code === "conflict" || (code === "duplicate_entry" && context !== "members"))) {
     return CONFLICT_MESSAGES[context]();
   }

@@ -11,6 +11,7 @@ import { useShareDialog } from "@/components/collab/share-dialog";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabLiveStore } from "../live/live-store";
+import { OLEAFLY_SERVER } from "../default-server";
 import { useCollabStore } from "../store";
 import {
   BOB,
@@ -18,6 +19,7 @@ import {
   account,
   CAROL,
   SERVER_ID,
+  capabilities,
   collabError,
   fill,
   libraryProject,
@@ -45,6 +47,9 @@ const mocks = vi.hoisted(() => ({
   collabStopSharing: vi.fn(),
   collabLeaveProject: vi.fn(),
   collabServersList: vi.fn(),
+  collabServerProbe: vi.fn(),
+  collabServerSignIn: vi.fn(),
+  collabServerSignInCancel: vi.fn(),
   copyIntoLibrary: vi.fn(),
 }));
 
@@ -63,6 +68,9 @@ vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
   collabStopSharing: mocks.collabStopSharing,
   collabLeaveProject: mocks.collabLeaveProject,
   collabServersList: mocks.collabServersList,
+  collabServerProbe: mocks.collabServerProbe,
+  collabServerSignIn: mocks.collabServerSignIn,
+  collabServerSignInCancel: mocks.collabServerSignInCancel,
 }));
 
 vi.mock("@/store/copy-into-library", () => ({ copyIntoLibrary: mocks.copyIntoLibrary }));
@@ -231,11 +239,35 @@ describe("ShareDialog before sharing", () => {
     const user = userEvent.setup();
     openDialog();
     expect(await screen.findByText(share.noServers)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: share.addOleafly })).toBeNull();
     await user.click(screen.getByRole("button", { name: share.openSettings }));
     expect(useSettingsStore.getState().settingsInitialSection).toBe("collaboration");
     expect(useSettingsStore.getState().settingsOpen).toBe(true);
     expect(useShareDialog.getState().projectId).toBeNull();
     expect(mocks.collabShareCheck).not.toHaveBeenCalled();
+  });
+
+  it("adds the Oleafly server in one click when there is no server yet, then goes on to sharing", async () => {
+    mocks.collabShareInfo.mockResolvedValue(null);
+    mocks.collabServersList.mockResolvedValue([]);
+    mocks.collabServerProbe.mockResolvedValue(capabilities({ name: OLEAFLY_SERVER.name }));
+    mocks.collabServerSignIn.mockResolvedValue(server({ url: OLEAFLY_SERVER.url, name: OLEAFLY_SERVER.name }));
+    mocks.collabShareCheck.mockResolvedValue(shareCheck());
+    useSettingsStore.setState({ settingsOpen: false });
+    const user = userEvent.setup();
+    openDialog();
+    expect(await screen.findByText(share.noServersYet)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: share.openSettings })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: share.addOleafly }));
+    expect(mocks.collabServerProbe).toHaveBeenCalledWith(OLEAFLY_SERVER.url);
+    const continueWith = fill(enCollab.addServer.continueWith, { provider: "GitHub" });
+    await user.click(await screen.findByRole("button", { name: continueWith }));
+    expect(mocks.collabServerSignIn).toHaveBeenCalledWith(OLEAFLY_SERVER.url, "github", undefined);
+    await user.click(await screen.findByRole("button", { name: enCollab.addServer.done }));
+    expect(await screen.findByText(fill(share.disclosure, { server: OLEAFLY_SERVER.name }))).toBeInTheDocument();
+    expect(mocks.collabShareCheck).toHaveBeenCalledWith("grant", SERVER_ID);
+    expect(screen.queryByRole("dialog", { name: fill(enCollab.addServer.doneTitle, { server: OLEAFLY_SERVER.name }) })).toBeNull();
+    expect(useSettingsStore.getState().settingsOpen).toBe(false);
   });
 
   it("copies an opened folder into Oleafly first, then continues with the copy", async () => {

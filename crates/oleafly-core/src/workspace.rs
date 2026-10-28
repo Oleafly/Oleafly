@@ -654,6 +654,8 @@ fn starter_document(engine: Engine) -> &'static [u8] {
         }
         Engine::Typst => b"= Hello from Oleafly\n",
         Engine::Markdown => b"# Hello from Oleafly\n",
+        Engine::Quarto => b"---\ntitle: Hello from Oleafly\nformat: typst\n---\n\nWrite your document in Quarto.\n",
+        Engine::Calepin => b"#import \"/.calepin/calepin.typ\" as calepin\n#show: calepin.document\n\n= Hello from Oleafly\n",
     }
 }
 
@@ -718,6 +720,8 @@ mod tests {
             (Engine::Latexmk, "main.tex"),
             (Engine::Typst, "main.typ"),
             (Engine::Markdown, "main.md"),
+            (Engine::Quarto, "main.qmd"),
+            (Engine::Calepin, "main.typ"),
         ] {
             let directory = TempDir::new().unwrap();
             let workspace = Workspace::init(

@@ -1083,6 +1083,16 @@
         "unknownEntryType": "Tip de intrare bibliografică necunoscut @{{type}}."
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "opțiune de bloc de cod Quarto"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "opțiune de bloc de cod Calepin"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "Se încarcă imaginea",
@@ -1561,7 +1571,7 @@
     "keyTaken": "O variantă nu poate seta același nume de două ori.",
     "saveFailed": "Variantele nu au putut fi salvate."
   },
-  "sharedSettingsViewer": "Cititorii nu pot modifica asta într-un proiect partajat.",
+  "sharedSettingsViewer": "Doar proprietarii și editorii pot modifica asta într-un proiect partajat.",
   "typstForms": {
     "message": "{{label}}: {{detail}}",
     "atKeyPath": "{{message}} (la {{path}})",

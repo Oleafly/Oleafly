@@ -1,9 +1,26 @@
 # syntax=docker/dockerfile:1.27
 ARG RUST_VERSION=1.98.1
 ARG ALPINE_VERSION=3.22
+ARG NODE_VERSION=22.22.0
 ARG RUNTIME_IMAGE=gcr.io/distroless/static-debian13:latest@sha256:58133991db06659feaabe0f4e97a35cebf15ef4ea08f8a4c6d2ee5f75e4aa6a0
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0 AS xx
+
+FROM --platform=$BUILDPLATFORM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS web
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+WORKDIR /src
+RUN corepack enable
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches ./patches
+COPY packages ./packages
+RUN --mount=type=cache,target=/pnpm-store,sharing=locked \
+    pnpm install --frozen-lockfile --store-dir /pnpm-store
+COPY tsconfig.json vite.config.ts vite.web.config.ts ./
+COPY e2e/vite-client-without-transport.ts ./e2e/vite-client-without-transport.ts
+COPY scripts/production-hook-audit.mjs ./scripts/production-hook-audit.mjs
+COPY src ./src
+COPY web ./web
+RUN pnpm web:build
 
 FROM --platform=$BUILDPLATFORM rust:${RUST_VERSION}-alpine${ALPINE_VERSION} AS build
 COPY --from=xx / /
@@ -17,11 +34,12 @@ COPY vendor ./vendor
 COPY crates ./crates
 COPY src-tauri/Cargo.toml ./src-tauri/Cargo.toml
 COPY src-tauri/src ./src-tauri/src
+COPY --from=web /src/web/dist ./web/dist
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,target=/build/target,sharing=locked \
     find crates -type f -exec touch {} + \
-    && xx-cargo build --profile server-release --locked -p oleafly-server --target-dir /build/target \
+    && xx-cargo build --profile server-release --locked -p oleafly-server --features web --target-dir /build/target \
     && xx-verify --static "/build/target/$(xx-cargo --print-target-triple)/server-release/oleafly-server" \
     && mkdir -p /out/data \
     && chmod 0700 /out/data \

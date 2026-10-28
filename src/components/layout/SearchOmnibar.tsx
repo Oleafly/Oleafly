@@ -52,13 +52,15 @@ function searchableDate(timestamp: number) {
 function searchableEngine(project: ProjectInfo) {
   const raw = project.engine?.trim().toLowerCase() ?? "";
   const path = project.main_doc.toLowerCase();
+  const isQuarto = raw === "quarto" || path.endsWith(".qmd") || path.endsWith(".rmd");
   const isMarkdown =
     raw === "markdown" ||
     raw === "md" ||
     raw === "pandoc" ||
     path.endsWith(".md") ||
     path.endsWith(".markdown");
-  const nonTypstLabel = isMarkdown ? "markdown" : "tectonic";
+  const markdownLabel = isQuarto ? "quarto markdown" : "markdown";
+  const nonTypstLabel = isMarkdown || isQuarto ? markdownLabel : "tectonic";
   const label =
     raw === "typst" || raw === "typ" || path.endsWith(".typ") ? "typst" : nonTypstLabel;
   return `${raw} ${label}`.trim();

@@ -30,3 +30,13 @@ services:
         sync: false
       - key: OLEAFLY_GITHUB_CLIENT_SECRET
         sync: false
+      - key: OLEAFLY_OPEN_SIGNUP
+        value: "false"
+      - key: OLEAFLY_ACCOUNT_STORAGE_MB
+        sync: false
+      - key: OLEAFLY_MAX_PROJECTS_PER_ACCOUNT
+        sync: false
+      - key: OLEAFLY_UPLOADS_PER_HOUR
+        sync: false
+      - key: OLEAFLY_WEB
+        value: "false"

@@ -73,6 +73,9 @@ typed_id!(ServerId);
 typed_id!(SharedProjectId);
 typed_id!(BatchId);
 typed_id!(CommentId);
+typed_id!(SuggestionId);
+typed_id!(ChatMessageId);
+typed_id!(VersionId);
 
 #[cfg(test)]
 mod tests {

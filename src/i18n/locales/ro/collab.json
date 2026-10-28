@@ -61,6 +61,7 @@
       "loading": "Se încarcă dispozitivele tale…",
       "loadFailed": "Oleafly nu a putut încărca dispozitivele tale.",
       "current": "Acest computer",
+      "browser": "Browser",
       "added": "Adăugat: {{date}}",
       "lastSeen": "Văzut ultima dată: {{date}}",
       "neverSeen": "Nevăzut încă",
@@ -139,6 +140,7 @@
   "addServer": {
     "title": "Adaugă un server de colaborare",
     "description": "Introdu adresa primită de la grupul tău. Oleafly verifică serverul înainte să te autentifici.",
+    "oleaflyDescription": "Serverul public Oleafly",
     "addressLabel": "Adresa serverului",
     "addressPlaceholder": "collab.example.edu",
     "continue": "Continuă",
@@ -218,7 +220,15 @@
     "server_removed": "Serverul acestui proiect nu mai este în lista ta. Păstrează proiectul ca o copie locală sau adaugă din nou serverul.",
     "share_in_progress": "Acest proiect se partajează deja. Așteaptă să se termine.",
     "cancelled": "Deschiderea proiectului partajat a fost anulată.",
-    "cloud_synced": "Biblioteca ta Oleafly se află într-un folder sincronizat de un serviciu cloud. Mut-o din Dropbox, OneDrive sau iCloud Drive ca să poți partaja proiecte sau să te alături lor."
+    "cloud_synced": "Biblioteca ta Oleafly se află într-un folder sincronizat de un serviciu cloud. Mut-o din Dropbox, OneDrive sau iCloud Drive ca să poți partaja proiecte sau să te alături lor.",
+    "suggestion_not_found": "Această sugestie nu mai există. Poate că cineva a acceptat-o sau a respins-o.",
+    "suggestion_not_yours": "Doar persoana care a făcut această sugestie o poate retrage.",
+    "suggestion_role": "Rolul tău în acest proiect nu permite sugestii.",
+    "chat_role": "Rolul tău în acest proiect nu permite acest lucru în chat.",
+    "history_unavailable": "Istoricul acestui proiect nu este încă pe acest computer. Încearcă din nou după ce se sincronizează.",
+    "account_storage_full": "Contul proprietarului proiectului a rămas fără spațiu de stocare pe acest server. Elimină câteva fișiere ca să faci loc sau cere-i administratorului serverului mai mult spațiu.",
+    "too_many_projects": "Ai deja câte proiecte partajate permite acest server. Oprește partajarea unuia înainte să partajezi altul.",
+    "too_many_uploads": "Ai încărcat prea multe fișiere în ultima oră. Încearcă din nou mai târziu."
   },
   "roles": {
     "admin": "Administrator",
@@ -481,8 +491,16 @@
   "projectRoles": {
     "owner": "Proprietar",
     "editor": "Editor",
+    "reviewer": "Recenzent",
+    "commenter": "Comentator",
     "viewer": "Cititor",
     "unknown": "Rol necunoscut"
+  },
+  "projectRoleDescriptions": {
+    "editor": "Editează și examinează sugestiile",
+    "reviewer": "Sugerează modificări și comentează",
+    "commenter": "Citește și comentează",
+    "viewer": "Doar citește"
   },
   "share": {
     "button": "Partajează",
@@ -494,6 +512,8 @@
     "editCopy": "Aceasta este copia partajată. De acum înainte editează această copie, nu folderul original.",
     "serverLabel": "Server",
     "noServers": "Autentifică-te mai întâi pe un server de colaborare, apoi revino ca să partajezi.",
+    "noServersYet": "Adaugă un server de colaborare și autentifică-te ca să partajezi acest proiect.",
+    "addOleafly": "Adaugă serverul Oleafly",
     "openSettings": "Deschide setările de Colaborare",
     "checking": "Se verifică proiectul…",
     "checkFailed": "Oleafly nu a putut verifica acest proiect.",
@@ -503,7 +523,7 @@
     "cloudSynced": "Biblioteca ta Oleafly se află într-un folder sincronizat de iCloud, Dropbox sau un serviciu similar. Două servicii de sincronizare și-ar disputa aceleași fișiere, așa că Oleafly nu poate partaja de acolo. Mută mai întâi biblioteca în afara acelui folder.",
     "tooLarge": "Aceste fișiere depășesc limita serverului, de {{size}} MB. Micșorează-le sau elimină-le înainte să partajezi.",
     "renamed": "Unele nume nu funcționează pe toate computerele. Celelalte persoane primesc aceste fișiere cu un nume puțin diferit.",
-    "excluded": "Nu se partajează: fișierele de compilare, setările Oleafly și istoricul Git.",
+    "excluded": "Nu se partajează: celelalte fișiere de compilare, setările Oleafly și istoricul Git. Cel mai recent PDF compilat se partajează, ca coautorii să îl poată citi într-un browser.",
     "start": "Partajează",
     "preparing": "Se pregătește proiectul…",
     "uploading": "Se încarcă figurile și celelalte fișiere: {{done}} din {{total}}",
@@ -551,7 +571,7 @@
     },
     "comments": {
       "label": "Comentarii",
-      "description": "Oricine poate edita poate comenta textul din acest proiect. Dacă dezactivezi opțiunea, comentariile sunt ascunse, dar nu sunt șterse.",
+      "description": "Proprietarii, editorii, recenzenții și comentatorii pot comenta textul din acest proiect. Dacă dezactivezi opțiunea, comentariile sunt ascunse, dar nu sunt șterse.",
       "serverOff": "Comentariile sunt dezactivate pe {{server}}. Cere-i administratorului să le activeze."
     },
     "stop": "Oprește partajarea",
@@ -594,6 +614,7 @@
     "unknownPerson": "Cineva",
     "viewing": "Vizualizează {{path}}",
     "editing": "Editează {{path}}",
+    "reviewing": "Revizuiește {{path}}",
     "goTo": "Mergi la {{name}}",
     "nowhere": "Nu este în niciun fișier, deci nu ai unde să mergi"
   },
@@ -666,6 +687,8 @@
   },
   "activity": {
     "welcomeEdit": "Partajat de {{owner}} pe {{server}}. Poți edita.",
+    "welcomeReview": "Partajat de {{owner}} pe {{server}}. Poți sugera modificări și poți comenta.",
+    "welcomeComment": "Partajat de {{owner}} pe {{server}}. Poți comenta.",
     "welcomeView": "Partajat de {{owner}} pe {{server}}. Poți vizualiza.",
     "joined": "{{name}} a deschis proiectul",
     "left": "{{name}} a închis proiectul",
@@ -774,9 +797,7 @@
       "signedOutTitle": "Ești deconectat de la acest server",
       "signedOutDescription": "Autentifică-te din nou în Setări, apoi deschide consola de administrare de pe cardul serverului.",
       "refusedTitle": "Consola de administrare este pentru administratori și coordonatori",
-      "refusedDescription": "Rolul tău pe acest server este {{role}}. Dacă trebuie să gestionezi serverul, adresează-te unui administrator.",
-      "turnedOffTitle": "Colaborarea în timp real este dezactivată",
-      "turnedOffDescription": "Activeaz-o din nou din Setări, la Experimente, ca să gestionezi aici acest server."
+      "refusedDescription": "Rolul tău pe acest server este {{role}}. Dacă trebuie să gestionezi serverul, adresează-te unui administrator."
     },
     "overview": {
       "loading": "Se încarcă prezentarea generală…",
@@ -929,8 +950,6 @@
     }
   },
   "links": {
-    "turnedOff": "Colaborarea în timp real este dezactivată. Activeaz-o în Setări, la Experimente, apoi deschide din nou linkul.",
-    "openSettings": "Deschide Setări",
     "malformed": "Oleafly nu poate deschide acest link. Cere unul nou persoanei care ți l-a trimis.",
     "opening": "Se deschide proiectul partajat…",
     "downloading": "Se descarcă fișierele: {{done}} din {{total}}",
@@ -952,8 +971,8 @@
     "add": "Adaugă comentariu",
     "showResolved": "Arată comentariile rezolvate",
     "hideResolved": "Ascunde comentariile rezolvate",
-    "empty": "Încă nu există comentarii.",
-    "emptyCanWrite": "Încă nu există comentarii. Selectează un text și alege Adaugă comentariu ca să începi unul.",
+    "empty": "Încă nu există comentarii sau sugestii.",
+    "emptyCanWrite": "Încă nu există comentarii sau sugestii. Selectează un text și alege Adaugă comentariu ca să începi unul.",
     "allResolved": "Toate comentariile sunt rezolvate.",
     "loadFailed": "Comentariile acestui fișier nu s-au putut încărca.",
     "detached": "Detașate",
@@ -1010,6 +1029,111 @@
       "empty": "Scrie ceva înainte să publici."
     }
   },
+  "suggestions": {
+    "insertedBy": "{{name}} a sugerat adăugarea acestui text",
+    "deletedBy": "{{name}} a sugerat ștergerea acestui text",
+    "unverifiedLabel": "Sugerat de cineva pe care Oleafly nu l-a putut verifica",
+    "card": "Sugestie de la {{name}}",
+    "unverifiedCard": "Sugestie de la cineva pe care Oleafly nu l-a putut verifica",
+    "added": "Adăugat",
+    "deleted": "Șters",
+    "accept": "Acceptă",
+    "reject": "Respinge",
+    "withdraw": "Retrage",
+    "acceptAll": "Acceptă toate",
+    "rejectAll": "Respinge toate",
+    "fileActions": "Sugestiile din {{file}}",
+    "pendingCount": "Sugestii în așteptare: {{number}}",
+    "loadFailed": "Sugestiile acestui fișier nu s-au putut încărca.",
+    "rejectAllConfirm": {
+      "title": "Respingi toate sugestiile din {{file}}?",
+      "description": "Textul original revine în fișier pentru toată lumea din acest proiect. Sugestii în așteptare: {{number}}.",
+      "confirm": "Respinge toate"
+    },
+    "withdrawConfirm": {
+      "title": "Retragi această sugestie?",
+      "description": "Textul original revine în fișier pentru toată lumea din acest proiect.",
+      "confirm": "Retrage"
+    },
+    "pendingCompile": "Acest proiect are sugestii care așteaptă să fie examinate: {{number}}. PDF-ul le arată ca și cum ar fi fost acceptate.",
+    "pendingExport": "Acest proiect are sugestii care așteaptă să fie examinate: {{number}}. Exportul le include ca și cum ar fi fost acceptate.",
+    "mode": {
+      "label": "Editare sau sugerare",
+      "editing": "Editare",
+      "suggesting": "Sugerare",
+      "editingHint": "Editare: modificările tale schimbă textul imediat",
+      "suggestingHint": "Sugerare: modificările tale devin sugestii pe care un proprietar sau un editor le poate accepta",
+      "reviewerHint": "Ești recenzent, așa că modificările tale devin sugestii pe care un proprietar sau un editor le poate accepta"
+    }
+  },
+  "chat": {
+    "title": "Chat",
+    "titleUnread": "Chat, mesaje noi",
+    "list": "Mesaje",
+    "empty": "Încă nu există mesaje.",
+    "label": "Mesaj",
+    "placeholder": "Scrie un mesaj",
+    "send": "Trimite",
+    "readOnly": "Cititorii pot citi chatul, dar nu pot scrie în el.",
+    "offline": "Acest proiect nu este conectat acum, așa că nu poți scrie mesaje.",
+    "delete": "Șterge mesajul",
+    "deleteConfirm": {
+      "title": "Ștergi acest mesaj?",
+      "description": "Se șterge pentru toată lumea din acest proiect."
+    },
+    "deleted": "Acest mesaj a fost șters.",
+    "clear": "Golește chatul",
+    "clearConfirm": {
+      "title": "Golești chatul?",
+      "description": "Toate mesajele sunt eliminate pentru toată lumea din acest proiect. Acțiunea nu poate fi anulată.",
+      "confirm": "Golește chatul"
+    },
+    "loadFailed": "Oleafly nu a putut încărca chatul.",
+    "loadOlder": "Arată mesajele mai vechi"
+  },
+  "history": {
+    "title": "Istoric",
+    "refresh": "Reîmprospătează istoricul",
+    "empty": "Încă nu există modificări.",
+    "loadFailed": "Oleafly nu a putut încărca istoricul proiectului.",
+    "loadMore": "Arată modificările mai vechi",
+    "earlier": "Modificări mai vechi",
+    "timeRange": "{{from}} până la {{to}}",
+    "authorsMore": "{{names}} și încă {{number}}",
+    "filesChanged": "Fișiere modificate: {{number}}",
+    "open": "Deschide",
+    "compare": "Compară",
+    "compareWith": "Compară cu aceasta",
+    "comparePick": "Alege a doua versiune pentru comparație.",
+    "cancelCompare": "Anulează",
+    "name": "Denumește această versiune",
+    "rename": "Redenumește",
+    "unname": "Elimină numele",
+    "nameLabel": "Numele versiunii",
+    "namePlaceholder": "De exemplu, Trimis recenzenților",
+    "versionDescription": "Cum arăta proiectul după aceste modificări. Îl poți citi aici fără să schimbi nimic.",
+    "files": "Fișiere",
+    "noFiles": "Niciun fișier text nu s-a modificat în această versiune.",
+    "fileLabel": "{{path}} așa cum era la {{time}}",
+    "fileMissing": "Acest fișier nu exista în această versiune.",
+    "loadingFile": "Se încarcă…",
+    "restoreFile": "Restaurează acest fișier",
+    "restoreProject": "Restaurează tot proiectul",
+    "restoreFileConfirm": {
+      "title": "Restaurezi {{path}}?",
+      "description": "Fișierul revine la cum era la {{time}} pentru toată lumea din acest proiect. Textul lui actual rămâne în istoric, așa că poți reveni la el.",
+      "confirm": "Restaurează fișierul"
+    },
+    "restoreProjectConfirm": {
+      "title": "Restaurezi tot proiectul?",
+      "description": "Fiecare fișier revine la cum era la {{time}} pentru toată lumea din acest proiect. Textul actual rămâne în istoric, așa că poți reveni la el.",
+      "confirm": "Restaurează proiectul"
+    },
+    "compareTitle": "Modificări între două versiuni",
+    "compareDescription": "De la {{from}} la {{to}}",
+    "changedFiles": "Fișiere modificate: {{number}}",
+    "noChanges": "Niciun text nu s-a schimbat între aceste versiuni."
+  },
   "accessLog": {
     "opened": "{{name}} a deschis proiectul",
     "joinedLink": "{{name}} s-a alăturat prin link",
@@ -1065,6 +1189,10 @@
   "access": {
     "viewerBy": "{{name}} te-a făcut cititor. Poți citi acest proiect, dar nu îl poți edita.",
     "viewer": "Acum ești cititor. Poți citi acest proiect, dar nu îl poți edita.",
+    "commenterBy": "{{name}} te-a făcut comentator. Poți citi și comenta acest proiect, dar nu îl poți edita.",
+    "commenter": "Acum ești comentator. Poți citi și comenta acest proiect, dar nu îl poți edita.",
+    "reviewerBy": "{{name}} te-a făcut recenzent. Modificările tale devin sugestii pe care un proprietar sau un editor le poate accepta.",
+    "reviewer": "Acum ești recenzent. Modificările tale devin sugestii pe care un proprietar sau un editor le poate accepta.",
     "viewOnly": "Poți vedea acest proiect partajat, dar nu îl poți edita.",
     "connecting": "Acest proiect partajat încă se conectează, așa că nu poate fi modificat încă. Încearcă din nou peste câteva momente.",
     "unsentReadOnly": "Ultimele tale modificări din {{path}} nu au fost trimise, pentru că acum poți doar să vezi acest proiect.",
@@ -1081,6 +1209,8 @@
     "projectTooLarge": "{{file}} rămâne pe acest computer pentru că proiectul a atins limita de mărime a serverului, de {{limit}}. Roagă persoana care administrează serverul să o mărească.",
     "projectTooLargeUnknown": "{{file}} rămâne pe acest computer pentru că proiectul a atins limita de mărime a serverului. Roagă persoana care administrează serverul să o mărească.",
     "projectFull": "Acest proiect a atins limita de mărime a serverului, așa că modificările tale rămân deocamdată pe acest computer. Roagă persoana care administrează serverul să o mărească.",
+    "accountStorageFull": "Nu s-a putut partaja pentru că proprietarul proiectului a rămas fără spațiu de stocare pe acest server: {{files}}",
+    "tooManyUploads": "Nu s-a partajat încă pentru că ai încărcat prea multe fișiere în ultima oră: {{files}}. Încearcă din nou mai târziu.",
     "replaced": "{{name}} a înlocuit {{file}} în același timp cu tine. Versiunea ta este păstrată ca {{copy}}.",
     "added": "{{file}} se numește acum {{copy}}, pentru că {{name}} a adăugat un fișier cu același nume.",
     "beside": "{{name}} are și un fișier numit {{file}}. Acesta este păstrat ca {{copy}}.",

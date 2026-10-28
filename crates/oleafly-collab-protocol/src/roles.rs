@@ -16,9 +16,22 @@ pub enum ServerRole {
 pub enum ProjectRole {
     Owner,
     Editor,
+    Reviewer,
+    Commenter,
     Viewer,
     #[serde(other)]
     Unknown,
+}
+
+pub const GRANTABLE_ROLES: [ProjectRole; 4] = [
+    ProjectRole::Editor,
+    ProjectRole::Reviewer,
+    ProjectRole::Commenter,
+    ProjectRole::Viewer,
+];
+
+pub fn grantable(role: ProjectRole) -> bool {
+    GRANTABLE_ROLES.contains(&role)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -137,11 +150,34 @@ mod tests {
             server,
             ["\"admin\"", "\"maintainer\"", "\"member\"", "\"guest\""]
         );
-        let project: Vec<String> = [ProjectRole::Owner, ProjectRole::Editor, ProjectRole::Viewer]
-            .iter()
-            .map(|role| serde_json::to_string(role).unwrap())
-            .collect();
-        assert_eq!(project, ["\"owner\"", "\"editor\"", "\"viewer\""]);
+        let project: Vec<String> = [
+            ProjectRole::Owner,
+            ProjectRole::Editor,
+            ProjectRole::Reviewer,
+            ProjectRole::Commenter,
+            ProjectRole::Viewer,
+        ]
+        .iter()
+        .map(|role| serde_json::to_string(role).unwrap())
+        .collect();
+        assert_eq!(
+            project,
+            [
+                "\"owner\"",
+                "\"editor\"",
+                "\"reviewer\"",
+                "\"commenter\"",
+                "\"viewer\""
+            ]
+        );
+        assert_eq!(
+            serde_json::from_str::<ProjectRole>("\"reviewer\"").unwrap(),
+            ProjectRole::Reviewer
+        );
+        assert_eq!(
+            serde_json::from_str::<ProjectRole>("\"commenter\"").unwrap(),
+            ProjectRole::Commenter
+        );
         assert_eq!(
             serde_json::from_str::<ProjectRole>("\"viewer\"").unwrap(),
             ProjectRole::Viewer
@@ -150,6 +186,20 @@ mod tests {
             serde_json::from_str::<ServerRole>("\"Admin\"").unwrap(),
             ServerRole::Unknown
         );
+    }
+
+    #[test]
+    fn everyone_but_the_owner_and_unknown_roles_can_be_granted() {
+        assert!(!grantable(ProjectRole::Owner));
+        assert!(!grantable(ProjectRole::Unknown));
+        for role in [
+            ProjectRole::Editor,
+            ProjectRole::Reviewer,
+            ProjectRole::Commenter,
+            ProjectRole::Viewer,
+        ] {
+            assert!(grantable(role), "{role:?}");
+        }
     }
 
     #[test]

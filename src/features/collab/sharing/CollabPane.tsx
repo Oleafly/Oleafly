@@ -68,10 +68,12 @@ import { GuestBadge } from "../GuestBadge";
 import { InactiveBadge, isInactive } from "../InactiveBadge";
 import { collabPerson } from "../people";
 import { peerHue } from "../live/peer-hue";
+import { canEditProjectRole } from "../roles";
 import { AccessLog, useAccessLogShown } from "./AccessLog";
 import { useCollabActivity, type ActivityEntry } from "./activity-store";
 import { MergeReviewDialog } from "./MergeReviewDialog";
 import { RecentlyDeleted } from "./RecentlyDeleted";
+import { SharedHistory } from "./SharedHistory";
 import { settingActivityText } from "./setting-activity";
 import { middleEllipsisPath } from "./middle-ellipsis";
 import { SyncStateIcon, useSyncWords } from "./sync-display";
@@ -108,7 +110,7 @@ const ACTIVITY_ICONS: Readonly<Record<ActivityEntry["kind"], Icon>> = {
 
 const TICK_MS = 60_000;
 
-const OPEN_SECTIONS = { people: true, activity: true, deleted: false, accessLog: false };
+const OPEN_SECTIONS = { people: true, activity: true, history: false, deleted: false, accessLog: false };
 
 function openCollaborationSettings() {
   const settings = useSettingsStore.getState();
@@ -243,12 +245,20 @@ function memberText(entry: MemberEntry, t: ReturnType<typeof useTranslation<["co
   return t(($) => $.collab.activity.memberRemoved, { by, name });
 }
 
+type WelcomeEntry = Extract<ActivityEntry, { kind: "welcome" }>;
+
+function welcomeText(entry: WelcomeEntry, t: ReturnType<typeof useTranslation<["collab"]>>["t"]) {
+  const values = { owner: entry.owner, server: entry.server };
+  if (canEditProjectRole(entry.role)) return t(($) => $.collab.activity.welcomeEdit, values);
+  if (entry.role === "reviewer") return t(($) => $.collab.activity.welcomeReview, values);
+  if (entry.role === "commenter") return t(($) => $.collab.activity.welcomeComment, values);
+  return t(($) => $.collab.activity.welcomeView, values);
+}
+
 function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["collab"]>>["t"], unknown: string) {
   switch (entry.kind) {
     case "welcome":
-      return entry.role === "editor"
-        ? t(($) => $.collab.activity.welcomeEdit, { owner: entry.owner, server: entry.server })
-        : t(($) => $.collab.activity.welcomeView, { owner: entry.owner, server: entry.server });
+      return welcomeText(entry, t);
     case "joined":
       return entry.count > 1
         ? t(($) => $.collab.activity.rejoined, { name: entry.name || unknown })
@@ -714,6 +724,7 @@ export function CollabPane() {
   const peopleTitle = t(($) => $.collab.pane.people);
   const activityTitle = t(($) => $.collab.pane.activity);
   const deletedTitle = t(($) => $.collab.pane.deleted);
+  const historyTitle = t(($) => $.collab.history.title);
   const accessLogTitle = t(($) => $.collab.pane.accessLog);
   const projectId = live.projectId;
   const selfId = live.share?.account_id ?? null;
@@ -772,6 +783,15 @@ export function CollabPane() {
         <ActivityList title={activityTitle} entries={entries} />
       </SidebarSection>
     )),
+  );
+  if (live.share) {
+    sections.push(
+      section("history", "collab-history-v", historyTitle, "collab-history-resize", (open, onOpenChange) => (
+        <SharedHistory open={open} onOpenChange={onOpenChange} />
+      )),
+    );
+  }
+  sections.push(
     section("deleted", "collab-deleted-v", deletedTitle, "collab-deleted-resize", (open, onOpenChange) => (
       <RecentlyDeleted open={open} onOpenChange={onOpenChange} />
     )),

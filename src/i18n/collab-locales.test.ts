@@ -5,8 +5,6 @@ import { flattenCatalog, SUPPORTED_LOCALES } from "@oleafly/i18n-contract";
 
 const LOCALES = fileURLToPath(new URL("./locales/", import.meta.url));
 const SHELL_KEYS = [
-  "settings.experimentation.liveCollaboration.description",
-  "settings.experimentation.liveCollaboration.label",
   "settings.nav.collaboration",
   "settings.search.keywords.collaboration",
 ];
@@ -30,7 +28,7 @@ describe("collaboration translations", () => {
     expect(keys.get("activity.suspended")).toBe(keys.get("section.server.suspendedHint"));
   });
 
-  it.each(others)("%s has the four new shell keys", (locale) => {
+  it.each(others)("%s has the collaboration shell keys", (locale) => {
     const shell = catalog(locale, "shell");
     for (const key of SHELL_KEYS) expect(shell.get(key), key).toBeTruthy();
   });

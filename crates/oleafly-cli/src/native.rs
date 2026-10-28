@@ -80,7 +80,7 @@ pub fn ignored_flags(flags: EngineFlags, engine: Engine) -> Vec<&'static str> {
         Engine::Tectonic => (false, false, false),
         Engine::Latexmk => (false, true, false),
         Engine::Typst => (false, true, true),
-        Engine::Markdown => (true, true, true),
+        Engine::Markdown | Engine::Quarto | Engine::Calepin => (true, true, true),
     };
     [
         (offline && flags.offline, "--offline"),
@@ -483,6 +483,7 @@ impl BuildTools {
             Engine::Latexmk => self.latexmk.as_deref(),
             Engine::Typst => self.typst.as_deref(),
             Engine::Markdown => self.pandoc.as_deref(),
+            Engine::Quarto | Engine::Calepin => None,
         }
     }
 
@@ -495,6 +496,7 @@ impl BuildTools {
                 ("pandoc", self.pandoc.as_deref()),
                 ("tectonic", self.tectonic.as_deref()),
             ],
+            Engine::Quarto | Engine::Calepin => Vec::new(),
         }
     }
 
@@ -516,6 +518,9 @@ impl BuildTools {
     }
 
     fn missing_for_engine(&self, engine: Engine) -> Error {
+        if matches!(engine, Engine::Quarto | Engine::Calepin) {
+            return not_in_command_line(engine);
+        }
         let name = engine.tool_name();
         if let (Engine::Typst, Some(message)) = (engine, self.typst_pin_error()) {
             return Error::new(ErrorKind::MissingTool, message);
@@ -1005,6 +1010,7 @@ impl NativeCompiler {
                 staging = Some(staged);
                 (arguments, produced, working)
             }
+            Engine::Quarto | Engine::Calepin => return Err(not_in_command_line(build.engine())),
         };
         Ok(BuildCommand {
             executable,
@@ -1246,7 +1252,9 @@ fn diagnostics_for(
             }
             diagnostics
         }
-        Engine::Typst | Engine::Markdown => errors.iter().map(diagnostic_of).collect(),
+        Engine::Typst | Engine::Markdown | Engine::Quarto | Engine::Calepin => {
+            errors.iter().map(diagnostic_of).collect()
+        }
     }
 }
 
@@ -1565,6 +1573,19 @@ fn pandoc_engine_path(tectonic: &Path) -> Result<(PathBuf, Option<CompilerAlias>
     }
     let alias = CompilerAlias::create(tectonic, "tectonic")?;
     Ok((alias.executable.clone(), Some(alias)))
+}
+
+fn not_in_command_line(engine: Engine) -> Error {
+    let (name, command) = match engine {
+        Engine::Calepin => ("Calepin", "calepin compile"),
+        _ => ("Quarto", "quarto render"),
+    };
+    Error::new(
+        ErrorKind::Build,
+        format!(
+            "{name} projects can't be built from the command line yet. Open the project in Oleafly, or run `{command}` yourself."
+        ),
+    )
 }
 
 fn missing_tool(engine: Engine) -> Error {
@@ -1984,8 +2005,8 @@ fn image_check_applies(ok: bool, engine: Engine) -> bool {
 
 fn parse_errors(engine: Engine, log: &str) -> Vec<BuildError> {
     match engine {
-        Engine::Typst => parse_typst_errors(log),
-        Engine::Markdown => parse_pandoc_diagnostics(log)
+        Engine::Typst | Engine::Calepin => parse_typst_errors(log),
+        Engine::Markdown | Engine::Quarto => parse_pandoc_diagnostics(log)
             .into_iter()
             .map(BuildError::from)
             .collect(),

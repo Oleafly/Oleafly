@@ -101,6 +101,11 @@
       "pickTitle": "Programm für {{name}} auswählen",
       "filter": "Programme"
     },
+    "sharedCodeExecution": {
+      "title": "Code in diesem geteilten Projekt erlauben?",
+      "message": "Beim Kompilieren wird dann der Code in diesem Projekt auf diesem Computer ausgeführt. Jede Person mit Bearbeitungsrechten kann diesen Code ändern. Erlauben Sie das nur, wenn Sie allen im Projekt vertrauen.",
+      "confirm": "Auf diesem Computer erlauben"
+    },
     "desktopApps": {
       "title": "Desktop-Apps",
       "action": "{{agent}} möchte {{action}}.",

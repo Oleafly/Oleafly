@@ -471,6 +471,18 @@ pub(super) fn typst_references(masked: &str) -> Vec<String> {
     found
 }
 
+pub fn typst_uses_calepin(source: &str) -> bool {
+    masked_typst_uses_calepin(&mask_typst_comments(source))
+}
+
+pub(super) fn masked_typst_uses_calepin(masked: &str) -> bool {
+    typst_references(masked).iter().any(|target| {
+        target
+            .strip_prefix("/.calepin/")
+            .is_some_and(|rest| rest == "calepin.typ" || rest.ends_with("/calepin.typ"))
+    })
+}
+
 pub(super) fn typst_library_like(stem: &str, masked: &str) -> bool {
     if matches!(
         stem,

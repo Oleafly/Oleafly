@@ -61,7 +61,9 @@ Compartilhe um projeto no Oleafly Server do seu laboratório e todos editam os m
 - As edições feitas offline são mescladas quando você se reconecta. Se elas se sobrepuserem às de outra pessoa, o Oleafly mostra as duas e pergunta antes de aplicar qualquer coisa.
 - Edições de IA, citações do Zotero, renomeações, exclusões e figuras também são sincronizadas. Se duas pessoas substituírem a mesma figura ao mesmo tempo, as duas versões são mantidas.
 - O arquivo principal, o compilador, o idioma da correção ortográfica e as opções do Typst são compartilhados, então a equipe inteira compila o projeto do mesmo jeito.
-- Cada projeto tem um proprietário, editores e leitores. Convidados por e-mail veem apenas os projetos para os quais foram convidados.
+- Cada projeto tem um proprietário, editores, revisores, comentaristas e leitores. As edições dos revisores viram sugestões, e proprietários e editores também podem mudar para o modo Sugestão. Convidados por e-mail veem apenas os projetos para os quais foram convidados.
+- Cada projeto compartilhado tem um chat e um histórico onde você pode comparar versões, restaurar uma delas ou dar um nome a ela.
+- Coautores podem abrir um projeto compartilhado no navegador quando o acesso pelo navegador está ativado no servidor, e ler o PDF da última compilação.
 
 ### Execute o servidor você mesmo
 
@@ -167,6 +169,7 @@ Tectonic, Typst e Pandoc vêm com o aplicativo, então um projeto novo compila s
 - Completação e diagnósticos ao vivo para labels, citações, comandos, ambientes e caminhos de arquivo em todo o projeto.
 - A correção ortográfica e gramatical roda localmente e é ajustada para a escrita acadêmica.
 - XeLaTeX, LuaLaTeX e upLaTeX ou pLaTeX para documentos em japonês.
+- Documentos Quarto e Calepin executam seu código em R, Python ou Julia assim que você permite código no projeto. O Oleafly pode baixar qualquer uma das duas ferramentas para você.
 
 ## Citações, figuras, verificações e modelos
 

@@ -2,11 +2,18 @@ import {
   markdown,
   markdownLanguage as gfmMarkdownLanguage,
 } from "@codemirror/lang-markdown";
-import { styleTags } from "@lezer/highlight";
+import { StreamLanguage } from "@codemirror/language";
+import { yaml } from "@codemirror/legacy-modes/mode/yaml";
+import { parseMixed } from "@lezer/common";
+import { styleTags, tags as t } from "@lezer/highlight";
 import type {
+  BlockContext,
+  Element,
   InlineContext,
+  Line,
   MarkdownExtension,
 } from "@lezer/markdown";
+import { codeChunkLanguage } from "./code-chunks";
 import { syntaxTags } from "./syntax-colors";
 
 const DOLLAR = "$".codePointAt(0);
@@ -19,6 +26,12 @@ const CLOSE_BRACKET = "]".codePointAt(0);
 const LINK_FOLLOWERS = new Set(["(", "[", ":"].map((character) => character.codePointAt(0)));
 const GROUP_KEY_PREFIX = /[\s;-]/u;
 const BACKSLASH = "\\".codePointAt(0);
+const OPEN_BRACE = "{".codePointAt(0);
+const LESS_THAN = "<".codePointAt(0);
+const SHORTCODE_CLOSE = ">}}";
+const FRONT_MATTER_OPEN = /^---[ \t]*$/u;
+const FRONT_MATTER_CLOSE = /^(?:---|\.\.\.)[ \t]*$/u;
+const yamlParser = StreamLanguage.define(yaml).parser;
 
 const whitespace = (code: number): boolean =>
   code === 9 || code === 10 || code === 13 || code === 32;
@@ -184,6 +197,87 @@ const pandocMarkdownExtensions: MarkdownExtension = {
   ],
 };
 
+function frontMatterEnd(cx: BlockContext, line: Line, marks: Element[]): number {
+  let contentFrom = -1;
+  let contentTo = -1;
+  const addContent = () => {
+    if (contentTo > contentFrom) marks.push(cx.elt("FrontMatterContent", contentFrom, contentTo));
+  };
+  while (cx.nextLine()) {
+    if (FRONT_MATTER_CLOSE.test(line.text)) {
+      addContent();
+      marks.push(cx.elt("FrontMatterMark", cx.lineStart, cx.lineStart + 3));
+      const end = cx.lineStart + line.text.length;
+      cx.nextLine();
+      return end;
+    }
+    if (contentFrom < 0) contentFrom = cx.lineStart;
+    if (line.text.trim()) contentTo = cx.lineStart + line.text.length;
+  }
+  addContent();
+  return Math.max(3, contentTo);
+}
+
+function parseFrontMatter(cx: BlockContext, line: Line): boolean {
+  if (cx.lineStart !== 0 || !FRONT_MATTER_OPEN.test(line.text) || !cx.peekLine().trim()) {
+    return false;
+  }
+  const marks = [cx.elt("FrontMatterMark", 0, 3)];
+  const end = frontMatterEnd(cx, line, marks);
+  cx.addElement(cx.elt("FrontMatter", 0, end, marks));
+  return true;
+}
+
+const pandocFrontMatter: MarkdownExtension = {
+  defineNodes: [
+    { name: "FrontMatter", block: true },
+    { name: "FrontMatterMark", style: syntaxTags.formatting },
+    { name: "FrontMatterContent" },
+  ],
+  parseBlock: [
+    {
+      name: "FrontMatter",
+      parse: parseFrontMatter,
+      before: "HorizontalRule",
+    },
+  ],
+  wrap: parseMixed((node) =>
+    node.name === "FrontMatter"
+      ? { parser: yamlParser, overlay: (child) => child.name === "FrontMatterContent" }
+      : null,
+  ),
+};
+
+function parseQuartoShortcode(
+  context: InlineContext,
+  next: number,
+  position: number,
+): number {
+  if (
+    next !== OPEN_BRACE ||
+    context.char(position + 1) !== OPEN_BRACE ||
+    context.char(position + 2) !== LESS_THAN
+  ) {
+    return -1;
+  }
+  const close = context.slice(position, context.end).indexOf(SHORTCODE_CLOSE);
+  if (close < 0) return -1;
+  return context.addElement(
+    context.elt("QuartoShortcode", position, position + close + SHORTCODE_CLOSE.length),
+  );
+}
+
+const quartoShortcodes: MarkdownExtension = {
+  defineNodes: [{ name: "QuartoShortcode", style: t.meta }],
+  parseInline: [
+    {
+      name: "QuartoShortcode",
+      parse: parseQuartoShortcode,
+      before: "Escape",
+    },
+  ],
+};
+
 /**
  * Oleafly compiles Pandoc Markdown rather than strict CommonMark. The GFM base
  * covers tables, task lists, and strikethrough, while the extension adds
@@ -192,6 +286,15 @@ const pandocMarkdownExtensions: MarkdownExtension = {
 export function markdownLanguage() {
   return markdown({
     base: gfmMarkdownLanguage,
-    extensions: pandocMarkdownExtensions,
+    extensions: [pandocMarkdownExtensions, pandocFrontMatter],
+    codeLanguages: codeChunkLanguage,
+  });
+}
+
+export function quartoLanguage() {
+  return markdown({
+    base: gfmMarkdownLanguage,
+    extensions: [pandocMarkdownExtensions, pandocFrontMatter, quartoShortcodes],
+    codeLanguages: codeChunkLanguage,
   });
 }

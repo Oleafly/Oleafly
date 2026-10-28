@@ -10,6 +10,7 @@ pub mod frames;
 pub mod guests;
 pub mod ids;
 pub mod language;
+pub mod outputs;
 pub mod page;
 pub mod poll;
 pub mod projects;

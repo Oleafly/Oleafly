@@ -4,6 +4,7 @@ import {
   ensureGitHostingAccount,
   openProject,
   openRailTab,
+  openVersioning,
   stageAllGitChanges,
   unstageAllGitChanges,
   pressGlobal,
@@ -138,7 +139,7 @@ test("a successful compile is committed only through an explicit local action", 
   await expect(graph).toBeVisible({ timeout: 10_000 });
   await expect(graph.getByText(message, { exact: true })).toBeVisible({ timeout: 10_000 });
 
-  await tauriPage.click('[aria-label="Versioning"]');
+  await openVersioning(tauriPage);
   await expect(tauriPage.getByTestId("versioning-panel-checkpoints")).toBeVisible({
     timeout: 10_000,
   });

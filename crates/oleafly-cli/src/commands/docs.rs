@@ -803,6 +803,17 @@ async fn export_with_pandoc(
     let workspace = &opened.workspace;
     let engine = workspace.manifest().engine()?;
     let id = format.id();
+    if export_formats(engine).is_empty() {
+        return Err(CliError::new(
+            ErrorKind::InvalidInput,
+            "export.unsupported_format",
+            format!(
+                "{} projects can't be exported from the command line.",
+                engine.canonical_name()
+            ),
+        )
+        .hint("Open the project in Oleafly to export it."));
+    }
     if !export_formats(engine).contains(&id) {
         return Err(CliError::new(
             ErrorKind::InvalidInput,

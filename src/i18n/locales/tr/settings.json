@@ -268,6 +268,7 @@
       "keyPlaceholder": "Gerekmiyorsa boş bırakın",
       "keyPlaceholderStored": "Yeni bir anahtar girmedikçe kayıtlı anahtar kalır",
       "namePlaceholder": "Acme",
+      "presetsLabel": "Yaygın sağlayıcılar",
       "saveAnyway": "Yine de kaydet",
       "submitAdd": "Sağlayıcı ekle",
       "submitAddAnyway": "Modelsiz ekle"
@@ -368,7 +369,8 @@
       "badge": {
         "connected": "Bağlı",
         "notRunning": "Çalışmıyor",
-        "running": "Çalışıyor"
+        "running": "Çalışıyor",
+        "suggested": "Önerilen"
       },
       "blurbs": {
         "anthropic": "Claude modelleri - kod ve yazımda güçlü.",
@@ -378,7 +380,7 @@
         "groq": "Çok hızlı açık model çıkarımı.",
         "mistral": "Mistral ve Codestral modelleri.",
         "ollama": "Modelleri makinenizde çalıştırır. Anahtar gerekmez - Ollama'yı kurun ve bir model indirin.",
-        "openai": "GPT modelleri. Varsayılan seçenek.",
+        "openai": "GPT modelleri.",
         "openrouter": "Tek anahtarla birçok laboratuvarın modellerine erişin.",
         "perplexity": "Canlı web dayanağı olan Sonar modelleri.",
         "xai": "xAI'den Grok modelleri.",
@@ -633,6 +635,21 @@
         "description": "Düğmeler, seçimler ve düzenleyici imleci için kullanılır.",
         "label": "Vurgu rengi",
         "swatchAriaLabel": "{{name}} vurgusu"
+      },
+      "appIcon": {
+        "aurora": "Aurora",
+        "blue": "Mavi",
+        "coral": "Mercan",
+        "description": "Oleafly açıkken Dock'ta veya görev çubuğunda gösterilecek simgeyi seçin.",
+        "iridescent": "Yanardöner",
+        "label": "Uygulama simgesi",
+        "light": "Açık",
+        "mint": "Nane",
+        "note": "Finder, Başlat menüsü ve uygulama başlatıcılar varsayılan simgeyi göstermeye devam eder.",
+        "ocean": "Okyanus",
+        "pastel": "Pastel",
+        "prism": "Prizma",
+        "sunset": "Gün batımı"
       },
       "bgPattern": {
         "description": "Proje rafının arkasındaki deseni seçin.",
@@ -1457,6 +1474,58 @@
         "detail": "Geçiş yapmadan önce açık projeyi kurulu daha yeni bir sürümle derleyin ve sonuçları karşılaştırın.",
         "check": "Typst {{version}} ile denetle"
       }
+    },
+    "notebook": {
+      "loading": "Bu bilgisayarda Quarto, Calepin ve diller aranıyor",
+      "source": {
+        "system": "Bu bilgisayarda",
+        "managed": "Oleafly tarafından indirildi"
+      },
+      "active": {
+        "version": "{{tool}} {{version}}",
+        "missing": "Bu bilgisayarda bulunamadı."
+      },
+      "managedIdle": "Kullanılmıyor. Oleafly önce bu bilgisayarda bulunan kopyayı kullanır.",
+      "download": {
+        "optional": "İsteğe bağlı. Oleafly zaten bu bilgisayardaki kopyayı kullanıyor.",
+        "license": "{{license}} lisansı.",
+        "action": "{{tool}} {{version}} sürümünü indir ({{size}})",
+        "actionNoSize": "{{tool}} {{version}} sürümünü indir",
+        "notOffered": "Oleafly, {{tool}} aracını bu bilgisayar için indiremiyor. Kendiniz kurun, Oleafly onu bulur."
+      },
+      "removeAria": "Oleafly'nin indirdiği {{tool}} kopyasını kaldır",
+      "languages": {
+        "heading": "Diller",
+        "tooltip": "Quarto ve Calepin belgelerindeki kod bu programlarla çalışır.",
+        "notFound": "Bulunamadı",
+        "note": "Oleafly kodu bu bilgisayarda zaten bulunan R, Python ve Julia ile çalıştırır. Bunları hiçbir zaman kendisi kurmaz."
+      },
+      "codeNote": "Bir belgedeki kod, yalnızca Derleme menüsünde o proje için kod çalıştırmaya izin verdikten sonra çalışır.",
+      "progress": {
+        "starting": "Başlatılıyor",
+        "downloading": "İndiriliyor %{{percent}}",
+        "verifying": "Denetleniyor",
+        "extracting": "Arşivden çıkarılıyor",
+        "done": "Tamamlanıyor"
+      },
+      "error": {
+        "load": "Quarto, Calepin ve diller aranamadı.",
+        "install": "{{tool}} kurulamadı.",
+        "remove": "{{tool}} kaldırılamadı."
+      }
+    },
+    "quarto": {
+      "heading": "Quarto",
+      "tooltip": "Quarto, .qmd ve .Rmd belgelerini PDF'e, web sayfasına veya slaytlara dönüştürür. Oleafly bu bilgisayarda bir Quarto bulursa onu, bulamazsa indirdiği bir kopyayı kullanır.",
+      "detail": "Oleafly, .qmd ve .Rmd belgelerini bu kopyayla derler.",
+      "downloadDetail": "Oleafly kendi kopyasını uygulama klasöründe tutar. Quarto, Pandoc'u ve kendi lisanslarıyla gelen başka araçları içerir."
+    },
+    "calepin": {
+      "heading": "Calepin",
+      "tooltip": "Calepin bir Typst belgesindeki kodu çalıştırır ve sonuçları PDF'e ekler. Oleafly bu bilgisayarda bir Calepin bulursa onu, bulamazsa indirdiği bir kopyayı kullanır.",
+      "detail": "Oleafly, Calepin belgelerini bu kopyayla derler.",
+      "downloadDetail": "Oleafly kendi kopyasını uygulama klasöründe tutar.",
+      "typstNote": "Calepin, Oleafly'deki yerleşik Typst ile çıktı oluşturur. Typst 0.15 veya daha yenisi gerekir."
     }
   },
   "gitHosting": {

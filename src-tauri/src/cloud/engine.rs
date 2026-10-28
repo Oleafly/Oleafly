@@ -5,7 +5,9 @@ use super::store::{BatchCopy, BatchDelete, BatchFile, CloudStore, StoreError, Wr
 use crate::checkpoint_capture::FileStamp;
 use futures_util::stream::{self, StreamExt};
 use oleafly_core::content::{ContentHash, ContentHasher};
-use oleafly_core::exclude::{decide, Decision, EntryInfo, EntryKind, PolicyFields, SkipReason};
+use oleafly_core::exclude::{
+    decide, decide_with_siblings, Decision, EntryInfo, EntryKind, PolicyFields, SkipReason,
+};
 use oleafly_core::hlc::{Hlc, HlcClock, Stamp};
 use oleafly_core::ids::{DeviceId, ProjectId};
 use oleafly_core::portable;
@@ -280,6 +282,28 @@ pub(crate) fn version_remote(cloud: ProjectId) -> String {
 
 fn file_remote(cloud: ProjectId, portable: &str) -> String {
     format!("{}/files/{portable}", project_remote(cloud))
+}
+
+/// What a round's uploads replace. A store that keeps one version of each
+/// file (S3) writes an upload only over the version named here, so a round
+/// that lost the race to another computer can't replace what that computer
+/// published. Set around `put_paths`, since a `BatchFile` doesn't carry it;
+/// stores that keep every revision ignore it.
+#[derive(Clone, Debug)]
+pub(crate) struct UploadBases {
+    /// The manifest the round builds on, and its revision, or `None` while
+    /// the project has none.
+    pub(crate) manifest: String,
+    pub(crate) manifest_rev: Option<String>,
+    pub(crate) device: String,
+    /// Each upload's remote path: `Update` with the version the manifest
+    /// holds, `Add` for a file it doesn't hold, `Overwrite` for a record
+    /// without a revision.
+    pub(crate) files: BTreeMap<String, WriteMode>,
+}
+
+tokio::task_local! {
+    pub(crate) static UPLOAD_BASES: UploadBases;
 }
 
 pub(crate) fn tombstone_remote(cloud: ProjectId) -> String {
@@ -607,7 +631,9 @@ fn classify_entry(
         git_tracked: false,
         git_pointer_inside: None,
     };
-    let mut decision = decide(relative, &info, fields);
+    let mut decision = decide_with_siblings(relative, &info, fields, |sibling| {
+        root.join(sibling).is_file()
+    });
     // A build-output-shaped file Git tracks, such as a committed log of
     // results, is the user's to keep, so it backs up. The main PDF and helper
     // folders stay out: they come back with the next compile.
@@ -1059,16 +1085,23 @@ fn split_remote(
         return view;
     };
     let fields = policy.fields();
+    let remote_keys: BTreeSet<String> = remote
+        .version
+        .files
+        .iter()
+        .map(|record| key(&record.path))
+        .collect();
     for record in &remote.version.files {
         let usable = portable::synced_path_problem(&record.path).is_none()
             && valid_hash(&record.hash)
             && record.size <= oleafly_core::exclude::MAX_SYNC_FILE_BYTES
             && record.rev.as_deref().is_none_or(valid_rev)
             && cloud_skip(Path::new(&record.path)).is_none()
-            && match decide(
+            && match decide_with_siblings(
                 Path::new(&record.path),
                 &EntryInfo::file(record.size),
                 &fields,
+                |sibling| remote_keys.contains(&key(sibling)),
             ) {
                 Decision::Include => true,
                 Decision::Skip(SkipReason::BuildOutput) => tracked.contains(&key(&record.path)),
@@ -3037,8 +3070,18 @@ impl<S: CloudStore> Round<'_, S> {
                 bytes += queue[end].size;
                 end += 1;
             }
-            let stop = self
-                .upload_chunk(&queue[next..end], &mut run, meter.as_ref(), &sources)
+            let bases = upload_bases(
+                self.cloud,
+                &queue[next..end],
+                view,
+                publisher.rev.clone(),
+                publisher.context.device,
+            );
+            let stop = UPLOAD_BASES
+                .scope(
+                    bases,
+                    self.upload_chunk(&queue[next..end], &mut run, meter.as_ref(), &sources),
+                )
                 .await;
             self.hold_without_copies(&queue[..end], &mut run);
             next = end;
@@ -3237,6 +3280,35 @@ fn publisher_for<'a, S: CloudStore>(
         extra: remote
             .map(|remote| remote.version.extra.clone())
             .unwrap_or_default(),
+    }
+}
+
+fn upload_bases(
+    cloud: ProjectId,
+    jobs: &[&UploadJob],
+    view: &RemoteView,
+    manifest_rev: Option<String>,
+    device: DeviceId,
+) -> UploadBases {
+    let files = jobs
+        .iter()
+        .map(|job| {
+            let mode = match view.usable.get(&job.key) {
+                // After a case-only rename the file goes to a key of its own.
+                Some(record) if record.path == job.path => record
+                    .rev
+                    .clone()
+                    .map_or(WriteMode::Overwrite, WriteMode::Update),
+                _ => WriteMode::Add,
+            };
+            (file_remote(cloud, &job.path), mode)
+        })
+        .collect();
+    UploadBases {
+        manifest: version_remote(cloud),
+        manifest_rev,
+        device: device.to_string(),
+        files,
     }
 }
 

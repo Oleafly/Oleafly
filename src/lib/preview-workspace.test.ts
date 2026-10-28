@@ -4,6 +4,7 @@ import { createCompileSuccessCheckpoint, type CompileSuccessCheckpoint } from "@
 const mocks = vi.hoisted(() => ({
   detachedProject: "current" as string | null,
   checkpoint: null as CompileSuccessCheckpoint | null,
+  htmlOutput: null as { projectId: string; path: string; builtAt: number } | null,
   detachedChanged: (() => {}) as () => void,
   unsubscribeDetached: vi.fn(),
   handlers: new Map<string, (event: { payload: unknown }) => void>(),
@@ -17,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   setTypstVersion: vi.fn(async (_version: string | null) => {}),
   applyTypstCompileOptions: vi.fn(async (_update: unknown) => {}),
   chooseTypstVariant: vi.fn(),
+  applyShellEscape: vi.fn(async (_allow: boolean, _options?: unknown) => true),
   setFocus: vi.fn(async () => {}),
   off: vi.fn(),
   files: {} as Record<string, unknown>,
@@ -43,6 +45,7 @@ vi.mock("@/lib/typst-compile-actions", () => ({
   applyTypstCompileOptions: mocks.applyTypstCompileOptions,
   chooseTypstVariant: mocks.chooseTypstVariant,
 }));
+vi.mock("@/lib/latex-compile-actions", () => ({ applyShellEscape: mocks.applyShellEscape }));
 vi.mock("@tauri-apps/api/event", () => ({
   emitTo: mocks.emitTo,
   listen: vi.fn(async (name, handler) => { mocks.handlers.set(name, handler); return mocks.off; }),
@@ -54,7 +57,7 @@ vi.mock("@/store/files", () => ({ engineSwitchToastKey: (projectId: string) => `
 vi.mock("@/store/preview-detached", () => ({ usePreviewDetachedStore: { getState: () => ({ projectId: mocks.detachedProject }), subscribe: (listener: () => void) => { mocks.detachedChanged = listener; return mocks.unsubscribeDetached; } } }));
 vi.mock("@/store/compile", () => ({ useCompileStore: {
   getState: () => ({ recompile: mocks.recompile, stopCompile: mocks.stopCompile, status: "success", log: "Build output", errors: [], diagnostics: [], compileTimeMs: 120,
-    lastAttemptIdentity: null, lastCompileCheckpoint: mocks.checkpoint, failureReason: null,
+    lastAttemptIdentity: null, lastCompileCheckpoint: mocks.checkpoint, failureReason: null, htmlOutput: mocks.htmlOutput,
     autoCompile: false, compileMode: "normal", checkSyntaxBeforeCompile: true, stopOnFirstError: false,
     livePreview: { projectId: "current", enabled: false, status: "off", message: null },
     setAutoCompile: mocks.setAutoCompile, setCompileMode: mocks.setCompileMode,
@@ -69,7 +72,7 @@ const untrusted = { trusted: false, source: null, parent: null, repository: null
 const trusted = { trusted: true, source: "folder", parent: null, repository: null };
 
 beforeEach(() => {
-  vi.clearAllMocks(); mocks.handlers.clear(); mocks.detachedProject = "current"; mocks.checkpoint = null; mocks.detachedChanged = () => {};
+  vi.clearAllMocks(); mocks.handlers.clear(); mocks.detachedProject = "current"; mocks.checkpoint = null; mocks.htmlOutput = null; mocks.detachedChanged = () => {};
   mocks.files = {}; mocks.filesChanged = () => {}; mocks.tauri = true; mocks.activeTourId = null;
   useFolderAccessStore.getState().reset(null);
 });
@@ -206,6 +209,50 @@ describe("detached compile commands", () => {
     expect(mocks.setEngine).toHaveBeenCalledWith("latexmk", "xelatex");
     command({ projectId: "current", action: "engine", engine: "latexmk", flavor: "invalid" });
     expect(mocks.setEngine).toHaveBeenCalledOnce();
+    cleanup();
+  });
+
+  it("switches a Typst document between Typst and Calepin and nothing else", async () => {
+    const cleanup = await startPreviewWorkspaceBridge();
+    const command = (payload: unknown) => mocks.handlers.get("preview:command")?.({ payload });
+    command({ projectId: "current", action: "engine", engine: "calepin" });
+    await Promise.resolve();
+    expect(mocks.setEngine).not.toHaveBeenCalled();
+    mocks.files = { engine: { id: "typst", label: "Typst" } };
+    command({ projectId: "current", action: "engine", engine: "calepin" });
+    await vi.waitFor(() => expect(mocks.setEngine).toHaveBeenCalledExactlyOnceWith("calepin"));
+    mocks.files = { engine: { id: "calepin", label: "Calepin" } };
+    command({ projectId: "current", action: "engine", engine: "quarto" });
+    command({ projectId: "current", action: "engine", engine: "typst" });
+    await vi.waitFor(() => expect(mocks.setEngine).toHaveBeenLastCalledWith("typst"));
+    expect(mocks.setEngine).toHaveBeenCalledTimes(2);
+    cleanup();
+  });
+
+  it("tells the detached window about the web page this project built, and not another's", async () => {
+    const page = { projectId: "current", path: "/current/.oleafly/build/report.html", builtAt: 1 };
+    mocks.htmlOutput = page;
+    let cleanup = await startPreviewWorkspaceBridge();
+    mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "ready" } });
+    expect(mocks.emitTo).toHaveBeenLastCalledWith("preview", "preview:workspace", expect.objectContaining({ htmlOutput: page }));
+    cleanup();
+    mocks.htmlOutput = { ...page, projectId: "other" };
+    cleanup = await startPreviewWorkspaceBridge();
+    mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "ready" } });
+    expect(mocks.emitTo).toHaveBeenLastCalledWith("preview", "preview:workspace", expect.not.objectContaining({ htmlOutput: expect.anything() }));
+    cleanup();
+  });
+
+  it("allows or stops code in a notebook project from the detached menu", async () => {
+    const cleanup = await startPreviewWorkspaceBridge();
+    const command = (payload: unknown) => mocks.handlers.get("preview:command")?.({ payload });
+    command({ projectId: "current", action: "code-execution", value: true });
+    await Promise.resolve();
+    expect(mocks.applyShellEscape).not.toHaveBeenCalled();
+    mocks.files = { engine: { id: "quarto", label: "Quarto" } };
+    command({ projectId: "current", action: "code-execution", value: "yes" });
+    command({ projectId: "current", action: "code-execution", value: false });
+    await vi.waitFor(() => expect(mocks.applyShellEscape).toHaveBeenCalledExactlyOnceWith(false, { recompile: true }));
     cleanup();
   });
 

@@ -158,6 +158,7 @@ fn engine_name(main_doc: &str) -> Result<&'static str, String> {
         Some(oleafly_core::SourceFamily::Latex) => Ok(LATEX_ENGINE),
         Some(oleafly_core::SourceFamily::Typst) => Ok("typst"),
         Some(oleafly_core::SourceFamily::Markdown) => Ok("markdown"),
+        Some(oleafly_core::SourceFamily::Quarto) => Ok("quarto"),
         None => Err(AppError::new("project.import_no_main").into()),
     }
 }

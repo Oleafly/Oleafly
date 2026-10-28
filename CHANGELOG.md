@@ -31,6 +31,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when you open it. It runs the `oleafly` command the app installs, so you
   need the app with Settings > Integrations > Oleafly MCP turned on.
 - A CLI agent that is still starting has a Cancel button.
+- Suggesting mode for shared projects. Switch the editor from Editing to
+  Suggesting and your edits become tracked changes: added text is
+  highlighted, and deleted text stays visible, struck through. Owners and
+  editors accept or reject each suggestion, or every suggestion in a file at
+  once, and whoever suggested a change can withdraw it. The Comments pane
+  lists suggestions next to the comments, and you can reply to one like a
+  comment.
+  AI edits and inserted citations made while suggesting become suggestions
+  too. A compile or export with suggestions waiting tells you how many.
+- Reviewer and Commenter roles for shared projects. A reviewer comments and
+  suggests changes, and every edit they make is a suggestion. A commenter
+  reads and comments. Both can use the chat. You can give these roles to
+  people you add, to guests and to the project's link. The server checks
+  every change a reviewer or commenter sends, so an edit their role doesn't
+  allow never reaches anyone.
+- A chat for each shared project, in a Chat tab next to Comments. Everyone
+  but viewers can post, people can delete their own messages, and the owner can
+  clear the chat.
+- History for shared projects, in the collaboration pane. It lists changes by
+  time and person. Open any version to read it, compare two versions, restore
+  one file or the whole project, or give a version a name such as "Sent to
+  the reviewers". Owners and editors restore and name versions. A restore is
+  a new change, so the text it replaces stays in the history.
+- Add server now offers the Oleafly server as a one-click choice above the
+  address field. Any other server's address still works as before.
+- Co-authors can open a shared project in their browser when the
+  collaboration server has browser access turned on. Without installing
+  Oleafly, they can edit as their role allows, comment, handle suggestions,
+  chat and read the latest PDF, and the project's web page gets an **Open in
+  browser** button. Whoever runs the server turns it on with
+  `OLEAFLY_WEB=true`, and the published server image already includes the
+  browser app.
+- After a successful compile of a shared project, an owner's or editor's app
+  uploads the PDF and its SyncTeX file to the server, at most once a minute,
+  so people reading the project in a browser see the newest PDF and who
+  compiled it.
+- Oleafly Server can let anyone sign up. With `OLEAFLY_OPEN_SIGNUP=true`,
+  anyone who signs in with one of the server's sign-in options gets an
+  account, and each account gets 100 MB of storage, 50 shared projects and
+  300 uploads an hour. `OLEAFLY_ACCOUNT_STORAGE_MB`,
+  `OLEAFLY_MAX_PROJECTS_PER_ACCOUNT` and `OLEAFLY_UPLOADS_PER_HOUR` change
+  those limits, and also work without open sign-up. Compiled PDFs count
+  toward storage but not toward uploads.
+- Quarto and Calepin engines. Quarto turns `.qmd` and `.Rmd` documents into a
+  PDF, a web page or slides, and Calepin runs the code in a Typst document
+  and puts the results in the PDF. Oleafly uses the copy on your computer, or
+  downloads a pinned, checksum-verified one from Settings > Engines when you
+  ask. Code runs with your own R, Python or Julia, and only after you allow
+  code for that project in the Compile menu. Until then Quarto shows the code
+  without running it, and Calepin shows the results from its last run. New
+  templates: Quarto article, Quarto slides and Calepin report. Quarto's
+  working folders (`.quarto` and a document's `_files` folder) stay out of
+  cloud sync, shared projects and checkpoints. Calepin's `.calepin` folder is
+  shared and synced like any other, so co-authors who haven't allowed code
+  still see its stored results.
+- When a Typst document has Chinese, Japanese or Korean text that no font on
+  this computer can show, Oleafly says so and offers to download the free
+  font pack that covers it.
+- **Add custom provider** in Settings > AI has presets for Qwen (DashScope),
+  Kimi (Moonshot), Zhipu GLM, SiliconFlow and Volcengine Ark. Pick one and it
+  fills in the name and base URL, so you only add your API key.
+- **App icon** in Settings > Appearance offers ten icons for the Dock or
+  taskbar while Oleafly is open: pastel, blue, light, prism, iridescent, ocean,
+  mint, aurora, sunset and coral.
 - Template authors can give their own Typst functions a form. Describe the
   arguments in `[tool.oleafly]` in a package's `typst.toml`, or in
   `oleafly-forms.toml` at the project root, and Visual mode shows each call as
@@ -79,8 +143,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   app's KaTeX instead of bundling an older copy. Cloud sync only loads its
   background code on a computer connected to Dropbox, Google Drive or an S3
   bucket, or once you open Settings.
-
-
 - GitLab, Codeberg, Gitea and Forgejo accounts show their real logos: in the
   add-account choices, in Settings, in the remote menu, in the publish dialog
   and beside each repository. The publish dialog's account picker moved to
@@ -88,9 +150,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In Settings, each Git hosting account keeps its actions on the right and
   signs out with an icon button. The server name shows only when it differs
   from the badge.
+- Live collaboration is no longer an experiment and is always on. Settings >
+  Collaboration is there from the start, and the switch under Settings >
+  Experimentation is gone.
+- With Oleafly in Chinese, DeepSeek is the suggested AI provider. It comes
+  first in the provider list and is preselected until you set up a provider.
+- New app icon: a quill in a pastel gradient, cyan to amber, on a light
+  tile. The quill inside the app is blue.
 
 ### Fixed
 
+- Deleting a file or folder in the file tree asks first again, and so do
+  restoring an earlier chat checkpoint and replacing an equation or diagram
+  file. The question never showed up in the app, so all of these went ahead
+  without asking. That included the permanent delete on a system with no
+  trash.
+- CLI agents and research tasks keep your NO_PROXY list when you set only one
+  spelling of it. On Linux and macOS the other spelling held only the local
+  addresses, and agents that read it sent internal hosts through your proxy.
+- Google Drive and S3 sync no longer give up on a file that takes more than
+  two minutes to download, and S3 no longer fails larger uploads on a slow
+  connection. One such file used to stop sync for every project after it.
+- Google Drive uploads read large files from disk a piece at a time. Before,
+  the whole file sat in memory, twice when updating it, so a big video or
+  dataset could run Oleafly out of memory.
+- When two computers sync the same file to S3 at the same moment, the one that
+  loses no longer overwrites the other's copy in the bucket. It gets a
+  conflict instead, and its next sync keeps both versions.
 - In Typst document settings, clearing two values of one `#set` rule, or
   clearing one and setting another, could leave a broken rule such as
   `#set par(` without its closing parenthesis. Clearing a value on the line
@@ -145,7 +231,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a tool Oleafly offered and has valid JSON arguments. Any other reply stays
   text. A reply that starts like a tool call appears once it is finished
   instead of word by word.
-
 - DeepSeek Harness couldn't open a conversation and said "The agent
   disconnected." It prints a log line on its output while a session starts,
   and Oleafly closed the connection at the first line that wasn't a protocol
@@ -193,8 +278,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   retries or shows an error, long tool calls were cut off at about 8,000
   tokens, and timeouts, server errors, rejected requests and empty replies
   now come with a hint. DeepSeek Flash is treated as reading images.
-
-
 - When Tectonic crashed while looking for a font that isn't installed, the
   build failed with nothing in the error list, and only the last line of the
   log said the compiler had crashed. Tectonic 0.17 does this on some
@@ -206,8 +289,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exit code, and missed the error at the end. It now gets the exit code and
   the start and end of the output, and an error printed after a long log is
   kept.
-
-
 - Open files in a library project reload when a terminal, an agent or
   another app changes them, as files in an opened folder already did. If you
   have unsaved edits, a bar above the editor lets you compare both versions,

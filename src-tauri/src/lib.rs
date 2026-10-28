@@ -11,6 +11,7 @@ mod agent_turns;
 mod ai_model_metadata;
 mod ai_model_registry;
 mod app_error;
+mod app_icon;
 mod approvals;
 mod arxiv_import;
 mod assets;
@@ -67,6 +68,7 @@ mod logsafe;
 mod mcp;
 mod menu;
 mod native_drop;
+mod notebook_toolchain;
 mod ollama;
 mod open_folder;
 mod open_request;
@@ -179,7 +181,6 @@ where
     R: tauri::Runtime,
     F: Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static,
 {
-    let handler = collab::switch::gated(handler);
     let handler = window_commands::gated(handler);
     move |invoke| {
         let command = invoke.message.command().to_string();
@@ -434,7 +435,6 @@ pub fn run() {
         open_request::OpenSource::Launch,
     );
     i18n::startup();
-    collab::switch::startup();
     let mut builder = tauri::Builder::default();
     if single_instance::enabled_for_this_launch() {
         builder = builder.plugin(single_instance::plugin());
@@ -474,14 +474,17 @@ pub fn run() {
     }
     #[cfg(windows)]
     {
-        builder = builder.plugin(webview_focus::plugin());
+        builder = builder
+            .plugin(webview_focus::plugin())
+            .plugin(app_icon::plugin());
     }
     #[cfg(target_os = "linux")]
     {
         builder = builder
             .plugin(native_drop::plugin())
             .plugin(window_frame::plugin())
-            .plugin(web_process::plugin());
+            .plugin(web_process::plugin())
+            .plugin(app_icon::plugin());
     }
 
     #[cfg(target_os = "macos")]
@@ -519,7 +522,6 @@ pub fn run() {
         // fails the launch instead of silently skipping the seed.
         let every_load = e2e_localstorage_seed("OLEAFLY_E2E_BOOT_LOCALSTORAGE");
         let once_per_launch = e2e_localstorage_seed("OLEAFLY_E2E_LAUNCH_LOCALSTORAGE");
-        collab::switch::adopt_seeds(every_load.as_ref(), once_per_launch.as_ref());
         if every_load.is_some() || once_per_launch.is_some() {
             let empty = serde_json::Value::Object(serde_json::Map::new());
             let launch = format!(
@@ -732,6 +734,7 @@ pub fn run() {
             menu::set_recent_projects,
             i18n::set_ui_locale,
             i18n::get_ui_locale,
+            app_icon::app_icon_set,
             agent_exec::agent_exec_cwd,
             agent_exec::agent_exec_authorize,
             agent_exec::agent_exec_register_external,
@@ -785,7 +788,6 @@ pub fn run() {
             cloud::commands::cloud_settings_defer,
             cloud::commands::cloud_wait_for_changes,
             cloud::commands::cloud_settings_keep_local,
-            collab::switch::collab_live_collaboration_set,
             collab::commands::collab_servers_list,
             collab::commands::collab_server_probe,
             collab::commands::collab_server_sign_in,
@@ -881,6 +883,27 @@ pub fn run() {
             collab::comments::collab_comment_resolve,
             collab::comments::collab_comment_reopen,
             collab::comments::collab_comment_thread_delete,
+            collab::suggesting::collab_edit_mode_get,
+            collab::suggesting::collab_edit_mode_set,
+            collab::suggesting::collab_suggestion_list,
+            collab::suggesting::collab_suggestion_counts,
+            collab::suggesting::collab_suggestion_accept,
+            collab::suggesting::collab_suggestion_reject,
+            collab::suggesting::collab_suggestion_withdraw,
+            collab::suggesting::collab_suggestion_accept_file,
+            collab::suggesting::collab_suggestion_reject_file,
+            collab::suggesting::collab_suggestion_reply,
+            collab::chat::collab_chat_list,
+            collab::chat::collab_chat_send,
+            collab::chat::collab_chat_delete,
+            collab::chat::collab_chat_clear,
+            collab::history::collab_history_list,
+            collab::history::collab_history_file,
+            collab::history::collab_history_changed_files,
+            collab::history::collab_history_restore,
+            collab::history::collab_version_name,
+            collab::history::collab_version_unname,
+            collab::output::collab_output_info,
             community::discord_community_stats,
             release_notes::release_notes_page,
             ollama::ollama_list_models,
@@ -979,6 +1002,10 @@ pub fn run() {
             typst_toolchain::remove_unused_tinymist_downloads,
             typst_toolchain::set_default_typst_version,
             typst_toolchain::set_project_typst_version,
+            notebook_toolchain::notebook_toolchain_status,
+            notebook_toolchain::install_notebook_tool,
+            notebook_toolchain::remove_notebook_tool,
+            notebook_toolchain::open_compiled_html,
             typst_watch::typst_watch_start,
             typst_watch::typst_watch_compile,
             typst_watch::typst_watch_stop,
@@ -986,6 +1013,7 @@ pub fn run() {
             typst_options::typst_project_options,
             typst_options::set_typst_project_options,
             typst_options::typst_project_fonts,
+            typst_options::typst_glyph_coverage,
             system_fonts::list_system_fonts,
             typst_export::export_typst_document,
             typst_packages::typst_universe_index,

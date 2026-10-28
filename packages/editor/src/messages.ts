@@ -306,6 +306,8 @@ export const EDITOR_MESSAGE_KEYS = [
   "bibtex.lint.unknownEntryType",
   "bibtex.lint.fieldRepeated",
   "bibtex.lint.invalidYear",
+  "quarto.completion.chunkOption",
+  "calepin.completion.chunkOption",
   "visual.table.captionPlacement",
   "visual.table.captionAbove",
   "visual.table.captionBelow",

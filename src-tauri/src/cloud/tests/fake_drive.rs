@@ -1,7 +1,8 @@
 //! A small Google Drive v3 for the Drive store's tests: the file and folder
 //! queries the store sends, simple, multipart and resumable uploads, revision
 //! history, trash, the change feed and the account lookup. It can make
-//! another computer's write land in the middle of a compare-and-swap.
+//! another computer's write land in the middle of a compare-and-swap, keep
+//! only part of a resumable piece or fail it, and answer slowly.
 
 use crate::cloud::drive::{DriveEndpoints, DriveStore};
 use crate::cloud::store::TokenRefresher;
@@ -9,9 +10,11 @@ use axum::body::Bytes;
 use axum::extract::State;
 use axum::http::{header, HeaderMap, Method, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
+use futures_util::StreamExt;
 use serde_json::{json, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::time::Duration;
 
 const FOLDER: &str = "application/vnd.google-apps.folder";
 pub(crate) const PERMISSION_ID: &str = "04719871092875471834";
@@ -32,7 +35,7 @@ pub(crate) struct Drive {
     pub(crate) token: String,
     next: u64,
     changes: Vec<(u64, String)>,
-    sessions: BTreeMap<String, (Option<String>, Value, Vec<u8>)>,
+    sessions: BTreeMap<String, Session>,
     /// Bytes another computer writes to a file just before the next update
     /// of it lands, as if its write slipped between the check and the write.
     pub(crate) race_next_update: Option<Vec<u8>>,
@@ -40,6 +43,31 @@ pub(crate) struct Drive {
     /// create in that folder lands.
     pub(crate) race_next_create: bool,
     pub(crate) calls: usize,
+    /// How the next resumable pieces go, one entry each: Drive keeps the
+    /// first `n` bytes and answers the status. 308 is Drive persisting only
+    /// part of a piece; 503 is a failure after keeping some, or after keeping
+    /// all of it with only the reply lost.
+    pub(crate) piece_faults: VecDeque<(usize, u16)>,
+    /// Runs once after the next resumable piece lands, as another program
+    /// writing to the file that is going up.
+    pub(crate) after_piece: Option<Box<dyn FnOnce() + Send>>,
+    /// The offset and length of every resumable piece Drive took, whole or
+    /// in part.
+    pub(crate) pieces: Vec<(usize, usize)>,
+    /// How long Drive takes to answer anything sent to an upload session.
+    pub(crate) piece_delay: Option<Duration>,
+    /// File contents go out in pieces of this many bytes with this pause
+    /// before each one after the first, as over a slow link.
+    pub(crate) media_pace: Option<(usize, Duration)>,
+}
+
+#[derive(Default)]
+struct Session {
+    target: Option<String>,
+    metadata: Value,
+    received: Vec<u8>,
+    /// The file the upload made or updated, once it had every byte.
+    done: Option<String>,
 }
 
 impl Drive {
@@ -173,6 +201,13 @@ impl FakeDrive {
     pub(crate) fn store_with(&self, token: &str, refresher: TokenRefresher) -> DriveStore {
         DriveStore::at(self.endpoints(), token.into(), Some(refresher))
     }
+
+    /// A store with short limits: `request` on each small request, `read` on
+    /// how long a download may go without a byte.
+    pub(crate) fn store_timed(&self, request: Duration, read: Duration) -> DriveStore {
+        let token = self.lock().token.clone();
+        DriveStore::with_timeouts(self.endpoints(), token, None, request, read)
+    }
 }
 
 fn query_map(uri: &Uri) -> BTreeMap<String, String> {
@@ -262,7 +297,7 @@ fn not_found() -> Response {
         .into_response()
 }
 
-fn created(drive: &mut Drive, metadata: &Value, bytes: Option<Vec<u8>>) -> Response {
+fn make(drive: &mut Drive, metadata: &Value, bytes: Option<Vec<u8>>) -> String {
     let name = metadata["name"].as_str().unwrap_or_default().to_string();
     let parent = metadata["parents"][0]
         .as_str()
@@ -273,9 +308,30 @@ fn created(drive: &mut Drive, metadata: &Value, bytes: Option<Vec<u8>>) -> Respo
         drive.race_next_create = false;
         drive.add(&name, &parent, false, Some(b"theirs".to_vec()));
     }
-    let id = drive.add(&name, &parent, folder, bytes.or((!folder).then(Vec::new)));
+    drive.add(&name, &parent, folder, bytes.or((!folder).then(Vec::new)))
+}
+
+fn created(drive: &mut Drive, metadata: &Value, bytes: Option<Vec<u8>>) -> Response {
+    let id = make(drive, metadata, bytes);
     let file = &drive.files[&id];
     axum::Json(file_json(&id, file)).into_response()
+}
+
+/// File contents, all at once or, with `pace`, a piece at a time.
+fn media(pace: Option<(usize, Duration)>, bytes: Vec<u8>) -> Response {
+    let Some((size, pause)) = pace else {
+        return (StatusCode::OK, bytes).into_response();
+    };
+    let pieces: Vec<Vec<u8>> = bytes.chunks(size).map(<[u8]>::to_vec).collect();
+    let paced = futures_util::stream::iter(pieces.into_iter().enumerate()).then(
+        move |(index, piece)| async move {
+            if index > 0 {
+                tokio::time::sleep(pause).await;
+            }
+            Ok::<_, std::io::Error>(piece)
+        },
+    );
+    (StatusCode::OK, axum::body::Body::from_stream(paced)).into_response()
 }
 
 fn multipart_parts(content_type: &str, body: &[u8]) -> Option<(Value, Vec<u8>)> {
@@ -312,16 +368,36 @@ async fn handle(
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
-    let mut drive = shared.lock().unwrap_or_else(PoisonError::into_inner);
+    let (response, delay) = {
+        let mut drive = shared.lock().unwrap_or_else(PoisonError::into_inner);
+        let response = respond(&mut drive, &method, &uri, &headers, &body);
+        let delay = drive
+            .piece_delay
+            .filter(|_| uri.path().starts_with("/upload/session/"));
+        (response, delay)
+    };
+    if let Some(delay) = delay {
+        tokio::time::sleep(delay).await;
+    }
+    response
+}
+
+fn respond(
+    drive: &mut Drive,
+    method: &Method,
+    uri: &Uri,
+    headers: &HeaderMap,
+    body: &[u8],
+) -> Response {
     drive.calls += 1;
     let authorized = headers
         .get(header::AUTHORIZATION)
         .and_then(|value| value.to_str().ok())
         == Some(format!("Bearer {}", drive.token).as_str());
     let path = uri.path().to_string();
-    let query = query_map(&uri);
+    let query = query_map(uri);
     if path.starts_with("/upload/session/") {
-        return resume(&mut drive, &path, &headers, &body);
+        return resume(drive, &path, headers, body);
     }
     if !authorized {
         return (
@@ -373,23 +449,21 @@ async fn handle(
             axum::Json(json!({"files": files})).into_response()
         }
         ("POST", ["drive", "v3", "files"]) => {
-            let metadata: Value = serde_json::from_slice(&body).unwrap_or_default();
-            created(&mut drive, &metadata, None)
+            let metadata: Value = serde_json::from_slice(body).unwrap_or_default();
+            created(drive, &metadata, None)
         }
         ("GET", ["drive", "v3", "files", id]) => {
             let Some(file) = drive.files.get(*id) else {
                 return not_found();
             };
             if query.get("alt").map(String::as_str) == Some("media") {
-                return match file.revisions.last() {
-                    Some((_, bytes)) => (StatusCode::OK, bytes.clone()).into_response(),
-                    None => (StatusCode::OK, Vec::new()).into_response(),
-                };
+                let bytes = file.revisions.last().map(|(_, bytes)| bytes.clone());
+                return media(drive.media_pace, bytes.unwrap_or_default());
             }
             axum::Json(file_json(id, file)).into_response()
         }
         ("PATCH", ["drive", "v3", "files", id]) => {
-            let change: Value = serde_json::from_slice(&body).unwrap_or_default();
+            let change: Value = serde_json::from_slice(body).unwrap_or_default();
             if !drive.files.contains_key(*id) {
                 return not_found();
             }
@@ -427,7 +501,7 @@ async fn handle(
                 .get(*id)
                 .and_then(|file| file.revisions.iter().find(|(known, _)| known == rev));
             match found {
-                Some((_, bytes)) => (StatusCode::OK, bytes.clone()).into_response(),
+                Some((_, bytes)) => media(drive.media_pace, bytes.clone()),
                 None => not_found(),
             }
         }
@@ -439,17 +513,20 @@ async fn handle(
                         .get(header::CONTENT_TYPE)
                         .and_then(|value| value.to_str().ok())
                         .unwrap_or_default();
-                    match multipart_parts(content_type, &body) {
-                        Some((metadata, media)) => created(&mut drive, &metadata, Some(media)),
+                    match multipart_parts(content_type, body) {
+                        Some((metadata, media)) => created(drive, &metadata, Some(media)),
                         None => (StatusCode::BAD_REQUEST, "bad multipart").into_response(),
                     }
                 }
-                Some("media") => update(&mut drive, &target.unwrap_or_default(), body.to_vec()),
+                Some("media") => update(drive, &target.unwrap_or_default(), body.to_vec()),
                 Some("resumable") => {
                     let session = format!("s{}", drive.tick());
-                    let metadata: Value = serde_json::from_slice(&body).unwrap_or_default();
-                    drive.sessions.insert(session.clone(), (target, metadata, Vec::new()));
-                    let location = format!("{}/upload/session/{session}", host_of(&headers));
+                    let metadata: Value = serde_json::from_slice(body).unwrap_or_default();
+                    drive.sessions.insert(
+                        session.clone(),
+                        Session { target, metadata, ..Session::default() },
+                    );
+                    let location = format!("{}/upload/session/{session}", host_of(headers));
                     (StatusCode::OK, [(header::LOCATION, location)]).into_response()
                 }
                 _ => (StatusCode::BAD_REQUEST, "unknown upload type").into_response(),
@@ -477,22 +554,85 @@ fn update(drive: &mut Drive, id: &str, bytes: Vec<u8>) -> Response {
 }
 
 fn resume(drive: &mut Drive, path: &str, headers: &HeaderMap, body: &[u8]) -> Response {
-    let session = path.trim_start_matches("/upload/session/").to_string();
-    let total: Option<usize> = headers
-        .get("content-range")
+    let key = path.trim_start_matches("/upload/session/").to_string();
+    // `bytes 0-8388607/13631493` sends a piece; `bytes */13631493` asks how
+    // much of the upload Drive has.
+    let Some((span, total)) = headers
+        .get(header::CONTENT_RANGE)
         .and_then(|value| value.to_str().ok())
-        .and_then(|range| range.rsplit('/').next())
-        .and_then(|total| total.parse().ok());
-    let Some((_, _, received)) = drive.sessions.get_mut(&session) else {
+        .and_then(|range| range.strip_prefix("bytes "))
+        .and_then(|range| range.split_once('/'))
+        .and_then(|(span, total)| Some((span.to_string(), total.parse::<usize>().ok()?)))
+    else {
+        return (StatusCode::BAD_REQUEST, "no content range").into_response();
+    };
+    let Some(session) = drive.sessions.get(&key) else {
         return not_found();
     };
-    received.extend_from_slice(body);
-    if total.is_some_and(|total| received.len() < total) {
-        return StatusCode::PERMANENT_REDIRECT.into_response();
+    let mut status = None;
+    if span != "*" && session.done.is_none() {
+        // Drive takes a piece only where the upload stands.
+        let start = session.received.len();
+        if body.is_empty() || span != format!("{start}-{}", start + body.len() - 1) {
+            return (
+                StatusCode::BAD_REQUEST,
+                "the piece isn't where the upload stands",
+            )
+                .into_response();
+        }
+        drive.pieces.push((start, body.len()));
+        let kept = match drive.piece_faults.pop_front() {
+            Some((kept, fault)) => {
+                status = Some(fault);
+                kept.min(body.len())
+            }
+            None => body.len(),
+        };
+        let Some(session) = drive.sessions.get_mut(&key) else {
+            return not_found();
+        };
+        session.received.extend_from_slice(&body[..kept]);
+        if session.received.len() >= total && finish(drive, &key).is_none() {
+            return not_found();
+        }
+        if let Some(changed) = drive.after_piece.take() {
+            changed();
+        }
     }
-    let (target, metadata, received) = drive.sessions.remove(&session).unwrap();
-    match target {
-        Some(id) => update(drive, &id, received),
-        None => created(drive, &metadata, Some(received)),
+    let session = &drive.sessions[&key];
+    match (status, &session.done) {
+        (Some(status), _) if status != 308 => StatusCode::from_u16(status)
+            .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
+            .into_response(),
+        (_, Some(id)) => axum::Json(file_json(id, &drive.files[id])).into_response(),
+        _ if session.received.is_empty() => StatusCode::PERMANENT_REDIRECT.into_response(),
+        _ => (
+            StatusCode::PERMANENT_REDIRECT,
+            [(
+                header::RANGE,
+                format!("bytes=0-{}", session.received.len() - 1),
+            )],
+        )
+            .into_response(),
     }
+}
+
+/// Makes or updates the file once its upload has every byte, and notes which
+/// file that was. `None` when the file to update is gone.
+fn finish(drive: &mut Drive, key: &str) -> Option<String> {
+    let session = drive.sessions.get(key)?;
+    let (target, metadata, received) = (
+        session.target.clone(),
+        session.metadata.clone(),
+        session.received.clone(),
+    );
+    let id = match target {
+        Some(id) => {
+            drive.revise(&id, received)?;
+            id
+        }
+        None => make(drive, &metadata, Some(received)),
+    };
+    drive.sessions.get_mut(key)?.done = Some(id.clone());
+    Some(id)
 }

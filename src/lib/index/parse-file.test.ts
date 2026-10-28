@@ -191,3 +191,16 @@ describe("parseFile: unusual inputs", () => {
     expect(parsed.uses.filter((u) => u.kind === "cite").map((u) => u.name)).toEqual(["a", "b"]);
   });
 });
+
+describe("parseFile: Quarto sources", () => {
+  it("reads headings from .qmd and .Rmd files and skips code chunk comments", () => {
+    const text = "---\ntitle: Paper\n---\n\n# Introduction\n\n```{r}\n#| label: fig-a\n# not a heading\nplot(1)\n```\n\n## Methods {#sec-methods}\n";
+    for (const path of ["paper.qmd", "analysis.Rmd"]) {
+      const sections = parseFile(path, text).defs.filter((d) => d.kind === "section");
+      expect(sections.map((d) => [d.name, d.level])).toEqual([
+        ["Introduction", 0],
+        ["Methods", 1],
+      ]);
+    }
+  });
+});

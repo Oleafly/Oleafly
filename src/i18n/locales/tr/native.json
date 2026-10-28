@@ -101,6 +101,11 @@
       "pickTitle": "{{name}} için programı seçin",
       "filter": "Programlar"
     },
+    "sharedCodeExecution": {
+      "title": "Bu paylaşılan projede kod çalıştırmaya izin verilsin mi?",
+      "message": "Bundan sonra derleme, bu projedeki kodu bu bilgisayarda çalıştırır. Düzenleme erişimi olan herkes bu kodu değiştirebilir. Buna yalnızca projedeki herkese güveniyorsanız izin verin.",
+      "confirm": "Bu bilgisayarda izin ver"
+    },
     "desktopApps": {
       "title": "Masaüstü uygulamaları",
       "action": "{{agent}} şunu yapmak istiyor: {{action}}.",

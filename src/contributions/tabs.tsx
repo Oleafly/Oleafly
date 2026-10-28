@@ -7,6 +7,9 @@ import { useMcpActivityStore } from "@/store/mcp-activity";
 import { useResearchAttentionBadge } from "@/store/research-attention";
 import { researchTasksEnabled } from "@/store/research-tasks-flag";
 import {
+  ChatPanel,
+  ChatRailIcon,
+  chatRailLabel,
   CollabPanel,
   CollabRailIcon,
   collabRailLabel,
@@ -14,8 +17,9 @@ import {
   CommentsRailIcon,
   commentsRailLabel,
 } from "@/components/collab/CollabSlots";
+import { useChatRail } from "@/components/collab/chat-rail";
 import { useCollabRail } from "@/components/collab/collab-rail";
-import { useCommentsRail } from "@/components/collab/comments-rail";
+import { commentsRailShown } from "@/components/collab/comments-rail";
 import { SourceControl } from "@/components/layout/SourceControl";
 import { PreflightPanel } from "@/components/preflight/PreflightPanel";
 import { McpActivityPanel } from "@/components/layout/McpActivityPanel";
@@ -60,8 +64,17 @@ export function registerRailTabs() {
     icon: CommentsRailIcon,
     section: "assist",
     order: 59.5,
-    when: () => useCommentsRail.getState().visible,
+    when: commentsRailShown,
     panel: CommentsPanel,
+  });
+  registerRailTab({
+    id: "chat",
+    label: chatRailLabel,
+    icon: ChatRailIcon,
+    section: "assist",
+    order: 59.75,
+    when: () => useChatRail.getState().visible,
+    panel: ChatPanel,
   });
   registerRailTab({
     id: "files",

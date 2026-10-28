@@ -432,8 +432,8 @@ export function Editor() {
         {showMarkdownToolbar && (
           <div className="shrink-0">
             <MarkdownToolbar
-              wysiwyg={isMarkdownFile ? markdownVisual : wysiwyg}
-              onToggleWysiwyg={toggleWysiwyg}
+              wysiwyg={markdownVisual}
+              onToggleWysiwyg={isMarkdownFile ? toggleWysiwyg : undefined}
               mode={isMarkdownFile ? markdownMode : undefined}
               splitLayout={markdownSplitLayout}
               onModeChange={isMarkdownFile ? (mode, layout) => {

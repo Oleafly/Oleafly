@@ -4,6 +4,7 @@ use oleafly_collab_protocol::projects::{
     PersonSummary, ProjectDevice, ProjectMember, ProjectPatch, ProjectRole, ProjectStatus,
     ProjectSummary,
 };
+use oleafly_collab_protocol::roles::grantable;
 use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::blobs::snapshot_key;
@@ -12,6 +13,8 @@ use crate::error::ServerError;
 use crate::members;
 
 pub const DIRECTORY_LIMIT: usize = 20;
+pub const LINK_ROLES: &str = "A link can give Editor, Reviewer, Commenter or Viewer access.";
+pub const MEMBER_ROLES: &str = "Choose Editor, Reviewer, Commenter or Viewer.";
 pub const BACKLOG_LIMIT: usize = 2_000;
 pub const BACKLOG_BYTES: usize = 4 * 1024 * 1024;
 
@@ -62,6 +65,8 @@ pub fn role_to_str(role: ProjectRole) -> &'static str {
     match role {
         ProjectRole::Owner => "owner",
         ProjectRole::Editor => "editor",
+        ProjectRole::Reviewer => "reviewer",
+        ProjectRole::Commenter => "commenter",
         ProjectRole::Viewer => "viewer",
         ProjectRole::Unknown => "unknown",
     }
@@ -71,6 +76,8 @@ pub fn role_from_str(text: &str) -> Result<ProjectRole, ServerError> {
     match text {
         "owner" => Ok(ProjectRole::Owner),
         "editor" => Ok(ProjectRole::Editor),
+        "reviewer" => Ok(ProjectRole::Reviewer),
+        "commenter" => Ok(ProjectRole::Commenter),
         "viewer" => Ok(ProjectRole::Viewer),
         other => Err(ServerError::Internal(format!(
             "unknown project role {other}"
@@ -301,10 +308,8 @@ pub fn apply_patch(
     project: SharedProjectId,
     patch: &ProjectPatch,
 ) -> Result<(), ServerError> {
-    if patch.link_role == Some(ProjectRole::Unknown) {
-        return Err(ServerError::BadRequest(
-            "A link can give Editor or Viewer access.".to_string(),
-        ));
+    if patch.link_role.is_some_and(|role| !grantable(role)) {
+        return Err(ServerError::BadRequest(LINK_ROLES.to_string()));
     }
     if let Some(title) = &patch.title {
         conn.execute(
@@ -570,7 +575,8 @@ pub fn pending_removals(
 pub fn blob_in_use(conn: &Connection, hash: &str) -> Result<bool, ServerError> {
     Ok(conn
         .query_row(
-            "SELECT 1 FROM project_blobs WHERE hash = ?1 LIMIT 1",
+            "SELECT 1 FROM project_blobs WHERE hash = ?1 \
+             UNION ALL SELECT 1 FROM project_outputs WHERE blob_hash = ?1 LIMIT 1",
             [hash],
             |_| Ok(()),
         )
@@ -1393,21 +1399,16 @@ pub fn delete_project(
     let transaction = conn.transaction()?;
     let snapshots = snapshots(&transaction, project)?;
     let hashes = transaction
-        .prepare("SELECT hash FROM project_blobs WHERE project_id = ?1")?
+        .prepare(
+            "SELECT hash FROM project_blobs WHERE project_id = ?1 \
+             UNION SELECT blob_hash FROM project_outputs WHERE project_id = ?1",
+        )?
         .query_map([project.to_string()], |row| row.get::<_, String>(0))?
         .collect::<Result<Vec<_>, _>>()?;
     transaction.execute("DELETE FROM projects WHERE id = ?1", [project.to_string()])?;
     let mut orphan_blobs = Vec::new();
     for hash in hashes {
-        let still_used = transaction
-            .query_row(
-                "SELECT 1 FROM project_blobs WHERE hash = ?1 LIMIT 1",
-                [&hash],
-                |_| Ok(()),
-            )
-            .optional()?
-            .is_some();
-        if !still_used {
+        if !blob_in_use(&transaction, &hash)? {
             queue_removal(&transaction, Removal::File, None, &hash, now)?;
             orphan_blobs.push(hash);
         }

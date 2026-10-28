@@ -484,7 +484,7 @@ export function TopToolbar() {
         {t(($) => $.shell.toolbar.exportPagePng)}
       </DropdownMenuItem>
     )}
-    {engine.source_format === "typst" && engine.typst_options && (
+    {engine.id === "typst" && engine.typst_options && (
       <DropdownMenuItem
         data-testid="export-typst-native"
         onSelect={() => {

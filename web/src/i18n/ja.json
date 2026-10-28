@@ -1,0 +1,188 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "読み込み中",
+    "loadFailed": "Oleafly はサーバーに接続できませんでした。",
+    "retry": "再試行",
+    "dismiss": "閉じる",
+    "projects": "プロジェクト",
+    "account": "アカウント",
+    "signOut": "サインアウト",
+    "signOutFailed": "サインアウトできませんでした。もう一度お試しください。",
+    "cancel": "キャンセル"
+  },
+  "signIn": {
+    "title": "Oleafly にサインイン",
+    "description": "共著者がプロジェクトを共有したアカウントでサインインしてください。",
+    "action": "サインイン"
+  },
+  "projects": {
+    "title": "共有されたプロジェクト",
+    "emptyTitle": "まだ共有されたプロジェクトはありません",
+    "emptyDescription": "誰かがあなたのアカウントとプロジェクトを共有すると、ここに表示されます。",
+    "untitled": "無題のプロジェクト",
+    "ownedBy": "所有者: {{name}}",
+    "loadFailed": "プロジェクトを読み込めませんでした。",
+    "list": "プロジェクト"
+  },
+  "roles": {
+    "owner": "所有者",
+    "editor": "編集者",
+    "reviewer": "レビュアー",
+    "commenter": "コメント投稿者",
+    "viewer": "閲覧者",
+    "unknown": "閲覧のみ"
+  },
+  "connection": {
+    "connecting": "接続中",
+    "online": "接続済み",
+    "offline": "オフライン",
+    "offlineBanner": "オフラインです。変更は保持され、接続が戻ると送信されます。",
+    "ended": "切断済み"
+  },
+  "ended": {
+    "signedOutTitle": "サインアウトされています",
+    "signedOutDescription": "このプロジェクトの作業を続けるには、もう一度サインインしてください。",
+    "noAccessTitle": "このプロジェクトを開けません",
+    "noAccessDescription": "このプロジェクトはあなたのアカウントと共有されていないか、アクセス権が削除されました。",
+    "stoppedTitle": "切断されました",
+    "stoppedDescription": "もう一度接続するには、ページを再読み込みしてください。"
+  },
+  "access": {
+    "changed": "このプロジェクトでのあなたの役割が {{role}} に変わりました。"
+  },
+  "discarded": {
+    "read_only": "このプロジェクトを編集できなくなったため、最後の編集は保存されませんでした。",
+    "refused": "最後の編集を保存できませんでした。"
+  },
+  "views": {
+    "label": "パネル",
+    "files": "ファイル",
+    "source": "ソース",
+    "pdf": "PDF",
+    "comments": "コメント",
+    "chat": "チャット"
+  },
+  "presence": {
+    "label": "参加中のユーザー"
+  },
+  "files": {
+    "title": "ファイル",
+    "empty": "このプロジェクトにはまだファイルがありません。",
+    "tree": "プロジェクトのファイル"
+  },
+  "source": {
+    "noFileTitle": "ファイルを開く",
+    "noFileDescription": "一覧からファイルを選ぶと内容を読めます。",
+    "opening": "{{path}} を開いています",
+    "removed": "{{path}} はプロジェクトから削除されました。",
+    "readOnly": "閲覧のみ",
+    "readOnlyHint": "あなたの役割では、このプロジェクトを閲覧できますが、編集はできません。",
+    "modeLabel": "編集モード",
+    "editing": "編集",
+    "suggesting": "提案",
+    "suggestingHint": "あなたの編集は提案になり、所有者または編集者がレビューします。",
+    "comment": "コメント",
+    "commentHint": "テキストを選択するとコメントできます。",
+    "binary": "このファイルはブラウザで表示できません。",
+    "blobFailed": "ファイルを読み込めませんでした。"
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "{{name}} が {{time}} にコンパイル",
+    "emptyTitle": "PDF はまだありません",
+    "emptyDescription": "誰かが Oleafly アプリでプロジェクトをコンパイルすると、ここに PDF が表示されます。",
+    "loading": "PDF を読み込み中",
+    "failed": "PDF を読み込めませんでした。",
+    "zoomIn": "拡大",
+    "zoomOut": "縮小",
+    "fitWidth": "幅に合わせる",
+    "download": "ダウンロード",
+    "zoom": "{{percent}}%"
+  },
+  "comments": {
+    "emptyTitle": "コメントや提案はありません",
+    "emptyCanComment": "ソースでテキストを選択し、「コメント」を選ぶとスレッドを始められます。",
+    "emptyReadOnly": "このプロジェクトのコメントと提案がここに表示されます。",
+    "newComment": "新しいコメント",
+    "placeholder": "コメントを追加",
+    "submit": "コメント",
+    "reply": "返信",
+    "replyPlaceholder": "返信",
+    "replyLabel": "このスレッドに返信",
+    "edit": "編集",
+    "editLabel": "コメントを編集",
+    "save": "保存",
+    "delete": "削除",
+    "deleteTitle": "このコメントを削除しますか？",
+    "deleteDescription": "元に戻すことはできません。",
+    "messageActions": "コメントの操作",
+    "resolve": "解決",
+    "reopen": "再開",
+    "resolvedBy": "{{name}} が解決済みにしました",
+    "deleted": "削除されたコメント",
+    "edited": "編集済み",
+    "anchorLost": "このコメントが付いていたテキストは削除されました。",
+    "showInSource": "ソースで表示",
+    "thread": "{{name}} のコメント",
+    "hideResolved": "解決済みを非表示",
+    "resolvedCount_other": "解決済み {{count}} 件"
+  },
+  "suggestions": {
+    "inserted": "追加",
+    "deleted": "削除",
+    "accept": "承認",
+    "reject": "却下",
+    "withdraw": "取り下げ",
+    "acceptAll": "すべて承認",
+    "rejectAll": "すべて却下",
+    "pending_other": "提案 {{count}} 件",
+    "card": "{{name}} の提案",
+    "lineBreak": "改行"
+  },
+  "chat": {
+    "emptyTitle": "まだメッセージはありません",
+    "emptyDescription": "ここのメッセージは、プロジェクトの全員に表示されます。",
+    "placeholder": "メッセージを入力",
+    "label": "メッセージ",
+    "send": "送信",
+    "readOnly": "チャットは読めます。閲覧者は投稿できません。",
+    "delete": "メッセージを削除",
+    "clear": "チャットを消去",
+    "clearTitle": "全員のチャットを消去しますか？",
+    "clearDescription": "プロジェクトの全員から、これらのメッセージが削除されます。",
+    "messages": "チャットのメッセージ"
+  },
+  "people": {
+    "you": "あなた",
+    "someone": "誰か",
+    "unverified": "未確認の作成者"
+  },
+  "errors": {
+    "offline": "オフラインです。接続してから、もう一度お試しください。",
+    "generic": "サーバーがその変更を拒否しました。",
+    "suggestion_not_found": "その提案はすでに処理されています。",
+    "suggestion_not_yours": "取り下げられるのは自分の提案だけです。",
+    "suggestion_role": "あなたの役割では、提案の作成やレビューはできません。",
+    "chat_role": "あなたの役割では、チャットに投稿できません。",
+    "comment_not_live": "現在、コメントは使用できません。",
+    "comment_not_yours": "変更できるのは自分のコメントだけです。",
+    "comment_off_server": "このサーバーではコメントがオフになっています。",
+    "comment_off_project": "このプロジェクトではコメントがオフになっています。",
+    "comment_viewer": "閲覧者はコメントできません。",
+    "comment_someone_replied": "ほかの人が返信したため、このコメントは削除できません。",
+    "comment_message_deleted": "そのコメントは削除されました。",
+    "comment_selection_changed": "入力中にテキストが変更されました。もう一度選択してください。",
+    "comment_too_long": "コメントが長すぎます。",
+    "comment_empty": "先に何か入力してください。",
+    "rate_limited": "一度に送られた変更が多すぎます。少し待ってから、もう一度お試しください。",
+    "too_large": "大きすぎるため送信できません。",
+    "project_too_large": "このプロジェクトは大きすぎるため、ブラウザで開けません。",
+    "server_busy": "サーバーが混み合っています。少し待ってから、もう一度お試しください。",
+    "not_open": "変更する前に、ファイルを開いてください。",
+    "cross_site": "このリクエストは、このサーバーの Oleafly ウェブアプリから送られたものではありません。ページを再読み込みして、もう一度お試しください。",
+    "conflict": "ほかの人が行った変更と競合しています。もう一度お試しください。",
+    "account_storage_full": "このサーバーでは、プロジェクト所有者のアカウントに保存領域の空きがありません。",
+    "too_many_uploads": "過去 1 時間のアップロードが多すぎます。しばらくしてから、もう一度お試しください。"
+  }
+}

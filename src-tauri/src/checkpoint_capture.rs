@@ -125,7 +125,11 @@ fn walk_project_once(
                 )
             })?;
             if metadata.is_dir() {
-                pending.push(path);
+                if !oleafly_core::exclude::is_notebook_figures_folder(&portable, |sibling| {
+                    project_root.join(sibling).is_file()
+                }) {
+                    pending.push(path);
+                }
                 continue;
             }
             if !metadata.is_file() {
@@ -446,7 +450,12 @@ fn decide_entry(
         return EntryDecision::Skip(SkipKind::Cloud);
     }
     if metadata.is_dir() {
-        return if is_skipped_directory(&name) {
+        return if is_skipped_directory(&name)
+            || relative.as_deref().is_some_and(|relative| {
+                oleafly_core::exclude::is_notebook_figures_folder(relative, |sibling| {
+                    root.join(sibling).is_file()
+                })
+            }) {
             EntryDecision::Ignore
         } else {
             EntryDecision::Descend(path)
@@ -1278,6 +1287,39 @@ mod tests {
         let walk = walk_project(root).unwrap();
 
         assert_eq!(captured_paths(&walk), vec!["main.tex"]);
+    }
+
+    #[test]
+    fn skips_quarto_output_but_keeps_calepin_results_and_unrelated_files_folders() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        for relative in [
+            "report.qmd",
+            "notes/analysis.Rmd",
+            "report_files/figure-html/plot.png",
+            "notes/analysis_files/libs/quarto.js",
+            "data_files/raw.csv",
+            "notes/report_files/kept.png",
+            ".quarto/xref/index.json",
+            ".calepin/calepin.typ",
+            "chapters/.Calepin/intro/calepin.typ",
+        ] {
+            write(root, relative, b"x");
+        }
+        let kept = vec![
+            "data_files/raw.csv",
+            "notes/analysis.Rmd",
+            "notes/report_files/kept.png",
+            "report.qmd",
+        ];
+        let mut with_results = vec![
+            ".calepin/calepin.typ",
+            "chapters/.Calepin/intro/calepin.typ",
+        ];
+        with_results.extend(kept.iter().copied());
+
+        assert_eq!(captured_paths(&walk_project(root).unwrap()), with_results);
+        assert_eq!(captured_paths(&linked_walk(root, None).walk), kept);
     }
 
     #[test]

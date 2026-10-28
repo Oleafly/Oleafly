@@ -813,11 +813,11 @@ pub(crate) fn bibliography_target(
     let text = read_bounded(&root.join(&main), MAX_MAIN_BYTES).unwrap_or_default();
     let (declared, add_extension) = match manifest.engine()? {
         Engine::Tectonic | Engine::Latexmk => (latex_bibliographies(&text), true),
-        Engine::Typst => (
+        Engine::Typst | Engine::Calepin => (
             declared_bibliographies(BibliographySource::Typst, &text),
             false,
         ),
-        Engine::Markdown => (
+        Engine::Markdown | Engine::Quarto => (
             declared_bibliographies(BibliographySource::Markdown, &text),
             false,
         ),
@@ -826,7 +826,7 @@ pub(crate) fn bibliography_target(
         .parent()
         .map(slash)
         .filter(|dir| !dir.is_empty());
-    let typst = manifest.engine()? == Engine::Typst;
+    let typst = matches!(manifest.engine()?, Engine::Typst | Engine::Calepin);
     let mut first_declared: Option<(String, PathBuf)> = None;
     for name in declared {
         let mut name = name.replace('\\', "/");
@@ -906,8 +906,10 @@ fn declaration_hint(engine: Engine, relative: &str) -> String {
         Engine::Tectonic | Engine::Latexmk => {
             format!("Add \\bibliography{{{}}} to the document (or \\addbibresource{{{relative}}} with biblatex).", relative.trim_end_matches(".bib"))
         }
-        Engine::Typst => format!("Add #bibliography(\"{relative}\") to the document."),
-        Engine::Markdown => {
+        Engine::Typst | Engine::Calepin => {
+            format!("Add #bibliography(\"{relative}\") to the document.")
+        }
+        Engine::Markdown | Engine::Quarto => {
             format!("Add `bibliography: {relative}` to the document's front matter.")
         }
     }

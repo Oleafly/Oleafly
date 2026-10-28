@@ -437,7 +437,19 @@
       "help": "Bir varyant, taslak veya baskıya hazır derleme gibi kendi değerlerini sys.inputs içine aktarır. Seçtiğiniz varyant bu bilgisayarda kalır. Varyantları Belge ayarlarında ekleyin veya düzenleyin.",
       "none": "Varyant yok"
     },
-    "sharedViewer": "Paylaşılan bir projede görüntüleyenler bu ayarları değiştiremez."
+    "typEngine": {
+      "title": "Motor (bu proje)",
+      "help": "Typst belgeyi yazıldığı gibi derler. Calepin ayrıca içindeki kodu çalıştırır ve sonuçları PDF'e ekler.",
+      "typst": "Typst <note>[yerleşik]</note>",
+      "calepin": "Calepin <note>[kod çalıştırır]</note>"
+    },
+    "code": {
+      "title": "Kod (bu bilgisayar)",
+      "help": "Quarto ve Calepin bu projedeki R, Python ve Julia kodunu çalıştırabilir. Kod sizin izinlerinizle çalışır, bu yüzden buna yalnızca güvendiğiniz bir projede izin verin. Bu seçim yalnızca bu bilgisayar için geçerlidir.",
+      "off": "Kapalı",
+      "run": "Kodu bu bilgisayarda çalıştır"
+    },
+    "sharedViewer": "Paylaşılan bir projede bu ayarları yalnızca sahipler ve düzenleyenler değiştirebilir."
   },
   "datePicker": {
     "placeholder": "Bir tarih seçin"
@@ -504,6 +516,18 @@
   "shellCommands": {
     "allow": "Dış komutlara izin ver",
     "banner": "Bu belge derlenirken dış komutlar çalıştırıyor ve bu proje bunları engelliyor. Bunlara yalnızca projedeki her dosyaya güveniyorsanız izin verin."
+  },
+  "codeExecution": {
+    "allow": "Bu projede kod çalıştırmaya izin ver",
+    "needed": "Bu belgenin derlenmesi için kodunun çalışması gerekiyor, ancak bu projede kod kapalı. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin.",
+    "skipped": "Bu projede kod kapalı olduğu için bu belgedeki kod çalışmadı. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin.",
+    "storedResults": "Bu projede kod kapalı olduğu için PDF, önceki bir çalıştırmadan kaydedilmiş kod sonuçlarını gösteriyor. Kod çalıştırmaya yalnızca projedeki her dosyaya güveniyorsanız izin verin."
+  },
+  "typstCjkFonts": {
+    "message": "Bu belgede bu bilgisayardaki hiçbir yazı tipinin gösteremediği Çince, Japonca veya Korece metin var, bu yüzden bu metin PDF'te yok.",
+    "download": "Yazı tiplerini indir",
+    "downloadSize": "Yazı tiplerini indir ({{size}})",
+    "downloading": "Yazı tipleri indiriliyor"
   },
   "errorBoundary": {
     "copyDiagnostics": "Tanılamaları kopyala",
@@ -625,6 +649,8 @@
       "standalone": "Bağımsız şekil",
       "typst": "Typst",
       "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Calepin not defteri",
       "unknown": "Diğer"
     },
     "reason": {
@@ -844,10 +870,6 @@
       "latexTools": {
         "description": "Oleafly Tools galerisini ve tek tek araçları (PDF içe aktarma, denklemler, tablolar, BibTeX, laboratuvar ve literatür arama, son tarihler) ve bunların eğik çizgi komutlarını gösterir. Hâlâ beta aşamasında olduğu için varsayılan olarak kapalıdır.",
         "label": "LaTeX araçları"
-      },
-      "liveCollaboration": {
-        "description": "Projeleri, sizin veya grubunuzun çalıştırdığı bir iş birliği sunucusu üzerinden başkalarıyla birlikte düzenleyin. Ayarlar'a bir İş Birliği bölümü ekler. Beta aşamasında olduğu için varsayılan olarak kapalıdır.",
-        "label": "Canlı iş birliği"
       },
       "researchTasks": {
         "description": "Bir ajan, projenin bir kopyasında kendi başına çalışır ve değişikliklerini sizin incelemeniz için bırakır. Çok kararsızdır: çalıştırmalar takılabilir, başarısız olabilir veya elle düzeltmeniz gereken değişiklikler bırakabilir, üstelik sağlayıcınızın kotasını baştan sona kullanır. Ayarlar'a bir Araştırma bölümü ekler. Kapatmak, çalışan tüm görevleri durdurur. Varsayılan olarak kapalıdır. Açarsanız sorumluluk size aittir.",

@@ -15,6 +15,9 @@ use oleafly_collab_protocol::email::{
     EmailPreferences, EmailPreferencesPatch, EmailStatus, EmailTestResult,
 };
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
+use oleafly_collab_protocol::outputs::{
+    encode_main_file, OutputKind, ProjectOutput, MAIN_FILE_HEADER,
+};
 use oleafly_collab_protocol::projects::{
     MemberGrant, NewProject, PersonSummary, ProjectDevice, ProjectMember, ProjectPatch,
     ProjectRole, ProjectSummary,
@@ -521,6 +524,51 @@ impl ServerClient {
         read_steadily_with(response, STALLED_AFTER, progress.as_deref()).await
     }
 
+    pub async fn put_output(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        kind: OutputKind,
+        main_file: &str,
+        bytes: Vec<u8>,
+    ) -> Result<ProjectOutput, CollabError> {
+        let request = self
+            .http
+            .put(self.project_url(project, &["output", kind.as_str()]))
+            .bearer_auth(access)
+            .header(MAIN_FILE_HEADER, encode_main_file(main_file));
+        let response = upload(request, bytes, None, STALLED_AFTER).await?;
+        json_answer(response).await
+    }
+
+    pub async fn outputs(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+    ) -> Result<Vec<ProjectOutput>, CollabError> {
+        json(
+            self.http
+                .get(self.project_url(project, &["output"]))
+                .bearer_auth(access),
+        )
+        .await
+    }
+
+    pub async fn get_output(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        kind: OutputKind,
+    ) -> Result<Vec<u8>, CollabError> {
+        let (_, bytes) = download(
+            self.http
+                .get(self.project_url(project, &["output", kind.as_str()]))
+                .bearer_auth(access),
+        )
+        .await?;
+        Ok(bytes)
+    }
+
     pub async fn put_snapshot(
         &self,
         access: &str,
@@ -882,6 +930,10 @@ pub(crate) fn asked_wait_for(at: &Url) -> Option<Duration> {
 
 pub(super) async fn json<T: DeserializeOwned>(request: RequestBuilder) -> Result<T, CollabError> {
     let response = check_status(request.send().await.map_err(network_error)?).await?;
+    json_answer(response).await
+}
+
+async fn json_answer<T: DeserializeOwned>(response: Response) -> Result<T, CollabError> {
     let status = response.status().as_u16();
     let body = body_within(response, JSON_ANSWER_BYTES).await?;
     serde_json::from_slice(&body).map_err(|error| CollabError::Api {
@@ -1212,6 +1264,144 @@ mod tests {
                 .await
                 .expect("fetched"),
             figure
+        );
+    }
+
+    #[tokio::test]
+    async fn a_compiled_pdf_and_its_synctex_go_up_and_their_info_comes_back() {
+        let (_server, client, _admin, member) = admin_and_member().await;
+        let access = &member.access_token;
+        let project = client
+            .create_project(access, "Thesis")
+            .await
+            .expect("project")
+            .project_id;
+        assert!(client
+            .outputs(access, project)
+            .await
+            .expect("no outputs yet")
+            .is_empty());
+        let mut pdf = b"%PDF-1.7\n".to_vec();
+        pdf.extend((0..400 * 1024).map(|at| (at % 251) as u8));
+        let mut synctex = vec![0x1f, 0x8b, 8, 0];
+        synctex.extend((0..2048).map(|at| (at % 13) as u8));
+        let stored = client
+            .put_output(
+                access,
+                project,
+                OutputKind::Pdf,
+                "chapters/main file.tex",
+                pdf.clone(),
+            )
+            .await
+            .expect("pdf stored");
+        assert_eq!(stored.kind, OutputKind::Pdf);
+        assert_eq!(stored.size, pdf.len() as u64);
+        assert_eq!(stored.compiled_by, member.account_id);
+        assert_eq!(stored.main_file, "chapters/main file.tex");
+        client
+            .put_output(
+                access,
+                project,
+                OutputKind::Synctex,
+                "chapters/main file.tex",
+                synctex.clone(),
+            )
+            .await
+            .expect("synctex stored");
+        let listed = client.outputs(access, project).await.expect("outputs");
+        let kinds: Vec<OutputKind> = listed.iter().map(|output| output.kind).collect();
+        assert_eq!(kinds, [OutputKind::Pdf, OutputKind::Synctex]);
+        assert_eq!(listed[0], stored);
+        assert_eq!(
+            client
+                .get_output(access, project, OutputKind::Pdf)
+                .await
+                .expect("pdf"),
+            pdf
+        );
+        assert_eq!(
+            client
+                .get_output(access, project, OutputKind::Synctex)
+                .await
+                .expect("synctex"),
+            synctex
+        );
+    }
+
+    #[tokio::test]
+    async fn an_output_the_server_refuses_keeps_its_code() {
+        let mut config = test_config();
+        config.quotas.storage_mb = Some(1);
+        let server = TestServer::start(config).await;
+        let member = seed(&server, ServerRole::Member).await;
+        let client = ServerClient::new(server_url(&server)).expect("client");
+        let access = &member.access_token;
+        let project = client
+            .create_project(access, "Thesis")
+            .await
+            .expect("project")
+            .project_id;
+        let not_pdf = client
+            .put_output(
+                access,
+                project,
+                OutputKind::Pdf,
+                "main.tex",
+                b"<html>".to_vec(),
+            )
+            .await;
+        assert!(
+            matches!(&not_pdf, Err(CollabError::Api { status: 400, .. })),
+            "{not_pdf:?}"
+        );
+        let mut large = b"%PDF-1.7\n".to_vec();
+        large.resize(1024 * 1024 + 16, b' ');
+        let full = client
+            .put_output(access, project, OutputKind::Pdf, "main.tex", large)
+            .await;
+        assert!(
+            matches!(&full, Err(CollabError::Api { status: 413, code, .. }) if code == "account_storage_full"),
+            "{full:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn the_account_limits_keep_their_codes() {
+        let mut config = test_config();
+        config.quotas.projects = Some(1);
+        config.quotas.uploads_per_hour = Some(1);
+        let server = TestServer::start(config).await;
+        let member = seed(&server, ServerRole::Member).await;
+        let client = ServerClient::new(server_url(&server)).expect("client");
+        let access = &member.access_token;
+        let project = client
+            .create_project(access, "Thesis")
+            .await
+            .expect("project")
+            .project_id;
+        let second = client.create_project(access, "Notes").await;
+        assert!(
+            matches!(&second, Err(CollabError::Api { status: 429, code, .. }) if code == "too_many_projects"),
+            "{second:?}"
+        );
+        let hash_of = |bytes: &[u8]| -> String {
+            ring::digest::digest(&ring::digest::SHA256, bytes)
+                .as_ref()
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect()
+        };
+        client
+            .put_blob(access, project, &hash_of(b"one"), b"one".to_vec())
+            .await
+            .expect("first upload");
+        let again = client
+            .put_blob(access, project, &hash_of(b"two"), b"two".to_vec())
+            .await;
+        assert!(
+            matches!(&again, Err(CollabError::Api { status: 429, code, .. }) if code == "too_many_uploads"),
+            "{again:?}"
         );
     }
 

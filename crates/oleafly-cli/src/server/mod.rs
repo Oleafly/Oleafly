@@ -151,6 +151,8 @@ pub struct CommentsArgs {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum RoleArg {
     Editor,
+    Reviewer,
+    Commenter,
     Viewer,
 }
 
@@ -158,6 +160,8 @@ impl RoleArg {
     pub(crate) fn role(self) -> ProjectRole {
         match self {
             Self::Editor => ProjectRole::Editor,
+            Self::Reviewer => ProjectRole::Reviewer,
+            Self::Commenter => ProjectRole::Commenter,
             Self::Viewer => ProjectRole::Viewer,
         }
     }
@@ -180,6 +184,8 @@ pub(crate) fn role_name(role: ProjectRole) -> &'static str {
     match role {
         ProjectRole::Owner => "owner",
         ProjectRole::Editor => "editor",
+        ProjectRole::Reviewer => "reviewer",
+        ProjectRole::Commenter => "commenter",
         ProjectRole::Viewer => "viewer",
         ProjectRole::Unknown => "unknown",
     }

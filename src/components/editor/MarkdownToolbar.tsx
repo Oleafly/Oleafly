@@ -25,6 +25,7 @@ import {
   Redo2,
 } from "lucide-react";
 import { Popover, PopoverItem } from "@/components/ui/popover";
+import { isQuartoEngine } from "@/lib/notebook-engines";
 import type { MarkdownSplitLayout } from "@/lib/wysiwyg-mode";
 // The chrome is shared with the LaTeX toolbar so both bars measure, overflow,
 // and sit in the editor frame identically.
@@ -252,7 +253,7 @@ export function MarkdownToolbar({
   showProjectInfo = true,
 }: Readonly<{
   wysiwyg: boolean;
-  onToggleWysiwyg: () => void;
+  onToggleWysiwyg?: () => void;
   mode?: EditorMode;
   splitLayout?: MarkdownSplitLayout;
   onModeChange?: (mode: EditorMode, layout?: MarkdownSplitLayout) => void;
@@ -261,6 +262,7 @@ export function MarkdownToolbar({
 }>) {
   const { t } = useTranslation(["common", "editor"]);
   const markdownProject = useFilesStore((state) => state.engineLoaded && state.engine.source_format === "markdown");
+  const markdownSettings = useFilesStore((state) => !isQuartoEngine(state.engine));
   const controls = useMemo<ToolbarControl[]>(() => {
     const list: ToolbarControl[] = [
       {
@@ -432,16 +434,18 @@ export function MarkdownToolbar({
 
   return (
     <div className="flex min-h-9 flex-wrap items-center gap-x-0.5 gap-y-1 overflow-x-auto border-b px-2">
-      <WysiwygModeSwitch
-        wysiwyg={wysiwyg}
-        onToggle={onToggleWysiwyg}
-        mode={mode}
-        splitLayout={splitLayout}
-        onModeChange={onModeChange}
-        data-tour="wysiwyg-toggle"
-      />
+      {onToggleWysiwyg ? (
+        <WysiwygModeSwitch
+          wysiwyg={wysiwyg}
+          onToggle={onToggleWysiwyg}
+          mode={mode}
+          splitLayout={splitLayout}
+          onModeChange={onModeChange}
+          data-tour="wysiwyg-toggle"
+        />
+      ) : null}
       <div className={cn("flex flex-1 items-center gap-0.5", showProjectInfo ? "min-w-44" : "min-w-36")}>
-        <Divider />
+        {onToggleWysiwyg ? <Divider /> : null}
         <IconBtn onClick={editorUndo} disabled={!history.canUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
           <Undo2 className="size-4" />
         </IconBtn>
@@ -479,7 +483,7 @@ export function MarkdownToolbar({
               <ScanSearch data-testid="document-insights-button" className="size-4" />
             </IconBtn>
           )}
-          {markdownProject && (
+          {markdownProject && markdownSettings && (
             <IconBtn
               onClick={() => useTypstDocumentPanelStore.getState().openPanel("settings")}
               title={t(($) => $.editor.typstSettings.title)}

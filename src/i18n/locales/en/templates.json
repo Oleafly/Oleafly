@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "Show only resume templates that Applicant Tracking Systems can parse reliably: single-column, standard fonts, and selectable text (no words baked into graphics).",
       "atsFriendly": "ATS-friendly",
       "offlineTooltip": "Show only templates that compile with no downloads: their fonts and packages are already bundled, so they build without an internet connection.",

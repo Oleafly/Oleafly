@@ -437,7 +437,19 @@
       "help": "Muunnelma välittää omat arvonsa kohteeseen sys.inputs, esimerkiksi luonnosta tai lopullista painoversiota varten. Valitsemasi muunnelma säilyy tällä tietokoneella. Lisää tai muokkaa muunnelmia kohdassa Dokumentin asetukset.",
       "none": "Ei muunnelmaa"
     },
-    "sharedViewer": "Katselijat eivät voi muuttaa näitä asetuksia jaetussa projektissa."
+    "typEngine": {
+      "title": "Moottori (tämä projekti)",
+      "help": "Typst kääntää dokumentin sellaisenaan. Calepin myös suorittaa sen koodin ja lisää tulokset PDF:ään.",
+      "typst": "Typst <note>[sisäänrakennettu]</note>",
+      "calepin": "Calepin <note>[suorittaa koodia]</note>"
+    },
+    "code": {
+      "title": "Koodi (tämä kone)",
+      "help": "Quarto ja Calepin voivat suorittaa tämän projektin R-, Python- ja Julia-koodin. Koodi suoritetaan sinun oikeuksillasi, joten salli se vain projektille, johon luotat. Valinta koskee vain tätä konetta.",
+      "off": "Pois",
+      "run": "Suorita koodi tällä koneella"
+    },
+    "sharedViewer": "Vain omistajat ja muokkaajat voivat muuttaa näitä asetuksia jaetussa projektissa."
   },
   "datePicker": {
     "placeholder": "Valitse päivämäärä"
@@ -504,6 +516,18 @@
   "shellCommands": {
     "allow": "Salli ulkoiset komennot",
     "banner": "Tämä dokumentti suorittaa ulkoisia komentoja käännöksen aikana, ja tämä projekti estää ne. Salli ne vain, jos luotat jokaiseen projektin tiedostoon."
+  },
+  "codeExecution": {
+    "allow": "Salli koodi tässä projektissa",
+    "needed": "Tämän dokumentin koodi täytyy suorittaa, jotta dokumentti kääntyy, ja koodin suoritus on tässä projektissa pois päältä. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon.",
+    "skipped": "Tämän dokumentin koodia ei suoritettu, koska koodin suoritus on tässä projektissa pois päältä. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon.",
+    "storedResults": "PDF näyttää aiemmalla suorituskerralla tallennetut koodin tulokset, koska koodin suoritus on tässä projektissa pois päältä. Salli koodi vain, jos luotat jokaiseen projektin tiedostoon."
+  },
+  "typstCjkFonts": {
+    "message": "Asiakirjassa on kiinan-, japanin- tai koreankielistä tekstiä, jota mikään tämän tietokoneen fontti ei pysty näyttämään, joten se puuttuu PDF:stä.",
+    "download": "Lataa fontit",
+    "downloadSize": "Lataa fontit ({{size}})",
+    "downloading": "Ladataan fontteja"
   },
   "errorBoundary": {
     "copyDiagnostics": "Kopioi diagnostiikka",
@@ -625,6 +649,8 @@
       "standalone": "Erillinen kuva",
       "typst": "Typst",
       "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Calepin-muistikirja",
       "unknown": "Muu"
     },
     "reason": {
@@ -844,10 +870,6 @@
       "latexTools": {
         "description": "Näytä Oleafly Tools -galleria ja yksittäiset työkalut (PDF-tuonti, kaavat, taulukot, BibTeX, labra- ja kirjallisuushaku, määräajat) sekä niiden kauttaviivakomennot. Oletuksena pois, koska nämä ovat vielä beta-vaiheessa.",
         "label": "LaTeX-työkalut"
-      },
-      "liveCollaboration": {
-        "description": "Muokkaa projekteja muiden kanssa yhteistyöpalvelimen kautta, jota sinä tai ryhmäsi ylläpitää. Lisää asetuksiin Yhteistyö-osion. Oletuksena pois, koska ominaisuus on vielä beta-vaiheessa.",
-        "label": "Reaaliaikainen yhteistyö"
       },
       "researchTasks": {
         "description": "Agentti työskentelee itsenäisesti projektin kopiossa ja jättää muutokset sinun tarkistettavaksesi. Erittäin epävakaa: ajot voivat jumittua, epäonnistua tai jättää muutoksia, jotka pitää selvittää käsin, ja ne kuluttavat tekoälypalvelusi kiintiötä koko ajan. Lisää asetuksiin Tutkimus-osion. Kun kytket sen pois, kaikki käynnissä olevat tehtävät pysähtyvät. Oletuksena pois. Ota käyttöön omalla vastuullasi.",

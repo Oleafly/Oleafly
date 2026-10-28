@@ -140,7 +140,7 @@ pub fn source_profile(engine: Engine) -> SourceProfile {
     match engine {
         Engine::Tectonic | Engine::Latexmk => SourceProfile::Latex,
         Engine::Typst => SourceProfile::Typst,
-        Engine::Markdown => SourceProfile::None,
+        Engine::Markdown | Engine::Quarto | Engine::Calepin => SourceProfile::None,
     }
 }
 

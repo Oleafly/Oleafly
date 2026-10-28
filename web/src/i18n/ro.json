@@ -1,0 +1,192 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "Se încarcă",
+    "loadFailed": "Oleafly nu a putut accesa serverul.",
+    "retry": "Încearcă din nou",
+    "dismiss": "Închide",
+    "projects": "Proiecte",
+    "account": "Cont",
+    "signOut": "Deconectează-te",
+    "signOutFailed": "Deconectarea nu a reușit. Încearcă din nou.",
+    "cancel": "Anulează"
+  },
+  "signIn": {
+    "title": "Autentifică-te în Oleafly",
+    "description": "Autentifică-te cu contul cu care un coautor a partajat proiectul.",
+    "action": "Autentifică-te"
+  },
+  "projects": {
+    "title": "Partajate cu tine",
+    "emptyTitle": "Încă nu este nimic partajat cu tine",
+    "emptyDescription": "Când cineva partajează un proiect cu contul tău, acesta apare aici.",
+    "untitled": "Proiect fără titlu",
+    "ownedBy": "Proprietar: {{name}}",
+    "loadFailed": "Proiectele tale nu s-au putut încărca.",
+    "list": "Proiecte"
+  },
+  "roles": {
+    "owner": "Proprietar",
+    "editor": "Editor",
+    "reviewer": "Recenzent",
+    "commenter": "Comentator",
+    "viewer": "Cititor",
+    "unknown": "Doar citire"
+  },
+  "connection": {
+    "connecting": "Se conectează",
+    "online": "Conectat",
+    "offline": "Offline",
+    "offlineBanner": "Ești offline. Modificările tale sunt păstrate și trimise când revine conexiunea.",
+    "ended": "Deconectat"
+  },
+  "ended": {
+    "signedOutTitle": "Ești deconectat",
+    "signedOutDescription": "Autentifică-te din nou ca să lucrezi în continuare la acest proiect.",
+    "noAccessTitle": "Nu poți deschide acest proiect",
+    "noAccessDescription": "Nu a fost partajat cu contul tău sau accesul tău a fost eliminat.",
+    "stoppedTitle": "Deconectat",
+    "stoppedDescription": "Reîncarcă pagina ca să te conectezi din nou."
+  },
+  "access": {
+    "changed": "Noul tău rol în acest proiect: {{role}}."
+  },
+  "discarded": {
+    "read_only": "Ultimele tale modificări nu au fost salvate, pentru că acum nu poți edita acest proiect.",
+    "refused": "Ultimele tale modificări nu au putut fi salvate."
+  },
+  "views": {
+    "label": "Panouri",
+    "files": "Fișiere",
+    "source": "Sursă",
+    "pdf": "PDF",
+    "comments": "Comentarii",
+    "chat": "Chat"
+  },
+  "presence": {
+    "label": "Persoane prezente"
+  },
+  "files": {
+    "title": "Fișiere",
+    "empty": "Acest proiect nu are încă fișiere.",
+    "tree": "Fișierele proiectului"
+  },
+  "source": {
+    "noFileTitle": "Deschide un fișier",
+    "noFileDescription": "Alege un fișier din listă ca să-l citești.",
+    "opening": "Se deschide {{path}}",
+    "removed": "{{path}} a fost eliminat din proiect.",
+    "readOnly": "Doar citire",
+    "readOnlyHint": "Rolul tău îți permite să citești acest proiect, dar nu să îl editezi.",
+    "modeLabel": "Mod de editare",
+    "editing": "Editare",
+    "suggesting": "Sugerare",
+    "suggestingHint": "Modificările tale sunt sugestii pe care le examinează un proprietar sau un editor.",
+    "comment": "Comentează",
+    "commentHint": "Selectează un text ca să-l comentezi.",
+    "binary": "Acest fișier nu poate fi afișat în browser.",
+    "blobFailed": "Fișierul nu s-a putut încărca."
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "Compilat de {{name}}, {{time}}",
+    "emptyTitle": "Încă nu există PDF",
+    "emptyDescription": "PDF-ul apare aici după ce cineva compilează proiectul în aplicația Oleafly.",
+    "loading": "Se încarcă PDF-ul",
+    "failed": "PDF-ul nu s-a putut încărca.",
+    "zoomIn": "Mărește",
+    "zoomOut": "Micșorează",
+    "fitWidth": "Potrivește pe lățime",
+    "download": "Descarcă",
+    "zoom": "{{percent}}%"
+  },
+  "comments": {
+    "emptyTitle": "Nu există comentarii sau sugestii",
+    "emptyCanComment": "Selectează un text în sursă și alege Comentează ca să începi o discuție.",
+    "emptyReadOnly": "Comentariile și sugestiile din acest proiect apar aici.",
+    "newComment": "Comentariu nou",
+    "placeholder": "Adaugă un comentariu",
+    "submit": "Comentează",
+    "reply": "Răspunde",
+    "replyPlaceholder": "Răspuns",
+    "replyLabel": "Răspunde în această discuție",
+    "edit": "Editează",
+    "editLabel": "Editează comentariul",
+    "save": "Salvează",
+    "delete": "Șterge",
+    "deleteTitle": "Ștergi acest comentariu?",
+    "deleteDescription": "Acțiunea nu poate fi anulată.",
+    "messageActions": "Acțiuni pentru comentariu",
+    "resolve": "Rezolvă",
+    "reopen": "Redeschide",
+    "resolvedBy": "Rezolvat de {{name}}",
+    "deleted": "Comentariu șters",
+    "edited": "editat",
+    "anchorLost": "Textul la care se referea acest comentariu a fost eliminat.",
+    "showInSource": "Arată în sursă",
+    "thread": "Comentariu de la {{name}}",
+    "hideResolved": "Ascunde comentariile rezolvate",
+    "resolvedCount_one": "{{count}} comentariu rezolvat",
+    "resolvedCount_few": "{{count}} comentarii rezolvate",
+    "resolvedCount_other": "{{count}} de comentarii rezolvate"
+  },
+  "suggestions": {
+    "inserted": "Adăugat",
+    "deleted": "Șters",
+    "accept": "Acceptă",
+    "reject": "Respinge",
+    "withdraw": "Retrage",
+    "acceptAll": "Acceptă toate",
+    "rejectAll": "Respinge toate",
+    "pending_one": "{{count}} sugestie",
+    "pending_few": "{{count}} sugestii",
+    "pending_other": "{{count}} de sugestii",
+    "card": "Sugestie de la {{name}}",
+    "lineBreak": "Rând nou"
+  },
+  "chat": {
+    "emptyTitle": "Încă nu există mesaje",
+    "emptyDescription": "Mesajele de aici sunt văzute de toată lumea din proiect.",
+    "placeholder": "Scrie un mesaj",
+    "label": "Mesaj",
+    "send": "Trimite",
+    "readOnly": "Poți citi chatul. Cititorii nu pot scrie mesaje.",
+    "delete": "Șterge mesajul",
+    "clear": "Golește chatul",
+    "clearTitle": "Golești chatul pentru toată lumea?",
+    "clearDescription": "Toți cei din proiect pierd aceste mesaje.",
+    "messages": "Mesajele din chat"
+  },
+  "people": {
+    "you": "Tu",
+    "someone": "Cineva",
+    "unverified": "Autor neverificat"
+  },
+  "errors": {
+    "offline": "Ești offline. Încearcă din nou când ești conectat.",
+    "generic": "Serverul a refuzat această modificare.",
+    "suggestion_not_found": "Cineva s-a ocupat deja de această sugestie.",
+    "suggestion_not_yours": "Poți retrage doar propriile sugestii.",
+    "suggestion_role": "Rolul tău nu permite să faci sau să examinezi sugestii.",
+    "chat_role": "Rolul tău nu permite să scrii în chat.",
+    "comment_not_live": "Comentariile nu sunt disponibile acum.",
+    "comment_not_yours": "Poți modifica doar propriile comentarii.",
+    "comment_off_server": "Comentariile sunt dezactivate pe acest server.",
+    "comment_off_project": "Comentariile sunt dezactivate pentru acest proiect.",
+    "comment_viewer": "Cititorii nu pot comenta.",
+    "comment_someone_replied": "Cineva a răspuns, așa că acest comentariu nu poate fi șters.",
+    "comment_message_deleted": "Acel comentariu a fost șters.",
+    "comment_selection_changed": "Textul s-a schimbat cât timp scriai. Selectează-l din nou.",
+    "comment_too_long": "Comentariul este prea lung.",
+    "comment_empty": "Scrie mai întâi ceva.",
+    "rate_limited": "Prea multe modificări deodată. Așteaptă puțin și încearcă din nou.",
+    "too_large": "Este prea mare ca să fie trimis.",
+    "project_too_large": "Acest proiect este prea mare ca să fie deschis într-un browser.",
+    "server_busy": "Serverul este ocupat. Încearcă din nou în câteva clipe.",
+    "not_open": "Deschide fișierul înainte să-l modifici.",
+    "cross_site": "Această solicitare nu a venit din aplicația web Oleafly de pe acest server. Reîncarcă pagina și încearcă din nou.",
+    "conflict": "Asta intră în conflict cu o modificare făcută de altcineva. Încearcă din nou.",
+    "account_storage_full": "Contul proprietarului proiectului a rămas fără spațiu de stocare pe acest server.",
+    "too_many_uploads": "Ai făcut prea multe încărcări în ultima oră. Încearcă din nou mai târziu."
+  }
+}

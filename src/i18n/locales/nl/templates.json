@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "Toon alleen cv-sjablonen die Applicant Tracking Systems betrouwbaar kunnen lezen: één kolom, standaardlettertypen en selecteerbare tekst (geen woorden die vastzitten in afbeeldingen).",
       "atsFriendly": "ATS-vriendelijk",
       "offlineTooltip": "Toon alleen sjablonen die compileren zonder downloads: hun lettertypen en pakketten zitten er al bij, dus ze bouwen zonder internetverbinding.",

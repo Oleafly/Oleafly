@@ -48,6 +48,7 @@ vi.mock("@/store/files", async () => {
   const useFilesStore = create(() => ({
     projectId: "p1" as string | null,
     projectName: "Paper",
+    engine: { label: "Tectonic" },
     engineLoaded: true,
     loading: false,
     mainDoc: "main.tex",
@@ -153,6 +154,9 @@ vi.mock("@/lib/native-dock-shortcuts", () => ({
 }));
 vi.mock("@/lib/mcp-bridge", () => ({ startMcpBridge: mocks.startMcpBridge }));
 vi.mock("@/lib/research-pdf-bridge", () => ({ mountResearchPdfBridge: mocks.mountResearchPdfBridge }));
+// Live collaboration has tests of its own. Started here, it would store the {} every invoke
+// returns as its lists, and its lazily loaded banners would then fail on them.
+vi.mock("@/components/layout/CollabLiveKeeper", () => ({ CollabLiveKeeper: () => null }));
 vi.mock("@/lib/ai-tools", () => ({ initAiPdfCaptureFlag: mocks.initAiPdfCaptureFlag }));
 vi.mock("@/lib/open-compile", () => ({
   automaticCompileAllowed: () => true,
@@ -175,6 +179,8 @@ vi.mock("@/components/layout/FolderUnavailableBanner", () => ({ FolderUnavailabl
 vi.mock("@/components/open-folder/MainDocumentPicker", () => ({ MainDocumentPicker: () => null }));
 vi.mock("@/components/open-folder/OpenedFolderBanners", () => ({ OpenedFolderBanners: () => null }));
 vi.mock("@/components/layout/ShellCommandsBanner", () => ({ ShellCommandsBanner: () => null }));
+vi.mock("@/components/layout/CodeExecutionBanner", () => ({ CodeExecutionBanner: () => null }));
+vi.mock("@/components/layout/TypstCjkFontBanner", () => ({ TypstCjkFontBanner: () => null }));
 vi.mock("@/components/open-folder/OpenFolderKeeper", () => ({ OpenFolderKeeper: () => null }));
 vi.mock("@/components/layout/ProjectAvailabilityKeeper", () => ({ ProjectAvailabilityKeeper: () => null }));
 vi.mock("@/components/layout/FolderWatchKeeper", () => ({ FolderWatchKeeper: () => null }));

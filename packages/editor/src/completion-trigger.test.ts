@@ -44,6 +44,10 @@ describe("completion lexical triggers", () => {
     ["markdown", "[Viz](#u\u0301vod"],
     ["markdown", "\u05E8\u05D0\u05D4 @\u05E9\u05B8\u05C1\u05DC"],
     ["bibtex", "crossref = {\u092A\u0930\u093F"],
+    ["markdown", "```{r}\n#| "],
+    ["markdown", "```{python}\n#| label: a\n#| fig-c"],
+    ["typst", "```python\n#|"],
+    ["typst", "```r\n  #| ec"],
   ] as const)("recognizes a trigger in %s: %s", (syntax, source) => {
     expect(triggered(source, syntax)).toBe(true);
   });
@@ -65,6 +69,8 @@ describe("completion lexical triggers", () => {
     '#image("a\nb',
     '#bibliography(("a.bib" "b',
     '#image("done") and "x',
+    "Text #| ec",
+    "#| echo: false",
   ])(
     "leaves %j without a Typst trigger",
     (source) => {

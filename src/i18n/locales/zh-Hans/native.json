@@ -101,6 +101,11 @@
       "pickTitle": "选择 {{name}} 的程序",
       "filter": "程序"
     },
+    "sharedCodeExecution": {
+      "title": "要在这个共享项目中允许代码吗？",
+      "message": "允许后，编译时会在这台电脑上运行此项目中的代码。任何拥有编辑权限的人都可以修改这些代码。只有在你信任项目中的每个人时才允许。",
+      "confirm": "在这台电脑上允许"
+    },
     "desktopApps": {
       "title": "桌面应用",
       "action": "{{agent}} 想要{{action}}。",

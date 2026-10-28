@@ -121,7 +121,7 @@ function collectMacroUses(
   const alt = macroNames.map(escapeRegExp).join("|");
   const macroDefSpans = macroDefinitionSpans(defs);
   for (const [path, rawText] of Object.entries(files)) {
-    if (/\.(?:typ|md|markdown)$/i.test(path)) continue;
+    if (/\.(?:typ|md|markdown|qmd|rmd)$/i.test(path)) continue;
     collectFileMacroUses(
       path,
       rawText,

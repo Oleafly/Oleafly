@@ -61,7 +61,9 @@ Teile ein Projekt auf den Oleafly Server deiner Arbeitsgruppe, und alle bearbeit
 - Änderungen, die du offline machst, werden zusammengeführt, sobald du wieder verbunden bist. Überschneiden sie sich mit denen einer anderen Person, zeigt Oleafly dir beide und fragt, bevor es etwas übernimmt.
 - Auch KI-Änderungen, Zotero-Zitate, Umbenennungen, Löschungen und Abbildungen werden übertragen. Ersetzen zwei Personen gleichzeitig dieselbe Abbildung, bleiben beide Versionen erhalten.
 - Hauptdatei, Compiler, Sprache der Rechtschreibprüfung und Typst-Optionen werden geteilt, sodass das ganze Team das Projekt auf dieselbe Weise kompiliert.
-- Jedes Projekt hat Rollen für Eigentümer, Bearbeiter und Betrachter. Gäste, die per E-Mail eingeladen werden, sehen nur die Projekte, zu denen sie eingeladen wurden.
+- Jedes Projekt hat Rollen für Eigentümer, Bearbeiter, Gutachter, Kommentatoren und Betrachter. Bearbeitungen von Gutachtern werden zu Vorschlägen, und auch Eigentümer und Bearbeiter können in den Modus Vorschlagen wechseln. Gäste, die per E-Mail eingeladen werden, sehen nur die Projekte, zu denen sie eingeladen wurden.
+- Jedes geteilte Projekt hat einen Chat und einen Verlauf, in dem du Versionen vergleichen, eine davon wiederherstellen oder ihr einen Namen geben kannst.
+- Mitautor:innen können ein geteiltes Projekt in ihrem Browser öffnen, wenn der Browserzugriff auf dem Server eingeschaltet ist, und das PDF der letzten Kompilierung lesen.
 
 ### Den Server selbst betreiben
 
@@ -167,6 +169,7 @@ Tectonic, Typst und Pandoc werden mit der App ausgeliefert, sodass ein neues Pro
 - Vervollständigung und Live-Diagnosen für Labels, Zitate, Befehle, Umgebungen und Dateipfade im ganzen Projekt.
 - Rechtschreib- und Grammatikprüfung laufen lokal und sind auf wissenschaftliches Schreiben abgestimmt.
 - XeLaTeX, LuaLaTeX sowie upLaTeX oder pLaTeX für japanische Dokumente.
+- Quarto- und Calepin-Dokumente führen ihren R-, Python- oder Julia-Code aus, sobald du Code für das Projekt erlaubst. Oleafly kann beide Werkzeuge für dich herunterladen.
 
 ## Zitate, Abbildungen, Prüfungen und Vorlagen
 

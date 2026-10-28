@@ -439,7 +439,19 @@
       "help": "Une variante passe ses propres valeurs à sys.inputs, par exemple pour une version brouillon ou définitive. La variante choisie reste sur cet ordinateur. Ajoutez ou modifiez des variantes dans les Réglages du document.",
       "none": "Aucune variante"
     },
-    "sharedViewer": "Les lecteurs ne peuvent pas modifier ces paramètres dans un projet partagé."
+    "typEngine": {
+      "title": "Moteur (ce projet)",
+      "help": "Typst compile le document tel qu'il est écrit. Calepin exécute en plus le code qu'il contient et place les résultats dans le PDF.",
+      "typst": "Typst <note>[intégré]</note>",
+      "calepin": "Calepin <note>[exécute du code]</note>"
+    },
+    "code": {
+      "title": "Code (cet ordinateur)",
+      "help": "Quarto et Calepin peuvent exécuter le code R, Python et Julia de ce projet. Le code s'exécute avec vos droits : réservez-le aux projets de confiance. Ce choix ne s'applique qu'à cet ordinateur.",
+      "off": "Désactivé",
+      "run": "Exécuter le code sur cet ordinateur"
+    },
+    "sharedViewer": "Seuls les propriétaires et les éditeurs peuvent modifier ces paramètres dans un projet partagé."
   },
   "datePicker": {
     "placeholder": "Choisir une date"
@@ -507,6 +519,18 @@
   "shellCommands": {
     "allow": "Autoriser les commandes externes",
     "banner": "Ce document lance des commandes externes pendant la compilation, et ce projet les bloque. Autorisez-les seulement si vous faites confiance à chaque fichier du projet."
+  },
+  "codeExecution": {
+    "allow": "Autoriser le code dans ce projet",
+    "needed": "Ce document doit exécuter son code pour être généré, et le code est désactivé pour ce projet. Autorisez le code seulement si vous faites confiance à chaque fichier du projet.",
+    "skipped": "Le code de ce document ne s'est pas exécuté, car le code est désactivé pour ce projet. Autorisez le code seulement si vous faites confiance à chaque fichier du projet.",
+    "storedResults": "Le PDF affiche des résultats de code enregistrés lors d'une exécution précédente, car le code est désactivé pour ce projet. Autorisez le code seulement si vous faites confiance à chaque fichier du projet."
+  },
+  "typstCjkFonts": {
+    "message": "Ce document contient du texte chinois, japonais ou coréen qu'aucune police de cet ordinateur ne peut afficher, il est donc absent du PDF.",
+    "download": "Télécharger les polices",
+    "downloadSize": "Télécharger les polices ({{size}})",
+    "downloading": "Téléchargement des polices"
   },
   "errorBoundary": {
     "copyDiagnostics": "Copier les diagnostics",
@@ -628,6 +652,8 @@
       "standalone": "Figure autonome",
       "typst": "Typst",
       "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Notebook Calepin",
       "unknown": "Autre"
     },
     "reason": {
@@ -859,10 +885,6 @@
       "latexTools": {
         "description": "Afficher la galerie Oleafly Tools et les outils individuels (import PDF, équations, tableaux, BibTeX, laboratoire et recherche bibliographique, échéances) ainsi que leurs commandes slash. Désactivé par défaut tant que c'est en bêta.",
         "label": "Outils LaTeX"
-      },
-      "liveCollaboration": {
-        "description": "Modifier des projets avec d'autres personnes via un serveur de collaboration que vous ou votre groupe hébergez. Ajoute une section Collaboration aux Paramètres. Désactivé par défaut tant que c'est en bêta.",
-        "label": "Collaboration en direct"
       },
       "researchTasks": {
         "description": "Un agent travaille seul dans une copie du projet et vous laisse ses modifications à relire. Très instable. Une exécution peut se bloquer, échouer ou laisser des modifications à trier à la main, et elle consomme en continu le quota de votre fournisseur. Ajoute une section Recherche aux Paramètres. La désactiver arrête toutes les tâches en cours. Désactivé par défaut, à activer à vos risques et périls.",

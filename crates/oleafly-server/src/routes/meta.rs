@@ -138,6 +138,9 @@ async fn manifest(State(state): State<AppState>) -> Result<Response, ServerError
             access_logs: runtime.access_logs_allowed,
             comments: runtime.comments_allowed,
             encryption: EncryptionSupport::None,
+            suggestions: true,
+            chat: true,
+            web: config.web_enabled(),
         },
         limits: Limits {
             max_project_mb: config.limits.max_project_mb,

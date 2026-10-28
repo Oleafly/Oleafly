@@ -37,7 +37,13 @@
     "too_large": "Shown when the Zotero library is bigger than one import allows. The RDF export is Zotero's File, Export Collection, Zotero RDF option."
   },
   "collab": {
-    "turned_off": "Shown when something asks for live collaboration while its switch is off. \"Live collaboration\" is the switch label and \"Experimentation\" is the Settings section that holds it. Use the same words as those two labels."
+    "suggestion_role": "Shown when someone whose role is reviewer or commenter tries to create, rename, move or delete a file in a shared project. Use the same words as the collaboration error with the same name."
+  },
+  "notebook": {
+    "code_needed": "{{engine}} is Quarto or Calepin. Code is the per-project setting in the Compile menu that lets the R, Python or Julia code in the document run. Its Off choice is what \"code is off\" means.",
+    "quarto_missing": "Settings > Engines > Quarto is the path to the Quarto tab. Use the same words as the Settings window title and the Engines section name, joined with >.",
+    "calepin_missing": "Settings > Engines > Calepin is the path to the Calepin tab. Use the same words as the Settings window title and the Engines section name, joined with >.",
+    "install_unverified": "{{tool}} is Quarto or Calepin. The downloaded archive did not match its checksum."
   },
   "provider_credit": {
     "failed": "{{provider}} is an AI provider name such as OpenRouter or DeepSeek. Keep it unchanged."

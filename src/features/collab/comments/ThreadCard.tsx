@@ -48,7 +48,7 @@ function useFailure() {
   return [error, run] as const;
 }
 
-function moveFocus(event: KeyboardEvent<HTMLButtonElement>) {
+export function moveFocus(event: KeyboardEvent<HTMLButtonElement>) {
   if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
   const pane = event.currentTarget.closest("[data-comments-pane]");
   if (!pane) return;
@@ -89,7 +89,7 @@ function MessageBody({
   );
 }
 
-function MessageRow({
+export function MessageRow({
   thread,
   message,
   context,

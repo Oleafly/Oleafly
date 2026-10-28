@@ -61,6 +61,7 @@
       "loading": "Cargando tus dispositivos…",
       "loadFailed": "Oleafly no pudo cargar tus dispositivos.",
       "current": "Este equipo",
+      "browser": "Navegador",
       "added": "Se añadió el {{date}}",
       "lastSeen": "Última conexión: {{date}}",
       "neverSeen": "Aún no se ha conectado",
@@ -139,6 +140,7 @@
   "addServer": {
     "title": "Añadir un servidor de colaboración",
     "description": "Escribe la dirección que te dio tu grupo. Oleafly comprueba el servidor antes de que inicies sesión.",
+    "oleaflyDescription": "El servidor público de Oleafly",
     "addressLabel": "Dirección del servidor",
     "addressPlaceholder": "collab.example.edu",
     "continue": "Continuar",
@@ -218,7 +220,15 @@
     "server_removed": "El servidor de este proyecto ya no está en tu lista. Guarda el proyecto como copia local o vuelve a añadir el servidor.",
     "share_in_progress": "Este proyecto ya se está compartiendo. Espera a que termine.",
     "cancelled": "Se canceló la apertura del proyecto compartido.",
-    "cloud_synced": "Tu biblioteca de Oleafly está en una carpeta que sincroniza un servicio en la nube. Sácala de Dropbox, OneDrive o iCloud Drive para compartir proyectos o unirte a ellos."
+    "cloud_synced": "Tu biblioteca de Oleafly está en una carpeta que sincroniza un servicio en la nube. Sácala de Dropbox, OneDrive o iCloud Drive para compartir proyectos o unirte a ellos.",
+    "suggestion_not_found": "Esa sugerencia ya no existe. Puede que alguien la haya aceptado o rechazado.",
+    "suggestion_not_yours": "Solo la persona que hizo esta sugerencia puede retirarla.",
+    "suggestion_role": "Tu rol en este proyecto no permite sugerencias.",
+    "chat_role": "Tu rol en este proyecto no permite hacer eso en el chat.",
+    "history_unavailable": "El historial de este proyecto todavía no está en este equipo. Vuelve a intentarlo cuando se haya sincronizado.",
+    "account_storage_full": "La cuenta de la persona propietaria del proyecto se quedó sin almacenamiento en este servidor. Quita algunos archivos para liberar espacio o pide más espacio al administrador del servidor.",
+    "too_many_projects": "Ya tienes tantos proyectos compartidos como permite este servidor. Deja de compartir uno antes de compartir otro.",
+    "too_many_uploads": "Has subido demasiados archivos en la última hora. Vuelve a intentarlo más tarde."
   },
   "roles": {
     "admin": "Administrador",
@@ -481,8 +491,16 @@
   "projectRoles": {
     "owner": "Propietario",
     "editor": "Editor",
+    "reviewer": "Revisor",
+    "commenter": "Comentador",
     "viewer": "Lector",
     "unknown": "Rol desconocido"
+  },
+  "projectRoleDescriptions": {
+    "editor": "Edita y revisa sugerencias",
+    "reviewer": "Sugiere cambios y comenta",
+    "commenter": "Lee y comenta",
+    "viewer": "Solo lee"
   },
   "share": {
     "button": "Compartir",
@@ -494,6 +512,8 @@
     "editCopy": "Esta es la copia compartida. A partir de ahora, edita esta y no la carpeta original.",
     "serverLabel": "Servidor",
     "noServers": "Primero inicia sesión en un servidor de colaboración y luego vuelve para compartir.",
+    "noServersYet": "Añade un servidor de colaboración e inicia sesión para compartir este proyecto.",
+    "addOleafly": "Añadir el servidor de Oleafly",
     "openSettings": "Abrir los ajustes de Colaboración",
     "checking": "Comprobando el proyecto…",
     "checkFailed": "Oleafly no pudo comprobar este proyecto.",
@@ -503,7 +523,7 @@
     "cloudSynced": "Tu biblioteca de Oleafly está en una carpeta que sincroniza iCloud, Dropbox o un servicio parecido. Dos servicios de sincronización se pelearían por los mismos archivos, así que Oleafly no puede compartir desde ahí. Primero saca la biblioteca de esa carpeta.",
     "tooLarge": "Estos archivos superan el límite del servidor, que es de {{size}} MB. Redúcelos o quítalos antes de compartir.",
     "renamed": "Algunos nombres no funcionan en todos los equipos. Las demás personas reciben estos archivos con un nombre un poco distinto.",
-    "excluded": "No se comparten: los archivos de compilación, los ajustes de Oleafly y el historial de Git.",
+    "excluded": "No se comparten: los demás archivos de compilación, los ajustes de Oleafly y el historial de Git. El PDF compilado más reciente sí se comparte, para que los coautores puedan leerlo en un navegador.",
     "start": "Compartir",
     "preparing": "Preparando el proyecto…",
     "uploading": "Subiendo figuras y otros archivos: {{done}} de {{total}}",
@@ -551,7 +571,7 @@
     },
     "comments": {
       "label": "Comentarios",
-      "description": "Cualquier persona que pueda editar puede comentar el texto de este proyecto. Si lo desactivas, los comentarios se ocultan, pero no se eliminan.",
+      "description": "Los propietarios, editores, revisores y comentadores pueden comentar el texto de este proyecto. Si lo desactivas, los comentarios se ocultan, pero no se eliminan.",
       "serverOff": "Los comentarios están desactivados en {{server}}. Pide a su administrador que los active."
     },
     "stop": "Dejar de compartir",
@@ -594,6 +614,7 @@
     "unknownPerson": "Alguien",
     "viewing": "Viendo {{path}}",
     "editing": "Editando {{path}}",
+    "reviewing": "Revisando {{path}}",
     "goTo": "Ir a donde está {{name}}",
     "nowhere": "No está en ningún archivo, así que no hay adónde ir"
   },
@@ -666,6 +687,8 @@
   },
   "activity": {
     "welcomeEdit": "Compartido por {{owner}} en {{server}}. Puedes editarlo.",
+    "welcomeReview": "Compartido por {{owner}} en {{server}}. Puedes sugerir cambios y comentar.",
+    "welcomeComment": "Compartido por {{owner}} en {{server}}. Puedes comentar.",
     "welcomeView": "Compartido por {{owner}} en {{server}}. Puedes verlo.",
     "joined": "{{name}} abrió el proyecto",
     "left": "{{name}} cerró el proyecto",
@@ -774,9 +797,7 @@
       "signedOutTitle": "No tienes la sesión iniciada en este servidor",
       "signedOutDescription": "Vuelve a iniciar sesión en Ajustes y luego abre la consola de administración desde la tarjeta del servidor.",
       "refusedTitle": "La consola de administración es para administradores y mantenedores",
-      "refusedDescription": "Tu rol en este servidor es {{role}}. Pide ayuda a un administrador si necesitas gestionarlo.",
-      "turnedOffTitle": "La colaboración en tiempo real está desactivada",
-      "turnedOffDescription": "Vuelve a activarla en Ajustes, en Experimentación, para gestionar este servidor aquí."
+      "refusedDescription": "Tu rol en este servidor es {{role}}. Pide ayuda a un administrador si necesitas gestionarlo."
     },
     "overview": {
       "loading": "Cargando el resumen…",
@@ -929,8 +950,6 @@
     }
   },
   "links": {
-    "turnedOff": "La colaboración en tiempo real está desactivada. Actívala en Ajustes, en Experimentación, y vuelve a abrir el enlace.",
-    "openSettings": "Abrir Ajustes",
     "malformed": "Oleafly no puede abrir este enlace. Pide uno nuevo a quien te lo envió.",
     "opening": "Abriendo el proyecto compartido…",
     "downloading": "Descargando archivos: {{done}} de {{total}}",
@@ -952,8 +971,8 @@
     "add": "Añadir comentario",
     "showResolved": "Mostrar comentarios resueltos",
     "hideResolved": "Ocultar comentarios resueltos",
-    "empty": "Todavía no hay comentarios.",
-    "emptyCanWrite": "Todavía no hay comentarios. Selecciona texto y elige Añadir comentario para empezar uno.",
+    "empty": "Todavía no hay comentarios ni sugerencias.",
+    "emptyCanWrite": "Todavía no hay comentarios ni sugerencias. Selecciona texto y elige Añadir comentario para empezar uno.",
     "allResolved": "Todos los comentarios están resueltos.",
     "loadFailed": "No se pudieron cargar los comentarios de este archivo.",
     "detached": "Desvinculados",
@@ -1010,6 +1029,111 @@
       "empty": "Escribe algo antes de publicar."
     }
   },
+  "suggestions": {
+    "insertedBy": "{{name}} sugirió añadir esto",
+    "deletedBy": "{{name}} sugirió eliminar esto",
+    "unverifiedLabel": "Sugerido por alguien que Oleafly no pudo verificar",
+    "card": "Sugerencia de {{name}}",
+    "unverifiedCard": "Sugerencia de alguien que Oleafly no pudo verificar",
+    "added": "Insertado",
+    "deleted": "Eliminado",
+    "accept": "Aceptar",
+    "reject": "Rechazar",
+    "withdraw": "Retirar",
+    "acceptAll": "Aceptar todas",
+    "rejectAll": "Rechazar todas",
+    "fileActions": "Sugerencias en {{file}}",
+    "pendingCount": "Sugerencias pendientes: {{number}}",
+    "loadFailed": "No se pudieron cargar las sugerencias de este archivo.",
+    "rejectAllConfirm": {
+      "title": "¿Rechazar todas las sugerencias de {{file}}?",
+      "description": "El texto original vuelve al archivo para todas las personas de este proyecto. Sugerencias pendientes: {{number}}.",
+      "confirm": "Rechazar todas"
+    },
+    "withdrawConfirm": {
+      "title": "¿Retirar esta sugerencia?",
+      "description": "El texto original vuelve al archivo para todas las personas de este proyecto.",
+      "confirm": "Retirar"
+    },
+    "pendingCompile": "Este proyecto tiene sugerencias pendientes de revisión: {{number}}. El PDF las muestra como si estuvieran aceptadas.",
+    "pendingExport": "Este proyecto tiene sugerencias pendientes de revisión: {{number}}. La exportación las incluye como si estuvieran aceptadas.",
+    "mode": {
+      "label": "Editando o sugiriendo",
+      "editing": "Editando",
+      "suggesting": "Sugiriendo",
+      "editingHint": "Editando: tus ediciones cambian el texto al instante",
+      "suggestingHint": "Sugiriendo: tus ediciones se convierten en sugerencias para que un propietario o un editor las acepte",
+      "reviewerHint": "Eres revisor, así que tus ediciones se convierten en sugerencias para que un propietario o un editor las acepte"
+    }
+  },
+  "chat": {
+    "title": "Chat",
+    "titleUnread": "Chat, mensajes nuevos",
+    "list": "Mensajes",
+    "empty": "Todavía no hay mensajes.",
+    "label": "Mensaje",
+    "placeholder": "Escribe un mensaje",
+    "send": "Enviar",
+    "readOnly": "Los lectores pueden leer el chat, pero no escribir en él.",
+    "offline": "Este proyecto no está conectado ahora mismo, así que no puedes enviar mensajes.",
+    "delete": "Eliminar mensaje",
+    "deleteConfirm": {
+      "title": "¿Eliminar este mensaje?",
+      "description": "Se elimina para todas las personas de este proyecto."
+    },
+    "deleted": "Este mensaje se eliminó.",
+    "clear": "Vaciar chat",
+    "clearConfirm": {
+      "title": "¿Vaciar el chat?",
+      "description": "Se eliminan todos los mensajes para todas las personas de este proyecto. No se puede deshacer.",
+      "confirm": "Vaciar chat"
+    },
+    "loadFailed": "Oleafly no pudo cargar el chat.",
+    "loadOlder": "Mostrar mensajes anteriores"
+  },
+  "history": {
+    "title": "Historial",
+    "refresh": "Actualizar historial",
+    "empty": "Todavía no hay cambios.",
+    "loadFailed": "Oleafly no pudo cargar el historial del proyecto.",
+    "loadMore": "Mostrar cambios anteriores",
+    "earlier": "Cambios anteriores",
+    "timeRange": "De {{from}} a {{to}}",
+    "authorsMore": "{{names}} y {{number}} más",
+    "filesChanged": "Archivos modificados: {{number}}",
+    "open": "Abrir",
+    "compare": "Comparar",
+    "compareWith": "Comparar con esta",
+    "comparePick": "Elige una segunda versión para comparar.",
+    "cancelCompare": "Cancelar",
+    "name": "Poner nombre a esta versión",
+    "rename": "Cambiar nombre",
+    "unname": "Quitar nombre",
+    "nameLabel": "Nombre de la versión",
+    "namePlaceholder": "Por ejemplo, Enviada a los revisores",
+    "versionDescription": "Así quedó el proyecto después de estos cambios. Puedes leerlo aquí sin cambiar nada.",
+    "files": "Archivos",
+    "noFiles": "En esta versión no cambió ningún archivo de texto.",
+    "fileLabel": "{{path}} tal como estaba el {{time}}",
+    "fileMissing": "Este archivo no existía en esta versión.",
+    "loadingFile": "Cargando…",
+    "restoreFile": "Restaurar este archivo",
+    "restoreProject": "Restaurar todo el proyecto",
+    "restoreFileConfirm": {
+      "title": "¿Restaurar {{path}}?",
+      "description": "El archivo vuelve al estado que tenía el {{time}} para todas las personas de este proyecto. Su texto actual se queda en el historial, así que puedes volver a él.",
+      "confirm": "Restaurar archivo"
+    },
+    "restoreProjectConfirm": {
+      "title": "¿Restaurar todo el proyecto?",
+      "description": "Todos los archivos vuelven al estado que tenían el {{time}} para todas las personas de este proyecto. El texto actual se queda en el historial, así que puedes volver a él.",
+      "confirm": "Restaurar proyecto"
+    },
+    "compareTitle": "Cambios entre dos versiones",
+    "compareDescription": "De {{from}} a {{to}}",
+    "changedFiles": "Archivos modificados: {{number}}",
+    "noChanges": "No cambió ningún texto entre estas versiones."
+  },
   "accessLog": {
     "opened": "{{name}} abrió el proyecto",
     "joinedLink": "{{name}} se unió con el enlace",
@@ -1065,6 +1189,10 @@
   "access": {
     "viewerBy": "{{name}} te cambió el rol a lector. Puedes leer este proyecto, pero no editarlo.",
     "viewer": "Ahora eres lector. Puedes leer este proyecto, pero no editarlo.",
+    "commenterBy": "{{name}} te cambió el rol a comentador. Puedes leer y comentar este proyecto, pero no editarlo.",
+    "commenter": "Ahora eres comentador. Puedes leer y comentar este proyecto, pero no editarlo.",
+    "reviewerBy": "{{name}} te cambió el rol a revisor. Tus ediciones se convierten en sugerencias para que un propietario o un editor las acepte.",
+    "reviewer": "Ahora eres revisor. Tus ediciones se convierten en sugerencias para que un propietario o un editor las acepte.",
     "viewOnly": "Puedes ver este proyecto compartido, pero no editarlo.",
     "connecting": "Este proyecto compartido aún se está conectando, así que todavía no se puede cambiar. Vuelve a intentarlo en un momento.",
     "unsentReadOnly": "Tus últimos cambios en {{path}} no se enviaron porque ahora solo puedes ver este proyecto.",
@@ -1081,6 +1209,8 @@
     "projectTooLarge": "{{file}} se queda en este equipo porque el proyecto alcanzó el límite de tamaño del servidor, {{limit}}. Pide a quien gestiona el servidor que lo suba.",
     "projectTooLargeUnknown": "{{file}} se queda en este equipo porque el proyecto alcanzó el límite de tamaño del servidor. Pide a quien gestiona el servidor que lo suba.",
     "projectFull": "Este proyecto alcanzó el límite de tamaño del servidor, así que tus cambios se quedan en este equipo por ahora. Pide a quien gestiona el servidor que lo suba.",
+    "accountStorageFull": "No se pudo compartir porque la persona propietaria del proyecto se quedó sin almacenamiento en este servidor: {{files}}",
+    "tooManyUploads": "Aún no se ha compartido porque has subido demasiados archivos en la última hora: {{files}}. Vuelve a intentarlo más tarde.",
     "replaced": "{{name}} reemplazó {{file}} al mismo tiempo que tú. Tu versión se guardó como {{copy}}.",
     "added": "{{file}} ahora se llama {{copy}} porque {{name}} agregó un archivo con el mismo nombre.",
     "beside": "{{name}} también tiene un archivo llamado {{file}}. Se guardó como {{copy}}.",

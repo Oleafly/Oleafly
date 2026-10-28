@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     projectName: "My paper",
     flushForQuit: vi.fn(),
     engine: {
+      id: "typst",
       source_format: "typst",
       typst_options: {
         system_fonts: true,
@@ -46,6 +47,7 @@ import { exportCurrentDocument, exportCurrentTypst } from "./export";
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.state.projectId = "paper-a";
+  mocks.state.engine.id = "typst";
   mocks.state.flushForQuit.mockResolvedValue(undefined);
   mocks.pickSavePath.mockResolvedValue("/out/My_paper.png");
   mocks.exportTypstDocument.mockResolvedValue({ files: ["/out/My_paper-1.png", "/out/My_paper-2.png"] });
@@ -81,6 +83,13 @@ describe("Typst native exports", () => {
     await exportCurrentTypst({ format: "svg" });
     expect(mocks.exportTypstDocument).not.toHaveBeenCalled();
     expect(mocks.infoUnique).not.toHaveBeenCalled();
+  });
+
+  it("leaves a Calepin document to its own compiler", async () => {
+    mocks.state.engine.id = "calepin";
+    await exportCurrentTypst({ format: "png" });
+    expect(mocks.pickSavePath).not.toHaveBeenCalled();
+    expect(mocks.exportTypstDocument).not.toHaveBeenCalled();
   });
 
   it("reports a Typst failure once and clears the progress toast", async () => {

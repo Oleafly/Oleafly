@@ -1097,6 +1097,16 @@
         "unknownEntryType": "Nieznany typ pozycji bibliografii @{{type}}."
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "opcja bloku kodu Quarto"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "opcja bloku kodu Calepin"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "Wczytywanie obrazu",
@@ -1582,7 +1592,7 @@
     "keyTaken": "Wariant nie może ustawić tej samej nazwy dwa razy.",
     "saveFailed": "Nie udało się zapisać wariantów."
   },
-  "sharedSettingsViewer": "Przeglądający nie mogą tego zmieniać we współdzielonym projekcie.",
+  "sharedSettingsViewer": "Tylko właściciele i edytujący mogą to zmieniać we współdzielonym projekcie.",
   "typstForms": {
     "message": "{{label}}: {{detail}}",
     "atKeyPath": "{{message}} (w {{path}})",

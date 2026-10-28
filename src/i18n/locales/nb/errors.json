@@ -44,7 +44,8 @@
     "folder_holds_templates": "I denne mappen lagrer Oleafly sine egne maler. Velg mappen til malen i stedet."
   },
   "settings": {
-    "locale_unsupported": "Språket {{locale}} er ikke tilgjengelig."
+    "locale_unsupported": "Språket {{locale}} er ikke tilgjengelig.",
+    "app_icon_unsupported": "Appikonet {{icon}} er ikke tilgjengelig."
   },
   "literature": {
     "query_empty": "Søket kan ikke være tomt.",
@@ -146,7 +147,8 @@
     "shell_escape": "Stol på denne mappen før du tillater shell escape.",
     "broad_folder": "Oleafly kan ikke stole på hele {{name}}. Velg en mindre mappe.",
     "declined": "Mappen ble ikke klarert.",
-    "unavailable": "Oleafly kunne ikke sjekke om denne mappen er klarert."
+    "unavailable": "Oleafly kunne ikke sjekke om denne mappen er klarert.",
+    "notebook": "Stol på denne mappen for å kompilere med Quarto eller Calepin."
   },
   "open_folder": {
     "not_absolute": "Bruk hele banen til mappen.",
@@ -335,7 +337,18 @@
     "browser_sign_in_failed": "Innloggingen fra nettleseren din fungerte ikke. Den kan ha utløpt. Logg inn i stedet."
   },
   "collab": {
-    "turned_off": "Samarbeid i sanntid er slått av. Slå det på i Innstillinger under Eksperimentering."
+    "suggestion_role": "Rollen din i dette prosjektet gir ikke lov til forslag."
+  },
+  "notebook": {
+    "code_needed": "{{engine}} må kjøre kode for å bygge dette dokumentet, og kode er slått av for dette prosjektet. Tillat kode i dette prosjektet for å kompilere det.",
+    "quarto_missing": "Quarto er ikke installert. Installer det under Innstillinger > Motorer > Quarto, og kompiler på nytt.",
+    "calepin_missing": "Calepin er ikke installert. Installer det under Innstillinger > Motorer > Calepin, og kompiler på nytt.",
+    "not_offered": "Oleafly kan ikke laste ned {{tool}} for denne maskinen. Installer det selv, og kompiler på nytt.",
+    "busy": "{{tool}} installeres fortsatt. Prøv igjen når installasjonen er ferdig.",
+    "install_unverified": "{{tool}} ble lastet ned, men bestod ikke integritetssjekken. Prøv å installere det på nytt.",
+    "unknown_tool": "Oleafly kjenner ikke til noe verktøy som heter {{tool}}.",
+    "not_managed": "Oleafly kan bare fjerne kopien av {{tool}} som den har lastet ned selv.",
+    "no_html_output": "Det finnes ingen HTML-utdata ennå. Kompiler dokumentet først."
   },
   "attachments": {
     "too_large": "Denne filen er større enn {{max}} MB. Legg ved en mindre fil.",

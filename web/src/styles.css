@@ -1,0 +1,31 @@
+@import "../../src/styles/globals.css";
+@source "./";
+@source "../../src/components/ui";
+
+:root {
+  --app-surface: var(--background);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--background);
+}
+
+.web-suggest-insert {
+  background-color: hsl(var(--suggest-hue) 85% 55% / 0.24);
+}
+
+.web-suggest-delete {
+  background-color: hsl(var(--suggest-hue) 85% 55% / 0.1);
+  color: hsl(var(--suggest-hue) 65% 36%);
+  text-decoration-line: line-through;
+}
+
+.dark .web-suggest-delete {
+  color: hsl(var(--suggest-hue) 75% 74%);
+}

@@ -199,6 +199,7 @@ pub(crate) fn project_state_engine(
         crate::document_engine::descriptor_for(&effective.engine, &effective.main_doc)?;
     crate::typst_toolchain::describe_project(&mut engine, &effective);
     crate::typst_options::describe(&mut engine, project_id, &effective);
+    crate::document_engine::describe_notebook_output(&mut engine, project_id, &effective.main_doc);
     engine.tex_flavor = effective.tex_flavor;
     engine.allow_shell_escape = effective.allow_shell_escape;
     Ok(engine)
@@ -274,7 +275,18 @@ struct ShellEscapeTrustRecord {
 }
 
 const SHELL_ESCAPE_NEEDS_LATEXMK: &str =
-    "shell escape can only be enabled for the system TeX (latexmk) engine";
+    "external commands and code can only be allowed for the latexmk, Quarto and Calepin engines";
+
+pub(crate) fn engine_runs_project_code(engine: &str) -> bool {
+    oleafly_core::Engine::named(engine).is_some_and(oleafly_core::Engine::runs_project_code)
+}
+
+pub(crate) fn engine_runs_notebook_code(engine: &str) -> bool {
+    matches!(
+        oleafly_core::Engine::named(engine),
+        Some(oleafly_core::Engine::Quarto | oleafly_core::Engine::Calepin)
+    )
+}
 
 fn shell_escape_trust_path(project_id: &str) -> Result<PathBuf, String> {
     paths::validate_project_id(project_id)?;
@@ -762,7 +774,7 @@ fn read_routed_meta(project_id: &str, route: &Route) -> Result<ProjectMeta, Stri
         }
     }
     meta.allow_shell_escape =
-        meta.engine == "latexmk" && shell_escape_trusted(project_id).unwrap_or(false);
+        engine_runs_project_code(&meta.engine) && shell_escape_trusted(project_id).unwrap_or(false);
     Ok(meta)
 }
 
@@ -858,7 +870,7 @@ pub(crate) fn follow_shared_settings<T>(
         if !changed {
             return Ok((outcome, None));
         }
-        if before == "latexmk" && meta.engine != "latexmk" {
+        if engine_runs_project_code(&before) && meta.engine != before {
             revoke_shell_escape_trust(project_id)?;
         }
         write_chosen_meta(project_id, &meta, SHARED_SETTING_FIELDS)?;
@@ -2288,6 +2300,7 @@ pub async fn write_file<R: tauri::Runtime>(
     expected_generation: Option<u64>,
     expected_hash: Option<String>,
 ) -> Result<FileMutationResult, String> {
+    refuse_new_shared_file(&project_id, &path)?;
     let watch = SettingsWatch::start(&project_id, is_root_manifest(&path));
     let result = write_project_file(
         project_id,
@@ -2432,6 +2445,13 @@ impl ProjectFileWrite {
     }
 }
 
+fn refuse_new_shared_file(project_id: &str, path: &str) -> Result<(), String> {
+    if resolve(project_id, path).is_ok_and(|target| target.exists()) {
+        return Ok(());
+    }
+    crate::collab::suggesting::tree_change_refused(project_id, &[path])
+}
+
 #[tauri::command(async)]
 pub fn create_file(
     project_id: String,
@@ -2440,6 +2460,7 @@ pub fn create_file(
     conflict_strategy: Option<FileConflictStrategy>,
     expected_generation: Option<u64>,
 ) -> Result<CreateFileResult, String> {
+    crate::collab::suggesting::tree_change_refused(&project_id, &[&path])?;
     let relative = mutation_relative_path(&project_id, &path, false)?;
     // KeepBoth may divert to a sibling name, so the admission scope covers the
     // whole parent rather than the single requested path.
@@ -2462,6 +2483,7 @@ pub fn delete_file(
     expected_generation: Option<u64>,
     permanent: Option<bool>,
 ) -> Result<FileMutationResult, String> {
+    crate::collab::suggesting::tree_change_refused(&project_id, &[&path])?;
     let deleted_rel = mutation_relative_path(&project_id, &path, true)?;
     if deleted_rel.is_empty() {
         return Err("refusing to delete project root".into());
@@ -2552,6 +2574,7 @@ pub async fn rename_file(
     expected_generation: Option<u64>,
     state: tauri::State<'_, crate::state::AppState>,
 ) -> Result<RenameFileResult, String> {
+    crate::collab::suggesting::tree_change_refused(&project_id, &[&from, &to])?;
     let result = rename_file_synchronized(
         &state,
         project_id.clone(),
@@ -2773,7 +2796,7 @@ fn rename_path_and_update_meta(
             });
         }
     };
-    let leaves_latexmk = meta.engine == "latexmk" && selected_engine != "latexmk";
+    let leaves_latexmk = engine_runs_project_code(&meta.engine) && selected_engine != meta.engine;
     if leaves_latexmk {
         if let Some(project_id) = project_id {
             if let Err(error) = revoke_shell_escape_trust(project_id) {
@@ -3338,6 +3361,7 @@ pub async fn copy_file(
     to: String,
     expected_generation: Option<u64>,
 ) -> Result<CopyFileResult, String> {
+    crate::collab::suggesting::tree_change_refused(&project_id, &[&to])?;
     let source_rel = mutation_relative_path(&project_id, &from, false)?;
     let destination_rel = mutation_relative_path(&project_id, &to, false)?;
     let source_scope = MutationScope::subtree(source_rel);
@@ -3426,6 +3450,7 @@ pub async fn save_file_base64(
     data: String,
     expected_generation: Option<u64>,
 ) -> Result<FileMutationResult, String> {
+    refuse_new_shared_file(&project_id, &path)?;
     let relative = mutation_relative_path(&project_id, &path, false)?;
     let admission = admit_mutation(
         &project_id,
@@ -3690,8 +3715,10 @@ fn set_main_doc_unlocked(project_id: String, main_doc: String) -> Result<Project
         let selected_engine = engine_for_main_document(&meta.engine, &main_doc)?;
         meta.main_doc = main_doc;
         if selected_engine != "latexmk" {
-            revoke_shell_escape_trust(&project_id)?;
             meta.tex_flavor = None;
+        }
+        if !engine_runs_project_code(&selected_engine) || selected_engine != meta.engine {
+            revoke_shell_escape_trust(&project_id)?;
             meta.allow_shell_escape = false;
         }
         meta.engine = selected_engine;
@@ -3707,7 +3734,11 @@ pub(crate) fn remember_detected_main(project_id: &str, main_doc: &str) -> Result
             return Ok(false);
         }
         let effective = read_routed_meta(project_id, &route)?;
-        let engine = engine_for_main_document(&effective.engine, main_doc)?;
+        let engine = detected_notebook_engine(
+            project_id,
+            main_doc,
+            engine_for_main_document(&effective.engine, main_doc)?,
+        );
         let stored = linked_listing_meta(project_id);
         if stored
             .as_ref()
@@ -3731,6 +3762,24 @@ pub(crate) fn remember_detected_main(project_id: &str, main_doc: &str) -> Result
         write_routed_meta(project_id, &route, &meta, MetaWrite::Device)?;
         Ok(true)
     })
+}
+
+fn detected_notebook_engine(project_id: &str, main_doc: &str, engine: String) -> String {
+    use std::io::Read as _;
+
+    if engine != "typst" {
+        return engine;
+    }
+    let mut head = Vec::new();
+    let read = resolve(project_id, main_doc)
+        .ok()
+        .and_then(|path| std::fs::File::open(path).ok())
+        .and_then(|file| file.take(64 * 1024).read_to_end(&mut head).ok());
+    if read.is_some() && oleafly_core::typst_uses_calepin(&String::from_utf8_lossy(&head)) {
+        "calepin".to_owned()
+    } else {
+        engine
+    }
 }
 
 fn pin_typst_if_unpinned(meta: &mut ProjectMeta) {
@@ -3825,13 +3874,17 @@ fn set_project_engine_unlocked(
     if engine.eq_ignore_ascii_case("latexmk") {
         crate::trust::require_trusted(project_id, crate::trust::Capability::SystemTex)?;
     }
+    if engine_runs_notebook_code(&engine) {
+        crate::trust::require_trusted(project_id, crate::trust::Capability::Notebook)?;
+    }
     let flavor = validate_tex_flavor(&engine, flavor)?;
     with_project_metadata(project_id, || {
         let mut meta = read_meta(project_id)?;
         crate::document_engine::engine_for(&engine, &meta.main_doc)?;
+        let changed = meta.engine != engine;
         meta.engine = engine;
         meta.tex_flavor = flavor;
-        if meta.engine != "latexmk" {
+        if !engine_runs_project_code(&meta.engine) || changed {
             revoke_shell_escape_trust(project_id)?;
             meta.allow_shell_escape = false;
         }
@@ -3990,7 +4043,7 @@ pub async fn set_project_shell_escape(
     let meta = shared_shell_escape::change(
         &project_id,
         allow_shell_escape,
-        shared_shell_escape::ask(app.clone()),
+        shared_shell_escape::ask(app.clone(), project_id.clone()),
         &state.compile_lock,
     )
     .await?;
@@ -4016,7 +4069,7 @@ fn set_project_shell_escape_unlocked(
     }
     with_project_metadata(project_id, || {
         let mut meta = read_meta(project_id)?;
-        if allow_shell_escape && meta.engine != "latexmk" {
+        if allow_shell_escape && !engine_runs_project_code(&meta.engine) {
             return Err(SHELL_ESCAPE_NEEDS_LATEXMK.into());
         }
         if allow_shell_escape {
@@ -4242,20 +4295,22 @@ pub(crate) fn engine_for_main_document(
     current_engine: &str,
     main_doc: &str,
 ) -> Result<String, String> {
-    let current_is_typst = matches!(
-        current_engine.trim().to_ascii_lowercase().as_str(),
-        "typst" | "typ"
-    );
-    let current_is_markdown = matches!(
-        current_engine.trim().to_ascii_lowercase().as_str(),
-        "markdown" | "md" | "pandoc"
+    let current = current_engine.trim().to_ascii_lowercase();
+    let current_is_calepin = current == "calepin";
+    let current_is_other_format = matches!(
+        current.as_str(),
+        "typst" | "typ" | "markdown" | "md" | "pandoc" | "quarto" | "qmd" | "calepin"
     );
     let lower = main_doc.to_ascii_lowercase();
-    let selected = if lower.ends_with(".typ") {
+    let selected = if lower.ends_with(".typ") && current_is_calepin {
+        "calepin".to_owned()
+    } else if lower.ends_with(".typ") {
         "typst".to_owned()
     } else if lower.ends_with(".md") || lower.ends_with(".markdown") {
         "markdown".to_owned()
-    } else if current_is_typst || current_is_markdown {
+    } else if lower.ends_with(".qmd") || lower.ends_with(".rmd") {
+        "quarto".to_owned()
+    } else if current_is_other_format {
         default_engine()
     } else {
         current_engine.to_owned()
@@ -4302,6 +4357,26 @@ pub(crate) fn template_engine(
         ),
         None => (engine, None),
     })
+}
+
+pub(crate) fn declared_template_engine(
+    declared: &str,
+    main_doc: &str,
+    tex_flavor: Option<&str>,
+) -> Result<(String, Option<String>), String> {
+    let notebook = oleafly_core::Engine::named(declared)
+        .filter(|engine| {
+            matches!(
+                engine,
+                oleafly_core::Engine::Quarto | oleafly_core::Engine::Calepin
+            )
+        })
+        .map(oleafly_core::Engine::manifest_name)
+        .filter(|name| crate::document_engine::engine_for(name, main_doc).is_ok());
+    match notebook {
+        Some(name) => Ok((name.to_owned(), None)),
+        None => template_engine(main_doc, tex_flavor),
+    }
 }
 
 #[tauri::command(async)]
@@ -6573,46 +6648,62 @@ pub async fn export_document(
     let root = location.root.clone();
     resolve_export_main_document(&project_id, &main_doc)?;
     require_export_destination_outside_project(&root, &dest)?;
-    let found = tauri::async_runtime::spawn_blocking(find_pandoc)
-        .await
-        .map_err(|e| e.to_string())?;
-    let pandoc = match found {
-        Some(p) => p,
-        None => download_pandoc_impl(app, &state.pandoc_install_lock).await?,
-    };
-    let transaction = AtomicFile::for_export(&dest)?;
-    let staged_dest = transaction.staging_path().to_string_lossy().into_owned();
-    let build_dir = crate::paths::existing_build_dir(&project_id).ok().flatten();
-    let staging_dir = crate::conversion::export_renders_citations(&format)
-        .then(|| export_staging_dir(&location))
-        .flatten();
-    let through_html = crate::typst_export::convert_through_html(
-        &project_id,
-        &root,
-        &main_doc,
-        &format,
-        Path::new(&pandoc),
-        &staged_dest,
-        typst_variant,
-    )
-    .await;
-    if !matches!(through_html, Ok(true)) {
-        run_export_pandoc(
+    if crate::document_engine::exports_through_engine(&meta.engine, &meta.main_doc) {
+        crate::document_engine::require_notebook_trust(&project_id, &meta.engine, &meta.main_doc)?;
+        let effective = crate::trust::restrict_compile_meta(&project_id, meta.clone())?;
+        let transaction = AtomicFile::for_export(&dest)?;
+        crate::document_engine::export_notebook(crate::document_engine::NotebookExport {
+            engine: &effective.engine,
+            project_dir: &root,
+            main_document: &main_doc,
+            format: &format,
+            destination: transaction.staging_path(),
+            allow_code: effective.allow_shell_escape,
+        })
+        .await?;
+        transaction.commit()?;
+    } else {
+        let found = tauri::async_runtime::spawn_blocking(find_pandoc)
+            .await
+            .map_err(|e| e.to_string())?;
+        let pandoc = match found {
+            Some(p) => p,
+            None => download_pandoc_impl(app, &state.pandoc_install_lock).await?,
+        };
+        let transaction = AtomicFile::for_export(&dest)?;
+        let staged_dest = transaction.staging_path().to_string_lossy().into_owned();
+        let build_dir = crate::paths::existing_build_dir(&project_id).ok().flatten();
+        let staging_dir = crate::conversion::export_renders_citations(&format)
+            .then(|| export_staging_dir(&location))
+            .flatten();
+        let through_html = crate::typst_export::convert_through_html(
+            &project_id,
+            &root,
+            &main_doc,
+            &format,
             Path::new(&pandoc),
-            ExportJob {
-                root: &root,
-                build_dir,
-                main_doc: &main_doc,
-                format: &format,
-                output: &staged_dest,
-                staging_dir,
-                temp_dir: None,
-            },
+            &staged_dest,
+            typst_variant,
         )
-        .await
-        .map_err(|error| through_html.err().unwrap_or(error))?;
+        .await;
+        if !matches!(through_html, Ok(true)) {
+            run_export_pandoc(
+                Path::new(&pandoc),
+                ExportJob {
+                    root: &root,
+                    build_dir,
+                    main_doc: &main_doc,
+                    format: &format,
+                    output: &staged_dest,
+                    staging_dir,
+                    temp_dir: None,
+                },
+            )
+            .await
+            .map_err(|error| through_html.err().unwrap_or(error))?;
+        }
+        transaction.commit()?;
     }
-    transaction.commit()?;
     drop(worktree);
     if let Ok(canon) = Path::new(&reveal_dest).canonicalize() {
         let mut allow = state.reveal_allowlist.lock().await;
@@ -7295,8 +7386,11 @@ pub fn create_project_from_template(
     let dir = reservation.path().to_path_buf();
     let project_id = create_project_transaction(reservation, || {
         let manifest = crate::templates::instantiate(&app, &template_id, &dir)?;
-        let (engine, tex_flavor) =
-            template_engine(&manifest.main_doc, manifest.tex_flavor.as_deref())?;
+        let (engine, tex_flavor) = declared_template_engine(
+            &manifest.engine,
+            &manifest.main_doc,
+            manifest.tex_flavor.as_deref(),
+        )?;
         crate::document_engine::engine_for(&engine, &manifest.main_doc)?;
         crate::assets::stage_template_fonts(&app, &manifest, &dir)?;
         let color = color
@@ -7994,6 +8088,7 @@ pub async fn import_paths_into_project<R: tauri::Runtime>(
     source_paths: Vec<String>,
     expected_generation: Option<u64>,
 ) -> Result<ImportPathsResult, String> {
+    crate::collab::suggesting::tree_change_refused(&project_id, &[&dest_dir])?;
     {
         use tauri::Manager;
         let drops = app.try_state::<crate::native_drop::NativeDropState>();
@@ -8300,11 +8395,7 @@ pub async fn recycle_project(
     )
     .await;
     if restarted {
-        if crate::collab::switch::enabled() {
-            crate::collab::live::commands::settle_started(app, project_id).await;
-        } else {
-            crate::collab::live::stop(&project_id).await;
-        }
+        crate::collab::live::commands::settle_started(app, project_id).await;
     }
     recycled
 }
@@ -8380,19 +8471,21 @@ mod tests {
         copy_path_in_project, create_blank_project, create_diagram_project_from,
         create_image_project_in, create_markdown_project_in, create_path_in_project,
         create_project_from_ad_hoc_blocking, create_project_from_pdf_conversion_blocking,
-        create_project_transaction, create_typst_project_in, download_project_zip,
-        duplicate_project, engine_for_main_document, export_would_write_inside_project,
-        extract_pandoc, flatten_single_root_folder, get_or_create_scratch_project_blocking,
-        import_paths_transactional, import_paths_transactional_with, import_project_zip_bytes,
-        import_project_zip_bytes_with, import_skip, infer_main_document, is_table_import_extension,
-        normalize_loaded_tex_flavor, normalize_relative, pandoc_asset_for,
-        pandoc_version_supported, read_meta, read_picked_file_bytes, rel_slash, rename_exclusive,
-        rename_path_in_project, safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized,
-        set_main_doc_unlocked, try_reserve_project_directory,
-        try_reserve_project_directory_adopting, validate_conversion_export, validate_tex_flavor,
-        write_meta_at, AdHocProjectFile, CreateAdHocProjectRequest, CreateFileResult,
-        FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta, RenameFileResult,
-        SearchHit, TexSpec, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
+        create_project_transaction, create_typst_project_in, declared_template_engine,
+        download_project_zip, duplicate_project, engine_for_main_document,
+        engine_for_untrusted_project, engine_runs_notebook_code, engine_runs_project_code,
+        export_would_write_inside_project, extract_pandoc, flatten_single_root_folder,
+        get_or_create_scratch_project_blocking, import_paths_transactional,
+        import_paths_transactional_with, import_project_zip_bytes, import_project_zip_bytes_with,
+        import_skip, infer_main_document, is_table_import_extension, normalize_loaded_tex_flavor,
+        normalize_relative, pandoc_asset_for, pandoc_version_supported, read_meta,
+        read_picked_file_bytes, rel_slash, rename_exclusive, rename_path_in_project,
+        safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
+        try_reserve_project_directory, try_reserve_project_directory_adopting,
+        validate_conversion_export, validate_tex_flavor, write_meta_at, AdHocProjectFile,
+        CreateAdHocProjectRequest, CreateFileResult, FileConflictStrategy, MutationScope,
+        PdfConversionFigure, ProjectMeta, RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID,
+        TABLE_IMPORT_ALLOWLIST_LIMIT,
     };
     use std::collections::HashMap;
     use std::io::Write;
@@ -13595,6 +13688,54 @@ mod tests {
             engine_for_main_document("markdown", "main.tex").unwrap(),
             "xetex"
         );
+    }
+
+    #[test]
+    fn notebook_engines_follow_their_main_documents() {
+        assert_eq!(
+            engine_for_main_document("xetex", "paper.qmd").unwrap(),
+            "quarto"
+        );
+        assert_eq!(
+            engine_for_main_document("typst", "analysis.Rmd").unwrap(),
+            "quarto"
+        );
+        assert_eq!(
+            engine_for_main_document("quarto", "main.tex").unwrap(),
+            "xetex"
+        );
+        assert_eq!(
+            engine_for_main_document("calepin", "chapters/two.typ").unwrap(),
+            "calepin"
+        );
+        assert_eq!(
+            engine_for_main_document("calepin", "notes.md").unwrap(),
+            "markdown"
+        );
+        assert_eq!(engine_for_untrusted_project("report.typ").unwrap(), "typst");
+        assert_eq!(
+            declared_template_engine("calepin", "report.typ", None).unwrap(),
+            ("calepin".to_owned(), None)
+        );
+        assert_eq!(
+            declared_template_engine("Quarto", "slides.qmd", None)
+                .unwrap()
+                .0,
+            "quarto"
+        );
+        assert_eq!(
+            declared_template_engine("calepin", "report.tex", Some("pdflatex"))
+                .unwrap()
+                .0,
+            "latexmk"
+        );
+        assert!(engine_runs_project_code("latexmk"));
+        assert!(engine_runs_project_code("quarto"));
+        assert!(engine_runs_project_code("calepin"));
+        assert!(!engine_runs_project_code("xetex"));
+        assert!(!engine_runs_project_code("typst"));
+        assert!(engine_runs_notebook_code("calepin"));
+        assert!(!engine_runs_notebook_code("latexmk"));
     }
 
     // Held across awaits deliberately: it serializes the shared test data-dir

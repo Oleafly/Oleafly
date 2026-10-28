@@ -338,6 +338,8 @@ pub fn new_project_engine(
         "typst"
     } else if lower.ends_with(".md") || lower.ends_with(".markdown") {
         "markdown"
+    } else if lower.ends_with(".qmd") || lower.ends_with(".rmd") {
+        "quarto"
     } else if latex_default_engine == Some(LATEXMK) {
         LATEXMK
     } else {
@@ -364,6 +366,21 @@ pub fn template_engine(
         Some(flavor) => (LATEXMK.to_string(), Some(flavor.as_str().to_string())),
         None => (engine, None),
     })
+}
+
+pub fn declared_template_engine(
+    declared: &str,
+    main_doc: &str,
+    tex_flavor: Option<&str>,
+    latex_default_engine: Option<&str>,
+) -> Result<(String, Option<String>), String> {
+    match Engine::named(declared)
+        .filter(|engine| matches!(engine, Engine::Quarto | Engine::Calepin))
+        .filter(|engine| engine.accepts(main_doc))
+    {
+        Some(engine) => Ok((engine.manifest_name().to_string(), None)),
+        None => template_engine(main_doc, tex_flavor, latex_default_engine),
+    }
 }
 
 #[cfg(test)]
@@ -591,6 +608,34 @@ mod tests {
             ("xetex".into(), None)
         );
         assert!(template_engine("main.txt", None, None).is_err());
+        assert_eq!(
+            template_engine("paper.qmd", None, None).unwrap(),
+            ("quarto".into(), None)
+        );
+        assert_eq!(
+            template_engine("analysis.Rmd", None, None).unwrap(),
+            ("quarto".into(), None)
+        );
+    }
+
+    #[test]
+    fn a_declared_quarto_or_calepin_engine_is_kept() {
+        assert_eq!(
+            declared_template_engine("calepin", "report.typ", None, None).unwrap(),
+            ("calepin".into(), None)
+        );
+        assert_eq!(
+            declared_template_engine("Quarto", "slides.qmd", None, None).unwrap(),
+            ("quarto".into(), None)
+        );
+        assert_eq!(
+            declared_template_engine("calepin", "report.tex", Some("pdflatex"), None).unwrap(),
+            ("latexmk".into(), Some("pdflatex".into()))
+        );
+        assert_eq!(
+            declared_template_engine("typst", "main.typ", None, None).unwrap(),
+            ("typst".into(), None)
+        );
     }
 
     #[test]

@@ -223,7 +223,7 @@ describe("EditorContextMenu", () => {
     expect(formatting.formatWithLanguageService).toHaveBeenCalledWith(view, "selection");
   });
 
-  // Opens the menu once per item, 17 times; that takes over a second here and more on a loaded Windows runner.
+  // Nineteen menu walks: 3.3 s on a Windows runner, over 5 s under load.
   it("writes Typst markup from the Typst menu", () => {
     openMenu(engineWithProfile("typst"), true);
 

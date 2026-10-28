@@ -34,6 +34,7 @@ import { projectFileLinksExtension } from "./cm/file-links";
 import { cursorSignalExtension } from "./cm/cursor-signal";
 import { collabEditorSlot } from "./cm/collab-slot";
 import { commentsEditorSlot } from "./cm/comments-slot";
+import { suggestionsEditorSlot } from "./cm/suggestions-slot";
 import { requestComment } from "@/components/collab/comments-rail";
 import { historySignalExtension } from "./history-signal";
 import { recompileShortcutBinding } from "./cm/recompile-shortcut";
@@ -370,10 +371,10 @@ export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean 
     <CodeMirrorEditorCore
       active={active}
       host={HOST}
-      extraExtensions={[...SHELL_EXTENSIONS, collabEditorSlot(), commentsEditorSlot()]}
+      extraExtensions={[...SHELL_EXTENSIONS, collabEditorSlot(), commentsEditorSlot(), suggestionsEditorSlot()]}
       extraExtensionsForPath={(path) => {
         if (hasTypstFormsLint(path)) return [typstFormsLint(path)];
-        if (!path || !/\.(?:tex|latex|ltx|sty|cls|md|markdown|typ|bib)$/i.test(path)) {
+        if (!path || !/\.(?:tex|latex|ltx|sty|cls|md|markdown|qmd|rmd|typ|bib)$/i.test(path)) {
           return [];
         }
         if (/\.(?:tex|latex|ltx|sty|cls)$/i.test(path)) {

@@ -20,6 +20,7 @@ import { usePdfPosition } from "@/lib/use-pdf-position";
 import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
 import { usePreviewGeometry } from "@/lib/preview-geometry";
 import type { PreviewWorkspaceSnapshot } from "@/lib/preview-workspace";
+import { HtmlOutputPanel } from "./HtmlOutputPanel";
 import {
   useCallback,
   useDeferredValue,
@@ -901,6 +902,10 @@ export function PreviewWindow({
     previewDocument !== null &&
     !displayedIsCurrent &&
     !disableNativeBridge;
+  const htmlBuiltAt =
+    workspace?.htmlOutput && workspace.htmlOutput.projectId === projectId
+      ? workspace.htmlOutput.builtAt
+      : null;
   const placeholderTitle = (): string => {
     if (compileState?.status === "compiling") return t(($) => $.preview.window.compilingTitle);
     if (compileState?.status === "error") return t(($) => $.preview.window.compileFailedTitle);
@@ -961,7 +966,12 @@ export function PreviewWindow({
           : undefined
       }
     >
-      {previewDocument ? (
+      {htmlBuiltAt !== null && (
+        <div className="flex h-full items-center justify-center px-6">
+          <HtmlOutputPanel projectId={projectId} builtAt={htmlBuiltAt} />
+        </div>
+      )}
+      {htmlBuiltAt === null && (previewDocument ? (
         <ErrorBoundary
           resetKey={`${previewDocument.identity}:${viewerReload}`}
           fallback={
@@ -1016,7 +1026,7 @@ export function PreviewWindow({
             }
           />
         </div>
-      )}
+      ))}
     </section>
   );
 
@@ -1136,8 +1146,9 @@ export function PreviewWindow({
           typstVariant={workspace?.typstVariant ?? null}
           setTypstVariant={(variant) => { void command({ action: "typst-variant", variant }); }}
           livePreview={workspace?.livePreview}
+          setCodeExecution={(allow) => command({ action: "code-execution", value: allow })}
           onOptionsOpen={() => {
-            if (workspace?.engine.source_format === "typst") void refreshTypstToolchain();
+            if (workspace?.engine.id === "typst") void refreshTypstToolchain();
           }}
         />
         <Button size="sm" variant="ghost" className="ml-auto" data-testid="preview-reattach"
@@ -1153,7 +1164,7 @@ export function PreviewWindow({
             </Button>
           </div>}
         {!logsOpen && <PdfToolbarControls
-          isImage={false} hasDocument={!!previewDocument} numPages={numPages}
+          isImage={false} hasDocument={!!previewDocument && htmlBuiltAt === null} numPages={numPages}
           page={page} pageInput={pageInput} setPageInput={setPageInput} jumpToPage={jumpToPage}
           pdfRef={pdfRef} layout={layout} setLayout={setLayout}
           outlineOpen={outlineOpen} setOutlineOpen={setOutlineOpen}
@@ -1162,7 +1173,7 @@ export function PreviewWindow({
           exporting={exporting} exportDisplayedPreview={downloadDisplayedPdf}
           downloadActionLabel={() => displayedIsStale ? t(($) => $.preview.actions.downloadStalePdf) : t(($) => $.preview.actions.downloadPdf)}
           onSave={() => {
-            setSaveName(`${(workspace?.mainDoc || compileState?.identity.mainDocument || "document").replace(/\.(?:tex|typ|md|markdown)$/i, "")}.pdf`);
+            setSaveName(`${(workspace?.mainDoc || compileState?.identity.mainDocument || "document").replace(/\.(?:tex|typ|md|markdown|qmd|rmd)$/i, "")}.pdf`);
             setSaveOpen(true);
           }}
           inverted={inverted} setInverted={setInverted} screenReaderMode={screenReaderMode} setScreenReaderMode={setScreenReaderMode}

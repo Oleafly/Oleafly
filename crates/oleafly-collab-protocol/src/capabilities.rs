@@ -45,6 +45,12 @@ pub struct Features {
     pub access_logs: bool,
     pub comments: bool,
     pub encryption: EncryptionSupport,
+    #[serde(default)]
+    pub suggestions: bool,
+    #[serde(default)]
+    pub chat: bool,
+    #[serde(default)]
+    pub web: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -107,7 +113,10 @@ mod tests {
             "link_sharing": false,
             "access_logs": false,
             "comments": true,
-            "encryption": "none"
+            "encryption": "none",
+            "suggestions": true,
+            "chat": true,
+            "web": false
         },
         "limits": { "max_project_mb": 200, "max_file_mb": 50, "max_members_per_project": 20 }
     }"#;
@@ -139,6 +148,9 @@ mod tests {
                 access_logs: false,
                 comments: true,
                 encryption: EncryptionSupport::None,
+                suggestions: true,
+                chat: true,
+                web: false,
             },
             limits: Limits {
                 max_project_mb: 200,
@@ -171,6 +183,20 @@ mod tests {
             serde_json::from_value::<CapabilityManifest>(value).unwrap(),
             manifest()
         );
+    }
+
+    #[test]
+    fn a_manifest_from_an_older_server_has_no_suggestions_chat_or_browser_access() {
+        let mut value: serde_json::Value = serde_json::from_str(MANIFEST).unwrap();
+        let features = value["features"].as_object_mut().unwrap();
+        for key in ["suggestions", "chat", "web"] {
+            features.remove(key);
+        }
+        let parsed: CapabilityManifest = serde_json::from_value(value).unwrap();
+        assert!(!parsed.features.suggestions);
+        assert!(!parsed.features.chat);
+        assert!(!parsed.features.web);
+        assert!(parsed.features.comments);
     }
 
     #[test]

@@ -16,6 +16,7 @@ use crate::db::{parse_id, Db};
 use crate::error::ServerError;
 use crate::mentions::{self, Span};
 use crate::peers::{self, Reach};
+use crate::role_guard::{self, RoleRule, RoleVerdict};
 use crate::security_log::{self, NewSecurityEvent};
 use crate::snapshots::{self, Budgeted, Current, Keep, Replay, Snapshots};
 use crate::state::AppState;
@@ -546,15 +547,70 @@ impl CommentGuard {
         Ok(verdict)
     }
 
-    // Kept documents already give their memory to this read when it needs
-    // it, so waiting here only waits for documents in use and builds. A
-    // build of this very project is waited for to its end, once, since its
-    // memory comes back when it finishes.
+    pub async fn check_role(
+        &self,
+        db: &Db,
+        snapshots: &Snapshots,
+        project: SharedProjectId,
+        payload: Vec<u8>,
+        rule: RoleRule,
+    ) -> Result<RoleVerdict, ServerError> {
+        let slot = self.slot(project);
+        let _turn = slot.turn.lock().await;
+        let kept = snapshots.take_kept(Keep::CommentChecks, project);
+        let current = match snapshots.caught_up(db, project, kept).await? {
+            Some(current) => Some(current),
+            None => self.read_quietly(db, snapshots, project).await?,
+        };
+        let Some((replay, seq)) = current else {
+            return Ok(RoleVerdict::Unchecked);
+        };
+        let (verdict, replay) = tokio::task::spawn_blocking(move || {
+            let before = replay.doc().oplog_frontiers();
+            let (verdict, intact) = role_guard::judge(replay.doc(), &payload, &rule);
+            let replay = if intact {
+                Some(replay)
+            } else {
+                rewound(project, &replay, &before).map(|fresh| replay.replaced(fresh))
+            };
+            (verdict, replay)
+        })
+        .await
+        .map_err(|error| ServerError::Internal(format!("a role check failed: {error}")))?;
+        if let Some(replay) = replay {
+            snapshots.keep(Keep::CommentChecks, project, replay, seq);
+        }
+        Ok(verdict)
+    }
+
+    async fn read_quietly(
+        &self,
+        db: &Db,
+        snapshots: &Snapshots,
+        project: SharedProjectId,
+    ) -> Result<Option<(Budgeted, u64)>, ServerError> {
+        self.read_for(db, snapshots, project, false).await
+    }
+
     async fn read(
         &self,
         db: &Db,
         snapshots: &Snapshots,
         project: SharedProjectId,
+    ) -> Result<Option<(Budgeted, u64)>, ServerError> {
+        self.read_for(db, snapshots, project, true).await
+    }
+
+    // Kept documents already give their memory to this read when it needs
+    // it, so waiting here only waits for documents in use and builds. A
+    // build of this very project is waited for to its end, once, since its
+    // memory comes back when it finishes.
+    async fn read_for(
+        &self,
+        db: &Db,
+        snapshots: &Snapshots,
+        project: SharedProjectId,
+        warn: bool,
     ) -> Result<Option<(Budgeted, u64)>, ServerError> {
         let mut waited_for_build = false;
         for _ in 0..BUSY_TRIES {
@@ -568,6 +624,7 @@ impl CommentGuard {
                     }
                     _ => tokio::time::sleep(BUSY_PAUSE).await,
                 },
+                Current::TooLarge { .. } | Current::Missing if !warn => return Ok(None),
                 Current::TooLarge { needed, allowed } => {
                     self.warn(project, &format!(
                         "reading it needs about {} MB and OLEAFLY_SNAPSHOT_MEMORY_MB allows {} MB. Raise OLEAFLY_SNAPSHOT_MEMORY_MB to keep comments off for it",
@@ -582,10 +639,12 @@ impl CommentGuard {
                 }
             }
         }
-        self.warn(
-            project,
-            "snapshot builds and other reads held the memory budget",
-        );
+        if warn {
+            self.warn(
+                project,
+                "snapshot builds and other reads held the memory budget",
+            );
+        }
         Ok(None)
     }
 

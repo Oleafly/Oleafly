@@ -77,6 +77,7 @@ export type RailTab =
   | "research"
   | "collab"
   | "comments"
+  | "chat"
   | "mcp";
 
 export type DockPlacement = "left" | "right" | "bottom";
@@ -820,6 +821,31 @@ export function appZoomLevel(value: unknown): number {
   return APP_ZOOM_LEVELS.includes(level) ? level : 100;
 }
 
+export const APP_ICONS = [
+  { id: "pastel", src: "/app-icon/pastel.png" },
+  { id: "blue", src: "/app-icon/blue.png" },
+  { id: "light", src: "/app-icon/light.png" },
+  { id: "prism", src: "/app-icon/prism.png" },
+  { id: "iridescent", src: "/app-icon/iridescent.png" },
+  { id: "ocean", src: "/app-icon/ocean.png" },
+  { id: "mint", src: "/app-icon/mint.png" },
+  { id: "aurora", src: "/app-icon/aurora.png" },
+  { id: "sunset", src: "/app-icon/sunset.png" },
+  { id: "coral", src: "/app-icon/coral.png" },
+] as const;
+
+export type AppIconId = (typeof APP_ICONS)[number]["id"];
+
+export const APP_ICON_IDS: readonly AppIconId[] = APP_ICONS.map((icon) => icon.id);
+
+export function readAppIcon(value: unknown): AppIconId {
+  return APP_ICON_IDS.find((id) => id === value) ?? "pastel";
+}
+
+export function appIconSource(id: AppIconId): string {
+  return (APP_ICONS.find((icon) => icon.id === id) ?? APP_ICONS[0]).src;
+}
+
 export const EDITOR_FONT_SIZES: readonly number[] = [11, 12, 13, 14, 15, 16, 18, 20, 24];
 
 export const EDITOR_FONT_SIZE_RANGE = { min: 6, max: 100, step: 1 } as const;
@@ -1069,12 +1095,12 @@ interface SettingsState {
   setDockPlacement: (v: DockPlacement) => void;
   bgPattern: BackgroundPattern;
   setBgPattern: (v: BackgroundPattern) => void;
+  appIcon: AppIconId;
+  setAppIcon: (v: AppIconId) => void;
   homeProjectLayout: HomeProjectLayout;
   setHomeProjectLayout: (v: HomeProjectLayout) => void;
   latexTools: boolean;
   setLatexTools: (v: boolean) => void;
-  liveCollaboration: boolean;
-  setLiveCollaboration: (v: boolean) => void;
   // Engine for NEW LaTeX projects: "tectonic" (bundled, zero-setup) or
   // "latexmk" (system TeX; full Overleaf tool parity). Existing projects keep
   // their own pin in project.json.
@@ -1246,9 +1272,9 @@ const PREF_DEFAULTS = {
   accentColor: "#2563eb",
   dockPlacement: "left" as DockPlacement,
   bgPattern: "dots" as BackgroundPattern,
+  appIcon: "pastel" as AppIconId,
   homeProjectLayout: "grid" as HomeProjectLayout,
   latexTools: false,
-  liveCollaboration: false,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
 } as const;
 
@@ -1257,10 +1283,6 @@ type PrefKey = keyof typeof PREF_DEFAULTS;
 export type PreferenceKey = Exclude<PrefKey, "vim" | "offline">;
 
 export type PreferenceValues = { [K in PreferenceKey]: SettingsState[K] };
-
-// Where the Live collaboration switch is kept. Other windows, such as the
-// admin console, follow it through the storage event.
-export const LIVE_COLLABORATION_KEY = "oleafly.liveCollaboration";
 
 // What each Settings section's Reset button restores, mapped to the storage key
 // that persists it (null: kept for the session only). The reset and
@@ -1343,11 +1365,11 @@ export const SECTION_SETTINGS = {
     accentColor: "oleafly.accent",
     dockPlacement: "oleafly.dockPlacement",
     bgPattern: "oleafly.bgPattern",
+    appIcon: "oleafly.appIcon",
     homeProjectLayout: "oleafly.library.projectLayout",
   },
   experimentation: {
     latexTools: "oleafly.latexTools",
-    liveCollaboration: LIVE_COLLABORATION_KEY,
   },
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
@@ -1401,6 +1423,16 @@ export function sectionDiffersFromDefaults(
     return !Object.is(current, value);
   });
 }
+
+function dropRetiredLiveCollaborationFlag(): void {
+  try {
+    localStorage.removeItem("oleafly.liveCollaboration");
+  } catch {
+    return;
+  }
+}
+
+dropRetiredLiveCollaborationFlag();
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   editorKeymap: initialEditorKeymap,
@@ -2021,6 +2053,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.bgPattern", v);
     set({ bgPattern: v });
   },
+  appIcon: readAppIcon(ls("oleafly.appIcon", "pastel")),
+  setAppIcon: (v) => {
+    const icon = readAppIcon(v);
+    saveLs("oleafly.appIcon", icon);
+    set({ appIcon: icon });
+  },
   homeProjectLayout:
     ls("oleafly.library.projectLayout", "grid") === "list" ? "list" : "grid",
   setHomeProjectLayout: (v) => {
@@ -2031,11 +2069,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setLatexTools: (v) => {
     saveLs("oleafly.latexTools", v ? "1" : "0");
     set({ latexTools: v });
-  },
-  liveCollaboration: ls(LIVE_COLLABORATION_KEY, "0") === "1",
-  setLiveCollaboration: (v) => {
-    saveLs(LIVE_COLLABORATION_KEY, v ? "1" : "0");
-    set({ liveCollaboration: v });
   },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),

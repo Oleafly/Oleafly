@@ -5,7 +5,7 @@ import { fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
 import { indentUnit } from "@codemirror/language";
-import type { CompletionSource } from "@codemirror/autocomplete";
+import { currentCompletions, startCompletion, type CompletionSource } from "@codemirror/autocomplete";
 import { getCM, Vim } from "@replit/codemirror-vim";
 import type { CodeMirrorV } from "@replit/codemirror-vim";
 import { forceLinting, forEachDiagnostic } from "@codemirror/lint";
@@ -47,6 +47,8 @@ describe("isProseSourcePath", () => {
   it("enables prose checks for Markdown, LaTeX, and Typst", () => {
     expect(isProseSourcePath("main.md")).toBe(true);
     expect(isProseSourcePath("paper.MARKDOWN")).toBe(true);
+    expect(isProseSourcePath("paper.qmd")).toBe(true);
+    expect(isProseSourcePath("analysis.Rmd")).toBe(true);
     expect(isProseSourcePath("main.tex")).toBe(true);
     expect(isProseSourcePath("main.typ")).toBe(true);
   });
@@ -480,4 +482,40 @@ describe("BibTeX source tools", () => {
 
     mounted.unmount();
   }, 10_000);
+});
+
+describe("code chunk option completion", () => {
+  function chunkHost(path: string, content: string): EditorHost {
+    return {
+      t: englishEditorMessage,
+      useActivePath: () => path,
+      getActivePath: () => path,
+      useDocVersion: () => 0,
+      useCompletionSyntax: () => (path.endsWith(".typ") ? "typst" : "markdown"),
+      getContent: () => content,
+      setContent: () => {},
+      useSettings: () => ({ keymap: "default", tabSize: 2, lineWrap: true, spellcheck: false, harper: false, editorTheme: "system", autocomplete: true, autoCloseBrackets: true, cursorBlinking: "blink", highlightCurrentLine: true, cursorHeight: "text", ghostCompletion: false, stickyScroll: false, mathPreview: false }),
+      useVisualMode: () => false,
+      useEditorKeymap: () => ({}),
+      useLintRefreshDeps: () => [],
+    };
+  }
+
+  it.each([
+    ["paper.qmd", "```{r}\n#| ", "fig-cap", "Quarto chunk option"],
+    ["analysis.Rmd", "```{python}\n#| ", "code-fold", "Quarto chunk option"],
+    ["main.typ", "```python\n#| ", "results-location", "Calepin chunk option"],
+  ])("offers chunk options in %s", async (path, content, label, detail) => {
+    installEnglishEditorMessages();
+    const mounted = render(createElement(CodeMirrorEditor, { host: chunkHost(path, content) }));
+    const view = getEditorView();
+    expect(view).not.toBeNull();
+    view!.dispatch({ selection: { anchor: view!.state.doc.length } });
+    startCompletion(view!);
+    await vi.waitFor(() => {
+      const option = currentCompletions(view!.state).find((candidate) => candidate.label === label);
+      expect(option?.detail).toBe(detail);
+    });
+    mounted.unmount();
+  });
 });

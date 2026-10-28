@@ -1069,6 +1069,16 @@
         "unknownEntryType": "Bilinmeyen kaynakça kayıt türü @{{type}}."
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "Quarto kod bloğu seçeneği"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "Calepin kod bloğu seçeneği"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "Görsel yükleniyor",
@@ -1540,7 +1550,7 @@
     "keyTaken": "Bir varyant aynı adı iki kez ayarlayamaz.",
     "saveFailed": "Varyantlar kaydedilemedi."
   },
-  "sharedSettingsViewer": "Paylaşılan bir projede görüntüleyenler bunu değiştiremez.",
+  "sharedSettingsViewer": "Paylaşılan bir projede bunu yalnızca sahipler ve düzenleyenler değiştirebilir.",
   "typstForms": {
     "message": "{{label}}: {{detail}}",
     "atKeyPath": "{{message}} ({{path}} konumunda)",

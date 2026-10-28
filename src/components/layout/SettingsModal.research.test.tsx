@@ -45,7 +45,6 @@ describe("Research tasks flag", () => {
       flag.store.setState({ enabled: value });
     });
     const settings = useSettingsStore.getState();
-    settings.setLiveCollaboration(false);
     settings.setSettingsInitialSection("experimentation");
     settings.setSettingsOpen(true);
   });

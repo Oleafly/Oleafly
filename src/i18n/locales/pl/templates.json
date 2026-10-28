@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "Pokazuje tylko szablony CV, które systemy rekrutacyjne ATS potrafią niezawodnie odczytać: jednokolumnowe, ze standardowymi krojami pisma i zaznaczalnym tekstem (bez słów wtopionych w grafikę).",
       "atsFriendly": "Zgodne z ATS",
       "offlineTooltip": "Pokazuje tylko szablony, które kompilują się bez pobierania czegokolwiek: ich kroje pisma i pakiety są już dołączone, więc działają bez połączenia z internetem.",

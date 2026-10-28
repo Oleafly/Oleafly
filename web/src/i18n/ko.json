@@ -1,0 +1,188 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "불러오는 중",
+    "loadFailed": "Oleafly가 서버에 연결하지 못했습니다.",
+    "retry": "다시 시도",
+    "dismiss": "닫기",
+    "projects": "프로젝트",
+    "account": "계정",
+    "signOut": "로그아웃",
+    "signOutFailed": "로그아웃하지 못했습니다. 다시 시도하세요.",
+    "cancel": "취소"
+  },
+  "signIn": {
+    "title": "Oleafly에 로그인",
+    "description": "공저자가 프로젝트를 공유한 계정으로 로그인하세요.",
+    "action": "로그인"
+  },
+  "projects": {
+    "title": "나와 공유됨",
+    "emptyTitle": "아직 나와 공유된 항목이 없습니다",
+    "emptyDescription": "누군가 내 계정과 프로젝트를 공유하면 여기에 표시됩니다.",
+    "untitled": "제목 없는 프로젝트",
+    "ownedBy": "소유자: {{name}}",
+    "loadFailed": "프로젝트를 불러오지 못했습니다.",
+    "list": "프로젝트"
+  },
+  "roles": {
+    "owner": "소유자",
+    "editor": "편집자",
+    "reviewer": "검토자",
+    "commenter": "댓글 작성자",
+    "viewer": "뷰어",
+    "unknown": "읽기 전용"
+  },
+  "connection": {
+    "connecting": "연결 중",
+    "online": "연결됨",
+    "offline": "오프라인",
+    "offlineBanner": "오프라인 상태입니다. 변경 내용은 보관되며 연결이 돌아오면 전송됩니다.",
+    "ended": "연결 끊김"
+  },
+  "ended": {
+    "signedOutTitle": "로그아웃되었습니다",
+    "signedOutDescription": "이 프로젝트에서 계속 작업하려면 다시 로그인하세요.",
+    "noAccessTitle": "이 프로젝트를 열 수 없습니다",
+    "noAccessDescription": "내 계정과 공유되지 않았거나 접근 권한이 제거되었습니다.",
+    "stoppedTitle": "연결 끊김",
+    "stoppedDescription": "다시 연결하려면 페이지를 새로 고치세요."
+  },
+  "access": {
+    "changed": "이 프로젝트에서 내 역할이 변경되었습니다: {{role}}"
+  },
+  "discarded": {
+    "read_only": "이제 이 프로젝트를 편집할 수 없어서 마지막 편집 내용이 저장되지 않았습니다.",
+    "refused": "마지막 편집 내용을 저장하지 못했습니다."
+  },
+  "views": {
+    "label": "패널",
+    "files": "파일",
+    "source": "소스",
+    "pdf": "PDF",
+    "comments": "댓글",
+    "chat": "채팅"
+  },
+  "presence": {
+    "label": "접속 중인 사람"
+  },
+  "files": {
+    "title": "파일",
+    "empty": "이 프로젝트에 아직 파일이 없습니다.",
+    "tree": "프로젝트 파일"
+  },
+  "source": {
+    "noFileTitle": "파일 열기",
+    "noFileDescription": "목록에서 파일을 골라 읽어 보세요.",
+    "opening": "{{path}} 여는 중",
+    "removed": "프로젝트에서 {{path}} 파일이 제거되었습니다.",
+    "readOnly": "읽기 전용",
+    "readOnlyHint": "내 역할로는 이 프로젝트를 읽을 수는 있지만 편집할 수는 없습니다.",
+    "modeLabel": "편집 모드",
+    "editing": "편집",
+    "suggesting": "제안",
+    "suggestingHint": "내 편집은 제안이 되고 소유자나 편집자가 검토합니다.",
+    "comment": "댓글",
+    "commentHint": "댓글을 달 텍스트를 선택하세요.",
+    "binary": "이 파일은 브라우저에서 표시할 수 없습니다.",
+    "blobFailed": "파일을 불러오지 못했습니다."
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "{{name}} 님이 {{time}}에 컴파일함",
+    "emptyTitle": "아직 PDF가 없습니다",
+    "emptyDescription": "누군가 Oleafly 앱에서 프로젝트를 컴파일하면 여기에 PDF가 나타납니다.",
+    "loading": "PDF를 불러오는 중",
+    "failed": "PDF를 불러오지 못했습니다.",
+    "zoomIn": "확대",
+    "zoomOut": "축소",
+    "fitWidth": "너비에 맞추기",
+    "download": "다운로드",
+    "zoom": "{{percent}}%"
+  },
+  "comments": {
+    "emptyTitle": "댓글이나 제안이 없습니다",
+    "emptyCanComment": "소스에서 텍스트를 선택하고 댓글을 눌러 스레드를 시작하세요.",
+    "emptyReadOnly": "이 프로젝트의 댓글과 제안이 여기에 표시됩니다.",
+    "newComment": "새 댓글",
+    "placeholder": "댓글 추가",
+    "submit": "댓글 달기",
+    "reply": "답글 달기",
+    "replyPlaceholder": "답글",
+    "replyLabel": "이 스레드에 답글 달기",
+    "edit": "수정",
+    "editLabel": "댓글 수정",
+    "save": "저장",
+    "delete": "삭제",
+    "deleteTitle": "이 댓글을 삭제할까요?",
+    "deleteDescription": "되돌릴 수 없습니다.",
+    "messageActions": "댓글 작업",
+    "resolve": "해결",
+    "reopen": "다시 열기",
+    "resolvedBy": "{{name}} 님이 해결함",
+    "deleted": "삭제된 댓글",
+    "edited": "수정됨",
+    "anchorLost": "이 댓글이 달려 있던 텍스트가 삭제되었습니다.",
+    "showInSource": "소스에서 보기",
+    "thread": "{{name}} 님의 댓글",
+    "hideResolved": "해결된 항목 숨기기",
+    "resolvedCount_other": "해결됨 {{count}}개"
+  },
+  "suggestions": {
+    "inserted": "추가됨",
+    "deleted": "삭제됨",
+    "accept": "수락",
+    "reject": "거부",
+    "withdraw": "철회",
+    "acceptAll": "모두 수락",
+    "rejectAll": "모두 거부",
+    "pending_other": "제안 {{count}}개",
+    "card": "{{name}} 님의 제안",
+    "lineBreak": "줄바꿈"
+  },
+  "chat": {
+    "emptyTitle": "아직 메시지가 없습니다",
+    "emptyDescription": "여기의 메시지는 프로젝트의 모든 사람이 봅니다.",
+    "placeholder": "메시지를 입력하세요",
+    "label": "메시지",
+    "send": "보내기",
+    "readOnly": "채팅을 읽을 수 있습니다. 뷰어는 게시할 수 없습니다.",
+    "delete": "메시지 삭제",
+    "clear": "채팅 지우기",
+    "clearTitle": "모든 사람의 채팅을 지울까요?",
+    "clearDescription": "프로젝트의 모든 사람에게서 이 메시지가 사라집니다.",
+    "messages": "채팅 메시지"
+  },
+  "people": {
+    "you": "나",
+    "someone": "누군가",
+    "unverified": "확인되지 않은 작성자"
+  },
+  "errors": {
+    "offline": "오프라인 상태입니다. 연결되면 다시 시도하세요.",
+    "generic": "서버가 변경을 거부했습니다.",
+    "suggestion_not_found": "이미 처리된 제안입니다.",
+    "suggestion_not_yours": "내 제안만 철회할 수 있습니다.",
+    "suggestion_role": "내 역할로는 제안하거나 제안을 검토할 수 없습니다.",
+    "chat_role": "내 역할로는 채팅에 게시할 수 없습니다.",
+    "comment_not_live": "지금은 댓글을 사용할 수 없습니다.",
+    "comment_not_yours": "내 댓글만 변경할 수 있습니다.",
+    "comment_off_server": "이 서버에서는 댓글이 꺼져 있습니다.",
+    "comment_off_project": "이 프로젝트에서는 댓글이 꺼져 있습니다.",
+    "comment_viewer": "뷰어는 댓글을 달 수 없습니다.",
+    "comment_someone_replied": "다른 사람이 답글을 달아서 이 댓글을 삭제할 수 없습니다.",
+    "comment_message_deleted": "삭제된 댓글입니다.",
+    "comment_selection_changed": "작성하는 동안 텍스트가 바뀌었습니다. 다시 선택하세요.",
+    "comment_too_long": "댓글이 너무 깁니다.",
+    "comment_empty": "먼저 내용을 입력하세요.",
+    "rate_limited": "한 번에 변경이 너무 많습니다. 잠시 후 다시 시도하세요.",
+    "too_large": "너무 커서 보낼 수 없습니다.",
+    "project_too_large": "이 프로젝트는 너무 커서 브라우저에서 열 수 없습니다.",
+    "server_busy": "서버가 바쁩니다. 잠시 후 다시 시도하세요.",
+    "not_open": "변경하려면 먼저 파일을 여세요.",
+    "cross_site": "이 요청은 이 서버의 Oleafly 웹 앱에서 온 것이 아닙니다. 페이지를 새로 고친 다음 다시 시도하세요.",
+    "conflict": "다른 사람이 한 변경과 충돌합니다. 다시 시도하세요.",
+    "account_storage_full": "이 서버에서 프로젝트 소유자 계정의 저장 공간이 가득 찼습니다.",
+    "too_many_uploads": "지난 1시간 동안 업로드를 너무 많이 했습니다. 나중에 다시 시도하세요."
+  }
+}

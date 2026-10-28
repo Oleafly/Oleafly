@@ -326,7 +326,7 @@ function collectInputEdges(sink: SymSink, dir: string): void {
 
 export function parseFile(path: string, rawText: string): FileSymbols {
   if (path.toLowerCase().endsWith(".typ")) return parseTypstFile(path, rawText);
-  if (/\.(?:md|markdown)$/i.test(path)) return parseMarkdownFile(path, rawText);
+  if (/\.(?:md|markdown|qmd|rmd)$/i.test(path)) return parseMarkdownFile(path, rawText);
   const text = maskComments(rawText);
   const defs: Sym[] = [];
   const uses: Sym[] = [];

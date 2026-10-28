@@ -101,6 +101,11 @@
       "pickTitle": "選擇 {{name}} 的程式",
       "filter": "程式"
     },
+    "sharedCodeExecution": {
+      "title": "要在這個分享專案中允許程式碼嗎？",
+      "message": "允許後，編譯時會在這台電腦上執行這個專案中的程式碼。任何擁有編輯權限的人都可以修改這些程式碼。只有在你信任專案中的每個人時才允許。",
+      "confirm": "在這台電腦上允許"
+    },
     "desktopApps": {
       "title": "桌面應用程式",
       "action": "{{agent}} 想要{{action}}。",

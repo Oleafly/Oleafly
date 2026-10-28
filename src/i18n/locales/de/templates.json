@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "Nur Lebenslaufvorlagen zeigen, die Bewerbermanagementsysteme zuverlässig auslesen können: einspaltig, Standardschriften und markierbarer Text (keine Wörter in Grafiken).",
       "atsFriendly": "ATS-tauglich",
       "offlineTooltip": "Nur Vorlagen zeigen, die ohne Downloads kompilieren: Ihre Schriften und Pakete sind bereits enthalten, der Bau gelingt also ohne Internetverbindung.",

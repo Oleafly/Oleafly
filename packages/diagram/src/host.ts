@@ -68,4 +68,8 @@ export interface DiagramHost {
   typstContext?(): { projectId: string | null; typstVersion: string | null };
   renderTypst?(request: DiagramTypstRequest): Promise<DiagramTypstRender>;
   renderMermaid?(source: string, options: { scale: number; background: string }): Promise<{ svg: string; pngBase64: string }>;
+  // Asks before the composer overwrites files or drops hand-written code.
+  // Without it the composer uses window.confirm, which a Tauri webview
+  // answers with a Promise, never true.
+  confirm?(message: string): Promise<boolean>;
 }

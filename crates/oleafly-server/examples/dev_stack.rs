@@ -91,6 +91,13 @@ async fn main() {
     if seeded {
         println!("Anyone with an @lab.test email is admitted as a member.");
     }
+    if state.config.web_enabled() {
+        println!("Browser app on http://{SERVER}/web/ (sign in at http://{SERVER}/web/sign-in).");
+    } else if state.config.web {
+        println!(
+            "OLEAFLY_WEB is on, but this build has no browser app. Run it with --features web."
+        );
+    }
     let app =
         oleafly_server::build_router(state).into_make_service_with_connect_info::<SocketAddr>();
     axum::serve(listener, app)

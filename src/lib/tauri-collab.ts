@@ -13,6 +13,8 @@ import type {
   CollabAdminProjectsQuery,
   CollabAllowlistEntry,
   CollabCapabilities,
+  CollabChatChanged,
+  CollabChatMessage,
   CollabCommandError,
   CollabCommentCount,
   CollabCommentError,
@@ -33,10 +35,13 @@ import type {
   CollabEmailPreferences,
   CollabEmailPreferencesPatch,
   CollabEmailStatus,
+  CollabEditMode,
   CollabEmailTestResult,
   CollabErrorCode,
+  CollabFileAtVersion,
   CollabGuestInvitation,
   CollabGuestInviteResult,
+  CollabHistoryPage,
   CollabLiveInfo,
   CollabLiveMerged,
   CollabLiveNewDevice,
@@ -47,6 +52,7 @@ import type {
   CollabMergeReviewFile,
   CollabNewAllowlistEntry,
   CollabNewDomainRule,
+  CollabOutputInfo,
   CollabPage,
   CollabPerson,
   CollabPresence,
@@ -65,6 +71,9 @@ import type {
   CollabShareProgress,
   CollabSharedWithMe,
   CollabSignInCode,
+  CollabSuggestionCount,
+  CollabSuggestionList,
+  CollabSuggestionsChanged,
   CollabSyncDecision,
   CollabSyncPaused,
   CollabSyncResumed,
@@ -111,10 +120,17 @@ const COLLAB_ERROR_CODES = new Set<string>([
   "server_removed",
   "share_in_progress",
   "cancelled",
-  "turned_off",
   "cloud_synced",
   "owner_away",
   "wrong_server",
+  "suggestion_not_found",
+  "suggestion_not_yours",
+  "suggestion_role",
+  "chat_role",
+  "history_unavailable",
+  "account_storage_full",
+  "too_many_projects",
+  "too_many_uploads",
 ] satisfies CollabErrorCode[]);
 
 export function isCollabCommandError(value: unknown): value is CollabCommandError {
@@ -575,3 +591,65 @@ export function onCollabLiveMembers(
   );
 }
 
+export const COLLAB_SUGGESTIONS_CHANGED_EVENT = "collab://suggestions-changed";
+export const COLLAB_CHAT_CHANGED_EVENT = "collab://chat-changed";
+
+export const collabEditModeGet = (projectId: string) =>
+  invoke<CollabEditMode>("collab_edit_mode_get", { projectId });
+export const collabEditModeSet = (projectId: string, mode: CollabEditMode) =>
+  invoke<void>("collab_edit_mode_set", { projectId, mode });
+export const collabSuggestionList = (projectId: string, path: string) =>
+  invoke<CollabSuggestionList>("collab_suggestion_list", { projectId, path });
+export const collabSuggestionCounts = (projectId: string) =>
+  invoke<CollabSuggestionCount[]>("collab_suggestion_counts", { projectId });
+export const collabSuggestionAccept = (projectId: string, ids: string[]) =>
+  invoke<void>("collab_suggestion_accept", { projectId, ids });
+export const collabSuggestionReject = (projectId: string, ids: string[]) =>
+  invoke<void>("collab_suggestion_reject", { projectId, ids });
+export const collabSuggestionWithdraw = (projectId: string, ids: string[]) =>
+  invoke<void>("collab_suggestion_withdraw", { projectId, ids });
+export const collabSuggestionAcceptFile = (projectId: string, path: string) =>
+  invoke<void>("collab_suggestion_accept_file", { projectId, path });
+export const collabSuggestionRejectFile = (projectId: string, path: string) =>
+  invoke<void>("collab_suggestion_reject_file", { projectId, path });
+
+export const collabSuggestionReply = (
+  projectId: string,
+  id: string,
+  body: string,
+  members: CollabCommentMember[],
+) => invoke<CollabCommentThread>("collab_suggestion_reply", { projectId, id, body, members });
+
+export function onCollabSuggestionsChanged(
+  handler: (payload: CollabSuggestionsChanged) => void,
+): Promise<UnlistenFn> {
+  return listen<CollabSuggestionsChanged>(COLLAB_SUGGESTIONS_CHANGED_EVENT, ({ payload }) => handler(payload));
+}
+
+export const collabChatList = (projectId: string, before: string | null, limit: number) =>
+  invoke<CollabChatMessage[]>("collab_chat_list", { projectId, before, limit });
+export const collabChatSend = (projectId: string, body: string) =>
+  invoke<CollabChatMessage>("collab_chat_send", { projectId, body });
+export const collabChatDelete = (projectId: string, id: string) =>
+  invoke<void>("collab_chat_delete", { projectId, id });
+export const collabChatClear = (projectId: string) => invoke<void>("collab_chat_clear", { projectId });
+
+export function onCollabChatChanged(handler: (payload: CollabChatChanged) => void): Promise<UnlistenFn> {
+  return listen<CollabChatChanged>(COLLAB_CHAT_CHANGED_EVENT, ({ payload }) => handler(payload));
+}
+
+export const collabHistoryList = (projectId: string, before: string | null, limit: number) =>
+  invoke<CollabHistoryPage>("collab_history_list", { projectId, before, limit });
+export const collabHistoryFile = (projectId: string, versionId: string, path: string) =>
+  invoke<CollabFileAtVersion>("collab_history_file", { projectId, versionId, path });
+export const collabHistoryChangedFiles = (projectId: string, fromVersion: string, toVersion: string) =>
+  invoke<string[]>("collab_history_changed_files", { projectId, fromVersion, toVersion });
+export const collabHistoryRestore = (projectId: string, versionId: string, paths: string[] | null) =>
+  invoke<void>("collab_history_restore", { projectId, versionId, paths });
+export const collabVersionName = (projectId: string, versionId: string, name: string) =>
+  invoke<void>("collab_version_name", { projectId, versionId, name });
+export const collabVersionUnname = (projectId: string, versionId: string) =>
+  invoke<void>("collab_version_unname", { projectId, versionId });
+
+export const collabOutputInfo = (projectId: string) =>
+  invoke<CollabOutputInfo[]>("collab_output_info", { projectId });

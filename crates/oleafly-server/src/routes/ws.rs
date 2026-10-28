@@ -13,7 +13,7 @@ use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId, SharedProjectId};
 use oleafly_collab_protocol::projects::{
-    project_role_allows, PresenceState, ProjectAction, ProjectStatus,
+    project_role_allows, PresenceState, ProjectAction, ProjectRole, ProjectStatus,
 };
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::time::{Instant, MissedTickBehavior};
@@ -27,6 +27,7 @@ use crate::mentions;
 use crate::peers::{self, Bound, Claim};
 use crate::projects;
 use crate::rate_limit::client_key;
+use crate::role_guard::{RoleRule, RoleVerdict};
 use crate::rooms::{self, Outbox, Queued, RoomMember};
 use crate::routes::meta::spoken_protocol;
 use crate::routes::{authenticate, Authenticated, ClientIp};
@@ -48,6 +49,10 @@ pub const MAX_SOCKETS: usize = 512;
 pub const OUTBOUND_CAPACITY: usize = 512;
 pub const MAX_PRESENCE_FILE_ID: usize = 256;
 pub const COMMENTS_OFF: &str = "Comments are turned off for this project.";
+pub const REVIEWERS_SUGGEST: &str =
+    "As a reviewer you can suggest changes and comment, but not edit directly.";
+pub const COMMENTERS_COMMENT: &str = "As a commenter you can comment, but not change the text.";
+const MOST_CHECKS: u32 = 3;
 const BRIEF_SEND: Duration = Duration::from_secs(5);
 // Frames at least this large are parsed and encoded on the blocking pool.
 pub const ASIDE_BYTES: usize = 256 * 1024;
@@ -641,7 +646,13 @@ pub(crate) fn leave_rooms(state: &AppState, connection: u64, device: DeviceId) {
 // check, so nothing large is copied for the case that doesn't need it.
 enum Appendix {
     Stored(projects::Appended),
-    Unchecked(Envelope, peers::Reach, Vec<u8>),
+    Unchecked(Box<(Envelope, peers::Reach, Vec<u8>)>, Needed),
+}
+
+#[derive(Clone, Copy)]
+enum Needed {
+    Comments,
+    Role(RoleRule),
 }
 
 // Where a change stands with the comment check as it is stored.
@@ -652,6 +663,10 @@ enum Check {
     Passed,
     // Stored without the check, which runs once the budget allows.
     Later,
+    Role {
+        role: ProjectRole,
+        comments_off: bool,
+    },
 }
 
 struct ReadChange {
@@ -921,35 +936,53 @@ impl Peer<'_> {
             Ok(Err(Unread::Failed)) | Err(_) => return stored_failed,
         };
         let batch = envelope.batch_id;
-        let first = self
-            .append(project, envelope, reach, stored, Check::Pending, mention)
-            .await;
-        let appended = match first {
-            Ok(Appendix::Stored(appended)) => Ok(appended),
-            Ok(Appendix::Unchecked(envelope, reach, stored)) => {
-                let check = match self.comment_check(project, &envelope).await {
-                    Ok(check) => check,
-                    Err(refusal) => return *refusal,
-                };
-                let checked = self
-                    .append(project, envelope, reach, stored, check, mention)
-                    .await;
-                if checked.is_err() {
-                    self.state
-                        .comment_guard
-                        .forget(&self.state.snapshots, project)
-                        .await;
-                } else if check == Check::Later {
-                    self.state.comment_guard.recheck(self.state, project);
+        let mut check = Check::Pending;
+        let mut waiting = (envelope, reach, stored);
+        let mut checks = 0;
+        let appended = loop {
+            let (envelope, reach, stored) = waiting;
+            let appended = self
+                .append(project, envelope, reach, stored, check, mention)
+                .await;
+            let needed = match appended {
+                Ok(Appendix::Stored(appended)) => {
+                    if check == Check::Later {
+                        self.state.comment_guard.recheck(self.state, project);
+                    }
+                    break Ok(appended);
                 }
-                checked.and_then(|appended| match appended {
-                    Appendix::Stored(appended) => Ok(appended),
-                    Appendix::Unchecked(..) => Err(ServerError::Internal(
-                        "the comment check did not hold".to_string(),
-                    )),
-                })
+                Ok(Appendix::Unchecked(held, needed)) => {
+                    waiting = *held;
+                    needed
+                }
+                Err(error) => {
+                    if checks > 0 {
+                        self.state
+                            .comment_guard
+                            .forget(&self.state.snapshots, project)
+                            .await;
+                    }
+                    break Err(error);
+                }
+            };
+            checks += 1;
+            if checks > MOST_CHECKS {
+                self.state
+                    .comment_guard
+                    .forget(&self.state.snapshots, project)
+                    .await;
+                break Err(ServerError::Internal(
+                    "the change check did not hold".to_string(),
+                ));
             }
-            Err(error) => Err(error),
+            let checked = match needed {
+                Needed::Comments => self.comment_check(project, &waiting.0).await,
+                Needed::Role(rule) => self.role_check(project, &waiting.0, rule).await,
+            };
+            check = match checked {
+                Ok(check) => check,
+                Err(refusal) => return *refusal,
+            };
         };
         match appended {
             Ok(appended) => {
@@ -1024,6 +1057,59 @@ impl Peer<'_> {
         }
     }
 
+    async fn role_check(
+        &self,
+        project: SharedProjectId,
+        envelope: &Envelope,
+        rule: RoleRule,
+    ) -> Result<Check, Box<ServerFrame>> {
+        let guard = &self.state.comment_guard;
+        let verdict = guard
+            .check_role(
+                &self.state.db,
+                &self.state.snapshots,
+                project,
+                envelope.payload.clone(),
+                rule,
+            )
+            .await;
+        if matches!(
+            verdict,
+            Ok(RoleVerdict::Allowed
+                | RoleVerdict::ChangesComments
+                | RoleVerdict::Refused
+                | RoleVerdict::Unreadable)
+        ) {
+            guard.read_project(self.state, project);
+        }
+        match verdict {
+            Ok(RoleVerdict::Allowed) => Ok(Check::Role {
+                role: rule.role,
+                comments_off: rule.comments_off,
+            }),
+            Ok(RoleVerdict::ChangesComments) => Err(Box::new(frame_error(
+                self.code_for(FrameErrorCode::CommentsOff, FrameErrorCode::Forbidden),
+                COMMENTS_OFF,
+            ))),
+            Ok(RoleVerdict::Refused) => Err(Box::new(frame_error(
+                FrameErrorCode::Forbidden,
+                if rule.role == ProjectRole::Reviewer {
+                    REVIEWERS_SUGGEST
+                } else {
+                    COMMENTERS_COMMENT
+                },
+            ))),
+            Ok(RoleVerdict::Unreadable) => Err(Box::new(frame_error(
+                FrameErrorCode::BadFrame,
+                "This update is not valid.",
+            ))),
+            Ok(RoleVerdict::Unchecked) | Err(_) => Err(Box::new(frame_error(
+                FrameErrorCode::Internal,
+                "The server could not check this change. It goes again shortly.",
+            ))),
+        }
+    }
+
     async fn append(
         &self,
         project: SharedProjectId,
@@ -1046,7 +1132,7 @@ impl Peer<'_> {
                 let role = projects::role_of(transaction, project, account)?
                     .ok_or(ServerError::NotFound)?;
                 if row.status != ProjectStatus::Active
-                    || !project_role_allows(role, ProjectAction::Edit)
+                    || !project_role_allows(role, ProjectAction::Comment)
                 {
                     return Err(ServerError::Forbidden);
                 }
@@ -1063,8 +1149,23 @@ impl Peer<'_> {
                     Claim::Known => return Ok(nothing_new()),
                     Claim::Fresh(_) => {}
                 }
-                if check == Check::Pending && !comments_on(transaction, &row)? {
-                    return Ok(Written::now(Appendix::Unchecked(envelope, reach, stored)));
+                let comments_off = !comments_on(transaction, &row)?;
+                if RoleRule::needed(role) && check != (Check::Role { role, comments_off }) {
+                    let rule = RoleRule {
+                        role,
+                        account,
+                        comments_off,
+                    };
+                    return Ok(Written::now(Appendix::Unchecked(
+                        Box::new((envelope, reach, stored)),
+                        Needed::Role(rule),
+                    )));
+                }
+                if check == Check::Pending && comments_off {
+                    return Ok(Written::now(Appendix::Unchecked(
+                        Box::new((envelope, reach, stored)),
+                        Needed::Comments,
+                    )));
                 }
                 let after =
                     projects::log_bytes(transaction, project)?.saturating_add(stored.len() as u64);

@@ -88,7 +88,7 @@ import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
-import { useSettingsStore } from "@/store/settings";
+import { appIconSource, useSettingsStore } from "@/store/settings";
 import { cn, isLinux, isWindows } from "@/lib/utils";
 import {
   recycleProject,
@@ -242,6 +242,7 @@ export function Library() {
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const hoverPreview = useSettingsStore((s) => s.hoverPreview);
   const bgPattern = useSettingsStore((s) => s.bgPattern);
+  const appIcon = useSettingsStore((s) => s.appIcon);
   const projectLayout = useSettingsStore((s) => s.homeProjectLayout);
   const setProjectLayout = useSettingsStore((s) => s.setHomeProjectLayout);
   const [forkTarget, setForkTarget] = useState<{ id: string; name: string } | null>(null);
@@ -916,7 +917,7 @@ export function Library() {
         <EmptyHeader className="max-w-2xl">
           <EmptyMedia className="size-16 overflow-hidden rounded-2xl border-white/20 bg-white p-0 shadow-sm sm:size-20">
             <img
-              src="/oleafly-tile-gradient.png"
+              src={appIconSource(appIcon)}
               alt={t(($) => $.library.home.appIconAlt)}
               className="size-full object-cover"
             />
@@ -1085,7 +1086,10 @@ export function Library() {
                   { value: "all", label: t(($) => $.library.home.filters.locationAll) },
                   {
                     value: "library",
-                    label: collabKit?.libraryLocation ?? t(($) => $.library.home.filters.locationLibrary),
+                    label:
+                      sharedLocation && collabKit
+                        ? collabKit.libraryLocation
+                        : t(($) => $.library.home.filters.locationLibrary),
                   },
                   ...(sharedLocation && collabKit ? [{ value: "shared", label: collabKit.location }] : []),
                   ...(hasFolders
@@ -1103,6 +1107,8 @@ export function Library() {
                 { value: "latex", label: "LaTeX" },
                 { value: "typst", label: "Typst" },
                 { value: "markdown", label: "Markdown" },
+                { value: "quarto", label: "Quarto" },
+                { value: "calepin", label: "Calepin" },
               ]}
             />
             <FilterSelect

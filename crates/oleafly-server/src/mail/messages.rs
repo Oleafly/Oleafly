@@ -81,6 +81,7 @@ pub fn platform_label(platform: &str) -> String {
         "macos" | "darwin" => "macOS".to_string(),
         "windows" => "Windows".to_string(),
         "linux" => "Linux".to_string(),
+        "web" => "Web browser".to_string(),
         _ => one_line(platform, 40),
     }
 }
@@ -118,6 +119,8 @@ fn project_role_words(role: ProjectRole) -> &'static str {
     match role {
         ProjectRole::Owner => "You're its owner.",
         ProjectRole::Editor => "You're an editor, so you can change it.",
+        ProjectRole::Reviewer => "You're a reviewer, so you can suggest changes and comment.",
+        ProjectRole::Commenter => "You're a commenter, so you can read it and comment.",
         ProjectRole::Viewer | ProjectRole::Unknown => {
             "You're a viewer, so you can read it but not change it."
         }
@@ -618,6 +621,7 @@ mod tests {
         assert_eq!(platform_label("macos"), "macOS");
         assert_eq!(platform_label("windows"), "Windows");
         assert_eq!(platform_label("linux"), "Linux");
+        assert_eq!(platform_label("web"), "Web browser");
         assert_eq!(platform_label("Plan\n9"), "Plan 9");
     }
 

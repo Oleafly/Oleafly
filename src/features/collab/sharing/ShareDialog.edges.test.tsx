@@ -11,12 +11,14 @@ import { useShareDialog } from "@/components/collab/share-dialog";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabLiveStore } from "../live/live-store";
+import { OLEAFLY_SERVER } from "../default-server";
 import { useCollabStore } from "../store";
 import {
   BOB,
   BOB_ID,
   SERVER_ID,
   account,
+  capabilities,
   collabError,
   deferred,
   fill,
@@ -40,6 +42,8 @@ const mocks = vi.hoisted(() => ({
   collabCommentsStatus: vi.fn(),
   collabAccessLogStatus: vi.fn(),
   collabGuestInvitations: vi.fn(),
+  collabServerProbe: vi.fn(),
+  collabServerSignInCancel: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
@@ -54,6 +58,8 @@ vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
   collabCommentsStatus: mocks.collabCommentsStatus,
   collabAccessLogStatus: mocks.collabAccessLogStatus,
   collabGuestInvitations: mocks.collabGuestInvitations,
+  collabServerProbe: mocks.collabServerProbe,
+  collabServerSignInCancel: mocks.collabServerSignInCancel,
 }));
 
 import { ShareDialog } from "./ShareDialog";
@@ -243,6 +249,35 @@ describe("ShareDialog loading", () => {
     expect(mocks.collabShareCheck).not.toHaveBeenCalled();
     await act(async () => answer([server()]));
     expect(await screen.findByText(fill(share.disclosure, { server: "Smith Lab" }))).toBeInTheDocument();
+  });
+
+  it("offers only Collaboration settings when the server list could not load", async () => {
+    mocks.collabServersList.mockRejectedValue(collabError("internal"));
+    openDialog();
+    expect(await screen.findByText(share.noServers)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: share.addOleafly })).toBeNull();
+    expect(screen.getByRole("button", { name: share.openSettings })).toBeEnabled();
+  });
+
+  it("closes only the add server dialog on Escape and offers the Oleafly server again", async () => {
+    mocks.collabServersList.mockResolvedValue([]);
+    mocks.collabServerProbe.mockResolvedValue(capabilities({ name: OLEAFLY_SERVER.name }));
+    mocks.collabServerSignInCancel.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    openDialog();
+    await user.click(await screen.findByRole("button", { name: share.addOleafly }));
+    expect(
+      await screen.findByRole("heading", { name: fill(enCollab.addServer.serverTitle, { server: OLEAFLY_SERVER.name }) }),
+    ).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: fill(enCollab.addServer.serverTitle, { server: OLEAFLY_SERVER.name }) }),
+      ).toBeNull(),
+    );
+    expect(useShareDialog.getState().projectId).toBe("grant");
+    expect(screen.getByRole("button", { name: share.addOleafly })).toBeEnabled();
+    expect(useCollabStore.getState().servers).toEqual([]);
   });
 
   it("explains when the sharing state cannot be read and tries again", async () => {

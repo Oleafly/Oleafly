@@ -44,7 +44,8 @@
     "folder_holds_templates": "Oleafly säilyttää tässä kansiossa omia mallipohjiaan. Valitse sen sijaan mallipohjan kansio."
   },
   "settings": {
-    "locale_unsupported": "Kieli {{locale}} ei ole saatavilla."
+    "locale_unsupported": "Kieli {{locale}} ei ole saatavilla.",
+    "app_icon_unsupported": "Sovelluksen kuvake {{icon}} ei ole saatavilla."
   },
   "literature": {
     "query_empty": "Hakulauseke ei voi olla tyhjä.",
@@ -146,7 +147,8 @@
     "shell_escape": "Luota tähän kansioon, ennen kuin sallit shell escape -toiminnon.",
     "broad_folder": "Oleafly ei voi luottaa koko kansioon {{name}}. Valitse pienempi kansio.",
     "declined": "Kansioon ei luotettu.",
-    "unavailable": "Oleafly ei voinut tarkistaa, onko tähän kansioon luotettu."
+    "unavailable": "Oleafly ei voinut tarkistaa, onko tähän kansioon luotettu.",
+    "notebook": "Luota tähän kansioon, jotta voit kääntää Quartolla tai Calepinilla."
   },
   "open_folder": {
     "not_absolute": "Käytä kansion koko polkua.",
@@ -335,7 +337,18 @@
     "browser_sign_in_failed": "Selaimesi kirjautuminen ei toiminut. Se on voinut vanhentua. Kirjaudu sen sijaan sisään."
   },
   "collab": {
-    "turned_off": "Reaaliaikainen yhteistyö on pois päältä. Ota se käyttöön Asetusten kohdassa Kokeilut."
+    "suggestion_role": "Roolisi tässä projektissa ei salli ehdotuksia."
+  },
+  "notebook": {
+    "code_needed": "{{engine}} joutuu suorittamaan koodia tämän dokumentin kääntämiseksi, ja koodin suoritus on tässä projektissa pois päältä. Salli koodi tässä projektissa, jotta voit kääntää dokumentin.",
+    "quarto_missing": "Quartoa ei ole asennettu. Asenna se kohdasta Asetukset > Moottorit > Quarto ja käännä sitten uudelleen.",
+    "calepin_missing": "Calepinia ei ole asennettu. Asenna se kohdasta Asetukset > Moottorit > Calepin ja käännä sitten uudelleen.",
+    "not_offered": "Oleafly ei voi ladata työkalua {{tool}} tälle koneelle. Asenna se itse ja käännä sitten uudelleen.",
+    "busy": "{{tool}} asennetaan yhä. Yritä uudelleen, kun asennus on valmis.",
+    "install_unverified": "{{tool}} ladattiin, mutta se ei läpäissyt eheystarkistusta. Yritä asentaa se uudelleen.",
+    "unknown_tool": "Oleafly ei tunne työkalua nimeltä {{tool}}.",
+    "not_managed": "Oleafly voi poistaa vain sen kopion työkalusta {{tool}}, jonka se on itse ladannut.",
+    "no_html_output": "HTML-tulostetta ei ole vielä. Käännä dokumentti ensin."
   },
   "attachments": {
     "too_large": "Tämä tiedosto on yli {{max}} MB. Liitä pienempi tiedosto.",

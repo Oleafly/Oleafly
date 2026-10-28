@@ -18,6 +18,7 @@ export interface CommentReveal {
 
 interface CommentsRailState {
   visible: boolean;
+  suggestions: boolean;
   unread: boolean;
   canCompose: boolean;
   request: CommentRequest | null;
@@ -26,11 +27,17 @@ interface CommentsRailState {
 
 export const useCommentsRail = create<CommentsRailState>(() => ({
   visible: false,
+  suggestions: false,
   unread: false,
   canCompose: false,
   request: null,
   reveal: null,
 }));
+
+export function commentsRailShown(): boolean {
+  const rail = useCommentsRail.getState();
+  return rail.visible || rail.suggestions;
+}
 
 export function showCommentsTab(): void {
   const settings = useSettingsStore.getState();
@@ -39,7 +46,7 @@ export function showCommentsTab(): void {
 }
 
 export function commentTarget(view: EditorView | null): CommentRequest | null {
-  if (!view || !useSettingsStore.getState().liveCollaboration || !useCommentsRail.getState().canCompose) return null;
+  if (!view || !useCommentsRail.getState().canCompose) return null;
   const path = useFilesStore.getState().activePath;
   if (!path) return null;
   const selection = view.state.selection.main;

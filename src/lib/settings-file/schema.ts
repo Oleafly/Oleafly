@@ -18,6 +18,7 @@ import {
   type EditorKeyDefinition,
 } from "@/store/editor-keymap";
 import {
+  APP_ICON_IDS,
   APP_ZOOM_LEVELS,
   EDITOR_CURSOR_WIDTHS,
   EDITOR_CUSTOM_LETTER_SPACING,
@@ -402,6 +403,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("appearance.app.fontFamily", "appFontFamily", fontFamily),
   pref("appearance.app.dockPlacement", "dockPlacement", oneOf(["left", "right", "bottom"] as const)),
   pref("appearance.app.backgroundPattern", "bgPattern", oneOf(["dots", "grid", "none"] as const)),
+  pref("appearance.app.appIcon", "appIcon", oneOf(APP_ICON_IDS)),
   field(
     "appearance.app.customTheme",
     customTheme,

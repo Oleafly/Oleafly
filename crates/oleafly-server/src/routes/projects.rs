@@ -16,7 +16,7 @@ use oleafly_collab_protocol::projects::{
     project_role_allows, MemberGrant, NewProject, PersonSummary, ProjectAction, ProjectDevice,
     ProjectMember, ProjectPatch, ProjectRole, ProjectStatus, ProjectSummary,
 };
-use oleafly_collab_protocol::roles::{ServerAction, ServerRole};
+use oleafly_collab_protocol::roles::{grantable, ServerAction, ServerRole};
 use oleafly_collab_protocol::snapshots::{
     snapshot_signing_bytes, ProjectPeer, SNAPSHOT_DEVICE_HEADER, SNAPSHOT_SIGNATURE_HEADER,
 };
@@ -32,6 +32,7 @@ use crate::mail::notify;
 use crate::members;
 use crate::peers;
 use crate::projects::{self, ProjectRow};
+use crate::quotas::{self, Storage};
 use crate::removals;
 use crate::routes::{json_body, path_id, Authenticated, ClientIp};
 use crate::security_log::{self, NewSecurityEvent};
@@ -90,7 +91,7 @@ fn two_ids<A: std::str::FromStr, B: std::str::FromStr>(
     Ok((first, second))
 }
 
-fn project_and_hash(
+pub(crate) fn project_and_hash(
     path: Result<Path<(String, String)>, PathRejection>,
 ) -> Result<(SharedProjectId, String), ServerError> {
     let Path((project, hash)) =
@@ -122,7 +123,7 @@ fn event(
     }
 }
 
-fn require(role: ProjectRole, action: ProjectAction) -> Result<(), ServerError> {
+pub(crate) fn require(role: ProjectRole, action: ProjectAction) -> Result<(), ServerError> {
     if project_role_allows(role, action) {
         Ok(())
     } else {
@@ -149,7 +150,7 @@ pub(crate) fn access(
     Ok((row, role))
 }
 
-fn content_length_within(headers: &HeaderMap, limit: u64) -> Result<(), ServerError> {
+pub(crate) fn content_length_within(headers: &HeaderMap, limit: u64) -> Result<(), ServerError> {
     let declared = headers
         .get(header::CONTENT_LENGTH)
         .and_then(|value| value.to_str().ok())
@@ -163,7 +164,7 @@ fn content_length_within(headers: &HeaderMap, limit: u64) -> Result<(), ServerEr
     }
 }
 
-fn megabytes(value: u64) -> u64 {
+pub(crate) fn megabytes(value: u64) -> u64 {
     value.saturating_mul(1024 * 1024)
 }
 
@@ -194,9 +195,11 @@ async fn create(
     }
     let owner = auth.account_id;
     let now = state.clock.now_ms();
+    let most = state.config.quotas.projects;
     let created = state
         .db
         .call(move |conn| {
+            quotas::may_create_project(conn, owner, most)?;
             let id = projects::create_pending(conn, owner, &title, now)?;
             let row = projects::project_row(conn, id)?.ok_or(ServerError::NotFound)?;
             projects::summary(conn, &row, ProjectRole::Owner)
@@ -232,14 +235,13 @@ async fn update(
     let project: SharedProjectId = path_id(path)?;
     let patch = json_body(body)?;
     if matches!(patch.link_role, Some(ProjectRole::Owner)) {
-        return Err(ServerError::BadRequest(
-            "A link can give Editor or Viewer access, not Owner.".to_string(),
-        ));
+        return Err(ServerError::BadRequest(format!(
+            "{} Owner is not one of them.",
+            projects::LINK_ROLES
+        )));
     }
-    if matches!(patch.link_role, Some(ProjectRole::Unknown)) {
-        return Err(ServerError::BadRequest(
-            "A link can give Editor or Viewer access.".to_string(),
-        ));
+    if patch.link_role.is_some_and(|role| !grantable(role)) {
+        return Err(ServerError::BadRequest(projects::LINK_ROLES.to_string()));
     }
     if let Some(title) = &patch.title {
         let trimmed = title.trim();
@@ -656,7 +658,8 @@ async fn put_blob(
     let limit = megabytes(state.config.limits.max_file_mb);
     content_length_within(&headers, limit)?;
     let account = auth.account_id;
-    state
+    let (uploads, now) = (state.config.quotas.uploads_per_hour, state.clock.now_ms());
+    let owner = state
         .db
         .call(move |conn| {
             let (row, role) = access(conn, project, account)?;
@@ -666,9 +669,11 @@ async fn put_blob(
                     "This project is no longer shared.".to_string(),
                 ));
             }
-            Ok(())
+            quotas::count_upload(conn, account, uploads, now)?;
+            Ok(row.owner)
         })
         .await?;
+    let storage = Storage::for_upload(owner, account, state.config.quotas.storage_mb);
     let _room = state
         .transfers
         .hold(
@@ -697,12 +702,24 @@ async fn put_blob(
             if after > limit_mb.saturating_mul(1024 * 1024) {
                 return Err(projects::too_large_for(limit_mb));
             }
-            Ok(())
+            match storage {
+                Some(storage) => storage.check(conn, size, 0),
+                None => Ok(()),
+            }
         })
         .await?;
     let now = state.clock.now_ms();
-    crate::blobs::cleanup::upload(&state.db, &state.blobs, project, &hash, body, limit_mb, now)
-        .await?;
+    crate::blobs::cleanup::upload(
+        &state.db,
+        &state.blobs,
+        project,
+        &hash,
+        body,
+        limit_mb,
+        storage,
+        now,
+    )
+    .await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -792,7 +809,8 @@ async fn put_snapshot(
     };
     content_length_within(&headers, limit)?;
     let (account, device) = (auth.account_id, auth.device_id);
-    let (newest, public_key) = state
+    let (uploads, counted_at) = (state.config.quotas.uploads_per_hour, state.clock.now_ms());
+    let (newest, public_key, owner) = state
         .db
         .call(move |conn| {
             let (row, role) = access(conn, project, account)?;
@@ -811,7 +829,8 @@ async fn put_snapshot(
             let public_key = crate::auth::devices::find(conn, device)?
                 .map(|found| found.public_key)
                 .ok_or(ServerError::Unauthorized)?;
-            Ok((newest, public_key))
+            quotas::count_upload(conn, account, uploads, counted_at)?;
+            Ok((newest, public_key, row.owner))
         })
         .await?;
     let now = state.clock.now_ms();
@@ -843,6 +862,13 @@ async fn put_snapshot(
     let held = {
         if bytes.is_empty() {
             return Err(too_large());
+        }
+        if let Some(storage) = Storage::for_upload(owner, account, state.config.quotas.storage_mb) {
+            let size = bytes.len() as u64;
+            state
+                .db
+                .read(move |conn| storage.check(conn, size, 0))
+                .await?;
         }
         let checked = bytes.clone();
         let reach = tokio::task::spawn_blocking(move || peers::snapshot_reach(&checked))
@@ -1062,14 +1088,16 @@ async fn grant_member(
     let (project, target): (SharedProjectId, AccountId) = two_ids(path)?;
     let MemberGrant { role } = json_body(body)?;
     if role == ProjectRole::Owner {
-        return Err(ServerError::BadRequest(
-            "Ownership cannot be given away yet. Choose Editor or Viewer.".to_string(),
-        ));
+        return Err(ServerError::BadRequest(format!(
+            "Ownership cannot be given away yet. {}",
+            projects::MEMBER_ROLES
+        )));
     }
-    if role == ProjectRole::Unknown {
-        return Err(ServerError::BadRequest(
-            "This server doesn't know that role. Choose Editor or Viewer.".to_string(),
-        ));
+    if !grantable(role) {
+        return Err(ServerError::BadRequest(format!(
+            "This server doesn't know that role. {}",
+            projects::MEMBER_ROLES
+        )));
     }
     auth.require(ServerAction::ShareProjects)?;
     let account = auth.account_id;

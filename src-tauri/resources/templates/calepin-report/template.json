@@ -1,0 +1,14 @@
+{
+  "id": "calepin-report",
+  "name": "Calepin report",
+  "category": "Theses & Reports",
+  "description": "A Typst report with executable Python chunks and an inline result, built by Calepin. Chunks run once you allow code in the project, and a chunk whose language is not installed shows a note instead of output.",
+  "main_doc": "main.typ",
+  "engine": "calepin",
+  "layout": "single-column",
+  "pages": "multi",
+  "default_color": "#0f766e",
+  "license": { "spdx": "MIT", "author": "Oleafly", "url": "https://github.com/Oleafly/Oleafly" },
+  "requires": { "packages": [], "fonts": [], "engine": "calepin" },
+  "order": 44
+}

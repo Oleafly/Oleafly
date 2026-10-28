@@ -4,7 +4,6 @@ import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
-import { useSettingsStore } from "@/store/settings";
 
 const loaded = vi.hoisted(() => ({ pane: vi.fn(), keeper: vi.fn(), activity: vi.fn() }));
 
@@ -46,28 +45,12 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  useSettingsStore.setState({ liveCollaboration: false });
   useCollabRail.setState({ visible: false, unread: false });
   useCommentsRail.setState({ visible: false, unread: false });
 });
 
 describe("comment slots", () => {
-  it("load nothing while live collaboration is off", async () => {
-    useCollabRail.setState({ visible: true });
-    const { container } = render(
-      <>
-        <CollabActivitySlot />
-        <CommentsPanel />
-      </>,
-    );
-    await settle();
-    expect(container).toBeEmptyDOMElement();
-    expect(loaded.pane).not.toHaveBeenCalled();
-    expect(loaded.keeper).not.toHaveBeenCalled();
-  });
-
   it("start the comment keeper only for a shared project", async () => {
-    useSettingsStore.setState({ liveCollaboration: true });
     render(<CollabActivitySlot />);
     await vi.waitFor(() => expect(loaded.activity).toHaveBeenCalled());
     await settle();
@@ -77,7 +60,6 @@ describe("comment slots", () => {
   });
 
   it("load the Comments tab on demand", async () => {
-    useSettingsStore.setState({ liveCollaboration: true });
     render(<CommentsPanel />);
     expect(await screen.findByText("comments pane")).toBeInTheDocument();
   });

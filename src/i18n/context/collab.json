@@ -31,6 +31,7 @@
     }
   },
   "addServer": {
+    "oleaflyDescription": "Line under the name Oleafly on the button that picks the public Oleafly server at collab.oleafly.com, above the field for any other address",
     "addressPlaceholder": "Example server address shown in an empty field. Keep it exactly as written.",
     "serverTitle": "Dialog title once the server answers and the person picks how to sign in. {{server}} is the server's name, such as Smith Lab",
     "serverDescription": "Under the dialog title while the person picks a sign-in option. The people who run the server control who gets in",
@@ -53,7 +54,8 @@
     "not_admitted": "Shown when the server's admin has not allowed this person to sign in. Keep it short and calm.",
     "server_changed": "Shown when the saved server address now belongs to a different server. Oleafly refused to talk to it. Keep the advice to remove and re-add only if trusted.",
     "duplicate_server": "Shown when an address the person adds answers as a server that is already in their list under a different address.",
-    "device_in_use": "\"Computer account\" means the person's user account on the operating system, not their account on the server. Oleafly's device key belongs to that operating-system account, so two people sharing it cannot both sign in."
+    "device_in_use": "\"Computer account\" means the person's user account on the operating system, not their account on the server. Oleafly's device key belongs to that operating-system account, so two people sharing it cannot both sign in.",
+    "account_storage_full": "Storage on the server counts against the account that owns the project, whoever uploads the file. The person reading this may be that owner."
   },
   "roles": {
     "admin": "Server role with full control of the server",
@@ -176,10 +178,14 @@
   "projectRoles": {
     "editor": "Role on one shared project: can change files. Different from the server roles under roles.",
     "viewer": "Role on one shared project: can open and read it but not change it.",
-    "unknown": "Shown in place of a project role that a newer server uses and this version of the app doesn't know. The person can only read the project."
+    "unknown": "Shown in place of a project role that a newer server uses and this version of the app doesn't know. The person can only read the project.",
+    "reviewer": "Project role for someone whose edits all become suggestions that an owner or editor accepts or rejects. They can also comment. One word, like Editor and Viewer.",
+    "commenter": "Project role for someone who can read the project and comment on it but not edit or suggest. One word, like Editor and Viewer."
   },
   "share": {
     "copyAndShare": "Button on a project that is a folder outside Oleafly. It copies the folder into the library, then shares the copy.",
+    "noServersYet": "Shown in the Share dialog when the person has not added any collaboration server yet",
+    "addOleafly": "Button that adds the public Oleafly server and starts signing in to it right away",
     "renamed": "Some characters in file names are refused on some systems, so those files get a slightly different name on other people's computers."
   },
   "manage": {
@@ -187,7 +193,7 @@
       "sharing": "Name of a switch. When it is on, anyone signed in to the server who has the project link can open the project."
     },
     "comments": {
-      "label": "Name of a switch in the share dialog that only the project owner sees. When it is on, people who can edit the project can leave comments on its text.",
+      "label": "Name of a switch in the share dialog that only the project owner sees. When it is on, owners, editors, reviewers and commenters can leave comments on its text.",
       "description": "Explains the Comments switch. Turning it off hides comments for everyone but keeps them stored.",
       "serverOff": "Shown under the Comments switch, which is locked off, when the admin of the server has turned comments off for the whole server. {{server}} is the server's name."
     },
@@ -313,11 +319,10 @@
         "pending": "Badge on a project whose owner is still uploading it for the first time"
       },
       "count": "{{shown}} and {{total}} are numbers of projects in the list"
-    }
+    },
+    "states": {}
   },
   "links": {
-    "turnedOff": "Shown when someone clicks an Oleafly link while the Live collaboration setting is off. Settings and Experimentation are the window and section names, so use the same words as the Settings navigation in shell.json.",
-    "openSettings": "Button that opens the Settings window at the Experimentation section.",
     "malformed": "Shown when an Oleafly link someone clicked in an email or web page cannot be read.",
     "opening": "Short status line next to a spinner while a shared project downloads and opens.",
     "confirm": {
@@ -423,5 +428,51 @@
     "added": "Banner. Two people added a file with the same name. {{file}} is the name, {{copy}} the new name this file got on this computer, {{name}} the other person.",
     "retry": "Button that tries again to send the files listed in the banner",
     "dismiss": "Accessible label of the close button on one banner row"
+  },
+  "projectRoleDescriptions": {
+    "editor": "Short line under the role name in the role picker. Editors change text directly and accept or reject other people's suggestions.",
+    "reviewer": "Short line under the role name in the role picker. Keep it as short as the English.",
+    "commenter": "Short line under the role name in the role picker. Keep it as short as the English.",
+    "viewer": "Short line under the role name in the role picker. Keep it as short as the English."
+  },
+  "toolbar": {
+    "reviewing": "Tooltip on a collaborator's avatar when that person is a reviewer working in a file. {{path}} is the file. Same pattern as Editing {{path}}."
+  },
+  "access": {
+    "reviewerBy": "Banner after the owner changes this person's role to Reviewer. {{name}} is the owner. Use the same words for suggestions as the Suggesting mode.",
+    "commenterBy": "Banner after the owner changes this person's role to Commenter. {{name}} is the owner."
+  },
+  "suggestions": {
+    "insertedBy": "Tooltip on suggested new text in the editor. {{name}} is the person who suggested it.",
+    "deletedBy": "Tooltip on struck-through text in the editor that someone suggested deleting. {{name}} is that person.",
+    "added": "Small label above the text a suggestion adds. Past participle, one word if possible.",
+    "deleted": "Small label above the text a suggestion removes. Past participle, one word if possible.",
+    "accept": "Button on a suggestion card. Keeps the suggested text and removes the marking.",
+    "reject": "Button on a suggestion card. Puts the original text back.",
+    "withdraw": "Button the person who made a suggestion uses to take it back. The original text comes back, as with Reject.",
+    "acceptAll": "Button for one file in the Comments pane. Accepts every suggestion in that file.",
+    "rejectAll": "Button for one file in the Comments pane. Rejects every suggestion in that file.",
+    "pendingCount": "Screen reader text for the small number next to a file name. {{number}} is how many suggestions in the file wait for review.",
+    "pendingCompile": "Shown once when the person starts a compile while suggestions wait for review. {{number}} is how many. The compiled PDF already shows them.",
+    "pendingExport": "Shown once when the person starts an export while suggestions wait for review. {{number}} is how many.",
+    "mode": {
+      "editing": "Name of the editor mode where typing changes the text straight away. Use the same word as the published docs for Editing mode.",
+      "suggesting": "Name of the editor mode where typing becomes suggestions. Use the same word as the published docs for Suggesting mode.",
+      "reviewerHint": "Tooltip on the locked Suggesting label that reviewers see in the toolbar."
+    }
+  },
+  "chat": {
+    "title": "Name of the project chat in the sidebar rail. One word if the language allows.",
+    "titleUnread": "Rail label when the chat has messages this person hasn't seen yet.",
+    "readOnly": "Shown instead of the message box for people with the Viewer role.",
+    "clear": "Button only the project's owner sees. Removes every message for everyone."
+  },
+  "history": {
+    "title": "Section in the Live collaboration pane listing earlier versions of the shared project.",
+    "earlier": "Group heading for changes made before the app recorded times, so no date is known.",
+    "authorsMore": "{{names}} is a short list of names, {{number}} is how many more people made changes.",
+    "name": "Button that gives a version a name, like a bookmark. Not about file names.",
+    "restoreProject": "Button that brings back every file as it was in this version. The change is a normal new edit, so nothing is lost.",
+    "timeRange": "Two clock times, such as 10:02 to 10:40, for a group of changes."
   }
 }

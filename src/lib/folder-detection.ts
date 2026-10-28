@@ -1,4 +1,4 @@
-export type SourceFamily = "latex" | "typst" | "markdown";
+export type SourceFamily = "latex" | "typst" | "markdown" | "quarto";
 
 export type DetectionTier = "s" | "a" | "m" | "w";
 
@@ -10,6 +10,8 @@ export type DocumentKind =
   | "standalone"
   | "typst"
   | "markdown"
+  | "quarto"
+  | "calepin"
   | "unknown";
 
 export type DetectionReason =

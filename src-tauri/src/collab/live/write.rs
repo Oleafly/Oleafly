@@ -96,7 +96,7 @@ fn write_renaming(
     let Some(target) = safe_target(root, &path) else {
         return Ok(refused);
     };
-    if !live.can_edit() {
+    if !live.can_edit() && !live.suggesting() {
         return Ok(refused);
     }
     let mut placed = by_path(&materialize::layout(&live.doc().nodes()?));
@@ -106,7 +106,15 @@ fn write_renaming(
     let crlf = crlf_only(text.as_bytes()) == Some(true);
     let text = lf_text(text);
     let base = base.map(lf_text);
+    let suggested = live.suggesting();
+    if !live.can_edit() && !matches!(placed.get(&path), Some((_, NodeKind::Text, _))) {
+        return Ok(refused);
+    }
     let added = match placed.get(&path).cloned() {
+        Some((id, NodeKind::Text, _)) if suggested => {
+            live.suggested_text(&id, &text)?;
+            None
+        }
         Some((id, NodeKind::Text, _)) => {
             let current = live.doc().text(&id)?;
             let chosen = match base {
@@ -186,6 +194,7 @@ fn kept_from_a_viewer(live: &LiveProject, root: &Path, path: &str) -> Result<boo
     }
     Ok(match placed.get(&path) {
         Some((_, NodeKind::Dir, _)) => false,
+        Some((_, NodeKind::Text, _)) => !live.suggesting(),
         Some(_) => true,
         None => {
             std::fs::symlink_metadata(target).is_err()
@@ -201,7 +210,7 @@ impl Active {
         base: Option<&str>,
         text: &str,
     ) -> Result<WriteOutcome, CollabError> {
-        let (handled, renamed) = {
+        let (handled, renamed, suggested) = {
             let reads = guard(&READS);
             let mut live = lock(&self.live);
             if kept_from_a_viewer(&live, &self.root, path)? {
@@ -211,7 +220,7 @@ impl Active {
                 });
             }
             let mut bases = guard(&self.bases);
-            write_renaming(
+            let (handled, renamed) = write_renaming(
                 &mut live,
                 &mut bases,
                 reads.get(&self.project_id),
@@ -219,13 +228,20 @@ impl Active {
                 path,
                 base,
                 text,
-            )?
+            )?;
+            let suggested = (handled && live.suggesting())
+                .then(|| normalized(path))
+                .flatten();
+            (handled, renamed, suggested)
         };
         if !handled {
             return Ok(WriteOutcome {
                 handled: false,
                 reason: None,
             });
+        }
+        if let Some(path) = suggested {
+            crate::collab::suggesting::tell(self.host.as_ref(), &self.project_id, Some(path), true);
         }
         self.handle.flush();
         self.refresh_pending();

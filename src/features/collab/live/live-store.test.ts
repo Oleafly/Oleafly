@@ -567,6 +567,22 @@ describe("collab live store", () => {
     expect(useCollabLiveStore.getState().accessNotice).toBeNull();
   });
 
+  it("tells the person when they become a reviewer or a commenter, and clears it once they can edit again", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit("members", { projectId: PROJECT, accountId: ALICE, by: BOB, kind: "role_changed" });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "reviewer" });
+    await settle();
+    expect(useCollabLiveStore.getState().accessNotice).toEqual({ kind: "reviewer", byName: "Bob Jones" });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "commenter" });
+    await settle();
+    expect(useCollabLiveStore.getState().accessNotice).toEqual({ kind: "commenter", byName: "" });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "owner" });
+    await settle();
+    expect(useCollabLiveStore.getState().accessNotice).toBeNull();
+  });
+
   it("does not use an old change of someone else's role to name who changed this person's role", async () => {
     openProject(PROJECT);
     stop = startCollabLive();

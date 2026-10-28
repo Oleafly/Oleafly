@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
@@ -220,6 +220,16 @@ describe("RecentlyDeleted", () => {
     await screen.findByRole("list", { name: enCollab.pane.deleted });
     expect(screen.getAllByRole("listitem")).toHaveLength(3);
     expect(screen.queryByRole("button", { name: /restore/i })).toBeNull();
+  });
+
+  it("shows reviewers and commenters the list with no Restore", async () => {
+    for (const role of ["reviewer", "commenter"] as const) {
+      useCollabLiveStore.setState({ role, share: shareInfo({ role, account_id: ALICE_ID }) });
+      view();
+      await screen.findByRole("list", { name: enCollab.pane.deleted });
+      expect(screen.queryByRole("button", { name: /restore/i })).toBeNull();
+      cleanup();
+    }
   });
 
   it("says so in one quiet line when nothing was deleted", async () => {

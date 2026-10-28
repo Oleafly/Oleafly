@@ -13,23 +13,29 @@ use super::store::{
     Waited, WriteMode,
 };
 use futures_util::stream::{self, StreamExt};
-use oleafly_core::content::ContentHash;
+use oleafly_core::content::{ContentHash, ContentHasher};
 use reqwest::Method;
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::path::Path;
+use std::io::SeekFrom;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
+use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
 const FOLDER: &str = "application/vnd.google-apps.folder";
 const ROOT_NAME: &str = "Oleafly";
 const MAX_ATTEMPTS: u32 = 4;
 const SIMPLE_UPLOAD_LIMIT: u64 = 5 * 1024 * 1024;
 /// Resumable uploads go in pieces that are a multiple of 256 KiB.
-const CHUNK: usize = 8 * 1024 * 1024;
+const CHUNK: u64 = 8 * 1024 * 1024;
 const MAX_REPLY_BYTES: usize = 16 * 1024 * 1024;
 const MAX_LIST_PAGES: usize = 1_000;
+/// The limit on a lookup or other small request. Downloads have none, and an
+/// upload's grows with its size.
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(120);
+/// How long a download may go without a byte before it counts as stalled.
+const STREAM_READ_TIMEOUT: Duration = Duration::from_secs(60);
 const UPLOAD_CONCURRENCY: usize = 6;
 /// How often a wait for changes asks Drive, which has no long poll.
 const CHANGE_POLL: Duration = Duration::from_secs(60);
@@ -57,7 +63,14 @@ pub(crate) struct DriveStore {
     endpoints: DriveEndpoints,
     token: Mutex<String>,
     refresher: Option<TokenRefresher>,
-    http: reqwest::Client,
+    /// For calls with a total timeout. It has no read timeout: reqwest runs
+    /// that from the start of a request until the reply's headers, so it
+    /// would also cap the time to send an upload's body.
+    timed: reqwest::Client,
+    /// For downloads, which run as long as bytes keep coming. Its read
+    /// timeout catches one that stalls.
+    streaming: reqwest::Client,
+    timeout: Duration,
     /// Store paths to the items they resolved to. A path that stops resolving
     /// is dropped and looked up again.
     paths: Mutex<HashMap<String, Item>>,
@@ -96,18 +109,43 @@ impl DriveStore {
         token: String,
         refresher: Option<TokenRefresher>,
     ) -> Self {
+        Self::with_timeouts(
+            endpoints,
+            token,
+            refresher,
+            REQUEST_TIMEOUT,
+            STREAM_READ_TIMEOUT,
+        )
+    }
+
+    /// `request` limits each small request; `read` is how long a download
+    /// may go without a byte.
+    pub(crate) fn with_timeouts(
+        endpoints: DriveEndpoints,
+        token: String,
+        refresher: Option<TokenRefresher>,
+        request: Duration,
+        read: Duration,
+    ) -> Self {
+        let client = |read: Option<Duration>| {
+            // A resumable upload answers 308 for "send the next piece", which
+            // must not be followed as a redirect.
+            let mut builder = reqwest::Client::builder()
+                .user_agent("Oleafly")
+                .connect_timeout(Duration::from_secs(15))
+                .redirect(reqwest::redirect::Policy::none());
+            if let Some(read) = read {
+                builder = builder.read_timeout(read);
+            }
+            builder.build().unwrap_or_else(|_| reqwest::Client::new())
+        };
         Self {
             endpoints,
             token: Mutex::new(token),
             refresher,
-            // A resumable upload answers 308 for "send the next piece", which
-            // must not be followed as a redirect.
-            http: reqwest::Client::builder()
-                .user_agent("Oleafly")
-                .connect_timeout(Duration::from_secs(15))
-                .redirect(reqwest::redirect::Policy::none())
-                .build()
-                .unwrap_or_else(|_| reqwest::Client::new()),
+            timed: client(None),
+            streaming: client(Some(read)),
+            timeout: request,
             paths: Mutex::new(HashMap::new()),
             names: Mutex::new(HashMap::new()),
         }
@@ -120,6 +158,30 @@ impl DriveStore {
             .clone()
     }
 
+    /// Swaps in a fresh token for `stale`, the one Drive refused. False when
+    /// there's no way to get one.
+    async fn renew(&self, stale: String) -> StoreResult<bool> {
+        let Some(refresher) = &self.refresher else {
+            return Ok(false);
+        };
+        let fresh = refresher(stale).await?;
+        *self
+            .token
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = fresh;
+        Ok(true)
+    }
+
+    /// A body gets the time a small request has plus a second for every 32
+    /// KiB in it, so an 8 MiB piece still goes up on a slow uplink.
+    fn upload_timeout(&self, len: usize) -> Duration {
+        self.timeout + Duration::from_secs(len as u64 / 32_768)
+    }
+
+    /// Sends a request, trying again on a dropped connection, a busy or
+    /// failing Drive, and once with a fresh token. `timeout` is the limit on
+    /// the whole call; `None` is for a download, which instead fails when it
+    /// stalls.
     async fn send(
         &self,
         method: Method,
@@ -127,18 +189,19 @@ impl DriveStore {
         query: &[(&str, String)],
         body: &Body,
         extra: &[(&'static str, String)],
+        timeout: Option<Duration>,
     ) -> StoreResult<reqwest::Response> {
         let mut refreshed = false;
         let mut attempt = 0;
         loop {
             attempt += 1;
             let token = self.token();
-            let mut request = self
-                .http
-                .request(method.clone(), url)
-                .timeout(REQUEST_TIMEOUT)
-                .bearer_auth(&token)
-                .query(query);
+            let mut request = match timeout {
+                Some(timeout) => self.timed.request(method.clone(), url).timeout(timeout),
+                None => self.streaming.request(method.clone(), url),
+            }
+            .bearer_auth(&token)
+            .query(query);
             for (name, value) in extra {
                 request = request.header(*name, value);
             }
@@ -157,23 +220,14 @@ impl DriveStore {
                 }
                 Err(error) => return Err(StoreError::Network(error.to_string())),
             };
-            let status = response.status().as_u16();
-            if status == 401 {
-                match (&self.refresher, refreshed) {
-                    (Some(refresher), false) => {
-                        let fresh = refresher(token).await?;
-                        *self
-                            .token
-                            .lock()
-                            .unwrap_or_else(std::sync::PoisonError::into_inner) = fresh;
-                        refreshed = true;
-                        continue;
-                    }
-                    _ => return Err(StoreError::Revoked),
+            if response.status().as_u16() == 401 {
+                if !refreshed && self.renew(token).await? {
+                    refreshed = true;
+                    continue;
                 }
+                return Err(StoreError::Revoked);
             }
-            let limited = status == 429 || status == 403 && rate_limited(&response);
-            if attempt < MAX_ATTEMPTS && (limited || (500..600).contains(&status)) {
+            if attempt < MAX_ATTEMPTS && retryable(&response) {
                 let wait = retry_after(&response);
                 drop(response);
                 tokio::time::sleep(retry_delay(attempt, wait)).await;
@@ -190,7 +244,9 @@ impl DriveStore {
         query: &[(&str, String)],
         body: &Body,
     ) -> StoreResult<Option<Value>> {
-        let response = self.send(method, url, query, body, &[]).await?;
+        let response = self
+            .send(method, url, query, body, &[], Some(self.timeout))
+            .await?;
         if response.status().as_u16() == 404 {
             return Ok(None);
         }
@@ -442,6 +498,7 @@ impl DriveStore {
             Some(rev) => format!("{}/files/{id}/revisions/{rev}", self.endpoints.api),
             None => format!("{}/files/{id}", self.endpoints.api),
         };
+        // No total timeout: a large file takes as long as the link needs.
         let response = self
             .send(
                 Method::GET,
@@ -449,6 +506,7 @@ impl DriveStore {
                 &[("alt", "media".into())],
                 &Body::None,
                 &[],
+                None,
             )
             .await?;
         if response.status().as_u16() == 404 {
@@ -460,19 +518,25 @@ impl DriveStore {
         Ok(Some(response))
     }
 
-    /// Writes `bytes` as the new content of `id`, or as a new file named
+    /// Writes `content` as the new content of `id`, or as a new file named
     /// `name` in `parent`, and returns the id and its new head revision.
-    async fn upload(&self, target: Upload<'_>, bytes: Vec<u8>) -> StoreResult<(String, String)> {
+    async fn upload(
+        &self,
+        target: Upload<'_>,
+        content: Content<'_>,
+    ) -> StoreResult<(String, String)> {
         let fields = ("fields", "id,headRevisionId".to_string());
-        let response = if bytes.len() as u64 <= SIMPLE_UPLOAD_LIMIT {
-            match target {
+        let response = match content {
+            Content::Memory(bytes) if bytes.len() as u64 <= SIMPLE_UPLOAD_LIMIT => match target {
                 Upload::Update(id) => {
+                    let timeout = self.upload_timeout(bytes.len());
                     self.send(
                         Method::PATCH,
                         &format!("{}/files/{id}", self.endpoints.upload),
                         &[("uploadType", "media".into()), fields],
                         &Body::Bytes(bytes, "application/octet-stream"),
                         &[],
+                        Some(timeout),
                     )
                     .await?
                 }
@@ -485,6 +549,7 @@ impl DriveStore {
                     .into_bytes();
                     body.extend_from_slice(&bytes);
                     body.extend_from_slice(format!("\r\n--{boundary}--").as_bytes());
+                    let timeout = self.upload_timeout(body.len());
                     self.send(
                         Method::POST,
                         &format!("{}/files", self.endpoints.upload),
@@ -494,12 +559,12 @@ impl DriveStore {
                             "multipart/related; boundary=oleafly-drive-upload-boundary",
                         ),
                         &[],
+                        Some(timeout),
                     )
                     .await?
                 }
-            }
-        } else {
-            self.resumable(target, bytes).await?
+            },
+            content => self.resumable(target, content).await?,
         };
         if !response.status().is_success() {
             return Err(failure(response).await);
@@ -518,9 +583,9 @@ impl DriveStore {
     async fn resumable(
         &self,
         target: Upload<'_>,
-        bytes: Vec<u8>,
+        mut content: Content<'_>,
     ) -> StoreResult<reqwest::Response> {
-        let total = bytes.len();
+        let total = content.size();
         let (method, url, metadata) = match target {
             Upload::Update(id) => (
                 Method::PATCH,
@@ -543,6 +608,7 @@ impl DriveStore {
                 ],
                 &Body::Json(metadata),
                 &[("x-upload-content-length", total.to_string())],
+                Some(self.timeout),
             )
             .await?;
         if !started.status().is_success() {
@@ -554,25 +620,109 @@ impl DriveStore {
             .and_then(|value| value.to_str().ok())
             .map(str::to_string)
             .ok_or_else(|| StoreError::Server("drive didn't open an upload session".into()))?;
+        // Each piece is read at the offset Drive asks for next. Drive may keep
+        // only part of a piece, and after a failed one it is asked how much it
+        // has, so a piece sent again starts where Drive stands.
         let mut offset = 0;
+        let mut tries = 0;
         loop {
-            let end = (offset + CHUNK).min(total);
-            let range = format!("bytes {offset}-{}/{total}", end.saturating_sub(1));
-            let response = self
-                .send(
-                    Method::PUT,
-                    &session,
-                    &[],
-                    &Body::Bytes(bytes[offset..end].to_vec(), "application/octet-stream"),
-                    &[("content-range", range)],
-                )
-                .await?;
-            // 308 asks for the next piece.
-            if response.status().as_u16() == 308 && end < total {
-                offset = end;
-                continue;
+            tries += 1;
+            let last = tries >= MAX_ATTEMPTS;
+            let len = (total - offset).min(CHUNK);
+            let piece = content.piece(offset, len).await?;
+            let end = offset + len;
+            if end == total {
+                // The last piece makes the file on Drive, so a file that
+                // changed while it went up fails here, before Drive keeps a
+                // mix of two versions.
+                content.unchanged().await?;
             }
-            return Ok(response);
+            let token = self.token();
+            // Ok holds the offset Drive asked for; Err the wait before asking
+            // Drive where a failed piece left the upload.
+            let kept_or_wait = match self.put_piece(&session, &token, piece, offset, total).await {
+                Ok(response) if response.status().as_u16() == 308 => {
+                    Ok(kept(&response, end, total)?)
+                }
+                Ok(response) if last => return Ok(response),
+                Ok(response) if response.status().as_u16() == 401 => {
+                    drop(response);
+                    if !self.renew(token).await? {
+                        return Err(StoreError::Revoked);
+                    }
+                    Err(Duration::ZERO)
+                }
+                Ok(response) if retryable(&response) => {
+                    Err(retry_delay(tries, retry_after(&response)))
+                }
+                Ok(response) => return Ok(response),
+                Err(error) if !last && transient(&error) => Err(retry_delay(tries, None)),
+                Err(error) => return Err(StoreError::Network(error.to_string())),
+            };
+            let next = match kept_or_wait {
+                Ok(next) => next,
+                Err(wait) => {
+                    tokio::time::sleep(wait).await;
+                    // Drive may have kept some of the piece, or all of it
+                    // with only the reply lost.
+                    match self.standing(&session, end, total).await? {
+                        Standing::At(next) => next,
+                        Standing::Done(response) => return Ok(response),
+                    }
+                }
+            };
+            if next > offset {
+                tries = 0;
+            } else if last {
+                return Err(StoreError::Server("drive stopped taking the upload".into()));
+            }
+            offset = next;
+        }
+    }
+
+    /// Sends one piece of a resumable upload, once, moving its bytes into the
+    /// request. A failure is followed by asking Drive how much it kept, not
+    /// by sending the same bytes again.
+    async fn put_piece(
+        &self,
+        session: &str,
+        token: &str,
+        piece: Vec<u8>,
+        offset: u64,
+        total: u64,
+    ) -> reqwest::Result<reqwest::Response> {
+        let last = offset + piece.len() as u64 - 1;
+        self.timed
+            .put(session)
+            .timeout(self.upload_timeout(piece.len()))
+            .bearer_auth(token)
+            .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+            .header(
+                reqwest::header::CONTENT_RANGE,
+                format!("bytes {offset}-{last}/{total}"),
+            )
+            .body(piece)
+            .send()
+            .await
+    }
+
+    /// Asks Drive how much of an interrupted upload it has. `sent` is the end
+    /// of the furthest piece sent.
+    async fn standing(&self, session: &str, sent: u64, total: u64) -> StoreResult<Standing> {
+        let response = self
+            .send(
+                Method::PUT,
+                session,
+                &[],
+                &Body::Bytes(Vec::new(), "application/octet-stream"),
+                &[("content-range", format!("bytes */{total}"))],
+                Some(self.timeout),
+            )
+            .await?;
+        match response.status().as_u16() {
+            308 => kept(&response, sent, total).map(Standing::At),
+            200 | 201 => Ok(Standing::Done(response)),
+            _ => Err(failure(response).await),
         }
     }
 
@@ -627,7 +777,9 @@ impl DriveStore {
         if current.rev != expected {
             return Err(StoreError::Conflict);
         }
-        let (_, written) = self.upload(Upload::Update(id), bytes).await?;
+        let (_, written) = self
+            .upload(Upload::Update(id), Content::Memory(bytes))
+            .await?;
         let revisions = self.revisions(id).await?;
         let Some(position) = revisions.iter().position(|revision| *revision == written) else {
             self.forget(path);
@@ -647,7 +799,9 @@ impl DriveStore {
         if let Some(theirs) = theirs {
             if let Some(response) = self.download(id, Some(theirs)).await? {
                 let restored = read_capped(response, MAX_REPLY_BYTES).await?;
-                let _ = self.upload(Upload::Update(id), restored).await;
+                let _ = self
+                    .upload(Upload::Update(id), Content::Memory(restored))
+                    .await;
             }
         }
         Err(StoreError::Conflict)
@@ -675,7 +829,7 @@ impl DriveStore {
                     parent: &parents[0],
                     name,
                 },
-                bytes,
+                Content::Memory(bytes),
             )
             .await?;
         let files: Vec<Item> = self
@@ -699,32 +853,38 @@ impl DriveStore {
                 let id = self.file(path).await?.ok_or(StoreError::Conflict)?;
                 self.swap(path, &id, expected, bytes).await
             }
-            WriteMode::Overwrite => match self.file(path).await? {
-                Some(id) => match self.upload(Upload::Update(&id), bytes.clone()).await {
-                    Ok((_, rev)) => Ok(rev),
-                    Err(error) => {
-                        self.forget(path);
-                        Err(error)
-                    }
-                },
-                None => {
-                    let (parent, name) = parent_of(path);
-                    let parents = self.folders(parent, true).await?.ok_or_else(|| {
-                        StoreError::Server("drive couldn't make the folder".into())
-                    })?;
-                    let (id, rev) = self
-                        .upload(
-                            Upload::Create {
-                                parent: &parents[0],
-                                name,
-                            },
-                            bytes,
-                        )
-                        .await?;
-                    self.remember(path, &id, false);
-                    Ok(rev)
+            WriteMode::Overwrite => self.overwrite(path, Content::Memory(bytes)).await,
+        }
+    }
+
+    /// Writes `content` at `path`, over whatever is there.
+    async fn overwrite(&self, path: &str, content: Content<'_>) -> StoreResult<String> {
+        match self.file(path).await? {
+            Some(id) => match self.upload(Upload::Update(&id), content).await {
+                Ok((_, rev)) => Ok(rev),
+                Err(error) => {
+                    self.forget(path);
+                    Err(error)
                 }
             },
+            None => {
+                let (parent, name) = parent_of(path);
+                let parents = self
+                    .folders(parent, true)
+                    .await?
+                    .ok_or_else(|| StoreError::Server("drive couldn't make the folder".into()))?;
+                let (id, rev) = self
+                    .upload(
+                        Upload::Create {
+                            parent: &parents[0],
+                            name,
+                        },
+                        content,
+                    )
+                    .await?;
+                self.remember(path, &id, false);
+                Ok(rev)
+            }
         }
     }
 
@@ -789,6 +949,149 @@ impl DriveStore {
 enum Upload<'a> {
     Update(&'a str),
     Create { parent: &'a str, name: &'a str },
+}
+
+/// What an upload sends: bytes in memory, or a file read from disk a piece at
+/// a time.
+enum Content<'a> {
+    Memory(Vec<u8>),
+    File(&'a mut LocalFile),
+}
+
+impl Content<'_> {
+    fn size(&self) -> u64 {
+        match self {
+            Self::Memory(bytes) => bytes.len() as u64,
+            Self::File(file) => file.size(),
+        }
+    }
+
+    async fn piece(&mut self, offset: u64, len: u64) -> StoreResult<Vec<u8>> {
+        match self {
+            Self::Memory(bytes) => {
+                let start = offset as usize;
+                Ok(bytes[start..start + len as usize].to_vec())
+            }
+            Self::File(file) => file.piece(offset, len).await,
+        }
+    }
+
+    async fn unchanged(&self) -> StoreResult<()> {
+        match self {
+            Self::Memory(_) => Ok(()),
+            Self::File(file) => file.unchanged().await,
+        }
+    }
+}
+
+/// A file that goes up straight from disk, so it never has to fit in memory.
+/// Each piece is read at the offset Drive asks for, and each byte goes into
+/// the hash once, in order, the first time it is read.
+struct LocalFile {
+    file: tokio::fs::File,
+    path: PathBuf,
+    state: (u64, Option<SystemTime>),
+    hasher: ContentHasher,
+    hashed: u64,
+}
+
+impl LocalFile {
+    async fn open(path: &Path) -> StoreResult<Self> {
+        let state = file_state(path).await?;
+        let file = tokio::fs::File::open(path)
+            .await
+            .map_err(|error| StoreError::Io(error.to_string()))?;
+        Ok(Self {
+            file,
+            path: path.to_path_buf(),
+            state,
+            hasher: ContentHasher::new(),
+            hashed: 0,
+        })
+    }
+
+    fn size(&self) -> u64 {
+        self.state.0
+    }
+
+    async fn piece(&mut self, offset: u64, len: u64) -> StoreResult<Vec<u8>> {
+        let mut piece = vec![0; len as usize];
+        self.file
+            .seek(SeekFrom::Start(offset))
+            .await
+            .map_err(|error| StoreError::Io(error.to_string()))?;
+        self.file.read_exact(&mut piece).await.map_err(|error| {
+            // The file is shorter than when the upload began.
+            if error.kind() == std::io::ErrorKind::UnexpectedEof {
+                changed_while_read()
+            } else {
+                StoreError::Io(error.to_string())
+            }
+        })?;
+        // A piece sent again after Drive kept only part of one starts among
+        // bytes already hashed.
+        let seen = usize::try_from(self.hashed.saturating_sub(offset))
+            .unwrap_or(usize::MAX)
+            .min(piece.len());
+        self.hasher.update(&piece[seen..]);
+        self.hashed = self.hashed.max(offset + len);
+        Ok(piece)
+    }
+
+    /// Fails when the file is no longer the one the upload began with.
+    async fn unchanged(&self) -> StoreResult<()> {
+        if file_state(&self.path).await? != self.state {
+            return Err(changed_while_read());
+        }
+        Ok(())
+    }
+
+    /// The hash of the whole file, once every byte of it has been read.
+    fn finish(&self) -> StoreResult<ContentHash> {
+        if self.hashed != self.size() {
+            return Err(StoreError::Server(
+                "drive ended an upload before it had every byte".into(),
+            ));
+        }
+        Ok(self.hasher.finish())
+    }
+}
+
+fn changed_while_read() -> StoreError {
+    StoreError::Io("the file changed while it was read".into())
+}
+
+/// Where an interrupted resumable upload stands.
+enum Standing {
+    /// Drive has every byte before this offset.
+    At(u64),
+    /// Drive has the whole file, and the reply says what it wrote.
+    Done(reqwest::Response),
+}
+
+/// Where a resumable upload goes on from after Drive's 308: one past the last
+/// byte in its Range header, or the start when it has none of the file yet.
+/// `sent` is the end of the furthest piece sent.
+fn kept(response: &reqwest::Response, sent: u64, total: u64) -> StoreResult<u64> {
+    let next = match response.headers().get(reqwest::header::RANGE) {
+        None => Some(0),
+        Some(range) => range
+            .to_str()
+            .ok()
+            .and_then(|range| range.strip_prefix("bytes=0-"))
+            .and_then(|last| last.trim().parse::<u64>().ok())
+            .and_then(|last| last.checked_add(1)),
+    };
+    // Drive can't hold more than it was sent, and a 308 means it lacks some.
+    next.filter(|next| *next <= sent && *next < total)
+        .ok_or_else(|| StoreError::Server("drive reported an upload range that doesn't fit".into()))
+}
+
+/// A reply worth trying again after a wait: Drive is failing or asks to slow
+/// down.
+fn retryable(response: &reqwest::Response) -> bool {
+    let status = response.status().as_u16();
+    status == 429 || status == 403 && rate_limited(response) || (500..600).contains(&status)
 }
 
 fn rate_limited(response: &reqwest::Response) -> bool {
@@ -902,19 +1205,24 @@ impl CloudStore for DriveStore {
     }
 
     async fn put_path(&self, remote: &str, local: &Path) -> StoreResult<Uploaded> {
-        let before = file_state(local).await?;
-        let bytes = tokio::fs::read(local)
-            .await
-            .map_err(|error| StoreError::Io(error.to_string()))?;
-        if file_state(local).await? != before {
-            return Err(StoreError::Io("the file changed while it was read".into()));
-        }
-        let hash = ContentHash::digest(&bytes);
-        let size = bytes.len() as u64;
-        let rev = self
-            .write(&normalize(remote), bytes, &WriteMode::Overwrite)
-            .await?;
-        Ok(Uploaded { rev, hash, size })
+        let mut file = LocalFile::open(local).await?;
+        let size = file.size();
+        let content = if size <= SIMPLE_UPLOAD_LIMIT {
+            // Small enough for one request, so it is read whole.
+            let bytes = file.piece(0, size).await?;
+            file.unchanged().await?;
+            Content::Memory(bytes)
+        } else {
+            // Read a piece at a time as it goes up: a file can be gigabytes,
+            // and several go up at once.
+            Content::File(&mut file)
+        };
+        let rev = self.overwrite(&normalize(remote), content).await?;
+        Ok(Uploaded {
+            rev,
+            hash: file.finish()?,
+            size,
+        })
     }
 
     async fn put_paths(

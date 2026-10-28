@@ -44,7 +44,8 @@
     "folder_holds_templates": "In deze map bewaart Oleafly zijn eigen sjablonen. Kies in plaats daarvan de map van het sjabloon."
   },
   "settings": {
-    "locale_unsupported": "De taal {{locale}} is niet beschikbaar."
+    "locale_unsupported": "De taal {{locale}} is niet beschikbaar.",
+    "app_icon_unsupported": "Het app-pictogram {{icon}} is niet beschikbaar."
   },
   "literature": {
     "query_empty": "De zoekopdracht mag niet leeg zijn.",
@@ -146,7 +147,8 @@
     "shell_escape": "Vertrouw deze map voordat je shell escape toestaat.",
     "broad_folder": "Oleafly kan niet heel {{name}} vertrouwen. Kies een kleinere map.",
     "declined": "De map is niet vertrouwd.",
-    "unavailable": "Oleafly kon niet controleren of deze map wordt vertrouwd."
+    "unavailable": "Oleafly kon niet controleren of deze map wordt vertrouwd.",
+    "notebook": "Vertrouw deze map om met Quarto of Calepin te compileren."
   },
   "open_folder": {
     "not_absolute": "Gebruik het volledige pad naar de map.",
@@ -335,7 +337,18 @@
     "browser_sign_in_failed": "De aanmelding uit je browser werkte niet. Misschien is hij verlopen. Meld je rechtstreeks aan."
   },
   "collab": {
-    "turned_off": "Live samenwerken staat uit. Zet het aan in Instellingen, onder Experimenten."
+    "suggestion_role": "Je rol in dit project staat geen suggesties toe."
+  },
+  "notebook": {
+    "code_needed": "{{engine}} moet code uitvoeren om dit document te bouwen, en code staat uit voor dit project. Sta code toe in dit project om het te compileren.",
+    "quarto_missing": "Quarto is niet geïnstalleerd. Installeer het via Instellingen > Engines > Quarto en compileer daarna opnieuw.",
+    "calepin_missing": "Calepin is niet geïnstalleerd. Installeer het via Instellingen > Engines > Calepin en compileer daarna opnieuw.",
+    "not_offered": "Oleafly kan {{tool}} niet downloaden voor deze computer. Installeer het zelf en compileer daarna opnieuw.",
+    "busy": "{{tool}} wordt nog geïnstalleerd. Probeer het opnieuw als dat klaar is.",
+    "install_unverified": "{{tool}} is gedownload, maar de integriteitscontrole is mislukt. Probeer het opnieuw te installeren.",
+    "unknown_tool": "Oleafly kent geen tool met de naam {{tool}}.",
+    "not_managed": "Oleafly kan alleen de kopie van {{tool}} verwijderen die het zelf heeft gedownload.",
+    "no_html_output": "Er is nog geen HTML-uitvoer. Compileer eerst het document."
   },
   "attachments": {
     "too_large": "Dit bestand is groter dan {{max}} MB. Voeg een kleiner bestand toe.",

@@ -61,6 +61,7 @@
       "loading": "Loading your devices…",
       "loadFailed": "Oleafly couldn't load your devices.",
       "current": "This computer",
+      "browser": "Browser",
       "added": "Added {{date}}",
       "lastSeen": "Last seen {{date}}",
       "neverSeen": "Not seen yet",
@@ -139,6 +140,7 @@
   "addServer": {
     "title": "Add a collaboration server",
     "description": "Enter the address your group gave you. Oleafly checks the server before you sign in.",
+    "oleaflyDescription": "The public Oleafly server",
     "addressLabel": "Server address",
     "addressPlaceholder": "collab.example.edu",
     "continue": "Continue",
@@ -218,7 +220,15 @@
     "server_removed": "This project's server isn't in your list any more. Keep the project as a local copy, or add the server again.",
     "share_in_progress": "This project is already being shared. Wait for that to finish.",
     "cancelled": "Opening the shared project was cancelled.",
-    "cloud_synced": "Your Oleafly library is in a folder that a cloud service syncs. Move it out of Dropbox, OneDrive or iCloud Drive to share or join projects."
+    "cloud_synced": "Your Oleafly library is in a folder that a cloud service syncs. Move it out of Dropbox, OneDrive or iCloud Drive to share or join projects.",
+    "suggestion_not_found": "That suggestion is already gone. Someone may have accepted or rejected it.",
+    "suggestion_not_yours": "Only the person who made this suggestion can withdraw it.",
+    "suggestion_role": "Your role in this project doesn't allow suggestions.",
+    "chat_role": "Your role in this project doesn't allow that in the chat.",
+    "history_unavailable": "This project's history isn't on this computer yet. Try again once it has synced.",
+    "account_storage_full": "The project owner's account is out of storage on this server. Remove some files to make room, or ask the server's admin for more space.",
+    "too_many_projects": "You already have as many shared projects as this server allows. Stop sharing one before you share another.",
+    "too_many_uploads": "You made too many uploads in the last hour. Try again later."
   },
   "roles": {
     "admin": "Admin",
@@ -481,8 +491,16 @@
   "projectRoles": {
     "owner": "Owner",
     "editor": "Editor",
+    "reviewer": "Reviewer",
+    "commenter": "Commenter",
     "viewer": "Viewer",
     "unknown": "Unknown role"
+  },
+  "projectRoleDescriptions": {
+    "editor": "Edits and reviews suggestions",
+    "reviewer": "Suggests changes and comments",
+    "commenter": "Reads and comments",
+    "viewer": "Reads only"
   },
   "share": {
     "button": "Share",
@@ -494,6 +512,8 @@
     "editCopy": "This is the shared copy. Edit this one from now on, not the original folder.",
     "serverLabel": "Server",
     "noServers": "Sign in to a collaboration server first, then come back to share.",
+    "noServersYet": "Add a collaboration server and sign in to share this project.",
+    "addOleafly": "Add the Oleafly server",
     "openSettings": "Open Collaboration settings",
     "checking": "Checking the project…",
     "checkFailed": "Oleafly couldn't check this project.",
@@ -503,7 +523,7 @@
     "cloudSynced": "Your Oleafly library is in a folder that iCloud, Dropbox or a similar service syncs. Two sync services would fight over the same files, so Oleafly can't share from there. Move the library out of that folder first.",
     "tooLarge": "These files are over the server's limit of {{size}} MB. Make them smaller or remove them before you share.",
     "renamed": "Some names don't work on every computer. Other people get these files under a slightly different name.",
-    "excluded": "Not shared: build output, Oleafly settings and Git history.",
+    "excluded": "Not shared: other build files, Oleafly settings and Git history. The latest compiled PDF is shared, so co-authors can read it in a browser.",
     "start": "Share",
     "preparing": "Getting the project ready…",
     "uploading": "Uploading figures and other files: {{done}} of {{total}}",
@@ -551,7 +571,7 @@
     },
     "comments": {
       "label": "Comments",
-      "description": "Anyone who can edit can comment on text in this project. Turning this off hides comments but doesn't delete them.",
+      "description": "Owners, editors, reviewers and commenters can comment on text in this project. Turning this off hides comments but doesn't delete them.",
       "serverOff": "Comments are turned off on {{server}}. Ask its admin to turn them on."
     },
     "stop": "Stop sharing",
@@ -594,6 +614,7 @@
     "unknownPerson": "Someone",
     "viewing": "Viewing {{path}}",
     "editing": "Editing {{path}}",
+    "reviewing": "Reviewing {{path}}",
     "goTo": "Go to {{name}}",
     "nowhere": "Not in a file, so there is nowhere to go"
   },
@@ -666,6 +687,8 @@
   },
   "activity": {
     "welcomeEdit": "Shared by {{owner}} on {{server}}. You can edit.",
+    "welcomeReview": "Shared by {{owner}} on {{server}}. You can suggest changes and comment.",
+    "welcomeComment": "Shared by {{owner}} on {{server}}. You can comment.",
     "welcomeView": "Shared by {{owner}} on {{server}}. You can view.",
     "joined": "{{name}} opened the project",
     "left": "{{name}} closed the project",
@@ -774,9 +797,7 @@
       "signedOutTitle": "You're signed out of this server",
       "signedOutDescription": "Sign in again in Settings, then open the admin console from the server's card.",
       "refusedTitle": "The admin console is for admins and maintainers",
-      "refusedDescription": "Your role on this server is {{role}}. Ask an admin if you need to manage it.",
-      "turnedOffTitle": "Live collaboration is turned off",
-      "turnedOffDescription": "Turn it on again in Settings, under Experimentation, to manage this server here."
+      "refusedDescription": "Your role on this server is {{role}}. Ask an admin if you need to manage it."
     },
     "overview": {
       "loading": "Loading the overview…",
@@ -929,8 +950,6 @@
     }
   },
   "links": {
-    "turnedOff": "Live collaboration is off. Turn it on in Settings under Experimentation, then open the link again.",
-    "openSettings": "Open Settings",
     "malformed": "Oleafly can't open this link. Ask the person who sent it for a new one.",
     "opening": "Opening the shared project…",
     "downloading": "Downloading files: {{done}} of {{total}}",
@@ -952,8 +971,8 @@
     "add": "Add comment",
     "showResolved": "Show resolved comments",
     "hideResolved": "Hide resolved comments",
-    "empty": "No comments yet.",
-    "emptyCanWrite": "No comments yet. Select some text and choose Add comment to start one.",
+    "empty": "No comments or suggestions yet.",
+    "emptyCanWrite": "No comments or suggestions yet. Select some text and choose Add comment to start one.",
     "allResolved": "All comments are resolved.",
     "loadFailed": "Couldn't load the comments for this file.",
     "detached": "Detached",
@@ -1010,6 +1029,111 @@
       "empty": "Write something before you post."
     }
   },
+  "suggestions": {
+    "insertedBy": "{{name}} suggested adding this",
+    "deletedBy": "{{name}} suggested deleting this",
+    "unverifiedLabel": "Suggested by someone Oleafly couldn't verify",
+    "card": "Suggestion from {{name}}",
+    "unverifiedCard": "Suggestion from someone Oleafly couldn't verify",
+    "added": "Added",
+    "deleted": "Deleted",
+    "accept": "Accept",
+    "reject": "Reject",
+    "withdraw": "Withdraw",
+    "acceptAll": "Accept all",
+    "rejectAll": "Reject all",
+    "fileActions": "Suggestions in {{file}}",
+    "pendingCount": "Suggestions waiting: {{number}}",
+    "loadFailed": "Couldn't load the suggestions for this file.",
+    "rejectAllConfirm": {
+      "title": "Reject every suggestion in {{file}}?",
+      "description": "The original text goes back into the file for everyone in this project. Suggestions waiting: {{number}}.",
+      "confirm": "Reject all"
+    },
+    "withdrawConfirm": {
+      "title": "Withdraw this suggestion?",
+      "description": "The original text goes back into the file for everyone in this project.",
+      "confirm": "Withdraw"
+    },
+    "pendingCompile": "This project has suggestions waiting for review: {{number}}. The PDF shows them as if they were accepted.",
+    "pendingExport": "This project has suggestions waiting for review: {{number}}. The export includes them as if they were accepted.",
+    "mode": {
+      "label": "Editing or suggesting",
+      "editing": "Editing",
+      "suggesting": "Suggesting",
+      "editingHint": "Editing: your edits change the text straight away",
+      "suggestingHint": "Suggesting: your edits become suggestions for an owner or editor to accept",
+      "reviewerHint": "You're a reviewer, so your edits become suggestions for an owner or editor to accept"
+    }
+  },
+  "chat": {
+    "title": "Chat",
+    "titleUnread": "Chat, new messages",
+    "list": "Messages",
+    "empty": "No messages yet.",
+    "label": "Message",
+    "placeholder": "Write a message",
+    "send": "Send",
+    "readOnly": "Viewers can read the chat but not post in it.",
+    "offline": "This project isn't connected right now, so you can't post.",
+    "delete": "Delete message",
+    "deleteConfirm": {
+      "title": "Delete this message?",
+      "description": "It's deleted for everyone in this project."
+    },
+    "deleted": "This message was deleted.",
+    "clear": "Clear chat",
+    "clearConfirm": {
+      "title": "Clear the chat?",
+      "description": "Every message is removed for everyone in this project. This can't be undone.",
+      "confirm": "Clear chat"
+    },
+    "loadFailed": "Oleafly couldn't load the chat.",
+    "loadOlder": "Show older messages"
+  },
+  "history": {
+    "title": "History",
+    "refresh": "Refresh history",
+    "empty": "No changes yet.",
+    "loadFailed": "Oleafly couldn't load the project's history.",
+    "loadMore": "Show older changes",
+    "earlier": "Earlier changes",
+    "timeRange": "{{from}} to {{to}}",
+    "authorsMore": "{{names}} and {{number}} more",
+    "filesChanged": "Files changed: {{number}}",
+    "open": "Open",
+    "compare": "Compare",
+    "compareWith": "Compare with this",
+    "comparePick": "Pick a second version to compare with.",
+    "cancelCompare": "Cancel",
+    "name": "Name this version",
+    "rename": "Rename",
+    "unname": "Remove name",
+    "nameLabel": "Version name",
+    "namePlaceholder": "For example, Sent to the reviewers",
+    "versionDescription": "How the project looked after these changes. You can read it here without changing anything.",
+    "files": "Files",
+    "noFiles": "No text files changed in this version.",
+    "fileLabel": "{{path}} as it was at {{time}}",
+    "fileMissing": "This file didn't exist in this version.",
+    "loadingFile": "Loading…",
+    "restoreFile": "Restore this file",
+    "restoreProject": "Restore whole project",
+    "restoreFileConfirm": {
+      "title": "Restore {{path}}?",
+      "description": "The file goes back to how it was at {{time}} for everyone in this project. Its current text stays in the history, so you can go back to it.",
+      "confirm": "Restore file"
+    },
+    "restoreProjectConfirm": {
+      "title": "Restore the whole project?",
+      "description": "Every file goes back to how it was at {{time}} for everyone in this project. The current text stays in the history, so you can go back to it.",
+      "confirm": "Restore project"
+    },
+    "compareTitle": "Changes between two versions",
+    "compareDescription": "From {{from}} to {{to}}",
+    "changedFiles": "Files changed: {{number}}",
+    "noChanges": "No text changed between these versions."
+  },
   "accessLog": {
     "opened": "{{name}} opened the project",
     "joinedLink": "{{name}} joined with the link",
@@ -1065,6 +1189,10 @@
   "access": {
     "viewerBy": "{{name}} made you a viewer. You can read this project but not edit it.",
     "viewer": "You're now a viewer. You can read this project but not edit it.",
+    "commenterBy": "{{name}} made you a commenter. You can read and comment on this project but not edit it.",
+    "commenter": "You're now a commenter. You can read and comment on this project but not edit it.",
+    "reviewerBy": "{{name}} made you a reviewer. Your edits become suggestions for an owner or editor to accept.",
+    "reviewer": "You're now a reviewer. Your edits become suggestions for an owner or editor to accept.",
     "viewOnly": "You can view this shared project but not edit it.",
     "connecting": "This shared project is still connecting, so it can't be changed yet. Try again in a moment.",
     "unsentReadOnly": "Your last changes to {{path}} weren't sent because you can only view this project now.",
@@ -1081,6 +1209,8 @@
     "projectTooLarge": "{{file}} stays on this computer because this project reached the server's size limit of {{limit}}. Ask the person who runs the server to raise it.",
     "projectTooLargeUnknown": "{{file}} stays on this computer because this project reached the server's size limit. Ask the person who runs the server to raise it.",
     "projectFull": "This project reached the server's size limit, so your changes stay on this computer for now. Ask the person who runs the server to raise it.",
+    "accountStorageFull": "Couldn't be shared because the project owner is out of storage on this server: {{files}}",
+    "tooManyUploads": "Not shared yet because you made too many uploads in the last hour: {{files}}. Try again later.",
     "replaced": "{{name}} replaced {{file}} at the same time as you. Your version is kept as {{copy}}.",
     "added": "{{file}} is now {{copy}} because {{name}} added a file with the same name.",
     "beside": "{{name}} also has a file named {{file}}. Theirs is kept as {{copy}}.",

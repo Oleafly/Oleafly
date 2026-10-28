@@ -61,7 +61,9 @@ Comparte un proyecto en el Oleafly Server de tu laboratorio y todos editan los m
 - Las ediciones que haces sin conexión se fusionan cuando vuelves a conectarte. Si se solapan con las de otra persona, Oleafly te muestra ambas y pregunta antes de aplicar nada.
 - Las ediciones de la IA, las citas de Zotero, los cambios de nombre, los borrados y las figuras también se sincronizan. Si dos personas reemplazan la misma figura a la vez, se conservan ambas versiones.
 - El archivo principal, el compilador, el idioma de la ortografía y las opciones de Typst se comparten, así que todo el equipo compila el proyecto de la misma manera.
-- Cada proyecto tiene un propietario, editores y lectores. Los invitados por correo electrónico solo ven los proyectos a los que se les invitó.
+- Cada proyecto tiene un propietario, editores, revisores, comentadores y lectores. Las ediciones de los revisores se convierten en sugerencias, y los propietarios y editores también pueden cambiar al modo Sugiriendo. Los invitados por correo electrónico solo ven los proyectos a los que se les invitó.
+- Cada proyecto compartido tiene un chat y un historial donde puedes comparar versiones, restaurar una o ponerle un nombre.
+- Los coautores pueden abrir un proyecto compartido en su navegador cuando el servidor tiene activado el acceso desde el navegador, y leer el PDF de la última compilación.
 
 ### Aloja el servidor por tu cuenta
 
@@ -167,6 +169,7 @@ Tectonic, Typst y Pandoc vienen con la aplicación, así que un proyecto nuevo c
 - Completado y diagnósticos en directo para etiquetas, citas, comandos, entornos y rutas de archivos en todo el proyecto.
 - La corrección ortográfica y gramatical se ejecuta en local y está adaptada a la escritura académica.
 - XeLaTeX, LuaLaTeX, y upLaTeX o pLaTeX para documentos en japonés.
+- Los documentos de Quarto y Calepin ejecutan su código de R, Python o Julia en cuanto permites el código en el proyecto. Oleafly puede descargar cualquiera de las dos herramientas por ti.
 
 ## Citas, figuras, comprobaciones y plantillas
 

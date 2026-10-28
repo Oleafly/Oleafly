@@ -29,6 +29,7 @@ const AT: &str = "at";
 const BODY: &str = "body";
 const EDITED_AT: &str = "edited_at";
 const MENTIONS: &str = "mentions";
+const SUGGESTION: &str = "suggestion";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -114,7 +115,7 @@ pub struct Authorship {
 }
 
 #[derive(Clone, Copy)]
-struct Judge<'a> {
+pub(crate) struct Judge<'a> {
     authors: &'a Authorship,
     own_peer: u64,
     me: Option<AccountId>,
@@ -189,14 +190,14 @@ impl Judge<'_> {
         }
     }
 
-    fn wrote(&self, map: &LoroMap, keys: &[&str], claimed: AccountId) -> bool {
+    pub(crate) fn wrote(&self, map: &LoroMap, keys: &[&str], claimed: AccountId) -> bool {
         !self.checking()
             || keys
                 .iter()
                 .all(|key| self.allows(map.get_last_editor(key), claimed))
     }
 
-    fn wrote_all(&self, map: &LoroMap, claimed: AccountId) -> bool {
+    pub(crate) fn wrote_all(&self, map: &LoroMap, claimed: AccountId) -> bool {
         !self.checking()
             || map
                 .keys()
@@ -437,25 +438,25 @@ fn mention_value(mentions: &[AccountId]) -> LoroValue {
     )
 }
 
-fn string_of(value: Option<&LoroValue>) -> Option<String> {
+pub(crate) fn string_of(value: Option<&LoroValue>) -> Option<String> {
     match value {
         Some(LoroValue::String(text)) => Some(text.to_string()),
         _ => None,
     }
 }
 
-fn number_of(value: Option<&LoroValue>) -> Option<i64> {
+pub(crate) fn number_of(value: Option<&LoroValue>) -> Option<i64> {
     match value {
         Some(LoroValue::I64(number)) => Some(*number),
         _ => None,
     }
 }
 
-fn flag_of(value: Option<&LoroValue>) -> bool {
+pub(crate) fn flag_of(value: Option<&LoroValue>) -> bool {
     matches!(value, Some(LoroValue::Bool(true)))
 }
 
-fn parsed<T: std::str::FromStr>(value: Option<&LoroValue>) -> Option<T> {
+pub(crate) fn parsed<T: std::str::FromStr>(value: Option<&LoroValue>) -> Option<T> {
     string_of(value)?.parse().ok()
 }
 
@@ -585,6 +586,11 @@ impl Anchors {
             self.moved.insert(stored.to_vec(), update);
         }
         Some(at)
+    }
+
+    pub(crate) fn position(&mut self, doc: &LoroDoc, stored: &[u8]) -> Option<usize> {
+        self.settle(doc);
+        self.boundary(doc, stored)
     }
 
     fn resolve(
@@ -1062,11 +1068,81 @@ impl ProjectDoc {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn open_suggestion_thread(
+        &self,
+        file_id: &str,
+        start: &[u8],
+        end: &[u8],
+        quote: &str,
+        suggestion: &str,
+        author: AccountId,
+        at: i64,
+        body: &str,
+        mentions: &[AccountId],
+    ) -> Result<CommentId, CollabError> {
+        self.writable()?;
+        let body = checked_body(body)?;
+        self.text_of(file_id)?;
+        let id = CommentId::new_v7();
+        let thread = self
+            .loro()
+            .get_map(COMMENTS)
+            .insert_container(&thread_key(file_id, id), LoroMap::new())
+            .map_err(loro_error)?;
+        thread.insert(START, start.to_vec()).map_err(loro_error)?;
+        thread.insert(END, end.to_vec()).map_err(loro_error)?;
+        let quote: String = quote.chars().take(MAX_QUOTE_CHARS).collect();
+        thread.insert(QUOTE, quote).map_err(loro_error)?;
+        thread
+            .insert(CREATED_BY, author.to_string())
+            .map_err(loro_error)?;
+        thread.insert(CREATED_AT, at).map_err(loro_error)?;
+        thread.insert(SUGGESTION, suggestion).map_err(loro_error)?;
+        let messages = thread
+            .insert_container(MESSAGES, LoroList::new())
+            .map_err(loro_error)?;
+        write_message(&messages, author, at, body, mentions)?;
+        Ok(id)
+    }
+
+    pub(crate) fn suggestion_threads(&self, file_id: &str) -> HashMap<String, CommentId> {
+        let prefix = format!("{file_id}/");
+        let mut found: Vec<(i64, CommentId, String)> = Vec::new();
+        self.loro().get_map(COMMENTS).for_each(|key, value| {
+            let Some(id) = key
+                .strip_prefix(&prefix)
+                .and_then(|id| id.parse::<CommentId>().ok())
+            else {
+                return;
+            };
+            let ValueOrContainer::Container(Container::Map(map)) = value else {
+                return;
+            };
+            let LoroValue::Map(fields) = map.get_deep_value() else {
+                return;
+            };
+            if flag_of(fields.get(DELETED)) {
+                return;
+            }
+            if let Some(suggestion) = string_of(fields.get(SUGGESTION)) {
+                let at = number_of(fields.get(CREATED_AT)).unwrap_or_default();
+                found.push((at, id, suggestion));
+            }
+        });
+        found.sort();
+        let mut threads = HashMap::new();
+        for (_, id, suggestion) in found {
+            threads.entry(suggestion).or_insert(id);
+        }
+        threads
+    }
+
     pub fn authorship(&self) -> &Authorship {
         self.authors()
     }
 
-    fn judge(&self) -> Judge<'_> {
+    pub(crate) fn judge(&self) -> Judge<'_> {
         Judge {
             authors: self.authors(),
             own_peer: self.loro().peer_id(),

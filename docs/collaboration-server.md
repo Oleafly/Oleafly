@@ -1,8 +1,8 @@
 # Oleafly Server
 
-Oleafly Server lets a group of people work on the same Oleafly projects. One person runs the server. Everyone else adds it in Oleafly and signs in with an account they already have, such as GitHub or a university login. When someone shares a project on the server, the people they add get a full copy that stays in sync while they edit. Everyone still compiles on their own computer and keeps their own git history and checkpoints.
+Oleafly Server lets a group of people work on the same Oleafly projects. One person runs the server. Everyone else adds it in Oleafly and signs in with an account they already have, such as GitHub or a university login. When someone shares a project on the server, the people they add get a full copy that stays in sync while they edit. Everyone still compiles on their own computer and keeps their own git history and checkpoints. If you turn on [browser access](#browser-access), co-authors can also open a shared project in their browser.
 
-Live collaboration is off by default. To try it, turn on **Live collaboration** in **Settings › Experimentation**, then open **Settings › Collaboration**.
+To connect to a server, open **Settings › Collaboration** in Oleafly and select **Add server**.
 
 ## Who this is for
 
@@ -15,12 +15,13 @@ A person can belong to several servers. Each shared project lives on one server.
 The server keeps everything in one folder, set by `OLEAFLY_DATA_DIR`:
 
 - **Accounts.** Each member's display name, avatar address, verified email addresses, and their user ID and login at the sign-in provider. The server never sees or stores a password.
-- **Devices.** Each computer that signed in: its name, operating system, public key, and when it was last seen. Sign-in tokens are stored only as hashes.
+- **Devices.** Each computer that signed in, and each browser signed in for [browser access](#browser-access): its name, operating system, public key, and when it was last seen. Sign-in tokens and browser sessions are stored only as hashes.
 - **The security log.** Sign-ins and refused sign-ins, devices added and signed out, changes to members, roles and settings, projects shared, archived and restored, changes to who can open a project, and guest invitations, each with the time and the IP address. Entries older than `OLEAFLY_SECURITY_LOG_DAYS` days are deleted.
 - **Server settings** that admins change in Oleafly.
 - **Project access logs**, for projects whose owner turns one on: who opened the project, joined it or downloaded a copy, with the device name and the time. Only the project's owner can read it. Entries older than `OLEAFLY_SECURITY_LOG_DAYS` days are deleted, as in the security log.
 - **Guest invitations**: the invited email address, the project, the role and who sent it. Answered and expired invitations are deleted `OLEAFLY_SECURITY_LOG_DAYS` days after they were answered or expired.
-- **Shared projects.** Every file and the full history of changes. Files a project no longer uses, such as the old copy of a figure someone replaced, are deleted 30 days after the project last used them. A file uploaded for a change that hasn't reached the server yet is kept for those 30 days as well. When an owner stops sharing a project, the server keeps it read-only for `OLEAFLY_ARCHIVE_DAYS` days and then deletes it. In that time only the owner and any admins in the project can download it.
+- **Shared projects.** Every file and the full history of changes. Comments, suggestions, chat messages and version names are part of that history too. Deleting a comment or a chat message takes it out of the project, but the history of changes still holds it, on the server and on every member's computer. Files a project no longer uses, such as the old copy of a figure someone replaced, are deleted 30 days after the project last used them. A file uploaded for a change that hasn't reached the server yet is kept for those 30 days as well. When an owner stops sharing a project, the server keeps it read-only for `OLEAFLY_ARCHIVE_DAYS` days and then deletes it. In that time only the owner and any admins in the project can download it.
+- **Compiled PDFs.** The newest PDF of each shared project, and its SyncTeX file, which the apps of owners and editors upload after they compile. Read [Compiled PDFs](#compiled-pdfs).
 
 **Projects are not encrypted on the server.** Anyone who can read the data folder, the machine's disk or your backups can read every project stored there. That includes whoever runs the machine and the company that hosts it. Inside Oleafly the rules are stricter: no server role, admin included, can open a project unless the project's owner added them. If you need to keep a project away from the people who run a server, run your own server for it.
 
@@ -75,15 +76,20 @@ The server reads its settings from environment variables. A variable that is set
 | `OLEAFLY_S3_REGION` | The bucket's region. | `us-east-1` |
 | `OLEAFLY_S3_ACCESS_KEY_ID`, `OLEAFLY_S3_SECRET_ACCESS_KEY` | The key the server uses for the bucket. Required with an `s3://` address. | None |
 | `OLEAFLY_MAX_PROJECT_MB` | The largest project the server accepts, in megabytes. A file upload counts the project's files and its change log, and a text change counts only the change log. Read [Size and connection limits](#size-and-connection-limits). | `200` |
-| `OLEAFLY_MAX_FILE_MB` | The largest single file, in megabytes. | `50` |
+| `OLEAFLY_MAX_FILE_MB` | The largest single file, in megabytes. A compiled PDF has to fit too. | `50` |
 | `OLEAFLY_MAX_MEMBERS_PER_PROJECT` | The most people on one project. Only active accounts count, so a suspended account doesn't take a place. | `20` |
+| `OLEAFLY_OPEN_SIGNUP` | Give an account to anyone who signs in, not only the people your access rules let in. Read [Open sign-up and account limits](#open-sign-up-and-account-limits). | `false` |
+| `OLEAFLY_ACCOUNT_STORAGE_MB` | How many megabytes the projects one account owns may use together, compiled PDFs included. | `100` with open sign-up, otherwise no limit |
+| `OLEAFLY_MAX_PROJECTS_PER_ACCOUNT` | How many shared projects one account may own at once. | `50` with open sign-up, otherwise no limit |
+| `OLEAFLY_UPLOADS_PER_HOUR` | How many file and snapshot uploads one account may make in an hour. Compiled PDFs don't count. | `300` with open sign-up, otherwise no limit |
+| `OLEAFLY_WEB` | Turn on browser access. The server has to be built with the browser app, as the published image and programs are. Read [Browser access](#browser-access). | `false` |
 | `OLEAFLY_SIGN_IN_BURST` | How many sign-in requests one network address can make in a burst. A sign-in takes about six, so the default covers 50 people at one address signing in at the same time. | `300` |
 | `OLEAFLY_SIGN_IN_PER_MINUTE` | How many sign-in requests one network address gets back each minute after the burst. | `120` |
 | `OLEAFLY_EMAIL_LINKS_PER_IP` | How many sign-in emails the server sends to people at one network address in 15 minutes. | `100` |
 | `OLEAFLY_EMAIL_LINKS_PER_ADDRESS` | How many sign-in emails one email address can get in 15 minutes. It can't be more than `OLEAFLY_EMAIL_LINKS_PER_IP`. | `3` |
 | `OLEAFLY_EMAIL_LINKS_PER_HOUR` | How many sign-in emails the whole server sends in an hour, all addresses together. A flood of requests from many addresses stops there instead of at your mail provider's limit. | `300` |
 | `OLEAFLY_DEVICE_CODES_PER_IP` | How many sign-in codes people at one network address can ask for in 10 minutes. Read [Sign in with a code](#sign-in-with-a-code). | `100` |
-| `OLEAFLY_SNAPSHOT_MEMORY_MB` | How much memory, in megabytes, documents and large file transfers may use together: three quarters for documents, such as building project snapshots, and one quarter for transfers of a megabyte or more. A project whose snapshot needs more keeps all its changes until you raise it. The server's startup note says "Documents and large file transfers may use N MB together". Read [Size and connection limits](#size-and-connection-limits). | Half of the smallest of the container's memory limit, the service's cgroup limit and the machine's memory, or `1024` when the server can't read any of them |
+| `OLEAFLY_SNAPSHOT_MEMORY_MB` | How much memory, in megabytes, documents and large file transfers may use together: three quarters for documents, such as building project snapshots, checking changes from reviewers and commenters, and projects open in a browser, and one quarter for transfers of a megabyte or more. A project whose snapshot needs more keeps all its changes until you raise it. The server's startup note says "Documents and large file transfers may use N MB together". Read [Size and connection limits](#size-and-connection-limits). | Half of the smallest of the container's memory limit, the service's cgroup limit and the machine's memory, or `1024` when the server can't read any of them |
 | `OLEAFLY_BEHIND_PROXY` | Take each person's address from the `X-Forwarded-For` header your proxy adds. Read [What OLEAFLY_BEHIND_PROXY changes](#what-oleafly_behind_proxy-changes). The Compose, Coolify and Render files turn it on. | `false` |
 | `OLEAFLY_PROXY_HOPS` | How many proxies every request passes through before it reaches the server. It needs `OLEAFLY_BEHIND_PROXY=true`. With more than one proxy, `OLEAFLY_TRUSTED_PROXIES` is safer. | `1` |
 | `OLEAFLY_TRUSTED_PROXIES` | Your proxies' IP addresses and CIDR ranges, separated by commas. The server then uses `X-Forwarded-For` only on connections from them, and skips the trusted entries from the right to find the visitor. It needs `OLEAFLY_BEHIND_PROXY=true` and can't be combined with `OLEAFLY_PROXY_HOPS`. | None |
@@ -104,7 +110,7 @@ Seven settings can hold secrets: `OLEAFLY_SETUP_CODE`, `OLEAFLY_GITHUB_CLIENT_SE
 
 A project's size is its files plus its change log, the record of edits the server keeps so that devices can catch up. `OLEAFLY_MAX_PROJECT_MB` treats the two differently. A file upload, such as a figure, counts both, and the server refuses an upload that would go past the limit. Oleafly then keeps that file on the computer and says the project reached the server's size limit. A text change counts only the change log, so a project whose figures fill the limit still accepts typing. If the change log itself reaches the limit, the server refuses changes too. Oleafly keeps them on the computer, asks people to have the limit raised, and sends them once you raise `OLEAFLY_MAX_PROJECT_MB` and restart the server.
 
-Each account can hold up to 32 live connections at once, across all its devices and projects, and the whole server up to 512. One device keeps at most 8: when it opens another, its oldest one closes. A device needs only one, and the room above that is for the half-open connections a flaky network leaves behind until they time out. When an account already has 32, a device that has a connection of its own replaces its oldest one instead of being turned away, so one device's leftovers can't lock the account's other devices out. A device with no connection yet gets 429 "Too many requests", and so does every new connection once the server has 512. The server's log then says "refused a connection over the open connection limit". Oleafly shows the project as reconnecting, keeps changes on the computer and tries again within about a minute.
+Each account can hold up to 32 live connections at once, across all its devices and projects, and the whole server up to 512. One device keeps at most 8: when it opens another, its oldest one closes. A device needs only one, and the room above that is for the half-open connections a flaky network leaves behind until they time out. When an account already has 32, a device that has a connection of its own replaces its oldest one instead of being turned away, so one device's leftovers can't lock the account's other devices out. A device with no connection yet gets 429 "Too many requests", and so does every new connection once the server has 512. The server's log then says "refused a connection over the open connection limit". Oleafly shows the project as reconnecting, keeps changes on the computer and tries again within about a minute. Each browser tab with a shared project open uses one live connection too, and each signed-in browser counts as one device.
 
 Large file transfers and documents share the memory `OLEAFLY_SNAPSHOT_MEMORY_MB` sets. An upload or download of a megabyte or more waits up to 30 seconds for room in its quarter. If there is still none, the server answers 503 `server_busy` with `Retry-After: 5`. One account can have four large transfers under way at once, and together they can hold at most half of that quarter, 128 MB when `OLEAFLY_SNAPSHOT_MEMORY_MB` is 1024. A transfer past either limit gets 429. When it's the account's only transfer, it can use the whole quarter, so one large snapshot still goes through. One long-polling session posts one batch of edits at a time, and one account has at most eight batches being read at once across all its sessions. A batch past either limit gets 429. These are normal answers to a busy server, and Oleafly tries again by itself.
 
@@ -282,7 +288,7 @@ Before you start, point your domain's DNS record, such as `collab.example.org`, 
 6. Select **Deploy**. The first build compiles the server and takes a few minutes. When it's done, Coolify shows the resource as running and healthy.
 7. Open `https://collab.example.org/healthz` in a browser. It shows `{"status":"ok"}`.
 8. Open **Logs**, choose the `oleafly-server` container, and copy the code from the newest line that starts with `Setup code:`.
-9. In Oleafly, turn on **Live collaboration** in **Settings › Experimentation**. Then open **Settings › Collaboration**, select **Add server**, enter `https://collab.example.org`, then the setup code, and sign in with GitHub. You are now the server's admin. [Become the first admin](#become-the-first-admin) covers what comes next.
+9. In Oleafly, open **Settings › Collaboration**, select **Add server**, enter `https://collab.example.org`, then the setup code, and sign in with GitHub. You are now the server's admin. [Become the first admin](#become-the-first-admin) covers what comes next.
 
 If the server doesn't start, its log names the setting it can't use. When it says `OLEAFLY_PUBLIC_URL` is not set, step 4 is missing. A domain that starts with `http://` is refused, because the server needs HTTPS.
 
@@ -305,7 +311,7 @@ Follow the steps above with two changes. In step 2, set **Docker Compose Locatio
 The button reads [`render.yaml`](../render.yaml) from the Oleafly repository. It creates one web service from the published image, with a 1 GB disk for the data folder. Render attaches disks only to paid instance types, so the service starts on the smallest paid one, in Render's Oregon region. For another region, deploy from a fork with `region` set in `render.yaml`.
 
 1. Select the button and sign in to Render.
-2. Render asks for `OLEAFLY_SERVER_NAME` and the GitHub client ID and secret. Fill in the name and leave the GitHub fields empty for now. Their callback address depends on the service's address, which you don't have yet.
+2. Render asks for `OLEAFLY_SERVER_NAME`, the GitHub client ID and secret, and the three account limits. Fill in the name and leave the rest empty for now. The GitHub callback address depends on the service's address, which you don't have yet. With open sign-up off, as the Blueprint sets it, empty limits mean no limit.
 3. Select **Deploy Blueprint**. Once the service is live, its page shows its address, such as `https://oleafly-server.onrender.com`. The Blueprint sets `OLEAFLY_PUBLIC_URL` to that address.
 4. Create the GitHub OAuth app as described under [GitHub](#github), with that address followed by `/auth/callback/github` as the callback address. Add the client ID and secret under the service's **Environment**. Render restarts the server with them.
 5. Find the newest `Setup code:` line in the service's **Logs** and [become the first admin](#become-the-first-admin).
@@ -389,6 +395,8 @@ docker buildx build --platform linux/amd64 --target binary --output type=local,d
 
 This writes `dist/oleafly-server`. Use `--platform linux/arm64` for an ARM server. Copy the file to `/usr/local/bin/oleafly-server` on the server and make it executable.
 
+The Docker build includes the app for [browser access](#browser-access). The `cargo build` command above leaves it out. To include it, install Node.js 22 and run `corepack enable`, then run `pnpm install` and `pnpm web:build` in the `Oleafly` folder, and add `--features web` to the `cargo build` command. The browser app is built into the server program, so nothing else needs copying.
+
 ### Run it with systemd
 
 1. Create the settings file. Only root can read it:
@@ -452,7 +460,7 @@ The server speaks plain HTTP, so something in front of it handles HTTPS: Caddy i
 - accept requests as large as `OLEAFLY_MAX_PROJECT_MB`,
 - add the client's address to `X-Forwarded-For`.
 
-It should also pass WebSocket upgrades through to `/ws` and keep those connections open for at least an hour. Live editing uses them when it can. If they're blocked, live editing still works over slower HTTP long-polling. Read [When WebSocket connections are blocked](#when-websocket-connections-are-blocked).
+It should also pass WebSocket upgrades through to `/ws` and keep those connections open for at least an hour. Live editing uses them when it can. If they're blocked, live editing still works over slower HTTP long-polling. Read [When WebSocket connections are blocked](#when-websocket-connections-are-blocked). With [browser access](#browser-access) on, it has to pass upgrades to `/web/ws` as well. The browser app has no long-polling fallback.
 
 The upgrade request carries the app's token in an `Authorization: Bearer` header, so the proxy must pass that header on. nginx, Caddy and Traefik do that by default. In nginx, check that the configuration doesn't set `proxy_set_header Authorization ""`. If a proxy drops the header, the server refuses every live connection with a sign-in error, and Oleafly ends live editing as if the person signed out. Signing in again doesn't help, because the next connection loses the header too.
 
@@ -550,6 +558,8 @@ Save this as `/etc/apache2/sites-available/oleafly.conf`, then run `sudo a2ensit
 ### Under a path
 
 If the server lives under a path, include the path in `OLEAFLY_PUBLIC_URL`, for example `https://www.cs.example.edu/oleafly`, and in the callback addresses you register with sign-in providers. The server answers both with and without that path, so your proxy can pass it on or strip it, whichever suits its configuration. With nginx, use `location /oleafly/ {` with the same lines inside, and keep `proxy_pass http://127.0.0.1:8080;` without a path so nginx passes the path on.
+
+[Browser access](#browser-access) doesn't work under a path. The browser app loads its files and talks to the server at `/web/` on the root of the domain, so under `https://www.cs.example.edu/oleafly` it can't start. Give the server a host name of its own, such as `oleafly.cs.example.edu`, if you want it.
 
 ### Certificates your university signs
 
@@ -717,7 +727,7 @@ A new server has no admin. Until someone finishes setup, the server makes a new 
    - Docker Compose: `docker compose logs oleafly-server | grep 'Setup code'`
    - Coolify: the logs of the `oleafly-server` service
    - systemd: `sudo journalctl -u oleafly-server | grep 'Setup code'`
-2. In Oleafly, turn on **Live collaboration** in **Settings › Experimentation**. Then open **Settings › Collaboration**, select **Add server**, and enter your server's address. Oleafly asks for the setup code.
+2. In Oleafly, open **Settings › Collaboration**, select **Add server**, and enter your server's address. Oleafly asks for the setup code.
 3. Enter the code and sign in with any provider you configured. You become the server's admin, and the code stops working.
 
 Anyone who has the code before you use it can make themselves admin, so only ever paste it into Oleafly.
@@ -741,7 +751,7 @@ If you're signed out of the server, or your role is member or guest, the window 
 | Overview | Whether the server is healthy, how many people, devices and projects it has and who is online, how much storage it uses, its email and sign-in options, and its settings at a glance. It warns **Nobody can sign in** when the server has no sign-in option, which means no GitHub or OpenID Connect provider and no [sign-in by email link](#sign-in-by-email-link). It warns **The server can't save files** when the data folder can't be written to. |
 | People | Everyone who has signed in. Change roles, suspend or remove people, and sign out their devices. [Guest](#guests) invitations waiting for approval are at the top. |
 | Access rules | The allowed people list and the domain rules from [Become the first admin](#become-the-first-admin). |
-| Projects | Every project shared on the server, with its owner, how many people it has, its size and its last activity. Search by title or owner, show only shared, archived or uploading projects, and archive or restore a project. |
+| Projects | Every project shared on the server, with its owner, how many people it has, its size with its compiled PDFs, and its last activity. Search by title or owner, show only shared, archived or uploading projects, and archive or restore a project. |
 | Settings | The server settings, such as **Allow guests**, **Allow link sharing** and **Sign in by email**. |
 | Email | Whether email is set up, the From address and the last failure. Send a test email from here. Read [Email](#email). |
 | Security log | Sign-ins and refused sign-ins, devices, people, settings, projects and guests. Each entry says who did it, when and from which IP address, with details such as the project, the sign-in option used or why a sign-in was refused. |
@@ -810,7 +820,7 @@ If you turn **Allow guests** off later, owners can't send new invitations and un
 
 ### Invite a guest
 
-Only a project's owner can invite guests to it. In **Manage sharing**, the owner types the person's email address under **Add people**. If nobody on the server uses that address, Oleafly offers **Invite as guest**, with the role Editor or Viewer.
+Only a project's owner can invite guests to it. In **Manage sharing**, the owner types the person's email address under **Add people**. If nobody on the server uses that address, Oleafly offers **Invite as guest**, with the role Editor, Reviewer, Commenter or Viewer.
 
 - An invitation is for one address and one project, and it ends after 14 days.
 - One person can send up to 20 invitations an hour.
@@ -824,13 +834,99 @@ The guest adds the server in Oleafly and signs in with any option that gives the
 
 ### What guests can and can't do
 
-Guests can open and compile the projects they were invited to, edit them if they're editors, and sign out their own devices. They can't see the member directory or anyone's email address, share projects, invite other people, or join a project through its link. To give a guest another project, that project's owner invites the same address. The guest already has an account, so the invitation works at once, or once it's approved when approval is on.
+Guests can open and compile the projects they were invited to, comment, suggest or edit as their [project role](#roles-and-permissions) allows, and sign out their own devices. They can't see the member directory or anyone's email address, share projects, invite other people, or join a project through its link. To give a guest another project, that project's owner invites the same address. The guest already has an account, so the invitation works at once, or once it's approved when approval is on.
 
 When a guest is removed from their last project, or leaves it, the server ends their access: it removes the account and signs out every device. A new invitation brings the same account back. If you remove a guest under **People** while they still have projects, a new invitation won't bring them back.
 
 ### Removal sticks
 
 When an owner removes someone from a project, guest or not, that person can't come back through the project's link, even with link sharing on. Each try shows in the security log. To let them back in, the owner adds them again, or sends a new invitation if they're a guest. Someone who leaves a project on their own can still rejoin through its link.
+
+## Open sign-up and account limits
+
+By default the server gives an account only to the people your access rules let in: an entry on the allowed list, a domain rule, a guest invitation or the setup code. With `OLEAFLY_OPEN_SIGNUP=true`, anyone who signs in with one of your providers gets an account as a member, and so does anyone who signs in with an email link while **Sign in by email** is on. The allowed list and domain rules still decide the role of the people they cover. Someone you removed or suspended stays out, and so does anyone whose verified address belongs to such an account. The first admin still needs the setup code.
+
+Open sign-up also turns on three limits for each account. You can set any of them without open sign-up as well.
+
+| Setting | What it limits | With open sign-up | Without |
+| --- | --- | --- | --- |
+| `OLEAFLY_ACCOUNT_STORAGE_MB` | The files, change logs and compiled PDFs of every project the account owns. Archived projects count until the server deletes them. | 100 MB | No limit |
+| `OLEAFLY_MAX_PROJECTS_PER_ACCOUNT` | The shared projects the account owns, not counting archived ones. | 50 | No limit |
+| `OLEAFLY_UPLOADS_PER_HOUR` | The file and snapshot uploads the account makes in an hour. Compiled PDFs don't count. | 300 | No limit |
+
+Storage counts against the project's owner, whoever uploads. The server refuses a file upload, a first snapshot or a compiled PDF that would go past it with 413 `account_storage_full`. Text changes still go through. Sharing a project past the project limit gets 429 `too_many_projects`, and an upload past the hourly limit gets 429 `too_many_uploads` with the minutes left to wait. Each limit has to be a whole number of 1 or more.
+
+When the server starts, its log says whether open sign-up is on and which limits apply, for example "Each account may store 100 MB, own 50 projects and make 300 uploads an hour."
+
+## Suggestions, chat and history
+
+What someone can do in a project depends on their project role: Owner, Editor, Reviewer, Commenter or Viewer. [Roles and permissions](#roles-and-permissions) has the whole table. Owners choose roles in **Manage sharing**, for people they add, for guests and for the project's link.
+
+### Suggestions
+
+Owners and editors can switch the editor between **Editing** and **Suggesting**. Reviewers are always in Suggesting. There, an edit goes into the file straight away and is also recorded as a suggestion. Added text is highlighted, and deleted text leaves the file but shows struck through where it was, so it can go back. An owner or editor accepts a suggestion to keep it or rejects it to undo it, one at a time or all at once for a file, and the author can withdraw their own. A compile or an export with suggestions waiting treats them as accepted and says how many are waiting.
+
+The server checks every change from a reviewer or a commenter before it stores it, so a modified app can't get around the role. A commenter's change may only touch comments and the chat. A reviewer's change may also touch file text and suggestions, but only when undoing that reviewer's own suggestions in it gives back the text from before: everything it adds sits inside one of their added-text suggestions, and everything it removes is kept, character for character, in one of their deleted-text suggestions. A reviewer can change or remove only their own suggestions, so accepting and rejecting is left to owners and editors. Any other change from a reviewer gets "As a reviewer you can suggest changes and comment, but not edit directly." Reviewers and commenters can't add, rename, move, delete or upload files either.
+
+To check such a change, the server reads the whole project into memory, from the documents' share of `OLEAFLY_SNAPSHOT_MEMORY_MB`. If the project doesn't fit, the server turns the change away rather than store it unchecked, and Oleafly tries again later. If changes from reviewers or commenters on a large project don't arrive, raise `OLEAFLY_SNAPSHOT_MEMORY_MB`.
+
+### Chat
+
+Every shared project has a chat. Everyone but viewers can post in it, and viewers can read it. A message can be up to 4,000 characters. People can delete their own messages, and the owner can clear the whole chat.
+
+### History and named versions
+
+The collaboration pane has a **History** section for each shared project. Edits close together in time make one entry, which ends after ten minutes without edits or after an hour, and each entry says who edited which files. Anyone in the project can open a version to read it and compare two versions. Owners and editors can restore one file or the whole project to a version, and give a version a name, such as "Sent to the reviewers". A restore is a new change, so the text it replaces stays in the history. Names are part of the project, so everyone sees them.
+
+Each app builds the history from its own full copy of the project, so the server has no setting for it. Edits made with versions of Oleafly before this one carry no times and show as one entry, **Earlier changes**.
+
+## Compiled PDFs
+
+When an owner or editor compiles a shared project and gets a PDF, their app uploads it to the server, with the SyncTeX file when the compile made one. The server keeps the newest PDF and SyncTeX file of each project and removes the ones they replace. People reading the project in a [browser](#browser-access) see that PDF, with who compiled it and when. Reviewers, commenters and viewers still compile on their own computers, and their PDFs stay there.
+
+An app uploads at most once a minute for each project, so when someone compiles faster than that, only the newest PDF goes up. If the server answers 404, 413 or 429, for example because the file is too large or the owner's storage is full, the app waits 15 minutes before it tries again for that project.
+
+A PDF has to contain `%PDF-` in its first kilobyte, a SyncTeX file has to be gzip-compressed, and each has to fit `OLEAFLY_MAX_FILE_MB`. The server refuses anything else. Compiled PDFs are stored like other files, in the data folder or the bucket. They count toward the owner's `OLEAFLY_ACCOUNT_STORAGE_MB`, but not toward `OLEAFLY_MAX_PROJECT_MB` or `OLEAFLY_UPLOADS_PER_HOUR`. An archived project takes no new ones.
+
+The routes, if you script against the server:
+
+| Route | Who can use it | What it does |
+| --- | --- | --- |
+| `PUT /api/v1/projects/<project>/output/pdf` and `.../output/synctex` | Owners and editors | Stores the newest file. The `X-Oleafly-Main-File` header names the main file that was compiled. |
+| `GET /api/v1/projects/<project>/output/pdf` and `.../output/synctex` | Everyone in the project | Downloads it. |
+| `GET /api/v1/projects/<project>/output` | Everyone in the project | Lists what's stored, with the size, who compiled it and when. |
+
+## Browser access
+
+Co-authors can open a shared project in their browser, without installing Oleafly. The server serves a web app for that under `/web/`. It's off until you turn it on:
+
+1. Run a server with the browser app built in. The published image, `ghcr.io/oleafly/oleafly-server`, and the Linux programs on the releases page have it. To build one yourself, read [Build the server](#build-the-server).
+2. Set `OLEAFLY_WEB=true` and restart the server. If the server was built without the browser app, it starts anyway, leaves browser access off and warns about it in its log.
+
+Then `https://collab.example.org/web/` opens the browser app, and each project's page, the `/p/<project>` address that sharing emails link to, gets an **Open in browser** button.
+
+In the browser, people see the projects shared with them. They can read and edit text files as their role allows, switch between Editing and Suggesting if they're an owner or editor, comment, deal with suggestions, chat and see who else is in the project. They can also read the newest [compiled PDF](#compiled-pdfs). The browser doesn't compile, and figures and other files that aren't text don't open there.
+
+| Address | What it is |
+| --- | --- |
+| `/web/` | The browser app. `/web/?project=<project>` opens one project. |
+| `/web/sign-in` | The sign-in page. |
+| `/web/api/...` | What the browser app reads: the account, its projects, a project's files and compiled PDF, and sign-out. |
+| `/web/ws` | The live connection for an open project. |
+
+Browser access needs the server at the root of its domain. Read [Under a path](#under-a-path).
+
+### Signing in from a browser
+
+The browser signs in at `/web/sign-in` with the same providers, access rules and callback addresses as the app, so there's nothing new to register. Email links work there too while **Sign in by email** is on. After sign-in the server sets a cookie named `oleafly_web` that lasts 30 days and is `HttpOnly`, `Secure` and `SameSite=Lax`.
+
+Each browser that signs in becomes a device of that account, named after the browser, such as "Firefox on Linux". It's listed with the person's other devices and in the admin console, and signing it out ends that browser's session. The server signs the browser's edits like any device's, with a key it derives from the session cookie and doesn't store. Expired sessions are signed out at the server's next maintenance pass.
+
+Pages under `/web/` send a strict content security policy: they load scripts and styles only from the server, and no other site can show them in a frame. A request that changes something, such as signing out, needs the header `X-Requested-With: oleafly-web` and an `Origin` header that matches `OLEAFLY_PUBLIC_URL` exactly. The WebSocket at `/web/ws` needs the same `Origin`. So `OLEAFLY_PUBLIC_URL` has to be the exact address people open, with the same scheme, host and port, and your proxy must not change the `Origin` header. If your proxy adds a `Referrer-Policy` header, use `same-origin` rather than `no-referrer`. With `no-referrer`, browsers send `Origin: null` and the server refuses the request.
+
+### Memory for browser projects
+
+For browsers, the server opens the project itself. It reads the project into memory when the first browser opens it, applies browser edits there and lets it go a minute after the last browser leaves. That memory comes from the documents' share of `OLEAFLY_SNAPSHOT_MEMORY_MB`, the same share snapshot builds use. A project that needs more than the whole share can't open in a browser, and the server refuses it with `project_too_large`. When other work is using the share, the server answers `server_busy` and the browser can try again a moment later. If either happens often, raise `OLEAFLY_SNAPSHOT_MEMORY_MB`.
 
 ## Backups
 
@@ -975,6 +1071,8 @@ Back up first. The server updates its database the first time a new version star
 
 Older versions kept project snapshots in a `snapshots` folder inside the data folder. The first time a newer version starts, it moves them into the blob store. It checks each copy against its hash before it deletes the old file, and the log says how many snapshots it moved. Older versions also left behind snapshot files that no project used any more. Those are removed too. If a snapshot can't be moved, for example because the bucket refuses the upload, the file stays where it is and the server keeps using it. It tries again at the next start and at each maintenance pass.
 
+The version with reviewers, chat and browser access adds four steps to the database, numbered 0015 to 0018. The first rebuilds the tables for projects, project members and guest invitations so that they accept the Reviewer and Commenter roles. The others add the upload counts for [account limits](#open-sign-up-and-account-limits), the [compiled PDFs](#compiled-pdfs) and browser sessions. They run once, the first time the new version starts, and an older server refuses to open the database after that, so make the backup first. People on an older version of Oleafly can keep working. If they have the Reviewer or Commenter role, their app shows the project read-only until they update.
+
 - One-command install: run `curl -fsSL https://oleafly.com/server/install.sh | sudo sh -s update`. The installer downloads the new release's images before it changes anything. When the version changes, it keeps the old `docker-compose.yml`, `Caddyfile`, `litestream.yml` and `install.sh` as `.previous` files, then stops the server and copies the data volume to `/opt/oleafly-server/backups`. It keeps the three newest copies. The new files go into a folder next to them first and replace the old ones only once all of them are written, so a full disk can't leave half of a release. If that fails, the installer starts the old version again and says to run it once there is space. If the new version doesn't start, the installer prints the commands that put the previous version and its data back. The copy of the installer in `/opt/oleafly-server` only installs its own release again, so it stops and says so when a newer release is out.
 - Docker Compose: download the new release's `docker-compose.yml` and `SHA256SUMS` as in [Docker Compose](#docker-compose), check them, then run `docker compose pull && docker compose up -d`. If you build from source, run `git pull` in the `Oleafly` folder and repeat the build command.
 - Coolify: select **Redeploy**. With the published image, that pulls the newest release under the image's tag.
@@ -1001,27 +1099,48 @@ Oleafly checks the server's version every time it connects. If the app and the s
 
 Each person has one server role, given by the server's admins and maintainers. In each project they were added to, they also have a project role, given by that project's owner. A cell says whether that role on its own allows the action. No server role opens a project by itself: project access comes only from the project's owner.
 
-| Action | Admin | Maintainer | Member | Guest | Owner | Editor | Viewer |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Add the server to Oleafly | Yes | Yes | Yes | Yes | n/a | n/a | n/a |
-| See the member list | Yes | Yes | Yes, unless the admin hides it | No | n/a | n/a | n/a |
-| Share a project | Yes | Yes | Yes | No | n/a | n/a | n/a |
-| Add people to a project | No | No | No | No | Yes | No | No |
-| Change project roles | No | No | No | No | Yes | No | No |
-| Turn on link sharing | No | No | No | No | Yes, if the server allows it | No | No |
-| Open a project | No | No | No | No | Yes | Yes | Yes |
-| Edit | No | No | No | No | Yes | Yes | No |
-| Compile | No | No | No | No | Yes | Yes | Yes |
-| Read the project access log | No | No | No | No | Yes, when it is on | No | No |
-| Read the security log | Yes | Yes | No | No | No | No | No |
-| Add members to the server | Yes | Yes | No | No | n/a | n/a | n/a |
-| Appoint maintainers | Yes | No | No | No | n/a | n/a | n/a |
-| Change server settings | Yes | No | No | No | n/a | n/a | n/a |
-| Delete a project | Yes, to free storage | No | No | No | Yes, by stopping sharing | No | No |
-| Sign out someone's device | Yes | Yes, but not other admins' or maintainers' | Own devices only | Own devices only | n/a | n/a | n/a |
-| Read stored projects with direct server access | Not in the app | Not in the app | Not in the app | Not in the app | n/a | n/a | n/a |
+### Server roles
+
+| Action | Admin | Maintainer | Member | Guest |
+| --- | --- | --- | --- | --- |
+| Add the server to Oleafly | Yes | Yes | Yes | Yes |
+| See the member list | Yes | Yes | Yes, unless the admin hides it | No |
+| Share a project | Yes | Yes | Yes | No |
+| Open a project | No | No | No | No |
+| Read the security log | Yes | Yes | No | No |
+| Add members to the server | Yes | Yes | No | No |
+| Appoint maintainers | Yes | No | No | No |
+| Change server settings | Yes | No | No | No |
+| Delete a project | Yes, to free storage | No | No | No |
+| Sign out someone's device | Yes | Yes, but not other admins' or maintainers' | Own devices only | Own devices only |
+| Read stored projects with direct server access | Not in the app | Not in the app | Not in the app | Not in the app |
 
 The last row matters most. Projects are not encrypted on the server, so whoever runs the machine can read every stored project, whatever their role. Oleafly gives no role, admin included, a way to do it from the app. When an admin deletes a project to free storage, its owner and members are told, and their own copies stay on their computers.
+
+### Project roles
+
+| Action | Owner | Editor | Reviewer | Commenter | Viewer |
+| --- | --- | --- | --- | --- | --- |
+| Open the project and read its files, comments and suggestions | Yes | Yes | Yes | Yes | Yes |
+| Compile on their own computer | Yes | Yes | Yes | Yes | Yes |
+| Comment and reply | Yes | Yes | Yes | Yes | No |
+| Suggest changes | Yes, in Suggesting | Yes, in Suggesting | Yes, every edit is a suggestion | No | No |
+| Edit directly | Yes | Yes | No | No | No |
+| Add, rename, move, delete or upload files | Yes | Yes | No | No | No |
+| Accept or reject suggestions | Yes | Yes | No | No | No |
+| Withdraw their own suggestions | Yes | Yes | Yes | No | No |
+| Post in the chat and delete their own messages | Yes | Yes | Yes | Yes | No, they can read it |
+| Clear the chat | Yes | No | No | No | No |
+| Browse the history and compare versions | Yes | Yes | Yes | Yes | Yes |
+| Restore and name versions | Yes | Yes | No | No | No |
+| Upload the PDF they compile for browser readers | Yes | Yes | No | No | No |
+| Add people, invite guests and change roles | Yes, guests only if the server allows them | No | No | No | No |
+| Turn on link sharing | Yes, if the server allows it | No | No | No | No |
+| Turn comments or the project access log on or off | Yes | No | No | No | No |
+| Read the project access log | Yes, when it is on | No | No | No | No |
+| Delete the project | Yes, by stopping sharing | No | No | No | No |
+
+When the owner turns comments off, nobody can comment, so commenters can only read and chat. Roles work the same in the app and in a [browser](#browser-access), and the server checks them on every change. Read [Suggestions](#suggestions).
 
 ## Checking the server
 
@@ -1029,4 +1148,5 @@ The last row matters most. Projects are not encrypted on the server, so whoever 
 - `/readyz` answers `200` only while the server can write to its database and its data folder, and, with a bucket, write, read back and delete a small test object there. When it can't, for example on a full disk, it answers `503` and names what failed: `database`, `storage` for the data folder, or `files` for the bucket. It checks the bucket at most every 5 minutes, and every 30 seconds after a failure, and gives it 5 seconds each time.
 - The Docker image checks `/readyz` by itself with the server's own `oleafly-server healthcheck` command, so `docker ps` and Coolify show an unhealthy server instead of a running one that can't save anything.
 - In Oleafly, **Test connection** under **Settings › Collaboration** checks the address, HTTPS, the version, WebSocket connections, sign-in providers and the server's clock, and names the first problem it finds. When WebSocket connections are blocked but long-polling gets through, it says live edits take a slower route. **Connection checks** in the [admin console](#admin-console) runs the same checks.
+- With browser access on, `https://collab.example.org/web/` opens the browser app. A `404` there means `OLEAFLY_WEB` isn't `true`, or the server was built without the `web` feature, which the startup log warns about. A page that says the browser app is not in this build means the server was built with the feature but without `pnpm web:build` first.
 - A certificate error from Oleafly or in the server's log usually means a certificate authority that the machine doesn't trust yet. Read [Certificates your university signs](#certificates-your-university-signs).

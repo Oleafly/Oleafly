@@ -1,0 +1,190 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "Ladataan",
+    "loadFailed": "Oleafly ei saanut yhteyttä palvelimeen.",
+    "retry": "Yritä uudelleen",
+    "dismiss": "Sulje",
+    "projects": "Projektit",
+    "account": "Tili",
+    "signOut": "Kirjaudu ulos",
+    "signOutFailed": "Uloskirjautuminen epäonnistui. Yritä uudelleen.",
+    "cancel": "Peruuta"
+  },
+  "signIn": {
+    "title": "Kirjaudu sisään Oleaflyhin",
+    "description": "Kirjaudu sisään tilillä, jolle kanssakirjoittaja jakoi projektin.",
+    "action": "Kirjaudu sisään"
+  },
+  "projects": {
+    "title": "Kanssasi jaetut",
+    "emptyTitle": "Kanssasi ei ole vielä jaettu mitään",
+    "emptyDescription": "Kun joku jakaa projektin tilillesi, se näkyy tässä.",
+    "untitled": "Nimetön projekti",
+    "ownedBy": "Omistaja: {{name}}",
+    "loadFailed": "Projektejasi ei voitu ladata.",
+    "list": "Projektit"
+  },
+  "roles": {
+    "owner": "Omistaja",
+    "editor": "Muokkaaja",
+    "reviewer": "Tarkastaja",
+    "commenter": "Kommentoija",
+    "viewer": "Katselija",
+    "unknown": "Vain luku"
+  },
+  "connection": {
+    "connecting": "Yhdistetään",
+    "online": "Yhdistetty",
+    "offline": "Ei yhteyttä",
+    "offlineBanner": "Olet offline-tilassa. Muutoksesi säilytetään ja lähetetään, kun yhteys palaa.",
+    "ended": "Yhteys katkaistu"
+  },
+  "ended": {
+    "signedOutTitle": "Olet kirjautunut ulos",
+    "signedOutDescription": "Kirjaudu uudelleen sisään, niin voit jatkaa tämän projektin parissa.",
+    "noAccessTitle": "Et voi avata tätä projektia",
+    "noAccessDescription": "Sitä ei ole jaettu tilillesi, tai pääsysi on poistettu.",
+    "stoppedTitle": "Yhteys katkaistu",
+    "stoppedDescription": "Lataa sivu uudelleen, niin yhteys muodostetaan uudelleen."
+  },
+  "access": {
+    "changed": "Uusi roolisi tässä projektissa: {{role}}."
+  },
+  "discarded": {
+    "read_only": "Viimeisimpiä muokkauksiasi ei tallennettu, koska et voi enää muokata tätä projektia.",
+    "refused": "Viimeisimpiä muokkauksiasi ei voitu tallentaa."
+  },
+  "views": {
+    "label": "Paneelit",
+    "files": "Tiedostot",
+    "source": "Lähdekoodi",
+    "pdf": "PDF",
+    "comments": "Kommentit",
+    "chat": "Keskustelu"
+  },
+  "presence": {
+    "label": "Nyt paikalla"
+  },
+  "files": {
+    "title": "Tiedostot",
+    "empty": "Tässä projektissa ei ole vielä tiedostoja.",
+    "tree": "Projektin tiedostot"
+  },
+  "source": {
+    "noFileTitle": "Avaa tiedosto",
+    "noFileDescription": "Valitse luettelosta tiedosto, jonka haluat lukea.",
+    "opening": "Avataan tiedostoa {{path}}",
+    "removed": "Tiedosto {{path}} poistettiin projektista.",
+    "readOnly": "Vain luku",
+    "readOnlyHint": "Roolisi sallii tämän projektin lukemisen mutta ei muokkaamista.",
+    "modeLabel": "Muokkaustila",
+    "editing": "Muokkaaminen",
+    "suggesting": "Ehdottaminen",
+    "suggestingHint": "Muokkauksesi ovat ehdotuksia, jotka omistaja tai muokkaaja tarkistaa.",
+    "comment": "Kommentoi",
+    "commentHint": "Valitse tekstiä kommentoidaksesi sitä.",
+    "binary": "Tätä tiedostoa ei voi näyttää selaimessa.",
+    "blobFailed": "Tiedostoa ei voitu ladata."
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "Kääntänyt {{name}}, {{time}}",
+    "emptyTitle": "Ei vielä PDF:ää",
+    "emptyDescription": "PDF näkyy tässä, kun joku kääntää projektin Oleafly-sovelluksessa.",
+    "loading": "Ladataan PDF:ää",
+    "failed": "PDF:ää ei voitu ladata.",
+    "zoomIn": "Lähennä",
+    "zoomOut": "Loitonna",
+    "fitWidth": "Sovita leveyteen",
+    "download": "Lataa",
+    "zoom": "{{percent}} %"
+  },
+  "comments": {
+    "emptyTitle": "Ei kommentteja tai ehdotuksia",
+    "emptyCanComment": "Valitse tekstiä lähdekoodista ja aloita keskustelu valitsemalla Kommentoi.",
+    "emptyReadOnly": "Tämän projektin kommentit ja ehdotukset näkyvät tässä.",
+    "newComment": "Uusi kommentti",
+    "placeholder": "Kirjoita kommentti",
+    "submit": "Kommentoi",
+    "reply": "Vastaa",
+    "replyPlaceholder": "Vastaa",
+    "replyLabel": "Vastaa tähän keskusteluun",
+    "edit": "Muokkaa",
+    "editLabel": "Muokkaa kommenttia",
+    "save": "Tallenna",
+    "delete": "Poista",
+    "deleteTitle": "Poistetaanko tämä kommentti?",
+    "deleteDescription": "Tätä ei voi perua.",
+    "messageActions": "Kommentin toiminnot",
+    "resolve": "Ratkaise",
+    "reopen": "Avaa uudelleen",
+    "resolvedBy": "Ratkaisija: {{name}}",
+    "deleted": "Kommentti poistettu",
+    "edited": "muokattu",
+    "anchorLost": "Teksti, jota tämä kommentti koski, on poistettu.",
+    "showInSource": "Näytä lähdekoodissa",
+    "thread": "Kommentti käyttäjältä {{name}}",
+    "hideResolved": "Piilota ratkaistut",
+    "resolvedCount_one": "{{count}} ratkaistu",
+    "resolvedCount_other": "{{count}} ratkaistua"
+  },
+  "suggestions": {
+    "inserted": "Lisätty",
+    "deleted": "Poistettu",
+    "accept": "Hyväksy",
+    "reject": "Hylkää",
+    "withdraw": "Peru",
+    "acceptAll": "Hyväksy kaikki",
+    "rejectAll": "Hylkää kaikki",
+    "pending_one": "{{count}} ehdotus",
+    "pending_other": "{{count}} ehdotusta",
+    "card": "Ehdotus käyttäjältä {{name}}",
+    "lineBreak": "Rivinvaihto"
+  },
+  "chat": {
+    "emptyTitle": "Ei vielä viestejä",
+    "emptyDescription": "Kaikki projektin jäsenet näkevät täällä olevat viestit.",
+    "placeholder": "Kirjoita viesti",
+    "label": "Viesti",
+    "send": "Lähetä",
+    "readOnly": "Voit lukea keskustelua. Katselijat eivät voi kirjoittaa siihen.",
+    "delete": "Poista viesti",
+    "clear": "Tyhjennä keskustelu",
+    "clearTitle": "Tyhjennetäänkö keskustelu kaikilta?",
+    "clearDescription": "Kaikki projektin jäsenet menettävät nämä viestit.",
+    "messages": "Keskustelun viestit"
+  },
+  "people": {
+    "you": "Sinä",
+    "someone": "Joku",
+    "unverified": "Vahvistamaton kirjoittaja"
+  },
+  "errors": {
+    "offline": "Olet offline-tilassa. Yritä uudelleen, kun yhteys on palannut.",
+    "generic": "Palvelin hylkäsi muutoksen.",
+    "suggestion_not_found": "Ehdotus on jo käsitelty.",
+    "suggestion_not_yours": "Voit perua vain omia ehdotuksiasi.",
+    "suggestion_role": "Roolisi ei salli ehdotusten tekemistä eikä käsittelyä.",
+    "chat_role": "Roolisi ei salli keskusteluun kirjoittamista.",
+    "comment_not_live": "Kommentit eivät ole juuri nyt käytettävissä.",
+    "comment_not_yours": "Voit muuttaa vain omia kommenttejasi.",
+    "comment_off_server": "Kommentit on poistettu käytöstä tällä palvelimella.",
+    "comment_off_project": "Kommentit on poistettu käytöstä tässä projektissa.",
+    "comment_viewer": "Katselijat eivät voi kommentoida.",
+    "comment_someone_replied": "Joku on vastannut, joten tätä kommenttia ei voi poistaa.",
+    "comment_message_deleted": "Kommentti on poistettu.",
+    "comment_selection_changed": "Teksti muuttui kirjoittaessasi. Valitse se uudelleen.",
+    "comment_too_long": "Kommentti on liian pitkä.",
+    "comment_empty": "Kirjoita ensin jotain.",
+    "rate_limited": "Liian monta muutosta kerralla. Odota hetki ja yritä uudelleen.",
+    "too_large": "Tämä on liian suuri lähetettäväksi.",
+    "project_too_large": "Tämä projekti on liian suuri avattavaksi selaimessa.",
+    "server_busy": "Palvelin on kiireinen. Yritä hetken päästä uudelleen.",
+    "not_open": "Avaa tiedosto ennen kuin muutat sitä.",
+    "cross_site": "Tämä pyyntö ei tullut tämän palvelimen Oleafly-verkkosovelluksesta. Lataa sivu uudelleen ja yritä vielä kerran.",
+    "conflict": "Tämä on ristiriidassa jonkun toisen tekemän muutoksen kanssa. Yritä uudelleen.",
+    "account_storage_full": "Projektin omistajan tilin tallennustila on loppunut tällä palvelimella.",
+    "too_many_uploads": "Olet lähettänyt liian monta tiedostoa viimeisen tunnin aikana. Yritä myöhemmin uudelleen."
+  }
+}

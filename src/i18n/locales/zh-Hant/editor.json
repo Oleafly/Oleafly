@@ -1055,6 +1055,16 @@
         "unknownEntryType": "未知的參考文獻條目類型 @{{type}}。"
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "Quarto 程式碼區塊選項"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "Calepin 程式碼區塊選項"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "載入影像中",
@@ -1519,7 +1529,7 @@
     "keyTaken": "同一個變體不能設定同一個名稱兩次。",
     "saveFailed": "無法儲存變體。"
   },
-  "sharedSettingsViewer": "在共享專案中，檢視者無法變更此項目。",
+  "sharedSettingsViewer": "在共享專案中，只有擁有者和編輯者可以變更此項目。",
   "typstForms": {
     "message": "{{label}}：{{detail}}",
     "atKeyPath": "{{message}}（位於 {{path}}）",

@@ -9,7 +9,7 @@ import { shell } from "@codemirror/legacy-modes/mode/shell";
 import { latexLanguage } from "./latex";
 import { typstLanguage } from "./typst";
 import { bibtexLanguage } from "./bibtex";
-import { markdownLanguage } from "./markdown";
+import { markdownLanguage, quartoLanguage } from "./markdown";
 
 export function languageForPath(path: string): LanguageSupport | null {
   const p = path.toLowerCase();
@@ -20,6 +20,7 @@ export function languageForPath(path: string): LanguageSupport | null {
   if (p.endsWith(".bib")) return bibtexLanguage();
   if (p.endsWith(".json")) return json();
   if (/\.(md|markdown)$/.test(p)) return markdownLanguage();
+  if (/\.(qmd|rmd)$/.test(p)) return quartoLanguage();
   if (p.endsWith(".css")) return css();
   if (base === ".gitignore" || base.endsWith(".gitignore") || p.endsWith(".env"))
     return new LanguageSupport(StreamLanguage.define(properties));

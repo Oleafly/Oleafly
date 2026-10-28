@@ -61,10 +61,6 @@ function localeForSpec(file: string): string {
   return `${language}-${tail}`;
 }
 
-function liveCollaborationForSpec(file: string): "1" | "0" {
-  return /-peer\.spec\.ts$/.test(file) ? "1" : "0";
-}
-
 const DISMISSED_TOUR_STATE = JSON.stringify({
   state: {
     schemaVersion: 1,
@@ -314,7 +310,6 @@ function createNativeTest(dismissTours: boolean) {
         // so the gated e2e specs run. Wrapped as an IIFE expression, the form
         // this bridge evaluates reliably (bare multi-statement strings time out).
         const locale = localeForSpec(testInfo.file);
-        const liveCollaboration = liveCollaborationForSpec(testInfo.file);
         await page.evaluate(`(function(){
           localStorage.removeItem("oleafly.shortcuts");
           localStorage.setItem("oleafly.locale", "${locale}");
@@ -326,7 +321,6 @@ function createNativeTest(dismissTours: boolean) {
           localStorage.setItem("oleafly.dictionary.locale", "en_US");
           localStorage.setItem("oleafly.spellcheck", "1");
           localStorage.setItem("oleafly.harper", "1");
-          localStorage.setItem("oleafly.liveCollaboration", "${liveCollaboration}");
           localStorage.setItem("oleafly.assistant-runtime.v1", '{"state":{"runtime":"built-in"},"version":0}');
           return true;
         })()`);

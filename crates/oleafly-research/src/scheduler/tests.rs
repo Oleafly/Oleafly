@@ -2551,8 +2551,19 @@ async fn a_spent_time_budget_leaves_the_agent_its_grace_period_to_wrap_up() {
     let run = next_run(&mut starts).await;
     assert_eq!(run.context.execution_root, isolation.execution_root);
 
-    // The budget watcher checks every 20 ms in tests; the agent keeps its turn.
-    tokio::time::sleep(Duration::from_millis(300)).await;
+    // The budget watcher checks every 20 ms in tests, and each check writes
+    // the active time before it looks at the budget. A second write means the
+    // first check has noticed the spent budget (a fixed 300 ms wait was too
+    // short for a loaded Windows runner). The agent keeps its turn.
+    let mut written = budget_ms;
+    for _ in 0..2 {
+        let before = written;
+        poll_until(|| {
+            written = store.require(&task.id).unwrap().active_ms;
+            written > before
+        })
+        .await;
+    }
     assert!(!run.cancel.is_cancelled());
     let wrapped = finish_run(&state, run, Ok(outcome("Wrote the handoff and the report"))).await;
     assert_eq!(wrapped.status, ResearchTaskStatus::AwaitingReview);

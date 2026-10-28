@@ -1,0 +1,192 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "Carregando",
+    "loadFailed": "O Oleafly não conseguiu acessar o servidor.",
+    "retry": "Tentar de novo",
+    "dismiss": "Fechar",
+    "projects": "Projetos",
+    "account": "Conta",
+    "signOut": "Sair",
+    "signOutFailed": "Não foi possível sair da conta. Tente de novo.",
+    "cancel": "Cancelar"
+  },
+  "signIn": {
+    "title": "Fazer login no Oleafly",
+    "description": "Faça login com a conta com a qual um coautor compartilhou o projeto.",
+    "action": "Fazer login"
+  },
+  "projects": {
+    "title": "Compartilhados com você",
+    "emptyTitle": "Nada foi compartilhado com você ainda",
+    "emptyDescription": "Quando alguém compartilhar um projeto com a sua conta, ele aparece aqui.",
+    "untitled": "Projeto sem título",
+    "ownedBy": "Proprietário: {{name}}",
+    "loadFailed": "Não foi possível carregar os seus projetos.",
+    "list": "Projetos"
+  },
+  "roles": {
+    "owner": "Proprietário",
+    "editor": "Editor",
+    "reviewer": "Revisor",
+    "commenter": "Comentarista",
+    "viewer": "Leitor",
+    "unknown": "Somente leitura"
+  },
+  "connection": {
+    "connecting": "Conectando",
+    "online": "Conectado",
+    "offline": "Offline",
+    "offlineBanner": "Você está offline. As suas alterações são guardadas e enviadas quando a conexão voltar.",
+    "ended": "Desconectado"
+  },
+  "ended": {
+    "signedOutTitle": "Você saiu da sua conta",
+    "signedOutDescription": "Faça login de novo para continuar trabalhando neste projeto.",
+    "noAccessTitle": "Você não pode abrir este projeto",
+    "noAccessDescription": "Ele não foi compartilhado com a sua conta, ou o seu acesso foi removido.",
+    "stoppedTitle": "Desconectado",
+    "stoppedDescription": "Recarregue a página para se conectar de novo."
+  },
+  "access": {
+    "changed": "Sua nova função neste projeto: {{role}}."
+  },
+  "discarded": {
+    "read_only": "As suas últimas edições não foram salvas porque agora você não pode editar este projeto.",
+    "refused": "Não foi possível salvar as suas últimas edições."
+  },
+  "views": {
+    "label": "Painéis",
+    "files": "Arquivos",
+    "source": "Código",
+    "pdf": "PDF",
+    "comments": "Comentários",
+    "chat": "Chat"
+  },
+  "presence": {
+    "label": "Pessoas aqui"
+  },
+  "files": {
+    "title": "Arquivos",
+    "empty": "Este projeto ainda não tem arquivos.",
+    "tree": "Arquivos do projeto"
+  },
+  "source": {
+    "noFileTitle": "Abra um arquivo",
+    "noFileDescription": "Escolha um arquivo da lista para lê-lo.",
+    "opening": "Abrindo {{path}}",
+    "removed": "{{path}} foi removido do projeto.",
+    "readOnly": "Somente leitura",
+    "readOnlyHint": "Com a sua função, você pode ler este projeto, mas não editá-lo.",
+    "modeLabel": "Modo de edição",
+    "editing": "Edição",
+    "suggesting": "Sugestão",
+    "suggestingHint": "As suas edições são sugestões que um proprietário ou editor revisa.",
+    "comment": "Comentar",
+    "commentHint": "Selecione um texto para comentar.",
+    "binary": "Este arquivo não pode ser mostrado no navegador.",
+    "blobFailed": "Não foi possível carregar o arquivo."
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "Compilado por {{name}}, {{time}}",
+    "emptyTitle": "Ainda não há PDF",
+    "emptyDescription": "O PDF aparece aqui depois que alguém compila o projeto no aplicativo Oleafly.",
+    "loading": "Carregando o PDF",
+    "failed": "Não foi possível carregar o PDF.",
+    "zoomIn": "Aumentar o zoom",
+    "zoomOut": "Diminuir o zoom",
+    "fitWidth": "Ajustar à largura",
+    "download": "Baixar",
+    "zoom": "{{percent}}%"
+  },
+  "comments": {
+    "emptyTitle": "Nenhum comentário ou sugestão",
+    "emptyCanComment": "Selecione um texto no código e escolha Comentar para iniciar uma conversa.",
+    "emptyReadOnly": "Os comentários e as sugestões deste projeto aparecem aqui.",
+    "newComment": "Novo comentário",
+    "placeholder": "Escreva um comentário",
+    "submit": "Comentar",
+    "reply": "Responder",
+    "replyPlaceholder": "Escreva uma resposta",
+    "replyLabel": "Responder a esta conversa",
+    "edit": "Editar",
+    "editLabel": "Editar comentário",
+    "save": "Salvar",
+    "delete": "Excluir",
+    "deleteTitle": "Excluir este comentário?",
+    "deleteDescription": "Não é possível desfazer.",
+    "messageActions": "Ações do comentário",
+    "resolve": "Resolver",
+    "reopen": "Reabrir",
+    "resolvedBy": "Resolvido por {{name}}",
+    "deleted": "Comentário excluído",
+    "edited": "editado",
+    "anchorLost": "O texto deste comentário foi removido.",
+    "showInSource": "Mostrar no código",
+    "thread": "Comentário de {{name}}",
+    "hideResolved": "Ocultar resolvidos",
+    "resolvedCount_one": "{{count}} resolvido",
+    "resolvedCount_many": "{{count}} resolvidos",
+    "resolvedCount_other": "{{count}} resolvidos"
+  },
+  "suggestions": {
+    "inserted": "Inserido",
+    "deleted": "Excluído",
+    "accept": "Aceitar",
+    "reject": "Recusar",
+    "withdraw": "Retirar",
+    "acceptAll": "Aceitar tudo",
+    "rejectAll": "Recusar tudo",
+    "pending_one": "{{count}} sugestão",
+    "pending_many": "{{count}} sugestões",
+    "pending_other": "{{count}} sugestões",
+    "card": "Sugestão de {{name}}",
+    "lineBreak": "Quebra de linha"
+  },
+  "chat": {
+    "emptyTitle": "Ainda não há mensagens",
+    "emptyDescription": "Todas as pessoas do projeto veem as mensagens daqui.",
+    "placeholder": "Escreva uma mensagem",
+    "label": "Mensagem",
+    "send": "Enviar",
+    "readOnly": "Você pode ler o chat. Leitores não podem enviar mensagens.",
+    "delete": "Excluir mensagem",
+    "clear": "Limpar chat",
+    "clearTitle": "Limpar o chat para todos?",
+    "clearDescription": "Todas as pessoas do projeto perdem estas mensagens.",
+    "messages": "Mensagens do chat"
+  },
+  "people": {
+    "you": "Você",
+    "someone": "Alguém",
+    "unverified": "Autor não verificado"
+  },
+  "errors": {
+    "offline": "Você está offline. Tente de novo quando a conexão voltar.",
+    "generic": "O servidor recusou essa alteração.",
+    "suggestion_not_found": "Alguém já cuidou dessa sugestão.",
+    "suggestion_not_yours": "Você só pode retirar as suas próprias sugestões.",
+    "suggestion_role": "A sua função não permite fazer nem revisar sugestões.",
+    "chat_role": "A sua função não permite enviar mensagens no chat.",
+    "comment_not_live": "Os comentários não estão disponíveis agora.",
+    "comment_not_yours": "Você só pode alterar os seus próprios comentários.",
+    "comment_off_server": "Os comentários estão desativados neste servidor.",
+    "comment_off_project": "Os comentários estão desativados neste projeto.",
+    "comment_viewer": "Leitores não podem comentar.",
+    "comment_someone_replied": "Alguém respondeu, então este comentário não pode ser excluído.",
+    "comment_message_deleted": "Esse comentário foi excluído.",
+    "comment_selection_changed": "O texto mudou enquanto você escrevia. Selecione-o de novo.",
+    "comment_too_long": "O comentário é longo demais.",
+    "comment_empty": "Escreva algo primeiro.",
+    "rate_limited": "Alterações demais de uma vez. Aguarde um momento e tente de novo.",
+    "too_large": "Isso é grande demais para enviar.",
+    "project_too_large": "Este projeto é grande demais para abrir em um navegador.",
+    "server_busy": "O servidor está ocupado. Tente de novo daqui a pouco.",
+    "not_open": "Abra o arquivo antes de alterá-lo.",
+    "cross_site": "Esta solicitação não veio do aplicativo web Oleafly deste servidor. Recarregue a página e tente de novo.",
+    "conflict": "Isso entra em conflito com uma mudança feita por outra pessoa. Tente de novo.",
+    "account_storage_full": "A conta do proprietário do projeto ficou sem espaço de armazenamento neste servidor.",
+    "too_many_uploads": "Você enviou arquivos demais na última hora. Tente de novo mais tarde."
+  }
+}

@@ -70,7 +70,7 @@ impl From<CollabError> for CollabCommandError {
     }
 }
 
-const PASSED_THROUGH: [&str; 23] = [
+const PASSED_THROUGH: [&str; 31] = [
     "not_admitted",
     "setup_code_invalid",
     "device_in_use",
@@ -94,6 +94,14 @@ const PASSED_THROUGH: [&str; 23] = [
     "cloud_synced",
     "owner_away",
     "wrong_server",
+    "suggestion_not_found",
+    "suggestion_not_yours",
+    "suggestion_role",
+    "chat_role",
+    "history_unavailable",
+    "account_storage_full",
+    "too_many_projects",
+    "too_many_uploads",
 ];
 
 fn api_code(status: u16, code: &str) -> &'static str {
@@ -1687,7 +1695,7 @@ mod tests {
         );
     }
 
-    const NEW_CODES: [(u16, &str); 22] = [
+    const NEW_CODES: [(u16, &str); 30] = [
         (400, "invalid_domain"),
         (400, "invalid_email"),
         (400, "invalid_login"),
@@ -1710,6 +1718,14 @@ mod tests {
         (404, "server_unknown"),
         (409, "owner_away"),
         (400, "wrong_server"),
+        (404, "suggestion_not_found"),
+        (403, "suggestion_not_yours"),
+        (403, "suggestion_role"),
+        (403, "chat_role"),
+        (404, "history_unavailable"),
+        (413, "account_storage_full"),
+        (429, "too_many_projects"),
+        (429, "too_many_uploads"),
     ];
 
     #[test]
@@ -1759,10 +1775,7 @@ mod tests {
             .expect("CollabErrorCode in backend-port");
         let end = start + contract[start..].find(';').expect("end of CollabErrorCode");
         let union = &contract[start..end];
-        let codes = NEW_CODES
-            .iter()
-            .map(|(_, code)| *code)
-            .chain(["invalid", "turned_off"]);
+        let codes = NEW_CODES.iter().map(|(_, code)| *code).chain(["invalid"]);
         for code in codes {
             assert!(
                 union.contains(&format!("\"{code}\"")),

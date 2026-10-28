@@ -6,7 +6,7 @@ use oleafly_collab_protocol::capabilities::{
 };
 use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::clock::Clock;
-use oleafly_server::test_support::{test_app, test_app_with};
+use oleafly_server::test_support::{test_app, test_app_with, test_config};
 use oleafly_server::{members, settings};
 use serde_json::json;
 
@@ -131,6 +131,22 @@ async fn only_link_sharing_is_advertised_among_the_optional_features() {
         manifest.features.encryption,
         EncryptionSupport::None
     ));
+}
+
+#[tokio::test]
+async fn browser_access_is_advertised_only_when_built_in_and_turned_on() {
+    let app = test_app().await;
+    let manifest: CapabilityManifest =
+        serde_json::from_value(support::send_get(&app.router, MANIFEST, None).await.body).unwrap();
+    assert!(manifest.features.suggestions);
+    assert!(manifest.features.chat);
+    assert!(!manifest.features.web);
+    let mut config = test_config();
+    config.web = true;
+    let app = test_app_with(config).await;
+    let manifest: CapabilityManifest =
+        serde_json::from_value(support::send_get(&app.router, MANIFEST, None).await.body).unwrap();
+    assert_eq!(manifest.features.web, cfg!(feature = "web"));
 }
 
 #[tokio::test]

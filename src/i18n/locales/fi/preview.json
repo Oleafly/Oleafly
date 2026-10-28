@@ -97,7 +97,20 @@
     "installPackages_one": "Etsi ja asenna {{name}}",
     "installPackages_other": "Etsi ja asenna {{count}} tiedostoa",
     "downloadTypst": "Lataa Typst {{version}}",
-    "useTypst": "Käytä versiota Typst {{version}}"
+    "useTypst": "Käytä versiota Typst {{version}}",
+    "installTool": "Asenna {{tool}} {{version}}",
+    "installToolSize": "Asenna {{tool}} {{version}} ({{size}})",
+    "engineSettings": "Avaa moottoriasetukset"
+  },
+  "html": {
+    "builtTitle": "Käännetty verkkosivuksi",
+    "builtDetail": "Käännetty klo {{time}}. Verkkosivut avautuvat selaimessa.",
+    "building": "Käännetään verkkosivua",
+    "buildingDetail": "Kun se on valmis, voit avata sen selaimessa.",
+    "pendingTitle": "Tästä dokumentista käännetään verkkosivu",
+    "pendingDetail": "Käännä se ja avaa se sitten selaimessa.",
+    "open": "Avaa selaimessa",
+    "compile": "Käännä"
   },
   "stale": {
     "badge": "Vanhentunut",

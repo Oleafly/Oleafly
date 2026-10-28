@@ -178,6 +178,15 @@ describe("buildMarkdownInsights", () => {
     expect(insights.todos.map((todo) => todo.text)).toEqual(["TODO: check"]);
   });
 
+  it("skips Quarto cross-references in Quarto documents only", () => {
+    const text = "See @fig-rig, @tbl-results and @knuth1984.\n";
+    const keys = (mainDoc: string) =>
+      buildMarkdownInsights({ mainDoc, texts: { [mainDoc]: text } }).citations.map((citation) => citation.key);
+    expect(keys("paper.qmd")).toEqual(["knuth1984"]);
+    expect(keys("paper.Rmd")).toEqual(["knuth1984"]);
+    expect(keys("paper.md")).toEqual(["fig-rig", "tbl-results", "knuth1984"]);
+  });
+
   it("ends an HTML comment at --!> as well as -->", () => {
     const text = "<!-- TODO: hidden --!> shown\n<!--\nTODO: inside --!> after\n";
     const notes = buildMarkdownInsights({ mainDoc: "notes.md", texts: { "notes.md": text } }).todos;

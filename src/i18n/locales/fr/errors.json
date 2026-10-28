@@ -44,7 +44,8 @@
     "folder_holds_templates": "Ce dossier contient les modèles propres à Oleafly. Choisissez plutôt le dossier du modèle."
   },
   "settings": {
-    "locale_unsupported": "La langue {{locale}} n'est pas disponible."
+    "locale_unsupported": "La langue {{locale}} n'est pas disponible.",
+    "app_icon_unsupported": "L'icône d'application {{icon}} n'est pas disponible."
   },
   "literature": {
     "query_empty": "La requête de recherche ne peut pas être vide.",
@@ -146,7 +147,8 @@
     "shell_escape": "Faites confiance à ce dossier avant d'autoriser le shell escape.",
     "broad_folder": "Oleafly ne peut pas faire confiance à l'ensemble du dossier {{name}}. Choisissez un dossier plus petit.",
     "declined": "La confiance n'a pas été accordée au dossier.",
-    "unavailable": "Oleafly n'a pas pu vérifier si ce dossier est de confiance."
+    "unavailable": "Oleafly n'a pas pu vérifier si ce dossier est de confiance.",
+    "notebook": "Faites confiance à ce dossier pour compiler avec Quarto ou Calepin."
   },
   "open_folder": {
     "not_absolute": "Indiquez le chemin complet du dossier.",
@@ -335,7 +337,18 @@
     "browser_sign_in_failed": "La connexion récupérée dans votre navigateur n'a pas fonctionné. Elle a peut-être expiré. Connectez-vous directement."
   },
   "collab": {
-    "turned_off": "La collaboration en direct est désactivée. Activez-la dans Paramètres, sous Expérimentation."
+    "suggestion_role": "Votre rôle dans ce projet ne permet pas de faire des suggestions."
+  },
+  "notebook": {
+    "code_needed": "{{engine}} doit exécuter du code pour générer ce document, et le code est désactivé pour ce projet. Autorisez le code dans ce projet pour le compiler.",
+    "quarto_missing": "Quarto n'est pas installé. Installez-le depuis Paramètres > Moteurs > Quarto, puis compilez à nouveau.",
+    "calepin_missing": "Calepin n'est pas installé. Installez-le depuis Paramètres > Moteurs > Calepin, puis compilez à nouveau.",
+    "not_offered": "Oleafly ne peut pas télécharger {{tool}} pour cet ordinateur. Installez-le vous-même, puis compilez à nouveau.",
+    "busy": "{{tool}} est encore en cours d'installation. Réessayez quand ce sera terminé.",
+    "install_unverified": "{{tool}} a été téléchargé mais a échoué à la vérification d'intégrité. Réessayez de l'installer.",
+    "unknown_tool": "Oleafly ne connaît aucun outil nommé {{tool}}.",
+    "not_managed": "Oleafly ne peut supprimer {{tool}} que s'il l'a téléchargé lui-même.",
+    "no_html_output": "Il n'y a pas encore de sortie HTML. Compilez d'abord le document."
   },
   "attachments": {
     "too_large": "Ce fichier dépasse {{max}} Mo. Joignez un fichier plus petit.",

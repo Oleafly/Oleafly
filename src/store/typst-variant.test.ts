@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { DocumentEngineDescriptor } from "@/lib/tauri";
 
-const engine = (variants: string[], source_format: "typst" | "latex" = "typst") => ({
-  source_format,
+const engine = (variants: string[], id: "typst" | "latex" | "calepin" = "typst") => ({
+  id: id as DocumentEngineDescriptor["id"],
   typst_options: {
     system_fonts: true,
     reproducible: false,
@@ -38,6 +39,7 @@ describe("the chosen Typst variant", () => {
     expect(activeTypstVariant("paper", engine(["draft", "final"]), selections)).toBe("final");
     expect(activeTypstVariant("paper", engine(["draft"]), selections)).toBeNull();
     expect(activeTypstVariant("paper", engine(["final"], "latex"), selections)).toBeNull();
+    expect(activeTypstVariant("paper", engine(["final"], "calepin"), selections)).toBeNull();
     expect(activeTypstVariant("other", engine(["final"]), selections)).toBeNull();
     expect(activeTypstVariant(null, engine(["final"]), selections)).toBeNull();
   });

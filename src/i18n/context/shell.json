@@ -26,7 +26,16 @@
     "mode": {
       "normal": "Radio option for the full compile, as opposed to the fast draft mode"
     },
-    "texRootLabel": "Short badge for the LaTeX magic comment % !TEX root. Keep TEX verbatim."
+    "texRootLabel": "Short badge for the LaTeX magic comment % !TEX root. Keep TEX verbatim.",
+    "typEngine": {
+      "typst": "Radio option. Typst is a product name. Keep the <note> tags.",
+      "calepin": "Radio option. Calepin is a product name that runs the code in a Typst document. Keep the <note> tags."
+    },
+    "code": {
+      "title": "Menu group heading. The setting applies to this computer only, not to other people sharing the project.",
+      "off": "Radio option: code in the document does not run.",
+      "run": "Radio option: the R, Python or Julia code in the document runs on this computer when it compiles."
+    }
   },
   "dock": {
     "settings": "Toolbar button that opens the settings dialog"
@@ -71,7 +80,8 @@
   },
   "openedFolder": {
     "kind": {
-      "standalone": "Kind of document: a LaTeX file that uses the standalone class, usually one figure"
+      "standalone": "Kind of document: a LaTeX file that uses the standalone class, usually one figure",
+      "calepin": "Kind of project for a folder of Typst files that use Calepin to run code. Calepin is a product name. Translate only notebook."
     },
     "picker": {
       "bestMatch": "Badge on the document the app thinks is the main one",
@@ -205,5 +215,14 @@
   "stuckWindow": {
     "reloaded": "Shown once after Oleafly force-reloaded a window whose page had stopped answering for 30 seconds. The window then reopens the project.",
     "reloadedAgain": "Shown when the same window stopped answering again soon after, so Oleafly reloaded it to the project library without reopening the project."
+  },
+  "codeExecution": {
+    "allow": "Banner button that lets the code in this project run on this computer."
+  },
+  "typstCjkFonts": {
+    "message": "Banner shown when a Typst document has Chinese, Japanese or Korean text and no installed font can show it. Keep PDF verbatim.",
+    "download": "Banner button that downloads the Chinese, Japanese and Korean font pack",
+    "downloadSize": "Same button with the download size, such as 154 MB",
+    "downloading": "Busy label on the button while the fonts download"
   }
 }

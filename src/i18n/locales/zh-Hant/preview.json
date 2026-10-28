@@ -96,7 +96,20 @@
     "chooseEngine": "選擇引擎",
     "installPackages_other": "尋找並安裝 {{count}} 個檔案",
     "downloadTypst": "下載 Typst {{version}}",
-    "useTypst": "使用 Typst {{version}}"
+    "useTypst": "使用 Typst {{version}}",
+    "installTool": "安裝 {{tool}} {{version}}",
+    "installToolSize": "安裝 {{tool}} {{version}}（{{size}}）",
+    "engineSettings": "開啟引擎設定"
+  },
+  "html": {
+    "builtTitle": "已建置為網頁",
+    "builtDetail": "建置於 {{time}}。網頁會在你的瀏覽器中開啟。",
+    "building": "正在建置網頁",
+    "buildingDetail": "完成後，你可以在瀏覽器中開啟它。",
+    "pendingTitle": "這份文件會建置為網頁",
+    "pendingDetail": "請先編譯，再到瀏覽器中開啟。",
+    "open": "在瀏覽器中開啟",
+    "compile": "編譯"
   },
   "stale": {
     "badge": "已過期",

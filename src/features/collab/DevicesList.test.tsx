@@ -127,6 +127,14 @@ describe("DevicesList", () => {
     expect(await screen.findByTestId("collab-device-d-5")).toHaveTextContent("freebsd");
   });
 
+  it("names a browser session in words", async () => {
+    load.mockResolvedValue([device({ device_id: "d-6", name: "Firefox", platform: "web" })]);
+    render(<DevicesList variant="own" load={load} signOut={signOut} />);
+    const row = await screen.findByTestId("collab-device-d-6");
+    expect(row).toHaveTextContent(devices.browser);
+    expect(row).not.toHaveTextContent(/\bweb\b/);
+  });
+
   it("ignores a failure from a list that was already closed", async () => {
     const slow = deferred<ReturnType<typeof device>[]>();
     const first = vi.fn(() => slow.promise);

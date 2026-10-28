@@ -269,6 +269,7 @@
       "keyPlaceholder": "Lasciala vuota se non serve",
       "keyPlaceholderStored": "La chiave salvata resta finché non ne inserisci una nuova",
       "namePlaceholder": "Acme",
+      "presetsLabel": "Provider comuni",
       "saveAnyway": "Salva comunque",
       "submitAdd": "Aggiungi il provider",
       "submitAddAnyway": "Aggiungi senza modelli"
@@ -369,7 +370,8 @@
       "badge": {
         "connected": "Collegato",
         "notRunning": "Non in esecuzione",
-        "running": "In esecuzione"
+        "running": "In esecuzione",
+        "suggested": "Consigliato"
       },
       "blurbs": {
         "anthropic": "Modelli Claude, forti su codice e scrittura.",
@@ -379,7 +381,7 @@
         "groq": "Inferenza molto veloce su modelli aperti.",
         "mistral": "Modelli Mistral e Codestral.",
         "ollama": "Esegue i modelli sulla tua macchina. Nessuna chiave necessaria: installa Ollama e scarica un modello.",
-        "openai": "Modelli GPT. La scelta predefinita.",
+        "openai": "Modelli GPT.",
         "openrouter": "Una sola chiave per accedere ai modelli di molti laboratori.",
         "perplexity": "Modelli Sonar con ancoraggio al web in tempo reale.",
         "xai": "Modelli Grok di xAI.",
@@ -637,6 +639,21 @@
         "description": "Usato per pulsanti, selezioni e cursore dell'editor.",
         "label": "Colore d'accento",
         "swatchAriaLabel": "Accento {{name}}"
+      },
+      "appIcon": {
+        "aurora": "Aurora",
+        "blue": "Blu",
+        "coral": "Corallo",
+        "description": "Scegli l'icona che Oleafly mostra nel Dock o nella barra delle applicazioni mentre è aperto.",
+        "iridescent": "Iridescente",
+        "label": "Icona dell'app",
+        "light": "Chiara",
+        "mint": "Menta",
+        "note": "Il Finder, il menu Start e i launcher delle app continuano a mostrare l'icona predefinita.",
+        "ocean": "Oceano",
+        "pastel": "Pastello",
+        "prism": "Prisma",
+        "sunset": "Tramonto"
       },
       "bgPattern": {
         "description": "Scegli la trama dietro lo scaffale dei progetti.",
@@ -1468,6 +1485,58 @@
         "detail": "Compila il progetto aperto con una versione installata più recente e confronta i risultati prima di passare.",
         "check": "Verifica con Typst {{version}}"
       }
+    },
+    "notebook": {
+      "loading": "Ricerca di Quarto, Calepin e linguaggi su questo computer",
+      "source": {
+        "system": "Su questo computer",
+        "managed": "Scaricato da Oleafly"
+      },
+      "active": {
+        "version": "{{tool}} {{version}}",
+        "missing": "Non trovato su questo computer."
+      },
+      "managedIdle": "Non in uso. Oleafly usa prima la copia trovata su questo computer.",
+      "download": {
+        "optional": "Facoltativo. Oleafly usa già la copia presente su questo computer.",
+        "license": "Licenza {{license}}.",
+        "action": "Scarica {{tool}} {{version}} ({{size}})",
+        "actionNoSize": "Scarica {{tool}} {{version}}",
+        "notOffered": "Oleafly non può scaricare {{tool}} per questo computer. Installalo tu e Oleafly lo troverà."
+      },
+      "removeAria": "Rimuovi {{tool}} scaricato da Oleafly",
+      "languages": {
+        "heading": "Linguaggi",
+        "tooltip": "Il codice nei documenti Quarto e Calepin viene eseguito con questi programmi.",
+        "notFound": "Non trovato",
+        "note": "Oleafly esegue il codice con R, Python e Julia già presenti su questo computer. Non li installa mai."
+      },
+      "codeNote": "Il codice di un documento viene eseguito solo dopo che hai consentito il codice per quel progetto nel menu di compilazione.",
+      "progress": {
+        "starting": "Avvio",
+        "downloading": "Download {{percent}}%",
+        "verifying": "Verifica",
+        "extracting": "Estrazione",
+        "done": "Completamento"
+      },
+      "error": {
+        "load": "Impossibile verificare la presenza di Quarto, Calepin e linguaggi.",
+        "install": "Impossibile installare {{tool}}.",
+        "remove": "Impossibile rimuovere {{tool}}."
+      }
+    },
+    "quarto": {
+      "heading": "Quarto",
+      "tooltip": "Quarto trasforma i documenti .qmd e .Rmd in un PDF, una pagina web o delle slide. Oleafly usa il Quarto installato su questo computer se lo trova, altrimenti una copia che scarica.",
+      "detail": "Oleafly compila i documenti .qmd e .Rmd con questa copia.",
+      "downloadDetail": "Oleafly tiene una propria copia nella cartella dell'app. Quarto include Pandoc e altri strumenti con le rispettive licenze."
+    },
+    "calepin": {
+      "heading": "Calepin",
+      "tooltip": "Calepin esegue il codice di un documento Typst e inserisce i risultati nel PDF. Oleafly usa il Calepin installato su questo computer se lo trova, altrimenti una copia che scarica.",
+      "detail": "Oleafly compila i documenti Calepin con questa copia.",
+      "downloadDetail": "Oleafly tiene una propria copia nella cartella dell'app.",
+      "typstNote": "Calepin esegue il rendering con il Typst integrato in Oleafly. Richiede Typst 0.15 o successivo."
     }
   },
   "gitHosting": {

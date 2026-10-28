@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useLayoutEffect, useMemo, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
 import { HOME_CHROME_SURFACE } from "@/components/library/home-chrome";
@@ -42,7 +42,7 @@ export function BulkDeleteButton({
   );
   const hasSelection = ids.size > 0;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!hasSelection) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented || typingInto(event.target)) return;

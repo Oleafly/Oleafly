@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,11 @@ import {
   typstInstallLabel,
   useTypstToolchainStore,
 } from "@/store/typst-toolchain";
+import { notebookEngineId } from "@/lib/notebook-engines";
+
+const NotebookToolMissingOffer = lazy(() =>
+  import("./NotebookToolMissingOffer").then((module) => ({ default: module.NotebookToolMissingOffer })),
+);
 
 export type CompileOfferPlacement = "preview" | "log" | "toolbar";
 
@@ -92,13 +97,32 @@ export function CompileOfferButton({ placement }: Readonly<{ placement: CompileO
   const projectId = useFilesStore((s) => s.projectId);
   const engineId = useFilesStore((s) => s.engine.id);
   const pinnedMissing = useFilesStore((s) => s.engine.typst_missing ?? null);
+  const notebookTool = useFilesStore((s) => notebookEngineId(s.engine));
   const typstVersion = missingTypstVersion(offer, projectId, engineId, pinnedMissing);
   if (projectId && typstVersion) {
     return <TypstMissingOffer placement={placement} projectId={projectId} version={typstVersion} />;
   }
   if (
+    projectId &&
+    offer?.kind === "notebook-tool-missing" &&
+    offer.projectId === projectId &&
+    offer.tool === notebookTool
+  ) {
+    return (
+      <Suspense fallback={null}>
+        <NotebookToolMissingOffer
+          compact={placement !== "preview"}
+          testId={TEST_IDS[placement]}
+          projectId={projectId}
+          tool={offer.tool}
+        />
+      </Suspense>
+    );
+  }
+  if (
     !offer ||
     offer.kind === "typst-version-missing" ||
+    offer.kind === "notebook-tool-missing" ||
     offer.projectId !== projectId ||
     !offerMatchesEngine(offer, engineId)
   ) {

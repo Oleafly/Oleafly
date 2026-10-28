@@ -11,6 +11,8 @@ describe("languageForPath", () => {
     "document.cls",
     "notes.md",
     "notes.markdown",
+    "paper.qmd",
+    "analysis.Rmd",
     "main.typ",
     "references.bib",
   ])("loads contractual source support for %s case-insensitively", (path) => {
@@ -22,6 +24,7 @@ describe("languageForPath", () => {
     "main.typ.txt",
     "main.tex.txt",
     "notes.markdown.bak",
+    "paper.qmd.html",
     "plain.bst",
     "PLAIN.BST",
   ])("does not grant contractual support to excluded/lookalike path %s", (path) => {
@@ -82,5 +85,11 @@ describe("languageForPath", () => {
 
   it("keeps a shell script named after Dockerfile in the shell mode", () => {
     expect(languageForPath("dockerfile.sh")?.language.name).toBe("shell");
+  });
+});
+
+describe("Quarto sources", () => {
+  it.each(["paper.qmd", "analysis.Rmd", "ANALYSIS.RMD"])("reads %s as Markdown", (path) => {
+    expect(languageForPath(path)?.language.name).toBe("markdown");
   });
 });

@@ -303,7 +303,7 @@ describe("other people's changes", () => {
     await shown();
     emit("collab-comments-changed", changed({ fileIds: [REFS_FILE], paths: ["refs.tex"] }));
     expect(useCommentsRail.getState().unread).toBe(true);
-    act(() => useSettingsStore.setState({ liveCollaboration: true }));
+    act(() => useSettingsStore.setState({ latexTools: true }));
     expect(useCommentsRail.getState().unread).toBe(true);
   });
 });

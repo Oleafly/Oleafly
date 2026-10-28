@@ -111,6 +111,7 @@ async fn start_locked(
         .map_err(io)??
     };
     let (mut live, disk) = loaded;
+    live.set_edit_mode(crate::collab::suggesting::load_mode(&paths, project_id));
     if live.repaired_on_load() {
         let _ = crate::project::append_app_log(format!(
             "Live collaboration repaired the saved shared document of project {project_id} when it opened"
@@ -206,20 +207,6 @@ pub fn finish_for_quit(wait: Duration) {
         active.close_figures();
         active.save_now();
         active.handle.stop();
-    });
-}
-
-pub fn stop_running_session() {
-    let held = LIFECYCLE.try_lock().ok();
-    let taken = held.as_ref().and_then(|_| guard(&ACTIVE).take());
-    tauri::async_runtime::spawn(async move {
-        let _lifecycle = match held {
-            Some(held) => held,
-            None => LIFECYCLE.lock().await,
-        };
-        if let Some(active) = taken.or_else(|| guard(&ACTIVE).take()) {
-            finish(active).await;
-        }
     });
 }
 

@@ -82,7 +82,7 @@ async fn decide(
     let identity = identity.clone();
     app.state
         .db
-        .call(move |conn| admission::decide(conn, &identity, setup_hash.as_deref()))
+        .call(move |conn| admission::decide(conn, &identity, setup_hash.as_deref(), false))
         .await
         .expect("decide")
 }
@@ -93,7 +93,7 @@ async fn admit(app: &TestApp, identity: &ExternalIdentity, setup_hash: Option<St
     app.state
         .db
         .call(move |conn| {
-            let decision = admission::decide(conn, &identity, setup_hash.as_deref())?;
+            let decision = admission::decide(conn, &identity, setup_hash.as_deref(), false)?;
             admission::apply(conn, &identity, decision, 20, None, now)
         })
         .await
@@ -784,8 +784,8 @@ async fn removed_then_invited(role: ServerRole) -> Returning {
                 now,
             )?;
             let identity = github("42", "bob", &["bob@uni.edu"]);
-            let decision = admission::decide(conn, &identity, None)?;
-            let again = admission::decide(conn, &identity, None)?;
+            let decision = admission::decide(conn, &identity, None, false)?;
+            let again = admission::decide(conn, &identity, None, false)?;
             let applied = admission::apply(conn, &identity, again, 20, None, now)?;
             Ok(Returning {
                 decision,
@@ -913,7 +913,7 @@ async fn a_removed_member_added_again_is_left_out_of_projects_that_filled_up() {
         .state
         .db
         .call(move |conn| {
-            let decision = admission::decide(conn, &identity, None)?;
+            let decision = admission::decide(conn, &identity, None, false)?;
             admission::apply(conn, &identity, decision, 2, None, now)
         })
         .await
@@ -1177,7 +1177,7 @@ async fn inactive_then_invited_under_another_identity(
             )?;
             let accounts_before = count(conn)?;
             let identity = github("43", "bob-elsewhere", &["bob@uni.edu"]);
-            let decision = admission::decide(conn, &identity, None)?;
+            let decision = admission::decide(conn, &identity, None, false)?;
             let applied = admission::apply(conn, &identity, decision, 20, None, now)?;
             Ok(InvitedElsewhere {
                 applied,

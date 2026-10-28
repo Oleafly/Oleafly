@@ -267,6 +267,7 @@
       "keyPlaceholder": "若不需要金鑰請留空",
       "keyPlaceholderStored": "除非輸入新金鑰，否則保留已儲存的金鑰",
       "namePlaceholder": "Acme",
+      "presetsLabel": "常用供應商",
       "saveAnyway": "仍要儲存",
       "submitAdd": "新增供應商",
       "submitAddAnyway": "新增但不含模型"
@@ -367,7 +368,8 @@
       "badge": {
         "connected": "已連線",
         "notRunning": "未執行",
-        "running": "執行中"
+        "running": "執行中",
+        "suggested": "推薦"
       },
       "blurbs": {
         "anthropic": "Claude 模型，擅長程式碼與寫作。",
@@ -377,7 +379,7 @@
         "groq": "速度極快的開放模型推論。",
         "mistral": "Mistral 與 Codestral 模型。",
         "ollama": "在你的電腦上執行模型。不需要金鑰，只要安裝 Ollama 並拉取模型。",
-        "openai": "GPT 模型，預設之選。",
+        "openai": "GPT 模型。",
         "openrouter": "一組金鑰即可使用多家實驗室的模型。",
         "perplexity": "Sonar 模型，具備即時網路查證。",
         "xai": "來自 xAI 的 Grok 模型。",
@@ -629,6 +631,21 @@
         "description": "用於按鈕、選取範圍與編輯器游標。",
         "label": "強調色",
         "swatchAriaLabel": "{{name}} 強調色"
+      },
+      "appIcon": {
+        "aurora": "極光",
+        "blue": "藍色",
+        "coral": "珊瑚",
+        "description": "選擇 Oleafly 開啟時在 Dock 或工作列中顯示的圖示。",
+        "iridescent": "幻彩",
+        "label": "應用程式圖示",
+        "light": "淺色",
+        "mint": "薄荷",
+        "note": "Finder、[開始] 功能表和應用程式啟動器仍會顯示預設圖示。",
+        "ocean": "海洋",
+        "pastel": "粉彩",
+        "prism": "稜鏡",
+        "sunset": "日落"
       },
       "bgPattern": {
         "description": "選擇專案架背後的圖樣。",
@@ -1446,6 +1463,58 @@
         "detail": "切換前，先用已安裝的較新版本建置開啟中的專案，並比較結果。",
         "check": "以 Typst {{version}} 檢查"
       }
+    },
+    "notebook": {
+      "loading": "正在這台電腦上檢查 Quarto、Calepin 與語言",
+      "source": {
+        "system": "這台電腦",
+        "managed": "由 Oleafly 下載"
+      },
+      "active": {
+        "version": "{{tool}} {{version}}",
+        "missing": "在這台電腦上找不到。"
+      },
+      "managedIdle": "未使用。Oleafly 會優先使用在這台電腦上找到的副本。",
+      "download": {
+        "optional": "非必要。Oleafly 已經在使用這台電腦上的副本。",
+        "license": "{{license}} 授權。",
+        "action": "下載 {{tool}} {{version}}（{{size}}）",
+        "actionNoSize": "下載 {{tool}} {{version}}",
+        "notOffered": "Oleafly 無法為這台電腦下載 {{tool}}。請自行安裝，Oleafly 會找到它。"
+      },
+      "removeAria": "移除 Oleafly 下載的 {{tool}}",
+      "languages": {
+        "heading": "語言",
+        "tooltip": "Quarto 與 Calepin 文件中的程式碼會由這些程式執行。",
+        "notFound": "找不到",
+        "note": "Oleafly 會使用這台電腦上已有的 R、Python 與 Julia 執行程式碼，從不自行安裝它們。"
+      },
+      "codeNote": "只有在編譯選單中為該專案允許程式碼後，文件中的程式碼才會執行。",
+      "progress": {
+        "starting": "正在啟動",
+        "downloading": "正在下載 {{percent}}%",
+        "verifying": "正在檢查",
+        "extracting": "正在解壓縮",
+        "done": "即將完成"
+      },
+      "error": {
+        "load": "無法檢查 Quarto、Calepin 與語言。",
+        "install": "無法安裝 {{tool}}。",
+        "remove": "無法移除 {{tool}}。"
+      }
+    },
+    "quarto": {
+      "heading": "Quarto",
+      "tooltip": "Quarto 能把 .qmd 與 .Rmd 文件轉換成 PDF、網頁或投影片。Oleafly 會優先使用這台電腦上的 Quarto，找不到時則使用它下載的副本。",
+      "detail": "Oleafly 會用這個副本編譯 .qmd 與 .Rmd 文件。",
+      "downloadDetail": "Oleafly 會把自己的副本存放在應用程式資料夾中。Quarto 內含 Pandoc 與其他工具，它們各自採用自己的授權。"
+    },
+    "calepin": {
+      "heading": "Calepin",
+      "tooltip": "Calepin 會執行 Typst 文件中的程式碼，並把結果放進 PDF。Oleafly 會優先使用這台電腦上的 Calepin，找不到時則使用它下載的副本。",
+      "detail": "Oleafly 會用這個副本編譯 Calepin 文件。",
+      "downloadDetail": "Oleafly 會把自己的副本存放在應用程式資料夾中。",
+      "typstNote": "Calepin 會以 Oleafly 內建的 Typst 算繪，需要 Typst 0.15 以上版本。"
     }
   },
   "gitHosting": {

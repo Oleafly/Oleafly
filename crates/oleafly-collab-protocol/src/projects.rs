@@ -116,14 +116,29 @@ pub enum ProjectAction {
     ManageMembers,
     ChangeLinkSharing,
     StopSharing,
+    Comment,
+    Suggest,
+    Chat,
+    Resolve,
 }
 
 pub fn project_role_allows(role: ProjectRole, action: ProjectAction) -> bool {
     match action {
         ProjectAction::Read => true,
-        ProjectAction::Edit | ProjectAction::UploadSnapshot => {
+        ProjectAction::Edit | ProjectAction::UploadSnapshot | ProjectAction::Resolve => {
             matches!(role, ProjectRole::Owner | ProjectRole::Editor)
         }
+        ProjectAction::Suggest => matches!(
+            role,
+            ProjectRole::Owner | ProjectRole::Editor | ProjectRole::Reviewer
+        ),
+        ProjectAction::Comment | ProjectAction::Chat => matches!(
+            role,
+            ProjectRole::Owner
+                | ProjectRole::Editor
+                | ProjectRole::Reviewer
+                | ProjectRole::Commenter
+        ),
         ProjectAction::ManageMembers
         | ProjectAction::ChangeLinkSharing
         | ProjectAction::StopSharing => matches!(role, ProjectRole::Owner),
@@ -373,6 +388,19 @@ mod tests {
             json!({ "role": "viewer" }),
         );
         round_trip(
+            MemberGrant {
+                role: ProjectRole::Reviewer,
+            },
+            json!({ "role": "reviewer" }),
+        );
+        round_trip(
+            ProjectPatch {
+                link_role: Some(ProjectRole::Commenter),
+                ..ProjectPatch::default()
+            },
+            json!({ "link_role": "commenter" }),
+        );
+        round_trip(
             ProjectDevice {
                 device_id: "01920000-0000-7000-8000-000000000003".parse().unwrap(),
                 account_id: ACCOUNT.parse().unwrap(),
@@ -436,18 +464,67 @@ mod tests {
         ));
     }
 
+    const ACTIONS: [ProjectAction; 10] = [
+        ProjectAction::Read,
+        ProjectAction::Edit,
+        ProjectAction::UploadSnapshot,
+        ProjectAction::ManageMembers,
+        ProjectAction::ChangeLinkSharing,
+        ProjectAction::StopSharing,
+        ProjectAction::Comment,
+        ProjectAction::Suggest,
+        ProjectAction::Chat,
+        ProjectAction::Resolve,
+    ];
+
+    #[test]
+    fn every_role_follows_the_review_matrix() {
+        let allowed = |role: ProjectRole| -> Vec<ProjectAction> {
+            ACTIONS
+                .into_iter()
+                .filter(|action| project_role_allows(role, *action))
+                .collect()
+        };
+        assert_eq!(allowed(ProjectRole::Owner), ACTIONS.to_vec());
+        assert_eq!(
+            allowed(ProjectRole::Editor),
+            [
+                ProjectAction::Read,
+                ProjectAction::Edit,
+                ProjectAction::UploadSnapshot,
+                ProjectAction::Comment,
+                ProjectAction::Suggest,
+                ProjectAction::Chat,
+                ProjectAction::Resolve,
+            ]
+        );
+        assert_eq!(
+            allowed(ProjectRole::Reviewer),
+            [
+                ProjectAction::Read,
+                ProjectAction::Comment,
+                ProjectAction::Suggest,
+                ProjectAction::Chat,
+            ]
+        );
+        assert_eq!(
+            allowed(ProjectRole::Commenter),
+            [
+                ProjectAction::Read,
+                ProjectAction::Comment,
+                ProjectAction::Chat,
+            ]
+        );
+        assert_eq!(allowed(ProjectRole::Viewer), [ProjectAction::Read]);
+        assert_eq!(allowed(ProjectRole::Unknown), [ProjectAction::Read]);
+    }
+
     #[test]
     fn a_project_role_from_a_later_server_reads_as_unknown_and_can_only_read() {
-        let role: ProjectRole = serde_json::from_value(json!("commenter")).unwrap();
+        let role: ProjectRole = serde_json::from_value(json!("auditor")).unwrap();
         assert_eq!(role, ProjectRole::Unknown);
         assert!(project_role_allows(role, ProjectAction::Read));
-        for action in [
-            ProjectAction::Edit,
-            ProjectAction::UploadSnapshot,
-            ProjectAction::ManageMembers,
-            ProjectAction::ChangeLinkSharing,
-            ProjectAction::StopSharing,
-        ] {
+        for action in ACTIONS.into_iter().skip(1) {
             assert!(!project_role_allows(role, action), "{action:?}");
         }
         assert_eq!(serde_json::to_value(role).unwrap(), json!("unknown"));
@@ -455,11 +532,11 @@ mod tests {
             "project_id": PROJECT,
             "title": "Grant proposal",
             "owner": serde_json::to_value(carol()).unwrap(),
-            "role": "commenter",
+            "role": "auditor",
             "status": "active",
             "created_at": 5,
             "link_sharing": true,
-            "link_role": "commenter",
+            "link_role": "auditor",
             "head_seq": 0
         });
         let read: ProjectSummary = serde_json::from_value(summary).unwrap();

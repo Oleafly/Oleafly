@@ -97,7 +97,20 @@
     "installPackages_one": "Hitta och installera {{name}}",
     "installPackages_other": "Hitta och installera {{count}} filer",
     "downloadTypst": "Ladda ner Typst {{version}}",
-    "useTypst": "Använd Typst {{version}}"
+    "useTypst": "Använd Typst {{version}}",
+    "installTool": "Installera {{tool}} {{version}}",
+    "installToolSize": "Installera {{tool}} {{version}} ({{size}})",
+    "engineSettings": "Öppna motorinställningar"
+  },
+  "html": {
+    "builtTitle": "Byggd som webbsida",
+    "builtDetail": "Byggd kl. {{time}}. Webbsidor öppnas i webbläsaren.",
+    "building": "Bygger webbsidan",
+    "buildingDetail": "När den är klar kan du öppna den i webbläsaren.",
+    "pendingTitle": "Det här dokumentet byggs som en webbsida",
+    "pendingDetail": "Kompilera det och öppna det sedan i webbläsaren.",
+    "open": "Öppna i webbläsaren",
+    "compile": "Kompilera"
   },
   "stale": {
     "badge": "Inaktuell",

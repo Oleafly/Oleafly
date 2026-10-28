@@ -41,6 +41,8 @@ import type { DocumentEngineDescriptor, TexFlavor, TypstToolchainStatus } from "
 import type { TypstOptionsDescriptor } from "@oleafly/backend-port";
 import { typstSupports, type TypstOptionsUpdate } from "@/lib/typst-options";
 import { applyTypstCompileOptions, chooseTypstVariant } from "@/lib/typst-compile-actions";
+import { applyShellEscape } from "@/lib/latex-compile-actions";
+import { isCalepinEngine, isNotebookEngine } from "@/lib/notebook-engines";
 import { recompileWithPreview } from "@/lib/compile-preview";
 import { activeTypstVariant, useTypstVariantStore } from "@/store/typst-variant";
 import { cn, shortcut } from "@/lib/utils";
@@ -125,7 +127,7 @@ function TypstLivePreviewSync() {
 
 function TypstLivePreviewKeeper() {
   const projectId = useFilesStore((s) => s.projectId);
-  const typst = useFilesStore((s) => s.engine.source_format === "typst");
+  const typst = useFilesStore((s) => s.engine.id === "typst");
   const typstMissing = useFilesStore((s) => s.engine.typst_missing ?? null);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   useEffect(() => () => stopTypstLivePreview(), []);
@@ -205,11 +207,12 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
           : { projectId, enabled: false, status: "off", message: null }
       }
       onOptionsOpen={() => {
-        if (engine.source_format === "typst") void refreshTypstToolchain();
+        if (engine.id === "typst") void refreshTypstToolchain();
       }}
       typstVariant={activeTypstVariant(projectId, engine, typstSelections)}
       setTypstVariant={chooseTypstVariant}
       setTypstOptions={applyTypstCompileOptions}
+      setCodeExecution={(allow) => applyShellEscape(allow, { recompile: true })}
     />
   </>;
 }
@@ -232,6 +235,7 @@ export type CompileControlsViewProps = Pick<FileState, "engine" | "engineLoaded"
       typstVariant?: string | null;
       setTypstVariant?: (variant: string | null) => void;
       setTypstOptions?: (update: TypstOptionsUpdate) => Promise<unknown>;
+      setCodeExecution?: (allow: boolean) => unknown;
       livePreview?: LivePreviewState;
     };
 
@@ -257,6 +261,142 @@ function MenuGroupLabel({ title, help }: Readonly<{ title: string; help?: string
 function SharedViewerNote() {
   const { t } = useTranslation(["shell"]);
   return <p className="px-2 py-1.5 text-xs text-muted-foreground">{t(($) => $.shell.compile.sharedViewer)}</p>;
+}
+
+function TrustFolderMenuItem({
+  label,
+  testId,
+  onTrust,
+}: Readonly<{ label: string; testId: string; onTrust?: () => void }>) {
+  return (
+    <DropdownMenuItem
+      data-testid={testId}
+      className="items-start gap-2 text-xs text-muted-foreground"
+      onSelect={() => onTrust?.()}
+    >
+      <ShieldAlert className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+      <span className="whitespace-normal">{label}</span>
+    </DropdownMenuItem>
+  );
+}
+
+function reportEngineSwitchFailure(error: unknown, fallback: string): void {
+  void logError("switch compile engine", error);
+  const projectId = useFilesStore.getState().projectId;
+  if (!projectId) return;
+  toast.errorUnique(engineSwitchToastKey(projectId), decodeAppError(error) ? describeError(error) : fallback);
+}
+
+function TypEngineMenuGroup({
+  engine,
+  setEngine,
+  locked,
+  trustNeeded,
+  onTrust,
+}: Readonly<{
+  engine: DocumentEngineDescriptor;
+  setEngine: (engine: string) => Promise<unknown>;
+  locked: boolean;
+  trustNeeded: boolean;
+  onTrust?: () => void;
+}>) {
+  const { t } = useTranslation(["shell", "errors"]);
+  const current = isCalepinEngine(engine) ? "calepin" : "typst";
+  return (
+    <>
+      <DropdownMenuSeparator />
+      <MenuGroupLabel
+        title={t(($) => $.shell.compile.typEngine.title)}
+        help={t(($) => $.shell.compile.typEngine.help)}
+      />
+      <DropdownMenuRadioGroup
+        value={current}
+        onValueChange={(value) => {
+          if (locked || value === current) return;
+          if (value !== "typst" && value !== "calepin") return;
+          void setEngine(value).catch((error: unknown) =>
+            reportEngineSwitchFailure(error, t(($) => $.shell.enginePicker.switchFailed)),
+          );
+        }}
+      >
+        <DropdownMenuRadioItem value="typst" data-testid="typ-engine-typst" disabled={locked}>
+          <Trans
+            ns="shell"
+            i18nKey={($) => $.shell.compile.typEngine.typst}
+            components={{ note: <span className="ml-1 text-muted-foreground" /> }}
+          />
+        </DropdownMenuRadioItem>
+        <DropdownMenuRadioItem
+          value="calepin"
+          data-testid="typ-engine-calepin"
+          disabled={locked || trustNeeded}
+        >
+          <Trans
+            ns="shell"
+            i18nKey={($) => $.shell.compile.typEngine.calepin}
+            components={{ note: <span className="ml-1 text-muted-foreground" /> }}
+          />
+        </DropdownMenuRadioItem>
+      </DropdownMenuRadioGroup>
+      {trustNeeded && (
+        <TrustFolderMenuItem
+          label={t(($) => $.errors.trust.notebook)}
+          testId="typ-engine-trust"
+          onTrust={onTrust}
+        />
+      )}
+    </>
+  );
+}
+
+function CodeExecutionMenuGroup({
+  allowed,
+  setCodeExecution,
+  trustNeeded,
+  onTrust,
+}: Readonly<{
+  allowed: boolean;
+  setCodeExecution?: (allow: boolean) => unknown;
+  trustNeeded: boolean;
+  onTrust?: () => void;
+}>) {
+  const { t } = useTranslation(["shell", "errors"]);
+  const current = allowed ? "run" : "off";
+  return (
+    <>
+      <DropdownMenuSeparator />
+      <MenuGroupLabel
+        title={t(($) => $.shell.compile.code.title)}
+        help={t(($) => $.shell.compile.code.help)}
+      />
+      <DropdownMenuRadioGroup
+        value={current}
+        onValueChange={(value) => {
+          if (value === current || !setCodeExecution) return;
+          if (value === "run" && trustNeeded) return;
+          void setCodeExecution(value === "run");
+        }}
+      >
+        <DropdownMenuRadioItem value="off" data-testid="code-execution-off" disabled={!setCodeExecution}>
+          {t(($) => $.shell.compile.code.off)}
+        </DropdownMenuRadioItem>
+        <DropdownMenuRadioItem
+          value="run"
+          data-testid="code-execution-run"
+          disabled={!setCodeExecution || trustNeeded}
+        >
+          {t(($) => $.shell.compile.code.run)}
+        </DropdownMenuRadioItem>
+      </DropdownMenuRadioGroup>
+      {trustNeeded && (
+        <TrustFolderMenuItem
+          label={t(($) => $.errors.trust.notebook)}
+          testId="code-execution-trust"
+          onTrust={onTrust}
+        />
+      )}
+    </>
+  );
 }
 
 function UnsupportedNote() {
@@ -530,13 +670,15 @@ export function CompileControlsView({
   engine, engineLoaded, setEngine, recompile, stopCompile, autoCompile, setAutoCompile, compileMode, setCompileMode, checkSyntaxBeforeCompile, setCheckSyntaxBeforeCompile, stopOnFirstError, setStopOnFirstError, status, compileRevision, iconOnly = false,
   blockedReason = null, systemTexLocked = false, sharedSettingsLocked = false, onTrustForSystemTex,
   typstToolchain = null, setTypstVersion, onOptionsOpen,
-  typstVariant = null, setTypstVariant, setTypstOptions, livePreview,
+  typstVariant = null, setTypstVariant, setTypstOptions, setCodeExecution, livePreview,
 }: Readonly<CompileControlsViewProps>) {
   const { t } = useTranslation(["shell", "errors"]);
   const blocked = blockedReason !== null;
   const settings = compileSettingsForEngine(engine);
   const compiling = status === "compiling";
-  const typst = engine.source_format === "typst";
+  const typst = engine.id === "typst";
+  const typSource = typst || isCalepinEngine(engine);
+  const notebook = isNotebookEngine(engine);
   const watchStoppable = Boolean(livePreview?.enabled && STOPPABLE_WATCH.has(livePreview.status));
   const hasCompileResult = status === "success" || status === "error";
   const compileLabel = hasCompileResult
@@ -773,6 +915,27 @@ export function CompileControlsView({
             )}
           </>
         )}
+
+        {typSource && (
+          <TypEngineMenuGroup
+            engine={engine}
+            setEngine={(next) => setEngine(next)}
+            locked={sharedSettingsLocked}
+            trustNeeded={systemTexLocked && !notebook}
+            onTrust={onTrustForSystemTex}
+          />
+        )}
+
+        {notebook && (
+          <CodeExecutionMenuGroup
+            allowed={engine.allow_shell_escape}
+            setCodeExecution={setCodeExecution}
+            trustNeeded={systemTexLocked}
+            onTrust={onTrustForSystemTex}
+          />
+        )}
+
+        {typSource && sharedSettingsLocked && !typst && <SharedViewerNote />}
 
         {typst && setTypstVersion && (
           <TypstVersionMenuGroup

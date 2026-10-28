@@ -1,4 +1,4 @@
-import { Eye, UserX, X } from "lucide-react";
+import { Eye, MessageSquare, PencilLine, UserX, X, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspace-banner";
 import { useFilesStore } from "@/store/files";
@@ -6,12 +6,25 @@ import { useCollabLiveStore, type AccessNotice } from "./live-store";
 
 type Translate = ReturnType<typeof useTranslation<["collab", "common"]>>["t"];
 
+const ICONS: Readonly<Record<AccessNotice["kind"], LucideIcon>> = {
+  viewer: Eye,
+  commenter: MessageSquare,
+  reviewer: PencilLine,
+  removed: UserX,
+};
+
 function noticeText(notice: AccessNotice, t: Translate): string {
   const name = notice.byName;
-  if (notice.kind === "viewer") {
-    return name ? t(($) => $.collab.access.viewerBy, { name }) : t(($) => $.collab.access.viewer);
+  switch (notice.kind) {
+    case "viewer":
+      return name ? t(($) => $.collab.access.viewerBy, { name }) : t(($) => $.collab.access.viewer);
+    case "commenter":
+      return name ? t(($) => $.collab.access.commenterBy, { name }) : t(($) => $.collab.access.commenter);
+    case "reviewer":
+      return name ? t(($) => $.collab.access.reviewerBy, { name }) : t(($) => $.collab.access.reviewer);
+    case "removed":
+      return name ? t(($) => $.collab.access.removedBy, { name }) : t(($) => $.collab.access.removed);
   }
-  return name ? t(($) => $.collab.access.removedBy, { name }) : t(($) => $.collab.access.removed);
 }
 
 export function AccessChangeBanner() {
@@ -22,7 +35,7 @@ export function AccessChangeBanner() {
   );
   if (!notice) return null;
   const tone = notice.kind === "removed" ? "warning" : "primary";
-  const Icon = notice.kind === "removed" ? UserX : Eye;
+  const Icon = ICONS[notice.kind];
   return (
     <WorkspaceBanner tone={tone} role="status" data-testid="collab-access-banner">
       <Icon aria-hidden className={tone === "primary" ? "size-3.5 shrink-0 text-primary" : "size-3.5 shrink-0"} />

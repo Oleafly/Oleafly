@@ -19,6 +19,8 @@ import {
   FileUp,
   FolderInput,
   Hash,
+  NotebookPen,
+  NotebookText,
   Search,
   Sparkles,
   X,
@@ -151,6 +153,8 @@ export function compilerLabel(template: TemplateInfo, t: TemplatesTranslator): s
   if (template.document_engine === "unknown") return t("compiler.unknown");
   if (template.document_engine === "typst") return "Typst";
   if (template.document_engine === "markdown") return "Pandoc";
+  if (template.document_engine === "quarto") return "Quarto";
+  if (template.document_engine === "calepin") return "Calepin";
   const pinned = template.tex_flavor ? TEX_FLAVOR_LABELS[template.tex_flavor] : undefined;
   if (pinned) return pinned;
   return template.engine === "luatex" ? "LuaLaTeX" : "Tectonic";
@@ -278,6 +282,8 @@ function trapDialogTab(event: KeyboardEvent, elements: HTMLElement[]): void {
 function engineIcon(engine: TemplateInfo["document_engine"]) {
   if (engine === "markdown") return Hash;
   if (engine === "typst") return Sparkles;
+  if (engine === "quarto") return NotebookText;
+  if (engine === "calepin") return NotebookPen;
   return FileText;
 }
 
@@ -784,6 +790,8 @@ export function NewProjectDialog({
               { value: "latex", label: t("dialog.engineLatex") },
               { value: "typst", label: t("dialog.engineTypst") },
               { value: "markdown", label: t("dialog.engineMarkdown") },
+              { value: "quarto", label: t("dialog.engineQuarto") },
+              { value: "calepin", label: t("dialog.engineCalepin") },
             ]}
           />
           <Tooltip label={t("dialog.atsTooltip")}>

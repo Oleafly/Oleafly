@@ -26,6 +26,7 @@ const PROJECT_COLUMNS: &str = "SELECT p.id, p.title, p.status, p.owner_account, 
      (SELECT COUNT(*) FROM project_grants g WHERE g.project_id = p.id), \
      (SELECT COALESCE(SUM(s.size), 0) FROM project_snapshots s WHERE s.project_id = p.id) \
        + (SELECT COALESCE(SUM(b.size), 0) FROM project_blobs b WHERE b.project_id = p.id) \
+       + (SELECT COALESCE(SUM(o.size), 0) FROM project_outputs o WHERE o.project_id = p.id) \
      FROM projects p";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -105,7 +106,9 @@ pub fn storage(conn: &Connection, location: FilesLocation) -> Result<StorageUsag
         )?,
         file_bytes: bytes(
             conn,
-            "SELECT COALESCE(SUM(size), 0) FROM (SELECT MAX(size) AS size FROM project_blobs GROUP BY hash)",
+            "SELECT COALESCE(SUM(size), 0) FROM (SELECT MAX(size) AS size FROM \
+             (SELECT hash, size FROM project_blobs UNION ALL SELECT blob_hash, size FROM project_outputs) \
+             GROUP BY hash)",
         )?,
         files_location: location,
     })

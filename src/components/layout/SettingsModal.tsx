@@ -75,6 +75,7 @@ import {
 import {
   useSettingsStore,
   GRAMMAR_DIALECTS,
+  appIconSource,
   sectionDiffersFromDefaults,
   type GrammarDialect,
 } from "@/store/settings";
@@ -283,12 +284,8 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
   },
 ];
 
-/** The sections to list: Collaboration and Research exist only while their Experimentation switch is on. */
-function availableNav(liveCollaboration: boolean, researchTasks: boolean) {
-  return NAV.filter(
-    (item) =>
-      (item.id !== "collaboration" || liveCollaboration) && (item.id !== "research" || researchTasks),
-  );
+function availableNav(researchTasks: boolean) {
+  return NAV.filter((item) => item.id !== "research" || researchTasks);
 }
 const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   general: "settings-general",
@@ -335,8 +332,6 @@ export function SettingsModal() {
   const offline = useSettingsStore((s) => s.offline);
   const setOffline = useSettingsStore((s) => s.setOffline);
   const latexTools = useSettingsStore((s) => s.latexTools);
-  const liveCollaboration = useSettingsStore((s) => s.liveCollaboration);
-  const setLiveCollaboration = useSettingsStore((s) => s.setLiveCollaboration);
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
   // 0.4.8: research tasks are experimental; Rust keeps the switch and stops running tasks when it goes off.
   const researchTasks = useResearchTasksEnabled();
@@ -404,7 +399,7 @@ export function SettingsModal() {
   const dismissedTours = AVAILABLE_TOUR_IDS.filter(
     (id) => tours[id].status === "dismissed",
   ).length;
-  const sectionNav = availableNav(liveCollaboration, researchTasks);
+  const sectionNav = availableNav(researchTasks);
   const navigation = developerSettings
     ? [
         ...sectionNav.slice(0, -1),
@@ -451,10 +446,7 @@ export function SettingsModal() {
 
   useEffect(() => {
     if (!open) return;
-    const available = availableNav(
-      useSettingsStore.getState().liveCollaboration,
-      useResearchTasksFlagStore.getState().enabled,
-    );
+    const available = availableNav(useResearchTasksFlagStore.getState().enabled);
     const next = available.some((item) => item.id === settingsInitialSection)
       ? (settingsInitialSection as Section)
       : "general";
@@ -479,9 +471,6 @@ export function SettingsModal() {
     if (cloudLibraryRevision > 0) setStorageRefreshKey((value) => value + 1);
   }, [cloudLibraryRevision]);
 
-  useEffect(() => {
-    if (!liveCollaboration && section === "collaboration") setSection("general");
-  }, [liveCollaboration, section]);
   useEffect(() => {
     if (!researchTasks && section === "research") setSection("general");
   }, [researchTasks, section]);
@@ -801,13 +790,6 @@ export function SettingsModal() {
           onChange={setLatexTools}
         />
         <SettingsToggleRow
-          testId="settings-live-collaboration"
-          label={t(($) => $.shell.settings.experimentation.liveCollaboration.label)}
-          description={t(($) => $.shell.settings.experimentation.liveCollaboration.description)}
-          checked={liveCollaboration}
-          onChange={setLiveCollaboration}
-        />
-        <SettingsToggleRow
           testId="settings-research-tasks"
           label={t(($) => $.shell.settings.experimentation.researchTasks.label)}
           description={t(($) => $.shell.settings.experimentation.researchTasks.description)}
@@ -833,7 +815,7 @@ export function SettingsModal() {
   );
 
   const renderCollaborationSection = () =>
-    section === "collaboration" && liveCollaboration ? (
+    section === "collaboration" ? (
       <Suspense fallback={<LoadingState size="compact" label={t(($) => $.common.state.loading)} />}>
         <CollaborationSection />
       </Suspense>
@@ -1566,6 +1548,7 @@ function HelpSection() {
   const discordOnline = useDiscordOnlineCount();
 
   const setOpen = useSettingsStore((s) => s.setSettingsOpen);
+  const appIcon = useSettingsStore((s) => s.appIcon);
   const projectId = useFilesStore((s) => s.projectId);
   const beginTour = () => {
     setOpen(false);
@@ -1699,7 +1682,7 @@ function HelpSection() {
         </div>
         <img
           data-testid="about-oleafly-logo"
-          src="/oleafly-tile-gradient.png"
+          src={appIconSource(appIcon)}
           alt={t(($) => $.shell.settings.help.logoAlt)}
           className="size-14 shrink-0 rounded-xl"
         />

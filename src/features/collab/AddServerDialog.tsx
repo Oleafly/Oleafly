@@ -29,6 +29,7 @@ import {
   isCollabCommandError,
 } from "@/lib/tauri-collab";
 import { ConnectionChecks } from "./ConnectionChecks";
+import { hasOleaflyServer, OLEAFLY_SERVER } from "./default-server";
 import { collabErrorCode, collabErrorMessage, collabErrorText } from "./errors";
 import { InlineAlert } from "./feedback";
 import { useConnectionTest } from "./use-connection-test";
@@ -185,9 +186,13 @@ export function AddServerDialog({
   const { t, i18n } = useTranslation(["collab", "common"]);
   const signIn = useCollabStore((state) => state.signIn);
   const signInWithCode = useCollabStore((state) => state.signInWithCode);
+  const servers = useCollabStore((state) => state.servers);
   const { copiedText, copy } = useCopyStatus();
   const addressId = useId();
   const setupId = useId();
+  const oleaflyNameId = useId();
+  const oleaflyDescriptionId = useId();
+  const offerOleafly = (initialUrl ?? "").trim() === "" && !hasOleaflyServer(servers);
   const attempt = useRef(0);
   const [address, setAddress] = useState("");
   const [setupCode, setSetupCode] = useState("");
@@ -222,7 +227,7 @@ export function AddServerDialog({
     }
   }, [resetConnectionTest]);
 
-  const tryMoved = (target: string) => {
+  const tryAddress = (target: string) => {
     setAddress(target);
     void probe(target);
   };
@@ -235,7 +240,7 @@ export function AddServerDialog({
       return (
         <div className="space-y-2">
           <InlineAlert>{t(($) => $.collab.addServer.moved, { target: trouble.target })}</InlineAlert>
-          <Button type="button" variant="outline" size="sm" onClick={() => tryMoved(trouble.target)}>
+          <Button type="button" variant="outline" size="sm" onClick={() => tryAddress(trouble.target)}>
             {t(($) => $.collab.addServer.useMoved)}
           </Button>
         </div>
@@ -370,6 +375,27 @@ export function AddServerDialog({
         void probe(address);
       }}
     >
+      {offerOleafly ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto w-full justify-start gap-3 whitespace-normal p-3 text-left"
+          aria-labelledby={oleaflyNameId}
+          aria-describedby={oleaflyDescriptionId}
+          disabled={step.kind === "checking"}
+          onClick={() => tryAddress(OLEAFLY_SERVER.url)}
+        >
+          <Avatar person={{ id: OLEAFLY_SERVER.url, name: OLEAFLY_SERVER.name }} size="md" fallbackIcon={<Server />} />
+          <span className="min-w-0">
+            <span id={oleaflyNameId} className="block truncate text-sm font-medium">
+              {OLEAFLY_SERVER.name}
+            </span>
+            <span id={oleaflyDescriptionId} className="block text-xs font-normal text-muted-foreground">
+              {t(($) => $.collab.addServer.oleaflyDescription)}
+            </span>
+          </span>
+        </Button>
+      ) : null}
       <div className="space-y-1.5">
         <label htmlFor={addressId} className="text-xs font-medium">
           {t(($) => $.collab.addServer.addressLabel)}

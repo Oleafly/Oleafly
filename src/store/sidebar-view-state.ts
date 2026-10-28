@@ -68,6 +68,7 @@ interface SidebarPanelViews {
     readonly sectionOpen: {
       readonly people: boolean;
       readonly activity: boolean;
+      readonly history?: boolean;
       readonly deleted?: boolean;
       readonly accessLog?: boolean;
     };

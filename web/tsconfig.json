@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.json",
+  "include": [
+    "src",
+    "dev",
+    "vitest.setup.ts",
+    "../vite.web.config.ts",
+    "../vitest.web.config.ts",
+    "../src/i18n/i18next.d.ts",
+    "../src/i18n/resources-types.d.ts",
+    "../packages/preview/src/pdf-worker.d.ts"
+  ]
+}

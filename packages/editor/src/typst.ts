@@ -38,7 +38,7 @@ export function loadTypstParser(): Promise<Parser> {
   loadingParser ??= import("./typst-tools").then(
     (module) => {
       loadedTools = module;
-      loadedParser = module.typstParser;
+      loadedParser = module.typstEditorParser;
       return module.typstParser;
     },
     (error: unknown) => {

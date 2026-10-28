@@ -1055,6 +1055,16 @@
         "unknownEntryType": "알 수 없는 참고문헌 항목 형식 @{{type}}입니다."
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "Quarto 청크 옵션"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "Calepin 청크 옵션"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "이미지를 불러오는 중",
@@ -1519,7 +1529,7 @@
     "keyTaken": "한 변형에서 같은 이름을 두 번 설정할 수 없습니다.",
     "saveFailed": "변형을 저장하지 못했습니다."
   },
-  "sharedSettingsViewer": "공유 프로젝트에서 뷰어는 이 항목을 변경할 수 없습니다.",
+  "sharedSettingsViewer": "공유 프로젝트에서는 소유자와 편집자만 이 항목을 변경할 수 있습니다.",
   "typstForms": {
     "message": "{{label}}: {{detail}}",
     "atKeyPath": "{{message}} ({{path}}에서)",

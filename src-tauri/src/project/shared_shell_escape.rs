@@ -32,7 +32,7 @@ fn to_confirm(project_id: &str, allow: bool) -> Result<Option<String>, String> {
         return Ok(None);
     }
     crate::trust::require_trusted(project_id, crate::trust::Capability::ShellEscape)?;
-    if super::read_meta(project_id)?.engine != "latexmk" {
+    if !super::engine_runs_project_code(&super::read_meta(project_id)?.engine) {
         return Err(super::SHELL_ESCAPE_NEEDS_LATEXMK.into());
     }
     shared_project_of(project_id)
@@ -54,15 +54,30 @@ pub(crate) async fn change(
     super::set_project_shell_escape_unlocked(project_id, allow, shared.as_deref())
 }
 
-pub(crate) async fn ask(app: tauri::AppHandle) -> bool {
-    crate::trust::native_confirm(
-        &app,
-        "dialog.sharedShellEscape.title",
-        crate::i18n::t("dialog.sharedShellEscape.message"),
-        "dialog.sharedShellEscape.confirm",
-    )
-    .await
-    .unwrap_or(false)
+fn dialog_keys(engine: &str) -> (&'static str, &'static str, &'static str) {
+    if super::engine_runs_notebook_code(engine) {
+        (
+            "dialog.sharedCodeExecution.title",
+            "dialog.sharedCodeExecution.message",
+            "dialog.sharedCodeExecution.confirm",
+        )
+    } else {
+        (
+            "dialog.sharedShellEscape.title",
+            "dialog.sharedShellEscape.message",
+            "dialog.sharedShellEscape.confirm",
+        )
+    }
+}
+
+pub(crate) async fn ask(app: tauri::AppHandle, project_id: String) -> bool {
+    let engine = super::read_meta(&project_id)
+        .map(|meta| meta.engine)
+        .unwrap_or_default();
+    let (title, message, confirm) = dialog_keys(&engine);
+    crate::trust::native_confirm(&app, title, crate::i18n::t(message), confirm)
+        .await
+        .unwrap_or(false)
 }
 
 #[cfg(test)]
@@ -260,5 +275,54 @@ mod tests {
 
         let _again = share("reshared");
         assert!(!effective("reshared"));
+    }
+
+    #[test]
+    fn notebook_engines_ask_with_the_code_dialog() {
+        assert_eq!(dialog_keys("quarto").0, "dialog.sharedCodeExecution.title");
+        assert_eq!(
+            dialog_keys("calepin").1,
+            "dialog.sharedCodeExecution.message"
+        );
+        assert_eq!(dialog_keys("latexmk").0, "dialog.sharedShellEscape.title");
+    }
+
+    #[test]
+    fn a_quarto_project_allows_code_only_on_this_computer_and_forgets_it_on_an_engine_switch() {
+        let library = TempLibrary::new();
+        library.project("notebook", &[("main.qmd", "# Notes\n")]);
+        crate::project::write_meta(
+            "notebook",
+            &ProjectMeta {
+                name: "notebook".to_owned(),
+                main_doc: "main.qmd".into(),
+                engine: "quarto".into(),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+        let (result, asked) = turn("notebook", true, false);
+        assert!(!asked);
+        assert!(result.unwrap().allow_shell_escape);
+        assert!(
+            crate::project::read_meta("notebook")
+                .unwrap()
+                .allow_shell_escape
+        );
+        let manifest = std::fs::read_to_string(
+            crate::paths::project_dir("notebook")
+                .unwrap()
+                .join("project.json"),
+        )
+        .unwrap();
+        assert!(!manifest.contains("allow_shell_escape"), "{manifest}");
+
+        crate::project::follow_shared_settings("notebook", |meta| {
+            meta.engine = "markdown".into();
+            meta.main_doc = "main.qmd".into();
+            Ok(((), true))
+        })
+        .ok();
+        assert!(!crate::project::shell_escape_trusted("notebook").unwrap());
     }
 }

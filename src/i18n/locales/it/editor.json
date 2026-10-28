@@ -1083,6 +1083,16 @@
         "unknownEntryType": "Tipo di voce bibliografica sconosciuto @{{type}}."
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "opzione del blocco di codice Quarto"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "opzione del blocco di codice Calepin"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "Caricamento dell'immagine",
@@ -1561,7 +1571,7 @@
     "keyTaken": "Una variante non può impostare lo stesso nome due volte.",
     "saveFailed": "Impossibile salvare le varianti."
   },
-  "sharedSettingsViewer": "I visualizzatori non possono modificare questa impostazione in un progetto condiviso.",
+  "sharedSettingsViewer": "Solo proprietari ed editor possono modificare questa impostazione in un progetto condiviso.",
   "typstForms": {
     "message": "{{label}}: {{detail}}",
     "atKeyPath": "{{message}} (in {{path}})",

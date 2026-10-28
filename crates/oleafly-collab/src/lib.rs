@@ -1,4 +1,5 @@
 pub mod binding;
+pub mod chat;
 pub mod comments;
 pub mod device_key;
 pub mod devices;
@@ -6,6 +7,7 @@ pub mod doc;
 pub mod editor;
 pub mod error;
 pub mod file_ids;
+pub mod history;
 pub mod live;
 pub mod mass_change;
 pub mod materialize;
@@ -15,6 +17,7 @@ pub mod paths;
 pub mod review;
 pub mod secret_port;
 pub mod settings;
+pub mod suggestions;
 
 pub use binding::{load_binding, remove_binding, save_binding, ShareBinding};
 pub use device_key::{server_key_account, DeviceKey, DEVICE_KEY_ACCOUNT};

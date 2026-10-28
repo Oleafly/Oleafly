@@ -11,10 +11,10 @@ use rusqlite::{Connection, OpenFlags, OptionalExtension, Transaction, Transactio
 
 use crate::error::ServerError;
 
-pub const SCHEMA_VERSION: i64 = 14;
+pub const SCHEMA_VERSION: i64 = 18;
 pub const SERVER_ID_KEY: &str = "server_id";
 pub const SETUP_CODE_HASH_KEY: &str = "setup_code_hash";
-const MIGRATIONS: [&str; 14] = [
+const MIGRATIONS: [&str; 18] = [
     include_str!("../migrations/0001_core.sql"),
     include_str!("../migrations/0002_projects.sql"),
     include_str!("../migrations/0003_email.sql"),
@@ -29,6 +29,10 @@ const MIGRATIONS: [&str; 14] = [
     include_str!("../migrations/0012_device_code_network.sql"),
     include_str!("../migrations/0013_project_sizes.sql"),
     include_str!("../migrations/0014_comment_rechecks.sql"),
+    include_str!("../migrations/0015_review_roles.sql"),
+    include_str!("../migrations/0016_public_service.sql"),
+    include_str!("../migrations/0017_project_outputs.sql"),
+    include_str!("../migrations/0018_web_sessions.sql"),
 ];
 
 // Reads that need no write go to their own connections, so token checks,
@@ -294,9 +298,31 @@ fn migrate(connection: &mut Connection) -> Result<(), ServerError> {
         )));
     }
     let applied = usize::try_from(current).unwrap_or(0);
+    if applied >= MIGRATIONS.len() {
+        return Ok(());
+    }
+    let enforced: bool = connection.query_row("PRAGMA foreign_keys", [], |row| row.get(0))?;
+    connection.execute_batch("PRAGMA foreign_keys = OFF;")?;
+    let migrated = apply_migrations(connection, applied);
+    if enforced {
+        connection.execute_batch("PRAGMA foreign_keys = ON;")?;
+    }
+    migrated
+}
+
+fn apply_migrations(connection: &mut Connection, applied: usize) -> Result<(), ServerError> {
     for (index, sql) in MIGRATIONS.iter().enumerate().skip(applied) {
         let transaction = connection.transaction()?;
         transaction.execute_batch(sql)?;
+        let broken: Option<String> = transaction
+            .query_row("PRAGMA foreign_key_check", [], |row| row.get(0))
+            .optional()?;
+        if let Some(table) = broken {
+            return Err(ServerError::Internal(format!(
+                "migration {} left a row in {table} pointing at nothing",
+                index + 1
+            )));
+        }
         transaction.execute_batch(&format!("PRAGMA user_version = {};", index + 1))?;
         transaction.commit()?;
     }
@@ -354,9 +380,10 @@ mod tests {
     use super::*;
     use rusqlite::params;
 
-    const TABLES: [&str; 31] = [
+    const TABLES: [&str; 34] = [
         "access_tokens",
         "account_emails",
+        "account_uploads",
         "accounts",
         "allowlist",
         "auth_codes",
@@ -376,6 +403,7 @@ mod tests {
         "project_access_log",
         "project_blobs",
         "project_grants",
+        "project_outputs",
         "project_peers",
         "project_removals",
         "project_snapshots",
@@ -386,9 +414,10 @@ mod tests {
         "server_meta",
         "settings",
         "sign_in_throttle",
+        "web_sessions",
     ];
 
-    const INDEXES: [&str; 30] = [
+    const INDEXES: [&str; 34] = [
         "access_tokens_device",
         "access_tokens_expires",
         "account_emails_email",
@@ -413,12 +442,16 @@ mod tests {
         "project_blobs_hash",
         "project_blobs_used",
         "project_grants_account",
+        "project_outputs_hash",
+        "projects_owner",
         "projects_status",
         "refresh_tokens_device",
         "refresh_tokens_expires",
         "refresh_tokens_family",
         "security_log_at",
         "sign_in_throttle_expires",
+        "web_sessions_account",
+        "web_sessions_expires",
     ];
 
     fn names(conn: &Connection, kind: &str) -> Vec<String> {
@@ -549,6 +582,100 @@ mod tests {
             .unwrap();
         assert_eq!(unused, 0);
         assert_eq!(count(&conn, "project_blobs"), 2);
+    }
+
+    #[test]
+    fn an_older_database_keeps_its_projects_grants_and_invitations_and_takes_the_review_roles() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+        migrated_to(&mut conn, 14);
+        conn.execute_batch(
+            "INSERT INTO accounts (id, display_name, server_role, created_at, updated_at) VALUES ('a1', 'Ada', 'member', 1, 1), ('a2', 'Bo', 'member', 1, 1);
+             INSERT INTO projects (id, owner_account, title, status, created_at, link_sharing, link_role, head_seq, comments_enabled, access_log, peers_known) VALUES ('p1', 'a1', 'Thesis', 'active', 1, 1, 'editor', 7, 0, 1, 1);
+             INSERT INTO project_grants (project_id, account_id, role, granted_at, granted_by, accepted_at) VALUES ('p1', 'a1', 'owner', 1, NULL, 1), ('p1', 'a2', 'viewer', 2, 'a1', 3);
+             INSERT INTO guest_invitations (id, project_id, email, role, invited_by, status, created_at, expires_at) VALUES ('g1', 'p1', 'guest@uni.edu', 'viewer', 'a1', 'invited', 1, 99);
+             INSERT INTO project_updates (project_id, seq, batch_id, device_id, account_id, envelope, created_at) VALUES ('p1', 1, 'b1', 'd1', 'a1', zeroblob(40), 1);
+             INSERT INTO project_blobs (project_id, hash, size, used_at) VALUES ('p1', 'h1', 10, 1);",
+        )
+        .unwrap();
+        migrate(&mut conn).unwrap();
+        assert_eq!(version(&conn), SCHEMA_VERSION);
+        let project: (String, i64, i64, i64, i64, i64, i64) = conn
+            .query_row(
+                "SELECT link_role, head_seq, comments_enabled, access_log, peers_known, log_bytes, file_bytes FROM projects WHERE id = 'p1'",
+                [],
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                        row.get(5)?,
+                        row.get(6)?,
+                    ))
+                },
+            )
+            .unwrap();
+        assert_eq!(project, ("editor".to_string(), 7, 0, 1, 1, 40, 10));
+        let grant: (String, String, i64) = conn
+            .query_row(
+                "SELECT role, granted_by, accepted_at FROM project_grants WHERE account_id = 'a2'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(grant, ("viewer".to_string(), "a1".to_string(), 3));
+        assert_eq!(count(&conn, "guest_invitations"), 1);
+        conn.execute_batch(
+            "UPDATE project_grants SET role = 'reviewer' WHERE account_id = 'a2';
+             UPDATE projects SET link_role = 'commenter' WHERE id = 'p1';
+             INSERT INTO guest_invitations (id, project_id, email, role, invited_by, status, created_at, expires_at) VALUES ('g2', 'p1', 'other@uni.edu', 'reviewer', 'a1', 'invited', 1, 99);",
+        )
+        .unwrap();
+        assert!(conn
+            .execute(
+                "UPDATE project_grants SET role = 'auditor' WHERE account_id = 'a2'",
+                []
+            )
+            .is_err());
+        assert!(conn
+            .execute(
+                "UPDATE projects SET link_role = 'owner' WHERE id = 'p1'",
+                []
+            )
+            .is_err());
+        conn.execute_batch(
+            "INSERT INTO project_updates (project_id, seq, batch_id, device_id, account_id, envelope, created_at) VALUES ('p1', 2, 'b2', 'd1', 'a1', zeroblob(5), 1);
+             INSERT INTO project_blobs (project_id, hash, size, used_at) VALUES ('p1', 'h2', 3, 1);",
+        )
+        .unwrap();
+        let sizes: (i64, i64) = conn
+            .query_row(
+                "SELECT log_bytes, file_bytes FROM projects WHERE id = 'p1'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(sizes, (45, 13));
+        let enforced: bool = conn
+            .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+            .unwrap();
+        assert!(enforced);
+        let integrity: String = conn
+            .query_row("PRAGMA integrity_check", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(integrity, "ok");
+        conn.execute("DELETE FROM projects WHERE id = 'p1'", [])
+            .unwrap();
+        for table in [
+            "project_grants",
+            "guest_invitations",
+            "project_updates",
+            "project_blobs",
+        ] {
+            assert_eq!(count(&conn, table), 0, "{table}");
+        }
     }
 
     #[test]

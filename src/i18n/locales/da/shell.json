@@ -437,7 +437,19 @@
       "help": "En variant sender sine egne værdier til sys.inputs, for eksempel til et udkast eller en trykklar udgave. Den valgte variant bliver på denne computer. Tilføj eller rediger varianter under Dokumentindstillinger.",
       "none": "Ingen variant"
     },
-    "sharedViewer": "Læsere kan ikke ændre disse indstillinger i et delt projekt."
+    "typEngine": {
+      "title": "Motor (dette projekt)",
+      "help": "Typst kompilerer dokumentet, som det er skrevet. Calepin kører også koden i det og sætter resultaterne ind i PDF'en.",
+      "typst": "Typst <note>[indbygget]</note>",
+      "calepin": "Calepin <note>[kører kode]</note>"
+    },
+    "code": {
+      "title": "Kode (denne computer)",
+      "help": "Quarto og Calepin kan køre R-, Python- og Julia-koden i dette projekt. Kode kører med dine rettigheder, så tillad det kun for et projekt, du stoler på. Valget gælder kun denne computer.",
+      "off": "Fra",
+      "run": "Kør kode på denne computer"
+    },
+    "sharedViewer": "Kun ejere og redaktører kan ændre disse indstillinger i et delt projekt."
   },
   "datePicker": {
     "placeholder": "Vælg en dato"
@@ -504,6 +516,18 @@
   "shellCommands": {
     "allow": "Tillad eksterne kommandoer",
     "banner": "Dette dokument kører eksterne kommandoer under kompileringen, og dette projekt blokerer dem. Tillad dem kun, hvis du stoler på alle filer i projektet."
+  },
+  "codeExecution": {
+    "allow": "Tillad kode i dette projekt",
+    "needed": "Dette dokument skal køre sin kode for at blive bygget, og kode er slået fra for dette projekt. Tillad kun kode, hvis du stoler på alle filer i projektet.",
+    "skipped": "Koden i dette dokument blev ikke kørt, fordi kode er slået fra for dette projekt. Tillad kun kode, hvis du stoler på alle filer i projektet.",
+    "storedResults": "PDF'en viser koderesultater, der er gemt fra en tidligere kørsel, fordi kode er slået fra for dette projekt. Tillad kun kode, hvis du stoler på alle filer i projektet."
+  },
+  "typstCjkFonts": {
+    "message": "Dokumentet har kinesisk, japansk eller koreansk tekst, som ingen skrifttype på denne computer kan vise, så teksten mangler i PDF'en.",
+    "download": "Hent skrifttyper",
+    "downloadSize": "Hent skrifttyper ({{size}})",
+    "downloading": "Henter skrifttyper"
   },
   "errorBoundary": {
     "copyDiagnostics": "Kopier diagnostikken",
@@ -625,6 +649,8 @@
       "standalone": "Selvstændig figur",
       "typst": "Typst",
       "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Calepin-notesbog",
       "unknown": "Andet"
     },
     "reason": {
@@ -844,10 +870,6 @@
       "latexTools": {
         "description": "Vis galleriet Oleafly-værktøjer og de enkelte værktøjer (PDF-import, ligninger, tabeller, BibTeX, søgning efter forskergrupper og litteratur, frister) samt deres skråstregskommandoer. Slået fra som udgangspunkt, mens det stadig er i beta.",
         "label": "LaTeX-værktøjer"
-      },
-      "liveCollaboration": {
-        "description": "Rediger projekter sammen med andre via en samarbejdsserver, som du eller din gruppe driver. Tilføjer afsnittet Samarbejde under Indstillinger. Slået fra som udgangspunkt, mens det stadig er i beta.",
-        "label": "Samarbejde i realtid"
       },
       "researchTasks": {
         "description": "En agent arbejder selvstændigt i en kopi af projektet og efterlader sine ændringer, så du kan gennemgå dem. Meget ustabilt: kørsler kan gå i stå, fejle eller efterlade ændringer, du selv må rette op på manuelt, og de bruger din udbyders kvote hele tiden. Tilføjer afsnittet Forskning under Indstillinger. Hvis du slår det fra, stoppes alle kørende opgaver. Slået fra som udgangspunkt. Slå det til på eget ansvar.",

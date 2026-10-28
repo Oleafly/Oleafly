@@ -240,6 +240,39 @@ async fn two_computers_share_edits_and_deletes_and_build_output_stays_home() {
 }
 
 #[tokio::test]
+async fn quarto_output_stays_home_and_calepin_results_sync() {
+    let store = MemoryStore::default();
+    let cloud = ProjectId::new();
+    let mut desk = Device::new("Desk");
+    desk.write(
+        "project.json",
+        r#"{"name":"Report","main_doc":"report.qmd","engine":"quarto"}"#,
+    );
+    desk.write("report.qmd", "# Report");
+    desk.write("report_files/figure-html/plot.png", "figure");
+    desk.write(".quarto/xref/index.json", "{}");
+    desk.write(".calepin/calepin.typ", "runtime");
+    desk.write("data_files/raw.csv", "a,b");
+    let first = desk.sync(&store, cloud).await;
+    assert_eq!(first.outcome.uploaded, 4);
+    for left_out in [
+        "report_files/figure-html/plot.png",
+        ".quarto/xref/index.json",
+    ] {
+        assert!(
+            store.read(&file_remote(cloud, left_out)).is_none(),
+            "{left_out}"
+        );
+    }
+    assert!(store
+        .read(&file_remote(cloud, "data_files/raw.csv"))
+        .is_some());
+    assert!(store
+        .read(&file_remote(cloud, ".calepin/calepin.typ"))
+        .is_some());
+}
+
+#[tokio::test]
 async fn concurrent_edits_keep_both_versions_and_name_the_copy_after_its_author() {
     let (store, cloud, mut desk, mut laptop) = paired().await;
     desk.write("main.tex", "desk edit");
@@ -2680,7 +2713,66 @@ mod s3_fake {
     use super::{thesis, today, version_remote, Device, ProjectId};
     use crate::cloud::engine::delete_project_folder;
     use crate::cloud::store::CloudStore;
-    use crate::cloud::tests::fake_s3::FakeS3;
+    use crate::cloud::tests::fake_s3::{FakeS3, Hold};
+    use std::sync::Arc;
+    use std::time::Duration;
+    use tokio::sync::Notify;
+
+    #[tokio::test]
+    async fn a_round_that_loses_the_race_leaves_the_winners_copy_in_the_bucket() {
+        let fake = FakeS3::start().await;
+        let desk_store = fake.store("oleafly");
+        let laptop_store = fake.store("oleafly");
+        let cloud = ProjectId::new();
+        let mut desk = Device::new("Desk");
+        let mut laptop = Device::new("Laptop");
+        thesis(&desk);
+        desk.sync(&desk_store, cloud).await;
+        laptop.download(&laptop_store, cloud).await;
+
+        // The laptop's round reads the manifest, then its upload waits while
+        // the desk's round uploads the same file and publishes.
+        desk.write("main.tex", "desk edit");
+        laptop.write("main.tex", "laptop edit");
+        let key = format!("oleafly/projects/{cloud}/files/main.tex");
+        let arrived = Arc::new(Notify::new());
+        let release = Arc::new(Notify::new());
+        fake.with(|bucket| {
+            bucket.hold = Some(Hold {
+                prefix: format!("PUT {key}"),
+                arrived: Arc::clone(&arrived),
+                release: Arc::clone(&release),
+            });
+        });
+        let (lost, won) = tokio::join!(laptop.sync(&laptop_store, cloud), async {
+            tokio::time::timeout(Duration::from_secs(30), arrived.notified())
+                .await
+                .expect("the laptop's upload never came");
+            let won = desk.sync(&desk_store, cloud).await;
+            release.notify_one();
+            won
+        });
+        assert!(won.error.is_none(), "{:?}", won.error);
+        assert_eq!(lost.outcome.uploaded, 0);
+        // The copy the desk's manifest names is still there.
+        assert_eq!(
+            fake.with(|bucket| bucket.read(&key)),
+            Some(b"desk edit".to_vec())
+        );
+
+        // The laptop's next round downloads it and keeps both edits.
+        laptop.project.remote_dirty = true;
+        let merged = laptop.sync(&laptop_store, cloud).await;
+        assert!(merged.error.is_none(), "{:?}", merged.error);
+        assert_eq!(merged.outcome.conflicts, 1);
+        let copy = format!("main (Desk {}).tex", today());
+        assert_eq!(laptop.read(&copy).as_deref(), Some("desk edit"));
+        desk.project.remote_dirty = true;
+        let pulled = desk.sync(&desk_store, cloud).await;
+        assert!(pulled.error.is_none(), "{:?}", pulled.error);
+        assert_eq!(desk.read("main.tex").as_deref(), Some("laptop edit"));
+        assert_eq!(desk.read(&copy).as_deref(), Some("desk edit"));
+    }
 
     #[tokio::test]
     async fn two_computers_share_edits_conflicts_and_deletes_through_a_bucket() {

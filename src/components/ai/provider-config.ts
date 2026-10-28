@@ -1,6 +1,12 @@
 import { getConfigCached, invalidateConfigCache } from "@/lib/config-cache";
 import { getSnapshotConfig } from "@/lib/initial-state";
-import { effectiveProviderKeys, isProviderConfigured, pickActiveProvider } from "@/lib/ai-providers";
+import { currentLocale } from "@/i18n";
+import {
+  effectiveProviderKeys,
+  isProviderConfigured,
+  pickActiveProvider,
+  suggestedProviderId,
+} from "@/lib/ai-providers";
 import type { AppConfig, CustomProvider, Persona, StoredModel } from "@/lib/tauri";
 
 export interface ProviderState {
@@ -17,8 +23,11 @@ export interface ProviderState {
   customPrompt: string;
 }
 
-export function deriveProviderState(cfg: AppConfig): ProviderState {
-  const { providerId, modelId, credential } = pickActiveProvider(cfg);
+export function deriveProviderState(
+  cfg: AppConfig,
+  suggested: string = suggestedProviderId(currentLocale()),
+): ProviderState {
+  const { providerId, modelId, credential } = pickActiveProvider(cfg, suggested);
   const keys = effectiveProviderKeys(cfg);
   const customs = cfg.ai_custom_providers ?? [];
   return {

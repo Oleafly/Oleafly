@@ -297,11 +297,19 @@ pub struct DocChanges {
     pub texts: Vec<(String, Vec<TextDelta>)>,
     pub tree: bool,
     pub comments: crate::comments::CommentEvents,
+    pub suggestions: std::collections::BTreeSet<String>,
+    pub chat: bool,
+    pub versions: bool,
 }
 
 impl DocChanges {
     pub fn is_empty(&self) -> bool {
-        self.texts.is_empty() && !self.tree && self.comments.is_empty()
+        self.texts.is_empty()
+            && !self.tree
+            && self.comments.is_empty()
+            && self.suggestions.is_empty()
+            && !self.chat
+            && !self.versions
     }
 }
 
@@ -353,6 +361,9 @@ impl Imported {
         self.changes.texts.extend(later.changes.texts);
         self.changes.tree |= later.changes.tree;
         self.changes.comments.extend(later.changes.comments);
+        self.changes.suggestions.extend(later.changes.suggestions);
+        self.changes.chat |= later.changes.chat;
+        self.changes.versions |= later.changes.versions;
         self.arrived.extend(later.arrived);
         self.pending |= later.pending;
         self.waiting.extend(later.waiting);
@@ -379,6 +390,17 @@ fn recorder(doc: &LoroDoc) -> (SharedRecorder, loro::Subscription) {
             if crate::comments::record(&mut recorder.changes.comments, change) {
                 continue;
             }
+            if crate::suggestions::record(&mut recorder.changes.suggestions, change) {
+                continue;
+            }
+            if crate::chat::record(change) {
+                recorder.changes.chat = true;
+                continue;
+            }
+            if crate::history::record(change) {
+                recorder.changes.versions = true;
+                continue;
+            }
             match (change.target, &change.diff) {
                 (ContainerID::Root { name, .. }, Diff::Text(deltas)) => {
                     if let Some(id) = name.as_str().strip_prefix(TEXT_PREFIX) {
@@ -401,11 +423,17 @@ pub struct ProjectDoc {
     log: tree::TreeLog,
     authors: crate::comments::Authorship,
     anchors: Mutex<crate::comments::Anchors>,
+    suggested: Mutex<HashMap<String, String>>,
     recorded: SharedRecorder,
     compacted_with: VersionVector,
     scratch_failures: usize,
     frozen: bool,
     _events: loro::Subscription,
+}
+
+fn keep_times(doc: &LoroDoc) {
+    doc.set_record_timestamp(true);
+    doc.set_change_merge_interval(crate::history::MERGE_SECONDS);
 }
 
 fn doc_error<T: std::fmt::Debug>(error: T) -> CollabError {
@@ -468,6 +496,7 @@ impl ProjectDoc {
     pub fn create() -> Result<ProjectDoc, CollabError> {
         let doc = LoroDoc::new();
         doc.set_peer_id(fresh_peer()?).map_err(doc_error)?;
+        keep_times(&doc);
         let tree = doc.get_tree(TREE);
         tree.enable_fractional_index(0);
         let trash = tree.create(TreeParentId::Root).map_err(doc_error)?;
@@ -486,6 +515,7 @@ impl ProjectDoc {
             log: tree::TreeLog::default(),
             authors: crate::comments::Authorship::default(),
             anchors: Mutex::default(),
+            suggested: Mutex::default(),
             recorded,
             compacted_with: VersionVector::new(),
             scratch_failures: 0,
@@ -534,6 +564,7 @@ impl ProjectDoc {
             .map_err(doc_error)?;
         let (_, copy) = filled(|copy| {
             copy.import(&bytes).map_err(doc_error)?;
+            keep_times(copy);
             then(copy)?;
             ProjectDoc::wrap(copy.clone())
         })?;
@@ -541,6 +572,7 @@ impl ProjectDoc {
     }
 
     fn wrap(doc: LoroDoc) -> Result<ProjectDoc, CollabError> {
+        keep_times(&doc);
         let tree = doc.get_tree(TREE);
         tree.enable_fractional_index(0);
         let (recorded, events) = recorder(&doc);
@@ -552,6 +584,7 @@ impl ProjectDoc {
             log: tree::TreeLog::default(),
             authors: crate::comments::Authorship::default(),
             anchors: Mutex::default(),
+            suggested: Mutex::default(),
             recorded,
             compacted_with: VersionVector::new(),
             scratch_failures: 0,
@@ -559,6 +592,8 @@ impl ProjectDoc {
             _events: events,
         };
         wrapped.reindex()?;
+        let indexed = wrapped.index_suggestions();
+        *wrapped.suggestion_index() = indexed;
         Ok(wrapped)
     }
 
@@ -691,6 +726,16 @@ impl ProjectDoc {
 
     pub(crate) fn anchors(&self) -> std::sync::MutexGuard<'_, crate::comments::Anchors> {
         self.anchors.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    pub(crate) fn suggestion_index(&self) -> std::sync::MutexGuard<'_, HashMap<String, String>> {
+        self.suggested
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
+
+    pub(crate) fn file_ids(&self) -> HashMap<String, TreeID> {
+        self.ids.clone()
     }
 
     pub(crate) fn text_of(&self, id: &str) -> Result<LoroText, CollabError> {
@@ -905,7 +950,7 @@ impl ProjectDoc {
 
     // The changes are kept even when the work fails, because a batch import
     // applies every update it can before it reports the one that failed.
-    fn recording<T>(
+    pub(crate) fn recording<T>(
         &self,
         work: impl FnOnce(&LoroDoc) -> Result<T, CollabError>,
     ) -> (Result<T, CollabError>, DocChanges) {
@@ -1010,6 +1055,14 @@ impl ProjectDoc {
 
     pub fn peer_id(&self) -> u64 {
         self.doc.peer_id()
+    }
+
+    pub fn set_peer_id(&mut self, peer: u64) -> Result<(), CollabError> {
+        if self.doc.peer_id() == peer {
+            return Ok(());
+        }
+        self.doc.commit();
+        self.doc.set_peer_id(peer).map_err(doc_error)
     }
 
     pub(crate) fn scratch_failures(&self) -> usize {
@@ -1410,6 +1463,27 @@ pub fn decode_version(bytes: &[u8]) -> Result<VersionVector, CollabError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_switched_writer_id_signs_the_next_changes_and_an_earlier_one_carries_on() {
+        let mut doc = ProjectDoc::create().unwrap();
+        let file = doc
+            .add_node(None, "a.tex", NodeKind::Text, None, "")
+            .unwrap();
+        doc.set_peer_id(11).unwrap();
+        doc.set_text(&file, "one").unwrap();
+        doc.set_peer_id(12).unwrap();
+        doc.set_text(&file, "one two").unwrap();
+        let first = doc.version().get(&11).copied();
+        doc.set_peer_id(11).unwrap();
+        doc.set_text(&file, "one two three").unwrap();
+        let version = doc.version();
+        assert_eq!(doc.peer_id(), 11);
+        assert_eq!(first, Some(3));
+        assert_eq!(version.get(&11).copied(), Some(9));
+        assert_eq!(version.get(&12).copied(), Some(4));
+        assert_eq!(doc.text(&file).unwrap(), "one two three");
+    }
 
     fn shared_pair() -> (ProjectDoc, ProjectDoc, String) {
         let mut owner = ProjectDoc::create().unwrap();

@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "只顯示求職者追蹤系統（ATS）能穩定解析的履歷範本：單欄、標準字型，而且文字可選取，不會嵌在圖形裡。",
       "atsFriendly": "適用 ATS",
       "offlineTooltip": "只顯示不必下載就能編譯的範本：字型與套件都已內建，沒有網路也能建置。",

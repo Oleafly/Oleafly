@@ -826,7 +826,7 @@ pub(crate) fn finished_naming(
                 )],
             ),
         ),
-        Ok(Finish::DeviceGone | Finish::Code(_)) => sign_in_pages::notice(
+        Ok(Finish::DeviceGone | Finish::Code(_) | Finish::Web(_)) => sign_in_pages::notice(
             locale,
             StatusCode::BAD_REQUEST,
             sign_in_pages::Tone::Problem,

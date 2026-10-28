@@ -232,8 +232,6 @@ pub struct AppConfig {
     pub typst_default_version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub latex_default_engine: Option<String>,
-    #[serde(default)]
-    pub live_collaboration: bool,
     // 0.4.8 E: research task defaults
     /// Keep the computer awake while a research task or run is active.
     #[serde(default = "default_true")]
@@ -326,7 +324,6 @@ impl Default for AppConfig {
             cli_settings_revision: 0,
             typst_default_version: None,
             latex_default_engine: None,
-            live_collaboration: false,
             research_keep_awake: true,
             research_notifications: true,
             research_command_network: false,
@@ -1219,7 +1216,6 @@ fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     // 0.4.8 H: only set_ai_tools_model changes where Tools send images.
     config.ai_tools_model = stored.ai_tools_model;
     config.latex_default_engine = stored.latex_default_engine;
-    config.live_collaboration = stored.live_collaboration;
     // 0.4.8 I: only cua_driver_settings_set changes what agents may control.
     config.cua_driver = stored.cua_driver;
     // 0.4.8: only research_tasks_set_enabled turns research tasks on or off.

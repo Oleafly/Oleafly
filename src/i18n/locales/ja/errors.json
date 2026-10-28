@@ -44,7 +44,8 @@
     "folder_holds_templates": "このフォルダには Oleafly 自身のテンプレートが入っています。代わりにテンプレートのフォルダを選んでください。"
   },
   "settings": {
-    "locale_unsupported": "言語 {{locale}} は利用できません。"
+    "locale_unsupported": "言語 {{locale}} は利用できません。",
+    "app_icon_unsupported": "アプリアイコン {{icon}} は利用できません。"
   },
   "literature": {
     "query_empty": "検索キーワードは空にできません。",
@@ -146,7 +147,8 @@
     "shell_escape": "shell escape を許可する前に、このフォルダを信頼してください。",
     "broad_folder": "Oleafly は {{name}} 全体を信頼できません。もっと小さいフォルダを選んでください。",
     "declined": "フォルダは信頼されませんでした。",
-    "unavailable": "Oleafly はこのフォルダが信頼されているかどうかを確認できませんでした。"
+    "unavailable": "Oleafly はこのフォルダが信頼されているかどうかを確認できませんでした。",
+    "notebook": "Quarto または Calepin でコンパイルするには、このフォルダを信頼してください。"
   },
   "open_folder": {
     "not_absolute": "フォルダのフルパスを指定してください。",
@@ -335,7 +337,18 @@
     "browser_sign_in_failed": "ブラウザから取り込んだサインイン情報は使えませんでした。期限が切れている可能性があります。直接サインインしてください。"
   },
   "collab": {
-    "turned_off": "リアルタイム共同編集はオフになっています。設定の「実験的な機能」でオンにしてください。"
+    "suggestion_role": "このプロジェクトでのあなたの役割では、提案はできません。"
+  },
+  "notebook": {
+    "code_needed": "{{engine}} はこの文書をビルドするためにコードを実行する必要がありますが、このプロジェクトではコードがオフになっています。コンパイルするには、このプロジェクトでコードを許可してください。",
+    "quarto_missing": "Quarto がインストールされていません。設定 > エンジン > Quarto からインストールしてから、もう一度コンパイルしてください。",
+    "calepin_missing": "Calepin がインストールされていません。設定 > エンジン > Calepin からインストールしてから、もう一度コンパイルしてください。",
+    "not_offered": "Oleafly はこのコンピュータ向けの {{tool}} をダウンロードできません。ご自身でインストールしてから、もう一度コンパイルしてください。",
+    "busy": "{{tool}} はまだインストール中です。完了してから、もう一度お試しください。",
+    "install_unverified": "{{tool}} をダウンロードしましたが、整合性チェックに失敗しました。もう一度インストールしてください。",
+    "unknown_tool": "Oleafly は {{tool}} というツールを認識できません。",
+    "not_managed": "Oleafly が削除できるのは、自分でダウンロードした {{tool}} のコピーだけです。",
+    "no_html_output": "HTML の出力はまだありません。先に文書をコンパイルしてください。"
   },
   "attachments": {
     "too_large": "このファイルは {{max}} MB を超えています。もっと小さいファイルを添付してください。",

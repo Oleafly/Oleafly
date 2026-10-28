@@ -101,7 +101,7 @@ const SETTING_KEYS = {
   email_notifications: "emailNotifications",
 } as const;
 
-const PROJECT_ROLES = ["owner", "editor", "viewer"] as const satisfies readonly CollabProjectRole[];
+const PROJECT_ROLES = ["owner", "editor", "reviewer", "commenter", "viewer"] as const satisfies readonly CollabProjectRole[];
 
 const EMAIL_LINK_PROVIDER = "email-link";
 const GITHUB_PROVIDER = "github";

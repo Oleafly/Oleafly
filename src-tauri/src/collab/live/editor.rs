@@ -42,10 +42,18 @@ pub fn doc_change(
     operation: TextOperation,
 ) -> Result<(), CollabError> {
     let active = active_for(project_id).ok_or_else(not_live)?;
-    lock(&active.live).editor_change(file_id, rev, operation)?;
+    let suggested = {
+        let mut live = lock(&active.live);
+        let suggesting = live.suggesting();
+        live.editor_change(file_id, rev, operation)?;
+        suggesting.then(|| crate::collab::suggesting::path_of(live.doc(), file_id))
+    };
     active.handle.flush();
     active.kick();
     active.refresh_pending();
+    if let Some(path) = suggested {
+        crate::collab::suggesting::tell(active.host.as_ref(), project_id, path, true);
+    }
     Ok(())
 }
 
@@ -77,6 +85,23 @@ pub(in crate::collab) fn comment_live<T>(
     active.handle.flush();
     active.refresh_pending();
     Ok(outcome)
+}
+
+pub(in crate::collab) fn review_live<T>(
+    project_id: &str,
+    work: impl FnOnce(&mut LiveProject, AccountId) -> Result<T, CollabError>,
+) -> Result<T, CollabError> {
+    let active = active_for(project_id).ok_or_else(not_live)?;
+    let outcome = lock(&active.live).guarded(|live| work(live, active.account_id))?;
+    active.save_now();
+    active.handle.flush();
+    active.kick();
+    active.refresh_pending();
+    Ok(outcome)
+}
+
+pub(in crate::collab) fn live_root(project_id: &str) -> Option<std::path::PathBuf> {
+    active_for(project_id).map(|active| active.root.clone())
 }
 
 pub(in crate::collab) fn edit_live<T>(

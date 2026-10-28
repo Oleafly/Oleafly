@@ -890,7 +890,7 @@ function noLintTooltip(): Diagnostic[] {
 
 function formatForPath(path: string): ProofreadingFormat | null {
   if (/\.(?:tex|latex|ltx)$/iu.test(path)) return "latex";
-  if (/\.(?:md|markdown)$/iu.test(path)) return "markdown";
+  if (/\.(?:md|markdown|qmd|rmd)$/iu.test(path)) return "markdown";
   if (/\.typ$/iu.test(path)) return "typst";
   return null;
 }
@@ -1115,14 +1115,14 @@ const LOCAL_TYPO_CORRECTIONS = new Map<string, string>([
 ]);
 
 function fallbackSpellingRanges(text: string, path: string): SpellingWord[] {
-  if (/\.(?:md|markdown)$/i.test(path)) return markdownSpellcheckRanges(text);
+  if (/\.(?:md|markdown|qmd|rmd)$/i.test(path)) return markdownSpellcheckRanges(text);
   if (/\.typ$/i.test(path)) return typstSpellcheckRanges(text);
   return spellcheckRanges(text);
 }
 
 function fallbackProse(text: string, path: string) {
   if (/\.typ$/i.test(path)) return decodeTypstProse(text);
-  if (/\.(?:md|markdown)$/i.test(path)) {
+  if (/\.(?:md|markdown|qmd|rmd)$/i.test(path)) {
     return {
       text: maskMarkdown(text),
       start: (index: number) => index,
@@ -1133,7 +1133,7 @@ function fallbackProse(text: string, path: string) {
 }
 
 function fallbackGrammarProse(text: string, path: string) {
-  if (/\.(?:md|markdown)$/i.test(path)) return markdownToProse(text);
+  if (/\.(?:md|markdown|qmd|rmd)$/i.test(path)) return markdownToProse(text);
   if (/\.typ$/i.test(path)) return typstToProse(text);
   return maskToProse(text);
 }
@@ -1301,7 +1301,7 @@ export function createHarperLinter(includeSpelling = false) {
         const h = host;
         if (!h) return [];
         const path = h.getActivePath() ?? "";
-        if (!/\.(tex|ltx|latex|md|markdown|typ)$/i.test(path)) return [];
+        if (!/\.(tex|ltx|latex|md|markdown|qmd|rmd|typ)$/i.test(path)) return [];
         let workerDiagnostics: Diagnostic[] | null = null;
         try {
           workerDiagnostics = await proofreadWithWorker(

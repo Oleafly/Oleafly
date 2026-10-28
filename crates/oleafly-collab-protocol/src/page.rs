@@ -90,10 +90,8 @@ pub const STYLE: &str = concat!(
 
 const LOGO: &str = concat!(
     "<svg viewBox=\"0 0 192 192\" role=\"img\" aria-label=\"Oleafly\" xmlns=\"http://www.w3.org/2000/svg\">",
-    "<defs><linearGradient id=\"oleafly-tile\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">",
-    "<stop offset=\"0\" stop-color=\"#ffffff\"/><stop offset=\"1\" stop-color=\"#eef7e6\"/></linearGradient></defs>",
-    "<rect x=\"1\" y=\"1\" width=\"190\" height=\"190\" rx=\"34\" fill=\"url(#oleafly-tile)\" stroke=\"#e2eadb\" stroke-width=\"2\"/>",
-    "<path transform=\"translate(36.8 37.3) scale(4.85)\" fill=\"#7ccb43\" ",
+    "<rect x=\"1\" y=\"1\" width=\"190\" height=\"190\" rx=\"34\" fill=\"#2F6FDB\"/>",
+    "<path transform=\"translate(36.8 37.3) scale(4.85)\" fill=\"#ffffff\" ",
     "d=\"M21 2C6 2 4 16 3 22h1.998c.666-3.333 2.333-5.166 5.002-5.5 4-.5 7-4 8-7l-1.5-1 1-1c1-1 2.004-2.5 3.5-5.5z\"/>",
     "</svg>"
 );

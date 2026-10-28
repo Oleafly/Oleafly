@@ -24,6 +24,7 @@ import {
 } from "@/components/tools/EquationPreviewPanel";
 import { latexMathToTypst } from "@oleafly/editor/latex-to-typst-math";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
+import { confirmAction } from "@/store/confirm-dialog";
 import { useHomeViewStore } from "@/store/home-view";
 import { ThemeMenu } from "@/components/layout/ThemeControls";
 import { downloadBlob, downloadBytes } from "@/lib/download-blob";
@@ -263,7 +264,8 @@ export function EquationToolView() {
         projectMutationGeneration(project.id),
       ]);
       const exists = files.some((file) => file.path.toLowerCase() === path.toLowerCase());
-      if (exists && !window.confirm(t(($) => $.researchTools.equation.replaceConfirm, { path, project: project.name }))) {
+      const replace = t(($) => $.researchTools.equation.replaceConfirm, { path, project: project.name });
+      if (exists && !(await confirmAction({ message: replace }))) {
         return;
       }
       const bytes = await equationPng();

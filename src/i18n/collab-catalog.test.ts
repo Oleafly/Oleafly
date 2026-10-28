@@ -44,6 +44,14 @@ const ERROR_CODES = [
   "cloud_synced",
   "owner_away",
   "wrong_server",
+  "suggestion_not_found",
+  "suggestion_not_yours",
+  "suggestion_role",
+  "chat_role",
+  "history_unavailable",
+  "account_storage_full",
+  "too_many_projects",
+  "too_many_uploads",
 ];
 const CHECKS = ["reachable", "https", "protocol", "webSocket", "signInProviders", "email", "clock"];
 const STATUSES = ["pass", "fail", "info", "skipped"];
@@ -117,7 +125,8 @@ describe("collab catalog", () => {
 
   it("names every server role, security event and runtime setting", () => {
     expect(Object.keys(collab.roles)).toEqual(["admin", "maintainer", "member", "guest", "unknown"]);
-    expect(Object.keys(collab.projectRoles)).toEqual(["owner", "editor", "viewer", "unknown"]);
+    expect(Object.keys(collab.projectRoles)).toEqual(["owner", "editor", "reviewer", "commenter", "viewer", "unknown"]);
+    expect(Object.keys(collab.projectRoleDescriptions)).toEqual(["editor", "reviewer", "commenter", "viewer"]);
     expect(Object.keys(collab.admin.log.kinds).sort()).toEqual([...EVENT_KINDS].sort());
     for (const key of RUNTIME_SETTINGS) {
       expect(flat.get(`admin.settings.${key}.label`), key).toBeTruthy();

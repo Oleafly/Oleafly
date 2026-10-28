@@ -26,6 +26,12 @@ pub const BUILD_ARTIFACT_PATTERNS: &[&str] = &[
     "*.xdv",
 ];
 
+const ENGINE_STATE_DIRECTORIES: [&str; 1] = [".quarto"];
+
+const NOTEBOOK_FIGURES_SUFFIX: &str = "_files";
+
+const NOTEBOOK_SOURCE_EXTENSIONS: [&str; 3] = ["qmd", "Rmd", "rmd"];
+
 pub fn new_repository_exclude_lines() -> impl Iterator<Item = &'static str> {
     [
         ".oleafly/",
@@ -87,10 +93,48 @@ pub fn is_quietly_ignored_name(name: &str) -> bool {
         || is_cloud_client_artifact_name(name)
 }
 
+pub fn is_engine_state_directory(name: &str) -> bool {
+    ENGINE_STATE_DIRECTORIES
+        .iter()
+        .any(|directory| name.eq_ignore_ascii_case(directory))
+}
+
+pub fn is_notebook_figures_folder(relative_path: &str, has_sibling: impl Fn(&str) -> bool) -> bool {
+    let normalized = relative_path.replace('\\', "/");
+    let normalized = normalized.trim_matches('/');
+    let (folder, name) = match normalized.rsplit_once('/') {
+        Some((folder, name)) => (Some(folder), name),
+        None => (None, normalized),
+    };
+    let Some(stem) = name
+        .strip_suffix(NOTEBOOK_FIGURES_SUFFIX)
+        .filter(|stem| !stem.is_empty())
+    else {
+        return false;
+    };
+    NOTEBOOK_SOURCE_EXTENSIONS.iter().any(|extension| {
+        has_sibling(&match folder {
+            Some(folder) => format!("{folder}/{stem}.{extension}"),
+            None => format!("{stem}.{extension}"),
+        })
+    })
+}
+
+pub fn is_generated_folder(relative_path: &str, has_sibling: impl Fn(&str) -> bool) -> bool {
+    let normalized = relative_path.replace('\\', "/");
+    let name = normalized
+        .trim_matches('/')
+        .rsplit('/')
+        .next()
+        .unwrap_or_default();
+    is_engine_state_directory(name) || is_notebook_figures_folder(&normalized, has_sibling)
+}
+
 pub fn is_capture_excluded_component(component: &str) -> bool {
     if [".git", ".oleafly", "node_modules"]
         .iter()
         .any(|name| component.eq_ignore_ascii_case(name))
+        || is_engine_state_directory(component)
     {
         return true;
     }
@@ -242,26 +286,97 @@ fn is_helper_output_component(name: &str) -> bool {
     starts_with_ignoring_case(name, "_minted-")
         || starts_with_ignoring_case(name, "pythontex-files-")
         || name.eq_ignore_ascii_case("svg-inkscape")
+        || is_engine_state_directory(name)
 }
 
 pub fn decide(relative: &Path, entry: &EntryInfo, fields: &PolicyFields<'_>) -> Decision {
+    decide_with_siblings(relative, entry, fields, |_| false)
+}
+
+fn utf8_components(relative: &Path) -> Result<Vec<&str>, Decision> {
     let mut components: Vec<&str> = Vec::new();
     for component in relative.components() {
         let Component::Normal(part) = component else {
-            return Decision::Skip(SkipReason::NonUtf8Name);
+            return Err(Decision::Skip(SkipReason::NonUtf8Name));
         };
         let Some(part) = part.to_str() else {
-            return if components
-                .first()
-                .is_some_and(|first| first.eq_ignore_ascii_case(".git"))
-            {
-                Decision::Git
-            } else {
-                Decision::Skip(SkipReason::NonUtf8Name)
-            };
+            return Err(
+                if components
+                    .first()
+                    .is_some_and(|first| first.eq_ignore_ascii_case(".git"))
+                {
+                    Decision::Git
+                } else {
+                    Decision::Skip(SkipReason::NonUtf8Name)
+                },
+            );
         };
         components.push(part);
     }
+    Ok(components)
+}
+
+fn is_build_output(
+    components: &[&str],
+    portable: &str,
+    entry: &EntryInfo,
+    fields: &PolicyFields<'_>,
+    has_sibling: impl Fn(&str) -> bool,
+) -> bool {
+    let folders = if entry.kind == EntryKind::Directory {
+        components.len()
+    } else {
+        components.len() - 1
+    };
+    components
+        .iter()
+        .any(|part| is_helper_output_component(part))
+        || (1..=folders).any(|end| {
+            components[end - 1].ends_with(NOTEBOOK_FIGURES_SUFFIX)
+                && is_notebook_figures_folder(&components[..end].join("/"), &has_sibling)
+        })
+        || (entry.kind == EntryKind::File
+            && (is_build_artifact(portable, |_| false) || is_main_pdf(portable, fields.main_doc)))
+}
+
+fn skipped_by_default(
+    components: &[&str],
+    portable: &str,
+    entry: &EntryInfo,
+    fields: &PolicyFields<'_>,
+    has_sibling: impl Fn(&str) -> bool,
+) -> Option<SkipReason> {
+    if entry.git_tracked || listed(fields.sync_include, portable) {
+        return None;
+    }
+    if is_build_output(components, portable, entry, fields, has_sibling) {
+        return Some(SkipReason::BuildOutput);
+    }
+    if components
+        .iter()
+        .any(|part| part.eq_ignore_ascii_case("node_modules"))
+    {
+        return Some(SkipReason::Reinstallable);
+    }
+    if components
+        .iter()
+        .any(|part| part.eq_ignore_ascii_case("__MACOSX"))
+    {
+        return Some(SkipReason::ZipLeftovers);
+    }
+    None
+}
+
+pub fn decide_with_siblings(
+    relative: &Path,
+    entry: &EntryInfo,
+    fields: &PolicyFields<'_>,
+    has_sibling: impl Fn(&str) -> bool,
+) -> Decision {
+    let components = match utf8_components(relative) {
+        Ok(components) => components,
+        Err(decision) => return decision,
+    };
     if components.is_empty() {
         return Decision::Include;
     }
@@ -284,29 +399,8 @@ pub fn decide(relative: &Path, entry: &EntryInfo, fields: &PolicyFields<'_>) -> 
         return Decision::Ignore;
     }
 
-    let overridden = entry.git_tracked || listed(fields.sync_include, &portable);
-    if !overridden {
-        let build_output = components
-            .iter()
-            .any(|part| is_helper_output_component(part))
-            || (entry.kind == EntryKind::File
-                && (is_build_artifact(&portable, |_| false)
-                    || is_main_pdf(&portable, fields.main_doc)));
-        if build_output {
-            return Decision::Skip(SkipReason::BuildOutput);
-        }
-        if components
-            .iter()
-            .any(|part| part.eq_ignore_ascii_case("node_modules"))
-        {
-            return Decision::Skip(SkipReason::Reinstallable);
-        }
-        if components
-            .iter()
-            .any(|part| part.eq_ignore_ascii_case("__MACOSX"))
-        {
-            return Decision::Skip(SkipReason::ZipLeftovers);
-        }
+    if let Some(reason) = skipped_by_default(&components, &portable, entry, fields, has_sibling) {
+        return Decision::Skip(reason);
     }
 
     match entry.kind {
@@ -329,7 +423,8 @@ pub fn decide(relative: &Path, entry: &EntryInfo, fields: &PolicyFields<'_>) -> 
 #[cfg(test)]
 mod tests {
     use super::{
-        decide, is_build_artifact, is_capture_excluded_component, is_linked_skipped_directory,
+        decide, decide_with_siblings, is_build_artifact, is_capture_excluded_component,
+        is_generated_folder, is_linked_skipped_directory, is_notebook_figures_folder,
         is_scan_skipped_directory, Decision, EntryInfo, EntryKind, PolicyFields, SkipReason,
         MAX_SYNC_FILE_BYTES,
     };
@@ -466,6 +561,86 @@ mod tests {
             ),
             Decision::Include
         );
+    }
+
+    #[test]
+    fn notebook_engine_folders_are_build_output_and_figure_folders_need_their_source() {
+        assert_eq!(
+            file(".quarto/xref/index.json"),
+            Decision::Skip(SkipReason::BuildOutput)
+        );
+        for path in [
+            ".calepin/calepin.typ",
+            "chapters/.calepin/calepin.typ",
+            ".Calepin/report/calepin.typ",
+        ] {
+            assert_eq!(file(path), Decision::Include, "{path}");
+        }
+        assert_eq!(
+            decide(Path::new(".quarto"), &EntryInfo::directory(), &fields()),
+            Decision::Skip(SkipReason::BuildOutput)
+        );
+        let sources = ["report.qmd", "notes/analysis.Rmd", "slides.rmd"];
+        let has = |path: &str| sources.contains(&path);
+        let beside = |path: &str, entry: EntryInfo| {
+            decide_with_siblings(Path::new(path), &entry, &fields(), has)
+        };
+        for path in [
+            "report_files/figure-html/plot.png",
+            "notes/analysis_files/libs/quarto.js",
+            "slides_files/figure-revealjs/a.svg",
+        ] {
+            assert_eq!(
+                beside(path, EntryInfo::file(10)),
+                Decision::Skip(SkipReason::BuildOutput),
+                "{path}"
+            );
+        }
+        assert_eq!(
+            beside("report_files", EntryInfo::directory()),
+            Decision::Skip(SkipReason::BuildOutput)
+        );
+        assert_eq!(
+            beside("report_files", EntryInfo::file(10)),
+            Decision::Include
+        );
+        assert_eq!(
+            beside("data_files/raw.csv", EntryInfo::file(10)),
+            Decision::Include
+        );
+        assert_eq!(
+            beside("notes/report_files/a.png", EntryInfo::file(10)),
+            Decision::Include
+        );
+        assert_eq!(
+            beside("_files/a.png", EntryInfo::file(10)),
+            Decision::Include
+        );
+        assert_eq!(file("report_files/figure-html/plot.png"), Decision::Include);
+        let included = vec!["report_files".to_string()];
+        let base = fields();
+        let kept = PolicyFields {
+            sync_include: &included,
+            ..base
+        };
+        assert_eq!(
+            decide_with_siblings(
+                Path::new("report_files/figure-html/plot.png"),
+                &EntryInfo::file(10),
+                &kept,
+                has
+            ),
+            Decision::Include
+        );
+        assert!(is_notebook_figures_folder("notes\\analysis_files\\", has));
+        assert!(!is_notebook_figures_folder("report_files/figure-html", has));
+        assert!(is_generated_folder(".quarto", |_| false));
+        assert!(!is_generated_folder("deep/.CALEPIN", |_| false));
+        assert!(is_generated_folder("report_files", has));
+        assert!(!is_generated_folder("figures", has));
+        assert!(is_capture_excluded_component(".quarto"));
+        assert!(!is_capture_excluded_component(".Calepin"));
+        assert!(!is_capture_excluded_component("quarto"));
     }
 
     #[test]

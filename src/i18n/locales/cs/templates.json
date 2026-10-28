@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "Zobrazit jen šablony životopisů, které systémy pro sledování uchazečů (ATS) spolehlivě přečtou: jeden sloupec, běžná písma a vybíratelný text (žádná slova zapečená do grafiky).",
       "atsFriendly": "Vhodné pro ATS",
       "offlineTooltip": "Zobrazit jen šablony, které se zkompilují bez stahování: jejich písma a balíčky jsou už součástí aplikace, takže se sestaví i bez připojení k internetu.",

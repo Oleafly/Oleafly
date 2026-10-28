@@ -1,0 +1,14 @@
+{
+  "id": "quarto-article",
+  "name": "Quarto article",
+  "category": "Journals & Conferences",
+  "description": "A Quarto research article with an abstract, numbered sections, math, citations and a Python code chunk, rendered to PDF through Typst so no TeX install is needed.",
+  "main_doc": "main.qmd",
+  "engine": "quarto",
+  "layout": "single-column",
+  "pages": "multi",
+  "default_color": "#447099",
+  "license": { "spdx": "MIT", "author": "Oleafly", "url": "https://github.com/Oleafly/Oleafly" },
+  "requires": { "packages": [], "fonts": [], "engine": "quarto" },
+  "order": 35
+}

@@ -10,11 +10,11 @@ use crate::{Error, ErrorKind, Result};
 use parse::{
     arxiv_toplevel_sources, document_class, has_begin_document, has_bibliography, has_extension,
     has_plain_tex_end, latex_references, latex_title, latexmk_default_files, markdown_references,
-    markdown_title, mask_latex_comments, mask_typst_comments, normalize_project_path, parent_of,
-    resolve_in, resolve_project_path, typst_library_like, typst_references,
-    typst_template_entrypoint, typst_title,
+    markdown_title, mask_latex_comments, mask_typst_comments, masked_typst_uses_calepin,
+    normalize_project_path, parent_of, resolve_in, resolve_project_path, typst_library_like,
+    typst_references, typst_template_entrypoint, typst_title,
 };
-pub use parse::{tex_magic_comments, TexMagicComments};
+pub use parse::{tex_magic_comments, typst_uses_calepin, TexMagicComments};
 use serde::Serialize;
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap, VecDeque};
@@ -35,10 +35,19 @@ const TAIL_BYTES: u64 = 4 * 1024;
 const UTF8_BOM: [u8; 3] = [0xEF, 0xBB, 0xBF];
 const MANIFEST_FILE: &str = "project.json";
 const TYPST_VENDOR_DIRECTORY: &str = "typst-packages";
-const SOURCE_SUFFIXES: [&str; 6] = [".tex", ".ltx", ".latex", ".typ", ".md", ".markdown"];
+const SOURCE_SUFFIXES: [&str; 8] = [
+    ".tex",
+    ".ltx",
+    ".latex",
+    ".typ",
+    ".md",
+    ".markdown",
+    ".qmd",
+    ".rmd",
+];
 const LATEX_SUFFIXES: [&str; 3] = [".tex", ".ltx", ".latex"];
 const GRAPHIC_SUFFIXES: [&str; 6] = [".pdf", ".png", ".jpg", ".jpeg", ".eps", ".svg"];
-const ROOT_MAINS: [&str; 3] = ["main.tex", "main.typ", "main.md"];
+const ROOT_MAINS: [&str; 4] = ["main.tex", "main.typ", "main.qmd", "main.md"];
 const REPOSITORY_NOTES: [&str; 7] = [
     "readme",
     "changelog",
@@ -55,6 +64,7 @@ pub enum SourceFamily {
     Latex,
     Typst,
     Markdown,
+    Quarto,
 }
 
 impl SourceFamily {
@@ -67,6 +77,7 @@ impl SourceFamily {
             "tex" | "ltx" | "latex" => Some(Self::Latex),
             "typ" => Some(Self::Typst),
             "md" | "markdown" => Some(Self::Markdown),
+            "qmd" | "rmd" => Some(Self::Quarto),
             _ => None,
         }
     }
@@ -91,6 +102,8 @@ pub enum DocumentKind {
     Standalone,
     Typst,
     Markdown,
+    Quarto,
+    Calepin,
     Unknown,
 }
 
@@ -536,6 +549,7 @@ struct Facts {
     has_content: bool,
     references: Vec<String>,
     magic_root: Option<String>,
+    calepin: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -574,6 +588,7 @@ fn read_facts(file: &Path, relative: &str, family: SourceFamily) -> Facts {
                 has_content: !masked.trim().is_empty(),
                 references: latex_references(&masked).inputs,
                 magic_root: tex_magic_comments(&head).root,
+                calepin: false,
             }
         }
         SourceFamily::Typst => {
@@ -583,10 +598,11 @@ fn read_facts(file: &Path, relative: &str, family: SourceFamily) -> Facts {
                 library_like: typst_library_like(&file_stem(relative), &masked),
                 has_content: !masked.trim().is_empty(),
                 references: typst_references(&masked),
+                calepin: masked_typst_uses_calepin(&masked),
                 ..Facts::default()
             }
         }
-        SourceFamily::Markdown => Facts {
+        SourceFamily::Markdown | SourceFamily::Quarto => Facts {
             title: markdown_title(&head),
             has_content: !head.trim().is_empty(),
             references: markdown_references(&head),
@@ -1018,11 +1034,17 @@ fn tier_of(source: &Source, included: bool) -> Option<Tier> {
             Some(Tier::S)
         }
         SourceFamily::Typst => (facts.has_content && !facts.library_like).then_some(Tier::A),
-        SourceFamily::Markdown => (facts.has_content
-            && !REPOSITORY_NOTES
-                .contains(&file_stem(&source.path).split('.').next().unwrap_or("")))
-        .then_some(Tier::M),
+        SourceFamily::Markdown => {
+            (facts.has_content && !repository_note(&source.path)).then_some(Tier::M)
+        }
+        SourceFamily::Quarto => {
+            (facts.has_content && !repository_note(&source.path)).then_some(Tier::A)
+        }
     }
+}
+
+fn repository_note(path: &str) -> bool {
+    REPOSITORY_NOTES.contains(&file_stem(path).split('.').next().unwrap_or(""))
 }
 
 fn latex_kind(class: &str, poster_package: bool) -> DocumentKind {
@@ -1052,8 +1074,10 @@ fn kind_of(source: &Source) -> DocumentKind {
             .map_or(DocumentKind::Unknown, |class| {
                 latex_kind(class, source.facts.poster_package)
             }),
+        SourceFamily::Typst if source.facts.calepin => DocumentKind::Calepin,
         SourceFamily::Typst => DocumentKind::Typst,
         SourceFamily::Markdown => DocumentKind::Markdown,
+        SourceFamily::Quarto => DocumentKind::Quarto,
     }
 }
 
@@ -1158,7 +1182,9 @@ impl Ranked {
                 DocumentKind::Document
                 | DocumentKind::Book
                 | DocumentKind::Typst
-                | DocumentKind::Markdown => 0,
+                | DocumentKind::Markdown
+                | DocumentKind::Quarto
+                | DocumentKind::Calepin => 0,
                 DocumentKind::Presentation | DocumentKind::Poster => 1,
                 DocumentKind::Standalone | DocumentKind::Unknown => 2,
             },
@@ -1266,7 +1292,7 @@ fn root_main(
         };
         let expected = match source.family {
             SourceFamily::Latex => Tier::S,
-            SourceFamily::Typst => Tier::A,
+            SourceFamily::Typst | SourceFamily::Quarto => Tier::A,
             SourceFamily::Markdown => Tier::M,
         };
         (!source.placeholder && tier_of(&source, included) == Some(expected)).then_some(source.path)

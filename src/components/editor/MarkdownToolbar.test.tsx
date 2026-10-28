@@ -5,7 +5,10 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
 import { shortcut } from "@/lib/utils";
+import { LATEX_ENGINE } from "@/lib/document-engine";
+import type { DocumentEngineDescriptor } from "@/lib/tauri";
 import { useDiagramComposerStore } from "@/store/diagram-composer";
+import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 
 const editorHistory = vi.hoisted(() => ({ canUndo: true, canRedo: true }));
@@ -312,6 +315,36 @@ describe("MarkdownToolbar", () => {
 
     expect(screen.getByLabelText(toolbar.switchToSource)).toBeInTheDocument();
     expect(screen.queryByLabelText(en.projectInfo.trigger)).not.toBeInTheDocument();
+  });
+
+  it("leaves out the mode switch for a file with no visual editor", () => {
+    widenToolbar(2000);
+    render(<MarkdownToolbar wysiwyg={false} />);
+
+    expect(screen.queryByLabelText(toolbar.switchToSource)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(toolbar.switchToVisual)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(toolbar.underline)).toBeInTheDocument();
+    expect(screen.getByLabelText(withShortcut(toolbar.find, "⌘F"))).toBeInTheDocument();
+  });
+
+  it("offers insights but not Pandoc document settings in a Quarto project", () => {
+    widenToolbar(2000);
+    const files = useFilesStore.getState();
+    const markdown = (id: string): DocumentEngineDescriptor =>
+      ({ ...LATEX_ENGINE, id, source_format: "markdown" }) as unknown as DocumentEngineDescriptor;
+    try {
+      useFilesStore.setState({ engineLoaded: true, engine: markdown("quarto") });
+      const { unmount } = render(<MarkdownToolbar wysiwyg={false} />);
+      expect(screen.getByTestId("document-insights-button")).toBeInTheDocument();
+      expect(screen.queryByTestId("document-settings-button")).not.toBeInTheDocument();
+      unmount();
+
+      useFilesStore.setState({ engine: markdown("markdown") });
+      render(<MarkdownToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
+      expect(screen.getByTestId("document-settings-button")).toBeInTheDocument();
+    } finally {
+      useFilesStore.setState({ engineLoaded: files.engineLoaded, engine: files.engine });
+    }
   });
 
   it("toggles visual mode from the switch", () => {
