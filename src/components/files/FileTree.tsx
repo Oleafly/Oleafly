@@ -78,6 +78,7 @@ import { isFileConflictError, takeDroppedPaths } from "@/lib/tauri";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { notifyError, toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
+import { confirmAction } from "@/store/confirm-dialog";
 import { cn, isWindows } from "@/lib/utils";
 import { useCollabSettingsLocked } from "@/lib/collab-live-bridge";
 import { formatNumber } from "@/lib/intl";
@@ -917,9 +918,13 @@ export function FileTree({
         const permanent = isWindows
           ? i18n.t(($) => $.workspace.files.confirmPermanentDeleteWindows, { path })
           : i18n.t(($) => $.workspace.files.confirmPermanentDelete, { path });
-        if (window.confirm(permanent)) {
-          void deleteEntry(path, { permanent: true }).catch(failed);
-        }
+        void confirmAction({
+          message: permanent,
+          confirmLabel: i18n.t(($) => $.common.actions.delete),
+          destructive: true,
+        }).then((confirmed) => {
+          if (confirmed) void deleteEntry(path, { permanent: true }).catch(failed);
+        });
       });
     },
     deleteQuestion: (path) => {
@@ -1502,7 +1507,13 @@ function TreeRowEditMenuItems({
       <ContextMenuItem
         className="text-destructive focus:text-destructive"
         onClick={() => {
-          if (window.confirm(ctx.deleteQuestion(node.path))) ctx.onDelete(node.path);
+          void confirmAction({
+            message: ctx.deleteQuestion(node.path),
+            confirmLabel: t(($) => $.common.actions.delete),
+            destructive: true,
+          }).then((confirmed) => {
+            if (confirmed) ctx.onDelete(node.path);
+          });
         }}
       >
         <Trash2 className="mr-2 size-4" /> {t(($) => $.common.actions.delete)}

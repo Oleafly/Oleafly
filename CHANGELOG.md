@@ -81,6 +81,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Deleting a file or folder in the file tree asks first again, and so do
+  restoring an earlier chat checkpoint and replacing an equation or diagram
+  file. The question never showed up in the app, so all of these went ahead
+  without asking. That included the permanent delete on a system with no
+  trash.
+- CLI agents and research tasks keep your NO_PROXY list when you set only one
+  spelling of it. On Linux and macOS the other spelling held only the local
+  addresses, and agents that read it sent internal hosts through your proxy.
+- Google Drive and S3 sync no longer give up on a file that takes more than
+  two minutes to download, and S3 no longer fails larger uploads on a slow
+  connection. One such file used to stop sync for every project after it.
+- Google Drive uploads read large files from disk a piece at a time. Before,
+  the whole file sat in memory, twice when updating it, so a big video or
+  dataset could run Oleafly out of memory.
+- When two computers sync the same file to S3 at the same moment, the one that
+  loses no longer overwrites the other's copy in the bucket. It gets a
+  conflict instead, and its next sync keeps both versions.
 - Custom providers that need no API key, such as a local Lemonade, LM Studio
   or llama.cpp server, stopped working after the first save. Oleafly lost the
   "no key needed" setting when it saved, so every request failed with "No API

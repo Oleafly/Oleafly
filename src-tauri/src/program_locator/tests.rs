@@ -662,18 +662,36 @@ fn every_agent_launch_bypasses_the_proxy_for_loopback_in_both_spellings() {
         ("HTTP_PROXY", "http://127.0.0.1:7890"),
     ]);
     let env = agent_env(&process, &login, false);
-    assert_eq!(
-        value_of(&env, "NO_PROXY"),
-        Some(".internal,127.0.0.1,localhost,::1")
-    );
-    assert_eq!(
-        value_of(&env, "no_proxy"),
-        Some("corp.example,127.0.0.1,localhost,::1")
-    );
+    // Both spellings carry the entries of either, so a tool that reads the
+    // spelling the user didn't set still skips the proxy for them.
+    let both = Some(".internal,corp.example,127.0.0.1,localhost,::1");
+    assert_eq!(value_of(&env, "NO_PROXY"), both);
+    assert_eq!(value_of(&env, "no_proxy"), both);
     assert_eq!(env.iter().filter(|(name, _)| name == "NO_PROXY").count(), 1);
+    assert_eq!(env.iter().filter(|(name, _)| name == "no_proxy").count(), 1);
     let bare = agent_env(&exact_env(&[]), &[], false);
     assert_eq!(value_of(&bare, "NO_PROXY"), Some("127.0.0.1,localhost,::1"));
     assert_eq!(value_of(&bare, "no_proxy"), Some("127.0.0.1,localhost,::1"));
+}
+
+#[test]
+fn a_no_proxy_set_in_one_spelling_reaches_the_other() {
+    for spelling in ["NO_PROXY", "no_proxy"] {
+        let env = agent_env(&exact_env(&[(spelling, ".corp.example")]), &[], false);
+        for name in ["NO_PROXY", "no_proxy"] {
+            assert_eq!(
+                value_of(&env, name),
+                Some(".corp.example,127.0.0.1,localhost,::1"),
+                "{name} when only {spelling} was set"
+            );
+        }
+    }
+    let same = exact_env(&[("NO_PROXY", "a.example"), ("no_proxy", "A.EXAMPLE")]);
+    let env = agent_env(&same, &[], false);
+    assert_eq!(
+        value_of(&env, "no_proxy"),
+        Some("a.example,127.0.0.1,localhost,::1")
+    );
 }
 
 #[test]

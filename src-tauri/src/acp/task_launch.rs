@@ -102,9 +102,15 @@ fn task_env_with(
     } else {
         &["NO_PROXY", "no_proxy"]
     };
+    // One list for both spellings, so a tool that reads the spelling the user
+    // didn't set still sees their entries.
+    let existing: Vec<Option<OsString>> = no_proxy
+        .iter()
+        .map(|name| launch_value(launch, name).or_else(|| host(name)))
+        .collect();
+    let existing: Vec<Option<&OsStr>> = existing.iter().map(Option::as_deref).collect();
+    let merged = crate::program_locator::merged_no_proxy(&existing);
     for name in no_proxy {
-        let existing = launch_value(launch, name).or_else(|| host(name));
-        let merged = crate::program_locator::with_loopback_no_proxy(existing.as_deref());
         env.insert((*name).to_owned(), merged.to_string_lossy().into_owned());
     }
     for (name, default) in TASK_DEFAULTS {
@@ -414,7 +420,11 @@ mod tests {
             get("NO_PROXY"),
             Some("corp.example,127.0.0.1,localhost,::1")
         );
-        assert_eq!(get("no_proxy"), Some("127.0.0.1,localhost,::1"));
+        // The lowercase spelling the launch didn't set gets the same list.
+        assert_eq!(
+            get("no_proxy"),
+            Some("corp.example,127.0.0.1,localhost,::1")
+        );
         assert_eq!(get("NODE_NO_WARNINGS"), Some("1"));
         assert_eq!(get("PYTHONIOENCODING"), Some("gbk"));
         for dropped in [

@@ -230,10 +230,11 @@ jobs:
   rust:
     name: Rust (test + clippy)
     runs-on: ubuntu-22.04
-    # The work takes 25 to 29 minutes (tests with coverage alone are about 23).
-    # At 30 the limit cut off the cache save afterwards, so the next run started
-    # cold and timed out too.
-    timeout-minutes: 45
+    # The work takes 28 to 44 minutes (tests with coverage alone are 20 to 26)
+    # and keeps growing. At 45 the limit cut off five runs in two days, one of
+    # them after a slow apt mirror took 24 minutes. A cut-off run also skips
+    # the cache save, so the next run starts cold.
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v7
 
@@ -242,10 +243,12 @@ jobs:
         with:
           node-version: 22
 
+      # A slow mirror fails this step instead of eating the job's time limit.
       - name: Install Linux system dependencies (Tauri)
+        timeout-minutes: 10
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get -o Acquire::Retries=3 update
+          sudo apt-get -o Acquire::Retries=3 install -y \
             libwebkit2gtk-4.1-dev \
             libappindicator3-dev \
             librsvg2-dev \
@@ -403,7 +406,8 @@ jobs:
   rust-windows:
     name: Rust checks (Windows)
     runs-on: windows-2022
-    timeout-minutes: 50
+    # Green runs take 33 to 46 minutes; at 50 the limit cut one off.
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v7
 

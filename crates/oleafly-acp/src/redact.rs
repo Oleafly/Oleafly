@@ -23,7 +23,17 @@ fn environment_secrets(
 
 impl Redactor {
     pub fn new(extra: &[Value]) -> Self {
-        let mut secrets = environment_secrets(std::env::vars_os());
+        Self::with_secrets(environment_secrets(std::env::vars_os()), extra)
+    }
+
+    /// Only the secrets in `extra`, so a test's answer doesn't depend on the
+    /// token-like variables of the shell that runs it.
+    #[cfg(test)]
+    fn without_environment(extra: &[Value]) -> Self {
+        Self::with_secrets(Vec::new(), extra)
+    }
+
+    fn with_secrets(mut secrets: Vec<String>, extra: &[Value]) -> Self {
         for value in extra {
             collect_secrets(value, &mut secrets);
         }
@@ -388,7 +398,7 @@ mod tests {
 
     #[test]
     fn a_secret_added_later_is_removed_from_text_and_values() {
-        let redactor = Redactor::new(&[]);
+        let redactor = Redactor::without_environment(&[]);
         redactor.add_secret("typed-api-key-123456");
         assert_eq!(
             redactor.text("error: key typed-api-key-123456 rejected"),
@@ -403,7 +413,7 @@ mod tests {
     #[test]
     fn holdback_keeps_only_an_ending_that_could_start_a_secret() {
         let secret = "tok-0123456789abcdef0123456789abcdef";
-        let redactor = Redactor::new(&[json!({"api_key": secret})]);
+        let redactor = Redactor::without_environment(&[json!({"api_key": secret})]);
         // Prose no secret starts with is stored whole, however long the secrets are.
         assert_eq!(
             redactor.holdback("ACP fixture waiting for cancellation."),
@@ -424,7 +434,7 @@ mod tests {
         assert_eq!(redactor.holdback("Use sk-abc"), 6);
         assert_eq!(redactor.holdback("Use (ghp_ab"), 7);
         assert_eq!(redactor.holdback("Option A"), 1);
-        assert_eq!(Redactor::new(&[]).holdback("done sk"), 2);
+        assert_eq!(Redactor::without_environment(&[]).holdback("done sk"), 2);
         assert_eq!(redactor.holdback("Use sk-0123456789abcdefgh"), 0);
     }
 
@@ -475,7 +485,7 @@ mod tests {
 
     #[test]
     fn prose_that_mentions_a_password_is_kept() {
-        let redactor = Redactor::new(&[]);
+        let redactor = Redactor::without_environment(&[]);
         for line in [
             "The login flow works as follows: the client sends the password to the server.",
             "Section 2: password hashing",
@@ -489,7 +499,7 @@ mod tests {
 
     #[test]
     fn only_the_assigned_credential_is_replaced() {
-        let redactor = Redactor::new(&[]);
+        let redactor = Redactor::without_environment(&[]);
         assert_eq!(
             redactor.text("Use password = hunter2222 to log in."),
             "Use password = [credential omitted] to log in."
@@ -518,7 +528,7 @@ mod tests {
 
     #[test]
     fn the_longest_secret_is_known() {
-        let redactor = Redactor::new(&[]);
+        let redactor = Redactor::without_environment(&[]);
         let before = redactor.longest_secret();
         redactor.add_secret(&"k".repeat(before + 40));
         assert_eq!(redactor.longest_secret(), before + 40);
@@ -526,7 +536,7 @@ mod tests {
 
     #[test]
     fn short_values_are_not_treated_as_secrets() {
-        let redactor = Redactor::new(&[]);
+        let redactor = Redactor::without_environment(&[]);
         redactor.add_secret("abc");
         assert_eq!(redactor.text("abc"), "abc");
     }
