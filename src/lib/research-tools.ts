@@ -50,7 +50,7 @@ export function defaultGoal(prompt: string): string {
  * assistant uses (one with a key, or a custom provider that needs none), and its
  * model. A task without one fails as soon as it starts.
  */
-export async function builtinTaskAgent(config: AppConfig): Promise<{ agentId: string; modelId: string }> {
+export function builtinTaskAgent(config: AppConfig): { agentId: string; modelId: string } {
   const { providerId, modelId } = pickActiveProvider(config);
   if (!hasConfiguredProvider(config)) {
     throw new Error(
@@ -90,7 +90,7 @@ const HOST: ResearchToolsHost & ResearchTaskToolsHost = {
     if (!researchTasksEnabled()) throw new Error(TASKS_OFF);
     const projectId = openProject();
     const config = await getConfig();
-    const agent = await builtinTaskAgent(config);
+    const agent = builtinTaskAgent(config);
     // A whole prompt can be longer than a goal may be.
     const brief = defaultBrief(input.brief.goal ?? defaultGoal(input.prompt));
     brief.successCriteria = input.brief.successCriteria ?? [];

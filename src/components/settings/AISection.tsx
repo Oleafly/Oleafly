@@ -152,6 +152,39 @@ function withRefreshStamp(
   return { ...config.ai_model_lists_refreshed_at, [providerId]: refreshedAt };
 }
 
+/** The config after a custom provider's edit. `listed` is the model list its
+ * address answered with, or null when it answered none. Moving without a new
+ * key leaves the old one behind, so the provider then needs none. */
+function withEditedCustomProvider(
+  config: AppConfig,
+  current: CustomProvider,
+  edit: { name: string; baseURL: string; apiKey: string; leavesKeyBehind: boolean; listed: ProviderModel[] | null },
+  refreshedAt: number,
+): AppConfig {
+  const { id } = current;
+  const mergedModels = mergeFetchedModels(config.ai_provider_models[id] ?? [], edit.listed);
+  const nextProvider: CustomProvider = {
+    ...current,
+    name: edit.name,
+    baseURL: edit.baseURL,
+    keyOptional: edit.apiKey ? false : current.keyOptional || edit.leavesKeyBehind,
+  };
+  return {
+    ...config,
+    ai_custom_providers: config.ai_custom_providers.map((c) => (c.id === id ? nextProvider : c)),
+    ai_provider_models: { ...config.ai_provider_models, [id]: mergedModels },
+    ai_model_lists_refreshed_at:
+      edit.listed === null
+        ? config.ai_model_lists_refreshed_at
+        : withRefreshStamp(config, id, refreshedAt),
+    ai_keys: edit.apiKey ? { ...config.ai_keys, [id]: edit.apiKey } : config.ai_keys,
+    ai_model:
+      config.ai_provider === id
+        ? reconcileActiveModel(mergedModels, config.ai_model, defaultModel(id))
+        : config.ai_model,
+  };
+}
+
 type CustomDialogState =
   | { mode: "add" }
   | { mode: "edit"; target: CustomProviderEditTarget };
@@ -562,30 +595,12 @@ export function AISection() {
       };
     }
     const res = customDiscoveryResult(discovery);
-    const baseURL = discovery.baseURL;
-    const existingModels = cfg.ai_provider_models[id] ?? [];
-    const mergedModels = mergeFetchedModels(existingModels, res.ok ? res.models : null);
-    const nextProvider: CustomProvider = {
-      ...current,
-      name,
-      baseURL,
-      keyOptional: apiKey ? false : current.keyOptional || leavesKeyBehind,
-    };
-    const nextKeys = apiKey ? { ...cfg.ai_keys, [id]: apiKey } : cfg.ai_keys;
-    const nextModel =
-      cfg.ai_provider === id
-        ? reconcileActiveModel(mergedModels, cfg.ai_model, defaultModel(id))
-        : cfg.ai_model;
-    const next: AppConfig = {
-      ...cfg,
-      ai_custom_providers: cfg.ai_custom_providers.map((c) => (c.id === id ? nextProvider : c)),
-      ai_provider_models: { ...cfg.ai_provider_models, [id]: mergedModels },
-      ai_model_lists_refreshed_at: res.ok
-        ? withRefreshStamp(cfg, id, Date.now())
-        : cfg.ai_model_lists_refreshed_at,
-      ai_keys: nextKeys,
-      ai_model: nextModel,
-    };
+    const next = withEditedCustomProvider(
+      cfg,
+      current,
+      { name, baseURL: discovery.baseURL, apiKey, leavesKeyBehind, listed: res.ok ? res.models : null },
+      Date.now(),
+    );
     try {
       await persist(next);
       setOpenProviders((m) => ({ ...m, [id]: true }));

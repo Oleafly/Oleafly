@@ -68,6 +68,15 @@ type RefreshError =
 
 type AddError = "" | "empty" | "spaces" | "duplicate";
 
+/** Why a manual refresh failed: a custom server's address and the reason, or
+ * a hosted provider's refused key or lost connection. */
+function refreshErrorOf(error: unknown, baseURL: string | undefined): RefreshError {
+  if (baseURL) {
+    return { kind: "described", text: describeModelListFailure(modelListFailureOf(error), baseURL) };
+  }
+  return { kind: agentErrorKind(error) === "auth" ? "invalidKey" : "unreachable" };
+}
+
 function relativeUpdated(then: number, now: number): string {
   const seconds = Math.floor(Math.max(0, now - then) / 1000);
   if (seconds < 60) return formatRelativeTime(-seconds, "second");
@@ -144,15 +153,7 @@ export function ModelManager({
           clearModelListThrottle(providerId);
           setThrottledUntil(0);
         }
-        if (trigger === "auto") return;
-        if (baseURL) {
-          setRefreshError({
-            kind: "described",
-            text: describeModelListFailure(modelListFailureOf(e), baseURL),
-          });
-        } else {
-          setRefreshError({ kind: agentErrorKind(e) === "auth" ? "invalidKey" : "unreachable" });
-        }
+        if (trigger !== "auto") setRefreshError(refreshErrorOf(e, baseURL));
       } finally {
         const remaining = MIN_SPIN_MS - (Date.now() - now);
         if (remaining > 0) {

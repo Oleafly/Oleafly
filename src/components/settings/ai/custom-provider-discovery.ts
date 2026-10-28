@@ -15,12 +15,18 @@ export type CustomModelDiscovery =
 // would ask for /chat/completions/models.
 const ENDPOINT_PATHS = ["/chat/completions", "/completions", "/responses", "/models"];
 
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") end -= 1;
+  return value.slice(0, end);
+}
+
 /** The base URL without trailing slashes or a pasted endpoint path. */
 export function trimEndpointPath(url: string): string {
-  let base = url.trim().replace(/\/+$/, "");
+  let base = trimTrailingSlashes(url.trim());
   for (const path of ENDPOINT_PATHS) {
     if (base.toLowerCase().endsWith(path)) {
-      base = base.slice(0, -path.length).replace(/\/+$/, "");
+      base = trimTrailingSlashes(base.slice(0, -path.length));
       break;
     }
   }
@@ -38,8 +44,10 @@ export function withApiVersion(baseURL: string): string | null {
   }
   // "localhost:13305" parses too, as a "localhost:" scheme.
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
-  if (/\/v\d+[a-z\d]*$/i.test(parsed.pathname.replace(/\/+$/, ""))) return null;
-  return `${baseURL.replace(/\/+$/, "")}/v1`;
+  const path = trimTrailingSlashes(parsed.pathname);
+  const slash = path.lastIndexOf("/");
+  if (slash >= 0 && /^v\d[a-z\d]*$/i.test(path.slice(slash + 1))) return null;
+  return `${trimTrailingSlashes(baseURL)}/v1`;
 }
 
 export function modelListFailureOf(error: unknown): ModelListFailure {
