@@ -832,15 +832,30 @@ fn an_ack_that_comes_back_during_the_send_is_counted() {
 #[cfg(unix)]
 #[test]
 fn output_left_when_a_paused_shell_exits_on_its_own_still_arrives() {
-    // Past the watermark by more than one batch, and by little enough that
-    // the rest fits in the pump's queue: the shell exits while output is
-    // paused (nothing is acknowledged until then).
-    const TOTAL: usize = FLOW_HIGH_WATERMARK + 100_000;
+    // The shell writes one byte past the watermark, so the pump pauses right
+    // at the end of that write (nothing is acknowledged until the shell has
+    // exited). Only then does it write the rest and exit. The rest has to
+    // fit in the pump or the shell blocks on it for good: a macOS pty hands
+    // the reader 1 KiB at a time, so the 32-chunk queue holds about 32 KiB,
+    // and a rest sized by where a batch happened to cross the watermark did
+    // not always fit on a loaded machine.
+    const PAUSED_AT: usize = FLOW_HIGH_WATERMARK + 1;
+    const REST: usize = 4096;
     let project = tempfile::tempdir().unwrap();
+    let gate = project.path().join("write-the-rest");
     let counter = OutputCounter::new();
     let owner = SessionOwner::new("main", "drain-after-exit");
     let mut shell = CommandBuilder::new("/bin/sh");
-    shell.args(["-c", &format!("head -c {TOTAL} /dev/zero | tr '\\0' x")]);
+    shell.args([
+        "-c",
+        &format!(
+            "head -c {PAUSED_AT} /dev/zero | tr '\\0' x; \
+             while [ ! -e \"$1\" ]; do sleep 0.01; done; \
+             head -c {REST} /dev/zero | tr '\\0' x"
+        ),
+        "sh",
+    ]);
+    shell.arg(&gate);
     let id = open_terminal(
         project.path(),
         owner.clone(),
@@ -859,12 +874,20 @@ fn output_left_when_a_paused_shell_exits_on_its_own_still_arrives() {
             .is_some_and(|registry| registry.get(&session.id, &session.owner).is_ok())
     };
     let deadline = Instant::now() + test_wait::CHILD_PATIENCE;
+    while counter.total.load(Ordering::Acquire) < PAUSED_AT && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert_eq!(counter.total.load(Ordering::Acquire), PAUSED_AT);
+    assert!(open(), "the shell exited before writing the rest");
+    std::fs::write(&gate, "").unwrap();
+    let deadline = Instant::now() + test_wait::CHILD_PATIENCE;
     while open() && Instant::now() < deadline {
         std::thread::sleep(Duration::from_millis(20));
     }
     assert!(!open(), "the shell did not exit");
-    assert!(
-        counter.total.load(Ordering::Acquire) < TOTAL,
+    assert_eq!(
+        counter.total.load(Ordering::Acquire),
+        PAUSED_AT,
         "the output never paused"
     );
     // The tab still acknowledges what it parses, and the rest comes through.
@@ -879,7 +902,7 @@ fn output_left_when_a_paused_shell_exits_on_its_own_still_arrives() {
         std::thread::sleep(Duration::from_millis(10));
     }
     assert!(counter.exited.load(Ordering::Acquire), "no exit event");
-    assert_eq!(counter.total.load(Ordering::Acquire), TOTAL);
+    assert_eq!(counter.total.load(Ordering::Acquire), PAUSED_AT + REST);
     assert!(!counter.mismatched.load(Ordering::Acquire));
 }
 
