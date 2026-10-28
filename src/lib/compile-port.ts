@@ -33,14 +33,14 @@ export function createDesktopCompilePort(projectId: string): CompilePort {
     stop() {
       if (running > 0) void cancelCompile();
     },
-    async syncTex(output) {
-      if (!output.pdf) return null;
+    syncTex(output) {
+      if (!output.pdf) return Promise.resolve(null);
       const main = output.target.mainDocument;
-      return {
+      return Promise.resolve({
         forward: (file, line) => synctexForward(projectId, main, file, line),
         inverse: (page, x, y) => synctexInverse(projectId, main, page, x, y),
         dispose: () => {},
-      };
+      });
     },
   };
 }

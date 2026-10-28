@@ -35,13 +35,17 @@ const entryName = indexHtml.match(/<script[^>]+src="\/web\/assets\/([^"]+\.js)"/
 const failures = [];
 if (!entryName || !byName.has(entryName)) failures.push("the entry chunk named in web/dist/index.html is missing");
 
-async function source(name) {
-  return readFile(new URL(name, assetsDir), "utf8");
-}
+// Every chunk's text, read once for the startup walk and the test-engine check.
+const sources = new Map(
+  await Promise.all(
+    javascript.map(async (asset) => [asset.name, await readFile(new URL(asset.name, assetsDir), "utf8")]),
+  ),
+);
 
-// Static imports only: `import ... from "./x.js"` and bare `import "./x.js"`,
-// not `import("./x.js")`, which is what loads on demand.
-const STATIC_IMPORT = /(?:^|[;\s}])import\s*(?:[\w*$\s{},]+from\s*)?["']\.\/([^"']+\.js)["']/gu;
+// Static imports only: `import ... from "./x.js"`, `export ... from "./x.js"`
+// and bare `import "./x.js"`, not `import("./x.js")`, which is what loads on
+// demand.
+const STATIC_IMPORT = /(?:(?:^|[;\s}])import|\bfrom)\s*["']\.\/([^"']+)["']/gu;
 const startup = new Set();
 const queue = entryName ? [entryName] : [];
 for (const preload of indexHtml.matchAll(/<link[^>]+rel="modulepreload"[^>]+href="\/web\/assets\/([^"]+\.js)"/gu)) {
@@ -49,9 +53,12 @@ for (const preload of indexHtml.matchAll(/<link[^>]+rel="modulepreload"[^>]+href
 }
 while (queue.length > 0) {
   const name = queue.shift();
-  if (startup.has(name) || !byName.has(name)) continue;
+  const text = sources.get(name);
+  if (startup.has(name) || text === undefined) continue;
   startup.add(name);
-  for (const match of (await source(name)).matchAll(STATIC_IMPORT)) queue.push(match[1]);
+  for (const [, target] of text.matchAll(STATIC_IMPORT)) {
+    if (target.endsWith(".js")) queue.push(target);
+  }
 }
 
 const sum = (items) => items.reduce((total, asset) => total + asset.bytes, 0);
@@ -66,10 +73,8 @@ for (const module of modules) {
   if (limit === undefined) failures.push(`${module.name} has no size limit; add it to the budget`);
   else if (module.bytes > limit) failures.push(`${module.name} is ${module.bytes} bytes, over ${limit}`);
 }
-for (const asset of javascript) {
-  if ((await source(asset.name)).includes("Oleafly test engine")) {
-    failures.push(`${asset.name} carries the test engine, which production builds leave out`);
-  }
+for (const [name, text] of sources) {
+  if (text.includes("Oleafly test engine")) failures.push(`${name} carries the test engine, which production builds leave out`);
 }
 
 if (failures.length > 0) throw new Error(failures.join("\n"));

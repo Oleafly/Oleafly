@@ -23,7 +23,8 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,target=/build/target,sharing=locked \
     find crates -type f -exec touch {} + \
-    && cargo build --locked -p oleafly-synctex-wasm --target wasm32-unknown-unknown --profile wasm-release --target-dir /build/target \
+    && cargo build --locked -p oleafly-synctex-wasm --target wasm32-unknown-unknown \
+        --profile wasm-release --target-dir /build/target \
     && mkdir -p /out \
     && cp /build/target/wasm32-unknown-unknown/wasm-release/oleafly_synctex_wasm.wasm /out/oleafly_synctex.wasm
 

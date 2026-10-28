@@ -16,7 +16,7 @@ const LINES_PER_PAGE = Math.floor((PAGE_HEIGHT - 2 * MARGIN) / LEADING);
 const MAX_CHARS = Math.floor((PAGE_WIDTH - 2 * MARGIN) / ADVANCE);
 const SP_PER_BP = 65781.76;
 const MAX_INPUT_DEPTH = 4;
-const ERROR_COMMAND = "\\fakeerror";
+const ERROR_COMMAND = String.raw`\fakeerror`;
 
 interface TypesetLine {
   tag: number;
@@ -58,11 +58,11 @@ function collect(sources: CompileSources, path: string, depth: number, into: Col
   text.split(/\r\n|\n|\r/u).forEach((raw, index) => {
     const line = index + 1;
     const trimmed = raw.trim();
-    if (hasBody && trimmed.includes("\\begin{document}")) {
+    if (hasBody && trimmed.includes(String.raw`\begin{document}`)) {
       inBody = true;
       return;
     }
-    if (trimmed.includes("\\end{document}")) {
+    if (trimmed.includes(String.raw`\end{document}`)) {
       inBody = false;
       return;
     }
