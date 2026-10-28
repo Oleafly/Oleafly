@@ -10,6 +10,8 @@ pub enum Engine {
     Latexmk,
     Typst,
     Markdown,
+    Quarto,
+    Calepin,
 }
 
 impl Engine {
@@ -19,6 +21,8 @@ impl Engine {
             "latexmk" => Some(Self::Latexmk),
             "typst" | "typ" => Some(Self::Typst),
             "markdown" | "md" | "pandoc" => Some(Self::Markdown),
+            "quarto" | "qmd" => Some(Self::Quarto),
+            "calepin" => Some(Self::Calepin),
             _ => None,
         }
     }
@@ -51,6 +55,7 @@ impl Engine {
             "tex" | "ltx" | "latex" => Ok(Self::Tectonic),
             "typ" => Ok(Self::Typst),
             "md" | "markdown" => Ok(Self::Markdown),
+            "qmd" | "rmd" => Ok(Self::Quarto),
             _ => Err(Error::new(
                 ErrorKind::InvalidInput,
                 format!("cannot infer an engine for `{main_document}`"),
@@ -70,10 +75,11 @@ impl Engine {
                     "tex" | "ltx" | "latex"
                 )
             }
-            Self::Typst => extension.eq_ignore_ascii_case("typ"),
+            Self::Typst | Self::Calepin => extension.eq_ignore_ascii_case("typ"),
             Self::Markdown => {
                 matches!(extension.to_ascii_lowercase().as_str(), "md" | "markdown")
             }
+            Self::Quarto => matches!(extension.to_ascii_lowercase().as_str(), "qmd" | "rmd"),
         }
     }
 
@@ -83,6 +89,8 @@ impl Engine {
             Self::Latexmk => "latexmk",
             Self::Typst => "typst",
             Self::Markdown => "markdown",
+            Self::Quarto => "quarto",
+            Self::Calepin => "calepin",
         }
     }
 
@@ -92,14 +100,17 @@ impl Engine {
             Self::Latexmk => "latexmk",
             Self::Typst => "typst",
             Self::Markdown => "markdown",
+            Self::Quarto => "quarto",
+            Self::Calepin => "calepin",
         }
     }
 
     pub const fn default_main_document(self) -> &'static str {
         match self {
             Self::Tectonic | Self::Latexmk => "main.tex",
-            Self::Typst => "main.typ",
+            Self::Typst | Self::Calepin => "main.typ",
             Self::Markdown => "main.md",
+            Self::Quarto => "main.qmd",
         }
     }
 
@@ -109,7 +120,13 @@ impl Engine {
             Self::Latexmk => "latexmk",
             Self::Typst => "typst",
             Self::Markdown => "pandoc",
+            Self::Quarto => "quarto",
+            Self::Calepin => "calepin",
         }
+    }
+
+    pub const fn runs_project_code(self) -> bool {
+        matches!(self, Self::Latexmk | Self::Quarto | Self::Calepin)
     }
 }
 
@@ -909,7 +926,52 @@ mod tests {
         assert_eq!(Engine::named("LATEXMK"), Some(Engine::Latexmk));
         assert_eq!(Engine::named("typ"), Some(Engine::Typst));
         assert_eq!(Engine::named("pandoc"), Some(Engine::Markdown));
+        assert_eq!(Engine::named(" Quarto "), Some(Engine::Quarto));
+        assert_eq!(Engine::named("calepin"), Some(Engine::Calepin));
         assert_eq!(Engine::named("pdflatex"), None);
+    }
+
+    #[test]
+    fn quarto_and_calepin_accept_their_own_main_documents() {
+        assert_eq!(Engine::infer("paper.qmd").unwrap(), Engine::Quarto);
+        assert_eq!(Engine::infer("analysis.Rmd").unwrap(), Engine::Quarto);
+        assert_eq!(Engine::infer("notebook.typ").unwrap(), Engine::Typst);
+        assert!(Engine::Quarto.accepts("slides.QMD"));
+        assert!(!Engine::Quarto.accepts("notes.md"));
+        assert!(Engine::Calepin.accepts("report.typ"));
+        assert!(!Engine::Calepin.accepts("report.qmd"));
+        assert_eq!(
+            Engine::from_manifest("calepin", "report.typ").unwrap(),
+            Engine::Calepin
+        );
+        assert_eq!(
+            Engine::from_manifest("quarto", "paper.qmd").unwrap(),
+            Engine::Quarto
+        );
+        assert_eq!(
+            Engine::from_manifest("quarto", "paper.typ")
+                .unwrap_err()
+                .kind(),
+            ErrorKind::InvalidManifest
+        );
+        assert_eq!(Engine::Quarto.manifest_name(), "quarto");
+        assert_eq!(Engine::Calepin.default_main_document(), "main.typ");
+        assert_eq!(Engine::Quarto.default_main_document(), "main.qmd");
+        assert!(Engine::Calepin.runs_project_code());
+        assert!(Engine::Quarto.runs_project_code());
+        assert!(Engine::Latexmk.runs_project_code());
+        assert!(!Engine::Typst.runs_project_code());
+    }
+
+    #[test]
+    fn quarto_and_calepin_manifests_are_sniffed_as_ours() {
+        for ours in [
+            r#"{"main_doc":"paper.qmd","engine":"quarto"}"#,
+            r#"{"main_doc":"analysis.Rmd","engine":"quarto"}"#,
+            r#"{"main_doc":"report.typ","engine":"calepin"}"#,
+        ] {
+            assert!(sniff_oleafly_manifest(ours.as_bytes()).is_some(), "{ours}");
+        }
     }
 
     #[test]

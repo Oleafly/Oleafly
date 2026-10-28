@@ -2060,7 +2060,7 @@
       "checkPassed": "Piaskownica działa.",
       "checkFailed": "Sprawdzenie piaskownicy nie powiodło się: {{reason}}",
       "runtimes": "Interpretery",
-      "runtimesEmpty": "Nie znaleziono Pythona, R ani Julii.",
+      "runtimesEmpty": "Nie znaleziono środowiska Python, R ani Julia.",
       "refresh": "Odśwież",
       "access": "Foldery, które piaskownica może czytać",
       "accessNote": "Aby zadania mogły czytać te foldery, Oleafly dodaje do każdego z nich wpis uprawnień.",

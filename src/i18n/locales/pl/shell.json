@@ -441,7 +441,19 @@
       "help": "Wariant przekazuje własne wartości do sys.inputs, na przykład dla szkicu albo wersji do druku. Wybrany wariant zostaje na tym komputerze. Warianty dodasz lub zmienisz w Ustawieniach dokumentu.",
       "none": "Brak wariantu"
     },
-    "sharedViewer": "Przeglądający nie mogą zmieniać tych ustawień we współdzielonym projekcie."
+    "typEngine": {
+      "title": "Silnik (ten projekt)",
+      "help": "Typst kompiluje dokument w takiej postaci, w jakiej został napisany. Calepin dodatkowo uruchamia zawarty w nim kod i umieszcza wyniki w pliku PDF.",
+      "typst": "Typst <note>[wbudowany]</note>",
+      "calepin": "Calepin <note>[uruchamia kod]</note>"
+    },
+    "code": {
+      "title": "Kod (ten komputer)",
+      "help": "Quarto i Calepin mogą uruchamiać kod w językach R, Python i Julia zawarty w tym projekcie. Kod działa z Twoimi uprawnieniami, więc zezwalaj na niego tylko w projekcie, któremu ufasz. Ten wybór dotyczy tylko tego komputera.",
+      "off": "Wyłączony",
+      "run": "Uruchamiaj kod na tym komputerze"
+    },
+    "sharedViewer": "Tylko właściciele i edytujący mogą zmieniać te ustawienia we współdzielonym projekcie."
   },
   "datePicker": {
     "placeholder": "Wybierz datę"
@@ -510,6 +522,18 @@
   "shellCommands": {
     "allow": "Zezwól na polecenia zewnętrzne",
     "banner": "Ten dokument podczas kompilacji uruchamia polecenia zewnętrzne, a ten projekt je blokuje. Zezwól na nie tylko wtedy, gdy ufasz każdemu plikowi w projekcie."
+  },
+  "codeExecution": {
+    "allow": "Zezwól na kod w tym projekcie",
+    "needed": "Ten dokument musi uruchomić swój kod, aby się skompilować, a kod jest wyłączony w tym projekcie. Zezwól na kod tylko wtedy, gdy ufasz każdemu plikowi w projekcie.",
+    "skipped": "Kod w tym dokumencie nie został uruchomiony, bo kod jest wyłączony w tym projekcie. Zezwól na kod tylko wtedy, gdy ufasz każdemu plikowi w projekcie.",
+    "storedResults": "PDF pokazuje wyniki kodu zapisane podczas wcześniejszego uruchomienia, bo kod jest wyłączony w tym projekcie. Zezwól na kod tylko wtedy, gdy ufasz każdemu plikowi w projekcie."
+  },
+  "typstCjkFonts": {
+    "message": "Ten dokument zawiera tekst chiński, japoński lub koreański, którego żadna czcionka na tym komputerze nie potrafi wyświetlić, więc brakuje go w PDF.",
+    "download": "Pobierz czcionki",
+    "downloadSize": "Pobierz czcionki ({{size}})",
+    "downloading": "Pobieranie czcionek"
   },
   "errorBoundary": {
     "copyDiagnostics": "Kopiuj dane diagnostyczne",
@@ -631,6 +655,8 @@
       "standalone": "Samodzielna ilustracja",
       "typst": "Typst",
       "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Notatnik Calepin",
       "unknown": "Inne"
     },
     "reason": {
@@ -874,10 +900,6 @@
       "latexTools": {
         "description": "Pokazuje galerię Narzędzi Oleafly i poszczególne narzędzia (import PDF, wzory, tabele, BibTeX, wyszukiwanie zespołów i literatury, terminy) wraz z ich poleceniami z ukośnikiem. Domyślnie wyłączone, bo funkcja jest w wersji beta.",
         "label": "Narzędzia LaTeX"
-      },
-      "liveCollaboration": {
-        "description": "Edytuj projekty z innymi osobami za pośrednictwem serwera współpracy prowadzonego przez Ciebie lub Twoją grupę. Dodaje do Ustawień sekcję Współpraca. Domyślnie wyłączone, bo funkcja jest w wersji beta.",
-        "label": "Współpraca na żywo"
       },
       "researchTasks": {
         "description": "Agent pracuje samodzielnie w kopii projektu, a zmiany zostawia Tobie do przejrzenia. Bardzo niestabilne: uruchomienia mogą się zawiesić, zakończyć błędem albo zostawić zmiany do ręcznego uporządkowania, a przez cały czas zużywają limit Twojego dostawcy. Dodaje do Ustawień sekcję Badania. Wyłączenie zatrzymuje wszystkie trwające zadania. Domyślnie wyłączone. Włącz na własne ryzyko.",

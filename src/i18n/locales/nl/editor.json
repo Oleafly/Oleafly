@@ -1069,6 +1069,16 @@
         "unknownEntryType": "Onbekend type bibliografie-item @{{type}}."
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "Quarto-chunkoptie"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "Calepin-chunkoptie"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "Afbeelding laden",
@@ -1513,5 +1523,5 @@
     "keyTaken": "Een variant kan dezelfde naam niet twee keer instellen.",
     "saveFailed": "Kon de varianten niet opslaan."
   },
-  "sharedSettingsViewer": "Lezers kunnen dit in een gedeeld project niet wijzigen."
+  "sharedSettingsViewer": "Alleen eigenaren en bewerkers kunnen dit in een gedeeld project wijzigen."
 }

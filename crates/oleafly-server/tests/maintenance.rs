@@ -49,6 +49,7 @@ async fn maintenance_prunes_old_security_events_and_expired_sign_in_rows() {
             expired_projects: 0,
             access_events: 0,
             guest_invitations: 0,
+            web_sessions: 0,
         }
     );
     let (targets, nonces) = app

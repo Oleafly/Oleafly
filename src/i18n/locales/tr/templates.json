@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "Yalnızca Başvuru Takip Sistemlerinin (ATS) güvenilir biçimde okuyabildiği özgeçmiş şablonlarını gösterir: tek sütun, standart yazı tipleri ve seçilebilir metin (görsele gömülü yazı yok).",
       "atsFriendly": "ATS uyumlu",
       "offlineTooltip": "Yalnızca indirme gerektirmeden derlenen şablonları gösterir: yazı tipleri ve paketleri zaten birlikte gelir, bu yüzden internet bağlantısı olmadan derlenirler.",

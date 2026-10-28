@@ -1,5 +1,5 @@
 use oleafly_core::content::{tree_digest, ContentHash};
-use oleafly_core::exclude::{decide, Decision, EntryInfo, EntryKind, PolicyFields};
+use oleafly_core::exclude::{decide_with_siblings, Decision, EntryInfo, EntryKind, PolicyFields};
 use oleafly_core::ids::ProjectId;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -325,7 +325,10 @@ fn origin_entry(
         git_tracked: false,
         git_pointer_inside: None,
     };
-    if decide(relative, &info, fields) != Decision::Include {
+    if decide_with_siblings(relative, &info, fields, |sibling| {
+        root.join(sibling).is_file()
+    }) != Decision::Include
+    {
         return None;
     }
     if kind == EntryKind::Directory {
@@ -592,6 +595,32 @@ mod tests {
             std::os::unix::fs::symlink("main.tex", root.join("link.tex")).unwrap();
             assert_eq!(origin_digest(root).unwrap(), current);
         }
+    }
+
+    #[test]
+    fn origin_digest_ignores_quarto_output_but_not_calepin_results() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        std::fs::write(root.join("report.qmd"), "# Report").unwrap();
+        std::fs::create_dir_all(root.join("data_files")).unwrap();
+        std::fs::write(root.join("data_files/raw.csv"), "a,b").unwrap();
+        let settled = origin_digest(root).unwrap();
+        for (folder, file) in [
+            ("report_files/figure-html", "plot.png"),
+            (".quarto/xref", "index.json"),
+        ] {
+            std::fs::create_dir_all(root.join(folder)).unwrap();
+            std::fs::write(root.join(folder).join(file), "generated").unwrap();
+        }
+        assert_eq!(origin_digest(root).unwrap(), settled);
+        std::fs::create_dir_all(root.join(".calepin")).unwrap();
+        std::fs::write(root.join(".calepin/calepin.typ"), "results").unwrap();
+        let with_results = origin_digest(root).unwrap();
+        assert_ne!(with_results, settled);
+        std::fs::remove_dir_all(root.join(".calepin")).unwrap();
+        assert_eq!(origin_digest(root).unwrap(), settled);
+        std::fs::write(root.join("data_files/raw.csv"), "a,b,c").unwrap();
+        assert_ne!(origin_digest(root).unwrap(), settled);
     }
 
     #[test]

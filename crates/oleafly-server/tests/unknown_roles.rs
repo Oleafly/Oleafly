@@ -38,17 +38,17 @@ async fn a_role_this_server_does_not_know_is_refused_and_nothing_is_stored() {
         (
             Method::PUT,
             format!("/api/v1/projects/{project}/members/{alice_id}"),
-            json!({ "role": "commenter" }),
+            json!({ "role": "auditor" }),
         ),
         (
             Method::PATCH,
             format!("/api/v1/projects/{project}"),
-            json!({ "link_sharing": true, "link_role": "commenter" }),
+            json!({ "link_sharing": true, "link_role": "auditor" }),
         ),
         (
             Method::POST,
             format!("/api/v1/projects/{project}/invitations"),
-            json!({ "email": "carol@uni.edu", "role": "commenter" }),
+            json!({ "email": "carol@uni.edu", "role": "auditor" }),
         ),
     ];
     for (method, path, body) in requests {

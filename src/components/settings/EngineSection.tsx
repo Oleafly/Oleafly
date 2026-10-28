@@ -47,6 +47,8 @@ import { useFilesStore } from "@/store/files";
 import { openTypstUpgrade } from "@/components/typst-upgrade/open";
 import { newerInstalledTypstVersions, projectTypstVersion } from "@/components/typst-upgrade/versions";
 import { CheckBadge } from "@/components/ui/check-badge";
+import { NotebookEngineTab } from "@/components/settings/NotebookEngineTab";
+import { NOTEBOOK_TOOL_LABELS, notebookToolForSettingsTarget } from "@/store/notebook-toolchain";
 
 const ENGINE_CHOICES: DefaultLatexEngine[] = ["tectonic", "latexmk"];
 
@@ -147,7 +149,12 @@ function MarkdownEngineTab() {
   );
 }
 
-type EngineTab = "latex" | "typst" | "markdown";
+type EngineTab = "latex" | "typst" | "markdown" | "quarto" | "calepin";
+
+function engineTabForTarget(target: string | null): EngineTab | null {
+  if (target === TYPST_SETTINGS_TARGET) return "typst";
+  return notebookToolForSettingsTarget(target);
+}
 
 function releaseDate(releasedAt: string | null): string | null {
   if (!releasedAt) return null;
@@ -366,7 +373,7 @@ function TypstUpgradeEntry() {
   const projectId = useFilesStore((s) => s.projectId);
   const engine = useFilesStore((s) => s.engine);
   const status = useTypstToolchainStore((s) => s.status);
-  if (!projectId || engine.source_format !== "typst") return null;
+  if (!projectId || engine.id !== "typst") return null;
   const newer = newerInstalledTypstVersions(status, projectTypstVersion(engine, status))[0];
   if (!newer) return null;
   return (
@@ -464,12 +471,11 @@ export function EngineSection() {
   const [distros, setDistros] = useState<TexDistribution[]>([]);
   const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
   const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
-  const [tab, setTab] = useState<EngineTab>(() =>
-    scrollTarget === TYPST_SETTINGS_TARGET ? "typst" : "latex",
-  );
+  const [tab, setTab] = useState<EngineTab>(() => engineTabForTarget(scrollTarget) ?? "latex");
   useEffect(() => {
-    if (scrollTarget !== TYPST_SETTINGS_TARGET) return;
-    setTab("typst");
+    const target = engineTabForTarget(scrollTarget);
+    if (!target) return;
+    setTab(target);
     setScrollTarget(null);
   }, [scrollTarget, setScrollTarget]);
 
@@ -505,14 +511,24 @@ export function EngineSection() {
       onValueChange={(value) => setTab(value as EngineTab)}
       className="flex flex-col gap-5"
     >
-      <TabsList aria-label={t(($) => $.settings.engine.sectionName)} className="w-fit self-start">
+      <TabsList scrollable aria-label={t(($) => $.settings.engine.sectionName)} className="self-start">
         <TabsTrigger value="latex" data-testid="engines-tab-latex">LaTeX</TabsTrigger>
         <TabsTrigger value="typst" data-testid="engines-tab-typst">Typst</TabsTrigger>
         <TabsTrigger value="markdown" data-testid="engines-tab-markdown">Markdown</TabsTrigger>
+        <TabsTrigger value="quarto" data-testid="engines-tab-quarto">{NOTEBOOK_TOOL_LABELS.quarto}</TabsTrigger>
+        <TabsTrigger value="calepin" data-testid="engines-tab-calepin">{NOTEBOOK_TOOL_LABELS.calepin}</TabsTrigger>
       </TabsList>
 
       <TabsContent value="markdown" className="flex flex-col gap-5">
         <MarkdownEngineTab />
+      </TabsContent>
+
+      <TabsContent value="quarto" className="flex flex-col gap-5">
+        <NotebookEngineTab tool="quarto" />
+      </TabsContent>
+
+      <TabsContent value="calepin" className="flex flex-col gap-5">
+        <NotebookEngineTab tool="calepin" />
       </TabsContent>
 
       <TabsContent value="typst" className="flex flex-col gap-5">

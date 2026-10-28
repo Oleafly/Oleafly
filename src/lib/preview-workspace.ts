@@ -1,6 +1,11 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
-import { useCompileStore, type CompileState, type LivePreviewState } from "@/store/compile";
+import {
+  useCompileStore,
+  type CompiledHtmlOutput,
+  type CompileState,
+  type LivePreviewState,
+} from "@/store/compile";
 import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useSettingsStore } from "@/store/settings";
@@ -18,6 +23,8 @@ import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access"
 import { activeTypstVariant, useTypstVariantStore } from "@/store/typst-variant";
 import { applyTypstCompileOptions, chooseTypstVariant } from "@/lib/typst-compile-actions";
 import type { TypstOptionsUpdate } from "@/lib/typst-options";
+import { applyShellEscape } from "@/lib/latex-compile-actions";
+import { isCalepinEngine, isNotebookEngine } from "@/lib/notebook-engines";
 
 type FileState = ReturnType<typeof useFilesStore.getState>;
 export interface PreviewWorkspaceSnapshot extends
@@ -31,12 +38,13 @@ export interface PreviewWorkspaceSnapshot extends
   typstVariant?: string | null;
   livePreview?: LivePreviewState;
   previewState?: PreviewWindowState;
+  htmlOutput?: CompiledHtmlOutput | null;
 }
 
 export type PreviewWorkspaceCommand =
   | { action: "compile"; fromScratch?: boolean }
   | { action: "stop" | "ready" | "pdf-settings" | "settings" | "refresh-files" | "ask-ai" | "trust-folder" }
-  | { action: "auto-compile" | "syntax-check" | "stop-on-error"; value: boolean }
+  | { action: "auto-compile" | "syntax-check" | "stop-on-error" | "code-execution"; value: boolean }
   | { action: "compile-mode"; value: "normal" | "fast" }
   | { action: "engine"; engine: string; flavor?: TexFlavor | null }
   | { action: "typst-version"; version: string | null }
@@ -73,6 +81,7 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
       systemTexLocked: folderIsRestricted(useFolderAccessStore.getState(), projectId),
       typstVariant: activeTypstVariant(projectId, files.engine),
       livePreview: compile.livePreview,
+      ...(compile.htmlOutput?.projectId === projectId ? { htmlOutput: compile.htmlOutput } : {}),
       previewState: previewState?.identity.projectId === projectId
         ? { ...previewState, projectStateRevision: currentProjectStateRevision() } : undefined,
     } satisfies PreviewWorkspaceSnapshot).catch(() => {});
@@ -106,6 +115,14 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
           if (payload.engine === "xetex" || (payload.engine === "latexmk" &&
             [null, undefined, "pdflatex", "xelatex", "lualatex", "uplatex", "platex"].includes(payload.flavor))) {
             await files.setEngine(payload.engine, payload.flavor);
+          } else if ((payload.engine === "typst" || payload.engine === "calepin") &&
+            (files.engine.id === "typst" || isCalepinEngine(files.engine))) {
+            await files.setEngine(payload.engine);
+          }
+          break;
+        case "code-execution":
+          if (typeof payload.value === "boolean" && isNotebookEngine(files.engine)) {
+            await applyShellEscape(payload.value, { recompile: true });
           }
           break;
         case "typst-version":

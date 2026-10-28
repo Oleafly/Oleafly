@@ -490,7 +490,9 @@ describe("comments across the project", () => {
   }
 
   it("shows one plain message and no file section when the project has no comments", () => {
-    expect(copy.emptyCanWrite).toBe("No comments yet. Select some text and choose Add comment to start one.");
+    expect(copy.emptyCanWrite).toBe(
+      "No comments or suggestions yet. Select some text and choose Add comment to start one.",
+    );
     show([], { counts: [] });
     expect(screen.getByText(copy.emptyCanWrite)).toBeInTheDocument();
     expect(screen.queryAllByRole("region")).toEqual([]);
@@ -498,7 +500,7 @@ describe("comments across the project", () => {
   });
 
   it("tells people who cannot comment only that there are no comments yet", () => {
-    expect(copy.empty).toBe("No comments yet.");
+    expect(copy.empty).toBe("No comments or suggestions yet.");
     viewAs("viewer");
     show([], { status: commentsStatus({ canComment: false }), counts: [] });
     expect(screen.getByText(copy.empty)).toBeInTheDocument();

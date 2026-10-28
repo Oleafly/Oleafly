@@ -32,6 +32,8 @@ describe("sourceLanguageForPath", () => {
     ["paper.latex", "latex"],
     ["README.md", "markdown"],
     ["docs/guide.markdown", "markdown"],
+    ["paper.qmd", "markdown"],
+    ["analysis/report.Rmd", "markdown"],
   ] as const)("reads %s as %s", (path, language) => {
     expect(sourceLanguageForPath(path)).toBe(language);
   });
@@ -51,6 +53,7 @@ describe("completionSyntaxForPath", () => {
     expect(completionSyntaxForPath("appendix.tex", "typst")).toBe("latex");
     expect(completionSyntaxForPath("macros.sty", "typst")).toBe("latex");
     expect(completionSyntaxForPath("refs.bib", "typst")).toBe("bibtex");
+    expect(completionSyntaxForPath("paper.qmd", "latex")).toBe("markdown");
   });
 
   it("falls back to the engine source format, then to generic", () => {
@@ -66,6 +69,7 @@ describe("formattingProfileForPath", () => {
     expect(formattingProfileForPath(TYPST, true, "README.md")).toBe("markdown");
     expect(formattingProfileForPath(TYPST, true, "appendix.tex")).toBe("latex");
     expect(formattingProfileForPath(MARKDOWN, true, "chart.typ")).toBe("typst");
+    expect(formattingProfileForPath(TYPST, true, "analysis.Rmd")).toBe("markdown");
   });
 
   it("needs no engine for a known file language", () => {

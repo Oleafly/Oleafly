@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { LogIn, PowerOff, ServerOff, ShieldX } from "lucide-react";
+import { LogIn, ServerOff, ShieldX } from "lucide-react";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { useWindowGeometry } from "@/lib/preview-geometry";
@@ -13,7 +13,6 @@ import {
   collabServerRefresh,
   collabServersList,
 } from "@/lib/tauri-collab";
-import { LIVE_COLLABORATION_KEY, useSettingsStore } from "@/store/settings";
 import { collabErrorText } from "../errors";
 import { LoadFailed } from "../feedback";
 import { canManageServer, toServerRole } from "../roles";
@@ -42,22 +41,7 @@ export function AdminConsoleWindow({ search = window.location.search }: Readonly
   const serverId = readConsoleServerId(search);
   const [state, setState] = useState<WindowState>({ status: "loading" });
   const [request, setRequest] = useState(0);
-  const enabled = useSettingsStore((settings) => settings.liveCollaboration);
   useWindowGeometry(serverId ? consoleGeometryKey(serverId) : null);
-
-  // This window keeps its own copy of the settings, so it follows the switch
-  // in the main window and reloads once collaboration is on again.
-  useEffect(() => {
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== LIVE_COLLABORATION_KEY) return;
-      const on = event.newValue === "1";
-      if (on === useSettingsStore.getState().liveCollaboration) return;
-      useSettingsStore.setState({ liveCollaboration: on });
-      if (on) setRequest((count) => count + 1);
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
 
   const load = useMemo(() => ({ serverId, request }), [serverId, request]);
 
@@ -90,16 +74,6 @@ export function AdminConsoleWindow({ search = window.location.search }: Readonly
   }, [name, t]);
 
   const renderState = () => {
-    if (!enabled) {
-      return (
-        <EmptyState
-          className="m-auto p-6"
-          icon={<PowerOff aria-hidden className={STATE_ICON_CLASS} />}
-          title={t(($) => $.collab.console.states.turnedOffTitle)}
-          description={t(($) => $.collab.console.states.turnedOffDescription)}
-        />
-      );
-    }
     if (state.status === "loading") {
       return <LoadingState className="m-auto" label={t(($) => $.collab.console.states.loading)} />;
     }

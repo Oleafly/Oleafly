@@ -97,7 +97,20 @@
     "installPackages_one": "{{name}} zoeken en installeren",
     "installPackages_other": "{{count}} bestanden zoeken en installeren",
     "downloadTypst": "Typst {{version}} downloaden",
-    "useTypst": "Typst {{version}} gebruiken"
+    "useTypst": "Typst {{version}} gebruiken",
+    "installTool": "{{tool}} {{version}} installeren",
+    "installToolSize": "{{tool}} {{version}} installeren ({{size}})",
+    "engineSettings": "Engine-instellingen openen"
+  },
+  "html": {
+    "builtTitle": "Gebouwd als webpagina",
+    "builtDetail": "Gebouwd om {{time}}. Webpagina's openen in je browser.",
+    "building": "De webpagina bouwen",
+    "buildingDetail": "Als het klaar is, kun je de pagina openen in je browser.",
+    "pendingTitle": "Dit document wordt gebouwd als webpagina",
+    "pendingDetail": "Compileer het en open het daarna in je browser.",
+    "open": "Openen in browser",
+    "compile": "Compileren"
   },
   "stale": {
     "badge": "Verouderd",

@@ -5,6 +5,7 @@ import {
   fillCommandPalette,
   openProject,
   openSettings,
+  openVersioning,
   pressGlobal,
   chooseProjectKind,
   revealLibraryProject,
@@ -120,7 +121,7 @@ test("history command reveals Source Control Graph while Versioning stays checkp
     ),
   ).toHaveAttribute("aria-expanded", "true");
 
-  await tauriPage.click('[aria-label="Versioning"]');
+  await openVersioning(tauriPage);
   await expect(tauriPage.getByTestId("versioning-panel-checkpoints")).toBeVisible({
     timeout: 10_000,
   });

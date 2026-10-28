@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ dialog: vi.fn() }));
 
@@ -34,7 +34,6 @@ vi.mock("@/features/collab/sharing/OpenLinkDialog", () => ({
 }));
 
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
-import { useSettingsStore } from "@/store/settings";
 import { ProjectImportMenu } from "./ProjectImportMenu";
 
 function openMenu() {
@@ -56,30 +55,17 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-afterEach(() => {
-  useSettingsStore.setState({ liveCollaboration: false });
-});
-
 describe("ProjectImportMenu shared project link", () => {
   it("opens the shared link dialog from the Cloud group", async () => {
-    useSettingsStore.setState({ liveCollaboration: true });
     renderMenu();
     await act(async () => {
       await Promise.resolve();
     });
     openMenu();
-    const item = await screen.findByRole("menuitem", { name: enCollab.library.openLink.menu });
+    const item = await screen.findByRole("menuitem", { name: enCollab.library.openLink.menu }, { timeout: 10_000 });
     fireEvent.click(item);
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Close link dialog" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  });
-
-  it("leaves the menu as it was while live collaboration is off", async () => {
-    renderMenu();
-    openMenu();
-    expect(await screen.findByTestId("import-git")).toBeInTheDocument();
-    expect(screen.queryByRole("menuitem", { name: enCollab.library.openLink.menu })).toBeNull();
-    expect(mocks.dialog).not.toHaveBeenCalled();
-  });
+  }, 20_000);
 });

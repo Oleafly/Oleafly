@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   pickSavePath: vi.fn(),
   writeBytesFile: vi.fn(),
   logError: vi.fn(),
+  openCompiledHtml: vi.fn(async (_projectId: string) => {}),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => mocks.native }));
@@ -27,6 +28,7 @@ vi.mock("@/lib/tauri", () => ({
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
+vi.mock("@/lib/notebook-commands", () => ({ openCompiledHtml: mocks.openCompiledHtml }));
 
 vi.mock("@tauri-apps/api/event", () => ({
   emitTo: vi.fn(async () => {}),
@@ -97,6 +99,7 @@ import userEvent from "@testing-library/user-event";
 import { PreviewWindow } from "./PreviewWindow";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import type { PreviewWorkspaceSnapshot } from "@/lib/preview-workspace";
+import type { DocumentEngineDescriptor } from "@/lib/tauri";
 import { useTypstToolchainStore } from "@/store/typst-toolchain";
 
 /**
@@ -575,5 +578,45 @@ describe("detached preview scroll area", () => {
     expect(host.querySelector(":scope > [data-overlay-scrollbar='y']")).not.toBeNull();
     expect(host.querySelector(":scope > [data-overlay-scrollbar='x']")).not.toBeNull();
     expect(area).toHaveAttribute("data-select-all-scope");
+  });
+});
+
+describe("detached preview of a notebook", () => {
+  const quartoWorkspace: PreviewWorkspaceSnapshot = {
+    projectId: "alpha",
+    engine: {
+      ...LATEX_ENGINE,
+      id: "quarto",
+      label: "Quarto",
+      source_format: "markdown",
+      main_document: "report.qmd",
+      source_extensions: ["qmd", "rmd"],
+      allow_shell_escape: false,
+    } as unknown as DocumentEngineDescriptor,
+    engineLoaded: true, mainDoc: "report.qmd",
+    status: "success", log: "", errors: [], diagnostics: null, compileTimeMs: 12,
+    compileRevision: 0, autoCompile: false, compileMode: "normal", checkSyntaxBeforeCompile: true, stopOnFirstError: false,
+    noMainDocument: false, systemTexLocked: false,
+    htmlOutput: { projectId: "alpha", path: "/alpha/.oleafly/build/report.html", builtAt: Date.UTC(2026, 9, 24, 9) },
+  };
+
+  it("opens the built page in the browser and sends the code choice to the main window", async () => {
+    mocks.native = true;
+    render(<PreviewWindow />);
+    await vi.waitFor(() => expect(mocks.listeners.has("preview:workspace")).toBe(true));
+    act(() => mocks.listeners.get("preview:workspace")?.({ payload: quartoWorkspace }));
+    const user = userEvent.setup();
+    expect(screen.getByTestId("html-output-panel")).toHaveTextContent(enPreview.html.builtTitle);
+    await user.click(screen.getByRole("button", { name: enPreview.html.open }));
+    expect(mocks.openCompiledHtml).toHaveBeenCalledExactlyOnceWith("alpha");
+
+    await user.click(screen.getByLabelText(enShell.compile.options));
+    const menu = await screen.findByRole("menu");
+    await user.click(within(menu).getByTestId("code-execution-run"));
+    expect(emitTo).toHaveBeenCalledWith("main", "preview:command", {
+      projectId: "alpha",
+      action: "code-execution",
+      value: true,
+    });
   });
 });

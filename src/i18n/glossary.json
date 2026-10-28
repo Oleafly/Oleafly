@@ -6,6 +6,7 @@
     "ACP", "Vim", "URL", "JSON", "YAML", "CSV", "PNG", "SVG", "API", "GPU", "CPU", "Harper",
     "Hunspell", "Mermaid", "Excalidraw", "Zotero", "OpenAI", "Anthropic", "Claude", "Gemini",
     "Codex", "Semantic Scholar", "Crossref", "OpenAlex", "Cookie", "shell", "Discord", "Dropbox",
+    "Quarto", "Calepin", "Python", "Julia", "Jupyter", "knitr", "reveal.js",
     "Mathpix"
   ],
   "terms": {

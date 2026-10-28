@@ -101,6 +101,11 @@
       "pickTitle": "Vælg programmet til {{name}}",
       "filter": "Programmer"
     },
+    "sharedCodeExecution": {
+      "title": "Vil du tillade kode i dette delte projekt?",
+      "message": "Så kører kompileringen koden i dette projekt på denne computer. Alle med redigeringsadgang kan ændre koden. Tillad det kun, hvis du stoler på alle i projektet.",
+      "confirm": "Tillad på denne computer"
+    },
     "desktopApps": {
       "title": "Skrivebordsapps",
       "action": "{{agent}} vil {{action}}.",

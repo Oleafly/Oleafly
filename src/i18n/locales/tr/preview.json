@@ -97,7 +97,20 @@
     "installPackages_one": "{{name}} paketini bul ve kur",
     "installPackages_other": "{{count}} dosyayı bul ve kur",
     "downloadTypst": "Typst {{version}} sürümünü indir",
-    "useTypst": "Typst {{version}} kullan"
+    "useTypst": "Typst {{version}} kullan",
+    "installTool": "{{tool}} {{version}} sürümünü kur",
+    "installToolSize": "{{tool}} {{version}} sürümünü kur ({{size}})",
+    "engineSettings": "Motor ayarlarını aç"
+  },
+  "html": {
+    "builtTitle": "Web sayfası olarak derlendi",
+    "builtDetail": "Derleme saati: {{time}}. Web sayfaları tarayıcınızda açılır.",
+    "building": "Web sayfası derleniyor",
+    "buildingDetail": "Derleme bitince sayfayı tarayıcınızda açabilirsiniz.",
+    "pendingTitle": "Bu belge bir web sayfası olarak derlenir",
+    "pendingDetail": "Belgeyi derleyin, sonra tarayıcınızda açın.",
+    "open": "Tarayıcıda aç",
+    "compile": "Derle"
   },
   "stale": {
     "badge": "Eski",

@@ -166,7 +166,6 @@ pub const GLOBAL_KEYS: &[(&str, &str, KeyKind)] = &[
         "skills_share_with_agents",
         KeyKind::Bool,
     ),
-    ("live_collaboration", "live_collaboration", KeyKind::Bool),
     ("ui.locale", "ui_locale", KeyKind::Locale),
     ("mcp.enabled", "mcp_enabled", KeyKind::ReadOnly),
     ("mcp.port", "mcp_port", KeyKind::ReadOnly),
@@ -229,7 +228,7 @@ fn global_value(config: &Map<String, Value>, file_key: &str, kind: KeyKind) -> V
         (_, KeyKind::TypstVersion) => json!(oleafly_downloads::typst::bundled_version()),
         (_, KeyKind::LatexEngine) => json!("tectonic"),
         (_, KeyKind::Locale) => json!("system"),
-        (_, KeyKind::Bool) => json!(!matches!(file_key, "live_collaboration")),
+        (_, KeyKind::Bool) => json!(true),
         (_, KeyKind::ReadOnly) => Value::Null,
     }
 }

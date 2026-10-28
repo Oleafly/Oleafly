@@ -5,7 +5,11 @@
       "src/**/*.ts",
       "src/**/*.tsx",
       "packages/*/src/**/*.ts",
-      "packages/*/src/**/*.tsx"
+      "packages/*/src/**/*.tsx",
+      "web/src/**/*.ts",
+      "web/src/**/*.tsx",
+      "web/dev/**/*.ts",
+      "web/vitest.setup.ts"
     ]
   },
   "plugins": [

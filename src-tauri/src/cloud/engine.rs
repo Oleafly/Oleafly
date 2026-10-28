@@ -5,7 +5,9 @@ use super::store::{BatchCopy, BatchDelete, BatchFile, CloudStore, StoreError, Wr
 use crate::checkpoint_capture::FileStamp;
 use futures_util::stream::{self, StreamExt};
 use oleafly_core::content::{ContentHash, ContentHasher};
-use oleafly_core::exclude::{decide, Decision, EntryInfo, EntryKind, PolicyFields, SkipReason};
+use oleafly_core::exclude::{
+    decide, decide_with_siblings, Decision, EntryInfo, EntryKind, PolicyFields, SkipReason,
+};
 use oleafly_core::hlc::{Hlc, HlcClock, Stamp};
 use oleafly_core::ids::{DeviceId, ProjectId};
 use oleafly_core::portable;
@@ -629,7 +631,9 @@ fn classify_entry(
         git_tracked: false,
         git_pointer_inside: None,
     };
-    let mut decision = decide(relative, &info, fields);
+    let mut decision = decide_with_siblings(relative, &info, fields, |sibling| {
+        root.join(sibling).is_file()
+    });
     // A build-output-shaped file Git tracks, such as a committed log of
     // results, is the user's to keep, so it backs up. The main PDF and helper
     // folders stay out: they come back with the next compile.
@@ -1081,16 +1085,23 @@ fn split_remote(
         return view;
     };
     let fields = policy.fields();
+    let remote_keys: BTreeSet<String> = remote
+        .version
+        .files
+        .iter()
+        .map(|record| key(&record.path))
+        .collect();
     for record in &remote.version.files {
         let usable = portable::synced_path_problem(&record.path).is_none()
             && valid_hash(&record.hash)
             && record.size <= oleafly_core::exclude::MAX_SYNC_FILE_BYTES
             && record.rev.as_deref().is_none_or(valid_rev)
             && cloud_skip(Path::new(&record.path)).is_none()
-            && match decide(
+            && match decide_with_siblings(
                 Path::new(&record.path),
                 &EntryInfo::file(record.size),
                 &fields,
+                |sibling| remote_keys.contains(&key(sibling)),
             ) {
                 Decision::Include => true,
                 Decision::Skip(SkipReason::BuildOutput) => tracked.contains(&key(&record.path)),

@@ -117,6 +117,7 @@ export const SETTINGS_SEARCH_TABS: Readonly<Record<string, string>> = {
   "engine.distributions": "latex",
   "engine.packages": "latex",
   "engine.tagging": "latex",
+  "engine.notebook": "quarto",
   github: "git-hosting",
   gitHosting: "git-hosting",
   // Its rows' keys also name the Providers tab ("ai.agents.providers").

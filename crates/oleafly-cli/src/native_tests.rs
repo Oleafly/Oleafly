@@ -161,6 +161,26 @@ fn build_options_name_the_flags_each_engine_ignores() {
 }
 
 #[test]
+fn quarto_and_calepin_projects_say_the_command_line_cannot_build_them_yet() {
+    let compiler = NativeCompiler::new(BuildTools::default());
+    for engine in [Engine::Quarto, Engine::Calepin] {
+        let directory = TempDir::new().unwrap();
+        let workspace = workspace_for_engine(&directory, engine, None);
+        let build = workspace.prepare_build().unwrap();
+        let Err(error) = compiler.command(&build, BuildOptions::default(), true) else {
+            panic!("{engine:?} built from the command line");
+        };
+        assert_eq!(error.kind(), ErrorKind::Build);
+        assert!(
+            error.message().contains("command line yet"),
+            "{}",
+            error.message()
+        );
+        assert!(BuildTools::default().required_for_engine(engine).is_empty());
+    }
+}
+
+#[test]
 fn debug_build_records_the_compilation_target() {
     assert!(option_env!("OLEAFLY_BUILD_TARGET").is_some_and(|target| !target.is_empty()));
 }
@@ -398,6 +418,7 @@ fn compiler_commands_preserve_every_engine_contract() {
                 Engine::Latexmk => Some(latexmk.as_path()),
                 Engine::Typst => Some(typst.as_path()),
                 Engine::Markdown => Some(pandoc.as_path()),
+                Engine::Quarto | Engine::Calepin => None,
             }
         );
     }

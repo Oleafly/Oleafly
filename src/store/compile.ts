@@ -1,5 +1,5 @@
 import { create, type StoreApi } from "zustand";
-import { collabCompileBarrier } from "@/lib/collab-live-bridge";
+import { collabCompileBarrier, noteUnreviewedSuggestions } from "@/lib/collab-live-bridge";
 import {
   cancelCompile,
   clearBuildDir,
@@ -81,6 +81,8 @@ import {
 } from "@/store/project-index";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { mainDocumentMissing } from "@/lib/main-document";
+import { compiledHtmlOutput } from "@/lib/notebook-engines";
+import type { NotebookTool } from "@/lib/notebook-commands";
 
 // Bumped on every recompile so a compile that finishes after the project was
 // switched (or a newer compile started) can detect it is stale and not overwrite
@@ -331,6 +333,12 @@ export function isCompileCheckpointCurrent(
   );
 }
 
+export interface CompiledHtmlOutput {
+  readonly projectId: string;
+  readonly path: string;
+  readonly builtAt: number;
+}
+
 export interface CompileState {
   status: CompileStatus;
   phase: CompilePhase;
@@ -344,6 +352,7 @@ export interface CompileState {
   lastCompileCheckpoint: CompileSuccessCheckpoint | null;
   compiledSources: CompileSourceSnapshot | null;
   compileTimeMs: number | null;
+  htmlOutput: CompiledHtmlOutput | null;
   autoCompile: boolean;
   setAutoCompile: (v: boolean) => void;
   /// `fast` trades reference/TOC freshness for a single typesetting pass.
@@ -414,7 +423,7 @@ export function typstLivePreviewWanted(
     autoCompile &&
       files.projectId &&
       files.engineLoaded &&
-      files.engine.source_format === "typst" &&
+      files.engine.id === "typst" &&
       !files.engine.typst_missing,
   );
 }
@@ -472,7 +481,7 @@ function livePreviewRoutes(state: CompileState, files: FilesSnapshot, projectId:
     live.enabled &&
     live.projectId === projectId &&
     live.status !== "failed" &&
-    files.engine.source_format === "typst"
+    files.engine.id === "typst"
   );
 }
 
@@ -559,9 +568,19 @@ export type CompileOffer =
       readonly kind: "typst-version-missing";
       readonly projectId: string;
       readonly version: string;
+    }
+  | {
+      readonly kind: "notebook-tool-missing";
+      readonly projectId: string;
+      readonly tool: NotebookTool;
     };
 
 const TYPST_VERSION_MISSING = "typst_version_missing";
+const NOTEBOOK_CODE_NEEDED = "notebook.code_needed";
+const NOTEBOOK_TOOL_MISSING: ReadonlyMap<string, NotebookTool> = new Map([
+  ["notebook.quarto_missing", "quarto"],
+  ["notebook.calepin_missing", "calepin"],
+]);
 
 const offeredPackageSets = new Map<string, Set<string>>();
 const packageInstallsRunning = new Set<string>();
@@ -828,6 +847,8 @@ export function acceptCompileOffer(offer: CompileOffer): void {
     useEnginePickerStore.getState().openPicker("compile-failure", offer.findings);
   } else if (offer.kind === "typst-version-missing") {
     void downloadMissingTypst(offer.projectId, offer.version);
+  } else if (offer.kind === "notebook-tool-missing") {
+    void import("@/store/notebook-toolchain").then((module) => module.openNotebookToolSettings(offer.tool));
   } else {
     installOfferedPackages(offer.projectId, offer.packages);
   }
@@ -841,6 +862,21 @@ export async function downloadMissingTypst(projectId: string, version: string): 
   if (useFilesStore.getState().projectId !== projectId) return;
   const { useTypstToolchainStore } = await import("@/store/typst-toolchain");
   const installed = await useTypstToolchainStore.getState().installVersion(version);
+  if (!installed || useFilesStore.getState().projectId !== projectId) return;
+  clearOffer(projectId);
+  void useCompileStore.getState().recompile();
+}
+
+function notebookToolMissingMessage(tool: NotebookTool): string {
+  return tool === "quarto"
+    ? i18n.t(($) => $.errors.notebook.quarto_missing)
+    : i18n.t(($) => $.errors.notebook.calepin_missing);
+}
+
+export async function installMissingNotebookTool(projectId: string, tool: NotebookTool): Promise<void> {
+  if (useFilesStore.getState().projectId !== projectId) return;
+  const { useNotebookToolchainStore } = await import("@/store/notebook-toolchain");
+  const installed = await useNotebookToolchainStore.getState().install(tool);
   if (!installed || useFilesStore.getState().projectId !== projectId) return;
   clearOffer(projectId);
   void useCompileStore.getState().recompile();
@@ -1184,6 +1220,34 @@ async function pandocPrerequisiteGate(ctx: CompileGateContext): Promise<boolean>
   return compileIdentityGate(ctx);
 }
 
+function notebookPrerequisite(engine: DocumentEngineDescriptor): NotebookTool | null {
+  const prerequisite: string | null = engine.capabilities.compiler_prerequisite;
+  return prerequisite === "quarto" || prerequisite === "calepin" ? prerequisite : null;
+}
+
+async function notebookPrerequisiteGate(ctx: CompileGateContext, tool: NotebookTool): Promise<boolean> {
+  const { NOTEBOOK_TOOL_LABELS, useNotebookToolchainStore } = await import("@/store/notebook-toolchain");
+  const cached = useNotebookToolchainStore.getState().status;
+  const status =
+    cached && (cached[tool].active || ctx.origin !== "explicit")
+      ? cached
+      : await useNotebookToolchainStore.getState().refresh();
+  if (!status || status[tool].active || !ctx.capturedProjectId) return compileIdentityGate(ctx);
+  const installing =
+    status[tool].installing || useNotebookToolchainStore.getState().installs[tool] !== undefined;
+  ctx.set({
+    status: "unavailable",
+    phase: "idle",
+    failureReason: installing
+      ? i18n.t(($) => $.errors.notebook.busy, { tool: NOTEBOOK_TOOL_LABELS[tool] })
+      : notebookToolMissingMessage(tool),
+    lastAttemptIdentity: gateAttemptIdentity(ctx),
+    offer: { kind: "notebook-tool-missing", projectId: ctx.capturedProjectId, tool },
+  });
+  ctx.abortIntent();
+  return false;
+}
+
 function systemTexPrerequisiteGate(ctx: CompileGateContext): boolean {
   if (ctx.files.engine.capabilities.compiler_prerequisite !== "system_tex") return true;
   // A TinyTeX install may be in flight: queue this compile behind it
@@ -1316,6 +1380,8 @@ async function runCompileGates(
   if (!engineLoadedGate(ctx)) return null;
   if (!typstVersionGate(ctx)) return null;
   if (!(await pandocPrerequisiteGate(ctx))) return null;
+  const notebookTool = notebookPrerequisite(ctx.files.engine);
+  if (notebookTool && !(await notebookPrerequisiteGate(ctx, notebookTool))) return null;
   if (!systemTexPrerequisiteGate(ctx)) return null;
   if (!compileIdentityGate(ctx)) return null;
   const projectId = ctx.capturedProjectId;
@@ -1582,10 +1648,43 @@ function settleAlreadyShownOutput(
   return true;
 }
 
+async function applyHtmlCompileResult(
+  ctx: CompileApplyContext,
+  result: CompileResult,
+  path: string,
+): Promise<CompileResult> {
+  const errors = await explainedErrors(result);
+  if (ctx.identityStale()) return result;
+  let applied = false;
+  ctx.set((state) => {
+    if (
+      ctx.identityStale() ||
+      hasCompileCheckpointAdvanced(ctx.checkpointAtStart, state.lastCompileCheckpoint)
+    ) {
+      return state;
+    }
+    applied = true;
+    return {
+      status: "success",
+      phase: "idle",
+      failureReason: null,
+      errors,
+      diagnostics: result.diagnostics ?? null,
+      log: `${ctx.offlineNoticePrefix}${result.log}`,
+      compileTimeMs: result.compile_time_ms ?? 0,
+      htmlOutput: { projectId: ctx.projectId, path, builtAt: Date.now() },
+    };
+  });
+  if (applied) settleCompileNotices(ctx.projectId);
+  return result;
+}
+
 async function applyCompileResult(
   ctx: CompileApplyContext,
   result: CompileResult,
 ): Promise<CompileResult> {
+  const htmlPath = result.ok ? compiledHtmlOutput(result) : null;
+  if (htmlPath) return applyHtmlCompileResult(ctx, result, htmlPath);
   const currentCheckpoint = ctx.get().lastCompileCheckpoint;
   if (compileResultSuperseded(ctx, result, currentCheckpoint)) return result;
   if (settleAlreadyShownOutput(ctx, result, currentCheckpoint)) return result;
@@ -1626,6 +1725,7 @@ async function applyCompileResult(
       lastCompileCheckpoint: checkpoint ?? state.lastCompileCheckpoint,
       compiledSources: checkpoint ? ctx.compiledSourceSnapshot : state.compiledSources,
       compileTimeMs: checkpoint ? (result.compile_time_ms ?? 0) : state.compileTimeMs,
+      htmlOutput: checkpoint ? null : state.htmlOutput,
     };
   });
   if (!applied) return result;
@@ -1668,7 +1768,7 @@ export async function applyTypstLiveResult(live: TypstLiveResult): Promise<boole
     const files = useFilesStore.getState();
     return (
       files.projectId === projectId &&
-      files.engine.source_format === "typst" &&
+      files.engine.id === "typst" &&
       resolveEffectiveMainDoc().mainDoc === mainDocument
     );
   };
@@ -1762,6 +1862,43 @@ function reportMissingTypst(ctx: CompileApplyContext, version: string, e: unknow
   }
 }
 
+function reportMissingNotebookTool(ctx: CompileApplyContext, tool: NotebookTool, e: unknown): void {
+  const message = describeError(e);
+  ctx.set((state) => {
+    if (
+      ctx.identityStale() ||
+      hasCompileCheckpointAdvanced(ctx.checkpointAtStart, state.lastCompileCheckpoint)
+    ) {
+      return state;
+    }
+    return {
+      status: "unavailable",
+      phase: "idle",
+      failureReason: message,
+      offer: { kind: "notebook-tool-missing", projectId: ctx.projectId, tool },
+    };
+  });
+  void import("@/lib/preview-window")
+    .then((module) =>
+      module.refreshPreviewWindow({
+        identity: ctx.requestIdentity,
+        status: "unavailable",
+        checkpoint: null,
+        message,
+      }),
+    )
+    .catch(() => {});
+  void logError("compile", e);
+  void import("@/store/notebook-toolchain")
+    .then((module) => module.useNotebookToolchainStore.getState().refresh())
+    .catch(() => {});
+}
+
+function codeNeededErrors(code: string | undefined, message: string): CompileError[] | null {
+  if (code !== NOTEBOOK_CODE_NEEDED) return null;
+  return [{ kind: "error", code, message, line: null, file: null, explanation: null }];
+}
+
 function handleCompileException(ctx: CompileApplyContext, e: unknown): void {
   const appError = decodeAppError(e);
   const missingTypst = appError?.code === TYPST_VERSION_MISSING ? appError.params.version : undefined;
@@ -1769,7 +1906,13 @@ function handleCompileException(ctx: CompileApplyContext, e: unknown): void {
     reportMissingTypst(ctx, missingTypst, e);
     return;
   }
+  const missingTool = appError ? NOTEBOOK_TOOL_MISSING.get(appError.code) : undefined;
+  if (missingTool) {
+    reportMissingNotebookTool(ctx, missingTool, e);
+    return;
+  }
   const message = appError ? describeError(e) : String(e);
+  const codeNeeded = codeNeededErrors(appError?.code, message);
   ctx.set((state) => {
     if (
       ctx.identityStale() ||
@@ -1781,7 +1924,8 @@ function handleCompileException(ctx: CompileApplyContext, e: unknown): void {
       status: "error",
       phase: "idle",
       log: `${ctx.offlineNoticePrefix}Compile failed: ${message}`,
-      failureReason: `Compile failed: ${message}`,
+      failureReason: codeNeeded ? message : `Compile failed: ${message}`,
+      ...(codeNeeded ? { errors: codeNeeded } : {}),
     };
   });
   void import("@/lib/preview-window")
@@ -1855,6 +1999,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
   lastCompileCheckpoint: null,
   compiledSources: null,
   compileTimeMs: null,
+  htmlOutput: null,
   offer: null,
   autoCompile: readStoredFlag(AUTO_COMPILE_KEY, false),
   setAutoCompile: (v) => {
@@ -1911,6 +2056,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       lastCompileCheckpoint: null,
       compiledSources: null,
       compileTimeMs: null,
+      htmlOutput: null,
       offer: null,
     });
   },
@@ -1961,6 +2107,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       log: validated.log,
       lastCompiledAt: checkpoint.completedAt,
       lastCompileCheckpoint: checkpoint,
+      htmlOutput: null,
     });
     return true;
   },
@@ -1979,6 +2126,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     activeCompileIntent = intent;
     const files = useFilesStore.getState();
     const capturedProjectId = files.projectId;
+    if (origin === "explicit") noteUnreviewedSuggestions(capturedProjectId, "compile");
     const releaseIntent = () => {
       if (activeCompileIntent === intent) activeCompileIntent = null;
     };

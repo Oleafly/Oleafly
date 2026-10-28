@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ProjectInfo } from "@/lib/tauri";
@@ -118,15 +118,7 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => {
-  useSettingsStore.setState({ liveCollaboration: false });
-});
-
-describe("Library with live collaboration on", () => {
-  beforeEach(() => {
-    useSettingsStore.setState({ liveCollaboration: true });
-  });
-
+describe("Library collaboration", () => {
   it("labels shared projects and lists what others shared", async () => {
     await renderLibrary();
     await waitFor(() => expect(within(card("Open Grant")).getByText(enCollab.library.kind)).toBeInTheDocument());
@@ -158,6 +150,27 @@ describe("Library with live collaboration on", () => {
     expect(screen.queryByRole("button", { name: "Open Grant" })).toBeNull();
   });
 
+  it("names the library location plainly while no project is shared", async () => {
+    const thesis = project("thesis", "Thesis", {
+      location: { kind: "linked", display_path: "~/Desktop/thesis", availability: "unknown" },
+    });
+    useFilesStore.setState({ projects: [GRANT, PAPER, thesis] });
+    await renderLibrary();
+    await waitFor(() => expect(within(card("Open Grant")).getByText(enCollab.library.kind)).toBeInTheDocument());
+    act(() => useFilesStore.setState({ projects: [PAPER, thesis] }));
+    openFilters();
+    fireEvent.pointerDown(locationSelect() as HTMLElement, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual([
+      enLibrary.home.filters.locationAll,
+      enLibrary.home.filters.locationLibrary,
+      enLibrary.home.filters.locationExternal,
+    ]);
+    fireEvent.click(screen.getByRole("option", { name: enLibrary.home.filters.locationLibrary }));
+    expect(locationSelect()).toHaveTextContent(enLibrary.home.filters.locationLibrary);
+    expect(screen.getByRole("button", { name: "Open Paper" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open Thesis" })).toBeNull();
+  });
+
   it("offers Share in the project menu", async () => {
     await renderLibrary();
     await waitFor(() => expect(within(card("Open Grant")).getByText(enCollab.library.kind)).toBeInTheDocument());
@@ -168,21 +181,5 @@ describe("Library with live collaboration on", () => {
     fireEvent.click(await screen.findByRole("menuitem", { name: enCollab.share.button }));
     expect(useShareDialog.getState().projectId).toBe("paper");
     expect(await screen.findByRole("dialog")).toHaveTextContent("paper");
-  });
-});
-
-describe("Library with live collaboration off", () => {
-  it("shows no sharing labels, filters, menu items or lists", async () => {
-    await renderLibrary();
-    expect(within(card("Open Grant")).queryByText(enCollab.library.kind)).toBeNull();
-    openFilters();
-    expect(locationSelect()).toBeNull();
-    fireEvent.pointerDown(
-      screen.getAllByRole("button", { name: enLibrary.projects.actions.replace("{{name}}", "Paper") })[0],
-      { button: 0, ctrlKey: false, pointerType: "mouse" },
-    );
-    await screen.findAllByRole("menuitem");
-    expect(screen.queryByRole("menuitem", { name: enCollab.share.button })).toBeNull();
-    expect(mocks.sharedWithYou).not.toHaveBeenCalled();
   });
 });

@@ -248,9 +248,8 @@ oleafly skills path [ID]
 Project settings (in `project.json`): `name`, `main`, `engine`, `compiler`,
 `typst.version`, `compile_dir`. App settings (`--global`):
 `typst.default_version`, `latex.default_engine`, `checkpoints.enabled`,
-`checkpoints.notifications`, `git.auto_init`, `skills.share_with_agents`,
-`live_collaboration` and `ui.locale`; the MCP settings are shown but change
-only in the app. Keys and tokens are never shown or changed here. If the app
+`checkpoints.notifications`, `git.auto_init`, `skills.share_with_agents` and
+`ui.locale`; the MCP settings are shown but change only in the app. Keys and tokens are never shown or changed here. If the app
 is open, restart it to pick up an app setting.
 
 `projects list` shows your library projects and the folders you opened in

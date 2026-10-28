@@ -23,6 +23,8 @@ const BY_EXT: Record<string, { Icon: LucideIcon; cls: string }> = {
   json: { Icon: FileJson, cls: "text-yellow-500" },
   md: { Icon: FileType, cls: "text-indigo-400" },
   markdown: { Icon: FileType, cls: "text-indigo-400" },
+  qmd: { Icon: FileType, cls: "text-indigo-400" },
+  rmd: { Icon: FileType, cls: "text-indigo-400" },
   css: { Icon: FileCode, cls: "text-primary" },
   scss: { Icon: FileCode, cls: "text-pink-500" },
   js: { Icon: FileCode, cls: "text-yellow-400" },

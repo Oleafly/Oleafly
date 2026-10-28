@@ -1097,6 +1097,16 @@
         "unknownEntryType": "Неизвестный тип записи библиографии @{{type}}."
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "параметр блока кода Quarto"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "параметр блока кода Calepin"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "Загрузка изображения",
@@ -1555,5 +1565,5 @@
     "keyTaken": "Вариант не может задавать одно и то же имя дважды.",
     "saveFailed": "Не удалось сохранить варианты."
   },
-  "sharedSettingsViewer": "Читатели не могут менять это в общем проекте."
+  "sharedSettingsViewer": "Только владельцы и редакторы могут менять это в общем проекте."
 }

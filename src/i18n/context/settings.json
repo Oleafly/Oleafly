@@ -81,6 +81,7 @@
       "namePlaceholder": "Example display name for a fictional company",
       "saveAnyway": "Button that replaces Save after the model list could not be read from the address. Saves the provider without models.",
       "submitAdd": "Button that creates the new provider",
+      "presetsLabel": "Label above buttons that each fill in the name and address of a well known provider. The provider names on the buttons are not translated.",
       "submitAddAnyway": "Button that replaces Add provider after the model list could not be read from the address. Adds the provider without any models. The person then adds a model by name."
     },
     "instructions": {
@@ -115,7 +116,8 @@
       "badge": {
         "connected": "A remote provider has a working API key saved",
         "notRunning": "A locally installed model server is not answering",
-        "running": "A locally installed model server is up and answering"
+        "running": "A locally installed model server is up and answering",
+        "suggested": "Badge on the provider card the app suggests for this interface language, shown until any provider is set up"
       },
       "docs": "Link to a provider's own documentation website",
       "getKey": "Link that opens the provider's signup page where the user creates an API key",
@@ -403,7 +405,39 @@
         "withDetail": "Joins a failure sentence with the raw tlmgr output that explains it"
       }
     },
-    "sectionName": "Name of the Engines settings section. Also used inside the reset confirmation sentence \"Reset {{sectionName}} settings?\"."
+    "sectionName": "Name of the Engines settings section. Also used inside the reset confirmation sentence \"Reset {{sectionName}} settings?\".",
+    "notebook": {
+      "source": {
+        "system": "Badge: the program was found installed on this computer.",
+        "managed": "Badge: Oleafly downloaded this copy of the program into its own folder."
+      },
+      "active": {
+        "version": "{{tool}} is Quarto or Calepin and {{version}} a version number such as 1.10.19. Keep both verbatim."
+      },
+      "managedIdle": "Shown on the copy Oleafly downloaded when the program is also installed on this computer, so the downloaded copy is not used.",
+      "download": {
+        "optional": "Shown next to the download button when Oleafly already found the program installed on this computer.",
+        "license": "{{license}} is an SPDX license id such as MIT. Keep it verbatim.",
+        "action": "Button that downloads the program. {{tool}} is Quarto or Calepin, {{version}} a version number, {{size}} a download size such as 120 MB.",
+        "actionNoSize": "Button that downloads the program when its size is not known. {{tool}} is Quarto or Calepin."
+      },
+      "removeAria": "Screen reader label of the delete button on the copy Oleafly downloaded. {{tool}} is Quarto or Calepin.",
+      "languages": {
+        "heading": "Heading over the list of programming languages (R, Python, Julia) found on this computer.",
+        "notFound": "Shown in a language row when that language is not installed."
+      },
+      "codeNote": "The Compile menu is the menu on the Compile button in the toolbar. Use the same word for Compile as that button.",
+      "progress": {
+        "verifying": "Install phase: checking the integrity of the download.",
+        "extracting": "Install phase: unpacking the downloaded archive."
+      }
+    },
+    "quarto": {
+      "heading": "Tab and section name. Quarto is a product name. Keep it verbatim."
+    },
+    "calepin": {
+      "heading": "Tab and section name. Calepin is a product name. Keep it verbatim."
+    }
   },
   "gitHosting": {
     "account": {

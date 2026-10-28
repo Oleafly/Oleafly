@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Files, MessageSquare, RadioTower } from "lucide-react";
+import { Files, MessageSquare, MessagesSquare, RadioTower } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { AnalyzedQuery, FacetState } from "@oleafly/search-query";
 import type { ProjectSearchExtension } from "@/components/library/project-search";
@@ -9,6 +9,7 @@ import type { ProjectInfo } from "@/lib/tauri";
 import { ToolbarAction } from "@/components/layout/ToolbarAction";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useFilesStore } from "@/store/files";
+import { useChatRail } from "./chat-rail";
 import { useCollabReady } from "./collab-ready";
 import { useCollabRail } from "./collab-rail";
 import { useCommentsRail } from "./comments-rail";
@@ -58,6 +59,13 @@ const comments = () => import("@/features/collab/comments");
 
 const CommentsPane = lazy(() => comments().then((module) => ({ default: module.CommentsPane })));
 const CommentsKeeper = lazy(() => comments().then((module) => ({ default: module.CommentsKeeper })));
+const suggestions = () => import("@/features/collab/suggestions");
+
+const SuggestionsKeeper = lazy(() => suggestions().then((module) => ({ default: module.SuggestionsKeeper })));
+const chat = () => import("@/features/collab/chat");
+
+const ChatPane = lazy(() => chat().then((module) => ({ default: module.ChatPane })));
+const ChatKeeper = lazy(() => chat().then((module) => ({ default: module.ChatKeeper })));
 const CollabBanners = lazy(() =>
   import("@/features/collab/live/SyncPauseBanner").then((module) => ({ default: module.CollabBanners })),
 );
@@ -134,7 +142,7 @@ export function CollabTreeClashSlot() {
 const NO_CLASHES: ReadonlyMap<string, string> = new Map();
 
 // The renamed-on-disk labels for the whole tree, read once by the tree so
-// each row needs no subscription of its own. Empty while collaboration is off.
+// each row needs no subscription of its own.
 export function useTreeClashLabels(): ReadonlyMap<string, string> {
   const ready = useCollabReady();
   const labels = useTreeClashes((state) => state.labels);
@@ -188,6 +196,8 @@ export function CollabActivitySlot() {
       {shared ? (
         <Suspense fallback={null}>
           <CommentsKeeper />
+          <SuggestionsKeeper />
+          <ChatKeeper />
         </Suspense>
       ) : null}
     </Gate>
@@ -244,6 +254,33 @@ export function CommentsRailIcon({ className }: Readonly<{ className?: string }>
       <MessageSquare aria-hidden className={className} />
       {unread ? (
         <span data-testid="comments-rail-dot" aria-hidden className="pointer-events-none absolute right-0.5 top-0.5 flex size-2">
+          <span className="absolute inline-flex size-full rounded-full bg-primary opacity-75 motion-safe:animate-ping" />
+          <span className="relative inline-flex size-2 rounded-full bg-primary" />
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+export function ChatPanel() {
+  return (
+    <Gate>
+      <ChatPane />
+    </Gate>
+  );
+}
+
+export function chatRailLabel(): string {
+  return useChatRail.getState().unread ? i18n.t(($) => $.collab.chat.titleUnread) : i18n.t(($) => $.collab.chat.title);
+}
+
+export function ChatRailIcon({ className }: Readonly<{ className?: string }>) {
+  const unread = useChatRail((state) => state.unread);
+  return (
+    <>
+      <MessagesSquare aria-hidden className={className} />
+      {unread ? (
+        <span data-testid="chat-rail-dot" aria-hidden className="pointer-events-none absolute right-0.5 top-0.5 flex size-2">
           <span className="absolute inline-flex size-full rounded-full bg-primary opacity-75 motion-safe:animate-ping" />
           <span className="relative inline-flex size-2 rounded-full bg-primary" />
         </span>

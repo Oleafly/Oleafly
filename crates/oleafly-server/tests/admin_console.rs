@@ -86,6 +86,7 @@ struct Seed {
     created_at: i64,
     snapshot_bytes: u64,
     file_bytes: u64,
+    output_bytes: u64,
     members: Vec<AccountId>,
 }
 
@@ -97,6 +98,7 @@ impl Seed {
             created_at,
             snapshot_bytes: 100,
             file_bytes: 0,
+            output_bytes: 0,
             members: Vec::new(),
         }
     }
@@ -125,6 +127,18 @@ async fn seed_project(app: &TestApp, owner: AccountId, seed: Seed) -> SharedProj
             if seed.file_bytes > 0 {
                 let hash = format!("{:064x}", seed.file_bytes);
                 projects::add_blob(conn, id, &hash, seed.file_bytes, seed.created_at)?;
+            }
+            if seed.output_bytes > 0 {
+                conn.execute(
+                    "INSERT INTO project_outputs (project_id, kind, blob_hash, size, compiled_by, compiled_at, main_file) VALUES (?1, 'pdf', ?2, ?3, ?4, ?5, 'main.tex')",
+                    params![
+                        id.to_string(),
+                        format!("{:064x}", seed.output_bytes),
+                        i64::try_from(seed.output_bytes).unwrap_or(i64::MAX),
+                        owner.to_string(),
+                        seed.created_at
+                    ],
+                )?;
             }
             for account in seed.members {
                 projects::grant(
@@ -313,6 +327,7 @@ async fn the_overview_counts_people_devices_projects_and_who_is_online() {
         Seed {
             snapshot_bytes: 1_000,
             file_bytes: 300,
+            output_bytes: 700,
             ..Seed::active("Thesis", 1)
         },
     )
@@ -366,7 +381,7 @@ async fn the_overview_counts_people_devices_projects_and_who_is_online() {
     assert_eq!(counts.people_online, 2);
     let storage = overview.storage.expect("admins see storage");
     assert_eq!(storage.snapshot_bytes, 3_500);
-    assert_eq!(storage.file_bytes, 300);
+    assert_eq!(storage.file_bytes, 1_000);
     assert!(storage.database_bytes > 0);
     assert_eq!(storage.files_location, FilesLocation::Disk);
     assert_eq!(overview.version, env!("CARGO_PKG_VERSION"));
@@ -783,6 +798,7 @@ async fn the_projects_list_describes_each_project() {
         Seed {
             snapshot_bytes: 1_000,
             file_bytes: 250,
+            output_bytes: 400,
             members: vec![editor.account_id],
             ..Seed::active("Thesis", 10 * MINUTE)
         },
@@ -801,7 +817,7 @@ async fn the_projects_list_describes_each_project() {
     assert_eq!(item.owner.email, None);
     assert_eq!(item.status, ProjectStatus::Active);
     assert_eq!(item.member_count, 2);
-    assert_eq!(item.size_bytes, Some(1_250));
+    assert_eq!(item.size_bytes, Some(1_650));
     assert_eq!(item.created_at, 10 * MINUTE);
     assert_eq!(item.last_activity_at, 20 * MINUTE);
     assert_eq!(item.archived_at, None);

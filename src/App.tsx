@@ -14,6 +14,7 @@ import {
   useRef,
   useState,
   type KeyboardEventHandler,
+  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -32,10 +33,10 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
 import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner";
 import { FolderUnavailableBanner } from "@/components/layout/FolderUnavailableBanner";
-import { MainDocumentPicker } from "@/components/open-folder/MainDocumentPicker";
 import { OpenedFolderBanners } from "@/components/open-folder/OpenedFolderBanners";
 import { CollabActivitySlot, CollabSyncPauseSlot } from "@/components/collab/CollabSlots";
 import { ShellCommandsBanner } from "@/components/layout/ShellCommandsBanner";
+import { isNotebookEngine } from "@/lib/notebook-engines";
 import { ZenSession } from "@/components/layout/ZenSession";
 import { ZenCompileCorner, ZenTitleStrip } from "@/components/layout/ZenChrome";
 import { OpenFolderKeeper } from "@/components/open-folder/OpenFolderKeeper";
@@ -60,7 +61,6 @@ import { CommandPalette } from "@/components/layout/CommandPalette";
 import { SearchOmnibar } from "@/components/layout/SearchOmnibar";
 import { GlobalNewProject } from "@/components/library/GlobalNewProject";
 import { SaveAsTemplateHost } from "@/components/library/SaveAsTemplateHost";
-import { CopyIntoLibraryDialog } from "@/components/library/CopyIntoLibraryDialog";
 import { BibtexToolView } from "@/components/tools/BibtexToolView";
 import { TableToolView } from "@/components/tools/TableToolView";
 import { DeadlinesView } from "@/components/deadlines/DeadlinesView";
@@ -128,7 +128,6 @@ import { AssistantOutputsBridge } from "@/components/ai/AssistantOutputsBridge";
 import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
 import { ChatPanel } from "@/components/ai/ChatPanel";
 import { AboutModal } from "@/components/layout/AboutModal";
-import { EnginePickerModal } from "@/components/layout/EnginePickerModal";
 import { expectEngineChoiceOnOpen, takeEngineChoiceOnOpen } from "@/store/engine-picker";
 import { revealPreviewForCompile, togglePreviewPane } from "@/lib/compile-preview";
 import { TinytexGuards } from "@/components/layout/TinytexGuards";
@@ -136,7 +135,6 @@ import { QuitGuard } from "@/components/layout/QuitGuard";
 import { SaveBlockedDialog } from "@/components/layout/SaveBlockedDialog";
 import { OpenFolderStopDialog, useOpenFolderIntake } from "@/components/layout/OpenFolderGuards";
 import { useTemplateLinkIntake } from "@/features/template-link-intake";
-import { QuickActionOffer } from "@/components/layout/QuickActionOffer";
 import { COMPILE_SUCCEEDED_EVENT } from "@/lib/compile-checkpoint";
 import {
   CHECKPOINT_PUBLICATION_EVENT,
@@ -263,11 +261,55 @@ const LiteratureSearchToolView = lazy(() =>
 const TerminalDock = lazy(() =>
   import("@/components/dock/TerminalDock").then((m) => ({ default: memo(m.TerminalDock) })),
 );
+const EnginePickerModal = lazy(() =>
+  import("@/components/layout/EnginePickerModal").then((m) => ({ default: m.EnginePickerModal })),
+);
+const MainDocumentPicker = lazy(() =>
+  import("@/components/open-folder/MainDocumentPicker").then((m) => ({ default: m.MainDocumentPicker })),
+);
+const CopyIntoLibraryDialog = lazy(() =>
+  import("@/components/library/CopyIntoLibraryDialog").then((m) => ({ default: m.CopyIntoLibraryDialog })),
+);
+const QuickActionOffer = lazy(() =>
+  import("@/components/layout/QuickActionOffer").then((m) => ({ default: m.QuickActionOffer })),
+);
+const CodeExecutionBanner = lazy(() =>
+  import("@/components/layout/CodeExecutionBanner").then((m) => ({ default: m.CodeExecutionBanner })),
+);
+const TypstCjkFontBanner = lazy(() =>
+  import("@/components/layout/TypstCjkFontBanner").then((m) => ({ default: m.TypstCjkFontBanner })),
+);
+
+function CodeExecutionSlot() {
+  const blocked = useFilesStore(
+    (state) => state.projectId !== null && isNotebookEngine(state.engine) && !state.engine.allow_shell_escape,
+  );
+  if (!blocked) return null;
+  return (
+    <Suspense fallback={null}>
+      <CodeExecutionBanner />
+    </Suspense>
+  );
+}
+
+function TypstCjkFontSlot() {
+  const typst = useFilesStore((state) => state.projectId !== null && state.engine.source_format === "typst");
+  if (!typst) return null;
+  return (
+    <Suspense fallback={null}>
+      <TypstCjkFontBanner />
+    </Suspense>
+  );
+}
 
 const WorkspaceSidebar = memo(Sidebar);
 const WorkspaceEditor = memo(Editor);
 const WorkspacePreview = memo(PreviewPane);
 const WorkspaceAssistant = memo(ChatPanel);
+
+function LazyModals({ children }: Readonly<{ children: ReactNode }>) {
+  return <Suspense fallback={null}>{children}</Suspense>;
+}
 
 // One-chunk-fetch placeholder for the lazy editor/preview surfaces: quiet,
 // centered, and shaped like the boot progress card so loading reads as one
@@ -896,7 +938,9 @@ function AppContent() {
         <CommandPalette />
         <SearchOmnibar />
         <GlobalNewProject />
-        <CopyIntoLibraryDialog />
+        <LazyModals>
+          <CopyIntoLibraryDialog />
+        </LazyModals>
         <SaveAsTemplateHost />
         <Suspense fallback={null}>
           {homePage === "pdf-import" && <PdfImportView />}
@@ -914,12 +958,16 @@ function AppContent() {
           {homePage === "tools" && <LatexToolsView />}
         </Suspense>
         <ExternalToolApprovals />
-        <EnginePickerModal />
+        <LazyModals>
+          <EnginePickerModal />
+        </LazyModals>
         <TinytexGuards />
         <QuitGuard />
         <SaveBlockedDialog />
         <OpenFolderStopDialog />
-        <QuickActionOffer />
+        <LazyModals>
+          <QuickActionOffer />
+        </LazyModals>
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && (
           <Suspense fallback={null}>
@@ -957,6 +1005,8 @@ function AppContent() {
         <CollabSyncPauseSlot />
         <CollabActivitySlot />
         <ShellCommandsBanner />
+        <CodeExecutionSlot />
+        <TypstCjkFontSlot />
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <ErrorBoundary
             resetKey={projectId}
@@ -1172,17 +1222,23 @@ function AppContent() {
         <CommandPalette />
         <SearchOmnibar />
         <GlobalNewProject />
-        <CopyIntoLibraryDialog />
+        <LazyModals>
+          <CopyIntoLibraryDialog />
+        </LazyModals>
         <SaveAsTemplateHost />
         <AssistantOutputsBridge />
         <ExternalToolApprovals />
-        <EnginePickerModal />
-        <MainDocumentPicker />
+        <LazyModals>
+          <EnginePickerModal />
+          <MainDocumentPicker />
+        </LazyModals>
         <TinytexGuards />
         <QuitGuard />
         <SaveBlockedDialog />
         <OpenFolderStopDialog />
-        <QuickActionOffer />
+        <LazyModals>
+          <QuickActionOffer />
+        </LazyModals>
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         {chatFloating && !zen && (
           <Suspense fallback={null}>

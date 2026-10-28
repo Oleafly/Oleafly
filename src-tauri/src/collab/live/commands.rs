@@ -24,10 +24,6 @@ pub async fn collab_live_start(
     let info = start(state.inner(), host, &project_id)
         .await
         .map_err(CollabCommandError::from)?;
-    if !crate::collab::switch::enabled() {
-        stop(&project_id).await;
-        return Err(crate::collab::switch::turned_off());
-    }
     settle_started(app, project_id).await;
     Ok(info)
 }

@@ -179,6 +179,15 @@ impl Budgeted {
         self.replay.finish()
     }
 
+    pub fn into_parts(self) -> (Replay, Held) {
+        (
+            self.replay,
+            Held {
+                reserved: self.reserved,
+            },
+        )
+    }
+
     // Exports the document and keeps as much of its reservation as the
     // exported bytes need, for the caller to hold while it stores them.
     fn exported(self) -> Option<(Vec<u8>, Reserved)> {
@@ -189,6 +198,25 @@ impl Budgeted {
         let bytes = replay.finish()?;
         reserved.shrink_to(bytes.len() as u64);
         Some((bytes, reserved))
+    }
+}
+
+pub struct Held {
+    reserved: Reserved,
+}
+
+impl Held {
+    pub fn bytes(&self) -> u64 {
+        self.reserved.bytes
+    }
+
+    pub fn grow(&mut self, snapshots: &Snapshots, bytes: u64) -> bool {
+        let Some(mut more) = snapshots.reserve(bytes) else {
+            return false;
+        };
+        self.reserved.bytes += more.bytes;
+        more.bytes = 0;
+        true
     }
 }
 

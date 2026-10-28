@@ -1,0 +1,192 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "Chargement",
+    "loadFailed": "Oleafly n'a pas pu joindre le serveur.",
+    "retry": "Réessayer",
+    "dismiss": "Ignorer",
+    "projects": "Projets",
+    "account": "Compte",
+    "signOut": "Se déconnecter",
+    "signOutFailed": "Impossible de vous déconnecter. Réessayez.",
+    "cancel": "Annuler"
+  },
+  "signIn": {
+    "title": "Se connecter à Oleafly",
+    "description": "Connectez-vous avec le compte auquel un coauteur a donné accès au projet.",
+    "action": "Se connecter"
+  },
+  "projects": {
+    "title": "Partagés avec vous",
+    "emptyTitle": "Rien n'est encore partagé avec vous",
+    "emptyDescription": "Quand quelqu'un partage un projet avec votre compte, il apparaît ici.",
+    "untitled": "Projet sans titre",
+    "ownedBy": "Propriétaire : {{name}}",
+    "loadFailed": "Impossible de charger vos projets.",
+    "list": "Projets"
+  },
+  "roles": {
+    "owner": "Propriétaire",
+    "editor": "Éditeur",
+    "reviewer": "Relecteur",
+    "commenter": "Commentateur",
+    "viewer": "Lecteur",
+    "unknown": "Lecture seule"
+  },
+  "connection": {
+    "connecting": "Connexion en cours",
+    "online": "Connecté",
+    "offline": "Hors ligne",
+    "offlineBanner": "Vous êtes hors ligne. Vos modifications sont conservées et seront envoyées au retour de la connexion.",
+    "ended": "Déconnecté"
+  },
+  "ended": {
+    "signedOutTitle": "Vous êtes déconnecté",
+    "signedOutDescription": "Reconnectez-vous pour continuer à travailler sur ce projet.",
+    "noAccessTitle": "Vous ne pouvez pas ouvrir ce projet",
+    "noAccessDescription": "Il n'a pas été partagé avec votre compte, ou votre accès a été retiré.",
+    "stoppedTitle": "Déconnecté",
+    "stoppedDescription": "Rechargez la page pour vous reconnecter."
+  },
+  "access": {
+    "changed": "Votre nouveau rôle dans ce projet : {{role}}."
+  },
+  "discarded": {
+    "read_only": "Vos dernières modifications n'ont pas été enregistrées, car vous ne pouvez plus modifier ce projet.",
+    "refused": "Vos dernières modifications n'ont pas pu être enregistrées."
+  },
+  "views": {
+    "label": "Volets",
+    "files": "Fichiers",
+    "source": "Source",
+    "pdf": "PDF",
+    "comments": "Commentaires",
+    "chat": "Chat"
+  },
+  "presence": {
+    "label": "Personnes présentes"
+  },
+  "files": {
+    "title": "Fichiers",
+    "empty": "Ce projet n'a encore aucun fichier.",
+    "tree": "Fichiers du projet"
+  },
+  "source": {
+    "noFileTitle": "Ouvrez un fichier",
+    "noFileDescription": "Choisissez un fichier dans la liste pour le lire.",
+    "opening": "Ouverture du fichier {{path}}",
+    "removed": "{{path}} a été retiré du projet.",
+    "readOnly": "Lecture seule",
+    "readOnlyHint": "Votre rôle permet de lire ce projet, mais pas de le modifier.",
+    "modeLabel": "Mode d'édition",
+    "editing": "Modification",
+    "suggesting": "Suggestion",
+    "suggestingHint": "Vos modifications sont des suggestions qu'un propriétaire ou un éditeur examine.",
+    "comment": "Commenter",
+    "commentHint": "Sélectionnez du texte pour le commenter.",
+    "binary": "Ce fichier ne peut pas être affiché dans le navigateur.",
+    "blobFailed": "Impossible de charger le fichier."
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "Compilé par {{name}}, {{time}}",
+    "emptyTitle": "Pas encore de PDF",
+    "emptyDescription": "Le PDF apparaît ici une fois que quelqu'un a compilé le projet dans l'application Oleafly.",
+    "loading": "Chargement du PDF",
+    "failed": "Impossible de charger le PDF.",
+    "zoomIn": "Zoom avant",
+    "zoomOut": "Zoom arrière",
+    "fitWidth": "Ajuster à la largeur",
+    "download": "Télécharger",
+    "zoom": "{{percent}} %"
+  },
+  "comments": {
+    "emptyTitle": "Aucun commentaire ni suggestion",
+    "emptyCanComment": "Sélectionnez du texte dans la source et choisissez Commenter pour lancer une discussion.",
+    "emptyReadOnly": "Les commentaires et suggestions de ce projet apparaissent ici.",
+    "newComment": "Nouveau commentaire",
+    "placeholder": "Ajoutez un commentaire",
+    "submit": "Commenter",
+    "reply": "Répondre",
+    "replyPlaceholder": "Votre réponse",
+    "replyLabel": "Répondre à cette discussion",
+    "edit": "Modifier",
+    "editLabel": "Modifier le commentaire",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "deleteTitle": "Supprimer ce commentaire ?",
+    "deleteDescription": "Cette action est définitive.",
+    "messageActions": "Actions du commentaire",
+    "resolve": "Résoudre",
+    "reopen": "Rouvrir",
+    "resolvedBy": "Résolu par {{name}}",
+    "deleted": "Commentaire supprimé",
+    "edited": "modifié",
+    "anchorLost": "Le texte de ce commentaire a été supprimé.",
+    "showInSource": "Afficher dans la source",
+    "thread": "Commentaire écrit par {{name}}",
+    "hideResolved": "Masquer les résolus",
+    "resolvedCount_one": "{{count}} résolu",
+    "resolvedCount_many": "{{count}} résolus",
+    "resolvedCount_other": "{{count}} résolus"
+  },
+  "suggestions": {
+    "inserted": "Ajouté",
+    "deleted": "Supprimé",
+    "accept": "Accepter",
+    "reject": "Refuser",
+    "withdraw": "Retirer",
+    "acceptAll": "Tout accepter",
+    "rejectAll": "Tout refuser",
+    "pending_one": "{{count}} suggestion",
+    "pending_many": "{{count}} suggestions",
+    "pending_other": "{{count}} suggestions",
+    "card": "Suggestion proposée par {{name}}",
+    "lineBreak": "Saut de ligne"
+  },
+  "chat": {
+    "emptyTitle": "Aucun message pour l'instant",
+    "emptyDescription": "Les messages publiés ici sont visibles par tout le monde dans le projet.",
+    "placeholder": "Écrivez un message",
+    "label": "Message",
+    "send": "Envoyer",
+    "readOnly": "Vous pouvez lire le chat. Les lecteurs ne peuvent pas y écrire.",
+    "delete": "Supprimer le message",
+    "clear": "Vider le chat",
+    "clearTitle": "Vider le chat pour tout le monde ?",
+    "clearDescription": "Tout le monde dans le projet perd ces messages.",
+    "messages": "Messages du chat"
+  },
+  "people": {
+    "you": "Vous",
+    "someone": "Quelqu'un",
+    "unverified": "Auteur non vérifié"
+  },
+  "errors": {
+    "offline": "Vous êtes hors ligne. Réessayez une fois connecté.",
+    "generic": "Le serveur a refusé cette modification.",
+    "suggestion_not_found": "Cette suggestion a déjà été traitée.",
+    "suggestion_not_yours": "Vous ne pouvez retirer que vos propres suggestions.",
+    "suggestion_role": "Votre rôle ne permet ni de faire ni d'examiner des suggestions.",
+    "chat_role": "Votre rôle ne permet pas d'écrire dans le chat.",
+    "comment_not_live": "Les commentaires ne sont pas disponibles pour le moment.",
+    "comment_not_yours": "Vous ne pouvez modifier que vos propres commentaires.",
+    "comment_off_server": "Les commentaires sont désactivés sur ce serveur.",
+    "comment_off_project": "Les commentaires sont désactivés pour ce projet.",
+    "comment_viewer": "Les lecteurs ne peuvent pas commenter.",
+    "comment_someone_replied": "Quelqu'un a répondu, ce commentaire ne peut donc pas être supprimé.",
+    "comment_message_deleted": "Ce commentaire a été supprimé.",
+    "comment_selection_changed": "Le texte a changé pendant que vous écriviez. Sélectionnez-le à nouveau.",
+    "comment_too_long": "Le commentaire est trop long.",
+    "comment_empty": "Écrivez d'abord quelque chose.",
+    "rate_limited": "Trop de modifications à la fois. Attendez un instant, puis réessayez.",
+    "too_large": "C'est trop volumineux pour être envoyé.",
+    "project_too_large": "Ce projet est trop volumineux pour être ouvert dans un navigateur.",
+    "server_busy": "Le serveur est occupé. Réessayez dans un instant.",
+    "not_open": "Ouvrez le fichier avant de le modifier.",
+    "cross_site": "Cette requête ne vient pas de l'application web Oleafly de ce serveur. Rechargez la page, puis réessayez.",
+    "conflict": "Cela entre en conflit avec une modification faite par quelqu'un d'autre. Réessayez.",
+    "account_storage_full": "Le compte du propriétaire du projet n'a plus d'espace de stockage sur ce serveur.",
+    "too_many_uploads": "Vous avez envoyé trop de fichiers au cours de la dernière heure. Réessayez plus tard."
+  }
+}

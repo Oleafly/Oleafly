@@ -24,7 +24,7 @@ const MAX_FILES = 40;
 const MAX_FILE_CHARS = 80_000;
 const MAX_QUERY_TOKENS = 32;
 const MAX_TOKEN_HITS = 8;
-const INDEXABLE = /\.(?:tex|typ|md|markdown|bib)$/i;
+const INDEXABLE = /\.(?:tex|typ|md|markdown|qmd|rmd|bib)$/i;
 
 export function tokenize(s: string): string[] {
   return s

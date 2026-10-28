@@ -97,7 +97,20 @@
     "installPackages_one": "Find and install {{name}}",
     "installPackages_other": "Find and install {{count}} files",
     "downloadTypst": "Download Typst {{version}}",
-    "useTypst": "Use Typst {{version}}"
+    "useTypst": "Use Typst {{version}}",
+    "installTool": "Install {{tool}} {{version}}",
+    "installToolSize": "Install {{tool}} {{version}} ({{size}})",
+    "engineSettings": "Open engine settings"
+  },
+  "html": {
+    "builtTitle": "Built as a web page",
+    "builtDetail": "Built at {{time}}. Web pages open in your browser.",
+    "building": "Building the web page",
+    "buildingDetail": "When it's done, you can open it in your browser.",
+    "pendingTitle": "This document builds to a web page",
+    "pendingDetail": "Compile it, then open it in your browser.",
+    "open": "Open in browser",
+    "compile": "Compile"
   },
   "stale": {
     "badge": "Stale",

@@ -84,13 +84,11 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
-  useSettingsStore.setState({ liveCollaboration: false });
   useCollabLiveStore.setState({ projectId: null, share: null, status: null, pending: 0, peers: {}, members: [] });
 });
 
 describe("TopToolbar collaboration items", () => {
   it("keeps the avatars left of Recompile and puts Share right after version history", async () => {
-    useSettingsStore.setState({ liveCollaboration: true });
     const view = renderToolbar();
     const share = await screen.findByRole("button", { name: enCollab.share.button }, LAZY);
     await waitFor(() => expect(view.container.querySelector('[data-toolbar-item="collab"]')).not.toBeNull(), LAZY);
@@ -109,7 +107,6 @@ describe("TopToolbar collaboration items", () => {
   });
 
   it("has no sync state button", async () => {
-    useSettingsStore.setState({ liveCollaboration: true });
     renderToolbar();
     await screen.findByRole("button", { name: enCollab.share.button }, LAZY);
     for (const words of Object.values(enCollab.sync)) expect(screen.queryByRole("button", { name: words })).toBeNull();
@@ -117,7 +114,6 @@ describe("TopToolbar collaboration items", () => {
   });
 
   it("keeps Share next to version history when nobody else is here", async () => {
-    useSettingsStore.setState({ liveCollaboration: true });
     useCollabLiveStore.setState({ share: null, status: null, peers: {}, members: [] });
     const view = renderToolbar();
     await screen.findByRole("button", { name: enCollab.share.button }, LAZY);
@@ -127,21 +123,8 @@ describe("TopToolbar collaboration items", () => {
   });
 
   it("opens the share dialog from anywhere that asks for it", async () => {
-    useSettingsStore.setState({ liveCollaboration: true });
     renderToolbar();
     act(() => useShareDialog.getState().openFor("grant"));
     expect(await screen.findByRole("dialog")).toHaveTextContent("grant");
-  });
-
-  it("adds nothing to the toolbar while live collaboration is off", async () => {
-    const view = renderToolbar();
-    act(() => useShareDialog.getState().openFor("grant"));
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(view.container.querySelector('[data-toolbar-item="collab"]')).toBeNull();
-    expect(view.container.querySelector('[data-toolbar-item="share"]')).toBeNull();
-    expect(screen.queryByRole("button", { name: enCollab.share.button })).toBeNull();
-    expect(mocks.dialog).not.toHaveBeenCalled();
   });
 });

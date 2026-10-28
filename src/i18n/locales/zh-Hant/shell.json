@@ -435,7 +435,19 @@
       "help": "變體會把自己的值傳給 sys.inputs，例如草稿版或定稿版建置。你選擇的變體只會儲存在這台電腦上。可在文件設定中新增或編輯變體。",
       "none": "無變體"
     },
-    "sharedViewer": "在共享專案中，檢視者無法變更這些設定。"
+    "typEngine": {
+      "title": "引擎（本專案）",
+      "help": "Typst 會依文件原樣編譯。Calepin 還會執行其中的程式碼，並把結果放進 PDF。",
+      "typst": "Typst <note>[內建]</note>",
+      "calepin": "Calepin <note>[執行程式碼]</note>"
+    },
+    "code": {
+      "title": "程式碼（這台電腦）",
+      "help": "Quarto 與 Calepin 可以執行這個專案中的 R、Python 與 Julia 程式碼。程式碼會以你的權限執行，因此只對你信任的專案允許。這項選擇只適用於這台電腦。",
+      "off": "關閉",
+      "run": "在這台電腦上執行程式碼"
+    },
+    "sharedViewer": "在共享專案中，只有擁有者和編輯者可以變更這些設定。"
   },
   "datePicker": {
     "placeholder": "選擇日期"
@@ -501,6 +513,18 @@
   "shellCommands": {
     "allow": "允許外部命令",
     "banner": "此文件在編譯時會執行外部命令，但此專案封鎖了這些命令。只有在你信任專案中的每個檔案時才允許。"
+  },
+  "codeExecution": {
+    "allow": "在此專案中允許程式碼",
+    "needed": "這份文件需要執行其中的程式碼才能建置，但此專案的程式碼已關閉。只有在你信任專案中的每個檔案時，才允許程式碼。",
+    "skipped": "此專案的程式碼已關閉，因此這份文件中的程式碼沒有執行。只有在你信任專案中的每個檔案時，才允許程式碼。",
+    "storedResults": "此專案的程式碼已關閉，因此 PDF 顯示的是先前執行時儲存的程式碼結果。只有在你信任專案中的每個檔案時，才允許程式碼。"
+  },
+  "typstCjkFonts": {
+    "message": "此文件包含中文、日文或韓文文字，但這台電腦上沒有能顯示它們的字型，所以 PDF 中缺少這些文字。",
+    "download": "下載字型",
+    "downloadSize": "下載字型（{{size}}）",
+    "downloading": "正在下載字型"
   },
   "errorBoundary": {
     "copyDiagnostics": "複製診斷資訊",
@@ -622,6 +646,8 @@
       "standalone": "獨立圖形",
       "typst": "Typst",
       "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Calepin 筆記本",
       "unknown": "其他"
     },
     "reason": {
@@ -829,10 +855,6 @@
       "latexTools": {
         "description": "顯示 Oleafly 工具庫與各項工具（PDF 匯入、方程式、表格、BibTeX、實驗與文獻搜尋、截止日期）以及它們的斜線指令。仍在 beta 階段，預設為關閉。",
         "label": "LaTeX 工具"
-      },
-      "liveCollaboration": {
-        "description": "透過你或你的團隊架設的協作伺服器，與其他人共同編輯專案。會在「設定」中新增「協作」分區。仍在 beta 階段，預設為關閉。",
-        "label": "即時協作"
       },
       "researchTasks": {
         "description": "代理程式會在專案的副本中自行運作，並把修改留給你審閱。極不穩定：執行可能卡住、失敗，或留下需要手動處理的修改，而且全程都會用掉你的供應商額度。會在「設定」中新增「研究」分區。關閉後會停止所有執行中的任務。預設為關閉，開啟後風險自負。",

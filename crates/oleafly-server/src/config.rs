@@ -52,6 +52,37 @@ const S3_VARIABLES: [&str; 6] = [
     "OLEAFLY_S3_SECRET_ACCESS_KEY_FILE",
 ];
 pub const DEFAULT_S3_REGION: &str = "us-east-1";
+pub const OPEN_SIGNUP_STORAGE_MB: u64 = 100;
+pub const OPEN_SIGNUP_PROJECTS: u32 = 50;
+pub const OPEN_SIGNUP_UPLOADS_PER_HOUR: u32 = 300;
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct AccountQuotas {
+    pub storage_mb: Option<u64>,
+    pub projects: Option<u32>,
+    pub uploads_per_hour: Option<u32>,
+}
+
+impl AccountQuotas {
+    pub fn sentence(&self) -> Option<String> {
+        let mut parts = Vec::new();
+        if let Some(storage) = self.storage_mb {
+            parts.push(format!("store {storage} MB"));
+        }
+        if let Some(projects) = self.projects {
+            parts.push(format!("own {projects} projects"));
+        }
+        if let Some(uploads) = self.uploads_per_hour {
+            parts.push(format!("make {uploads} uploads an hour"));
+        }
+        let listed = match parts.as_slice() {
+            [] => return None,
+            [only] => only.clone(),
+            [first @ .., last] => format!("{} and {last}", first.join(", ")),
+        };
+        Some(format!("Each account may {listed}."))
+    }
+}
 
 #[derive(Clone)]
 pub enum ProviderConfig {
@@ -225,6 +256,9 @@ pub struct ServerConfig {
     pub mail_from: Option<String>,
     pub blob_store: BlobStoreConfig,
     pub limits: Limits,
+    pub open_signup: bool,
+    pub quotas: AccountQuotas,
+    pub web: bool,
     pub sign_in: SignInLimits,
     pub behind_proxy: bool,
     pub proxy_hops: u8,
@@ -355,6 +389,25 @@ impl ServerConfig {
                 "OLEAFLY_MAX_FILE_MB cannot be larger than OLEAFLY_MAX_PROJECT_MB.",
             ));
         }
+        let open_signup = source.flag("OLEAFLY_OPEN_SIGNUP", false)?;
+        let quotas = AccountQuotas {
+            storage_mb: quota(
+                &source,
+                "OLEAFLY_ACCOUNT_STORAGE_MB",
+                open_signup.then_some(OPEN_SIGNUP_STORAGE_MB),
+            )?,
+            projects: quota(
+                &source,
+                "OLEAFLY_MAX_PROJECTS_PER_ACCOUNT",
+                open_signup.then_some(OPEN_SIGNUP_PROJECTS),
+            )?,
+            uploads_per_hour: quota(
+                &source,
+                "OLEAFLY_UPLOADS_PER_HOUR",
+                open_signup.then_some(OPEN_SIGNUP_UPLOADS_PER_HOUR),
+            )?,
+        };
+        let web = source.flag("OLEAFLY_WEB", false)?;
         let sign_in = parse_sign_in_limits(&source)?;
         let behind_proxy = source.flag("OLEAFLY_BEHIND_PROXY", false)?;
         let proxy_hops = source.number("OLEAFLY_PROXY_HOPS", 1u8)?;
@@ -429,6 +482,11 @@ impl ServerConfig {
                 broad_proxies.join(", ")
             )));
         }
+        if web && !cfg!(feature = "web") {
+            startup_notes.push(StartupNote::Warning(
+                "OLEAFLY_WEB is true, but this build of Oleafly Server has no browser app, so browser access stays off. Use the official image or build with the web feature.".to_string(),
+            ));
+        }
         let poll_hold_seconds =
             source.number("OLEAFLY_POLL_HOLD_SECONDS", DEFAULT_POLL_HOLD_SECONDS)?;
         if poll_hold_seconds > MAX_POLL_HOLD_SECONDS {
@@ -458,6 +516,9 @@ impl ServerConfig {
             mail_from,
             blob_store,
             limits,
+            open_signup,
+            quotas,
+            web,
             sign_in,
             behind_proxy,
             proxy_hops,
@@ -478,6 +539,22 @@ impl ServerConfig {
 
     pub fn path_prefix(&self) -> &str {
         self.public_url.path().trim_end_matches('/')
+    }
+
+    pub fn web_enabled(&self) -> bool {
+        cfg!(feature = "web") && self.web
+    }
+
+    pub fn sign_up_note(&self) -> String {
+        let mode = if self.open_signup {
+            "Open sign-up is on, so anyone who signs in gets an account as a member."
+        } else {
+            "Open sign-up is off, so only people the allowlist, a domain rule or an invitation lets in get an account."
+        };
+        match self.quotas.sentence() {
+            Some(limits) => format!("{mode} {limits}"),
+            None => mode.to_string(),
+        }
     }
 
     pub fn require_sign_in(&self) -> Result<(), ConfigError> {
@@ -510,6 +587,20 @@ pub fn normalize_setup_code(code: &str) -> String {
 
 fn read_secret_file(path: &Path) -> std::io::Result<String> {
     std::fs::read_to_string(path)
+}
+
+fn quota<T>(
+    source: &Source<'_>,
+    name: &str,
+    open_default: Option<T>,
+) -> Result<Option<T>, ConfigError>
+where
+    T: std::str::FromStr + PartialOrd + From<u8>,
+{
+    if source.is_set(name) {
+        return source.number(name, T::from(1u8)).map(Some);
+    }
+    Ok(open_default)
 }
 
 const DEFAULT_SNAPSHOT_MEMORY_MB: u64 = 1024;
@@ -1263,6 +1354,9 @@ impl fmt::Debug for ServerConfig {
                 "max_members_per_project",
                 &self.limits.max_members_per_project,
             )
+            .field("open_signup", &self.open_signup)
+            .field("quotas", &self.quotas)
+            .field("web", &self.web)
             .field("sign_in", &self.sign_in)
             .field("behind_proxy", &self.behind_proxy)
             .field("proxy_hops", &self.proxy_hops)
@@ -2596,5 +2690,95 @@ mod tests {
         assert!(text.contains("lab-bucket"));
         assert!(text.contains("thesis-files"));
         assert!(text.contains("us-east-1"));
+    }
+
+    #[test]
+    fn account_quotas_apply_by_default_only_with_open_sign_up() {
+        let closed = load(&[BASE]).unwrap();
+        assert!(!closed.open_signup);
+        assert_eq!(closed.quotas, AccountQuotas::default());
+        assert_eq!(
+            closed.sign_up_note(),
+            "Open sign-up is off, so only people the allowlist, a domain rule or an invitation lets in get an account."
+        );
+        let open = load(&[BASE, ("OLEAFLY_OPEN_SIGNUP", "true")]).unwrap();
+        assert!(open.open_signup);
+        assert_eq!(
+            open.quotas,
+            AccountQuotas {
+                storage_mb: Some(100),
+                projects: Some(50),
+                uploads_per_hour: Some(300),
+            }
+        );
+        assert_eq!(
+            open.sign_up_note(),
+            "Open sign-up is on, so anyone who signs in gets an account as a member. Each account may store 100 MB, own 50 projects and make 300 uploads an hour."
+        );
+        let tuned = load(&[
+            BASE,
+            ("OLEAFLY_OPEN_SIGNUP", "TRUE"),
+            ("OLEAFLY_ACCOUNT_STORAGE_MB", "2048"),
+            ("OLEAFLY_UPLOADS_PER_HOUR", "500"),
+        ])
+        .unwrap();
+        assert_eq!(
+            tuned.quotas,
+            AccountQuotas {
+                storage_mb: Some(2048),
+                projects: Some(50),
+                uploads_per_hour: Some(500),
+            }
+        );
+        let limited = load(&[BASE, ("OLEAFLY_MAX_PROJECTS_PER_ACCOUNT", "3")]).unwrap();
+        assert_eq!(
+            limited.quotas,
+            AccountQuotas {
+                projects: Some(3),
+                ..AccountQuotas::default()
+            }
+        );
+        assert!(limited
+            .sign_up_note()
+            .ends_with("Each account may own 3 projects."));
+        assert!(limited.ignored_settings.is_empty());
+    }
+
+    #[test]
+    fn browser_access_is_off_unless_asked_for_and_built_in() {
+        let off = load(&[BASE]).unwrap();
+        assert!(!off.web);
+        assert!(!off.web_enabled());
+        let on = load(&[BASE, ("OLEAFLY_WEB", "true")]).unwrap();
+        assert!(on.web);
+        assert_eq!(on.web_enabled(), cfg!(feature = "web"));
+        let warned = on
+            .startup_notes
+            .iter()
+            .any(|note| matches!(note, StartupNote::Warning(text) if text.contains("OLEAFLY_WEB")));
+        assert_eq!(warned, !cfg!(feature = "web"));
+        assert!(on.ignored_settings.is_empty());
+        assert_eq!(
+            load_err(&[BASE, ("OLEAFLY_WEB", "on")]).variable,
+            "OLEAFLY_WEB"
+        );
+    }
+
+    #[test]
+    fn a_quota_or_the_sign_up_switch_that_does_not_parse_names_its_setting() {
+        assert_eq!(
+            load_err(&[BASE, ("OLEAFLY_OPEN_SIGNUP", "yes")]).variable,
+            "OLEAFLY_OPEN_SIGNUP"
+        );
+        for name in [
+            "OLEAFLY_ACCOUNT_STORAGE_MB",
+            "OLEAFLY_MAX_PROJECTS_PER_ACCOUNT",
+            "OLEAFLY_UPLOADS_PER_HOUR",
+        ] {
+            for value in ["0", "-1", "lots"] {
+                let error = load_err(&[BASE, ("OLEAFLY_OPEN_SIGNUP", "true"), (name, value)]);
+                assert_eq!(error.variable, name, "{name}={value}");
+            }
+        }
     }
 }

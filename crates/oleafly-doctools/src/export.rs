@@ -19,6 +19,7 @@ pub fn export_formats(engine: Engine) -> &'static [&'static str] {
         }
         Engine::Typst => &["tex", "docx", "html", "md", "txt", "epub"],
         Engine::Markdown => &["docx", "html", "txt", "pptx", "epub", "typst", "tex"],
+        Engine::Quarto | Engine::Calepin => &[],
     }
 }
 
@@ -240,5 +241,7 @@ mod tests {
         assert!(export_formats(Engine::Typst).contains(&"tex"));
         assert!(!export_formats(Engine::Typst).contains(&"pptx"));
         assert!(export_formats(Engine::Markdown).contains(&"pptx"));
+        assert!(export_formats(Engine::Quarto).is_empty());
+        assert!(export_formats(Engine::Calepin).is_empty());
     }
 }

@@ -4,14 +4,17 @@ import {
   collabCompileBarrier,
   collabDocumentSession,
   collabProjectReadOnly,
+  collabSettingsLocked,
   collabVisualReadOnly,
   collabHoldsDocument,
   installCollabEditorPort,
+  installReviewNotice,
+  noteUnreviewedSuggestions,
   useCollabEditorGate,
 } from "./collab-live-bridge";
 
 afterEach(() => {
-  useCollabEditorGate.setState({ projectId: null, viewer: false });
+  useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false });
 });
 
 describe("collab live bridge", () => {
@@ -74,5 +77,34 @@ describe("collab live bridge", () => {
     expect(collabProjectReadOnly("project")).toBe(true);
     expect(collabProjectReadOnly("other")).toBe(false);
     expect(collabProjectReadOnly(null)).toBe(false);
+  });
+
+  it("locks shared settings and files for every role that can't edit, while a reviewer can still type", () => {
+    useCollabEditorGate.setState({ projectId: "project", viewer: false, locked: true });
+    expect(collabProjectReadOnly("project")).toBe(false);
+    expect(collabSettingsLocked("project")).toBe(true);
+    expect(collabSettingsLocked("other")).toBe(false);
+    useCollabEditorGate.setState({ viewer: true, locked: true });
+    expect(collabProjectReadOnly("project")).toBe(true);
+    useCollabEditorGate.setState({ viewer: false, locked: false });
+    expect(collabSettingsLocked("project")).toBe(false);
+  });
+
+  it("passes a compile or export to the installed review notice only", () => {
+    const notice = vi.fn();
+    noteUnreviewedSuggestions("project", "compile");
+    const uninstall = installReviewNotice(notice);
+    noteUnreviewedSuggestions("project", "export");
+    noteUnreviewedSuggestions(null, "compile");
+    expect(notice).toHaveBeenCalledTimes(1);
+    expect(notice).toHaveBeenCalledWith("project", "export");
+    const newer = vi.fn();
+    const uninstallNewer = installReviewNotice(newer);
+    uninstall();
+    noteUnreviewedSuggestions("project", "compile");
+    expect(newer).toHaveBeenCalledWith("project", "compile");
+    uninstallNewer();
+    noteUnreviewedSuggestions("project", "compile");
+    expect(newer).toHaveBeenCalledTimes(1);
   });
 });

@@ -46,6 +46,8 @@ describe("compilerLabel", () => {
     expect(compilerLabel(template("latex", "luatex"), stubT)).toBe("LuaLaTeX");
     expect(compilerLabel(template("typst", "typst"), stubT)).toBe("Typst");
     expect(compilerLabel(template("markdown", "markdown"), stubT)).toBe("Pandoc");
+    expect(compilerLabel(template("quarto", "quarto"), stubT)).toBe("Quarto");
+    expect(compilerLabel(template("calepin", "calepin"), stubT)).toBe("Calepin");
     expect(compilerLabel(template("unknown", "unknown"), stubT)).toBe("compiler.unknown");
   });
 

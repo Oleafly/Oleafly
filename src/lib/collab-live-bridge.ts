@@ -15,12 +15,14 @@ export interface CollabEditorPort {
 interface CollabEditorGate {
   projectId: string | null;
   viewer: boolean;
+  locked: boolean;
   connecting: boolean;
 }
 
 export const useCollabEditorGate = create<CollabEditorGate>(() => ({
   projectId: null,
   viewer: false,
+  locked: false,
   connecting: false,
 }));
 
@@ -43,6 +45,21 @@ export function collabHoldsDocument(path: string): boolean {
 
 export async function collabCompileBarrier(projectId: string | null): Promise<void> {
   if (projectId && port) await port.flush(projectId);
+}
+
+export type ReviewAction = "compile" | "export";
+
+let reviewNotice: ((projectId: string, action: ReviewAction) => void) | null = null;
+
+export function installReviewNotice(next: (projectId: string, action: ReviewAction) => void): () => void {
+  reviewNotice = next;
+  return () => {
+    if (reviewNotice === next) reviewNotice = null;
+  };
+}
+
+export function noteUnreviewedSuggestions(projectId: string | null, action: ReviewAction): void {
+  if (projectId) reviewNotice?.(projectId, action);
 }
 
 // Called by the files store before it saves and leaves a project.
@@ -73,7 +90,7 @@ export function useCollabVisualReadOnly(projectId: string | null): boolean {
 }
 
 const settingsLocked = (gate: CollabEditorGate, projectId: string | null) =>
-  projectId !== null && gate.projectId === projectId && gate.viewer;
+  projectId !== null && gate.projectId === projectId && (gate.viewer || gate.locked);
 
 export function collabSettingsLocked(projectId: string | null): boolean {
   return settingsLocked(useCollabEditorGate.getState(), projectId);

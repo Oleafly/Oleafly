@@ -68,6 +68,9 @@ interface RawBlock {
 }
 
 const CROSSREF_PREFIX = /^(?:fig|tbl|eq|sec|lst|thm|lem|def|cor|prop|tab):/u;
+const QUARTO_SOURCE = /\.(?:qmd|rmd)$/iu;
+const QUARTO_CROSSREF_PREFIX =
+  /^(?:fig|tbl|lst|tip|nte|wrn|imp|cau|thm|lem|cor|prp|cnj|def|exm|exr|sol|rem|eq|sec)-/u;
 const CITATION = /(?<![\p{L}\p{N}_])-?@(\{[^{}\s]+\}|[\p{L}\p{N}_][\p{L}\p{N}_:.#$%&+?<>~/-]*)/gu;
 const DELIMITER_CELL = /^:?-+:?$/u;
 const GRID_BORDER = /^\s*\+(?:[-=:]+\+)+\s*$/u;
@@ -812,6 +815,7 @@ class MarkdownScan {
       const raw = match[1];
       const key = raw.startsWith("{") ? raw.slice(1, -1) : trimTrailing(raw, ".:,;!?/-");
       if (!key || CROSSREF_PREFIX.test(key)) continue;
+      if (QUARTO_SOURCE.test(this.mainDoc) && QUARTO_CROSSREF_PREFIX.test(key)) continue;
       this.cites.push({ key, location: this.at(index, match.index + match[0].indexOf("@") + 1) });
     }
   }

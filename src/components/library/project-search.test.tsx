@@ -68,6 +68,15 @@ describe("projectEngine", () => {
     expect(projectEngine({ engine: "pandoc", main_doc: "x" })).toBe("markdown");
     expect(projectEngineLabel({ engine: "", main_doc: "main.tex" })).toBe("LaTeX");
   });
+
+  it("tells Quarto and Calepin projects apart from Markdown and Typst", () => {
+    expect(projectEngine({ engine: "quarto", main_doc: "index.qmd" })).toBe("quarto");
+    expect(projectEngine({ engine: undefined, main_doc: "analysis.Rmd" })).toBe("quarto");
+    expect(projectEngine({ engine: "calepin", main_doc: "main.typ" })).toBe("calepin");
+    expect(projectEngine({ engine: "typst", main_doc: "main.typ" })).toBe("typst");
+    expect(projectEngineLabel({ engine: "quarto", main_doc: "index.qmd" })).toBe("Quarto");
+    expect(projectEngineLabel({ engine: "calepin", main_doc: "main.typ" })).toBe("Calepin");
+  });
 });
 
 describe("project search schema", () => {

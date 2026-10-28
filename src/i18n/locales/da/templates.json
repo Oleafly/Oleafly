@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "Vis kun CV-skabeloner, som ansøgningssystemer (ATS) kan læse pålideligt: én spalte, almindelige skrifttyper og tekst, der kan markeres (ingen ord bagt ind i grafik).",
       "atsFriendly": "ATS-venlig",
       "offlineTooltip": "Vis kun skabeloner, der kan kompileres uden download: deres skrifttyper og pakker er allerede med, så de bygges uden internetforbindelse.",

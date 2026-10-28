@@ -1,0 +1,61 @@
+---
+title: "Title of Your Article"
+author:
+  - name: Your Name
+    affiliations:
+      - name: Your Institution
+date: today
+abstract: |
+  State the question, the approach and the main finding in three or four
+  sentences. Keep it readable on its own.
+format:
+  typst:
+    number-sections: true
+bibliography: references.bib
+jupyter:
+  kernelspec:
+    name: python3
+    language: python
+    display_name: Python 3
+---
+
+# Introduction
+
+This article is written in Quarto. Prose is Markdown, and math works inline,
+as in $E = mc^2$, or on its own line:
+
+$$
+\bar{x} = \frac{1}{n} \sum_{i=1}^{n} x_i
+$$
+
+Cite a source from `references.bib` with its key, like this [@knuth1984].
+Change `typst` to `pdf` under `format` to render through LaTeX instead.
+
+# Methods
+
+The chunk below runs once you allow code in this project. Until then the
+document shows the code without running it, so it still compiles.
+
+```{python}
+#| echo: true
+values = [2.1, 2.4, 1.9, 2.8, 2.2]
+mean = sum(values) / len(values)
+print(f"The mean of {len(values)} values is {mean:.2f}.")
+```
+
+# Results
+
+Describe what you found. Add tables with Markdown pipes:
+
+| Group   | Mean | SD   |
+|---------|-----:|-----:|
+| Control | 2.10 | 0.20 |
+| Treated | 2.45 | 0.31 |
+
+: Example results {#tbl-results}
+
+@tbl-results summarizes the two groups.
+
+# Discussion
+
+Explain what the results mean, their limits, and what comes next.

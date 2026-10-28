@@ -1097,6 +1097,16 @@
         "unknownEntryType": "Neznámý typ záznamu bibliografie @{{type}}."
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "možnost bloku kódu Quarto"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "možnost bloku kódu Calepin"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "Načítá se obrázek",
@@ -1555,5 +1565,5 @@
     "keyTaken": "Varianta nemůže nastavit stejný název dvakrát.",
     "saveFailed": "Varianty se nepodařilo uložit."
   },
-  "sharedSettingsViewer": "Čtenáři ve sdíleném projektu toto nastavení nemohou měnit."
+  "sharedSettingsViewer": "Ve sdíleném projektu mohou toto nastavení měnit jen vlastníci a editoři."
 }

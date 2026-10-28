@@ -117,6 +117,8 @@ const SOURCE_LANGUAGE_BY_EXTENSION: ReadonlyMap<string, SourceLanguage> = new Ma
   ["latex", "latex"],
   ["md", "markdown"],
   ["markdown", "markdown"],
+  ["qmd", "markdown"],
+  ["rmd", "markdown"],
 ]);
 
 export function sourceLanguageForPath(path: string | null): SourceLanguage | null {

@@ -48,6 +48,7 @@ vi.mock("@/store/files", async () => {
   const useFilesStore = create(() => ({
     projectId: "p1" as string | null,
     projectName: "Paper",
+    engine: { label: "Tectonic" },
     engineLoaded: true,
     loading: false,
     mainDoc: "main.tex",
@@ -175,6 +176,8 @@ vi.mock("@/components/layout/FolderUnavailableBanner", () => ({ FolderUnavailabl
 vi.mock("@/components/open-folder/MainDocumentPicker", () => ({ MainDocumentPicker: () => null }));
 vi.mock("@/components/open-folder/OpenedFolderBanners", () => ({ OpenedFolderBanners: () => null }));
 vi.mock("@/components/layout/ShellCommandsBanner", () => ({ ShellCommandsBanner: () => null }));
+vi.mock("@/components/layout/CodeExecutionBanner", () => ({ CodeExecutionBanner: () => null }));
+vi.mock("@/components/layout/TypstCjkFontBanner", () => ({ TypstCjkFontBanner: () => null }));
 vi.mock("@/components/open-folder/OpenFolderKeeper", () => ({ OpenFolderKeeper: () => null }));
 vi.mock("@/components/layout/ProjectAvailabilityKeeper", () => ({ ProjectAvailabilityKeeper: () => null }));
 vi.mock("@/components/layout/FolderWatchKeeper", () => ({ FolderWatchKeeper: () => null }));

@@ -14,6 +14,8 @@ export const TEMPLATES_MESSAGE_KEYS = [
   "dialog.engineLatex",
   "dialog.engineTypst",
   "dialog.engineMarkdown",
+  "dialog.engineQuarto",
+  "dialog.engineCalepin",
   "dialog.atsTooltip",
   "dialog.atsFriendly",
   "dialog.offlineTooltip",

@@ -40,7 +40,7 @@ export function PrepExport() {
   );
 
   const typstOptions = useFilesStore((s) =>
-    s.engine.source_format === "typst" ? (s.engine.typst_options ?? null) : null,
+    s.engine.id === "typst" ? (s.engine.typst_options ?? null) : null,
   );
   const typstVersion = useFilesStore((s) => s.engine.typst_resolved?.version ?? null);
 

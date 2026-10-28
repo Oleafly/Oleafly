@@ -16,7 +16,6 @@ import { appendAppLog } from "@/lib/tauri";
 import { loadDisplayHomes } from "@/lib/display-path";
 import { logError } from "@/lib/log";
 import { installQuitFallback } from "@/lib/quit-flush";
-import { syncLiveCollaborationSwitch } from "@/lib/collab-switch";
 import { reapOrphanAgentRuns } from "@/lib/agent-backend";
 import { getSnapshotConfig, getSnapshotPendingOpen, hydrateFromSnapshot } from "@/lib/initial-state";
 import { prepareColdOpen } from "@/features/open-folder";
@@ -42,6 +41,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { isMac } from "@/lib/utils";
 import { StoredAppTypography } from "@/lib/app-typography";
 import { AppZoom } from "@/lib/app-zoom";
+import { AppIcon } from "@/lib/app-icon";
 import { registerE2EImports } from "@/lib/e2e-import-registry";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { AdminConsoleSlot } from "@/components/collab/CollabSlots";
@@ -248,6 +248,7 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
   return (
     <QueryClientProvider client={queryClient}>
       <AppZoom />
+      <AppIcon />
       <App />
       <Toaster />
       <ConfirmHost />
@@ -279,7 +280,6 @@ async function bootstrap(): Promise<void> {
   // Fetched early so the first paint already shows home paths as ~/…
   void loadDisplayHomes();
   if (view === "main") {
-    syncLiveCollaborationSwitch();
     void installQuitFallback().catch((error) => logError("prepare quit fallback", error));
     await Promise.all([reapOrphanAgentRuns(), hydrateFromSnapshot(), initializeDesktopI18n()]);
     await syncLocaleFromConfig(getSnapshotConfig()?.ui_locale);

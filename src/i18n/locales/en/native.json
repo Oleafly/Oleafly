@@ -101,6 +101,11 @@
       "pickTitle": "Choose the program for {{name}}",
       "filter": "Programs"
     },
+    "sharedCodeExecution": {
+      "title": "Allow code in this shared project?",
+      "message": "Compiling will then run the code in this project on this computer. Anyone with edit access can change that code. Only allow this if you trust everyone in the project.",
+      "confirm": "Allow on this computer"
+    },
     "desktopApps": {
       "title": "Desktop apps",
       "action": "{{agent}} wants to {{action}}.",

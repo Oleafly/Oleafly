@@ -53,6 +53,8 @@ describe("project paths", () => {
     expect(engineForPath("main.typ")).toBe("typst");
     expect(engineForPath("notes.md")).toBe("markdown");
     expect(engineForPath("notes.markdown")).toBe("markdown");
+    expect(engineForPath("paper.qmd")).toBe("markdown");
+    expect(engineForPath("analysis.Rmd")).toBe("markdown");
     expect(engineForPath("style.sty")).toBe("latex");
     expect(engineForPath("refs.yml")).toBeNull();
     expect(analysisEngineForPath("refs.yml")).toBe("bibtex");
@@ -67,6 +69,7 @@ describe("project paths", () => {
     expect(isBibliographyYamlCandidate("main.tex")).toBe(false);
     expect(isProjectIntelligencePath("refs.yml")).toBe(true);
     expect(isProjectIntelligencePath("main.tex")).toBe(true);
+    expect(isProjectIntelligencePath("chapters/intro.qmd")).toBe(true);
     expect(isProjectIntelligencePath("figure.png")).toBe(false);
   });
 });

@@ -267,6 +267,7 @@
       "keyPlaceholder": "不要な場合は空欄のままにしてください",
       "keyPlaceholderStored": "新しく入力しない限り、保存済みのキーが使われます",
       "namePlaceholder": "Acme",
+      "presetsLabel": "よく使われるプロバイダ",
       "saveAnyway": "そのまま保存",
       "submitAdd": "プロバイダを追加",
       "submitAddAnyway": "モデルなしで追加"
@@ -367,7 +368,8 @@
       "badge": {
         "connected": "接続済み",
         "notRunning": "起動していません",
-        "running": "稼働中"
+        "running": "稼働中",
+        "suggested": "おすすめ"
       },
       "blurbs": {
         "anthropic": "Claude のモデル。コードと文章に強みがあります。",
@@ -377,7 +379,7 @@
         "groq": "オープンモデルを非常に高速に推論します。",
         "mistral": "Mistral と Codestral のモデル。",
         "ollama": "このマシンでモデルを動かします。キーは不要です。Ollama をインストールしてモデルを取得してください。",
-        "openai": "GPT のモデル。標準的な選択肢です。",
+        "openai": "GPT のモデル。",
         "openrouter": "1 つのキーで、多くの研究機関のモデルを使えます。",
         "perplexity": "ウェブの最新情報に基づく Sonar のモデル。",
         "xai": "xAI の Grok のモデル。",
@@ -629,6 +631,21 @@
         "description": "ボタン、選択範囲、エディタのカーソルに使われます。",
         "label": "アクセントカラー",
         "swatchAriaLabel": "{{name}} のアクセント"
+      },
+      "appIcon": {
+        "aurora": "オーロラ",
+        "blue": "ブルー",
+        "coral": "コーラル",
+        "description": "Oleafly を開いている間に Dock やタスクバーに表示するアイコンを選びます。",
+        "iridescent": "玉虫色",
+        "label": "アプリアイコン",
+        "light": "ライト",
+        "mint": "ミント",
+        "note": "Finder、スタート メニュー、アプリランチャーでは既定のアイコンのままです。",
+        "ocean": "オーシャン",
+        "pastel": "パステル",
+        "prism": "プリズム",
+        "sunset": "サンセット"
       },
       "bgPattern": {
         "description": "プロジェクトの棚の背景の模様を選びます。",
@@ -1446,6 +1463,58 @@
         "detail": "切り替える前に、インストール済みの新しいバージョンで開いているプロジェクトをビルドし、結果を比べます。",
         "check": "Typst {{version}} で確認"
       }
+    },
+    "notebook": {
+      "loading": "このコンピュータで Quarto、Calepin、言語を確認しています",
+      "source": {
+        "system": "このコンピュータ",
+        "managed": "Oleafly がダウンロード"
+      },
+      "active": {
+        "version": "{{tool}} {{version}}",
+        "missing": "このコンピュータに見つかりません。"
+      },
+      "managedIdle": "使用していません。Oleafly は、このコンピュータで見つかったコピーを優先して使います。",
+      "download": {
+        "optional": "任意です。Oleafly はすでにこのコンピュータにあるコピーを使っています。",
+        "license": "{{license}} ライセンスです。",
+        "action": "{{tool}} {{version}} をダウンロード（{{size}}）",
+        "actionNoSize": "{{tool}} {{version}} をダウンロード",
+        "notOffered": "Oleafly はこのコンピュータ向けの {{tool}} をダウンロードできません。ご自身でインストールすれば、Oleafly が見つけます。"
+      },
+      "removeAria": "Oleafly がダウンロードした {{tool}} を削除",
+      "languages": {
+        "heading": "言語",
+        "tooltip": "Quarto と Calepin の文書のコードは、これらのプログラムで実行されます。",
+        "notFound": "見つかりません",
+        "note": "Oleafly は、このコンピュータにすでにある R、Python、Julia でコードを実行します。これらを Oleafly がインストールすることはありません。"
+      },
+      "codeNote": "文書内のコードは、コンパイルメニューでそのプロジェクトのコードを許可した後にのみ実行されます。",
+      "progress": {
+        "starting": "開始しています",
+        "downloading": "ダウンロード中 {{percent}}%",
+        "verifying": "確認しています",
+        "extracting": "展開しています",
+        "done": "仕上げています"
+      },
+      "error": {
+        "load": "Quarto、Calepin、言語を確認できませんでした。",
+        "install": "{{tool}} をインストールできませんでした。",
+        "remove": "{{tool}} を削除できませんでした。"
+      }
+    },
+    "quarto": {
+      "heading": "Quarto",
+      "tooltip": "Quarto は .qmd と .Rmd の文書を PDF、ウェブページ、スライドに変換します。Oleafly は、このコンピュータに Quarto があればそれを使い、なければダウンロードしたコピーを使います。",
+      "detail": "Oleafly は .qmd と .Rmd の文書をこのコピーでコンパイルします。",
+      "downloadDetail": "Oleafly は自身のコピーをアプリのフォルダに保存します。Quarto には Pandoc などのツールが含まれ、それぞれ独自のライセンスで提供されています。"
+    },
+    "calepin": {
+      "heading": "Calepin",
+      "tooltip": "Calepin は Typst の文書内のコードを実行し、その結果を PDF に入れます。Oleafly は、このコンピュータに Calepin があればそれを使い、なければダウンロードしたコピーを使います。",
+      "detail": "Oleafly は Calepin の文書をこのコピーでコンパイルします。",
+      "downloadDetail": "Oleafly は自身のコピーをアプリのフォルダに保存します。",
+      "typstNote": "Calepin は Oleafly に組み込まれた Typst で描画します。Typst 0.15 以降が必要です。"
     }
   },
   "gitHosting": {

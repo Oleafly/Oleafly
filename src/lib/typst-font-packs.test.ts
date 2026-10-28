@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ComponentInfo } from "@/lib/tauri";
-import { isTypstFontPackId, missingTypstFont, packForFamily } from "./typst-font-packs";
+import { cjkCharacters, isTypstFontPackId, missingTypstFont, packForFamily } from "./typst-font-packs";
 
 const pack = (over: Partial<ComponentInfo>): ComponentInfo => ({
   id: "typst-text",
@@ -39,5 +39,19 @@ describe("typst font packs", () => {
   it("knows the shipped pack ids", () => {
     expect(isTypstFontPackId("typst-icons")).toBe(true);
     expect(isTypstFontPackId("lato")).toBe(false);
+  });
+});
+
+describe("CJK text detection", () => {
+  it("collects each Chinese, Japanese and Korean character once across sources", () => {
+    expect(cjkCharacters(["= 你好 Hello", "#set text(lang: \"zh\")\n你们好"])).toBe("你好们");
+    expect(cjkCharacters(["ひらがな カタカナ 한국어"])).toBe("ひらがなカタナ한국어");
+    expect(cjkCharacters(["= Results\nThe café is open. Ünïcödé, Ελληνικά, кириллица."])).toBe("");
+    expect(cjkCharacters([])).toBe("");
+  });
+
+  it("stops at the limit", () => {
+    expect(cjkCharacters(["一二三四五六"], 3)).toBe("一二三");
+    expect(Array.from(cjkCharacters([Array.from({ length: 100 }, (_, i) => String.fromCodePoint(0x4e00 + i)).join("")]))).toHaveLength(32);
   });
 });

@@ -8,7 +8,7 @@ import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabCapabilities, CollabServer, CollabSignInCode } from "@/lib/tauri";
 import { COLLAB_ERROR_CODES, collabErrorText } from "./errors";
-import { account, capabilities, collabError, deferred, fill, server } from "./tests/fixtures";
+import { account, capabilities, collabError, deferred, fill, server, signedOutServer } from "./tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
   openExternal: vi.fn(async () => undefined),
@@ -33,6 +33,7 @@ vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
 }));
 
 import { AddServerDialog, CODE_OFFER_DELAY_MS, normalizeServerAddress } from "./AddServerDialog";
+import { OLEAFLY_SERVER } from "./default-server";
 import { useCollabStore } from "./store";
 
 const copy = enCollab.addServer;
@@ -129,6 +130,56 @@ describe("AddServerDialog", () => {
       await screen.findByText(fill(copy.doneDescription, { server: "Smith Lab", name: "Alice Chen" })),
     ).toBeInTheDocument();
     expect(useCollabStore.getState().servers).toEqual([server()]);
+  });
+
+  it("offers the Oleafly server above the address field and checks it as if its address was typed", async () => {
+    useCollabStore.setState({ servers: [server()] });
+    mocks.collabServerProbe.mockResolvedValue(capabilities({ name: OLEAFLY_SERVER.name }));
+    const user = userEvent.setup();
+    renderDialog();
+    const entry = screen.getByRole("button", { name: OLEAFLY_SERVER.name });
+    expect(entry).toHaveAccessibleDescription(copy.oleaflyDescription);
+    const field = screen.getByLabelText(copy.addressLabel);
+    expect(entry.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await user.click(entry);
+    expect(mocks.collabServerProbe).toHaveBeenCalledWith(OLEAFLY_SERVER.url);
+    expect(
+      await screen.findByRole("heading", { name: fill(copy.serverTitle, { server: OLEAFLY_SERVER.name }) }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(OLEAFLY_SERVER.url)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: github })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: copy.back }));
+    expect(screen.getByLabelText(copy.addressLabel)).toHaveValue(OLEAFLY_SERVER.url);
+  });
+
+  it("offers the connection test for the Oleafly server when it can't be reached", async () => {
+    mocks.collabServerProbe.mockRejectedValue(collabError("unreachable"));
+    mocks.collabServerTest.mockResolvedValue([{ id: "reachable", status: "fail", detail: null }]);
+    const user = userEvent.setup();
+    renderDialog();
+    await user.click(screen.getByRole("button", { name: OLEAFLY_SERVER.name }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
+    expect(screen.getByLabelText(copy.addressLabel)).toHaveValue(OLEAFLY_SERVER.url);
+    await user.click(screen.getByRole("button", { name: enCollab.section.server.test }));
+    expect(mocks.collabServerTest).toHaveBeenCalledWith(OLEAFLY_SERVER.url);
+    expect(await screen.findByText(enCollab.section.checks.items.reachable.fail)).toBeInTheDocument();
+  });
+
+  it.each([
+    ["signed in", server({ url: OLEAFLY_SERVER.url, name: OLEAFLY_SERVER.name })],
+    ["signed out", signedOutServer({ url: `${OLEAFLY_SERVER.url}/`, name: OLEAFLY_SERVER.name })],
+  ])("leaves the Oleafly server out once it is in the list (%s)", (_state, known) => {
+    useCollabStore.setState({ servers: [known] });
+    renderDialog();
+    expect(screen.queryByRole("button", { name: OLEAFLY_SERVER.name })).toBeNull();
+    expect(screen.getByLabelText(copy.addressLabel)).toBeEnabled();
+  });
+
+  it("leaves the Oleafly server out when the dialog was opened for another address", async () => {
+    mocks.collabServerProbe.mockRejectedValue(collabError("not_found"));
+    renderDialog("https://collab.uni.edu");
+    expect(await screen.findByRole("alert")).toHaveTextContent(copy.notAServer);
+    expect(screen.queryByRole("button", { name: OLEAFLY_SERVER.name })).toBeNull();
   });
 
   it("asks for the setup code on a new server and sends it with the sign-in", async () => {

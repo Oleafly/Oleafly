@@ -269,6 +269,7 @@
       "keyPlaceholder": "Lasă gol dacă nu este necesară",
       "keyPlaceholderStored": "Cheia salvată rămâne dacă nu introduci alta",
       "namePlaceholder": "Acme",
+      "presetsLabel": "Furnizori obișnuiți",
       "saveAnyway": "Salvează oricum",
       "submitAdd": "Adaugă furnizorul",
       "submitAddAnyway": "Adaugă fără modele"
@@ -369,7 +370,8 @@
       "badge": {
         "connected": "Conectat",
         "notRunning": "Nu rulează",
-        "running": "Rulează"
+        "running": "Rulează",
+        "suggested": "Recomandat"
       },
       "blurbs": {
         "anthropic": "Modele Claude, bune la cod și la scriere.",
@@ -379,7 +381,7 @@
         "groq": "Inferență foarte rapidă pe modele deschise.",
         "mistral": "Modele Mistral și Codestral.",
         "ollama": "Rulează modele pe computerul tău. Nu are nevoie de cheie: instalează Ollama și descarcă un model.",
-        "openai": "Modele GPT. Alegerea implicită.",
+        "openai": "Modele GPT.",
         "openrouter": "O singură cheie, acces la modele de la multe laboratoare.",
         "perplexity": "Modele Sonar, cu ancorare în web în timp real.",
         "xai": "Modele Grok de la xAI.",
@@ -637,6 +639,21 @@
         "description": "Se folosește pentru butoane, selecții și cursorul din editor.",
         "label": "Culoare de accent",
         "swatchAriaLabel": "Accent {{name}}"
+      },
+      "appIcon": {
+        "aurora": "Auroră",
+        "blue": "Albastră",
+        "coral": "Coral",
+        "description": "Alege pictograma pe care Oleafly o arată în Dock sau în bara de activități cât timp este deschis.",
+        "iridescent": "Irizat",
+        "label": "Pictograma aplicației",
+        "light": "Deschisă",
+        "mint": "Mentă",
+        "note": "Finder, meniul Start și lansatoarele de aplicații arată în continuare pictograma implicită.",
+        "ocean": "Ocean",
+        "pastel": "Pastel",
+        "prism": "Prismă",
+        "sunset": "Apus"
       },
       "bgPattern": {
         "description": "Alege modelul din spatele raftului de proiecte.",
@@ -1468,6 +1485,58 @@
         "detail": "Compilează proiectul deschis cu o versiune instalată mai nouă și compară rezultatele înainte să treci la ea.",
         "check": "Verifică cu Typst {{version}}"
       }
+    },
+    "notebook": {
+      "loading": "Se caută pe acest computer Quarto, Calepin și limbajele",
+      "source": {
+        "system": "Pe acest computer",
+        "managed": "Descărcat de Oleafly"
+      },
+      "active": {
+        "version": "{{tool}} {{version}}",
+        "missing": "Nu a fost găsit pe acest computer."
+      },
+      "managedIdle": "Nu este în uz. Oleafly folosește mai întâi copia găsită pe acest computer.",
+      "download": {
+        "optional": "Opțional. Oleafly folosește deja copia de pe acest computer.",
+        "license": "Licența {{license}}.",
+        "action": "Descarcă {{tool}} {{version}} ({{size}})",
+        "actionNoSize": "Descarcă {{tool}} {{version}}",
+        "notOffered": "Oleafly nu poate descărca {{tool}} pentru acest computer. Instalează-l tu și Oleafly îl va găsi."
+      },
+      "removeAria": "Elimină copia {{tool}} descărcată de Oleafly",
+      "languages": {
+        "heading": "Limbaje",
+        "tooltip": "Codul din documentele Quarto și Calepin rulează cu aceste programe.",
+        "notFound": "Negăsit",
+        "note": "Oleafly rulează codul cu R, Python și Julia care există deja pe acest computer. Nu le instalează niciodată."
+      },
+      "codeNote": "Codul dintr-un document rulează doar după ce permiți rularea codului pentru acel proiect din meniul Compilare.",
+      "progress": {
+        "starting": "Se pornește",
+        "downloading": "Se descarcă {{percent}}%",
+        "verifying": "Se verifică",
+        "extracting": "Se dezarhivează",
+        "done": "Se finalizează"
+      },
+      "error": {
+        "load": "Nu s-au putut căuta Quarto, Calepin și limbajele.",
+        "install": "{{tool}} nu a putut fi instalat.",
+        "remove": "{{tool}} nu a putut fi eliminat."
+      }
+    },
+    "quarto": {
+      "heading": "Quarto",
+      "tooltip": "Quarto transformă documentele .qmd și .Rmd într-un PDF, o pagină web sau diapozitive. Oleafly folosește Quarto de pe acest computer, dacă îl găsește, sau o copie pe care o descarcă.",
+      "detail": "Oleafly compilează documentele .qmd și .Rmd cu această copie.",
+      "downloadDetail": "Oleafly își păstrează propria copie în folderul aplicației. Quarto include Pandoc și alte instrumente, fiecare cu propria licență."
+    },
+    "calepin": {
+      "heading": "Calepin",
+      "tooltip": "Calepin rulează codul dintr-un document Typst și pune rezultatele în PDF. Oleafly folosește Calepin de pe acest computer, dacă îl găsește, sau o copie pe care o descarcă.",
+      "detail": "Oleafly compilează documentele Calepin cu această copie.",
+      "downloadDetail": "Oleafly își păstrează propria copie în folderul aplicației.",
+      "typstNote": "Calepin randează cu Typst-ul inclus în Oleafly. Are nevoie de Typst 0.15 sau mai nou."
     }
   },
   "gitHosting": {

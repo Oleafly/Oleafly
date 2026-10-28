@@ -1,4 +1,5 @@
-import { pickActiveProvider } from "@/lib/ai-providers";
+import { currentLocale } from "@/i18n";
+import { pickActiveProvider, suggestedProviderId } from "@/lib/ai-providers";
 import { getConfig } from "@/lib/tauri";
 import { createResearchTask, defaultBrief, listResearchTasks } from "@/lib/research-tasks";
 
@@ -15,7 +16,7 @@ export function ensureResearchStarterTask({ projectId, title, prompt }: {
     const tasks = await listResearchTasks(projectId);
     if (tasks.some((task) => task.title === title && task.prompt === prompt)) return;
     const config = await getConfig();
-    const { providerId, modelId } = pickActiveProvider(config);
+    const { providerId, modelId } = pickActiveProvider(config, suggestedProviderId(currentLocale()));
     await createResearchTask({
       projectId,
       title,

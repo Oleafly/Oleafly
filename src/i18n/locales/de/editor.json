@@ -1069,6 +1069,16 @@
         "unknownEntryType": "Unbekannter Typ eines Literatureintrags @{{type}}."
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "Quarto-Chunk-Option"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "Calepin-Chunk-Option"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "Bild wird geladen",
@@ -1513,5 +1523,5 @@
     "keyTaken": "Eine Variante kann denselben Namen nicht zweimal setzen.",
     "saveFailed": "Die Varianten konnten nicht gespeichert werden."
   },
-  "sharedSettingsViewer": "Betrachter können das in einem geteilten Projekt nicht ändern."
+  "sharedSettingsViewer": "Nur Inhaber und Bearbeiter können das in einem geteilten Projekt ändern."
 }

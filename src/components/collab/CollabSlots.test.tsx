@@ -4,7 +4,6 @@ import { act, fireEvent, render, renderHook, screen } from "@testing-library/rea
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
 import { useFilesStore } from "@/store/files";
-import { useSettingsStore } from "@/store/settings";
 
 const loaded = vi.hoisted(() => ({
   toolbar: vi.fn(),
@@ -121,24 +120,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  useSettingsStore.setState({ liveCollaboration: false });
   useFilesStore.setState({ projectId: null });
 });
 
 describe("collaboration slots", () => {
-  it("render nothing and load nothing while live collaboration is off", async () => {
-    useSettingsStore.setState({ liveCollaboration: false });
-    useShareDialog.setState({ projectId: "grant" });
-    const { container } = renderEverySlot();
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(container).toBeEmptyDOMElement();
-    for (const component of Object.values(loaded)) expect(component).not.toHaveBeenCalled();
-  });
-
-  it("puts Share in a measured icon slot and loads the rest on demand when it is on", async () => {
-    useSettingsStore.setState({ liveCollaboration: true });
+  it("puts Share in a measured icon slot and loads the rest on demand", async () => {
     const { container } = renderEverySlot();
     expect(await screen.findByText("collab toolbar")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "share button" })).toBeInTheDocument();
@@ -159,7 +145,6 @@ describe("collaboration slots", () => {
   });
 
   it("adds no Share slot without an open project", async () => {
-    useSettingsStore.setState({ liveCollaboration: true });
     useFilesStore.setState({ projectId: null });
     const { container } = render(<CollabShareSlot />);
     await act(async () => {
@@ -169,15 +154,13 @@ describe("collaboration slots", () => {
     expect(loaded.share).not.toHaveBeenCalled();
   });
 
-  it("opens the server admin console window only while live collaboration is on", async () => {
-    useSettingsStore.setState({ liveCollaboration: true });
+  it("opens the server admin console window", async () => {
     render(<AdminConsoleSlot />);
     expect(await screen.findByText("admin console")).toBeInTheDocument();
     expect(loaded.admin).toHaveBeenCalled();
   });
 
   it("opens the share dialog for the project someone asked to share", async () => {
-    useSettingsStore.setState({ liveCollaboration: true });
     render(<ShareDialogHost />);
     act(() => useShareDialog.getState().openFor("grant"));
     expect(await screen.findByText("share dialog grant")).toBeInTheDocument();
@@ -189,16 +172,6 @@ describe("collaboration slots", () => {
 describe("TreeRowPeers", () => {
   beforeAll(async () => {
     await loadNamespace("collab");
-  });
-
-  beforeEach(() => {
-    useSettingsStore.setState({ liveCollaboration: true });
-  });
-
-  it("draws nothing while live collaboration is off, even for a file someone has open", () => {
-    useSettingsStore.setState({ liveCollaboration: false });
-    const { container } = render(<TreeRowPeers marks={[{ id: "alice", hue: 200, label: "Alice Chen is in this file" }]} />);
-    expect(container).toBeEmptyDOMElement();
   });
 
   it("draws one labelled dot per person in their colour and names them in the app tooltip", async () => {
@@ -229,19 +202,8 @@ describe("TreeRowClash", () => {
     await loadNamespace("collab");
   });
 
-  beforeEach(() => {
-    useSettingsStore.setState({ liveCollaboration: true });
-  });
-
   afterEach(() => {
     useTreeClashes.setState({ labels: new Map() });
-  });
-
-  it("gives the tree no labels while live collaboration is off, even for a renamed file", () => {
-    useSettingsStore.setState({ liveCollaboration: false });
-    useTreeClashes.setState({ labels: new Map([["figs/plot (from Bob Smith).png", "label"]]) });
-    const { result } = renderHook(() => useTreeClashLabels());
-    expect(result.current.size).toBe(0);
   });
 
   it("gives the tree every label once collaboration is ready", () => {

@@ -97,7 +97,20 @@
     "installPackages_one": "Find og installer {{name}}",
     "installPackages_other": "Find og installer {{count}} filer",
     "downloadTypst": "Download Typst {{version}}",
-    "useTypst": "Brug Typst {{version}}"
+    "useTypst": "Brug Typst {{version}}",
+    "installTool": "Installer {{tool}} {{version}}",
+    "installToolSize": "Installer {{tool}} {{version}} ({{size}})",
+    "engineSettings": "Åbn motorindstillinger"
+  },
+  "html": {
+    "builtTitle": "Bygget som webside",
+    "builtDetail": "Bygget kl. {{time}}. Websider åbnes i din browser.",
+    "building": "Bygger websiden",
+    "buildingDetail": "Når den er færdig, kan du åbne den i din browser.",
+    "pendingTitle": "Dette dokument bygges som en webside",
+    "pendingDetail": "Kompiler det, og åbn det så i din browser.",
+    "open": "Åbn i browser",
+    "compile": "Kompiler"
   },
   "stale": {
     "badge": "Forældet",

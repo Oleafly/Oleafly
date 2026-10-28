@@ -150,7 +150,7 @@ fn io(error: impl std::fmt::Display) -> CollabError {
 }
 
 impl Commenter {
-    fn may_write(&self) -> Result<(), CollabError> {
+    pub(crate) fn may_write(&self) -> Result<(), CollabError> {
         if !self.switches.server {
             return Err(refused(
                 403,
@@ -165,7 +165,7 @@ impl Commenter {
                 "comments are turned off for this project",
             ));
         }
-        if !project_role_allows(self.role, ProjectAction::Edit) {
+        if !project_role_allows(self.role, ProjectAction::Comment) {
             return Err(refused(
                 403,
                 "viewer",
@@ -207,7 +207,7 @@ fn status_of(switches: CommentSwitches, role: ProjectRole) -> CommentsStatus {
         project_enabled: switches.project,
         can_comment: switches.server
             && switches.project
-            && project_role_allows(role, ProjectAction::Edit),
+            && project_role_allows(role, ProjectAction::Comment),
     }
 }
 
@@ -650,7 +650,7 @@ pub(crate) fn write_comment<T>(
     })
 }
 
-fn tell_local(app: &tauri::AppHandle, project_id: &str, file_id: &str) {
+pub(crate) fn tell_local(app: &tauri::AppHandle, project_id: &str, file_id: &str) {
     let path = super::live::read_live(project_id, |live| path_in(&layout_of(live.doc()), file_id))
         .flatten();
     let _ = app.emit(
@@ -1787,5 +1787,35 @@ mod tests {
             }]
         );
         assert!(heard.taken().is_empty());
+    }
+
+    #[test]
+    fn reviewers_and_commenters_can_comment_and_viewers_still_cannot() {
+        for role in [
+            ProjectRole::Owner,
+            ProjectRole::Editor,
+            ProjectRole::Reviewer,
+            ProjectRole::Commenter,
+        ] {
+            assert!(
+                status_of(CommentSwitches::default(), role).can_comment,
+                "{role:?}"
+            );
+            let who = Commenter {
+                account: AccountId::new_v7(),
+                role,
+                switches: CommentSwitches::default(),
+            };
+            assert!(who.may_write().is_ok(), "{role:?}");
+        }
+        for role in [ProjectRole::Viewer, ProjectRole::Unknown] {
+            assert!(!status_of(CommentSwitches::default(), role).can_comment);
+            let who = Commenter {
+                account: AccountId::new_v7(),
+                role,
+                switches: CommentSwitches::default(),
+            };
+            assert_eq!(code(who.may_write().unwrap_err()), "viewer");
+        }
     }
 }

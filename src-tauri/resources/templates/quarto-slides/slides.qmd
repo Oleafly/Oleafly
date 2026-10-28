@@ -1,0 +1,63 @@
+---
+title: "Title of Your Talk"
+subtitle: "Where and when you give it"
+author: "Your Name"
+format:
+  revealjs:
+    slide-number: true
+    transition: fade
+jupyter:
+  kernelspec:
+    name: python3
+    language: python
+    display_name: Python 3
+---
+
+## Why this matters
+
+- The question in one line
+- What people believed before
+- What you found
+
+## A formula
+
+The sample mean of $n$ values:
+
+$$
+\bar{x} = \frac{1}{n} \sum_{i=1}^{n} x_i
+$$
+
+## Code on a slide
+
+This chunk runs once you allow code in this project. Until then the slide
+shows the code only.
+
+```{python}
+#| echo: true
+squares = [n * n for n in range(1, 6)]
+print(squares)
+```
+
+## Two columns
+
+:::: {.columns}
+
+::: {.column width="50%"}
+**Before**
+
+- Slow
+- Manual
+:::
+
+::: {.column width="50%"}
+**After**
+
+- Fast
+- Repeatable
+:::
+
+::::
+
+## Thank you
+
+Questions and contact details go here.

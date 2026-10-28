@@ -9,9 +9,11 @@ pub mod email_sign_in;
 pub mod guests;
 pub mod landing;
 pub mod meta;
+pub mod outputs;
 pub mod poll;
 pub mod projects;
 pub mod sign_in_pages;
+pub mod web_pages;
 pub mod ws;
 
 use std::convert::Infallible;
@@ -36,7 +38,7 @@ use crate::state::AppState;
 use crate::tokens;
 
 pub fn api_routes() -> Router<AppState> {
-    Router::new()
+    let router = Router::new()
         .merge(meta::router())
         .merge(admin::router())
         .merge(console::router())
@@ -48,9 +50,21 @@ pub fn api_routes() -> Router<AppState> {
         .merge(ws::router())
         .merge(poll::router())
         .merge(projects::router())
+        .merge(outputs::router())
         .merge(access_log::router())
         .merge(guests::router())
-        .merge(landing::router())
+        .merge(landing::router());
+    with_web(router)
+}
+
+#[cfg(feature = "web")]
+fn with_web(router: Router<AppState>) -> Router<AppState> {
+    router.merge(crate::web::router())
+}
+
+#[cfg(not(feature = "web"))]
+fn with_web(router: Router<AppState>) -> Router<AppState> {
+    router
 }
 
 pub async fn not_found() -> ServerError {

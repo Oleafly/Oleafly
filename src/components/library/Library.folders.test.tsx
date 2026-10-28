@@ -17,6 +17,10 @@ vi.mock("@/components/library/HomeDock", () => ({
   HomeDock: () => null,
   HOME_DOCK_GLASS_SURFACE: "",
 }));
+vi.mock("@/components/collab/CollabSlots", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/collab/CollabSlots")>()),
+  useCollabLibraryKit: () => null,
+}));
 vi.mock("@/components/layout/WindowControls", () => ({ WindowControls: () => null }));
 vi.mock("@/components/layout/LeafLogo", () => ({ LeafLogo: () => null }));
 vi.mock("@/components/pdf/PdfViewer", () => ({ PdfViewer: () => null }));

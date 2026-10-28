@@ -1,0 +1,190 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "Laster",
+    "loadFailed": "Oleafly kunne ikke nå serveren.",
+    "retry": "Prøv igjen",
+    "dismiss": "Lukk",
+    "projects": "Prosjekter",
+    "account": "Konto",
+    "signOut": "Logg ut",
+    "signOutFailed": "Du kunne ikke logges ut. Prøv igjen.",
+    "cancel": "Avbryt"
+  },
+  "signIn": {
+    "title": "Logg inn på Oleafly",
+    "description": "Logg inn med kontoen en medforfatter delte prosjektet med.",
+    "action": "Logg inn"
+  },
+  "projects": {
+    "title": "Delt med deg",
+    "emptyTitle": "Ingenting er delt med deg ennå",
+    "emptyDescription": "Når noen deler et prosjekt med kontoen din, vises det her.",
+    "untitled": "Prosjekt uten tittel",
+    "ownedBy": "Eies av {{name}}",
+    "loadFailed": "Prosjektene dine kunne ikke lastes inn.",
+    "list": "Prosjekter"
+  },
+  "roles": {
+    "owner": "Eier",
+    "editor": "Redaktør",
+    "reviewer": "Korrekturleser",
+    "commenter": "Kommentator",
+    "viewer": "Leser",
+    "unknown": "Lesetilgang"
+  },
+  "connection": {
+    "connecting": "Kobler til",
+    "online": "Tilkoblet",
+    "offline": "Frakoblet",
+    "offlineBanner": "Du er frakoblet. Endringene dine tas vare på og sendes når tilkoblingen er tilbake.",
+    "ended": "Koblet fra"
+  },
+  "ended": {
+    "signedOutTitle": "Du er logget ut",
+    "signedOutDescription": "Logg inn igjen for å fortsette arbeidet med dette prosjektet.",
+    "noAccessTitle": "Du kan ikke åpne dette prosjektet",
+    "noAccessDescription": "Det er ikke delt med kontoen din, eller tilgangen din er fjernet.",
+    "stoppedTitle": "Koblet fra",
+    "stoppedDescription": "Last inn siden på nytt for å koble til igjen."
+  },
+  "access": {
+    "changed": "Rollen din i dette prosjektet er nå {{role}}."
+  },
+  "discarded": {
+    "read_only": "De siste endringene dine ble ikke lagret fordi du ikke kan redigere dette prosjektet nå.",
+    "refused": "De siste endringene dine kunne ikke lagres."
+  },
+  "views": {
+    "label": "Paneler",
+    "files": "Filer",
+    "source": "Kildekode",
+    "pdf": "PDF",
+    "comments": "Kommentarer",
+    "chat": "Chat"
+  },
+  "presence": {
+    "label": "Personer her"
+  },
+  "files": {
+    "title": "Filer",
+    "empty": "Prosjektet har ingen filer ennå.",
+    "tree": "Prosjektfiler"
+  },
+  "source": {
+    "noFileTitle": "Åpne en fil",
+    "noFileDescription": "Velg en fil i listen for å lese den.",
+    "opening": "Åpner {{path}}",
+    "removed": "{{path}} ble fjernet fra prosjektet.",
+    "readOnly": "Skrivebeskyttet",
+    "readOnlyHint": "Med rollen din kan du lese prosjektet, men ikke redigere det.",
+    "modeLabel": "Redigeringsmodus",
+    "editing": "Redigering",
+    "suggesting": "Forslag",
+    "suggestingHint": "Endringene dine er forslag som en eier eller redaktør går gjennom.",
+    "comment": "Kommenter",
+    "commentHint": "Merk tekst for å kommentere den.",
+    "binary": "Denne filen kan ikke vises i nettleseren.",
+    "blobFailed": "Filen kunne ikke lastes inn."
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "Kompilert av {{name}}, {{time}}",
+    "emptyTitle": "Ingen PDF ennå",
+    "emptyDescription": "PDF-en vises her når noen har kompilert prosjektet i Oleafly-appen.",
+    "loading": "Laster inn PDF-en",
+    "failed": "PDF-en kunne ikke lastes inn.",
+    "zoomIn": "Zoom inn",
+    "zoomOut": "Zoom ut",
+    "fitWidth": "Tilpass til bredden",
+    "download": "Last ned",
+    "zoom": "{{percent}} %"
+  },
+  "comments": {
+    "emptyTitle": "Ingen kommentarer eller forslag",
+    "emptyCanComment": "Merk tekst i kildekoden og velg Kommenter for å starte en tråd.",
+    "emptyReadOnly": "Kommentarer og forslag til prosjektet vises her.",
+    "newComment": "Ny kommentar",
+    "placeholder": "Skriv en kommentar",
+    "submit": "Kommenter",
+    "reply": "Svar",
+    "replyPlaceholder": "Svar",
+    "replyLabel": "Svar i denne tråden",
+    "edit": "Rediger",
+    "editLabel": "Rediger kommentar",
+    "save": "Lagre",
+    "delete": "Slett",
+    "deleteTitle": "Slette denne kommentaren?",
+    "deleteDescription": "Dette kan ikke angres.",
+    "messageActions": "Handlinger for kommentaren",
+    "resolve": "Løs",
+    "reopen": "Åpne igjen",
+    "resolvedBy": "Løst av {{name}}",
+    "deleted": "Kommentar slettet",
+    "edited": "redigert",
+    "anchorLost": "Teksten denne kommentaren gjaldt, er fjernet.",
+    "showInSource": "Vis i kildekoden",
+    "thread": "Kommentar fra {{name}}",
+    "hideResolved": "Skjul løste",
+    "resolvedCount_one": "{{count}} løst",
+    "resolvedCount_other": "{{count}} løste"
+  },
+  "suggestions": {
+    "inserted": "Lagt til",
+    "deleted": "Slettet",
+    "accept": "Godta",
+    "reject": "Avslå",
+    "withdraw": "Trekk tilbake",
+    "acceptAll": "Godta alle",
+    "rejectAll": "Avslå alle",
+    "pending_one": "{{count}} forslag",
+    "pending_other": "{{count}} forslag",
+    "card": "Forslag fra {{name}}",
+    "lineBreak": "Linjeskift"
+  },
+  "chat": {
+    "emptyTitle": "Ingen meldinger ennå",
+    "emptyDescription": "Alle i prosjektet kan se meldingene her.",
+    "placeholder": "Skriv en melding",
+    "label": "Melding",
+    "send": "Send",
+    "readOnly": "Du kan lese chatten. Lesere kan ikke skrive i den.",
+    "delete": "Slett melding",
+    "clear": "Tøm chatten",
+    "clearTitle": "Tømme chatten for alle?",
+    "clearDescription": "Alle i prosjektet mister disse meldingene.",
+    "messages": "Chatmeldinger"
+  },
+  "people": {
+    "you": "Du",
+    "someone": "Noen",
+    "unverified": "Ubekreftet forfatter"
+  },
+  "errors": {
+    "offline": "Du er frakoblet. Prøv igjen når du er tilkoblet.",
+    "generic": "Serveren avviste den endringen.",
+    "suggestion_not_found": "Det forslaget er allerede behandlet.",
+    "suggestion_not_yours": "Du kan bare trekke tilbake dine egne forslag.",
+    "suggestion_role": "Med rollen din kan du ikke komme med eller gå gjennom forslag.",
+    "chat_role": "Med rollen din kan du ikke skrive i chatten.",
+    "comment_not_live": "Kommentarer er ikke tilgjengelige akkurat nå.",
+    "comment_not_yours": "Du kan bare endre dine egne kommentarer.",
+    "comment_off_server": "Kommentarer er slått av på denne serveren.",
+    "comment_off_project": "Kommentarer er slått av for dette prosjektet.",
+    "comment_viewer": "Lesere kan ikke kommentere.",
+    "comment_someone_replied": "Noen har svart, så denne kommentaren kan ikke slettes.",
+    "comment_message_deleted": "Den kommentaren er slettet.",
+    "comment_selection_changed": "Teksten ble endret mens du skrev. Merk den på nytt.",
+    "comment_too_long": "Kommentaren er for lang.",
+    "comment_empty": "Skriv noe først.",
+    "rate_limited": "For mange endringer på en gang. Vent litt og prøv igjen.",
+    "too_large": "Det er for stort til å sendes.",
+    "project_too_large": "Prosjektet er for stort til å åpnes i en nettleser.",
+    "server_busy": "Serveren er opptatt. Prøv igjen om litt.",
+    "not_open": "Åpne filen før du endrer den.",
+    "cross_site": "Denne forespørselen kom ikke fra Oleafly-nettappen på denne serveren. Last inn siden på nytt og prøv igjen.",
+    "conflict": "Det kolliderer med en endring noen andre har gjort. Prøv igjen.",
+    "account_storage_full": "Prosjekteierens konto har ikke mer lagringsplass på denne serveren.",
+    "too_many_uploads": "Du har lastet opp for mange filer den siste timen. Prøv igjen senere."
+  }
+}

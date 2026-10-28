@@ -50,6 +50,19 @@ describe("AccessChangeBanner", () => {
     expect(toasts.toast.info).not.toHaveBeenCalled();
   });
 
+  it("says what a reviewer or a commenter can do now", () => {
+    useCollabLiveStore.setState({ accessNotice: { kind: "reviewer", byName: "Bob Smith" } });
+    const view = render(<AccessChangeBanner />);
+    expect(screen.getByRole("status")).toHaveTextContent(fill(copy.reviewerBy, { name: "Bob Smith" }));
+    act(() => useCollabLiveStore.setState({ accessNotice: { kind: "reviewer", byName: "" } }));
+    expect(screen.getByRole("status")).toHaveTextContent(copy.reviewer);
+    act(() => useCollabLiveStore.setState({ accessNotice: { kind: "commenter", byName: "Bob Smith" } }));
+    expect(screen.getByRole("status")).toHaveTextContent(fill(copy.commenterBy, { name: "Bob Smith" }));
+    act(() => useCollabLiveStore.setState({ accessNotice: { kind: "commenter", byName: "" } }));
+    expect(screen.getByRole("status")).toHaveTextContent(copy.commenter);
+    view.unmount();
+  });
+
   it("says who removed the person and that their copy stays on this computer", () => {
     useCollabLiveStore.setState({ accessNotice: { kind: "removed", byName: "Bob Smith" } });
     render(<AccessChangeBanner />);

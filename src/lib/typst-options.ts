@@ -61,6 +61,14 @@ export const setTypstProjectOptions = (projectId: string, update: TypstOptionsUp
 export const typstProjectFonts = (projectId: string) =>
   invoke<TypstFontList>("typst_project_fonts", { projectId });
 
+export interface TypstGlyphCoverage {
+  uncovered: string;
+  packsApply: boolean;
+}
+
+export const typstGlyphCoverage = (projectId: string, characters: string) =>
+  invoke<TypstGlyphCoverage>("typst_glyph_coverage", { projectId, characters });
+
 export const exportTypstDocument = (
   projectId: string,
   mainDoc: string,

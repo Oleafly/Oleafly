@@ -14,6 +14,9 @@ const EXPLANATIONS: Readonly<Record<string, Explain>> = {
     i18n.t(($) => $.errors.tex.shell_escape_denied_pythontex, shellEscapeParams()),
   "tex.shell_escape_denied_command": () =>
     i18n.t(($) => $.errors.tex.shell_escape_denied_command, shellEscapeParams()),
+  "notebook.code_needed": () => i18n.t(($) => $.shell.codeExecution.needed),
+  "notebook.code_skipped": () => i18n.t(($) => $.shell.codeExecution.skipped),
+  "notebook.stored_results": () => i18n.t(($) => $.shell.codeExecution.storedResults),
   "tex.compiler_crashed": () => i18n.t(($) => $.errors.tex.compiler_crashed),
   "tex.compiler_crashed_font": (params) =>
     i18n.t(($) => $.errors.tex.compiler_crashed_font, { font: params.font ?? "" }),

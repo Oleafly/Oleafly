@@ -795,6 +795,9 @@ mod pin_tests {
                 access_logs: false,
                 comments: false,
                 encryption: EncryptionSupport::None,
+                suggestions: false,
+                chat: false,
+                web: false,
             },
             limits: Limits {
                 max_project_mb: 1,

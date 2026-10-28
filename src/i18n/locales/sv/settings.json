@@ -268,6 +268,7 @@
       "keyPlaceholder": "Lämna tomt om ingen krävs",
       "keyPlaceholderStored": "Den sparade nyckeln blir kvar om du inte anger en ny",
       "namePlaceholder": "Acme",
+      "presetsLabel": "Vanliga leverantörer",
       "saveAnyway": "Spara ändå",
       "submitAdd": "Lägg till leverantör",
       "submitAddAnyway": "Lägg till utan modeller"
@@ -368,7 +369,8 @@
       "badge": {
         "connected": "Ansluten",
         "notRunning": "Körs inte",
-        "running": "Körs"
+        "running": "Körs",
+        "suggested": "Rekommenderas"
       },
       "blurbs": {
         "anthropic": "Claude-modeller, starka på kod och skrivande.",
@@ -378,7 +380,7 @@
         "groq": "Mycket snabb körning av öppna modeller.",
         "mistral": "Mistral- och Codestral-modeller.",
         "ollama": "Kör modeller på din dator. Ingen nyckel behövs, installera bara Ollama och hämta en modell.",
-        "openai": "GPT-modeller. Standardvalet.",
+        "openai": "GPT-modeller.",
         "openrouter": "En nyckel, tillgång till modeller från många labb.",
         "perplexity": "Sonar-modeller med aktuell webbförankring.",
         "xai": "Grok-modeller från xAI.",
@@ -633,6 +635,21 @@
         "description": "Används för knappar, markeringar och redigerarens markör.",
         "label": "Accentfärg",
         "swatchAriaLabel": "Accentfärgen {{name}}"
+      },
+      "appIcon": {
+        "aurora": "Norrsken",
+        "blue": "Blå",
+        "coral": "Korall",
+        "description": "Välj ikonen som Oleafly visar i Dock eller i aktivitetsfältet medan appen är öppen.",
+        "iridescent": "Skimrande",
+        "label": "Appikon",
+        "light": "Ljus",
+        "mint": "Mint",
+        "note": "Finder, Start-menyn och appstartare visar fortfarande standardikonen.",
+        "ocean": "Hav",
+        "pastel": "Pastell",
+        "prism": "Prisma",
+        "sunset": "Solnedgång"
       },
       "bgPattern": {
         "description": "Välj mönstret bakom projekthyllan.",
@@ -1457,6 +1474,58 @@
         "detail": "Bygg det öppna projektet med en nyare installerad version och jämför resultaten innan du byter.",
         "check": "Kontrollera med Typst {{version}}"
       }
+    },
+    "notebook": {
+      "loading": "Söker efter Quarto, Calepin och språk på den här datorn",
+      "source": {
+        "system": "På den här datorn",
+        "managed": "Nedladdad av Oleafly"
+      },
+      "active": {
+        "version": "{{tool}} {{version}}",
+        "missing": "Hittades inte på den här datorn."
+      },
+      "managedIdle": "Används inte. Oleafly använder först kopian som hittades på den här datorn.",
+      "download": {
+        "optional": "Valfritt. Oleafly använder redan kopian på den här datorn.",
+        "license": "{{license}}-licens.",
+        "action": "Ladda ner {{tool}} {{version}} ({{size}})",
+        "actionNoSize": "Ladda ner {{tool}} {{version}}",
+        "notOffered": "Oleafly kan inte ladda ner {{tool}} för den här datorn. Installera det själv så hittar Oleafly det."
+      },
+      "removeAria": "Ta bort kopian av {{tool}} som Oleafly laddade ner",
+      "languages": {
+        "heading": "Språk",
+        "tooltip": "Kod i Quarto- och Calepin-dokument körs med de här programmen.",
+        "notFound": "Hittades inte",
+        "note": "Oleafly kör kod med R, Python och Julia som redan finns på den här datorn. Oleafly installerar dem aldrig själv."
+      },
+      "codeNote": "Kod i ett dokument körs först när du har tillåtit kod för det projektet i kompileringsmenyn.",
+      "progress": {
+        "starting": "Startar",
+        "downloading": "Laddar ner {{percent}} %",
+        "verifying": "Kontrollerar",
+        "extracting": "Packar upp",
+        "done": "Slutför"
+      },
+      "error": {
+        "load": "Det gick inte att söka efter Quarto, Calepin och språk.",
+        "install": "Det gick inte att installera {{tool}}.",
+        "remove": "Det gick inte att ta bort {{tool}}."
+      }
+    },
+    "quarto": {
+      "heading": "Quarto",
+      "tooltip": "Quarto gör om .qmd- och .Rmd-dokument till en PDF, en webbsida eller presentationsbilder. Oleafly använder Quarto på den här datorn om programmet hittar det, annars en kopia som Oleafly laddar ner.",
+      "detail": "Oleafly kompilerar .qmd- och .Rmd-dokument med den här kopian.",
+      "downloadDetail": "Oleafly sparar en egen kopia i appens mapp. Quarto innehåller Pandoc och andra verktyg under deras egna licenser."
+    },
+    "calepin": {
+      "heading": "Calepin",
+      "tooltip": "Calepin kör koden i ett Typst-dokument och lägger in resultaten i PDF-filen. Oleafly använder Calepin på den här datorn om programmet hittar det, annars en kopia som Oleafly laddar ner.",
+      "detail": "Oleafly kompilerar Calepin-dokument med den här kopian.",
+      "downloadDetail": "Oleafly sparar en egen kopia i appens mapp.",
+      "typstNote": "Calepin renderar med den Typst som är inbyggd i Oleafly. Det kräver Typst 0.15 eller senare."
     }
   },
   "gitHosting": {

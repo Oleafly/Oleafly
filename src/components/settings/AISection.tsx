@@ -12,7 +12,7 @@ import {
   type ProviderModel,
   type StoredModel,
 } from "@/lib/tauri";
-import { defaultModel, getProvider, supportsModelDiscovery } from "@/lib/ai-providers";
+import { defaultModel, getProvider, suggestedProviderId, supportsModelDiscovery } from "@/lib/ai-providers";
 import {
   clearModelListThrottle,
   enabledModels,
@@ -189,7 +189,7 @@ function resetProviderModelPreferences(
 }
 
 export function AISection() {
-  const { t } = useTranslation(["common", "settings"]);
+  const { t, i18n } = useTranslation(["common", "settings"]);
   const [tab, setTab] = useState<AiSettingsTab>("providers");
   const [mcpMounted, setMcpMounted] = useState(false);
   const [cfg, setCfg] = useState<AppConfig>(DEFAULT_CFG);
@@ -854,6 +854,7 @@ export function AISection() {
             onAddCustomProvider={() => setCustomDialog({ mode: "add" })}
             onEditCustomProvider={openEditCustomProvider}
             deleteCustomProvider={deleteCustomProvider}
+            suggestedProvider={suggestedProviderId(i18n.language)}
           />
           <div className="mt-3 space-y-3">
             <ProjectApprovals />
@@ -932,6 +933,7 @@ export function AISection() {
         }}
         onSubmit={customDialog?.mode === "edit" ? editCustomProvider : addCustomProvider}
         editing={customDialog?.mode === "edit" ? customDialog.target : null}
+        takenIds={cfg.ai_custom_providers.map((provider) => provider.id)}
       />
 
       {msg && (

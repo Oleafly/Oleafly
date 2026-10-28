@@ -233,6 +233,29 @@ describe("NewProjectDialog", () => {
     expect(screen.getByTestId("template-card-blank")).toBeInTheDocument();
   });
 
+  it("filters and badges Quarto and Calepin templates", () => {
+    open({
+      templates: [
+        ...TEMPLATES,
+        template({ id: "quarto-article", name: "Quarto article", document_engine: "quarto", engine: "quarto" }),
+        template({ id: "calepin-report", name: "Calepin report", document_engine: "calepin", engine: "calepin" }),
+      ],
+    });
+    expect(screen.getByTestId("template-card-quarto-article")).toHaveTextContent("Quarto");
+    expect(screen.getByTestId("template-card-calepin-report")).toHaveTextContent("Calepin");
+    const engine = screen.getByLabelText("dialog.engineLabel");
+    expect(screen.getByRole("option", { name: "dialog.engineQuarto" })).toBeInTheDocument();
+    fireEvent.change(engine, { target: { value: "quarto" } });
+    expect(screen.getByTestId("template-card-quarto-article")).toBeInTheDocument();
+    expect(screen.queryByTestId("template-card-calepin-report")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("template-card-blank")).not.toBeInTheDocument();
+    fireEvent.change(engine, { target: { value: "calepin" } });
+    expect(screen.getByTestId("template-card-calepin-report")).toBeInTheDocument();
+    expect(screen.queryByTestId("template-card-quarto-article")).not.toBeInTheDocument();
+    fireEvent.change(engine, { target: { value: "typst" } });
+    expect(screen.queryByTestId("template-card-calepin-report")).not.toBeInTheDocument();
+  });
+
   it("shows a new search's results from the top of the list", () => {
     open();
     const list = screen.getByTestId("template-card-blank").closest(".overflow-y-auto") as HTMLElement;

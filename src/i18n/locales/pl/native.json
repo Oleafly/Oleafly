@@ -101,6 +101,11 @@
       "pickTitle": "Wybierz program dla {{name}}",
       "filter": "Programy"
     },
+    "sharedCodeExecution": {
+      "title": "Zezwolić na kod w tym udostępnionym projekcie?",
+      "message": "Kompilacja uruchomi wtedy kod tego projektu na tym komputerze. Każdy, kto ma prawo do edycji, może zmienić ten kod. Zezwól na to tylko wtedy, gdy ufasz wszystkim osobom w projekcie.",
+      "confirm": "Zezwól na tym komputerze"
+    },
     "desktopApps": {
       "title": "Aplikacje na komputerze",
       "action": "{{agent}} chce {{action}}.",

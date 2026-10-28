@@ -44,7 +44,8 @@
     "folder_holds_templates": "Bu klasör Oleafly'nin kendi şablonlarını içeriyor. Bunun yerine şablonun klasörünü seçin."
   },
   "settings": {
-    "locale_unsupported": "{{locale}} dili kullanılamıyor."
+    "locale_unsupported": "{{locale}} dili kullanılamıyor.",
+    "app_icon_unsupported": "{{icon}} uygulama simgesi kullanılamıyor."
   },
   "literature": {
     "query_empty": "Arama sorgusu boş olamaz.",
@@ -146,7 +147,8 @@
     "shell_escape": "shell escape özelliğine izin vermeden önce bu klasöre güvenin.",
     "broad_folder": "Oleafly {{name}} klasörünün tamamına güvenemez. Daha küçük bir klasör seçin.",
     "declined": "Klasöre güvenilmedi.",
-    "unavailable": "Oleafly bu klasöre güvenilip güvenilmediğini denetleyemedi."
+    "unavailable": "Oleafly bu klasöre güvenilip güvenilmediğini denetleyemedi.",
+    "notebook": "Quarto veya Calepin ile derlemek için bu klasöre güvenin."
   },
   "open_folder": {
     "not_absolute": "Klasörün tam yolunu kullanın.",
@@ -335,7 +337,18 @@
     "browser_sign_in_failed": "Tarayıcınızdan alınan oturum bilgisi işe yaramadı. Süresi dolmuş olabilir. Doğrudan oturum açın."
   },
   "collab": {
-    "turned_off": "Canlı iş birliği kapalı. Ayarlar'daki Deneysel Özellikler bölümünden açın."
+    "suggestion_role": "Bu projedeki rolünüz öneri yapmaya izin vermiyor."
+  },
+  "notebook": {
+    "code_needed": "{{engine}} bu belgeyi derlemek için kod çalıştırmalı, ancak bu projede kod kapalı. Derlemek için bu projede kod çalıştırmaya izin verin.",
+    "quarto_missing": "Quarto kurulu değil. Ayarlar > Motorlar > Quarto bölümünden kurun, sonra yeniden derleyin.",
+    "calepin_missing": "Calepin kurulu değil. Ayarlar > Motorlar > Calepin bölümünden kurun, sonra yeniden derleyin.",
+    "not_offered": "Oleafly, {{tool}} aracını bu bilgisayar için indiremiyor. Kendiniz kurun, sonra yeniden derleyin.",
+    "busy": "{{tool}} hâlâ kuruluyor. Kurulum bitince yeniden deneyin.",
+    "install_unverified": "{{tool}} indirildi ancak bütünlük denetiminden geçemedi. Yeniden kurmayı deneyin.",
+    "unknown_tool": "Oleafly, {{tool}} adlı bir aracı tanımıyor.",
+    "not_managed": "Oleafly yalnızca kendi indirdiği {{tool}} kopyasını kaldırabilir.",
+    "no_html_output": "Henüz HTML çıktısı yok. Önce belgeyi derleyin."
   },
   "attachments": {
     "too_large": "Bu dosya {{max}} MB sınırını aşıyor. Daha küçük bir dosya ekleyin.",

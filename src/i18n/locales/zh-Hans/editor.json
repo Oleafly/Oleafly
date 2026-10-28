@@ -1055,6 +1055,16 @@
         "unknownEntryType": "未知的参考文献条目类型 @{{type}}。"
       }
     },
+    "quarto": {
+      "completion": {
+        "chunkOption": "Quarto 代码块选项"
+      }
+    },
+    "calepin": {
+      "completion": {
+        "chunkOption": "Calepin 代码块选项"
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "正在加载图片",
@@ -1492,5 +1502,5 @@
     "keyTaken": "同一变体不能两次设置同一名称。",
     "saveFailed": "无法保存变体。"
   },
-  "sharedSettingsViewer": "在共享项目中，查看者无法更改此项。"
+  "sharedSettingsViewer": "在共享项目中，只有所有者和编辑者可以更改此项。"
 }

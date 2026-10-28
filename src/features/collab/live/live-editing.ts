@@ -15,7 +15,7 @@ import {
 import { isProjectIntelligencePath } from "@/lib/project-intelligence/source";
 import { onPathsDeleted, onPathsMoved, useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
-import { isReadOnlyProjectRole } from "../roles";
+import { canEditProjectRole, isReadOnlyProjectRole } from "../roles";
 import { LiveSessions } from "./live-sessions";
 import { type LivePeer, type LiveSession, useCollabLiveStore } from "./live-store";
 import { createPresencePublisher, type Presence } from "./presence";
@@ -189,9 +189,15 @@ export function startLiveEditing(live: LiveSession): () => void {
         : Promise.resolve(),
     handBack: (id) => (id === projectId ? sessions.handBack(HAND_BACK_WAIT_MS) : Promise.resolve()),
   });
-  useCollabEditorGate.setState({ projectId, viewer: isViewer(), connecting: false });
+  const isLocked = () => !canEditProjectRole(useCollabLiveStore.getState().role);
+  useCollabEditorGate.setState({ projectId, viewer: isViewer(), locked: isLocked(), connecting: false });
   const unsubscribeRole = useCollabLiveStore.subscribe((state, previous) => {
-    if (state.role !== previous.role) useCollabEditorGate.setState({ viewer: isReadOnlyProjectRole(state.role) });
+    if (state.role !== previous.role) {
+      useCollabEditorGate.setState({
+        viewer: isReadOnlyProjectRole(state.role),
+        locked: !canEditProjectRole(state.role),
+      });
+    }
   });
 
   const queue = inOrder();
@@ -224,7 +230,7 @@ export function startLiveEditing(live: LiveSession): () => void {
     uninstallPort();
     sessions.close();
     indexer.dispose();
-    useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false, connecting: false });
     const files = useFilesStore.getState();
     if (files.projectId === projectId) files.bumpDocVersion();
   };

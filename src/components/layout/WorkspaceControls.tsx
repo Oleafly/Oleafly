@@ -16,6 +16,7 @@ import { useTerminalsStore } from "@/store/terminals";
 import { useMcpActivityStore } from "@/store/mcp-activity";
 import { useResearchTasksEnabled } from "@/store/research-tasks-flag";
 import { useCollabRail } from "@/components/collab/collab-rail";
+import { useChatRail } from "@/components/collab/chat-rail";
 import { useCommentsRail } from "@/components/collab/comments-rail";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useTheme } from "@/lib/theme";
@@ -100,8 +101,10 @@ export function SidebarViews() {
   const mcpEnabled = useMcpActivityStore((s) => s.serverRunning);
   const collabShown = useCollabRail((s) => s.visible);
   useCollabRail((s) => s.unread);
-  const commentsShown = useCommentsRail((s) => s.visible);
+  const commentsShown = useCommentsRail((s) => s.visible || s.suggestions);
   useCommentsRail((s) => s.unread);
+  const chatShown = useChatRail((s) => s.visible);
+  useChatRail((s) => s.unread);
   const { theme } = useTheme();
 
   useEffect(() => {
@@ -120,6 +123,10 @@ export function SidebarViews() {
   useEffect(() => {
     if (!researchShown && railTab === "research") setRailTab("files");
   }, [researchShown, railTab, setRailTab]);
+
+  useEffect(() => {
+    if (!chatShown && railTab === "chat") setRailTab("files");
+  }, [chatShown, railTab, setRailTab]);
 
   const select = (tab: RailTab) => {
     setRailTab(tab);

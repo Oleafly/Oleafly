@@ -335,6 +335,7 @@ describe("settings search tabs", () => {
     expect(settingsTabFor(["engine", "distributions"])).toBe("latex");
     expect(settingsTabFor(["engine", "packages"])).toBe("latex");
     expect(settingsTabFor(["engine", "tagging"])).toBe("latex");
+    expect(settingsTabFor(["engine", "notebook", "languages"])).toBe("quarto");
     expect(settingsTabFor(["ai", "approvals", "file"])).toBe("providers");
     expect(settingsTabFor(["ai", "budget"])).toBe("providers");
     expect(settingsTabFor(["ai", "models"])).toBe("providers");

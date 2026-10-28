@@ -265,6 +265,8 @@ fn extensions_for(engine: Engine) -> &'static str {
         Engine::Tectonic | Engine::Latexmk => ".tex",
         Engine::Typst => ".typ",
         Engine::Markdown => ".md",
+        Engine::Quarto => ".qmd",
+        Engine::Calepin => ".typ",
     }
 }
 

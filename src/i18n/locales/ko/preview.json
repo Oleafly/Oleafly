@@ -96,7 +96,20 @@
     "chooseEngine": "엔진 선택",
     "installPackages_other": "파일 {{count}}개 찾아서 설치",
     "downloadTypst": "Typst {{version}} 다운로드",
-    "useTypst": "Typst {{version}} 사용"
+    "useTypst": "Typst {{version}} 사용",
+    "installTool": "{{tool}} {{version}} 설치",
+    "installToolSize": "{{tool}} {{version}} 설치({{size}})",
+    "engineSettings": "엔진 설정 열기"
+  },
+  "html": {
+    "builtTitle": "웹 페이지로 빌드됨",
+    "builtDetail": "{{time}}에 빌드했습니다. 웹 페이지는 브라우저에서 열립니다.",
+    "building": "웹 페이지를 빌드하는 중",
+    "buildingDetail": "완료되면 브라우저에서 열 수 있습니다.",
+    "pendingTitle": "이 문서는 웹 페이지로 빌드됩니다",
+    "pendingDetail": "컴파일한 다음 브라우저에서 여세요.",
+    "open": "브라우저에서 열기",
+    "compile": "컴파일"
   },
   "stale": {
     "badge": "최신 아님",

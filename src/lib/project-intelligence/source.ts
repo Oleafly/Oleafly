@@ -8,7 +8,7 @@ import type {
 } from "./types";
 
 export const INDEXABLE_PROJECT_FILE =
-  /\.(?:tex|ltx|latex|sty|cls|typ|md|markdown|bib)$/i;
+  /\.(?:tex|ltx|latex|sty|cls|typ|md|markdown|qmd|rmd|bib)$/i;
 
 const LOCKFILE_YAML = /(?:^|[-_.])lock\.ya?ml$/;
 
@@ -25,9 +25,7 @@ export function engineForPath(
   const lower = path.toLowerCase();
   if (lower.endsWith(".bib")) return "bibtex";
   if (lower.endsWith(".typ")) return "typst";
-  if (lower.endsWith(".md") || lower.endsWith(".markdown")) {
-    return "markdown";
-  }
+  if (/\.(?:md|markdown|qmd|rmd)$/.test(lower)) return "markdown";
   if (/\.(?:tex|ltx|latex|sty|cls)$/i.test(lower)) return "latex";
   return null;
 }

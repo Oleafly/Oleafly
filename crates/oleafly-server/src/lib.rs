@@ -15,11 +15,14 @@ pub mod i18n;
 pub mod mail;
 pub mod members;
 pub mod mentions;
+pub mod outputs;
 pub mod peers;
 pub mod polls;
 pub mod projects;
+pub mod quotas;
 pub mod rate_limit;
 pub mod removals;
+pub mod role_guard;
 pub mod rooms;
 pub mod routes;
 pub mod security_log;
@@ -31,6 +34,9 @@ pub mod state;
 pub mod test_support;
 pub mod tokens;
 pub mod transfers;
+#[cfg(feature = "web")]
+pub mod web;
+pub mod web_sessions;
 
 use std::future::Future;
 use std::net::SocketAddr;
@@ -200,6 +206,7 @@ pub async fn serve(config: ServerConfig) -> Result<(), ServeError> {
         env!("CARGO_PKG_VERSION"),
         state.config.public_url
     );
+    tracing::info!("{}", state.config.sign_up_note());
     serve_on(state, listener, shutdown_signal())
         .await
         .map_err(ServeError::Failed)

@@ -463,3 +463,41 @@ fn font_listing_reads_typst_options_only_for_typst_projects() {
         [root.join("fonts"), root.join("assets/type")]
     );
 }
+
+#[test]
+fn coverage_probes_each_visible_character_once_up_to_the_limit() {
+    assert_eq!(coverage_probes("中文 中\n文字\t"), ['中', '文', '字']);
+    let many: String = (0..200u32)
+        .filter_map(|offset| char::from_u32(0x4E00 + offset))
+        .collect();
+    assert_eq!(coverage_probes(&many).len(), COVERAGE_PROBE_LIMIT);
+    assert!(coverage_probes(" \u{7}\n").is_empty());
+}
+
+#[test]
+fn characters_no_font_maps_stay_uncovered_and_placeholder_fonts_do_not_count() {
+    assert_eq!(uncovered_by(&fontdb::Database::new(), "中文 中"), "中文");
+    assert_eq!(uncovered_by(&fontdb::Database::new(), ""), "");
+    assert!(draws_placeholders("LastResort"));
+    assert!(draws_placeholders("lastresort"));
+    assert!(!draws_placeholders("Noto Sans CJK SC"));
+}
+
+#[test]
+fn glyph_coverage_looks_only_at_the_fonts_a_compile_would_see() {
+    let (_directory, root) = project_with_fonts();
+    let settings = TypstCompileSettings {
+        font_dirs: vec![root.join("fonts")],
+        ignore_system_fonts: true,
+        ..TypstCompileSettings::default()
+    };
+    assert!(coverage_database(&settings).is_empty());
+    assert_eq!(
+        serde_json::to_value(TypstGlyphCoverage {
+            uncovered: "中".into(),
+            packs_apply: false,
+        })
+        .unwrap(),
+        serde_json::json!({"uncovered": "中", "packsApply": false})
+    );
+}

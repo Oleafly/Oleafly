@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 
 use clap::{Args, Subcommand};
 use oleafly_core::templates::{
-    instantiate_from, is_valid_id, list_templates_in_roots, missing_font_packs, sort_templates,
-    template_engine, TemplateManifest,
+    declared_template_engine, instantiate_from, is_valid_id, list_templates_in_roots,
+    missing_font_packs, sort_templates, TemplateManifest,
 };
 use oleafly_core::{Engine, InitOptions, ProjectManifest, TypstSpec, Workspace};
 use oleafly_downloads::template_packs::{
@@ -162,6 +162,8 @@ fn engine_label(manifest: &TemplateManifest) -> &'static str {
         Some(Engine::Markdown) => "markdown",
         Some(Engine::Latexmk) => "latexmk",
         Some(Engine::Tectonic) => "latex",
+        Some(Engine::Quarto) => "quarto",
+        Some(Engine::Calepin) => "calepin",
         None => "unknown",
     }
 }
@@ -743,7 +745,8 @@ async fn run_new(ctx: &Context, args: NewArgs) -> Result<Outcome, CliError> {
     let latex_default = ctx
         .data_root()
         .and_then(crate::app_config::latex_default_engine);
-    let (engine, tex_flavor) = template_engine(
+    let (engine, tex_flavor) = declared_template_engine(
+        &template.engine,
         &template.main_doc,
         template.tex_flavor.as_deref(),
         latex_default.as_deref(),

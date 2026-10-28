@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { NodeProp, Tree, type TreeBuffer, TreeFragment, type SyntaxNode } from "@lezer/common";
 import { describe, expect, it } from "vitest";
-import { parseTypst, typstParser, typstPlainTitle } from "./typst-parser";
+import { parseTypst, typstEditorParser, typstParser, typstPlainTitle } from "./typst-parser";
 
 function shape(node: SyntaxNode): string {
   if (node.type.isError) return "⚠";
@@ -372,6 +372,23 @@ describe("incremental Typst parsing", () => {
     expect(partial.length).toBeLessThan(document.length);
     const resumed = typstParser.parse(document, TreeFragment.addTree(partial, [], true));
     expect(topLevel(resumed, positioned)).toBe(topLevel(parseTypst(document), positioned));
+  });
+
+  it("keeps reusing chunks after a stopped editor parse that nests raw blocks", () => {
+    const parse = typstEditorParser.startParse(document);
+    parse.stopAt(Math.floor(document.length / 2));
+    let partial: Tree | null = null;
+    while (!(partial = parse.advance()));
+    const at = Math.floor(document.length / 4);
+    const next = `${document.slice(0, at)}x${document.slice(at)}`;
+    const fragments = TreeFragment.applyChanges(TreeFragment.addTree(partial, [], true), [
+      { fromA: at, toA: at, fromB: at, toB: at + 1 },
+    ]);
+    const reparsed = typstEditorParser.parse(next, fragments);
+    expect(topLevel(reparsed, positioned)).toBe(topLevel(parseTypst(next), positioned));
+    const before = chunksOf(partial);
+    const reused = [...chunksOf(reparsed)].filter((chunk) => before.has(chunk)).length;
+    expect(reused).toBeGreaterThan(10);
   });
 
   it("matches a full parse after a sequence of structural edits", () => {

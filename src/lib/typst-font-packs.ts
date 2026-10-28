@@ -3,6 +3,21 @@ import type { ComponentInfo } from "@/lib/tauri";
 export const TYPST_FONT_PACK_IDS = ["typst-cjk", "typst-text", "typst-sans", "typst-mono", "typst-icons"] as const;
 export type TypstFontPackId = (typeof TYPST_FONT_PACK_IDS)[number];
 
+export const CJK_FONT_PACK_ID: TypstFontPackId = "typst-cjk";
+
+const CJK_CHARACTER = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/gu;
+
+export function cjkCharacters(texts: Iterable<string>, limit = 32): string {
+  const found = new Set<string>();
+  for (const text of texts) {
+    for (const [character] of text.matchAll(CJK_CHARACTER)) {
+      found.add(character);
+      if (found.size >= limit) return [...found].join("");
+    }
+  }
+  return [...found].join("");
+}
+
 export function isTypstFontPackId(id: string): id is TypstFontPackId {
   return (TYPST_FONT_PACK_IDS as readonly string[]).includes(id);
 }

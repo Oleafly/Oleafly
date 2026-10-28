@@ -55,6 +55,7 @@ function renderTab(overrides: Partial<ProvidersTabProps> = {}) {
     onAddCustomProvider: vi.fn(),
     onEditCustomProvider: vi.fn(),
     deleteCustomProvider: vi.fn().mockResolvedValue(undefined),
+    suggestedProvider: "openai",
     ...overrides,
   };
   const view = render(
@@ -150,6 +151,32 @@ beforeEach(() => {
 });
 
 describe("ProvidersTab provider cards", () => {
+  it("lists the suggested provider first and marks it until any provider is set up", () => {
+    const { rerender } = renderTab({ suggestedProvider: "deepseek" });
+
+    const cards = screen.getAllByTestId(/^ai-provider-card-/u);
+    expect(cards[0]).toHaveAttribute("data-testid", "ai-provider-card-deepseek");
+    expect(within(cards[0] as HTMLElement).getByTestId("ai-provider-suggested")).toHaveTextContent(
+      providers.badge.suggested,
+    );
+    expect(screen.getAllByTestId("ai-provider-suggested")).toHaveLength(1);
+
+    rerender({ suggestedProvider: "deepseek", savedKeys: { openai: "sk-saved" } });
+    expect(screen.getAllByTestId(/^ai-provider-card-/u)[0]).toHaveAttribute(
+      "data-testid",
+      "ai-provider-card-deepseek",
+    );
+    expect(screen.queryByTestId("ai-provider-suggested")).toBeNull();
+  });
+
+  it("keeps OpenAI first and suggested for other interface languages", () => {
+    renderTab();
+
+    const first = screen.getAllByTestId(/^ai-provider-card-/u)[0] as HTMLElement;
+    expect(first).toHaveAttribute("data-testid", "ai-provider-card-openai");
+    expect(within(first).getByTestId("ai-provider-suggested")).toBeInTheDocument();
+  });
+
   it("keeps a collapsed card to its name and expands it on request", async () => {
     const user = userEvent.setup();
     const setOpenProviders = vi.fn();

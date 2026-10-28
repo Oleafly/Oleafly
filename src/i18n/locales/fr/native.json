@@ -101,6 +101,11 @@
       "pickTitle": "Choisissez le programme pour {{name}}",
       "filter": "Programmes"
     },
+    "sharedCodeExecution": {
+      "title": "Autoriser le code dans ce projet partagé ?",
+      "message": "La compilation exécutera alors le code de ce projet sur cet ordinateur. Toute personne disposant d'un accès en modification peut changer ce code. Autorisez-le seulement si vous faites confiance à tous les membres du projet.",
+      "confirm": "Autoriser sur cet ordinateur"
+    },
     "desktopApps": {
       "title": "Applications de bureau",
       "action": "{{agent}} veut {{action}}.",

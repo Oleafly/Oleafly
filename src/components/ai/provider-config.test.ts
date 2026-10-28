@@ -53,6 +53,20 @@ describe("deriveProviderState", () => {
     expect(state.keysMap).toEqual({ openai: "legacy" });
   });
 
+  it("starts an interface with nothing set up on its suggested provider", async () => {
+    const { deriveProviderState } = await loadModule();
+    const empty = config({ ai_provider: "", ai_model: "", ai_keys: {} });
+    const chinese = deriveProviderState(empty, "deepseek");
+    expect(chinese).toMatchObject({ provider: "deepseek", apiKey: "" });
+    expect(chinese.model).toMatch(/^deepseek/u);
+    expect(deriveProviderState(empty).provider).toBe("openai");
+    expect(deriveProviderState({ ...empty, ai_api_key: "legacy" }, "deepseek")).toMatchObject({
+      provider: "openai",
+      apiKey: "legacy",
+      keysMap: { openai: "legacy" },
+    });
+  });
+
   it("treats a key optional custom provider as configured without a key", async () => {
     const { deriveProviderState } = await loadModule();
     const state = deriveProviderState(

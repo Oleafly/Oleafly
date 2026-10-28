@@ -2,7 +2,7 @@ use oleafly_collab_protocol::admin::{MemberStatus, SecurityEventKind};
 use oleafly_collab_protocol::guests::{GuestInvitation, GuestInvitationStatus};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
 use oleafly_collab_protocol::projects::{ProjectRole, ProjectStatus};
-use oleafly_collab_protocol::roles::ServerRole;
+use oleafly_collab_protocol::roles::{grantable, ServerRole};
 use rusqlite::{params, Connection, OptionalExtension, Row};
 use serde_json::json;
 
@@ -21,7 +21,7 @@ pub const INVITATION_DAYS: i64 = 14;
 pub const INVITATIONS_PER_HOUR: i64 = 20;
 const HOUR_MS: i64 = 60 * 60 * 1000;
 const COLUMNS: &str = "id, project_id, email, role, invited_by, status, created_at, expires_at";
-pub const GUEST_ROLES: &str = "A guest can be an Editor or a Viewer.";
+pub const GUEST_ROLES: &str = "A guest can be an Editor, a Reviewer, a Commenter or a Viewer.";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Invitation {
@@ -204,7 +204,7 @@ pub fn create(
     approval_required: bool,
     now: i64,
 ) -> Result<Invitation, ServerError> {
-    if !matches!(role, ProjectRole::Editor | ProjectRole::Viewer) {
+    if !grantable(role) {
         return Err(ServerError::BadRequest(GUEST_ROLES.to_string()));
     }
     let recent: i64 = conn.query_row(

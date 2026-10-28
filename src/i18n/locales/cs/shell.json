@@ -441,7 +441,19 @@
       "help": "Varianta předává do sys.inputs vlastní hodnoty, například pro koncept nebo finální verzi do tisku. Vybraná varianta zůstává v tomto počítači. Varianty přidáte nebo upravíte v Nastavení dokumentu.",
       "none": "Bez varianty"
     },
-    "sharedViewer": "Čtenáři ve sdíleném projektu nemohou tato nastavení měnit."
+    "typEngine": {
+      "title": "Engine (tento projekt)",
+      "help": "Typst zkompiluje dokument tak, jak je napsaný. Calepin navíc spustí kód v dokumentu a výsledky vloží do PDF.",
+      "typst": "Typst <note>[vestavěný]</note>",
+      "calepin": "Calepin <note>[spouští kód]</note>"
+    },
+    "code": {
+      "title": "Kód (tento počítač)",
+      "help": "Quarto a Calepin mohou spouštět kód v jazycích R, Python a Julia, který tento projekt obsahuje. Kód běží s vašimi oprávněními, proto ho povolte jen u projektu, kterému důvěřujete. Volba platí jen pro tento počítač.",
+      "off": "Vypnuto",
+      "run": "Spouštět kód v tomto počítači"
+    },
+    "sharedViewer": "Ve sdíleném projektu mohou tato nastavení měnit jen vlastníci a editoři."
   },
   "datePicker": {
     "placeholder": "Vyberte datum"
@@ -510,6 +522,18 @@
   "shellCommands": {
     "allow": "Povolit externí příkazy",
     "banner": "Tento dokument při kompilaci spouští externí příkazy a tento projekt je blokuje. Povolte je jen tehdy, pokud důvěřujete každému souboru v projektu."
+  },
+  "codeExecution": {
+    "allow": "Povolit kód v tomto projektu",
+    "needed": "Tento dokument musí při sestavení spustit svůj kód a kód je pro tento projekt vypnutý. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu.",
+    "skipped": "Kód v tomto dokumentu se nespustil, protože kód je pro tento projekt vypnutý. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu.",
+    "storedResults": "PDF zobrazuje výsledky kódu uložené z dřívějšího spuštění, protože kód je pro tento projekt vypnutý. Kód povolte jen tehdy, pokud důvěřujete každému souboru v projektu."
+  },
+  "typstCjkFonts": {
+    "message": "Tento dokument obsahuje čínský, japonský nebo korejský text, který žádné písmo v tomto počítači nedokáže zobrazit, a proto v PDF chybí.",
+    "download": "Stáhnout písma",
+    "downloadSize": "Stáhnout písma ({{size}})",
+    "downloading": "Stahují se písma"
   },
   "errorBoundary": {
     "copyDiagnostics": "Kopírovat diagnostiku",
@@ -631,6 +655,8 @@
       "standalone": "Samostatný obrázek",
       "typst": "Typst",
       "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Poznámkový blok Calepin",
       "unknown": "Jiné"
     },
     "reason": {
@@ -874,10 +900,6 @@
       "latexTools": {
         "description": "Zobrazí galerii Oleafly Tools a jednotlivé nástroje (import PDF, rovnice, tabulky, BibTeX, hledání laboratoří a literatury, termíny) i jejich příkazy s lomítkem. Ve výchozím stavu vypnuto, dokud je to v beta verzi.",
         "label": "Nástroje LaTeX"
-      },
-      "liveCollaboration": {
-        "description": "Upravujte projekty s dalšími lidmi přes server pro spolupráci, který provozujete vy nebo vaše skupina. Přidá do Nastavení sekci „Spolupráce“. Ve výchozím stavu vypnuto, dokud je to v beta verzi.",
-        "label": "Živá spolupráce"
       },
       "researchTasks": {
         "description": "Agent pracuje sám v kopii projektu a své změny nechá vám k posouzení. Velmi nestabilní: spuštění se mohou zaseknout, selhat nebo po sobě nechat změny, které budete muset vyřešit ručně, a po celou dobu spotřebovávají limit vašeho poskytovatele. Přidá do Nastavení sekci „Výzkum“. Po vypnutí se zastaví všechny běžící úlohy. Ve výchozím stavu vypnuto. Zapněte to na vlastní riziko.",

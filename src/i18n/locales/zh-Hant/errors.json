@@ -44,7 +44,8 @@
     "folder_holds_templates": "這個資料夾存放的是 Oleafly 內建的範本。請改選範本本身的資料夾。"
   },
   "settings": {
-    "locale_unsupported": "語言 {{locale}} 無法使用。"
+    "locale_unsupported": "語言 {{locale}} 無法使用。",
+    "app_icon_unsupported": "應用程式圖示 {{icon}} 無法使用。"
   },
   "literature": {
     "query_empty": "搜尋內容不可為空白。",
@@ -146,7 +147,8 @@
     "shell_escape": "允許 shell escape 前，請先信任這個資料夾。",
     "broad_folder": "Oleafly 無法信任整個 {{name}}。請選擇較小的資料夾。",
     "declined": "未信任該資料夾。",
-    "unavailable": "Oleafly 無法檢查這個資料夾是否受信任。"
+    "unavailable": "Oleafly 無法檢查這個資料夾是否受信任。",
+    "notebook": "信任這個資料夾後才能使用 Quarto 或 Calepin 編譯。"
   },
   "open_folder": {
     "not_absolute": "請使用資料夾的完整路徑。",
@@ -335,7 +337,18 @@
     "browser_sign_in_failed": "來自瀏覽器的登入資訊無效，可能已經過期。請直接登入。"
   },
   "collab": {
-    "turned_off": "即時協作已關閉。請在設定的「實驗功能」中開啟。"
+    "suggestion_role": "你在這個專案中的角色不允許提出建議。"
+  },
+  "notebook": {
+    "code_needed": "{{engine}} 需要執行程式碼才能建置這份文件，但此專案的程式碼已關閉。若要編譯，請在此專案中允許程式碼。",
+    "quarto_missing": "尚未安裝 Quarto。請從設定 > 引擎 > Quarto 安裝，然後重新編譯。",
+    "calepin_missing": "尚未安裝 Calepin。請從設定 > 引擎 > Calepin 安裝，然後重新編譯。",
+    "not_offered": "Oleafly 無法為這台電腦下載 {{tool}}。請自行安裝，然後重新編譯。",
+    "busy": "{{tool}} 仍在安裝中。請在完成後再試一次。",
+    "install_unverified": "{{tool}} 已下載，但未通過完整性檢查。請再安裝一次。",
+    "unknown_tool": "Oleafly 無法辨識名為 {{tool}} 的工具。",
+    "not_managed": "Oleafly 只能移除自己下載的 {{tool}} 副本。",
+    "no_html_output": "還沒有 HTML 輸出。請先編譯文件。"
   },
   "attachments": {
     "too_large": "這個檔案超過 {{max}} MB。請附加較小的檔案。",

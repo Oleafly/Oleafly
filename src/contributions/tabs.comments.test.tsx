@@ -3,6 +3,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { railSections, railTabLabel, registry, type AppContext } from "@oleafly/registry";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
+import { useChatRail } from "@/components/collab/chat-rail";
 import { useCommentsRail } from "@/components/collab/comments-rail";
 import { useCollabRail } from "@/components/collab/collab-rail";
 import { loadNamespace } from "@/i18n";
@@ -27,8 +28,9 @@ beforeEach(() => {
 
 afterEach(() => {
   registry.railTabs.length = 0;
-  useCommentsRail.setState({ visible: false, unread: false });
+  useCommentsRail.setState({ visible: false, suggestions: false, unread: false });
   useCollabRail.setState({ visible: false, unread: false });
+  useChatRail.setState({ visible: false, unread: false });
 });
 
 describe("Comments rail tab", () => {
@@ -37,6 +39,26 @@ describe("Comments rail tab", () => {
     expect(shownIds()).not.toContain("comments");
     useCommentsRail.setState({ visible: true });
     expect(shownIds()).toContain("comments");
+  });
+
+  it("shows while suggestions wait for review even with comments turned off", () => {
+    useCollabRail.setState({ visible: true });
+    useCommentsRail.setState({ visible: false, suggestions: true });
+    expect(shownIds()).toContain("comments");
+  });
+
+  it("puts Chat after Comments while the project is shared and names new messages", () => {
+    useCollabRail.setState({ visible: true });
+    useCommentsRail.setState({ visible: true });
+    expect(shownIds()).not.toContain("chat");
+    useChatRail.setState({ visible: true });
+    const ids = shownIds();
+    expect(ids.indexOf("chat")).toBe(ids.indexOf("comments") + 1);
+    const tab = registry.railTabs.find((entry) => entry.id === "chat");
+    if (!tab) throw new Error("The Chat tab is not registered.");
+    expect(railTabLabel(tab, ctx)).toBe(enCollab.chat.title);
+    useChatRail.setState({ unread: true });
+    expect(railTabLabel(tab, ctx)).toBe(enCollab.chat.titleUnread);
   });
 
   it("sits right after Live collaboration and names unseen activity", () => {

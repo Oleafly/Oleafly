@@ -61,6 +61,7 @@
       "loading": "正在載入你的裝置…",
       "loadFailed": "Oleafly 無法載入你的裝置。",
       "current": "這台電腦",
+      "browser": "瀏覽器",
       "added": "新增於 {{date}}",
       "lastSeen": "上次連線於 {{date}}",
       "neverSeen": "尚未連線",
@@ -139,6 +140,7 @@
   "addServer": {
     "title": "新增協作伺服器",
     "description": "輸入你的團隊提供的位址。Oleafly 會在你登入前先檢查伺服器。",
+    "oleaflyDescription": "公開的 Oleafly 伺服器",
     "addressLabel": "伺服器位址",
     "addressPlaceholder": "collab.example.edu",
     "continue": "繼續",
@@ -218,7 +220,15 @@
     "server_removed": "這個專案的伺服器已不在你的清單中。請將專案保留為本機副本，或重新新增該伺服器。",
     "share_in_progress": "這個專案正在分享中。請等待完成。",
     "cancelled": "已取消開啟分享的專案。",
-    "cloud_synced": "你的 Oleafly 專案庫位於由雲端服務同步的資料夾中。要分享或加入專案，請把它移出 Dropbox、OneDrive 或 iCloud Drive。"
+    "cloud_synced": "你的 Oleafly 專案庫位於由雲端服務同步的資料夾中。要分享或加入專案，請把它移出 Dropbox、OneDrive 或 iCloud Drive。",
+    "suggestion_not_found": "這個建議已經不存在。可能已有人接受或拒絕了它。",
+    "suggestion_not_yours": "只有提出這個建議的人才能撤回它。",
+    "suggestion_role": "你在這個專案中的角色不允許提出建議。",
+    "chat_role": "你在這個專案中的角色不允許在聊天中進行這項操作。",
+    "history_unavailable": "這個專案的歷史記錄尚未同步到這台電腦。請在同步完成後再試一次。",
+    "account_storage_full": "專案擁有者的帳號在這個伺服器上的儲存空間已用完。請移除一些檔案來騰出空間，或請伺服器的管理員提供更多空間。",
+    "too_many_projects": "你分享的專案數量已達到這個伺服器允許的上限。請先停止分享其中一個，再分享其他專案。",
+    "too_many_uploads": "你在過去一小時內上傳的次數太多。請稍後再試。"
   },
   "roles": {
     "admin": "管理員",
@@ -481,8 +491,16 @@
   "projectRoles": {
     "owner": "擁有者",
     "editor": "編輯者",
+    "reviewer": "審閱者",
+    "commenter": "評論者",
     "viewer": "檢視者",
     "unknown": "未知角色"
+  },
+  "projectRoleDescriptions": {
+    "editor": "編輯並審閱建議",
+    "reviewer": "建議變更並評論",
+    "commenter": "閱讀並評論",
+    "viewer": "僅閱讀"
   },
   "share": {
     "button": "分享",
@@ -494,6 +512,8 @@
     "editCopy": "這是分享的副本。從現在起請編輯這份副本，而不是原本的資料夾。",
     "serverLabel": "伺服器",
     "noServers": "請先登入協作伺服器，再回到這裡分享。",
+    "noServersYet": "新增協作伺服器並登入後，即可分享這個專案。",
+    "addOleafly": "新增 Oleafly 伺服器",
     "openSettings": "開啟協作設定",
     "checking": "正在檢查專案…",
     "checkFailed": "Oleafly 無法檢查這個專案。",
@@ -503,7 +523,7 @@
     "cloudSynced": "你的 Oleafly 專案庫位於由 iCloud、Dropbox 或類似服務同步的資料夾中。兩個同步服務會搶著處理同一批檔案，因此 Oleafly 無法從那裡分享。請先將專案庫移出該資料夾。",
     "tooLarge": "這些檔案超過伺服器 {{size}} MB 的上限。請在分享前縮小或移除這些檔案。",
     "renamed": "有些名稱無法在每台電腦上使用。其他人收到這些檔案時，名稱會略有不同。",
-    "excluded": "不會分享：建置輸出、Oleafly 設定與 Git 歷史記錄。",
+    "excluded": "不會分享：其他建置輸出、Oleafly 設定與 Git 歷史記錄。最新編譯的 PDF 會分享，方便共同作者在瀏覽器中閱讀。",
     "start": "分享",
     "preparing": "正在準備專案…",
     "uploading": "正在上傳圖片和其他檔案：{{done}}/{{total}}",
@@ -551,7 +571,7 @@
     },
     "comments": {
       "label": "評論",
-      "description": "能編輯的人都可以評論這個專案中的文字。關閉後，評論會被隱藏，但不會被刪除。",
+      "description": "擁有者、編輯者、審閱者和評論者都可以評論這個專案中的文字。關閉後，評論會被隱藏，但不會被刪除。",
       "serverOff": "{{server}} 已關閉評論。請聯絡伺服器的管理員開啟。"
     },
     "stop": "停止分享",
@@ -594,6 +614,7 @@
     "unknownPerson": "某人",
     "viewing": "正在檢視 {{path}}",
     "editing": "正在編輯 {{path}}",
+    "reviewing": "正在審閱 {{path}}",
     "goTo": "前往 {{name}} 所在位置",
     "nowhere": "未在任何檔案中，無法前往"
   },
@@ -666,6 +687,8 @@
   },
   "activity": {
     "welcomeEdit": "由 {{server}} 上的 {{owner}} 分享。你可以編輯。",
+    "welcomeReview": "由 {{server}} 上的 {{owner}} 分享。你可以建議變更並評論。",
+    "welcomeComment": "由 {{server}} 上的 {{owner}} 分享。你可以評論。",
     "welcomeView": "由 {{server}} 上的 {{owner}} 分享。你可以檢視。",
     "joined": "{{name}} 開啟了專案",
     "left": "{{name}} 關閉了專案",
@@ -774,9 +797,7 @@
       "signedOutTitle": "你已登出這個伺服器",
       "signedOutDescription": "請在設定中重新登入，然後從伺服器的卡片開啟管理主控台。",
       "refusedTitle": "管理主控台僅供管理員和維護者使用",
-      "refusedDescription": "你在這個伺服器上的角色是 {{role}}。如果需要管理這個伺服器，請聯絡管理員。",
-      "turnedOffTitle": "即時協作已關閉",
-      "turnedOffDescription": "如需在這裡管理這個伺服器，請在設定的「實驗功能」中重新開啟。"
+      "refusedDescription": "你在這個伺服器上的角色是 {{role}}。如果需要管理這個伺服器，請聯絡管理員。"
     },
     "overview": {
       "loading": "正在載入總覽…",
@@ -929,8 +950,6 @@
     }
   },
   "links": {
-    "turnedOff": "即時協作已關閉。請在設定的「實驗功能」中開啟，然後再次開啟連結。",
-    "openSettings": "開啟設定",
     "malformed": "Oleafly 無法開啟這個連結。請向傳送者索取新的連結。",
     "opening": "正在開啟分享的專案…",
     "downloading": "正在下載檔案：{{done}}/{{total}}",
@@ -952,8 +971,8 @@
     "add": "新增評論",
     "showResolved": "顯示已解決的評論",
     "hideResolved": "隱藏已解決的評論",
-    "empty": "還沒有評論。",
-    "emptyCanWrite": "還沒有評論。選取一些文字，然後選擇「新增評論」即可開始。",
+    "empty": "還沒有評論或建議。",
+    "emptyCanWrite": "還沒有評論或建議。選取一些文字，然後選擇「新增評論」即可開始。",
     "allResolved": "所有評論都已解決。",
     "loadFailed": "無法載入這個檔案的評論。",
     "detached": "已脫離的評論",
@@ -1010,6 +1029,111 @@
       "empty": "發佈前請先寫點內容。"
     }
   },
+  "suggestions": {
+    "insertedBy": "{{name}} 建議新增這段內容",
+    "deletedBy": "{{name}} 建議刪除這段內容",
+    "unverifiedLabel": "由 Oleafly 無法確認身分的人建議",
+    "card": "{{name}} 的建議",
+    "unverifiedCard": "來自 Oleafly 無法確認身分的人的建議",
+    "added": "已新增",
+    "deleted": "已刪除",
+    "accept": "接受",
+    "reject": "拒絕",
+    "withdraw": "撤回",
+    "acceptAll": "全部接受",
+    "rejectAll": "全部拒絕",
+    "fileActions": "{{file}} 中的建議",
+    "pendingCount": "等待審閱的建議：{{number}}",
+    "loadFailed": "無法載入這個檔案的建議。",
+    "rejectAllConfirm": {
+      "title": "要拒絕 {{file}} 中的所有建議嗎？",
+      "description": "檔案會為本專案中的所有人還原成原本的文字。等待審閱的建議：{{number}}。",
+      "confirm": "全部拒絕"
+    },
+    "withdrawConfirm": {
+      "title": "要撤回這個建議嗎？",
+      "description": "檔案會為本專案中的所有人還原成原本的文字。",
+      "confirm": "撤回"
+    },
+    "pendingCompile": "這個專案有等待審閱的建議：{{number}}。PDF 會將它們顯示為已接受。",
+    "pendingExport": "這個專案有等待審閱的建議：{{number}}。匯出內容會將它們視為已接受並包含在內。",
+    "mode": {
+      "label": "編輯或建議",
+      "editing": "編輯",
+      "suggesting": "建議",
+      "editingHint": "編輯：你的編輯會立刻變更文字",
+      "suggestingHint": "建議：你的編輯會變成建議，由擁有者或編輯者接受",
+      "reviewerHint": "你是審閱者，所以你的編輯會變成建議，由擁有者或編輯者接受"
+    }
+  },
+  "chat": {
+    "title": "聊天",
+    "titleUnread": "聊天，有新訊息",
+    "list": "訊息",
+    "empty": "還沒有訊息。",
+    "label": "訊息",
+    "placeholder": "寫一則訊息",
+    "send": "傳送",
+    "readOnly": "檢視者可以閱讀聊天內容，但不能傳送訊息。",
+    "offline": "這個專案目前沒有連線，所以你無法傳送訊息。",
+    "delete": "刪除訊息",
+    "deleteConfirm": {
+      "title": "刪除這則訊息嗎？",
+      "description": "它會對本專案中的所有人刪除。"
+    },
+    "deleted": "這則訊息已刪除。",
+    "clear": "清除聊天",
+    "clearConfirm": {
+      "title": "清除聊天嗎？",
+      "description": "所有訊息都會對本專案中的所有人移除。此動作無法復原。",
+      "confirm": "清除聊天"
+    },
+    "loadFailed": "Oleafly 無法載入聊天。",
+    "loadOlder": "顯示較早的訊息"
+  },
+  "history": {
+    "title": "歷史記錄",
+    "refresh": "重新整理歷史記錄",
+    "empty": "還沒有變更。",
+    "loadFailed": "Oleafly 無法載入專案的歷史記錄。",
+    "loadMore": "顯示較早的變更",
+    "earlier": "較早的變更",
+    "timeRange": "{{from}} 至 {{to}}",
+    "authorsMore": "{{names}} 和另外 {{number}} 人",
+    "filesChanged": "變更的檔案：{{number}}",
+    "open": "開啟",
+    "compare": "比較",
+    "compareWith": "與這個版本比較",
+    "comparePick": "再選擇一個版本來比較。",
+    "cancelCompare": "取消",
+    "name": "為這個版本命名",
+    "rename": "重新命名",
+    "unname": "移除名稱",
+    "nameLabel": "版本名稱",
+    "namePlaceholder": "例如：已寄給審稿人",
+    "versionDescription": "這些變更之後專案的樣子。你可以在這裡閱讀，不會更動任何內容。",
+    "files": "檔案",
+    "noFiles": "這個版本中沒有文字檔案變更。",
+    "fileLabel": "{{path}} 在 {{time}} 時的內容",
+    "fileMissing": "這個版本中不存在這個檔案。",
+    "loadingFile": "正在載入…",
+    "restoreFile": "還原這個檔案",
+    "restoreProject": "還原整個專案",
+    "restoreFileConfirm": {
+      "title": "要還原 {{path}} 嗎？",
+      "description": "這個檔案會為本專案中的所有人還原到 {{time}} 時的狀態。它目前的文字會保留在歷史記錄中，所以你可以再回到那個版本。",
+      "confirm": "還原檔案"
+    },
+    "restoreProjectConfirm": {
+      "title": "要還原整個專案嗎？",
+      "description": "每個檔案都會為本專案中的所有人還原到 {{time}} 時的狀態。目前的文字會保留在歷史記錄中，所以你可以再回到那個版本。",
+      "confirm": "還原專案"
+    },
+    "compareTitle": "兩個版本之間的變更",
+    "compareDescription": "從 {{from}} 到 {{to}}",
+    "changedFiles": "變更的檔案：{{number}}",
+    "noChanges": "這兩個版本之間沒有文字變更。"
+  },
   "accessLog": {
     "opened": "{{name}} 開啟了專案",
     "joinedLink": "{{name}} 透過連結加入了專案",
@@ -1065,6 +1189,10 @@
   "access": {
     "viewerBy": "{{name}} 已將你設為檢視者。你可以閱讀這個專案，但不能編輯。",
     "viewer": "你現在是檢視者。你可以閱讀這個專案，但不能編輯。",
+    "commenterBy": "{{name}} 已將你設為評論者。你可以閱讀和評論這個專案，但不能編輯。",
+    "commenter": "你現在是評論者。你可以閱讀和評論這個專案，但不能編輯。",
+    "reviewerBy": "{{name}} 已將你設為審閱者。你的編輯會變成建議，由擁有者或編輯者接受。",
+    "reviewer": "你現在是審閱者。你的編輯會變成建議，由擁有者或編輯者接受。",
     "viewOnly": "你可以檢視這個分享的專案，但不能編輯。",
     "connecting": "這個分享的專案仍在連線，所以暫時無法變更。請稍後再試。",
     "unsentReadOnly": "你現在只能檢視這個專案，因此你對 {{path}} 的最後變更沒有送出。",
@@ -1081,6 +1209,8 @@
     "projectTooLarge": "這個專案已達到伺服器的大小上限 {{limit}}，所以 {{file}} 會留在這台電腦上。請讓管理伺服器的人提高上限。",
     "projectTooLargeUnknown": "這個專案已達到伺服器的大小上限，所以 {{file}} 會留在這台電腦上。請讓管理伺服器的人提高上限。",
     "projectFull": "這個專案已達到伺服器的大小上限，所以你的變更暫時留在這台電腦上。請讓管理伺服器的人提高上限。",
+    "accountStorageFull": "由於專案擁有者在這個伺服器上的儲存空間已用完，無法分享：{{files}}",
+    "tooManyUploads": "由於你在過去一小時內上傳的次數太多，尚未分享：{{files}}。請稍後再試。",
     "replaced": "{{name}} 與你同時替換了 {{file}}。你的版本已儲存為 {{copy}}。",
     "added": "因為 {{name}} 新增了同名檔案，{{file}} 現在是 {{copy}}。",
     "beside": "{{name}} 也有一個名為 {{file}} 的檔案。該檔案已儲存為 {{copy}}。",

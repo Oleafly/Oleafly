@@ -119,7 +119,9 @@ export function DevicesList({
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-medium">{device.name}</p>
               <p className="truncate text-[0.6875rem] text-muted-foreground">
-                {PLATFORM_NAMES[device.platform] ?? device.platform}
+                {device.platform === "web"
+                  ? t(($) => $.collab.section.devices.browser)
+                  : (PLATFORM_NAMES[device.platform] ?? device.platform)}
                 {" · "}
                 {t(($) => $.collab.section.devices.added, { date: formatDate(device.created_at) })}
                 {" · "}

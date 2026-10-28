@@ -9,7 +9,7 @@ export interface TemplateInfo {
   description: string;
   category: string;
   engine: string;
-  document_engine: "latex" | "latexmk" | "typst" | "markdown" | "unknown";
+  document_engine: "latex" | "latexmk" | "typst" | "markdown" | "quarto" | "calepin" | "unknown";
   ats_profile: "friendly" | "design-forward" | null;
   default_color: string | null;
   license: { spdx?: string | null; author?: string | null } | null;

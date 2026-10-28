@@ -307,6 +307,9 @@ fn manifest(max_file_mb: u64, max_project_mb: u64) -> String {
             access_logs: false,
             comments: true,
             encryption: EncryptionSupport::None,
+            suggestions: true,
+            chat: true,
+            web: false,
         },
         limits: Limits {
             max_project_mb,
@@ -329,6 +332,7 @@ struct Canned {
     asked: Arc<Mutex<Vec<String>>>,
     project_mb: Arc<AtomicU64>,
     retry_after: Arc<AtomicU64>,
+    refusal: Arc<Mutex<Option<(&'static str, &'static str)>>>,
 }
 
 impl Canned {
@@ -363,6 +367,7 @@ struct Counters {
     asked: Arc<Mutex<Vec<String>>>,
     project_mb: Arc<AtomicU64>,
     retry_after: Arc<AtomicU64>,
+    refusal: Arc<Mutex<Option<(&'static str, &'static str)>>>,
 }
 
 async fn answer(mut stream: TcpStream, counters: Counters, max_file_mb: u64, fail: usize) {
@@ -440,7 +445,13 @@ async fn answer(mut stream: TcpStream, counters: Counters, max_file_mb: u64, fai
         ("200 OK", manifest(max_file_mb, project_mb))
     } else if line.starts_with("PUT ") && line.contains("/blobs/") {
         let count = counters.puts.fetch_add(1, Ordering::SeqCst) + 1;
-        if counters.full.load(Ordering::SeqCst) {
+        let refusal = *counters.refusal.lock().unwrap();
+        if let Some((status, code)) = refusal {
+            (
+                status,
+                format!("{{\"code\":\"{code}\",\"message\":\"no\"}}"),
+            )
+        } else if counters.full.load(Ordering::SeqCst) {
             (
                 "413 Payload Too Large",
                 "{\"code\":\"project_too_large\",\"message\":\"full\"}".to_owned(),
@@ -491,6 +502,7 @@ async fn canned(fail: usize, max_file_mb: u64) -> Canned {
         asked: Arc::default(),
         project_mb: Arc::new(AtomicU64::new(200)),
         retry_after: Arc::new(AtomicU64::new(0)),
+        refusal: Arc::default(),
     };
     let counted = counters.clone();
     tokio::spawn(async move {
@@ -510,6 +522,7 @@ async fn canned(fail: usize, max_file_mb: u64) -> Canned {
         asked: counters.asked,
         project_mb: counters.project_mb,
         retry_after: counters.retry_after,
+        refusal: counters.refusal,
     }
 }
 
@@ -740,6 +753,89 @@ fn a_reconnect_sends_a_figure_refused_for_a_full_project_again_only_once_the_lim
         server.full.store(false, Ordering::SeqCst);
         alice.active.retry_uploads(Retry::Reconnect).await;
         until("the upload once the server allows more", || {
+            alice.shared_blob("figures/plot.png").is_some()
+        })
+        .await;
+        assert_eq!(server.puts.load(Ordering::SeqCst), 2);
+    });
+}
+
+#[test]
+fn a_figure_refused_because_the_owner_is_out_of_storage_waits_until_asked() {
+    run(async {
+        let server = canned(0, 50).await;
+        *server.refusal.lock().unwrap() = Some(("413 Payload Too Large", "account_storage_full"));
+        let alice = canned_side(&server).await;
+        alice.online();
+        let figure = [0x89, b'P', b'N', b'G', 7, 7];
+        alice.write("figures/plot.png", &figure);
+        alice
+            .active
+            .import_paths(Some(vec!["figures/plot.png".to_owned()]))
+            .await
+            .unwrap();
+        assert_eq!(alice.shared_blob("figures/plot.png"), None);
+        assert_eq!(
+            alice.host.last_uploads(),
+            Some(vec![UploadFile {
+                path: "figures/plot.png".to_owned(),
+                state: UploadState::AccountStorageFull,
+                size: figure.len() as u64,
+                limit: None,
+            }])
+        );
+        assert_eq!(
+            serde_json::to_value(UploadState::AccountStorageFull).unwrap(),
+            serde_json::json!("account_storage_full")
+        );
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        alice.active.retry_uploads(Retry::Reconnect).await;
+        assert_eq!(
+            server.puts.load(Ordering::SeqCst),
+            1,
+            "a full account is tried again neither on a timer nor on a reconnect"
+        );
+        *server.refusal.lock().unwrap() = None;
+        alice.active.retry_uploads(Retry::Asked).await;
+        until("the upload once the owner has room", || {
+            alice.shared_blob("figures/plot.png").is_some()
+        })
+        .await;
+        assert_eq!(server.puts.load(Ordering::SeqCst), 2);
+    });
+}
+
+#[test]
+fn a_figure_refused_for_too_many_uploads_waits_for_a_reconnect_or_a_retry() {
+    run(async {
+        let server = canned(0, 50).await;
+        *server.refusal.lock().unwrap() = Some(("429 Too Many Requests", "too_many_uploads"));
+        let alice = canned_side(&server).await;
+        alice.online();
+        let figure = [0x89, b'P', b'N', b'G', 6, 6];
+        alice.write("figures/plot.png", &figure);
+        alice
+            .active
+            .import_paths(Some(vec!["figures/plot.png".to_owned()]))
+            .await
+            .unwrap();
+        assert_eq!(
+            alice.active.upload_list()[0].state,
+            UploadState::TooManyUploads
+        );
+        assert_eq!(
+            serde_json::to_value(UploadState::TooManyUploads).unwrap(),
+            serde_json::json!("too_many_uploads")
+        );
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        assert_eq!(
+            server.puts.load(Ordering::SeqCst),
+            1,
+            "an hourly limit is not tried again on a timer"
+        );
+        *server.refusal.lock().unwrap() = None;
+        alice.active.retry_uploads(Retry::Reconnect).await;
+        until("the upload after the reconnect", || {
             alice.shared_blob("figures/plot.png").is_some()
         })
         .await;

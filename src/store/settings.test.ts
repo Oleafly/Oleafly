@@ -881,7 +881,6 @@ describe("section reset checks", () => {
     ["appearance", { editorMathPreview: false }, "resetAppearancePreferences"],
     ["appearance", { hiddenFilePatterns: [] }, "resetAppearancePreferences"],
     ["experimentation", { latexTools: true }, "resetExperimentationPreferences"],
-    ["experimentation", { liveCollaboration: true }, "resetExperimentationPreferences"],
     ["engine", { defaultLatexEngine: "latexmk" }, "resetEnginePreferences"],
   ];
 

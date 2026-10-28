@@ -14,6 +14,8 @@
       "engineLatex": "LaTeX",
       "engineTypst": "Typst",
       "engineMarkdown": "Markdown",
+      "engineQuarto": "Quarto",
+      "engineCalepin": "Calepin",
       "atsTooltip": "Muestra solo las plantillas de currículum que los sistemas de seguimiento de candidatos (ATS) pueden leer con fiabilidad: una sola columna, tipografías estándar y texto seleccionable (sin palabras incrustadas en imágenes).",
       "atsFriendly": "Compatible con ATS",
       "offlineTooltip": "Muestra solo las plantillas que compilan sin descargas: sus tipografías y paquetes ya vienen incluidos, así que funcionan sin conexión a internet.",

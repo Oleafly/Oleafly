@@ -26,6 +26,17 @@ pub fn open_link(public_url: &Url, project: SharedProjectId) -> String {
     link.to_string()
 }
 
+pub fn browser_link(public_url: &Url, project: SharedProjectId) -> String {
+    let mut link = public_url.clone();
+    let base = public_url.path().trim_end_matches('/').to_string();
+    link.set_path(&format!("{base}/web/"));
+    link.set_fragment(None);
+    link.query_pairs_mut()
+        .clear()
+        .append_pair("project", &project.to_string());
+    link.to_string()
+}
+
 pub fn comment_link(
     public_url: &Url,
     project: SharedProjectId,
@@ -57,11 +68,20 @@ async fn landing(
     let open = escape(&open_link(&state.config.public_url, project));
     let server = escape(&state.config.server_name);
     let title = locale.text(Key::LandingTitle);
+    let browser = if state.config.web_enabled() {
+        format!(
+            "<a class=\"button\" href=\"{}\">{}</a>",
+            escape(&browser_link(&state.config.public_url, project)),
+            escape(locale.text(Key::LandingOpenBrowser)),
+        )
+    } else {
+        String::new()
+    };
     let page = document_in(
         locale.tag(),
         title,
         &format!(
-            "{}<h1>{}</h1><p>{}</p><p class=\"next\">{}</p><div class=\"actions\"><a class=\"button primary\" href=\"{open}\">{}</a><a class=\"button\" href=\"{DOWNLOAD_URL}\">{}</a></div>",
+            "{}<h1>{}</h1><p>{}</p><p class=\"next\">{}</p><div class=\"actions\"><a class=\"button primary\" href=\"{open}\">{}</a>{browser}<a class=\"button\" href=\"{DOWNLOAD_URL}\">{}</a></div>",
             status(Tone::Info),
             escape(title),
             locale.fill_html(Key::LandingBody, &[("server", &server)]),
@@ -100,6 +120,22 @@ mod tests {
             "oleafly://open?server=https%3A%2F%2Fwww.cs.uni.edu%2Foleafly&project=01920000-0000-7000-8000-0000000000aa"
         );
         assert_eq!(escape("<a & \"b\">"), "&lt;a &amp; &quot;b&quot;&gt;");
+    }
+
+    #[test]
+    fn the_browser_link_opens_the_project_in_the_web_app_under_any_path() {
+        let project: SharedProjectId = "01920000-0000-7000-8000-0000000000aa".parse().unwrap();
+        assert_eq!(
+            browser_link(&Url::parse("https://collab.example.edu/").unwrap(), project),
+            "https://collab.example.edu/web/?project=01920000-0000-7000-8000-0000000000aa"
+        );
+        assert_eq!(
+            browser_link(
+                &Url::parse("https://www.cs.uni.edu/oleafly/").unwrap(),
+                project
+            ),
+            "https://www.cs.uni.edu/oleafly/web/?project=01920000-0000-7000-8000-0000000000aa"
+        );
     }
 
     #[test]
