@@ -94,7 +94,7 @@ paths it expects to change. Trust prompts are answered through
 | Dictionary download | picking Spanish in Settings downloads and verifies the pack, then `hola` is accepted and `holaa` is flagged with a suggestion | 🔑 91 |
 | Environment argument shapes | `alignat` and `tabularx` complete with the arguments their `\begin` needs | 87 |
 | Editor tabs | close button removes the tab, main.tex stays active | 34 |
-| Context menu | every LaTeX insertion/heading/list action; Ask AI widget; SyncTeX; definition/references/rename activation; every Typst/Markdown profile action | 53 (activation/navigation), 16 (legacy smoke) |
+| Context menu | every LaTeX Format/Insert action through its submenu, including the nested Heading and List submenus; Ask AI widget; SyncTeX; definition/references/rename activation; every Typst/Markdown profile action; equation export through Import and export | 53 (activation/navigation), 16 (legacy smoke), 75 (equation export) |
 | File tabs | created by file switching | 08 |
 | File tree | root + nested row new file/folder, open/switch, file/folder rename, recursive copy/delete, active-file fallback, set-main marker, backend/reopen persistence | 08, 54 |
 | Outline | section listed | 08 |
@@ -138,8 +138,8 @@ paths it expects to change. Trust prompts are answered through
 | Visual figure dialog and image paste | A + C + R | 88 | Dialog insert of a real PNG compiles and the caption appears in the PDF; pasted PNG appears in the tree; source-mode paste inserts the snippet. |
 | Visual table toolbar | A + C + R | 88 | Toolbar-edited table compiles and its caption renders. |
 | Go to PDF (SyncTeX) | A | 47, 53 | Verifies source-only → split view and a PDF location highlight; it does not mutate document content. |
-| LaTeX context-menu insertions | A | 53 | Every direct action plus all six heading and both list submenu actions; semantic compile assertions are shared with 51. |
-| Typst / Markdown context menus | A | 53 | Every profile-appropriate action and Ask AI widget activation; source effects only. |
+| LaTeX context-menu insertions | A | 53 | Every Format and Insert submenu action plus all six heading and both list actions nested under Insert; semantic compile assertions are shared with 51. |
+| Typst / Markdown context menus | A | 53 | Every profile-appropriate Format and Insert action (Markdown table and equation included) and Ask AI widget activation; source effects only. |
 
 ## Compile & preview
 | Surface | Interactions | Spec |

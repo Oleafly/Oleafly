@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Cloud sync works with Google Drive and S3-compatible storage as well as
+  Dropbox (#317). Choose one under Settings > Data storage > Cloud sync.
+  Google Drive keeps your projects in an Oleafly folder in My Drive. For S3
+  you enter the endpoint, the bucket and your keys; Amazon S3, Google Cloud
+  Storage with HMAC keys and MinIO all work. Before it connects, Oleafly
+  tries a few writes in the bucket. A service that ignores conditional
+  writes is turned down, because without them two computers syncing at once
+  could overwrite each other.
+- Storage usage has a bar of everything in the Oleafly data folder, split by
+  what takes the space. Below it, each part has its size: documents and code,
+  images, PDFs, Git history, build cache, the TeX distribution, AI agents,
+  research tasks, checkpoints and the rest.
+- Cut, Copy, Paste and Select all in the editor's right-click menu (#319).
+  Formatting, inserting, and import and export each moved into a submenu, so
+  the menu is much shorter. In Markdown files, type `/table` or `/equation`
+  to insert one, as LaTeX and Typst files already allowed. The Ask AI popup
+  also takes your own request next to the preset actions.
 - Oleafly's MCP server is in the MCP Registry as `io.github.Oleafly/oleafly`.
   Each release carries `oleafly.mcpb`, which installs it in Claude Desktop
   when you open it. It runs the `oleafly` command the app installs, so you
@@ -50,8 +67,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   first open a LaTeX or Markdown file. Once you've finished the tours, the
   library screen loads about 2 MB less. Mermaid diagrams in chat use the
   app's KaTeX instead of bundling an older copy. Cloud sync only loads its
-  background code on a computer connected to Dropbox, or once you open
-  Settings.
+  background code on a computer connected to Dropbox, Google Drive or an S3
+  bucket, or once you open Settings.
+
+
+- GitLab, Codeberg, Gitea and Forgejo accounts show their real logos: in the
+  add-account choices, in Settings, in the remote menu, in the publish dialog
+  and beside each repository. The publish dialog's account picker moved to
+  the bottom left, beside the button.
+- In Settings, each Git hosting account keeps its actions on the right and
+  signs out with an icon button. The server name shows only when it differs
+  from the badge.
 
 ### Fixed
 
@@ -144,7 +170,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tokens, and timeouts, server errors, rejected requests and empty replies
   now come with a hint. DeepSeek Flash is treated as reading images.
 
-### Fixed
 
 - When Tectonic crashed while looking for a font that isn't installed, the
   build failed with nothing in the error list, and only the last line of the
@@ -157,6 +182,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exit code, and missed the error at the end. It now gets the exit code and
   the start and end of the output, and an error printed after a long log is
   kept.
+
+
+- Open files in a library project reload when a terminal, an agent or
+  another app changes them, as files in an opened folder already did. If you
+  have unsaved edits, a bar above the editor lets you compare both versions,
+  keep yours, or reload.
+
+### Security
+
+- Updated zstd, the compression library behind file history and the file
+  snapshots taken during agent turns, from 0.13.3 to 0.14.3. It fixes four
+  security advisories in how zstd handles memory (RUSTSEC-2026-0391,
+  RUSTSEC-2026-0398, RUSTSEC-2026-0403 and RUSTSEC-2026-0410).
 
 ## [0.4.8] - 2026-10-25
 

@@ -189,7 +189,14 @@
     "addLabel": "레이블 추가",
     "convertLatexMath": "LaTeX 수식을 Typst로 변환",
     "noLatexMath": "먼저 LaTeX 수식을 선택하세요.",
-    "renameFile": "파일 이름 바꾸기…"
+    "renameFile": "파일 이름 바꾸기…",
+    "cut": "잘라내기",
+    "copy": "복사",
+    "paste": "붙여넣기",
+    "selectAll": "모두 선택",
+    "format": "서식",
+    "insert": "삽입",
+    "importExport": "가져오기와 내보내기"
   },
   "shell": {
     "noFileOpenTab": "열린 파일 없음",
@@ -318,7 +325,8 @@
     "improveWriting": "글 다듬기",
     "fixGrammar": "문법과 문체 고치기",
     "expand": "늘려서 자세히 쓰기",
-    "findReferences": "참조 찾기"
+    "findReferences": "참조 찾기",
+    "customPrompt": "변경할 내용을 설명하세요…"
   },
   "versioning": {
     "dismiss": "버전 관리 닫기",
@@ -938,6 +946,12 @@
         "groupAuto": "다른 참고문헌과 이어서 번호 매기기",
         "groupNone": "따로 번호 매기기",
         "groupNamed": "이름이 같은 참고문헌과 이어서 번호 매기기"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "표",
+        "equation": "별행 수식"
       }
     },
     "wysiwyg": {

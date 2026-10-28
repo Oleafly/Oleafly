@@ -1,0 +1,11 @@
+[package]
+name = "oleafly-s3"
+version = "0.1.0"
+description = "AWS Signature Version 4 request signing shared by the Oleafly app and server"
+license = "AGPL-3.0-or-later"
+publish = false
+edition = "2021"
+rust-version = "1.87"
+
+[dependencies]
+ring = "0.17"

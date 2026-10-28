@@ -8,8 +8,93 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::{oneshot, Notify};
 
 pub(crate) const LOOPBACK_PORTS: [u16; 3] = [53171, 53172, 53173];
-const AUTHORIZE_URL: &str = "https://www.dropbox.com/oauth2/authorize";
+const DROPBOX_AUTHORIZE_URL: &str = "https://www.dropbox.com/oauth2/authorize";
 const MAX_RESPONSE_BYTES: usize = 1024 * 1024;
+
+/// How a provider takes back a sign-in when the person disconnects.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum Revoke {
+    /// POST to this URL with the access token as the bearer.
+    Bearer(String),
+    /// POST to this URL with the access token as the `token` form field.
+    TokenField(String),
+}
+
+/// What differs between OAuth providers. The PKCE flow, the loopback
+/// listener, the code exchange, refreshing and revoking are shared, so a new
+/// provider is one of these.
+#[derive(Clone, Debug)]
+pub(crate) struct OAuthConfig {
+    /// Names the provider in messages that end up in logs.
+    pub(crate) name: &'static str,
+    pub(crate) authorize_url: String,
+    pub(crate) token_url: String,
+    pub(crate) client_id: String,
+    /// Desktop clients of some providers get a secret that can't be kept
+    /// secret in an app; it is sent because their token endpoint wants it.
+    pub(crate) client_secret: Option<String>,
+    pub(crate) scopes: &'static str,
+    /// Extra authorize parameters, such as the ones that ask for a refresh
+    /// token.
+    pub(crate) extra: &'static [(&'static str, &'static str)],
+    /// The authorize parameter that carries the interface language.
+    pub(crate) locale_param: Option<&'static str>,
+    /// The loopback path the browser comes back to.
+    pub(crate) callback: &'static str,
+    pub(crate) revoke: Revoke,
+    /// Whether the provider can show a code to paste when no loopback port
+    /// is free.
+    pub(crate) paste: bool,
+}
+
+/// The Google client this build signs in with, from the build environment.
+/// A desktop client's secret can't be kept secret in an app; Google's token
+/// endpoint still asks for it.
+fn google_client() -> Option<(&'static str, &'static str)> {
+    let id = option_env!("OLEAFLY_GOOGLE_CLIENT_ID").filter(|id| !id.is_empty())?;
+    Some((
+        id,
+        option_env!("OLEAFLY_GOOGLE_CLIENT_SECRET").unwrap_or(""),
+    ))
+}
+
+/// Google Drive with `drive.file`: the app sees only the files it made, in an
+/// `Oleafly` folder the person can see. It needs no security review.
+pub(crate) fn google_config() -> Option<OAuthConfig> {
+    let (client_id, secret) = google_client()?;
+    Some(OAuthConfig {
+        name: "google",
+        authorize_url: "https://accounts.google.com/o/oauth2/v2/auth".into(),
+        token_url: "https://oauth2.googleapis.com/token".into(),
+        client_id: client_id.into(),
+        client_secret: (!secret.is_empty()).then(|| secret.to_string()),
+        scopes: "https://www.googleapis.com/auth/drive.file",
+        // A refresh token comes only with offline access, and again after the
+        // first time only when consent is asked for.
+        extra: &[("access_type", "offline"), ("prompt", "consent")],
+        locale_param: Some("hl"),
+        callback: "/oauth/google",
+        revoke: Revoke::TokenField("https://oauth2.googleapis.com/revoke".into()),
+        paste: false,
+    })
+}
+
+pub(crate) fn dropbox_config() -> OAuthConfig {
+    let endpoints = super::store::endpoints();
+    OAuthConfig {
+        name: "dropbox",
+        authorize_url: DROPBOX_AUTHORIZE_URL.into(),
+        token_url: endpoints.token,
+        client_id: dropbox_app_key().into(),
+        client_secret: None,
+        scopes: SCOPES,
+        extra: &[("token_access_type", "offline")],
+        locale_param: Some("locale"),
+        callback: "/oauth/dropbox",
+        revoke: Revoke::Bearer(format!("{}/auth/token/revoke", endpoints.api)),
+        paste: true,
+    }
+}
 
 pub(crate) fn dropbox_app_key() -> &'static str {
     match option_env!("OLEAFLY_DROPBOX_APP_KEY") {
@@ -49,7 +134,7 @@ impl fmt::Display for OAuthError {
             Self::Cancelled => formatter.write_str("sign-in was cancelled"),
             Self::Timeout => formatter.write_str("sign-in timed out"),
             Self::CodeInvalid => formatter.write_str("sign-in code was refused"),
-            Self::Revoked => formatter.write_str("dropbox access was revoked"),
+            Self::Revoked => formatter.write_str("cloud access was revoked"),
             Self::NoPort => formatter.write_str("no loopback port is available"),
             Self::Network(message) | Self::Server(message) => formatter.write_str(message),
         }
@@ -109,32 +194,38 @@ pub(crate) const SCOPES: &str =
 /// says sign-in did not finish.
 const FINISH_WAIT: std::time::Duration = std::time::Duration::from_secs(180);
 
-pub(crate) fn redirect_uri(port: u16) -> String {
-    format!("http://127.0.0.1:{port}/oauth/dropbox")
+pub(crate) fn redirect_uri(config: &OAuthConfig, port: u16) -> String {
+    format!("http://127.0.0.1:{port}{}", config.callback)
 }
 
 pub(crate) fn authorize_url(
-    app_key: &str,
+    config: &OAuthConfig,
     flow: &PkceFlow,
     redirect: Option<&str>,
     locale: Option<&str>,
 ) -> String {
-    let mut url = reqwest::Url::parse(AUTHORIZE_URL).expect("static authorize URL");
+    let mut url = reqwest::Url::parse(&config.authorize_url).expect("valid authorize URL");
     {
         let mut query = url.query_pairs_mut();
         query
-            .append_pair("client_id", app_key)
-            .append_pair("response_type", "code")
-            .append_pair("token_access_type", "offline")
+            .append_pair("client_id", &config.client_id)
+            .append_pair("response_type", "code");
+        for (key, value) in config.extra {
+            query.append_pair(key, value);
+        }
+        query
             .append_pair("code_challenge", &flow.challenge)
             .append_pair("code_challenge_method", "S256")
-            .append_pair("scope", SCOPES)
+            .append_pair("scope", config.scopes)
             .append_pair("state", &flow.state);
         if let Some(redirect) = redirect {
             query.append_pair("redirect_uri", redirect);
         }
-        if let Some(locale) = locale.filter(|locale| !locale.is_empty()) {
-            query.append_pair("locale", locale);
+        if let (Some(param), Some(locale)) = (
+            config.locale_param,
+            locale.filter(|locale| !locale.is_empty()),
+        ) {
+            query.append_pair(param, locale);
         }
     }
     url.to_string()
@@ -285,7 +376,7 @@ async fn loopback_handler(
     if let Some(sender) = sender {
         let _ = sender.send(result);
     }
-    // The code only says Dropbox approved; Oleafly still has to trade it for
+    // The code only says the provider approved; Oleafly still has to trade it for
     // a token and read the account, so the tab waits to say how that went.
     let outcome = signed_in
         .then(|| {
@@ -313,16 +404,19 @@ async fn loopback_handler(
 }
 
 pub(crate) async fn bind_loopback(
+    callback: &'static str,
     expected_state: String,
     pages: LoopbackPages,
 ) -> OAuthResult<LoopbackListener> {
-    bind_loopback_on(&LOOPBACK_PORTS, expected_state, pages).await
+    bind_loopback_on(&LOOPBACK_PORTS, callback, expected_state, pages).await
 }
 
-// Dropbox only redirects to the registered ports above. Tests pass port 0 for
-// any free port, so a machine that holds those ports can't fail them.
+// Dropbox only redirects to the registered ports above, and the other
+// providers accept them too. Tests pass port 0 for any free port, so a
+// machine that holds those ports can't fail them.
 async fn bind_loopback_on(
     ports: &[u16],
+    callback: &'static str,
     expected_state: String,
     pages: LoopbackPages,
 ) -> OAuthResult<LoopbackListener> {
@@ -351,7 +445,7 @@ async fn bind_loopback_on(
         pages,
     });
     let router = axum::Router::new()
-        .route("/oauth/dropbox", axum::routing::get(loopback_handler))
+        .route(callback, axum::routing::get(loopback_handler))
         .with_state(shared);
     let signal = Arc::clone(&shutdown);
     let task = tokio::spawn(async move {
@@ -392,13 +486,6 @@ impl fmt::Debug for TokenSet {
     }
 }
 
-#[derive(Clone, Debug)]
-pub(crate) struct Account {
-    pub(crate) account_id: String,
-    pub(crate) email: String,
-    pub(crate) display_name: String,
-}
-
 #[derive(Deserialize)]
 struct TokenResponse {
     access_token: String,
@@ -407,33 +494,18 @@ struct TokenResponse {
     account_id: Option<String>,
 }
 
-#[derive(Deserialize)]
-struct AccountResponse {
-    account_id: String,
-    email: String,
-    name: AccountName,
-}
-
-#[derive(Deserialize)]
-struct AccountName {
-    display_name: String,
-}
-
-pub(crate) struct DropboxAuthClient {
+pub(crate) struct OAuthClient {
     http: reqwest::Client,
-    token_url: String,
-    api_base: String,
+    config: OAuthConfig,
 }
 
 const AUTH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
-impl DropboxAuthClient {
-    pub(crate) fn new() -> Self {
-        let endpoints = super::store::endpoints();
+impl OAuthClient {
+    pub(crate) fn new(config: OAuthConfig) -> Self {
         Self {
             http: super::store::http().clone(),
-            token_url: endpoints.token,
-            api_base: endpoints.api,
+            config,
         }
     }
 
@@ -445,17 +517,25 @@ impl DropboxAuthClient {
             .map_err(|error| OAuthError::Network(error.to_string()))?
         {
             if bytes.len() + chunk.len() > MAX_RESPONSE_BYTES {
-                return Err(OAuthError::Server("dropbox response is too large".into()));
+                return Err(OAuthError::Server(format!(
+                    "{} response is too large",
+                    self.config.name
+                )));
             }
             bytes.extend_from_slice(&chunk);
         }
         Ok(bytes)
     }
 
-    async fn token(&self, form: Vec<(&str, &str)>, refresh: bool) -> OAuthResult<TokenSet> {
+    async fn token(&self, mut form: Vec<(&str, &str)>, refresh: bool) -> OAuthResult<TokenSet> {
+        form.push(("client_id", &self.config.client_id));
+        if let Some(secret) = &self.config.client_secret {
+            form.push(("client_secret", secret));
+        }
+        let name = self.config.name;
         let response = self
             .http
-            .post(&self.token_url)
+            .post(&self.config.token_url)
             .timeout(AUTH_TIMEOUT)
             .form(&form)
             .send()
@@ -473,16 +553,14 @@ impl DropboxAuthClient {
                 "invalid_grant" if refresh => OAuthError::Revoked,
                 "invalid_grant" => OAuthError::CodeInvalid,
                 "access_denied" => OAuthError::Cancelled,
-                _ => OAuthError::Server(format!("dropbox sign-in failed with status {status}")),
+                _ => OAuthError::Server(format!("{name} sign-in failed with status {status}")),
             });
         }
-        let parsed: TokenResponse = serde_json::from_slice(&bytes).map_err(|_| {
-            OAuthError::Server("dropbox sign-in returned an unreadable reply".into())
-        })?;
+        let unreadable =
+            || OAuthError::Server(format!("{name} sign-in returned an unreadable reply"));
+        let parsed: TokenResponse = serde_json::from_slice(&bytes).map_err(|_| unreadable())?;
         if parsed.access_token.is_empty() {
-            return Err(OAuthError::Server(
-                "dropbox sign-in returned an unreadable reply".into(),
-            ));
+            return Err(unreadable());
         }
         Ok(TokenSet {
             access_token: parsed.access_token,
@@ -494,7 +572,6 @@ impl DropboxAuthClient {
 
     pub(crate) async fn exchange_code(
         &self,
-        app_key: &str,
         code: &str,
         verifier: &str,
         redirect: Option<&str>,
@@ -503,7 +580,6 @@ impl DropboxAuthClient {
             ("code", code),
             ("grant_type", "authorization_code"),
             ("code_verifier", verifier),
-            ("client_id", app_key),
         ];
         if let Some(redirect) = redirect {
             form.push(("redirect_uri", redirect));
@@ -511,16 +587,11 @@ impl DropboxAuthClient {
         self.token(form, false).await
     }
 
-    pub(crate) async fn refresh(
-        &self,
-        app_key: &str,
-        refresh_token: &str,
-    ) -> OAuthResult<TokenSet> {
+    pub(crate) async fn refresh(&self, refresh_token: &str) -> OAuthResult<TokenSet> {
         self.token(
             vec![
                 ("grant_type", "refresh_token"),
                 ("refresh_token", refresh_token),
-                ("client_id", app_key),
             ],
             true,
         )
@@ -528,97 +599,38 @@ impl DropboxAuthClient {
     }
 
     pub(crate) async fn revoke(&self, access_token: &str) -> OAuthResult<()> {
-        let response = self
-            .http
-            .post(format!("{}/auth/token/revoke", self.api_base))
+        let request = match &self.config.revoke {
+            Revoke::Bearer(url) => self.http.post(url).bearer_auth(access_token),
+            Revoke::TokenField(url) => self.http.post(url).form(&[("token", access_token)]),
+        };
+        let response = request
             .timeout(AUTH_TIMEOUT)
-            .bearer_auth(access_token)
             .send()
             .await
             .map_err(|error| OAuthError::Network(error.to_string()))?;
         let status = response.status();
         let _ = self.read_capped(response).await?;
-        if status.is_success() || status.as_u16() == 401 {
+        // A token that is already gone counts as revoked: Dropbox says so with
+        // 401, a token-field endpoint with 400.
+        let gone = match &self.config.revoke {
+            Revoke::Bearer(_) => status.as_u16() == 401,
+            Revoke::TokenField(_) => status.as_u16() == 400,
+        };
+        if status.is_success() || gone {
             return Ok(());
         }
         Err(OAuthError::Server(format!(
-            "dropbox revoke failed with status {status}"
+            "{} revoke failed with status {status}",
+            self.config.name
         )))
-    }
-
-    pub(crate) async fn space_usage(&self, access_token: &str) -> OAuthResult<(u64, u64)> {
-        let response = self
-            .http
-            .post(format!("{}/users/get_space_usage", self.api_base))
-            .timeout(AUTH_TIMEOUT)
-            .bearer_auth(access_token)
-            .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .body("null")
-            .send()
-            .await
-            .map_err(|error| OAuthError::Network(error.to_string()))?;
-        let status = response.status();
-        let bytes = self.read_capped(response).await?;
-        if status.as_u16() == 401 {
-            return Err(OAuthError::Revoked);
-        }
-        if !status.is_success() {
-            return Err(OAuthError::Server(format!(
-                "dropbox space lookup failed with status {status}"
-            )));
-        }
-        let value: serde_json::Value = serde_json::from_slice(&bytes).map_err(|_| {
-            OAuthError::Server("dropbox space lookup returned an unreadable reply".into())
-        })?;
-        let used = value
-            .get("used")
-            .and_then(serde_json::Value::as_u64)
-            .unwrap_or(0);
-        let allocated = value
-            .get("allocation")
-            .and_then(|allocation| allocation.get("allocated"))
-            .and_then(serde_json::Value::as_u64)
-            .unwrap_or(0);
-        Ok((used, allocated))
-    }
-
-    pub(crate) async fn current_account(&self, access_token: &str) -> OAuthResult<Account> {
-        let response = self
-            .http
-            .post(format!("{}/users/get_current_account", self.api_base))
-            .timeout(AUTH_TIMEOUT)
-            .bearer_auth(access_token)
-            .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .body("null")
-            .send()
-            .await
-            .map_err(|error| OAuthError::Network(error.to_string()))?;
-        let status = response.status();
-        let bytes = self.read_capped(response).await?;
-        if status.as_u16() == 401 {
-            return Err(OAuthError::Revoked);
-        }
-        if !status.is_success() {
-            return Err(OAuthError::Server(format!(
-                "dropbox account lookup failed with status {status}"
-            )));
-        }
-        let parsed: AccountResponse = serde_json::from_slice(&bytes).map_err(|_| {
-            OAuthError::Server("dropbox account lookup returned an unreadable reply".into())
-        })?;
-        Ok(Account {
-            account_id: parsed.account_id,
-            email: parsed.email,
-            display_name: parsed.name.display_name,
-        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        authorize_url, bind_loopback_on, query_value, redirect_uri, DropboxAuthClient,
-        LoopbackPages, OAuthError, PkceFlow,
+        authorize_url, bind_loopback_on, dropbox_config, query_value, redirect_uri, LoopbackPages,
+        OAuthClient, OAuthConfig, OAuthError, PkceFlow, Revoke,
     };
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
     use sha2::{Digest, Sha256};
@@ -647,7 +659,16 @@ mod tests {
     #[test]
     fn authorize_urls_carry_pkce_and_the_paste_variant_omits_the_redirect() {
         let flow = PkceFlow::generate();
-        let url = authorize_url("key123", &flow, Some(&redirect_uri(53171)), Some("de"));
+        let config = OAuthConfig {
+            client_id: "key123".into(),
+            ..dropbox_config()
+        };
+        let url = authorize_url(
+            &config,
+            &flow,
+            Some(&redirect_uri(&config, 53171)),
+            Some("de"),
+        );
         let parsed = reqwest::Url::parse(&url).unwrap();
         let pairs: std::collections::HashMap<String, String> =
             parsed.query_pairs().into_owned().collect();
@@ -667,16 +688,21 @@ mod tests {
         );
         assert_eq!(pairs["locale"], "de");
         assert!(!url.contains("client_secret"));
-        let paste = authorize_url("key123", &flow, None, None);
+        let paste = authorize_url(&config, &flow, None, None);
         assert!(!paste.contains("redirect_uri"));
     }
 
     #[tokio::test]
     async fn loopback_accepts_only_the_matching_state_and_then_the_code() {
         let flow = PkceFlow::generate();
-        let listener = bind_loopback_on(&[0], flow.state.clone(), LoopbackPages::default())
-            .await
-            .unwrap();
+        let listener = bind_loopback_on(
+            &[0],
+            "/oauth/dropbox",
+            flow.state.clone(),
+            LoopbackPages::default(),
+        )
+        .await
+        .unwrap();
         let port = listener.port;
         let http = reqwest::Client::new();
         let wrong = http
@@ -709,9 +735,14 @@ mod tests {
     #[tokio::test]
     async fn the_browser_hears_connecting_failed_after_the_code_arrived() {
         let flow = PkceFlow::generate();
-        let listener = bind_loopback_on(&[0], flow.state.clone(), LoopbackPages::default())
-            .await
-            .unwrap();
+        let listener = bind_loopback_on(
+            &[0],
+            "/oauth/dropbox",
+            flow.state.clone(),
+            LoopbackPages::default(),
+        )
+        .await
+        .unwrap();
         let port = listener.port;
         let waiting = tokio::spawn(async move {
             let mut listener = listener;
@@ -737,9 +768,14 @@ mod tests {
     #[tokio::test]
     async fn loopback_reports_refusals_and_timeouts() {
         let flow = PkceFlow::generate();
-        let listener = bind_loopback_on(&[0], flow.state.clone(), LoopbackPages::default())
-            .await
-            .unwrap();
+        let listener = bind_loopback_on(
+            &[0],
+            "/oauth/dropbox",
+            flow.state.clone(),
+            LoopbackPages::default(),
+        )
+        .await
+        .unwrap();
         let port = listener.port;
         let waiting = tokio::spawn(async move {
             let mut listener = listener;
@@ -754,9 +790,14 @@ mod tests {
             .await
             .unwrap();
         assert!(matches!(waiting.await.unwrap(), Err(OAuthError::Cancelled)));
-        let mut listener = bind_loopback_on(&[0], "state".into(), LoopbackPages::default())
-            .await
-            .unwrap();
+        let mut listener = bind_loopback_on(
+            &[0],
+            "/oauth/dropbox",
+            "state".into(),
+            LoopbackPages::default(),
+        )
+        .await
+        .unwrap();
         assert!(matches!(
             listener.wait(Duration::from_millis(50)).await,
             Err(OAuthError::Timeout)
@@ -788,7 +829,7 @@ mod tests {
         ) -> axum::response::Response {
             use axum::response::IntoResponse as _;
             *shared.body.lock().unwrap() = body.clone();
-            if body.contains("client_secret") {
+            if body.contains("client_secret") && !body.contains("client_id=desktop") {
                 return (axum::http::StatusCode::BAD_REQUEST, "secret not allowed").into_response();
             }
             if query_value(Some(&body), "code").as_deref() == Some("bad")
@@ -819,12 +860,15 @@ mod tests {
                 .map(str::to_string);
             axum::http::StatusCode::OK
         }
-        async fn account() -> axum::Json<serde_json::Value> {
-            axum::Json(serde_json::json!({
-                "account_id": "dbid:AAH4",
-                "email": "ada@example.org",
-                "name": {"display_name": "Ada"}
-            }))
+        async fn revoke_field(
+            axum::extract::State(shared): axum::extract::State<Shared>,
+            body: String,
+        ) -> axum::http::StatusCode {
+            *shared.body.lock().unwrap() = body.clone();
+            if query_value(Some(&body), "token").as_deref() == Some("gone") {
+                return axum::http::StatusCode::BAD_REQUEST;
+            }
+            axum::http::StatusCode::OK
         }
         let shared = Shared {
             body: Arc::new(Mutex::new(String::new())),
@@ -835,7 +879,7 @@ mod tests {
         let router = axum::Router::new()
             .route("/token", axum::routing::post(token))
             .route("/2/auth/token/revoke", axum::routing::post(revoke))
-            .route("/2/users/get_current_account", axum::routing::post(account))
+            .route("/revoke", axum::routing::post(revoke_field))
             .with_state(shared.clone());
         let task = tokio::spawn(async move {
             let _ = axum::serve(listener, router).await;
@@ -848,12 +892,13 @@ mod tests {
         }
     }
 
-    fn client(fake: &FakeDropbox) -> DropboxAuthClient {
-        DropboxAuthClient {
-            http: reqwest::Client::new(),
+    fn client(fake: &FakeDropbox) -> OAuthClient {
+        OAuthClient::new(OAuthConfig {
+            client_id: "key123".into(),
             token_url: format!("{}/token", fake.base),
-            api_base: format!("{}/2", fake.base),
-        }
+            revoke: Revoke::Bearer(format!("{}/2/auth/token/revoke", fake.base)),
+            ..dropbox_config()
+        })
     }
 
     #[tokio::test]
@@ -862,7 +907,6 @@ mod tests {
         let client = client(&fake);
         let tokens = client
             .exchange_code(
-                "key123",
                 "code-123",
                 "verifier-1",
                 Some("http://127.0.0.1:53171/oauth/dropbox"),
@@ -881,23 +925,21 @@ mod tests {
             query_value(Some(&body), "client_id").as_deref(),
             Some("key123")
         );
-        let refreshed = client.refresh("key123", "rt-1").await.unwrap();
+        let refreshed = client.refresh("rt-1").await.unwrap();
         assert_eq!(refreshed.access_token, "at-2");
         assert!(refreshed.refresh_token.is_none());
         assert!(matches!(
-            client
-                .exchange_code("key123", "bad", "verifier-1", None)
-                .await,
+            client.exchange_code("bad", "verifier-1", None).await,
             Err(OAuthError::CodeInvalid)
         ));
         assert!(matches!(
-            client.refresh("key123", "revoked").await,
+            client.refresh("revoked").await,
             Err(OAuthError::Revoked)
         ));
     }
 
     #[tokio::test]
-    async fn revoke_and_account_lookup_use_the_bearer_token() {
+    async fn revoke_uses_the_bearer_token() {
         let fake = fake_dropbox().await;
         let client = client(&fake);
         client.revoke("at-1").await.unwrap();
@@ -905,9 +947,31 @@ mod tests {
             fake.last_auth.lock().unwrap().as_deref(),
             Some("Bearer at-1")
         );
-        let account = client.current_account("at-1").await.unwrap();
-        assert_eq!(account.account_id, "dbid:AAH4");
-        assert_eq!(account.email, "ada@example.org");
-        assert_eq!(account.display_name, "Ada");
+    }
+
+    #[tokio::test]
+    async fn a_desktop_client_sends_its_secret_and_revokes_with_a_token_field() {
+        let fake = fake_dropbox().await;
+        let client = OAuthClient::new(OAuthConfig {
+            client_id: "desktop".into(),
+            client_secret: Some("not-really-secret".into()),
+            token_url: format!("{}/token", fake.base),
+            revoke: Revoke::TokenField(format!("{}/revoke", fake.base)),
+            ..dropbox_config()
+        });
+        client
+            .exchange_code("code-123", "verifier-1", None)
+            .await
+            .unwrap();
+        let body = fake.last_body.lock().unwrap().clone();
+        assert_eq!(
+            query_value(Some(&body), "client_secret").as_deref(),
+            Some("not-really-secret")
+        );
+        client.revoke("at-1").await.unwrap();
+        let body = fake.last_body.lock().unwrap().clone();
+        assert_eq!(query_value(Some(&body), "token").as_deref(), Some("at-1"));
+        // A token the provider no longer knows is already revoked.
+        client.revoke("gone").await.unwrap();
     }
 }

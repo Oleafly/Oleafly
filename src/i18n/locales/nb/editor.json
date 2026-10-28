@@ -189,7 +189,14 @@
     "addLabel": "Legg til etikett",
     "convertLatexMath": "Gjør om LaTeX-matematikk til Typst",
     "noLatexMath": "Merk litt LaTeX-matematikk først.",
-    "renameFile": "Gi filen nytt navn…"
+    "renameFile": "Gi filen nytt navn…",
+    "cut": "Klipp ut",
+    "copy": "Kopier",
+    "paste": "Lim inn",
+    "selectAll": "Marker alt",
+    "format": "Formatering",
+    "insert": "Sett inn",
+    "importExport": "Import og eksport"
   },
   "shell": {
     "noFileOpenTab": "Ingen filer er åpne",
@@ -322,7 +329,8 @@
     "improveWriting": "Forbedre teksten",
     "fixGrammar": "Rett grammatikk og stil",
     "expand": "Utdyp og utbroder",
-    "findReferences": "Finn referanser"
+    "findReferences": "Finn referanser",
+    "customPrompt": "Beskriv endringen…"
   },
   "versioning": {
     "dismiss": "Lukk versjonshåndteringen",
@@ -952,6 +960,12 @@
         "groupAuto": "nummerer sammen med de andre litteraturlistene",
         "groupNone": "nummerer for seg",
         "groupNamed": "nummerer sammen med litteraturlister med samme navn"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "Tabell",
+        "equation": "Ligning i egen blokk"
       }
     },
     "wysiwyg": {

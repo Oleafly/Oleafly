@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import type { CloudSpace } from "@/lib/cloud";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatNumber } from "@/lib/intl";
+import { useCloudProviderName } from "@/store/cloud";
 
 export type StorageTone = "roomy" | "filling" | "tight" | "full";
 
@@ -23,6 +24,7 @@ export function storageTone(percent: number): StorageTone {
 
 export function StorageRing({ space }: Readonly<{ space: CloudSpace | null }>) {
   const { t } = useTranslation(["cloud"]);
+  const provider = useCloudProviderName();
   if (!space || !Number.isFinite(space.allocated) || space.allocated <= 0 || !Number.isFinite(space.used)) {
     return null;
   }
@@ -42,7 +44,7 @@ export function StorageRing({ space }: Readonly<{ space: CloudSpace | null }>) {
       <span className="relative inline-flex size-14 shrink-0">
         <progress
           className="sr-only"
-          aria-label={t(($) => $.cloud.storage.label)}
+          aria-label={t(($) => $.cloud.storage.label, { provider })}
           aria-valuetext={usedText}
           max={100}
           value={shown}

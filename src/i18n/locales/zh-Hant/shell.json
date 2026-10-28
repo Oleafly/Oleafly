@@ -784,24 +784,41 @@
         "linkedFolders_other": "{{count}} 個已開啟資料夾的建置輸出與設定共 {{size}}",
         "refresh": "重新整理儲存空間用量",
         "stats": {
-          "appData": "應用程式資料",
-          "appDataDetail": "素材與設定",
-          "buildCache": "建置快取",
-          "buildCacheDetail": "產生的輸出",
           "files": "檔案",
           "folders_other": "{{count}} 個資料夾",
-          "gitHistory": "Git 歷史記錄",
-          "gitHistoryDetail": "本機版本",
           "images": "圖片",
           "pdfs": "PDF 檔案",
-          "projectFiles": "專案檔案",
-          "projectFilesDetail": "原始碼與中繼資料",
           "projects": "專案"
         },
         "subtitle": "專案、預覽、歷史記錄與應用程式資料",
         "title": "儲存空間用量",
         "total": "Oleafly 資料目錄共 {{size}}",
-        "unreadable_other": "已排除 {{count}} 個無法存取的項目。"
+        "unreadable_other": "已排除 {{count}} 個無法存取的項目。",
+        "groups": {
+          "projects": "專案",
+          "appData": "應用程式資料",
+          "elsewhere": "其他位置"
+        },
+        "parts": {
+          "documents": "文件與程式碼",
+          "images": "圖片",
+          "pdfs": "PDF 檔案",
+          "media": "音訊與影片",
+          "data": "資料檔案",
+          "otherFiles": "其他檔案",
+          "git": "Git 歷史記錄",
+          "build": "建置快取",
+          "texDistribution": "TeX 發行版",
+          "agents": "AI 代理程式",
+          "researchTasks": "研究任務",
+          "tools": "工具",
+          "checkpoints": "檢查點",
+          "compileCache": "編譯快取",
+          "otherAppData": "設定與其他資料",
+          "recycleBin": "資源回收筒",
+          "linkedFolders": "已開啟的資料夾"
+        },
+        "other": "其他"
       },
       "tabs": {
         "cloud": "雲端同步",

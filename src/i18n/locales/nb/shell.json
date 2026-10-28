@@ -797,26 +797,43 @@
         "linkedFolders_other": "{{size}} byggeresultater og innstillinger for {{count}} åpnede mapper",
         "refresh": "Oppdater lagringsbruken",
         "stats": {
-          "appData": "Appdata",
-          "appDataDetail": "Ressurser og innstillinger",
-          "buildCache": "Byggemellomlager",
-          "buildCacheDetail": "Generert resultat",
           "files": "Filer",
           "folders_one": "{{count}} mappe",
           "folders_other": "{{count}} mapper",
-          "gitHistory": "Git-historikk",
-          "gitHistoryDetail": "Lokale versjoner",
           "images": "Bilder",
           "pdfs": "PDF-er",
-          "projectFiles": "Prosjektfiler",
-          "projectFilesDetail": "Kildekode og metadata",
           "projects": "Prosjekter"
         },
         "subtitle": "Prosjekter, forhåndsvisninger, historikk og appdata",
         "title": "Lagringsbruk",
         "total": "{{size}} i datamappen til Oleafly",
         "unreadable_one": "{{count}} element som ikke er tilgjengelig, er utelatt.",
-        "unreadable_other": "{{count}} elementer som ikke er tilgjengelige, er utelatt."
+        "unreadable_other": "{{count}} elementer som ikke er tilgjengelige, er utelatt.",
+        "groups": {
+          "projects": "Prosjekter",
+          "appData": "Appdata",
+          "elsewhere": "Andre steder"
+        },
+        "parts": {
+          "documents": "Dokumenter og kode",
+          "images": "Bilder",
+          "pdfs": "PDF-er",
+          "media": "Lyd og video",
+          "data": "Datafiler",
+          "otherFiles": "Andre filer",
+          "git": "Git-historikk",
+          "build": "Byggemellomlager",
+          "texDistribution": "TeX-distribusjon",
+          "agents": "AI-agenter",
+          "researchTasks": "Forskningsoppgaver",
+          "tools": "Verktøy",
+          "checkpoints": "Sjekkpunkter",
+          "compileCache": "Kompileringsmellomlager",
+          "otherAppData": "Innstillinger og andre data",
+          "recycleBin": "Papirkurv",
+          "linkedFolders": "Åpnede mapper"
+        },
+        "other": "Annet"
       },
       "tabs": {
         "cloud": "Skysynkronisering",

@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cloudSettingsDownload } from "@/lib/cloud";
+import { cloudProviderName } from "@/lib/cloud-providers";
 import { readCloudSettings } from "@/lib/cloud-settings";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { useCloudStore } from "@/store/cloud";
@@ -335,10 +336,11 @@ export default function SettingsFileCard() {
     }
     setProblem(null);
     setBusy(true);
+    const provider = cloudProviderName(useCloudStore.getState().state?.provider);
     try {
       const { values, stamp } = await cloudSettingsDownload();
       if (!values) {
-        toast.info(t(($) => $.settingsFile.toast.cloudEmpty));
+        toast.info(t(($) => $.settingsFile.toast.cloudEmpty, { provider }));
         return;
       }
       const result = readCloudSettings(
@@ -346,10 +348,10 @@ export default function SettingsFileCard() {
         readLocalSnapshot(await readConfigPreferences(), getStoredPreference()),
       );
       if (!result.ok) {
-        toast.error(t(($) => $.settingsFile.toast.cloudUnreadable));
+        toast.error(t(($) => $.settingsFile.toast.cloudUnreadable, { provider }));
         return;
       }
-      const name = t(($) => $.settingsFile.cloudSource);
+      const name = t(($) => $.settingsFile.cloudSource, { provider });
       if (result.changed.length === 0) {
         await cloud.settingsImported(stamp);
         toast.info(t(($) => $.settingsFile.toast.unchanged, { name }));
@@ -358,7 +360,9 @@ export default function SettingsFileCard() {
       setPending({ name, plan: result.plan, changed: result.changed.length, ignored: result.ignored, stamp });
     } catch (error) {
       void logError("import settings from cloud", error);
-      toast.error(decodeAppError(error) ? describeError(error) : t(($) => $.settingsFile.toast.cloudLoadFailed));
+      toast.error(
+        decodeAppError(error) ? describeError(error) : t(($) => $.settingsFile.toast.cloudLoadFailed, { provider }),
+      );
     } finally {
       setBusy(false);
     }
@@ -376,7 +380,9 @@ export default function SettingsFileCard() {
     const parts = [
       pending.stamp === undefined
         ? t(($) => $.settingsFile.confirm.description, { name: pending.name })
-        : t(($) => $.settingsFile.confirm.cloudDescription),
+        : t(($) => $.settingsFile.confirm.cloudDescription, {
+            provider: cloudProviderName(useCloudStore.getState().state?.provider),
+          }),
       t(($) => $.settingsFile.confirm.changes, { count: pending.changed }),
     ];
     if (pending.ignored.length > 0) {

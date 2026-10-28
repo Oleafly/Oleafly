@@ -7,7 +7,7 @@ const CloudSyncKeeper = lazy<ComponentType>(() =>
   import("@/components/cloud/CloudSyncKeeper").catch(() => ({ default: () => null })),
 );
 
-// With no Dropbox account on this computer there is nothing to keep in sync, so
+// With no cloud account on this computer there is nothing to keep in sync, so
 // the keeper and the cloud store wait for Settings, where the account is added.
 function useKeeperWanted(): boolean {
   const settingsOpen = useSettingsStore((s) => s.settingsOpen);

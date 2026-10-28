@@ -189,7 +189,14 @@
     "addLabel": "Adaugă o etichetă",
     "convertLatexMath": "Convertește formula LaTeX în Typst",
     "noLatexMath": "Selectează întâi o formulă LaTeX.",
-    "renameFile": "Redenumește fișierul…"
+    "renameFile": "Redenumește fișierul…",
+    "cut": "Decupează",
+    "copy": "Copiază",
+    "paste": "Lipește",
+    "selectAll": "Selectează tot",
+    "format": "Formatare",
+    "insert": "Inserare",
+    "importExport": "Import și export"
   },
   "shell": {
     "noFileOpenTab": "Niciun fișier deschis",
@@ -326,7 +333,8 @@
     "improveWriting": "Îmbunătățește scrierea",
     "fixGrammar": "Corectează gramatica și stilul",
     "expand": "Dezvoltă și detaliază",
-    "findReferences": "Găsește referințele"
+    "findReferences": "Găsește referințele",
+    "customPrompt": "Descrie modificarea…"
   },
   "versioning": {
     "dismiss": "Închide versionarea",
@@ -966,6 +974,12 @@
         "groupAuto": "numerotare comună cu celelalte bibliografii",
         "groupNone": "numerotare proprie",
         "groupNamed": "numerotare comună cu bibliografiile cu același nume"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "Tabel",
+        "equation": "Ecuație pe rând separat"
       }
     },
     "wysiwyg": {

@@ -810,20 +810,12 @@
         "linkedFolders_other": "{{size}} de fichiers de compilation et de réglages pour {{count}} dossiers ouverts",
         "refresh": "Actualiser l'espace utilisé",
         "stats": {
-          "appData": "Données de l'application",
-          "appDataDetail": "Ressources et réglages",
-          "buildCache": "Cache de compilation",
-          "buildCacheDetail": "Sorties générées",
           "files": "Fichiers",
           "folders_one": "{{count}} dossier",
           "folders_many": "{{count}} dossiers",
           "folders_other": "{{count}} dossiers",
-          "gitHistory": "Historique Git",
-          "gitHistoryDetail": "Versions locales",
           "images": "Images",
           "pdfs": "PDF",
-          "projectFiles": "Fichiers de projet",
-          "projectFilesDetail": "Sources et métadonnées",
           "projects": "Projets"
         },
         "subtitle": "Projets, aperçus, historique et données de l'application",
@@ -831,7 +823,32 @@
         "total": "{{size}} dans le dossier de données d'Oleafly",
         "unreadable_one": "{{count}} élément inaccessible a été exclu.",
         "unreadable_many": "{{count}} éléments inaccessibles ont été exclus.",
-        "unreadable_other": "{{count}} éléments inaccessibles ont été exclus."
+        "unreadable_other": "{{count}} éléments inaccessibles ont été exclus.",
+        "groups": {
+          "projects": "Projets",
+          "appData": "Données de l'application",
+          "elsewhere": "Ailleurs"
+        },
+        "parts": {
+          "documents": "Documents et code",
+          "images": "Images",
+          "pdfs": "PDF",
+          "media": "Audio et vidéo",
+          "data": "Fichiers de données",
+          "otherFiles": "Autres fichiers",
+          "git": "Historique Git",
+          "build": "Cache de compilation",
+          "texDistribution": "Distribution TeX",
+          "agents": "Agents IA",
+          "researchTasks": "Tâches de recherche",
+          "tools": "Outils",
+          "checkpoints": "Points de contrôle",
+          "compileCache": "Cache du compilateur",
+          "otherAppData": "Paramètres et autres données",
+          "recycleBin": "Corbeille",
+          "linkedFolders": "Dossiers ouverts"
+        },
+        "other": "Autres"
       },
       "tabs": {
         "cloud": "Synchronisation cloud",

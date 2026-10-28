@@ -49,6 +49,7 @@ import { platform as osPlatform, arch as osArch, version as osVersion } from "@t
 import { Button } from "@/components/ui/button";
 import { NavItem } from "@/components/ui/nav-item";
 import { StatGrid } from "@/components/ui/stat-grid";
+import { StorageBreakdown } from "@/components/settings/StorageBreakdown";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { SettingsPath } from "@/components/settings/SettingsPath";
@@ -659,6 +660,7 @@ export function SettingsModal() {
     }
     if (storageSummary) {
       return (
+        <>
         <StatGrid
           stats={[
             {
@@ -687,32 +689,10 @@ export function SettingsModal() {
               value: formatNumber(storageSummary.pdf_count),
               detail: formatBytes(storageSummary.pdf_bytes),
             },
-            {
-              id: "sources",
-              label: t(($) => $.shell.settings.data.storage.stats.projectFiles),
-              value: formatBytes(storageSummary.source_bytes),
-              detail: t(($) => $.shell.settings.data.storage.stats.projectFilesDetail),
-            },
-            {
-              id: "git",
-              label: t(($) => $.shell.settings.data.storage.stats.gitHistory),
-              value: formatBytes(storageSummary.git_bytes),
-              detail: t(($) => $.shell.settings.data.storage.stats.gitHistoryDetail),
-            },
-            {
-              id: "build",
-              label: t(($) => $.shell.settings.data.storage.stats.buildCache),
-              value: formatBytes(storageSummary.build_bytes),
-              detail: t(($) => $.shell.settings.data.storage.stats.buildCacheDetail),
-            },
-            {
-              id: "appData",
-              label: t(($) => $.shell.settings.data.storage.stats.appData),
-              value: formatBytes(storageSummary.app_data_bytes),
-              detail: t(($) => $.shell.settings.data.storage.stats.appDataDetail),
-            },
           ]}
         />
+        <StorageBreakdown summary={storageSummary} />
+        </>
       );
     }
     return (
@@ -943,14 +923,6 @@ export function SettingsModal() {
         </Tooltip>
       </div>
       {renderStorageSummary()}
-      {storageSummary && storageSummary.linked_folder_count > 0 ? (
-        <p className="border-t px-4 py-2 text-xs text-muted-foreground">
-          {t(($) => $.shell.settings.data.storage.linkedFolders, {
-            count: storageSummary.linked_folder_count,
-            size: formatBytes(storageSummary.linked_folders_bytes),
-          })}
-        </p>
-      ) : null}
       {storageSummary && storageSummary.unreadable_entries > 0 ? (
         <p className="border-t px-4 py-2 text-[0.625rem] text-muted-foreground">
           {t(($) => $.shell.settings.data.storage.unreadable, {

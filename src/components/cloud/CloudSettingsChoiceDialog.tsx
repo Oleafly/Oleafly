@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Spinner } from "@/components/ui/spinner";
 import { describeError } from "@/lib/app-error";
-import { useCloudStore } from "@/store/cloud";
+import { cloudProviderName } from "@/lib/cloud-providers";
+import { activeCloudProvider, useCloudStore } from "@/store/cloud";
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { useCatalogUpdates } from "@/i18n/use-catalog-updates";
@@ -18,8 +19,10 @@ export function CloudSettingsChoiceDialog() {
   const error = useCloudStore((s) => s.settingsChoiceError);
   const chooseSettings = useCloudStore((s) => s.chooseSettings);
   const deferSettingsChoice = useCloudStore((s) => s.deferSettingsChoice);
+  const kind = useCloudStore(activeCloudProvider);
 
   if (!choice || choice.deferred) return null;
+  const provider = cloudProviderName(kind);
 
   return (
     <ModalShell
@@ -38,7 +41,7 @@ export function CloudSettingsChoiceDialog() {
         {t(($) => $.cloud.choice.title)}
       </h2>
       <p id={descriptionId} className="mt-2 select-text text-xs leading-relaxed text-muted-foreground">
-        {t(($) => $.cloud.choice.description)}
+        {t(($) => $.cloud.choice.description, { provider })}
       </p>
       {error ? (
         <div className="mt-3">
@@ -65,7 +68,7 @@ export function CloudSettingsChoiceDialog() {
           onClick={() => void chooseSettings("cloud")}
         >
           {busy ? <Spinner /> : null}
-          {t(($) => $.cloud.choice.useCloud)}
+          {t(($) => $.cloud.choice.useCloud, { provider })}
         </Button>
       </div>
     </ModalShell>

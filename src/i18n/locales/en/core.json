@@ -391,10 +391,8 @@
     "updatedToday": "Updated today",
     "updatedYesterday": "Updated yesterday",
     "autosaveFailed": "Could not save your changes. They are still in the editor.",
-    "changedOnDisk": "\"{{path}}\" changed outside Oleafly. Reload it, or save again to keep your version.",
     "openFileEncoding": "Could not open \"{{path}}\" because it is not a UTF-8 text file. If it is text, save it as UTF-8 and open it again.",
     "openFileFailed": "Could not open \"{{path}}\". See the app log for details.",
-    "reloadFromDisk": "Reload",
     "changedOnDiskElsewhere": "{{path}} changed on disk, so Oleafly didn't save it. Open it to pick which version to keep."
   },
   "projectDiagnostics": {

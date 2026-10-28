@@ -189,7 +189,14 @@
     "addLabel": "添加标签",
     "convertLatexMath": "将 LaTeX 公式转换为 Typst",
     "noLatexMath": "请先选择一些 LaTeX 公式。",
-    "renameFile": "重命名文件…"
+    "renameFile": "重命名文件…",
+    "cut": "剪切",
+    "copy": "复制",
+    "paste": "粘贴",
+    "selectAll": "全选",
+    "format": "格式",
+    "insert": "插入",
+    "importExport": "导入和导出"
   },
   "shell": {
     "noFileOpenTab": "未打开文件",
@@ -318,7 +325,8 @@
     "improveWriting": "改进写作",
     "fixGrammar": "修复语法和风格",
     "expand": "扩写与详述",
-    "findReferences": "查找参考文献"
+    "findReferences": "查找参考文献",
+    "customPrompt": "描述修改内容…"
   },
   "versioning": {
     "dismiss": "忽略版本管理",
@@ -938,6 +946,12 @@
         "groupAuto": "与其他参考文献连续编号",
         "groupNone": "单独编号",
         "groupNamed": "与同名参考文献连续编号"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "表格",
+        "equation": "行间公式"
       }
     },
     "wysiwyg": {

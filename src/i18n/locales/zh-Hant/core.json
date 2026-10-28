@@ -382,10 +382,8 @@
     "updatedToday": "今天更新",
     "updatedYesterday": "昨天更新",
     "autosaveFailed": "無法儲存你的變更。變更仍保留在編輯器中。",
-    "changedOnDisk": "「{{path}}」已在 Oleafly 以外被修改。請重新載入，或再次儲存以保留你的版本。",
     "openFileEncoding": "無法開啟「{{path}}」，因為它不是 UTF-8 文字檔。如果是文字檔，請以 UTF-8 儲存後再重新開啟。",
     "openFileFailed": "無法開啟「{{path}}」。詳情請查看應用程式記錄。",
-    "reloadFromDisk": "重新載入",
     "changedOnDiskElsewhere": "{{path}} 已在磁碟上變更，因此 Oleafly 沒有儲存它。請開啟該檔案，選擇要保留的版本。"
   },
   "projectDiagnostics": {

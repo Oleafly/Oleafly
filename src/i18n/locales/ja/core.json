@@ -382,10 +382,8 @@
     "updatedToday": "今日更新",
     "updatedYesterday": "昨日更新",
     "autosaveFailed": "変更を保存できませんでした。変更はエディターに残っています。",
-    "changedOnDisk": "「{{path}}」が Oleafly の外で変更されました。再読み込みするか、もう一度保存して自分の版を残してください。",
     "openFileEncoding": "「{{path}}」は UTF-8 のテキストファイルではないため開けません。テキストの場合は UTF-8 で保存してから、もう一度開いてください。",
     "openFileFailed": "「{{path}}」を開けませんでした。詳細はアプリのログを確認してください。",
-    "reloadFromDisk": "再読み込み",
     "changedOnDiskElsewhere": "{{path}} がディスク上で変更されたため、Oleafly は保存しませんでした。ファイルを開いて、残す版を選んでください。"
   },
   "projectDiagnostics": {

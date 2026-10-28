@@ -79,6 +79,19 @@ pub struct LibraryStorageSummary {
     pub unreadable_entries: u64,
     pub linked_folders_bytes: u64,
     pub linked_folder_count: u64,
+    // `source_bytes` split by kind of file. The four add up to it.
+    pub document_bytes: u64,
+    pub media_bytes: u64,
+    pub data_bytes: u64,
+    pub other_project_bytes: u64,
+    // The parts of `app_data_bytes` worth naming. The rest of it is settings,
+    // chats, assets and other small state.
+    pub tex_distribution_bytes: u64,
+    pub agents_bytes: u64,
+    pub research_tasks_bytes: u64,
+    pub tools_bytes: u64,
+    pub checkpoints_bytes: u64,
+    pub compile_cache_bytes: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -104,16 +117,78 @@ struct PendingCheckpointCleanup {
     recycle_id: String,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SourceKind {
+    Document,
+    Media,
+    Data,
+    Other,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum AppPart {
+    TexDistribution,
+    Agents,
+    ResearchTasks,
+    Tools,
+    Checkpoints,
+    CompileCache,
+    Other,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum FileClass {
-    Source,
+    Source(SourceKind),
     Image,
     Pdf,
     Git,
     Build,
     RecycleBin,
     LinkedFolders,
-    AppData,
+    AppData(AppPart),
+}
+
+fn app_part(relative: &Path) -> AppPart {
+    let first = relative
+        .components()
+        .next()
+        .and_then(|component| match component {
+            Component::Normal(value) => value.to_str(),
+            _ => None,
+        })
+        .unwrap_or_default();
+    match first {
+        "tinytex" | "tinytex.installing" | "tinytex.previous" => AppPart::TexDistribution,
+        "acp" => AppPart::Agents,
+        "research-tasks" => AppPart::ResearchTasks,
+        "bin" => AppPart::Tools,
+        "checkpoints" => AppPart::Checkpoints,
+        "compiler-cache" => AppPart::CompileCache,
+        _ => AppPart::Other,
+    }
+}
+
+// Oleafly's own files in a project (its settings and project.json) count as
+// other files, whatever their extension.
+fn is_project_metadata(relative: &Path) -> bool {
+    has_component(relative, ".oleafly")
+        || (relative.components().count() == 3 && relative.ends_with("project.json"))
+}
+
+fn source_kind(extension: &str) -> SourceKind {
+    match extension {
+        "tex" | "ltx" | "latex" | "sty" | "cls" | "bst" | "bbx" | "cbx" | "dtx" | "ins" | "def"
+        | "bib" | "typ" | "md" | "markdown" | "mdx" | "qmd" | "rmd" | "txt" | "org" | "rst"
+        | "adoc" | "csl" | "ipynb" | "py" | "r" | "jl" | "m" | "do" | "lua" | "sh" | "js"
+        | "ts" | "c" | "h" | "cpp" | "hpp" | "rs" | "go" | "java" => SourceKind::Document,
+        "mp4" | "m4v" | "mov" | "webm" | "mkv" | "avi" | "wmv" | "mpg" | "mpeg" | "mp3" | "wav"
+        | "m4a" | "aac" | "flac" | "ogg" | "oga" | "opus" | "aif" | "aiff" => SourceKind::Media,
+        "csv" | "tsv" | "json" | "jsonl" | "ndjson" | "geojson" | "dat" | "yml" | "yaml"
+        | "xml" | "toml" | "xlsx" | "xls" | "ods" | "parquet" | "feather" | "arrow" | "h5"
+        | "hdf5" | "nc" | "npy" | "npz" | "mat" | "rds" | "rdata" | "rda" | "sav" | "dta"
+        | "sas7bdat" | "sqlite" | "sqlite3" | "db" | "duckdb" => SourceKind::Data,
+        _ => SourceKind::Other,
+    }
 }
 
 fn has_component(path: &Path, expected: &str) -> bool {
@@ -142,7 +217,7 @@ fn classify_file(relative: &Path, in_projects: bool) -> FileClass {
         return FileClass::LinkedFolders;
     }
     if !in_projects {
-        return FileClass::AppData;
+        return FileClass::AppData(app_part(relative));
     }
     if has_component(relative, ".git") {
         return FileClass::Git;
@@ -162,8 +237,10 @@ fn classify_file(relative: &Path, in_projects: bool) -> FileClass {
         FileClass::Image
     } else if extension == "pdf" {
         FileClass::Pdf
+    } else if is_project_metadata(relative) {
+        FileClass::Source(SourceKind::Other)
     } else {
-        FileClass::Source
+        FileClass::Source(source_kind(&extension))
     }
 }
 
@@ -222,6 +299,59 @@ fn count_linked_folders(linked_root: &Path) -> u64 {
         .count() as u64
 }
 
+/// Adds one file to the totals and to the part of the bar it belongs to.
+fn record_file(summary: &mut LibraryStorageSummary, relative: &Path, bytes: u64) {
+    summary.file_count += 1;
+    summary.total_bytes = summary.total_bytes.saturating_add(bytes);
+    let in_projects = relative.starts_with("projects");
+    if in_projects {
+        summary.projects_bytes = summary.projects_bytes.saturating_add(bytes);
+    }
+    match classify_file(relative, in_projects) {
+        FileClass::Source(kind) => {
+            summary.source_bytes = summary.source_bytes.saturating_add(bytes);
+            let part = match kind {
+                SourceKind::Document => &mut summary.document_bytes,
+                SourceKind::Media => &mut summary.media_bytes,
+                SourceKind::Data => &mut summary.data_bytes,
+                SourceKind::Other => &mut summary.other_project_bytes,
+            };
+            *part = part.saturating_add(bytes);
+        }
+        FileClass::Image => {
+            summary.image_count += 1;
+            summary.image_bytes = summary.image_bytes.saturating_add(bytes);
+        }
+        FileClass::Pdf => {
+            summary.pdf_count += 1;
+            summary.pdf_bytes = summary.pdf_bytes.saturating_add(bytes);
+        }
+        FileClass::Git => summary.git_bytes = summary.git_bytes.saturating_add(bytes),
+        FileClass::Build => summary.build_bytes = summary.build_bytes.saturating_add(bytes),
+        FileClass::RecycleBin => {
+            summary.recycle_bin_bytes = summary.recycle_bin_bytes.saturating_add(bytes)
+        }
+        FileClass::LinkedFolders => {
+            summary.linked_folders_bytes = summary.linked_folders_bytes.saturating_add(bytes)
+        }
+        FileClass::AppData(part) => {
+            summary.app_data_bytes = summary.app_data_bytes.saturating_add(bytes);
+            let named = match part {
+                AppPart::TexDistribution => Some(&mut summary.tex_distribution_bytes),
+                AppPart::Agents => Some(&mut summary.agents_bytes),
+                AppPart::ResearchTasks => Some(&mut summary.research_tasks_bytes),
+                AppPart::Tools => Some(&mut summary.tools_bytes),
+                AppPart::Checkpoints => Some(&mut summary.checkpoints_bytes),
+                AppPart::CompileCache => Some(&mut summary.compile_cache_bytes),
+                AppPart::Other => None,
+            };
+            if let Some(named) = named {
+                *named = named.saturating_add(bytes);
+            }
+        }
+    }
+}
+
 fn scan_storage(root: &Path) -> LibraryStorageSummary {
     let mut summary = LibraryStorageSummary::default();
     if !root.is_dir() {
@@ -268,39 +398,8 @@ fn scan_storage(root: &Path) -> LibraryStorageSummary {
                 continue;
             }
 
-            let bytes = metadata.len();
-            summary.file_count += 1;
-            summary.total_bytes = summary.total_bytes.saturating_add(bytes);
             let relative = path.strip_prefix(root).unwrap_or(&path);
-            let in_projects = relative.starts_with("projects");
-            if in_projects {
-                summary.projects_bytes = summary.projects_bytes.saturating_add(bytes);
-            }
-            match classify_file(relative, in_projects) {
-                FileClass::Source => {
-                    summary.source_bytes = summary.source_bytes.saturating_add(bytes)
-                }
-                FileClass::Image => {
-                    summary.image_count += 1;
-                    summary.image_bytes = summary.image_bytes.saturating_add(bytes);
-                }
-                FileClass::Pdf => {
-                    summary.pdf_count += 1;
-                    summary.pdf_bytes = summary.pdf_bytes.saturating_add(bytes);
-                }
-                FileClass::Git => summary.git_bytes = summary.git_bytes.saturating_add(bytes),
-                FileClass::Build => summary.build_bytes = summary.build_bytes.saturating_add(bytes),
-                FileClass::RecycleBin => {
-                    summary.recycle_bin_bytes = summary.recycle_bin_bytes.saturating_add(bytes)
-                }
-                FileClass::LinkedFolders => {
-                    summary.linked_folders_bytes =
-                        summary.linked_folders_bytes.saturating_add(bytes)
-                }
-                FileClass::AppData => {
-                    summary.app_data_bytes = summary.app_data_bytes.saturating_add(bytes)
-                }
-            }
+            record_file(&mut summary, relative, metadata.len());
         }
     }
     summary.recycled_project_count = count_recycled_projects(&root.join("recycle-bin"));
@@ -1554,6 +1653,66 @@ mod tests {
                 + summary.linked_folders_bytes,
             summary.total_bytes
         );
+    }
+
+    #[test]
+    fn storage_scan_splits_project_files_by_kind_and_names_the_large_app_data_parts() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        let project = root.join("projects/paper");
+        for folder in [
+            project.join("media"),
+            project.join("data"),
+            project.join(".oleafly"),
+            root.join("tinytex/bin"),
+            root.join("acp/agents"),
+            root.join("research-tasks/t1"),
+            root.join("bin"),
+            root.join("checkpoints/paper"),
+            root.join("compiler-cache"),
+            root.join("chats"),
+        ] {
+            std::fs::create_dir_all(folder).unwrap();
+        }
+        for (path, text) in [
+            (project.join("main.tex"), "1"),
+            (project.join("refs.bib"), "22"),
+            (project.join("media/talk.mp4"), "333"),
+            (project.join("data/results.csv"), "4444"),
+            (project.join("project.json"), "55555"),
+            (project.join(".oleafly/settings.json"), "6"),
+            (project.join("font.otf"), "77"),
+            (root.join("tinytex/bin/pdflatex"), "tex"),
+            (root.join("acp/agents/claude"), "agent"),
+            (root.join("research-tasks/t1/log"), "task"),
+            (root.join("bin/pandoc"), "pandoc"),
+            (root.join("checkpoints/paper/1"), "cp"),
+            (root.join("compiler-cache/x"), "cache"),
+            (root.join("chats/c.json"), "chat"),
+            (root.join("config.json"), "{}"),
+        ] {
+            std::fs::write(path, text).unwrap();
+        }
+
+        let summary = scan_storage(root);
+        assert_eq!(summary.document_bytes, 3);
+        assert_eq!(summary.media_bytes, 3);
+        assert_eq!(summary.data_bytes, 4);
+        assert_eq!(summary.other_project_bytes, 5 + 1 + 2);
+        assert_eq!(
+            summary.document_bytes
+                + summary.media_bytes
+                + summary.data_bytes
+                + summary.other_project_bytes,
+            summary.source_bytes
+        );
+        assert_eq!(summary.tex_distribution_bytes, 3);
+        assert_eq!(summary.agents_bytes, 5);
+        assert_eq!(summary.research_tasks_bytes, 4);
+        assert_eq!(summary.tools_bytes, 6);
+        assert_eq!(summary.checkpoints_bytes, 2);
+        assert_eq!(summary.compile_cache_bytes, 5);
+        assert_eq!(summary.app_data_bytes, 3 + 5 + 4 + 6 + 2 + 5 + 4 + 2);
     }
 
     #[test]

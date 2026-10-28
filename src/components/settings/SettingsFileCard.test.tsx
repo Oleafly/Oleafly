@@ -4,6 +4,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppConfig } from "@/lib/tauri";
+import type { CloudProviderKind } from "@/lib/cloud";
 
 const mocks = vi.hoisted(() => ({
   cloudSettingsDownload: vi.fn(),
@@ -69,8 +70,24 @@ async function chooseLocalImport() {
   await userEvent.click(await screen.findByTestId("settings-file-import-local"));
 }
 
-function connectedCloud() {
-  useCloudStore.setState({ status: "connected" });
+function connectedCloud(provider: CloudProviderKind = "dropbox") {
+  useCloudStore.setState({
+    status: "connected",
+    state: {
+      status: "connected",
+      provider,
+      email: "ada@uni.edu",
+      displayName: null,
+      deviceName: "Desk",
+      enabled: true,
+      lastEmail: "ada@uni.edu",
+      lastSyncedMs: 0,
+      lastError: null,
+      quotaFull: false,
+      linkedCount: 0,
+      projects: [],
+    },
+  });
 }
 
 async function chooseCloudImport() {
@@ -288,6 +305,14 @@ describe("SettingsFileCard", () => {
       ),
     );
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("names the connected provider when importing from the cloud", async () => {
+    connectedCloud("google_drive");
+    mocks.cloudSettingsDownload.mockResolvedValue({ values: { appearance: { app: { fontSize: 18 } } }, stamp: "4" });
+    render(<SettingsFileCard />);
+    await chooseCloudImport();
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent("Settings from your Google Drive will replace yours.");
   });
 
   it("routes to Cloud sync when cloud import is chosen while disconnected", async () => {

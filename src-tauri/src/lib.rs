@@ -457,6 +457,7 @@ pub fn run() {
         .plugin(typst_watch::lifecycle_plugin())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         // Research tasks tell the user when they need them.
         .plugin(tauri_plugin_notification::init());
@@ -760,7 +761,9 @@ pub fn run() {
             commands::export_project_image,
             cloud::commands::cloud_state,
             cloud::commands::cloud_details,
+            cloud::commands::cloud_providers,
             cloud::commands::cloud_connect_begin,
+            cloud::commands::cloud_connect_credentials,
             cloud::commands::cloud_connect_wait,
             cloud::commands::cloud_connect_paste,
             cloud::commands::cloud_connect_cancel,

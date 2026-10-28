@@ -85,6 +85,8 @@ SQLiteを使う単一のRustバイナリで、ファイルはディスクまた�
 
 クラウド同期をオンにすると、ライブラリのプロジェクトとアプリの設定が、あるコンピューターから次のコンピューターへ引き継がれます。ダウンロードしたものは、ファイルを置き換える前に必ず記録と照合され、未保存の変更がある開いたファイルが上書きされることはありません。
 
+同期先にはDropbox、Google Drive、またはAmazon S3、Google Cloud Storage、MinIOなどのS3互換サービスにある自分のバケットを選べます。
+
 <p align="center">
   <img src="../assets/readme/cloud-sync-dropbox.png" alt="Dropboxのカードと同期される項目の一覧を表示するOleaflyのクラウド同期設定" width="100%" />
 </p>

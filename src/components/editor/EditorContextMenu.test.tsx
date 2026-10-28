@@ -12,6 +12,7 @@ const view = vi.hoisted(() => ({
   dispatch: vi.fn(),
   posAtCoords: vi.fn(() => 7),
   state: {
+    readOnly: false,
     doc: { toString: () => "See \\ref{fig:plot}." },
     selection: { main: { empty: true, from: 0, to: 0 } },
   },
@@ -24,8 +25,20 @@ const formatting = vi.hoisted(() => ({
 const controller = vi.hoisted(() => ({
   getEditorView: vi.fn<() => unknown>(() => null),
   insertAtCursor: vi.fn(),
+  insertTemplate: vi.fn(),
   wrapSelection: vi.fn(),
+  wrapSelectionOrPlaceholder: vi.fn(),
 }));
+
+const clipboard = vi.hoisted(() => ({
+  hasSelectedText: vi.fn((_state: unknown) => false),
+  copySelection: vi.fn(async (_view: unknown) => {}),
+  cutSelection: vi.fn(async (_view: unknown) => {}),
+  pasteClipboard: vi.fn(async (_view: unknown) => {}),
+  selectAllText: vi.fn((_view: unknown) => {}),
+}));
+
+const convertMath = vi.hoisted(() => ({ convertLatexMathAtSelection: vi.fn(async () => {}) }));
 
 const nav = vi.hoisted(() => ({
   goToDefinition: vi.fn(() => true),
@@ -107,6 +120,8 @@ vi.mock("@/lib/index/nav", () => nav);
 vi.mock("@/lib/file-references/rename-at-cursor", () => fileRename);
 vi.mock("@/features/synctex", () => synctex);
 vi.mock("@/features/equation-export", () => equationExport);
+vi.mock("./clipboard-commands", () => clipboard);
+vi.mock("./convert-latex-math", () => convertMath);
 vi.mock("@/lib/toast", () => ({ toast: toasts }));
 vi.mock("@/store/project-index", () => ({
   useIndexStore: { getState: () => projectIndex.state },
@@ -120,6 +135,7 @@ vi.mock("@/components/editor/latex-commands", async (importOriginal) => {
 import { HEADING_LEVELS } from "@/components/editor/latex-commands";
 import { TYPST_HEADING_LEVELS } from "@/components/editor/typst-commands";
 import { loadFileRename } from "@/lib/file-references/rename-trigger";
+import { useTableImportStore } from "@/store/table-import";
 import { EditorContextMenu } from "./EditorContextMenu";
 
 const menu = en.contextMenu;
@@ -150,6 +166,16 @@ function openMenu(
   return trigger;
 }
 
+// Opens each submenu in turn, the way a click on its trigger does.
+function openSubmenus(...labels: string[]) {
+  for (const label of labels) fireEvent.click(screen.getByText(label));
+}
+
+function clickPath(...labels: string[]) {
+  openSubmenus(...labels.slice(0, -1));
+  fireEvent.click(screen.getByText(labels[labels.length - 1]));
+}
+
 describe("EditorContextMenu", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -160,6 +186,7 @@ describe("EditorContextMenu", () => {
     projectIndex.state = { index: {} };
     typstCommands.typstLanguageServiceOffers.mockImplementation(() => false);
     fileRename.pathReferenceUnderCursor.mockReturnValue(null);
+    clipboard.hasSelectedText.mockReturnValue(false);
   });
 
   it("offers only a disabled notice before an engine is loaded", () => {
@@ -202,33 +229,33 @@ describe("EditorContextMenu", () => {
     fireEvent.click(screen.getByText(menu.askAi));
     expect(inlineAi.openInlineEdit).toHaveBeenCalledWith(view);
 
-    const items: [string, keyof typeof typstCommands][] = [
-      [toolbar.bold, "insertTypstBold"],
-      [toolbar.italic, "insertTypstItalic"],
-      [toolbar.underline, "insertTypstUnderline"],
-      [toolbar.strikethrough, "insertTypstStrikethrough"],
-      [toolbar.inlineCode, "insertTypstRawInline"],
-      [toolbar.insertLink, "insertTypstLink"],
-      [menu.toggleComment, "toggleTypstComment"],
-      [menu.figure, "insertTypstFigure"],
-      [menu.inlineMath, "insertTypstMath"],
-      [menu.displayMath, "insertTypstDisplayMath"],
-      [menu.numberedEquation, "insertTypstNumberedEquation"],
-      [menu.alignedEquations, "insertTypstAlignedMath"],
-      [toolbar.fraction, "insertTypstFraction"],
-      [menu.quote, "insertTypstQuote"],
-      [menu.footnote, "insertTypstFootnote"],
-      [menu.crossReference, "insertTypstReference"],
-      [menu.addLabel, "addTypstLabel"],
+    const items: [string, string, keyof typeof typstCommands][] = [
+      [menu.format, toolbar.bold, "insertTypstBold"],
+      [menu.format, toolbar.italic, "insertTypstItalic"],
+      [menu.format, toolbar.underline, "insertTypstUnderline"],
+      [menu.format, toolbar.strikethrough, "insertTypstStrikethrough"],
+      [menu.format, toolbar.inlineCode, "insertTypstRawInline"],
+      [menu.format, toolbar.insertLink, "insertTypstLink"],
+      [menu.format, menu.toggleComment, "toggleTypstComment"],
+      [menu.insert, menu.figure, "insertTypstFigure"],
+      [menu.insert, menu.inlineMath, "insertTypstMath"],
+      [menu.insert, menu.displayMath, "insertTypstDisplayMath"],
+      [menu.insert, menu.numberedEquation, "insertTypstNumberedEquation"],
+      [menu.insert, menu.alignedEquations, "insertTypstAlignedMath"],
+      [menu.insert, toolbar.fraction, "insertTypstFraction"],
+      [menu.insert, menu.quote, "insertTypstQuote"],
+      [menu.insert, menu.footnote, "insertTypstFootnote"],
+      [menu.insert, menu.crossReference, "insertTypstReference"],
+      [menu.insert, menu.addLabel, "addTypstLabel"],
     ];
-    for (const [label, command] of items) {
+    for (const [submenu, label, command] of items) {
       openMenu(engineWithProfile("typst"), true);
-      fireEvent.click(screen.getByText(label));
+      clickPath(submenu, label);
       expect(typstCommands[command], label).toHaveBeenCalledOnce();
     }
 
     openMenu(engineWithProfile("typst"), true);
-    fireEvent.click(screen.getByText(menu.table));
+    clickPath(menu.insert, menu.table);
     expect(typstCommands.insertTypstTable).toHaveBeenCalledWith(3, 3);
     expect(controller.wrapSelection).not.toHaveBeenCalled();
     expect(latexCommands.insertBold).not.toHaveBeenCalled();
@@ -269,7 +296,7 @@ describe("EditorContextMenu", () => {
 
   it("opens the Typst heading and list submenus", () => {
     openMenu(engineWithProfile("typst"), true);
-    fireEvent.click(screen.getByText(toolbar.heading));
+    openSubmenus(menu.insert, toolbar.heading);
     for (const level of TYPST_HEADING_LEVELS) {
       expect(screen.getByText(level.label())).toBeInTheDocument();
     }
@@ -277,8 +304,7 @@ describe("EditorContextMenu", () => {
     expect(typstCommands.insertTypstHeading).toHaveBeenCalledWith(TYPST_HEADING_LEVELS[2]);
 
     openMenu(engineWithProfile("typst"), true);
-    fireEvent.click(screen.getByText(toolbar.list));
-    fireEvent.click(screen.getByText(toolbar.numberedList));
+    clickPath(menu.insert, toolbar.list, toolbar.numberedList);
     expect(typstCommands.insertTypstNumberedList).toHaveBeenCalledOnce();
   });
 
@@ -300,11 +326,11 @@ describe("EditorContextMenu", () => {
 
   it("exports the equation under the caret as SVG or PNG from the Typst menu", () => {
     openMenu(engineWithProfile("typst"), true);
-    fireEvent.click(screen.getByText(menu.equationAsSvg));
+    clickPath(menu.importExport, menu.equationAsSvg);
     expect(equationExport.saveEquationAsSvg).toHaveBeenCalledOnce();
 
     openMenu(engineWithProfile("typst"), true);
-    fireEvent.click(screen.getByText(menu.equationAsPng));
+    clickPath(menu.importExport, menu.equationAsPng);
     expect(equationExport.saveEquationAsPng).toHaveBeenCalledOnce();
     expect(equationExport.saveEquationAsSvg).toHaveBeenCalledOnce();
   });
@@ -316,39 +342,52 @@ describe("EditorContextMenu", () => {
     expect(inlineAi.openInlineEdit).toHaveBeenCalledWith(view);
 
     openMenu(engineWithProfile("markdown"), true);
-    fireEvent.click(screen.getByText(toolbar.bold));
+    clickPath(menu.format, toolbar.bold);
     expect(controller.wrapSelection).toHaveBeenCalledWith("**", "**");
 
     openMenu(engineWithProfile("markdown"), true);
-    fireEvent.click(screen.getByText(toolbar.italic));
+    clickPath(menu.format, toolbar.italic);
     expect(controller.wrapSelection).toHaveBeenLastCalledWith("*", "*");
 
     openMenu(engineWithProfile("markdown"), true);
-    fireEvent.click(screen.getByText(toolbar.heading));
+    clickPath(menu.insert, toolbar.heading);
     expect(controller.insertAtCursor).toHaveBeenCalledWith("# Heading\n");
 
     openMenu(engineWithProfile("markdown"), true);
-    fireEvent.click(screen.getByText(toolbar.bulletedList));
+    clickPath(menu.insert, toolbar.bulletedList);
     expect(controller.insertAtCursor).toHaveBeenLastCalledWith("- Item\n");
+
+    openMenu(engineWithProfile("markdown"), true);
+    clickPath(menu.insert, menu.table);
+    expect(controller.insertTemplate).toHaveBeenCalledWith(
+      expect.stringContaining("| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n"),
+      2,
+      10,
+    );
+
+    openMenu(engineWithProfile("markdown"), true);
+    clickPath(menu.insert, menu.equation);
+    expect(controller.wrapSelectionOrPlaceholder).toHaveBeenCalledWith("$$\n", "\n$$\n", "");
   });
 
   it("lists every LaTeX entry with its shortcut", () => {
     openMenu(LATEX_ENGINE, true);
 
-    expect(screen.getByText(menu.askAi).parentElement).toHaveTextContent(shortcut("⌘L"));
-    expect(screen.getByText(toolbar.goToDefinition).parentElement).toHaveTextContent(
-      shortcut("F12"),
-    );
-    expect(screen.getByText(toolbar.findReferences).parentElement).toHaveTextContent(
-      shortcut("⇧F12"),
-    );
-    expect(screen.getByText(toolbar.renameSymbol).parentElement).toHaveTextContent(shortcut("F2"));
-    expect(screen.getByText(toolbar.bold).parentElement).toHaveTextContent(shortcut("⌘B"));
-    expect(screen.getByText(toolbar.italic).parentElement).toHaveTextContent(shortcut("⌘I"));
+    expect(screen.getByText(menu.askAi)).toHaveTextContent(shortcut("⌘L"));
+    expect(screen.getByText(toolbar.goToDefinition)).toHaveTextContent(shortcut("F12"));
+    expect(screen.getByText(toolbar.findReferences)).toHaveTextContent(shortcut("⇧F12"));
+    expect(screen.getByText(toolbar.renameSymbol)).toHaveTextContent(shortcut("F2"));
+    expect(screen.getByText(toolbar.goToPdf)).toBeInTheDocument();
+
+    openSubmenus(menu.format);
+    expect(screen.getByText(toolbar.bold)).toHaveTextContent(shortcut("⌘B"));
+    expect(screen.getByText(toolbar.italic)).toHaveTextContent(shortcut("⌘I"));
+    expect(screen.getByText(toolbar.underline)).toBeInTheDocument();
+    expect(screen.getByText(toolbar.inlineCode)).toBeInTheDocument();
+
+    openMenu(LATEX_ENGINE, true);
+    openSubmenus(menu.insert);
     for (const label of [
-      toolbar.goToPdf,
-      toolbar.underline,
-      toolbar.inlineCode,
       toolbar.heading,
       toolbar.list,
       toolbar.fraction,
@@ -372,35 +411,35 @@ describe("EditorContextMenu", () => {
   });
 
   it("runs the LaTeX insert commands", () => {
-    openMenu(LATEX_ENGINE, true);
-    fireEvent.click(screen.getByText(toolbar.bold));
-    expect(latexCommands.insertBold).toHaveBeenCalledOnce();
+    const items: [string, string, keyof typeof latexCommands][] = [
+      [menu.format, toolbar.bold, "insertBold"],
+      [menu.format, toolbar.italic, "insertItalic"],
+      [menu.format, toolbar.underline, "insertUnderline"],
+      [menu.format, toolbar.inlineCode, "insertCode"],
+      [menu.insert, menu.figure, "insertFigure"],
+      [menu.insert, menu.equation, "insertEquation"],
+      [menu.insert, menu.align, "insertAlign"],
+      [menu.insert, toolbar.fraction, "insertFraction"],
+      [menu.insert, toolbar.blockquote, "insertBlockquote"],
+      [menu.insert, menu.footnote, "insertFootnote"],
+      [menu.insert, menu.crossReference, "insertRef"],
+      [menu.insert, menu.label, "insertLabel"],
+    ];
+    for (const [submenu, label, command] of items) {
+      openMenu(LATEX_ENGINE, true);
+      clickPath(submenu, label);
+      expect(latexCommands[command], label).toHaveBeenCalledOnce();
+    }
 
     openMenu(LATEX_ENGINE, true);
-    fireEvent.click(screen.getByText(toolbar.underline));
-    expect(latexCommands.insertUnderline).toHaveBeenCalledOnce();
-
-    openMenu(LATEX_ENGINE, true);
-    fireEvent.click(screen.getByText(menu.table));
+    clickPath(menu.insert, menu.table);
     expect(latexCommands.insertTable).toHaveBeenCalledWith(3, 3);
-
-    openMenu(LATEX_ENGINE, true);
-    fireEvent.click(screen.getByText(menu.figure));
-    expect(latexCommands.insertFigure).toHaveBeenCalledOnce();
-
-    openMenu(LATEX_ENGINE, true);
-    fireEvent.click(screen.getByText(menu.equation));
-    expect(latexCommands.insertEquation).toHaveBeenCalledOnce();
-
-    openMenu(LATEX_ENGINE, true);
-    fireEvent.click(screen.getByText(menu.label));
-    expect(latexCommands.insertLabel).toHaveBeenCalledOnce();
   });
 
   it("opens the heading and list submenus", () => {
     openMenu(LATEX_ENGINE, true);
 
-    fireEvent.click(screen.getByText(toolbar.heading));
+    openSubmenus(menu.insert, toolbar.heading);
     for (const level of HEADING_LEVELS) {
       expect(screen.getByText(level.label())).toBeInTheDocument();
     }
@@ -408,7 +447,7 @@ describe("EditorContextMenu", () => {
     expect(latexCommands.insertHeading).toHaveBeenCalledWith(HEADING_LEVELS[1]);
 
     openMenu(LATEX_ENGINE, true);
-    fireEvent.click(screen.getByText(toolbar.list));
+    openSubmenus(menu.insert, toolbar.list);
     expect(screen.getByText(menu.enumerate)).toBeInTheDocument();
     fireEvent.click(screen.getByText(menu.itemize));
     expect(latexCommands.insertItemize).toHaveBeenCalledOnce();
@@ -476,29 +515,33 @@ describe("EditorContextMenu", () => {
 
   it("follows the file language for a Typst file in a LaTeX project", () => {
     openMenu(LATEX_ENGINE, true, "", "notes.typ");
+    openSubmenus(menu.insert);
     expect(screen.queryByText(menu.align)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText(toolbar.bold));
+    expect(screen.getByText(menu.alignedEquations)).toBeInTheDocument();
+
+    openMenu(LATEX_ENGINE, true, "", "notes.typ");
+    clickPath(menu.format, toolbar.bold);
     expect(typstCommands.insertTypstBold).toHaveBeenCalledOnce();
     expect(latexCommands.insertBold).not.toHaveBeenCalled();
   });
 
   it("follows the file language for a Markdown file in a Typst project", () => {
     openMenu(engineWithProfile("typst"), true, "", "README.md");
-    expect(screen.queryByText(menu.equationAsSvg)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText(toolbar.bold));
+    expect(screen.queryByText(menu.importExport)).not.toBeInTheDocument();
+    clickPath(menu.format, toolbar.bold);
     expect(controller.wrapSelection).toHaveBeenCalledWith("**", "**");
   });
 
   it("follows the file language for a LaTeX file in a Typst project", () => {
     openMenu(engineWithProfile("typst"), true, "", "appendix.tex");
-    fireEvent.click(screen.getByText(toolbar.bold));
+    clickPath(menu.format, toolbar.bold);
     expect(latexCommands.insertBold).toHaveBeenCalledOnce();
     expect(controller.wrapSelection).not.toHaveBeenCalled();
   });
 
   it("keeps the engine menu for files without a source language", () => {
     openMenu(engineWithProfile("typst"), true, "", "refs.bib");
-    fireEvent.click(screen.getByText(toolbar.bold));
+    clickPath(menu.format, toolbar.bold);
     expect(typstCommands.insertTypstBold).toHaveBeenCalledOnce();
   });
 
@@ -528,5 +571,101 @@ describe("EditorContextMenu", () => {
       expect(fileRename.startFileRenameAtCursor).toHaveBeenLastCalledWith(view);
     }
     expect(fileRename.startFileRenameAtCursor).toHaveBeenCalledTimes(3);
+  });
+
+  it.each([
+    ["LaTeX", LATEX_ENGINE, true],
+    ["Typst", engineWithProfile("typst"), true],
+    ["Markdown", engineWithProfile("markdown"), false],
+  ] as const)("groups the %s menu into submenus", (_name, engine, importExport) => {
+    openMenu(engine, true);
+
+    const roots = screen.getAllByRole("menuitem").map((item) => item.textContent?.replace(/\s+/gu, " ").trim());
+    expect(roots.slice(0, 5)).toEqual([
+      `${menu.askAi}${shortcut("⌘L")}`,
+      `${menu.cut}${shortcut("⌘X")}`,
+      `${menu.copy}${shortcut("⌘C")}`,
+      `${menu.paste}${shortcut("⌘V")}`,
+      `${menu.selectAll}${shortcut("⌘A")}`,
+    ]);
+    expect(screen.getByText(menu.format)).toHaveAttribute("aria-haspopup", "menu");
+    expect(screen.getByText(menu.insert)).toHaveAttribute("aria-haspopup", "menu");
+    expect(Boolean(screen.queryByText(menu.importExport))).toBe(importExport);
+    for (const nested of [toolbar.bold, menu.table, menu.tableFromFile, menu.equationAsSvg]) {
+      expect(screen.queryByText(nested)).not.toBeInTheDocument();
+    }
+  });
+
+  it("keeps the file imports and equation exports in Import and export", () => {
+    useTableImportStore.setState({ open: false });
+    openMenu(LATEX_ENGINE, true);
+    openSubmenus(menu.importExport);
+    expect(screen.getByTestId("context-export-equation-svg")).toHaveTextContent(menu.equationAsSvg);
+    expect(screen.getByTestId("context-export-equation-png")).toHaveTextContent(menu.equationAsPng);
+    expect(screen.queryByTestId("context-convert-latex-math")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("context-table-from-file"));
+    expect(useTableImportStore.getState().open).toBe(true);
+    useTableImportStore.setState({ open: false });
+
+    openMenu(engineWithProfile("typst"), true);
+    openSubmenus(menu.importExport);
+    expect(screen.getByTestId("context-table-from-file")).toHaveTextContent(menu.tableFromFile);
+    fireEvent.click(screen.getByTestId("context-convert-latex-math"));
+    expect(convertMath.convertLatexMathAtSelection).toHaveBeenCalledOnce();
+  });
+
+  it("opens nested submenus from the keyboard", () => {
+    openMenu(LATEX_ENGINE, true);
+
+    fireEvent.keyDown(screen.getByText(menu.insert), { key: "ArrowRight" });
+    fireEvent.keyDown(screen.getByText(toolbar.heading), { key: "ArrowRight" });
+    fireEvent.keyDown(screen.getByText(HEADING_LEVELS[2].label()), { key: "Enter" });
+
+    expect(latexCommands.insertHeading).toHaveBeenCalledWith(HEADING_LEVELS[2]);
+  });
+
+  it("enables Cut and Copy only for selected text, and Cut and Paste only in an editable view", () => {
+    openMenu(LATEX_ENGINE, true);
+    expect(screen.getByText(menu.cut)).toHaveAttribute("data-disabled");
+    expect(screen.getByText(menu.copy)).toHaveAttribute("data-disabled");
+    expect(screen.getByText(menu.paste)).not.toHaveAttribute("data-disabled");
+    expect(screen.getByText(menu.selectAll)).not.toHaveAttribute("data-disabled");
+
+    clipboard.hasSelectedText.mockReturnValue(true);
+    openMenu(LATEX_ENGINE, true);
+    expect(clipboard.hasSelectedText).toHaveBeenCalledWith(view.state);
+    expect(screen.getByText(menu.cut)).not.toHaveAttribute("data-disabled");
+    expect(screen.getByText(menu.copy)).not.toHaveAttribute("data-disabled");
+
+    view.state.readOnly = true;
+    try {
+      openMenu(engineWithProfile("markdown"), true);
+      expect(screen.getByText(menu.cut)).toHaveAttribute("data-disabled");
+      expect(screen.getByText(menu.copy)).not.toHaveAttribute("data-disabled");
+      expect(screen.getByText(menu.paste)).toHaveAttribute("data-disabled");
+    } finally {
+      view.state.readOnly = false;
+    }
+
+    controller.getEditorView.mockReturnValue(null);
+    openMenu(engineWithProfile("typst"), true);
+    for (const label of [menu.cut, menu.copy, menu.paste, menu.selectAll]) {
+      expect(screen.getByText(label), label).toHaveAttribute("data-disabled");
+    }
+  });
+
+  it("runs the clipboard commands on the editor", () => {
+    clipboard.hasSelectedText.mockReturnValue(true);
+    const commands: [string, keyof typeof clipboard][] = [
+      [menu.cut, "cutSelection"],
+      [menu.copy, "copySelection"],
+      [menu.paste, "pasteClipboard"],
+      [menu.selectAll, "selectAllText"],
+    ];
+    for (const [label, command] of commands) {
+      openMenu(LATEX_ENGINE, true);
+      fireEvent.click(screen.getByText(label));
+      expect(clipboard[command], label).toHaveBeenCalledWith(view);
+    }
   });
 });

@@ -189,7 +189,14 @@
     "addLabel": "Добавить метку",
     "convertLatexMath": "Преобразовать формулу LaTeX в Typst",
     "noLatexMath": "Сначала выделите формулу LaTeX.",
-    "renameFile": "Переименовать файл…"
+    "renameFile": "Переименовать файл…",
+    "cut": "Вырезать",
+    "copy": "Копировать",
+    "paste": "Вставить",
+    "selectAll": "Выделить всё",
+    "format": "Форматирование",
+    "insert": "Вставка",
+    "importExport": "Импорт и экспорт"
   },
   "shell": {
     "noFileOpenTab": "Нет открытых файлов",
@@ -330,7 +337,8 @@
     "improveWriting": "Улучшить текст",
     "fixGrammar": "Исправить грамматику и стиль",
     "expand": "Дополнить и раскрыть",
-    "findReferences": "Найти ссылки"
+    "findReferences": "Найти ссылки",
+    "customPrompt": "Опишите изменение…"
   },
   "versioning": {
     "dismiss": "Закрыть панель версий",
@@ -980,6 +988,12 @@
         "groupAuto": "общая нумерация с другими библиографиями",
         "groupNone": "собственная нумерация",
         "groupNamed": "общая нумерация с одноимёнными библиографиями"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "Таблица",
+        "equation": "Выключная формула"
       }
     },
     "wysiwyg": {

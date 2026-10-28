@@ -2348,9 +2348,7 @@ pub(crate) fn write_project_bytes(
     }
     if location.kind == ProjectKind::Library {
         atomic_write(target, bytes).map_err(failed)?;
-        if crate::collab::registry::is_shared(project_id) {
-            crate::folder_watch::note_own_write(target);
-        }
+        crate::folder_watch::note_own_write(target);
         crate::agent_turns::note_app_write(project_id, path);
         if crate::collab::registry::is_shared(project_id) {
             crate::collab::live::app_wrote(project_id, path);
@@ -8472,7 +8470,7 @@ mod tests {
     }
 
     #[test]
-    fn a_shared_library_projects_own_write_never_reaches_the_watcher() {
+    fn a_library_projects_own_write_never_reaches_the_watcher_shared_or_not() {
         use notify::event::{DataChange, ModifyKind};
         use notify::{Event, EventKind};
         let library = crate::collab::testing::TempLibrary::new();
@@ -8507,10 +8505,7 @@ mod tests {
         assert!(shared_written);
         assert!(solo_written);
         assert_eq!(shared_change, None);
-        assert_eq!(
-            solo_change.map(|change| change.paths),
-            Some(vec!["main.tex".to_string()])
-        );
+        assert_eq!(solo_change, None);
     }
 
     #[test]

@@ -20,9 +20,9 @@
     "imported": "Innstillingene er importert.",
     "unchanged": "Innstillingene dine samsvarer allerede med {{name}}.",
     "applyFailed": "Noen innstillinger kunne ikke lagres. Prøv å importere på nytt.",
-    "cloudEmpty": "Dropboxen din har ingen Oleafly-innstillinger ennå. Slå på skysynkronisering på en annen datamaskin først.",
-    "cloudLoadFailed": "Kunne ikke laste innstillingene fra Dropboxen din.",
-    "cloudUnreadable": "Innstillingene i Dropboxen din kunne ikke leses."
+    "cloudEmpty": "{{provider}} har ingen Oleafly-innstillinger ennå. Slå på skysynkronisering på en annen datamaskin først.",
+    "cloudLoadFailed": "Kunne ikke laste innstillinger fra {{provider}}.",
+    "cloudUnreadable": "Innstillingene i {{provider}} kunne ikke leses."
   },
   "confirm": {
     "title": "Vil du erstatte innstillingene dine?",
@@ -30,7 +30,7 @@
     "changes": "Innstillinger som endres: {{count}}",
     "ignored": "Ikke gjenkjent, så de hoppes over:",
     "action": "Importer",
-    "cloudDescription": "Innstillingene fra Dropboxen din erstatter dine. Alt de ikke inneholder, forblir som det er."
+    "cloudDescription": "Innstillingene fra {{provider}} erstatter dine. Alt de ikke inneholder, forblir som det er."
   },
   "error": {
     "title": "{{name}} ble ikke importert",
@@ -59,5 +59,5 @@
   },
   "importFromLocal": "Importer fra denne enheten",
   "importFromCloud": "Importer fra skyen",
-  "cloudSource": "Dropboxen din"
+  "cloudSource": "{{provider}}"
 }

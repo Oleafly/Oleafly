@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ExternalLink, GitBranch, Server } from "lucide-react";
+import { ExternalLink, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { IntegrationError } from "@/components/settings/IntegrationCard";
-import { GitHubBrandIcon } from "@/components/settings/IntegrationBrandIcons";
 import { DeviceCodeCard } from "@/components/settings/git-hosting/DeviceCodeCard";
+import { ForgeBrandIcon } from "@/components/settings/git-hosting/ForgeBrandIcon";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import {
   FORGE_PRESETS,
@@ -33,10 +33,6 @@ import { useForgeAccountsStore } from "@/store/forge-accounts";
 type FoundServer = { base: string; kind: ForgeKind; flavor: ForgeFlavor | null; deviceFlow: boolean };
 
 export const CA_EXTENSIONS = ["pem", "crt", "cer", "der"];
-
-function ServerIcon({ kind }: Readonly<{ kind: ForgeKind }>) {
-  return kind === "github" ? <GitHubBrandIcon /> : <GitBranch />;
-}
 
 /** Add an account (or sign in to one again): pick a hosted service or type a
  * server address, then sign in in the browser or paste an access token. */
@@ -235,7 +231,7 @@ export function AddAccountPanel({
             void detect(preset.base, caFile);
           }}
         >
-          <ServerIcon kind={preset.kind} />
+          <ForgeBrandIcon base={preset.base} kind={preset.kind} />
           {preset.label}
         </Button>
       ))}
@@ -323,7 +319,7 @@ export function AddAccountPanel({
       {found.deviceFlow && !useToken ? (
         <div className="space-y-2">
           <Button data-testid="git-hosting-sign-in-browser" disabled={busy} onClick={() => void signInWithBrowser()}>
-            {busy ? <Spinner /> : <ServerIcon kind={found.kind} />}
+            {busy ? <Spinner /> : <ForgeBrandIcon base={found.base} kind={found.kind} flavor={found.flavor} />}
             {t(($) => $.settings.gitHosting.add.signInBrowser, { host })}
           </Button>
           <p className="text-xs text-muted-foreground">{t(($) => $.settings.gitHosting.add.browserHint)}</p>

@@ -1,7 +1,8 @@
-import { decodeAppError, describeError } from "@/lib/app-error";
+import { decodeAppError, describeError, provideErrorParams } from "@/lib/app-error";
 import {
   cloudConnectBegin,
   cloudConnectCancel,
+  cloudConnectCredentials,
   cloudConnectPaste,
   cloudConnectWait,
   cloudDetails,
@@ -12,6 +13,7 @@ import {
   cloudProjectReplaceRemote,
   cloudProjectResolveHold,
   cloudProjectSetMode,
+  cloudProviders,
   cloudRemoveRemote,
   cloudSetDeviceName,
   cloudSetEnabled,
@@ -24,14 +26,18 @@ import {
   type CloudDirtyFile,
   type CloudProgress,
   type CloudProject,
+  type CloudProviderInfo,
+  type CloudProviderKind,
   type CloudSpace,
   type CloudState,
   type CloudStatus,
   type ConnectBegin,
+  type S3ConnectConfig,
   type SyncProjectReport,
   type SyncReport,
 } from "@/lib/cloud";
 import { i18n } from "@/i18n";
+import { cloudProviderName } from "@/lib/cloud-providers";
 import { applyCloudSettings, gatherCloudSettings } from "@/lib/cloud-settings";
 import { applyFolderChange } from "@/lib/external-file-changes";
 import { logError } from "@/lib/log";
@@ -82,11 +88,16 @@ interface CloudStoreState {
   status: CloudConnection;
   state: CloudState | null;
   loadError: string | null;
+  /** The providers this build offers, in the order to show them. */
+  providers: CloudProviderInfo[] | null;
+  providersError: string | null;
   space: CloudSpace | null;
   remote: CloudProject[];
   detailsLoaded: boolean;
   detailsError: string | null;
   connectFlow: ConnectBegin | null;
+  /** The provider of the last connect attempt, until it connects or is cancelled. */
+  connectProvider: CloudProviderKind | null;
   connectBusy: boolean;
   pasteBusy: boolean;
   connectError: string | null;
@@ -106,6 +117,7 @@ interface CloudStoreState {
   libraryRevision: number;
   settingsImport: SettingsImportRequest;
   refresh: () => Promise<void>;
+  loadProviders: () => Promise<void>;
   refreshDetails: () => Promise<void>;
   retryDetails: () => Promise<void>;
   watchDetails: () => () => void;
@@ -121,7 +133,13 @@ interface CloudStoreState {
   removeRemote: (cloudId: string) => Promise<void>;
   downloadProject: (cloudId: string) => Promise<void>;
   downloadAll: () => Promise<void>;
-  beginConnect: (paste: boolean) => Promise<void>;
+  beginConnect: (provider: CloudProviderKind, paste?: boolean) => Promise<void>;
+  connectWithCredentials: (
+    provider: CloudProviderKind,
+    config: S3ConnectConfig,
+    accessKeyId: string,
+    secretAccessKey: string,
+  ) => Promise<boolean>;
   submitPasteCode: (code: string) => Promise<void>;
   cancelConnect: () => void;
   disconnect: () => Promise<boolean>;
@@ -166,6 +184,7 @@ let flowGeneration = 0;
 let syncInFlight: Promise<void> | null = null;
 let settingsInFlight: Promise<void> | null = null;
 let pasteInFlight = false;
+let credentialsInFlight = false;
 let detailsViewers = 0;
 let applyingDepth = 0;
 let deferredStamp: string | null = null;
@@ -198,6 +217,13 @@ export function projectNeedsAttention(project: CloudProject): boolean {
 
 export function remoteBusyKey(cloudId: string): string {
   return `remote:${cloudId}`;
+}
+
+/** The provider the cloud strings name: the one being connected, else the connected one. */
+export function activeCloudProvider(
+  source: Pick<CloudStoreState, "connectProvider" | "state">,
+): CloudProviderKind | null {
+  return source.connectProvider ?? source.state?.provider ?? null;
 }
 
 type AttentionSource = Pick<CloudStoreState, "status" | "state" | "settingsChoice" | "settingsProblem">;
@@ -310,6 +336,10 @@ function without(list: readonly string[], id: string): string[] {
   return list.filter((entry) => entry !== id);
 }
 
+function accessNotRevokedMessage(provider: CloudProviderKind): string {
+  return i18n.t(($) => $.cloud.toast.accessNotRevoked[provider]);
+}
+
 export const useCloudStore = create<CloudStoreState>((set, get) => {
   const mutateState = (update: (state: CloudState) => CloudState) => {
     const current = get().state;
@@ -325,6 +355,8 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
     }));
 
   const projectOf = (localId: string) => get().state?.projects.find((project) => project.localId === localId);
+
+  const providerName = () => cloudProviderName(activeCloudProvider(get()));
 
   const setBusy = (localId: string, busy: boolean) =>
     set((current) => ({
@@ -416,6 +448,7 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
     deferredStamp = null;
     set({
       connectFlow: null,
+      connectProvider: null,
       connectBusy: false,
       pasteBusy: false,
       connectError: null,
@@ -501,11 +534,14 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
     status: "unknown",
     state: null,
     loadError: null,
+    providers: null,
+    providersError: null,
     space: null,
     remote: [],
     detailsLoaded: false,
     detailsError: null,
     connectFlow: null,
+    connectProvider: null,
     connectBusy: false,
     pasteBusy: false,
     connectError: null,
@@ -535,6 +571,17 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
         if (generation !== stateGeneration) return;
         void logError("cloud state", error);
         set({ loadError: rawError(error) });
+      }
+    },
+
+    loadProviders: async () => {
+      if (get().providers) return;
+      try {
+        const providers = await cloudProviders();
+        set({ providers, providersError: null });
+      } catch (error) {
+        void logError("cloud providers", error);
+        set({ providersError: rawError(error) });
       }
     },
 
@@ -678,12 +725,12 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
           let message: string;
           if (choice === "restore") {
             message = remote
-              ? i18n.t(($) => $.cloud.toast.filesUploadedAgain, { name: project.name })
+              ? i18n.t(($) => $.cloud.toast.filesUploadedAgain, { name: project.name, provider: providerName() })
               : i18n.t(($) => $.cloud.toast.filesRestored, { name: project.name });
           } else {
             message = remote
               ? i18n.t(($) => $.cloud.toast.filesDeletedHere, { name: project.name })
-              : i18n.t(($) => $.cloud.toast.filesDeleted, { name: project.name });
+              : i18n.t(($) => $.cloud.toast.filesDeleted, { name: project.name, provider: providerName() });
           }
           toast.successUnique(ACTION_TOAST, message);
         }
@@ -725,7 +772,7 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
         } else {
           toast.successUnique(
             ACTION_TOAST,
-            i18n.t(($) => $.cloud.toast.replaced, { name: project.name }),
+            i18n.t(($) => $.cloud.toast.replaced, { name: project.name, provider: providerName() }),
           );
         }
         await followChangesOnDisk(report);
@@ -747,7 +794,7 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
         await cloudProjectRemove(localId);
         toast.successUnique(
           ACTION_TOAST,
-          i18n.t(($) => $.cloud.toast.removed, { name: project.name }),
+          i18n.t(($) => $.cloud.toast.removed, { name: project.name, provider: providerName() }),
         );
       } catch (error) {
         void logError("cloud remove project", error);
@@ -769,7 +816,7 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
         set((current) => ({ remote: current.remote.filter((entry) => entry.cloudId !== cloudId) }));
         toast.successUnique(
           ACTION_TOAST,
-          i18n.t(($) => $.cloud.toast.removedRemote, { name: project.name }),
+          i18n.t(($) => $.cloud.toast.removedRemote, { name: project.name, provider: providerName() }),
         );
       } catch (error) {
         void logError("cloud remove remote project", error);
@@ -840,12 +887,12 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
       await afterDownloads();
     },
 
-    beginConnect: async (paste) => {
+    beginConnect: async (provider, paste = false) => {
       const generation = ++flowGeneration;
       let previous = get().connectFlow;
-      set({ connectError: null, connectBusy: true });
+      set({ connectError: null, connectBusy: true, connectProvider: provider });
       try {
-        const begin = await cloudConnectBegin(paste);
+        const begin = await cloudConnectBegin(paste, provider);
         if (generation !== flowGeneration) {
           void cancelFlow(begin.flowId);
           return;
@@ -887,15 +934,49 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
       }
     },
 
+    connectWithCredentials: async (provider, config, accessKeyId, secretAccessKey) => {
+      if (credentialsInFlight) return false;
+      credentialsInFlight = true;
+      const generation = ++flowGeneration;
+      const previous = get().connectFlow;
+      if (previous) void cancelFlow(previous.flowId);
+      set({ connectFlow: null, connectProvider: provider, connectBusy: true, connectError: null });
+      try {
+        await cloudConnectCredentials(provider, config, accessKeyId, secretAccessKey);
+        // The keys are saved by now, so a cancelled attempt still shows the account.
+        if (generation !== flowGeneration) {
+          await get().refresh();
+          return false;
+        }
+        await finishConnect();
+        return true;
+      } catch (error) {
+        if (generation !== flowGeneration) return false;
+        void logError("cloud connect credentials", error);
+        failConnect(error);
+        return false;
+      } finally {
+        credentialsInFlight = false;
+      }
+    },
+
     cancelConnect: () => {
       flowGeneration += 1;
       const flow = get().connectFlow;
       if (flow) void cancelFlow(flow.flowId);
-      set({ connectFlow: null, connectBusy: false, pasteBusy: false, connectError: null, settingsImport: null });
+      set({
+        connectFlow: null,
+        connectProvider: null,
+        connectBusy: false,
+        pasteBusy: false,
+        connectError: null,
+        settingsImport: null,
+      });
     },
 
     disconnect: async () => {
       if (get().disconnecting) return false;
+      const provider = get().state?.provider ?? "dropbox";
       set({ disconnecting: true });
       let remoteRevoked = true;
       try {
@@ -926,7 +1007,7 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
         progress: {},
         resumedAt: {},
       });
-      if (!remoteRevoked) toast.infoUnique(ACTION_TOAST, i18n.t(($) => $.cloud.toast.accessNotRevoked));
+      if (!remoteRevoked) toast.infoUnique(ACTION_TOAST, accessNotRevokedMessage(provider));
       await get().refresh();
       return true;
     },
@@ -976,3 +1057,10 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
     clearSettingsImport: () => set({ settingsImport: null }),
   };
 });
+
+provideErrorParams("cloud", () => ({ provider: cloudProviderName(activeCloudProvider(useCloudStore.getState())) }));
+
+/** The name of the provider the cloud strings talk about, for `{{provider}}`. */
+export function useCloudProviderName(): string {
+  return cloudProviderName(useCloudStore(activeCloudProvider));
+}
