@@ -81,8 +81,12 @@ describe("Toaster close button", () => {
 
     expect(undo).not.toHaveBeenCalled();
     expect(useToastStore.getState().toasts).toEqual([]);
-    // sonner keeps a closed toast for 200 ms before it removes it. Wait for
-    // that here, so its timer never fires after the test environment is gone.
+    // sonner keeps a closed toast for 200 ms before it removes it. Closing
+    // starts that removal twice, once from the button and once when the
+    // store's dismissal reaches the toast, and the toast is gone after the
+    // first. Wait out the second too, so no timer fires after the test
+    // environment is gone (React then fails with "window is not defined").
     await waitFor(() => expect(screen.queryByRole("button", { name: UNDO })).toBeNull());
+    await act(() => new Promise((resolve) => setTimeout(resolve, 250)));
   });
 });
