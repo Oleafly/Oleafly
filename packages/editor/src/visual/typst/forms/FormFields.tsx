@@ -72,8 +72,12 @@ export function historyCommand(event: {
 
 // An Enter or Escape that confirms or cancels an IME candidate belongs to the IME. WebKit sends
 // that key after compositionend, with keyCode 229 and isComposing false.
+export function imeKeyEvent(event: { readonly isComposing?: boolean; readonly keyCode?: number }): boolean {
+  return event.isComposing === true || event.keyCode === 229;
+}
+
 function composing(event: KeyboardEvent): boolean {
-  return event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229;
+  return imeKeyEvent(event.nativeEvent);
 }
 
 type EditingDocument = { execCommand(command: string): boolean };

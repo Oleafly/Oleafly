@@ -29,7 +29,7 @@ export function inVisualForm(active: Element | null): boolean {
 // a form.
 export function visualFormHistory(active: Element | null): "field" | "document" | null {
   if (!active || !inVisualForm(active)) return null;
-  return active.hasAttribute("data-ofl-form-draft") ? "field" : "document";
+  return active instanceof HTMLElement && active.dataset.oflFormDraft !== undefined ? "field" : "document";
 }
 
 // Keys typed in a form, or in a control a widget draws in the text, aren't typing in the

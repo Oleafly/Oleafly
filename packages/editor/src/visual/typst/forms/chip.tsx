@@ -1,6 +1,5 @@
 import {
   type FC,
-  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   useCallback,
   useEffect,
@@ -11,7 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { editorMessage } from "../../../messages";
-import { FormSaves, historyCommand, shortSummary } from "./FormFields";
+import { FormSaves, historyCommand, imeKeyEvent, shortSummary } from "./FormFields";
 import { FormBody, type FormHost, holdFormFocus, TypstFormWidget } from "./widget";
 
 export function chipText(host: FormHost): string {
@@ -169,7 +168,7 @@ const Popover: FC<{ readonly host: FormHost; readonly anchor: HTMLElement; onClo
     };
     // On the document, so Escape still closes the popover once focus has left it.
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
+      if (event.key !== "Escape" || event.defaultPrevented || imeKeyEvent(event)) return;
       const inside = container.contains(document.activeElement);
       if (inside) event.stopPropagation();
       requestClose(inside);
@@ -188,29 +187,43 @@ const Popover: FC<{ readonly host: FormHost; readonly anchor: HTMLElement; onClo
     (node?.querySelector<HTMLElement>(FIRST_FIELD) ?? node?.querySelector<HTMLElement>("button"))?.focus();
   }, []);
 
+  const latestHost = useRef(host);
+  latestHost.current = host;
+
   // Tab and Shift-Tab stay inside the popover, so focus can't wander off into the app behind it.
-  // A history key a field didn't take, on a button for instance, undoes in the document.
-  const onKeyDown = (event: ReactKeyboardEvent<HTMLDialogElement>) => {
-    const command = historyCommand(event);
-    if (command) {
-      if (event.isDefaultPrevented()) return;
-      event.preventDefault();
-      host.history(command);
-      return;
-    }
-    if (event.key !== "Tab") return;
-    const controls = focusable(event.currentTarget);
-    if (controls.length === 0) return;
-    const first = controls[0];
-    const last = controls.at(-1) ?? first;
-    if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    } else if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    }
-  };
+  // A history key a field didn't take, on a button for instance, undoes in the document. Both
+  // listen on the portal's container, added after React's own listener there, so a key a field
+  // already handled arrives marked.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const node = panel.current;
+      const command = historyCommand(event);
+      if (command) {
+        if (event.defaultPrevented) return;
+        event.preventDefault();
+        latestHost.current.history(command);
+        return;
+      }
+      if (event.key !== "Tab" || !node) return;
+      const controls = focusable(node);
+      if (controls.length === 0) return;
+      const first = controls[0];
+      const last = controls.at(-1) ?? first;
+      if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    };
+    container.addEventListener("keydown", onKey);
+    container.addEventListener("mousedown", holdFormFocus);
+    return () => {
+      container.removeEventListener("keydown", onKey);
+      container.removeEventListener("mousedown", holdFormFocus);
+    };
+  }, [container]);
 
   const style = {
     top: placement.top,
@@ -225,8 +238,6 @@ const Popover: FC<{ readonly host: FormHost; readonly anchor: HTMLElement; onClo
       open
       aria-label={host.model.definition.label}
       style={style}
-      onMouseDown={holdFormFocus}
-      onKeyDown={onKeyDown}
     >
       <FormSaves.Provider value={track}>
         <FormBody host={host} />
