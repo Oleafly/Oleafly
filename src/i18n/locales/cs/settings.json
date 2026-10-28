@@ -238,18 +238,28 @@
       "addDescription": "Připojte jakýkoli koncový bod kompatibilní s OpenAI podle jeho základní adresy URL.",
       "addTitle": "Přidat vlastního poskytovatele",
       "baseUrlLabel": "Základní adresa URL",
-      "baseUrlNote": "Váš uložený klíč API se odešle na tuto novou adresu.",
+      "baseUrlNote": "Uložený klíč API se na novou adresu neodešle. Zadejte ho znovu, nebo pole nechte prázdné, pokud nový server klíč nepotřebuje.",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "Server na {{url}} odmítl klíč API.",
+        "rejected": "Server na {{url}} nevrátil seznam modelů. Většina místních serverů vyžaduje na konci adresy /v1, například http://localhost:13305/v1.",
+        "timeout": "Výpis modelů ze serveru {{url}} trval příliš dlouho.",
+        "unreachable": "Na {{url}} se nepodařilo připojit. Zkontrolujte, zda server běží a zda je adresa správná.",
+        "unreadable": "Server na {{url}} odpověděl, ale nevypsal žádné modely. Zkontrolujte, zda je na serveru stažený nějaký model."
+      },
       "editDescription": "Změňte název nebo základní adresu URL.",
       "editTitle": "Upravit vlastního poskytovatele",
       "errors": {
         "addFailed": "Tohoto poskytovatele se nepodařilo přidat.",
+        "baseUrlCredentials": "Zadejte klíč do pole Klíč API, ne do adresy URL.",
         "baseUrlHost": "Adrese URL chybí host.",
         "baseUrlInvalid": "Zadejte úplnou adresu URL, například https://api.example.com/v1 nebo http://localhost:1234/v1.",
         "baseUrlProtocol": "Použijte https://, nebo http:// pro místní server.",
+        "baseUrlQuery": "Odstraňte ? a vše, co za ním následuje.",
         "baseUrlRequired": "Základní adresa URL je povinná.",
         "idFormat": "Používejte jen malá písmena, číslice a pomlčky, například acme.",
         "idRequired": "ID je povinné.",
+        "idTooLong": "Použijte nejvýše 64 znaků.",
         "nameRequired": "Název je povinný.",
         "saveFailed": "Tohoto poskytovatele se nepodařilo uložit."
       },
@@ -261,7 +271,9 @@
       "keyPlaceholderStored": "Uložený klíč zůstane, dokud nezadáte nový",
       "namePlaceholder": "Acme",
       "presetsLabel": "Běžní poskytovatelé",
-      "submitAdd": "Přidat poskytovatele"
+      "saveAnyway": "Přesto uložit",
+      "submitAdd": "Přidat poskytovatele",
+      "submitAddAnyway": "Přidat bez modelů"
     },
     "instructions": {
       "capabilitiesTitle": "Schopnosti agenta",
@@ -431,11 +443,13 @@
       "messages": {
         "keyRemoved": "Klíč {{provider}} byl odebrán.",
         "keyRemovedAccessDisabled": "Klíč {{provider}} byl odebrán. Přístup k AI je vypnutý.",
-        "keySavedAddModels": "Klíč {{provider}} byl uložen. Modely přidejte ručně níže.",
         "keySavedCheckedOnUse": "Klíč {{provider}} byl uložen. Zkontroluje se při prvním použití.",
+        "keySavedModelsNotListed": "Klíč {{provider}} byl uložen, ale nebyly vypsány žádné modely. {{reason}}",
         "ollamaConnected": "Ollama připojena · {{model}}",
         "preferencesReset": "Předvolby asistenta AI byly obnoveny na výchozí hodnoty.",
         "providerAdded": "{{provider}} byl přidán.",
+        "providerAddedAt": "{{provider}} byl přidán na {{url}}.",
+        "providerAddedWithoutModels": "{{provider}} byl přidán bez modelů. Níže přidejte model podle názvu.",
         "providerConnected": "{{provider}} je připojen.",
         "providerUpdated": "{{provider}} byl aktualizován.",
         "providerUpdatedWithoutModels": "{{provider}} byl aktualizován. Jeho seznam modelů se nepodařilo obnovit."

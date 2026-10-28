@@ -299,32 +299,12 @@ export function reportFileSaveFailure(
   );
 }
 
+// Library projects and opened folders alike: the banner over the editor
+// offers Compare, Keep mine and Reload. A toast names the file only when a
+// save the user asked for is blocked in a tab they are not looking at.
 function reportDiskConflict(projectId: string, path: string, explicit: boolean): void {
-  const state = useFilesStore.getState();
-  if (state.manifestHome !== "library") {
-    noteChangedOnDisk(projectId, path);
-    if (explicit && state.activePath !== path) reportBackgroundDiskConflict(projectId, path);
-    return;
-  }
-  const key = writeKey(projectId, path);
-  if (diskConflicts.get(key)?.warned && !explicit) return;
-  diskConflicts.set(key, {
-    warned: true,
-    toastId: toast.errorUnique(
-      `disk-conflict:${key}`,
-      i18n.t(($) => $.core.project.changedOnDisk, { path }),
-      {
-        label: i18n.t(($) => $.core.project.reloadFromDisk),
-        onClick: () => {
-          void useFilesStore
-            .getState()
-            .reloadFromDisk(path)
-            .catch((error) => reportFileOpenFailure(projectId, path, error));
-        },
-      },
-      true,
-    ),
-  });
+  noteChangedOnDisk(projectId, path);
+  if (explicit && useFilesStore.getState().activePath !== path) reportBackgroundDiskConflict(projectId, path);
 }
 
 function reportBackgroundDiskConflict(projectId: string, path: string): void {

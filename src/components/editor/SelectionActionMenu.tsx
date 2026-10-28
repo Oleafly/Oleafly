@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeftRight, BookMarked, Check, Maximize2, MessageSquarePlus, Sparkles } from "lucide-react";
+import { ArrowLeftRight, ArrowUp, BookMarked, Check, Maximize2, MessageSquarePlus, Sparkles } from "lucide-react";
+import { isImeEnter } from "@/components/ai/composer/ime";
 import { requestComment, useCommentsRail } from "@/components/collab/comments-rail";
 import { useCollabReady } from "@/components/collab/CollabSlots";
+import { Input } from "@/components/ui/input";
 import { MenuRow } from "@/components/ui/menu-row";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { openInlineEditWithInstruction } from "@/components/editor/cm/inline-ai/openSession";
@@ -14,6 +16,12 @@ interface Action {
   icon: typeof Sparkles;
   label: () => string;
   prompt: string;
+}
+
+// WebKit moves focus to the page body when a button is pressed, which would
+// hide the popup before the click lands; the field and the editor keep it.
+function keepFocus(event: MouseEvent) {
+  event.preventDefault();
 }
 
 const ACTIONS: Action[] = [
@@ -79,7 +87,9 @@ export function SelectionActionMenu() {
   const [text, setText] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [readOnly, setReadOnly] = useState(false);
+  const [instruction, setInstruction] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+  const instructionRef = useRef<HTMLInputElement>(null);
   const canCommentRef = useRef(canComment);
   canCommentRef.current = canComment;
   const posRef = useRef(pos);
@@ -103,6 +113,9 @@ export function SelectionActionMenu() {
     const update = (e?: Event) => {
       const target = e?.target as Node | null;
       if (target && containerRef.current?.contains(target)) return;
+      // Typing a request moves focus into the menu, which is not the editor
+      // losing it.
+      if (containerRef.current?.contains(document.activeElement)) return;
       const v = getEditorView();
       if (!v?.hasFocus) {
         hide(false);
@@ -150,21 +163,30 @@ export function SelectionActionMenu() {
     };
   }, []);
 
+  useEffect(() => {
+    if (expanded) instructionRef.current?.focus({ preventScroll: true });
+  }, [expanded]);
+
   if (!pos) return null;
 
-  const runAction = (action: Action) => {
-    const prompt = `${action.prompt}:\n\n${text}`;
+  const close = () => {
+    setPos(null);
+    setExpanded(false);
+    setInstruction("");
+  };
+
+  const runInstruction = (request: string) => {
+    const prompt = `${request}:\n\n${text}`;
     const view = getEditorView();
     if (view?.state.readOnly) {
-      setPos(null);
-      setExpanded(false);
+      close();
       return;
     }
     // These actions rewrite the selection, so they belong inline: the editor
     // shows the shimmer while streaming and then a strikethrough/insert diff to
     // accept or reject. Only fall back to the agent panel when no inline
     // session can start (no editor, or one already running).
-    const inline = view ? openInlineEditWithInstruction(view, action.prompt) : false;
+    const inline = view ? openInlineEditWithInstruction(view, request) : false;
     if (!inline) {
       handoffToAssistant(prompt, { autoSend: true });
     }
@@ -174,20 +196,57 @@ export function SelectionActionMenu() {
         detail: { prompt, target: inline ? "inline" : "agent" },
       }),
     );
-    setPos(null);
-    setExpanded(false);
+    close();
+  };
+
+  const runTypedInstruction = () => {
+    const typed = instruction.trim();
+    if (typed) runInstruction(typed);
   };
 
   return (
     <div ref={containerRef} className="fixed z-50" style={{ top: pos.top, left: pos.left }}>
       {expanded ? (
-        <div className="w-56 rounded-lg border bg-popover p-1 text-popover-foreground shadow-xl">
+        <div className="w-64 rounded-lg border bg-popover p-1 text-popover-foreground shadow-xl">
+          <div className="mb-1 flex items-center gap-1 p-1">
+            <Input
+              ref={instructionRef}
+              value={instruction}
+              onChange={(event) => setInstruction(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !isImeEnter(event)) {
+                  event.preventDefault();
+                  runTypedInstruction();
+                } else if (event.key === "Escape") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setExpanded(false);
+                  setInstruction("");
+                  getEditorView()?.focus();
+                }
+              }}
+              placeholder={t(($) => $.editor.selectionActions.customPrompt)}
+              aria-label={t(($) => $.editor.selectionActions.customPrompt)}
+              className="h-7 px-2 text-xs"
+            />
+            <button
+              type="button"
+              onClick={runTypedInstruction}
+              onMouseDown={keepFocus}
+              disabled={!instruction.trim()}
+              aria-label={t(($) => $.editor.inlineAi.submit)}
+              className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
+            >
+              <ArrowUp className="size-3.5" />
+            </button>
+          </div>
           {ACTIONS.map((action) => (
             <MenuRow
               key={action.id}
               icon={<action.icon className="size-4" />}
               label={action.label()}
-              onClick={() => runAction(action)}
+              onClick={() => runInstruction(action.prompt)}
+              onMouseDown={keepFocus}
             />
           ))}
         </div>
@@ -199,14 +258,7 @@ export function SelectionActionMenu() {
               {t(($) => $.editor.selectionActions.askAi)}
             </button>
           )}
-          {canComment ? (
-            <CommentPill
-              onDone={() => {
-                setPos(null);
-                setExpanded(false);
-              }}
-            />
-          ) : null}
+          {canComment ? <CommentPill onDone={close} /> : null}
         </div>
       )}
     </div>

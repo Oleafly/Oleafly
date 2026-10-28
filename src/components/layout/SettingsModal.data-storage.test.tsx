@@ -66,6 +66,16 @@ const storageSummary = {
   unreadable_entries: 0,
   linked_folders_bytes: 0,
   linked_folder_count: 0,
+  document_bytes: 2,
+  media_bytes: 0,
+  data_bytes: 1,
+  other_project_bytes: 1,
+  tex_distribution_bytes: 0,
+  agents_bytes: 0,
+  research_tasks_bytes: 0,
+  tools_bytes: 0,
+  checkpoints_bytes: 0,
+  compile_cache_bytes: 0,
 };
 
 const recycledProject = {
@@ -292,6 +302,9 @@ describe("Settings Data Storage recycle bin", () => {
       linked_folders_bytes: 2048,
     });
     render(<SettingsModal />);
+    const label = await screen.findByText("Opened folders");
+    expect(label.closest("li")).toHaveTextContent("2 KB");
+    fireEvent.mouseEnter(label);
     expect(await screen.findByText(/for 2 opened folders/)).toBeInTheDocument();
   });
 
@@ -299,7 +312,7 @@ describe("Settings Data Storage recycle bin", () => {
     render(<SettingsModal />);
     await screen.findByRole("heading", { name: "Recycle Bin" });
     await screen.findByText(/across the Oleafly data folder/);
-    expect(screen.queryByText(/opened folder/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/opened folder/i)).not.toBeInTheDocument();
   });
 
   it("blurs the library folder path and leaves sizes and counts clear", async () => {

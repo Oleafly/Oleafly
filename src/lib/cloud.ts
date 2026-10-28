@@ -10,7 +10,7 @@ export type CloudStatus = "connected" | "disconnected" | "revoked";
 export type CloudProjectMode = "sync" | "pause" | "download" | "held" | "removed";
 
 export interface CloudHold {
-  /** `massDelete`: files deleted here; `remoteDelete`: files no longer in Dropbox. */
+  /** `massDelete`: files deleted here; `remoteDelete`: files no longer in the cloud. */
   kind: "massDelete" | "remoteDelete";
   count: number;
   total: number;
@@ -52,8 +52,36 @@ export interface CloudProject {
   uploadingFrom: string | null;
 }
 
+/** A storage provider sync can use. Matches `ProviderKind` in Rust. */
+export type CloudProviderKind = "dropbox" | "google_drive" | "s3";
+
+export interface CloudProviderInfo {
+  kind: CloudProviderKind;
+  /** Browser sign-in, or keys typed into a form. */
+  auth: "oauth" | "credentials";
+  /** False when this build can't connect it. */
+  available: boolean;
+  pasteCode: boolean;
+  /** Whether the provider reports used and total space. */
+  quota: boolean;
+}
+
+/** Where an S3-compatible bucket is and how to reach it. */
+export interface S3ConnectConfig {
+  endpoint: string;
+  region: string;
+  bucket: string;
+  /** The folder in the bucket that sync keeps everything under. */
+  prefix: string;
+  /** Put the bucket in the path instead of the host name, as MinIO and most self-hosted servers need. */
+  pathStyle: boolean;
+}
+
 export interface CloudState {
   status: CloudStatus;
+  /** The connected provider, or null when nothing is connected. */
+  provider: CloudProviderKind | null;
+  /** The account's email, or for S3 a label naming the bucket and server. */
   email: string | null;
   displayName: string | null;
   deviceName: string;
@@ -127,8 +155,15 @@ export function cloudDetails(): Promise<CloudDetails> {
   return invoke<CloudDetails>("cloud_details");
 }
 
-export function cloudConnectBegin(paste: boolean): Promise<ConnectBegin> {
-  return invoke<ConnectBegin>("cloud_connect_begin", { paste });
+export function cloudProviders(): Promise<CloudProviderInfo[]> {
+  return invoke<CloudProviderInfo[]>("cloud_providers");
+}
+
+export function cloudConnectBegin(
+  paste: boolean,
+  provider: CloudProviderKind = "dropbox",
+): Promise<ConnectBegin> {
+  return invoke<ConnectBegin>("cloud_connect_begin", { provider, paste });
 }
 
 export function cloudConnectWait(flowId: string): Promise<{ email: string }> {
@@ -139,12 +174,22 @@ export function cloudConnectPaste(flowId: string, code: string): Promise<{ email
   return invoke<{ email: string }>("cloud_connect_paste", { flowId, code });
 }
 
+/** Connects a provider that takes keys instead of a browser sign-in. */
+export function cloudConnectCredentials(
+  provider: CloudProviderKind,
+  config: S3ConnectConfig,
+  accessKeyId: string,
+  secretAccessKey: string,
+): Promise<{ email: string }> {
+  return invoke<{ email: string }>("cloud_connect_credentials", { provider, config, accessKeyId, secretAccessKey });
+}
+
 export function cloudConnectCancel(flowId: string): Promise<void> {
   return invoke<void>("cloud_connect_cancel", { flowId });
 }
 
 export interface CloudDisconnectDone {
-  /** False when Dropbox couldn't be reached to end Oleafly's access. */
+  /** False when the provider couldn't be reached to end Oleafly's access. */
   remoteRevoked: boolean;
 }
 

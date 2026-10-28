@@ -207,6 +207,8 @@ export const EDITOR_MESSAGE_KEYS = [
   "typst.bibliographyParameter.groupNone",
   "typst.bibliographyParameter.groupNamed",
   "typst.snippet.partBibliography",
+  "markdown.snippet.table",
+  "markdown.snippet.equation",
   "latex.completion.environment",
   "latex.completion.documentEnvironment",
   "latex.completion.package",

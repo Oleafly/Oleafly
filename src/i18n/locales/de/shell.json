@@ -823,26 +823,43 @@
         "linkedFolders_other": "{{size}} Ausgabedateien und Einstellungen für {{count}} geöffnete Ordner",
         "refresh": "Speicherbelegung aktualisieren",
         "stats": {
-          "appData": "App-Daten",
-          "appDataDetail": "Ressourcen und Einstellungen",
-          "buildCache": "Bau-Zwischenspeicher",
-          "buildCacheDetail": "Erzeugte Ausgaben",
           "files": "Dateien",
           "folders_one": "{{count}} Ordner",
           "folders_other": "{{count}} Ordner",
-          "gitHistory": "Git-Historie",
-          "gitHistoryDetail": "Lokale Versionen",
           "images": "Bilder",
           "pdfs": "PDFs",
-          "projectFiles": "Projektdateien",
-          "projectFilesDetail": "Quellen und Metadaten",
           "projects": "Projekte"
         },
         "subtitle": "Projekte, Vorschauen, Historie und App-Daten",
         "title": "Speicherbelegung",
         "total": "{{size}} im Datenordner von Oleafly",
         "unreadable_one": "{{count}} unzugängliches Element wurde ausgelassen.",
-        "unreadable_other": "{{count}} unzugängliche Elemente wurden ausgelassen."
+        "unreadable_other": "{{count}} unzugängliche Elemente wurden ausgelassen.",
+        "groups": {
+          "projects": "Projekte",
+          "appData": "App-Daten",
+          "elsewhere": "Anderswo"
+        },
+        "parts": {
+          "documents": "Dokumente und Code",
+          "images": "Bilder",
+          "pdfs": "PDFs",
+          "media": "Audio und Video",
+          "data": "Datendateien",
+          "otherFiles": "Weitere Dateien",
+          "git": "Git-Verlauf",
+          "build": "Bau-Zwischenspeicher",
+          "texDistribution": "TeX-Distribution",
+          "agents": "KI-Agenten",
+          "researchTasks": "Forschungsaufgaben",
+          "tools": "Tools",
+          "checkpoints": "Checkpoints",
+          "compileCache": "Kompilier-Zwischenspeicher",
+          "otherAppData": "Einstellungen und weitere Daten",
+          "recycleBin": "Papierkorb",
+          "linkedFolders": "Geöffnete Ordner"
+        },
+        "other": "Sonstiges"
       },
       "tabs": {
         "cloud": "Cloud-Abgleich",

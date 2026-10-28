@@ -3,6 +3,7 @@ import { test, expect } from "../fixtures";
 import {
   caretIn,
   caretLineIncludes,
+  clickEditorContextPath,
   compileAndProbe,
   createBlankProject,
   createProjectFromTemplate,
@@ -62,45 +63,10 @@ async function openContextMenu(page: TauriPage) {
   await expect(page.getByRole("menu")).toBeVisible({ timeout: 5_000 });
 }
 
-async function clickContextAction(page: TauriPage, label: string) {
+// Every label but the last opens a submenu: ("Insert", "Heading", "Section").
+async function clickContextAction(page: TauriPage, ...path: string[]) {
   await openContextMenu(page);
-  await page.locator('[role="menuitem"]').filter({ hasText: label }).click();
-}
-
-async function clickContextSubAction(
-  page: TauriPage,
-  submenu: string,
-  label: string,
-) {
-  await openContextMenu(page);
-  // The Tauri bridge's text-locator hover only emits legacy mouse events.
-  // Radix submenus open from pointer movement (or ArrowRight), so drive the
-  // actual mounted submenu trigger with the events a user generates.
-  await page.evaluate(
-    `(() => {
-      const trigger = Array.from(document.querySelectorAll('[role="menuitem"][aria-haspopup="menu"]'))
-        .find((element) => (element.textContent ?? "").trim().includes(${JSON.stringify(submenu)}));
-      if (!trigger) throw new Error(${JSON.stringify(`context submenu unavailable: ${submenu}`)});
-      trigger.focus();
-      const rect = trigger.getBoundingClientRect();
-      trigger.dispatchEvent(new PointerEvent("pointermove", {
-        bubbles: true,
-        pointerType: "mouse",
-        clientX: rect.left + rect.width / 2,
-        clientY: rect.top + rect.height / 2,
-      }));
-      trigger.dispatchEvent(new KeyboardEvent("keydown", {
-        bubbles: true,
-        key: "ArrowRight",
-      }));
-      return true;
-    })()`,
-  );
-  const item = page.locator('[role="menuitem"]').filter({ hasText: label });
-  await expect(item).toBeVisible({
-    timeout: 5_000,
-  });
-  await item.click();
+  await clickEditorContextPath(page, path);
 }
 
 async function resetInlineAi(page: TauriPage) {
@@ -118,11 +84,11 @@ async function resetLatexCursor(page: TauriPage) {
 
 async function expectContextInsertion(
   page: TauriPage,
-  action: string,
+  path: readonly string[],
   expected: string,
 ) {
   await resetLatexCursor(page);
-  await clickContextAction(page, action);
+  await clickContextAction(page, ...path);
   expect(await editorSource(page)).toContain(expected);
 }
 
@@ -139,25 +105,25 @@ test("LaTeX context menu activates every formatting and insertion action", async
   await resetInlineAi(tauriPage);
 
   const directActions = [
-    ["Bold", String.raw`\textbf{text}`],
-    ["Italic", String.raw`\textit{text}`],
-    ["Underline", String.raw`\underline{text}`],
-    ["Inline code", String.raw`\texttt{text}`],
-    ["Table", String.raw`\begin{table}`],
-    ["Align", String.raw`\begin{align}`],
-    ["Equation", String.raw`\begin{equation}`],
-    ["Fraction", String.raw`\frac{numerator}{denominator}`],
-    ["Blockquote", String.raw`\begin{quote}`],
-    ["Footnote", String.raw`\footnote{note text}`],
-    ["Cross-reference", String.raw`\ref{label}`],
-    ["Label", String.raw`\label{label}`],
+    [["Format", "Bold"], String.raw`\textbf{text}`],
+    [["Format", "Italic"], String.raw`\textit{text}`],
+    [["Format", "Underline"], String.raw`\underline{text}`],
+    [["Format", "Inline code"], String.raw`\texttt{text}`],
+    [["Insert", "Table"], String.raw`\begin{table}`],
+    [["Insert", "Equation"], String.raw`\begin{equation}`],
+    [["Insert", "Align"], String.raw`\begin{align}`],
+    [["Insert", "Fraction"], String.raw`\frac{numerator}{denominator}`],
+    [["Insert", "Blockquote"], String.raw`\begin{quote}`],
+    [["Insert", "Footnote"], String.raw`\footnote{note text}`],
+    [["Insert", "Cross-reference"], String.raw`\ref{label}`],
+    [["Insert", "Label"], String.raw`\label{label}`],
   ] as const;
-  for (const [action, expected] of directActions) {
-    await expectContextInsertion(tauriPage, action, expected);
+  for (const [path, expected] of directActions) {
+    await expectContextInsertion(tauriPage, path, expected);
   }
 
   await resetLatexCursor(tauriPage);
-  await clickContextAction(tauriPage, "Figure");
+  await clickContextAction(tauriPage, "Insert", "Figure");
   await tauriPage.click('[data-testid="figure-dialog-placeholder"]');
   expect(await editorSource(tauriPage)).toContain(String.raw`\begin{figure}`);
 
@@ -171,7 +137,7 @@ test("LaTeX context menu activates every formatting and insertion action", async
   ] as const;
   for (const [label, command] of headingActions) {
     await resetLatexCursor(tauriPage);
-    await clickContextSubAction(tauriPage, "Heading", label);
+    await clickContextAction(tauriPage, "Insert", "Heading", label);
     expect(await editorSource(tauriPage)).toContain(
       `\\${command}{${label} Title}`,
     );
@@ -182,7 +148,7 @@ test("LaTeX context menu activates every formatting and insertion action", async
     ["Enumerate", "enumerate"],
   ] as const) {
     await resetLatexCursor(tauriPage);
-    await clickContextSubAction(tauriPage, "List", label);
+    await clickContextAction(tauriPage, "Insert", "List", label);
     expect(await editorSource(tauriPage)).toContain(
       `\\begin{${environment}}`,
     );
@@ -263,12 +229,12 @@ Context reference: \ref{sec:context-nav}.
 
 async function exerciseSimpleProfile(
   page: TauriPage,
-  expectations: readonly (readonly [string, string])[],
+  expectations: readonly (readonly [readonly string[], string])[],
 ) {
-  for (const [action, expected] of expectations) {
+  for (const [path, expected] of expectations) {
     await replaceEditorSource(page, "CONTEXTTARGET");
     await setEditorCaretAfter(page, "CONTEXTTARGET");
-    await clickContextAction(page, action);
+    await clickContextAction(page, ...path);
     expect(await editorSource(page)).toContain(expected);
   }
 
@@ -290,20 +256,13 @@ test("Typst context menu activates every profile-appropriate action", async ({
     `E2E Context Typst ${RUN}`,
   );
   await exerciseSimpleProfile(tauriPage, [
-    ["Bold", "CONTEXTTARGET*text*"],
-    ["Italic", "CONTEXTTARGET_text_"],
+    [["Format", "Bold"], "CONTEXTTARGET*text*"],
+    [["Format", "Italic"], "CONTEXTTARGET_text_"],
+    [["Insert", "Heading", "Title"], "= Title\n"],
+    [["Insert", "Heading", "Section"], "== Section\n"],
+    [["Insert", "List", "Bulleted list"], "- Item\n"],
+    [["Insert", "List", "Numbered list"], "+ Item\n"],
   ]);
-  for (const [submenu, label, expected] of [
-    ["Heading", "Title", "= Title\n"],
-    ["Heading", "Section", "== Section\n"],
-    ["List", "Bulleted list", "- Item\n"],
-    ["List", "Numbered list", "+ Item\n"],
-  ] as const) {
-    await replaceEditorSource(tauriPage, "CONTEXTTARGET");
-    await setEditorCaretAfter(tauriPage, "CONTEXTTARGET");
-    await clickContextSubAction(tauriPage, submenu, label);
-    expect(await editorSource(tauriPage)).toContain(expected);
-  }
 });
 
 test("Markdown context menu activates every profile-appropriate action", async ({
@@ -315,9 +274,11 @@ test("Markdown context menu activates every profile-appropriate action", async (
     `E2E Context Markdown ${RUN}`,
   );
   await exerciseSimpleProfile(tauriPage, [
-    ["Bold", "CONTEXTTARGET****"],
-    ["Italic", "CONTEXTTARGET**"],
-    ["Heading", "# Heading\n"],
-    ["Bulleted list", "- Item\n"],
+    [["Format", "Bold"], "CONTEXTTARGET****"],
+    [["Format", "Italic"], "CONTEXTTARGET**"],
+    [["Insert", "Heading"], "# Heading\n"],
+    [["Insert", "Bulleted list"], "- Item\n"],
+    [["Insert", "Table"], "CONTEXTTARGET| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n"],
+    [["Insert", "Equation"], "CONTEXTTARGET$$\n\n$$\n"],
   ]);
 });

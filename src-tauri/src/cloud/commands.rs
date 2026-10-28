@@ -1,8 +1,10 @@
 use super::engine::{self, RoundEnv, RoundError, RoundOptions, SyncContext, SyncOutcome};
 use super::oauth::{
-    authorize_url, bind_loopback, dropbox_app_key, redirect_uri, DropboxAuthClient,
-    LoopbackListener, LoopbackPages, OAuthError, PkceFlow, TokenSet,
+    authorize_url, bind_loopback, redirect_uri, LoopbackListener, LoopbackPages, OAuthClient,
+    OAuthError, PkceFlow, TokenSet,
 };
+use super::provider::{AnyStore, ProviderConfig, ProviderInfo, ProviderKind};
+use super::s3::{S3Config, S3Keys, S3Store};
 use super::settings::{self, SettingsOutcome, SettingsRound};
 use super::state::{self, EngineState, Hold, PendingDelete, ProjectState, SkippedFile};
 use super::store::{CloudStore, DropboxStore, StoreError, TokenRefresher, WriteMode};
@@ -16,7 +18,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
-const REFRESH_SECRET_ACCOUNT: &str = "cloud/dropbox/refresh";
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(600);
 const ROUND_ATTEMPTS: usize = 3;
 const MIN_FREE_BYTES: u64 = 1024 * 1024;
@@ -24,6 +25,9 @@ const MAX_CHANGED_PATHS: usize = 500;
 
 #[derive(Clone, Deserialize, Serialize)]
 struct ConnectedAccount {
+    /// Older files have no provider; every one of them is Dropbox.
+    #[serde(default)]
+    provider: ProviderKind,
     account_id: String,
     email: String,
     display_name: String,
@@ -31,6 +35,9 @@ struct ConnectedAccount {
     enabled: bool,
     #[serde(default)]
     revoked: bool,
+    /// Where a provider without a fixed address keeps the files.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    config: Option<ProviderConfig>,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -87,6 +94,7 @@ pub struct CloudProjectView {
 #[serde(rename_all = "camelCase")]
 pub struct CloudStateView {
     status: &'static str,
+    provider: Option<ProviderKind>,
     email: Option<String>,
     display_name: Option<String>,
     device_name: String,
@@ -110,6 +118,7 @@ pub struct CloudDetailsView {
 fn disconnected_view(device_name: String, last_email: Option<String>) -> CloudStateView {
     CloudStateView {
         status: "disconnected",
+        provider: None,
         email: None,
         display_name: None,
         device_name,
@@ -228,6 +237,7 @@ pub struct SettingsDownloadView {
 }
 
 struct Flow {
+    provider: ProviderKind,
     pkce: PkceFlow,
     redirect: Option<String>,
     listener: Option<LoopbackListener>,
@@ -508,8 +518,12 @@ fn extract_pasted_code(pasted: &str, expected_state: &str) -> Result<String, OAu
         .ok_or(OAuthError::CodeInvalid)
 }
 
-fn auth_client() -> DropboxAuthClient {
-    DropboxAuthClient::new()
+fn auth_client(provider: ProviderKind) -> Result<OAuthClient, String> {
+    provider.oauth().map(OAuthClient::new).ok_or_else(|| {
+        AppError::new("cloud.server")
+            .detail("this provider doesn't sign in through the browser")
+            .into()
+    })
 }
 
 fn cache_tokens(tokens: &TokenSet) {
@@ -521,36 +535,54 @@ fn cache_tokens(tokens: &TokenSet) {
     });
 }
 
-async fn finish_connect(tokens: TokenSet) -> Result<ConnectDone, String> {
-    let client = auth_client();
-    let account = client
-        .current_account(&tokens.access_token)
+/// The store a freshly signed-in token opens, before anything is saved.
+fn signed_in_store(provider: ProviderKind, access_token: String) -> Result<AnyStore, String> {
+    match provider {
+        ProviderKind::Dropbox => Ok(AnyStore::Dropbox(DropboxStore::new(access_token, None))),
+        ProviderKind::GoogleDrive => Ok(AnyStore::Drive(super::drive::DriveStore::new(
+            access_token,
+            None,
+        ))),
+        ProviderKind::S3 => Err(AppError::new("cloud.server")
+            .detail("this provider doesn't sign in through the browser")
+            .into()),
+    }
+}
+
+async fn finish_connect(provider: ProviderKind, tokens: TokenSet) -> Result<ConnectDone, String> {
+    let account = signed_in_store(provider, tokens.access_token.clone())?
+        .account()
         .await
-        .map_err(|error| app_error(&error))?;
+        .map_err(|error| error.to_app_error())?;
+    let account_id = provider.account_key(&account.account_id);
     let refresh = tokens
         .refresh_token
         .clone()
         .ok_or_else(|| AppError::new("cloud.code_invalid").to_string())?;
-    let previous_backend = read_connection()?
-        .and_then(|file| file.account)
-        .map(|account| account.backend);
-    let choice = crate::secrets::set_cloud_secret(REFRESH_SECRET_ACCOUNT, &refresh)?;
-    if let Some(previous) = previous_backend.filter(|previous| *previous != choice.backend) {
-        let _ = crate::secrets::delete_cloud_secret(REFRESH_SECRET_ACCOUNT, previous);
+    let previous = read_connection()?.and_then(|file| file.account);
+    let secret = provider.secret_account();
+    let choice = crate::secrets::set_cloud_secret(secret, &refresh)?;
+    if let Some(previous) = previous {
+        let old_secret = previous.provider.secret_account();
+        if old_secret != secret || previous.backend != choice.backend {
+            let _ = crate::secrets::delete_cloud_secret(old_secret, previous.backend);
+        }
     }
     update_connection(|file| {
         file.last_email = Some(account.email.clone());
         file.account = Some(ConnectedAccount {
-            account_id: account.account_id.clone(),
+            provider,
+            account_id: account_id.clone(),
             email: account.email.clone(),
             display_name: account.display_name.clone(),
             backend: choice.backend,
             enabled: true,
             revoked: false,
+            config: None,
         });
         Ok(())
     })?;
-    state::update(|state| state.adopt_account(&account.account_id))?;
+    state::update(|state| state.adopt_account(&account_id))?;
     cache_tokens(&tokens);
     Ok(ConnectDone {
         email: account.email,
@@ -562,15 +594,16 @@ async fn refresh_access_token(expected: Option<&str>) -> Result<String, String> 
     let account = file.account.ok_or_else(not_connected)?;
     if expected.is_some_and(|expected| expected != account.account_id) {
         return Err(AppError::new("cloud.network")
-            .detail("the dropbox account changed")
+            .detail("the cloud account changed")
             .into());
     }
-    let Some(refresh) = crate::secrets::get_cloud_secret(REFRESH_SECRET_ACCOUNT, account.backend)?
+    let Some(refresh) =
+        crate::secrets::get_cloud_secret(account.provider.secret_account(), account.backend)?
     else {
         mark_revoked();
         return Err(AppError::new("cloud.revoked").into());
     };
-    let tokens = match auth_client().refresh(dropbox_app_key(), &refresh).await {
+    let tokens = match auth_client(account.provider)?.refresh(&refresh).await {
         Ok(tokens) => tokens,
         Err(OAuthError::Revoked) => {
             mark_revoked();
@@ -625,7 +658,7 @@ async fn forced_refresh(expected: String, stale: String) -> Result<String, Store
             } else {
                 // `error` is already a serialized app error; the round wraps
                 // this one again, so keep only a plain description here.
-                StoreError::Network("the dropbox sign-in could not be renewed".into())
+                StoreError::Network("the cloud sign-in could not be renewed".into())
             }
         })
 }
@@ -635,9 +668,44 @@ pub(crate) fn refresher(account_id: &str) -> TokenRefresher {
     Arc::new(move |stale| Box::pin(forced_refresh(account_id.clone(), stale)))
 }
 
-async fn dropbox_store(account_id: &str) -> Result<DropboxStore, String> {
-    let token = access_token().await?;
-    Ok(DropboxStore::new(token, Some(refresher(account_id))))
+/// The connected account's store. Everything above the engine reaches the
+/// provider through this.
+async fn active_store(account: &ConnectedAccount) -> Result<AnyStore, String> {
+    match account.provider {
+        ProviderKind::Dropbox => {
+            let token = access_token().await?;
+            Ok(AnyStore::Dropbox(DropboxStore::new(
+                token,
+                Some(refresher(&account.account_id)),
+            )))
+        }
+        ProviderKind::GoogleDrive => {
+            let token = access_token().await?;
+            Ok(AnyStore::Drive(super::drive::DriveStore::new(
+                token,
+                Some(refresher(&account.account_id)),
+            )))
+        }
+        ProviderKind::S3 => {
+            let Some(ProviderConfig::S3(config)) = account.config.clone() else {
+                return Err(AppError::new("cloud.server")
+                    .detail("the storage settings are missing")
+                    .into());
+            };
+            let keys = crate::secrets::get_cloud_secret(
+                account.provider.secret_account(),
+                account.backend,
+            )?
+            .and_then(|stored| serde_json::from_str::<S3Keys>(&stored).ok());
+            let Some(keys) = keys else {
+                mark_revoked();
+                return Err(AppError::new("cloud.revoked").into());
+            };
+            S3Store::new(config, keys)
+                .map(AnyStore::S3)
+                .map_err(|error| error.to_app_error())
+        }
+    }
 }
 
 fn connected_account() -> Result<(ConnectionFile, ConnectedAccount), String> {
@@ -669,7 +737,76 @@ fn cloud_dirs() -> Result<(PathBuf, PathBuf), String> {
 }
 
 #[tauri::command]
-pub async fn cloud_connect_begin(paste: bool) -> Result<ConnectBegin, String> {
+pub fn cloud_providers() -> Vec<ProviderInfo> {
+    super::provider::providers()
+}
+
+/// Connects a provider that takes keys instead of a browser sign-in. The
+/// bucket is checked first, and nothing is saved unless sync can work there.
+#[tauri::command]
+pub async fn cloud_connect_credentials(
+    provider: ProviderKind,
+    config: S3Config,
+    access_key_id: String,
+    secret_access_key: String,
+) -> Result<ConnectDone, String> {
+    if provider != ProviderKind::S3 {
+        return Err(AppError::new("cloud.server")
+            .detail("this provider signs in through the browser")
+            .into());
+    }
+    let keys = S3Keys {
+        access_key_id: access_key_id.trim().to_string(),
+        secret_access_key,
+    };
+    let store = S3Store::new(config.clone(), keys.clone()).map_err(|error| error.to_app_error())?;
+    store.probe().await.map_err(|error| error.to_app_error())?;
+    let account = store
+        .account()
+        .await
+        .map_err(|error| error.to_app_error())?;
+    let stored = serde_json::to_string(&keys).map_err(|error| error.to_string())?;
+    let previous = read_connection()?.and_then(|file| file.account);
+    let secret = provider.secret_account();
+    let choice = crate::secrets::set_cloud_secret(secret, &stored)?;
+    if let Some(previous) = previous {
+        let old_secret = previous.provider.secret_account();
+        if old_secret != secret || previous.backend != choice.backend {
+            let _ = crate::secrets::delete_cloud_secret(old_secret, previous.backend);
+        }
+    }
+    clear_token_cache();
+    update_connection(|file| {
+        file.last_email = Some(account.email.clone());
+        file.account = Some(ConnectedAccount {
+            provider,
+            account_id: account.account_id.clone(),
+            email: account.email.clone(),
+            display_name: account.display_name.clone(),
+            backend: choice.backend,
+            enabled: true,
+            revoked: false,
+            config: Some(ProviderConfig::S3(config)),
+        });
+        Ok(())
+    })?;
+    state::update(|state| state.adopt_account(&account.account_id))?;
+    Ok(ConnectDone {
+        email: account.email,
+    })
+}
+
+#[tauri::command]
+pub async fn cloud_connect_begin(
+    provider: Option<ProviderKind>,
+    paste: bool,
+) -> Result<ConnectBegin, String> {
+    let provider = provider.unwrap_or_default();
+    let config = provider.oauth().ok_or_else(|| {
+        AppError::new("cloud.server")
+            .detail("this provider doesn't sign in through the browser")
+            .to_string()
+    })?;
     {
         let mut live = flows()
             .lock()
@@ -681,25 +818,24 @@ pub async fn cloud_connect_begin(paste: bool) -> Result<ConnectBegin, String> {
     let pkce = PkceFlow::generate();
     let locale = crate::i18n::current();
     let locale = (locale != "en").then(|| locale.replace('-', "_"));
-    let (redirect, listener, paste) = if paste {
+    let (redirect, listener, paste) = if paste && config.paste {
         (None, None, true)
     } else {
         let pages = LoopbackPages {
             success: crate::i18n::t("cloud.connectedPage"),
             failure: crate::i18n::t("cloud.failedPage"),
         };
-        match bind_loopback(pkce.state.clone(), pages).await {
-            Ok(listener) => (Some(redirect_uri(listener.port)), Some(listener), false),
-            Err(OAuthError::NoPort) => (None, None, true),
+        match bind_loopback(config.callback, pkce.state.clone(), pages).await {
+            Ok(listener) => (
+                Some(redirect_uri(&config, listener.port)),
+                Some(listener),
+                false,
+            ),
+            Err(OAuthError::NoPort) if config.paste => (None, None, true),
             Err(error) => return Err(app_error(&error)),
         }
     };
-    let auth_url = authorize_url(
-        dropbox_app_key(),
-        &pkce,
-        redirect.as_deref(),
-        locale.as_deref(),
-    );
+    let auth_url = authorize_url(&config, &pkce, redirect.as_deref(), locale.as_deref());
     let flow_id = pkce.state.clone();
     let shutdown = listener.as_ref().map(LoopbackListener::shutdown_handle);
     flows()
@@ -708,6 +844,7 @@ pub async fn cloud_connect_begin(paste: bool) -> Result<ConnectBegin, String> {
         .insert(
             flow_id.clone(),
             Flow {
+                provider,
                 pkce,
                 redirect,
                 listener,
@@ -752,16 +889,11 @@ pub async fn cloud_connect_wait(flow_id: String) -> Result<ConnectDone, String> 
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .remove(&flow_id)
             .ok_or_else(|| AppError::new("cloud.sign_in_cancelled").to_string())?;
-        let tokens = auth_client()
-            .exchange_code(
-                dropbox_app_key(),
-                &code,
-                flow.pkce.verifier(),
-                flow.redirect.as_deref(),
-            )
+        let tokens = auth_client(flow.provider)?
+            .exchange_code(&code, flow.pkce.verifier(), flow.redirect.as_deref())
             .await
             .map_err(|error| app_error(&error))?;
-        finish_connect(tokens).await
+        finish_connect(flow.provider, tokens).await
     }
     .await;
     listener.finish(connected.is_ok()).await;
@@ -789,8 +921,15 @@ pub async fn cloud_connect_paste(flow_id: String, code: String) -> Result<Connec
             return Err(app_error(&error));
         }
     };
-    let tokens = match auth_client()
-        .exchange_code(dropbox_app_key(), &code, flow.pkce.verifier(), None)
+    let client = match auth_client(flow.provider) {
+        Ok(client) => client,
+        Err(error) => {
+            stop_flow(flow);
+            return Err(error);
+        }
+    };
+    let tokens = match client
+        .exchange_code(&code, flow.pkce.verifier(), None)
         .await
     {
         Ok(tokens) => tokens,
@@ -802,7 +941,7 @@ pub async fn cloud_connect_paste(flow_id: String, code: String) -> Result<Connec
             return Err(app_error(&error));
         }
     };
-    finish_connect(tokens).await
+    finish_connect(flow.provider, tokens).await
 }
 
 #[tauri::command]
@@ -923,6 +1062,7 @@ pub async fn cloud_state() -> Result<CloudStateView, String> {
         )
     });
     Ok(CloudStateView {
+        provider: Some(account.provider),
         status: if account.revoked {
             "revoked"
         } else {
@@ -970,7 +1110,7 @@ fn known_cloud_ids(
 }
 
 async fn remote_listing(
-    store: &DropboxStore,
+    store: &AnyStore,
     account_id: &str,
     known: &BTreeSet<ProjectId>,
 ) -> Result<Vec<engine::RemoteProject>, RoundError> {
@@ -1054,8 +1194,8 @@ pub async fn cloud_details() -> Result<CloudDetailsView, String> {
             error: Some(AppError::new("cloud.revoked").into()),
         });
     }
-    let mut token = match access_token().await {
-        Ok(token) => token,
+    let store = match active_store(&account).await {
+        Ok(store) => store,
         Err(error) => {
             return Ok(CloudDetailsView {
                 space: None,
@@ -1064,17 +1204,15 @@ pub async fn cloud_details() -> Result<CloudDetailsView, String> {
             })
         }
     };
-    let mut usage = auth_client().space_usage(&token).await;
-    if matches!(usage, Err(OAuthError::Revoked)) {
-        if let Ok(fresh) = forced_refresh(account.account_id.clone(), token.clone()).await {
-            usage = auth_client().space_usage(&fresh).await;
-            token = fresh;
-        }
-    }
-    let space = usage
+    let space = store
+        .space()
+        .await
         .ok()
-        .map(|(used, allocated)| CloudSpaceView { used, allocated });
-    let store = DropboxStore::new(token, Some(refresher(&account.account_id)));
+        .flatten()
+        .map(|space| CloudSpaceView {
+            used: space.used,
+            allocated: space.allocated,
+        });
     let engine_state = state::snapshot().unwrap_or_default();
     let (library, _) = split_library(library_projects().await);
     let bindings = crate::project_ids::all_bindings().unwrap_or_default();
@@ -1122,16 +1260,19 @@ pub async fn cloud_disconnect() -> Result<DisconnectDone, String> {
     };
     let mut remote_revoked = true;
     if let Some(account) = file.account.clone() {
-        if !account.revoked {
-            remote_revoked = match access_token().await {
-                Ok(token) => auth_client().revoke(&token).await.is_ok(),
-                Err(_) => false,
+        // Keys typed into the form have nothing to revoke here; the person
+        // deletes them at their provider.
+        if !account.revoked && account.provider.oauth().is_some() {
+            remote_revoked = match (access_token().await, auth_client(account.provider)) {
+                (Ok(token), Ok(client)) => client.revoke(&token).await.is_ok(),
+                _ => false,
             };
         }
+        let secret = account.provider.secret_account();
         let current = crate::secrets::cloud_secret_backend().backend;
-        let _ = crate::secrets::delete_cloud_secret(REFRESH_SECRET_ACCOUNT, account.backend);
+        let _ = crate::secrets::delete_cloud_secret(secret, account.backend);
         if current != account.backend {
-            let _ = crate::secrets::delete_cloud_secret(REFRESH_SECRET_ACCOUNT, current);
+            let _ = crate::secrets::delete_cloud_secret(secret, current);
         }
     }
     clear_token_cache();
@@ -1429,13 +1570,12 @@ async fn mark_remote_changes<S: CloudStore>(
     .map_err(RoundError::Local)
 }
 
-async fn free_space(quota_full: bool) -> Option<u64> {
+async fn free_space<S: CloudStore>(store: &S, quota_full: bool) -> Option<u64> {
     if !quota_full {
         return None;
     }
-    let token = access_token().await.ok()?;
-    let (used, allocated) = auth_client().space_usage(&token).await.ok()?;
-    (allocated > 0).then(|| allocated.saturating_sub(used))
+    let space = store.space().await.ok()??;
+    (space.allocated > 0).then(|| space.allocated.saturating_sub(space.used))
 }
 
 async fn retry_removals<S: CloudStore>(store: &S, account_id: &str) {
@@ -1470,7 +1610,7 @@ struct Sweep {
 }
 
 async fn sweep_library(
-    store: &DropboxStore,
+    store: &AnyStore,
     file: &ConnectionFile,
     account: &ConnectedAccount,
     dirty: &BTreeMap<String, BTreeSet<String>>,
@@ -1565,7 +1705,7 @@ pub async fn cloud_sync_now(dirty: Option<Vec<DirtyFile>>) -> Result<SyncReport,
     let _gate = sync_gate().lock().await;
     let (file, account) = require_usable()?;
     state::update(|state| state.adopt_account(&account.account_id))?;
-    let store = match dropbox_store(&account.account_id).await {
+    let store = match active_store(&account).await {
         Ok(store) => store,
         Err(error) => {
             state::update(|state| state.last_error = Some(error.clone()))?;
@@ -1603,7 +1743,7 @@ pub async fn cloud_sync_now(dirty: Option<Vec<DirtyFile>>) -> Result<SyncReport,
         })?;
     }
     retry_removals(&store, &account.account_id).await;
-    let free_bytes = free_space(quota_full).await;
+    let free_bytes = free_space(&store, quota_full).await;
     let dirty = dirty_keys(dirty);
     let sweep = sweep_library(&store, &file, &account, &dirty, free_bytes).await?;
     let bound = crate::project_ids::all_bindings().ok();
@@ -1667,7 +1807,7 @@ pub async fn cloud_project_set_mode(local_id: String, mode: String) -> Result<()
         let (_, account) = require_usable()?;
         let root = library_root(&local_id)?;
         let cloud = cloud_id_off_thread(&local_id, &root, &account.account_id).await?;
-        let store = dropbox_store(&account.account_id).await?;
+        let store = active_store(&account).await?;
         store
             .delete(&engine::tombstone_remote(cloud), None)
             .await
@@ -1694,7 +1834,7 @@ async fn forced_round(
     let (file, account) = require_usable()?;
     let root = library_root(local_id)?;
     let cloud = cloud_id_off_thread(local_id, &root, &account.account_id).await?;
-    let store = dropbox_store(&account.account_id).await?;
+    let store = active_store(&account).await?;
     let context = SyncContext {
         device: file.device_id,
         device_name: file.device_name.clone(),
@@ -1773,7 +1913,7 @@ pub fn cloud_project_dismiss_conflicts(local_id: String) -> Result<(), String> {
 }
 
 async fn write_tombstone(
-    store: &DropboxStore,
+    store: &AnyStore,
     cloud: ProjectId,
     device_name: &str,
 ) -> Result<(), String> {
@@ -1799,7 +1939,7 @@ pub async fn cloud_project_remove(local_id: String) -> Result<(), String> {
     let (file, account) = require_usable()?;
     let root = library_root(&local_id)?;
     let cloud = cloud_id_off_thread(&local_id, &root, &account.account_id).await?;
-    let store = dropbox_store(&account.account_id).await?;
+    let store = active_store(&account).await?;
     write_tombstone(&store, cloud, &file.device_name).await?;
     state::update(|state| {
         let entry = state.projects.entry(local_id.clone()).or_default();
@@ -1834,7 +1974,7 @@ pub async fn cloud_remove_remote(cloud_id: String) -> Result<(), String> {
             .detail("this project is on this computer")
             .into());
     }
-    let store = dropbox_store(&account.account_id).await?;
+    let store = active_store(&account).await?;
     write_tombstone(&store, cloud, &file.device_name).await?;
     engine::delete_project_folder(&store, cloud)
         .await
@@ -1920,7 +2060,7 @@ pub async fn cloud_download_project(
             })?;
         }
     }
-    let store = dropbox_store(&account.account_id).await?;
+    let store = active_store(&account).await?;
     let (staging, _) = cloud_dirs()?;
     let projects_root = crate::paths::projects_root()?;
     let reservation =
@@ -1967,7 +2107,7 @@ pub async fn cloud_download_project(
 }
 
 struct SettingsContext {
-    store: DropboxStore,
+    store: AnyStore,
     file: ConnectionFile,
     account_id: String,
     hlc: u64,
@@ -1977,7 +2117,7 @@ struct SettingsContext {
 async fn settings_context() -> Result<SettingsContext, String> {
     let (file, account) = require_usable()?;
     state::update(|state| state.adopt_account(&account.account_id))?;
-    let store = dropbox_store(&account.account_id).await?;
+    let store = active_store(&account).await?;
     let (hlc, settings) = state::read(|state| (state.hlc, state.settings.clone()))?;
     Ok(SettingsContext {
         store,
@@ -2071,6 +2211,7 @@ pub struct CloudWait {
 
 const LONGPOLL_SECS: u64 = 120;
 const NO_CURSOR_RETRY_MS: u64 = 60_000;
+const NO_FEED_RETRY_MS: u64 = 15 * 60_000;
 
 #[tauri::command]
 pub async fn cloud_wait_for_changes() -> Result<CloudWait, String> {
@@ -2088,8 +2229,14 @@ pub async fn cloud_wait_for_changes() -> Result<CloudWait, String> {
             retry_after_ms: Some(NO_CURSOR_RETRY_MS),
         });
     };
-    match super::store::wait_for_changes(&cursor, LONGPOLL_SECS).await {
-        Ok(waited) => Ok(CloudWait {
+    let store = active_store(&account).await?;
+    match store.wait_for_changes(&cursor, LONGPOLL_SECS).await {
+        // The provider can't wait for changes; the timer finds them instead.
+        Ok(None) => Ok(CloudWait {
+            changes: false,
+            retry_after_ms: Some(NO_FEED_RETRY_MS),
+        }),
+        Ok(Some(waited)) => Ok(CloudWait {
             changes: waited.changes,
             retry_after_ms: waited
                 .backoff

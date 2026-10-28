@@ -20,9 +20,9 @@
     "imported": "설정을 가져왔습니다.",
     "unchanged": "설정이 이미 {{name}} 파일과 같습니다.",
     "applyFailed": "일부 설정을 저장하지 못했습니다. 다시 가져와 보세요.",
-    "cloudEmpty": "아직 Dropbox에 Oleafly 설정이 없습니다. 먼저 다른 컴퓨터에서 클라우드 동기화를 켜세요.",
-    "cloudLoadFailed": "Dropbox에서 설정을 불러오지 못했습니다.",
-    "cloudUnreadable": "Dropbox에 있는 설정을 읽지 못했습니다."
+    "cloudEmpty": "아직 {{provider}}에 Oleafly 설정이 없습니다. 먼저 다른 컴퓨터에서 클라우드 동기화를 켜세요.",
+    "cloudLoadFailed": "{{provider}}에서 설정을 불러오지 못했습니다.",
+    "cloudUnreadable": "{{provider}}에 있는 설정을 읽지 못했습니다."
   },
   "confirm": {
     "title": "설정을 바꿀까요?",
@@ -30,7 +30,7 @@
     "changes": "변경될 설정: {{count}}개",
     "ignored": "인식할 수 없어 건너뛸 항목:",
     "action": "가져오기",
-    "cloudDescription": "Dropbox의 설정으로 현재 설정을 바꿉니다. 거기에 없는 항목은 그대로 유지됩니다."
+    "cloudDescription": "{{provider}}의 설정으로 현재 설정을 바꿉니다. 거기에 없는 항목은 그대로 유지됩니다."
   },
   "error": {
     "title": "{{name}} 파일을 가져오지 못했습니다",
@@ -59,5 +59,5 @@
   },
   "importFromLocal": "이 기기에서 가져오기",
   "importFromCloud": "클라우드에서 가져오기",
-  "cloudSource": "Dropbox"
+  "cloudSource": "{{provider}}"
 }

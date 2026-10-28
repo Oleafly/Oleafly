@@ -189,7 +189,14 @@
     "addLabel": "Label toevoegen",
     "convertLatexMath": "LaTeX-wiskunde omzetten naar Typst",
     "noLatexMath": "Selecteer eerst wat LaTeX-wiskunde.",
-    "renameFile": "Bestand hernoemen…"
+    "renameFile": "Bestand hernoemen…",
+    "cut": "Knippen",
+    "copy": "Kopiëren",
+    "paste": "Plakken",
+    "selectAll": "Alles selecteren",
+    "format": "Opmaak",
+    "insert": "Invoegen",
+    "importExport": "Importeren en exporteren"
   },
   "shell": {
     "noFileOpenTab": "Geen bestand geopend",
@@ -322,7 +329,8 @@
     "improveWriting": "Schrijfstijl verbeteren",
     "fixGrammar": "Grammatica en stijl verbeteren",
     "expand": "Uitbreiden en uitwerken",
-    "findReferences": "Referenties zoeken"
+    "findReferences": "Referenties zoeken",
+    "customPrompt": "Beschrijf de wijziging…"
   },
   "versioning": {
     "dismiss": "Versies sluiten",
@@ -952,6 +960,12 @@
         "groupAuto": "nummeren samen met de andere bibliografieën",
         "groupNone": "apart nummeren",
         "groupNamed": "nummeren samen met bibliografieën met dezelfde naam"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "Tabel",
+        "equation": "Vergelijking op een eigen regel"
       }
     },
     "wysiwyg": {

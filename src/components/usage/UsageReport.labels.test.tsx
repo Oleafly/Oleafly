@@ -332,6 +332,30 @@ describe("UsageReport labels", () => {
     expect(rowFor("odd-session")).toHaveTextContent("barter");
   });
 
+  it("names a custom provider by its configured name, the catalog first, and falls back to its id", () => {
+    const base = report();
+    const withCustom = report({
+      byProvider: [
+        { ...base.byProvider[0], key: "lemonade" },
+        { ...base.byProvider[0], key: "openai" },
+        { ...base.byProvider[0], key: "lab-gateway" },
+      ],
+    });
+    const names = new Map([
+      ["lemonade", "Lemonade (local)"],
+      ["openai", "Not the catalog name"],
+    ]);
+    const { unmount } = render(<UsageReport report={withCustom} providerNames={names} />);
+    const providers = within(sectionByHeading(enUsage.report.providers));
+    expect(providers.getByText("Lemonade (local)")).toBeVisible();
+    expect(providers.getByText("OpenAI")).toBeVisible();
+    expect(providers.queryByText("Not the catalog name")).not.toBeInTheDocument();
+    expect(providers.getByText("lab-gateway")).toBeVisible();
+    unmount();
+    render(<UsageReport report={withCustom} />);
+    expect(within(sectionByHeading(enUsage.report.providers)).getByText("lemonade")).toBeVisible();
+  });
+
   it("truncates a long identifier in the middle", () => {
     render(<UsageReport report={report()} />);
     const shortened = `${LONG_ID.slice(0, 12)}…${LONG_ID.slice(-8)}`;

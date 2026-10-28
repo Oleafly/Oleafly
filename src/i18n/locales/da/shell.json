@@ -823,26 +823,43 @@
         "linkedFolders_other": "{{size}} byggefiler og indstillinger for {{count}} åbnede mapper",
         "refresh": "Opdater lagerforbruget",
         "stats": {
-          "appData": "Appdata",
-          "appDataDetail": "Ressourcer og indstillinger",
-          "buildCache": "Byggecache",
-          "buildCacheDetail": "Genereret resultat",
           "files": "Filer",
           "folders_one": "{{count}} mappe",
           "folders_other": "{{count}} mapper",
-          "gitHistory": "Git-historik",
-          "gitHistoryDetail": "Lokale versioner",
           "images": "Billeder",
           "pdfs": "PDF-filer",
-          "projectFiles": "Projektfiler",
-          "projectFilesDetail": "Kilder og metadata",
           "projects": "Projekter"
         },
         "subtitle": "Projekter, forhåndsvisninger, historik og appdata",
         "title": "Lagerforbrug",
         "total": "{{size}} i Oleaflys datamappe",
         "unreadable_one": "{{count}} utilgængeligt element blev udeladt.",
-        "unreadable_other": "{{count}} utilgængelige elementer blev udeladt."
+        "unreadable_other": "{{count}} utilgængelige elementer blev udeladt.",
+        "groups": {
+          "projects": "Projekter",
+          "appData": "Appdata",
+          "elsewhere": "Andre steder"
+        },
+        "parts": {
+          "documents": "Dokumenter og kode",
+          "images": "Billeder",
+          "pdfs": "PDF-filer",
+          "media": "Lyd og video",
+          "data": "Datafiler",
+          "otherFiles": "Andre filer",
+          "git": "Git-historik",
+          "build": "Byggecache",
+          "texDistribution": "TeX-distribution",
+          "agents": "AI-agenter",
+          "researchTasks": "Forskningsopgaver",
+          "tools": "Værktøjer",
+          "checkpoints": "Kontrolpunkter",
+          "compileCache": "Kompileringscache",
+          "otherAppData": "Indstillinger og andre data",
+          "recycleBin": "Papirkurv",
+          "linkedFolders": "Åbnede mapper"
+        },
+        "other": "Andet"
       },
       "tabs": {
         "cloud": "Synkronisering i skyen",

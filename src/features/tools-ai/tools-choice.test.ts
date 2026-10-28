@@ -264,4 +264,14 @@ describe("Tools model choice", () => {
     expect(toolsProviderConfigured(cfg, "lmstudio")).toBe(true);
     expect(toolsProviderConfigured(cfg, "anthropic")).toBe(false);
   });
+
+  it("does not count the old single key for a custom provider", () => {
+    const cfg = config({
+      ai_keys: {},
+      ai_provider: "corp",
+      ai_api_key: "sk-old-openai",
+      ai_custom_providers: [{ id: "corp", name: "Corp", baseURL: "https://models.example/v1", keyOptional: false }],
+    });
+    expect(toolsProviderConfigured(cfg, "corp")).toBe(false);
+  });
 });

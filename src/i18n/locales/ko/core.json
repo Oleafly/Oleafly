@@ -382,10 +382,8 @@
     "updatedToday": "오늘 업데이트",
     "updatedYesterday": "어제 업데이트",
     "autosaveFailed": "변경 내용을 저장하지 못했습니다. 변경 내용은 편집기에 그대로 있습니다.",
-    "changedOnDisk": "\"{{path}}\" 파일이 Oleafly 밖에서 변경되었습니다. 다시 불러오거나, 내 버전을 유지하려면 다시 저장하세요.",
     "openFileEncoding": "\"{{path}}\" 파일은 UTF-8 텍스트 파일이 아니어서 열 수 없습니다. 텍스트 파일이라면 UTF-8로 저장한 뒤 다시 여세요.",
     "openFileFailed": "\"{{path}}\" 파일을 열 수 없습니다. 자세한 내용은 앱 로그를 확인하세요.",
-    "reloadFromDisk": "다시 불러오기",
     "changedOnDiskElsewhere": "{{path}}이(가) 디스크에서 바뀌어 Oleafly가 저장하지 않았습니다. 파일을 열어 남길 버전을 고르세요."
   },
   "projectDiagnostics": {

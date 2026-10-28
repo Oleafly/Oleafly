@@ -524,11 +524,10 @@ fn watch_project_as(
     mode_override: Option<WatchMode>,
     fresh: bool,
 ) -> Result<Option<u64>, String> {
+    // Library projects are watched too: a terminal or agent started in one
+    // writes its files directly, and the open editor has to hear about it.
     let location = crate::project_location::locate(project_id)?;
     let shared = crate::collab::registry::is_shared(project_id);
-    if location.kind != crate::project_location::ProjectKind::Linked && !shared {
-        return Ok(None);
-    }
     let network = crate::linked_registry::cached_membership(project_id)
         .ok()
         .and_then(|membership| match membership {
@@ -1100,19 +1099,48 @@ mod tests {
         );
     }
 
+    // A terminal or agent started in a library project writes its files
+    // directly, so the editor has to hear about it like any opened folder.
     #[test]
-    fn a_library_project_that_is_not_shared_is_never_watched() {
-        let _guard = crate::paths::data_dir_env_lock();
-        let data = tempfile::tempdir().unwrap();
-        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
-        crate::paths::create_project_dir("watch-library").unwrap();
-        let (sink, _receiver) = recorder();
+    fn a_library_project_is_watched_its_own_save_is_silent_and_an_outside_edit_is_reported() {
+        let library = crate::collab::testing::TempLibrary::new();
+        let root = library.project("watch-library", &[("main.tex", "one")]);
+        age(&root.join("main.tex"));
+        let (sink, receiver) = recorder();
 
-        let watched = watch_project("watch-library", sink, None);
-        std::env::remove_var("OLEAFLY_DATA_DIR");
+        let token = watch_project(
+            "watch-library",
+            sink,
+            Some(WatchMode::Poll(Duration::from_millis(50))),
+        )
+        .unwrap()
+        .expect("a library project is watched");
+        std::thread::sleep(Duration::from_millis(200));
+        crate::project::write_project_bytes(
+            "watch-library",
+            &root.join("main.tex"),
+            "main.tex",
+            b"saved by Oleafly",
+        )
+        .unwrap();
+        let own = receiver.recv_timeout(Duration::from_millis(800));
+        std::fs::write(root.join("main.tex"), "edited in a terminal").unwrap();
+        // The poll watcher compares whole-second times, so the edit must not
+        // land in the same second as the save before it.
+        std::fs::File::options()
+            .write(true)
+            .open(root.join("main.tex"))
+            .unwrap()
+            .set_modified(SystemTime::now() + Duration::from_secs(2))
+            .unwrap();
+        let outside = next_change(&receiver);
+        stop("watch-library", Some(token));
 
-        assert_eq!(watched.unwrap(), None);
-        assert_eq!(active_token("watch-library"), None);
+        assert!(own.is_err(), "{own:?}");
+        let outside = outside.expect("an outside edit is reported");
+        assert_eq!(outside.project_id, "watch-library");
+        assert_eq!(outside.paths, ["main.tex"]);
+        assert!(!outside.rescan);
     }
 
     #[test]

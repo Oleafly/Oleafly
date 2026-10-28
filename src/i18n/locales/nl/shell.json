@@ -823,26 +823,43 @@
         "linkedFolders_other": "{{size}} aan buildbestanden en instellingen voor {{count}} geopende mappen",
         "refresh": "Opslaggebruik vernieuwen",
         "stats": {
-          "appData": "App-gegevens",
-          "appDataDetail": "Bestanden en instellingen",
-          "buildCache": "Buildcache",
-          "buildCacheDetail": "Gegenereerde uitvoer",
           "files": "Bestanden",
           "folders_one": "{{count}} map",
           "folders_other": "{{count}} mappen",
-          "gitHistory": "Git-geschiedenis",
-          "gitHistoryDetail": "Lokale versies",
           "images": "Afbeeldingen",
           "pdfs": "PDF's",
-          "projectFiles": "Projectbestanden",
-          "projectFilesDetail": "Broncode en metagegevens",
           "projects": "Projecten"
         },
         "subtitle": "Projecten, voorbeelden, geschiedenis en app-gegevens",
         "title": "Opslaggebruik",
         "total": "{{size}} in de datamap van Oleafly",
         "unreadable_one": "{{count}} ontoegankelijk item is niet meegerekend.",
-        "unreadable_other": "{{count}} ontoegankelijke items zijn niet meegerekend."
+        "unreadable_other": "{{count}} ontoegankelijke items zijn niet meegerekend.",
+        "groups": {
+          "projects": "Projecten",
+          "appData": "App-gegevens",
+          "elsewhere": "Elders"
+        },
+        "parts": {
+          "documents": "Documenten en code",
+          "images": "Afbeeldingen",
+          "pdfs": "PDF's",
+          "media": "Audio en video",
+          "data": "Databestanden",
+          "otherFiles": "Overige bestanden",
+          "git": "Git-geschiedenis",
+          "build": "Buildcache",
+          "texDistribution": "TeX-distributie",
+          "agents": "AI-agents",
+          "researchTasks": "Onderzoekstaken",
+          "tools": "Tools",
+          "checkpoints": "Checkpoints",
+          "compileCache": "Compilatiecache",
+          "otherAppData": "Instellingen en overige gegevens",
+          "recycleBin": "Prullenbak",
+          "linkedFolders": "Geopende mappen"
+        },
+        "other": "Overig"
       },
       "tabs": {
         "cloud": "Cloudsynchronisatie",

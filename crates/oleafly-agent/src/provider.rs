@@ -185,6 +185,25 @@ impl Resolved {
             Err(_) => false,
         }
     }
+
+    /// A server the user runs or points Oleafly at: a local or LAN address,
+    /// Ollama, or any custom provider. Such a server can stay silent for
+    /// minutes while a CPU-bound model reads a long prompt, which a hosted
+    /// API does not.
+    pub fn is_self_hosted(&self) -> bool {
+        self.is_local_endpoint() || catalog_entry(&self.provider_id).is_none()
+    }
+}
+
+/// Whether the old single `ai_api_key` may stand in for this provider's key.
+/// It was an API key for one of the hosted catalog providers: never a host
+/// address, and never something to send to a server the user added.
+pub fn legacy_key_applies(provider_id: &str) -> bool {
+    catalog_entry(provider_id).is_some_and(|entry| !entry.is_host)
+}
+
+fn is_custom_provider(cfg: &ProviderConfig, provider_id: &str) -> bool {
+    catalog_entry(provider_id).is_none() && cfg.custom.iter().any(|c| c.id == provider_id)
 }
 
 pub fn pick_provider(cfg: &ProviderConfig) -> (String, String, String) {
@@ -195,7 +214,7 @@ pub fn pick_provider(cfg: &ProviderConfig) -> (String, String, String) {
     };
 
     let mut keys = cfg.keys.clone();
-    if !cfg.legacy_key.is_empty() && !keys.contains_key(&saved) {
+    if !cfg.legacy_key.is_empty() && !keys.contains_key(&saved) && legacy_key_applies(&saved) {
         keys.insert(saved.clone(), cfg.legacy_key.clone());
     }
 
@@ -214,7 +233,12 @@ pub fn pick_provider(cfg: &ProviderConfig) -> (String, String, String) {
                 .unwrap_or(false)
     };
 
-    let provider_id = if has_credential(&saved) && saved_model(cfg, &saved).is_some() {
+    // A saved custom provider is never swapped for another one: its server is
+    // often local, and the fallback could be a cloud provider. Resolution
+    // fails instead and says what the provider is missing.
+    let provider_id = if is_custom_provider(cfg, &saved)
+        || (has_credential(&saved) && saved_model(cfg, &saved).is_some())
+    {
         saved.clone()
     } else {
         let mut candidates: Vec<&str> = keys
@@ -372,7 +396,10 @@ fn credential_for(cfg: &ProviderConfig, provider_id: &str) -> String {
     cfg.keys
         .get(provider_id)
         .cloned()
-        .or_else(|| (cfg.provider == provider_id).then(|| cfg.legacy_key.clone()))
+        .or_else(|| {
+            (cfg.provider == provider_id && legacy_key_applies(provider_id))
+                .then(|| cfg.legacy_key.clone())
+        })
         .unwrap_or_default()
 }
 
@@ -394,9 +421,17 @@ fn build_resolved(
     credential: String,
 ) -> Result<Resolved> {
     if model_id.trim().is_empty() {
-        return Err(AgentError::NotConfigured(format!(
-            "No enabled model is configured for {provider_id}. Enable one in Settings under AI."
-        )));
+        return Err(AgentError::NotConfigured(
+            if is_custom_provider(cfg, &provider_id) {
+                format!(
+                "No model is enabled for {provider_id}. Add or refresh its models in Settings > AI."
+            )
+            } else {
+                format!(
+                "No enabled model is configured for {provider_id}. Enable one in Settings under AI."
+            )
+            },
+        ));
     }
     let catalog = catalog_entry(&provider_id);
     let custom = catalog
@@ -975,5 +1010,251 @@ mod tests {
     fn resolution_leaves_caps_unknown_until_the_host_fills_them() {
         let cfg = cfg_with(&[("openai", "sk")]);
         assert_eq!(resolve(&cfg).unwrap().caps, ModelCaps::default());
+    }
+
+    fn lemonade() -> CustomProvider {
+        CustomProvider {
+            id: "lemonade".into(),
+            base_url: "http://localhost:13305/v1".into(),
+            key_optional: true,
+        }
+    }
+
+    #[test]
+    fn the_legacy_key_never_reaches_a_saved_custom_provider() {
+        let mut cfg = cfg_with(&[]);
+        cfg.provider = "lemonade".into();
+        cfg.model = "Qwen3-8B".into();
+        cfg.legacy_key = "sk-old-openai".into();
+        cfg.custom = vec![lemonade()];
+
+        let (id, model, credential) = pick_provider(&cfg);
+        assert_eq!((id.as_str(), model.as_str()), ("lemonade", "Qwen3-8B"));
+        assert_eq!(credential, "");
+
+        let resolved = resolve(&cfg).unwrap();
+        assert_eq!(resolved.credential, "");
+        assert_eq!(resolved.auth, None);
+        assert!(crate::wire::auth_headers(&resolved).is_empty());
+
+        for resolved in [
+            resolve_specific(&cfg, "lemonade", "Qwen3-8B").unwrap(),
+            resolve_for_probe(&cfg, "lemonade", "Qwen3-8B").unwrap(),
+            resolve_for_model_listing(&cfg, "lemonade").unwrap(),
+        ] {
+            assert_eq!(resolved.credential, "");
+            assert_eq!(resolved.auth, None);
+        }
+    }
+
+    #[test]
+    fn a_custom_provider_that_needs_a_key_does_not_borrow_the_legacy_one() {
+        let mut cfg = cfg_with(&[]);
+        cfg.provider = "corp".into();
+        cfg.model = "corp-model".into();
+        cfg.legacy_key = "sk-old-openai".into();
+        cfg.custom.push(CustomProvider {
+            id: "corp".into(),
+            base_url: "https://models.example/v1".into(),
+            key_optional: false,
+        });
+
+        assert!(matches!(
+            resolve(&cfg),
+            Err(AgentError::NotConfigured(message)) if message.contains("No API key is set for corp")
+        ));
+        assert!(matches!(
+            resolve_specific(&cfg, "corp", "corp-model"),
+            Err(AgentError::NotConfigured(message)) if message.contains("No API key is set for corp")
+        ));
+    }
+
+    #[test]
+    fn the_legacy_key_is_not_a_host_address_for_ollama() {
+        let mut cfg = cfg_with(&[]);
+        cfg.provider = "ollama".into();
+        cfg.legacy_key = "sk-old-openai".into();
+
+        let resolved = resolve(&cfg).unwrap();
+        assert_eq!(resolved.credential, "");
+        assert_eq!(
+            resolved.wire,
+            Wire::OpenAiChat {
+                base_url: format!("{OLLAMA_DEFAULT_HOST}/v1"),
+                reasoning_content: false
+            }
+        );
+        assert_eq!(
+            resolve_specific(&cfg, "ollama", "llama3.2")
+                .unwrap()
+                .credential,
+            ""
+        );
+    }
+
+    #[test]
+    fn a_saved_catalog_provider_still_gets_the_legacy_key() {
+        let mut cfg = cfg_with(&[]);
+        cfg.provider = "openai".into();
+        cfg.model = "gpt-4o".into();
+        cfg.legacy_key = "sk-legacy".into();
+        // A custom provider the user added later does not change that.
+        cfg.custom = vec![lemonade()];
+
+        let resolved = resolve(&cfg).unwrap();
+        assert_eq!(resolved.provider_id, "openai");
+        assert_eq!(resolved.auth.as_deref(), Some("sk-legacy"));
+        assert_eq!(
+            resolve_for_probe(&cfg, "openai", "gpt-4o")
+                .unwrap()
+                .credential,
+            "sk-legacy"
+        );
+        assert_eq!(
+            resolve_for_model_listing(&cfg, "openai")
+                .unwrap()
+                .credential,
+            "sk-legacy"
+        );
+    }
+
+    #[test]
+    fn a_saved_custom_provider_with_no_enabled_model_is_never_swapped_for_a_cloud_one() {
+        let mut cfg = cfg_with(&[("groq", "gsk-cloud"), ("openai", "sk-cloud")]);
+        cfg.provider = "lemonade".into();
+        cfg.model = "Qwen3-8B".into();
+        cfg.custom = vec![lemonade()];
+        cfg.enabled_models.insert("lemonade".into(), vec![]);
+        cfg.enabled_models
+            .insert("groq".into(), vec!["llama-enabled".into()]);
+
+        let (id, model, credential) = pick_provider(&cfg);
+        assert_eq!(
+            (id.as_str(), model.as_str(), credential.as_str()),
+            ("lemonade", "", "")
+        );
+
+        let error = resolve(&cfg).unwrap_err();
+        assert!(!error.retryable());
+        match error {
+            AgentError::NotConfigured(message) => {
+                assert_eq!(
+                    message,
+                    "No model is enabled for lemonade. Add or refresh its models in Settings > AI."
+                );
+                assert!(!message.contains("groq"));
+            }
+            other => panic!("unexpected error {other:?}"),
+        }
+
+        // No model list and no remembered model is the same case.
+        cfg.enabled_models.remove("lemonade");
+        cfg.model.clear();
+        assert!(matches!(
+            resolve(&cfg),
+            Err(AgentError::NotConfigured(message)) if message.contains("No model is enabled for lemonade")
+        ));
+    }
+
+    #[test]
+    fn a_saved_custom_provider_that_needs_a_key_is_never_swapped_for_a_cloud_one() {
+        let mut cfg = cfg_with(&[("openai", "sk-cloud")]);
+        cfg.provider = "corp".into();
+        cfg.model = "corp-model".into();
+        cfg.custom.push(CustomProvider {
+            id: "corp".into(),
+            base_url: "https://models.example/v1".into(),
+            key_optional: false,
+        });
+
+        let (id, model, credential) = pick_provider(&cfg);
+        assert_eq!(
+            (id.as_str(), model.as_str(), credential.as_str()),
+            ("corp", "corp-model", "")
+        );
+        assert!(matches!(
+            resolve(&cfg),
+            Err(AgentError::NotConfigured(message)) if message.contains("No API key is set for corp")
+        ));
+    }
+
+    #[test]
+    fn a_saved_custom_provider_with_a_model_resolves_even_when_others_exist() {
+        let mut cfg = cfg_with(&[("groq", "gsk-cloud")]);
+        cfg.provider = "lemonade".into();
+        cfg.model = "Qwen3-8B".into();
+        cfg.custom = vec![lemonade()];
+        cfg.enabled_models
+            .insert("lemonade".into(), vec!["Qwen3-8B".into()]);
+        cfg.enabled_models
+            .insert("groq".into(), vec!["llama-enabled".into()]);
+
+        let resolved = resolve(&cfg).unwrap();
+        assert_eq!(resolved.provider_id, "lemonade");
+        assert_eq!(resolved.model_id, "Qwen3-8B");
+    }
+
+    #[test]
+    fn a_custom_provider_that_is_not_the_saved_one_still_does_not_block_the_fallback() {
+        let mut cfg = cfg_with(&[("anthropic", "a")]);
+        cfg.provider = "google".into();
+        cfg.custom = vec![lemonade()];
+
+        assert_eq!(pick_provider(&cfg).0, "anthropic");
+    }
+
+    fn resolved_at(provider_id: &str, base_url: &str) -> Resolved {
+        Resolved {
+            provider_id: provider_id.into(),
+            model_id: "m".into(),
+            credential: String::new(),
+            auth: None,
+            wire: Wire::OpenAiChat {
+                base_url: base_url.into(),
+                reasoning_content: false,
+            },
+            caps: ModelCaps::default(),
+        }
+    }
+
+    #[test]
+    fn a_custom_provider_is_self_hosted_wherever_its_server_is() {
+        for base_url in [
+            "http://localhost:13305/v1",
+            "http://box.lan:8080/v1",
+            "http://box.local:8080/v1",
+            "http://100.64.12.5:8080/v1",
+            "http://host.docker.internal:1234/v1",
+            "https://gateway.example.com/v1",
+        ] {
+            assert!(
+                resolved_at("my-server", base_url).is_self_hosted(),
+                "{base_url}"
+            );
+        }
+        // Local-endpoint detection is a narrower question and stays as it was.
+        assert!(!resolved_at("my-server", "http://box.lan:8080/v1").is_local_endpoint());
+        assert!(!resolved_at("my-server", "http://100.64.12.5:8080/v1").is_local_endpoint());
+        assert!(resolved_at("my-server", "http://localhost:13305/v1").is_local_endpoint());
+    }
+
+    #[test]
+    fn ollama_is_self_hosted_even_on_a_remote_host() {
+        let mut cfg = cfg_with(&[("ollama", "http://gpu-box.lan:11434")]);
+        cfg.provider = "ollama".into();
+        let resolved = resolve(&cfg).unwrap();
+        assert!(resolved.is_self_hosted());
+    }
+
+    #[test]
+    fn a_hosted_catalog_provider_is_not_self_hosted() {
+        for id in ["openai", "anthropic", "google", "groq", "openrouter", "zai"] {
+            let mut cfg = cfg_with(&[(id, "key")]);
+            cfg.provider = id.into();
+            let resolved = resolve(&cfg).unwrap();
+            assert!(!resolved.is_self_hosted(), "{id}");
+        }
+        // A catalog provider is judged by its address like any other.
+        assert!(resolved_at("groq", "http://127.0.0.1:9000/v1").is_self_hosted());
     }
 }

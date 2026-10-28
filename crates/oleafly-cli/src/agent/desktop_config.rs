@@ -5,11 +5,12 @@
 //!
 //! This is read-only. A config the app would call corrupt is an error here
 //! too; nothing is migrated or written.
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::OpenOptions;
 use std::path::Path;
 use std::time::Duration;
 
+use oleafly_agent::provider::catalog_entry;
 use oleafly_secrets::{SecretFile, SecretStore};
 use serde::Deserialize;
 use serde_json::Value;
@@ -39,6 +40,10 @@ pub struct DesktopConfig {
     pub prefs: Prefs,
     /// Connector keys (`openalex-api-key`, `brave-search`, …).
     pub connector: BTreeMap<String, Zeroizing<String>>,
+    /// Custom providers from an older settings file, which says nothing
+    /// about a key, that have no stored key. A run on one goes without a key
+    /// when none turns up anywhere else, `OLEAFLY_API_KEY` included.
+    pub keyless_custom: BTreeSet<String>,
 }
 
 impl std::fmt::Debug for DesktopConfig {
@@ -85,6 +90,7 @@ impl DesktopConfig {
             task_mcp_servers: Vec::new(),
             prefs: Prefs::default(),
             connector: BTreeMap::new(),
+            keyless_custom: BTreeSet::new(),
         }
     }
 }
@@ -239,6 +245,12 @@ struct RawCustomProvider {
     id: String,
     #[serde(rename = "baseURL", default)]
     base_url: String,
+    /// The app's settings screen writes `keyOptional`; files from before it
+    /// have none.
+    #[serde(rename = "keyOptional", default)]
+    key_optional_camel: Option<bool>,
+    /// What older builds wrote. Kept apart from the camelCase field so a file
+    /// holding both does not fail as a duplicate.
     #[serde(default)]
     key_optional: bool,
 }
@@ -452,21 +464,40 @@ pub fn load(root: &Path) -> Result<DesktopConfig, ConfigError> {
             )
         })
         .collect();
+    // An older build wrote `key_optional: false` for every provider added
+    // without a key, so such an entry with no stored key is remembered as
+    // probably key-less. The stated flag stays what the file says, so a
+    // gateway whose key only comes from `OLEAFLY_API_KEY` still gets it.
+    let mut keyless_custom = BTreeSet::new();
+    let custom = raw
+        .ai_custom_providers
+        .into_iter()
+        .map(|custom| {
+            let has_key = keys
+                .get(&custom.id)
+                .is_some_and(|key| !key.trim().is_empty());
+            let flagged = custom.key_optional_camel.unwrap_or(false) || custom.key_optional;
+            if custom.key_optional_camel.is_none()
+                && !flagged
+                && !has_key
+                && catalog_entry(&custom.id).is_none()
+            {
+                keyless_custom.insert(custom.id.clone());
+            }
+            oleafly_agent::CustomProvider {
+                key_optional: flagged,
+                id: custom.id,
+                base_url: custom.base_url,
+            }
+        })
+        .collect();
     let ai = oleafly_agent::ProviderConfig {
         provider: raw.ai_provider,
         model: raw.ai_model,
         legacy_key,
         keys,
         enabled_models,
-        custom: raw
-            .ai_custom_providers
-            .into_iter()
-            .map(|custom| oleafly_agent::CustomProvider {
-                id: custom.id,
-                base_url: custom.base_url,
-                key_optional: custom.key_optional,
-            })
-            .collect(),
+        custom,
     };
     let mut mcp_servers = Vec::new();
     for server in raw.mcp_servers.into_iter().filter(|server| server.enabled) {
@@ -506,6 +537,7 @@ pub fn load(root: &Path) -> Result<DesktopConfig, ConfigError> {
             .into_iter()
             .map(|(name, value)| (name, Zeroizing::new(value)))
             .collect(),
+        keyless_custom,
     })
 }
 
@@ -674,6 +706,108 @@ mod tests {
         assert_eq!(config.ai.keys["openai"], "sk-stored-1");
         assert_eq!(config.ai.keys["groq"], "gsk-plain-1");
         assert_eq!(config.ai.legacy_key, "sk-legacy-0");
+    }
+
+    /// Whether a run on `id` may go without a key: the stated flag, or an
+    /// older entry with no stored key.
+    fn key_optional_of(config: &DesktopConfig, id: &str) -> bool {
+        config
+            .ai
+            .custom
+            .iter()
+            .find(|custom| custom.id == id)
+            .unwrap_or_else(|| panic!("no custom provider {id}"))
+            .key_optional
+            || config.keyless_custom.contains(id)
+    }
+
+    #[test]
+    fn key_optional_is_read_from_the_camel_case_field_the_app_writes_and_the_old_spelling() {
+        let root = data_root_with(
+            r#"{"ai_custom_providers":[
+                {"id":"camel-yes","name":"A","baseURL":"http://localhost:13305/v1","keyOptional":true},
+                {"id":"snake-yes","name":"B","baseURL":"http://localhost:1234/v1","key_optional":true},
+                {"id":"camel-no","name":"C","baseURL":"https://c.example/v1","keyOptional":false},
+                {"id":"snake-no","name":"D","baseURL":"https://d.example/v1","key_optional":false},
+                {"id":"both","name":"E","baseURL":"http://localhost:8000/v1","keyOptional":true,"key_optional":false}
+            ]}"#,
+        );
+        // Every provider has a stored key, so only the flag can make it optional.
+        SecretStore::at(root.path())
+            .write(
+                SecretFile::Ai,
+                &HashMap::from(
+                    ["camel-yes", "snake-yes", "camel-no", "snake-no", "both"]
+                        .map(|id| (id.to_string(), "sk-stored-1".to_string())),
+                ),
+            )
+            .unwrap();
+        let config = load(root.path()).unwrap();
+
+        assert!(key_optional_of(&config, "camel-yes"));
+        assert!(key_optional_of(&config, "snake-yes"));
+        assert!(!key_optional_of(&config, "camel-no"));
+        assert!(!key_optional_of(&config, "snake-no"));
+        assert!(key_optional_of(&config, "both"));
+        assert_eq!(
+            config.ai.custom[0].base_url, "http://localhost:13305/v1",
+            "the other fields still load"
+        );
+    }
+
+    #[test]
+    fn a_custom_provider_with_no_stored_key_is_key_optional_whatever_the_file_says() {
+        let root = data_root_with(
+            r#"{"ai_custom_providers":[
+                {"id":"lemonade","name":"Lemonade","baseURL":"http://localhost:13305/v1","key_optional":false},
+                {"id":"gateway","name":"Gateway","baseURL":"https://gw.example/v1","key_optional":false},
+                {"id":"blank","name":"Blank","baseURL":"https://b.example/v1","key_optional":false},
+                {"id":"openai","name":"Shadow","baseURL":"https://evil.example/v1","key_optional":false}
+            ]}"#,
+        );
+        SecretStore::at(root.path())
+            .write(
+                SecretFile::Ai,
+                &HashMap::from([
+                    ("gateway".to_string(), "sk-gateway-1".to_string()),
+                    ("blank".to_string(), "   ".to_string()),
+                ]),
+            )
+            .unwrap();
+        let config = load(root.path()).unwrap();
+
+        assert!(key_optional_of(&config, "lemonade"));
+        assert!(!key_optional_of(&config, "gateway"));
+        assert!(key_optional_of(&config, "blank"));
+        // A custom entry that shadows a catalog provider never relaxes its key.
+        assert!(!key_optional_of(&config, "openai"));
+    }
+
+    #[test]
+    fn only_an_older_entry_without_a_stored_key_is_taken_as_key_less() {
+        let root = data_root_with(
+            r#"{"ai_custom_providers":[
+                {"id":"older","name":"Older","baseURL":"https://gw.example/v1","key_optional":false},
+                {"id":"stated","name":"Stated","baseURL":"https://corp.example/v1","keyOptional":false}
+            ]}"#,
+        );
+        let config = load(root.path()).unwrap();
+
+        assert_eq!(config.keyless_custom, BTreeSet::from(["older".to_string()]));
+        // The stated flags stay as written, so the shared env key still applies.
+        assert!(config.ai.custom.iter().all(|custom| !custom.key_optional));
+        assert!(!key_optional_of(&config, "stated"));
+    }
+
+    #[test]
+    fn the_legacy_single_key_does_not_count_as_a_stored_key_for_a_custom_provider() {
+        let root = data_root_with(
+            r#"{"ai_api_key":"sk-old-openai","ai_custom_providers":[
+                {"id":"lemonade","name":"Lemonade","baseURL":"http://localhost:13305/v1"}
+            ]}"#,
+        );
+        let config = load(root.path()).unwrap();
+        assert!(key_optional_of(&config, "lemonade"));
     }
 
     #[test]

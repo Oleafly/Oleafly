@@ -11,8 +11,7 @@ import { ResearchRootsPanel } from "@/components/research/workspace/ResearchRoot
 import { ResearchTasksPanel, type ResearchTaskAgentOption } from "@/components/research/tasks/ResearchTasksPanel";
 import { knownProviderConfig, loadProviderConfig, subscribeProviderConfig, deriveProviderState } from "@/components/ai/provider-config";
 import { useAgentTargets } from "@/components/ai/use-agent-targets";
-import { mergeCustomProviders } from "@/lib/ai-providers";
-import { enabledModels } from "@/lib/ai-model-state";
+import { configuredModelGroups } from "@/lib/ai-model-groups";
 import type { ResearchTask } from "@/lib/research-tasks";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useAssistantRuntimeStore } from "@/store/assistant-runtime";
@@ -58,14 +57,10 @@ export function ResearchWorkspacePanel() {
   const groups = useMemo(() => {
     if (!config) return [];
     const state = deriveProviderState(config);
-    return mergeCustomProviders(state.customProviders)
-      .filter((provider) => Boolean(state.keysMap[provider.id]?.trim()) || state.customProviders.some((custom) => custom.id === provider.id && custom.keyOptional))
-      .map((provider) => {
-        const models = state.providerModelsMap[provider.id];
-        const available = models ? enabledModels(models).map((model) => ({ id: model.id, name: model.name })) : [...provider.models];
-        if (provider.id === state.provider && state.model && !available.some((model) => model.id === state.model)) available.push({ id: state.model, name: state.model });
-        return { id: provider.id, name: provider.name, models: available };
-      });
+    return configuredModelGroups(
+      { keys: state.keysMap, customProviders: state.customProviders, providerModels: state.providerModelsMap },
+      { keep: { providerId: state.provider, modelId: state.model } },
+    );
   }, [config]);
   const targets = useAgentTargets(projectId, groups);
   const agents = useMemo<ResearchTaskAgentOption[]>(() => targets.map((target) => ({
@@ -125,7 +120,7 @@ export function ResearchWorkspacePanel() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="tasks" className="min-h-0 flex-1 overflow-auto">
-          <ResearchTasksPanel projectId={projectId} agents={agents} onOpenSession={openSession} />
+          <ResearchTasksPanel projectId={projectId} agents={agents} customProviders={config?.ai_custom_providers} onOpenSession={openSession} />
         </TabsContent>
         <TabsContent value="folders" ref={foldersRef} className="min-h-0 flex-1 overflow-auto">
           {projectId ? (

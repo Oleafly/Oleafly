@@ -810,24 +810,41 @@
         "linkedFolders_other": "開いたフォルダ {{count}} 件のビルド出力と設定で {{size}}",
         "refresh": "使用容量を更新",
         "stats": {
-          "appData": "アプリのデータ",
-          "appDataDetail": "アセットと設定",
-          "buildCache": "ビルドキャッシュ",
-          "buildCacheDetail": "生成された出力",
           "files": "ファイル",
           "folders_other": "{{count}} 件のフォルダ",
-          "gitHistory": "Git の履歴",
-          "gitHistoryDetail": "ローカルのバージョン",
           "images": "画像",
           "pdfs": "PDF",
-          "projectFiles": "プロジェクトのファイル",
-          "projectFilesDetail": "ソースとメタデータ",
           "projects": "プロジェクト"
         },
         "subtitle": "プロジェクト、プレビュー、履歴、アプリのデータ",
         "title": "使用容量",
         "total": "Oleafly のデータフォルダ全体で {{size}}",
-        "unreadable_other": "アクセスできない項目 {{count}} 件を除外しました。"
+        "unreadable_other": "アクセスできない項目 {{count}} 件を除外しました。",
+        "groups": {
+          "projects": "プロジェクト",
+          "appData": "アプリのデータ",
+          "elsewhere": "ほかの場所"
+        },
+        "parts": {
+          "documents": "文書とコード",
+          "images": "画像",
+          "pdfs": "PDF",
+          "media": "音声と動画",
+          "data": "データファイル",
+          "otherFiles": "その他のファイル",
+          "git": "Git の履歴",
+          "build": "ビルドキャッシュ",
+          "texDistribution": "TeX ディストリビューション",
+          "agents": "AI エージェント",
+          "researchTasks": "研究タスク",
+          "tools": "ツール",
+          "checkpoints": "チェックポイント",
+          "compileCache": "コンパイルキャッシュ",
+          "otherAppData": "設定とその他のデータ",
+          "recycleBin": "ごみ箱",
+          "linkedFolders": "開いたフォルダ"
+        },
+        "other": "その他"
       },
       "tabs": {
         "cloud": "クラウド同期",

@@ -63,6 +63,7 @@ import { openEnvironmentCompletion } from "./latex-environments";
 import { latexPairInputHandler, latexPairKeymap } from "./latex-pairs";
 import { typstEditing } from "./typst-editing";
 import { typstSlashCompletions } from "./typst-snippets";
+import { markdownSlashCompletions } from "./markdown-snippets";
 import { typstMathPaste } from "./typst-math-paste";
 import { isVendoredTypstPackagePath } from "./typst-syntax";
 import {
@@ -791,18 +792,22 @@ function sourceToolsForPath(
 
   const quarto = isQuartoDocumentPath(path);
   if (quarto) preloadChunkOptions();
-  const overrideSources = quarto
-    ? [...gatedCompletionSources, quartoChunkOptionCompletions]
+  const popupSources = isMarkdownDocumentPath(path)
+    ? [
+        ...gatedCompletionSources,
+        markdownSlashCompletions,
+        ...(quarto ? [quartoChunkOptionCompletions] : []),
+      ]
     : gatedCompletionSources;
   return [
     ...mathPreviewExtensions,
     ...(ghostCompletionEnabled && ghostCompletionSources.length > 0
       ? [ghostCompletion(ghostCompletionSources, completionSyntax)]
       : []),
-    ...(overrideSources.length > 0
+    ...(popupSources.length > 0
       ? [
           autocompletion({
-            override: overrideSources,
+            override: popupSources,
             activateOnTyping: autocompleteWhileTyping,
             closeOnBlur: true,
           }),

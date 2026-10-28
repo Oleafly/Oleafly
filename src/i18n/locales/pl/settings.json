@@ -238,18 +238,28 @@
       "addDescription": "Podłącz dowolny punkt końcowy zgodny z OpenAI przez jego bazowy adres URL.",
       "addTitle": "Dodaj własnego dostawcę",
       "baseUrlLabel": "Bazowy adres URL",
-      "baseUrlNote": "Zapisany klucz API zostanie wysłany pod ten nowy adres.",
+      "baseUrlNote": "Zapisany klucz API nie zostanie wysłany pod nowy adres. Wpisz go ponownie albo zostaw pole puste, jeśli nowy serwer nie wymaga klucza.",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "Serwer pod adresem {{url}} odrzucił klucz API.",
+        "rejected": "Serwer pod adresem {{url}} nie zwrócił listy modeli. Większość serwerów lokalnych wymaga /v1 na końcu adresu, na przykład http://localhost:13305/v1.",
+        "timeout": "Pobranie listy modeli z {{url}} trwało zbyt długo.",
+        "unreachable": "Nie udało się połączyć z {{url}}. Sprawdź, czy serwer działa i czy adres jest poprawny.",
+        "unreadable": "Serwer pod adresem {{url}} odpowiedział, ale nie wymienił żadnych modeli. Sprawdź, czy na serwerze jest pobrany jakiś model."
+      },
       "editDescription": "Zmień nazwę albo bazowy adres URL.",
       "editTitle": "Edytuj własnego dostawcę",
       "errors": {
         "addFailed": "Nie udało się dodać tego dostawcy.",
+        "baseUrlCredentials": "Wpisz klucz w polu Klucz API, a nie w adresie URL.",
         "baseUrlHost": "W adresie URL brakuje hosta.",
         "baseUrlInvalid": "Podaj pełny adres URL, na przykład https://api.example.com/v1 albo http://localhost:1234/v1.",
         "baseUrlProtocol": "Użyj https:// albo http:// dla serwera lokalnego.",
+        "baseUrlQuery": "Usuń znak ? i wszystko, co po nim następuje.",
         "baseUrlRequired": "Bazowy adres URL jest wymagany.",
         "idFormat": "Używaj tylko małych liter, cyfr i myślników, na przykład acme.",
         "idRequired": "Identyfikator jest wymagany.",
+        "idTooLong": "Użyj maksymalnie 64 znaków.",
         "nameRequired": "Nazwa jest wymagana.",
         "saveFailed": "Nie udało się zapisać tego dostawcy."
       },
@@ -261,7 +271,9 @@
       "keyPlaceholderStored": "Zapisany klucz zostaje, dopóki nie wpiszesz nowego",
       "namePlaceholder": "Acme",
       "presetsLabel": "Popularni dostawcy",
-      "submitAdd": "Dodaj dostawcę"
+      "saveAnyway": "Zapisz mimo to",
+      "submitAdd": "Dodaj dostawcę",
+      "submitAddAnyway": "Dodaj bez modeli"
     },
     "instructions": {
       "capabilitiesTitle": "Możliwości agenta",
@@ -431,11 +443,13 @@
       "messages": {
         "keyRemoved": "Usunięto klucz dostawcy {{provider}}.",
         "keyRemovedAccessDisabled": "Usunięto klucz dostawcy {{provider}}. Dostęp do AI jest wyłączony.",
-        "keySavedAddModels": "Zapisano klucz dostawcy {{provider}}. Dodaj modele ręcznie poniżej.",
         "keySavedCheckedOnUse": "Zapisano klucz dostawcy {{provider}}. Zostanie sprawdzony przy pierwszym użyciu.",
+        "keySavedModelsNotListed": "Zapisano klucz dostawcy {{provider}}, ale nie wymieniono żadnych modeli. {{reason}}",
         "ollamaConnected": "Ollama połączony · {{model}}",
         "preferencesReset": "Przywrócono domyślne preferencje Asystenta AI.",
         "providerAdded": "Dodano {{provider}}.",
+        "providerAddedAt": "Dodano {{provider}} pod adresem {{url}}.",
+        "providerAddedWithoutModels": "Dodano {{provider}} bez modeli. Dodaj poniżej model według nazwy.",
         "providerConnected": "Połączono {{provider}}.",
         "providerUpdated": "Zaktualizowano {{provider}}.",
         "providerUpdatedWithoutModels": "Zaktualizowano {{provider}}. Nie udało się odświeżyć listy jego modeli."

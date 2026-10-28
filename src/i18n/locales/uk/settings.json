@@ -238,18 +238,28 @@
       "addDescription": "Підключіть будь-яку сумісну з OpenAI кінцеву точку за її базовою URL.",
       "addTitle": "Додати власного постачальника",
       "baseUrlLabel": "Базова URL",
-      "baseUrlNote": "Ваш збережений ключ API буде надіслано на цю нову адресу.",
+      "baseUrlNote": "Збережений ключ API не надсилається на нову адресу. Введіть його ще раз або залиште поле порожнім, якщо новому серверу ключ не потрібен.",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "Сервер за адресою {{url}} відхилив ключ API.",
+        "rejected": "Сервер за адресою {{url}} не повернув список моделей. Більшості локальних серверів потрібен /v1 в кінці адреси, наприклад http://localhost:13305/v1.",
+        "timeout": "Сервер за адресою {{url}} надто довго складав список моделей.",
+        "unreachable": "Не вдалося зв’язатися з {{url}}. Перевірте, чи запущено сервер і чи правильна адреса.",
+        "unreadable": "Сервер за адресою {{url}} відповів, але не перелічив жодної моделі. Перевірте, чи на сервері завантажено модель."
+      },
       "editDescription": "Змініть назву або базову URL.",
       "editTitle": "Редагувати власного постачальника",
       "errors": {
         "addFailed": "Не вдалося додати цього постачальника.",
+        "baseUrlCredentials": "Уведіть ключ у поле «Ключ API», а не в URL.",
         "baseUrlHost": "В URL бракує хоста.",
         "baseUrlInvalid": "Введіть повну URL, наприклад https://api.example.com/v1 або http://localhost:1234/v1.",
         "baseUrlProtocol": "Використайте https:// або http:// для локального сервера.",
+        "baseUrlQuery": "Видаліть ? і все, що йде після нього.",
         "baseUrlRequired": "Базова URL обов’язкова.",
         "idFormat": "Використовуйте лише малі літери, цифри і дефіси, наприклад acme.",
         "idRequired": "ID обов’язковий.",
+        "idTooLong": "Використовуйте не більше 64 символів.",
         "nameRequired": "Назва обов’язкова.",
         "saveFailed": "Не вдалося зберегти цього постачальника."
       },
@@ -261,7 +271,9 @@
       "keyPlaceholderStored": "Збережений ключ лишиться, якщо ви не введете новий",
       "namePlaceholder": "Acme",
       "presetsLabel": "Поширені постачальники",
-      "submitAdd": "Додати постачальника"
+      "saveAnyway": "Усе одно зберегти",
+      "submitAdd": "Додати постачальника",
+      "submitAddAnyway": "Додати без моделей"
     },
     "instructions": {
       "capabilitiesTitle": "Можливості агента",
@@ -431,11 +443,13 @@
       "messages": {
         "keyRemoved": "Ключ {{provider}} вилучено.",
         "keyRemovedAccessDisabled": "Ключ {{provider}} вилучено. Доступ до ШІ вимкнено.",
-        "keySavedAddModels": "Ключ {{provider}} збережено. Додайте моделі вручну нижче.",
         "keySavedCheckedOnUse": "Ключ {{provider}} збережено. Його перевірять під час першого використання.",
+        "keySavedModelsNotListed": "Ключ {{provider}} збережено, але жодної моделі не перелічено. {{reason}}",
         "ollamaConnected": "Ollama підключено · {{model}}",
         "preferencesReset": "Налаштування асистента ШІ повернуто до типових.",
         "providerAdded": "{{provider}} додано.",
+        "providerAddedAt": "{{provider}} додано за адресою {{url}}.",
+        "providerAddedWithoutModels": "{{provider}} додано без моделей. Додайте модель за назвою нижче.",
         "providerConnected": "{{provider}} підключено.",
         "providerUpdated": "{{provider}} оновлено.",
         "providerUpdatedWithoutModels": "{{provider}} оновлено. Його список моделей не вдалося оновити."

@@ -409,10 +409,8 @@
     "updatedToday": "Aktualizováno dnes",
     "updatedYesterday": "Aktualizováno včera",
     "autosaveFailed": "Změny se nepodařilo uložit. Pořád je máte v editoru.",
-    "changedOnDisk": "Soubor „{{path}}“ byl změněn mimo Oleafly. Načtěte ho znovu, nebo ho uložte ještě jednou a ponechte svou verzi.",
     "openFileEncoding": "Soubor „{{path}}“ nelze otevřít, protože nejde o textový soubor v kódování UTF-8. Pokud jde o text, uložte ho v UTF-8 a otevřete ho znovu.",
     "openFileFailed": "Soubor „{{path}}“ nelze otevřít. Podrobnosti najdete v protokolu aplikace.",
-    "reloadFromDisk": "Načíst znovu",
     "changedOnDiskElsewhere": "Soubor {{path}} se na disku změnil, proto ho Oleafly neuložil. Otevřete ho a vyberte, kterou verzi ponechat."
   },
   "projectDiagnostics": {

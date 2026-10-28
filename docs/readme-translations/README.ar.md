@@ -87,6 +87,8 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 
 فعّل المزامنة السحابية، فتنتقل معك مشروعات مكتبتك وإعدادات التطبيق من حاسوب إلى آخر. يُتحقق من كل تنزيل مقابل سجله قبل أن يحل محل ملف، ولا يُكتب أبدًا فوق ملف مفتوح لديك يحتوي على تغييرات غير محفوظة.
 
+يمكنك المزامنة مع Dropbox أو Google Drive أو مع حاوية خاصة بك على Amazon S3 أو Google Cloud Storage أو MinIO أو أي خدمة أخرى متوافقة مع S3.
+
 <p align="center">
   <img src="../assets/readme/cloud-sync-dropbox.png" alt="إعدادات المزامنة السحابية في Oleafly مع بطاقة Dropbox وقائمة بما تجري مزامنته" width="100%" />
 </p>

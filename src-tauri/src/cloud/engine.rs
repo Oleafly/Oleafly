@@ -1,9 +1,7 @@
 use super::merge::{self, PROJECT_META};
 use super::progress::{Meter, Phase};
 use super::state::{BaseEntry, Failure, Hold, PendingDelete, ProjectState, SkippedFile};
-use super::store::{
-    BatchCopy, BatchDelete, BatchFile, CloudStore, DropboxContentHasher, StoreError, WriteMode,
-};
+use super::store::{BatchCopy, BatchDelete, BatchFile, CloudStore, StoreError, WriteMode};
 use crate::checkpoint_capture::FileStamp;
 use futures_util::stream::{self, StreamExt};
 use oleafly_core::content::{ContentHash, ContentHasher};
@@ -130,9 +128,62 @@ pub(crate) struct VersionManifest {
     pub(crate) device: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) pending: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) lineage: Option<Lineage>,
     pub(crate) files: Vec<FileRecord>,
     #[serde(flatten)]
     pub(crate) extra: serde_json::Map<String, serde_json::Value>,
+}
+
+/// The manifests a manifest was built on, newest first. Providers that can
+/// only emulate compare-and-swap leave a short window in which two computers
+/// both publish; the one whose manifest is overwritten finds its own stamp
+/// missing here, and merges without trusting its base for deletions.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub(crate) struct Lineage {
+    /// The stamp of the manifest this lineage belongs to. An older Oleafly
+    /// copies fields it doesn't know forward, so a lineage whose `of` isn't
+    /// its manifest's own stamp says nothing.
+    pub(crate) of: Stamp,
+    pub(crate) ancestors: Vec<Stamp>,
+}
+
+const MAX_LINEAGE: usize = 128;
+
+impl Lineage {
+    /// The lineage of a manifest stamped `stamp` and built on `parent`.
+    fn after(stamp: Stamp, parent: Option<(Stamp, Option<&Lineage>)>) -> Self {
+        let mut ancestors = Vec::new();
+        if let Some((parent_stamp, parent_lineage)) = parent {
+            ancestors.push(parent_stamp);
+            if let Some(lineage) = parent_lineage.filter(|lineage| lineage.of == parent_stamp) {
+                ancestors.extend(lineage.ancestors.iter().copied());
+            }
+        }
+        ancestors.truncate(MAX_LINEAGE);
+        Self {
+            of: stamp,
+            ancestors,
+        }
+    }
+}
+
+/// Whether `version` was written without seeing the manifest this computer's
+/// base agrees with. Unknown cases (no base yet, a manifest from an older
+/// Oleafly, a lineage cut short) count as not diverged, as before lineage.
+fn diverged_from(version: &VersionManifest, base: Option<Stamp>) -> bool {
+    let Some(base) = base else {
+        return false;
+    };
+    if version.stamp == base {
+        return false;
+    }
+    match &version.lineage {
+        Some(lineage) if lineage.of == version.stamp => {
+            lineage.ancestors.len() < MAX_LINEAGE && !lineage.ancestors.contains(&base)
+        }
+        _ => false,
+    }
 }
 
 impl VersionManifest {
@@ -1001,6 +1052,7 @@ fn split_remote(
     remote: Option<&Remote>,
     policy: &OwnedPolicy,
     tracked: &BTreeSet<String>,
+    valid_rev: &dyn Fn(&str) -> bool,
 ) -> RemoteView {
     let mut view = RemoteView {
         usable: BTreeMap::new(),
@@ -1021,7 +1073,7 @@ fn split_remote(
         let usable = portable::synced_path_problem(&record.path).is_none()
             && valid_hash(&record.hash)
             && record.size <= oleafly_core::exclude::MAX_SYNC_FILE_BYTES
-            && record.rev.as_deref().is_none_or(super::store::valid_rev)
+            && record.rev.as_deref().is_none_or(valid_rev)
             && cloud_skip(Path::new(&record.path)).is_none()
             && match decide_with_siblings(
                 Path::new(&record.path),
@@ -1543,21 +1595,6 @@ fn unpack_entry<R: std::io::Read + std::io::Seek>(
     })
 }
 
-async fn dropbox_hash_of(path: &Path) -> Option<String> {
-    use tokio::io::AsyncReadExt;
-    let mut file = tokio::fs::File::open(path).await.ok()?;
-    let mut hasher = DropboxContentHasher::default();
-    let mut buffer = vec![0_u8; 1024 * 1024];
-    loop {
-        let read = file.read(&mut buffer).await.ok()?;
-        if read == 0 {
-            break;
-        }
-        hasher.update(&buffer[..read]);
-    }
-    Some(hasher.finish())
-}
-
 fn copy_from_disk(
     root: &Path,
     portable_path: &str,
@@ -1979,6 +2016,9 @@ struct Publisher<'a, S: CloudStore> {
     context: &'a SyncContext,
     clock: HlcClock,
     rev: Option<String>,
+    /// The stamp and lineage of the manifest the next publish builds on: the
+    /// remote one, then each one this round publishes.
+    parent: Option<(Stamp, Option<Lineage>)>,
     overwrite: bool,
     published: Vec<FileRecord>,
     pending: Option<u64>,
@@ -1997,6 +2037,12 @@ impl<S: CloudStore> Publisher<'_, S> {
             return Ok(false);
         }
         let stamp = Stamp::new(self.clock.tick(now_ms()), self.context.device);
+        let lineage = Lineage::after(
+            stamp,
+            self.parent
+                .as_ref()
+                .map(|(parent, lineage)| (*parent, lineage.as_ref())),
+        );
         let version = VersionManifest {
             v: FORMAT_VERSION,
             project: self.cloud,
@@ -2005,6 +2051,7 @@ impl<S: CloudStore> Publisher<'_, S> {
             stamp,
             device: Some(self.context.device_name.clone()),
             pending: self.pending,
+            lineage: Some(lineage.clone()),
             files: files.clone(),
             extra: self.extra.clone(),
         };
@@ -2020,6 +2067,7 @@ impl<S: CloudStore> Publisher<'_, S> {
             .put(&version_remote(self.cloud), bytes, mode)
             .await?;
         self.rev = Some(rev);
+        self.parent = Some((stamp, Some(lineage)));
         self.published = files;
         self.published_pending = self.pending;
         Ok(true)
@@ -2453,6 +2501,7 @@ impl<S: CloudStore> Round<'_, S> {
             }
         }
         self.project.base.clear();
+        self.project.base_manifest = None;
         self.project.meta_base = None;
         self.project.remote_rev = None;
         self.project.pending_deletes.clear();
@@ -2464,6 +2513,7 @@ impl<S: CloudStore> Round<'_, S> {
         project.paused = true;
         project.removed_by = Some(device);
         project.base.clear();
+        project.base_manifest = None;
         project.meta_base = None;
         project.remote_rev = None;
         project.remote_dirty = false;
@@ -2855,7 +2905,10 @@ impl<S: CloudStore> Round<'_, S> {
         let results = self.store.copy_paths(&items).await;
         let mut fallback = Vec::new();
         for ((job, exec, _), result) in copies.into_iter().zip(results) {
-            let expected = dropbox_hash_of(&native(&self.env.root, &job.path)).await;
+            let expected = self
+                .store
+                .copy_check_hash(&native(&self.env.root, &job.path))
+                .await;
             let copied = result.ok().filter(|copied| {
                 copied.size == job.size
                     && copied.content_hash.is_some()
@@ -3179,6 +3232,7 @@ fn publisher_for<'a, S: CloudStore>(
         context,
         clock,
         rev: remote.map(|remote| remote.rev.clone()),
+        parent: remote.map(|remote| (remote.version.stamp, remote.version.lineage.clone())),
         overwrite: options.replace_remote && remote.is_none(),
         published: remote
             .map(|remote| remote.version.files.clone())
@@ -3363,6 +3417,7 @@ impl<S: CloudStore> Round<'_, S> {
         }
         if publisher.rev.is_some() && (final_published || !run.published.is_empty()) {
             self.project.remote_rev = publisher.rev.clone();
+            self.project.base_manifest = publisher.parent.as_ref().map(|(stamp, _)| *stamp);
         }
         self.outcome.uploaded = run.published.len();
         self.project.base = base.into_values().collect();
@@ -3424,7 +3479,23 @@ pub(crate) async fn sync_project<S: CloudStore>(
     if let Some(remote) = &remote {
         observe_remote(&mut clock, remote);
     }
-    let view = split_remote(remote.as_ref(), &captured.policy, &captured.tracked);
+    let view = split_remote(
+        remote.as_ref(),
+        &captured.policy,
+        &captured.tracked,
+        &|rev| store.valid_rev(rev),
+    );
+    // A manifest that never saw this computer's last one means two computers
+    // published at once. Merging against the base would read the files the
+    // other one never saw as deleted, so this round deletes nothing.
+    let diverged = remote
+        .as_ref()
+        .is_some_and(|remote| diverged_from(&remote.version, round.project.base_manifest));
+    let planning = RoundOptions {
+        restore_deleted: options.restore_deleted || diverged,
+        ..options.clone()
+    };
+    let options = &planning;
     let mut planned = plan(&PlanInput {
         capture: &captured,
         remote: &view,
@@ -3591,7 +3662,7 @@ pub(crate) async fn list_remote_projects<S: CloudStore>(
 }
 
 fn too_many_files(error: &StoreError) -> bool {
-    matches!(error, StoreError::Server(detail) | StoreError::Rejected(detail) if detail.contains("too_many_files"))
+    matches!(error, StoreError::FolderTooLarge)
 }
 
 pub(crate) async fn delete_project_folder<S: CloudStore>(
@@ -3706,7 +3777,9 @@ pub(crate) async fn download_into<S: CloudStore>(
     };
     let meta = remote.version.manifest.clone();
     let policy = policy_for(meta.is_object().then_some(&meta)).unwrap_or_default();
-    let view = split_remote(Some(&remote), &policy, &BTreeSet::new());
+    let view = split_remote(Some(&remote), &policy, &BTreeSet::new(), &|rev| {
+        store.valid_rev(rev)
+    });
     let mut skipped = view.foreign.len();
     tokio::fs::create_dir_all(staging)
         .await

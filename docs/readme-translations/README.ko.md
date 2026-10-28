@@ -87,6 +87,8 @@ SQLite를 사용하는 단일 Rust 바이너리로, 파일을 디스크나 S3 �
 
 클라우드 동기화를 켜면 라이브러리의 프로젝트와 앱 설정이 어느 컴퓨터로 옮겨 가든 따라옵니다. 모든 다운로드는 파일을 교체하기 전에 기록과 대조해 확인되며, 저장하지 않은 변경 사항이 있는 열린 파일은 절대 덮어쓰지 않습니다.
 
+Dropbox, Google Drive, 또는 Amazon S3, Google Cloud Storage, MinIO 같은 S3 호환 서비스에 있는 내 버킷으로 동기화할 수 있습니다.
+
 <p align="center">
   <img src="../assets/readme/cloud-sync-dropbox.png" alt="Dropbox 카드와 동기화되는 항목 목록이 있는 Oleafly 클라우드 동기화 설정" width="100%" />
 </p>

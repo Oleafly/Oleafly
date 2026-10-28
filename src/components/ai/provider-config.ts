@@ -1,13 +1,21 @@
 import { getConfigCached, invalidateConfigCache } from "@/lib/config-cache";
 import { getSnapshotConfig } from "@/lib/initial-state";
 import { currentLocale } from "@/i18n";
-import { defaultModel, suggestedProviderId } from "@/lib/ai-providers";
+import {
+  effectiveProviderKeys,
+  isProviderConfigured,
+  pickActiveProvider,
+  suggestedProviderId,
+} from "@/lib/ai-providers";
 import type { AppConfig, CustomProvider, Persona, StoredModel } from "@/lib/tauri";
 
 export interface ProviderState {
   provider: string;
   model: string;
+  /** The active provider's saved key or host; empty for a key-less custom provider. */
   apiKey: string;
+  /** The active provider can take a request: it has a key or host, or is a custom provider that needs none. Gate the chat on this, not on `apiKey`. */
+  ready: boolean;
   keysMap: Record<string, string>;
   providerModelsMap: Record<string, StoredModel[]>;
   customProviders: CustomProvider[];
@@ -19,21 +27,14 @@ export function deriveProviderState(
   cfg: AppConfig,
   suggested: string = suggestedProviderId(currentLocale()),
 ): ProviderState {
-  const saved = cfg.ai_provider || suggested;
-  const legacy = cfg.ai_provider || "openai";
-  const keys = { ...cfg.ai_keys };
-  if (cfg.ai_api_key && !keys[legacy]) keys[legacy] = cfg.ai_api_key;
+  const { providerId, modelId, credential } = pickActiveProvider(cfg, suggested);
+  const keys = effectiveProviderKeys(cfg);
   const customs = cfg.ai_custom_providers ?? [];
-  const keyOptionalIds = customs.filter((c) => c.keyOptional).map((c) => c.id);
-  const firstConfigured = Object.keys(keys).find((k) => (keys[k] ?? "").trim());
-  const provider =
-    (keys[saved] ?? "").trim() || keyOptionalIds.includes(saved)
-      ? saved
-      : firstConfigured ?? saved;
   return {
-    provider,
-    model: provider === saved && cfg.ai_model ? cfg.ai_model : defaultModel(provider),
-    apiKey: keys[provider] || "",
+    provider: providerId,
+    model: modelId,
+    apiKey: credential,
+    ready: isProviderConfigured(providerId, keys, customs),
     keysMap: keys,
     providerModelsMap: cfg.ai_provider_models ?? {},
     customProviders: customs,

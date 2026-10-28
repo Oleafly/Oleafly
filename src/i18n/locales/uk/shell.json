@@ -849,21 +849,13 @@
         "linkedFolders_other": "{{size}} результатів збірки та налаштувань для {{count}} відкритої теки",
         "refresh": "Оновити дані про сховище",
         "stats": {
-          "appData": "Дані застосунку",
-          "appDataDetail": "Ресурси та налаштування",
-          "buildCache": "Кеш збірки",
-          "buildCacheDetail": "Згенерований результат",
           "files": "Файли",
           "folders_one": "{{count}} папка",
           "folders_few": "{{count}} папки",
           "folders_many": "{{count}} папок",
           "folders_other": "{{count}} папки",
-          "gitHistory": "Історія Git",
-          "gitHistoryDetail": "Локальні версії",
           "images": "Зображення",
           "pdfs": "Файли PDF",
-          "projectFiles": "Файли проєктів",
-          "projectFilesDetail": "Код і метадані",
           "projects": "Проєкти"
         },
         "subtitle": "Проєкти, перегляди, історія та дані застосунку",
@@ -872,7 +864,32 @@
         "unreadable_one": "{{count}} недоступний елемент виключено.",
         "unreadable_few": "{{count}} недоступні елементи виключено.",
         "unreadable_many": "{{count}} недоступних елементів виключено.",
-        "unreadable_other": "{{count}} недоступного елемента виключено."
+        "unreadable_other": "{{count}} недоступного елемента виключено.",
+        "groups": {
+          "projects": "Проєкти",
+          "appData": "Дані застосунку",
+          "elsewhere": "В інших місцях"
+        },
+        "parts": {
+          "documents": "Документи та код",
+          "images": "Зображення",
+          "pdfs": "Файли PDF",
+          "media": "Аудіо та відео",
+          "data": "Файли даних",
+          "otherFiles": "Інші файли",
+          "git": "Історія Git",
+          "build": "Кеш збірки",
+          "texDistribution": "Дистрибутив TeX",
+          "agents": "Агенти ШІ",
+          "researchTasks": "Дослідницькі завдання",
+          "tools": "Інструменти",
+          "checkpoints": "Контрольні точки",
+          "compileCache": "Кеш компіляції",
+          "otherAppData": "Налаштування й інші дані",
+          "recycleBin": "Кошик",
+          "linkedFolders": "Відкриті теки"
+        },
+        "other": "Інше"
       },
       "tabs": {
         "cloud": "Хмарна синхронізація",

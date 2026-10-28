@@ -12,8 +12,30 @@ describe("cloud bridge", () => {
     const calls: [() => Promise<unknown>, string, Record<string, unknown> | undefined][] = [
       [() => cloud.cloudState(), "cloud_state", undefined],
       [() => cloud.cloudDetails(), "cloud_details", undefined],
-      [() => cloud.cloudConnectBegin(true), "cloud_connect_begin", { paste: true }],
+      [() => cloud.cloudProviders(), "cloud_providers", undefined],
+      [() => cloud.cloudConnectBegin(true), "cloud_connect_begin", { provider: "dropbox", paste: true }],
+      [
+        () => cloud.cloudConnectBegin(false, "google_drive"),
+        "cloud_connect_begin",
+        { provider: "google_drive", paste: false },
+      ],
       [() => cloud.cloudConnectWait("f1"), "cloud_connect_wait", { flowId: "f1" }],
+      [
+        () =>
+          cloud.cloudConnectCredentials(
+            "s3",
+            { endpoint: "https://s3.eu-west-1.amazonaws.com", region: "eu-west-1", bucket: "b", prefix: "oleafly", pathStyle: false },
+            "AKIA",
+            "secret",
+          ),
+        "cloud_connect_credentials",
+        {
+          provider: "s3",
+          config: { endpoint: "https://s3.eu-west-1.amazonaws.com", region: "eu-west-1", bucket: "b", prefix: "oleafly", pathStyle: false },
+          accessKeyId: "AKIA",
+          secretAccessKey: "secret",
+        },
+      ],
       [() => cloud.cloudConnectPaste("f1", "code"), "cloud_connect_paste", { flowId: "f1", code: "code" }],
       [() => cloud.cloudConnectCancel("f1"), "cloud_connect_cancel", { flowId: "f1" }],
       [() => cloud.cloudDisconnect(), "cloud_disconnect", undefined],

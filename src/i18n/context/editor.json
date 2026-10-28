@@ -28,9 +28,19 @@
     "enumerate": "LaTeX enumerate environment, keep the environment name recognisable",
     "label": "Inserts a \\label command, not a checkpoint label",
     "figure": "Inserts a figure environment",
-    "table": "Inserts a tabular environment",
+    "table": "Inserts a table (a tabular environment in LaTeX)",
     "align": "Inserts an align environment",
-    "equation": "Inserts an equation environment"
+    "equation": "Inserts a display equation (an equation environment in LaTeX)",
+    "cut": "Clipboard command, use the platform's usual Edit menu wording",
+    "copy": "Clipboard command, use the platform's usual Edit menu wording",
+    "paste": "Clipboard command, use the platform's usual Edit menu wording",
+    "selectAll": "Clipboard command, use the platform's usual Edit menu wording",
+    "format": "Submenu of text formatting such as bold and italic. Not the code formatter behind Format document",
+    "insert": "Submenu of things to insert at the caret, such as headings, tables and equations",
+    "importExport": "Submenu for importing a table from a file, saving an equation as an image, and converting LaTeX math"
+  },
+  "selectionActions": {
+    "customPrompt": "Placeholder of the field where the person types their own instruction for rewriting the selected text"
   },
   "shell": {
     "diffIndex": "Git index side of a diff tab, shown in parentheses after the file name",
@@ -160,6 +170,12 @@
         "label": "Slash-command hint for inserting a cross-reference target",
         "bold": "Slash-command hint for inserting bold text",
         "italic": "Slash-command hint for inserting italic text"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "Slash-command hint for inserting a Markdown pipe table",
+        "equation": "Slash-command hint for inserting a $$ display equation"
       }
     },
     "wysiwyg": {

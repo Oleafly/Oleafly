@@ -235,18 +235,28 @@
       "addDescription": "以基礎 URL 連接任何相容 OpenAI 的端點。",
       "addTitle": "新增自訂供應商",
       "baseUrlLabel": "基礎 URL",
-      "baseUrlNote": "已儲存的 API 金鑰會傳送到這個新位址。",
+      "baseUrlNote": "已儲存的 API 金鑰不會傳送到新位址。請重新輸入，如果新伺服器不需要金鑰，也可以留空。",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "{{url}} 拒絕了這組 API 金鑰。",
+        "rejected": "{{url}} 沒有回傳模型清單。大多數本機伺服器需要在位址結尾加上 /v1，例如 http://localhost:13305/v1。",
+        "timeout": "{{url}} 列出模型花了太長時間。",
+        "unreachable": "無法連線到 {{url}}。請檢查伺服器是否正在執行，位址是否正確。",
+        "unreadable": "{{url}} 已回應，但沒有列出任何模型。請檢查伺服器是否已下載模型。"
+      },
       "editDescription": "變更名稱或基礎 URL。",
       "editTitle": "編輯自訂供應商",
       "errors": {
         "addFailed": "無法新增這個供應商。",
+        "baseUrlCredentials": "請把金鑰填在 API 金鑰欄位，不要放進 URL。",
         "baseUrlHost": "這個 URL 缺少主機名稱。",
         "baseUrlInvalid": "請輸入完整的 URL，例如 https://api.example.com/v1 或 http://localhost:1234/v1。",
         "baseUrlProtocol": "請使用 https://，本機伺服器可用 http://。",
+        "baseUrlQuery": "請移除 ? 及其後的所有內容。",
         "baseUrlRequired": "必須填寫基礎 URL。",
         "idFormat": "只能使用小寫英文字母、數字與連字號，例如 acme。",
         "idRequired": "必須填寫 ID。",
+        "idTooLong": "請使用 64 個字元以內。",
         "nameRequired": "必須填寫名稱。",
         "saveFailed": "無法儲存這個供應商。"
       },
@@ -258,7 +268,9 @@
       "keyPlaceholderStored": "除非輸入新金鑰，否則保留已儲存的金鑰",
       "namePlaceholder": "Acme",
       "presetsLabel": "常用供應商",
-      "submitAdd": "新增供應商"
+      "saveAnyway": "仍要儲存",
+      "submitAdd": "新增供應商",
+      "submitAddAnyway": "新增但不含模型"
     },
     "instructions": {
       "capabilitiesTitle": "代理程式能力",
@@ -425,11 +437,13 @@
       "messages": {
         "keyRemoved": "{{provider}} 金鑰已移除。",
         "keyRemovedAccessDisabled": "{{provider}} 金鑰已移除。AI 存取已停用。",
-        "keySavedAddModels": "{{provider}} 金鑰已儲存。請在下方手動新增模型。",
         "keySavedCheckedOnUse": "{{provider}} 金鑰已儲存。會在首次使用時檢查。",
+        "keySavedModelsNotListed": "{{provider}} 金鑰已儲存，但沒有列出任何模型。{{reason}}",
         "ollamaConnected": "Ollama 已連線 · {{model}}",
         "preferencesReset": "AI 助理偏好設定已還原為預設值。",
         "providerAdded": "{{provider}} 已新增。",
+        "providerAddedAt": "{{provider}} 已新增到 {{url}}。",
+        "providerAddedWithoutModels": "{{provider}} 已新增，但沒有模型。請在下方依名稱新增模型。",
         "providerConnected": "{{provider}} 已連線。",
         "providerUpdated": "{{provider}} 已更新。",
         "providerUpdatedWithoutModels": "{{provider}} 已更新。它的模型清單無法重新整理。"

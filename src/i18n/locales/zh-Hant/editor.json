@@ -189,7 +189,14 @@
     "addLabel": "加入標籤",
     "convertLatexMath": "將 LaTeX 數學式轉換為 Typst",
     "noLatexMath": "請先選取一些 LaTeX 數學式。",
-    "renameFile": "重新命名檔案…"
+    "renameFile": "重新命名檔案…",
+    "cut": "剪下",
+    "copy": "複製",
+    "paste": "貼上",
+    "selectAll": "全選",
+    "format": "格式",
+    "insert": "插入",
+    "importExport": "匯入與匯出"
   },
   "shell": {
     "noFileOpenTab": "未開啟檔案",
@@ -318,7 +325,8 @@
     "improveWriting": "改善文筆",
     "fixGrammar": "修正文法與風格",
     "expand": "擴寫與補充",
-    "findReferences": "尋找參考文獻"
+    "findReferences": "尋找參考文獻",
+    "customPrompt": "描述修改內容…"
   },
   "versioning": {
     "dismiss": "隱藏版本管理",
@@ -938,6 +946,12 @@
         "groupAuto": "與其他參考文獻連續編號",
         "groupNone": "單獨編號",
         "groupNamed": "與同名參考文獻連續編號"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "表格",
+        "equation": "行間公式"
       }
     },
     "wysiwyg": {

@@ -189,7 +189,14 @@
     "addLabel": "ラベルを追加",
     "convertLatexMath": "LaTeX の数式を Typst に変換",
     "noLatexMath": "先に LaTeX の数式を選択してください。",
-    "renameFile": "ファイル名を変更…"
+    "renameFile": "ファイル名を変更…",
+    "cut": "カット",
+    "copy": "コピー",
+    "paste": "ペースト",
+    "selectAll": "すべてを選択",
+    "format": "書式",
+    "insert": "挿入",
+    "importExport": "読み込みと書き出し"
   },
   "shell": {
     "noFileOpenTab": "ファイルが開かれていません",
@@ -318,7 +325,8 @@
     "improveWriting": "文章を改善",
     "fixGrammar": "文法と文体を直す",
     "expand": "詳しく書き足す",
-    "findReferences": "参照を検索"
+    "findReferences": "参照を検索",
+    "customPrompt": "変更内容を説明してください…"
   },
   "versioning": {
     "dismiss": "バージョン管理を閉じる",
@@ -938,6 +946,12 @@
         "groupAuto": "ほかの参考文献と通し番号にする",
         "groupNone": "単独で番号を付ける",
         "groupNamed": "同じ名前の参考文献と通し番号にする"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "表",
+        "equation": "ディスプレイ数式"
       }
     },
     "wysiwyg": {

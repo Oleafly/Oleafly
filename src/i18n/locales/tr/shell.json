@@ -823,26 +823,43 @@
         "linkedFolders_other": "Açılan {{count}} klasörün derleme çıktısı ve ayarları: {{size}}",
         "refresh": "Depolama kullanımını yenile",
         "stats": {
-          "appData": "Uygulama verileri",
-          "appDataDetail": "Varlıklar ve ayarlar",
-          "buildCache": "Derleme önbelleği",
-          "buildCacheDetail": "Üretilen çıktı",
           "files": "Dosyalar",
           "folders_one": "{{count}} klasör",
           "folders_other": "{{count}} klasör",
-          "gitHistory": "Git geçmişi",
-          "gitHistoryDetail": "Yerel sürümler",
           "images": "Görseller",
           "pdfs": "PDF'ler",
-          "projectFiles": "Proje dosyaları",
-          "projectFilesDetail": "Kaynaklar ve üst veriler",
           "projects": "Projeler"
         },
         "subtitle": "Projeler, önizlemeler, geçmiş ve uygulama verileri",
         "title": "Depolama kullanımı",
         "total": "Oleafly veri klasöründe toplam {{size}}",
         "unreadable_one": "{{count}} erişilemeyen öge dışarıda bırakıldı.",
-        "unreadable_other": "{{count}} erişilemeyen öge dışarıda bırakıldı."
+        "unreadable_other": "{{count}} erişilemeyen öge dışarıda bırakıldı.",
+        "groups": {
+          "projects": "Projeler",
+          "appData": "Uygulama verileri",
+          "elsewhere": "Başka yerlerde"
+        },
+        "parts": {
+          "documents": "Belgeler ve kod",
+          "images": "Görseller",
+          "pdfs": "PDF'ler",
+          "media": "Ses ve video",
+          "data": "Veri dosyaları",
+          "otherFiles": "Diğer dosyalar",
+          "git": "Git geçmişi",
+          "build": "Derleme önbelleği",
+          "texDistribution": "TeX dağıtımı",
+          "agents": "Yapay zeka ajanları",
+          "researchTasks": "Araştırma görevleri",
+          "tools": "Araçlar",
+          "checkpoints": "Kontrol noktaları",
+          "compileCache": "Derleyici önbelleği",
+          "otherAppData": "Ayarlar ve diğer veriler",
+          "recycleBin": "Geri Dönüşüm Kutusu",
+          "linkedFolders": "Açılan klasörler"
+        },
+        "other": "Diğer"
       },
       "tabs": {
         "cloud": "Bulut eşitleme",

@@ -236,18 +236,28 @@
       "addDescription": "Yhdistä mikä tahansa OpenAI-yhteensopiva päätepiste sen perus-URL-osoitteella.",
       "addTitle": "Lisää mukautettu palvelu",
       "baseUrlLabel": "Perus-URL",
-      "baseUrlNote": "Tallennettu API-avaimesi lähetetään tähän uuteen osoitteeseen.",
+      "baseUrlNote": "Tallennettua API-avainta ei lähetetä uuteen osoitteeseen. Anna se uudelleen tai jätä kenttä tyhjäksi, jos uusi palvelin ei tarvitse avainta.",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "Palvelin osoitteessa {{url}} hylkäsi API-avaimen.",
+        "rejected": "Palvelin osoitteessa {{url}} ei palauttanut malliluetteloa. Useimmat paikalliset palvelimet tarvitsevat osoitteen loppuun /v1, esimerkiksi http://localhost:13305/v1.",
+        "timeout": "Mallien luettelointi osoitteesta {{url}} kesti liian kauan.",
+        "unreachable": "Osoitteeseen {{url}} ei saatu yhteyttä. Tarkista, että palvelin on käynnissä ja osoite on oikea.",
+        "unreadable": "Palvelin osoitteessa {{url}} vastasi, mutta ei luetellut yhtään mallia. Tarkista, että palvelimelle on ladattu malli."
+      },
       "editDescription": "Vaihda nimi tai perus-URL.",
       "editTitle": "Muokkaa mukautettua palvelua",
       "errors": {
         "addFailed": "Palvelua ei voitu lisätä.",
+        "baseUrlCredentials": "Kirjoita avain API-avaimen kenttään, älä URL-osoitteeseen.",
         "baseUrlHost": "URL-osoitteesta puuttuu palvelinnimi.",
         "baseUrlInvalid": "Anna täydellinen URL, esimerkiksi https://api.example.com/v1 tai http://localhost:1234/v1.",
         "baseUrlProtocol": "Käytä muotoa https:// tai paikallisella palvelimella http://.",
+        "baseUrlQuery": "Poista ? ja kaikki sen jälkeinen.",
         "baseUrlRequired": "Perus-URL on pakollinen.",
         "idFormat": "Käytä vain pieniä kirjaimia, numeroita ja väliviivoja, esimerkiksi acme.",
         "idRequired": "Tunnus on pakollinen.",
+        "idTooLong": "Käytä enintään 64 merkkiä.",
         "nameRequired": "Nimi on pakollinen.",
         "saveFailed": "Palvelua ei voitu tallentaa."
       },
@@ -259,7 +269,9 @@
       "keyPlaceholderStored": "Tallennettu avain säilyy, ellet anna uutta",
       "namePlaceholder": "Acme",
       "presetsLabel": "Yleiset palvelut",
-      "submitAdd": "Lisää palvelu"
+      "saveAnyway": "Tallenna silti",
+      "submitAdd": "Lisää palvelu",
+      "submitAddAnyway": "Lisää ilman malleja"
     },
     "instructions": {
       "capabilitiesTitle": "Agentin kyvyt",
@@ -427,11 +439,13 @@
       "messages": {
         "keyRemoved": "Palvelun {{provider}} avain poistettiin.",
         "keyRemovedAccessDisabled": "Palvelun {{provider}} avain poistettiin. Tekoälyn käyttö on pois käytöstä.",
-        "keySavedAddModels": "Palvelun {{provider}} avain tallennettiin. Lisää mallit käsin alta.",
         "keySavedCheckedOnUse": "Palvelun {{provider}} avain tallennettiin. Se tarkistetaan ensimmäisellä käyttökerralla.",
+        "keySavedModelsNotListed": "Palvelun {{provider}} avain tallennettiin, mutta malleja ei lueteltu. {{reason}}",
         "ollamaConnected": "Ollama yhdistetty · {{model}}",
         "preferencesReset": "Tekoälyavustajan asetukset palautettiin oletuksiin.",
         "providerAdded": "{{provider}} lisättiin.",
+        "providerAddedAt": "{{provider}} lisättiin osoitteeseen {{url}}.",
+        "providerAddedWithoutModels": "{{provider}} lisättiin ilman malleja. Lisää malli nimellä alla.",
         "providerConnected": "{{provider}} yhdistettiin.",
         "providerUpdated": "{{provider}} päivitettiin.",
         "providerUpdatedWithoutModels": "{{provider}} päivitettiin. Sen malliluetteloa ei voitu päivittää."

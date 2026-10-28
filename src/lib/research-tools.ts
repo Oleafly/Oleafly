@@ -6,6 +6,9 @@ import {
   type ResearchTaskToolsHost,
   type ResearchToolsHost,
 } from "@oleafly/ai-tools";
+// Not components/ai/provider-config: it adds a window listener when imported,
+// and this module is imported by the MCP bridge at startup.
+import { hasConfiguredProvider, pickActiveProvider } from "@/lib/ai-providers";
 import { getConfig, type AppConfig } from "@/lib/tauri";
 import { retrieveProjectChunks } from "@/lib/ai-rag";
 import { verifyCitation } from "@/lib/research-literature";
@@ -43,27 +46,23 @@ export function defaultGoal(prompt: string): string {
 }
 
 /**
- * The built-in agent a task created by a tool runs on: the AI provider from
- * Settings that has a key, and its model. A task without one fails as soon as it starts.
+ * The built-in agent a task created by a tool runs on: the AI provider the
+ * assistant uses (one with a key, or a custom provider that needs none), and its
+ * model. A task without one fails as soon as it starts.
  */
 export async function builtinTaskAgent(config: AppConfig): Promise<{ agentId: string; modelId: string }> {
-  // Loaded on use: provider-config brings in the config cache, which
-  // registers a window listener when it is imported, and this module is
-  // imported by the MCP bridge at startup.
-  const { deriveProviderState } = await import("@/components/ai/provider-config");
-  const state = deriveProviderState(config);
-  const keyOptional = state.customProviders.some((custom) => custom.id === state.provider && custom.keyOptional);
-  if (!state.keysMap[state.provider]?.trim() && !keyOptional) {
+  const { providerId, modelId } = pickActiveProvider(config);
+  if (!hasConfiguredProvider(config)) {
     throw new Error(
       "No AI provider has an API key in Oleafly's settings, so a research task has no agent to run it. Ask the user to add a key in Settings, AI, or to create the task from the Research panel.",
     );
   }
-  if (!state.model.trim()) {
+  if (!modelId.trim()) {
     throw new Error(
-      `No model is chosen for ${state.provider} in Oleafly's settings, so a research task can't run. Ask the user to choose one in Settings, AI.`,
+      `No model is chosen for ${providerId} in Oleafly's settings, so a research task can't run. Ask the user to choose one in Settings, AI.`,
     );
   }
-  return { agentId: state.provider, modelId: state.model };
+  return { agentId: providerId, modelId };
 }
 
 function taskStatus(task: ResearchTask) {

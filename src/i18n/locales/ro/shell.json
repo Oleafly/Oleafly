@@ -836,20 +836,12 @@
         "linkedFolders_other": "{{size}} de rezultate de compilare și setări pentru {{count}} de foldere deschise",
         "refresh": "Reîmprospătează spațiul folosit",
         "stats": {
-          "appData": "Datele aplicației",
-          "appDataDetail": "Resurse și setări",
-          "buildCache": "Cache de compilare",
-          "buildCacheDetail": "Rezultate generate",
           "files": "Fișiere",
           "folders_one": "{{count}} folder",
           "folders_few": "{{count}} foldere",
           "folders_other": "{{count}} de foldere",
-          "gitHistory": "Istoric Git",
-          "gitHistoryDetail": "Versiuni locale",
           "images": "Imagini",
           "pdfs": "Fișiere PDF",
-          "projectFiles": "Fișierele proiectelor",
-          "projectFilesDetail": "Surse și metadate",
           "projects": "Proiecte"
         },
         "subtitle": "Proiecte, previzualizări, istoric și datele aplicației",
@@ -857,7 +849,32 @@
         "total": "{{size}} în folderul de date Oleafly",
         "unreadable_one": "{{count}} element inaccesibil a fost exclus.",
         "unreadable_few": "{{count}} elemente inaccesibile au fost excluse.",
-        "unreadable_other": "{{count}} de elemente inaccesibile au fost excluse."
+        "unreadable_other": "{{count}} de elemente inaccesibile au fost excluse.",
+        "groups": {
+          "projects": "Proiecte",
+          "appData": "Datele aplicației",
+          "elsewhere": "În altă parte"
+        },
+        "parts": {
+          "documents": "Documente și cod",
+          "images": "Imagini",
+          "pdfs": "Fișiere PDF",
+          "media": "Audio și video",
+          "data": "Fișiere de date",
+          "otherFiles": "Alte fișiere",
+          "git": "Istoric Git",
+          "build": "Cache de compilare",
+          "texDistribution": "Distribuție TeX",
+          "agents": "Agenți IA",
+          "researchTasks": "Sarcini de cercetare",
+          "tools": "Instrumente",
+          "checkpoints": "Puncte de control",
+          "compileCache": "Cache pentru compilator",
+          "otherAppData": "Setări și alte date",
+          "recycleBin": "Coșul de reciclare",
+          "linkedFolders": "Foldere deschise"
+        },
+        "other": "Altele"
       },
       "tabs": {
         "cloud": "Sincronizare în cloud",

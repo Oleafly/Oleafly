@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::Value;
 
@@ -8,7 +8,9 @@ use crate::event::AgentEvent;
 use crate::provider::Wire;
 use crate::sse::SseEvent;
 use crate::stream::anthropic_blocks::{AnthropicBlocks, AssistantBlock};
+use crate::stream::text_calls::{Settled, TextCallWatch};
 use crate::stream::{out_of_capacity, ToolCall, MAX_STREAM_TOOL_CALLS};
+use crate::tool::ToolSchema;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WireKind {
@@ -50,6 +52,8 @@ pub struct Translator {
     container: Option<String>,
     input_transformations: Vec<Value>,
     refusal_category: Option<String>,
+    /// Watches a chat reply for tool calls written as text.
+    text_calls: Option<TextCallWatch>,
 }
 
 impl Translator {
@@ -70,7 +74,19 @@ impl Translator {
             container: None,
             input_transformations: Vec::new(),
             refusal_category: None,
+            text_calls: None,
         }
+    }
+
+    /// Reads a chat reply's text as tool calls when the model wrote them
+    /// there instead of in `tool_calls`. Only the tools offered count, and
+    /// only the chat wire, where llama.cpp-served models do this.
+    pub fn offering(mut self, tools: &[ToolSchema]) -> Self {
+        if self.kind == WireKind::OpenAi && !tools.is_empty() {
+            let names: BTreeSet<String> = tools.iter().map(|tool| tool.name.clone()).collect();
+            self.text_calls = Some(TextCallWatch::new(names));
+        }
+        self
     }
 
     pub fn error(&self) -> Option<&AgentError> {
@@ -99,7 +115,8 @@ impl Translator {
     }
 
     pub fn finish(&mut self) -> Vec<AgentEvent> {
-        let mut out = self.close_all();
+        let mut out = self.settle_text_calls();
+        out.extend(self.close_all());
         if !self.done {
             self.done = true;
             out.push(AgentEvent::Done {
@@ -148,6 +165,39 @@ impl Translator {
 
     pub(crate) fn has_tool_calls(&self) -> bool {
         !self.open.is_empty() || !self.finished.is_empty()
+    }
+
+    /// Reply text held back in case it is a tool call.
+    pub(crate) fn holds_text(&self) -> bool {
+        self.text_calls
+            .as_ref()
+            .is_some_and(TextCallWatch::holds_text)
+    }
+
+    /// Turns the held reply into the calls it wrote, or shows it as text.
+    fn settle_text_calls(&mut self) -> Vec<AgentEvent> {
+        let Some(mut watch) = self.text_calls.take() else {
+            return Vec::new();
+        };
+        match watch.finish() {
+            Settled::Nothing => Vec::new(),
+            Settled::Text(text) => vec![AgentEvent::TextDelta { text }],
+            Settled::Calls(calls) => {
+                let mut out = Vec::new();
+                for (name, arguments) in calls {
+                    self.synthetic += 1;
+                    let index = -self.synthetic;
+                    let id = format!("call_{}_{}_{}", name, self.stream_tag, self.synthetic);
+                    out.extend(self.start_call(index, id, name));
+                    out.extend(self.push_args(index, &arguments));
+                    out.extend(self.close_call(index));
+                }
+                if matches!(self.stop_reason.as_deref(), None | Some("stop")) {
+                    self.stop_reason = Some("tool_calls".into());
+                }
+                out
+            }
+        }
     }
 
     fn start_call(&mut self, index: i64, id: String, name: String) -> Vec<AgentEvent> {
@@ -215,6 +265,11 @@ impl Translator {
         let Ok(value) = serde_json::from_str::<Value>(&event.data) else {
             return self.decode_failure(&event.data);
         };
+        if let Some(error) = chat_stream_error(&value) {
+            self.done = true;
+            self.error = Some(error);
+            return Vec::new();
+        }
         let mut out = Vec::new();
 
         if let Some(usage) = value.get("usage").filter(|u| u.is_object()) {
@@ -261,9 +316,19 @@ impl Translator {
             out.push(AgentEvent::ReasoningDelta { text });
         }
         if let Some(text) = nonempty(delta.get("content")) {
-            out.push(AgentEvent::TextDelta { text });
+            let shown = match &mut self.text_calls {
+                Some(watch) => watch.push(&text),
+                None => Some(text),
+            };
+            if let Some(text) = shown {
+                out.push(AgentEvent::TextDelta { text });
+            }
         }
         if let Some(calls) = delta.get("tool_calls").and_then(|c| c.as_array()) {
+            // The reply makes real calls, so its text is only text.
+            if let Some(text) = self.text_calls.take().and_then(|mut watch| watch.release()) {
+                out.push(AgentEvent::TextDelta { text });
+            }
             for (position, call) in calls.iter().enumerate() {
                 out.extend(self.openai_tool_call(call, position));
             }
@@ -795,6 +860,39 @@ fn responses_stream_error(code: Option<&str>, message: String) -> AgentError {
         format!("{message} ({code})")
     };
     AgentError::provider(status, message)
+}
+
+/// A chat stream chunk that carries a failure in place of a delta, as local
+/// servers send mid-stream: `{"error":{"message":"…","code":500}}` or
+/// `{"error":"…"}`. A numeric `code` in the 4xx or 5xx range is the status;
+/// anything else is a server fault.
+fn chat_stream_error(value: &Value) -> Option<AgentError> {
+    let error = value.get("error")?;
+    let text = |key: &str| {
+        error
+            .get(key)
+            .and_then(|found| found.as_str())
+            .map(str::trim)
+            .filter(|found| !found.is_empty())
+            .map(str::to_string)
+    };
+    let message = match error {
+        Value::String(message) => Some(message.trim().to_string()).filter(|m| !m.is_empty())?,
+        Value::Object(fields) if !fields.is_empty() => text("message")
+            .or_else(|| text("type"))
+            .unwrap_or_else(|| "The model server's stream failed.".to_string()),
+        _ => return None,
+    };
+    let status = error
+        .get("code")
+        .and_then(|code| {
+            code.as_u64()
+                .or_else(|| code.as_str().and_then(|code| code.trim().parse().ok()))
+        })
+        .and_then(|code| u16::try_from(code).ok())
+        .filter(|code| (400..=599).contains(code))
+        .unwrap_or(500);
+    Some(AgentError::provider(status, message))
 }
 
 fn anthropic_stream_error(kind: &str, message: String) -> AgentError {

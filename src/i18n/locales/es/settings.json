@@ -237,18 +237,28 @@
       "addDescription": "Conecta cualquier endpoint compatible con OpenAI mediante su URL base.",
       "addTitle": "Añadir un proveedor personalizado",
       "baseUrlLabel": "URL base",
-      "baseUrlNote": "Tu clave de API guardada se enviará a esta dirección nueva.",
+      "baseUrlNote": "La clave de API guardada no se envía a una dirección nueva. Vuelve a escribirla o déjala en blanco si el servidor nuevo no necesita clave.",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "{{url}} rechazó la clave de API.",
+        "rejected": "{{url}} no devolvió una lista de modelos. La mayoría de los servidores locales necesitan /v1 al final de la dirección, como http://localhost:13305/v1.",
+        "timeout": "{{url}} tardó demasiado en listar sus modelos.",
+        "unreachable": "No se pudo conectar con {{url}}. Comprueba que el servidor esté en marcha y que la dirección sea correcta.",
+        "unreadable": "{{url}} respondió, pero no listó ningún modelo. Comprueba que el servidor tenga un modelo descargado."
+      },
       "editDescription": "Cambia el nombre o la URL base.",
       "editTitle": "Editar el proveedor personalizado",
       "errors": {
         "addFailed": "No se pudo añadir ese proveedor.",
+        "baseUrlCredentials": "Escribe la clave en el campo Clave de API, no en la URL.",
         "baseUrlHost": "A la URL le falta el host.",
         "baseUrlInvalid": "Escribe una URL completa, por ejemplo https://api.example.com/v1 o http://localhost:1234/v1.",
         "baseUrlProtocol": "Usa https://, o http:// para un servidor local.",
+        "baseUrlQuery": "Quita el ? y todo lo que va después.",
         "baseUrlRequired": "La URL base es obligatoria.",
         "idFormat": "Usa solo minúsculas, cifras y guiones, por ejemplo acme.",
         "idRequired": "El ID es obligatorio.",
+        "idTooLong": "Usa 64 caracteres o menos.",
         "nameRequired": "El nombre es obligatorio.",
         "saveFailed": "No se pudo guardar ese proveedor."
       },
@@ -260,7 +270,9 @@
       "keyPlaceholderStored": "La clave guardada se mantiene salvo que escribas otra",
       "namePlaceholder": "Acme",
       "presetsLabel": "Proveedores habituales",
-      "submitAdd": "Añadir el proveedor"
+      "saveAnyway": "Guardar de todos modos",
+      "submitAdd": "Añadir el proveedor",
+      "submitAddAnyway": "Añadir sin modelos"
     },
     "instructions": {
       "capabilitiesTitle": "Capacidades del agente",
@@ -429,11 +441,13 @@
       "messages": {
         "keyRemoved": "Se quitó la clave de {{provider}}.",
         "keyRemovedAccessDisabled": "Se quitó la clave de {{provider}}. El acceso a la IA está desactivado.",
-        "keySavedAddModels": "Clave de {{provider}} guardada. Añade los modelos a mano abajo.",
         "keySavedCheckedOnUse": "Clave de {{provider}} guardada. Se comprueba la primera vez que se use.",
+        "keySavedModelsNotListed": "Clave de {{provider}} guardada, pero no se listó ningún modelo. {{reason}}",
         "ollamaConnected": "Ollama conectado · {{model}}",
         "preferencesReset": "Se restauraron las preferencias del asistente de IA a sus valores predeterminados.",
         "providerAdded": "Se añadió {{provider}}.",
+        "providerAddedAt": "Se añadió {{provider}} en {{url}}.",
+        "providerAddedWithoutModels": "Se añadió {{provider}} sin modelos. Añade un modelo por su nombre abajo.",
         "providerConnected": "{{provider}} está conectado.",
         "providerUpdated": "Se actualizó {{provider}}.",
         "providerUpdatedWithoutModels": "Se actualizó {{provider}}. No se pudo actualizar su lista de modelos."

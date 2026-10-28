@@ -21,6 +21,8 @@
     "core:window:allow-start-dragging",
     "shell:allow-open",
     "os:default",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text",
     "updater:allow-check"
   ]
 }

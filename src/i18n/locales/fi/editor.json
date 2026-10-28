@@ -189,7 +189,14 @@
     "addLabel": "Lisää nimike",
     "convertLatexMath": "Muunna LaTeX-matematiikka Typst-muotoon",
     "noLatexMath": "Valitse ensin LaTeX-matematiikkaa.",
-    "renameFile": "Nimeä tiedosto uudelleen…"
+    "renameFile": "Nimeä tiedosto uudelleen…",
+    "cut": "Leikkaa",
+    "copy": "Kopioi",
+    "paste": "Liitä",
+    "selectAll": "Valitse kaikki",
+    "format": "Muotoilu",
+    "insert": "Lisää",
+    "importExport": "Tuonti ja vienti"
   },
   "shell": {
     "noFileOpenTab": "Ei avointa tiedostoa",
@@ -322,7 +329,8 @@
     "improveWriting": "Paranna tekstiä",
     "fixGrammar": "Korjaa kielioppi ja tyyli",
     "expand": "Laajenna ja tarkenna",
-    "findReferences": "Etsi viitteet"
+    "findReferences": "Etsi viitteet",
+    "customPrompt": "Kuvaile muutos…"
   },
   "versioning": {
     "dismiss": "Piilota versiointi",
@@ -952,6 +960,12 @@
         "groupAuto": "numerointi yhdessä muiden lähdeluetteloiden kanssa",
         "groupNone": "oma numerointi",
         "groupNamed": "numerointi samannimisten lähdeluetteloiden kanssa"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "Taulukko",
+        "equation": "Erillinen kaava"
       }
     },
     "wysiwyg": {

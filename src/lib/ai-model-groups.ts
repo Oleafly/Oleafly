@@ -3,7 +3,7 @@
 // model. One helper so they agree on what "configured" and "listed" mean.
 import type { ModelSelectorGroup, ModelSelectorModel } from "@/components/ai/ModelSelector";
 import { enabledModels } from "@/lib/ai-model-state";
-import { mergeCustomProviders, type AIProvider } from "@/lib/ai-providers";
+import { isProviderConfigured, mergeCustomProviders, type AIProvider } from "@/lib/ai-providers";
 import type { CustomProvider, StoredModel } from "@/lib/tauri";
 
 export interface ModelGroupSource {
@@ -15,7 +15,7 @@ export interface ModelGroupSource {
 export interface ModelGroupOptions {
   /** Live Ollama tags. When non-empty they replace the stored Ollama list (ChatCore). */
   liveOllama?: readonly string[];
-  /** Keep this model in its provider's group even if nothing lists it (ChatCore's active model). */
+  /** Keep this model in its provider's group even if nothing lists it (ChatCore's active model). A blank id keeps nothing. */
   keep?: { providerId: string; modelId: string };
   /** Shape a stored model. Default: `{ id, name }`. */
   toModel?: (providerId: string, stored: StoredModel) => ModelSelectorModel;
@@ -28,10 +28,9 @@ export interface ModelGroupOptions {
 /** Providers the user set up: a saved key or host, or a custom provider
  * that needs no key. In catalog order, custom providers last. */
 export function configuredProviders(source: ModelGroupSource): AIProvider[] {
-  return mergeCustomProviders([...source.customProviders]).filter((provider) => {
-    if ((source.keys[provider.id] ?? "").trim().length > 0) return true;
-    return Boolean(source.customProviders.find((custom) => custom.id === provider.id)?.keyOptional);
-  });
+  return mergeCustomProviders([...source.customProviders]).filter((provider) =>
+    isProviderConfigured(provider.id, source.keys, source.customProviders),
+  );
 }
 
 function plainModel(_providerId: string, stored: StoredModel): ModelSelectorModel {
@@ -72,7 +71,7 @@ export function configuredModelGroups(
       models = models.filter((model) => include(provider.id, model));
     }
     const keep = options.keep;
-    if (keep?.providerId === provider.id && keep.modelId && !models.some((model) => model.id === keep.modelId)) {
+    if (keep?.providerId === provider.id && keep.modelId.trim() && !models.some((model) => model.id === keep.modelId)) {
       models = [...models, { id: keep.modelId, name: keep.modelId }];
     }
     if (models.length === 0 && options.dropEmpty !== false) continue;

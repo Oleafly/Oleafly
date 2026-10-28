@@ -189,7 +189,14 @@
     "addLabel": "Tilføj etiket",
     "convertLatexMath": "Konverter LaTeX-matematik til Typst",
     "noLatexMath": "Marker noget LaTeX-matematik først.",
-    "renameFile": "Omdøb fil…"
+    "renameFile": "Omdøb fil…",
+    "cut": "Klip",
+    "copy": "Kopier",
+    "paste": "Sæt ind",
+    "selectAll": "Vælg alt",
+    "format": "Format",
+    "insert": "Indsæt",
+    "importExport": "Import og eksport"
   },
   "shell": {
     "noFileOpenTab": "Ingen fil er åben",
@@ -322,7 +329,8 @@
     "improveWriting": "Forbedr teksten",
     "fixGrammar": "Ret grammatik og stil",
     "expand": "Uddyb og udbyg",
-    "findReferences": "Find referencer"
+    "findReferences": "Find referencer",
+    "customPrompt": "Beskriv ændringen…"
   },
   "versioning": {
     "dismiss": "Luk versionering",
@@ -952,6 +960,12 @@
         "groupAuto": "nummerer sammen med de andre litteraturlister",
         "groupNone": "nummerer for sig",
         "groupNamed": "nummerer sammen med litteraturlister med samme navn"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "Tabel",
+        "equation": "Ligning på egen linje"
       }
     },
     "wysiwyg": {

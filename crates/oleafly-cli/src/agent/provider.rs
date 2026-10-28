@@ -2,13 +2,14 @@
 //!
 //! Provider: `--provider`, then `OLEAFLY_PROVIDER`, then the app's choice.
 //! Model: `--model`, then `OLEAFLY_MODEL`, then the app's choice.
-//! Credential: the provider's own variable (or `OLEAFLY_API_KEY`), then
-//! the app's encrypted store. The app's model trust list is not applied:
-//! a model that is not turned on still runs, with a warning.
+//! Credential: the provider's own variable (or `OLEAFLY_API_KEY`, which a
+//! key-optional custom provider never gets), then the app's encrypted store.
+//! The app's model trust list is not applied: a model that is not turned on
+//! still runs, with a warning.
 use std::path::Path;
 
 use oleafly_agent::provider::{
-    catalog_entry, default_model, resolve_for_probe, resolve_specific, CATALOG,
+    catalog_entry, default_model, legacy_key_applies, resolve_for_probe, resolve_specific, CATALOG,
 };
 use oleafly_agent::{Effort, InputTokenSemantics, ModelCaps, Usage};
 use serde_json::Value;
@@ -287,10 +288,22 @@ pub fn resolve(
             hint: format!("Pass --model with a model of {provider_id}."),
         });
     }
+    // A custom entry never relaxes a catalog provider's key.
+    let key_optional =
+        catalog.is_none() && custom.as_ref().is_some_and(|custom| custom.key_optional);
+    let is_host = catalog.is_some_and(|entry| entry.is_host);
+    // `OLEAFLY_API_KEY` stands in for a provider's own variable, but not for a
+    // key-optional custom provider: that is usually a local server, and the
+    // key was meant for some other service.
     let env_credential = env_key_names(&provider_id)
         .iter()
         .find_map(|name| env_value(name).map(|value| (*name, value)))
-        .or_else(|| env_value("OLEAFLY_API_KEY").map(|value| ("OLEAFLY_API_KEY", value)));
+        .or_else(|| {
+            if key_optional {
+                return None;
+            }
+            env_value("OLEAFLY_API_KEY").map(|value| ("OLEAFLY_API_KEY", value))
+        });
     if let Some((_, value)) = &env_credential {
         ai.keys.insert(provider_id.clone(), value.clone());
     }
@@ -298,14 +311,24 @@ pub fn resolve(
         .keys
         .get(&provider_id)
         .cloned()
-        .or_else(|| (ai.provider == provider_id).then(|| ai.legacy_key.clone()))
+        .or_else(|| {
+            (ai.provider == provider_id && legacy_key_applies(&provider_id))
+                .then(|| ai.legacy_key.clone())
+        })
         .unwrap_or_default();
-    let key_optional = custom.as_ref().is_some_and(|custom| custom.key_optional);
-    let is_host = catalog.is_some_and(|entry| entry.is_host);
+    // An older settings entry with no key anywhere: it was most likely added
+    // for a key-less local server, so the run goes without one.
+    let keyless = catalog.is_none() && config.keyless_custom.contains(&provider_id);
     let source = match &env_credential {
         Some((name, _)) => CredentialSource::Env(name),
         None if !stored_key.trim().is_empty() => CredentialSource::Store,
         None if key_optional || is_host => CredentialSource::NotNeeded,
+        None if keyless => {
+            if let Some(custom) = ai.custom.iter_mut().find(|custom| custom.id == provider_id) {
+                custom.key_optional = true;
+            }
+            CredentialSource::NotNeeded
+        }
         None => {
             let env_names = env_key_names(&provider_id);
             return Err(ResolveError::MissingKey {
@@ -655,6 +678,182 @@ mod tests {
         .unwrap();
         assert_eq!(resolved.source, CredentialSource::NotNeeded);
         assert_eq!(resolved.resolved.credential, "");
+    }
+
+    fn custom_config(key_optional: bool) -> DesktopConfig {
+        config_with(oleafly_agent::ProviderConfig {
+            custom: vec![oleafly_agent::CustomProvider {
+                id: "lemonade".into(),
+                base_url: "http://localhost:13305/v1".into(),
+                key_optional,
+            }],
+            ..Default::default()
+        })
+    }
+
+    #[test]
+    fn the_shared_env_key_is_not_sent_to_a_key_optional_custom_provider() {
+        let root = tempfile::tempdir().unwrap();
+        let env = |name: &str| (name == "OLEAFLY_API_KEY").then(|| "sk-other-service".to_string());
+        let resolved = resolve(
+            root.path(),
+            &custom_config(true),
+            &choice(Some("lemonade"), Some("Qwen3-8B")),
+            &env,
+        )
+        .unwrap();
+        assert_eq!(resolved.source, CredentialSource::NotNeeded);
+        assert_eq!(resolved.resolved.credential, "");
+        assert_eq!(resolved.resolved.auth, None);
+    }
+
+    #[test]
+    fn the_shared_env_key_still_serves_providers_that_need_a_key() {
+        let root = tempfile::tempdir().unwrap();
+        let env = |name: &str| (name == "OLEAFLY_API_KEY").then(|| "sk-shared".to_string());
+        let keyed = resolve(
+            root.path(),
+            &custom_config(false),
+            &choice(Some("lemonade"), Some("Qwen3-8B")),
+            &env,
+        )
+        .unwrap();
+        assert_eq!(keyed.source, CredentialSource::Env("OLEAFLY_API_KEY"));
+        assert_eq!(keyed.resolved.auth.as_deref(), Some("sk-shared"));
+
+        let catalog = resolve(
+            root.path(),
+            &DesktopConfig::empty(),
+            &choice(Some("openai"), Some("gpt-6.1-sol")),
+            &env,
+        )
+        .unwrap();
+        assert_eq!(catalog.source, CredentialSource::Env("OLEAFLY_API_KEY"));
+    }
+
+    #[test]
+    fn an_older_entry_without_a_stored_key_takes_the_shared_key_or_runs_without_one() {
+        let root = tempfile::tempdir().unwrap();
+        let mut config = custom_config(false);
+        config.keyless_custom.insert("lemonade".into());
+
+        let shared = |name: &str| (name == "OLEAFLY_API_KEY").then(|| "sk-shared".to_string());
+        let with_env = resolve(
+            root.path(),
+            &config,
+            &choice(Some("lemonade"), Some("Qwen3-8B")),
+            &shared,
+        )
+        .unwrap();
+        assert_eq!(with_env.source, CredentialSource::Env("OLEAFLY_API_KEY"));
+        assert_eq!(with_env.resolved.auth.as_deref(), Some("sk-shared"));
+
+        let without = resolve(
+            root.path(),
+            &config,
+            &choice(Some("lemonade"), Some("Qwen3-8B")),
+            &|_| None,
+        )
+        .unwrap();
+        assert_eq!(without.source, CredentialSource::NotNeeded);
+        assert_eq!(without.resolved.auth, None);
+    }
+
+    #[test]
+    fn a_guessed_key_less_entry_does_not_count_as_a_configured_provider() {
+        let mut config = custom_config(false);
+        config.keyless_custom.insert("lemonade".into());
+        assert!(!configured(&config));
+    }
+
+    #[test]
+    fn a_key_optional_custom_provider_still_uses_a_provider_variable_it_is_given() {
+        let root = tempfile::tempdir().unwrap();
+        let mut config = custom_config(true);
+        config.ai.keys.insert("lemonade".into(), "sk-stored".into());
+        let resolved = resolve(
+            root.path(),
+            &config,
+            &choice(Some("lemonade"), Some("Qwen3-8B")),
+            &no_env,
+        )
+        .unwrap();
+        assert_eq!(resolved.source, CredentialSource::Store);
+        assert_eq!(resolved.resolved.auth.as_deref(), Some("sk-stored"));
+    }
+
+    #[test]
+    fn the_legacy_key_is_neither_used_nor_reported_for_a_custom_provider() {
+        let root = tempfile::tempdir().unwrap();
+        let mut config = custom_config(true);
+        config.ai.provider = "lemonade".into();
+        config.ai.legacy_key = "sk-old-openai".into();
+        let resolved = resolve(
+            root.path(),
+            &config,
+            &choice(None, Some("Qwen3-8B")),
+            &no_env,
+        )
+        .unwrap();
+        assert_eq!(resolved.source, CredentialSource::NotNeeded);
+        assert_eq!(resolved.resolved.credential, "");
+        assert_eq!(resolved.resolved.auth, None);
+
+        let mut keyed = custom_config(false);
+        keyed.ai.provider = "lemonade".into();
+        keyed.ai.legacy_key = "sk-old-openai".into();
+        let error = resolve(
+            root.path(),
+            &keyed,
+            &choice(None, Some("Qwen3-8B")),
+            &no_env,
+        )
+        .err()
+        .unwrap();
+        assert!(
+            matches!(error, ResolveError::MissingKey { ref provider, .. } if provider == "lemonade")
+        );
+    }
+
+    #[test]
+    fn a_saved_catalog_provider_still_uses_the_legacy_key() {
+        let root = tempfile::tempdir().unwrap();
+        let config = config_with(oleafly_agent::ProviderConfig {
+            provider: "openai".into(),
+            model: "gpt-6.1-sol".into(),
+            legacy_key: "sk-legacy".into(),
+            ..Default::default()
+        });
+        let resolved = resolve(root.path(), &config, &choice(None, None), &no_env).unwrap();
+        assert_eq!(resolved.source, CredentialSource::Store);
+        assert_eq!(resolved.resolved.auth.as_deref(), Some("sk-legacy"));
+    }
+
+    #[test]
+    fn a_saved_custom_provider_with_no_model_is_not_swapped_for_a_cloud_provider() {
+        let root = tempfile::tempdir().unwrap();
+        let mut config = custom_config(true);
+        config.ai.provider = "lemonade".into();
+        config.ai.keys.insert("groq".into(), "gsk-cloud".into());
+        config
+            .ai
+            .enabled_models
+            .insert("lemonade".into(), Vec::new());
+        config
+            .ai
+            .enabled_models
+            .insert("groq".into(), vec!["llama-enabled".into()]);
+
+        let error = resolve(root.path(), &config, &choice(None, None), &no_env)
+            .err()
+            .unwrap();
+        match error {
+            ResolveError::NoProvider { hint } => {
+                assert!(hint.contains("lemonade"), "{hint}");
+                assert!(!hint.contains("groq"), "{hint}");
+            }
+            other => panic!("unexpected error {other:?}"),
+        }
     }
 
     #[test]

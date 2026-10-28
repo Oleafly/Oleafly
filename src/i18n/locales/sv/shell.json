@@ -823,26 +823,43 @@
         "linkedFolders_other": "{{size}} byggutdata och inställningar för {{count}} öppnade mappar",
         "refresh": "Uppdatera lagringsanvändningen",
         "stats": {
-          "appData": "Appdata",
-          "appDataDetail": "Resurser och inställningar",
-          "buildCache": "Byggcache",
-          "buildCacheDetail": "Genererad utdata",
           "files": "Filer",
           "folders_one": "{{count}} mapp",
           "folders_other": "{{count}} mappar",
-          "gitHistory": "Git-historik",
-          "gitHistoryDetail": "Lokala versioner",
           "images": "Bilder",
           "pdfs": "PDF-filer",
-          "projectFiles": "Projektfiler",
-          "projectFilesDetail": "Källkod och metadata",
           "projects": "Projekt"
         },
         "subtitle": "Projekt, förhandsvisningar, historik och appdata",
         "title": "Lagringsanvändning",
         "total": "{{size}} i Oleaflys datamapp",
         "unreadable_one": "{{count}} otillgänglig post uteslöts.",
-        "unreadable_other": "{{count}} otillgängliga poster uteslöts."
+        "unreadable_other": "{{count}} otillgängliga poster uteslöts.",
+        "groups": {
+          "projects": "Projekt",
+          "appData": "Appdata",
+          "elsewhere": "På andra platser"
+        },
+        "parts": {
+          "documents": "Dokument och kod",
+          "images": "Bilder",
+          "pdfs": "PDF-filer",
+          "media": "Ljud och video",
+          "data": "Datafiler",
+          "otherFiles": "Övriga filer",
+          "git": "Git-historik",
+          "build": "Byggcache",
+          "texDistribution": "TeX-distribution",
+          "agents": "AI-agenter",
+          "researchTasks": "Forskningsuppgifter",
+          "tools": "Verktyg",
+          "checkpoints": "Kontrollpunkter",
+          "compileCache": "Kompileringscache",
+          "otherAppData": "Inställningar och övriga data",
+          "recycleBin": "Papperskorg",
+          "linkedFolders": "Öppnade mappar"
+        },
+        "other": "Annat"
       },
       "tabs": {
         "cloud": "Molnsynkronisering",

@@ -27,6 +27,7 @@ oleafly-collab = { path = "../oleafly-collab", optional = true }
 oleafly-collab-protocol = { path = "../oleafly-collab-protocol" }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }
 ring = "0.17"
+oleafly-s3 = { path = "../oleafly-s3" }
 rusqlite = { version = "0.32", features = ["bundled"] }
 rust-embed = { version = "8.5", optional = true }
 serde = { version = "1", features = ["derive"] }

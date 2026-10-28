@@ -238,18 +238,28 @@
       "addDescription": "Подключите любой совместимый с OpenAI адрес по его базовому URL.",
       "addTitle": "Добавить своего поставщика",
       "baseUrlLabel": "Базовый URL",
-      "baseUrlNote": "Ваш сохранённый ключ API будет отправляться на этот новый адрес.",
+      "baseUrlNote": "Сохранённый ключ API не отправляется на новый адрес. Введите его ещё раз или оставьте поле пустым, если новому серверу ключ не нужен.",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "Сервер по адресу {{url}} отклонил ключ API.",
+        "rejected": "Сервер по адресу {{url}} не вернул список моделей. Большинству локальных серверов нужен /v1 в конце адреса, например http://localhost:13305/v1.",
+        "timeout": "Сервер по адресу {{url}} слишком долго составлял список моделей.",
+        "unreachable": "Не удалось подключиться к {{url}}. Проверьте, что сервер запущен и адрес указан верно.",
+        "unreadable": "Сервер по адресу {{url}} ответил, но не перечислил ни одной модели. Проверьте, что на сервере загружена модель."
+      },
       "editDescription": "Измените имя или базовый URL.",
       "editTitle": "Изменить своего поставщика",
       "errors": {
         "addFailed": "Не удалось добавить этого поставщика.",
+        "baseUrlCredentials": "Введите ключ в поле «Ключ API», а не в URL.",
         "baseUrlHost": "В адресе URL нет узла.",
         "baseUrlInvalid": "Введите полный адрес URL, например https://api.example.com/v1 или http://localhost:1234/v1.",
         "baseUrlProtocol": "Используйте https:// или http:// для локального сервера.",
+        "baseUrlQuery": "Удалите ? и всё, что идёт после него.",
         "baseUrlRequired": "Базовый URL обязателен.",
         "idFormat": "Используйте только строчные латинские буквы, цифры и дефисы, например acme.",
         "idRequired": "ID обязателен.",
+        "idTooLong": "Используйте не более 64 символов.",
         "nameRequired": "Имя обязательно.",
         "saveFailed": "Не удалось сохранить этого поставщика."
       },
@@ -261,7 +271,9 @@
       "keyPlaceholderStored": "Сохранённый ключ останется, пока вы не введёте новый",
       "namePlaceholder": "Acme",
       "presetsLabel": "Популярные поставщики",
-      "submitAdd": "Добавить поставщика"
+      "saveAnyway": "Всё равно сохранить",
+      "submitAdd": "Добавить поставщика",
+      "submitAddAnyway": "Добавить без моделей"
     },
     "instructions": {
       "capabilitiesTitle": "Возможности агента",
@@ -431,11 +443,13 @@
       "messages": {
         "keyRemoved": "Ключ {{provider}} удалён.",
         "keyRemovedAccessDisabled": "Ключ {{provider}} удалён. Доступ к ИИ отключён.",
-        "keySavedAddModels": "Ключ {{provider}} сохранён. Добавьте модели вручную ниже.",
         "keySavedCheckedOnUse": "Ключ {{provider}} сохранён. Он проверяется при первом использовании.",
+        "keySavedModelsNotListed": "Ключ {{provider}} сохранён, но ни одной модели в списке не оказалось. {{reason}}",
         "ollamaConnected": "Ollama подключена · {{model}}",
         "preferencesReset": "Настройки ИИ-ассистента возвращены к значениям по умолчанию.",
         "providerAdded": "{{provider}} добавлен.",
+        "providerAddedAt": "{{provider}} добавлен по адресу {{url}}.",
+        "providerAddedWithoutModels": "{{provider}} добавлен без моделей. Добавьте модель по названию ниже.",
         "providerConnected": "{{provider}} подключён.",
         "providerUpdated": "{{provider}} обновлён.",
         "providerUpdatedWithoutModels": "{{provider}} обновлён. Его список моделей не удалось обновить."

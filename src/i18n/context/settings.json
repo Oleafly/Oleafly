@@ -62,12 +62,27 @@
       }
     },
     "customProvider": {
+      "baseUrlNote": "Note under the Base URL field when editing a provider. The key saved for the old address is not sent to a changed address, so the person can type the API key again in the field below, or leave that field blank for a server that needs no key. Keep API verbatim.",
       "baseUrlPlaceholder": "Example API endpoint. Keep the URL verbatim.",
+      "discovery": {
+        "auth": "Shown under the Add or Edit custom provider form when the server at the address refused the API key. {{url}} is the base URL the person entered. Keep API verbatim.",
+        "rejected": "Shown under the Add or Edit custom provider form when the server did not return a model list. {{url}} is the base URL the person entered. Keep /v1 and the example http://localhost:13305/v1 verbatim.",
+        "timeout": "Shown under the Add or Edit custom provider form when the server took too long to list its models. {{url}} is the base URL the person entered.",
+        "unreachable": "Shown under the Add or Edit custom provider form when nothing answered at the address. {{url}} is the base URL the person entered.",
+        "unreadable": "Shown under the Add or Edit custom provider form when the server answered but its model list was empty or could not be read. {{url}} is the base URL the person entered."
+      },
+      "errors": {
+        "baseUrlCredentials": "Validation message under the Base URL field when the URL contains a user name, password or key. Keep API verbatim.",
+        "baseUrlQuery": "Validation message under the Base URL field when the URL has a query string. ? is the literal question mark character that starts a query string; keep it as is.",
+        "idTooLong": "Validation message under the ID field. 64 is the maximum number of characters."
+      },
       "idLabel": "Short machine readable identifier for a user added provider",
       "idPlaceholder": "Example identifier. Keep it lowercase ASCII letters only.",
       "namePlaceholder": "Example display name for a fictional company",
+      "saveAnyway": "Button that replaces Save after the model list could not be read from the address. Saves the provider without models.",
       "submitAdd": "Button that creates the new provider",
-      "presetsLabel": "Label above buttons that each fill in the name and address of a well known provider. The provider names on the buttons are not translated."
+      "presetsLabel": "Label above buttons that each fill in the name and address of a well known provider. The provider names on the buttons are not translated.",
+      "submitAddAnyway": "Button that replaces Add provider after the model list could not be read from the address. Adds the provider without any models. The person then adds a model by name."
     },
     "instructions": {
       "saved": "Confirmation shown beside the button after custom instructions are saved"
@@ -117,6 +132,11 @@
       }
     },
     "section": {
+      "messages": {
+        "keySavedModelsNotListed": "Toast after an API key is saved but the provider returned no models. {{provider}} is the provider name. {{reason}} is a full sentence explaining why and is appended at the end, so keep it last.",
+        "providerAddedAt": "Toast after a custom provider is added. {{provider}} is the provider name. {{url}} is the base URL the person entered.",
+        "providerAddedWithoutModels": "Toast after a custom provider is added with no models because its model list could not be read. The person then adds a model by typing its name."
+      },
       "reset": {
         "sectionName": "The name of this settings section, shown inside the sentence \"Reset <name> settings?\""
       },

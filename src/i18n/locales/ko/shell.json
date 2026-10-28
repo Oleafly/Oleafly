@@ -810,24 +810,41 @@
         "linkedFolders_other": "연 폴더 {{count}}개의 빌드 출력과 설정에 {{size}}",
         "refresh": "저장 공간 사용량 새로 고침",
         "stats": {
-          "appData": "앱 데이터",
-          "appDataDetail": "에셋과 설정",
-          "buildCache": "빌드 캐시",
-          "buildCacheDetail": "생성된 결과물",
           "files": "파일",
           "folders_other": "폴더 {{count}}개",
-          "gitHistory": "Git 이력",
-          "gitHistoryDetail": "로컬 버전",
           "images": "이미지",
           "pdfs": "PDF",
-          "projectFiles": "프로젝트 파일",
-          "projectFilesDetail": "소스와 메타데이터",
           "projects": "프로젝트"
         },
         "subtitle": "프로젝트, 미리보기, 이력, 앱 데이터",
         "title": "저장 공간 사용량",
         "total": "Oleafly 데이터 폴더 전체에서 {{size}}",
-        "unreadable_other": "접근할 수 없는 항목 {{count}}개를 제외했습니다."
+        "unreadable_other": "접근할 수 없는 항목 {{count}}개를 제외했습니다.",
+        "groups": {
+          "projects": "프로젝트",
+          "appData": "앱 데이터",
+          "elsewhere": "다른 위치"
+        },
+        "parts": {
+          "documents": "문서와 코드",
+          "images": "이미지",
+          "pdfs": "PDF",
+          "media": "오디오와 동영상",
+          "data": "데이터 파일",
+          "otherFiles": "기타 파일",
+          "git": "Git 이력",
+          "build": "빌드 캐시",
+          "texDistribution": "TeX 배포판",
+          "agents": "AI 에이전트",
+          "researchTasks": "연구 작업",
+          "tools": "도구",
+          "checkpoints": "체크포인트",
+          "compileCache": "컴파일 캐시",
+          "otherAppData": "설정과 기타 데이터",
+          "recycleBin": "휴지통",
+          "linkedFolders": "연 폴더"
+        },
+        "other": "기타"
       },
       "tabs": {
         "cloud": "클라우드 동기화",

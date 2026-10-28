@@ -42,6 +42,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { WeekHourHeatmap, type HeatmapCell } from "@/components/ui/week-hour-heatmap";
 import { i18n } from "@/i18n";
 import { getProvider } from "@/lib/ai-providers";
+import { getConfigCached } from "@/lib/config-cache";
 import { formatCompactNumber, formatDateTime, formatList, formatNumber } from "@/lib/intl";
 import { notifyError, toast } from "@/lib/toast";
 import {
@@ -78,6 +79,8 @@ type UsageReportProps = {
   report: UsageReportData;
   onExport?: (report: UsageReportData) => unknown;
   projectNames?: ReadonlyMap<string, string>;
+  /** Names of the user's own providers by id; the catalog and agent names need no entry. */
+  providerNames?: ReadonlyMap<string, string>;
   onSelectFilter?: (dimension: UsageFilterDimension, value: string) => void;
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
@@ -100,6 +103,16 @@ type FilterOption = {
 
 const ALL = "__all__";
 const EMPTY_PROJECT_NAMES = new Map<string, string>();
+const EMPTY_PROVIDER_NAMES = new Map<string, string>();
+
+async function customProviderNames(): Promise<ReadonlyMap<string, string>> {
+  try {
+    const config = await getConfigCached();
+    return new Map((config.ai_custom_providers ?? []).map((provider) => [provider.id, provider.name]));
+  } catch {
+    return EMPTY_PROVIDER_NAMES;
+  }
+}
 const PAGE_SIZES = [10, 25, 50, 100];
 const WEEKDAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 const ACP_AGENT_NAMES: Record<string, string> = {
@@ -211,8 +224,8 @@ function runtimeLabel(value: string): string {
   return shortIdentifier(value);
 }
 
-function providerLabel(value: string): string {
-  return getProvider(value)?.name ?? ACP_AGENT_NAMES[value] ?? shortIdentifier(value);
+function providerLabel(value: string, providerNames: ReadonlyMap<string, string>): string {
+  return getProvider(value)?.name ?? providerNames.get(value) ?? ACP_AGENT_NAMES[value] ?? shortIdentifier(value);
 }
 
 function billingLabel(value: string): string {
@@ -744,6 +757,7 @@ export function UsageReport({
   report,
   onExport = saveUsageReportCsv,
   projectNames = EMPTY_PROJECT_NAMES,
+  providerNames = EMPTY_PROVIDER_NAMES,
   onSelectFilter,
   onPageChange,
   onPageSizeChange,
@@ -935,7 +949,7 @@ export function UsageReport({
         <BreakdownTable
           title={t(($) => $.usage.report.providers)}
           rows={report.byProvider}
-          labelForKey={providerLabel}
+          labelForKey={(value) => providerLabel(value, providerNames)}
           icon={(value) =>
             value === "Unknown" ? null : <ProviderLogo providerId={value} size={14} />
           }
@@ -1016,6 +1030,13 @@ export function UsageReportDialog({
     () => new Map(projects.map((project) => [project.id, project.name])),
     [projects],
   );
+  const providerNamesQuery = useQuery({
+    queryKey: ["usage-provider-names"],
+    queryFn: customProviderNames,
+    enabled: open,
+    staleTime: 15_000,
+  });
+  const providerNames = providerNamesQuery.data ?? EMPTY_PROVIDER_NAMES;
   const reportQuery = useQuery({
     queryKey: ["usage-report", filter],
     queryFn: () => query(filter),
@@ -1044,7 +1065,7 @@ export function UsageReportDialog({
       ),
       provider: filterOptions(
         report?.byProvider.map((row) => row.key) ?? [],
-        providerLabel,
+        (value) => providerLabel(value, providerNames),
         draft.provider,
       ),
       model: filterOptions(
@@ -1058,7 +1079,7 @@ export function UsageReportDialog({
         draft.session,
       ),
     };
-  }, [draft, projectNames, reportQuery.data]);
+  }, [draft, projectNames, providerNames, reportQuery.data]);
 
   const chooseFilter = (dimension: UsageFilterDimension, value: string) => {
     const key = DIMENSION_KEYS[dimension];
@@ -1096,6 +1117,7 @@ export function UsageReportDialog({
       <UsageReport
         report={data}
         projectNames={projectNames}
+        providerNames={providerNames}
         onSelectFilter={chooseFilter}
         onPageChange={(page) => setFilter((current) => ({ ...current, page }))}
         onPageSizeChange={(pageSize) =>

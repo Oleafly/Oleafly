@@ -477,6 +477,73 @@ describe("InlineEditPanel", () => {
       expect(screen.getByTestId("active-model")).toHaveTextContent("openai:gpt-6-astra");
     });
 
+    it("lists a key-less custom provider and the stored model lists, not the bare catalog", async () => {
+      tauri.getConfig.mockResolvedValue({
+        ai_provider: "lemonade",
+        ai_model: "Qwen3-4B",
+        ai_keys: { openai: "sk" },
+        ai_custom_providers: [
+          { id: "lemonade", name: "Lemonade", baseURL: "http://localhost:13305/v1", keyOptional: true },
+          { id: "gated", name: "Gated", baseURL: "https://gw.example/v1" },
+        ],
+        ai_provider_models: {
+          openai: [
+            { id: "gpt-fetched", name: "Fetched", enabled: true, source: "fetched" },
+            { id: "gpt-6-luna", name: "Luna", enabled: false, source: "fetched" },
+          ],
+          lemonade: [
+            { id: "Qwen3-4B", name: "Qwen3 4B", enabled: true, source: "fetched" },
+            { id: "Llama-3.2-1B", name: "Llama", enabled: true, source: "custom" },
+            { id: "off", name: "Off", enabled: false, source: "fetched" },
+          ],
+        },
+      });
+      openSession();
+      await renderPanel();
+      expect(screen.getByTestId("active-model")).toHaveTextContent("lemonade:Qwen3-4B");
+      expect(screen.getByText("lemonade/Qwen3-4B")).toBeInTheDocument();
+      expect(screen.getByText("lemonade/Llama-3.2-1B")).toBeInTheDocument();
+      expect(screen.queryByText("lemonade/off")).not.toBeInTheDocument();
+      expect(screen.queryByText(/^gated\//)).not.toBeInTheDocument();
+      expect(screen.getByText("openai/gpt-fetched")).toBeInTheDocument();
+      expect(screen.queryByText("openai/gpt-6-luna")).not.toBeInTheDocument();
+    });
+
+    it("does not list the old default model that a custom provider never had", async () => {
+      tauri.getConfig.mockResolvedValue({
+        ai_provider: "lemonade",
+        ai_model: "gpt-4o-mini",
+        ai_custom_providers: [
+          { id: "lemonade", name: "Lemonade", baseURL: "http://localhost:13305/v1", keyOptional: true },
+        ],
+        ai_provider_models: {
+          lemonade: [{ id: "Qwen3-4B", name: "Qwen3 4B", enabled: true, source: "fetched" }],
+        },
+      });
+      openSession();
+      await renderPanel();
+      expect(screen.getByTestId("active-model")).toHaveTextContent("lemonade:Qwen3-4B");
+      expect(screen.queryByText("lemonade/gpt-4o-mini")).not.toBeInTheDocument();
+    });
+
+    it("saves the chosen model onto the settings as they are now, not the panel's older copy", async () => {
+      openSession();
+      await renderPanel();
+      const newer = {
+        ...CONFIGURED,
+        ai_system_prompt: "Written after the panel opened",
+        ai_keys: { openai: "sk-test", groq: "gsk-added-later" },
+      };
+      tauri.getConfig.mockResolvedValue(newer);
+      fireEvent.click(screen.getByText("openai/gpt-6-astra"));
+      await waitFor(() => expect(tauri.setConfig).toHaveBeenCalled());
+      expect(tauri.setConfig).toHaveBeenCalledWith({
+        ...newer,
+        ai_provider: "openai",
+        ai_model: "gpt-6-astra",
+      });
+    });
+
     it("reloads the config when another surface changes it", async () => {
       openSession();
       await renderPanel();

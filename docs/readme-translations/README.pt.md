@@ -87,6 +87,8 @@ Leia o [guia do servidor](https://github.com/Oleafly/oleafly-server) para config
 
 Ative a sincronização na nuvem e os projetos da sua biblioteca e as configurações do aplicativo acompanham você de um computador para outro. Cada download é conferido com o seu registro antes de substituir um arquivo, e um arquivo aberto com alterações não salvas nunca é sobrescrito.
 
+Você pode sincronizar com o Dropbox, com o Google Drive ou com um bucket seu no Amazon S3, no Google Cloud Storage, no MinIO ou em outro serviço compatível com S3.
+
 <p align="center">
   <img src="../assets/readme/cloud-sync-dropbox.png" alt="Configurações de sincronização na nuvem do Oleafly com o cartão do Dropbox e uma lista do que é sincronizado" width="100%" />
 </p>

@@ -189,7 +189,14 @@
     "addLabel": "Lägg till etikett",
     "convertLatexMath": "Konvertera LaTeX-matematik till Typst",
     "noLatexMath": "Markera lite LaTeX-matematik först.",
-    "renameFile": "Byt namn på fil…"
+    "renameFile": "Byt namn på fil…",
+    "cut": "Klipp ut",
+    "copy": "Kopiera",
+    "paste": "Klistra in",
+    "selectAll": "Markera allt",
+    "format": "Format",
+    "insert": "Infoga",
+    "importExport": "Import och export"
   },
   "shell": {
     "noFileOpenTab": "Ingen fil är öppen",
@@ -322,7 +329,8 @@
     "improveWriting": "Förbättra texten",
     "fixGrammar": "Rätta grammatik och stil",
     "expand": "Utveckla och fördjupa",
-    "findReferences": "Hitta referenser"
+    "findReferences": "Hitta referenser",
+    "customPrompt": "Beskriv ändringen…"
   },
   "versioning": {
     "dismiss": "Stäng versionshanteringen",
@@ -952,6 +960,12 @@
         "groupAuto": "numrera tillsammans med de andra bibliografierna",
         "groupNone": "numrera separat",
         "groupNamed": "numrera tillsammans med bibliografier med samma namn"
+      }
+    },
+    "markdown": {
+      "snippet": {
+        "table": "Tabell",
+        "equation": "Ekvation på egen rad"
       }
     },
     "wysiwyg": {

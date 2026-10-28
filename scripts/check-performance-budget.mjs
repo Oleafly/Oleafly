@@ -68,6 +68,12 @@ const limits = {
   // @oleafly/ai-tools/approval-risk rather than the package index (a value
   // import of an index keeps every module it re-exports in the entry). The
   // entry measures 4,638,573 bytes before #338 and 4,646,817 bytes with it.
+  // About 10 KB of that headroom goes to the editor's right-click menu (Cut,
+  // Copy, Paste and Select all through the clipboard plugin, the submenus),
+  // the Ask AI popup's own request, Markdown's /table and /equation, and the
+  // GitLab, Codeberg, Gitea and Forgejo logos the remote menu shows (4.2 KB of
+  // it). The Dropbox and Google Drive logos moved to the Cloud tab and left the
+  // entry. The entry measures 4,657,262 bytes with them.
   largestJavaScript: 5_010_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
@@ -177,6 +183,10 @@ const limits = {
   // bytes on macOS.
   // +5 KB for the toolset chunk's import and export lists: 20,702,030 bytes
   // on macOS.
+  // The headroom also covers Google Drive and S3-compatible cloud sync (the
+  // provider cards, the S3 form, the provider choice in the Cloud tab), the
+  // storage bar in Settings and the entry growth above: 20,738,409 bytes on
+  // macOS.
   totalJavaScript: 21_020_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about

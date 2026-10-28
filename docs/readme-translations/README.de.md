@@ -87,6 +87,8 @@ Im [Server-Leitfaden](https://github.com/Oleafly/oleafly-server) findest du Einr
 
 Schalte die Cloud-Synchronisierung ein, und die Projekte deiner Bibliothek sowie deine App-Einstellungen begleiten dich von einem Computer zum nächsten. Jeder Download wird mit seinem Eintrag abgeglichen, bevor er eine Datei ersetzt, und eine geöffnete Datei mit ungespeicherten Änderungen wird nie überschrieben.
 
+Du kannst mit Dropbox, mit Google Drive oder mit einem eigenen Bucket bei Amazon S3, Google Cloud Storage, MinIO oder einem anderen S3-kompatiblen Dienst synchronisieren.
+
 <p align="center">
   <img src="../assets/readme/cloud-sync-dropbox.png" alt="Oleafly-Einstellungen zur Cloud-Synchronisierung mit der Dropbox-Karte und einer Liste dessen, was synchronisiert wird" width="100%" />
 </p>

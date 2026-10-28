@@ -262,7 +262,8 @@ describe("PublishDialog", () => {
     renderDialog();
 
     const action = screen.getByRole("button", { name: "Create and push" });
-    expect(action).toHaveClass("mt-auto", "ml-auto");
+    expect(action).toHaveClass("ml-auto");
+    expect(action.parentElement).toHaveClass("mt-auto");
     expect(action).not.toHaveClass("w-full");
 
     const header = screen.getByRole("heading", { name: "Publish to GitHub" }).parentElement?.parentElement;
@@ -780,6 +781,11 @@ describe("PublishDialog accounts and addresses", () => {
     renderDialog();
 
     expect(screen.getByRole("heading", { name: "Publish to GitHub" })).toBeInTheDocument();
+    // The picker sits beside the action at the bottom, labelled for screen
+    // readers only.
+    const picker = screen.getByRole("combobox", { name: enLibrary.github.accountLabel });
+    expect(picker.parentElement).toBe(screen.getByRole("button", { name: "Create and push" }).parentElement);
+    expect(screen.queryByText(enLibrary.github.accountLabel)).not.toBeInTheDocument();
     await chooseOption(user, enLibrary.github.accountLabel, "GitLab · zoe");
     expect(screen.getByRole("heading", { name: "Publish to GitLab" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Create and push" }));

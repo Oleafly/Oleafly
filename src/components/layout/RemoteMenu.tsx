@@ -5,7 +5,7 @@ import { useSettingsStore } from "@/store/settings";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Tooltip } from "@/components/ui/tooltip";
-import { GitHubBrandIcon } from "@/components/settings/IntegrationBrandIcons";
+import { ForgeBrandIcon } from "@/components/settings/git-hosting/ForgeBrandIcon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,7 +36,11 @@ export function RemoteMenu({
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const setSettingsScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
   const [open, setOpen] = useState(false);
-  const fallbackIcon = account?.kind === "github" ? <GitHubBrandIcon /> : <GitBranch />;
+  const fallbackIcon = account ? (
+    <ForgeBrandIcon base={account.base} kind={account.kind} flavor={account.flavor} />
+  ) : (
+    <GitBranch />
+  );
 
   const openSettings = () => {
     setSettingsScrollTarget("git-hosting");

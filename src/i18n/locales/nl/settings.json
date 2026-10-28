@@ -236,18 +236,28 @@
       "addDescription": "Verbind elk OpenAI-compatibel endpoint via de basis-URL.",
       "addTitle": "Eigen provider toevoegen",
       "baseUrlLabel": "Basis-URL",
-      "baseUrlNote": "Je opgeslagen API-sleutel wordt naar dit nieuwe adres gestuurd.",
+      "baseUrlNote": "De opgeslagen API-sleutel wordt niet naar een nieuw adres gestuurd. Voer hem opnieuw in, of laat het veld leeg als de nieuwe server geen sleutel nodig heeft.",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "{{url}} heeft de API-sleutel geweigerd.",
+        "rejected": "{{url}} heeft geen modellijst teruggegeven. De meeste lokale servers hebben /v1 aan het eind van het adres nodig, zoals http://localhost:13305/v1.",
+        "timeout": "{{url}} deed er te lang over om zijn modellen op te sommen.",
+        "unreachable": "Kon {{url}} niet bereiken. Controleer of de server draait en of het adres klopt.",
+        "unreadable": "{{url}} antwoordde, maar somde geen modellen op. Controleer of er een model op de server is gedownload."
+      },
       "editDescription": "Wijzig de naam of de basis-URL.",
       "editTitle": "Eigen provider bewerken",
       "errors": {
         "addFailed": "Kon die provider niet toevoegen.",
+        "baseUrlCredentials": "Zet de sleutel in het veld API-sleutel, niet in de URL.",
         "baseUrlHost": "In de URL ontbreekt een host.",
         "baseUrlInvalid": "Vul een volledige URL in, bijvoorbeeld https://api.example.com/v1 of http://localhost:1234/v1.",
         "baseUrlProtocol": "Gebruik https://, of http:// voor een lokale server.",
+        "baseUrlQuery": "Verwijder het ? en alles wat erna komt.",
         "baseUrlRequired": "De basis-URL is verplicht.",
         "idFormat": "Gebruik alleen kleine letters, cijfers en streepjes, bijvoorbeeld acme.",
         "idRequired": "Het ID is verplicht.",
+        "idTooLong": "Gebruik maximaal 64 tekens.",
         "nameRequired": "De naam is verplicht.",
         "saveFailed": "Kon die provider niet opslaan."
       },
@@ -259,7 +269,9 @@
       "keyPlaceholderStored": "De opgeslagen sleutel blijft staan tenzij je een nieuwe invult",
       "namePlaceholder": "Acme",
       "presetsLabel": "Veelgebruikte providers",
-      "submitAdd": "Provider toevoegen"
+      "saveAnyway": "Toch opslaan",
+      "submitAdd": "Provider toevoegen",
+      "submitAddAnyway": "Toevoegen zonder modellen"
     },
     "instructions": {
       "capabilitiesTitle": "Wat de agent kan",
@@ -427,11 +439,13 @@
       "messages": {
         "keyRemoved": "Sleutel van {{provider}} verwijderd.",
         "keyRemovedAccessDisabled": "Sleutel van {{provider}} verwijderd. AI-toegang is uitgeschakeld.",
-        "keySavedAddModels": "Sleutel van {{provider}} opgeslagen. Voeg hieronder handmatig modellen toe.",
         "keySavedCheckedOnUse": "Sleutel van {{provider}} opgeslagen. Hij wordt bij het eerste gebruik gecontroleerd.",
+        "keySavedModelsNotListed": "Sleutel van {{provider}} opgeslagen, maar er zijn geen modellen opgesomd. {{reason}}",
         "ollamaConnected": "Ollama verbonden · {{model}}",
         "preferencesReset": "De voorkeuren van de AI-assistent zijn hersteld naar de standaardwaarden.",
         "providerAdded": "{{provider}} toegevoegd.",
+        "providerAddedAt": "{{provider}} toegevoegd op {{url}}.",
+        "providerAddedWithoutModels": "{{provider}} toegevoegd zonder modellen. Voeg hieronder een model toe op naam.",
         "providerConnected": "{{provider}} verbonden.",
         "providerUpdated": "{{provider}} bijgewerkt.",
         "providerUpdatedWithoutModels": "{{provider}} bijgewerkt. De modellijst kon niet worden vernieuwd."

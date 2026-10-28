@@ -237,18 +237,28 @@
       "addDescription": "Conectează orice punct de acces compatibil cu OpenAI, după URL-ul lui de bază.",
       "addTitle": "Adaugă un furnizor personalizat",
       "baseUrlLabel": "URL de bază",
-      "baseUrlNote": "Cheia ta API salvată va fi trimisă către această adresă nouă.",
+      "baseUrlNote": "Cheia API salvată nu este trimisă către o adresă nouă. Introdu-o din nou sau lasă câmpul gol dacă noul server nu are nevoie de cheie.",
       "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "{{url}} a refuzat cheia API.",
+        "rejected": "{{url}} nu a returnat o listă de modele. Majoritatea serverelor locale au nevoie de /v1 la sfârșitul adresei, de exemplu http://localhost:13305/v1.",
+        "timeout": "{{url}} a durat prea mult să-și listeze modelele.",
+        "unreachable": "Nu s-a putut ajunge la {{url}}. Verifică dacă serverul rulează și dacă adresa este corectă.",
+        "unreadable": "{{url}} a răspuns, dar nu a listat niciun model. Verifică dacă serverul are un model descărcat."
+      },
       "editDescription": "Schimbă numele sau URL-ul de bază.",
       "editTitle": "Editează furnizorul personalizat",
       "errors": {
         "addFailed": "Furnizorul acela nu a putut fi adăugat.",
+        "baseUrlCredentials": "Pune cheia în câmpul Cheie API, nu în URL.",
         "baseUrlHost": "URL-ului îi lipsește gazda.",
         "baseUrlInvalid": "Introdu un URL complet, de exemplu https://api.example.com/v1 sau http://localhost:1234/v1.",
         "baseUrlProtocol": "Folosește https:// sau http:// pentru un server local.",
+        "baseUrlQuery": "Șterge ? și tot ce urmează după el.",
         "baseUrlRequired": "URL-ul de bază este obligatoriu.",
         "idFormat": "Folosește doar litere mici, cifre și cratime, de exemplu acme.",
         "idRequired": "Identificatorul este obligatoriu.",
+        "idTooLong": "Folosește cel mult 64 de caractere.",
         "nameRequired": "Numele este obligatoriu.",
         "saveFailed": "Furnizorul acela nu a putut fi salvat."
       },
@@ -260,7 +270,9 @@
       "keyPlaceholderStored": "Cheia salvată rămâne dacă nu introduci alta",
       "namePlaceholder": "Acme",
       "presetsLabel": "Furnizori obișnuiți",
-      "submitAdd": "Adaugă furnizorul"
+      "saveAnyway": "Salvează oricum",
+      "submitAdd": "Adaugă furnizorul",
+      "submitAddAnyway": "Adaugă fără modele"
     },
     "instructions": {
       "capabilitiesTitle": "Capabilitățile agentului",
@@ -429,11 +441,13 @@
       "messages": {
         "keyRemoved": "Cheia {{provider}} a fost eliminată.",
         "keyRemovedAccessDisabled": "Cheia {{provider}} a fost eliminată. Accesul AI este dezactivat.",
-        "keySavedAddModels": "Cheia {{provider}} a fost salvată. Adaugă manual modele mai jos.",
         "keySavedCheckedOnUse": "Cheia {{provider}} a fost salvată. Se verifică la prima folosire.",
+        "keySavedModelsNotListed": "Cheia {{provider}} a fost salvată, dar nu a fost listat niciun model. {{reason}}",
         "ollamaConnected": "Ollama conectat · {{model}}",
         "preferencesReset": "Preferințele Asistentului AI au revenit la valorile implicite.",
         "providerAdded": "{{provider}} a fost adăugat.",
+        "providerAddedAt": "{{provider}} a fost adăugat la {{url}}.",
+        "providerAddedWithoutModels": "{{provider}} a fost adăugat fără modele. Adaugă mai jos un model după nume.",
         "providerConnected": "{{provider}} este conectat.",
         "providerUpdated": "{{provider}} a fost actualizat.",
         "providerUpdatedWithoutModels": "{{provider}} a fost actualizat. Lista lui de modele nu a putut fi reîmprospătată."
