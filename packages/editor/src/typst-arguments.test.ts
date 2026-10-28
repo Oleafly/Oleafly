@@ -17,6 +17,9 @@ import {
 } from "./typst-arguments";
 import { readTypstFormsFixture } from "./typst-forms-test-support";
 
+// The seeded fuzz runs in under half a second here; a loaded CI runner can take ten times that.
+const FUZZ_TIMEOUT_MS = 60_000;
+
 let parser: Parser;
 
 beforeAll(async () => {
@@ -371,7 +374,7 @@ describe("edits to random call layouts", () => {
         }
       }
     }
-  });
+  }, FUZZ_TIMEOUT_MS);
 });
 
 describe("refusals that protect the document", () => {
