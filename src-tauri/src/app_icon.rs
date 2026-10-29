@@ -130,7 +130,6 @@ fn apply<R: Runtime>(app: &AppHandle<R>, variant: AppIconVariant) {
     windowed::set_every_window_icon(app, variant);
 }
 
-#[cfg(any(not(target_os = "macos"), test))]
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct Rgba {
     pub(crate) pixels: Vec<u8>,
@@ -138,7 +137,6 @@ pub(crate) struct Rgba {
     pub(crate) height: u32,
 }
 
-#[cfg(any(not(target_os = "macos"), test))]
 pub(crate) fn decode_png(bytes: &[u8]) -> Option<Rgba> {
     let mut decoder = png::Decoder::new(std::io::Cursor::new(bytes));
     decoder.set_transformations(png::Transformations::normalize_to_color8());
@@ -193,6 +191,177 @@ pub(crate) fn shrink(image: &Rgba, edge: u32) -> Option<Rgba> {
         width: edge,
         height: edge,
     })
+}
+
+#[cfg(any(target_os = "macos", test))]
+pub(crate) fn encode_png(image: &Rgba) -> Option<Vec<u8>> {
+    let mut bytes = Vec::new();
+    let mut encoder = png::Encoder::new(&mut bytes, image.width, image.height);
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut writer = encoder.write_header().ok()?;
+    writer.write_image_data(&image.pixels).ok()?;
+    writer.finish().ok()?;
+    Some(bytes)
+}
+
+/// Apple's grid for macOS app icons. macOS 15 and earlier draw an icon
+/// exactly as given, so a tile that fills its canvas shows larger than every
+/// other app in the Dock and Finder. macOS 26 refits such a tile itself.
+#[cfg(any(target_os = "macos", test))]
+pub(crate) mod macos_grid {
+    use super::Rgba;
+
+    /// In a 1024 px canvas: an 824 px tile with a 185.4 px corner radius,
+    /// centred, over a 30% black shadow dropped 10 px and blurred by 10 px.
+    const TILE: f64 = 824.0 / 1024.0;
+    const RADIUS: f64 = 185.4 / 1024.0;
+    const SHADOW_DROP: f64 = 10.0 / 1024.0;
+    const SHADOW_BLUR: f64 = 10.0 / 1024.0;
+    const SHADOW_OPACITY: f64 = 0.3;
+
+    /// Redraws a full-bleed square icon on the grid, at the same size.
+    pub(crate) fn frame(image: &Rgba) -> Option<Rgba> {
+        if image.width == 0 || image.width != image.height {
+            return None;
+        }
+        let edge = image.width as usize;
+        let canvas = f64::from(image.width);
+        let side = (canvas * TILE).round() as usize;
+        let inset = (edge - side) / 2;
+        let tile = resample(image, side);
+        let half = side as f64 / 2.0;
+        let centre = inset as f64 + half;
+        let radius = canvas * RADIUS;
+        let drop = canvas * SHADOW_DROP;
+        let mut shadow: Vec<f64> = (0..edge * edge)
+            .map(|at| {
+                let (x, y) = ((at % edge) as f64 + 0.5, (at / edge) as f64 + 0.5);
+                coverage(x, y - drop, centre, half, radius)
+            })
+            .collect();
+        blur(&mut shadow, edge, canvas * SHADOW_BLUR);
+        let mut pixels = Vec::with_capacity(edge * edge * 4);
+        for y in 0..edge {
+            for x in 0..edge {
+                let within =
+                    (inset..inset + side).contains(&x) && (inset..inset + side).contains(&y);
+                let inside = coverage(x as f64 + 0.5, y as f64 + 0.5, centre, half, radius);
+                let [red, green, blue, alpha] = if within && inside > 0.0 {
+                    tile[(y - inset) * side + (x - inset)].map(|value| value * inside)
+                } else {
+                    [0.0; 4]
+                };
+                // The shadow is black, so it adds coverage and no colour.
+                let total = alpha + shadow[y * edge + x] * SHADOW_OPACITY * (1.0 - alpha);
+                let straight = |value: f64| if total > 0.0 { value / total } else { 0.0 };
+                pixels.extend(
+                    [straight(red), straight(green), straight(blue), total]
+                        .map(|value| (value * 255.0).round().clamp(0.0, 255.0) as u8),
+                );
+            }
+        }
+        Some(Rgba {
+            pixels,
+            width: image.width,
+            height: image.height,
+        })
+    }
+
+    /// How much of the pixel centred at (x, y) the tile covers.
+    fn coverage(x: f64, y: f64, centre: f64, half: f64, radius: f64) -> f64 {
+        let dx = (x - centre).abs() - (half - radius);
+        let dy = (y - centre).abs() - (half - radius);
+        let distance = dx.max(0.0).hypot(dy.max(0.0)) + dx.max(dy).min(0.0) - radius;
+        (0.5 - distance).clamp(0.0, 1.0)
+    }
+
+    /// Area-averaged resize of a square image to `side` px, as premultiplied
+    /// colour from 0 to 1.
+    fn resample(image: &Rgba, side: usize) -> Vec<[f64; 4]> {
+        let edge = image.width as usize;
+        let source: Vec<[f64; 4]> = image
+            .pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|&[red, green, blue, alpha]| {
+                let alpha = f64::from(alpha) / 255.0;
+                let colour = |value: u8| f64::from(value) / 255.0 * alpha;
+                [colour(red), colour(green), colour(blue), alpha]
+            })
+            .collect();
+        let taps = area_taps(edge, side);
+        let mut rows = Vec::with_capacity(edge * side);
+        for y in 0..edge {
+            for column in &taps {
+                rows.push(weighted(column, |x| source[y * edge + x]));
+            }
+        }
+        let mut tile = Vec::with_capacity(side * side);
+        for row in &taps {
+            for x in 0..side {
+                tile.push(weighted(row, |y| rows[y * side + x]));
+            }
+        }
+        tile
+    }
+
+    fn weighted(taps: &[(usize, f64)], pixel: impl Fn(usize) -> [f64; 4]) -> [f64; 4] {
+        let mut sum = [0.0; 4];
+        for &(at, weight) in taps {
+            for (total, value) in sum.iter_mut().zip(pixel(at)) {
+                *total += value * weight;
+            }
+        }
+        sum
+    }
+
+    /// For each of `to` pixels, the `from` pixels it overlaps and by how much.
+    fn area_taps(from: usize, to: usize) -> Vec<Vec<(usize, f64)>> {
+        let scale = from as f64 / to as f64;
+        (0..to)
+            .map(|index| {
+                let start = index as f64 * scale;
+                let end = start + scale;
+                (start.floor() as usize..(end.ceil() as usize).min(from))
+                    .map(|source| {
+                        let overlap = end.min(source as f64 + 1.0) - start.max(source as f64);
+                        (source, overlap / scale)
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+
+    /// Gaussian blur of a square coverage plane; outside the plane is empty.
+    fn blur(plane: &mut [f64], edge: usize, sigma: f64) {
+        let reach = (sigma * 3.0).ceil() as usize;
+        let mut kernel: Vec<f64> = (0..=2 * reach)
+            .map(|index| {
+                let distance = index as f64 - reach as f64;
+                (-distance * distance / (2.0 * sigma * sigma)).exp()
+            })
+            .collect();
+        let total: f64 = kernel.iter().sum();
+        kernel.iter_mut().for_each(|weight| *weight /= total);
+        let span = |at: usize| at.saturating_sub(reach)..=(at + reach).min(edge - 1);
+        let mut across = vec![0.0; plane.len()];
+        for y in 0..edge {
+            for x in 0..edge {
+                across[y * edge + x] = span(x)
+                    .map(|source| plane[y * edge + source] * kernel[source + reach - x])
+                    .sum();
+            }
+        }
+        for y in 0..edge {
+            for x in 0..edge {
+                plane[y * edge + x] = span(y)
+                    .map(|source| across[source * edge + x] * kernel[source + reach - y])
+                    .sum();
+            }
+        }
+    }
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -260,12 +429,16 @@ mod windowed {
 
 #[cfg(target_os = "macos")]
 mod mac {
+    use std::sync::OnceLock;
+
     use tauri::{AppHandle, Runtime};
 
-    use super::AppIconVariant;
+    use super::{decode_png, encode_png, macos_grid, AppIconVariant};
 
     pub(super) fn set_application_icon<R: Runtime>(app: &AppHandle<R>, variant: AppIconVariant) {
-        let bytes = variant.png();
+        let Some(bytes) = dock_png(variant) else {
+            return;
+        };
         let _ = app.run_on_main_thread(move || {
             use objc2::rc::autoreleasepool;
             use objc2::{AllocAnyThread, MainThreadMarker};
@@ -284,6 +457,16 @@ mod mac {
                 unsafe { application.setApplicationIconImage(Some(&image)) };
             });
         });
+    }
+
+    /// The icon on Apple's grid. The Dock draws the image as given, and the
+    /// PNGs fill their canvas.
+    fn dock_png(variant: AppIconVariant) -> Option<&'static [u8]> {
+        static PNGS: [OnceLock<Option<Vec<u8>>>; AppIconVariant::ALL.len()] =
+            [const { OnceLock::new() }; AppIconVariant::ALL.len()];
+        PNGS[variant.index()]
+            .get_or_init(|| encode_png(&macos_grid::frame(&decode_png(variant.png())?)?))
+            .as_deref()
     }
 }
 
@@ -437,6 +620,196 @@ mod tests {
         assert!(!replace_current(AppIconVariant::Blue));
         assert!(replace_current(AppIconVariant::Pastel));
         assert_eq!(current(), AppIconVariant::Pastel);
+    }
+
+    /// The PNG layers of an .icns file. The ARGB and legacy layers are skipped.
+    fn icns_png_layers(icns: &[u8]) -> Vec<([u8; 4], Rgba)> {
+        assert_eq!(&icns[..4], b"icns");
+        let mut layers = Vec::new();
+        let mut at = 8;
+        while at + 8 <= icns.len() {
+            let kind: [u8; 4] = icns[at..at + 4].try_into().unwrap();
+            let length = u32::from_be_bytes(icns[at + 4..at + 8].try_into().unwrap()) as usize;
+            let data = &icns[at + 8..at + length];
+            if data.starts_with(&PNG_SIGNATURE) {
+                let image = decode_png(data).expect("an icns PNG layer decodes as RGBA");
+                layers.push((kind, image));
+            }
+            at += length;
+        }
+        layers
+    }
+
+    /// Checks that `image` leaves Apple's margin: an 824/1024 tile centred in
+    /// the canvas, transparent beyond it, opaque in the middle.
+    fn assert_on_macos_grid(image: &Rgba, label: &str) {
+        let edge = image.width;
+        assert_eq!(image.height, edge, "{label} is square");
+        let margin = edge * 100 / 1024;
+        let middle = edge / 2;
+        for (x, y) in [
+            (middle, margin / 2),
+            (middle, edge - 1 - margin / 2),
+            (margin / 2, middle),
+            (edge - 1 - margin / 2, middle),
+        ] {
+            assert!(
+                pixel(image, x, y)[3] <= 2,
+                "{label} ({edge} px) is drawn at ({x}, {y}), inside the margin macOS leaves round every icon"
+            );
+        }
+        assert_eq!(
+            pixel(image, middle, middle)[3],
+            255,
+            "{label} is opaque inside"
+        );
+        let solid: Vec<u32> = (0..edge)
+            .filter(|&x| pixel(image, x, middle)[3] >= 128)
+            .collect();
+        let width = solid.last().unwrap() - solid.first().unwrap() + 1;
+        let expected = f64::from(edge) * 824.0 / 1024.0;
+        assert!(
+            (f64::from(width) - expected).abs() <= 1.0,
+            "{label} ({edge} px) tile is {width} px wide, macOS expects {expected}"
+        );
+    }
+
+    #[test]
+    fn the_bundled_macos_icon_leaves_the_macos_margin() {
+        let icns = include_bytes!("../icons/icon.icns");
+        let layers = icns_png_layers(icns);
+        assert!(
+            layers.len() >= 6,
+            "icon.icns has {} PNG layers",
+            layers.len()
+        );
+        for (kind, image) in &layers {
+            assert_on_macos_grid(image, &String::from_utf8_lossy(kind));
+        }
+        let edges: Vec<u32> = layers.iter().map(|(_, image)| image.width).collect();
+        assert!(
+            edges.contains(&1024),
+            "icon.icns has a 1024 px layer: {edges:?}"
+        );
+    }
+
+    /// `icon.icns` is `icons/app-icon.png` on Apple's grid. After changing the
+    /// master, rebuild it on a Mac with
+    /// `OLEAFLY_WRITE_GOLDENS=1 cargo test -p oleafly --lib bundled_macos_icon_is_the_master`.
+    #[test]
+    fn the_bundled_macos_icon_is_the_master_on_the_macos_grid() {
+        let master = decode_png(include_bytes!("../icons/app-icon.png")).unwrap();
+        assert_eq!((master.width, master.height), (1024, 1024));
+        let default = decode_png(AppIconVariant::default().png()).unwrap();
+        let half = shrink(&master, 512).unwrap();
+        for (x, y) in [(256, 480), (256, 256), (140, 400), (380, 120), (60, 60)] {
+            let (want, got) = (pixel(&default, x, y), pixel(&half, x, y));
+            for (want, got) in want.iter().zip(got) {
+                assert!(
+                    want.abs_diff(got) <= 6,
+                    "app-icon.png is the default icon at ({x}, {y})"
+                );
+            }
+        }
+        let tile = macos_grid::frame(&master).unwrap();
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/icons/icon.icns");
+        if std::env::var_os("OLEAFLY_WRITE_GOLDENS").is_some() {
+            write_icns(&tile, path);
+        }
+        for (kind, layer) in icns_png_layers(&std::fs::read(path).unwrap()) {
+            let expected = shrink(&tile, layer.width).unwrap();
+            let differs = expected
+                .pixels
+                .iter()
+                .zip(&layer.pixels)
+                .filter(|(want, got)| want.abs_diff(**got) > 2)
+                .count();
+            assert_eq!(
+                differs,
+                0,
+                "{} is not app-icon.png on the macOS grid; rebuild icon.icns with OLEAFLY_WRITE_GOLDENS=1",
+                String::from_utf8_lossy(&kind)
+            );
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    fn write_icns(tile: &Rgba, path: &str) {
+        let iconset = tempfile::Builder::new()
+            .suffix(".iconset")
+            .tempdir()
+            .unwrap();
+        for (name, edge) in [
+            ("16x16", 16),
+            ("16x16@2x", 32),
+            ("32x32", 32),
+            ("32x32@2x", 64),
+            ("128x128", 128),
+            ("128x128@2x", 256),
+            ("256x256", 256),
+            ("256x256@2x", 512),
+            ("512x512", 512),
+            ("512x512@2x", 1024),
+        ] {
+            let png = encode_png(&shrink(tile, edge).unwrap()).unwrap();
+            std::fs::write(iconset.path().join(format!("icon_{name}.png")), png).unwrap();
+        }
+        let status = std::process::Command::new("iconutil")
+            .args(["-c", "icns", "-o", path])
+            .arg(iconset.path())
+            .status()
+            .expect("iconutil runs");
+        assert!(status.success(), "iconutil failed: {status}");
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    fn write_icns(_tile: &Rgba, _path: &str) {
+        panic!("icon.icns is rebuilt with iconutil, which only macOS has");
+    }
+
+    #[test]
+    fn every_icon_on_the_macos_grid_leaves_the_macos_margin() {
+        for variant in AppIconVariant::ALL {
+            let image = decode_png(variant.png()).unwrap();
+            let framed = macos_grid::frame(&image).unwrap();
+            assert_eq!((framed.width, framed.height), (512, 512));
+            assert_on_macos_grid(&framed, variant.id());
+            let (source, kept) = (pixel(&image, 256, 256), pixel(&framed, 256, 256));
+            for (want, got) in source.iter().zip(kept) {
+                assert!(want.abs_diff(got) <= 3, "{variant:?} keeps its colours");
+            }
+            let shadow = pixel(&framed, 256, 465)[3];
+            assert!(
+                (1..128).contains(&shadow),
+                "{variant:?} has a faint shadow under the tile, not {shadow}"
+            );
+            assert!(
+                pixel(&framed, 72, 72)[3] < 64,
+                "{variant:?} rounds its corners as much as macOS icons do"
+            );
+        }
+    }
+
+    #[test]
+    fn framing_refuses_an_image_that_is_not_square() {
+        let wide = Rgba {
+            pixels: vec![255; 2 * 4],
+            width: 2,
+            height: 1,
+        };
+        assert_eq!(macos_grid::frame(&wide), None);
+        let empty = Rgba {
+            pixels: Vec::new(),
+            width: 0,
+            height: 0,
+        };
+        assert_eq!(macos_grid::frame(&empty), None);
+    }
+
+    #[test]
+    fn an_encoded_png_decodes_to_the_same_pixels() {
+        let image = decode_png(AppIconVariant::Blue.png()).unwrap();
+        assert_eq!(decode_png(&encode_png(&image).unwrap()), Some(image));
     }
 
     #[test]
