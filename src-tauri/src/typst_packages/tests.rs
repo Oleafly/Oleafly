@@ -144,6 +144,65 @@ fn package_specs_parse_strictly() {
 }
 
 #[test]
+fn package_names_are_typst_identifiers() {
+    // Typst's spec parser takes any identifier (XID_Start or _, then
+    // XID_Continue, _ or -), capitals and other scripts included.
+    let longest = "é".repeat(64);
+    for valid in [
+        "@local/AcmeReport:1.0.0".to_owned(),
+        "@local/café:1.0.0".to_owned(),
+        "@local/cafe\u{301}:1.0.0".to_owned(),
+        "@Team_A/звіт:0.1.0".to_owned(),
+        "@_drafts/_wip:0.0.1".to_owned(),
+        format!("@local/{longest}:1.0.0"),
+    ] {
+        let parsed = PackageSpec::parse(&valid).unwrap_or_else(|| panic!("{valid}"));
+        assert_eq!(parsed.to_string(), valid);
+        assert_eq!(parsed.relative_dir().components().count(), 3, "{valid}");
+    }
+    for invalid in [
+        "@preview/3d-shapes:1.0.0".to_owned(),
+        "@preview/-cetz:1.0.0".to_owned(),
+        "@preview/x²:1.0.0".to_owned(),
+        "@preview/ce.tz:1.0.0".to_owned(),
+        "@pre\\view/cetz:1.0.0".to_owned(),
+        format!("@local/{longest}e:1.0.0"),
+    ] {
+        assert!(PackageSpec::parse(&invalid).is_none(), "{invalid}");
+    }
+}
+
+#[test]
+fn vendoring_copies_a_package_whose_name_has_capitals() {
+    let data = tempfile::tempdir().unwrap();
+    let project = tempfile::tempdir().unwrap();
+    let app = TypstPackageDirs::app(data.path());
+    fake_package(
+        &app.package_path,
+        "local",
+        "AcmeReport",
+        "1.0.0",
+        "#let cover = 1",
+    );
+    write(
+        &project.path().join("main.typ"),
+        "#import \"@local/AcmeReport:1.0.0\": cover\n",
+    );
+    let report = vendor_into_project(project.path(), &app, None).unwrap();
+    assert_eq!(report.vendored, vec!["@local/AcmeReport:1.0.0"]);
+    assert!(report.missing.is_empty());
+    assert!(project
+        .path()
+        .join(VENDOR_DIR)
+        .join("local/AcmeReport/1.0.0/lib.typ")
+        .is_file());
+    assert_eq!(
+        vendored_packages(project.path()),
+        vec!["@local/AcmeReport:1.0.0"]
+    );
+}
+
+#[test]
 fn package_specs_are_read_from_string_literals_outside_comments() {
     let source = r#"#import "@preview/cetz:0.4.2": canvas
 // #import "@preview/commented:1.0.0"

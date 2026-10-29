@@ -1108,6 +1108,33 @@
         "settings": {
           "show": "Show document settings",
           "hide": "Hide document settings"
+        },
+        "forms": {
+          "editInSource": "Edit in source",
+          "addInSource": "Add in source",
+          "refused": "The form can't add this here.",
+          "missing": "Missing",
+          "notSet": "Not set",
+          "notSetDefault": "Not set (default: {{value}})",
+          "defaultValue": "Default: {{value}}",
+          "clear": "Clear",
+          "on": "On",
+          "off": "Off",
+          "open": "Edit {{label}}",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "Typst can't read this text. A single $, *, _ or ` starts math or formatting. Close it, or type \\ in front of it.",
+          "readOnly": "This document can't be edited right now.",
+          "invalidNumber": "Enter a number.",
+          "between": "Enter a number from {{min}} to {{max}}.",
+          "atLeast": "Enter {{min}} or more.",
+          "atMost": "Enter {{max}} or less.",
+          "renderFailed": "This form couldn't be shown. Here is its source:",
+          "reason": {
+            "expression": "Computed in the source",
+            "kind": "Written as a different kind of value",
+            "unknownOption": "Not one of the choices",
+            "locked": "Locked because the call also takes values from \"..\""
+          }
         }
       },
       "table": {
@@ -1523,5 +1550,29 @@
     "keyTaken": "A variant can't set the same name twice.",
     "saveFailed": "Could not save the variants."
   },
-  "sharedSettingsViewer": "Only owners and editors can change this in a shared project."
+  "sharedSettingsViewer": "Only owners and editors can change this in a shared project.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} (at {{path}})",
+    "diagnostic": {
+      "parseError": "TOML error",
+      "schemaMissing": "Missing schema",
+      "schemaVersion": "Unsupported schema",
+      "fileTooLarge": "File too large",
+      "unreadable": "Unreadable file",
+      "invalidPackageSpec": "Invalid package",
+      "missingKey": "Missing key",
+      "unknownKey": "Unknown key",
+      "invalidValue": "Invalid value",
+      "invalidFunction": "Invalid function name",
+      "builtinName": "Built-in name",
+      "duplicateFunction": "Duplicate form",
+      "moduleRequired": "Missing module",
+      "moduleNotAllowed": "Module not allowed in a package",
+      "invalidModulePath": "Invalid module path",
+      "invalidArg": "Invalid argument",
+      "duplicateArg": "Duplicate argument",
+      "unknownKind": "Unknown field kind"
+    }
+  }
 }

@@ -1122,6 +1122,33 @@
         "settings": {
           "show": "Mostrar as configurações do documento",
           "hide": "Ocultar as configurações do documento"
+        },
+        "forms": {
+          "editInSource": "Editar no código",
+          "addInSource": "Adicionar no código",
+          "refused": "O formulário não pode adicionar isso aqui.",
+          "missing": "Ausente",
+          "notSet": "Não definido",
+          "notSetDefault": "Não definido (padrão: {{value}})",
+          "defaultValue": "Padrão: {{value}}",
+          "clear": "Limpar",
+          "on": "Ligado",
+          "off": "Desligado",
+          "open": "Editar {{label}}",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "O Typst não consegue ler este texto. Um $, *, _ ou ` solto inicia o modo matemático ou uma formatação. Feche-o ou digite \\ antes dele.",
+          "readOnly": "Este documento não pode ser editado no momento.",
+          "invalidNumber": "Digite um número.",
+          "between": "Digite um número de {{min}} a {{max}}.",
+          "atLeast": "Digite {{min}} ou mais.",
+          "atMost": "Digite {{max}} ou menos.",
+          "renderFailed": "Não foi possível mostrar este formulário. Aqui está o código dele:",
+          "reason": {
+            "expression": "Calculado no código",
+            "kind": "Escrito como outro tipo de valor",
+            "unknownOption": "Não é uma das opções",
+            "locked": "Travado porque a chamada também recebe valores de \"..\""
+          }
         }
       },
       "table": {
@@ -1544,5 +1571,29 @@
     "keyTaken": "Uma variante não pode definir o mesmo nome duas vezes.",
     "saveFailed": "Não foi possível salvar as variantes."
   },
-  "sharedSettingsViewer": "Só proprietários e editores podem alterar isso em um projeto compartilhado."
+  "sharedSettingsViewer": "Só proprietários e editores podem alterar isso em um projeto compartilhado.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} (em {{path}})",
+    "diagnostic": {
+      "parseError": "Erro de TOML",
+      "schemaMissing": "Esquema ausente",
+      "schemaVersion": "Esquema não compatível",
+      "fileTooLarge": "Arquivo grande demais",
+      "unreadable": "Arquivo ilegível",
+      "invalidPackageSpec": "Pacote inválido",
+      "missingKey": "Chave ausente",
+      "unknownKey": "Chave desconhecida",
+      "invalidValue": "Valor inválido",
+      "invalidFunction": "Nome de função inválido",
+      "builtinName": "Nome embutido",
+      "duplicateFunction": "Formulário duplicado",
+      "moduleRequired": "Módulo ausente",
+      "moduleNotAllowed": "Módulo não permitido em um pacote",
+      "invalidModulePath": "Caminho de módulo inválido",
+      "invalidArg": "Argumento inválido",
+      "duplicateArg": "Argumento duplicado",
+      "unknownKind": "Tipo de campo desconhecido"
+    }
+  }
 }

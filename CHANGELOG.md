@@ -104,9 +104,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **App icon** in Settings > Appearance offers ten icons for the Dock or
   taskbar while Oleafly is open: pastel, blue, light, prism, iridescent, ocean,
   mint, aurora, sunset and coral.
+- Template authors can give their own Typst functions a form. Describe the
+  arguments in `[tool.oleafly]` in a package's `typst.toml`, or in
+  `oleafly-forms.toml` at the project root, and Visual mode shows each call as
+  a card with labelled fields. Inside a paragraph, the call is a chip that
+  opens the same fields. Changing a field rewrites only that argument. A field
+  can hold text, Typst markup, a choice from a list, a number or an on/off
+  switch. Mistakes in `oleafly-forms.toml`, or in the `typst.toml` of a
+  package vendored into the project, show as markers when you open the file.
 
 ### Changed
 
+- Document settings reads Typst strings the way Typst does: an unknown escape
+  such as `\q`, or a `\u{..}` that names no character, stays as written.
 - CLI agents are no longer marked beta.
 - Errors from CLI agents, such as a disconnect, a timeout, a missing Node.js
   or a refused file request, now show in your interface language instead of
@@ -176,6 +186,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - When two computers sync the same file to S3 at the same moment, the one that
   loses no longer overwrites the other's copy in the bucket. It gets a
   conflict instead, and its next sync keeps both versions.
+- In Typst document settings, clearing two values of one `#set` rule, or
+  clearing one and setting another, could leave a broken rule such as
+  `#set par(` without its closing parenthesis. Clearing a value on the line
+  after a `//` comment, or in a rule written with its commas first, could
+  break the rule too.
+- In a Typst table cell, one bracket without its pair turned every bracket in
+  the cell into plain text, and a cell that ended in `\` broke the table. Now
+  only the bracket without a pair is escaped. No borders also works when the
+  table's `stroke` value comes after a comment.
+- In a Visual mode table cell, Ctrl+Z (Cmd+Z on macOS) undid the document
+  instead of your typing in the cell, and Ctrl+B or Ctrl+I added bold or
+  italic markup somewhere else in the text.
+- Vendor packages skipped a package whose name has capital letters or other
+  letters Typst allows, such as `@local/AcmeReport:1.0.0`.
 - Custom providers that need no API key, such as a local Lemonade, LM Studio
   or llama.cpp server, stopped working after the first save. Oleafly lost the
   "no key needed" setting when it saved, so every request failed with "No API

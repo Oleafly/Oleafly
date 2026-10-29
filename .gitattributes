@@ -48,3 +48,10 @@ crates/oleafly-lint/tests/fixtures/** text eol=lf
 # on every platform and read by the browser app's tests.
 crates/oleafly-synctex/tests/fixtures/synctex/*.expected.json text eol=lf
 crates/oleafly-synctex/tests/fixtures/synctex/*.gz binary
+
+# Typst function forms fixtures. Editor tests compare offsets and exact text,
+# so the sources stay LF everywhere, except the two files that are CRLF (and
+# one with a BOM) on purpose.
+test/fixtures/typst-forms/** text eol=lf
+test/fixtures/typst-forms/project/edge-cases-crlf.typ -text
+test/fixtures/typst-forms/bad/bom.toml -text

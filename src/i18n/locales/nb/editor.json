@@ -1108,6 +1108,33 @@
         "settings": {
           "show": "Vis dokumentinnstillinger",
           "hide": "Skjul dokumentinnstillinger"
+        },
+        "forms": {
+          "editInSource": "Rediger i kilden",
+          "addInSource": "Legg til i kilden",
+          "refused": "Skjemaet kan ikke legge til dette her.",
+          "missing": "Mangler",
+          "notSet": "Ikke satt",
+          "notSetDefault": "Ikke satt (standard: {{value}})",
+          "defaultValue": "Standard: {{value}}",
+          "clear": "Tøm",
+          "on": "På",
+          "off": "Av",
+          "open": "Rediger {{label}}",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "Typst kan ikke lese denne teksten. Et enkelt $, *, _ eller ` starter matematikk eller formatering. Lukk det eller skriv \\ foran det.",
+          "readOnly": "Dette dokumentet kan ikke redigeres akkurat nå.",
+          "invalidNumber": "Skriv inn et tall.",
+          "between": "Skriv inn et tall fra {{min}} til {{max}}.",
+          "atLeast": "Skriv inn {{min}} eller mer.",
+          "atMost": "Skriv inn {{max}} eller mindre.",
+          "renderFailed": "Dette skjemaet kunne ikke vises. Her er kilden:",
+          "reason": {
+            "expression": "Beregnet i kilden",
+            "kind": "Skrevet som en annen type verdi",
+            "unknownOption": "Ikke ett av valgene",
+            "locked": "Låst fordi funksjonskallet også henter verdier fra \"..\""
+          }
         }
       },
       "table": {
@@ -1523,5 +1550,29 @@
     "keyTaken": "En variant kan ikke sette samme navn to ganger.",
     "saveFailed": "Kunne ikke lagre variantene."
   },
-  "sharedSettingsViewer": "Bare eiere og redaktører kan endre dette i et delt prosjekt."
+  "sharedSettingsViewer": "Bare eiere og redaktører kan endre dette i et delt prosjekt.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} (ved {{path}})",
+    "diagnostic": {
+      "parseError": "TOML-feil",
+      "schemaMissing": "Manglende schema",
+      "schemaVersion": "Ustøttet schema",
+      "fileTooLarge": "For stor fil",
+      "unreadable": "Ulesbar fil",
+      "invalidPackageSpec": "Ugyldig pakke",
+      "missingKey": "Manglende nøkkel",
+      "unknownKey": "Ukjent nøkkel",
+      "invalidValue": "Ugyldig verdi",
+      "invalidFunction": "Ugyldig funksjonsnavn",
+      "builtinName": "Innebygd navn",
+      "duplicateFunction": "Duplisert skjema",
+      "moduleRequired": "Manglende modul",
+      "moduleNotAllowed": "Modul er ikke tillatt i en pakke",
+      "invalidModulePath": "Ugyldig modulsti",
+      "invalidArg": "Ugyldig argument",
+      "duplicateArg": "Duplisert argument",
+      "unknownKind": "Ukjent felttype"
+    }
+  }
 }

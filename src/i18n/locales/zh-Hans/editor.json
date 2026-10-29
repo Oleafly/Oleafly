@@ -1094,6 +1094,33 @@
         "settings": {
           "show": "显示文档设置",
           "hide": "隐藏文档设置"
+        },
+        "forms": {
+          "editInSource": "在源码中编辑",
+          "addInSource": "在源码中添加",
+          "refused": "表单无法在此处添加这一项。",
+          "missing": "缺失",
+          "notSet": "未设置",
+          "notSetDefault": "未设置（默认：{{value}}）",
+          "defaultValue": "默认：{{value}}",
+          "clear": "清除",
+          "on": "开启",
+          "off": "关闭",
+          "open": "编辑 {{label}}",
+          "chip": "{{label}}：{{summary}}",
+          "invalid": "Typst 无法读取这段文本。单独的 $, *, _ 或 ` 会被当作公式或格式的开头。请将其闭合，或在它前面加上 \\ 字符。",
+          "readOnly": "此文档目前无法编辑。",
+          "invalidNumber": "请输入数字。",
+          "between": "请输入 {{min}} 到 {{max}} 之间的数字。",
+          "atLeast": "请输入不小于 {{min}} 的数字。",
+          "atMost": "请输入不大于 {{max}} 的数字。",
+          "renderFailed": "无法显示此表单。以下是它的源码：",
+          "reason": {
+            "expression": "在源码中计算得出",
+            "kind": "以其他类型的值书写",
+            "unknownOption": "不在可选项之内",
+            "locked": "已锁定，因为调用还会从 \"..\" 获取值"
+          }
         }
       },
       "table": {
@@ -1502,5 +1529,29 @@
     "keyTaken": "同一变体不能两次设置同一名称。",
     "saveFailed": "无法保存变体。"
   },
-  "sharedSettingsViewer": "在共享项目中，只有所有者和编辑者可以更改此项。"
+  "sharedSettingsViewer": "在共享项目中，只有所有者和编辑者可以更改此项。",
+  "typstForms": {
+    "message": "{{label}}：{{detail}}",
+    "atKeyPath": "{{message}}（位于 {{path}}）",
+    "diagnostic": {
+      "parseError": "TOML 错误",
+      "schemaMissing": "缺少 schema",
+      "schemaVersion": "不支持的 schema",
+      "fileTooLarge": "文件过大",
+      "unreadable": "无法读取的文件",
+      "invalidPackageSpec": "无效的包",
+      "missingKey": "缺少键",
+      "unknownKey": "未知的键",
+      "invalidValue": "无效的值",
+      "invalidFunction": "无效的函数名",
+      "builtinName": "内置名称",
+      "duplicateFunction": "重复的表单",
+      "moduleRequired": "缺少模块",
+      "moduleNotAllowed": "包中不允许使用模块",
+      "invalidModulePath": "无效的模块路径",
+      "invalidArg": "无效的参数",
+      "duplicateArg": "重复的参数",
+      "unknownKind": "未知的字段类型"
+    }
+  }
 }

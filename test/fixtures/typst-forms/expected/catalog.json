@@ -1,0 +1,303 @@
+{
+  "forms": [
+    {
+      "id": "mod:template/memo.typ#memo-header",
+      "function": "memo-header",
+      "binding": {
+        "kind": "module",
+        "path": "template/memo.typ"
+      },
+      "label": "Memo header",
+      "summary": {
+        "named": "subject"
+      },
+      "fields": [
+        {
+          "arg": {
+            "named": "to"
+          },
+          "label": "To",
+          "help": null,
+          "placeholder": null,
+          "required": false,
+          "kind": {
+            "type": "text",
+            "multiline": false,
+            "default": null
+          }
+        },
+        {
+          "arg": {
+            "named": "subject"
+          },
+          "label": "Subject",
+          "help": null,
+          "placeholder": null,
+          "required": false,
+          "kind": {
+            "type": "text",
+            "multiline": false,
+            "default": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "pkg:@local/acme-report:0.1.0#cover-page",
+      "function": "cover-page",
+      "binding": {
+        "kind": "package",
+        "spec": "@local/acme-report:0.1.0"
+      },
+      "label": "Cover page",
+      "summary": {
+        "named": "title"
+      },
+      "fields": [
+        {
+          "arg": {
+            "named": "title"
+          },
+          "label": "Title",
+          "help": null,
+          "placeholder": "Report title",
+          "required": true,
+          "kind": {
+            "type": "text",
+            "multiline": false,
+            "default": null
+          }
+        },
+        {
+          "arg": {
+            "named": "subtitle"
+          },
+          "label": "Subtitle",
+          "help": "Shown under the title.",
+          "placeholder": null,
+          "required": false,
+          "kind": {
+            "type": "text",
+            "multiline": true,
+            "default": null
+          }
+        },
+        {
+          "arg": {
+            "named": "confidential"
+          },
+          "label": "Confidential",
+          "help": null,
+          "placeholder": null,
+          "required": false,
+          "kind": {
+            "type": "toggle",
+            "default": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "pkg:@local/acme-report:0.1.0#info-box",
+      "function": "info-box",
+      "binding": {
+        "kind": "package",
+        "spec": "@local/acme-report:0.1.0"
+      },
+      "label": "Info box",
+      "summary": {
+        "named": "title"
+      },
+      "fields": [
+        {
+          "arg": {
+            "named": "title"
+          },
+          "label": "Heading",
+          "help": null,
+          "placeholder": "Short heading",
+          "required": true,
+          "kind": {
+            "type": "text",
+            "multiline": false,
+            "default": null
+          }
+        },
+        {
+          "arg": {
+            "named": "tone"
+          },
+          "label": "Tone",
+          "help": null,
+          "placeholder": null,
+          "required": false,
+          "kind": {
+            "type": "choice",
+            "options": [
+              {
+                "value": "note",
+                "label": "Note"
+              },
+              {
+                "value": "risk",
+                "label": "Risk"
+              },
+              {
+                "value": "neutral",
+                "label": "neutral"
+              }
+            ],
+            "default": "note"
+          }
+        },
+        {
+          "arg": {
+            "positional": 0
+          },
+          "label": "Text",
+          "help": null,
+          "placeholder": null,
+          "required": false,
+          "kind": {
+            "type": "content"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pkg:@local/acme-report:0.1.0#status-badge",
+      "function": "status-badge",
+      "binding": {
+        "kind": "package",
+        "spec": "@local/acme-report:0.1.0"
+      },
+      "label": "Status",
+      "summary": {
+        "positional": 0
+      },
+      "fields": [
+        {
+          "arg": {
+            "positional": 0
+          },
+          "label": "Status",
+          "help": null,
+          "placeholder": null,
+          "required": true,
+          "kind": {
+            "type": "choice",
+            "options": [
+              {
+                "value": "draft",
+                "label": "Draft"
+              },
+              {
+                "value": "review",
+                "label": "In review"
+              },
+              {
+                "value": "approved",
+                "label": "Approved"
+              }
+            ],
+            "default": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "pkg:@local/acme-report:0.1.0#sign-off",
+      "function": "sign-off",
+      "binding": {
+        "kind": "package",
+        "spec": "@local/acme-report:0.1.0"
+      },
+      "label": "Sign-off",
+      "summary": {
+        "named": "name"
+      },
+      "fields": [
+        {
+          "arg": {
+            "named": "name"
+          },
+          "label": "Signed by",
+          "help": null,
+          "placeholder": null,
+          "required": true,
+          "kind": {
+            "type": "text",
+            "multiline": false,
+            "default": null
+          }
+        },
+        {
+          "arg": {
+            "named": "revision"
+          },
+          "label": "Revision",
+          "help": null,
+          "placeholder": null,
+          "required": false,
+          "kind": {
+            "type": "number",
+            "integer": true,
+            "min": 1.0,
+            "max": null,
+            "step": null,
+            "default": null
+          }
+        },
+        {
+          "arg": {
+            "named": "final"
+          },
+          "label": "Final version",
+          "help": null,
+          "placeholder": null,
+          "required": false,
+          "kind": {
+            "type": "toggle",
+            "default": false
+          }
+        }
+      ]
+    },
+    {
+      "id": "pkg:@local/acme-report:0.1.0#table",
+      "function": "table",
+      "binding": {
+        "kind": "package",
+        "spec": "@local/acme-report:0.1.0"
+      },
+      "label": "Acme table",
+      "summary": null,
+      "fields": [
+        {
+          "arg": {
+            "named": "caption"
+          },
+          "label": "Caption",
+          "help": null,
+          "placeholder": null,
+          "required": false,
+          "kind": {
+            "type": "text",
+            "multiline": false,
+            "default": null
+          }
+        }
+      ]
+    }
+  ],
+  "diagnostics": [
+    {
+      "source": "@local/acme-report:0.1.0",
+      "severity": "warning",
+      "code": "builtinName",
+      "path": "tool.oleafly.forms[4].function",
+      "line": 69,
+      "detail": "\"table\" is a built-in Typst name. Bare calls keep the built-in widget, so only qualified or renamed calls use this form."
+    }
+  ]
+}

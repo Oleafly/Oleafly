@@ -603,7 +603,7 @@ function visualExtensionFor(
   path: string | null,
 ): Extension {
   if (!visual || !ports) return [];
-  return isTypstSourcePath(path) ? visual.typstVisualMode(ports) : visual.visualMode(ports);
+  return isTypstSourcePath(path) ? visual.typstVisualMode(ports, path) : visual.visualMode(ports);
 }
 
 interface VisualCompartments {

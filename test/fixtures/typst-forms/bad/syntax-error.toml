@@ -1,0 +1,6 @@
+[tool.oleafly]
+schema = 1
+
+[[tool.oleafly.forms]]
+function = "info-box"
+fields = [ { arg = "title", kind = "text", label = "Heading" }

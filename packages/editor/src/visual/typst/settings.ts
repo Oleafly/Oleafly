@@ -1,6 +1,7 @@
 import type { EditorState } from "@codemirror/state";
 import type { Tree } from "@lezer/common";
-import { expressionAfterHash, hasErrorNode, isBlank } from "./syntax";
+import { hasErrorNode } from "../../typst-arguments";
+import { expressionAfterHash, isBlank } from "./syntax";
 
 const SETTING_STATEMENTS = new Set(["SetRule", "ShowRule", "ModuleImport", "LetBinding"]);
 const COMMENTS = new Set(["LineComment", "BlockComment"]);

@@ -4,15 +4,17 @@ import { type ColumnAlignment, plainColumn } from "../../table/column-spec";
 import { type CellData, type ParsedTable, type RowData, type RowLayout, TableModel } from "../../table/model";
 import {
   argumentNodes,
-  calleeName,
+  type CallArguments,
   closingParenthesis,
   contentBody,
   hasErrorNode,
   insideParentheses,
+  readCallArguments,
   namedValue,
   type TextRange,
   trailingContentBlocks,
-} from "../syntax";
+} from "../../../typst-arguments";
+import { calleeName } from "../syntax";
 
 export type TypstAlignment = Exclude<ColumnAlignment, "paragraph">;
 
@@ -38,6 +40,7 @@ export interface TypstNamedArgument {
 export interface TypstTable {
   parsed: ParsedTable;
   call: TextRange;
+  arguments: CallArguments;
   open: number;
   close: number;
   columnCount: number;
@@ -228,7 +231,8 @@ export function parseTypstTable(state: EditorState, call: SyntaxNode): TypstTabl
   if (!args || open?.name !== "LeftParen" || !close) return null;
   if (trailingContentBlocks(args).length > 0) return null;
   const collected = collect(state, args);
-  if (!collected) return null;
+  const callArguments = readCallArguments(state.doc, call);
+  if (!collected || !callArguments) return null;
   const find = (name: string) => collected.named.find((named) => named.name === name) ?? null;
   const columns = find("columns");
   const count = columnCountOf(state, columns);
@@ -242,6 +246,7 @@ export function parseTypstTable(state: EditorState, call: SyntaxNode): TypstTabl
   const trailingRule = collected.rules.has(collected.cells.length) && collected.cells.length > 0;
   const base = {
     call: range(call),
+    arguments: callArguments,
     open: open.to,
     close: close.from,
     columnCount: count,

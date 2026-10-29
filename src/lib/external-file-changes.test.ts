@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EMPTY_TYPST_FORM_CATALOG } from "@oleafly/editor/typst-forms";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 
 const mocks = vi.hoisted(() => ({
@@ -91,6 +92,7 @@ vi.mock("@/store/project-index", () => ({
 import { installCollabEditorPort } from "@/lib/collab-live-bridge";
 import { onPathsDeleted, onPathsMoved, useFilesStore } from "@/store/files";
 import { useProjectAvailabilityStore } from "@/store/project-availability";
+import { useTypstFormsStore } from "@/store/typst-forms";
 import {
   applyExternalFileChange,
   applyFolderChange,
@@ -688,5 +690,58 @@ describe("folder change edge cases", () => {
     releaseListing(TREE);
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(mocks.rebuildFromDisk).toHaveBeenCalledOnce();
+  });
+});
+
+describe("folder changes and Typst forms", () => {
+  function watchForms(): ReturnType<typeof vi.fn> {
+    const refresh = vi.fn(async () => undefined);
+    useTypstFormsStore.setState({
+      refresh,
+      catalog: { version: "v", watch: ["oleafly-forms.toml"], forms: [], diagnostics: [] },
+    });
+    return refresh;
+  }
+
+  it("reloads the forms once when a watched file changes, and not for other files", () => {
+    const refresh = watchForms();
+    applyFolderChange({ projectId: "project", paths: ["references.bib"], rescan: false });
+    expect(refresh).not.toHaveBeenCalled();
+    applyFolderChange({ projectId: "project", paths: ["oleafly-forms.toml", "references.bib"], rescan: false });
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it("reloads the forms after a rescan and when the window comes back", () => {
+    const refresh = watchForms();
+    applyFolderChange({ projectId: "project", paths: [], rescan: true });
+    expect(refresh).toHaveBeenCalledOnce();
+    refreshOpenFilesFromDisk("project");
+    expect(refresh).toHaveBeenCalledTimes(2);
+  });
+
+  it("reloads the forms when another window or an assistant tool changes a watched file", () => {
+    const refresh = watchForms();
+    const change = (payload: Omit<Parameters<typeof applyExternalFileChange>[0], "projectId">) =>
+      applyExternalFileChange({ projectId: "project", from: "other", ...payload }, "self");
+    change({ paths: ["references.bib"] });
+    change({ change: { kind: "write", path: "references.bib", content: "written\n" } });
+    expect(refresh).not.toHaveBeenCalled();
+    change({ paths: ["oleafly-forms.toml"] });
+    expect(refresh).toHaveBeenCalledOnce();
+    change({ change: { kind: "write", path: "oleafly-forms.toml", content: "[tool.oleafly]\n" } });
+    change({ change: { kind: "rename", from: "draft.toml", to: "oleafly-forms.toml" } });
+    change({ change: { kind: "delete", path: "oleafly-forms.toml" } });
+    expect(refresh).toHaveBeenCalledTimes(4);
+    change({});
+    expect(refresh).toHaveBeenCalledTimes(5);
+  });
+
+  it("reloads the forms on any change until a catalog has loaded", () => {
+    const refresh = vi.fn(async () => undefined);
+    useTypstFormsStore.setState({ refresh, catalog: EMPTY_TYPST_FORM_CATALOG });
+    applyFolderChange({ projectId: "project", paths: ["references.bib"], rescan: false });
+    expect(refresh).toHaveBeenCalledOnce();
+    applyExternalFileChange({ projectId: "project", paths: ["references.bib"], from: "other" }, "self");
+    expect(refresh).toHaveBeenCalledTimes(2);
   });
 });

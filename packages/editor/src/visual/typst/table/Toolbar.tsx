@@ -12,7 +12,7 @@ import {
   TableRemoveIcon,
   TrashIcon,
 } from "../../table/icons";
-import type { TextRange } from "../syntax";
+import type { TextRange } from "../../../typst-arguments";
 import {
   typstAlignmentEdit,
   typstBordersEdit,
