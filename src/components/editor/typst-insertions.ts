@@ -19,7 +19,8 @@ import { useFilesStore } from "@/store/files";
 import { sharedBaseOption } from "@/lib/shared-document-writes";
 import { useIndexStore } from "@/store/project-index";
 import { sanitizeTypstLabel, typstFigureAt } from "./typst-figure";
-import { matchTypstMath, typstStringLiteral } from "./typst-scan";
+import { encodeTypstString } from "@oleafly/editor/typst-literals";
+import { matchTypstMath } from "./typst-scan";
 import {
   typstGlyphSpec,
   typstSymbolForLatex,
@@ -117,7 +118,7 @@ export function typstReferenceText(
   before: string,
   after: string,
 ): string {
-  const labelExpression = LABEL_NAME.test(key) ? `<${key}>` : `label(${typstStringLiteral(key)})`;
+  const labelExpression = LABEL_NAME.test(key) ? `<${key}>` : `label(${encodeTypstString(key)})`;
   if (context === "math") return `#${kind}(${labelExpression})`;
   if (context === "code") return `${kind}(${labelExpression})`;
   if (!referenceSyntaxAllowed(key)) {

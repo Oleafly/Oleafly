@@ -1,3 +1,5 @@
+import { encodeTypstString } from "./typst-literals";
+
 export interface LatexToTypstOptions {
   typstVersion?: string | null;
 }
@@ -615,11 +617,6 @@ function isTypstVersionBefore(version: string | null | undefined, minor: number)
   return major === 0 && Number(match[2]) < minor;
 }
 
-function typstString(text: string): string {
-  const escaped = text.replaceAll("\\", String.raw`\\`).replaceAll('"', String.raw`\"`);
-  return `"${escaped}"`;
-}
-
 function plainText(raw: string): string {
   return raw
     .replaceAll(/\\textbackslash\b\s*/gu, "\\")
@@ -1110,7 +1107,7 @@ class LatexMathParser {
   private font(name: string): Atom {
     const argument = this.parseArgument();
     const letters = argument.every((atom) => /^\p{L}$/u.test(atom.code)) && argument.length > 1;
-    const content = letters ? [word(typstString(argument.map((atom) => atom.code).join("")))] : argument;
+    const content = letters ? [word(encodeTypstString(argument.map((atom) => atom.code).join("")))] : argument;
     const font = lookup(FONTS, name) ?? "upright";
     const typstName = font === "scr" && isTypstVersionBefore(this.options.typstVersion, 13) ? "cal" : font;
     return call(typstName, [content]);
@@ -1127,7 +1124,7 @@ class LatexMathParser {
         return;
       }
       const text = plainText(part);
-      if (text) atoms.push({ ...word(typstString(text)), space: index > 0 });
+      if (text) atoms.push({ ...word(encodeTypstString(text)), space: index > 0 });
     });
     if (atoms.length === 0) return null;
     if (style) return call(style, [atoms]);
@@ -1286,7 +1283,7 @@ class LatexMathParser {
       limits = true;
     }
     const name = plainText(this.readRawGroup()).replace(/\s+/gu, " ").trim();
-    return word(limits ? `op(${typstString(name)}, limits: #true)` : `op(${typstString(name)})`);
+    return word(limits ? `op(${encodeTypstString(name)}, limits: #true)` : `op(${encodeTypstString(name)})`);
   }
 
   private brace(name: string): Atom {
@@ -1333,7 +1330,7 @@ class LatexMathParser {
       const raw = [this.readRawGroup()];
       if (name === "SI" || name === "qty") raw.push(this.readRawGroup());
       const text = plainText(raw.join(" ")).trim();
-      return text ? word(typstString(text)) : null;
+      return text ? word(encodeTypstString(text)) : null;
     }
     if (!/^[A-Za-z]+$/u.test(name)) return null;
     return word(name);

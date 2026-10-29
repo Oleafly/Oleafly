@@ -6,11 +6,15 @@ import { test, expect } from "../fixtures";
 import {
   chooseAppSelectOption,
   createBlankProject,
+  createProjectFromTemplate,
   editorSource,
   openSettings,
   readProjectText,
+  replaceEditorSource,
+  setTypstFormField,
   waitEditorContains,
   waitLong,
+  writeProjectText,
   type Page,
 } from "../helpers";
 import { scriptValue } from "../script-value";
@@ -194,13 +198,72 @@ async function waitAppUpToDate(page: Page, timeoutMs = 30_000) {
   await waitLong(page, `document.querySelector(${scriptValue(PANE_STATUS)})?.getAttribute("aria-label") === "Up to date"`, timeoutMs);
 }
 
-async function expectConverged(page: Page, stack: CollabStack, contains: string[]) {
+// Leaves only this run's server, adds it, and signs the owner in.
+async function signInToServer(page: Page, ready: Ready) {
+  await page.evaluate(
+    `import("/src/lib/tauri-collab.ts").then(async ({ collabServersList, collabServerRemove }) => {
+      for (const server of await collabServersList()) {
+        if (server.url !== ${scriptValue(ready.server)}) await collabServerRemove(server.server_id);
+      }
+      return true;
+    })`,
+  );
+  await openSettings(page, "collaboration");
+  await clickButton(page, '[data-testid="collaboration-section"]', "Add server");
+  const address = '[role="dialog"] input[autocomplete="url"]';
+  await page.waitForFunction(`!!document.querySelector(${scriptValue(address)})`, 20_000);
+  await page.fill(address, ready.server);
+  await page.click('[role="dialog"] form button[type="submit"]');
+  const setup = '[role="dialog"] input[autocomplete="one-time-code"]';
+  await page.waitForFunction(`!!document.querySelector(${scriptValue(setup)})`, 20_000);
+  await page.fill(setup, ready.setupCode);
+  await clickButton(page, '[role="dialog"]', "Continue with GitHub");
+  await waitLong(
+    page,
+    `import("/src/lib/tauri-collab.ts").then(({ collabServersList }) => collabServersList()).then((servers) =>
+      servers.some((server) => server.signed_in && server.account?.display_name === ${scriptValue(ready.owner)}))`,
+    60_000,
+  );
+  await clickButton(page, '[role="dialog"]', "Done");
+  await page.press("body", "Escape");
+  await page.waitForFunction(`!document.querySelector('[data-testid="settings-section-appearance"]')`, 20_000);
+}
+
+// Shares the open project, turns on link sharing for editors, and returns the link.
+async function shareWithEditors(page: Page): Promise<string> {
+  await page.click('[data-toolbar-item="share"] button');
+  await page.waitForFunction(`!!document.querySelector(${scriptValue(SHARE_DIALOG)})`, 20_000);
+  await clickButton(page, SHARE_DIALOG, "Share", 60_000);
+  await waitLong(page, `import("/src/lib/tauri-collab.ts").then((tauri) => tauri.collabShareInfo(${projectIdExpression()})).then((share) => !!share)`, 60_000);
+  await waitLong(
+    page,
+    `(() => {
+      const toggle = document.querySelector(${scriptValue(`${SHARE_DIALOG} [role="switch"]`)});
+      if (!toggle) return false;
+      if (toggle.getAttribute("aria-checked") !== "true") toggle.click();
+      return !!document.querySelector(${scriptValue(LINK_ROLE)});
+    })()`,
+    30_000,
+  );
+  await chooseAppSelectOption(page, LINK_ROLE, { attribute: "data-label", value: "Editor" });
+  await waitLong(
+    page,
+    `import("/src/lib/tauri-collab.ts").then((tauri) => tauri.collabProjectSummary(${projectIdExpression()})).then((summary) => summary.link_sharing && summary.link_role === "editor")`,
+    30_000,
+  );
+  const link = await bridge<string>(page, `tauri.collabShareInfo(projectId).then((share) => share?.link ?? "")`);
+  expect(link).toContain("/p/");
+  await page.click(`${SHARE_DIALOG} button[aria-label="Close"]`);
+  return link;
+}
+
+async function expectConverged(page: Page, stack: CollabStack, contains: string[], path = "main.tex") {
   const deadline = Date.now() + 60_000;
   let last = "";
   for (;;) {
     const peer = (await stack.request({ cmd: "settle" })).text as string;
     const editor = await editorSource(page);
-    const disk = await readProjectText(page, "main.tex");
+    const disk = await readProjectText(page, path);
     const missing = contains.filter((needle) => !editor.includes(needle));
     if (editor === peer && disk === editor && missing.length === 0) return editor;
     last = JSON.stringify({ missing, editor, peer, disk });
@@ -218,61 +281,13 @@ test("one app and a headless peer share, edit together, merge after time away, a
 
     await test.step("the owner creates a project and signs in to the server", async () => {
       await createBlankProject(page, project);
-      await page.evaluate(
-        `import("/src/lib/tauri-collab.ts").then(async ({ collabServersList, collabServerRemove }) => {
-          for (const server of await collabServersList()) {
-            if (server.url !== ${scriptValue(ready.server)}) await collabServerRemove(server.server_id);
-          }
-          return true;
-        })`,
-      );
-      await openSettings(page, "collaboration");
-      await clickButton(page, '[data-testid="collaboration-section"]', "Add server");
-      const address = '[role="dialog"] input[autocomplete="url"]';
-      await page.waitForFunction(`!!document.querySelector(${scriptValue(address)})`, 20_000);
-      await page.fill(address, ready.server);
-      await page.click('[role="dialog"] form button[type="submit"]');
-      const setup = '[role="dialog"] input[autocomplete="one-time-code"]';
-      await page.waitForFunction(`!!document.querySelector(${scriptValue(setup)})`, 20_000);
-      await page.fill(setup, ready.setupCode);
-      await clickButton(page, '[role="dialog"]', "Continue with GitHub");
-      await waitLong(
-        page,
-        `import("/src/lib/tauri-collab.ts").then(({ collabServersList }) => collabServersList()).then((servers) =>
-          servers.some((server) => server.signed_in && server.account?.display_name === ${scriptValue(ready.owner)}))`,
-        60_000,
-      );
-      await clickButton(page, '[role="dialog"]', "Done");
-      await page.press("body", "Escape");
-      await page.waitForFunction(`!document.querySelector('[data-testid="settings-section-appearance"]')`, 20_000);
+      await signInToServer(page, ready);
     });
 
     let link = "";
     let reviewText = "";
     await test.step("the owner shares the project and turns on link sharing for editors", async () => {
-      await page.click('[data-toolbar-item="share"] button');
-      await page.waitForFunction(`!!document.querySelector(${scriptValue(SHARE_DIALOG)})`, 20_000);
-      await clickButton(page, SHARE_DIALOG, "Share", 60_000);
-      await waitLong(page, `import("/src/lib/tauri-collab.ts").then((tauri) => tauri.collabShareInfo(${projectIdExpression()})).then((share) => !!share)`, 60_000);
-      await waitLong(
-        page,
-        `(() => {
-          const toggle = document.querySelector(${scriptValue(`${SHARE_DIALOG} [role="switch"]`)});
-          if (!toggle) return false;
-          if (toggle.getAttribute("aria-checked") !== "true") toggle.click();
-          return !!document.querySelector(${scriptValue(LINK_ROLE)});
-        })()`,
-        30_000,
-      );
-      await chooseAppSelectOption(page, LINK_ROLE, { attribute: "data-label", value: "Editor" });
-      await waitLong(
-        page,
-        `import("/src/lib/tauri-collab.ts").then((tauri) => tauri.collabProjectSummary(${projectIdExpression()})).then((summary) => summary.link_sharing && summary.link_role === "editor")`,
-        30_000,
-      );
-      link = await bridge<string>(page, `tauri.collabShareInfo(projectId).then((share) => share?.link ?? "")`);
-      expect(link).toContain("/p/");
-      await page.click(`${SHARE_DIALOG} button[aria-label="Close"]`);
+      link = await shareWithEditors(page);
     });
 
     await test.step("the headless peer pastes the link and joins as an editor", async () => {
@@ -340,6 +355,69 @@ test("one app and a headless peer share, edit together, merge after time away, a
 
     expect(await paneStatus(page)).toBe("Up to date");
     expect(reviewText, "the merge review names the person whose changes it merged").toContain(`${ready.peer}: `);
+  } finally {
+    await stack.stop();
+  }
+});
+
+const MEMO_FORMS = `[tool.oleafly]
+schema = 1
+
+[[tool.oleafly.forms]]
+module = "template/memo.typ"
+function = "memo-header"
+label = "Memo header"
+fields = [
+  { arg = "to", kind = "text", label = "To" },
+  { arg = "subject", kind = "text", label = "Subject" },
+]
+`;
+const MEMO_TEMPLATE = "#let memo-header(to: none, subject: none) = [To: #to. Subject: #subject.]\n";
+const MEMO_REPORT = '#import "template/memo.typ": memo-header\n\nIntro.\n\n#memo-header(to: "Team", subject: "Plan")\n';
+
+async function focusedFormValue(page: Page): Promise<{ inForm: boolean; value: string }> {
+  return page.evaluate<{ inForm: boolean; value: string }>(`(() => {
+    const element = document.activeElement;
+    return { inForm: !!element?.closest(".ofl-visual-form-card"), value: element instanceof HTMLInputElement ? element.value : "" };
+  })()`);
+}
+
+test("a form field edit reaches the peer, and the peer's edit leaves a draft in a focused field alone", async ({ tauriPage: page }, testInfo) => {
+  test.setTimeout(600_000);
+  const stack = new CollabStack(STACK, testInfo.outputPath("collab-stack-forms.log"));
+  try {
+    const ready = await stack.ready;
+
+    await test.step("the owner shares a Typst project whose memo template declares a form", async () => {
+      await createProjectFromTemplate(page, "blank-typst", `Live Forms r${testInfo.retry}-${testInfo.repeatEachIndex}`);
+      await writeProjectText(page, "oleafly-forms.toml", MEMO_FORMS);
+      await writeProjectText(page, "template/memo.typ", MEMO_TEMPLATE);
+      await replaceEditorSource(page, MEMO_REPORT);
+      await signInToServer(page, ready);
+      const link = await shareWithEditors(page);
+      const joined = await stack.request({ cmd: "join", link });
+      expect(joined.file).toBe("main.typ");
+      await page.click('[aria-label="Switch to WYSIWYG view"]');
+      await waitLong(page, `!!document.querySelector(".cm-content .ofl-visual-form-card")`, 30_000);
+    });
+
+    await test.step("a field edited in the app shows up in the peer's document", async () => {
+      await setTypstFormField(page, "Memo header", "To", "Board", "enter");
+      await stack.request({ cmd: "wait_text", contains: ['to: "Board"'] });
+      await expectConverged(page, stack, ['to: "Board"'], "main.typ");
+    });
+
+    await test.step("the peer types while the app has a draft in a focused field", async () => {
+      await setTypstFormField(page, "Memo header", "Subject", "Draft subject", "none");
+      await stack.request({ cmd: "type", text: "Peer note. ", after: "Intro.", delay_ms: 20 });
+      await waitEditorContains(page, "Peer note.", 30_000);
+      expect(await focusedFormValue(page)).toEqual({ inForm: true, value: "Draft subject" });
+      await page.evaluate(
+        `document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }))`,
+      );
+      await stack.request({ cmd: "wait_text", contains: ['subject: "Draft subject"', "Peer note."] });
+      await expectConverged(page, stack, ['to: "Board"', 'subject: "Draft subject"', "Peer note."], "main.typ");
+    });
   } finally {
     await stack.stop();
   }

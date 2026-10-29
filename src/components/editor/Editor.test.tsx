@@ -577,6 +577,30 @@ describe("Editor shell", () => {
     fireEvent.keyDown(window, { key: "b", metaKey: true });
     expect(wrapSelection).toHaveBeenCalledTimes(2);
   });
+
+
+  it("leaves bold and italic to a form field or a table cell inside the text", () => {
+    openFile("notes.typ");
+    const { container } = render(<Editor />);
+    const surface = document.createElement("div");
+    surface.className = "cm-editor";
+    const content = document.createElement("div");
+    content.className = "cm-content";
+    const card = document.createElement("div");
+    card.setAttribute("data-ofl-visual-form", "");
+    const field = document.createElement("input");
+    const cell = document.createElement("textarea");
+    card.append(field);
+    content.append(card, cell);
+    surface.append(content);
+    container.appendChild(surface);
+
+    field.focus();
+    fireEvent.keyDown(window, { key: "b", metaKey: true });
+    cell.focus();
+    fireEvent.keyDown(window, { key: "i", ctrlKey: true });
+    expect(wrapSelection).not.toHaveBeenCalled();
+  });
 });
 
 describe("Editor in Zen mode", () => {

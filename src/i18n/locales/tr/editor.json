@@ -1108,6 +1108,33 @@
         "settings": {
           "show": "Belge ayarlarını göster",
           "hide": "Belge ayarlarını gizle"
+        },
+        "forms": {
+          "editInSource": "Kaynakta düzenle",
+          "addInSource": "Kaynağa ekle",
+          "refused": "Form bunu buraya ekleyemez.",
+          "missing": "Eksik",
+          "notSet": "Ayarlanmadı",
+          "notSetDefault": "Ayarlanmadı (varsayılan: {{value}})",
+          "defaultValue": "Varsayılan: {{value}}",
+          "clear": "Temizle",
+          "on": "Açık",
+          "off": "Kapalı",
+          "open": "{{label}} öğesini düzenle",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "Typst bu metni okuyamıyor. Tek başına bir $, *, _ veya ` matematik ya da biçimlendirme başlatır. Kapatın veya önüne \\ yazın.",
+          "readOnly": "Bu belge şu anda düzenlenemiyor.",
+          "invalidNumber": "Bir sayı girin.",
+          "between": "{{min}} ile {{max}} arasında bir sayı girin.",
+          "atLeast": "En az {{min}} olan bir sayı girin.",
+          "atMost": "En çok {{max}} olan bir sayı girin.",
+          "renderFailed": "Bu form gösterilemedi. Kaynağı şöyle:",
+          "reason": {
+            "expression": "Kaynakta hesaplanıyor",
+            "kind": "Farklı türde bir değer olarak yazılmış",
+            "unknownOption": "Seçeneklerden biri değil",
+            "locked": "İşlev çağrısı \"..\" üzerinden de değer aldığı için kilitli"
+          }
         }
       },
       "table": {
@@ -1523,5 +1550,29 @@
     "keyTaken": "Bir varyant aynı adı iki kez ayarlayamaz.",
     "saveFailed": "Varyantlar kaydedilemedi."
   },
-  "sharedSettingsViewer": "Paylaşılan bir projede bunu yalnızca sahipler ve düzenleyenler değiştirebilir."
+  "sharedSettingsViewer": "Paylaşılan bir projede bunu yalnızca sahipler ve düzenleyenler değiştirebilir.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} ({{path}} konumunda)",
+    "diagnostic": {
+      "parseError": "TOML hatası",
+      "schemaMissing": "Eksik şema",
+      "schemaVersion": "Desteklenmeyen şema",
+      "fileTooLarge": "Dosya çok büyük",
+      "unreadable": "Okunamayan dosya",
+      "invalidPackageSpec": "Geçersiz paket",
+      "missingKey": "Eksik anahtar",
+      "unknownKey": "Bilinmeyen anahtar",
+      "invalidValue": "Geçersiz değer",
+      "invalidFunction": "Geçersiz işlev adı",
+      "builtinName": "Yerleşik ad",
+      "duplicateFunction": "Yinelenen form",
+      "moduleRequired": "Eksik modül",
+      "moduleNotAllowed": "Pakette modüle izin verilmiyor",
+      "invalidModulePath": "Geçersiz modül yolu",
+      "invalidArg": "Geçersiz argüman",
+      "duplicateArg": "Yinelenen argüman",
+      "unknownKind": "Bilinmeyen alan türü"
+    }
+  }
 }

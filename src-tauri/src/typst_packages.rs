@@ -164,12 +164,17 @@ pub(crate) struct PackageSpec {
     pub(crate) version: String,
 }
 
+/// A namespace or name, by Typst's `is_ident`: XID_Start or `_`, then
+/// XID_Continue, `_` or `-`, so `@local/AcmeReport:1.0.0` is one. None of
+/// those is `/`, `\`, `:` or `.`, so each part stays one path component.
 fn valid_identifier(value: &str) -> bool {
-    !value.is_empty()
-        && value.len() <= 128
-        && !value.starts_with('-')
-        && value.bytes().all(|byte| {
-            byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'-' | b'_')
+    let mut characters = value.chars();
+    value.len() <= 128
+        && characters
+            .next()
+            .is_some_and(|first| unicode_ident::is_xid_start(first) || first == '_')
+        && characters.all(|character| {
+            unicode_ident::is_xid_continue(character) || character == '_' || character == '-'
         })
 }
 
@@ -216,6 +221,15 @@ impl Display for PackageSpec {
             self.namespace, self.name, self.version
         )
     }
+}
+
+/// Where the compiler finds `spec` in `dirs`: the package path first, then the
+/// download cache.
+pub(crate) fn package_dir(dirs: &TypstPackageDirs, spec: &PackageSpec) -> Option<PathBuf> {
+    [&dirs.package_path, &dirs.cache_path]
+        .into_iter()
+        .map(|root| root.join(spec.relative_dir()))
+        .find(|directory| directory.is_dir())
 }
 
 fn string_literals(source: &str) -> Vec<String> {
@@ -416,12 +430,10 @@ pub(crate) fn vendor_into_project(
     deps_json: Option<&str>,
 ) -> Result<TypstVendorReport, String> {
     let vendor = project_root.join(VENDOR_DIR);
-    let locations = [vendor.as_path(), &app.package_path, &app.cache_path];
     let locate = |spec: &PackageSpec| {
-        locations
-            .iter()
-            .map(|root| root.join(spec.relative_dir()))
-            .find(|directory| directory.is_dir())
+        Some(vendor.join(spec.relative_dir()))
+            .filter(|directory| directory.is_dir())
+            .or_else(|| package_dir(app, spec))
     };
     let mut wanted: BTreeSet<PackageSpec> = match deps_json {
         Some(json) => specs_from_deps(json, &[&vendor, &app.package_path, &app.cache_path])?,
@@ -778,7 +790,7 @@ pub struct TypstVendorResult {
     pub project: ProjectMeta,
 }
 
-async fn blocking<T, F>(work: F) -> Result<T, String>
+pub(crate) async fn blocking<T, F>(work: F) -> Result<T, String>
 where
     T: Send + 'static,
     F: FnOnce() -> Result<T, String> + Send + 'static,

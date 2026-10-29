@@ -1,3 +1,5 @@
+import type { TypstFormsPort } from "../typst-forms";
+
 export interface VisualImage {
   url: string;
   kind: "raster" | "svg" | "pdf";
@@ -14,4 +16,5 @@ export interface VisualPorts {
   resolveImage(path: string): Promise<VisualImage | null>;
   openFigureEditor?(range: VisualRange): void;
   referenceKind?(key: string): VisualReferenceKind | null;
+  typstForms?: TypstFormsPort;
 }

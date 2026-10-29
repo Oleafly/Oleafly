@@ -1,10 +1,6 @@
 import type { EditorState } from "@codemirror/state";
 import type { SyntaxNode } from "@lezer/common";
-
-export interface TextRange {
-  from: number;
-  to: number;
-}
+import { positionalArguments, type TextRange } from "../../typst-arguments";
 
 export function nodeText(state: EditorState, node: TextRange): string {
   return state.sliceDoc(node.from, node.to);
@@ -27,65 +23,6 @@ export function calleeName(state: EditorState, call: SyntaxNode): string | null 
   if (callee.name !== "FieldAccess") return null;
   const text = nodeText(state, callee);
   return /^[\p{ID_Start}_][\p{ID_Continue}.-]*$/u.test(text) ? text : null;
-}
-
-export function callArguments(call: SyntaxNode): SyntaxNode | null {
-  return call.getChild("Args");
-}
-
-export function argumentNodes(args: SyntaxNode): SyntaxNode[] {
-  const nodes: SyntaxNode[] = [];
-  for (let child = args.firstChild; child; child = child.nextSibling) {
-    if (["LeftParen", "RightParen", "Comma"].includes(child.name)) continue;
-    nodes.push(child);
-  }
-  return nodes;
-}
-
-export function namedArgument(state: EditorState, args: SyntaxNode, name: string): SyntaxNode | null {
-  for (let child = args.firstChild; child; child = child.nextSibling) {
-    if (child.name !== "Named") continue;
-    const key = child.firstChild;
-    if (key && nodeText(state, key) === name) return child;
-  }
-  return null;
-}
-
-export function namedValue(named: SyntaxNode): SyntaxNode | null {
-  const colon = named.getChild("Colon");
-  const value = colon?.nextSibling ?? null;
-  return value && !value.type.isError ? value : null;
-}
-
-export function positionalArguments(args: SyntaxNode): SyntaxNode[] {
-  return argumentNodes(args).filter((node) => node.name !== "Named" && !node.type.isError);
-}
-
-export function insideParentheses(args: SyntaxNode): boolean {
-  return args.firstChild?.name === "LeftParen";
-}
-
-export function closingParenthesis(args: SyntaxNode): SyntaxNode | null {
-  for (let child = args.firstChild; child; child = child.nextSibling) {
-    if (child.name === "RightParen") return child;
-  }
-  return null;
-}
-
-export function trailingContentBlocks(args: SyntaxNode): SyntaxNode[] {
-  const close = closingParenthesis(args);
-  const blocks: SyntaxNode[] = [];
-  for (let child = close ? close.nextSibling : args.firstChild; child; child = child.nextSibling) {
-    if (child.name === "ContentBlock") blocks.push(child);
-  }
-  return close || !insideParentheses(args) ? blocks : [];
-}
-
-export function contentBody(block: SyntaxNode): TextRange | null {
-  const open = block.firstChild;
-  const close = block.lastChild;
-  if (open?.name !== "LeftBracket" || close?.name !== "RightBracket" || close.from < open.to) return null;
-  return { from: open.to, to: close.from };
 }
 
 export function isClosedPair(node: SyntaxNode, open: string, close: string): boolean {
@@ -133,13 +70,3 @@ export function imagePath(state: EditorState, args: SyntaxNode): string | null {
   return path === "" ? null : path;
 }
 
-export function hasErrorNode(node: SyntaxNode): boolean {
-  let found = false;
-  node.toTree().iterate({
-    enter(ref) {
-      if (ref.type.isError) found = true;
-      return !found;
-    },
-  });
-  return found;
-}

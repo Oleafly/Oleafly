@@ -76,6 +76,12 @@ describe("typstFigureSource", () => {
     expect(typstCaptionContent("line\nbreak")).toBe("line break");
   });
 
+  it("escapes only the unmatched caption brackets, past raw text, and doubles a trailing backslash", () => {
+    expect(typstCaptionContent("See #emph[this] and\nnote 3]")).toBe(String.raw`See #emph[this] and note 3\]`);
+    expect(typstCaptionContent("Code `a[0]` and ] here")).toBe(String.raw`Code ${"`a[0]`"} and \] here`);
+    expect(typstCaptionContent("Saved in C:\\data\\")).toBe("Saved in C:\\data\\\\");
+  });
+
   it("repairs labels that Typst would reject", () => {
     expect(typstFigureSource({ ...BASE, label: "fig plot!" }, null).template).toMatch(/\) <fig-plot->$/u);
   });

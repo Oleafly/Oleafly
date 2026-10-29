@@ -1,69 +1,14 @@
 import type { ChangeSpec, EditorState } from "@codemirror/state";
 import type { TableEdit } from "../../table/commands";
 import { CellSelection } from "../../table/table-selection";
-import type { TextRange } from "../syntax";
+import { deleteArgumentSpan, lineStartIndent, planArgumentEdit, type TextRange } from "../../../typst-arguments";
 import type { TypstAlignment, TypstNamedArgument, TypstTable } from "./parse";
 
 const EMPTY_CELL = "[]";
 const NEW_COLUMN = "auto";
 
-function bracketsBalanced(text: string): boolean {
-  let depth = 0;
-  for (let index = 0; index < text.length; index++) {
-    const character = text[index];
-    if (character === "\\") index += 1;
-    else if (character === "[") depth += 1;
-    else if (character === "]") {
-      depth -= 1;
-      if (depth < 0) return false;
-    }
-  }
-  return depth === 0;
-}
-
-export function sanitizeTypstCell(text: string): string {
-  return bracketsBalanced(text) ? text : text.replaceAll(/(?<!\\)([[\]])/gu, String.raw`\$1`);
-}
-
 function emptyRow(count: number): string {
   return Array.from({ length: count }, () => EMPTY_CELL).join(", ");
-}
-
-function lineStartIndent(state: EditorState, pos: number): string | null {
-  const line = state.doc.lineAt(pos);
-  const before = state.sliceDoc(line.from, pos);
-  return /^[ \t]*$/u.test(before) ? before : null;
-}
-
-function afterSeparator(state: EditorState, pos: number): { comma: boolean; end: number } {
-  let end = pos;
-  const text = state.sliceDoc(pos, Math.min(state.doc.length, pos + 256));
-  const match = /^[ \t]*(,)?[ \t]*/u.exec(text);
-  if (match) end += match[0].length;
-  return { comma: Boolean(match?.[1]), end };
-}
-
-function commaBefore(state: EditorState, pos: number): number | null {
-  const text = state.sliceDoc(Math.max(0, pos - 256), pos);
-  const match = /,\s*$/u.exec(text);
-  return match ? pos - match[0].length : null;
-}
-
-export function deleteArgumentSpan(state: EditorState, span: TextRange): ChangeSpec {
-  const { doc } = state;
-  const indent = lineStartIndent(state, span.from);
-  const after = afterSeparator(state, span.to);
-  const endLine = doc.lineAt(span.to);
-  if (indent !== null && after.end >= endLine.to && endLine.to < doc.length) {
-    return { from: doc.lineAt(span.from).from, to: endLine.to + 1, insert: "" };
-  }
-  if (after.comma) {
-    const next = state.sliceDoc(after.end, after.end + 1);
-    if (next !== ")" && next !== "") return { from: span.from, to: after.end, insert: "" };
-  }
-  const comma = commaBefore(state, span.from);
-  if (comma !== null) return { from: comma, to: span.to, insert: "" };
-  return { from: span.from, to: after.comma ? after.end : span.to, insert: "" };
 }
 
 function rowSpan(table: TypstTable, row: number): TextRange {
@@ -72,7 +17,7 @@ function rowSpan(table: TypstTable, row: number): TextRange {
 
 function rowAbove(state: EditorState, table: TypstTable, row: number, count: number): ChangeSpec {
   const start = rowSpan(table, row).from;
-  const indent = lineStartIndent(state, start);
+  const indent = lineStartIndent(state.doc, start);
   const text = emptyRow(table.columnCount);
   if (indent !== null) {
     return { from: state.doc.lineAt(start).from, insert: `${indent}${text},\n`.repeat(count) };
@@ -82,7 +27,7 @@ function rowAbove(state: EditorState, table: TypstTable, row: number, count: num
 
 function rowBelowLast(state: EditorState, table: TypstTable, count: number): ChangeSpec {
   const last = rowSpan(table, table.rows.length - 1);
-  const indent = lineStartIndent(state, last.from);
+  const indent = lineStartIndent(state.doc, last.from);
   const text = emptyRow(table.columnCount);
   if (indent !== null) return { from: last.to, insert: `,\n${indent}${text}`.repeat(count) };
   return { from: last.to, insert: `, ${text}`.repeat(count) };
@@ -126,7 +71,7 @@ function deleteRows(state: EditorState, table: TypstTable, minRow: number, maxRo
   if (remaining <= 0) return null;
   const span = { from: rowSpan(table, minRow).from, to: rowSpan(table, maxRow).to };
   return {
-    changes: [deleteArgumentSpan(state, span)],
+    changes: [deleteArgumentSpan(state.doc, span)],
     selection: CellSelection.cell(Math.min(minRow, remaining - 1), 0),
   };
 }
@@ -141,32 +86,22 @@ function itemTexts(state: EditorState, argument: TypstNamedArgument): string[] {
   return argument.items.map((item) => state.sliceDoc(item.from, item.to));
 }
 
-function insertNamed(state: EditorState, table: TypstTable, text: string): ChangeSpec {
-  const anchor = table.named.at(-1) ?? null;
-  if (anchor && (!table.firstItem || anchor.named.to < table.firstItem.from)) {
-    const after = afterSeparator(state, anchor.named.to);
-    const indent = lineStartIndent(state, anchor.named.from);
-    const at = after.comma ? state.sliceDoc(anchor.named.to, after.end).indexOf(",") + anchor.named.to + 1 : anchor.named.to;
-    if (indent !== null) return { from: at, insert: `${after.comma ? "" : ","}\n${indent}${text},` };
-    return { from: at, insert: `${after.comma ? "" : ","} ${text},` };
-  }
-  const first = table.firstItem ?? table.named[0]?.named ?? null;
-  if (first) {
-    const indent = lineStartIndent(state, first.from);
-    if (indent !== null && state.sliceDoc(table.open, first.from).includes("\n")) {
-      return { from: table.open, insert: `\n${indent}${text},` };
-    }
-    return { from: first.from, insert: `${text}, ` };
-  }
-  return { from: table.open, insert: text };
+function addNamedArgument(state: EditorState, table: TypstTable, name: string, value: string): ChangeSpec[] {
+  const plan = planArgumentEdit(state.doc, table.arguments, { insert: { named: name }, text: value, content: false }, state.lineBreak);
+  return plan.ok ? [...plan.changes] : [];
 }
 
-function columnsChange(state: EditorState, table: TypstTable, next: string[] | number): ChangeSpec | null {
+function removeNamedArgument(state: EditorState, table: TypstTable, name: string): ChangeSpec[] {
+  const plan = planArgumentEdit(state.doc, table.arguments, { remove: { named: name } }, state.lineBreak);
+  return plan.ok ? [...plan.changes] : [];
+}
+
+function columnsChange(state: EditorState, table: TypstTable, next: string[] | number): ChangeSpec[] {
   const columns = table.columns;
   const count = typeof next === "number" ? next : next.length;
-  if (!columns) return count === 1 ? null : insertNamed(state, table, `columns: ${count}`);
+  if (!columns) return count === 1 ? [] : addNamedArgument(state, table, "columns", String(count));
   const insert = typeof next === "number" ? String(next) : arrayText(next, true);
-  return { from: columns.value.from, to: columns.value.to, insert };
+  return [{ from: columns.value.from, to: columns.value.to, insert }];
 }
 
 function alignArray(state: EditorState, table: TypstTable): string[] | null {
@@ -202,8 +137,7 @@ export function typstInsertColumnsEdit(
     typeof columns === "number"
       ? columns + count
       : [...columns.slice(0, index), ...Array.from({ length: count }, () => NEW_COLUMN), ...columns.slice(index)];
-  const columnChange = columnsChange(state, table, nextColumns);
-  if (columnChange) changes.push(columnChange);
+  changes.push(...columnsChange(state, table, nextColumns));
   const align = alignArray(state, table);
   if (align && table.align) {
     const next = [...align.slice(0, index), ...Array.from({ length: count }, () => "left"), ...align.slice(index)];
@@ -229,8 +163,7 @@ function deleteColumns(state: EditorState, table: TypstTable, minColumn: number,
   const columns = columnTexts(state, table);
   const nextColumns =
     typeof columns === "number" ? columns - count : columns.filter((_, index) => index < minColumn || index > maxColumn);
-  const columnChange = columnsChange(state, table, nextColumns);
-  if (columnChange) changes.push(columnChange);
+  changes.push(...columnsChange(state, table, nextColumns));
   const align = alignArray(state, table);
   if (align && table.align) {
     const next = align.filter((_, index) => index < minColumn || index > maxColumn);
@@ -261,21 +194,22 @@ export function typstAlignmentEdit(
   const { minColumn, maxColumn } = selection.bounds;
   const next = table.alignments.map((current, index) => (index >= minColumn && index <= maxColumn ? alignment : current));
   const text = next.every((value) => value === next[0]) ? next[0] : `(${next.join(", ")})`;
-  const change: ChangeSpec = table.align
-    ? { from: table.align.value.from, to: table.align.value.to, insert: text }
-    : insertNamed(state, table, `align: ${text}`);
-  return { changes: [change], selection };
+  const changes = table.align
+    ? [{ from: table.align.value.from, to: table.align.value.to, insert: text }]
+    : addNamedArgument(state, table, "align", text);
+  return { changes, selection };
 }
 
 export function typstBordersEdit(state: EditorState, table: TypstTable, bordered: boolean): TableEdit | null {
   if (bordered === table.bordered && (bordered || table.stroke)) return null;
   if (bordered) {
-    return table.stroke ? { changes: [deleteArgumentSpan(state, table.stroke.named)], selection: null } : null;
+    const changes = table.stroke ? removeNamedArgument(state, table, "stroke") : [];
+    return changes.length > 0 ? { changes, selection: null } : null;
   }
-  const change = table.stroke
-    ? { from: table.stroke.value.from, to: table.stroke.value.to, insert: "none" }
-    : insertNamed(state, table, "stroke: none");
-  return { changes: [change], selection: null };
+  const changes = table.stroke
+    ? [{ from: table.stroke.value.from, to: table.stroke.value.to, insert: "none" }]
+    : addNamedArgument(state, table, "stroke", "none");
+  return { changes, selection: null };
 }
 
 export function typstRemoveTableEdit(state: EditorState, removal: TextRange): TableEdit {

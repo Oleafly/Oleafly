@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Typst function forms harness</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans, system-ui, sans-serif);
+      }
+      #controls {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+      }
+      #panes {
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+        height: calc(100% - 42px);
+      }
+      #editor {
+        overflow: auto;
+        padding: 0 16px;
+      }
+      #editor .cm-editor {
+        height: 100%;
+      }
+      #source {
+        margin: 0;
+        border: none;
+        border-left: 1px solid var(--border);
+        padding: 12px;
+        resize: none;
+        font: 12px/1.5 var(--font-mono, monospace);
+        background: var(--muted);
+        color: var(--foreground);
+        outline: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="controls">
+      <label>Document
+        <select id="document">
+          <option value="report">report.typ</option>
+          <option value="edge-cases">edge-cases.typ</option>
+          <option value="large">300 cards</option>
+        </select>
+      </label>
+      <label><input id="forms" type="checkbox" checked /> Forms</label>
+      <label><input id="dark" type="checkbox" /> Dark</label>
+    </div>
+    <div id="panes">
+      <div id="editor"></div>
+      <textarea id="source" readonly aria-label="Source"></textarea>
+    </div>
+    <script type="module" src="/e2e/typst-forms-harness.tsx"></script>
+  </body>
+</html>

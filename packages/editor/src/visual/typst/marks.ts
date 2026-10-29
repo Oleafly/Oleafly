@@ -3,18 +3,21 @@ import type { EditorState, Range } from "@codemirror/state";
 import { Decoration, type DecorationSet, type EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 import type { SyntaxNode, Tree } from "@lezer/common";
 import { visualPortsFacet } from "../facets";
-import { isTypstTree, TYPST_STYLE_CALLS } from "./field";
+import { TYPST_STYLE_CALLS } from "./builtins";
+import { isTypstTree } from "./field";
 import {
-  calleeName,
   callArguments,
   contentBody,
-  hashBefore,
-  labelKey,
   namedArgument,
   namedValue,
-  referenceKey,
   trailingContentBlocks,
   type TextRange,
+} from "../../typst-arguments";
+import {
+  calleeName,
+  hashBefore,
+  labelKey,
+  referenceKey,
 } from "./syntax";
 
 const NAMED_COLORS: ReadonlySet<string> = new Set([
@@ -68,7 +71,7 @@ function codeMarks(from: number, to: number, holes: readonly TextRange[]): Range
 }
 
 function textColor(state: EditorState, args: SyntaxNode): string | null {
-  const fill = namedArgument(state, args, "fill");
+  const fill = namedArgument(state.doc, args, "fill");
   const value = fill ? namedValue(fill) : null;
   if (!value) return null;
   const text = state.sliceDoc(value.from, value.to).trim();
@@ -198,7 +201,7 @@ class TypstMarkBuilder {
   }
 
   private caption(args: SyntaxNode): void {
-    const named = namedArgument(this.state, args, "caption");
+    const named = namedArgument(this.state.doc, args, "caption");
     const value = named ? namedValue(named) : null;
     const body = value?.name === "ContentBlock" ? contentBody(value) : null;
     if (body && body.to > body.from) this.marks.push(mark("ofl-visual-typst-caption", body.from, body.to));

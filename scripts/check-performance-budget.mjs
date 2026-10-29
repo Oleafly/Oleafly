@@ -189,10 +189,12 @@ const limits = {
   // macOS.
   totalJavaScript: 21_020_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
-  // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
-  // 851 KB with 0.4.8's strings; keep narrow headroom so a namespace
-  // accidentally bundled twice fails loudly.
-  largestLocaleChunk: 900_000,
+  // The largest (Russian and Ukrainian, Cyrillic escapes) measured about
+  // 851 KB with 0.4.8's strings. Suggesting mode, the reviewer roles, project
+  // chat and history, and Typst function forms bring Russian to 902,304 bytes;
+  // keep narrow headroom so a namespace accidentally bundled twice fails
+  // loudly.
+  largestLocaleChunk: 950_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each

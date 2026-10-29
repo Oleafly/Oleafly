@@ -1122,6 +1122,33 @@
         "settings": {
           "show": "Arată setările documentului",
           "hide": "Ascunde setările documentului"
+        },
+        "forms": {
+          "editInSource": "Editează în sursă",
+          "addInSource": "Adaugă în sursă",
+          "refused": "Formularul nu poate adăuga asta aici.",
+          "missing": "Lipsește",
+          "notSet": "Nesetat",
+          "notSetDefault": "Nesetat (implicit: {{value}})",
+          "defaultValue": "Implicit: {{value}}",
+          "clear": "Golește",
+          "on": "Pornit",
+          "off": "Oprit",
+          "open": "Editează {{label}}",
+          "chip": "{{label}}: {{summary}}",
+          "invalid": "Typst nu poate citi acest text. Un $, *, _ sau ` singur începe o formulă sau o formatare. Închide-l sau scrie \\ în fața lui.",
+          "readOnly": "Acest document nu poate fi editat momentan.",
+          "invalidNumber": "Introdu un număr.",
+          "between": "Introdu un număr între {{min}} și {{max}}.",
+          "atLeast": "Introdu {{min}} sau mai mult.",
+          "atMost": "Introdu {{max}} sau mai puțin.",
+          "renderFailed": "Acest formular nu a putut fi afișat. Iată sursa lui:",
+          "reason": {
+            "expression": "Calculat în sursă",
+            "kind": "Scris ca un alt tip de valoare",
+            "unknownOption": "Nu face parte dintre opțiuni",
+            "locked": "Blocat, fiindcă apelul de funcție primește valori și din \"..\""
+          }
         }
       },
       "table": {
@@ -1544,5 +1571,29 @@
     "keyTaken": "O variantă nu poate seta același nume de două ori.",
     "saveFailed": "Variantele nu au putut fi salvate."
   },
-  "sharedSettingsViewer": "Doar proprietarii și editorii pot modifica asta într-un proiect partajat."
+  "sharedSettingsViewer": "Doar proprietarii și editorii pot modifica asta într-un proiect partajat.",
+  "typstForms": {
+    "message": "{{label}}: {{detail}}",
+    "atKeyPath": "{{message}} (la {{path}})",
+    "diagnostic": {
+      "parseError": "Eroare TOML",
+      "schemaMissing": "Schemă lipsă",
+      "schemaVersion": "Schemă neacceptată",
+      "fileTooLarge": "Fișier prea mare",
+      "unreadable": "Fișier ilizibil",
+      "invalidPackageSpec": "Pachet nevalid",
+      "missingKey": "Cheie lipsă",
+      "unknownKey": "Cheie necunoscută",
+      "invalidValue": "Valoare nevalidă",
+      "invalidFunction": "Nume de funcție nevalid",
+      "builtinName": "Nume încorporat",
+      "duplicateFunction": "Formular duplicat",
+      "moduleRequired": "Modul lipsă",
+      "moduleNotAllowed": "Modul nepermis într-un pachet",
+      "invalidModulePath": "Cale de modul nevalidă",
+      "invalidArg": "Argument nevalid",
+      "duplicateArg": "Argument duplicat",
+      "unknownKind": "Tip de câmp necunoscut"
+    }
+  }
 }

@@ -2,7 +2,7 @@ import type { EditorState } from "@codemirror/state";
 import { Decoration } from "@codemirror/view";
 import type { SyntaxNode } from "@lezer/common";
 import type { TypstDecorationBuilder } from "../field";
-import type { TextRange } from "../syntax";
+import type { TextRange } from "../../../typst-arguments";
 import { parseTypstTable } from "./parse";
 import { TypstTableWidget } from "./widget";
 

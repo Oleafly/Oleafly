@@ -48,6 +48,8 @@ tauri-plugin-deep-link = "~2.4.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["raw_value"] }
 toml = "0.8"
+# Package names follow Typst's identifier rule (XID_Start, XID_Continue).
+unicode-ident = "1"
 unicode-normalization = "0.1"
 rusqlite = { version = "0.32", features = ["bundled"] }
 portable-pty = "0.9"

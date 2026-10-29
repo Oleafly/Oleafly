@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { createElement } from "react";
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { create } from "zustand";
 import { redo, undo, undoDepth } from "@codemirror/commands";
@@ -10,7 +10,10 @@ import { EditorView } from "@codemirror/view";
 import { CodeMirrorEditor, type EditorHost } from "./CodeMirrorEditor";
 import { editBackgroundDocument, getEditorView, waitForEditorDocument } from "./controller";
 import { LocalDocumentSession, type DocumentSession, type RemoteChange, type Utf16Edit } from "./document-session";
-import { englishEditorMessage } from "./test-messages";
+import { englishEditorMessage, installEnglishEditorMessages } from "./test-messages";
+import { staticTypstForms } from "./typst-forms";
+import { typstFormsGolden } from "./typst-forms-test-support";
+import type { VisualPorts } from "./visual/types";
 
 if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
   Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
@@ -47,7 +50,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function mountEditor(initial: HostState, sessions: Map<string, DocumentSession>) {
+async function mountEditor(initial: HostState, sessions: Map<string, DocumentSession>, visualPorts?: VisualPorts) {
   const store = create<HostState>(() => initial);
   const setContent = vi.fn((path: string, content: string) => {
     store.setState((s) => ({ files: { ...s.files, [path]: content } }));
@@ -57,12 +60,13 @@ async function mountEditor(initial: HostState, sessions: Map<string, DocumentSes
     useActivePath: () => store((s) => s.activePath),
     getActivePath: () => store.getState().activePath,
     useDocVersion: () => store((s) => s.docVersion),
-    useCompletionSyntax: () => "latex",
+    useCompletionSyntax: () => (visualPorts ? "typst" : "latex"),
     getContent: (path) => store.getState().files[path] ?? "",
     setContent,
     documentSession: (path) => sessions.get(path) ?? null,
     useSettings: () => SETTINGS,
-    useVisualMode: () => false,
+    useVisualMode: () => visualPorts !== undefined,
+    visualPorts,
     useEditorKeymap: () => ({}),
     useLintRefreshDeps: () => [],
   };
@@ -242,6 +246,36 @@ describe("an editor composing with an input method", () => {
 });
 
 describe("an editor bound to a document session", () => {
+  it("sends a Typst form field's commit to the session as one local edit", async () => {
+    installEnglishEditorMessages();
+    const text = '#import "@local/acme-report:0.1.0": *\n\n#info-box(title: "Old", tone: "note")[Body.]\n';
+    const session = new LocalDocumentSession("main.typ", text);
+    const applyLocal = vi.spyOn(session, "applyLocal");
+    await mountEditor(
+      { activePath: "main.typ", docVersion: 0, files: { "main.typ": text } },
+      sessionsOf(session),
+      { resolveImage: async () => null, typstForms: staticTypstForms(typstFormsGolden()) },
+    );
+    const heading = await vi.waitFor(
+      () => {
+        const input = view().dom.querySelector<HTMLInputElement>(".ofl-visual-form-card input");
+        if (!input) throw new Error("no form card yet");
+        return input;
+      },
+      { timeout: 5_000 },
+    );
+    await act(async () => {
+      fireEvent.change(heading, { target: { value: "New" } });
+      fireEvent.keyDown(heading, { key: "Enter" });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const from = text.indexOf('"Old"');
+    expect(applyLocal).toHaveBeenCalledExactlyOnceWith([{ from, to: from + 5, insert: '"New"' }], 0);
+    expect(session.text()).toBe(text.replace('"Old"', '"New"'));
+  });
+
   it("sends minimal local edits and applies remote edits without feedback", async () => {
     const session = new LocalDocumentSession("main.tex", "hello");
     const applyLocal = vi.spyOn(session, "applyLocal");

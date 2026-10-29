@@ -14,14 +14,22 @@ import { IconBraceWidget } from "../widgets/icon-brace";
 import { IndicatorWidget } from "../widgets/indicator";
 import { ItemWidget } from "../widgets/item";
 import { type Preamble, type PreambleLabels, PreambleWidget } from "../widgets/preamble";
+import { BUILTIN_DISPATCH_NAMES, TYPST_STYLE_CALLS } from "./builtins";
 import { figureDecorations } from "./figure";
+import { formDecorations } from "./forms/decoration";
+import { type FormScope, typstDocumentPath } from "./forms/scope";
+import { formScopeFor, typstFormsField } from "./forms/state";
 import { isTypstDisplayBody } from "../../math-source";
 import { TypstMathWidget } from "./math";
 import { typstSettingsEnd } from "./settings";
 import {
-  calleeName,
   callArguments,
   contentBody,
+  positionalArguments,
+  trailingContentBlocks,
+} from "../../typst-arguments";
+import {
+  calleeName,
   decodeTypstEscape,
   hashBefore,
   imagePath,
@@ -29,9 +37,7 @@ import {
   isClosedPair,
   labelKey,
   listDepth,
-  positionalArguments,
   referenceKey,
-  trailingContentBlocks,
 } from "./syntax";
 import { tableDecorations } from "./table/decoration";
 import { RawLanguageWidget, TypstTextWidget } from "./widgets";
@@ -52,21 +58,6 @@ export const TYPST_SETTINGS_LABELS: PreambleLabels = {
   show: "visual.typst.settings.show",
   hide: "visual.typst.settings.hide",
 };
-
-export const TYPST_STYLE_CALLS: ReadonlySet<string> = new Set([
-  "underline",
-  "strike",
-  "overline",
-  "highlight",
-  "smallcaps",
-  "emph",
-  "strong",
-  "sub",
-  "super",
-  "text",
-  "upper",
-  "lower",
-]);
 
 const SHORTHANDS: Readonly<Record<string, string>> = {
   "~": " ",
@@ -96,6 +87,7 @@ export class TypstDecorationBuilder {
   readonly decorations: Range<Decoration>[] = [];
   readonly preamble: Preamble = { from: 0, to: 0, authors: [] };
   readonly ports: VisualPorts | null;
+  private readonly forms: FormScope | null;
   private readonly ordinals = new Map<number, number>();
   private readonly openingQuotes = new Set<number>();
   private labels: Set<string> | null = null;
@@ -105,6 +97,7 @@ export class TypstDecorationBuilder {
     private readonly tree: Tree,
   ) {
     this.ports = state.facet(visualPortsFacet);
+    this.forms = formScopeFor(state, tree);
   }
 
   build(): TypstDecorationResult {
@@ -354,6 +347,7 @@ export class TypstDecorationBuilder {
     const name = calleeName(this.state, call);
     const args = callArguments(call);
     if (!name || !args) return undefined;
+    if (!BUILTIN_DISPATCH_NAMES.has(name)) return this.forms ? formDecorations(this, this.forms, hash, call, name) : undefined;
     if (name === "figure") {
       figureDecorations(this, hash, call);
       return undefined;
@@ -478,8 +472,15 @@ export const typstVisualField = StateField.define<TypstVisualState>({
     }
     const tree = syntaxTree(tr.state);
     const stillParsing = tree.length < tr.state.doc.length && tree.type === value.tree.type;
+    // A renamed or moved document resolves its relative imports from its new folder.
+    const forms =
+      tr.startState.field(typstFormsField, false) !== tr.state.field(typstFormsField, false) ||
+      tr.startState.readOnly !== tr.state.readOnly ||
+      tr.startState.facet(typstDocumentPath) !== tr.state.facet(typstDocumentPath);
     const rebuild =
-      !stillParsing && !mousedown && (tree !== value.tree || tr.selection !== undefined || hasMouseDownEffect(tr));
+      !stillParsing &&
+      !mousedown &&
+      (tree !== value.tree || tr.selection !== undefined || hasMouseDownEffect(tr) || forms);
     if (rebuild) return { ...buildTypstDecorations(tr.state, tree), tree, mousedown };
     const decorations = tr.docChanged ? value.decorations.map(tr.changes) : value.decorations;
     if (decorations === value.decorations && mousedown === value.mousedown) return value;

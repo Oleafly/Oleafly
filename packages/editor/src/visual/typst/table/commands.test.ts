@@ -4,7 +4,6 @@ import { loadTypstParser } from "../../../typst";
 import { writeCellEdit } from "../../table/commands";
 import { CellSelection } from "../../table/table-selection";
 import {
-  sanitizeTypstCell,
   typstAlignmentEdit,
   typstAppendRowEdit,
   typstBordersEdit,
@@ -13,6 +12,7 @@ import {
   typstInsertRowsEdit,
   typstRemoveTableEdit,
 } from "./commands";
+import { sanitizeTypstContent } from "../../../typst-literals";
 import type { TypstTable } from "./parse";
 import { applied, tableOf } from "./test-support";
 
@@ -50,9 +50,9 @@ describe("Typst table cell edits", () => {
   });
 
   it("escapes brackets that would close the cell early", () => {
-    expect(sanitizeTypstCell("a ] b")).toBe("a \\] b");
-    expect(sanitizeTypstCell("keep [this] balanced")).toBe("keep [this] balanced");
-    expect(sanitizeTypstCell("already \\] escaped")).toBe("already \\] escaped");
+    expect(sanitizeTypstContent("a ] b")).toBe("a \\] b");
+    expect(sanitizeTypstContent("keep [this] balanced")).toBe("keep [this] balanced");
+    expect(sanitizeTypstContent("already \\] escaped")).toBe("already \\] escaped");
   });
 });
 
@@ -224,6 +224,18 @@ describe("Typst table alignment and borders", () => {
     expect(run(off ?? "", (state, table) => typstBordersEdit(state, table, true))).toBe(
       "#table(columns: 2, [a], [b])",
     );
+  });
+
+  it("removes a comma-first stroke line with its comma", () => {
+    expect(
+      run("#table(\n  stroke: none\n  , columns: 2\n  , [a], [b]\n)", (state, table) => typstBordersEdit(state, table, true)),
+    ).toBe("#table(\n  columns: 2\n  , [a], [b]\n)");
+  });
+
+  it("replaces a stroke value written after a comment", () => {
+    expect(
+      run("#table(columns: 2, stroke: /* thin */ 0.5pt, [a], [b])", (state, table) => typstBordersEdit(state, table, false)),
+    ).toBe("#table(columns: 2, stroke: /* thin */ none, [a], [b])");
   });
 });
 

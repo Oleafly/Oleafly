@@ -24,7 +24,7 @@ export const NO_PORTS: VisualPorts = { resolveImage: () => Promise.resolve(null)
 
 export function typstState(
   doc: string,
-  options: { cursor?: number; ports?: VisualPorts; readOnly?: boolean; extensions?: Extension[] } = {},
+  options: { cursor?: number; ports?: VisualPorts; path?: string; readOnly?: boolean; extensions?: Extension[] } = {},
 ): EditorState {
   const state = parsedState(
     EditorState.create({
@@ -32,13 +32,13 @@ export function typstState(
       selection: options.cursor === undefined ? undefined : { anchor: options.cursor },
       extensions: [
         typstLanguage(),
-        typstVisualMode(options.ports ?? NO_PORTS),
+        typstVisualMode(options.ports ?? NO_PORTS, options.path ?? null),
         EditorState.readOnly.of(options.readOnly ?? false),
         ...(options.extensions ?? []),
       ],
     }),
   );
-  if (syntaxTree(state).length !== doc.length || syntaxTree(state).type.name !== "Source") {
+  if (syntaxTree(state).length !== state.doc.length || syntaxTree(state).type.name !== "Source") {
     throw new Error("the Typst tree did not finish parsing");
   }
   return state;

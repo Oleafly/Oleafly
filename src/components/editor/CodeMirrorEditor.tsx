@@ -27,6 +27,8 @@ import { i18n } from "@/i18n";
 import { createPreflightLinter } from "./cm/preflight-linter";
 import { createTypstPackageHintLinter } from "./cm/typst-package-hints";
 import { createCompileErrorLinter } from "./cm/compile-error-linter";
+import { hasTypstFormsLint, typstFormsLint } from "./cm/typst-forms-lint";
+import { typstFormsPort } from "./visual-typst-forms";
 import { imagePasteExtension } from "./cm/image-paste";
 import { projectFileLinksExtension } from "./cm/file-links";
 import { cursorSignalExtension } from "./cm/cursor-signal";
@@ -230,6 +232,7 @@ const VISUAL_PORTS: VisualPorts = {
     void openVisualFigureEditor(range);
   },
   referenceKind: (key) => referenceKindIn(useIndexStore.getState().index, key),
+  typstForms: typstFormsPort,
 };
 
 export function saveActiveFromKeymap(): void {
@@ -370,6 +373,7 @@ export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean 
       host={HOST}
       extraExtensions={[...SHELL_EXTENSIONS, collabEditorSlot(), commentsEditorSlot(), suggestionsEditorSlot()]}
       extraExtensionsForPath={(path) => {
+        if (hasTypstFormsLint(path)) return [typstFormsLint(path)];
         if (!path || !/\.(?:tex|latex|ltx|sty|cls|md|markdown|qmd|rmd|typ|bib)$/i.test(path)) {
           return [];
         }

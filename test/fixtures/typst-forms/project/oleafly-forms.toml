@@ -1,0 +1,12 @@
+[tool.oleafly]
+schema = 1
+
+[[tool.oleafly.forms]]
+module = "template/memo.typ"
+function = "memo-header"
+label = "Memo header"
+summary = "subject"
+fields = [
+  { arg = "to", kind = "text", label = "To" },
+  { arg = "subject", kind = "text", label = "Subject" },
+]

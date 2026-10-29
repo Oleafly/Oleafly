@@ -87,6 +87,7 @@ import { fontFamilyName, fontFamilyStack } from "@/lib/font-families";
 import { applyAppTypography } from "@/lib/app-typography";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
+import { useTypstFormsStore } from "@/store/typst-forms";
 import { AVAILABLE_TOUR_IDS } from "@/lib/tours/registry";
 import { START_TOUR_EVENT } from "@/lib/tour";
 import { useDiagramComposerStore } from "@/store/diagram-composer";
@@ -148,7 +149,13 @@ import { useEditorColorKey } from "@/hooks/use-editor-theme";
 import { handleDockShortcut, handleTerminalTabShortcut } from "@/lib/dock-shortcuts";
 import { isTerminalTarget } from "@/lib/terminal-keys";
 import { terminalOwnsKey } from "@/lib/terminal-shortcut-guard";
-import { historyCommand, inPlainField, runFieldHistory } from "@/lib/field-history";
+import {
+  historyCommand,
+  inPlainField,
+  inVisualForm,
+  runFieldHistory,
+  visualFormHistory,
+} from "@/lib/field-history";
 import {
   startNativeDockShortcutBridge,
   usesNativeDockMenu,
@@ -425,7 +432,13 @@ function runDocumentMenuHistory(active: HTMLElement | null, redo: boolean): void
 function runMenuHistory(redo: boolean): void {
   if (!useFilesStore.getState().projectId) return;
   const active = document.activeElement as HTMLElement | null;
-  if (inPlainField(active)) {
+  // A menu click reaches no form key handler, so the form's own rule is applied here.
+  const form = visualFormHistory(active);
+  if (form === "document") {
+    runDocumentMenuHistory(active, redo);
+    return;
+  }
+  if (form === "field" || inPlainField(active)) {
     runFieldHistory(document, redo ? "redo" : "undo");
     return;
   }
@@ -809,6 +822,11 @@ function AppContent() {
       if (!payload || payload.projectId !== files.projectId) return;
       void files.applyProjectStateChanged(payload).then((applied) => {
         if (applied) usePreflightStore.getState().reset();
+        // Vendoring packages, the vendoring switch and engine changes move the folders forms
+        // are read from without changing a watched file the editor knows about.
+        if (useFilesStore.getState().projectId === payload.projectId) {
+          void useTypstFormsStore.getState().refresh();
+        }
       });
     },
     native,
@@ -858,9 +876,9 @@ function AppContent() {
       if (terminalOwnsKey(e)) return;
       if (matchesShortcut(e, useShortcutStore.getState().bindings.toggleSidebar)) {
         // Cmd/Ctrl+B means bold inside the source and visual editors; the
-        // sidebar toggle must not shadow it there.
+        // sidebar toggle must not shadow it there, or in a Visual-mode form.
         const el = document.activeElement as HTMLElement | null;
-        if (el?.closest(".cm-editor") || el?.closest(".ProseMirror")) return;
+        if (el?.closest(".cm-editor") || el?.closest(".ProseMirror") || inVisualForm(el)) return;
         e.preventDefault();
         e.stopPropagation();
         useSettingsStore.getState().toggleTree();
@@ -891,6 +909,8 @@ function AppContent() {
       if (useTourStore.getState().activeTourId) return;
       if (!useFilesStore.getState().projectId) return;
       const active = document.activeElement as HTMLElement | null;
+      // A form undoes a field's unsaved typing itself, and the document otherwise.
+      if (inVisualForm(active)) return;
       if (secondaryCodeEditorOwns(active)) return;
       // Once Vim owns the source editor, let its modal handler see the key
       // first. Keys it declines still fall through to CodeMirror's ordinary

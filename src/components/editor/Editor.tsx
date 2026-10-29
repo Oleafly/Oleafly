@@ -18,6 +18,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { getEditorView, wrapSelection } from "./cm/controller";
 import { useFilesStore } from "@/store/files";
 import { isManagedProjectPath, isReadOnlyLink } from "@/lib/project-paths";
+import { inWidgetControl } from "@/lib/field-history";
 import { ChangedOnDiskBanner } from "./ChangedOnDiskBanner";
 import { CloseAssistantTabsButton, EditorTabStrip } from "./EditorTabStrip";
 import { useDiffStore, diffKey } from "@/store/diff";
@@ -181,6 +182,9 @@ export function Editor() {
       // or any other input would silently mutate the document.
       const el = document.activeElement as HTMLElement | null;
       if (!el?.closest(".cm-editor")) return;
+      // A form field or a table cell inside the text keeps the key: the wrap would land at
+      // the editor's hidden selection, somewhere else in the document.
+      if (inWidgetControl(el)) return;
       const { activePath: path, engine, engineLoaded } = useFilesStore.getState();
       const action = FORMATTING_SHORTCUTS.get(e.key.toLowerCase());
       if (!action) return;
