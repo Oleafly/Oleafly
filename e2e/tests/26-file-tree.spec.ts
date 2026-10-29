@@ -84,6 +84,27 @@ async function createRootEntry(page: Page, name: string, mode: "file" | "dir") {
   }
 }
 
+// The open question that hasn't been answered yet. The bridge's chained
+// getByText ignores the dialog scope, so answers are clicked in an evaluate.
+const OPEN_QUESTION = '[role="alertdialog"]:not([data-e2e-answered])';
+
+async function answerQuestion(page: Page, label: string) {
+  const clicked = await page.evaluate<boolean>(
+    `(() => {
+      const dialog = document.querySelector(${JSON.stringify(OPEN_QUESTION)});
+      const button = Array.from(dialog?.querySelectorAll('button') ?? []).find(
+        // Cancel also holds its "esc" key hint.
+        candidate => candidate.textContent.trim().startsWith(${JSON.stringify(label)})
+      );
+      if (!(button instanceof HTMLButtonElement)) return false;
+      dialog.dataset.e2eAnswered = '1';
+      button.click();
+      return true;
+    })()`,
+  );
+  expect(clicked).toBe(true);
+}
+
 async function startInlineRename(page: Page, from: string, to: string) {
   await pickMenuItem(
     page,
@@ -184,6 +205,45 @@ test("delete a file via the tree three-dot menu", async ({ tauriPage }) => {
     "Delete",
     `!(document.querySelector('[aria-label="Explorer file tree"]')?.textContent ?? '').includes('renamed.tex')`,
   );
+});
+
+test("delete asks in the app's dialog: Cancel keeps the file, Delete removes it", async ({
+  tauriPage,
+}) => {
+  const name = `confirm-delete-${Date.now().toString(36)}.tex`;
+  const row = `[aria-label="Explorer file tree"] [data-path=${JSON.stringify(name)}]`;
+  const asking = `!!document.querySelector(${JSON.stringify(OPEN_QUESTION)})`;
+  const question = tauriPage.locator(OPEN_QUESTION);
+  await openProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await openRailTab(tauriPage, "Explorer");
+  await createRootEntry(tauriPage, name, "file");
+
+  // No window.confirm override here. Tauri's dialog plugin installs an async
+  // one, and the tree asks in the app's own dialog instead.
+  expect(
+    await tauriPage.evaluate<boolean>(
+      `window.confirm instanceof Object.getPrototypeOf(async () => undefined).constructor`,
+    ),
+  ).toBe(true);
+
+  await pickMenuItem(tauriPage, name, "Delete", asking);
+  await expect(question).toContainText(name);
+  await answerQuestion(tauriPage, "Cancel");
+  await expect(tauriPage.locator('[role="alertdialog"]')).toBeHidden({ timeout: 10_000 });
+  await expect(tauriPage.locator(row)).toBeVisible();
+
+  await pickMenuItem(tauriPage, name, "Delete", asking);
+  await expect(question).toContainText(name);
+  await answerQuestion(tauriPage, "Delete");
+  // Where the folder has no trash, a second question asks before deleting it
+  // permanently.
+  await tauriPage.waitForFunction(`!document.querySelector(${JSON.stringify(row)}) || ${asking}`, 15_000);
+  if (await tauriPage.evaluate<boolean>(asking)) {
+    await expect(question).toContainText(name);
+    await answerQuestion(tauriPage, "Delete");
+  }
+  await expect(tauriPage.locator(row)).toBeHidden({ timeout: 15_000 });
 });
 
 test("rename collisions offer Cancel, Keep both, and Replace without silent data loss", async ({
