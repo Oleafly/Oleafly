@@ -197,9 +197,10 @@ To move to a newer Rust:
    lands green.
 
 The minimum Rust versions are separate promises. The shared crates
-(`oleafly-core`, `oleafly-secrets`, `oleafly-doctools`, `oleafly-downloads`,
-`oleafly-sandbox`, `oleafly-forge`) and the agent crate `oleafly-agent` build
-on Rust 1.87. `oleafly-preflight` and
+(`oleafly-core`, `oleafly-secrets`, `oleafly-doctools`, `oleafly-synctex`,
+`oleafly-synctex-wasm`, `oleafly-downloads`, `oleafly-sandbox`,
+`oleafly-forge`) and the agent crate `oleafly-agent` build on Rust 1.87.
+`oleafly-preflight` and
 `oleafly-research` need 1.88 because they read PDFs with lopdf 0.42, which uses
 let chains (it declares 1.85, which is too low); research gets it through
 pdf-extract. `oleafly-acp` needs 1.88 for the official Agent Client Protocol

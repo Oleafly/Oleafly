@@ -1,16 +1,18 @@
 import type { PdfLoadState, PdfViewerHandle } from "@oleafly/preview";
-import { Download, FileText, Minus, MoveHorizontal, Plus } from "lucide-react";
+import { Download, FileText, Loader2, Minus, MoveHorizontal, Play, Plus, ScrollText } from "lucide-react";
 import { lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/empty";
 import { Tooltip } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn, shortcut } from "@/lib/utils";
 import { outputUrl, type WebApi } from "../api";
+import { outputKey, sharedOutputs, shownLocal } from "../compile/outputs";
 import { previewMessage } from "../i18n/packages";
-import type { CollabOutputInfo } from "../protocol";
 import { useWeb } from "../store";
+import { useActions } from "./context";
 import { dateTime } from "./format";
+import { CompileLog } from "./CompileLog";
 import { usePersonName } from "./people";
 
 const PdfViewer = lazy(() => import("@oleafly/preview").then((module) => ({ default: module.PdfViewer })));
@@ -20,10 +22,6 @@ const MAX_SCALE = 4;
 const STEP = 1.2;
 
 type Status = "idle" | "loading" | "ready" | "missing" | "failed";
-
-export function outputKey(info: CollabOutputInfo | undefined): string | null {
-  return info ? `${info.compiledAt}:${info.size}:${info.compiledBy}` : null;
-}
 
 function usePdfBytes(api: WebApi, projectId: string, key: string | null) {
   const [state, setState] = useState<{ status: Status; data: Uint8Array | null; key: string | null }>({
@@ -57,12 +55,45 @@ function usePdfBytes(api: WebApi, projectId: string, key: string | null) {
   return { ...state, retry };
 }
 
+function useObjectUrl(bytes: Uint8Array | null): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!bytes) {
+      setUrl(null);
+      return;
+    }
+    const next = URL.createObjectURL(new Blob([bytes as BlobPart], { type: "application/pdf" }));
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [bytes]);
+  return url;
+}
+
+function seconds(ms: number): string {
+  return Math.max(0.1, ms / 1000).toFixed(ms < 10_000 ? 1 : 0);
+}
+
+function IconButton({ label, onClick, children }: Readonly<{ label: string; onClick: () => void; children: ReactNode }>) {
+  return (
+    <Tooltip label={label}>
+      <Button type="button" variant="ghost" size="icon" className="size-7" aria-label={label} onClick={onClick}>
+        {children}
+      </Button>
+    </Tooltip>
+  );
+}
+
 export function PdfPane({ api, projectId }: Readonly<{ api: WebApi; projectId: string }>) {
   const { t } = useTranslation(["web"]);
+  const actions = useActions();
   const nameOf = usePersonName();
-  const info = useWeb((state) => state.output.find((item) => item.kind === "pdf"));
-  const key = outputKey(info);
-  const pdf = usePdfBytes(api, projectId, key);
+  const compile = useWeb((state) => state.compile);
+  const shared = useWeb((state) => sharedOutputs(state.output).pdf);
+  const local = useWeb(shownLocal);
+  const remote = usePdfBytes(api, projectId, local ? null : outputKey(shared));
+  const data = local?.pdf ?? remote.data;
+  const localUrl = useObjectUrl(local?.pdf ?? null);
+  const identity = local ? `web-compile:${compile.finishedAt ?? 0}` : `web-output:${remote.key ?? ""}`;
   const [scale, setScale] = useState(1);
   const manual = useRef(false);
   const viewer = useRef<PdfViewerHandle>(null);
@@ -93,7 +124,7 @@ export function PdfPane({ api, projectId }: Readonly<{ api: WebApi; projectId: s
     [fitWidth],
   );
 
-  const hasData = pdf.data !== null;
+  const hasData = data !== null;
   useEffect(() => {
     const element = scroller.current;
     if (!hasData || !element || typeof ResizeObserver === "undefined") return;
@@ -107,118 +138,144 @@ export function PdfPane({ api, projectId }: Readonly<{ api: WebApi; projectId: s
     return () => observer.disconnect();
   }, [hasData, fitWidth]);
 
-  const label = info
-    ? t(($) => $.web.pdf.compiledBy, { name: nameOf(info.compiledBy), time: dateTime(info.compiledAt) })
-    : null;
+  let label: string | null = null;
+  const failed = compile.status === "failed" && compile.shown === "local" && compile.error !== null;
+  if (compile.status === "running") label = t(($) => $.web.compile.running);
+  else if (failed) label = t(($) => $.web.compile.couldNotRun);
+  else if (local) label = t(($) => $.web.compile.compiledHere, { seconds: seconds(local.timeMs) });
+  else if (shared) label = t(($) => $.web.pdf.compiledBy, { name: nameOf(shared.compiledBy), time: dateTime(shared.compiledAt) });
 
   let body: ReactNode;
-  if (!info || pdf.status === "missing") {
+  if (data) {
+    body = (
+      <section ref={scroller} aria-label={t(($) => $.web.pdf.title)} className="isolate min-h-0 flex-1 overflow-auto bg-sidebar">
+        <Suspense fallback={<LoadingState className="m-4" label={t(($) => $.web.pdf.loading)} />}>
+          <PdfViewer
+            ref={viewer}
+            data={data}
+            documentIdentity={identity}
+            scale={scale}
+            t={previewMessage}
+            onLoadStateChange={onLoad}
+            onInverse={(page, x, y, word, context) => void actions.openFromPdf(page, x, y, word, context)}
+            onOpenLink={(url) => window.open(url, "_blank", "noopener,noreferrer")}
+          />
+        </Suspense>
+      </section>
+    );
+  } else if (compile.status === "failed" && compile.shown === "local") {
+    body = (
+      <ErrorState
+        className="m-4"
+        message={compile.error === null ? t(($) => $.web.compile.failedNoPdf) : t(($) => $.web.compile.couldNotRun)}
+      />
+    );
+  } else if (!shared || remote.status === "missing") {
     body = (
       <EmptyState
         testId="pdf-empty"
         className="flex-1 px-6 py-10"
         icon={<FileText aria-hidden className="size-8 text-muted-foreground" />}
         title={t(($) => $.web.pdf.emptyTitle)}
-        description={t(($) => $.web.pdf.emptyDescription)}
+        description={compile.ready ? t(($) => $.web.compile.emptyReady) : t(($) => $.web.pdf.emptyDescription)}
       />
     );
-  } else if (pdf.status === "failed" && !pdf.data) {
+  } else if (remote.status === "failed") {
     body = (
       <ErrorState className="m-4" message={t(($) => $.web.pdf.failed)}>
-        <Button type="button" size="sm" variant="outline" onClick={pdf.retry}>
+        <Button type="button" size="sm" variant="outline" onClick={remote.retry}>
           {t(($) => $.web.app.retry)}
         </Button>
       </ErrorState>
     );
-  } else if (!pdf.data) {
-    body = <LoadingState className="m-4" label={t(($) => $.web.pdf.loading)} />;
   } else {
-    body = (
-      <section
-        ref={scroller}
-        aria-label={t(($) => $.web.pdf.title)}
-        className="isolate min-h-0 flex-1 overflow-auto bg-sidebar"
-      >
-        <Suspense fallback={<LoadingState className="m-4" label={t(($) => $.web.pdf.loading)} />}>
-          <PdfViewer
-            ref={viewer}
-            data={pdf.data}
-            documentIdentity={`web-output:${pdf.key ?? ""}`}
-            scale={scale}
-            t={previewMessage}
-            onLoadStateChange={onLoad}
-            onOpenLink={(url) => window.open(url, "_blank", "noopener,noreferrer")}
-          />
-        </Suspense>
-      </section>
-    );
+    body = <LoadingState className="m-4" label={t(($) => $.web.pdf.loading)} />;
   }
 
+  const logShown = compile.logOpen && compile.output !== null;
+  const download = (local ? localUrl : null) ?? outputUrl(projectId, "pdf");
+  const mainFile = local?.target.mainDocument ?? shared?.mainFile ?? "";
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="@container flex min-h-0 flex-1 flex-col">
       <div className="flex min-h-9 flex-wrap items-center gap-1 border-b px-2 py-1">
+        {compile.ready ? (
+          <Tooltip label={t(($) => $.web.compile.hint, { shortcut: shortcut("⌘S") })}>
+            <Button
+              type="button"
+              size="xs"
+              variant="outline"
+              data-testid="compile"
+              disabled={compile.status === "running"}
+              onClick={() => actions.compile()}
+            >
+              {compile.status === "running" ? <Loader2 aria-hidden className="animate-spin" /> : <Play aria-hidden />}
+              {t(($) => $.web.compile.action)}
+            </Button>
+          </Tooltip>
+        ) : null}
         <p
-          className="min-w-0 flex-1 truncate text-[0.6875rem] text-muted-foreground"
+          className={cn(
+            "min-w-0 flex-1 truncate text-[0.6875rem] @max-lg:order-last @max-lg:basis-full",
+            failed ? "text-destructive" : "text-muted-foreground",
+          )}
           data-testid="pdf-label"
-          title={label ?? undefined}
+          title={(failed ? compile.error : label) ?? undefined}
         >
           {label}
         </p>
-        {pdf.data ? (
-          <div className="flex items-center gap-0.5">
-            <Tooltip label={t(($) => $.web.pdf.zoomOut)}>
+        <div className="ml-auto flex items-center gap-0.5">
+          {compile.output ? (
+            <Tooltip label={logShown ? t(($) => $.web.compile.hideLog) : t(($) => $.web.compile.showLog)}>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-7"
-                aria-label={t(($) => $.web.pdf.zoomOut)}
-                onClick={() => zoom(1 / STEP)}
+                className={cn("size-7", compile.output.ok ? undefined : "text-destructive")}
+                aria-label={logShown ? t(($) => $.web.compile.hideLog) : t(($) => $.web.compile.showLog)}
+                aria-pressed={logShown}
+                data-testid="compile-log-toggle"
+                onClick={() => actions.toggleLog()}
               >
+                <ScrollText aria-hidden />
+              </Button>
+            </Tooltip>
+          ) : null}
+          {data ? (
+            <>
+              <IconButton label={t(($) => $.web.pdf.zoomOut)} onClick={() => zoom(1 / STEP)}>
                 <Minus aria-hidden />
-              </Button>
-            </Tooltip>
-            <span className="w-10 text-center text-[0.6875rem] tabular-nums text-muted-foreground">
-              {t(($) => $.web.pdf.zoom, { percent: Math.round(scale * 100) })}
-            </span>
-            <Tooltip label={t(($) => $.web.pdf.zoomIn)}>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                aria-label={t(($) => $.web.pdf.zoomIn)}
-                onClick={() => zoom(STEP)}
-              >
+              </IconButton>
+              <span className="w-10 text-center text-[0.6875rem] tabular-nums text-muted-foreground">
+                {t(($) => $.web.pdf.zoom, { percent: Math.round(scale * 100) })}
+              </span>
+              <IconButton label={t(($) => $.web.pdf.zoomIn)} onClick={() => zoom(STEP)}>
                 <Plus aria-hidden />
-              </Button>
-            </Tooltip>
-            <Tooltip label={t(($) => $.web.pdf.fitWidth)}>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                aria-label={t(($) => $.web.pdf.fitWidth)}
-                onClick={fitAgain}
-              >
+              </IconButton>
+              <IconButton label={t(($) => $.web.pdf.fitWidth)} onClick={fitAgain}>
                 <MoveHorizontal aria-hidden />
-              </Button>
-            </Tooltip>
-            <Tooltip label={t(($) => $.web.pdf.download)}>
-              <a
-                href={outputUrl(projectId, "pdf")}
-                download={info?.mainFile ? info.mainFile.replace(/\.[^./]+$/u, ".pdf").split("/").pop() : true}
-                aria-label={t(($) => $.web.pdf.download)}
-                className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-7")}
-              >
-                <Download aria-hidden />
-              </a>
-            </Tooltip>
-          </div>
-        ) : null}
+              </IconButton>
+              <Tooltip label={t(($) => $.web.pdf.download)}>
+                <a
+                  href={download}
+                  download={mainFile ? mainFile.replace(/\.[^./]+$/u, ".pdf").split("/").pop() : true}
+                  aria-label={t(($) => $.web.pdf.download)}
+                  className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-7")}
+                >
+                  <Download aria-hidden />
+                </a>
+              </Tooltip>
+            </>
+          ) : null}
+        </div>
       </div>
+      {local && compile.share === "failed" ? (
+        <p role="status" className="border-b px-3 py-1 text-[0.6875rem] text-amber-700 dark:text-amber-400">
+          {t(($) => $.web.compile.shareFailed)}
+        </p>
+      ) : null}
       {body}
+      {logShown && compile.output ? <CompileLog output={compile.output} /> : null}
     </div>
   );
 }

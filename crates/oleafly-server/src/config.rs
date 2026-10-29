@@ -55,6 +55,8 @@ pub const DEFAULT_S3_REGION: &str = "us-east-1";
 pub const OPEN_SIGNUP_STORAGE_MB: u64 = 100;
 pub const OPEN_SIGNUP_PROJECTS: u32 = 50;
 pub const OPEN_SIGNUP_UPLOADS_PER_HOUR: u32 = 300;
+pub const DEFAULT_WEB_CONNECT_SRC: &str = "https://mirrors.oleafly.com";
+const WEB_CONNECT_SRC: &str = "OLEAFLY_WEB_CONNECT_SRC";
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct AccountQuotas {
@@ -259,6 +261,7 @@ pub struct ServerConfig {
     pub open_signup: bool,
     pub quotas: AccountQuotas,
     pub web: bool,
+    pub web_connect_src: Vec<String>,
     pub sign_in: SignInLimits,
     pub behind_proxy: bool,
     pub proxy_hops: u8,
@@ -408,6 +411,10 @@ impl ServerConfig {
             )?,
         };
         let web = source.flag("OLEAFLY_WEB", false)?;
+        let web_connect_src = match source.written(WEB_CONNECT_SRC) {
+            Some(raw) => parse_connect_src(&raw)?,
+            None => vec![DEFAULT_WEB_CONNECT_SRC.to_string()],
+        };
         let sign_in = parse_sign_in_limits(&source)?;
         let behind_proxy = source.flag("OLEAFLY_BEHIND_PROXY", false)?;
         let proxy_hops = source.number("OLEAFLY_PROXY_HOPS", 1u8)?;
@@ -519,6 +526,7 @@ impl ServerConfig {
             open_signup,
             quotas,
             web,
+            web_connect_src,
             sign_in,
             behind_proxy,
             proxy_hops,
@@ -644,6 +652,12 @@ impl Source<'_> {
     fn get(&self, name: &str) -> Option<String> {
         self.noted(name);
         present(self.vars, name).map(str::to_string)
+    }
+
+    // Like get, but an empty value counts as set.
+    fn written(&self, name: &str) -> Option<String> {
+        self.noted(name);
+        self.vars.get(name).map(|value| value.trim().to_string())
     }
 
     fn secret(&self, name: &str) -> Result<Option<String>, ConfigError> {
@@ -1076,6 +1090,42 @@ fn parse_trusted_proxies(raw: &str) -> Result<Vec<ProxyRange>, ConfigError> {
         .collect()
 }
 
+fn parse_connect_src(raw: &str) -> Result<Vec<String>, ConfigError> {
+    let mut origins: Vec<String> = Vec::new();
+    for item in raw
+        .split(|character: char| character == ',' || character.is_whitespace())
+        .filter(|item| !item.is_empty())
+    {
+        let origin = connect_origin(item).ok_or_else(|| {
+            ConfigError::new(
+                WEB_CONNECT_SRC,
+                format!("{WEB_CONNECT_SRC} must list origins such as https://mirrors.example.org, separated by spaces or commas, without a path, quotes or wildcards. Plain http works only for localhost, 127.0.0.1 or [::1]. {item} is not one."),
+            )
+        })?;
+        if !origins.contains(&origin) {
+            origins.push(origin);
+        }
+    }
+    Ok(origins)
+}
+
+fn connect_origin(item: &str) -> Option<String> {
+    let plain = item.chars().all(|character| {
+        character.is_ascii_alphanumeric() || matches!(character, ':' | '/' | '.' | '-' | '[' | ']')
+    });
+    let (_, authority) = item.split_once("://")?;
+    if !plain || authority.is_empty() || authority.contains('/') {
+        return None;
+    }
+    let url = Url::parse(item).ok()?;
+    let allowed = match url.scheme() {
+        "https" => true,
+        "http" => is_loopback(&url),
+        _ => false,
+    };
+    (allowed && url.host().is_some()).then(|| url.origin().ascii_serialization())
+}
+
 fn parse_sign_in_limits(source: &Source<'_>) -> Result<SignInLimits, ConfigError> {
     let limits = SignInLimits {
         requests_burst: source.number("OLEAFLY_SIGN_IN_BURST", DEFAULT_SIGN_IN_BURST)?,
@@ -1357,6 +1407,7 @@ impl fmt::Debug for ServerConfig {
             .field("open_signup", &self.open_signup)
             .field("quotas", &self.quotas)
             .field("web", &self.web)
+            .field("web_connect_src", &self.web_connect_src)
             .field("sign_in", &self.sign_in)
             .field("behind_proxy", &self.behind_proxy)
             .field("proxy_hops", &self.proxy_hops)
@@ -2762,6 +2813,70 @@ mod tests {
             load_err(&[BASE, ("OLEAFLY_WEB", "on")]).variable,
             "OLEAFLY_WEB"
         );
+    }
+
+    #[test]
+    fn the_browser_app_connects_to_the_mirror_unless_other_origins_are_listed() {
+        let default = load(&[BASE]).unwrap();
+        assert_eq!(default.web_connect_src, [DEFAULT_WEB_CONNECT_SRC]);
+        for empty in ["", "  "] {
+            let only_self = load(&[BASE, ("OLEAFLY_WEB_CONNECT_SRC", empty)]).unwrap();
+            assert!(only_self.web_connect_src.is_empty(), "{empty:?}");
+            assert!(only_self.ignored_settings.is_empty());
+        }
+        let listed = load(&[
+            BASE,
+            (
+                "OLEAFLY_WEB_CONNECT_SRC",
+                "https://Mirror.Example.org:8443, http://localhost:5173\thttps://mirror.example.org:8443 http://127.0.0.1,,http://[::1]:9000\nhttps://cdn.example.org:443",
+            ),
+        ])
+        .unwrap();
+        assert_eq!(
+            listed.web_connect_src,
+            [
+                "https://mirror.example.org:8443",
+                "http://localhost:5173",
+                "http://127.0.0.1",
+                "http://[::1]:9000",
+                "https://cdn.example.org",
+            ]
+        );
+        assert!(listed.ignored_settings.is_empty());
+    }
+
+    #[test]
+    fn a_connect_origin_with_a_path_quote_wildcard_or_plain_http_elsewhere_is_refused() {
+        for item in [
+            "https://mirror.example.org/tex",
+            "https://mirror.example.org/",
+            "'self'",
+            "*",
+            "https://*.example.org",
+            "\"https://mirror.example.org\"",
+            "https://mirror.example.org;script-src",
+            "http://mirror.example.org",
+            "http://localhost.example.org",
+            "mirror.example.org",
+            "wss://mirror.example.org",
+            "data:",
+            "https://",
+            "https://user@mirror.example.org",
+            "https://mirror.example.org?x=1",
+            "https://mirror.example.org#x",
+            "https://mirror_example.org",
+            "https://mirror.example.org:99999",
+        ] {
+            let error = load_err(&[
+                BASE,
+                (
+                    "OLEAFLY_WEB_CONNECT_SRC",
+                    &format!("https://ok.example.org {item}"),
+                ),
+            ]);
+            assert_eq!(error.variable, "OLEAFLY_WEB_CONNECT_SRC", "{item}");
+            assert!(error.message.contains(item), "{item}: {}", error.message);
+        }
     }
 
     #[test]

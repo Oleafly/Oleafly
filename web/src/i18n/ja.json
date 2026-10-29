@@ -100,6 +100,25 @@
     "download": "ダウンロード",
     "zoom": "{{percent}}%"
   },
+  "compile": {
+    "action": "コンパイル",
+    "hint": "このブラウザでプロジェクトをコンパイル ({{shortcut}})",
+    "running": "コンパイル中",
+    "compiledHere": "ブラウザで {{seconds}} 秒でコンパイル",
+    "failedNoPdf": "PDF ができる前にコンパイルが止まりました。",
+    "couldNotRun": "コンパイルを実行できませんでした。",
+    "emptyReady": "プロジェクトをコンパイルすると、ここに PDF が表示されます。",
+    "shareFailed": "この PDF はあなたにしか見えません。プロジェクトと共有できませんでした。",
+    "showLog": "ログを表示",
+    "hideLog": "ログを隠す",
+    "logTitle": "コンパイルログ",
+    "problems": "エラー: {{errors}} · 警告: {{warnings}}",
+    "noProblems": "エラーも警告もありません。",
+    "showRawLog": "ログ全体",
+    "showProblems": "問題",
+    "showInPdf": "PDF で表示",
+    "showInPdfHint": "この行を PDF で表示 ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "コメントや提案はありません",
     "emptyCanComment": "ソースでテキストを選択し、「コメント」を選ぶとスレッドを始められます。",

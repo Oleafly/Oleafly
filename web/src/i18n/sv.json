@@ -100,6 +100,25 @@
     "download": "Ladda ner",
     "zoom": "{{percent}} %"
   },
+  "compile": {
+    "action": "Kompilera",
+    "hint": "Kompilera projektet i den här webbläsaren ({{shortcut}})",
+    "running": "Kompilerar",
+    "compiledHere": "Kompilerad i din webbläsare på {{seconds}} s",
+    "failedNoPdf": "Kompileringen stoppade innan det blev någon PDF.",
+    "couldNotRun": "Kompileringen kunde inte köras.",
+    "emptyReady": "Kompilera projektet för att se dess PDF här.",
+    "shareFailed": "Bara du ser den här PDF:en. Den kunde inte delas med projektet.",
+    "showLog": "Visa loggen",
+    "hideLog": "Dölj loggen",
+    "logTitle": "Kompileringslogg",
+    "problems": "Fel: {{errors}} · Varningar: {{warnings}}",
+    "noProblems": "Inga fel eller varningar.",
+    "showRawLog": "Hela loggen",
+    "showProblems": "Problem",
+    "showInPdf": "Visa i PDF",
+    "showInPdfHint": "Visa den här raden i PDF:en ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "Inga kommentarer eller förslag",
     "emptyCanComment": "Markera text i källkoden och välj Kommentera för att starta en tråd.",

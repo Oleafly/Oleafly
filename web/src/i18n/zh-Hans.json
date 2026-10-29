@@ -100,6 +100,25 @@
     "download": "下载",
     "zoom": "{{percent}}%"
   },
+  "compile": {
+    "action": "编译",
+    "hint": "在此浏览器中编译项目 ({{shortcut}})",
+    "running": "正在编译",
+    "compiledHere": "已在你的浏览器中编译，用时 {{seconds}} 秒",
+    "failedNoPdf": "编译在生成 PDF 之前就停止了。",
+    "couldNotRun": "无法运行编译。",
+    "emptyReady": "编译项目后，PDF 会显示在这里。",
+    "shareFailed": "只有你能看到这个 PDF。它没能共享到项目中。",
+    "showLog": "显示日志",
+    "hideLog": "隐藏日志",
+    "logTitle": "编译日志",
+    "problems": "错误：{{errors}} · 警告：{{warnings}}",
+    "noProblems": "没有错误或警告。",
+    "showRawLog": "完整日志",
+    "showProblems": "问题",
+    "showInPdf": "在 PDF 中显示",
+    "showInPdfHint": "在 PDF 中显示这一行 ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "没有评论或建议",
     "emptyCanComment": "在源码中选中文本，然后选择“评论”即可发起讨论。",

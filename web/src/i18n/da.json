@@ -100,6 +100,25 @@
     "download": "Hent",
     "zoom": "{{percent}} %"
   },
+  "compile": {
+    "action": "Kompilér",
+    "hint": "Kompilér projektet i denne browser ({{shortcut}})",
+    "running": "Kompilerer",
+    "compiledHere": "Kompileret i din browser på {{seconds}} s",
+    "failedNoPdf": "Kompileringen stoppede, før der kom en PDF.",
+    "couldNotRun": "Kompileringen kunne ikke køre.",
+    "emptyReady": "Kompilér projektet for at se dets PDF her.",
+    "shareFailed": "Kun du kan se denne PDF. Den kunne ikke deles med projektet.",
+    "showLog": "Vis loggen",
+    "hideLog": "Skjul loggen",
+    "logTitle": "Kompileringslog",
+    "problems": "Fejl: {{errors}} · Advarsler: {{warnings}}",
+    "noProblems": "Ingen fejl eller advarsler.",
+    "showRawLog": "Hele loggen",
+    "showProblems": "Problemer",
+    "showInPdf": "Vis i PDF",
+    "showInPdfHint": "Vis denne linje i PDF'en ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "Ingen kommentarer eller forslag",
     "emptyCanComment": "Markér tekst i kilden, og vælg Kommentér for at starte en tråd.",

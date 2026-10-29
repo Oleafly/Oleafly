@@ -3,6 +3,7 @@
   "include": [
     "src",
     "dev",
+    "e2e",
     "vitest.setup.ts",
     "../vite.web.config.ts",
     "../vitest.web.config.ts",

@@ -23,7 +23,9 @@ making document engines, filesystem policy, and external integrations explicit.
 | `crates/oleafly-online/` | Online LaTeX service client: sessions, project lists, folder import, browser cookie reading and Git-bridge sync |
 | `crates/oleafly-preflight/` | Preflight checks in Rust, with the same results as the app's panel, for `oleafly check` and research tasks |
 | `crates/oleafly-lint/` | LaTeX, BibTeX, spelling and grammar checks for `oleafly lint` |
-| `crates/oleafly-doctools/` | Document statistics, SyncTeX lookups and Pandoc exports, shared by the app and the CLI |
+| `crates/oleafly-doctools/` | Document statistics, SyncTeX file reading and Pandoc exports, shared by the app and the CLI |
+| `crates/oleafly-synctex/` | SyncTeX parsing and forward and inverse search, with no file access, shared by the app, the CLI and the browser app |
+| `crates/oleafly-synctex-wasm/` | `oleafly-synctex` built to WebAssembly for the browser app (`pnpm synctex:wasm`) |
 | `crates/oleafly-downloads/` | TeX toolchain, Typst and template pack downloads, shared by the app and the CLI |
 | `src/` | Application shell, stores, Tauri adapters, contributions, and UI |
 | `packages/editor/` | Engine-neutral editor and language-service primitives |
@@ -40,6 +42,7 @@ making document engines, filesystem policy, and external integrations explicit.
 | `packages/templates/` | Template gallery contracts and host integration |
 | `packages/ai-core/` and `packages/ai-tools/` | Provider and tool boundaries |
 | `packages/backend-port/` | Typed contract between a frontend shell and its backend |
+| `packages/compile-port/` | One contract for compiling, reading the output and SyncTeX, with the engines that run in a browser |
 | `packages/i18n-contract/` | Supported locales, catalog helpers, and the translator contract |
 | `src-tauri/src/` | IPC commands, project sandbox, Git, engines, downloads, and secrets |
 | `src-tauri/resources/` | Templates, licenses, and pinned runtime resources |
@@ -111,6 +114,10 @@ adding or removing a tool.
   not a dynamic third-party plugin SDK.
 - `@oleafly/search-query` parses and runs GitHub-style search queries over any
   list. The app supplies the qualifiers, labels and icons.
+- `@oleafly/compile-port` owns the compile contract the desktop and the
+  browser app share: compile a target, read what it made, and search its
+  SyncTeX. `src/lib/compile-port.ts` puts the desktop's commands behind it,
+  and the browser port runs engines in the page.
 
 The app creates the concrete host adapters in `src/`. A package must not import
 Zustand stores, Tauri APIs, or `@/` application modules. This keeps package
@@ -136,6 +143,19 @@ returns the grouped result in `CompileResult.diagnostics`, so the log pane no
 longer reparses the whole log on every streamed chunk. The TypeScript parser in
 `@oleafly/latex` remains the fallback for a backend that does not send the
 field.
+
+The browser app in `web/` compiles through `@oleafly/compile-port` too. A
+compile reads every text file from the server in one request, with the
+editor's unsent changes on top, and runs an engine listed in
+`web/src/compile/engines.ts`. None ships yet; a development build started with
+`VITE_OLEAFLY_FAKE_ENGINE=1` gets the test engine. When an engine gives no
+diagnostics, its log is read with the `@oleafly/latex` parser. Click-to-source
+runs `crates/oleafly-synctex` built to WebAssembly, the code the desktop runs,
+on the browser's own output and on output an app uploaded. The uploader's
+project folder is worked out from the file's paths, so it doesn't matter where
+they compiled. Owners and editors share a compile with the project at most
+once a minute, as the app does. `pnpm check:web-budget` limits the JavaScript
+loaded at startup and gives each WebAssembly module its own size limit.
 
 ## AI providers and model trust
 

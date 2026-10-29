@@ -52,11 +52,14 @@
     "i18n:types": "node --experimental-strip-types --no-warnings scripts/i18n/gen-types.ts",
     "i18n:types:check": "node --experimental-strip-types --no-warnings scripts/i18n/gen-types.ts --check",
     "i18n:validate": "node --experimental-strip-types --no-warnings scripts/i18n/validate.ts",
-    "web:dev": "vite --config vite.web.config.ts",
-    "web:build": "vite build --config vite.web.config.ts",
-    "web:test": "vitest run --config vitest.web.config.ts",
+    "synctex:wasm": "node scripts/build-synctex-wasm.mjs",
+    "web:dev": "pnpm synctex:wasm && vite --config vite.web.config.ts",
+    "web:build": "pnpm synctex:wasm && vite build --config vite.web.config.ts",
+    "web:test": "pnpm synctex:wasm && vitest run --config vitest.web.config.ts",
     "web:typecheck": "tsc --noEmit -p web",
-    "web:mock": "node --experimental-transform-types --no-warnings web/dev/mock-server.ts"
+    "web:mock": "node --experimental-transform-types --no-warnings web/dev/mock-server.ts",
+    "web:e2e": "pnpm synctex:wasm && playwright test -c web/e2e/playwright.config.ts",
+    "check:web-budget": "node scripts/check-web-budget.mjs"
   },
   "dependencies": {
     "@citation-js/core": "0.8.2",
@@ -80,6 +83,7 @@
     "@oleafly/ai-core": "workspace:*",
     "@oleafly/ai-tools": "workspace:*",
     "@oleafly/backend-port": "workspace:*",
+    "@oleafly/compile-port": "workspace:*",
     "@oleafly/conversion-registry": "workspace:*",
     "@oleafly/diagram": "workspace:*",
     "@oleafly/editor": "workspace:*",

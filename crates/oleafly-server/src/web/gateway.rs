@@ -445,6 +445,7 @@ impl Session {
 
     async fn hello(&mut self) -> Result<(), Refusal> {
         let files = self.room.ready(&self.state).await?;
+        let compile = self.room.compile().await;
         let switches = self.switches().await?;
         self.sink.send(&Outgoing::Hello {
             role: self.role,
@@ -455,6 +456,7 @@ impl Session {
             },
             files,
             members: people(&self.members),
+            compile,
         });
         Ok(())
     }

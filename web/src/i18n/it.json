@@ -100,6 +100,25 @@
     "download": "Scarica",
     "zoom": "{{percent}}%"
   },
+  "compile": {
+    "action": "Compila",
+    "hint": "Compila il progetto in questo browser ({{shortcut}})",
+    "running": "Compilazione in corso",
+    "compiledHere": "Compilato nel tuo browser in {{seconds}} s",
+    "failedNoPdf": "La compilazione si è fermata prima di creare un PDF.",
+    "couldNotRun": "Non è stato possibile avviare la compilazione.",
+    "emptyReady": "Compila il progetto per vedere qui il suo PDF.",
+    "shareFailed": "Solo tu vedi questo PDF. Non è stato possibile condividerlo con il progetto.",
+    "showLog": "Mostra il log",
+    "hideLog": "Nascondi il log",
+    "logTitle": "Log di compilazione",
+    "problems": "Errori: {{errors}} · Avvisi: {{warnings}}",
+    "noProblems": "Nessun errore o avviso.",
+    "showRawLog": "Log completo",
+    "showProblems": "Problemi",
+    "showInPdf": "Mostra nel PDF",
+    "showInPdfHint": "Mostra questa riga nel PDF ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "Nessun commento o suggerimento",
     "emptyCanComment": "Seleziona del testo nel sorgente e scegli Commenta per avviare una conversazione.",

@@ -100,6 +100,25 @@
     "download": "Downloaden",
     "zoom": "{{percent}}%"
   },
+  "compile": {
+    "action": "Compileren",
+    "hint": "Het project in deze browser compileren ({{shortcut}})",
+    "running": "Bezig met compileren",
+    "compiledHere": "In je browser gecompileerd in {{seconds}} s",
+    "failedNoPdf": "Het compileren stopte voordat er een PDF was.",
+    "couldNotRun": "Het compileren kon niet starten.",
+    "emptyReady": "Compileer het project om de PDF hier te zien.",
+    "shareFailed": "Alleen jij ziet deze PDF. Hij kon niet met het project worden gedeeld.",
+    "showLog": "Logboek tonen",
+    "hideLog": "Logboek verbergen",
+    "logTitle": "Compileerlogboek",
+    "problems": "Fouten: {{errors}} · Waarschuwingen: {{warnings}}",
+    "noProblems": "Geen fouten of waarschuwingen.",
+    "showRawLog": "Volledig logboek",
+    "showProblems": "Problemen",
+    "showInPdf": "Tonen in PDF",
+    "showInPdfHint": "Deze regel in de PDF tonen ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "Geen opmerkingen of suggesties",
     "emptyCanComment": "Selecteer tekst in de broncode en kies Opmerking om een gesprek te beginnen.",

@@ -8,6 +8,7 @@ use oleafly_collab::doc::{DocChanges, NodeKind, ProjectDoc};
 use oleafly_collab::editor::{ChannelError, EditorChannel};
 use oleafly_collab::materialize;
 use oleafly_collab::ot::TextOperation;
+use oleafly_collab::settings::Settings;
 use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
 use oleafly_collab_protocol::frames::ServerFrame;
 use oleafly_collab_protocol::ids::{AccountId, BatchId, CommentId, DeviceId, SharedProjectId};
@@ -26,7 +27,7 @@ use crate::routes::ws::{Peer, ASIDE_BYTES};
 use crate::snapshots::{read_cost, Current, Held};
 use crate::sockets::SocketControl;
 use crate::state::AppState;
-use crate::web::frames::{CommentAction, Outgoing, WebFile, WebOutput};
+use crate::web::frames::{CommentAction, Outgoing, WebFile, WebOutput, WebText};
 use crate::web::{pending_core, Refusal};
 
 pub const LINGER: Duration = Duration::from_secs(60);
@@ -202,6 +203,7 @@ pub struct RoomDoc {
     retired: HashMap<(u64, String), u64>,
     writers: HashMap<DeviceId, u64>,
     files: Vec<WebFile>,
+    compile: Settings,
 }
 
 async fn load(state: &AppState, project: SharedProjectId) -> Result<RoomDoc, Refusal> {
@@ -229,12 +231,13 @@ async fn load(state: &AppState, project: SharedProjectId) -> Result<RoomDoc, Ref
         authorship.vouch(bound.iter().map(|row| (row.peer, row.account_id)));
         doc.set_authorship(authorship);
         let files = files_of(&doc);
-        Some((doc, held, files))
+        let compile = doc.settings();
+        Some((doc, held, files, compile))
     })
     .await
     .ok()
     .flatten();
-    let Some((doc, held, files)) = built else {
+    let Some((doc, held, files, compile)) = built else {
         return Err(cannot_open());
     };
     Ok(RoomDoc {
@@ -246,6 +249,7 @@ async fn load(state: &AppState, project: SharedProjectId) -> Result<RoomDoc, Ref
         retired: HashMap::new(),
         writers: HashMap::new(),
         files,
+        compile,
     })
 }
 
@@ -531,6 +535,39 @@ impl RoomDoc {
         if pending_core::chat_changed(&changes) {
             self.send_chat(sinks);
         }
+        self.compile_changed(sinks);
+    }
+
+    fn compile_changed(&mut self, sinks: &Sinks) {
+        let compile = self.doc.settings();
+        if compile == self.compile {
+            return;
+        }
+        self.compile = compile;
+        self.send_compile(sinks);
+    }
+
+    fn send_compile(&self, sinks: &Sinks) {
+        for sink in sinks.values() {
+            sink.send(&Outgoing::Compile {
+                settings: self.compile.clone(),
+            });
+        }
+    }
+
+    fn texts(&self) -> Vec<WebText> {
+        self.files
+            .iter()
+            .filter(|file| file.kind == "text")
+            .filter_map(|file| {
+                let text = self.doc.text(&file.file_id).ok()?;
+                Some(WebText {
+                    file_id: file.file_id.clone(),
+                    path: file.path.clone(),
+                    text,
+                })
+            })
+            .collect()
     }
 
     fn tree_changed(&mut self, sinks: &Sinks) {
@@ -798,6 +835,7 @@ impl RoomDoc {
 
     fn adopt(&mut self, mut old: RoomDoc, sinks: &Sinks) {
         let changed = old.files != self.files;
+        let compiled = old.compile != self.compile;
         for (file, channels) in old.channels.drain() {
             let Ok(text) = self.doc.text(&file) else {
                 continue;
@@ -823,6 +861,9 @@ impl RoomDoc {
                     files: self.files.clone(),
                 });
             }
+        }
+        if compiled {
+            self.send_compile(sinks);
         }
         let files: Vec<String> = self.channels.keys().cloned().collect();
         for file in files {
@@ -884,6 +925,24 @@ impl WebRoom {
         guard
             .as_ref()
             .map(|room| room.files.clone())
+            .ok_or_else(cannot_open)
+    }
+
+    pub async fn compile(&self) -> Settings {
+        self.doc
+            .lock()
+            .await
+            .as_ref()
+            .map(|room| room.compile.clone())
+            .unwrap_or_default()
+    }
+
+    pub async fn texts(&self) -> Result<Vec<WebText>, Refusal> {
+        self.doc
+            .lock()
+            .await
+            .as_ref()
+            .map(RoomDoc::texts)
             .ok_or_else(cannot_open)
     }
 

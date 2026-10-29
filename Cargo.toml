@@ -27,6 +27,17 @@ opt-level = 3
 [profile.server-release.package."*"]
 opt-level = 3
 
+# The browser app's SyncTeX WebAssembly (crates/oleafly-synctex-wasm, built
+# by scripts/build-synctex-wasm.mjs). Every reader downloads it, so it is
+# built for size, and a panic aborts instead of carrying unwinding code.
+[profile.wasm-release]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
 # The upstream bridge resolves windows through `webview_windows()`, which
 # drops a window the moment it hosts a second webview (the browser dock), so
 # every eval after opening the dock failed with "window not found". The

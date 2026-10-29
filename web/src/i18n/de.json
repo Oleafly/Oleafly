@@ -100,6 +100,25 @@
     "download": "Herunterladen",
     "zoom": "{{percent}} %"
   },
+  "compile": {
+    "action": "Kompilieren",
+    "hint": "Das Projekt in diesem Browser kompilieren ({{shortcut}})",
+    "running": "Wird kompiliert",
+    "compiledHere": "In Ihrem Browser in {{seconds}} s kompiliert",
+    "failedNoPdf": "Das Kompilieren wurde beendet, bevor ein PDF entstand.",
+    "couldNotRun": "Das Kompilieren konnte nicht starten.",
+    "emptyReady": "Kompilieren Sie das Projekt, um sein PDF hier zu sehen.",
+    "shareFailed": "Nur Sie sehen dieses PDF. Es konnte nicht mit dem Projekt geteilt werden.",
+    "showLog": "Protokoll anzeigen",
+    "hideLog": "Protokoll ausblenden",
+    "logTitle": "Kompilierprotokoll",
+    "problems": "Fehler: {{errors}} · Warnungen: {{warnings}}",
+    "noProblems": "Keine Fehler oder Warnungen.",
+    "showRawLog": "Ganzes Protokoll",
+    "showProblems": "Probleme",
+    "showInPdf": "Im PDF zeigen",
+    "showInPdfHint": "Diese Zeile im PDF zeigen ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "Keine Kommentare oder Vorschläge",
     "emptyCanComment": "Markieren Sie Text im Quelltext und wählen Sie Kommentieren, um eine Unterhaltung zu beginnen.",

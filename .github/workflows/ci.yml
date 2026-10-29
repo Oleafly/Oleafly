@@ -171,8 +171,24 @@ jobs:
       # frontend build needs no Tectonic sidecar.
       - name: Typecheck & build
         run: pnpm build
+
+      # The browser app runs the desktop's SyncTeX as WebAssembly, which
+      # `pnpm web:test` and `web:build` build from crates/oleafly-synctex-wasm.
+      - name: Install Rust toolchain with the WebAssembly target
+        uses: ./.github/actions/rust-toolchain
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache the SyncTeX WebAssembly build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> src-tauri/target
+          key: synctex-wasm
+
       - name: Browser app typecheck, test and build
         run: pnpm exec tsc --noEmit -p web && pnpm web:test && pnpm web:build
+      - name: Browser app size budget
+        run: pnpm check:web-budget
       - name: Check performance budgets
         run: pnpm check:performance
 
@@ -380,6 +396,7 @@ jobs:
         run: >-
           cargo +1.87.0 check --all-targets
           -p oleafly-core -p oleafly-secrets -p oleafly-doctools
+          -p oleafly-synctex -p oleafly-synctex-wasm
           -p oleafly-downloads -p oleafly-sandbox -p oleafly-forge
           -p oleafly-agent
 
@@ -1283,7 +1300,8 @@ jobs:
     # fixture pages that Vite serves from e2e/, with the Tauri bridge mocked
     # inside the page. They need no app build, and every packaged shard skips
     # them, so this lane is where they run now that Windows no longer runs the
-    # suite under `tauri dev`.
+    # suite under `tauri dev`. The browser app's specs run here too, against
+    # the dev mock server with the test engine compiling.
     name: E2E (browser harness, Linux)
     needs: frontend
     runs-on: ubuntu-24.04
@@ -1312,10 +1330,30 @@ jobs:
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
 
+      # `pnpm web:e2e` builds the browser app's SyncTeX WebAssembly first.
+      - name: Install Rust toolchain with the WebAssembly target
+        uses: ./.github/actions/rust-toolchain
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache the SyncTeX WebAssembly build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> src-tauri/target
+          key: synctex-wasm
+
       - name: Run the browser-harness specs
         env:
           CI: 1
         run: bash scripts/e2e-browser-harness.sh
+
+      # The compile, click-to-source both ways and the upload. Runs even when
+      # a harness spec failed, so one round reports both.
+      - name: Run the browser app specs
+        if: ${{ !cancelled() }}
+        env:
+          CI: 1
+        run: pnpm web:e2e
 
       - name: Upload failure artifacts
         if: always()
@@ -1326,6 +1364,8 @@ jobs:
             test-results/**/error-context.md
             test-results/**/trace.zip
             test-results/**/*.log
+            web/e2e/test-results/**/error-context.md
+            web/e2e/test-results/**/trace.zip
           if-no-files-found: ignore
           retention-days: 3
 

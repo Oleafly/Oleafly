@@ -8,10 +8,13 @@ import {
   type ChangeResult,
   type ChatMessage,
   manages,
+  MAX_OUTPUT_BYTES,
   minimalPdf,
   MockProject,
   type Mode,
+  outputItem,
   Refusal,
+  requestedByTheApp,
   type Role,
   type Wire,
 } from "./mock-state.ts";
@@ -73,6 +76,7 @@ function seedProject(): MockProject {
     "@article{smith2020,\n  title = {Sea ice drift},\n  author = {Smith, Ann},\n  year = {2020}\n}\n",
   );
   project.addBlob("f-diagram", "figures/diagram.svg", "diagram");
+  Object.assign(project.compile, { main_doc: "f-main", engine: "latex" });
   const main = project.text("f-main").text;
   const quoted = "buoy data";
   const at = main.indexOf(quoted);
@@ -220,13 +224,6 @@ function filesOf(project: MockProject) {
 function summary(project: MockProject, role: Role) {
   const owner = ACCOUNTS.find((account) => account.accountId === project.owner);
   return { project_id: project.projectId, title: project.title, owner: owner ? person(owner) : null, role };
-}
-
-function outputItems(project: MockProject) {
-  const output = project.output;
-  return output
-    ? [{ kind: "pdf", size: output.bytes.length, compiledBy: output.compiledBy, compiledAt: output.compiledAt, mainFile: output.mainFile }]
-    : [];
 }
 
 function viewersOf(project: MockProject, fileId?: string): Peer[] {
@@ -482,9 +479,10 @@ function upgrade(request: IncomingMessage, socket: Duplex): void {
     features: { suggestions: true, chat: true, web: true },
     files: filesOf(project),
     people: people(project),
+    compile: project.compile,
   });
   peer.send({ t: "chat", messages: project.chat });
-  peer.send({ t: "output", items: outputItems(project) });
+  peer.send({ t: "output", items: project.outputItems() });
   sendPresence(project);
 }
 
@@ -508,15 +506,54 @@ function signInPage(): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Sign in</title></head><body style="font-family: system-ui; max-width: 32rem; margin: 3rem auto; padding: 0 1rem"><h1>Mock sign-in</h1><p>Pick an account. The demo project gives each one a different role.</p><ul>${links}</ul></body></html>`;
 }
 
+function announceOutput(project: MockProject): void {
+  for (const peer of viewersOf(project)) peer.send({ t: "output", items: project.outputItems() });
+}
+
 function compile(project: MockProject, by: string): void {
-  const at = Date.now();
-  project.output = {
-    bytes: minimalPdf([project.title, `Compiled by ${by} at ${new Date(at).toISOString()}`, "This PDF comes from the mock server."]),
-    compiledBy: by,
-    compiledAt: at,
-    mainFile: "main.tex",
-  };
-  for (const peer of viewersOf(project)) peer.send({ t: "output", items: outputItems(project) });
+  const lines = [project.title, `Compiled by ${by} at ${new Date().toISOString()}`, "This PDF comes from the mock server."];
+  project.storeOutput("pdf", minimalPdf(lines), by, "main.tex");
+  announceOutput(project);
+}
+
+function readBody(request: IncomingMessage, limit: number): Promise<Uint8Array | null> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    request.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size <= limit) chunks.push(chunk);
+    });
+    request.on("end", () => resolve(size > limit ? null : new Uint8Array(Buffer.concat(chunks))));
+    request.on("error", reject);
+  });
+}
+
+function mainFileOf(request: IncomingMessage): string | null {
+  const raw = request.headers["x-oleafly-main-file"];
+  if (typeof raw !== "string") return null;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+}
+
+function putOutput(request: IncomingMessage, response: ServerResponse, project: MockProject, kind: string, by: Account): void {
+  readBody(request, MAX_OUTPUT_BYTES).then(
+    (bytes) => {
+      try {
+        if (!bytes) throw new Refusal("bad_request");
+        const stored = project.storeOutput(kind, bytes, by.accountId, mainFileOf(request));
+        announceOutput(project);
+        json(response, 200, outputItem(stored));
+      } catch (error) {
+        const code = error instanceof Refusal ? error.code : "server";
+        json(response, code === "server" ? 500 : 400, { code, message: "The server could not store this output." });
+      }
+    },
+    () => json(response, 400, { code: "bad_request", message: "The upload did not arrive." }),
+  );
 }
 
 function peerEdit(project: MockProject): void {
@@ -595,11 +632,19 @@ const server = createServer((request, response) => {
     json(response, 200, { projects: listed });
     return;
   }
-  const match = /^\/web\/api\/projects\/([^/]+)(?:\/(blobs|output)\/([^/]+))?$/u.exec(path);
+  const match = /^\/web\/api\/projects\/([^/]+)(?:\/(blobs|output)\/([^/]+)|\/(texts|output))?$/u.exec(path);
   const project = match ? projects.get(decodeURIComponent(match[1])) : undefined;
   const role = project?.roles.get(account.accountId);
   if (!match || !project || !role) {
     json(response, project ? 403 : 404, { code: project ? "forbidden" : "not_found", message: "No access" });
+    return;
+  }
+  if (match[4] === "texts") {
+    json(response, 200, { files: project.texts() });
+    return;
+  }
+  if (match[4] === "output") {
+    json(response, 200, { items: project.outputItems() });
     return;
   }
   if (!match[2]) {
@@ -615,12 +660,26 @@ const server = createServer((request, response) => {
     response.end(DIAGRAM);
     return;
   }
-  if (match[3] !== "pdf" || !project.output) {
+  if (request.method === "PUT") {
+    if (!requestedByTheApp(request.headers)) {
+      json(response, 403, { code: "cross_site", message: "This request did not come from the Oleafly web app on this server." });
+      return;
+    }
+    if (!manages(role)) {
+      json(response, 403, { code: "forbidden", message: "Only owners and editors store compiled output." });
+      return;
+    }
+    putOutput(request, response, project, match[3], account);
+    return;
+  }
+  const output = match[3] === "pdf" || match[3] === "synctex" ? project.outputs.get(match[3]) : undefined;
+  if (!output) {
     json(response, 404, { code: "not_found", message: "Nobody has compiled yet" });
     return;
   }
-  response.writeHead(200, { "Content-Type": "application/pdf", "Content-Length": project.output.bytes.length });
-  response.end(Buffer.from(project.output.bytes));
+  const type = output.kind === "pdf" ? "application/pdf" : "application/gzip";
+  response.writeHead(200, { "Content-Type": type, "Content-Length": output.bytes.length, "Cache-Control": "no-store" });
+  response.end(Buffer.from(output.bytes));
 });
 
 server.on("upgrade", (request, socket) => upgrade(request, socket));

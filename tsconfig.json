@@ -27,6 +27,8 @@
       "@oleafly/wysiwyg/link-destination": ["./packages/wysiwyg/src/link-destination.ts"],
       "@oleafly/ai-core": ["./packages/ai-core/src/index.ts"],
       "@oleafly/backend-port": ["./packages/backend-port/src/index.ts"],
+      "@oleafly/compile-port": ["./packages/compile-port/src/index.ts"],
+      "@oleafly/compile-port/testing": ["./packages/compile-port/src/testing.ts"],
       "@oleafly/diagram": ["./packages/diagram/src/index.ts"],
       "@oleafly/editor": ["./packages/editor/src/index.ts"],
       "@oleafly/editor/color-roles": ["./packages/editor/src/color-roles.ts"],

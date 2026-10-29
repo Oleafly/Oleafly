@@ -42,6 +42,9 @@ export interface WebPeer {
   head: number | null;
 }
 
+/** The project's compile settings as the server stores them: setting name to value. */
+export type CompileSettings = Readonly<Record<string, string>>;
+
 export interface WebPerson {
   accountId: string;
   name: string;
@@ -50,7 +53,14 @@ export interface WebPerson {
 }
 
 export type ServerFrame =
-  | { t: "hello"; role: CollabProjectRole; features: WebFeatures; files: WebFile[]; people: WebPerson[] }
+  | {
+      t: "hello";
+      role: CollabProjectRole;
+      features: WebFeatures;
+      files: WebFile[];
+      people: WebPerson[];
+      compile: CompileSettings;
+    }
   | { t: "opened"; fileId: string; rev: number; text: string }
   | { t: "ack"; fileId: string; rev: number; length: number | null }
   | { t: "remote"; fileId: string; rev: number; op: CollabTextOperation; length: number }
@@ -61,6 +71,7 @@ export type ServerFrame =
   | { t: "suggestions"; fileId: string; rev: number | null; suggestions: CollabSuggestion[] }
   | { t: "chat"; messages: CollabChatMessage[] }
   | { t: "output"; items: CollabOutputInfo[] }
+  | { t: "compile"; settings: CompileSettings }
   | { t: "access"; role: CollabProjectRole }
   | { t: "error"; code: string; message: string };
 
@@ -150,6 +161,13 @@ export function parseFeatures(value: unknown): WebFeatures {
   const raw = isRecord(value) ? value : {};
   const flag = (key: string) => raw[key] !== false;
   return { comments: flag("comments"), suggestions: flag("suggestions"), chat: flag("chat") };
+}
+
+export function parseCompileSettings(value: unknown): CompileSettings {
+  if (!isRecord(value)) return {};
+  const settings: Record<string, string> = {};
+  for (const [key, entry] of Object.entries(value)) if (typeof entry === "string") settings[key] = entry;
+  return settings;
 }
 
 export function parseFile(value: unknown): WebFile | null {
@@ -268,7 +286,7 @@ function parseChatMessage(value: unknown): CollabChatMessage | null {
   };
 }
 
-function parseOutput(value: unknown): CollabOutputInfo | null {
+export function parseOutput(value: unknown): CollabOutputInfo | null {
   if (!isRecord(value)) return null;
   if (value.kind !== "pdf" && value.kind !== "synctex") return null;
   return {
@@ -300,6 +318,7 @@ function parseKnown(frame: Raw): ServerFrame | null {
         features: parseFeatures(frame.features),
         files: list(frame.files, parseFile),
         people: list(frame.people ?? frame.members, parsePerson),
+        compile: parseCompileSettings(frame.compile),
       };
     case "opened":
       return fileId && rev !== null && typeof frame.text === "string"
@@ -337,6 +356,8 @@ function parseKnown(frame: Raw): ServerFrame | null {
       return { t: "chat", messages: list(frame.messages, parseChatMessage) };
     case "output":
       return { t: "output", items: list(frame.items, parseOutput) };
+    case "compile":
+      return { t: "compile", settings: parseCompileSettings(frame.settings) };
     case "access":
       return { t: "access", role: parseRole(frame.role) };
     case "error":

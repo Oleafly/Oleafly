@@ -100,6 +100,25 @@
     "download": "Lataa",
     "zoom": "{{percent}} %"
   },
+  "compile": {
+    "action": "Käännä",
+    "hint": "Käännä projekti tässä selaimessa ({{shortcut}})",
+    "running": "Käännetään",
+    "compiledHere": "Käännetty selaimessasi {{seconds}} sekunnissa",
+    "failedNoPdf": "Kääntäminen pysähtyi ennen kuin PDF valmistui.",
+    "couldNotRun": "Kääntämistä ei voitu suorittaa.",
+    "emptyReady": "Käännä projekti, niin sen PDF näkyy tässä.",
+    "shareFailed": "Vain sinä näet tämän PDF:n. Sitä ei voitu jakaa projektiin.",
+    "showLog": "Näytä loki",
+    "hideLog": "Piilota loki",
+    "logTitle": "Käännösloki",
+    "problems": "Virheet: {{errors}} · Varoitukset: {{warnings}}",
+    "noProblems": "Ei virheitä eikä varoituksia.",
+    "showRawLog": "Koko loki",
+    "showProblems": "Ongelmat",
+    "showInPdf": "Näytä PDF:ssä",
+    "showInPdfHint": "Näytä tämä rivi PDF:ssä ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "Ei kommentteja tai ehdotuksia",
     "emptyCanComment": "Valitse tekstiä lähdekoodista ja aloita keskustelu valitsemalla Kommentoi.",

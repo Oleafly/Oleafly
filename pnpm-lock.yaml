@@ -100,6 +100,9 @@ importers:
       '@oleafly/backend-port':
         specifier: workspace:*
         version: link:packages/backend-port
+      '@oleafly/compile-port':
+        specifier: workspace:*
+        version: link:packages/compile-port
       '@oleafly/conversion-registry':
         specifier: workspace:*
         version: link:packages/conversion-registry
@@ -426,6 +429,18 @@ importers:
         version: link:../latex
 
   packages/backend-port: {}
+
+  packages/compile-port:
+    dependencies:
+      '@oleafly/backend-port':
+        specifier: workspace:*
+        version: link:../backend-port
+      '@oleafly/latex':
+        specifier: workspace:*
+        version: link:../latex
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
 
   packages/conversion-registry: {}
 

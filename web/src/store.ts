@@ -1,4 +1,5 @@
 import type { CollabCommentThread } from "@oleafly/backend-port";
+import type { CompileOutput } from "@oleafly/compile-port";
 import { create } from "zustand";
 import type { DiscardReason } from "@/features/collab/live/remote-session";
 import type { WebMe } from "./api";
@@ -10,6 +11,7 @@ import type {
   CollabOutputInfo,
   CollabProjectRole,
   CollabSuggestion,
+  CompileSettings,
   WebFeatures,
   WebFile,
   WebPeer,
@@ -26,6 +28,25 @@ export interface CommentDraft {
   from: number;
   to: number;
   quote: string;
+}
+
+export type CompileStatus = "idle" | "running" | "done" | "failed";
+export type ShareStatus = "idle" | "sharing" | "shared" | "failed";
+
+export interface CompileState {
+  /** An engine in this browser compiles the project. */
+  ready: boolean;
+  status: CompileStatus;
+  output: CompileOutput | null;
+  finishedAt: number | null;
+  /** The compile failed before it made any output, with this message. */
+  error: string | null;
+  /** Which PDF the pane shows: this browser's compile, or the one the project shares. */
+  shown: "local" | "shared";
+  share: ShareStatus;
+  /** The shared output this browser uploaded, so it isn't downloaded back. */
+  sharedKey: string | null;
+  logOpen: boolean;
 }
 
 export interface Notice {
@@ -55,6 +76,8 @@ export interface WebState {
   suggestions: Readonly<Record<string, readonly CollabSuggestion[]>>;
   chat: readonly CollabChatMessage[];
   output: readonly CollabOutputInfo[];
+  compileSettings: CompileSettings;
+  compile: CompileState;
   peers: readonly WebPeer[];
   people: Readonly<Record<string, WebPerson>>;
   notice: Notice | null;
@@ -69,6 +92,24 @@ export interface WebState {
 }
 
 export const DEFAULT_FEATURES: WebFeatures = { comments: true, suggestions: true, chat: true };
+
+export function initialCompileState(): CompileState {
+  return {
+    ready: false,
+    status: "idle",
+    output: null,
+    finishedAt: null,
+    error: null,
+    shown: "shared",
+    share: "idle",
+    sharedKey: null,
+    logOpen: false,
+  };
+}
+
+export function patchCompile(patch: Partial<CompileState>): void {
+  useWeb.setState((state) => ({ compile: { ...state.compile, ...patch } }));
+}
 
 export function initialWebState(): WebState {
   return {
@@ -92,6 +133,8 @@ export function initialWebState(): WebState {
     suggestions: {},
     chat: [],
     output: [],
+    compileSettings: {},
+    compile: initialCompileState(),
     peers: [],
     people: {},
     notice: null,

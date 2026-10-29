@@ -1,0 +1,21 @@
+[package]
+name = "oleafly-synctex-wasm"
+version = "0.1.0"
+description = "The browser app's SyncTeX: oleafly-synctex behind a small C ABI for WebAssembly"
+license = "AGPL-3.0-or-later"
+publish = false
+edition = "2021"
+rust-version = "1.87"
+
+# Built by scripts/build-synctex-wasm.mjs with
+# `--target wasm32-unknown-unknown --profile wasm-release`.
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+oleafly-synctex = { path = "../oleafly-synctex" }
+serde = "1"
+serde_json = "1"
+
+[dev-dependencies]
+flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }

@@ -83,6 +83,7 @@ The server reads its settings from environment variables. A variable that is set
 | `OLEAFLY_MAX_PROJECTS_PER_ACCOUNT` | How many shared projects one account may own at once. | `50` with open sign-up, otherwise no limit |
 | `OLEAFLY_UPLOADS_PER_HOUR` | How many file and snapshot uploads one account may make in an hour. Compiled PDFs don't count. | `300` with open sign-up, otherwise no limit |
 | `OLEAFLY_WEB` | Turn on browser access. The server has to be built with the browser app, as the published image and programs are. Read [Browser access](#browser-access). | `false` |
+| `OLEAFLY_WEB_CONNECT_SRC` | Other sites the browser app may download from, as origins such as `https://mirrors.example.org`, separated by spaces or commas. Each one must use `https`, or `http` only for `localhost`, `127.0.0.1` or `[::1]`, and can't have a path. Set it to an empty value to allow only this server. | `https://mirrors.oleafly.com` |
 | `OLEAFLY_SIGN_IN_BURST` | How many sign-in requests one network address can make in a burst. A sign-in takes about six, so the default covers 50 people at one address signing in at the same time. | `300` |
 | `OLEAFLY_SIGN_IN_PER_MINUTE` | How many sign-in requests one network address gets back each minute after the burst. | `120` |
 | `OLEAFLY_EMAIL_LINKS_PER_IP` | How many sign-in emails the server sends to people at one network address in 15 minutes. | `100` |
@@ -395,7 +396,7 @@ docker buildx build --platform linux/amd64 --target binary --output type=local,d
 
 This writes `dist/oleafly-server`. Use `--platform linux/arm64` for an ARM server. Copy the file to `/usr/local/bin/oleafly-server` on the server and make it executable.
 
-The Docker build includes the app for [browser access](#browser-access). The `cargo build` command above leaves it out. To include it, install Node.js 22 and run `corepack enable`, then run `pnpm install` and `pnpm web:build` in the `Oleafly` folder, and add `--features web` to the `cargo build` command. The browser app is built into the server program, so nothing else needs copying.
+The Docker build includes the app for [browser access](#browser-access). The `cargo build` command above leaves it out. To include it, install Node.js 22 and run `corepack enable`. The browser app's SyncTeX code is Rust, so add the WebAssembly target too: `rustup target add wasm32-unknown-unknown`. Then run `pnpm install` and `pnpm web:build` in the `Oleafly` folder, and add `--features web` to the `cargo build` command. The browser app is built into the server program, so nothing else needs copying.
 
 ### Run it with systemd
 
@@ -893,6 +894,7 @@ The routes, if you script against the server:
 | Route | Who can use it | What it does |
 | --- | --- | --- |
 | `PUT /api/v1/projects/<project>/output/pdf` and `.../output/synctex` | Owners and editors | Stores the newest file. The `X-Oleafly-Main-File` header names the main file that was compiled. |
+| `PUT /web/api/projects/<project>/output/pdf` and `.../output/synctex` | Owners and editors, signed in to the browser app | The same, from the browser app. It also needs the `X-Requested-With` and `Origin` headers that [browser access](#browser-access) describes. |
 | `GET /api/v1/projects/<project>/output/pdf` and `.../output/synctex` | Everyone in the project | Downloads it. |
 | `GET /api/v1/projects/<project>/output` | Everyone in the project | Lists what's stored, with the size, who compiled it and when. |
 
@@ -905,13 +907,13 @@ Co-authors can open a shared project in their browser, without installing Oleafl
 
 Then `https://collab.example.org/web/` opens the browser app, and each project's page, the `/p/<project>` address that sharing emails link to, gets an **Open in browser** button.
 
-In the browser, people see the projects shared with them. They can read and edit text files as their role allows, switch between Editing and Suggesting if they're an owner or editor, comment, deal with suggestions, chat and see who else is in the project. They can also read the newest [compiled PDF](#compiled-pdfs). The browser doesn't compile, and figures and other files that aren't text don't open there.
+In the browser, people see the projects shared with them. They can read and edit text files as their role allows, switch between Editing and Suggesting if they're an owner or editor, comment, deal with suggestions, chat and see who else is in the project. They can also read the newest [compiled PDF](#compiled-pdfs). When its SyncTeX file came with it, a click in the PDF opens the source line it came from, and Show in PDF finds a source line in the PDF. The browser doesn't compile, and figures and other files that aren't text don't open there.
 
 | Address | What it is |
 | --- | --- |
 | `/web/` | The browser app. `/web/?project=<project>` opens one project. |
 | `/web/sign-in` | The sign-in page. |
-| `/web/api/...` | What the browser app reads: the account, its projects, a project's files and compiled PDF, and sign-out. |
+| `/web/api/...` | What the browser app reads and sends: the account, its projects, a project's files, the text of all of them in one request, the compiled PDF and SyncTeX file, an upload of a compiled PDF, and sign-out. |
 | `/web/ws` | The live connection for an open project. |
 
 Browser access needs the server at the root of its domain. Read [Under a path](#under-a-path).
@@ -922,7 +924,7 @@ The browser signs in at `/web/sign-in` with the same providers, access rules and
 
 Each browser that signs in becomes a device of that account, named after the browser, such as "Firefox on Linux". It's listed with the person's other devices and in the admin console, and signing it out ends that browser's session. The server signs the browser's edits like any device's, with a key it derives from the session cookie and doesn't store. Expired sessions are signed out at the server's next maintenance pass.
 
-Pages under `/web/` send a strict content security policy: they load scripts and styles only from the server, and no other site can show them in a frame. A request that changes something, such as signing out, needs the header `X-Requested-With: oleafly-web` and an `Origin` header that matches `OLEAFLY_PUBLIC_URL` exactly. The WebSocket at `/web/ws` needs the same `Origin`. So `OLEAFLY_PUBLIC_URL` has to be the exact address people open, with the same scheme, host and port, and your proxy must not change the `Origin` header. If your proxy adds a `Referrer-Policy` header, use `same-origin` rather than `no-referrer`. With `no-referrer`, browsers send `Origin: null` and the server refuses the request.
+Pages under `/web/` send a strict content security policy: they load scripts and styles only from the server, and no other site can show them in a frame. To compile in the browser, the app may run WebAssembly and download files from the origins in `OLEAFLY_WEB_CONNECT_SRC`, by default `https://mirrors.oleafly.com`, and it connects to no other site. A request that changes something, such as signing out, needs the header `X-Requested-With: oleafly-web` and an `Origin` header that matches `OLEAFLY_PUBLIC_URL` exactly. The WebSocket at `/web/ws` needs the same `Origin`. So `OLEAFLY_PUBLIC_URL` has to be the exact address people open, with the same scheme, host and port, and your proxy must not change the `Origin` header. If your proxy adds a `Referrer-Policy` header, use `same-origin` rather than `no-referrer`. With `no-referrer`, browsers send `Origin: null` and the server refuses the request.
 
 ### Memory for browser projects
 

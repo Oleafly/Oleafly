@@ -100,6 +100,25 @@
     "download": "Descarcă",
     "zoom": "{{percent}}%"
   },
+  "compile": {
+    "action": "Compilează",
+    "hint": "Compilează proiectul în acest browser ({{shortcut}})",
+    "running": "Se compilează",
+    "compiledHere": "Compilat în browserul tău în {{seconds}} s",
+    "failedNoPdf": "Compilarea s-a oprit înainte să apară un PDF.",
+    "couldNotRun": "Compilarea nu a putut rula.",
+    "emptyReady": "Compilează proiectul ca să-i vezi PDF-ul aici.",
+    "shareFailed": "Doar tu vezi acest PDF. Nu a putut fi partajat cu proiectul.",
+    "showLog": "Arată jurnalul",
+    "hideLog": "Ascunde jurnalul",
+    "logTitle": "Jurnalul compilării",
+    "problems": "Erori: {{errors}} · Avertismente: {{warnings}}",
+    "noProblems": "Nicio eroare și niciun avertisment.",
+    "showRawLog": "Tot jurnalul",
+    "showProblems": "Probleme",
+    "showInPdf": "Arată în PDF",
+    "showInPdfHint": "Arată acest rând în PDF ({{shortcut}})"
+  },
   "comments": {
     "emptyTitle": "Nu există comentarii sau sugestii",
     "emptyCanComment": "Selectează un text în sursă și alege Comentează ca să începi o discuție.",

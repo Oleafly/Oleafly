@@ -1,16 +1,17 @@
 import type { Extension } from "@codemirror/state";
 import { CodeMirrorEditor, type EditorHost } from "@oleafly/editor/CodeMirrorEditor";
-import { FileQuestion, FileX, Lock, MessageSquarePlus, PenLine } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { Crosshair, FileQuestion, FileX, Lock, MessageSquarePlus, PenLine } from "lucide-react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/empty";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn, shortcut } from "@/lib/utils";
 import type { WebApi } from "../api";
-import { WEB_EDITOR_KEYMAP } from "../editor/extensions";
+import { shownHasSyncTex } from "../compile/outputs";
+import { webEditorKeymap } from "../editor/extensions";
 import type { CollabEditMode, WebFile } from "../protocol";
 import { abilitiesFor, effectiveMode } from "../roles";
 import { useWeb } from "../store";
@@ -61,6 +62,7 @@ export function SourceToolbar({ file, loaded }: Readonly<{ file: WebFile | null;
   const role = useWeb((state) => state.role);
   const features = useWeb((state) => state.features);
   const selection = useWeb((state) => state.selection);
+  const synced = useWeb(shownHasSyncTex);
   const abilities = abilitiesFor(role, features);
   const text = file?.kind === "text";
   return (
@@ -69,6 +71,22 @@ export function SourceToolbar({ file, loaded }: Readonly<{ file: WebFile | null;
         {file?.path}
       </p>
       {text ? <ModeSwitch /> : null}
+      {text && synced ? (
+        <Tooltip label={t(($) => $.web.compile.showInPdfHint, { shortcut: shortcut("⌘⇧J") })}>
+          <Button
+            type="button"
+            size="xs"
+            variant="outline"
+            data-testid="show-in-pdf"
+            disabled={!loaded}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => void actions.showInPdf()}
+          >
+            <Crosshair aria-hidden />
+            {t(($) => $.web.compile.showInPdf)}
+          </Button>
+        </Tooltip>
+      ) : null}
       {text && abilities.comment ? (
         <Tooltip label={t(($) => $.web.source.commentHint)}>
           <Button
@@ -143,6 +161,8 @@ export function SourcePane({
   const loaded = useWeb((state) => (state.activeFileId ? state.loaded[state.activeFileId] === true : false));
   const removedPath = useWeb((state) => state.removedPath);
   const text = file?.kind === "text";
+  const actions = useActions();
+  const keymap = useMemo(() => webEditorKeymap(actions), [actions]);
 
   let placeholder: ReactNode = null;
   if (!file) {
@@ -168,7 +188,7 @@ export function SourcePane({
       <SourceToolbar file={file} loaded={loaded} />
       {placeholder}
       <div className={cn("relative min-h-0 flex-1", text ? "flex flex-col" : "hidden")} data-active-file={activeFileId ?? ""}>
-        <CodeMirrorEditor active={text && visible} host={host} extraExtensions={extensions} extraKeymap={WEB_EDITOR_KEYMAP} />
+        <CodeMirrorEditor active={text && visible} host={host} extraExtensions={extensions} extraKeymap={keymap} />
         {text && !loaded ? (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80">
             <LoadingState label={t(($) => $.web.source.opening, { path: file?.path ?? "" })} />
