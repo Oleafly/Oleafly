@@ -1,0 +1,207 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "Loading",
+    "loadFailed": "Oleafly could not reach the server.",
+    "retry": "Try again",
+    "dismiss": "Dismiss",
+    "projects": "Projects",
+    "account": "Account",
+    "signOut": "Sign out",
+    "signOutFailed": "You could not be signed out. Try again.",
+    "cancel": "Cancel"
+  },
+  "signIn": {
+    "title": "Sign in to Oleafly",
+    "description": "Sign in with the account a co-author shared the project with.",
+    "action": "Sign in"
+  },
+  "projects": {
+    "title": "Shared with you",
+    "emptyTitle": "Nothing is shared with you yet",
+    "emptyDescription": "When someone shares a project with your account, it shows here.",
+    "untitled": "Untitled project",
+    "ownedBy": "Owned by {{name}}",
+    "loadFailed": "Your projects could not be loaded.",
+    "list": "Projects"
+  },
+  "roles": {
+    "owner": "Owner",
+    "editor": "Editor",
+    "reviewer": "Reviewer",
+    "commenter": "Commenter",
+    "viewer": "Viewer",
+    "unknown": "Read only"
+  },
+  "connection": {
+    "connecting": "Connecting",
+    "online": "Connected",
+    "offline": "Offline",
+    "offlineBanner": "You're offline. Your changes are kept and sent when the connection is back.",
+    "ended": "Disconnected"
+  },
+  "ended": {
+    "signedOutTitle": "You're signed out",
+    "signedOutDescription": "Sign in again to keep working on this project.",
+    "noAccessTitle": "You can't open this project",
+    "noAccessDescription": "It was not shared with your account, or your access was removed.",
+    "stoppedTitle": "Disconnected",
+    "stoppedDescription": "Reload the page to connect again."
+  },
+  "access": {
+    "changed": "Your role in this project is now {{role}}."
+  },
+  "discarded": {
+    "read_only": "Your last edits were not saved because you can't edit this project now.",
+    "refused": "Your last edits could not be saved."
+  },
+  "views": {
+    "label": "Panels",
+    "files": "Files",
+    "source": "Source",
+    "pdf": "PDF",
+    "comments": "Comments",
+    "chat": "Chat"
+  },
+  "presence": {
+    "label": "People here"
+  },
+  "files": {
+    "title": "Files",
+    "empty": "This project has no files yet.",
+    "tree": "Project files"
+  },
+  "source": {
+    "noFileTitle": "Open a file",
+    "noFileDescription": "Pick a file from the list to read it.",
+    "opening": "Opening {{path}}",
+    "removed": "{{path}} was removed from the project.",
+    "readOnly": "Read only",
+    "readOnlyHint": "Your role can read this project but not edit it.",
+    "modeLabel": "Edit mode",
+    "editing": "Editing",
+    "suggesting": "Suggesting",
+    "suggestingHint": "Your edits are suggestions that an owner or editor reviews.",
+    "comment": "Comment",
+    "commentHint": "Select text to comment on it.",
+    "binary": "This file can't be shown in the browser.",
+    "blobFailed": "The file could not be loaded."
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "Compiled by {{name}}, {{time}}",
+    "emptyTitle": "No PDF yet",
+    "emptyDescription": "The PDF appears here after someone compiles the project in the Oleafly app.",
+    "loading": "Loading the PDF",
+    "failed": "The PDF could not be loaded.",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fitWidth": "Fit width",
+    "download": "Download",
+    "zoom": "{{percent}}%"
+  },
+  "compile": {
+    "action": "Compile",
+    "hint": "Compile the project in this browser ({{shortcut}})",
+    "running": "Compiling",
+    "compiledHere": "Compiled in your browser in {{seconds}} s",
+    "failedNoPdf": "The compile stopped before it made a PDF.",
+    "couldNotRun": "The compile couldn't run.",
+    "emptyReady": "Compile the project to see its PDF here.",
+    "shareFailed": "Only you can see this PDF. It couldn't be shared with the project.",
+    "showLog": "Show the log",
+    "hideLog": "Hide the log",
+    "logTitle": "Compile log",
+    "problems": "Errors: {{errors}} · Warnings: {{warnings}}",
+    "noProblems": "No errors or warnings.",
+    "showRawLog": "Full log",
+    "showProblems": "Problems",
+    "showInPdf": "Show in PDF",
+    "showInPdfHint": "Show this line in the PDF ({{shortcut}})"
+  },
+  "comments": {
+    "emptyTitle": "No comments or suggestions",
+    "emptyCanComment": "Select text in the source and choose Comment to start a thread.",
+    "emptyReadOnly": "Comments and suggestions on this project show here.",
+    "newComment": "New comment",
+    "placeholder": "Add a comment",
+    "submit": "Comment",
+    "reply": "Reply",
+    "replyPlaceholder": "Reply",
+    "replyLabel": "Reply to this thread",
+    "edit": "Edit",
+    "editLabel": "Edit comment",
+    "save": "Save",
+    "delete": "Delete",
+    "deleteTitle": "Delete this comment?",
+    "deleteDescription": "This can't be undone.",
+    "messageActions": "Comment actions",
+    "resolve": "Resolve",
+    "reopen": "Reopen",
+    "resolvedBy": "Resolved by {{name}}",
+    "deleted": "Comment deleted",
+    "edited": "edited",
+    "anchorLost": "The text this comment was on was removed.",
+    "showInSource": "Show in the source",
+    "thread": "Comment by {{name}}",
+    "hideResolved": "Hide resolved",
+    "resolvedCount_other": "{{count}} resolved"
+  },
+  "suggestions": {
+    "inserted": "Inserted",
+    "deleted": "Deleted",
+    "accept": "Accept",
+    "reject": "Reject",
+    "withdraw": "Withdraw",
+    "acceptAll": "Accept all",
+    "rejectAll": "Reject all",
+    "pending_other": "{{count}} suggestions",
+    "card": "Suggestion by {{name}}",
+    "lineBreak": "Line break"
+  },
+  "chat": {
+    "emptyTitle": "No messages yet",
+    "emptyDescription": "Messages here are seen by everyone in the project.",
+    "placeholder": "Write a message",
+    "label": "Message",
+    "send": "Send",
+    "readOnly": "You can read the chat. Viewers can't post.",
+    "delete": "Delete message",
+    "clear": "Clear chat",
+    "clearTitle": "Clear the chat for everyone?",
+    "clearDescription": "Everyone in the project loses these messages.",
+    "messages": "Chat messages"
+  },
+  "people": {
+    "you": "You",
+    "someone": "Someone",
+    "unverified": "Unverified author"
+  },
+  "errors": {
+    "offline": "You're offline. Try again when you're connected.",
+    "generic": "The server refused that change.",
+    "suggestion_not_found": "That suggestion was already handled.",
+    "suggestion_not_yours": "You can only withdraw your own suggestions.",
+    "suggestion_role": "Your role can't make or review suggestions.",
+    "chat_role": "Your role can't post in the chat.",
+    "comment_not_live": "Comments are not available right now.",
+    "comment_not_yours": "You can only change your own comments.",
+    "comment_off_server": "Comments are turned off on this server.",
+    "comment_off_project": "Comments are turned off for this project.",
+    "comment_viewer": "Viewers can't comment.",
+    "comment_someone_replied": "Someone replied, so this comment can't be deleted.",
+    "comment_message_deleted": "That comment was deleted.",
+    "comment_selection_changed": "The text changed while you were writing. Select it again.",
+    "comment_too_long": "The comment is too long.",
+    "comment_empty": "Write something first.",
+    "rate_limited": "Too many changes at once. Wait a moment and try again.",
+    "too_large": "That is too large to send.",
+    "project_too_large": "This project is too large to open in a browser.",
+    "server_busy": "The server is busy. Try again in a moment.",
+    "not_open": "Open the file before you change it.",
+    "cross_site": "This request didn't come from the Oleafly web app on this server. Reload the page and try again.",
+    "conflict": "That clashes with a change someone else made. Try again.",
+    "account_storage_full": "The project owner's account is out of storage on this server.",
+    "too_many_uploads": "You made too many uploads in the last hour. Try again later."
+  }
+}

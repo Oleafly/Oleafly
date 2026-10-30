@@ -1,0 +1,83 @@
+{
+  "templateCategories": {
+    "blank": "Trống",
+    "diagramsAndFigures": "Sơ đồ & Hình",
+    "cvsAndResumes": "CV & Sơ yếu lý lịch",
+    "journalsAndConferences": "Tạp chí & Hội nghị",
+    "bibliographies": "Tài liệu tham khảo",
+    "assignments": "Bài tập",
+    "thesesAndReports": "Luận văn & Báo cáo",
+    "books": "Sách",
+    "presentations": "Bài trình bày",
+    "posters": "Poster",
+    "newsletters": "Bản tin",
+    "calendars": "Lịch",
+    "letters": "Thư",
+    "aiGenerated": "Do AI tạo"
+  },
+  "templateCategoriesShort": {
+    "cvsAndResumes": "Sơ yếu lý lịch",
+    "diagramsAndFigures": "Sơ đồ",
+    "journalsAndConferences": "Tạp chí"
+  },
+  "fontPacks": {
+    "lato": {
+      "label": "Lato",
+      "description": "Phông chữ sans-serif nhân văn ấm áp, được nhiều mẫu sơ yếu lý lịch và CV hiện đại dùng."
+    },
+    "ptsans": {
+      "label": "PT Sans",
+      "description": "Phông chữ sans-serif gọn gàng, trung tính, dễ đọc trên màn hình và khi in."
+    },
+    "ptserif": {
+      "label": "PT Serif",
+      "description": "Phông chữ serif chuyển tiếp tinh tế, rất hợp với tài liệu học thuật và tài liệu điều hành."
+    }
+  },
+  "templatePacks": {
+    "academic-writing": {
+      "label": "Gói soạn thảo học thuật",
+      "description": "Đề xuất nghiên cứu và đề xuất tài trợ, tổng quan tài liệu, bài luận mục tiêu, thư giới thiệu, sách trắng và luận văn."
+    },
+    "beamer-themes": {
+      "label": "Bộ sưu tập giao diện Beamer",
+      "description": "Các bộ slide Beamer Madrid, Warsaw, Berkeley, Singapore, Copenhagen, Frankfurt, Boadilla và Pittsburgh."
+    },
+    "business-documents": {
+      "label": "Tài liệu doanh nghiệp",
+      "description": "Hoá đơn, bản ghi nhớ, biên bản họp, kế hoạch và báo cáo kinh doanh, chứng nhận và tờ gấp ba."
+    },
+    "conference-preprints": {
+      "label": "Kiểu preprint hội nghị",
+      "description": "Preprint theo kiểu NeurIPS, ICML, ICLR, ACL, CVPR, AAAI, IJCAI, Springer LNCS, JMLR, arXiv và Interspeech."
+    },
+    "coursework": {
+      "label": "Gói bài tập trên lớp",
+      "description": "Bài tập về nhà, phiếu bài tập, bài kiểm tra ngắn, bảng tiêu chí, ghi chú bài giảng, đề cương môn học, bảng tra toán học, đề thi và bản viết giả mã."
+    },
+    "creative-misc": {
+      "label": "Sáng tạo & Khác",
+      "description": "Sách công thức, thiệp mời, phiếu nhân vật RPG, lịch năm, bộ sưu tập bảng và TikZ, và ghi chép thực địa."
+    },
+    "cv-collection": {
+      "label": "Bộ sưu tập kiểu CV & sơ yếu lý lịch",
+      "description": "Sơ yếu lý lịch theo kiểu ModernCV, AltaCV, Awesome-CV, Europass, Friggeri, Plasmati, Twenty Seconds và Jake."
+    },
+    "reports-lab": {
+      "label": "Báo cáo phòng thí nghiệm & kỹ thuật",
+      "description": "Báo cáo thí nghiệm, báo cáo khoa học và kỹ thuật, báo cáo dự án và thực tập, và báo cáo thường niên."
+    },
+    "resume-plus": {
+      "label": "Mở rộng sơ yếu lý lịch & CV",
+      "description": "Sơ yếu lý lịch công nghệ hai cột, sơ yếu lý lịch tối giản, CV học thuật dạng dài, thư xin việc và CV bằng Typst."
+    },
+    "slides-posters": {
+      "label": "Slide & Poster",
+      "description": "Bộ slide Beamer Metropolis, tikzposter khổ dọc và khổ ngang, và bố cục better-poster."
+    },
+    "venue-classes": {
+      "label": "Lớp tạp chí & hội nghị",
+      "description": "REVTeX, ACS achemso, Elsevier, ACM sigconf và bộ khởi đầu tạp chí Typst."
+    }
+  }
+}

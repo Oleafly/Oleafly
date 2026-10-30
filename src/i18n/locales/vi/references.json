@@ -1,0 +1,228 @@
+{
+  "citeOleafly": "Cite Oleafly in this paper",
+  "empty": {
+    "citations": {
+      "detail": "Import a reference library or add a citation to begin.",
+      "title": "No citations yet"
+    },
+    "symbols": {
+      "detail": "Headings, labels, commands, and environments appear here as the project is authored.",
+      "title": "No symbols yet"
+    }
+  },
+  "filter": {
+    "ariaLabelCitations": "Filter citations",
+    "ariaLabelResults": "Filter results",
+    "ariaLabelSymbols": "Filter symbols",
+    "clear": "Clear filter",
+    "noCitation": "No citation matches “{{query}}”.",
+    "noResult": "No result matches “{{query}}”.",
+    "noSymbol": "No symbol matches “{{query}}”.",
+    "placeholderCitations": "Filter keys, titles, authors…",
+    "placeholderResults": "Filter locations…",
+    "placeholderSymbols": "Filter labels and commands…"
+  },
+  "import": {
+    "added_other": "{{count}} references added to {{target}}.",
+    "addedWithDuplicates_other": "{{count}} references added to {{target}}, {{duplicates}} already there.",
+    "allDuplicates_other": "Those {{count}} references are already in {{target}}.",
+    "defaultTarget": "the bibliography",
+    "description": "Add references from a citation manager or bibliography file to this project.",
+    "duplicateNote": "References with a DOI that already exists in the bibliography are skipped.",
+    "empty": "No references found in that file.",
+    "endnote": {
+      "button": "Choose XML, RIS, or BibTeX file",
+      "description": "Choose an EndNote XML, RIS, or BibTeX file. Oleafly adds the references to the project bibliography.",
+      "title": "EndNote, RIS, or BibTeX"
+    },
+    "failed": "Could not import those references.",
+    "nothingNew": "Nothing new to add to {{target}}.",
+    "problems_other": "{{count}} problems during import. {{details}}",
+    "readFailed": "Could not read that file.",
+    "title": "Import reference library",
+    "unrecognized": "Unrecognized file type: {{name}}",
+    "zotero": {
+      "button": "Choose Zotero RDF file",
+      "connect": "Connect Zotero account",
+      "connectedDescription": "Import every reference in your Zotero library, or choose a Zotero RDF file you exported.",
+      "description": "In Zotero, select File → Export Library → Zotero RDF. Then choose the exported file.",
+      "empty": "Your Zotero library has no references to import.",
+      "importLibrary": "Import Zotero library",
+      "limited": "Oleafly read the first {{fetched}} of {{total}} items in your Zotero library.",
+      "title": "Zotero"
+    }
+  },
+  "notice": {
+    "partial": "Partial results. Malformed or unreadable files may omit some occurrences.",
+    "stale": "Updating. Previous-revision citations, symbols, and ranges are hidden."
+  },
+  "panel": {
+    "ariaLabel": "References (Shift-F12)",
+    "clearQuery": "Clear reference query",
+    "cleanLibrary": "Clean reference library",
+    "importAriaLabel": "Import references",
+    "issues_other": "{{count}} reference or citation issues",
+    "tabWithCount": "{{label}}, {{count}}",
+    "title": "References",
+    "viewTabs": "Reference panel view"
+  },
+  "cleanLibrary": {
+    "title": "Clean the reference library",
+    "description": "Review citation keys and duplicate entries before changing your files.",
+    "library": "Reference library",
+    "entryCount_other": "{{count}} entries",
+    "footer": "Preview saves your open files. Applying checks that they still match the preview and backs up the originals.",
+    "noBib": "This project has no .bib file to clean.",
+    "entriesKept": "{{kept}} of {{total}} entries will remain.",
+    "changes": "Changes and notes",
+    "noChanges": "No file changes to apply.",
+    "filesToUpdate": "Files to update: {{files}}",
+    "none": "None",
+    "introSafeChanges": "Citation keys are standardized. DOI duplicates are removed only when all their details can be preserved.",
+    "introReview": "Similar titles and conflicting metadata stay in the library for review.",
+    "preview": "Preview",
+    "reviewTitle": "Review before applying",
+    "reviewBody": "Preview the changes to see which entries and citations will be updated.",
+    "statusAttention": "Needs attention",
+    "statusWorking": "Working…",
+    "statusPreviewReady": "Preview ready",
+    "statusReady": "Ready to preview",
+    "refreshPreview": "Refresh preview",
+    "previewChanges": "Preview changes",
+    "apply": "Apply and rewrite citations",
+    "truncated": "Preview shows the first 500 lines of each version.",
+    "actionRenamed": "{{old}} renamed to {{new}}",
+    "actionDuplicate": "{{removed}} removed as a duplicate of {{kept}} (matched by {{by}})",
+    "actionField": "{{key}}: {{field}}",
+    "reloadFailed": "The cleaned files could not be reloaded. Reopen the project before editing.",
+    "cleaned": "Library cleaned. {{kept}} of {{total}} entries kept.",
+    "cleanedWithBackup": "Library cleaned. {{kept}} of {{total}} entries kept. Original files are saved in {{path}}."
+  },
+  "query": {
+    "expired": {
+      "detail": "The project changed after this query. Run Find References again to use current source ranges.",
+      "title": "Reference results expired"
+    },
+    "noLocations": {
+      "detail": "The symbol exists in this revision, but it has no matching definitions or occurrences.",
+      "title": "No locations found"
+    },
+    "none": {
+      "detail": "Place the cursor on a label, citation, command, or environment and press Shift-F12.",
+      "title": "No reference query"
+    }
+  },
+  "tabs": {
+    "citations": "Citations",
+    "results": "References",
+    "symbols": "Symbols"
+  },
+  "trees": {
+    "citations": "Project citations",
+    "noCitations": "No bibliography entries or citation uses were found.",
+    "noSymbols": "No project-defined symbols were found.",
+    "symbols": "Project symbols"
+  },
+  "unavailable": {
+    "failed": {
+      "detail": "The latest project revision could not be analyzed. Source files were not changed.",
+      "title": "Project analysis failed"
+    },
+    "indexing": {
+      "detail": "References and citations will appear when the current project revision is ready.",
+      "title": "Indexing project intelligence"
+    },
+    "noProject": {
+      "detail": "Open a document project to inspect citations, symbols, and cross-file references.",
+      "title": "No project open"
+    },
+    "offline": {
+      "detail": "References and citations cannot be checked in this workspace right now.",
+      "title": "Analysis service unavailable"
+    },
+    "unsupported": {
+      "detail": "The active project does not use a supported document engine.",
+      "title": "Project intelligence unavailable"
+    },
+    "waiting": {
+      "detail": "The latest project revision has not been indexed yet.",
+      "title": "Waiting for project analysis"
+    }
+  },
+  "bibliographyStyle": {
+    "label": "Citation style",
+    "ariaLabel": "Citation style for the bibliography in {{path}}",
+    "failed": "Oleafly couldn't change the citation style."
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} & {{second}}",
+      "authorsMany": "{{first}} et al.",
+      "noYear": "n.d.",
+      "keySource": {
+        "bbt": "Key from Better BibTeX",
+        "native": "Key from Zotero",
+        "extra": "Key from the Extra field in Zotero",
+        "generated": "Key made by Oleafly"
+      },
+      "addFailed": "Oleafly couldn't add {{key}} to the bibliography. {{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "In Zotero, open Settings > Advanced and turn on \"Allow other applications on this computer to communicate with Zotero\".",
+      "unsupported": "Update Zotero to version 7 or newer to search your library from Oleafly.",
+      "keyRejected": "Zotero no longer accepts your API key. Reconnect your account in Zotero settings.",
+      "closed": "Open Zotero to search your library here, or connect your zotero.org account.",
+      "closedCached": "Zotero is closed. Results are from the last sync, {{time}}.",
+      "bbtMissing": "Better BibTeX isn't responding, so new keys come from Zotero. Check that it is installed and turned on.",
+      "action": "Zotero settings"
+    },
+    "actions": {
+      "addFromZotero": "Add from Zotero",
+      "addAllMissing_other": "Add all {{count}} missing citations from Zotero",
+      "notInLibrary": "{{key}} isn't in your Zotero library.",
+      "changed": "This entry changed in Zotero since you added it.",
+      "changedEdited": "This entry changed in Zotero, and you also edited it here.",
+      "update": "Update from Zotero",
+      "updated": "Updated {{key}} from Zotero.",
+      "updateFailed": "Oleafly couldn't update {{key}} from Zotero. Try again."
+    },
+    "chooseBibliography": {
+      "title": "Where should new references go?",
+      "description": "This project has more than one bibliography file. Oleafly adds new references to the one you pick and remembers it for this project.",
+      "confirm": "Use this file"
+    },
+    "handEdits": {
+      "title": "Replace your edits?",
+      "description": "You edited {{key}} by hand. Replacing it with the version from Zotero removes those changes.",
+      "confirm": "Use the Zotero version",
+      "cancel": "Keep mine"
+    },
+    "handList": {
+      "title": "Move your reference list?",
+      "description": "This paper lists its references by hand. Move them into {{path}} so they share one numbered list with the papers you cite from Zotero.",
+      "confirm": "Move list"
+    },
+    "missing": {
+      "title": "Add missing citations from Zotero",
+      "loading": "Checking your Zotero library…",
+      "none": "Every cited key is already in your bibliography.",
+      "found_other": "{{count}} cited keys are in Zotero",
+      "duplicates_other": "{{count}} keys cite papers that are already in your bibliography",
+      "duplicateRow": "{{key}} is the same paper as {{existing}}",
+      "notFound_other": "{{count}} cited keys aren't in Zotero",
+      "confirm_other": "Add {{count}} entries",
+      "done_other": "{{count}} entries are now in {{path}}.",
+      "failed": "Oleafly couldn't add the entries. {{detail}}"
+    },
+    "update": {
+      "title": "Update .bib entries from Zotero",
+      "loading": "Checking Zotero for changes…",
+      "none": "Your bibliography matches Zotero.",
+      "handEdited": "Edited by hand",
+      "handEditedNote": "Entries you edited by hand are not selected. Select one to replace it with the version from Zotero.",
+      "confirm_other": "Update {{count}} entries",
+      "done_other": "Updated {{count}} entries."
+    }
+  }
+}

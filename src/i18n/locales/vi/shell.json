@@ -1,0 +1,1464 @@
+{
+  "about": {
+    "close": "Đóng hộp giới thiệu",
+    "closeBackdrop": "Đóng hộp giới thiệu Oleafly",
+    "connect": "Kết nối với Oleafly",
+    "links": {
+      "discord": {
+        "description": "Đặt câu hỏi, báo lỗi và chia sẻ ý tưởng",
+        "label": "Discord"
+      },
+      "docs": {
+        "description": "Tìm hiểu mọi phần của Oleafly",
+        "label": "Tài liệu"
+      },
+      "social": {
+        "description": "Theo dõi các bản phát hành và quá trình phát triển",
+        "label": "Oleafly"
+      }
+    },
+    "star": "Gắn sao trên GitHub",
+    "tagline": "Không gian làm việc mã nguồn mở cho toàn bộ bài báo. Viết, biên dịch, hiệu đính, quản lý trích dẫn, xem lại PDF, theo dõi thay đổi trong Git và làm việc với các mô hình AI bạn chọn.",
+    "version": "Phiên bản {{version}}",
+    "viewSource": "Xem mã nguồn"
+  },
+  "addCitation": {
+    "added": "Đã thêm {{cite}}",
+    "adding": "Đang thêm…",
+    "close": "Đóng hộp trích dẫn",
+    "confirm": "Thêm vào .bib và trích dẫn",
+    "entry": "Mục",
+    "examples": {
+      "arxiv": "arXiv",
+      "doi": "DOI",
+      "title": "Tiêu đề"
+    },
+    "hint": "Dán DOI, mã arXiv hoặc URL để lấy trực tiếp mục đó, hoặc nhập tiêu đề để tìm trên Crossref. Thử một cái:",
+    "lookUp": "Tra cứu",
+    "lookingUp": "Đang tra cứu \"{{query}}\"…",
+    "matches_other": "{{count}} kết quả từ Crossref. Chọn một:",
+    "noResults": "Không tìm thấy kết quả. Kiểm tra mã định danh hoặc thử từ khoá tiêu đề khác.",
+    "placeholder": "DOI, mã arXiv, URL hoặc tiêu đề bài báo…",
+    "privacyNote": "Chỉ mã định danh hoặc tiêu đề được gửi tới doi.org, arXiv hoặc Crossref.",
+    "title": "Thêm trích dẫn",
+    "bibliography": "Tài liệu tham khảo",
+    "bibliographyHint": "Dự án này có nhiều hơn một tệp tài liệu tham khảo. Mục sẽ được thêm vào tệp bạn chọn ở đây.",
+    "zoteroMatches": "Từ thư viện Zotero của bạn",
+    "zoteroPlaceholder": "Tìm trong thư viện Zotero, hoặc dán DOI, mã arXiv hay tiêu đề"
+  },
+  "backendProtocol": {
+    "mismatch": "Cửa sổ này và backend của nó được tạo cho các phiên bản Oleafly khác nhau, nên một số tính năng có thể không hoạt động. Cài lại ứng dụng sẽ khắc phục việc này."
+  },
+  "branding": {
+    "assistantMascot": "Linh vật trợ lý AI Oleafly"
+  },
+  "changelog": {
+    "installed": "Bạn đang dùng phiên bản này",
+    "sectionItems_other": "{{count}} thay đổi",
+    "showNotes": "Hiện ghi chú"
+  },
+  "citeOleafly": {
+    "description": "Không tìm thấy tệp tài liệu tham khảo nào trong dự án này, nên không có gì bị thay đổi. Hãy sao chép mục bên dưới vào tài liệu tham khảo của bạn, hoặc tìm lại sau trong Cài đặt, Trợ giúp & Giới thiệu.",
+    "openHelp": "Mở Trợ giúp & Giới thiệu",
+    "title": "Trích dẫn Oleafly trong bài báo này"
+  },
+  "commandGroups": {
+    "commands": "Lệnh",
+    "compile": "Biên dịch",
+    "editor": "Trình soạn thảo",
+    "insert": "Chèn",
+    "project": "Dự án",
+    "settings": "Cài đặt",
+    "tools": "Công cụ"
+  },
+  "commandPalette": {
+    "empty": "Không tìm thấy kết quả.",
+    "label": "Bảng lệnh",
+    "placeholder": "Nhập lệnh hoặc tìm kiếm…"
+  },
+  "commands": {
+    "addCitation": {
+      "hint": "DOI / arXiv / tiêu đề",
+      "label": "Thêm trích dẫn"
+    },
+    "appearance": {
+      "keywords": "giao diện chế độ sáng tối theme appearance",
+      "useDark": "Dùng giao diện tối",
+      "useLight": "Dùng giao diện sáng",
+      "useSystem": "Dùng giao diện hệ thống"
+    },
+    "autoCompile": {
+      "disable": "Tắt tự động biên dịch",
+      "enable": "Bật tự động biên dịch"
+    },
+    "bold": {
+      "label": "Đậm"
+    },
+    "checkpoints": {
+      "label": "Điểm lưu"
+    },
+    "citeOleafly": {
+      "keywords": "trích dẫn bibtex tài liệu tham khảo ghi công oleafly",
+      "label": "Trích dẫn Oleafly trong bài báo này"
+    },
+    "clearCache": {
+      "keywords": "xoá bộ nhớ đệm build sạch biên dịch lại aux",
+      "label": "Xoá bộ nhớ đệm build và biên dịch lại"
+    },
+    "closeEnvironment": {
+      "keywords": "đóng kết thúc môi trường environment begin latex",
+      "label": "Đóng môi trường LaTeX"
+    },
+    "formatDocument": {
+      "keywords": "định dạng gọn gàng thụt lề typstyle typst",
+      "label": "Định dạng tài liệu"
+    },
+    "formatSelection": {
+      "keywords": "định dạng vùng chọn gọn gàng thụt lề typstyle typst",
+      "label": "Định dạng vùng chọn"
+    },
+    "createProject": {
+      "keywords": "dự án mới tạo mẫu thư viện mẫu",
+      "label": "Tạo dự án mới"
+    },
+    "diagramComposer": {
+      "keywords": "sơ đồ hình tikz vẽ canvas",
+      "label": "Mở Trình tạo sơ đồ"
+    },
+    "typstPackages": {
+      "keywords": "gói typst universe import thư viện duyệt vendor",
+      "label": "Duyệt gói Typst"
+    },
+    "latexPackages": {
+      "keywords": "gói latex ctan usepackage phần mở đầu cài đặt tlmgr duyệt",
+      "label": "Duyệt gói LaTeX"
+    },
+    "documentCitationScan": {
+      "keywords": "trích dẫn tài liệu quét đoạn văn tham khảo tìm",
+      "label": "Tìm trích dẫn trong tài liệu"
+    },
+    "equation": {
+      "label": "Công thức"
+    },
+    "exportPdf": {
+      "label": "Xuất PDF…"
+    },
+    "figure": {
+      "label": "Hình"
+    },
+    "generateFigure": {
+      "keywords": "hình sơ đồ vẽ tikz đồ thị biểu đồ minh hoạ",
+      "label": "Tạo hình bằng AI"
+    },
+    "gitHistory": {
+      "label": "Lịch sử Git"
+    },
+    "italic": {
+      "label": "Nghiêng"
+    },
+    "label": {
+      "label": "Nhãn"
+    },
+    "list": {
+      "label": "Danh sách gạch đầu dòng"
+    },
+    "newProject": {
+      "label": "Dự án mới…"
+    },
+    "newTerminal": {
+      "keywords": "terminal shell console mới",
+      "label": "Terminal mới"
+    },
+    "closeAllEditorTabs": {
+      "keywords": "đóng tất cả tab trình soạn thảo tệp",
+      "label": "Đóng tất cả tab trình soạn thảo"
+    },
+    "closeAssistantTabs": {
+      "keywords": "đóng tab trình soạn thảo tệp trợ lý ai agent đã mở",
+      "label": "Đóng các tệp trợ lý đã mở"
+    },
+    "offline": {
+      "offline": "Chế độ ngoại tuyến (--only-cached)",
+      "online": "Chế độ trực tuyến (cho phép tải gói)"
+    },
+    "openTool": "Mở {{name}}",
+    "recompile": {
+      "label": "Biên dịch lại"
+    },
+    "saveSettingsToFolder": {
+      "keywords": "lưu cài đặt dự án thư mục project.json chia sẻ tài liệu chính engine",
+      "label": "Lưu cài đặt dự án vào thư mục này",
+      "saved": "Đã lưu cài đặt dự án vào project.json trong thư mục này."
+    },
+    "section": {
+      "label": "Mục"
+    },
+    "settings": {
+      "keywords": "cài đặt tuỳ chọn settings preferences options",
+      "label": "Mở cài đặt"
+    },
+    "spellcheck": {
+      "disable": "Tắt kiểm tra chính tả",
+      "enable": "Bật kiểm tra chính tả"
+    },
+    "surroundEnvironment": {
+      "keywords": "bao quanh bọc môi trường environment begin end latex",
+      "label": "Bọc bằng môi trường"
+    },
+    "synctex": {
+      "label": "Đi tới PDF (SyncTeX)",
+      "typstLabel": "Đi tới PDF"
+    },
+    "table": {
+      "label": "Bảng"
+    },
+    "theme": {
+      "keywords": "giao diện tối sáng theme dark light appearance",
+      "toDark": "Chuyển sang giao diện tối",
+      "toLight": "Chuyển sang giao diện sáng"
+    },
+    "tools": {
+      "keywords": "công cụ latex pdf công thức bibtex bảng lab tìm kiếm hạn chót thư viện mẫu",
+      "label": "Mở Công cụ Oleafly"
+    },
+    "vim": {
+      "disable": "Tắt chế độ vim",
+      "enable": "Bật chế độ vim"
+    },
+    "wordCount": {
+      "label": "Đếm từ"
+    },
+    "editorCommands": {
+      "keywords": {
+        "deleteLine": "xoá dòng bỏ dòng",
+        "duplicate": "nhân bản dòng vùng chọn sao chép",
+        "lowercase": "chữ thường đổi chữ",
+        "titleCase": "viết hoa tiêu đề đổi chữ",
+        "uppercase": "chữ hoa đổi chữ"
+      }
+    },
+    "openFolder": {
+      "label": "Mở thư mục…",
+      "keywords": "mở thư mục thư mục có sẵn tệp cục bộ ổ đĩa"
+    },
+    "underline": {
+      "label": "Gạch chân"
+    },
+    "strikethrough": {
+      "label": "Gạch ngang"
+    },
+    "inlineCode": {
+      "label": "Mã trong dòng"
+    },
+    "link": {
+      "label": "Liên kết"
+    },
+    "footnote": {
+      "label": "Chú thích cuối trang"
+    },
+    "quote": {
+      "label": "Khối trích dẫn"
+    },
+    "inlineMath": {
+      "label": "Công thức trong dòng"
+    },
+    "numberedEquation": {
+      "label": "Công thức có đánh số"
+    },
+    "alignedEquations": {
+      "label": "Công thức căn thẳng hàng"
+    },
+    "fraction": {
+      "label": "Phân số"
+    },
+    "crossReference": {
+      "label": "Tham chiếu chéo"
+    },
+    "typstInsights": {
+      "label": "Thông tin tài liệu",
+      "keywords": "hình bảng công thức tiêu đề nhãn trích dẫn cần làm sửa metadata tóm tắt nộp bài"
+    },
+    "typstDocumentSettings": {
+      "label": "Cài đặt tài liệu",
+      "keywords": "khổ trang lề cột phông chữ cỡ chữ ngôn ngữ vùng căn đều giãn dòng đánh số"
+    },
+    "toggleComment": {
+      "label": "Bật tắt chú thích",
+      "keywords": "chú thích bỏ chú thích dòng khối comment"
+    },
+    "goToDefinition": {
+      "label": "Đi tới định nghĩa",
+      "keywords": "định nghĩa nhảy ký hiệu điều hướng"
+    },
+    "findReferences": {
+      "label": "Tìm tham chiếu",
+      "keywords": "tham chiếu cách dùng ký hiệu"
+    },
+    "renameSymbol": {
+      "label": "Đổi tên ký hiệu",
+      "keywords": "đổi tên ký hiệu tái cấu trúc"
+    },
+    "migrateToTypst": {
+      "label": "Chuyển thành dự án Typst",
+      "keywords": "typst chuyển đổi di trú latex dự án mới"
+    },
+    "typstMigrationReport": {
+      "label": "Xem báo cáo chuyển đổi Typst",
+      "keywords": "typst chuyển đổi di trú báo cáo latex"
+    },
+    "present": {
+      "label": "Trình chiếu slide",
+      "keywords": "trình chiếu slide bài trình bày toàn màn hình beamer touying polylux ghi chú diễn giả pdfpc"
+    },
+    "presentWithPresenter": {
+      "label": "Trình chiếu slide với chế độ diễn giả",
+      "keywords": "trình chiếu slide chế độ diễn giả ghi chú hẹn giờ slide tiếp theo"
+    },
+    "zenMode": {
+      "keywords": "không xao nhãng tập trung toàn màn hình ẩn giao diện tối giản viết",
+      "label": "Bật tắt Chế độ Zen"
+    },
+    "togglePreview": {
+      "keywords": "xem trước pdf hiện ẩn chia đôi chỉ trình soạn thảo",
+      "label": "Bật tắt Xem trước PDF"
+    },
+    "zoomIn": {
+      "keywords": "to hơn lớn hơn phóng to",
+      "label": "Phóng to"
+    },
+    "zoomOut": {
+      "keywords": "nhỏ hơn thu nhỏ",
+      "label": "Thu nhỏ"
+    },
+    "resetZoom": {
+      "keywords": "kích thước thật 100",
+      "label": "Đặt lại mức phóng"
+    },
+    "zoteroAddMissing": {
+      "label": "Thêm trích dẫn còn thiếu từ Zotero",
+      "keywords": "zotero thiếu trích dẫn khoá chưa định nghĩa tài liệu tham khảo sửa"
+    },
+    "zoteroUpdate": {
+      "label": "Cập nhật mục .bib từ Zotero",
+      "keywords": "zotero cập nhật làm mới tài liệu tham khảo mục đã thay đổi"
+    },
+    "zoteroSync": {
+      "label": "Đồng bộ thư viện Zotero",
+      "keywords": "zotero đồng bộ làm mới thư viện"
+    },
+    "insertFileLink": {
+      "label": "Chèn liên kết tới tệp",
+      "keywords": "liên kết tệp đường dẫn ghi chú tham chiếu"
+    }
+  },
+  "community": {
+    "discordOnline": "{{online}} người đang trực tuyến",
+    "discordOnlineAria": "{{online}} thành viên đang trực tuyến trên Discord",
+    "followOnX": "Theo dõi chúng tôi trên X",
+    "joinDiscord": "Tham gia Discord của chúng tôi"
+  },
+  "compile": {
+    "autoCompile": {
+      "off": "Tắt",
+      "on": "Bật",
+      "title": "Tự động biên dịch",
+      "help": "Biên dịch vài giây sau khi bạn ngừng gõ. Tệp đang mở được lưu trước.",
+      "typstHelp": "Typst tiếp tục chạy và cập nhật PDF một lát sau khi bạn ngừng gõ. Tệp đang mở tự lưu trong khi bật tính năng này.",
+      "typstStarting": "Đang khởi động Typst",
+      "typstRestarting": "Typst đang khởi động lại",
+      "typstFailed": "Typst đã dừng sau nhiều lỗi liên tiếp. Hãy sửa tệp để khởi động lại."
+    },
+    "compile": "Biên dịch",
+    "compiler": {
+      "auto": "Tự động <note>[TeX hệ thống]</note>",
+      "help": "Tectonic được tích hợp sẵn và không cần thiết lập. Các lựa chọn khác chạy TeX hệ thống, có thể đọc những tệp cục bộ mà tài khoản của bạn truy cập được, nên chỉ dùng với dự án tin cậy. Tự động chọn trình biên dịch theo mã nguồn. pdfLaTeX phù hợp với hầu hết mẫu tạp chí. XeLaTeX và LuaLaTeX bổ sung phông chữ hệ thống và Unicode. upLaTeX và pLaTeX biên dịch tài liệu tiếng Nhật.",
+      "lualatex": "LuaLaTeX <note>[TeX hệ thống]</note>",
+      "pdflatex": "pdfLaTeX <note>[TeX hệ thống]</note>",
+      "platex": "pLaTeX <note>[TeX hệ thống]</note>",
+      "tectonic": "Tectonic <note>[tích hợp sẵn]</note>",
+      "title": "Trình biên dịch (dự án này)",
+      "uplatex": "upLaTeX <note>[TeX hệ thống]</note>",
+      "xelatex": "XeLaTeX <note>[TeX hệ thống]</note>"
+    },
+    "errors": {
+      "continue": "Vẫn biên dịch dù có lỗi",
+      "stop": "Dừng ở lỗi đầu tiên",
+      "title": "Xử lý lỗi biên dịch"
+    },
+    "fromScratch": "Biên dịch lại từ đầu",
+    "mode": {
+      "fast": "Nhanh <note>[nháp]</note>",
+      "normal": "Bình thường",
+      "title": "Chế độ biên dịch"
+    },
+    "options": "Tuỳ chọn biên dịch",
+    "recompile": "Biên dịch lại",
+    "runTooltip": "{{action}} {{engine}} ({{shortcut}})",
+    "stop": "Dừng biên dịch",
+    "syntax": {
+      "check": "Kiểm tra cú pháp trước khi biên dịch",
+      "skip": "Không kiểm tra cú pháp",
+      "title": "Kiểm tra cú pháp"
+    },
+    "texRootBroken": "% !TEX root trong {{file}} trỏ tới một tệp không tồn tại ({{target}})",
+    "texRootLabel": "TEX root",
+    "texRootName": "root: {{name}}",
+    "texRootNotTex": "% !TEX root trong {{file}} trỏ tới {{target}}, không phải tệp LaTeX",
+    "texRootOverride": "root: {{path}} (do % !TEX root trong {{file}} đặt)",
+    "typstVersion": {
+      "title": "Phiên bản Typst (dự án này)",
+      "help": "Ghim một phiên bản để giữ nguyên kết quả của dự án này khi Oleafly cập nhật Typst. Mặc định theo phiên bản đã chọn trong Cài đặt. Để cài phiên bản hoặc thử dự án này trên bản mới hơn, vào Cài đặt → Engine → Typst.",
+      "default": "Mặc định ({{version}})",
+      "defaultPlain": "Mặc định",
+      "builtIn": "[tích hợp sẵn]",
+      "system": "[hệ thống]",
+      "missing": "[chưa cài đặt]",
+      "switchFailed": "Không đổi được phiên bản Typst."
+    },
+    "typstFonts": {
+      "title": "Phông chữ (dự án này)",
+      "help": "Typst đọc phông chữ từ thư mục fonts của dự án và các thư mục được liệt kê trong font_paths của project.json. Khi chỉ dùng phông chữ của dự án, PDF không phụ thuộc vào phông chữ cài trên máy này. Cài đặt tài liệu liệt kê các phông chữ mà Typst tìm thấy.",
+      "systemFonts": "Dùng phông chữ hệ thống",
+      "projectOnly": "Chỉ phông chữ của dự án",
+      "unsupported": "Cần Typst mới hơn",
+      "saveFailed": "Không lưu được cài đặt phông chữ."
+    },
+    "typstBuild": {
+      "title": "Build (dự án này)",
+      "help": "Build tái lập chỉ dùng phông chữ của dự án và gán ngày của PDF theo lần commit cuối. Cùng một mã nguồn sẽ cho cùng một PDF trên mọi máy.",
+      "standard": "Build tiêu chuẩn",
+      "reproducible": "Build tái lập",
+      "saveFailed": "Không lưu được cài đặt build."
+    },
+    "typstVariant": {
+      "title": "Biến thể (dự án này)",
+      "help": "Biến thể truyền các giá trị riêng của nó vào sys.inputs, ví dụ bản nháp hoặc bản camera-ready. Biến thể bạn chọn chỉ lưu trên máy này. Thêm hoặc sửa biến thể trong Cài đặt tài liệu.",
+      "none": "Không dùng biến thể"
+    },
+    "typEngine": {
+      "title": "Engine (dự án này)",
+      "help": "Typst biên dịch tài liệu đúng như đã viết. Calepin còn chạy mã trong đó và đưa kết quả vào PDF.",
+      "typst": "Typst <note>[tích hợp sẵn]</note>",
+      "calepin": "Calepin <note>[chạy mã]</note>"
+    },
+    "code": {
+      "title": "Mã (máy này)",
+      "help": "Quarto và Calepin có thể chạy mã R, Python và Julia trong dự án này. Mã chạy với quyền của bạn, nên chỉ cho phép với dự án bạn tin cậy. Lựa chọn này chỉ áp dụng trên máy này.",
+      "off": "Tắt",
+      "run": "Chạy mã trên máy này"
+    },
+    "sharedViewer": "Chỉ chủ sở hữu và người chỉnh sửa mới đổi được các cài đặt này trong dự án chia sẻ."
+  },
+  "datePicker": {
+    "placeholder": "Chọn ngày"
+  },
+  "devMenu": {
+    "inspect": "Kiểm tra",
+    "refreshApp": "Tải lại ứng dụng"
+  },
+  "dock": {
+    "assistant": {
+      "hide": "Ẩn trợ lý AI",
+      "show": "Hiện trợ lý AI"
+    },
+    "settings": "Cài đặt",
+    "sidebar": {
+      "hide": "Ẩn thanh bên ({{shortcut}})",
+      "show": "Hiện thanh bên ({{shortcut}})"
+    },
+    "terminal": {
+      "hide": "Ẩn terminal ({{shortcut}})",
+      "show": "Hiện terminal ({{shortcut}})"
+    }
+  },
+  "enginePicker": {
+    "descriptionCompileFailure": "Lỗi khớp với một thiếu hụt đã biết của engine Tectonic đi kèm. Chọn cách dự án này nên biên dịch. Lựa chọn được lưu trong dự án, nên cộng tác viên dùng cùng thiết lập.",
+    "descriptionImportScan": "Quá trình quét import phát hiện những tính năng mà engine Tectonic đi kèm không điều phối. Chọn cách dự án này nên biên dịch. Lựa chọn được lưu trong dự án, nên cộng tác viên dùng cùng thiết lập.",
+    "engineNames": {
+      "latexmk": "latexmk",
+      "pdflatexViaLatexmk": "pdfLaTeX qua latexmk"
+    },
+    "recommended": "Khuyến nghị",
+    "shellEscape": {
+      "included": "Việc này cũng cho phép dự án chạy lệnh bên ngoài, điều nó cần. LaTeX khi đó có thể chạy bất kỳ chương trình nào với quyền của bạn, nên chỉ làm vậy với dự án bạn tin cậy."
+    },
+    "shellEscapeFailed": "Không cập nhật được quyền chạy lệnh bên ngoài.",
+    "switchFailed": "Không đổi được engine biên dịch.",
+    "switched": "Dự án này giờ biên dịch bằng {{engine}}.",
+    "switchedAfterInstall": "Đã cài TinyTeX. Dự án này giờ biên dịch bằng {{engine}}.",
+    "systemTex": {
+      "found": "Đã tìm thấy bản phân phối TeX trên máy này. TeX hệ thống có thể đọc những tệp cục bộ mà tài khoản của bạn truy cập được, nên chỉ dùng với dự án tin cậy. TeX Live vẫn chạy các trợ thủ trong danh sách cho phép của riêng nó, như chuyển đổi EPS.",
+      "missing": "Không tìm thấy bản phân phối TeX nào (MacTeX, TeX Live, MiKTeX, TinyTeX) trên máy này.",
+      "switchPdflatex": "Chuyển sang pdfLaTeX và biên dịch lại",
+      "title": "Dùng LaTeX hệ thống của tôi (latexmk)",
+      "titlePdflatex": "Dùng pdfLaTeX trên LaTeX hệ thống của tôi (latexmk)",
+      "use": "Dùng LaTeX hệ thống"
+    },
+    "tectonic": {
+      "description": "Không cần thiết lập, hoạt động ngoại tuyến. Phù hợp với LaTeX đơn giản và hầu hết gói phổ biến.",
+      "keep": "Giữ Tectonic",
+      "switchBack": "Chuyển lại Tectonic",
+      "title": "Tiếp tục dùng Tectonic",
+      "withFailures_other": "Không cần thiết lập, hoạt động ngoại tuyến. Dự kiến {{features}} vẫn tiếp tục lỗi."
+    },
+    "tinytex": {
+      "description": "Cài một bản TeX Live gọn vào thư mục cá nhân, không cần quyền quản trị. Bản tải lõi khoảng 250 MB. Mẫu tạp chí có thể kéo thêm gói sau này, tổng cộng tới khoảng 1 GB.",
+      "download": "Tải và dùng TinyTeX",
+      "resume": "Tiếp tục tải (đã xong {{megabytes}} MB)",
+      "title": "Tải TinyTeX"
+    },
+    "titleCompileFailure": "Lần biên dịch này cần nhiều hơn engine tích hợp sẵn",
+    "titleImportScan": "Dự án này cần nhiều hơn engine tích hợp sẵn"
+  },
+  "shellCommands": {
+    "allow": "Cho phép lệnh bên ngoài",
+    "banner": "Tài liệu này chạy lệnh bên ngoài khi biên dịch, và dự án này chặn chúng. Chỉ cho phép nếu bạn tin cậy mọi tệp trong dự án."
+  },
+  "codeExecution": {
+    "allow": "Cho phép mã trong dự án này",
+    "needed": "Tài liệu này phải chạy mã để build, và mã đang tắt cho dự án này. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án.",
+    "skipped": "Mã trong tài liệu này không chạy vì mã đang tắt cho dự án này. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án.",
+    "storedResults": "PDF hiển thị kết quả mã đã lưu từ lần chạy trước vì mã đang tắt cho dự án này. Chỉ cho phép mã nếu bạn tin cậy mọi tệp trong dự án."
+  },
+  "typstCjkFonts": {
+    "message": "Tài liệu này có chữ Hán, Nhật hoặc Hàn mà không phông chữ nào trên máy này hiển thị được, nên PDF bỏ qua phần đó.",
+    "download": "Tải phông chữ",
+    "downloadSize": "Tải phông chữ ({{size}})",
+    "downloading": "Đang tải phông chữ"
+  },
+  "errorBoundary": {
+    "copyDiagnostics": "Sao chép thông tin chẩn đoán",
+    "description": "Oleafly gặp lỗi ngoài dự kiến và không thể hiển thị màn hình này. Các tệp dự án của bạn vẫn nằm trên đĩa. Chi tiết chẩn đoán có bên dưới.",
+    "halted": "Đã dừng",
+    "logSaved": "Đã lưu nhật ký vào <path>{{path}}</path>",
+    "reload": "Tải lại Oleafly",
+    "report": "Báo cáo trên GitHub",
+    "runtimeError": "Lỗi khi chạy",
+    "specimen": {
+      "diagramLabel": "Sơ đồ mẫu trang trí",
+      "layer": "LỚP {{current}}/{{total}}",
+      "specimen": "MẪU:",
+      "transversePlane": "MẶT PHẲNG NGANG",
+      "veinDensity": "MẬT ĐỘ GÂN:"
+    },
+    "specimenViewer": "Trình xem mẫu",
+    "stackTrace": "Dấu vết ngăn xếp",
+    "surfaceCrashed": "{{surface}} đã gặp sự cố.",
+    "surfaces": {
+      "aiAssistant": "trợ lý AI",
+      "assistantPanel": "bảng trợ lý",
+      "chat": "trò chuyện",
+      "diagramComposer": "trình tạo sơ đồ",
+      "editor": "trình soạn thảo",
+      "pdfPreview": "xem trước PDF",
+      "researchAssistant": "trợ lý nghiên cứu",
+      "terminalDock": "khay terminal"
+    },
+    "title": "Đã xảy ra lỗi"
+  },
+  "folderUnavailable": {
+    "missing": {
+      "title": "Thư mục này không khả dụng.",
+      "body": "Kết nối lại ổ đĩa hoặc tìm thư mục. Các tệp đang mở vẫn ở đây, và Oleafly sẽ không lưu hay biên dịch cho tới khi thư mục trở lại."
+    },
+    "replaced": {
+      "title": "Thư mục này đã bị thay thế.",
+      "body": "Một thư mục khác đang ở vị trí đó. Oleafly đã ngừng lưu để không ghi đè lên bất cứ thứ gì ở đó."
+    },
+    "permissionDenied": {
+      "title": "Oleafly không mở được thư mục này.",
+      "body": "Kiểm tra quyền của thư mục và thử lại. Các tệp đang mở vẫn ở đây."
+    },
+    "locate": "Định vị",
+    "useThisFolder": "Dùng thư mục này",
+    "saveCopy": "Lưu một bản",
+    "tryAgain": "Thử lại",
+    "savedCopy": "Đã lưu các tệp đang mở vào {{folder}}."
+  },
+  "home": {
+    "ariaLabel": "Trang chủ",
+    "label": "Trang chủ",
+    "title": "Về thư viện",
+    "tooltip": "Quay về thư viện dự án"
+  },
+  "importDestination": {
+    "scansGoTo": "Bản quét được đưa vào {{provider}}"
+  },
+  "keys": {
+    "enter": "Enter",
+    "esc": "esc"
+  },
+  "mcpActivity": {
+    "clearLog": "Xoá nhật ký",
+    "clearLogAriaLabel": "Xoá nhật ký MCP",
+    "live": "Trực tiếp",
+    "off": "Tắt",
+    "openSettings": "Mở cài đặt MCP",
+    "serverOff": "Máy chủ MCP đang tắt.",
+    "timeWithDuration": "{{time}} · {{ms}}ms",
+    "toolsTitle": "Công cụ có sẵn qua MCP",
+    "waiting": "Đang chờ agent bên ngoài…",
+    "waitingHint": "Các công cụ được gọi qua MCP (Claude, Cursor, Grok, …) hiện ở đây theo thời gian thực."
+  },
+  "omnibar": {
+    "bookmarked": "Đã đánh dấu",
+    "createProject": "Tạo dự án mới",
+    "groups": {
+      "action": "Hành động",
+      "documents": "Tài liệu",
+      "references": "Tài liệu tham khảo"
+    },
+    "label": "Tìm kiếm",
+    "noMatches": "Không tìm thấy kết quả",
+    "openReferences": "Mở tài liệu tham khảo của dự án này",
+    "placeholder": "Tìm dự án, tài liệu, hoặc nhập / để dùng lệnh…",
+    "placeholderDocuments": "Tìm trong tài liệu…",
+    "placeholderProjects": "Tìm dự án theo tên, engine, loại, ngày hoặc metadata…",
+    "referencesNeedProject": "Hãy mở một dự án trước để duyệt tài liệu tham khảo của dự án đó.",
+    "slash": {
+      "create": "mở thư viện mẫu",
+      "docs": "tìm trong tài liệu",
+      "projects": "tìm dự án của bạn",
+      "refs": "mở tài liệu tham khảo của dự án này",
+      "settings": "mở cài đặt",
+      "theme": "đổi giao diện màu"
+    },
+    "tryCommand": "Thử một lệnh",
+    "unknownCommand": "Lệnh không rõ. Nhập / để xem các lệnh có sẵn."
+  },
+  "openedFolder": {
+    "picker": {
+      "askTitle": "Oleafly nên biên dịch tài liệu nào?",
+      "askDescription": "Thư mục này có nhiều hơn một tài liệu. Hãy chọn tài liệu chính. Bạn có thể đổi sau.",
+      "listLabel": "Tài liệu trong thư mục này",
+      "open": "Mở",
+      "browse": "Chỉ duyệt tệp",
+      "bestMatch": "Khớp nhất",
+      "empty": "Oleafly không tìm thấy tài liệu nào ở đây. Nhấp chuột phải vào một tệp trong cây tệp và chọn Đặt làm tài liệu chính.",
+      "truncated": "Thư mục này lớn nên Oleafly đã dừng tìm sớm. Một số tài liệu có thể không được liệt kê.",
+      "openFailed": "Không đặt được {{path}} làm tài liệu chính."
+    },
+    "kind": {
+      "document": "Tài liệu",
+      "book": "Sách",
+      "presentation": "Bài trình bày",
+      "poster": "Poster",
+      "standalone": "Hình độc lập",
+      "typst": "Typst",
+      "markdown": "Markdown",
+      "quarto": "Quarto",
+      "calepin": "Sổ tay Calepin",
+      "unknown": "Khác"
+    },
+    "reason": {
+      "declared": "Được đánh dấu là tệp chính",
+      "top_level": "Nằm ở thư mục gốc",
+      "named_main": "Tên có chữ main",
+      "named_after_folder": "Đặt tên theo thư mục của nó",
+      "includes_files": "Có include các tệp khác",
+      "has_bibliography": "Có tài liệu tham khảo",
+      "no_begin_document": "Không có \\begin{document}",
+      "standalone_figure": "Hình độc lập",
+      "placeholder": "Chưa tải xuống"
+    },
+    "noMain": "Chưa có tài liệu chính. Chọn một tệp và chọn Đặt làm tài liệu chính.",
+    "trust": {
+      "banner": "Oleafly đã hạn chế một số tính năng trong thư mục này. Tin cậy thư mục để bật Git, terminal, agent và shell escape?",
+      "trustFolder": "Tin cậy thư mục này",
+      "trustParent": "Tin cậy thư mục cha",
+      "trustRepository": "Tin cậy kho lưu trữ",
+      "hide": "Ẩn",
+      "terminal": "Git hook và cài đặt kho lưu trữ bị tắt trong terminal này cho tới khi bạn tin cậy thư mục.",
+      "terminalReopen": "Terminal này đã khởi động trước khi bạn tin cậy thư mục. Mở lại để bật Git hook.",
+      "reopenTerminal": "Mở lại terminal",
+      "failed": "Không tin cậy được thư mục này."
+    },
+    "readOnly": {
+      "banner": "Thư mục này chỉ đọc. Bạn có thể biên dịch, nhưng không lưu được chỉnh sửa.",
+      "copy": "Sao chép vào thư viện",
+      "copied": "Oleafly đã sao chép thư mục này vào thư viện của bạn. Bạn đang chỉnh sửa bản sao."
+    },
+    "sync": {
+      "syncsWith": "Đồng bộ với {{service}}",
+      "cloudStorage": "Đồng bộ với dịch vụ đám mây",
+      "services": {
+        "icloud_drive": "iCloud Drive",
+        "one_drive": "OneDrive",
+        "dropbox": "Dropbox",
+        "google_drive": "Google Drive",
+        "box": "Box"
+      }
+    }
+  },
+  "projectSearch": {
+    "hint": "Tìm trong các tệp của dự án này.",
+    "noResults": "Không có kết quả.",
+    "placeholder": "Tìm trong dự án…",
+    "title": "Tìm kiếm"
+  },
+  "quitGuard": {
+    "failure": {
+      "descriptionQuit": "{{reason}} Các thay đổi chưa lưu của bạn vẫn đang mở. Ở lại để sửa lỗi, hoặc vẫn thoát và mất chúng.",
+      "descriptionReload": "{{reason}} Các thay đổi chưa lưu của bạn vẫn đang mở. Ở lại để sửa lỗi, hoặc vẫn tải lại và mất chúng.",
+      "descriptionRestart": "{{reason}} Các thay đổi chưa lưu của bạn vẫn đang mở. Ở lại để sửa lỗi, hoặc vẫn khởi động lại và mất chúng.",
+      "quitAnyway": "Vẫn thoát",
+      "reloadAnyway": "Vẫn tải lại",
+      "restartAnyway": "Vẫn khởi động lại",
+      "stay": "Ở lại",
+      "title": "Không lưu được một số tệp"
+    },
+    "flushTimeout": "Việc lưu không xong trong 5 giây.",
+    "installing": {
+      "description": "Đang lưu tệp và cài bản cập nhật. Oleafly sẽ khởi động lại khi sẵn sàng.",
+      "title": "Đang chuẩn bị khởi động lại"
+    }
+  },
+  "rail": {
+    "files": "Tệp",
+    "mcp": "Hoạt động MCP",
+    "pendingBadge_other": "{{count}} đang chờ",
+    "preflight": "Kiểm tra trước",
+    "references": "Tài liệu tham khảo & trích dẫn",
+    "research": "Không gian nghiên cứu",
+    "search": "Tìm trong dự án",
+    "sourceControl": "Quản lý mã nguồn",
+    "withShortcut": "{{label}} ({{shortcut}})"
+  },
+  "remoteMenu": {
+    "accountLabel": "{{login}} trên {{host}}",
+    "actions": "Hành động với kho lưu trữ",
+    "copyRepositoryLink": "Sao chép liên kết kho lưu trữ",
+    "openOnHost": "Mở trên {{host}}",
+    "settings": "Cài đặt dịch vụ Git",
+    "signedInAs": "Đã đăng nhập {{host}} với {{login}}"
+  },
+  "renameDialog": {
+    "close": "Đóng hộp đổi tên",
+    "collision": "Đã có {{kind}} tên \"{{name}}\".",
+    "commit": "Xác nhận đổi tên",
+    "newName": "Tên mới",
+    "planFiles_other": "{{count}} tệp",
+    "planSummary_other": "{{count}} chỉnh sửa trên $t(shell:renameDialog.planFiles, { \"count\": {{files}} })",
+    "symbolKinds": {
+      "atuse": "tham chiếu",
+      "bibentry": "mục tài liệu tham khảo",
+      "cite": "trích dẫn",
+      "environment": "môi trường",
+      "envuse": "chỗ dùng môi trường",
+      "file": "tệp",
+      "glossary": "mục từ điển thuật ngữ",
+      "glossaryuse": "chỗ dùng thuật ngữ",
+      "inputedge": "include",
+      "label": "nhãn",
+      "macro": "macro",
+      "macrouse": "chỗ dùng macro",
+      "ref": "tham chiếu",
+      "section": "mục",
+      "theorem": "định lý"
+    },
+    "title": "Đổi tên <symbol>{{name}}</symbol>"
+  },
+  "settings": {
+    "close": "Đóng cài đặt",
+    "data": {
+      "danger": {
+        "confirmDeleteAllAction": "Xoá tất cả dự án",
+        "confirmDeleteAllDescription": "Mọi dự án hiện tại sẽ được chuyển vào Thùng rác, kể cả tệp và lịch sử Git của nó. Bạn có thể khôi phục từng dự án sau đó.",
+        "confirmDeleteAllTitle_other": "Xoá tất cả {{count}} dự án?",
+        "deleteAll": "Xoá tất cả dự án",
+        "deleteAllAction": "Xoá tất cả",
+        "deleteAllDescription": "Chuyển mọi dự án vào Thùng rác. Không có gì bị xoá vĩnh viễn.",
+        "deleting": "Đang xoá…",
+        "moveFailed": "Không chuyển được các dự án vào Thùng rác.",
+        "movePartial_other": "Đã chuyển {{count}} dự án vào Thùng rác. Số còn lại chưa được chuyển.",
+        "movedCount_other": "Đã chuyển {{count}} dự án vào Thùng rác.",
+        "title": "Vùng nguy hiểm"
+      },
+      "gitHostingHint": "Sao lưu hoặc đồng bộ dự án giữa các thiết bị: liên kết nó với một kho Git, rồi dùng <push>Push</push> / <pull>Pull</pull> trong Quản lý mã nguồn. <setup>Thiết lập dịch vụ Git →</setup>",
+      "localFirst": "Oleafly ưu tiên cục bộ. Mọi dự án nằm trên đĩa của bạn:",
+      "plainFolders": "Mỗi dự án là một thư mục thường. Lịch sử Git là tuỳ chọn, và không gì rời khỏi máy bạn trừ khi bạn push lên máy chủ Git.",
+      "recycleBin": {
+        "clearAll": "Xoá sạch",
+        "clearFailed": "Không xoá sạch được Thùng rác.",
+        "clearPartial_other": "Đã xoá vĩnh viễn {{count}} dự án. Số còn lại vẫn trong Thùng rác.",
+        "clearedCount_other": "Đã xoá vĩnh viễn {{count}} dự án.",
+        "clearing": "Đang xoá…",
+        "confirmClearAction": "Xoá sạch Thùng rác",
+        "confirmClearDescription": "Thao tác này xoá vĩnh viễn mọi dự án hiện có trong Thùng rác, kể cả tệp và lịch sử Git. Không thể hoàn tác.",
+        "confirmClearTitle_other": "Xoá {{count}} dự án khỏi Thùng rác?",
+        "confirmDeleteAction": "Xoá vĩnh viễn",
+        "confirmDeleteDescription": "Thao tác này gỡ dự án, tệp và lịch sử Git của nó khỏi Thùng rác. Không thể hoàn tác.",
+        "confirmDeleteTitle": "Xoá vĩnh viễn “{{name}}”?",
+        "deleteFailed": "Không xoá vĩnh viễn được \"{{name}}\".",
+        "deleteOne": "Xoá vĩnh viễn {{name}}",
+        "deleted": "Đã xoá vĩnh viễn \"{{name}}\".",
+        "deletedAt": "Đã xoá {{date}} · {{size}}",
+        "empty": "Thùng rác đang trống.",
+        "loading": "Đang tải Thùng rác…",
+        "restore": "Khôi phục",
+        "restoreFailed": "Không khôi phục được \"{{name}}\".",
+        "restored": "Đã khôi phục \"{{name}}\".",
+        "size": "{{size}} · không tự động dọn dẹp",
+        "subtitle": "Dự án đã xoá ở lại đây cho tới khi bạn gỡ chúng",
+        "title": "Thùng rác"
+      },
+      "reveal": "Hiện thư mục dự án trong Finder",
+      "storage": {
+        "calculating": "Đang tính dung lượng lưu trữ…",
+        "desktopOnly": "Chi tiết lưu trữ có trong ứng dụng máy tính.",
+        "error": "Không tính được chi tiết lưu trữ.",
+        "linkedFolders_other": "{{size}} đầu ra build và cài đặt cho {{count}} thư mục đã mở",
+        "refresh": "Làm mới dung lượng lưu trữ",
+        "stats": {
+          "files": "Tệp",
+          "folders_other": "{{count}} thư mục",
+          "images": "Hình ảnh",
+          "pdfs": "PDF",
+          "projects": "Dự án"
+        },
+        "subtitle": "Dự án, bản xem trước, lịch sử và dữ liệu ứng dụng",
+        "title": "Dung lượng lưu trữ",
+        "total": "{{size}} trong thư mục dữ liệu Oleafly",
+        "unreadable_other": "Đã loại trừ {{count}} mục không truy cập được.",
+        "groups": {
+          "projects": "Dự án",
+          "appData": "Dữ liệu ứng dụng",
+          "elsewhere": "Nơi khác"
+        },
+        "parts": {
+          "documents": "Tài liệu và mã",
+          "images": "Hình ảnh",
+          "pdfs": "PDF",
+          "media": "Âm thanh và video",
+          "data": "Tệp dữ liệu",
+          "otherFiles": "Tệp khác",
+          "git": "Lịch sử Git",
+          "build": "Bộ nhớ đệm build",
+          "texDistribution": "Bản phân phối TeX",
+          "agents": "Agent AI",
+          "researchTasks": "Tác vụ nghiên cứu",
+          "tools": "Công cụ",
+          "checkpoints": "Điểm lưu",
+          "compileCache": "Bộ nhớ đệm biên dịch",
+          "otherAppData": "Cài đặt và dữ liệu khác",
+          "recycleBin": "Thùng rác",
+          "linkedFolders": "Thư mục đã mở"
+        },
+        "other": "Khác"
+      },
+      "tabs": {
+        "cloud": "Đồng bộ đám mây",
+        "local": "Lưu trữ cục bộ"
+      }
+    },
+    "experimentation": {
+      "latexTools": {
+        "description": "Hiện thư viện Công cụ Oleafly và từng công cụ (nhập PDF, công thức, bảng, BibTeX, tìm kiếm phòng thí nghiệm và tài liệu, hạn chót) cùng các lệnh slash của chúng. Mặc định tắt khi còn beta.",
+        "label": "Công cụ LaTeX"
+      },
+      "researchTasks": {
+        "description": "Một agent làm việc tự động trong bản sao của dự án và để lại thay đổi cho bạn xem lại. Rất không ổn định: các lần chạy có thể kẹt, lỗi hoặc để lại thay đổi phải xử lý tay, và chúng dùng hạn mức của nhà cung cấp suốt thời gian đó. Thêm mục Nghiên cứu vào Cài đặt. Tắt sẽ dừng mọi tác vụ đang chạy. Mặc định tắt. Bật với rủi ro của bạn.",
+        "label": "Tác vụ nghiên cứu",
+        "saveFailed": "Không lưu được công tắc tác vụ nghiên cứu. Hãy thử lại."
+      },
+      "warning": "Những tính năng này là thử nghiệm và vẫn trong giai đoạn beta. Chúng chưa được kiểm thử đầy đủ và có thể thay đổi, hỏng hoặc bị gỡ trong bản phát hành sau. Chỉ bật nếu bạn muốn thử phần đang làm dở."
+    },
+    "footer": {
+      "followOnX": "Theo dõi trên X",
+      "joinDiscord": "Tham gia cộng đồng Discord",
+      "releaseNotes": "Xem ghi chú phát hành",
+      "viewSource": "Xem mã nguồn"
+    },
+    "general": {
+      "dialect": {
+        "ariaLabel": "Phương ngữ tiếng Anh khi hiệu đính",
+        "description": "Áp dụng cách viết, ngữ pháp và quy ước vùng miền đã chọn.",
+        "label": "Phương ngữ tiếng Anh"
+      },
+      "dictionary": {
+        "ariaLabel": "Từ điển chính tả khi hiệu đính",
+        "description": "Gói Hunspell dùng cho kiểm tra chính tả ở Mã nguồn và Trình soạn thảo trực quan. Các ngôn ngữ ngoài năm gói có sẵn sẽ được tải khi cần.",
+        "label": "Từ điển chính tả",
+        "downloadFailed": "Không tải được từ điển {{name}}.",
+        "downloaded": "{{name}} đã sẵn sàng để kiểm tra chính tả.",
+        "downloading": "Đang tải {{name}}",
+        "offlineRefused": "Chế độ ngoại tuyến đang bật. Hãy tắt để tải {{name}}."
+      },
+      "harper": {
+        "description": "Kiểm tra ngữ pháp và phong cách tiếng Anh trong LaTeX, Typst và Markdown, ở cả Mã nguồn và Trình soạn thảo trực quan, với sửa một chạm.",
+        "label": "Ngữ pháp & phong cách (Harper)",
+        "englishOnly": "Kiểm tra ngữ pháp chỉ hoạt động với tiếng Anh. Tính năng tạm dừng khi từ điển chính tả là {{name}}."
+      },
+      "offline": {
+        "description": "Biên dịch với --only-cached và không bao giờ tải gói qua mạng.",
+        "label": "Chế độ ngoại tuyến"
+      },
+      "proofreadingNote": "Hiệu đính chạy cục bộ trong một worker nền. Harper theo phương ngữ tiếng Anh đã chọn, và kiểm tra chính tả luôn dùng đúng gói Hunspell đã chọn. Công thức, mã, chú thích, cú pháp trích dẫn, metadata và URL được loại trừ.",
+      "regionalism": {
+        "description": "Đánh dấu các từ không khớp phương ngữ tiếng Anh đã chọn. Tắt nếu bạn dùng những từ đó làm tên sản phẩm hoặc mã.",
+        "label": "Gợi ý từ vùng miền"
+      },
+      "spellcheck": {
+        "description": "Gạch chân từ viết sai bằng từ điển Hunspell ngoại tuyến đã chọn và gợi ý từ thay thế ở Mã nguồn và Trình soạn thảo trực quan.",
+        "label": "Kiểm tra chính tả"
+      },
+      "wordChoice": {
+        "description": "Gợi ý từ thay thế (ví dụ “too” và “to”). Tắt để chỉ giữ chính tả và ngữ pháp.",
+        "label": "Gợi ý chọn từ"
+      }
+    },
+    "help": {
+      "community": "Cộng đồng",
+      "copyInfo": "Sao chép thông tin",
+      "forksTitle": "Bản fork trên GitHub",
+      "forks_other": "{{count}} bản fork trên GitHub",
+      "logoAlt": "Oleafly",
+      "project": "Dự án",
+      "resources": {
+        "documentation": "Tài liệu",
+        "learn": "Học",
+        "license": "Giấy phép",
+        "reportCrash": "Báo cáo sự cố (kèm nhật ký)",
+        "startTour": "Bắt đầu hướng dẫn",
+        "whatsNew": "Có gì mới"
+      },
+      "resourcesTitle": "Tài nguyên",
+      "starRepo": "Gắn sao và khám phá trên GitHub",
+      "starsTitle": "Sao GitHub",
+      "stars_other": "{{count}} sao GitHub",
+      "support": "Nếu Oleafly giúp ích cho công việc của bạn, hãy <star>gắn sao dự án trên GitHub</star>. Một cú nhấp nhỏ giúp nhiều nhà nghiên cứu tìm thấy nó hơn và hỗ trợ quá trình phát triển.",
+      "supportAriaLabel": "Ủng hộ Oleafly",
+      "tagline": "Viết, biên dịch, hiệu đính, quản lý trích dẫn, xem lại PDF, theo dõi thay đổi trong Git và dùng các mô hình AI bạn chọn. Tất cả trong một không gian làm việc mã nguồn mở.",
+      "versionShort": "v{{version}}"
+    },
+    "nav": {
+      "ai": "Trợ lý AI",
+      "appearance": "Giao diện",
+      "collaboration": "Cộng tác",
+      "data": "Lưu trữ dữ liệu",
+      "dictionary": "Từ điển",
+      "downloads": "Tải xuống",
+      "engine": "Engine",
+      "experimentation": "Thử nghiệm",
+      "general": "Chung",
+      "help": "Trợ giúp & Giới thiệu",
+      "integrations": "Tích hợp",
+      "shortcuts": "Phím tắt",
+      "research": "Nghiên cứu"
+    },
+    "search": {
+      "empty": "Không có cài đặt nào khớp",
+      "keywords": {
+        "ai": "trợ lý, trò chuyện, mô hình, nhà cung cấp, API key, agent, prompt, hạn mức, máy chủ MCP",
+        "appearance": "giao diện, chế độ tối, chế độ sáng, màu, phông chữ, cỡ chữ, phóng, bố cục",
+        "collaboration": "máy chủ, đăng nhập, thiết bị, thành viên, người duy trì, chia sẻ, nhóm, phòng lab, chỉnh sửa trực tiếp, thời gian thực, nhật ký bảo mật",
+        "data": "sao lưu, thư mục thư viện, thư mục dự án, lưu trữ, dung lượng đĩa, thùng rác, xoá dự án, điểm lưu",
+        "dictionary": "chính tả, từ tuỳ chỉnh, từ bỏ qua, hiệu đính, quy tắc ngữ pháp",
+        "downloads": "gói, phông chữ, từ điển, tệp ngoại tuyến",
+        "engine": "trình biên dịch, LaTeX, TeX, Typst, Markdown, pandoc, build, PDF",
+        "experimentation": "phòng thí nghiệm, beta, tính năng sớm",
+        "general": "tuỳ chọn, ngôn ngữ, kiểm tra chính tả, lỗi chính tả, ngoại tuyến, hướng dẫn, lệnh terminal",
+        "help": "giới thiệu, phiên bản, cập nhật, nhật ký thay đổi, có gì mới, tài liệu, hỗ trợ, cộng đồng, Discord, giấy phép, báo cáo sự cố",
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, dịch vụ Git, ứng dụng máy tính, Cua, MCP, trích dẫn, tài khoản, kết nối",
+        "shortcuts": "phím tắt, tổ hợp phím, phím, bàn phím",
+        "research": "tác vụ nghiên cứu, hạn mức, thông báo, giữ máy thức, thử nghiệm, lần chạy"
+      },
+      "label": "Tìm trong cài đặt",
+      "results_other": "{{count}} mục khớp"
+    },
+    "sectionsNav": "Các mục cài đặt",
+    "title": "Cài đặt",
+    "tours": {
+      "confirmDescription": "Thao tác này bỏ qua mọi hướng dẫn còn lại và tắt hướng dẫn. Bạn có thể bật lại trong Cài đặt Chung để bắt đầu lại.",
+      "disableConfirm": "Tắt hướng dẫn",
+      "disableTitle": "Tắt hướng dẫn?",
+      "dismissAll": "Bỏ qua tất cả hướng dẫn",
+      "dismissAllConfirm": "Bỏ qua tất cả",
+      "dismissAllTitle": "Bỏ qua tất cả hướng dẫn?",
+      "enable": "Bật hướng dẫn",
+      "enableAll": "Bật tất cả hướng dẫn",
+      "enableOne": "Bật hướng dẫn {{name}}",
+      "progress": "Tiến độ hướng dẫn",
+      "progressDetail": "Đã hoàn thành {{completed}} và bỏ qua {{dismissed}}.",
+      "status": {
+        "completed": "Đã hoàn thành",
+        "dismissed": "Đã bỏ qua",
+        "pending": "Đang chờ"
+      },
+      "summary": "{{completed}} đã hoàn thành · {{dismissed}} đã bỏ qua · {{total}} tổng cộng"
+    }
+  },
+  "sourceControl": {
+    "abortMerge": "Huỷ merge",
+    "abortMergeDescription": "Các thay đổi đã xử lý xung đột tới giờ sẽ bị bỏ và tệp trở lại như trước khi merge bắt đầu.",
+    "abortMergeTitle": "Huỷ lần merge này?",
+    "aheadBehind": "{{ahead}} trước · {{behind}} sau origin/{{branch}}",
+    "branch": "Nhánh",
+    "branchName": "Tên nhánh",
+    "changeRepo": "Đổi kho",
+    "changes": "Thay đổi",
+    "checking": "Đang kiểm tra Quản lý mã nguồn…",
+    "clean": "Không có thay đổi. Cây làm việc sạch.",
+    "commit": "Commit",
+    "commitActions": "Thao tác commit khác",
+    "commitAmend": "Sửa commit cuối",
+    "amendedKeptMessage": "Đã sửa commit cuối và giữ nguyên thông điệp.",
+    "commitAndPush": "Commit & Push",
+    "commitAndSync": "Commit & Đồng bộ",
+    "commitDescription": "Mô tả commit",
+    "commitDescriptionPlaceholder": "Mô tả (không bắt buộc)",
+    "commitTitle": "Tiêu đề commit",
+    "committed": "Đã commit: \"{{subject}}\"",
+    "committedRemoteFailed": "Đã commit cục bộ, nhưng {{step}} thất bại: {{reason}}",
+    "committedWithConflicts": "Đã commit cục bộ. Hãy xử lý xung đột sau khi pull trước khi push.",
+    "confirmDiscard": "Xác nhận bỏ thay đổi",
+    "confirmDiscardTitle": "Bỏ mọi thay đổi của tệp này",
+    "continueMerge": "Hoàn tất merge",
+    "copyCommitId": "Sao chép ID commit",
+    "create": "Tạo",
+    "createBranch": "Tạo nhánh…",
+    "credentialRemoved": "Đã gỡ thông tin đăng nhập đã lưu khỏi remote Git này.",
+    "credentialWarning": "Các phiên bản Oleafly cũ đã lưu thông tin đăng nhập trong remote Git này.",
+    "discard": "Bỏ thay đổi",
+    "discardFor": "Bỏ thay đổi của {{path}}",
+    "discardAll": "Bỏ tất cả thay đổi",
+    "discardChangesDescription": "Các thay đổi trong cây làm việc này sẽ mất. Không thể hoàn tác.",
+    "discardChangesTitle": "Bỏ các thay đổi đã chọn?",
+    "discardTitle": "Bỏ thay đổi (trở về phiên bản trước)",
+    "enterTitle": "Nhập tiêu đề commit",
+    "finishMergeToCommit": "Hãy hoàn tất merge trước khi commit.",
+    "fetch": "Fetch",
+    "gitMissing": {
+      "copied": "Đã sao chép",
+      "copyCommand": "Sao chép lệnh",
+      "download": "Tải Git for Windows",
+      "linux": "Quản lý mã nguồn cần Git. Hãy cài gói git bằng trình quản lý gói của bạn, rồi làm mới bảng này.",
+      "mac": "Quản lý mã nguồn cần Git. Chạy lệnh này trong Terminal để cài công cụ dòng lệnh của Apple, có kèm Git, rồi làm mới bảng này.",
+      "title": "Git chưa được cài đặt",
+      "windows": "Quản lý mã nguồn cần Git. Hãy cài Git for Windows, rồi khởi động lại Oleafly."
+    },
+    "graph": "Đồ thị",
+    "commitCount_other": "{{count}} commit",
+    "initialize": "Khởi tạo kho lưu trữ",
+    "initialized": "Đã khởi tạo Git trên {{branch}}.",
+    "markResolved": "Đánh dấu đã xử lý",
+    "mergeNeedsAttention": "Xử lý xung đột merge",
+    "moreActions": "Thao tác Quản lý mã nguồn khác",
+    "noHistory": "Chưa có commit",
+    "noProject": "Mở một dự án để dùng Quản lý mã nguồn.",
+    "noStagedChanges": "Không có thay đổi đã stage",
+    "notInitialized": "Quản lý mã nguồn chưa được khởi tạo",
+    "notInitializedHint": "Oleafly sẽ không tự động commit vào kho Git.",
+    "nothingStaged": "Không có gì đã stage để commit.",
+    "openAllChanges": "Mở tất cả thay đổi",
+    "openFile": "Mở tệp",
+    "openFileFor": "Mở {{path}}",
+    "popStash": "Áp dụng stash mới nhất",
+    "publishRepository": "Xuất bản…",
+    "publishTo": "Xuất bản lên {{host}}",
+    "published": "Đã xuất bản lên {{url}}",
+    "pull": "Pull từ origin",
+    "pullShort": "Pull",
+    "push": "Commit và push lên origin",
+    "pushShort": "Push",
+    "pushSkippedNoRemote": "⚠ Đã bỏ qua push - chưa đặt remote origin bên dưới.",
+    "refresh": "Làm mới",
+    "remote": "Remote",
+    "remoteHint": "Tạo kho mới hoặc liên kết một kho có sẵn làm remote của dự án này, rồi push.",
+    "removeCredential": "Gỡ thông tin đăng nhập đã lưu",
+    "repositoryLinkCopied": "Đã sao chép liên kết kho lưu trữ",
+    "restoreCommit": "Khôi phục phiên bản",
+    "restoreCommitDescription": "Thao tác này thay thế mọi tệp dự án được theo dõi bằng phiên bản này và gỡ những tệp được thêm sau đó. Nhánh của bạn vẫn ở commit hiện tại.",
+    "restoreCommitTitle": "Khôi phục phiên bản này?",
+    "sectionActions": "Thao tác khác cho {{section}}",
+    "stage": "Stage",
+    "stageFor": "Stage {{path}}",
+    "stageAll": "Stage tất cả",
+    "stageFirst": "Hãy stage một tệp trước",
+    "stageToCommit": "Hãy stage một tệp để commit.",
+    "staged": "Đã stage",
+    "stagedChanges": "Thay đổi đã stage",
+    "stagedChangeCount_other": "{{count}} thay đổi đã stage",
+    "stash": "Stash thay đổi",
+    "stashNeedsAttention": "Xử lý xung đột stash",
+    "status": {
+      "modified": "Đã sửa",
+      "added": "Đã thêm",
+      "deleted": "Đã xoá",
+      "renamed": "Đã đổi tên",
+      "untracked": "Chưa theo dõi",
+      "conflict": "Xung đột",
+      "containsChanges": "Có thay đổi"
+    },
+    "sync": "Đồng bộ",
+    "title": "Quản lý mã nguồn",
+    "titleRequired": "Cần có tiêu đề commit.",
+    "titleRequiredStatus": "Nhập tiêu đề commit trước khi commit.",
+    "unlink": "Bỏ liên kết",
+    "unlinkedFrom": "Đã bỏ liên kết khỏi {{host}}.",
+    "unstage": "Bỏ stage",
+    "unstageFor": "Bỏ stage {{path}}",
+    "unstageAll": "Bỏ stage tất cả",
+    "workingChangeCount_other": "{{count}} thay đổi chưa stage",
+    "useCurrent": "Dùng bản hiện tại",
+    "useIncoming": "Dùng bản đến"
+  },
+  "splash": {
+    "initializing": "Đang khởi tạo Oleafly",
+    "loadingCore": "Đang tải Oleafly Core",
+    "loadingHarness": "Đang tải Oleafly Harness",
+    "loadingParsers": "Đang tải Oleafly Parsers",
+    "starting": "Đang khởi động Oleafly",
+    "opening": "Đang mở {{name}}…"
+  },
+  "theme": {
+    "dark": "Tối",
+    "light": "Sáng",
+    "menuLabel": "Giao diện: {{name}}",
+    "system": "Hệ thống",
+    "useDark": "Dùng giao diện tối",
+    "useLight": "Dùng giao diện sáng",
+    "useSystem": "Dùng giao diện hệ thống"
+  },
+  "tinytexGuards": {
+    "quit": {
+      "confirm": "Vẫn thoát",
+      "description": "{{phase}} ngay bây giờ. Nếu bạn thoát, quá trình cài sẽ tạm dừng. Phần đã tải được giữ lại và tiếp tục lần sau khi bạn mở Oleafly.",
+      "title": "TinyTeX vẫn đang cài đặt"
+    },
+    "wait": {
+      "description": "{{phase}} Lần biên dịch của bạn đang xếp hàng và sẽ tự bắt đầu ngay khi engine sẵn sàng.",
+      "title": "TinyTeX vẫn đang tải"
+    },
+    "typstQuit": {
+      "title": "Typst vẫn đang cài đặt",
+      "description": "Typst {{version}} đang tải. Nếu bạn thoát bây giờ, quá trình tải sẽ dừng và bạn cần bắt đầu lại từ Cài đặt."
+    }
+  },
+  "toolbar": {
+    "cancelRename": "Huỷ (Esc)",
+    "closeForkDialog": "Đóng hộp fork",
+    "compileFigureFirst": "Hãy biên dịch hình trước",
+    "compilePdfFirst": "PDF cần biên dịch trước",
+    "export": "Xuất",
+    "exportComplete": "Đã xuất {{format}} xong",
+    "exportDocx": "Xuất thành Word (.docx)",
+    "exportEpub": "Xuất thành EPUB (.epub)",
+    "exportHtml": "Xuất thành HTML (.html)",
+    "exportMarkdown": "Xuất thành Markdown (.md)",
+    "exportPdf": "Xuất thành PDF",
+    "exportPdfVector": "Xuất thành PDF (ảnh vector)",
+    "exportPngRaster": "Xuất thành PNG",
+    "exportPagePng": "Xuất trang thành PNG",
+    "exportAs": "Xuất thành {{format}}",
+    "exportPptx": "Xuất thành PowerPoint (.pptx)",
+    "exportSourceZip": "Xuất mã nguồn (.zip)",
+    "exportTxt": "Xuất thành văn bản thuần (.txt)",
+    "exportZipFailed": "Không xuất được tệp zip của dự án",
+    "exporting": "Đang xuất .{{format}}…",
+    "fork": "Fork",
+    "forkDescription": "Sao chép <name>{{name}}</name> và lịch sử Git của nó vào dự án mới. Điểm lưu bắt đầu trống.",
+    "forkFailed": "Không fork được dự án.",
+    "forkProject": "Fork dự án",
+    "layout": "Bố cục",
+    "layouts": {
+      "aiOnly": "Chỉ AI",
+      "editorAi": "Trình soạn thảo + AI",
+      "editorOnly": "Chỉ trình soạn thảo",
+      "editorPreview": "Trình soạn thảo + Xem trước",
+      "editorPreviewAi": "Trình soạn thảo + Xem trước + AI",
+      "previewAi": "Xem trước + AI",
+      "previewOnly": "Chỉ xem trước",
+      "zenMode": "Chế độ Zen"
+    },
+    "newProjectName": "Tên dự án mới",
+    "projectName": "Tên dự án",
+    "saveName": "Lưu (Enter)",
+    "saveNameAriaLabel": "Lưu tên",
+    "untitledProject": "dự án",
+    "versioning": "Phiên bản",
+    "viewFile": "Xem tệp",
+    "views": {
+      "editor": "Chế độ mã nguồn",
+      "pdf": "Chế độ PDF",
+      "split": "Chế độ chia đôi"
+    },
+    "moreActions": "Thao tác khác",
+    "renameFailed": "Không đổi tên được dự án."
+  },
+  "tour": {
+    "chooseColor": "Chọn màu đặc trưng của bạn",
+    "diagramArrow": "Mũi tên cong chỉ vào khung vẽ sơ đồ",
+    "pointer": "Đầu nhọn của chú thích hướng dẫn",
+    "quitConfirm": "Thoát hướng dẫn",
+    "quitDescription": "Tiến độ của bạn không được lưu. Bạn có thể khởi động lại bất kỳ hướng dẫn nào từ menu Trợ giúp.",
+    "quitTitle": "Thoát hướng dẫn?",
+    "setMood": "Chọn tâm trạng",
+    "showMeAround": "Dẫn tôi một vòng",
+    "skip": "Bỏ qua",
+    "step": "Bước {{step}}",
+    "stepOfTotal": "Bước {{step}} trên {{total}}",
+    "stepOfTour": "Bước {{step}} · {{tour}}",
+    "useAccent": "Dùng màu nhấn {{name}}",
+    "welcomeArrow": "Mũi tên vẽ tay chỉ vào đoạn chào mừng",
+    "welcomeBody": "Đưa một bài báo từ bản nháp đầu tiên tới PDF cuối cùng trong một không gian làm việc mã nguồn mở. Viết, biên dịch, hiệu đính, quản lý trích dẫn, tạo hình, xem lại mọi thay đổi trong Git và dùng các mô hình AI bạn chọn. Dự án của bạn ở lại trên máy.",
+    "welcomeTitle": "Chào mừng tới Oleafly"
+  },
+  "updateChecker": {
+    "available": "Có bản cập nhật · v{{version}}",
+    "check": "Kiểm tra cập nhật",
+    "checkAgain": "Kiểm tra lại",
+    "checkFailed": "Không kiểm tra được bản cập nhật.",
+    "checking": "Đang kiểm tra…",
+    "downloadFromGithub": "Tải từ GitHub",
+    "downloading": "Đang tải… {{percent}}%",
+    "installing": "Đang cài đặt…",
+    "lastCheckFailed": "Lần kiểm tra tự động cuối thất bại.",
+    "lastCheckFailedAt": "Lần kiểm tra tự động cuối thất bại · {{when}}.",
+    "latest": "Bạn đang dùng phiên bản mới nhất",
+    "releaseNotes": "Ghi chú phát hành",
+    "restartNotice": "Oleafly sẽ khởi động lại để hoàn tất.",
+    "tryAgain": "Thử lại",
+    "unsupported": "Bản cập nhật do ứng dụng máy tính quản lý.",
+    "updateNow": "Cập nhật ngay"
+  },
+  "updateWindow": {
+    "available": "Có bản cập nhật",
+    "checking": "Đang kiểm tra cập nhật…",
+    "currentVersion": "Bạn đang dùng v{{version}}",
+    "error": "Không hoàn tất được bản cập nhật. Vui lòng thử lại sau.",
+    "historyFailed": "Không tải được ghi chú phát hành trước đó.",
+    "later": "Để sau",
+    "looking": "Đang tìm phiên bản mới nhất…",
+    "packageInstall": "Được cài từ gói. Hãy tải phiên bản mới để cập nhật.",
+    "ready": "Đã có phiên bản mới sẵn sàng cài đặt.",
+    "released": "Phát hành {{when}}",
+    "upToDate": "Bạn đã cập nhật",
+    "upToDateGeneric": "Bạn đang chạy phiên bản Oleafly mới nhất",
+    "upToDateHeadline": "Bạn đã cập nhật!",
+    "upToDateVersion": "Oleafly v{{version}} là phiên bản mới nhất",
+    "viewRelease": "Xem bản phát hành"
+  },
+  "windowControls": {
+    "group": "Điều khiển cửa sổ",
+    "maximize": "Phóng to",
+    "minimize": "Thu nhỏ",
+    "restore": "Khôi phục"
+  },
+  "windows": {
+    "preview": "Xem trước: {{title}}",
+    "update": "Cập nhật Oleafly"
+  },
+  "openFolder": {
+    "confirmTitle": "Dừng và mở {{name}}?",
+    "confirmCompile": "{{project}} vẫn đang biên dịch. Mở {{name}} sẽ dừng lần biên dịch đó. Thay đổi của bạn được lưu trước.",
+    "confirmAssistant": "Trợ lý vẫn đang làm việc trong {{project}}. Mở {{name}} sẽ dừng phản hồi của nó. Thay đổi của bạn được lưu trước.",
+    "confirmBoth": "{{project}} vẫn đang biên dịch và trợ lý vẫn đang làm việc. Mở {{name}} sẽ dừng cả hai. Thay đổi của bạn được lưu trước.",
+    "confirmAction": "Dừng và mở",
+    "chooseSubfolder": "Chọn thư mục con",
+    "refusedTitle": "Không mở được {{name}}",
+    "refused": "Không mở được {{name}}. {{reason}}",
+    "reasonWithHint": "{{reason}} {{hint}}",
+    "permissionHint": {
+      "mac": "Trong Cài đặt Hệ thống, mở Quyền riêng tư & Bảo mật, rồi Tệp và Thư mục, và bật Oleafly. Nếu Oleafly không có trong danh sách, hãy thêm vào dưới Quyền truy cập toàn ổ đĩa rồi thử lại.",
+      "windows": "Kiểm tra tab Bảo mật trong Thuộc tính của thư mục để chắc tài khoản của bạn đọc được, rồi thử lại.",
+      "linux": "Kiểm tra rằng tài khoản của bạn đọc được thư mục này, rồi thử lại."
+    }
+  },
+  "quickActionOffer": {
+    "title": "Mở thư mục từ Finder",
+    "body": "Thêm Mở trong Oleafly vào Finder. Nó hoạt động ngay từ menu Dịch vụ và từ Thao tác nhanh khi bạn bật.",
+    "add": "Thêm vào Finder",
+    "notNow": "Để sau",
+    "added": "Đã thêm. Nó đã có trong menu Dịch vụ của Finder. Để dùng cả từ Thao tác nhanh, nhấp chuột phải vào một thư mục và bật trong Thao tác nhanh › Tuỳ chỉnh.",
+    "addedInQuickActions": "Đã thêm. Nhấp chuột phải vào một thư mục và bạn sẽ thấy nó dưới Thao tác nhanh.",
+    "failed": "Không thêm được. Bạn có thể thử lại trong Cài đặt › Chung."
+  },
+  "typstMigration": {
+    "title": "Chuyển thành dự án Typst",
+    "closeLabel": "Đóng bản chuyển đổi Typst",
+    "intro": "Oleafly tạo một dự án Typst mới từ dự án LaTeX này. Dự án này không bị thay đổi.",
+    "points": {
+      "text": "Pandoc chuyển văn bản, công thức, hình và bảng.",
+      "files": "Mỗi tệp input và include trở thành một tệp Typst riêng.",
+      "bibliography": "Các tệp BibTeX được sao chép nguyên vẹn.",
+      "compile": "Typst biên dịch dự án mới để kiểm tra."
+    },
+    "nameLabel": "Tên dự án mới",
+    "defaultName": "{{name}} (Typst)",
+    "notLatex": "Hãy mở một dự án LaTeX để chuyển đổi.",
+    "convert": "Chuyển đổi",
+    "retry": "Thử lại",
+    "progress": {
+      "reading": "Đang đọc dự án LaTeX",
+      "converting": "Đang chuyển đổi bằng Pandoc",
+      "creating": "Đang tạo dự án Typst",
+      "compiling": "Đang biên dịch bằng Typst"
+    },
+    "errors": {
+      "pandoc": "Pandoc chưa sẵn sàng. Hãy cài trong Công cụ, rồi thử lại.",
+      "noMain": "Không đọc được tệp LaTeX chính.",
+      "emptyOutput": "Pandoc trả về một tài liệu rỗng.",
+      "failed": "Quá trình chuyển đổi đã dừng: {{detail}}"
+    },
+    "report": {
+      "created": "Đã tạo {{name}}.",
+      "compiled": "Nó biên dịch được bằng Typst.",
+      "compileFailed_other": "Nó chưa biên dịch được. {{count}} lỗi cần sửa.",
+      "compileUnavailable": "Oleafly không biên dịch được nó: {{detail}}",
+      "converted": "Đã chuyển đổi",
+      "sources_other": "{{count}} tệp nguồn",
+      "figures_other": "{{count}} hình",
+      "tables_other": "{{count}} bảng",
+      "equations_other": "{{count}} công thức hiển thị",
+      "references_other": "{{count}} tham chiếu chéo",
+      "mathFixed_other": "{{count}} công thức được bộ chuyển đổi toán sửa",
+      "copied_other": "{{count}} tệp được sao chép",
+      "style": "Kiểu tài liệu tham khảo {{style}}",
+      "mapping": "{{source}} thành {{target}}",
+      "attention": "Cần chú ý",
+      "noAttention": "Không có gì cần chú ý.",
+      "problems": "Lỗi và cảnh báo biên dịch",
+      "location": "{{file}}, dòng {{line}}",
+      "noLocation": "Không có vị trí tệp",
+      "openAt": "Mở {{file}} tại dòng {{line}}",
+      "open": "Mở dự án Typst"
+    },
+    "notes": {
+      "missingInclude": "Không tìm thấy tệp {{detail}} nên nó bị bỏ qua.",
+      "lostInclude": "{{detail}} không tách được thành tệp riêng. Văn bản của nó vẫn nằm trong tệp đã include nó.",
+      "missingImage": "Không tìm thấy hình {{detail}}.",
+      "unsupportedImage": "Typst không hiển thị được {{detail}}. Hãy chuyển nó sang PDF, PNG hoặc SVG.",
+      "math": "Công thức này cần sửa tay: {{detail}}",
+      "bibliographyStyle": "Kiểu BibTeX {{detail}} không có bản tương ứng trong Typst. Kiểu mặc định được dùng.",
+      "skippedFile": "{{detail}} không được sao chép vì dự án quá lớn.",
+      "unreadableFile": "Không đọc được {{detail}}.",
+      "equationLabel": "Typst đánh số toàn bộ công thức, nên các tham chiếu tới {{detail}} giờ trỏ tới công thức chứa nó."
+    }
+  },
+  "typstExport": {
+    "menuItem": "Hình ảnh và HTML",
+    "title": "Xuất bằng Typst",
+    "close": "Đóng bản xuất Typst",
+    "format": "Định dạng",
+    "png": "Ảnh PNG",
+    "svg": "Ảnh SVG",
+    "html": "HTML",
+    "experimental": "Thử nghiệm",
+    "htmlNote": "Xuất HTML của Typst vẫn đang thử nghiệm. Nó bỏ qua thiết lập trang và các phần tử được đặt vị trí.",
+    "ppi": "Độ phân giải",
+    "ppiValue": "{{ppi}} PPI",
+    "pages": "Trang",
+    "pagesPlaceholder": "Tất cả trang",
+    "pagesHelp": "Dùng số trang và khoảng, chẳng hạn 1, 3-5 hoặc 8-.",
+    "pagesInvalid": "Kiểm tra khoảng trang. Dùng số trang và khoảng, chẳng hạn 1, 3-5 hoặc 8-.",
+    "pagesUnsupported": "Phiên bản Typst này luôn xuất mọi trang.",
+    "multiPage": "Mỗi trang được lưu thành tệp riêng, đánh số theo tên bạn chọn.",
+    "export": "Xuất",
+    "cancel": "Huỷ"
+  },
+  "typstUpgrade": {
+    "title": "Thử phiên bản Typst mới hơn",
+    "description": "Oleafly build dự án này với cả hai phiên bản trong thư mục tạm. Không gì trong dự án của bạn thay đổi trừ khi bạn chuyển.",
+    "compareWith": "Phiên bản mới hơn",
+    "running": "Đang build bằng Typst {{current}} và {{candidate}}",
+    "current": "Typst {{version}} (hiện tại)",
+    "candidate": "Typst {{version}}",
+    "built": "Đã build",
+    "failed": "Thất bại",
+    "pages_other": "{{count}} trang",
+    "pagesUnknown": "Không rõ số trang",
+    "errors_other": "{{count}} lỗi",
+    "warnings_other": "{{count}} cảnh báo",
+    "pageChange": "Số trang thay đổi từ {{from}} thành {{to}}.",
+    "pageSame": "Số trang giữ nguyên {{pages}}.",
+    "added": "Mới trong Typst {{version}}",
+    "removed": "Typst {{version}} không còn báo",
+    "noChanges": "Cả hai phiên bản báo cùng lỗi và cảnh báo.",
+    "unchanged_other": "{{count}} thông báo giống nhau ở cả hai phiên bản.",
+    "buildFailed": "Typst {{version}} không build được dự án.",
+    "switch": "Chuyển sang Typst {{version}}",
+    "switched": "Dự án này giờ dùng Typst {{version}}.",
+    "switchFailed": "Không đổi được phiên bản Typst.",
+    "runAgain": "Kiểm tra lại",
+    "close": "Đóng",
+    "checkFailed": "Không hoàn tất được lần kiểm tra.",
+    "noNewer": "Chưa cài Typst mới hơn. Bạn có thể cài trong Cài đặt.",
+    "openSettings": "Mở cài đặt Typst",
+    "location": "{{file}}, dòng {{line}}",
+    "error": "Lỗi",
+    "warning": "Cảnh báo"
+  },
+  "fileRenameDialog": {
+    "title": "Đổi tên tệp",
+    "titleFolder": "Đổi tên thư mục",
+    "newPath": "Đường dẫn mới",
+    "hint": "Những thư mục chưa tồn tại sẽ được tạo.",
+    "invalid": "Hãy dùng đường dẫn bên trong dự án này.",
+    "exists": "{{path}} đã tồn tại."
+  },
+  "zen": {
+    "compileFailed": "Biên dịch thất bại",
+    "compiling": "Đang biên dịch",
+    "hideLog": "Ẩn nhật ký biên dịch",
+    "showLog": "Hiện nhật ký biên dịch"
+  },
+  "collabSync": {
+    "paused_other": "{{count}} tệp đã thay đổi bên ngoài Oleafly. Gửi những thay đổi này cho mọi người, hay giữ cục bộ?",
+    "send": "Gửi",
+    "keepLocal": "Giữ cục bộ",
+    "unavailable": "Thư mục dự án không khả dụng nên đồng bộ tạm dừng. Nó sẽ tiếp tục khi thư mục trở lại."
+  },
+  "overleafSync": {
+    "button": "Đồng bộ Overleaf",
+    "title": "Đồng bộ với Overleaf",
+    "cancel": "Huỷ",
+    "more_other": "và {{count}} tệp khác",
+    "status": {
+      "notLinked": "Chưa đồng bộ với Overleaf.",
+      "linking": "Đang liên kết với Overleaf",
+      "syncing": "Đang đồng bộ với Overleaf",
+      "needsToken": "Thêm Git token Overleaf của bạn để đồng bộ.",
+      "never": "Chưa đồng bộ.",
+      "justNow": "vừa xong",
+      "synced": "Đã đồng bộ {{time}}.",
+      "conflicts_other": "{{count}} tệp đã thay đổi ở cả hai phía. Chọn phiên bản muốn giữ."
+    },
+    "actions": {
+      "keepInSync": "Giữ đồng bộ với Overleaf",
+      "syncNow": "Đồng bộ ngay",
+      "auto": "Tự động đồng bộ",
+      "resolve": "Chọn phiên bản",
+      "unlink": "Ngừng đồng bộ",
+      "addToken": "Thêm Git token",
+      "changeToken": "Đổi Git token"
+    },
+    "token": {
+      "title": "Thêm Git token Overleaf của bạn",
+      "description": "Oleafly đồng bộ qua tích hợp Git của Overleaf. Tạo token trong mục Git integration thuộc cài đặt tài khoản Overleaf, rồi dán vào đây. Token được mã hoá trên máy này.",
+      "openSettings": "Mở cài đặt tài khoản Overleaf",
+      "label": "Git token",
+      "note": "Tích hợp Git cần gói Overleaf trả phí hoặc gói đại học cho chủ sở hữu dự án.",
+      "save": "Lưu và đồng bộ"
+    },
+    "choice": {
+      "title": "Phiên bản nào nên thắng?",
+      "description": "Những tệp này khác nhau ở đây và trên Overleaf. Các tệp chỉ có ở một phía được giữ ở cả hai, nên không có gì bị xoá.",
+      "mine": "Dùng phiên bản của tôi",
+      "theirs": "Dùng phiên bản của Overleaf"
+    },
+    "conflicts": {
+      "title": "Chọn phiên bản",
+      "description": "Những tệp này đã thay đổi cả ở đây và trên Overleaf từ lần đồng bộ trước. Chọn phiên bản muốn giữ cho từng tệp. Không gì thay đổi cho tới khi bạn áp dụng.",
+      "mine": "Của tôi",
+      "theirs": "Của Overleaf",
+      "allMine": "Giữ tất cả của tôi",
+      "allTheirs": "Dùng tất cả của Overleaf",
+      "apply": "Áp dụng và đồng bộ"
+    }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly đã tải lại cửa sổ này vì nó ngừng phản hồi trong 30 giây. Các thay đổi ngay trước đó có thể chưa được lưu.",
+    "reloadedAgain": "Oleafly đã tải lại cửa sổ này lần nữa vì nó ngừng phản hồi. Nó không mở lại dự án của bạn, phòng trường hợp có gì đó trong dự án gây ra việc này."
+  }
+}

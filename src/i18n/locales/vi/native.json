@@ -1,0 +1,224 @@
+{
+  "menu": {
+    "app": "Oleafly",
+    "about": "About Oleafly",
+    "checkUpdates": "Check for Updates…",
+    "settings": "Settings…",
+    "reloadViews": "Reload Views",
+    "restartApp": "Restart Application",
+    "quit": "Quit Oleafly",
+    "hide": "Hide Oleafly",
+    "hideOthers": "Hide Others",
+    "showAll": "Show All",
+    "edit": "Edit",
+    "undo": "Undo",
+    "redo": "Redo",
+    "cut": "Cut",
+    "copy": "Copy",
+    "paste": "Paste",
+    "selectAll": "Select All",
+    "view": "View",
+    "toggleTerminal": "Toggle Terminal",
+    "file": "File",
+    "openFolder": "Open Folder…",
+    "openRecent": "Open Recent",
+    "noRecent": "No Recent Projects",
+    "window": "Window",
+    "minimize": "Minimize",
+    "fullscreen": "Toggle Full Screen",
+    "bringAllToFront": "Bring All to Front",
+    "zenMode": "Zen Mode"
+  },
+  "dialog": {
+    "cancel": "Cancel",
+    "fullAccess": {
+      "title": "Enable full access?",
+      "message": "Full access lets the assistant run shell commands and edit files without asking for approval each time. Enable full access?",
+      "confirm": "Enable full access"
+    },
+    "sharedShellEscape": {
+      "title": "Allow external commands in this shared project?",
+      "message": "Anyone who can edit this project could then run programs on this computer when you compile. Only allow this if you trust everyone in the project.",
+      "confirm": "Allow on this computer"
+    },
+    "cookieImport": {
+      "title": "Confirm cookie import",
+      "copyHost": "Copy the cookies for {{hostname}} from {{browser}} profile \"{{profile}}\" into Oleafly? They can sign you in to {{hostname}}.",
+      "copyAll": "Copy every cookie from {{browser}} profile \"{{profile}}\" into Oleafly? They can sign you in to websites.",
+      "copyConfirm": "Copy cookies"
+    },
+    "mcpApprove": {
+      "title": "Approve MCP tool",
+      "confirm": "Use tool"
+    },
+    "mcpCommand": {
+      "title": "Run this program?",
+      "message": "Oleafly will run this command whenever it starts the MCP server {{name}}:\n\n{{command}}\n\nOnly allow programs you trust.",
+      "environment": "It also sets these environment variables: {{names}}",
+      "confirm": "Allow"
+    },
+    "tableImport": {
+      "title": "Choose a spreadsheet to import",
+      "filter": "Spreadsheets"
+    },
+    "trustFolder": {
+      "title": "Trust this folder?",
+      "message": "Oleafly will turn on Git, the terminal, agents and LaTeX tools for {{name}}. Only trust folders whose contents you know.",
+      "messageParent": "Oleafly will trust {{name}} and every folder inside it, including ones you open later.",
+      "messageRepository": "Oleafly will run Git in {{name}} with the repository's own settings and hooks.",
+      "confirm": "Trust"
+    },
+    "restrictedWrite": {
+      "title": "Allow this change?",
+      "message": "The assistant wants to change {{path}}. Files like this can run programs, and this folder isn't trusted yet.",
+      "confirm": "Allow"
+    },
+    "restrictedNetwork": {
+      "title": "Allow this request?",
+      "message": "The assistant wants to use {{tool}}, which sends text to an online service. This folder isn't trusted yet.",
+      "confirm": "Allow"
+    },
+    "locateFolder": {
+      "title": "Find the project folder"
+    },
+    "rebindFolder": {
+      "title": "Use a different folder?",
+      "message": "{{name}} isn't the folder Oleafly had for this project. If you use it, Oleafly saves your unsaved changes there and closes this project's terminals and agent sessions. Anything running in them ends. Oleafly also stops trusting the folder, turns off Full Access, resets the assistant's approvals and unlinks research folders. Chats and history are kept.",
+      "confirm": "Use this folder"
+    },
+    "saveCopy": {
+      "title": "Choose where to save a copy",
+      "folderSuffix": "copy"
+    },
+    "openFolder": {
+      "title": "Open a folder",
+      "inside": "Choose a folder inside {{name}}"
+    },
+    "agentProgram": {
+      "title": "Use this program?",
+      "message": "Oleafly will start {{path}} whenever you use {{name}}. Only choose programs you trust.",
+      "confirm": "Use program",
+      "pickTitle": "Choose the program for {{name}}",
+      "filter": "Programs"
+    },
+    "sharedCodeExecution": {
+      "title": "Allow code in this shared project?",
+      "message": "Compiling will then run the code in this project on this computer. Anyone with edit access can change that code. Only allow this if you trust everyone in the project.",
+      "confirm": "Allow on this computer"
+    },
+    "desktopApps": {
+      "title": "Desktop apps",
+      "action": "{{agent}} wants to {{action}}.",
+      "steps": "{{agent}} wants to run these steps in a desktop app:",
+      "moreSteps": "Steps not shown and not run: {{count}}",
+      "moreItems": "Items not shown: {{count}}",
+      "cut": "(characters not shown: {{count}})",
+      "signedIn": "This acts in your own signed-in browser.",
+      "signedInOn": "This acts in your own signed-in browser, on {{origin}}.",
+      "task": "Task: {{title}}",
+      "app": "App: {{name}}",
+      "window": "Window: {{title}}",
+      "element": "Element: {{element}}",
+      "text": "Text: \"{{text}}\"",
+      "address": "Address: {{url}}",
+      "allowOnce": "Allow once",
+      "allowChat": "Allow for this chat",
+      "allowSession": "Allow for this session",
+      "allowTask": "Allow for this task",
+      "deny": "Don't allow",
+      "pickedFile": "the file you picked",
+      "actions": {
+        "launchApp": "open an app",
+        "click": "click in an app",
+        "doubleClick": "double-click in an app",
+        "rightClick": "right-click in an app",
+        "typeText": "type in an app",
+        "pressKey": "press a key in an app",
+        "hotkey": "press a keyboard shortcut in an app",
+        "scroll": "scroll in an app",
+        "setValue": "change a field in an app",
+        "browserPrepare": "open a browser for a website",
+        "browserNavigate": "go to a web page",
+        "browserClick": "click on a web page",
+        "browserType": "type on a web page",
+        "browserSelect": "pick an option on a web page",
+        "runScript": "run a Cua script"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "Allow desktop control?",
+      "message": "Agents will be able to use these. They ask before each action, and saving this clears any \"Allow for this chat\" choices:",
+      "confirm": "Allow",
+      "enabled": "Desktop apps",
+      "app": "App: {{identity}} ({{name}})",
+      "more": "And {{count}} more",
+      "site": "Website: {{origin}}",
+      "signedIn": "Your signed-in browser on {{origin}}",
+      "scripted": "Cua scripts",
+      "spacesTitle": "Give Cua Spaces more access?",
+      "spacesMessage": "Agents that use Cua Spaces will be able to:",
+      "spacesChanges": "Create and delete Spaces, and run commands in them",
+      "spacesSignIns": "Use your Claude Code or Codex sign-in inside a Space"
+    }
+  },
+  "errors": {
+    "menuUnavailable": "Application menu is unavailable",
+    "viewMenuUnavailable": "View menu is unavailable",
+    "menuItemUnavailable": "Menu item {{id}} is unavailable",
+    "fullAccessDismissed": "The full access confirmation was dismissed.",
+    "fullAccessDeclined": "Full access was not enabled.",
+    "approvalDialogClosed": "The native approval dialog closed unexpectedly."
+  },
+  "systemIntegration": {
+    "openInOleafly": "Open in Oleafly",
+    "openWithOleafly": "Open with Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (local copy)"
+  },
+  "approvals": {
+    "helperRefused": "Refused by the {{tool}} rule in approvals.toml",
+    "unknownTool": "No tool is named {{name}}, so its rule does nothing.",
+    "unknownToolSuggestion": "No tool is named {{name}}, so its rule does nothing. Did you mean {{suggestion}}?"
+  },
+  "cloud": {
+    "connectedPage": "You're connected. You can close this tab and go back to Oleafly.",
+    "failedPage": "Sign-in did not finish. You can close this tab and go back to Oleafly."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Task ready for review",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Plan ready to approve",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "A task needs your approval",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Task stopped",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Task budget used up",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly keeps working",
+      "body": "Research tasks you marked to keep running continue in the background. Open Oleafly to see their progress."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Permission checks are off ({{mode}})",
+      "description": "The agent can edit files and run commands without asking. Oleafly could not switch it to another mode. Change the mode in the agent's own settings."
+    }
+  }
+}

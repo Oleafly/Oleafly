@@ -1,8 +1,8 @@
 pub const ENGLISH: &str = "en";
 
-pub const LOCALES: [&str; 21] = [
+pub const LOCALES: [&str; 22] = [
     "en", "zh-Hans", "zh-Hant", "de", "fr", "es", "it", "nl", "pt-BR", "pl", "ru", "uk", "tr",
-    "cs", "da", "sv", "nb", "fi", "ro", "ja", "ko",
+    "cs", "da", "sv", "nb", "fi", "ro", "ja", "ko", "vi",
 ];
 
 pub fn supported(tag: &str) -> Option<&'static str> {
@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     fn the_languages_are_the_apps() {
-        assert_eq!(LOCALES.len(), 21);
+        assert_eq!(LOCALES.len(), 22);
         assert_eq!(LOCALES[0], ENGLISH);
         assert_eq!(supported("PT-br"), Some("pt-BR"));
         assert_eq!(supported("pt"), None);
