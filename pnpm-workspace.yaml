@@ -13,7 +13,7 @@ catalog:
 # Force transitive build and test dependencies to patched versions.
 overrides:
   # GHSA-qr28-fpjm-wq7f: quadratic replacement of percent-encoded runs in
-  # decode-uri-component <= 0.5.0, reached through @lobehub/ui's query-string.
+  # decode-uri-component <= 0.5.0, reached through @lobehub/ui > query-string.
   decode-uri-component@<0.5.1: "0.5.1"
   # Exact, so the editor extension types resolve against one core. Held at the
   # patched release for GHSA-j95f-988m-3j2f: quadratic ReDoS in block and

@@ -360,6 +360,9 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           # Public GitLab OAuth application id; empty keeps GitLab on access tokens.
           OLEAFLY_DESKTOP_GITLAB_CLIENT_ID: ${{ vars.OLEAFLY_DESKTOP_GITLAB_CLIENT_ID }}
+          # Google OAuth desktop client for Drive sync; empty hides Google Drive.
+          OLEAFLY_GOOGLE_CLIENT_ID: ${{ secrets.OLEAFLY_GOOGLE_CLIENT_ID }}
+          OLEAFLY_GOOGLE_CLIENT_SECRET: ${{ secrets.OLEAFLY_GOOGLE_CLIENT_SECRET }}
         with:
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: "Oleafly ${{ github.event.inputs.tag || github.ref_name }}"

@@ -240,7 +240,9 @@ describe("program row", () => {
       '@oleafly/error:{"code":"acp.program.network_path","params":{},"detail":null}',
     );
     fireEvent.click(ui.getByRole("button", { name: copy.choose }));
-    expect(await ui.findByRole("alert")).toHaveTextContent(
+    // Pick, check and the refused save each settle before the alert renders;
+    // under a full parallel run that chain can take longer than the 1 s default.
+    expect(await ui.findByRole("alert", {}, { timeout: 10_000 })).toHaveTextContent(
       "\\\\server\\share\\pi.exe is on a network location. Choose a program on this computer.",
     );
     expect(
