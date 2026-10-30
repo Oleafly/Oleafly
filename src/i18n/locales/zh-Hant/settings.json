@@ -633,6 +633,7 @@
         "swatchAriaLabel": "{{name}} 強調色"
       },
       "appIcon": {
+        "about": "應用程式圖示顯示的位置",
         "aurora": "極光",
         "blue": "藍色",
         "coral": "珊瑚",

@@ -637,6 +637,7 @@
         "swatchAriaLabel": "Korostusväri {{name}}"
       },
       "appIcon": {
+        "about": "Missä sovelluksen kuvake näkyy",
         "aurora": "Revontulet",
         "blue": "Sininen",
         "coral": "Koralli",

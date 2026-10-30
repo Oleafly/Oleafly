@@ -633,6 +633,7 @@
         "swatchAriaLabel": "{{name}} のアクセント"
       },
       "appIcon": {
+        "about": "アプリアイコンが表示される場所",
         "aurora": "オーロラ",
         "blue": "ブルー",
         "coral": "コーラル",

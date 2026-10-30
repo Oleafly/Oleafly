@@ -637,6 +637,7 @@
         "swatchAriaLabel": "{{name}} vurgusu"
       },
       "appIcon": {
+        "about": "Uygulama simgesinin göründüğü yerler",
         "aurora": "Aurora",
         "blue": "Mavi",
         "coral": "Mercan",

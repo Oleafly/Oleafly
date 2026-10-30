@@ -637,6 +637,7 @@
         "swatchAriaLabel": "Akzent {{name}}"
       },
       "appIcon": {
+        "about": "Wo das App-Symbol erscheint",
         "aurora": "Polarlicht",
         "blue": "Blau",
         "coral": "Koralle",

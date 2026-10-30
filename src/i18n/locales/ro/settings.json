@@ -641,6 +641,7 @@
         "swatchAriaLabel": "Accent {{name}}"
       },
       "appIcon": {
+        "about": "Unde apare pictograma aplicației",
         "aurora": "Auroră",
         "blue": "Albastră",
         "coral": "Coral",

@@ -641,6 +641,7 @@
         "swatchAriaLabel": "Accento {{name}}"
       },
       "appIcon": {
+        "about": "Dove compare l'icona dell'app",
         "aurora": "Aurora",
         "blue": "Blu",
         "coral": "Corallo",

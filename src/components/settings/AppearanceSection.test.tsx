@@ -220,9 +220,23 @@ describe("Appearance settings tabs", () => {
     render(<AppearanceSection />);
 
     const row = screen.getByTestId("settings-row-app-icon");
+    expect(
+      screen.getByTestId("theme-customization").compareDocumentPosition(row) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(within(row).getByText(appearance.app.appIcon.label)).toBeInTheDocument();
     expect(within(row).getByText(appearance.app.appIcon.description)).toBeInTheDocument();
-    expect(within(row).getByText(appearance.app.appIcon.note)).toBeInTheDocument();
+    expect(row).toHaveAttribute("data-state", "closed");
+    expect(row.querySelector("img")).toHaveAttribute("src", "/app-icon/blue.png");
+    expect(within(row).queryByRole("button", { name: appearance.app.appIcon.blue })).toBeNull();
+    expect(within(row).queryByText(appearance.app.appIcon.note)).toBeNull();
+
+    await user.hover(within(row).getByRole("button", { name: appearance.app.appIcon.about }));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(appearance.app.appIcon.note);
+    expect(row).toHaveAttribute("data-state", "closed");
+
+    await user.click(screen.getByTestId("settings-row-app-icon-toggle"));
+    expect(row).toHaveAttribute("data-state", "open");
     const blue = within(row).getByRole("button", { name: appearance.app.appIcon.blue });
     const light = within(row).getByRole("button", { name: appearance.app.appIcon.light });
     expect(blue.querySelector("img")).toHaveAttribute("src", "/app-icon/blue.png");

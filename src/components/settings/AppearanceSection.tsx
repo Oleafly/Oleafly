@@ -52,6 +52,7 @@ import {
   TERMINAL_FONTS,
   TYPST_FORMATTER_INDENT_SIZES,
   TYPST_FORMATTER_LINE_WIDTHS,
+  appIconSource,
   clampEditorFontSize,
   clampEditorLetterSpacing,
   clampEditorLineHeight,
@@ -74,6 +75,8 @@ import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { ThemeCustomization } from "@/components/settings/ThemeCustomization";
 import { EditorColors } from "@/components/settings/EditorColors";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
+import { InfoHint } from "@/components/ui/info-hint";
 
 const APPEARANCE_TABS = [
   { id: "app", label: () => i18n.t(($) => $.settings.appearance.tabs.app) },
@@ -240,43 +243,6 @@ function AppAppearanceTab() {
         </div>
       </div>
 
-      <div data-testid="settings-row-app-icon" className="rounded-lg border bg-card p-3">
-        <div className="text-sm font-medium">
-          {t(($) => $.settings.appearance.app.appIcon.label)}
-        </div>
-        <div className="mb-2 text-xs text-muted-foreground">
-          {t(($) => $.settings.appearance.app.appIcon.description)}
-        </div>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {APP_ICONS.map((option) => {
-            const active = appIcon === option.id;
-            return (
-              <button
-                type="button"
-                key={option.id}
-                data-testid={`settings-app-icon-${option.id}`}
-                aria-pressed={active}
-                onClick={() => setAppIcon(option.id)}
-                className={cn(
-                  "flex min-w-0 flex-col items-center gap-2 rounded-md border p-3 text-center text-xs font-medium break-words transition-colors",
-                  active
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:bg-accent",
-                )}
-              >
-                <div className="flex h-14 w-full items-center justify-center rounded bg-muted">
-                  <img src={option.src} alt="" draggable={false} className="size-10" />
-                </div>
-                {appIconLabels[option.id]}
-              </button>
-            );
-          })}
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {t(($) => $.settings.appearance.app.appIcon.note)}
-        </p>
-      </div>
-
       <SettingsRow
         testId="settings-row-accent"
         className="flex-wrap gap-y-2"
@@ -382,6 +348,51 @@ function AppAppearanceTab() {
         onChange={setAppFontFamily}
       />
       <ThemeCustomization />
+
+      <CollapsibleSection
+        id="settings-row-app-icon"
+        leading={
+          <img
+            src={appIconSource(appIcon)}
+            alt=""
+            draggable={false}
+            className="size-4 shrink-0"
+          />
+        }
+        title={t(($) => $.settings.appearance.app.appIcon.label)}
+        description={t(($) => $.settings.appearance.app.appIcon.description)}
+        trailing={
+          <InfoHint label={t(($) => $.settings.appearance.app.appIcon.about)}>
+            {t(($) => $.settings.appearance.app.appIcon.note)}
+          </InfoHint>
+        }
+      >
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {APP_ICONS.map((option) => {
+            const active = appIcon === option.id;
+            return (
+              <button
+                type="button"
+                key={option.id}
+                data-testid={`settings-app-icon-${option.id}`}
+                aria-pressed={active}
+                onClick={() => setAppIcon(option.id)}
+                className={cn(
+                  "flex min-w-0 flex-col items-center gap-2 rounded-md border p-3 text-center text-xs font-medium break-words transition-colors",
+                  active
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:bg-accent",
+                )}
+              >
+                <div className="flex h-14 w-full items-center justify-center rounded bg-muted">
+                  <img src={option.src} alt="" draggable={false} className="size-10" />
+                </div>
+                {appIconLabels[option.id]}
+              </button>
+            );
+          })}
+        </div>
+      </CollapsibleSection>
     </div>
   );
 }

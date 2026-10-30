@@ -645,6 +645,7 @@
         "swatchAriaLabel": "Zvýraznění {{name}}"
       },
       "appIcon": {
+        "about": "Kde se ikona aplikace zobrazuje",
         "aurora": "Polární záře",
         "blue": "Modrá",
         "coral": "Korál",
