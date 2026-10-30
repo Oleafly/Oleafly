@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AppWindow, GitBranch, LibraryBig } from "lucide-react";
+import { GitBranch, LibraryBig, MousePointer2 } from "lucide-react";
 import { McpBrandIcon } from "@/components/ai/McpBrandIcon";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GitHostingSection } from "@/components/settings/git-hosting/GitHostingSection";
@@ -29,8 +29,12 @@ export function IntegrationsSection() {
   const setScrollTarget = useSettingsStore(
     (state) => state.setSettingsScrollTarget,
   );
+  const settingsOpen = useSettingsStore((state) => state.settingsOpen);
 
   useEffect(() => {
+    // A target set as Settings closes is for the next time it opens; this
+    // copy is on its way out with the closing dialog.
+    if (!settingsOpen) return;
     if (scrollTarget === "git-hosting" || scrollTarget === "github") {
       setTab("git-hosting");
       setScrollTarget(null);
@@ -51,7 +55,7 @@ export function IntegrationsSection() {
       setOleaflyMcpVisited(true);
       setScrollTarget(null);
     }
-  }, [scrollTarget, setScrollTarget]);
+  }, [settingsOpen, scrollTarget, setScrollTarget]);
 
   return (
     <Tabs
@@ -70,10 +74,6 @@ export function IntegrationsSection() {
         <TabsTrigger value="overleaf" data-testid="integrations-tab-overleaf">
           <OverleafBrandIcon className="mr-1.5 size-3.5 text-[#47A141]" />
           {"Overleaf"}
-        </TabsTrigger>
-        <TabsTrigger value="desktop-apps" data-testid="integrations-tab-desktop-apps">
-          <AppWindow className="mr-1.5 size-3.5" />
-          {t(($) => $.settings.integrations.desktopApps.tab)}
         </TabsTrigger>
         <TabsTrigger
           value="alphaxiv"
@@ -100,19 +100,16 @@ export function IntegrationsSection() {
           <McpBrandIcon className="mr-1.5 size-3.5" />
           {"Oleafly MCP"}
         </TabsTrigger>
+        <TabsTrigger value="desktop-apps" data-testid="integrations-tab-desktop-apps">
+          <MousePointer2 className="mr-1.5 size-3.5" />
+          {t(($) => $.settings.integrations.desktopApps.tab)}
+        </TabsTrigger>
       </TabsList>
       <TabsContent value="git-hosting">
         <GitHostingSection />
       </TabsContent>
       <TabsContent value="overleaf">
         <OverleafSection />
-      </TabsContent>
-      <TabsContent value="desktop-apps">
-        {tab === "desktop-apps" ? (
-          <Suspense fallback={null}>
-            <DesktopAppsSection />
-          </Suspense>
-        ) : null}
       </TabsContent>
       <TabsContent value="alphaxiv">
         <AlphaXivSection />
@@ -132,6 +129,13 @@ export function IntegrationsSection() {
           <McpSection />
         </TabsContent>
       ) : null}
+      <TabsContent value="desktop-apps">
+        {tab === "desktop-apps" ? (
+          <Suspense fallback={null}>
+            <DesktopAppsSection />
+          </Suspense>
+        ) : null}
+      </TabsContent>
     </Tabs>
   );
 }

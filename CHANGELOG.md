@@ -152,9 +152,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   app's KaTeX instead of bundling an older copy. Cloud sync only loads its
   background code on a computer connected to Dropbox, Google Drive or an S3
   bucket, or once you open Settings.
-- GitLab, Codeberg, Gitea and Forgejo accounts show their real logos: in the
-  add-account choices, in Settings, in the remote menu, in the publish dialog
-  and beside each repository. The publish dialog's account picker moved to
+- GitLab, Codeberg, Gitea and Forgejo accounts show their real logos, GitLab's
+  and Codeberg's in their own colours: in the add-account choices, in
+  Settings, in the remote menu, in the publish dialog and beside each
+  repository. The publish dialog's account picker moved to
   the bottom left, beside the button.
 - In Settings, each Git hosting account keeps its actions on the right and
   signs out with an icon button. The server name shows only when it differs
@@ -166,9 +167,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   first in the provider list and is preselected until you set up a provider.
 - New app icon: a quill in a pastel gradient, cyan to amber, on a light
   tile. The quill inside the app is blue.
+- Desktop apps is now called Computer Use. Its tab in Settings > Integrations
+  has a cursor icon and comes after Oleafly MCP, and the app picker shows
+  each app's icon.
+- Cloud sync shows Google Drive's own four-colour logo and gives S3 a green
+  tile. The page your browser opens after you sign in to Google Drive looks
+  like the collaboration sign-in pages.
 
 ### Fixed
 
+- Computer Use works with Cua Driver 0.38, the version its installer gives
+  you now. Oleafly refused to start every 0.38 driver, saying it wasn't
+  running with Oleafly's limits, because 0.38 words that check's answer
+  differently.
+- Computer Use can find the windows of the apps you allowed again. Cua
+  Driver 0.38 refuses to list every app or window, so agents saw nothing and
+  were told the app wasn't allowed. Oleafly now finds the allowed apps that
+  run and asks for their windows one app at a time.
+- Computer Use only opens apps on your list. Cua Driver 0.38 opens any app
+  it's asked to, so Oleafly now checks the app first.
+- An agent on a model that reads only text, such as GLM-5.3, no longer
+  fails when a tool returns a picture, for example a Computer Use
+  screenshot. The provider turned the whole request down; now the picture is
+  left out and the model works from the text.
+- More code editors can't be added to Computer Use, because they run code
+  or commands without asking you: Sublime Text, BBEdit, Nova, Xcode,
+  Antigravity, Kiro, MacVim and Emacs.
+- Computer Use's setup is clearer. Settings asks for the macOS permissions
+  only once Cua Driver is installed and new enough, says when Cua Driver
+  hasn't checked them yet instead of "couldn't read", and shows the grant
+  command to copy when no project is open. After you run a step in the
+  terminal, Settings opens on Computer Use again, and the command in the
+  terminal's confirmation wraps instead of running off the edge. A Cua Driver
+  start that stops at its own permissions prompt says so.
+- Google Drive sync makes far fewer requests. Uploading a project creates
+  each folder once and looks up each folder's files once, instead of asking
+  for every file by name.
 - The Oleafly icon no longer looks bigger than other apps' icons in the Dock
   and Finder on macOS 15 and earlier. The bundled icon and the icons in
   Settings > Appearance now leave the margin macOS expects around an app icon.

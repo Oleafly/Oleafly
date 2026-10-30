@@ -1706,8 +1706,8 @@
       "gitFailed": "Oleafly ei voinut tallentaa Git-tokenia. Tarkista, että liitit koko tokenin."
     },
     "desktopApps": {
-      "tab": "Työpöytäsovellukset",
-      "title": "Työpöytäsovellukset",
+      "tab": "Computer Use",
+      "title": "Computer Use",
       "description": "Anna agenttien käyttää tämän koneen sovelluksia ja sivustoja Cua Driver -ohjelman kautta. Oleafly kysyy ennen jokaista toimintoa, ellet salli sellaista toimintoa keskustelussa, istunnossa tai tehtävässä. Kirjautunut selaimesi ja skriptit kysyvät aina.",
       "docsLink": "Cua Driver -ohjeet",
       "status": {
@@ -1733,6 +1733,7 @@
         "granted": "Cua Driver voi käyttää Käyttöapu- ja Näytön tallennus -oikeuksia.",
         "needed": "Cua Driver tarvitsee Käyttöapu- ja Näytön tallennus -oikeudet. Suorita käyttöoikeuksien myöntövaihe ja seuraa ohjeita.",
         "unknown": "Oleafly ei voinut lukea Cua Driver -ohjelman käyttöoikeuksia.",
+        "unchecked": "Cua Driver -ohjelma ei ole vielä tarkistanut käyttöoikeuksiaan. Valitse ”Myönnä käyttöoikeudet” ja ota sitten Käyttöapu ja Näytön tallennus käyttöön CuaDriverille kohdassa Järjestelmäasetukset.",
         "grant": "Myönnä käyttöoikeudet",
         "terminalTitle": "Cua Driver -käyttöoikeudet"
       },
@@ -1784,7 +1785,7 @@
         "signedIn": {
           "label": "Käytä selainta, johon olen kirjautunut",
           "labelFor": "Käytä selainta, johon olen kirjautunut, osoitteessa {{origin}}",
-          "description": "Agentit toimivat tällä sivustolla omassa Chrome- tai Edge-selaimessasi. Jätä tämä pois käytöstä, jos haluat käyttää erillistä selainprofiilia."
+          "description": "Ota sivustolla käyttöön ”Käytä selainta, johon olen kirjautunut”, niin agentit toimivat siellä omassa Chrome- tai Edge-selaimessasi. Kun asetus on pois käytöstä, ne käyttävät erillistä selainprofiilia."
         }
       },
       "scripted": {
@@ -1803,9 +1804,9 @@
         "note": "Katsominen tapahtuu heti. Napsautukset, kirjoittaminen ja sivunvaihdot kysyvät ensin, ellet salli niitä keskustelussa."
       },
       "task": {
-        "label": "Työpöytäsovellukset",
+        "label": "Computer Use",
         "description": "Anna tämän tehtävän käyttää sallittuja työpöytäsovelluksiasi. Sinun täytyy olla koneen ääressä hyväksymässä toiminnot.",
-        "off": "Ota ensin Työpöytäsovellukset käyttöön asetuksissa.",
+        "off": "Ota ensin Computer Use -toiminto käyttöön asetuksissa.",
         "unattended": "Ajastetut tehtävät ja Oleaflyn sulkemisen jälkeen jatkuvat tehtävät eivät voi käyttää työpöytäsovelluksia."
       },
       "spaces": {

@@ -4,7 +4,7 @@
   "packs": [
     {
       "id": "research-core",
-      "version": "2026.10.19.b7a82f61",
+      "version": "2026.10.19.d7cafe8b",
       "kind": "bundled"
     }
   ],
@@ -26,12 +26,12 @@
     },
     {
       "id": "desktop-apps",
-      "name": "Desktop apps",
+      "name": "Computer Use",
       "description": "Work in desktop apps and websites the user allowed, through the desktop_apps tool. Use when the user asks to do something inside an app such as Zotero, Excel, Word, SPSS, Stata or Prism, or on a website such as a journal submission site or a library database, and no Oleafly tool or connector can do it.",
       "phase": "tooling",
       "license": "MIT",
       "version": "1.0.0",
-      "bytes": 4431,
+      "bytes": 4504,
       "files": 1,
       "pack": "research-core"
     },
@@ -113,7 +113,7 @@
       "phase": "tooling",
       "license": "MIT",
       "version": "1.0.0",
-      "bytes": 10116,
+      "bytes": 10411,
       "files": 2,
       "pack": "research-core"
     },

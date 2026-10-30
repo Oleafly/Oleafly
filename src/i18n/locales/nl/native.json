@@ -107,7 +107,7 @@
       "confirm": "Toestaan op deze computer"
     },
     "desktopApps": {
-      "title": "Desktop-apps",
+      "title": "Computer Use",
       "action": "{{agent}} wil {{action}}.",
       "steps": "{{agent}} wil deze stappen uitvoeren in een desktop-app:",
       "moreSteps": "Stappen die niet getoond en niet uitgevoerd worden: {{count}}",
@@ -149,7 +149,7 @@
       "title": "Bediening van de desktop toestaan?",
       "message": "Agents kunnen het volgende gebruiken. Ze vragen het voor elke actie, en als je dit opslaat, vervallen alle keuzes voor 'Toestaan voor deze chat':",
       "confirm": "Toestaan",
-      "enabled": "Desktop-apps",
+      "enabled": "Computer Use",
       "app": "App: {{identity}} ({{name}})",
       "more": "En nog {{count}}",
       "site": "Website: {{origin}}",

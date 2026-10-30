@@ -1706,8 +1706,8 @@
       "gitFailed": "Oleafly kunne ikke lagre Git-tokenet. Sjekk at du limte inn hele tokenet."
     },
     "desktopApps": {
-      "tab": "Skrivebordsapper",
-      "title": "Skrivebordsapper",
+      "tab": "Computer Use",
+      "title": "Computer Use",
       "description": "La agenter bruke apper og nettsteder på denne maskinen via Cua Driver. Oleafly spør før hver handling, med mindre du tillater den typen handling for samtalen, økten eller oppgaven. Den innloggede nettleseren din og skript spør alltid.",
       "docsLink": "Dokumentasjon for Cua Driver",
       "status": {
@@ -1733,6 +1733,7 @@
         "granted": "Cua Driver kan bruke Tilgjengelighet og Skjermopptak.",
         "needed": "Cua Driver trenger Tilgjengelighet og Skjermopptak. Kjør trinnet som gir tillatelsene, og følg instruksjonene.",
         "unknown": "Oleafly kunne ikke lese tillatelsene til Cua Driver.",
+        "unchecked": "Cua Driver har ikke sjekket tillatelsene sine ennå. Bruk «Gi tillatelser», og slå deretter på Tilgjengelighet og Skjermopptak for CuaDriver i Systeminnstillinger.",
         "grant": "Gi tillatelser",
         "terminalTitle": "Tillatelser for Cua Driver"
       },
@@ -1784,7 +1785,7 @@
         "signedIn": {
           "label": "Bruk den innloggede nettleseren min",
           "labelFor": "Bruk den innloggede nettleseren min på {{origin}}",
-          "description": "Agenter jobber i din egen Chrome eller Edge på dette nettstedet. La det være av for å bruke en separat nettleserprofil."
+          "description": "Slå på «Bruk den innloggede nettleseren min» for et nettsted, så jobber agentene i din egen Chrome eller Edge der. Er den av, bruker de en separat nettleserprofil."
         }
       },
       "scripted": {
@@ -1803,9 +1804,9 @@
         "note": "Å se skjer med en gang. Klikk, skriving og sidebytter spør først, med mindre du tillater dem for samtalen."
       },
       "task": {
-        "label": "Skrivebordsapper",
+        "label": "Computer Use",
         "description": "La denne oppgaven bruke de tillatte skrivebordsappene dine. Du må være ved maskinen for å godkjenne handlinger.",
-        "off": "Slå på Skrivebordsapper i Innstillinger først.",
+        "off": "Slå på Computer Use i Innstillinger først.",
         "unattended": "Oppgaver som kjører etter en tidsplan eller etter at Oleafly er lukket, kan ikke bruke skrivebordsapper."
       },
       "spaces": {

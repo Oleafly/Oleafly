@@ -107,7 +107,7 @@
       "confirm": "Permite pe acest computer"
     },
     "desktopApps": {
-      "title": "Aplicații desktop",
+      "title": "Computer Use",
       "action": "{{agent}} vrea să {{action}}.",
       "steps": "{{agent}} vrea să facă acești pași într-o aplicație desktop:",
       "moreSteps": "Pași neafișați și neexecutați: {{count}}",
@@ -149,7 +149,7 @@
       "title": "Permiți controlul desktopului?",
       "message": "Agenții vor putea folosi următoarele. Cer voie înainte de fiecare acțiune, iar salvarea șterge toate alegerile „Permite pentru această conversație”:",
       "confirm": "Permite",
-      "enabled": "Aplicații desktop",
+      "enabled": "Computer Use",
       "app": "Aplicație: {{identity}} ({{name}})",
       "more": "Și încă {{count}}",
       "site": "Site: {{origin}}",

@@ -387,10 +387,10 @@
     "command_declined": "MCP 서버를 저장하지 않았습니다."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver가 설치되어 있지 않습니다. 설정 → 연동 → 데스크톱 앱에서 설치하세요.",
+    "not_installed": "Cua Driver가 설치되어 있지 않습니다. 설정 → 연동 → Computer Use에서 설치하세요.",
     "too_old": "Cua Driver {{version}}은(는) 너무 오래되었습니다. {{minimum}} 이상으로 업데이트하세요.",
     "no_app_bundle": "macOS 권한을 유지할 수 있도록 공식 설치 프로그램으로 Cua Driver를 설치하세요.",
-    "change_declined": "데스크톱 앱 설정을 이전 그대로 유지했습니다.",
+    "change_declined": "Computer Use 설정을 이전 그대로 유지했습니다.",
     "app_blocked": "에이전트는 {{name}}을(를) 사용할 수 없습니다.",
     "app_invalid": "Oleafly가 {{name}}을(를) 앱으로 사용할 수 없습니다.",
     "site_invalid": "“{{site}}”은(는) Oleafly가 사용할 수 있는 웹사이트 주소가 아닙니다. https://를 사용하고, 이 컴퓨터의 주소라면 http://를 사용하세요.",
@@ -398,7 +398,8 @@
     "too_many_sites": "웹사이트는 {{limit}}개까지 허용할 수 있습니다.",
     "start_failed": "Cua Driver를 시작하지 못했습니다: {{detail}}",
     "not_bounded": "Cua Driver가 Oleafly의 제한을 적용한 상태로 시작되지 않아 Oleafly가 중지했습니다.",
+    "needs_permissions": "Cua Driver가 macOS 권한을 기다리고 있습니다. 시스템 설정에서 CuaDriver에 대해 손쉬운 사용과 화면 기록을 켠 다음 다시 시도하세요.",
     "task_unattended": "예약에 따라 실행되거나 Oleafly를 닫은 뒤에 실행되는 작업은 데스크톱 앱을 사용할 수 없습니다.",
-    "main_window": "데스크톱 앱 설정은 기본 창에서 변경하세요."
+    "main_window": "Computer Use 설정은 기본 창에서 변경하세요."
   }
 }

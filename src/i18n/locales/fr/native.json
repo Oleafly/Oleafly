@@ -107,7 +107,7 @@
       "confirm": "Autoriser sur cet ordinateur"
     },
     "desktopApps": {
-      "title": "Applications de bureau",
+      "title": "Computer Use",
       "action": "{{agent}} veut {{action}}.",
       "steps": "{{agent}} veut effectuer ces étapes dans une application de bureau :",
       "moreSteps": "Étapes non affichées et non exécutées : {{count}}",
@@ -149,7 +149,7 @@
       "title": "Autoriser le contrôle du bureau ?",
       "message": "Les agents pourront utiliser les éléments suivants. Ils demandent avant chaque action, et l'enregistrement efface tous les choix « Autoriser pour cette discussion » :",
       "confirm": "Autoriser",
-      "enabled": "Applications de bureau",
+      "enabled": "Computer Use",
       "app": "Application : {{identity}} ({{name}})",
       "more": "Et {{count}} autres",
       "site": "Site web : {{origin}}",

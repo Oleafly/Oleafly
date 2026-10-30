@@ -1,5 +1,6 @@
 import { useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { AppWindow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,7 +17,7 @@ import { SettingsPath } from "@/components/settings/SettingsPath";
 import { describeError } from "@/lib/app-error";
 import { cuaDriverPickApp, type AllowedApp, type BlockReason, type InstalledApp } from "@/lib/desktop-apps";
 import { cn } from "@/lib/utils";
-import { appRowKey, matchApps, MAX_PICKER_ROWS, sameApp, useInstalledApps } from "./desktop-apps-queries";
+import { appRowKey, matchApps, MAX_PICKER_ROWS, sameApp, useAppIcons, useInstalledApps } from "./desktop-apps-queries";
 
 export interface AppPickerDialogProps {
   open: boolean;
@@ -39,6 +40,16 @@ function AppSubtitle({ app }: Readonly<{ app: InstalledApp }>) {
   return null;
 }
 
+/** The app's own icon, or a plain window until it loads or when it has none. */
+function AppIcon({ url }: Readonly<{ url: string | undefined }>) {
+  if (url) return <img src={url} alt="" draggable={false} className="size-8 shrink-0 object-contain" />;
+  return (
+    <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+      <AppWindow className="size-4" />
+    </span>
+  );
+}
+
 /** Picks an installed app agents may use. Blocked apps show why. */
 export default function AppPickerDialog({ open, onOpenChange, existing, onPick }: Readonly<AppPickerDialogProps>) {
   const { t } = useTranslation(["common", "settings"]);
@@ -50,6 +61,11 @@ export default function AppPickerDialog({ open, onOpenChange, existing, onPick }
   const [choosing, setChoosing] = useState(false);
   const matches = useMemo(() => matchApps(apps.data ?? [], query), [apps.data, query]);
   const shown = useMemo(() => matches.slice(0, MAX_PICKER_ROWS), [matches]);
+  const shownKeys = useMemo(() => shown.map(appRowKey), [shown]);
+  const icons = useAppIcons(shownKeys, apps.isSuccess);
+  // Add takes only a row the user can see: a search that hides the selected
+  // app leaves nothing to add until it shows again.
+  const chosen = selected && shown.some((app) => appRowKey(app) === appRowKey(selected)) ? selected : null;
 
   const blockedText = (reason: BlockReason) => t(($) => $.settings.integrations.desktopApps.apps.blocked[reason]);
 
@@ -112,18 +128,21 @@ export default function AppPickerDialog({ open, onOpenChange, existing, onPick }
                   onClick={() => setSelected(app)}
                   onDoubleClick={() => !unavailable && pick(app)}
                   className={cn(
-                    "flex h-auto w-full flex-col items-start justify-start gap-0.5 whitespace-normal border px-3 py-2 text-left font-normal",
+                    "flex h-auto w-full items-center justify-start gap-3 whitespace-normal border px-3 py-2 text-left font-normal",
                     "focus-visible:border-ring",
                     isSelected ? "border-primary bg-accent" : "border-transparent",
                   )}
                 >
-                  <span className="text-sm font-medium">{app.name}</span>
-                  <AppSubtitle app={app} />
-                  {unavailable ? (
-                    <span id={reasonId} className="text-xs text-muted-foreground">
-                      {app.blocked ? blockedText(app.blocked) : t(($) => $.settings.integrations.desktopApps.apps.dialog.added)}
-                    </span>
-                  ) : null}
+                  <AppIcon url={icons[appRowKey(app)]} />
+                  <span className="flex min-w-0 flex-col items-start gap-0.5">
+                    <span className="text-sm font-medium">{app.name}</span>
+                    <AppSubtitle app={app} />
+                    {unavailable ? (
+                      <span id={reasonId} className="text-xs text-muted-foreground">
+                        {app.blocked ? blockedText(app.blocked) : t(($) => $.settings.integrations.desktopApps.apps.dialog.added)}
+                      </span>
+                    ) : null}
+                  </span>
                 </Button>
               </li>
             );
@@ -184,7 +203,7 @@ export default function AppPickerDialog({ open, onOpenChange, existing, onPick }
             <Button type="button" variant="ghost" onClick={close}>
               {t(($) => $.common.actions.cancel)}
             </Button>
-            <Button type="button" disabled={!selected} onClick={() => selected && pick(selected)}>
+            <Button type="button" disabled={!chosen} onClick={() => chosen && pick(chosen)}>
               {t(($) => $.settings.integrations.desktopApps.apps.dialog.add)}
             </Button>
           </div>

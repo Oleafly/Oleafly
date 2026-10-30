@@ -16,7 +16,7 @@ use futures_util::stream::{self, StreamExt};
 use oleafly_core::content::{ContentHash, ContentHasher};
 use reqwest::Method;
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -76,6 +76,11 @@ pub(crate) struct DriveStore {
     paths: Mutex<HashMap<String, Item>>,
     /// Folder ids to their names, for mapping changes back to paths.
     names: Mutex<HashMap<String, String>>,
+    /// Folders the upload batch in flight read in full, with every name found
+    /// in each. A name that isn't there needs no lookup before it goes up. It
+    /// holds only while that batch runs, so another computer's new files show
+    /// up again in the next one.
+    indexed: Mutex<HashMap<String, HashSet<String>>>,
 }
 
 enum Body {
@@ -148,6 +153,7 @@ impl DriveStore {
             timeout: request,
             paths: Mutex::new(HashMap::new()),
             names: Mutex::new(HashMap::new()),
+            indexed: Mutex::new(HashMap::new()),
         }
     }
 
@@ -398,6 +404,166 @@ impl DriveStore {
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         let inside = format!("{path}/");
         paths.retain(|known, _| known != path && !known.starts_with(&inside));
+        drop(paths);
+        self.indexed
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .retain(|known, _| known != path && !known.starts_with(&inside));
+    }
+
+    /// Whether the batch in flight read the folder at `parent` and found
+    /// nothing named `name` in it.
+    fn known_absent(&self, parent: &str, name: &str) -> bool {
+        self.indexed
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(parent)
+            .is_some_and(|names| !names.contains(name))
+    }
+
+    /// Reads every child of the folder at `path` in one listing, so the files a
+    /// batch puts there need no lookup each. False when it couldn't, and the
+    /// files are looked up one by one as before.
+    async fn index_folder(&self, path: &str) -> StoreResult<bool> {
+        let Some(parents) = self.folders(path, false).await? else {
+            return Ok(false);
+        };
+        let within = parents
+            .iter()
+            .map(|parent| format!("'{}' in parents", escape(parent)))
+            .collect::<Vec<_>>()
+            .join(" or ");
+        let mut children: Vec<(String, Item)> = Vec::new();
+        let mut token: Option<String> = None;
+        let mut whole = false;
+        for _ in 0..MAX_LIST_PAGES {
+            let mut query = vec![
+                ("q", format!("({within}) and trashed = false")),
+                ("orderBy", "createdTime".to_string()),
+                (
+                    "fields",
+                    "nextPageToken,files(id,name,mimeType)".to_string(),
+                ),
+                ("pageSize", "1000".to_string()),
+                ("spaces", "drive".to_string()),
+            ];
+            if let Some(token) = &token {
+                query.push(("pageToken", token.clone()));
+            }
+            let value = self
+                .json(
+                    Method::GET,
+                    &format!("{}/files", self.endpoints.api),
+                    &query,
+                    &Body::None,
+                )
+                .await?
+                .unwrap_or_default();
+            for file in value["files"].as_array().into_iter().flatten() {
+                let (Some(name), Some(id)) = (file["name"].as_str(), file["id"].as_str()) else {
+                    continue;
+                };
+                let item = Item {
+                    id: id.to_string(),
+                    folder: file["mimeType"].as_str() == Some(FOLDER),
+                };
+                children.push((name.to_string(), item));
+            }
+            match value["nextPageToken"].as_str() {
+                Some(next) => token = Some(next.to_string()),
+                None => {
+                    whole = true;
+                    break;
+                }
+            }
+        }
+        if !whole {
+            return Ok(false);
+        }
+        // Oldest first, as a lookup by name picks. A name used by a file and a
+        // folder both stays out of the cache and is looked up as before.
+        let mut oldest: BTreeMap<&str, (Option<&Item>, Option<&Item>)> = BTreeMap::new();
+        for (name, item) in &children {
+            let entry = oldest.entry(name.as_str()).or_default();
+            let slot = if item.folder {
+                &mut entry.1
+            } else {
+                &mut entry.0
+            };
+            slot.get_or_insert(item);
+        }
+        for (name, kinds) in &oldest {
+            let child = if path.is_empty() {
+                (*name).to_string()
+            } else {
+                format!("{path}/{name}")
+            };
+            let only = match kinds {
+                (Some(item), None) | (None, Some(item)) => item,
+                _ => continue,
+            };
+            if self.cached(&child).is_none() {
+                self.remember(&child, &only.id, only.folder);
+            }
+        }
+        let names = oldest.keys().map(|name| (*name).to_string()).collect();
+        self.indexed
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(path.to_string(), names);
+        Ok(true)
+    }
+
+    /// Readies a batch: makes its missing folders a level at a time, so files
+    /// landing in the same new folder at once never each make it, then reads
+    /// each folder it writes into once. Returns the folders it read.
+    async fn prepare(&self, files: &[super::store::BatchFile]) -> Vec<String> {
+        let parents: BTreeSet<String> = files
+            .iter()
+            .map(|file| parent_of(&normalize(&file.remote)).0.to_string())
+            .collect();
+        let mut levels: BTreeMap<usize, BTreeSet<String>> = BTreeMap::new();
+        for parent in &parents {
+            let mut walked = String::new();
+            for (depth, segment) in parent.split('/').filter(|s| !s.is_empty()).enumerate() {
+                if !walked.is_empty() {
+                    walked.push('/');
+                }
+                walked.push_str(segment);
+                levels.entry(depth).or_default().insert(walked.clone());
+            }
+        }
+        // A folder that can't be made here fails its own files' uploads, which
+        // report why.
+        let _ = self.root(true).await;
+        for level in levels.into_values() {
+            let pending: Vec<_> = level.iter().map(|path| self.folders(path, true)).collect();
+            let _: Vec<_> = stream::iter(pending)
+                .buffer_unordered(UPLOAD_CONCURRENCY)
+                .collect()
+                .await;
+        }
+        let pending: Vec<_> = parents
+            .iter()
+            .map(|path| async move {
+                matches!(self.index_folder(path).await, Ok(true)).then(|| path.clone())
+            })
+            .collect();
+        stream::iter(pending)
+            .buffer_unordered(UPLOAD_CONCURRENCY)
+            .filter_map(|indexed| async move { indexed })
+            .collect()
+            .await
+    }
+
+    fn unindex(&self, folders: &[String]) {
+        let mut indexed = self
+            .indexed
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        for folder in folders {
+            indexed.remove(folder);
+        }
     }
 
     /// Every copy of the folder at `path`, oldest first, made on the way if
@@ -440,6 +606,9 @@ impl DriveStore {
             return Ok(Some(item.id));
         }
         let (parent, name) = parent_of(path);
+        if self.known_absent(parent, name) {
+            return Ok(None);
+        }
         let Some(parents) = self.folders(parent, false).await? else {
             return Ok(None);
         };
@@ -1230,6 +1399,7 @@ impl CloudStore for DriveStore {
         files: &[super::store::BatchFile],
         tick: &(dyn Fn() + Sync),
     ) -> Vec<StoreResult<Uploaded>> {
+        let indexed = self.prepare(files).await;
         // Collected before buffering, as the Send bound on commands needs.
         let pending: Vec<_> = files
             .iter()
@@ -1239,10 +1409,12 @@ impl CloudStore for DriveStore {
                 uploaded
             })
             .collect();
-        stream::iter(pending)
+        let uploaded = stream::iter(pending)
             .buffered(UPLOAD_CONCURRENCY)
             .collect()
-            .await
+            .await;
+        self.unindex(&indexed);
+        uploaded
     }
 
     async fn delete(&self, remote: &str, parent_rev: Option<&str>) -> StoreResult<()> {

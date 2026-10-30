@@ -1736,8 +1736,8 @@
       "gitFailed": "Oleafly nemohl uložit token Git. Zkontrolujte, že jste vložili celý token."
     },
     "desktopApps": {
-      "tab": "Aplikace v počítači",
-      "title": "Aplikace v počítači",
+      "tab": "Computer Use",
+      "title": "Computer Use",
       "description": "Povolte agentům používat aplikace a weby v tomto počítači přes Cua Driver. Oleafly se před každou akcí zeptá, pokud takový druh akce nepovolíte pro chat, relaci nebo úlohu. Váš přihlášený prohlížeč a skripty se ptají vždy.",
       "docsLink": "Dokumentace Cua Driver",
       "status": {
@@ -1763,6 +1763,7 @@
         "granted": "Cua Driver může používat Zpřístupnění a Nahrávání obrazovky.",
         "needed": "Cua Driver potřebuje Zpřístupnění a Nahrávání obrazovky. Spusťte krok udělení oprávnění a postupujte podle pokynů.",
         "unknown": "Oleafly nedokázal přečíst oprávnění Cua Driver.",
+        "unchecked": "Cua Driver ještě nezkontroloval svá oprávnění. Použijte tlačítko „Udělit oprávnění“ a potom v Nastavení systému zapněte pro CuaDriver Zpřístupnění a Nahrávání obrazovky.",
         "grant": "Udělit oprávnění",
         "terminalTitle": "Oprávnění Cua Driver"
       },
@@ -1814,7 +1815,7 @@
         "signedIn": {
           "label": "Použít můj přihlášený prohlížeč",
           "labelFor": "Použít můj přihlášený prohlížeč na {{origin}}",
-          "description": "Na tomto webu agenti pracují ve vašem vlastním Chrome nebo Edge. Ponechte vypnuté, chcete-li použít samostatný profil prohlížeče."
+          "description": "Zapněte u webu možnost „Použít můj přihlášený prohlížeč“, aby agenti na tomto webu pracovali ve vašem vlastním Chrome nebo Edge. Když je vypnutá, používají samostatný profil prohlížeče."
         }
       },
       "scripted": {
@@ -1833,9 +1834,9 @@
         "note": "Prohlížení proběhne hned. Kliknutí, psaní a změny stránky se nejdřív zeptají, pokud je nepovolíte pro chat."
       },
       "task": {
-        "label": "Aplikace v počítači",
+        "label": "Computer Use",
         "description": "Povolit této úloze používat povolené aplikace v počítači. Ke schvalování akcí musíte být u počítače.",
-        "off": "Nejdřív zapněte aplikace v počítači v Nastavení.",
+        "off": "Nejdřív zapněte funkci Computer Use v Nastavení.",
         "unattended": "Úlohy, které běží podle plánu nebo po zavření Oleafly, nemohou používat aplikace v počítači."
       },
       "spaces": {

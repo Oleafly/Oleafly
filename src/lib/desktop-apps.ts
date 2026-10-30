@@ -67,7 +67,12 @@ export interface DesktopAppsStatus {
   installLine: string;
   /** The same line as a program and its arguments, for the terminal. */
   installCommand: TerminalCommand;
-  permissions: { accessibility: boolean | null; screenRecording: boolean | null } | null;
+  permissions: {
+    accessibility: boolean | null;
+    screenRecording: boolean | null;
+    /** Cua Driver answered that it hasn't checked yet; the grant step finds out. */
+    unchecked?: boolean;
+  } | null;
   gnomeHelper: boolean | null;
   gnomeHelperLine: string | null;
   running: DesktopAppsRuntime[];
@@ -95,6 +100,10 @@ export const cuaDriverSettingsSet = (settings: DesktopAppsSettings) =>
 export const cuaDriverInstalledApps = () => invoke<InstalledApp[]>("cua_driver_installed_apps");
 
 export const cuaDriverPickApp = () => invoke<InstalledApp | null>("cua_driver_pick_app");
+
+/** The picker rows' icons as data URLs, by row key; apps without one are left out. */
+export const cuaDriverAppIcons = (keys: string[]) =>
+  invoke<Record<string, string>>("cua_driver_app_icons", { keys });
 
 export const cuaDriverTest = () => invoke<DesktopAppsTestReport>("cua_driver_test");
 

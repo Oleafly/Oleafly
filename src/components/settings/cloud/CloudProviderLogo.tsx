@@ -14,18 +14,26 @@ function DropboxBrandIcon({ className }: BrandIconProps) {
   );
 }
 
+// Google's four-colour Drive mark, so it sits on white like Google's own icon.
 function GoogleDriveBrandIcon({ className }: BrandIconProps) {
   return (
-    <BrandSvg className={className} viewBox="0 0 24 24">
-      <path d="M12.01 1.485c-2.082 0-3.754.02-3.743.047.01.02 1.708 3.001 3.774 6.62l3.76 6.574h3.76c2.081 0 3.753-.02 3.742-.047-.005-.02-1.708-3.001-3.775-6.62l-3.76-6.574zm-4.76 1.73a789.828 789.861 0 0 0-3.63 6.319L0 15.868l1.89 3.298 1.885 3.297 3.62-6.335 3.618-6.33-1.88-3.287C8.1 4.704 7.255 3.22 7.25 3.214zm2.259 12.653-.203.348c-.114.198-.96 1.672-1.88 3.287a423.93 423.948 0 0 1-1.698 2.97c-.01.026 3.24.042 7.222.042h7.244l1.796-3.157c.992-1.734 1.85-3.23 1.906-3.323l.104-.167h-7.249z" />
+    <BrandSvg className={className} viewBox="0 0 87.3 78">
+      <path fill="#0066DA" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" />
+      <path fill="#00AC47" d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0-1.2 4.5h27.5z" />
+      <path fill="#EA4335" d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" />
+      <path fill="#00832D" d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" />
+      <path fill="#2684FC" d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" />
+      <path fill="#FFBA00" d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" />
     </BrandSvg>
   );
 }
 
 const LOOK: Readonly<Record<CloudProviderKind, { icon: ComponentType<{ className?: string }>; tile: string }>> = {
   dropbox: { icon: DropboxBrandIcon, tile: "bg-[#0061FF] text-white" },
-  google_drive: { icon: GoogleDriveBrandIcon, tile: "bg-[#4285F4] text-white" },
-  s3: { icon: Database, tile: "bg-muted text-foreground" },
+  google_drive: { icon: GoogleDriveBrandIcon, tile: "border border-border bg-white" },
+  // S3's storage green, but no Amazon mark: the card covers every
+  // S3-compatible service, not only Amazon's.
+  s3: { icon: Database, tile: "bg-[#7AA116] text-white" },
 };
 
 const SIZE_CLASS = {

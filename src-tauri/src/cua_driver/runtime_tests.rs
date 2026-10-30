@@ -727,6 +727,36 @@ async fn a_deny_rule_refuses_before_the_driver() {
 }
 
 #[tokio::test]
+async fn oleafly_answers_list_apps_from_the_allowed_apps() {
+    // Cua Driver 0.38 refuses an unbounded list of apps or windows, so
+    // neither reaches the driver; a list of one app's windows does.
+    let mut config = settings(&[]);
+    // No computer runs this app, whatever the test machine has open.
+    config.apps = vec![AllowedApp {
+        name: "Nowhere".into(),
+        bundle_id: Some("org.example.never-installed".into()),
+        executable: Some("/nonexistent/oleafly-test-app".into()),
+    }];
+    let f = fixture(config, &[], ScriptedApprover::default());
+    let apps = dispatch(&f, &chat("run:a"), json!({"tool": "list_apps"})).await;
+    assert!(!apps.is_error, "{}", apps.text);
+    assert!(apps.text.starts_with("Allowed apps:"), "{}", apps.text);
+    assert!(apps.text.contains("Nowhere"), "{}", apps.text);
+    let windows = dispatch(&f, &chat("run:a"), json!({"tool": "list_windows"})).await;
+    assert!(!windows.is_error, "{}", windows.text);
+    assert!(
+        windows.text.contains("None of the allowed apps is running"),
+        "{}",
+        windows.text
+    );
+    assert!(!f
+        .launcher
+        .calls()
+        .iter()
+        .any(|entry| entry["tool"] == "list_apps" || entry["tool"] == "list_windows"));
+}
+
+#[tokio::test]
 async fn the_session_option_grants_only_that_tool_for_that_key() {
     let f = fixture(
         settings(&[]),
@@ -954,7 +984,12 @@ async fn images_reach_the_agent_as_data_urls() {
 #[tokio::test]
 async fn turn_end_ends_the_label_and_a_new_turn_starts_fresh() {
     let f = fixture(settings(&[]), &[], ScriptedApprover::default());
-    dispatch(&f, &chat("run:A"), json!({"tool": "list_windows"})).await;
+    dispatch(
+        &f,
+        &chat("run:A"),
+        json!({"tool": "list_windows", "args": {"pid": 1}}),
+    )
+    .await;
     let first = session_label("Assistant", "run:A");
     turn_ended_in(&f.state, "run:A");
     assert!(
@@ -964,7 +999,12 @@ async fn turn_end_ends_the_label_and_a_new_turn_starts_fresh() {
             }))
             .await
     );
-    dispatch(&f, &chat("run:B"), json!({"tool": "list_windows"})).await;
+    dispatch(
+        &f,
+        &chat("run:B"),
+        json!({"tool": "list_windows", "args": {"pid": 1}}),
+    )
+    .await;
     let second = session_label("Assistant", "run:B");
     assert!(f.launcher.calls().iter().any(|entry| {
         entry["tool"] == "start_session" && entry["args"]["session"] == second.as_str()
@@ -974,7 +1014,12 @@ async fn turn_end_ends_the_label_and_a_new_turn_starts_fresh() {
 #[tokio::test]
 async fn dropping_the_turn_guard_ends_the_session() {
     let f = fixture(settings(&[]), &[], ScriptedApprover::default());
-    dispatch(&f, &chat("run:a"), json!({"tool": "list_windows"})).await;
+    dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "list_windows", "args": {"pid": 1}}),
+    )
+    .await;
     let label = session_label("Assistant", "run:a");
     drop(TurnEndGuard::with_state(f.state.clone(), "run:a".into()));
     assert!(
@@ -1865,7 +1910,12 @@ async fn the_dialog_names_the_app_window_and_element_the_driver_described() {
         &[("FAKE_STRUCTURED", "1")],
         ScriptedApprover::with(&[Answer::Once]),
     );
-    dispatch(&f, &chat("run:a"), json!({"tool": "list_windows"})).await;
+    dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "list_windows", "args": {"pid": 4312}}),
+    )
+    .await;
     dispatch(
         &f,
         &chat("run:a"),
@@ -1946,7 +1996,7 @@ async fn turning_desktop_apps_off_while_a_dialog_is_open_says_they_are_off() {
     assert!(outcome.is_error);
     assert_eq!(
         outcome.text,
-        "Desktop apps are off. The user can turn them on in Settings > Integrations > Desktop apps."
+        "Computer Use is off. The user can turn it on in Settings > Integrations > Computer Use."
     );
     assert!(!f.launcher.tools().contains(&"click".to_string()));
 }
@@ -1977,7 +2027,12 @@ async fn an_answer_too_large_to_read_says_how_to_ask_for_less_and_keeps_the_daem
     assert_eq!(f.state.runtimes.running(), vec![RuntimeKind::Desktop]);
     // The next call gets a new session on the same daemon, with no second
     // start (and no second bounded self-check).
-    let next = dispatch(&f, &chat("run:a"), json!({"tool": "list_windows"})).await;
+    let next = dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "list_windows", "args": {"pid": 1}}),
+    )
+    .await;
     assert!(!next.is_error, "{}", next.text);
     assert_eq!(f.launcher.opened(RuntimeKind::Desktop), 2);
     let self_checks = f

@@ -387,10 +387,10 @@
     "command_declined": "The MCP server wasn't saved."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver isn't installed. Install it from Settings, Integrations, Desktop apps.",
+    "not_installed": "Cua Driver isn't installed. Install it from Settings, Integrations, Computer Use.",
     "too_old": "Cua Driver {{version}} is too old. Update it to {{minimum}} or newer.",
     "no_app_bundle": "Install Cua Driver with the official installer so it can hold the macOS permissions.",
-    "change_declined": "You kept your previous Desktop apps settings.",
+    "change_declined": "You kept your previous Computer Use settings.",
     "app_blocked": "Agents can't use {{name}}.",
     "app_invalid": "Oleafly can't use {{name}} as an app.",
     "site_invalid": "\"{{site}}\" isn't a website address Oleafly can use. Use https://, or http:// for this computer.",
@@ -398,7 +398,8 @@
     "too_many_sites": "You can allow up to {{limit}} websites.",
     "start_failed": "Cua Driver couldn't start: {{detail}}",
     "not_bounded": "Cua Driver didn't start with Oleafly's limits, so Oleafly stopped it.",
+    "needs_permissions": "Cua Driver is waiting for its macOS permissions. Turn on Accessibility and Screen Recording for CuaDriver in System Settings, then try again.",
     "task_unattended": "Tasks that run on a schedule or after Oleafly closes can't use desktop apps.",
-    "main_window": "Change Desktop apps from the main window."
+    "main_window": "Change Computer Use from the main window."
   }
 }

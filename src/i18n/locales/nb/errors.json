@@ -387,10 +387,10 @@
     "command_declined": "MCP-serveren ble ikke lagret."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver er ikke installert. Installer den under Innstillinger, Integrasjoner, Skrivebordsapper.",
+    "not_installed": "Cua Driver er ikke installert. Installer den under Innstillinger, Integrasjoner, Computer Use.",
     "too_old": "Cua Driver {{version}} er for gammel. Oppdater til {{minimum}} eller nyere.",
     "no_app_bundle": "Installer Cua Driver med det offisielle installasjonsprogrammet, slik at den kan få macOS-tillatelsene.",
-    "change_declined": "Du beholdt de tidligere innstillingene for Skrivebordsapper.",
+    "change_declined": "Du beholdt de tidligere innstillingene for Computer Use.",
     "app_blocked": "Agenter kan ikke bruke {{name}}.",
     "app_invalid": "Oleafly kan ikke bruke {{name}} som app.",
     "site_invalid": "«{{site}}» er ikke en nettstedsadresse Oleafly kan bruke. Bruk https://, eller http:// for denne maskinen.",
@@ -398,7 +398,8 @@
     "too_many_sites": "Du kan tillate opptil {{limit}} nettsteder.",
     "start_failed": "Cua Driver kunne ikke starte: {{detail}}",
     "not_bounded": "Cua Driver startet ikke med grensene til Oleafly, så Oleafly stoppet den.",
+    "needs_permissions": "Cua Driver venter på macOS-tillatelsene sine. Slå på Tilgjengelighet og Skjermopptak for CuaDriver i Systeminnstillinger, og prøv igjen.",
     "task_unattended": "Oppgaver som kjører etter en tidsplan eller etter at Oleafly er lukket, kan ikke bruke skrivebordsapper.",
-    "main_window": "Endre Skrivebordsapper fra hovedvinduet."
+    "main_window": "Endre Computer Use fra hovedvinduet."
   }
 }

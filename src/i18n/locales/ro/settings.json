@@ -1721,8 +1721,8 @@
       "gitFailed": "Oleafly nu a putut salva tokenul Git. Verifică dacă ai lipit tot tokenul."
     },
     "desktopApps": {
-      "tab": "Aplicații desktop",
-      "title": "Aplicații desktop",
+      "tab": "Computer Use",
+      "title": "Computer Use",
       "description": "Permite agenților să folosească aplicații și site-uri de pe acest computer prin Cua Driver. Oleafly întreabă înainte de fiecare acțiune, dacă nu permiți acel tip de acțiune pentru conversație, sesiune sau sarcină. Browserul tău autentificat și scripturile întreabă întotdeauna.",
       "docsLink": "Documentația Cua Driver",
       "status": {
@@ -1748,6 +1748,7 @@
         "granted": "Cua Driver poate folosi Accesibilitatea și Înregistrarea ecranului.",
         "needed": "Cua Driver are nevoie de Accesibilitate și Înregistrarea ecranului. Rulează pasul de acordare și urmează instrucțiunile.",
         "unknown": "Oleafly nu a putut citi permisiunile Cua Driver.",
+        "unchecked": "Cua Driver nu și-a verificat încă permisiunile. Folosește „Acordă permisiunile”, apoi activează Accesibilitatea și Înregistrarea ecranului pentru CuaDriver în Configurări sistem.",
         "grant": "Acordă permisiunile",
         "terminalTitle": "Permisiunile Cua Driver"
       },
@@ -1799,7 +1800,7 @@
         "signedIn": {
           "label": "Folosește browserul meu autentificat",
           "labelFor": "Folosește browserul meu autentificat pe {{origin}}",
-          "description": "Pe acest site, agenții lucrează în propriul tău Chrome sau Edge. Lasă opțiunea dezactivată ca să folosească un profil de browser separat."
+          "description": "Activează „Folosește browserul meu autentificat” pentru un site, ca agenții să lucreze acolo în propriul tău Chrome sau Edge. Când opțiunea este dezactivată, folosesc un profil de browser separat."
         }
       },
       "scripted": {
@@ -1818,9 +1819,9 @@
         "note": "Privitul se face imediat. Clicurile, scrierea și schimbările de pagină cer mai întâi voie, dacă nu le permiți pentru conversație."
       },
       "task": {
-        "label": "Aplicații desktop",
+        "label": "Computer Use",
         "description": "Permite acestei sarcini să folosească aplicațiile desktop permise. Trebuie să fii la computer ca să aprobi acțiunile.",
-        "off": "Activează mai întâi Aplicații desktop în Setări.",
+        "off": "Activează mai întâi Computer Use în Setări.",
         "unattended": "Sarcinile care rulează programat sau după ce se închide Oleafly nu pot folosi aplicații desktop."
       },
       "spaces": {

@@ -1706,8 +1706,8 @@
       "gitFailed": "Oleafly Git belirtecini kaydedemedi. Belirtecin tamamını yapıştırdığınızdan emin olun."
     },
     "desktopApps": {
-      "tab": "Masaüstü uygulamaları",
-      "title": "Masaüstü uygulamaları",
+      "tab": "Computer Use",
+      "title": "Computer Use",
       "description": "Ajanların bu bilgisayardaki uygulamaları ve web sitelerini Cua Driver aracılığıyla kullanmasına izin verin. Oleafly, o tür bir işleme sohbet, oturum veya görev için izin vermediğiniz sürece her işlemden önce sorar. Oturum açtığınız tarayıcınız ve betikler için her zaman sorulur.",
       "docsLink": "Cua Driver belgeleri",
       "status": {
@@ -1733,6 +1733,7 @@
         "granted": "Cua Driver, Erişilebilirlik ve Ekran Kaydı izinlerini kullanabiliyor.",
         "needed": "Cua Driver için Erişilebilirlik ve Ekran Kaydı izinleri gerekir. İzin verme adımını çalıştırıp yönergeleri izleyin.",
         "unknown": "Oleafly, Cua Driver'ın izinlerini okuyamadı.",
+        "unchecked": "Cua Driver izinlerini henüz kontrol etmedi. “İzin ver” düğmesini kullanın, sonra Sistem Ayarları'nda CuaDriver için Erişilebilirlik ve Ekran Kaydı izinlerini açın.",
         "grant": "İzin ver",
         "terminalTitle": "Cua Driver izinleri"
       },
@@ -1784,7 +1785,7 @@
         "signedIn": {
           "label": "Oturum açılmış tarayıcımı kullan",
           "labelFor": "{{origin}} için oturum açılmış tarayıcımı kullan",
-          "description": "Ajanlar bu sitede kendi Chrome veya Edge tarayıcınızda çalışır. Ayrı bir tarayıcı profili kullanmak için kapalı bırakın."
+          "description": "Ajanların bir sitede kendi Chrome veya Edge tarayıcınızda çalışmasını istiyorsanız o site için “Oturum açılmış tarayıcımı kullan” seçeneğini açın. Kapalıyken ayrı bir tarayıcı profili kullanırlar."
         }
       },
       "scripted": {
@@ -1803,9 +1804,9 @@
         "note": "Bakma hemen yapılır. Tıklama, yazma ve sayfa değişiklikleri için, sohbet için izin vermediğiniz sürece önce sorulur."
       },
       "task": {
-        "label": "Masaüstü uygulamaları",
+        "label": "Computer Use",
         "description": "Bu görevin izin verdiğiniz masaüstü uygulamalarını kullanmasına izin verin. İşlemleri onaylamak için bilgisayarın başında olmanız gerekir.",
-        "off": "Önce Ayarlar'dan Masaüstü uygulamalarını açın.",
+        "off": "Önce Ayarlar'dan Computer Use özelliğini açın.",
         "unattended": "Bir zamanlamaya göre veya Oleafly kapandıktan sonra çalışan görevler masaüstü uygulamalarını kullanamaz."
       },
       "spaces": {

@@ -1,7 +1,9 @@
 // 0.4.8 I: the Desktop apps settings read Rust's status and the installed
 // apps through react-query, so reopening Settings doesn't rescan.
-import { useQuery, type QueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQueries, useQuery, type QueryClient } from "@tanstack/react-query";
 import {
+  cuaDriverAppIcons,
   cuaDriverInstalledApps,
   cuaDriverStatus,
   cuaDriverToolSpec,
@@ -13,6 +15,7 @@ import {
 export const DESKTOP_APPS_STATUS_KEY = ["desktop-apps", "status"] as const;
 export const DESKTOP_APPS_INSTALLED_KEY = ["desktop-apps", "installed"] as const;
 export const DESKTOP_APPS_READY_KEY = ["desktop-apps", "ready"] as const;
+export const DESKTOP_APPS_ICONS_KEY = ["desktop-apps", "icons"] as const;
 
 /** The picker never shows more rows than this. */
 export const MAX_PICKER_ROWS = 200;
@@ -50,6 +53,32 @@ export function useInstalledApps(enabled: boolean) {
     staleTime: 5 * 60_000,
     retry: false,
     meta: { silent: true },
+  });
+}
+
+/** Rows per icon request: small batches load side by side, top rows first. */
+const ICON_BATCH = 20;
+
+/**
+ * Icons for the picker rows in view, by row key. Rust reads each one once, so
+ * a search that brings a row back costs next to nothing.
+ */
+export function useAppIcons(keys: readonly string[], enabled: boolean): Record<string, string> {
+  const batches = useMemo(() => {
+    const parts: string[][] = [];
+    for (let start = 0; start < keys.length; start += ICON_BATCH) parts.push(keys.slice(start, start + ICON_BATCH));
+    return parts;
+  }, [keys]);
+  return useQueries({
+    queries: batches.map((batch) => ({
+      queryKey: [...DESKTOP_APPS_ICONS_KEY, batch],
+      queryFn: () => cuaDriverAppIcons(batch),
+      enabled,
+      staleTime: Number.POSITIVE_INFINITY,
+      retry: false,
+      meta: { silent: true },
+    })),
+    combine: (results) => Object.assign({}, ...results.map((result) => result.data ?? {})) as Record<string, string>,
   });
 }
 

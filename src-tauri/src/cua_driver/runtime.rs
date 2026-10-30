@@ -50,9 +50,9 @@ const SCAN_EVERY: Duration = Duration::from_secs(1);
 #[cfg(unix)]
 const PROCESS_LIST_TIMEOUT: Duration = Duration::from_secs(3);
 
-pub(crate) const STOPPED_TEXT: &str = "Desktop apps were changed or turned off in Settings, so Oleafly stopped this call. Check the app's state before you try again.";
-pub(crate) const TIMEOUT_TEXT: &str = "Desktop apps didn't answer in time, so Oleafly restarted the connection. Check the app's state before you try again.";
-const NOT_CONFIGURED_TEXT: &str = "Desktop apps have nothing allowed for this yet. The user can add apps and websites in Settings > Integrations > Desktop apps.";
+pub(crate) const STOPPED_TEXT: &str = "Computer Use was changed or turned off in Settings, so Oleafly stopped this call. Check the app's state before you try again.";
+pub(crate) const TIMEOUT_TEXT: &str = "Computer Use didn't answer in time, so Oleafly restarted the connection. Check the app's state before you try again.";
+const NOT_CONFIGURED_TEXT: &str = "Computer Use has nothing allowed for this yet. The user can add apps and websites in Settings > Integrations > Computer Use.";
 pub(crate) const TOO_LARGE_TEXT: &str = "Cua Driver's answer was larger than Oleafly can read, so it was left out. For get_window_state, pass include_screenshot: false or a smaller max_elements. If this was an action, it may have run: check the app's state before you try again.";
 /// How the MCP client reports a line longer than `MAX_MESSAGE_BYTES`.
 const TOO_LARGE_MARKER: &str = "server response exceeded the";
@@ -408,6 +408,23 @@ fn log_tail(path: &Path) -> Option<String> {
         .collect::<Vec<_>>()
         .join(" ");
     (!text.is_empty()).then_some(text)
+}
+
+/// macOS: whether the daemon's log shows it stopped at its own permissions
+/// prompt (a missing Accessibility or Screen Recording grant), which makes it
+/// miss the self-check or start too slowly.
+fn waiting_for_permissions(log: &Path) -> bool {
+    log_tail(log)
+        .is_some_and(|tail| tail.contains("needs your permission before desktop tools can run"))
+}
+
+/// A failed start, named as the missing permissions when the log shows them.
+fn start_error(paths: &RuntimePaths, error: String) -> String {
+    if waiting_for_permissions(&paths.log_file) {
+        AppError::new("desktop_apps.needs_permissions").into()
+    } else {
+        error
+    }
 }
 
 fn read_pid(path: &Path) -> Option<u32> {
@@ -1318,7 +1335,7 @@ impl Runtimes {
             .await
         {
             self.launcher.stop_daemon(&install, &paths, handle).await;
-            return Err(error);
+            return Err(start_error(&paths, error));
         }
         write_owner_file(&paths, &handle);
         // Settings changed or turned off while it started: the manifest it
@@ -1351,6 +1368,7 @@ impl Runtimes {
             Err(_) => Err(start_failed("its first answer took too long.")),
         };
         if let Err(error) = verdict {
+            let error = start_error(&paths, error);
             drop(session);
             self.launcher.stop_daemon(&install, &paths, handle).await;
             log(format!(
@@ -1358,6 +1376,8 @@ impl Runtimes {
                 kind.as_str(),
                 if error.contains("not_bounded") {
                     "not_bounded"
+                } else if error.contains("needs_permissions") {
+                    "needs_permissions"
                 } else {
                     "start_failed"
                 }
@@ -1507,13 +1527,24 @@ fn refused_as_outside_manifest(result: &Value) -> bool {
     if !is_error(result) {
         return false;
     }
-    let Some((code, message)) = policy::refusal_from_result(result) else {
-        return false;
-    };
-    let message = message.to_ascii_lowercase();
-    code == "bounded_resource_outside_manifest"
-        || (code == "permission_denied"
-            && (message.contains("manifest") || message.contains("allow")))
+    if let Some((code, message)) = policy::refusal_from_result(result) {
+        let message = message.to_ascii_lowercase();
+        return code == "bounded_resource_outside_manifest"
+            || (code == "permission_denied"
+                && (message.contains("manifest") || message.contains("allow")));
+    }
+    // From 0.38 a tool the manifest leaves out comes back as plain text over
+    // MCP: "Permission denied: tool 'get_screen_size' is outside the
+    // capability manifest", with only `tool_invocation_failed` as its code.
+    let tool = format!("tool '{}'", policy::SELF_CHECK_TOOL);
+    result
+        .get("content")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|part| part.get("text").and_then(Value::as_str))
+        .map(str::to_ascii_lowercase)
+        .any(|text| text.contains(&tool) && text.contains("outside the capability manifest"))
 }
 
 #[cfg(test)]
@@ -1583,6 +1614,36 @@ mod tests {
             RuntimeKind::Desktop,
             Platform::Macos,
         )
+    }
+
+    #[test]
+    fn the_self_check_reads_each_way_a_driver_refuses_it() {
+        // cua-driver 0.38.0 over MCP, word for word.
+        let plain = json!({
+            "content": [{"type": "text", "text": "Permission denied: tool 'get_screen_size' is outside the capability manifest"}],
+            "isError": true,
+            "structuredContent": {"code": "tool_invocation_failed", "exit_code": 1}
+        });
+        assert!(refused_as_outside_manifest(&plain));
+        let structured = json!({
+            "isError": true,
+            "structuredContent": {"status": "refused", "refusal": {"code": "bounded_resource_outside_manifest", "message": "outside"}}
+        });
+        assert!(refused_as_outside_manifest(&structured));
+        // Running the tool, or failing it for another reason, proves nothing.
+        let ran = json!({"content": [{"type": "text", "text": "1800x1125"}]});
+        assert!(!refused_as_outside_manifest(&ran));
+        let failed = json!({
+            "content": [{"type": "text", "text": "no display"}],
+            "isError": true,
+            "structuredContent": {"code": "tool_invocation_failed"}
+        });
+        assert!(!refused_as_outside_manifest(&failed));
+        let other_tool = json!({
+            "content": [{"type": "text", "text": "Permission denied: tool 'click' is outside the capability manifest"}],
+            "isError": true
+        });
+        assert!(!refused_as_outside_manifest(&other_tool));
     }
 
     #[test]
@@ -1909,5 +1970,29 @@ mod tests {
         assert!(tail.len() <= 2048);
         assert!(!tail.contains('\n'));
         assert_eq!(log_tail(&dir.path().join("missing.log")), None);
+    }
+
+    #[test]
+    fn a_start_stopped_at_the_permissions_prompt_says_so() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = runtime_paths(dir.path(), RuntimeKind::Desktop, Platform::Macos);
+        std::fs::create_dir_all(paths.log_file.parent().unwrap()).unwrap();
+        // cua-driver 0.38.0 without Screen Recording, trimmed.
+        std::fs::write(
+            &paths.log_file,
+            "Cua Driver daemon listening on /x/desktop.sock\n\n\
+             ──────\n cua-driver needs your permission before desktop tools can run\n──────\n\n \
+             Missing TCC grant(s) for the Cua Driver app identity:\n   • Screen Recording\n",
+        )
+        .unwrap();
+        let error = start_error(&paths, AppError::new("desktop_apps.not_bounded").into());
+        assert!(error.contains("desktop_apps.needs_permissions"), "{error}");
+        std::fs::write(
+            &paths.log_file,
+            "Cua Driver daemon listening on /x/desktop.sock\n",
+        )
+        .unwrap();
+        let error = start_error(&paths, AppError::new("desktop_apps.not_bounded").into());
+        assert!(error.contains("desktop_apps.not_bounded"), "{error}");
     }
 }

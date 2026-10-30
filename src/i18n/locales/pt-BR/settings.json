@@ -1721,8 +1721,8 @@
       "gitFailed": "O Oleafly não conseguiu salvar o token Git. Confira se você colou o token inteiro."
     },
     "desktopApps": {
-      "tab": "Aplicativos de desktop",
-      "title": "Aplicativos de desktop",
+      "tab": "Computer Use",
+      "title": "Computer Use",
       "description": "Deixe os agentes usarem aplicativos e sites deste computador pelo Cua Driver. O Oleafly pergunta antes de cada ação, a menos que você permita esse tipo de ação para a conversa, a sessão ou a tarefa. Seu navegador conectado e os scripts sempre perguntam.",
       "docsLink": "Documentação do Cua Driver",
       "status": {
@@ -1748,6 +1748,7 @@
         "granted": "O Cua Driver pode usar Acessibilidade e Gravação de Tela.",
         "needed": "O Cua Driver precisa de Acessibilidade e Gravação de Tela. Execute a etapa de concessão e siga as instruções.",
         "unknown": "O Oleafly não conseguiu ler as permissões do Cua Driver.",
+        "unchecked": "O Cua Driver ainda não verificou as permissões dele. Use “Conceder permissões” e depois ligue Acessibilidade e Gravação de Tela para o CuaDriver em Ajustes do Sistema.",
         "grant": "Conceder permissões",
         "terminalTitle": "Permissões do Cua Driver"
       },
@@ -1799,7 +1800,7 @@
         "signedIn": {
           "label": "Usar meu navegador conectado",
           "labelFor": "Usar meu navegador conectado em {{origin}}",
-          "description": "Os agentes trabalham no seu próprio Chrome ou Edge neste site. Deixe desligado para usar um perfil de navegador separado."
+          "description": "Ligue “Usar meu navegador conectado” em um site para que os agentes trabalhem nele no seu próprio Chrome ou Edge. Com a opção desligada, eles usam um perfil de navegador separado."
         }
       },
       "scripted": {
@@ -1818,9 +1819,9 @@
         "note": "Olhar acontece na hora. Cliques, digitação e mudanças de página perguntam primeiro, a menos que você os permita para a conversa."
       },
       "task": {
-        "label": "Aplicativos de desktop",
+        "label": "Computer Use",
         "description": "Deixar esta tarefa usar seus aplicativos de desktop permitidos. Você precisa estar no computador para aprovar as ações.",
-        "off": "Primeiro ligue Aplicativos de desktop em Configurações.",
+        "off": "Primeiro ligue Computer Use em Configurações.",
         "unattended": "Tarefas que rodam em um horário agendado ou depois que o Oleafly fecha não podem usar aplicativos de desktop."
       },
       "spaces": {

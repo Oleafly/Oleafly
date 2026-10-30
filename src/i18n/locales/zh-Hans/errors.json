@@ -387,10 +387,10 @@
     "command_declined": "MCP 服务器未保存。"
   },
   "desktop_apps": {
-    "not_installed": "尚未安装 Cua Driver。请在“设置 → 集成 → 桌面应用”中安装。",
+    "not_installed": "尚未安装 Cua Driver。请在“设置 → 集成 → Computer Use”中安装。",
     "too_old": "Cua Driver {{version}} 版本过旧。请更新到 {{minimum}} 或更高版本。",
     "no_app_bundle": "请使用官方安装程序安装 Cua Driver，以便它能获得 macOS 权限。",
-    "change_declined": "已保留你之前的桌面应用设置。",
+    "change_declined": "已保留你之前的 Computer Use 设置。",
     "app_blocked": "代理无法使用 {{name}}。",
     "app_invalid": "Oleafly 无法将 {{name}} 作为应用使用。",
     "site_invalid": "“{{site}}”不是 Oleafly 可以使用的网站地址。请使用 https://，本机地址可使用 http://。",
@@ -398,7 +398,8 @@
     "too_many_sites": "最多可以允许 {{limit}} 个网站。",
     "start_failed": "Cua Driver 无法启动：{{detail}}",
     "not_bounded": "Cua Driver 没有按 Oleafly 的限制启动，因此 Oleafly 已将其停止。",
+    "needs_permissions": "Cua Driver 正在等待 macOS 权限。请在“系统设置”中为 CuaDriver 开启“辅助功能”和“屏幕录制”，然后重试。",
     "task_unattended": "按计划运行或在 Oleafly 关闭后运行的任务无法使用桌面应用。",
-    "main_window": "请在主窗口中更改桌面应用设置。"
+    "main_window": "请在主窗口中更改 Computer Use 设置。"
   }
 }

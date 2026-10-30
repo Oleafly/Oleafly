@@ -107,7 +107,7 @@
       "confirm": "Zezwól na tym komputerze"
     },
     "desktopApps": {
-      "title": "Aplikacje na komputerze",
+      "title": "Computer Use",
       "action": "{{agent}} chce {{action}}.",
       "steps": "{{agent}} chce wykonać te kroki w aplikacji na komputerze:",
       "moreSteps": "Niewyświetlone i niewykonane kroki: {{count}}",
@@ -149,7 +149,7 @@
       "title": "Zezwolić na sterowanie komputerem?",
       "message": "Agenci będą mogli z nich korzystać. Przed każdą akcją zapytają, a zapisanie usunie wszystkie wybory „Zezwól w tym czacie”:",
       "confirm": "Zezwól",
-      "enabled": "Aplikacje na komputerze",
+      "enabled": "Computer Use",
       "app": "Aplikacja: {{identity}} ({{name}})",
       "more": "I jeszcze {{count}}",
       "site": "Strona: {{origin}}",

@@ -107,7 +107,7 @@
       "confirm": "Bu bilgisayarda izin ver"
     },
     "desktopApps": {
-      "title": "Masaüstü uygulamaları",
+      "title": "Computer Use",
       "action": "{{agent}} şunu yapmak istiyor: {{action}}.",
       "steps": "{{agent}} bir masaüstü uygulamasında şu adımları çalıştırmak istiyor:",
       "moreSteps": "Gösterilmeyen ve çalıştırılmayan adımlar: {{count}}",
@@ -149,7 +149,7 @@
       "title": "Masaüstü denetimine izin verilsin mi?",
       "message": "Ajanlar bunları kullanabilecek. Her işlemden önce sorarlar ve bunu kaydetmek tüm \"Bu sohbet için izin ver\" seçimlerini temizler:",
       "confirm": "İzin ver",
-      "enabled": "Masaüstü uygulamaları",
+      "enabled": "Computer Use",
       "app": "Uygulama: {{identity}} ({{name}})",
       "more": "Ve {{count}} tane daha",
       "site": "Web sitesi: {{origin}}",

@@ -107,7 +107,7 @@
       "confirm": "Tillat på denne maskinen"
     },
     "desktopApps": {
-      "title": "Skrivebordsapper",
+      "title": "Computer Use",
       "action": "{{agent}} vil {{action}}.",
       "steps": "{{agent}} vil kjøre disse trinnene i en skrivebordsapp:",
       "moreSteps": "Trinn som ikke vises og ikke kjøres: {{count}}",
@@ -149,7 +149,7 @@
       "title": "Vil du tillate styring av skrivebordet?",
       "message": "Agenter vil kunne bruke følgende. De spør før hver handling, og når du lagrer, fjernes alle valg av «Tillat for denne samtalen»:",
       "confirm": "Tillat",
-      "enabled": "Skrivebordsapper",
+      "enabled": "Computer Use",
       "app": "App: {{identity}} ({{name}})",
       "more": "Og {{count}} til",
       "site": "Nettsted: {{origin}}",

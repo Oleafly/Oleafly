@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "pack": "research-core",
-  "version": "2026.10.19.b7a82f61",
+  "version": "2026.10.19.d7cafe8b",
   "skills": [
     {
       "id": "citation-management",
@@ -21,14 +21,14 @@
     },
     {
       "id": "desktop-apps",
-      "name": "Desktop apps",
+      "name": "Computer Use",
       "description": "Work in desktop apps and websites the user allowed, through the desktop_apps tool. Use when the user asks to do something inside an app such as Zotero, Excel, Word, SPSS, Stata or Prism, or on a website such as a journal submission site or a library database, and no Oleafly tool or connector can do it.",
       "tier": "native",
       "phase": "tooling",
       "license": "MIT",
-      "treeSha256": "2a6fcffb1deb51f469322efe283a7287eb65cc42031bdb36d0f3145c4f084ece",
+      "treeSha256": "c4b8dce7712488c6768a9e0565a1fe6675f72d35d6af2d1c25b2904e89b97eb9",
       "files": 1,
-      "bytes": 4431,
+      "bytes": 4504,
       "version": "1.0.0"
     },
     {
@@ -114,9 +114,9 @@
       "tier": "native",
       "phase": "tooling",
       "license": "MIT",
-      "treeSha256": "cb69a95f849ddc82309654c805d9adef72d80b8d449b148e21d542f0d5748bf3",
+      "treeSha256": "2dd072e1e42d7fb82734877a911f368de69ed8141594ce3352955285701d3b83",
       "files": 2,
-      "bytes": 10116,
+      "bytes": 10411,
       "version": "1.0.0"
     },
     {

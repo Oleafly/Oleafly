@@ -107,7 +107,7 @@
       "confirm": "Permitir en este equipo"
     },
     "desktopApps": {
-      "title": "Aplicaciones de escritorio",
+      "title": "Computer Use",
       "action": "{{agent}} quiere {{action}}.",
       "steps": "{{agent}} quiere hacer estos pasos en una aplicación de escritorio:",
       "moreSteps": "Pasos que no se muestran y no se ejecutan: {{count}}",
@@ -149,7 +149,7 @@
       "title": "¿Permitir el control del escritorio?",
       "message": "Los agentes podrán usar lo siguiente. Preguntan antes de cada acción y, al guardar, se borran todas las opciones \"Permitir en este chat\":",
       "confirm": "Permitir",
-      "enabled": "Aplicaciones de escritorio",
+      "enabled": "Computer Use",
       "app": "Aplicación: {{identity}} ({{name}})",
       "more": "Y {{count}} más",
       "site": "Sitio web: {{origin}}",

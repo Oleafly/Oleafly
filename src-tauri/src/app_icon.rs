@@ -193,7 +193,7 @@ pub(crate) fn shrink(image: &Rgba, edge: u32) -> Option<Rgba> {
     })
 }
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(target_os = "macos", windows, test))]
 pub(crate) fn encode_png(image: &Rgba) -> Option<Vec<u8>> {
     let mut bytes = Vec::new();
     let mut encoder = png::Encoder::new(&mut bytes, image.width, image.height);

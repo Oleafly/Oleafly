@@ -1706,8 +1706,8 @@
       "gitFailed": "Oleafly could not save the Git token. Check that you pasted the whole token."
     },
     "desktopApps": {
-      "tab": "Desktop apps",
-      "title": "Desktop apps",
+      "tab": "Computer Use",
+      "title": "Computer Use",
       "description": "Let agents use apps and websites on this computer through Cua Driver. Oleafly asks before each action, unless you allow that kind of action for the chat, session or task. Your signed-in browser and scripts always ask.",
       "docsLink": "Cua Driver docs",
       "status": {
@@ -1733,6 +1733,7 @@
         "granted": "Cua Driver can use Accessibility and Screen Recording.",
         "needed": "Cua Driver needs Accessibility and Screen Recording. Run the grant step and follow the prompts.",
         "unknown": "Oleafly couldn't read Cua Driver's permissions.",
+        "unchecked": "Cua Driver hasn't checked its permissions yet. Use Grant permissions, then turn on Accessibility and Screen Recording for CuaDriver in System Settings.",
         "grant": "Grant permissions",
         "terminalTitle": "Cua Driver permissions"
       },
@@ -1784,7 +1785,7 @@
         "signedIn": {
           "label": "Use my signed-in browser",
           "labelFor": "Use my signed-in browser on {{origin}}",
-          "description": "Agents work in your own Chrome or Edge on this site. Leave it off to use a separate browser profile."
+          "description": "Turn on Use my signed-in browser for a site to let agents work in your own Chrome or Edge there. With it off, they use a separate browser profile."
         }
       },
       "scripted": {
@@ -1803,9 +1804,9 @@
         "note": "Looking runs right away. Clicks, typing and page changes ask first, unless you allow them for the chat."
       },
       "task": {
-        "label": "Desktop apps",
+        "label": "Computer Use",
         "description": "Let this task use your allowed desktop apps. You need to be at the computer to approve actions.",
-        "off": "Turn on Desktop apps in Settings first.",
+        "off": "Turn on Computer Use in Settings first.",
         "unattended": "Tasks that run on a schedule or after Oleafly closes can't use desktop apps."
       },
       "spaces": {

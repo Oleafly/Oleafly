@@ -10,9 +10,10 @@ use std::sync::Arc;
 
 use serde_json::{json, Map, Value};
 
-use super::config::{ready, CuaDriverConfig};
+use super::config::{ready, AllowedApp, CuaDriverConfig};
 use super::gate::{self, Answer, GateDecision};
 use super::policy::{self, Family};
+use super::running::running_pids;
 use super::runtime::{BATCH_TIMEOUT, CALL_TIMEOUT};
 use super::{global, lock, log, CuaDriverState, CuaScope, RuntimeKind, Surface, DESKTOP_APPS_TOOL};
 use crate::mcp::client::McpServerTool;
@@ -22,7 +23,7 @@ const MAX_IMAGE_DATA_URL_BYTES: usize = 14 * 1024 * 1024;
 const IMAGE_TYPES: &[&str] = &["image/png", "image/jpeg", "image/webp", "image/gif"];
 
 const OFF_TEXT: &str =
-    "Desktop apps are off. The user can turn them on in Settings > Integrations > Desktop apps.";
+    "Computer Use is off. The user can turn it on in Settings > Integrations > Computer Use.";
 const DECLINED_TEXT: &str = "The user didn't allow this action.";
 const NO_ANSWER_TEXT: &str =
     "The user didn't answer the approval dialog in time, so nothing was done.";
@@ -36,7 +37,7 @@ const BATCH_TOO_LONG_TEXT: &str =
 const MAX_LISTED_ELEMENTS: usize = 300;
 const MAX_ELEMENT_LIST_CHARS: usize = 24 * 1024;
 const MAX_ELEMENT_LINE_CHARS: usize = 240;
-const NO_SIGNED_IN_TEXT: &str = "No website is marked for the user's signed-in browser. Use browser \"separate\", or ask the user to mark the site in Settings > Integrations > Desktop apps.";
+const NO_SIGNED_IN_TEXT: &str = "No website is marked for the user's signed-in browser. Use browser \"separate\", or ask the user to mark the site in Settings > Integrations > Computer Use.";
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct DesktopAppsOutcome {
@@ -371,7 +372,7 @@ async fn start_session(
     if failures.len() == kinds.len() {
         log_outcome("start_session", "error");
         let reasons = failures.join("\n");
-        return DesktopAppsOutcome::error(format!("Desktop apps couldn't start:\n{reasons}"));
+        return DesktopAppsOutcome::error(format!("Computer Use couldn't start:\n{reasons}"));
     }
     if !references.is_empty() {
         sections.push(format!(
@@ -501,6 +502,10 @@ pub(crate) async fn call_desktop_apps(
         }
     };
     let args = schema_known_args(state, kind, tool, args, &mut steps);
+    if let Some(text) = policy::launch_outside_list(tool.name, &args, &config.apps) {
+        log_outcome(tool.name, "refused:outside_list");
+        return DesktopAppsOutcome::error(text);
+    }
 
     let signed_in = kind == RuntimeKind::SignedInBrowser;
     let granted = !signed_in && already_allowed(state, scope, kind, tool, steps.as_deref());
@@ -528,12 +533,28 @@ pub(crate) async fn call_desktop_apps(
     let observed_args = Value::Object(args.clone());
     let mut forwarded = forwarded_args(args, steps.as_deref());
     forwarded.insert("session".into(), Value::String(label.clone()));
-    let call = state
-        .runtimes
-        .call(kind, &label, tool.name, Value::Object(forwarded), timeout);
-    let Some(called) = call_until_turn_ends(state, scope, call).await else {
-        log_outcome(tool.name, "refused:turn_ended");
-        return DesktopAppsOutcome::error(STOPPED_AT_TURN_END_TEXT);
+    let listed = if kind == RuntimeKind::Desktop {
+        allowed_listing(state, scope, &config, &label, tool.name, &observed_args).await
+    } else {
+        None
+    };
+    let called = match listed {
+        Some(Some(listed)) => listed,
+        Some(None) => {
+            log_outcome(tool.name, "refused:turn_ended");
+            return DesktopAppsOutcome::error(STOPPED_AT_TURN_END_TEXT);
+        }
+        None => {
+            let call =
+                state
+                    .runtimes
+                    .call(kind, &label, tool.name, Value::Object(forwarded), timeout);
+            let Some(called) = call_until_turn_ends(state, scope, call).await else {
+                log_outcome(tool.name, "refused:turn_ended");
+                return DesktopAppsOutcome::error(STOPPED_AT_TURN_END_TEXT);
+            };
+            called
+        }
     };
     match called {
         Ok(result) => {
@@ -554,6 +575,154 @@ pub(crate) async fn call_desktop_apps(
             DesktopAppsOutcome::error(readable(&error))
         }
     }
+}
+
+/// Whether `app` matches a `list_windows` `app` filter, which Cua Driver
+/// reads as part of the name or the exact bundle id.
+fn matches_app_filter(app: &AllowedApp, filter: Option<&str>) -> bool {
+    let Some(filter) = filter.map(str::trim).filter(|filter| !filter.is_empty()) else {
+        return true;
+    };
+    app.name.to_lowercase().contains(&filter.to_lowercase())
+        || app
+            .bundle_id
+            .as_deref()
+            .is_some_and(|id| id.eq_ignore_ascii_case(filter))
+}
+
+/// `list_apps` as Oleafly answers it: the allowed apps and the processes of
+/// those that run.
+pub(crate) fn allowed_apps_result(apps: &[(AllowedApp, Vec<u32>)]) -> Value {
+    let mut lines = vec!["Allowed apps:".to_string()];
+    let mut listed = Vec::new();
+    for (app, pids) in apps {
+        let identity = app
+            .bundle_id
+            .as_deref()
+            .or(app.executable.as_deref())
+            .unwrap_or_default();
+        let state = if pids.is_empty() {
+            "not running. launch_app opens it.".to_string()
+        } else {
+            let pids: Vec<String> = pids.iter().map(u32::to_string).collect();
+            format!(
+                "running, pid {}. Call list_windows with that pid.",
+                pids.join(", ")
+            )
+        };
+        lines.push(format!("- {} ({identity}): {state}", app.name));
+        let mut entry = json!({"name": app.name, "running": !pids.is_empty(), "pids": pids});
+        if let Some(bundle_id) = &app.bundle_id {
+            entry["bundle_id"] = json!(bundle_id);
+        }
+        if let Some(executable) = &app.executable {
+            entry["executable"] = json!(executable);
+        }
+        listed.push(entry);
+    }
+    json!({
+        "content": [{"type": "text", "text": lines.join("\n")}],
+        "structuredContent": {"apps": listed},
+    })
+}
+
+/// The windows of every `list_windows` answer in `answers`, as one answer in
+/// the driver's own shape.
+pub(crate) fn merged_windows_result(answers: &[Value], any_running: bool) -> Value {
+    let windows: Vec<Value> = answers
+        .iter()
+        .filter(|answer| answer.get("isError").and_then(Value::as_bool) != Some(true))
+        .filter_map(|answer| {
+            answer
+                .pointer("/structuredContent/windows")?
+                .as_array()
+                .cloned()
+        })
+        .flatten()
+        .collect();
+    let text = if !any_running {
+        "None of the allowed apps is running. launch_app opens one.".to_string()
+    } else if windows.is_empty() {
+        "The allowed apps that run have no windows.".to_string()
+    } else {
+        let mut lines = vec![format!("Found {} window(s).", windows.len())];
+        for window in &windows {
+            let text = |key: &str| window.get(key).and_then(Value::as_str).unwrap_or_default();
+            let number = |key: &str| window.get(key).and_then(Value::as_u64).unwrap_or_default();
+            lines.push(format!(
+                "- {} (pid {}) \"{}\" [window_id: {}]",
+                text("app_name"),
+                number("pid"),
+                text("title"),
+                number("window_id")
+            ));
+        }
+        lines.join("\n")
+    };
+    json!({
+        "content": [{"type": "text", "text": text}],
+        "structuredContent": {"windows": windows},
+    })
+}
+
+/// Cua Driver 0.38 counts a list of every app, or of every window, as
+/// watching the whole desktop, which Oleafly's manifests never allow. The
+/// allowed apps are known, so Oleafly answers `list_apps` itself and asks for
+/// each running allowed app's windows by pid. `None` for every other call;
+/// `Some(None)` when the turn ended meanwhile.
+async fn allowed_listing(
+    state: &CuaDriverState,
+    scope: &CuaScope,
+    config: &CuaDriverConfig,
+    label: &str,
+    tool: &str,
+    args: &Value,
+) -> Option<Option<Result<Value, String>>> {
+    let listing_windows = tool == "list_windows" && args.get("pid").is_none();
+    if tool != "list_apps" && !listing_windows {
+        return None;
+    }
+    let filter = args.get("app").and_then(Value::as_str).map(str::to_string);
+    let apps: Vec<AllowedApp> = config
+        .apps
+        .iter()
+        .filter(|app| !listing_windows || matches_app_filter(app, filter.as_deref()))
+        .cloned()
+        .collect();
+    let found = tauri::async_runtime::spawn_blocking(move || {
+        apps.into_iter()
+            .map(|app| {
+                let pids = running_pids(&app);
+                (app, pids)
+            })
+            .collect::<Vec<_>>()
+    })
+    .await
+    .unwrap_or_default();
+    if tool == "list_apps" {
+        return Some(Some(Ok(allowed_apps_result(&found))));
+    }
+    let mut answers = Vec::new();
+    for pid in found.iter().flat_map(|(_, pids)| pids) {
+        let mut forwarded = json!({"session": label, "pid": pid});
+        if let Some(on_screen) = args.get("on_screen_only") {
+            forwarded["on_screen_only"] = on_screen.clone();
+        }
+        let call = state.runtimes.call(
+            RuntimeKind::Desktop,
+            label,
+            "list_windows",
+            forwarded,
+            CALL_TIMEOUT,
+        );
+        match call_until_turn_ends(state, scope, call).await {
+            None => return Some(None),
+            Some(Ok(answer)) => answers.push(answer),
+            Some(Err(error)) => return Some(Some(Err(error))),
+        }
+    }
+    let any_running = found.iter().any(|(_, pids)| !pids.is_empty());
+    Some(Some(Ok(merged_windows_result(&answers, any_running))))
 }
 
 /// The runtime a tool runs on. A call for the user's signed-in browser needs
@@ -814,6 +983,73 @@ mod tests {
     use super::*;
 
     #[test]
+    fn oleafly_lists_the_allowed_apps_with_their_processes() {
+        let textedit = AllowedApp {
+            name: "TextEdit".into(),
+            bundle_id: Some("com.apple.TextEdit".into()),
+            executable: None,
+        };
+        let stata = AllowedApp {
+            name: "Stata".into(),
+            bundle_id: None,
+            executable: Some(r"C:\Program Files\Stata 18\StataSE-64.exe".into()),
+        };
+        let result =
+            allowed_apps_result(&[(textedit.clone(), vec![52508]), (stata.clone(), vec![])]);
+        let text = result["content"][0]["text"].as_str().unwrap();
+        assert!(
+            text.contains("TextEdit (com.apple.TextEdit): running, pid 52508"),
+            "{text}"
+        );
+        assert!(
+            text.contains("Stata (C:\\Program Files\\Stata 18\\StataSE-64.exe): not running"),
+            "{text}"
+        );
+        assert_eq!(
+            result["structuredContent"]["apps"][0]["pids"],
+            json!([52508])
+        );
+        assert_eq!(
+            result["structuredContent"]["apps"][1]["running"],
+            json!(false)
+        );
+        assert!(matches_app_filter(&textedit, Some("text")));
+        assert!(matches_app_filter(&textedit, Some("COM.APPLE.TEXTEDIT")));
+        assert!(!matches_app_filter(&textedit, Some("com.apple")));
+        assert!(matches_app_filter(&stata, None));
+    }
+
+    #[test]
+    fn windows_of_each_allowed_process_come_back_as_one_answer() {
+        // cua-driver 0.38.0, `list_windows {pid}`, trimmed.
+        let textedit = json!({"content": [{"type": "text", "text": "Found 1 window(s)."}], "structuredContent": {"windows": [
+            {"app_name": "TextEdit", "pid": 52508, "title": "Untitled", "window_id": 178776}
+        ]}});
+        let refused = json!({"isError": true, "structuredContent": {"refusal": {"code": "bounded_resource_outside_manifest"}, "windows": [
+            {"app_name": "Other", "pid": 1, "title": "x", "window_id": 2}
+        ]}});
+        let merged = merged_windows_result(&[textedit, refused], true);
+        let text = merged["content"][0]["text"].as_str().unwrap();
+        assert!(text.starts_with("Found 1 window(s)."), "{text}");
+        assert!(
+            text.contains("- TextEdit (pid 52508) \"Untitled\" [window_id: 178776]"),
+            "{text}"
+        );
+        assert_eq!(
+            merged["structuredContent"]["windows"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+        let none = merged_windows_result(&[], false);
+        assert!(none["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("None of the allowed apps is running"));
+    }
+
+    #[test]
     fn images_become_data_urls_and_refusals_become_plain_text() {
         let window = json!({"content": [
             {"type": "text", "text": "Zotero window"},
@@ -831,7 +1067,7 @@ mod tests {
         assert!(outcome.is_error);
         assert_eq!(
             outcome.text,
-            "That app or site isn't on the user's allowed list. Ask the user to add it in Settings > Integrations > Desktop apps."
+            "That app or site isn't on the user's allowed list. Ask the user to add it in Settings > Integrations > Computer Use."
         );
         assert_eq!(outcome.mcp_result["isError"], true);
     }

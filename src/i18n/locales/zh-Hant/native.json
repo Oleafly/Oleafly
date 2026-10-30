@@ -107,7 +107,7 @@
       "confirm": "在這台電腦上允許"
     },
     "desktopApps": {
-      "title": "桌面應用程式",
+      "title": "Computer Use",
       "action": "{{agent}} 想要{{action}}。",
       "steps": "{{agent}} 想要在桌面應用程式中執行以下步驟：",
       "moreSteps": "未顯示且不會執行的步驟：{{count}}",
@@ -149,7 +149,7 @@
       "title": "要允許控制桌面嗎？",
       "message": "代理程式將能夠使用以下項目。每次動作前仍會詢問，儲存後所有「在這個聊天中允許」的選擇都會被清除：",
       "confirm": "允許",
-      "enabled": "桌面應用程式",
+      "enabled": "Computer Use",
       "app": "應用程式：{{identity}}（{{name}}）",
       "more": "還有 {{count}} 個",
       "site": "網站：{{origin}}",

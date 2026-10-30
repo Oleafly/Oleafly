@@ -29,7 +29,7 @@ fn require_main<R: Runtime>(webview: &Webview<R>) -> Result<(), String> {
 
 fn unavailable() -> String {
     AppError::new("desktop_apps.start_failed")
-        .param("detail", "Desktop apps are not available on this system.")
+        .param("detail", "Computer Use isn't available on this system.")
         .into()
 }
 
@@ -40,7 +40,7 @@ pub(crate) fn own_exe() -> String {
 }
 
 fn blocking_error(error: impl std::fmt::Display) -> String {
-    format!("Desktop apps settings worker failed: {error}")
+    format!("Computer Use settings worker failed: {error}")
 }
 
 #[derive(Serialize)]
@@ -382,7 +382,22 @@ pub async fn cua_driver_installed_apps<R: Runtime>(
 ) -> Result<Vec<InstalledApp>, String> {
     require_main(&webview)?;
     let platform = Platform::current().ok_or_else(unavailable)?;
-    tauri::async_runtime::spawn_blocking(move || apps::list_installed_apps(platform))
+    let apps = tauri::async_runtime::spawn_blocking(move || apps::list_installed_apps(platform))
+        .await
+        .map_err(blocking_error)?;
+    super::icons::remember(&apps);
+    Ok(apps)
+}
+
+/// Icons for the picker's rows, by row key, as data URLs. Only apps from the
+/// last listing have one; the rest are left out.
+#[tauri::command]
+pub async fn cua_driver_app_icons<R: Runtime>(
+    webview: Webview<R>,
+    keys: Vec<String>,
+) -> Result<std::collections::HashMap<String, String>, String> {
+    require_main(&webview)?;
+    tauri::async_runtime::spawn_blocking(move || super::icons::icons_for(&keys))
         .await
         .map_err(blocking_error)
 }
@@ -626,7 +641,7 @@ pub(crate) async fn run_test(
     let settings = state.settings();
     if !settings.enabled {
         return Err(AppError::new("desktop_apps.start_failed")
-            .param("detail", "Desktop apps are off.")
+            .param("detail", "Computer Use is off.")
             .into());
     }
     let mut runtimes = Vec::new();
@@ -807,6 +822,11 @@ mod tests {
                 .map(|_| ()),
             );
             refused(cua_driver_installed_apps(webview.clone()).await.map(|_| ()));
+            refused(
+                cua_driver_app_icons(webview.clone(), Vec::new())
+                    .await
+                    .map(|_| ()),
+            );
             refused(
                 cua_driver_pick_app(webview.clone(), handle.clone())
                     .await
@@ -1254,7 +1274,7 @@ mod tests {
         assert_eq!(
             lines,
             vec![
-                "Desktop apps".to_string(),
+                "Computer Use".to_string(),
                 "App: com.microsoft.Excel (Excel)".into(),
                 r"App: C:\Program Files\Stata 18\StataSE-64.exe (Stata)".into(),
                 "Website: https://a.org".into(),

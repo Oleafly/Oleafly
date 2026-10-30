@@ -107,7 +107,7 @@
       "confirm": "Salli tällä koneella"
     },
     "desktopApps": {
-      "title": "Työpöytäsovellukset",
+      "title": "Computer Use",
       "action": "{{agent}} haluaa {{action}}.",
       "steps": "{{agent}} haluaa suorittaa nämä vaiheet työpöytäsovelluksessa:",
       "moreSteps": "Näyttämättä ja suorittamatta jääneet vaiheet: {{count}}",
@@ -149,7 +149,7 @@
       "title": "Sallitaanko työpöydän hallinta?",
       "message": "Agentit voivat käyttää seuraavia. Ne kysyvät ennen jokaista toimintoa, ja tallentaminen poistaa kaikki ”Salli tässä keskustelussa” -valinnat:",
       "confirm": "Salli",
-      "enabled": "Työpöytäsovellukset",
+      "enabled": "Computer Use",
       "app": "Sovellus: {{identity}} ({{name}})",
       "more": "Ja {{count}} lisää",
       "site": "Sivusto: {{origin}}",

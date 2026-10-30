@@ -1706,8 +1706,8 @@
       "gitFailed": "Oleafly kunne ikke gemme Git-tokenet. Tjek, at du har indsat hele tokenet."
     },
     "desktopApps": {
-      "tab": "Skrivebordsapps",
-      "title": "Skrivebordsapps",
+      "tab": "Computer Use",
+      "title": "Computer Use",
       "description": "Lad agenter bruge apps og hjemmesider på denne computer via Cua Driver. Oleafly spørger før hver handling, medmindre du tillader den slags handling for chatten, sessionen eller opgaven. Din browser med login og scripts spørger altid.",
       "docsLink": "Dokumentation til Cua Driver",
       "status": {
@@ -1733,6 +1733,7 @@
         "granted": "Cua Driver kan bruge Tilgængelighed og Skærmoptagelse.",
         "needed": "Cua Driver kræver Tilgængelighed og Skærmoptagelse. Kør trinnet, der giver tilladelserne, og følg anvisningerne.",
         "unknown": "Oleafly kunne ikke læse tilladelserne for Cua Driver.",
+        "unchecked": "Cua Driver har ikke tjekket sine tilladelser endnu. Brug »Giv tilladelser«, og slå derefter Tilgængelighed og Skærmoptagelse til for CuaDriver under Systemindstillinger.",
         "grant": "Giv tilladelser",
         "terminalTitle": "Tilladelser til Cua Driver"
       },
@@ -1784,7 +1785,7 @@
         "signedIn": {
           "label": "Brug min browser med login",
           "labelFor": "Brug min browser med login på {{origin}}",
-          "description": "Agenter arbejder i din egen Chrome eller Edge på denne hjemmeside. Lad den være slået fra for at bruge en separat browserprofil."
+          "description": "Slå »Brug min browser med login« til for en hjemmeside, så agenter arbejder i din egen Chrome eller Edge på den. Er den slået fra, bruger de en separat browserprofil."
         }
       },
       "scripted": {
@@ -1803,9 +1804,9 @@
         "note": "Det at kigge sker med det samme. Klik, indtastning og sideskift spørger først, medmindre du tillader dem for chatten."
       },
       "task": {
-        "label": "Skrivebordsapps",
+        "label": "Computer Use",
         "description": "Lad denne opgave bruge dine tilladte skrivebordsapps. Du skal være ved computeren for at godkende handlinger.",
-        "off": "Slå Skrivebordsapps til under Indstillinger først.",
+        "off": "Slå Computer Use til under Indstillinger først.",
         "unattended": "Opgaver, der kører efter en tidsplan eller efter at Oleafly er lukket, kan ikke bruge skrivebordsapps."
       },
       "spaces": {

@@ -1706,8 +1706,8 @@
       "gitFailed": "Oleafly konnte das Git-Token nicht speichern. Prüfen Sie, ob Sie das ganze Token eingefügt haben."
     },
     "desktopApps": {
-      "tab": "Desktop-Apps",
-      "title": "Desktop-Apps",
+      "tab": "Computer Use",
+      "title": "Computer Use",
       "description": "Lassen Sie Agenten über Cua Driver Apps und Websites auf diesem Computer verwenden. Oleafly fragt vor jeder Aktion, es sei denn, Sie erlauben diese Art von Aktion für den Chat, die Sitzung oder die Aufgabe. Ihr angemeldeter Browser und Skripte fragen immer.",
       "docsLink": "Dokumentation zu Cua Driver",
       "status": {
@@ -1733,6 +1733,7 @@
         "granted": "Cua Driver darf Bedienungshilfen und Bildschirmaufnahme verwenden.",
         "needed": "Cua Driver braucht Bedienungshilfen und Bildschirmaufnahme. Führen Sie den Schritt zum Erteilen aus und folgen Sie den Hinweisen.",
         "unknown": "Oleafly konnte die Berechtigungen von Cua Driver nicht lesen.",
+        "unchecked": "Cua Driver hat seine Berechtigungen noch nicht geprüft. Verwenden Sie „Berechtigungen erteilen“ und aktivieren Sie dann Bedienungshilfen und Bildschirmaufnahme für CuaDriver in den Systemeinstellungen.",
         "grant": "Berechtigungen erteilen",
         "terminalTitle": "Berechtigungen für Cua Driver"
       },
@@ -1784,7 +1785,7 @@
         "signedIn": {
           "label": "Meinen angemeldeten Browser verwenden",
           "labelFor": "Meinen angemeldeten Browser auf {{origin}} verwenden",
-          "description": "Agenten arbeiten auf dieser Website in Ihrem eigenen Chrome oder Edge. Lassen Sie es aus, um ein separates Browserprofil zu verwenden."
+          "description": "Schalten Sie „Meinen angemeldeten Browser verwenden“ für eine Website ein, damit Agenten dort in Ihrem eigenen Chrome oder Edge arbeiten. Bei ausgeschalteter Option verwenden sie ein separates Browserprofil."
         }
       },
       "scripted": {
@@ -1803,9 +1804,9 @@
         "note": "Ansehen geschieht sofort. Bei Klicks, Eingaben und Seitenwechseln wird zuerst gefragt, es sei denn, Sie erlauben sie für den Chat."
       },
       "task": {
-        "label": "Desktop-Apps",
+        "label": "Computer Use",
         "description": "Diese Aufgabe Ihre erlaubten Desktop-Apps verwenden lassen. Sie müssen am Computer sein, um Aktionen freizugeben.",
-        "off": "Schalten Sie zuerst Desktop-Apps in den Einstellungen ein.",
+        "off": "Schalten Sie zuerst Computer Use in den Einstellungen ein.",
         "unattended": "Aufgaben, die nach Zeitplan oder nach dem Schließen von Oleafly laufen, können keine Desktop-Apps verwenden."
       },
       "spaces": {

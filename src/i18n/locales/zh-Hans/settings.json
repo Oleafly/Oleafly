@@ -1691,8 +1691,8 @@
       "gitFailed": "Oleafly 无法保存 Git 令牌。请检查是否粘贴了完整的令牌。"
     },
     "desktopApps": {
-      "tab": "桌面应用",
-      "title": "桌面应用",
+      "tab": "Computer Use",
+      "title": "Computer Use",
       "description": "让代理通过 Cua Driver 使用这台计算机上的应用和网站。Oleafly 在每次操作前都会询问，除非你已在聊天、会话或任务中允许该类操作。你已登录的浏览器和脚本始终会询问。",
       "docsLink": "Cua Driver 文档",
       "status": {
@@ -1718,6 +1718,7 @@
         "granted": "Cua Driver 可以使用辅助功能和屏幕录制。",
         "needed": "Cua Driver 需要辅助功能和屏幕录制权限。请运行授权步骤并按提示操作。",
         "unknown": "Oleafly 无法读取 Cua Driver 的权限。",
+        "unchecked": "Cua Driver 尚未检查其权限。请先点击“授予权限”，然后在“系统设置”中为 CuaDriver 开启“辅助功能”和“屏幕录制”。",
         "grant": "授予权限",
         "terminalTitle": "Cua Driver 权限"
       },
@@ -1769,7 +1770,7 @@
         "signedIn": {
           "label": "使用我已登录的浏览器",
           "labelFor": "在 {{origin}} 上使用我已登录的浏览器",
-          "description": "代理会在你自己的 Chrome 或 Edge 中操作此网站。关闭此选项则使用单独的浏览器配置文件。"
+          "description": "为某个网站开启“使用我已登录的浏览器”后，代理会在你自己的 Chrome 或 Edge 中操作该网站。关闭时，则使用单独的浏览器配置文件。"
         }
       },
       "scripted": {
@@ -1788,9 +1789,9 @@
         "note": "查看会立即进行。点击、输入和页面变更会先询问，除非你已在聊天中允许。"
       },
       "task": {
-        "label": "桌面应用",
+        "label": "Computer Use",
         "description": "允许此任务使用你允许的桌面应用。你需要在计算机前批准操作。",
-        "off": "请先在设置中开启桌面应用。",
+        "off": "请先在设置中开启 Computer Use。",
         "unattended": "按计划运行或在 Oleafly 关闭后运行的任务无法使用桌面应用。"
       },
       "spaces": {

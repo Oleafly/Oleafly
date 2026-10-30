@@ -387,10 +387,10 @@
     "command_declined": "MCP server nebyl uložen."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver není nainstalovaný. Nainstalujte ho v části Nastavení, Integrace, Aplikace v počítači.",
+    "not_installed": "Cua Driver není nainstalovaný. Nainstalujte ho v části Nastavení, Integrace, Computer Use.",
     "too_old": "Cua Driver {{version}} je příliš starý. Aktualizujte ho na verzi {{minimum}} nebo novější.",
     "no_app_bundle": "Nainstalujte Cua Driver oficiálním instalačním programem, aby mohl držet oprávnění macOS.",
-    "change_declined": "Ponechali jste si předchozí nastavení aplikací v počítači.",
+    "change_declined": "Ponechali jste si předchozí nastavení funkce Computer Use.",
     "app_blocked": "Agenti nemohou používat {{name}}.",
     "app_invalid": "Oleafly nemůže {{name}} použít jako aplikaci.",
     "site_invalid": "„{{site}}“ není adresa webu, kterou může Oleafly použít. Použijte https://, nebo http:// pro tento počítač.",
@@ -398,7 +398,8 @@
     "too_many_sites": "Můžete povolit nejvýše {{limit}} webů.",
     "start_failed": "Cua Driver se nepodařilo spustit: {{detail}}",
     "not_bounded": "Cua Driver se nespustil s limity Oleafly, proto ho Oleafly zastavil.",
+    "needs_permissions": "Cua Driver čeká na svá oprávnění v macOS. V Nastavení systému zapněte pro CuaDriver Zpřístupnění a Nahrávání obrazovky a zkuste to znovu.",
     "task_unattended": "Úlohy, které běží podle plánu nebo po zavření Oleafly, nemohou používat aplikace v počítači.",
-    "main_window": "Nastavení aplikací v počítači měňte v hlavním okně."
+    "main_window": "Nastavení funkce Computer Use měňte v hlavním okně."
   }
 }

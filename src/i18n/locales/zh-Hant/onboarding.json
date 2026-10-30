@@ -128,7 +128,7 @@
     },
     "integrations": {
       "title": "整合",
-      "content": "連接 Git 代管（GitHub、GitLab、Codeberg 等）、alphaXiv、Zotero、引用搜尋、代理程式的桌面應用程式，以及 Oleafly 的本機 MCP 伺服器。"
+      "content": "連接 Git 代管（GitHub、GitLab、Codeberg 等）、alphaXiv、Zotero、引用搜尋、代理程式的 Computer Use，以及 Oleafly 的本機 MCP 伺服器。"
     },
     "shortcuts": {
       "title": "鍵盤快捷鍵",

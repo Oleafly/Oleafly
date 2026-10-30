@@ -25,6 +25,7 @@ vi.mock("@/lib/desktop-apps", () => ({
   cuaDriverTest: mocks.test,
   cuaDriverInstalledApps: vi.fn(async () => []),
   cuaDriverPickApp: vi.fn(async () => null),
+  cuaDriverAppIcons: vi.fn(async () => ({})),
   syncDesktopAppsTool: mocks.sync,
 }));
 vi.mock("@/lib/terminal-launch", () => ({
@@ -81,7 +82,7 @@ beforeEach(() => {
   mocks.settingsSet.mockReset();
   mocks.test.mockReset();
   useFilesStore.setState({ projectId: null });
-  useSettingsStore.setState({ settingsOpen: true });
+  useSettingsStore.setState({ settingsOpen: true, settingsInitialSection: "general", settingsScrollTarget: null });
   Element.prototype.hasPointerCapture = vi.fn(() => false);
   Element.prototype.scrollIntoView = vi.fn();
 });
@@ -120,6 +121,9 @@ describe("DesktopAppsSection", () => {
       confirmText: copy.install.confirm,
     });
     await waitFor(() => expect(useSettingsStore.getState().settingsOpen).toBe(false));
+    // Opened again, Settings comes back here for Check again.
+    expect(useSettingsStore.getState().settingsInitialSection).toBe("integrations");
+    expect(useSettingsStore.getState().settingsScrollTarget).toBe("desktop-apps");
   });
 
   it("keeps Settings open when the terminal confirmation is declined", async () => {
@@ -281,9 +285,47 @@ describe("DesktopAppsSection", () => {
     const row = await screen.findByTestId("desktop-apps-permissions");
     expect(within(row).getByRole("button", { name: copy.permissions.grant })).toBeDisabled();
     expect(within(row).getByText(copy.install.needsProject)).toBeVisible();
+    // The command the hint offers to copy is right there.
+    expect(within(row).getByText("/Applications/CuaDriver.app/Contents/MacOS/cua-driver permissions grant")).toBeVisible();
     mocks.status.mockResolvedValue(status({ permissions: { accessibility: true, screenRecording: true } }));
     await user.click(within(row).getByRole("button", { name: copy.install.checkAgain }));
     expect(await screen.findByText(copy.permissions.granted)).toBeVisible();
+  });
+
+  it("leaves the permissions until Cua Driver is installed and new enough", async () => {
+    mocks.status.mockResolvedValue(
+      status({ driverProblem: "too_old", driverVersion: "0.22.0", permissions: { accessibility: null, screenRecording: null } }),
+    );
+    renderSection();
+    expect(await screen.findByText(/0\.22\.0 is too old/)).toBeVisible();
+    expect(screen.queryByTestId("desktop-apps-permissions")).toBeNull();
+    expect(screen.queryByRole("button", { name: copy.permissions.grant })).toBeNull();
+  });
+
+  it("points to the grant step when Cua Driver hasn't checked its permissions yet", async () => {
+    mocks.status.mockResolvedValue(
+      status({ permissions: { accessibility: null, screenRecording: null, unchecked: true } }),
+    );
+    renderSection();
+    const row = await screen.findByTestId("desktop-apps-permissions");
+    expect(within(row).getByText(copy.permissions.unchecked)).toBeVisible();
+    expect(within(row).queryByText(copy.permissions.unknown)).toBeNull();
+  });
+
+  it("explains the signed-in browser switch only once there is a site to use it on", async () => {
+    mocks.status.mockResolvedValue(status({ settings: { ...OFF, enabled: true } }));
+    const { unmount } = renderSection();
+    const sites = await screen.findByTestId("desktop-apps-sites");
+    expect(within(sites).getByText(copy.sites.empty)).toBeVisible();
+    expect(within(sites).queryByText(copy.sites.signedIn.description)).toBeNull();
+    unmount();
+    mocks.status.mockResolvedValue(
+      status({ settings: { ...OFF, enabled: true, sites: [{ origin: "https://example.org", signedIn: false }] } }),
+    );
+    renderSection();
+    const listed = await screen.findByTestId("desktop-apps-sites");
+    expect(await within(listed).findByText(copy.sites.signedIn.description)).toBeVisible();
+    expect(within(listed).queryByText(copy.sites.empty)).toBeNull();
   });
 
   it("lists what Cua Driver's own check found even when the connection test passes", async () => {

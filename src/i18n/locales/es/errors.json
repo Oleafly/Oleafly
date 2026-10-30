@@ -387,10 +387,10 @@
     "command_declined": "No se guardó el servidor MCP."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver no está instalado. Instálalo en Ajustes, Integraciones, Aplicaciones de escritorio.",
+    "not_installed": "Cua Driver no está instalado. Instálalo en Ajustes, Integraciones, Computer Use.",
     "too_old": "Cua Driver {{version}} es demasiado antiguo. Actualízalo a {{minimum}} o posterior.",
     "no_app_bundle": "Instala Cua Driver con el instalador oficial para que pueda conservar los permisos de macOS.",
-    "change_declined": "Conservaste tus ajustes anteriores de Aplicaciones de escritorio.",
+    "change_declined": "Conservaste tus ajustes anteriores de Computer Use.",
     "app_blocked": "Los agentes no pueden usar {{name}}.",
     "app_invalid": "Oleafly no puede usar {{name}} como aplicación.",
     "site_invalid": "«{{site}}» no es una dirección web que Oleafly pueda usar. Usa https://, o http:// para este equipo.",
@@ -398,7 +398,8 @@
     "too_many_sites": "Puedes permitir hasta {{limit}} sitios web.",
     "start_failed": "Cua Driver no pudo arrancar: {{detail}}",
     "not_bounded": "Cua Driver no arrancó con los límites de Oleafly, así que Oleafly lo detuvo.",
+    "needs_permissions": "Cua Driver está esperando sus permisos de macOS. Activa Accesibilidad y Grabación de pantalla para CuaDriver en Ajustes del Sistema y vuelve a intentarlo.",
     "task_unattended": "Las tareas que se ejecutan según una programación o después de cerrar Oleafly no pueden usar aplicaciones de escritorio.",
-    "main_window": "Cambia Aplicaciones de escritorio desde la ventana principal."
+    "main_window": "Cambia Computer Use desde la ventana principal."
   }
 }

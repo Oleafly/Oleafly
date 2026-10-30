@@ -107,7 +107,7 @@
       "confirm": "Consenti su questo computer"
     },
     "desktopApps": {
-      "title": "App desktop",
+      "title": "Computer Use",
       "action": "{{agent}} vuole {{action}}.",
       "steps": "{{agent}} vuole eseguire questi passaggi in un'app desktop:",
       "moreSteps": "Passaggi non mostrati e non eseguiti: {{count}}",
@@ -149,7 +149,7 @@
       "title": "Consentire il controllo del desktop?",
       "message": "Gli agenti potranno usare quanto segue. Chiedono prima di ogni azione e, quando salvi, tutte le scelte \"Consenti per questa chat\" vengono cancellate:",
       "confirm": "Consenti",
-      "enabled": "App desktop",
+      "enabled": "Computer Use",
       "app": "App: {{identity}} ({{name}})",
       "more": "E altri {{count}}",
       "site": "Sito web: {{origin}}",

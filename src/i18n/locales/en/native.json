@@ -107,7 +107,7 @@
       "confirm": "Allow on this computer"
     },
     "desktopApps": {
-      "title": "Desktop apps",
+      "title": "Computer Use",
       "action": "{{agent}} wants to {{action}}.",
       "steps": "{{agent}} wants to run these steps in a desktop app:",
       "moreSteps": "Steps not shown and not run: {{count}}",
@@ -149,7 +149,7 @@
       "title": "Allow desktop control?",
       "message": "Agents will be able to use these. They ask before each action, and saving this clears any \"Allow for this chat\" choices:",
       "confirm": "Allow",
-      "enabled": "Desktop apps",
+      "enabled": "Computer Use",
       "app": "App: {{identity}} ({{name}})",
       "more": "And {{count}} more",
       "site": "Website: {{origin}}",

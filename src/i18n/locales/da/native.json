@@ -107,7 +107,7 @@
       "confirm": "Tillad på denne computer"
     },
     "desktopApps": {
-      "title": "Skrivebordsapps",
+      "title": "Computer Use",
       "action": "{{agent}} vil {{action}}.",
       "steps": "{{agent}} vil køre disse trin i en skrivebordsapp:",
       "moreSteps": "Trin, der hverken vises eller køres: {{count}}",
@@ -149,7 +149,7 @@
       "title": "Vil du tillade styring af skrivebordet?",
       "message": "Agenter vil kunne bruge følgende. De spørger før hver handling, og når du gemmer, ryddes alle valg af »Tillad for denne chat«:",
       "confirm": "Tillad",
-      "enabled": "Skrivebordsapps",
+      "enabled": "Computer Use",
       "app": "App: {{identity}} ({{name}})",
       "more": "Og {{count}} flere",
       "site": "Hjemmeside: {{origin}}",

@@ -107,7 +107,7 @@
       "confirm": "Permitir neste computador"
     },
     "desktopApps": {
-      "title": "Aplicativos de desktop",
+      "title": "Computer Use",
       "action": "{{agent}} quer {{action}}.",
       "steps": "{{agent}} quer executar estas etapas em um aplicativo de desktop:",
       "moreSteps": "Etapas não exibidas e não executadas: {{count}}",
@@ -149,7 +149,7 @@
       "title": "Permitir o controle do desktop?",
       "message": "Os agentes poderão usar o seguinte. Eles perguntam antes de cada ação, e salvar isto limpa todas as escolhas de \"Permitir nesta conversa\":",
       "confirm": "Permitir",
-      "enabled": "Aplicativos de desktop",
+      "enabled": "Computer Use",
       "app": "Aplicativo: {{identity}} ({{name}})",
       "more": "E mais {{count}}",
       "site": "Site: {{origin}}",

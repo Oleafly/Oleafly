@@ -1721,8 +1721,8 @@
       "gitFailed": "Oleafly n'a pas pu enregistrer le jeton Git. Vérifiez que vous avez collé le jeton en entier."
     },
     "desktopApps": {
-      "tab": "Applications de bureau",
-      "title": "Applications de bureau",
+      "tab": "Computer Use",
+      "title": "Computer Use",
       "description": "Laissez les agents utiliser les applications et les sites web de cet ordinateur grâce à Cua Driver. Oleafly demande avant chaque action, sauf si vous autorisez ce type d'action pour la discussion, la session ou la tâche. Votre navigateur connecté et les scripts demandent toujours.",
       "docsLink": "Documentation de Cua Driver",
       "status": {
@@ -1748,6 +1748,7 @@
         "granted": "Cua Driver peut utiliser Accessibilité et Enregistrement de l'écran.",
         "needed": "Cua Driver a besoin d'Accessibilité et d'Enregistrement de l'écran. Lancez l'étape d'autorisation et suivez les instructions.",
         "unknown": "Oleafly n'a pas pu lire les autorisations de Cua Driver.",
+        "unchecked": "Cua Driver n'a pas encore vérifié ses autorisations. Utilisez « Accorder les autorisations », puis activez Accessibilité et Enregistrement de l'écran pour CuaDriver dans Réglages Système.",
         "grant": "Accorder les autorisations",
         "terminalTitle": "Autorisations de Cua Driver"
       },
@@ -1799,7 +1800,7 @@
         "signedIn": {
           "label": "Utiliser mon navigateur connecté",
           "labelFor": "Utiliser mon navigateur connecté sur {{origin}}",
-          "description": "Les agents travaillent dans votre propre Chrome ou Edge sur ce site. Laissez désactivé pour utiliser un profil de navigateur distinct."
+          "description": "Activez « Utiliser mon navigateur connecté » pour un site afin que les agents y travaillent dans votre propre Chrome ou Edge. Quand l'option est désactivée, ils utilisent un profil de navigateur distinct."
         }
       },
       "scripted": {
@@ -1818,9 +1819,9 @@
         "note": "La consultation se fait tout de suite. Les clics, la saisie et les changements de page demandent d'abord, sauf si vous les autorisez pour la discussion."
       },
       "task": {
-        "label": "Applications de bureau",
+        "label": "Computer Use",
         "description": "Laisser cette tâche utiliser vos applications de bureau autorisées. Vous devez être devant l'ordinateur pour approuver les actions.",
-        "off": "Activez d'abord les applications de bureau dans les Paramètres.",
+        "off": "Activez d'abord Computer Use dans les Paramètres.",
         "unattended": "Les tâches qui s'exécutent selon une planification ou après la fermeture d'Oleafly ne peuvent pas utiliser les applications de bureau."
       },
       "spaces": {

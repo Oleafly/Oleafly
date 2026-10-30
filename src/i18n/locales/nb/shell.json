@@ -976,7 +976,7 @@
         "experimentation": "lab, beta, eksperimenter, tidlige funksjoner",
         "general": "innstillinger, språk, region, stavekontroll, stavemåte, skrivefeil, frakoblet, omvisninger, terminalkommando",
         "help": "om, versjon, oppdateringer, endringslogg, hva er nytt, dokumentasjon, støtte, hjelp, fellesskap, Discord, lisens, krasjrapport",
-        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-hosting, skrivebordsapper, Cua, MCP, siteringer, kontoer, tilkoblinger",
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-hosting, Computer Use, skrivebordsapper, Cua, MCP, siteringer, kontoer, tilkoblinger",
         "shortcuts": "tastebindinger, hurtigtaster, taster, tastatur, snarveier",
         "research": "forskning oppgaver budsjett varsler hold våken eksperimenter kjøringer"
       },

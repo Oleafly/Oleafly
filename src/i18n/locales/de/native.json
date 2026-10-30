@@ -107,7 +107,7 @@
       "confirm": "Auf diesem Computer erlauben"
     },
     "desktopApps": {
-      "title": "Desktop-Apps",
+      "title": "Computer Use",
       "action": "{{agent}} möchte {{action}}.",
       "steps": "{{agent}} möchte diese Schritte in einer Desktop-App ausführen:",
       "moreSteps": "Nicht angezeigte und nicht ausgeführte Schritte: {{count}}",
@@ -149,7 +149,7 @@
       "title": "Desktop-Steuerung erlauben?",
       "message": "Agenten können diese verwenden. Sie fragen vor jeder Aktion, und beim Speichern werden alle Entscheidungen „Für diesen Chat erlauben“ gelöscht:",
       "confirm": "Erlauben",
-      "enabled": "Desktop-Apps",
+      "enabled": "Computer Use",
       "app": "App: {{identity}} ({{name}})",
       "more": "Und {{count}} weitere",
       "site": "Website: {{origin}}",

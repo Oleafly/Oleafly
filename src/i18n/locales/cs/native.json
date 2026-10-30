@@ -107,7 +107,7 @@
       "confirm": "Povolit v tomto počítači"
     },
     "desktopApps": {
-      "title": "Aplikace v počítači",
+      "title": "Computer Use",
       "action": "{{agent}} chce {{action}}.",
       "steps": "{{agent}} chce v aplikaci v počítači provést tyto kroky:",
       "moreSteps": "Nezobrazené a nespuštěné kroky: {{count}}",
@@ -149,7 +149,7 @@
       "title": "Povolit ovládání počítače?",
       "message": "Agenti budou moci tyto položky používat. Před každou akcí se zeptají a uložením se zruší všechny volby „Povolit pro tento chat“:",
       "confirm": "Povolit",
-      "enabled": "Aplikace v počítači",
+      "enabled": "Computer Use",
       "app": "Aplikace: {{identity}} ({{name}})",
       "more": "A ještě {{count}}",
       "site": "Web: {{origin}}",

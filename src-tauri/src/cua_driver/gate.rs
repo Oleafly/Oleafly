@@ -17,7 +17,7 @@ use super::policy::{bounded, clipped, preview_clipped, CuratedTool, Step, ToolCl
 use super::{lock, BoxFuture, CuaScope, RuntimeKind, Surface};
 
 pub(crate) const DENIED_TEXT: &str =
-    "Desktop apps are denied for this project in the approval rules.";
+    "Computer Use is denied for this project in the approval rules.";
 pub(crate) const MAX_MESSAGE_CHARS: usize = 6_000;
 const MAX_STEP_LINE_CHARS: usize = 160;
 const MAX_TEXT_CHARS: usize = 200;

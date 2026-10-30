@@ -128,7 +128,7 @@
     },
     "integrations": {
       "title": "Intégrations",
-      "content": "Connectez l'hébergement Git (GitHub, GitLab, Codeberg et d'autres), alphaXiv, Zotero, la recherche de citations, les applications de bureau pour les agents et le serveur MCP local d'Oleafly."
+      "content": "Connectez l'hébergement Git (GitHub, GitLab, Codeberg et d'autres), alphaXiv, Zotero, la recherche de citations, Computer Use pour les agents et le serveur MCP local d'Oleafly."
     },
     "shortcuts": {
       "title": "Raccourcis clavier",

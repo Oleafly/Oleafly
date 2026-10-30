@@ -107,7 +107,7 @@
       "confirm": "このコンピュータで許可"
     },
     "desktopApps": {
-      "title": "デスクトップアプリ",
+      "title": "Computer Use",
       "action": "{{agent}} が{{action}}ことを求めています。",
       "steps": "{{agent}} がデスクトップアプリで次の手順を実行しようとしています:",
       "moreSteps": "表示されず、実行もされない手順: {{count}}",
@@ -149,7 +149,7 @@
       "title": "デスクトップの操作を許可しますか？",
       "message": "エージェントは次のものを使えるようになります。操作のたびに確認が入り、保存すると「このチャットで許可」の選択はすべて解除されます:",
       "confirm": "許可",
-      "enabled": "デスクトップアプリ",
+      "enabled": "Computer Use",
       "app": "アプリ: {{identity}}（{{name}}）",
       "more": "ほか {{count}} 件",
       "site": "ウェブサイト: {{origin}}",

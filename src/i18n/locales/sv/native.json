@@ -107,7 +107,7 @@
       "confirm": "Tillåt på den här datorn"
     },
     "desktopApps": {
-      "title": "Skrivbordsappar",
+      "title": "Computer Use",
       "action": "{{agent}} vill {{action}}.",
       "steps": "{{agent}} vill köra de här stegen i en skrivbordsapp:",
       "moreSteps": "Steg som inte visas och inte körs: {{count}}",
@@ -149,7 +149,7 @@
       "title": "Vill du tillåta styrning av skrivbordet?",
       "message": "Agenter kommer att kunna använda följande. De frågar före varje åtgärd, och när du sparar rensas alla val av \"Tillåt för den här chatten\":",
       "confirm": "Tillåt",
-      "enabled": "Skrivbordsappar",
+      "enabled": "Computer Use",
       "app": "App: {{identity}} ({{name}})",
       "more": "Och {{count}} till",
       "site": "Webbplats: {{origin}}",

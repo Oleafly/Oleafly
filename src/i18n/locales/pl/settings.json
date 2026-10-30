@@ -1736,8 +1736,8 @@
       "gitFailed": "Oleafly nie mógł zapisać tokenu Git. Sprawdź, czy wklejony został cały token."
     },
     "desktopApps": {
-      "tab": "Aplikacje na komputerze",
-      "title": "Aplikacje na komputerze",
+      "tab": "Computer Use",
+      "title": "Computer Use",
       "description": "Pozwól agentom używać aplikacji i stron na tym komputerze przez Cua Driver. Oleafly pyta przed każdą akcją, chyba że zezwolisz na taki rodzaj akcji w czacie, sesji lub zadaniu. Twoja zalogowana przeglądarka i skrypty zawsze wymagają pytania.",
       "docsLink": "Dokumentacja Cua Driver",
       "status": {
@@ -1763,6 +1763,7 @@
         "granted": "Cua Driver może korzystać z dostępności i nagrywania ekranu.",
         "needed": "Cua Driver potrzebuje uprawnień do dostępności i nagrywania ekranu. Uruchom krok nadawania uprawnień i postępuj zgodnie z instrukcjami.",
         "unknown": "Oleafly nie mógł odczytać uprawnień Cua Driver.",
+        "unchecked": "Cua Driver nie sprawdził jeszcze swoich uprawnień. Użyj „Nadaj uprawnienia”, a potem włącz Dostępność i Nagrywanie ekranu dla CuaDriver w Ustawieniach systemowych.",
         "grant": "Nadaj uprawnienia",
         "terminalTitle": "Uprawnienia Cua Driver"
       },
@@ -1814,7 +1815,7 @@
         "signedIn": {
           "label": "Użyj mojej zalogowanej przeglądarki",
           "labelFor": "Użyj mojej zalogowanej przeglądarki na {{origin}}",
-          "description": "Na tej stronie agenci pracują w Twoim własnym Chrome lub Edge. Zostaw wyłączone, aby używać osobnego profilu przeglądarki."
+          "description": "Włącz „Użyj mojej zalogowanej przeglądarki” dla strony, aby agenci pracowali na niej w Twoim własnym Chrome lub Edge. Gdy opcja jest wyłączona, używają osobnego profilu przeglądarki."
         }
       },
       "scripted": {
@@ -1833,9 +1834,9 @@
         "note": "Oglądanie działa od razu. Kliknięcia, pisanie i zmiany stron wymagają najpierw pytania, chyba że zezwolisz na nie w czacie."
       },
       "task": {
-        "label": "Aplikacje na komputerze",
+        "label": "Computer Use",
         "description": "Pozwól temu zadaniu używać dozwolonych aplikacji na komputerze. Musisz być przy komputerze, aby zatwierdzać czynności.",
-        "off": "Najpierw włącz aplikacje na komputerze w Ustawieniach.",
+        "off": "Najpierw włącz funkcję Computer Use w Ustawieniach.",
         "unattended": "Zadania uruchamiane według harmonogramu lub po zamknięciu Oleafly nie mogą używać aplikacji na komputerze."
       },
       "spaces": {
