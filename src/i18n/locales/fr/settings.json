@@ -641,6 +641,7 @@
         "swatchAriaLabel": "Accentuation {{name}}"
       },
       "appIcon": {
+        "about": "Où l'icône de l'application s'affiche",
         "aurora": "Aurore",
         "blue": "Bleue",
         "coral": "Corail",

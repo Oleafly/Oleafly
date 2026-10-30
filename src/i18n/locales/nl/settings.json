@@ -637,6 +637,7 @@
         "swatchAriaLabel": "Accent {{name}}"
       },
       "appIcon": {
+        "about": "Waar het app-pictogram verschijnt",
         "aurora": "Noorderlicht",
         "blue": "Blauw",
         "coral": "Koraal",

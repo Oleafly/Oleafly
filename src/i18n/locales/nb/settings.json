@@ -637,6 +637,7 @@
         "swatchAriaLabel": "Aksenten {{name}}"
       },
       "appIcon": {
+        "about": "Hvor appikonet vises",
         "aurora": "Nordlys",
         "blue": "Blå",
         "coral": "Korall",

@@ -641,6 +641,7 @@
         "swatchAriaLabel": "Destaque {{name}}"
       },
       "appIcon": {
+        "about": "Onde o ícone do aplicativo aparece",
         "aurora": "Aurora",
         "blue": "Azul",
         "coral": "Coral",
