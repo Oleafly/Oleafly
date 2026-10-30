@@ -169,6 +169,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The Oleafly icon no longer looks bigger than other apps' icons in the Dock
+  and Finder on macOS 15 and earlier. The bundled icon and the icons in
+  Settings > Appearance now leave the margin macOS expects around an app icon.
 - Deleting a file or folder in the file tree asks first again, and so do
   restoring an earlier chat checkpoint and replacing an equation or diagram
   file. The question never showed up in the app, so all of these went ahead
