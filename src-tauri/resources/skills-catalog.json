@@ -4,7 +4,7 @@
   "packs": [
     {
       "id": "research-core",
-      "version": "2026.10.19.d7cafe8b",
+      "version": "2026.10.19.fa83f292",
       "kind": "bundled"
     }
   ],
@@ -31,7 +31,7 @@
       "phase": "tooling",
       "license": "MIT",
       "version": "1.0.0",
-      "bytes": 4504,
+      "bytes": 4823,
       "files": 1,
       "pack": "research-core"
     },

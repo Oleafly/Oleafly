@@ -1738,7 +1738,7 @@
     "desktopApps": {
       "tab": "Computer Use",
       "title": "Computer Use",
-      "description": "Povolte agentům používat aplikace a weby v tomto počítači přes Cua Driver. Oleafly se před každou akcí zeptá, pokud takový druh akce nepovolíte pro chat, relaci nebo úlohu. Váš přihlášený prohlížeč a skripty se ptají vždy.",
+      "description": "Nechte agenty používat aplikace a weby v tomto počítači přes Cua Driver. Dostanou se jen k aplikacím a webům, které tu uvedete.",
       "docsLink": "Dokumentace Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} je nainstalovaný.",
@@ -1774,7 +1774,7 @@
       },
       "enable": {
         "label": "Povolit agentům používat aplikace v počítači",
-        "description": "Agenti vidí aplikace a weby níže. Před kliknutím, psaním a změnou stránky se vás nejdřív zeptají, pokud je nepovolíte pro chat, relaci nebo úlohu. Přidáním aplikace nebo webu se tyto volby zruší."
+        "description": "Agenti vidí a používají aplikace a weby níže."
       },
       "apps": {
         "heading": "Povolené aplikace",
@@ -1784,7 +1784,7 @@
         "missing": "Tento program nebyl v tomto počítači nalezen. Odeberte ho, nebo aplikaci přeinstalujte.",
         "dialog": {
           "title": "Přidat aplikaci",
-          "description": "Vyberte aplikaci, kterou mohou agenti používat. Po vašem schválení ji mohou otevřít, číst její okna a pracovat v ní.",
+          "description": "Vyberte aplikaci, kterou mohou agenti používat. Mohou ji otevřít, číst její okna a pracovat v ní.",
           "search": "Hledat aplikace",
           "loading": "Hledají se aplikace…",
           "none": "Žádná aplikace neodpovídá.",
@@ -1820,7 +1820,11 @@
       },
       "scripted": {
         "label": "Ovládání skripty",
-        "description": "Povolte agentům spouštět skripty Cua, které provedou mnoho kroků najednou. Oleafly se ptá před každým skriptem."
+        "description": "Nechte agenty spouštět skripty Cua, které provedou mnoho kroků najednou."
+      },
+      "ask": {
+        "label": "Ptát se před každou akcí",
+        "description": "Schvalujte každé kliknutí, stisk klávesy, změnu stránky a skript v dialogu. Druh akce můžete povolit pro zbytek chatu, relace nebo úlohy, kromě vašeho přihlášeného prohlížeče a skriptů. Přidáním aplikace nebo webu se tyto volby zruší."
       },
       "test": {
         "action": "Otestovat připojení",
@@ -1831,11 +1835,11 @@
       },
       "tool": {
         "description": "Používat aplikace v počítači a weby povolené v Nastavení.",
-        "note": "Prohlížení proběhne hned. Kliknutí, psaní a změny stránky se nejdřív zeptají, pokud je nepovolíte pro chat."
+        "note": "Funguje jen v aplikacích a na webech, které jste povolili. Když je zapnuto „Ptát se před každou akcí“, akce se nejdřív zeptají."
       },
       "task": {
         "label": "Computer Use",
-        "description": "Povolit této úloze používat povolené aplikace v počítači. Ke schvalování akcí musíte být u počítače.",
+        "description": "Povolit této úloze používat povolené aplikace v počítači. Když je zapnuto „Ptát se před každou akcí“, musíte být ke schvalování akcí u počítače.",
         "off": "Nejdřív zapněte funkci Computer Use v Nastavení.",
         "unattended": "Úlohy, které běží podle plánu nebo po zavření Oleafly, nemohou používat aplikace v počítači."
       },

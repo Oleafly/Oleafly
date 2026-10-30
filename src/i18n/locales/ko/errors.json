@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly가 {{host}}의 인증서를 확인하지 못했습니다. 조직에서 자체 인증 기관을 운영한다면 설정에서 그 인증서 파일을 계정에 추가하세요.",
     "tracked_secret_files": "이 프로젝트의 Git 기록에 있는 파일에 키나 비밀번호가 들어 있을 수 있어 게시를 중단했습니다: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "전체 접근 권한이 활성화되지 않았습니다."
-  },
+  "approvals": {},
   "trust": {
     "git": "소스 관리를 사용하려면 이 폴더를 신뢰하세요.",
     "repository": "여기에서 소스 관리를 사용하려면 {{name}} 저장소를 신뢰하세요.",

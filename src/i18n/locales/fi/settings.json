@@ -1708,7 +1708,7 @@
     "desktopApps": {
       "tab": "Computer Use",
       "title": "Computer Use",
-      "description": "Anna agenttien käyttää tämän koneen sovelluksia ja sivustoja Cua Driver -ohjelman kautta. Oleafly kysyy ennen jokaista toimintoa, ellet salli sellaista toimintoa keskustelussa, istunnossa tai tehtävässä. Kirjautunut selaimesi ja skriptit kysyvät aina.",
+      "description": "Anna agenttien käyttää tämän tietokoneen sovelluksia ja sivustoja Cua Driverin kautta. Ne pääsevät vain sovelluksiin ja sivustoihin, jotka luettelet tässä.",
       "docsLink": "Cua Driver -ohjeet",
       "status": {
         "installed": "Cua Driver {{version}} on asennettu.",
@@ -1744,7 +1744,7 @@
       },
       "enable": {
         "label": "Anna agenttien käyttää työpöytäsovelluksia",
-        "description": "Agentit näkevät alla olevat sovellukset ja sivustot. Napsautukset, kirjoittaminen ja sivunvaihdot kysyvät sinulta ensin, ellet salli niitä keskustelussa, istunnossa tai tehtävässä. Sovelluksen tai sivuston lisääminen poistaa nämä valinnat."
+        "description": "Agentit näkevät ja käyttävät alla olevia sovelluksia ja sivustoja."
       },
       "apps": {
         "heading": "Sallitut sovellukset",
@@ -1754,7 +1754,7 @@
         "missing": "Tätä ohjelmaa ei löytynyt tältä tietokoneelta. Poista se tai asenna sovellus uudelleen.",
         "dialog": {
           "title": "Lisää sovellus",
-          "description": "Valitse sovellus, jota agentit saavat käyttää. Ne voivat avata sen, lukea sen ikkunoita ja toimia siinä hyväksyntäsi jälkeen.",
+          "description": "Valitse sovellus, jota agentit saavat käyttää. Ne voivat avata sen, lukea sen ikkunoita ja toimia siinä.",
           "search": "Hae sovelluksia",
           "loading": "Etsitään sovelluksia…",
           "none": "Yksikään sovellus ei vastaa hakua.",
@@ -1790,7 +1790,11 @@
       },
       "scripted": {
         "label": "Skriptiohjaus",
-        "description": "Anna agenttien suorittaa Cua-skriptejä, jotka tekevät monta vaihetta kerralla. Oleafly kysyy ennen jokaista skriptiä."
+        "description": "Anna agenttien ajaa Cua-skriptejä, jotka tekevät monta vaihetta kerralla."
+      },
+      "ask": {
+        "label": "Kysy ennen jokaista toimintoa",
+        "description": "Hyväksy jokainen napsautus, näppäily, sivunvaihto ja skripti valintaikkunassa. Voit sallia tietynlaisen toiminnon keskustelun, istunnon tai tehtävän loppuun asti, paitsi kirjautuneessa selaimessasi ja skripteille. Sovelluksen tai sivuston lisääminen poistaa nämä valinnat."
       },
       "test": {
         "action": "Testaa yhteys",
@@ -1801,11 +1805,11 @@
       },
       "tool": {
         "description": "Käytä työpöytäsovelluksia ja sivustoja, jotka olet sallinut asetuksissa.",
-        "note": "Katsominen tapahtuu heti. Napsautukset, kirjoittaminen ja sivunvaihdot kysyvät ensin, ellet salli niitä keskustelussa."
+        "note": "Toimii vain sallimissasi sovelluksissa ja sivustoilla. Toiminnot kysyvät ensin, kun ”Kysy ennen jokaista toimintoa” on päällä."
       },
       "task": {
         "label": "Computer Use",
-        "description": "Anna tämän tehtävän käyttää sallittuja työpöytäsovelluksiasi. Sinun täytyy olla koneen ääressä hyväksymässä toiminnot.",
+        "description": "Anna tämän tehtävän käyttää sallittuja työpöytäsovelluksiasi. Kun ”Kysy ennen jokaista toimintoa” on päällä, sinun täytyy olla koneen ääressä hyväksymässä toiminnot.",
         "off": "Ota ensin Computer Use -toiminto käyttöön asetuksissa.",
         "unattended": "Ajastetut tehtävät ja Oleaflyn sulkemisen jälkeen jatkuvat tehtävät eivät voi käyttää työpöytäsovelluksia."
       },

@@ -1708,7 +1708,7 @@
     "desktopApps": {
       "tab": "Computer Use",
       "title": "Computer Use",
-      "description": "Lad agenter bruge apps og hjemmesider på denne computer via Cua Driver. Oleafly spørger før hver handling, medmindre du tillader den slags handling for chatten, sessionen eller opgaven. Din browser med login og scripts spørger altid.",
+      "description": "Lad agenter bruge apps og hjemmesider på denne computer via Cua Driver. De kan kun nå de apps og hjemmesider, du angiver her.",
       "docsLink": "Dokumentation til Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} er installeret.",
@@ -1744,7 +1744,7 @@
       },
       "enable": {
         "label": "Lad agenter bruge skrivebordsapps",
-        "description": "Agenter kan se apps og hjemmesider nedenfor. Klik, indtastning og sideskift spørger dig først, medmindre du tillader dem for chatten, sessionen eller opgaven. Når du tilføjer en app eller hjemmeside, ryddes de valg."
+        "description": "Agenter kan se og bruge apps og hjemmesider nedenfor."
       },
       "apps": {
         "heading": "Tilladte apps",
@@ -1754,7 +1754,7 @@
         "missing": "Dette program blev ikke fundet på denne computer. Fjern den, eller geninstaller appen.",
         "dialog": {
           "title": "Tilføj en app",
-          "description": "Vælg en app, som agenter må bruge. De kan åbne den, læse dens vinduer og handle i den, når du har godkendt.",
+          "description": "Vælg en app, som agenter må bruge. De kan åbne den, læse dens vinduer og handle i den.",
           "search": "Søg i apps",
           "loading": "Leder efter apps…",
           "none": "Ingen apps passer.",
@@ -1790,7 +1790,11 @@
       },
       "scripted": {
         "label": "Scriptstyring",
-        "description": "Lad agenter køre Cua-scripts, der udfører mange trin på én gang. Oleafly spørger før hvert script."
+        "description": "Lad agenter køre Cua-scripts, der udfører mange trin på én gang."
+      },
+      "ask": {
+        "label": "Spørg før hver handling",
+        "description": "Godkend hvert klik, tastetryk, sideskift og script i en dialog. Du kan tillade en slags handling resten af en chat, session eller opgave, undtagen i din browser med login og for scripts. Når du tilføjer en app eller hjemmeside, ryddes de valg."
       },
       "test": {
         "action": "Test forbindelsen",
@@ -1801,11 +1805,11 @@
       },
       "tool": {
         "description": "Brug de skrivebordsapps og hjemmesider, du har tilladt under Indstillinger.",
-        "note": "Det at kigge sker med det samme. Klik, indtastning og sideskift spørger først, medmindre du tillader dem for chatten."
+        "note": "Virker kun i de apps og på de hjemmesider, du har tilladt. Handlinger spørger først, når »Spørg før hver handling« er slået til."
       },
       "task": {
         "label": "Computer Use",
-        "description": "Lad denne opgave bruge dine tilladte skrivebordsapps. Du skal være ved computeren for at godkende handlinger.",
+        "description": "Lad denne opgave bruge dine tilladte skrivebordsapps. Når »Spørg før hver handling« er slået til, skal du være ved computeren for at godkende handlinger.",
         "off": "Slå Computer Use til under Indstillinger først.",
         "unattended": "Opgaver, der kører efter en tidsplan eller efter at Oleafly er lukket, kan ikke bruge skrivebordsapps."
       },

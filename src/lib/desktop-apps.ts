@@ -29,6 +29,8 @@ export interface DesktopAppsSettings {
   apps: AllowedApp[];
   sites: AllowedSite[];
   scriptedControl: boolean;
+  /** Every action asks in a dialog first; off by default. */
+  askBeforeActions: boolean;
 }
 
 export type BlockReason =

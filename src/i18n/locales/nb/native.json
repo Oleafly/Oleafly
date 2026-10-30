@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "Avbryt",
-    "fullAccess": {
-      "title": "Vil du slå på full tilgang?",
-      "message": "Med full tilgang kan assistenten kjøre shell-kommandoer og redigere filer uten å be om godkjenning hver gang. Vil du slå på full tilgang?",
-      "confirm": "Slå på full tilgang"
-    },
     "sharedShellEscape": {
       "title": "Tillate eksterne kommandoer i dette delte prosjektet?",
       "message": "Da kan alle som kan redigere prosjektet, kjøre programmer på denne maskinen når du kompilerer. Tillat det bare hvis du stoler på alle i prosjektet.",
@@ -147,7 +142,7 @@
     },
     "desktopAppsSettings": {
       "title": "Vil du tillate styring av skrivebordet?",
-      "message": "Agenter vil kunne bruke følgende. De spør før hver handling, og når du lagrer, fjernes alle valg av «Tillat for denne samtalen»:",
+      "message": "Agenter vil kunne bruke følgende:",
       "confirm": "Tillat",
       "enabled": "Computer Use",
       "app": "App: {{identity}} ({{name}})",
@@ -155,6 +150,7 @@
       "site": "Nettsted: {{origin}}",
       "signedIn": "Den innloggede nettleseren din på {{origin}}",
       "scripted": "Cua-skript",
+      "noAsking": "Handlinger kjøres uten å spørre deg først",
       "spacesTitle": "Vil du gi Cua Spaces mer tilgang?",
       "spacesMessage": "Agenter som bruker Cua Spaces vil kunne:",
       "spacesChanges": "Opprette og slette Spaces og kjøre kommandoer i dem",
@@ -165,7 +161,6 @@
     "menuUnavailable": "Programmenyen er utilgjengelig",
     "viewMenuUnavailable": "Vis-menyen er utilgjengelig",
     "menuItemUnavailable": "Menyvalget {{id}} er utilgjengelig",
-    "fullAccessDismissed": "Bekreftelsen for full tilgang ble lukket.",
     "fullAccessDeclined": "Full tilgang ble ikke slått på.",
     "approvalDialogClosed": "Den native godkjenningsdialogen lukket seg uventet."
   },

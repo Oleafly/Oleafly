@@ -26,9 +26,13 @@ pub struct CuaDriverConfig {
     pub apps: Vec<AllowedApp>,
     #[serde(default)]
     pub sites: Vec<AllowedSite>,
-    /// Lets agents run Cua scripts (`run_script`); each script still asks.
+    /// Lets agents run Cua scripts (`run_script`).
     #[serde(default)]
     pub scripted_control: bool,
+    /// Every action asks in a dialog first. Off, the allowed apps and sites
+    /// are the whole of the user's say, and actions run without asking.
+    #[serde(default)]
+    pub ask_before_actions: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -345,6 +349,7 @@ pub(crate) fn validate_against(
         apps,
         sites,
         scripted_control: config.scripted_control,
+        ask_before_actions: config.ask_before_actions,
     })
 }
 
@@ -396,6 +401,7 @@ pub(crate) fn sanitize_loaded(
             apps,
             sites,
             scripted_control: config.scripted_control,
+            ask_before_actions: config.ask_before_actions,
         },
         dropped,
     )
@@ -486,6 +492,8 @@ pub(crate) enum Widening {
     Site(String),
     SignedIn(String),
     ScriptedControl,
+    /// Actions run without a dialog.
+    NoAsking,
 }
 
 /// What `new` allows beyond `old`. Turning the connector on lists
@@ -531,6 +539,15 @@ pub(crate) fn widening(
     }
     if new.scripted_control && !base.scripted_control {
         found.push(Widening::ScriptedControl);
+    }
+    // Asking starts on in `empty` so turning the connector on names it.
+    let asked_before = if old.enabled {
+        old.ask_before_actions
+    } else {
+        true
+    };
+    if !new.ask_before_actions && asked_before {
+        found.push(Widening::NoAsking);
     }
     found
 }
@@ -881,6 +898,7 @@ mod tests {
             ],
             sites: vec![site("https://a.org", true)],
             scripted_control: true,
+            ask_before_actions: false,
         };
         assert_eq!(
             widening(&old, &new, Platform::Macos),
@@ -899,6 +917,28 @@ mod tests {
             Widening::Enabled
         );
         assert!(widening(&old, &CuaDriverConfig::default(), Platform::Macos).is_empty());
+    }
+
+    #[test]
+    fn turning_asking_off_is_a_widening_and_turning_it_on_is_not() {
+        let asking = CuaDriverConfig {
+            enabled: true,
+            ask_before_actions: true,
+            ..Default::default()
+        };
+        let quiet = CuaDriverConfig {
+            ask_before_actions: false,
+            ..asking.clone()
+        };
+        assert_eq!(
+            widening(&asking, &quiet, Platform::Macos),
+            vec![Widening::NoAsking]
+        );
+        assert!(widening(&quiet, &asking, Platform::Macos).is_empty());
+        // Turning the connector on names it unless asking is on.
+        let off = CuaDriverConfig::default();
+        assert!(widening(&off, &quiet, Platform::Macos).contains(&Widening::NoAsking));
+        assert!(!widening(&off, &asking, Platform::Macos).contains(&Widening::NoAsking));
     }
 
     #[test]
@@ -989,6 +1029,7 @@ mod tests {
             apps: vec![app("Zotero", "org.zotero.zotero")],
             sites: vec![site("https://a.org", true)],
             scripted_control: true,
+            ask_before_actions: false,
         };
         let json = serde_json::to_value(&config).unwrap();
         assert_eq!(json["scriptedControl"], true);
@@ -1110,6 +1151,7 @@ mod tests {
                 site("https://A.org/", true),
             ],
             scripted_control: true,
+            ask_before_actions: false,
         };
         let (kept, dropped) =
             sanitize_loaded(loaded, Platform::Macos, &FakeProbe::echo(), "oleafly");

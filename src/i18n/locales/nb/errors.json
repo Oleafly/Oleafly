@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly kunne ikke bekrefte sertifikatet til {{host}}. Hvis organisasjonen din har sin egen sertifiseringsinstans, legger du til sertifikatfilen dens i kontoen i Innstillinger.",
     "tracked_secret_files": "Publiseringen stoppet fordi filer i Git-historikken til prosjektet kan inneholde nøkler eller passord: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Full tilgang ble ikke slått på."
-  },
+  "approvals": {},
   "trust": {
     "git": "Stol på denne mappen for å bruke versjonskontroll.",
     "repository": "Stol på repositoriet {{name}} for å bruke versjonskontroll her.",

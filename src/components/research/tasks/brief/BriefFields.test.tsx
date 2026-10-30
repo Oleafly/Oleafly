@@ -432,7 +432,7 @@ describe("BriefFields", () => {
     const client = new QueryClient();
     client.setQueryData(DESKTOP_APPS_STATUS_KEY, {
       supported: true,
-      settings: { enabled: true, apps: [{ id: "com.example.lab", name: "Lab Notebook" }], sites: [], scriptedControl: false },
+      settings: { enabled: true, apps: [{ id: "com.example.lab", name: "Lab Notebook" }], sites: [], scriptedControl: false, askBeforeActions: false },
     } as unknown as DesktopAppsStatus);
     const onBrief = vi.fn();
     render(

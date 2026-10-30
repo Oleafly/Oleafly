@@ -1723,7 +1723,7 @@
     "desktopApps": {
       "tab": "Computer Use",
       "title": "Computer Use",
-      "description": "Laissez les agents utiliser les applications et les sites web de cet ordinateur grâce à Cua Driver. Oleafly demande avant chaque action, sauf si vous autorisez ce type d'action pour la discussion, la session ou la tâche. Votre navigateur connecté et les scripts demandent toujours.",
+      "description": "Laissez les agents utiliser des applications et des sites web sur cet ordinateur grâce à Cua Driver. Ils n'accèdent qu'aux applications et aux sites web que vous indiquez ici.",
       "docsLink": "Documentation de Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} est installé.",
@@ -1759,7 +1759,7 @@
       },
       "enable": {
         "label": "Laisser les agents utiliser les applications de bureau",
-        "description": "Les agents peuvent voir les applications et les sites web ci-dessous. Les clics, la saisie et les changements de page vous sont d'abord demandés, sauf si vous les autorisez pour la discussion, la session ou la tâche. Ajouter une application ou un site web efface ces choix."
+        "description": "Les agents peuvent voir et utiliser les applications et les sites web ci-dessous."
       },
       "apps": {
         "heading": "Applications autorisées",
@@ -1769,7 +1769,7 @@
         "missing": "Ce programme est introuvable sur cet ordinateur. Retirez-le, ou réinstallez l'application.",
         "dialog": {
           "title": "Ajouter une application",
-          "description": "Choisissez une application que les agents peuvent utiliser. Après votre approbation, ils peuvent l'ouvrir, lire ses fenêtres et y agir.",
+          "description": "Choisissez une application que les agents peuvent utiliser. Ils peuvent l'ouvrir, lire ses fenêtres et y agir.",
           "search": "Rechercher des applications",
           "loading": "Recherche d'applications…",
           "none": "Aucune application ne correspond.",
@@ -1805,7 +1805,11 @@
       },
       "scripted": {
         "label": "Contrôle par script",
-        "description": "Laissez les agents exécuter des scripts Cua qui font plusieurs étapes à la fois. Oleafly demande avant chaque script."
+        "description": "Laissez les agents exécuter des scripts Cua qui font plusieurs étapes à la fois."
+      },
+      "ask": {
+        "label": "Demander avant chaque action",
+        "description": "Approuvez chaque clic, saisie, changement de page et script dans une boîte de dialogue. Vous pouvez autoriser un type d'action pour le reste d'une discussion, d'une session ou d'une tâche, sauf dans votre navigateur connecté et pour les scripts. Ajouter une application ou un site web efface ces choix."
       },
       "test": {
         "action": "Tester la connexion",
@@ -1816,11 +1820,11 @@
       },
       "tool": {
         "description": "Utiliser les applications de bureau et les sites web que vous avez autorisés dans les Paramètres.",
-        "note": "La consultation se fait tout de suite. Les clics, la saisie et les changements de page demandent d'abord, sauf si vous les autorisez pour la discussion."
+        "note": "Fonctionne uniquement dans les applications et les sites web que vous avez autorisés. Les actions demandent d'abord quand « Demander avant chaque action » est activé."
       },
       "task": {
         "label": "Computer Use",
-        "description": "Laisser cette tâche utiliser vos applications de bureau autorisées. Vous devez être devant l'ordinateur pour approuver les actions.",
+        "description": "Laisser cette tâche utiliser vos applications de bureau autorisées. Avec « Demander avant chaque action » activé, vous devez être devant l'ordinateur pour approuver les actions.",
         "off": "Activez d'abord Computer Use dans les Paramètres.",
         "unattended": "Les tâches qui s'exécutent selon une planification ou après la fermeture d'Oleafly ne peuvent pas utiliser les applications de bureau."
       },

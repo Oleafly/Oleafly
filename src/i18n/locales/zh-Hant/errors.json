@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly 無法驗證 {{host}} 的憑證。如果你的組織使用自己的憑證授權單位，請在設定中將它的憑證檔加入這個帳號。",
     "tracked_secret_files": "此專案的 Git 歷史記錄中有檔案可能包含金鑰或密碼，已停止發布：{{files}}"
   },
-  "approvals": {
-    "full_access_declined": "未啟用完整存取權。"
-  },
+  "approvals": {},
   "trust": {
     "git": "信任這個資料夾後才能使用原始檔控制。",
     "repository": "信任儲存庫 {{name}} 後才能在這裡使用原始檔控制。",

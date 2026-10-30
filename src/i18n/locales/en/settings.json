@@ -1708,7 +1708,7 @@
     "desktopApps": {
       "tab": "Computer Use",
       "title": "Computer Use",
-      "description": "Let agents use apps and websites on this computer through Cua Driver. Oleafly asks before each action, unless you allow that kind of action for the chat, session or task. Your signed-in browser and scripts always ask.",
+      "description": "Let agents use apps and websites on this computer through Cua Driver. They can only reach the apps and websites you list here.",
       "docsLink": "Cua Driver docs",
       "status": {
         "installed": "Cua Driver {{version}} is installed.",
@@ -1744,7 +1744,7 @@
       },
       "enable": {
         "label": "Let agents use desktop apps",
-        "description": "Agents can see the apps and websites below. Clicks, typing and page changes ask you first, unless you allow them for the chat, session or task. Adding an app or website clears those choices."
+        "description": "Agents can see and use the apps and websites below."
       },
       "apps": {
         "heading": "Allowed apps",
@@ -1754,7 +1754,7 @@
         "missing": "This program wasn't found on this computer. Remove it, or reinstall the app.",
         "dialog": {
           "title": "Add an app",
-          "description": "Choose an app agents may use. They can open it, read its windows and act in it after you approve.",
+          "description": "Choose an app agents may use. They can open it, read its windows and act in it.",
           "search": "Search apps",
           "loading": "Looking for apps…",
           "none": "No apps match.",
@@ -1790,7 +1790,11 @@
       },
       "scripted": {
         "label": "Scripted control",
-        "description": "Let agents run Cua scripts that do many steps at once. Oleafly asks before each script."
+        "description": "Let agents run Cua scripts that do many steps at once."
+      },
+      "ask": {
+        "label": "Ask before each action",
+        "description": "Approve each click, keystroke, page change and script in a dialog. You can allow a kind of action for the rest of a chat, session or task, except in your signed-in browser and for scripts. Adding an app or website clears those choices."
       },
       "test": {
         "action": "Test connection",
@@ -1801,11 +1805,11 @@
       },
       "tool": {
         "description": "Use the desktop apps and websites you allowed in Settings.",
-        "note": "Looking runs right away. Clicks, typing and page changes ask first, unless you allow them for the chat."
+        "note": "Works only in the apps and websites you allowed. Actions ask first when Ask before each action is on."
       },
       "task": {
         "label": "Computer Use",
-        "description": "Let this task use your allowed desktop apps. You need to be at the computer to approve actions.",
+        "description": "Let this task use your allowed desktop apps. With Ask before each action on, you need to be at the computer to approve actions.",
         "off": "Turn on Computer Use in Settings first.",
         "unattended": "Tasks that run on a schedule or after Oleafly closes can't use desktop apps."
       },

@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "Anuluj",
-    "fullAccess": {
-      "title": "Włączyć pełny dostęp?",
-      "message": "Pełny dostęp pozwala asystentowi uruchamiać polecenia shell i edytować pliki bez pytania o zgodę za każdym razem. Włączyć pełny dostęp?",
-      "confirm": "Włącz pełny dostęp"
-    },
     "sharedShellEscape": {
       "title": "Zezwolić na polecenia zewnętrzne w tym udostępnionym projekcie?",
       "message": "Każdy, kto może edytować ten projekt, będzie mógł wtedy uruchamiać programy na tym komputerze, gdy kompilujesz. Zezwól na to tylko wtedy, gdy ufasz wszystkim osobom w projekcie.",
@@ -147,7 +142,7 @@
     },
     "desktopAppsSettings": {
       "title": "Zezwolić na sterowanie komputerem?",
-      "message": "Agenci będą mogli z nich korzystać. Przed każdą akcją zapytają, a zapisanie usunie wszystkie wybory „Zezwól w tym czacie”:",
+      "message": "Agenci będą mogli korzystać z tych elementów:",
       "confirm": "Zezwól",
       "enabled": "Computer Use",
       "app": "Aplikacja: {{identity}} ({{name}})",
@@ -155,6 +150,7 @@
       "site": "Strona: {{origin}}",
       "signedIn": "Twoja przeglądarka zalogowana na {{origin}}",
       "scripted": "Skrypty Cua",
+      "noAsking": "Akcje są wykonywane bez pytania Cię najpierw",
       "spacesTitle": "Przyznać Cua Spaces większy dostęp?",
       "spacesMessage": "Agenci korzystający z Cua Spaces będą mogli:",
       "spacesChanges": "Tworzyć i usuwać Spaces oraz uruchamiać w nich polecenia",
@@ -165,7 +161,6 @@
     "menuUnavailable": "Menu aplikacji jest niedostępne",
     "viewMenuUnavailable": "Menu Widok jest niedostępne",
     "menuItemUnavailable": "Element menu {{id}} jest niedostępny",
-    "fullAccessDismissed": "Potwierdzenie pełnego dostępu zostało zamknięte.",
     "fullAccessDeclined": "Pełny dostęp nie został włączony.",
     "approvalDialogClosed": "Natywne okno zatwierdzania zostało nieoczekiwanie zamknięte."
   },

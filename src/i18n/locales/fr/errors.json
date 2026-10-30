@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly n'a pas pu vérifier le certificat de {{host}}. Si votre organisation gère sa propre autorité de certification, ajoutez son fichier de certificat au compte dans les Paramètres.",
     "tracked_secret_files": "Publication arrêtée, car des fichiers de l'historique Git de ce projet peuvent contenir des clés ou des mots de passe : {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "L'accès complet n'a pas été activé."
-  },
+  "approvals": {},
   "trust": {
     "git": "Faites confiance à ce dossier pour utiliser le contrôle de version.",
     "repository": "Faites confiance au dépôt {{name}} pour utiliser ici le contrôle de version.",

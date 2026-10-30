@@ -187,7 +187,7 @@ import {
 import { personaGradient } from "@/lib/persona-colors";
 import { toast } from "@/lib/toast";
 import { WorkspaceBanner } from "@/components/ui/workspace-banner";
-import { decodeAppError, describeError } from "@/lib/app-error";
+import { describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { isProviderConfigured, mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
 import {
@@ -304,7 +304,6 @@ import { Spinner } from "@/components/ui/spinner";
 
 const MAX_AGENT_TOOL_DEFINITIONS = 128;
 const IMAGE_TOOLS = new Set(["preview_figure", "load_image", "verify_pdf_pages"]);
-const FULL_ACCESS_DECLINED = "approvals.full_access_declined";
 /** When the chat's cost is read back from the usage ledger after a run. */
 const CHAT_COST_REFRESH_MS = 1_000;
 /** The longest a streaming reply goes unsaved. */
@@ -1012,8 +1011,7 @@ export function ChatCore() {
 
   const changeApprovalMode = useCallback(
     (nextMode: ApprovalMode) => {
-      void setApprovalMode(projectId, nextMode).catch((error: unknown) => {
-        if (decodeAppError(error)?.code === FULL_ACCESS_DECLINED) return;
+      void setApprovalMode(projectId, nextMode).catch(() => {
         toast.error(i18n.t(($) => $.ai.toasts.approvalModeSaveFailed));
       });
     },

@@ -28,7 +28,7 @@ const copy = enSettings.integrations.desktopApps.task;
 function status(settings: Partial<DesktopAppsSettings>, supported = true): DesktopAppsStatus {
   return {
     supported,
-    settings: { enabled: true, apps: [], sites: [], scriptedControl: false, ...settings },
+    settings: { enabled: true, apps: [], sites: [], scriptedControl: false, askBeforeActions: false, ...settings },
   } as unknown as DesktopAppsStatus;
 }
 

@@ -18,6 +18,7 @@
 pub(crate) mod agent;
 pub(crate) mod apps;
 pub(crate) mod bridge;
+pub(crate) mod browser;
 pub(crate) mod commands;
 pub(crate) mod config;
 pub(crate) mod detect;

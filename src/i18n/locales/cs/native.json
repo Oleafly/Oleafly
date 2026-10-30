@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "Zrušit",
-    "fullAccess": {
-      "title": "Povolit úplný přístup?",
-      "message": "Úplný přístup dovolí asistentovi spouštět příkazy shell a upravovat soubory, aniž by pokaždé žádal o schválení. Povolit úplný přístup?",
-      "confirm": "Povolit úplný přístup"
-    },
     "sharedShellEscape": {
       "title": "Povolit externí příkazy v tomto sdíleném projektu?",
       "message": "Kdokoli, kdo může tento projekt upravovat, pak bude moci při vaší kompilaci spouštět programy v tomto počítači. Povolte to jen tehdy, pokud důvěřujete všem v projektu.",
@@ -147,7 +142,7 @@
     },
     "desktopAppsSettings": {
       "title": "Povolit ovládání počítače?",
-      "message": "Agenti budou moci tyto položky používat. Před každou akcí se zeptají a uložením se zruší všechny volby „Povolit pro tento chat“:",
+      "message": "Agenti budou moci používat tyto položky:",
       "confirm": "Povolit",
       "enabled": "Computer Use",
       "app": "Aplikace: {{identity}} ({{name}})",
@@ -155,6 +150,7 @@
       "site": "Web: {{origin}}",
       "signedIn": "Váš přihlášený prohlížeč na {{origin}}",
       "scripted": "Skripty Cua",
+      "noAsking": "Akce proběhnou, aniž by se vás nejdřív zeptaly",
       "spacesTitle": "Udělit Cua Spaces širší přístup?",
       "spacesMessage": "Agenti, kteří používají Cua Spaces, budou moci:",
       "spacesChanges": "Vytvářet a mazat Spaces a spouštět v nich příkazy",
@@ -165,7 +161,6 @@
     "menuUnavailable": "Nabídka aplikace není k dispozici",
     "viewMenuUnavailable": "Nabídka Zobrazit není k dispozici",
     "menuItemUnavailable": "Položka nabídky {{id}} není k dispozici",
-    "fullAccessDismissed": "Potvrzení úplného přístupu bylo zavřeno.",
     "fullAccessDeclined": "Úplný přístup nebyl povolen.",
     "approvalDialogClosed": "Nativní dialog schválení se neočekávaně zavřel."
   },

@@ -1738,7 +1738,7 @@
     "desktopApps": {
       "tab": "Computer Use",
       "title": "Computer Use",
-      "description": "Pozwól agentom używać aplikacji i stron na tym komputerze przez Cua Driver. Oleafly pyta przed każdą akcją, chyba że zezwolisz na taki rodzaj akcji w czacie, sesji lub zadaniu. Twoja zalogowana przeglądarka i skrypty zawsze wymagają pytania.",
+      "description": "Pozwól agentom używać aplikacji i stron na tym komputerze przez Cua Driver. Docierają tylko do aplikacji i stron, które tu wpiszesz.",
       "docsLink": "Dokumentacja Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} jest zainstalowany.",
@@ -1774,7 +1774,7 @@
       },
       "enable": {
         "label": "Pozwól agentom używać aplikacji na komputerze",
-        "description": "Agenci widzą poniższe aplikacje i strony. Przed kliknięciami, pisaniem i zmianami stron najpierw pytają Cię, chyba że zezwolisz na nie w czacie, sesji lub zadaniu. Dodanie aplikacji lub strony usuwa te wybory."
+        "description": "Agenci widzą i mogą używać poniższych aplikacji i stron."
       },
       "apps": {
         "heading": "Dozwolone aplikacje",
@@ -1784,7 +1784,7 @@
         "missing": "Nie znaleziono tego programu na tym komputerze. Usuń go albo zainstaluj aplikację ponownie.",
         "dialog": {
           "title": "Dodaj aplikację",
-          "description": "Wybierz aplikację, której mogą używać agenci. Po Twoim zatwierdzeniu mogą ją otwierać, czytać jej okna i w niej działać.",
+          "description": "Wybierz aplikację, której agenci mogą używać. Mogą ją otworzyć, czytać jej okna i działać w niej.",
           "search": "Szukaj aplikacji",
           "loading": "Wyszukiwanie aplikacji...",
           "none": "Brak pasujących aplikacji.",
@@ -1820,7 +1820,11 @@
       },
       "scripted": {
         "label": "Sterowanie skryptami",
-        "description": "Pozwól agentom uruchamiać skrypty Cua, które wykonują wiele kroków naraz. Oleafly pyta przed każdym skryptem."
+        "description": "Pozwól agentom uruchamiać skrypty Cua, które wykonują wiele kroków naraz."
+      },
+      "ask": {
+        "label": "Pytaj przed każdą akcją",
+        "description": "Zatwierdzaj każde kliknięcie, naciśnięcie klawisza, zmianę strony i skrypt w oknie dialogowym. Możesz zezwolić na dany rodzaj akcji do końca czatu, sesji lub zadania, z wyjątkiem zalogowanej przeglądarki i skryptów. Dodanie aplikacji lub strony usuwa te wybory."
       },
       "test": {
         "action": "Testuj połączenie",
@@ -1831,11 +1835,11 @@
       },
       "tool": {
         "description": "Używaj aplikacji na komputerze i stron dozwolonych w Ustawieniach.",
-        "note": "Oglądanie działa od razu. Kliknięcia, pisanie i zmiany stron wymagają najpierw pytania, chyba że zezwolisz na nie w czacie."
+        "note": "Działa tylko w aplikacjach i na stronach, na które zezwolisz. Gdy opcja „Pytaj przed każdą akcją” jest włączona, akcje najpierw pytają."
       },
       "task": {
         "label": "Computer Use",
-        "description": "Pozwól temu zadaniu używać dozwolonych aplikacji na komputerze. Musisz być przy komputerze, aby zatwierdzać czynności.",
+        "description": "Pozwól temu zadaniu używać dozwolonych aplikacji na komputerze. Gdy opcja „Pytaj przed każdą akcją” jest włączona, musisz być przy komputerze, aby zatwierdzać czynności.",
         "off": "Najpierw włącz funkcję Computer Use w Ustawieniach.",
         "unattended": "Zadania uruchamiane według harmonogramu lub po zamknięciu Oleafly nie mogą używać aplikacji na komputerze."
       },

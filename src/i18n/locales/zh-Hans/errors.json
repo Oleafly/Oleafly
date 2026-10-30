@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly 无法验证 {{host}} 的证书。如果你的组织运行自己的证书颁发机构，请在设置中将其证书文件添加到该账户。",
     "tracked_secret_files": "此项目的 Git 历史中有文件可能包含密钥或密码，发布已停止：{{files}}"
   },
-  "approvals": {
-    "full_access_declined": "未启用完全访问权限。"
-  },
+  "approvals": {},
   "trust": {
     "git": "信任此文件夹后才能使用源代码管理。",
     "repository": "信任仓库 {{name}} 后才能在这里使用源代码管理。",

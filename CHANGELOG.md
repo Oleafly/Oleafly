@@ -170,6 +170,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Desktop apps is now called Computer Use. Its tab in Settings > Integrations
   has a cursor icon and comes after Oleafly MCP, and the app picker shows
   each app's icon.
+- Computer Use doesn't ask before each action anymore. Agents still reach
+  only the apps and websites you list. To approve each click, keystroke,
+  page change and script, turn on Ask before each action in Settings >
+  Integrations > Computer Use.
+- Choosing Full access in the chat's approval menu applies right away,
+  without a confirmation dialog.
 - Cloud sync shows Google Drive's own four-colour logo and gives S3 a green
   tile. The page your browser opens after you sign in to Google Drive looks
   like the collaboration sign-in pages.
@@ -186,6 +192,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   run and asks for their windows one app at a time.
 - Computer Use only opens apps on your list. Cua Driver 0.38 opens any app
   it's asked to, so Oleafly now checks the app first.
+- Clicks and typing in an allowed app work again. Cua Driver 0.38 refuses
+  them unless the call names the app's process, and agents usually name only
+  the window or element they saw, so you could approve an action and then
+  watch it fail. Oleafly now adds the process the driver reported for that
+  window.
+- Websites in Computer Use work with Cua Driver 0.38. The driver now acts
+  in a tab only after it binds the browser's window, and agents had no way
+  to do that, so every page change was refused. Oleafly now connects to the
+  browser it opened, fills in the tab on later calls and passes the page's
+  text to the agent. A site that isn't on your list is turned down before
+  you're asked.
 - An agent on a model that reads only text, such as GLM-5.3, no longer
   fails when a tool returns a picture, for example a Computer Use
   screenshot. The provider turned the whole request down; now the picture is

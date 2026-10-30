@@ -1723,7 +1723,7 @@
     "desktopApps": {
       "tab": "Computer Use",
       "title": "Computer Use",
-      "description": "Permite agenților să folosească aplicații și site-uri de pe acest computer prin Cua Driver. Oleafly întreabă înainte de fiecare acțiune, dacă nu permiți acel tip de acțiune pentru conversație, sesiune sau sarcină. Browserul tău autentificat și scripturile întreabă întotdeauna.",
+      "description": "Permite agenților să folosească aplicații și site-uri de pe acest computer prin Cua Driver. Ajung doar la aplicațiile și site-urile pe care le treci aici.",
       "docsLink": "Documentația Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} este instalat.",
@@ -1759,7 +1759,7 @@
       },
       "enable": {
         "label": "Permite agenților să folosească aplicații desktop",
-        "description": "Agenții pot vedea aplicațiile și site-urile de mai jos. Clicurile, scrierea și schimbările de pagină îți cer mai întâi voie, dacă nu le permiți pentru conversație, sesiune sau sarcină. Adăugarea unei aplicații sau a unui site șterge aceste alegeri."
+        "description": "Agenții pot vedea și folosi aplicațiile și site-urile de mai jos."
       },
       "apps": {
         "heading": "Aplicații permise",
@@ -1769,7 +1769,7 @@
         "missing": "Acest program nu a fost găsit pe acest computer. Elimin-o sau reinstalează aplicația.",
         "dialog": {
           "title": "Adaugă o aplicație",
-          "description": "Alege o aplicație pe care o pot folosi agenții. După ce aprobi, o pot deschide, îi pot citi ferestrele și pot lucra în ea.",
+          "description": "Alege o aplicație pe care o pot folosi agenții. O pot deschide, îi pot citi ferestrele și pot acționa în ea.",
           "search": "Caută aplicații",
           "loading": "Se caută aplicații…",
           "none": "Nicio aplicație nu se potrivește.",
@@ -1805,7 +1805,11 @@
       },
       "scripted": {
         "label": "Control prin scripturi",
-        "description": "Permite agenților să ruleze scripturi Cua care fac mai mulți pași deodată. Oleafly întreabă înaintea fiecărui script."
+        "description": "Permite agenților să ruleze scripturi Cua care fac mulți pași deodată."
+      },
+      "ask": {
+        "label": "Întreabă înainte de fiecare acțiune",
+        "description": "Aprobă fiecare clic, apăsare de tastă, schimbare de pagină și script într-o casetă de dialog. Poți permite un tip de acțiune pentru restul unei conversații, sesiuni sau sarcini, cu excepția browserului tău autentificat și a scripturilor. Adăugarea unei aplicații sau a unui site șterge aceste alegeri."
       },
       "test": {
         "action": "Testează conexiunea",
@@ -1816,11 +1820,11 @@
       },
       "tool": {
         "description": "Folosește aplicațiile desktop și site-urile pe care le-ai permis în Setări.",
-        "note": "Privitul se face imediat. Clicurile, scrierea și schimbările de pagină cer mai întâi voie, dacă nu le permiți pentru conversație."
+        "note": "Funcționează doar în aplicațiile și pe site-urile pe care le-ai permis. Acțiunile cer voie mai întâi când „Întreabă înainte de fiecare acțiune” este pornit."
       },
       "task": {
         "label": "Computer Use",
-        "description": "Permite acestei sarcini să folosească aplicațiile desktop permise. Trebuie să fii la computer ca să aprobi acțiunile.",
+        "description": "Permite acestei sarcini să folosească aplicațiile desktop permise. Cu „Întreabă înainte de fiecare acțiune” pornit, trebuie să fii la computer ca să aprobi acțiunile.",
         "off": "Activează mai întâi Computer Use în Setări.",
         "unattended": "Sarcinile care rulează programat sau după ce se închide Oleafly nu pot folosi aplicații desktop."
       },

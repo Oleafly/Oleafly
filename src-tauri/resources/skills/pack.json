@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "pack": "research-core",
-  "version": "2026.10.19.d7cafe8b",
+  "version": "2026.10.19.fa83f292",
   "skills": [
     {
       "id": "citation-management",
@@ -26,9 +26,9 @@
       "tier": "native",
       "phase": "tooling",
       "license": "MIT",
-      "treeSha256": "c4b8dce7712488c6768a9e0565a1fe6675f72d35d6af2d1c25b2904e89b97eb9",
+      "treeSha256": "4afcbee0d05db2f1e41649aff925855c963dc881418f781cf1d22f57a03f4b59",
       "files": 1,
-      "bytes": 4504,
+      "bytes": 4823,
       "version": "1.0.0"
     },
     {

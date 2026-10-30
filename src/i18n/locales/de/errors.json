@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly konnte das Zertifikat von {{host}} nicht überprüfen. Wenn Ihre Organisation eine eigene Zertifizierungsstelle betreibt, fügen Sie deren Zertifikatsdatei in den Einstellungen dem Konto hinzu.",
     "tracked_secret_files": "Veröffentlichen abgebrochen, weil Dateien im Git-Verlauf dieses Projekts Schlüssel oder Passwörter enthalten können: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Der Vollzugriff wurde nicht aktiviert."
-  },
+  "approvals": {},
   "trust": {
     "git": "Vertrauen Sie diesem Ordner, um die Versionsverwaltung zu nutzen.",
     "repository": "Vertrauen Sie dem Repository {{name}}, um hier die Versionsverwaltung zu nutzen.",

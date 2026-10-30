@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly kon het certificaat van {{host}} niet verifiëren. Als je organisatie een eigen certificeringsinstantie heeft, voeg dan het certificaatbestand ervan toe aan het account bij Instellingen.",
     "tracked_secret_files": "Publiceren gestopt omdat bestanden in de Git-geschiedenis van dit project sleutels of wachtwoorden kunnen bevatten: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Volledige toegang is niet ingeschakeld."
-  },
+  "approvals": {},
   "trust": {
     "git": "Vertrouw deze map om versiebeheer te gebruiken.",
     "repository": "Vertrouw de repository {{name}} om hier versiebeheer te gebruiken.",

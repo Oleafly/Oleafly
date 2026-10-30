@@ -1723,7 +1723,7 @@
     "desktopApps": {
       "tab": "Computer Use",
       "title": "Computer Use",
-      "description": "Permetti agli agenti di usare app e siti web di questo computer tramite Cua Driver. Oleafly chiede prima di ogni azione, a meno che tu non consenta quel tipo di azione per la chat, la sessione o l'attività. Il tuo browser con accesso effettuato e gli script chiedono sempre.",
+      "description": "Permetti agli agenti di usare app e siti web su questo computer tramite Cua Driver. Raggiungono solo le app e i siti web che elenchi qui.",
       "docsLink": "Documentazione di Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} è installato.",
@@ -1759,7 +1759,7 @@
       },
       "enable": {
         "label": "Permetti agli agenti di usare le app desktop",
-        "description": "Gli agenti vedono le app e i siti web qui sotto. Clic, digitazione e cambi di pagina ti chiedono prima conferma, a meno che tu non li consenta per la chat, la sessione o l'attività. Aggiungere un'app o un sito web cancella queste scelte."
+        "description": "Gli agenti possono vedere e usare le app e i siti web qui sotto."
       },
       "apps": {
         "heading": "App consentite",
@@ -1769,7 +1769,7 @@
         "missing": "Questo programma non è stato trovato su questo computer. Rimuovilo oppure reinstalla l'app.",
         "dialog": {
           "title": "Aggiungi un'app",
-          "description": "Scegli un'app che gli agenti possono usare. Dopo la tua approvazione, possono aprirla, leggerne le finestre e agire al suo interno.",
+          "description": "Scegli un'app che gli agenti possono usare. Possono aprirla, leggerne le finestre e agire al suo interno.",
           "search": "Cerca app",
           "loading": "Ricerca delle app...",
           "none": "Nessuna app corrisponde.",
@@ -1805,7 +1805,11 @@
       },
       "scripted": {
         "label": "Controllo tramite script",
-        "description": "Permetti agli agenti di eseguire script Cua che fanno molti passaggi insieme. Oleafly chiede prima di ogni script."
+        "description": "Permetti agli agenti di eseguire script Cua che fanno molti passaggi in una volta."
+      },
+      "ask": {
+        "label": "Chiedi prima di ogni azione",
+        "description": "Approva ogni clic, tasto, cambio di pagina e script in una finestra di dialogo. Puoi consentire un tipo di azione per il resto di una chat, una sessione o un'attività, tranne nel browser con accesso effettuato e per gli script. Aggiungere un'app o un sito web cancella queste scelte."
       },
       "test": {
         "action": "Prova la connessione",
@@ -1816,11 +1820,11 @@
       },
       "tool": {
         "description": "Usa le app desktop e i siti web che hai consentito nelle Impostazioni.",
-        "note": "Guardare avviene subito. Clic, digitazione e cambi di pagina chiedono prima, a meno che tu non li consenta per la chat."
+        "note": "Funziona solo nelle app e nei siti web che hai consentito. Le azioni chiedono prima conferma quando \"Chiedi prima di ogni azione\" è attivo."
       },
       "task": {
         "label": "Computer Use",
-        "description": "Permetti a questa attività di usare le app desktop consentite. Devi essere al computer per approvare le azioni.",
+        "description": "Permetti a questa attività di usare le app desktop consentite. Con \"Chiedi prima di ogni azione\" attivo, devi essere al computer per approvare le azioni.",
         "off": "Prima attiva Computer Use nelle Impostazioni.",
         "unattended": "Le attività che girano in base a una pianificazione o dopo la chiusura di Oleafly non possono usare le app desktop."
       },

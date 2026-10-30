@@ -182,6 +182,15 @@ export default function DesktopAppsSection() {
         onChange={(scriptedControl) => void save({ ...settings, scriptedControl })}
       />
 
+      <SettingsToggleRow
+        testId="desktop-apps-ask"
+        label={t(($) => $.settings.integrations.desktopApps.ask.label)}
+        description={t(($) => $.settings.integrations.desktopApps.ask.description)}
+        checked={settings.askBeforeActions}
+        disabled={saving}
+        onChange={(askBeforeActions) => void save({ ...settings, askBeforeActions })}
+      />
+
       {error ? <IntegrationError>{error}</IntegrationError> : null}
       {notice ? (
         <output className="block text-xs text-muted-foreground" data-testid="desktop-apps-declined">

@@ -1708,7 +1708,7 @@
     "desktopApps": {
       "tab": "Computer Use",
       "title": "Computer Use",
-      "description": "Lassen Sie Agenten über Cua Driver Apps und Websites auf diesem Computer verwenden. Oleafly fragt vor jeder Aktion, es sei denn, Sie erlauben diese Art von Aktion für den Chat, die Sitzung oder die Aufgabe. Ihr angemeldeter Browser und Skripte fragen immer.",
+      "description": "Agenten Apps und Websites auf diesem Computer über Cua Driver verwenden lassen. Sie erreichen nur die Apps und Websites, die Sie hier eintragen.",
       "docsLink": "Dokumentation zu Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} ist installiert.",
@@ -1744,7 +1744,7 @@
       },
       "enable": {
         "label": "Agenten Desktop-Apps verwenden lassen",
-        "description": "Agenten sehen die Apps und Websites unten. Bei Klicks, Eingaben und Seitenwechseln fragen sie Sie zuerst, es sei denn, Sie erlauben sie für den Chat, die Sitzung oder die Aufgabe. Wenn Sie eine App oder Website hinzufügen, werden diese Entscheidungen gelöscht."
+        "description": "Agenten sehen und verwenden die Apps und Websites unten."
       },
       "apps": {
         "heading": "Erlaubte Apps",
@@ -1754,7 +1754,7 @@
         "missing": "Dieses Programm wurde auf diesem Computer nicht gefunden. Entfernen Sie es oder installieren Sie die App neu.",
         "dialog": {
           "title": "App hinzufügen",
-          "description": "Wählen Sie eine App, die Agenten verwenden dürfen. Sie können sie öffnen, ihre Fenster lesen und nach Ihrer Freigabe darin handeln.",
+          "description": "Wählen Sie eine App, die Agenten verwenden dürfen. Sie können sie öffnen, ihre Fenster lesen und darin handeln.",
           "search": "Apps durchsuchen",
           "loading": "Apps werden gesucht...",
           "none": "Keine passenden Apps.",
@@ -1790,7 +1790,11 @@
       },
       "scripted": {
         "label": "Skriptgesteuerte Bedienung",
-        "description": "Agenten Cua-Skripte ausführen lassen, die viele Schritte auf einmal erledigen. Oleafly fragt vor jedem Skript."
+        "description": "Agenten Cua-Skripte ausführen lassen, die viele Schritte auf einmal erledigen."
+      },
+      "ask": {
+        "label": "Vor jeder Aktion fragen",
+        "description": "Jeden Klick, jede Eingabe, jeden Seitenwechsel und jedes Skript in einem Dialog freigeben. Sie können eine Art von Aktion für den Rest eines Chats, einer Sitzung oder einer Aufgabe erlauben, außer in Ihrem angemeldeten Browser und bei Skripten. Wenn Sie eine App oder Website hinzufügen, werden diese Entscheidungen gelöscht."
       },
       "test": {
         "action": "Verbindung testen",
@@ -1801,11 +1805,11 @@
       },
       "tool": {
         "description": "Die Desktop-Apps und Websites verwenden, die Sie in den Einstellungen erlaubt haben.",
-        "note": "Ansehen geschieht sofort. Bei Klicks, Eingaben und Seitenwechseln wird zuerst gefragt, es sei denn, Sie erlauben sie für den Chat."
+        "note": "Funktioniert nur in den Apps und Websites, die Sie erlaubt haben. Aktionen fragen zuerst nach, wenn „Vor jeder Aktion fragen“ an ist."
       },
       "task": {
         "label": "Computer Use",
-        "description": "Diese Aufgabe Ihre erlaubten Desktop-Apps verwenden lassen. Sie müssen am Computer sein, um Aktionen freizugeben.",
+        "description": "Diese Aufgabe Ihre erlaubten Desktop-Apps verwenden lassen. Wenn „Vor jeder Aktion fragen“ an ist, müssen Sie am Computer sein, um Aktionen freizugeben.",
         "off": "Schalten Sie zuerst Computer Use in den Einstellungen ein.",
         "unattended": "Aufgaben, die nach Zeitplan oder nach dem Schließen von Oleafly laufen, können keine Desktop-Apps verwenden."
       },

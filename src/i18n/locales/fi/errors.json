@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly ei voinut vahvistaa palvelimen {{host}} varmennetta. Jos organisaatiollasi on oma varmentaja, lisää sen varmennetiedosto tiliin asetuksissa.",
     "tracked_secret_files": "Julkaisu keskeytyi, koska projektin Git-historian tiedostot voivat sisältää avaimia tai salasanoja: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Täyttä käyttöoikeutta ei otettu käyttöön."
-  },
+  "approvals": {},
   "trust": {
     "git": "Luota tähän kansioon, jotta voit käyttää versionhallintaa.",
     "repository": "Luota repositorioon {{name}}, jotta voit käyttää versionhallintaa täällä.",

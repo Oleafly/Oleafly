@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly, {{host}} sertifikasını doğrulayamadı. Kuruluşunuz kendi sertifika yetkilisini çalıştırıyorsa, onun sertifika dosyasını Ayarlar'dan hesaba ekleyin.",
     "tracked_secret_files": "Bu projenin Git geçmişindeki dosyalar anahtar veya parola içerebileceği için yayımlama durduruldu: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Tam erişim etkinleştirilmedi."
-  },
+  "approvals": {},
   "trust": {
     "git": "Kaynak Denetimi'ni kullanmak için bu klasöre güvenin.",
     "repository": "Burada Kaynak Denetimi'ni kullanmak için {{name}} deposuna güvenin.",

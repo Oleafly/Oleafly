@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly nedokázal ověřit certifikát {{host}}. Pokud má vaše organizace vlastní certifikační autoritu, přidejte její soubor certifikátu k účtu v Nastavení.",
     "tracked_secret_files": "Publikování se zastavilo, protože soubory v historii Git tohoto projektu mohou obsahovat klíče nebo hesla: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Úplný přístup nebyl povolen."
-  },
+  "approvals": {},
   "trust": {
     "git": "Chcete-li používat správu verzí, této složce důvěřujte.",
     "repository": "Chcete-li zde používat správu verzí, důvěřujte repozitáři {{name}}.",

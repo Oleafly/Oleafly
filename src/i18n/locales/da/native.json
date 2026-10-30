@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "Annuller",
-    "fullAccess": {
-      "title": "Aktiver fuld adgang?",
-      "message": "Med fuld adgang kan assistenten køre shell-kommandoer og redigere filer uden at bede om godkendelse hver gang. Vil du aktivere fuld adgang?",
-      "confirm": "Aktiver fuld adgang"
-    },
     "sharedShellEscape": {
       "title": "Vil du tillade eksterne kommandoer i dette delte projekt?",
       "message": "Så kan alle, der kan redigere projektet, køre programmer på denne computer, når du kompilerer. Tillad det kun, hvis du stoler på alle i projektet.",
@@ -147,7 +142,7 @@
     },
     "desktopAppsSettings": {
       "title": "Vil du tillade styring af skrivebordet?",
-      "message": "Agenter vil kunne bruge følgende. De spørger før hver handling, og når du gemmer, ryddes alle valg af »Tillad for denne chat«:",
+      "message": "Agenter vil kunne bruge følgende:",
       "confirm": "Tillad",
       "enabled": "Computer Use",
       "app": "App: {{identity}} ({{name}})",
@@ -155,6 +150,7 @@
       "site": "Hjemmeside: {{origin}}",
       "signedIn": "Din browser med login på {{origin}}",
       "scripted": "Cua-scripts",
+      "noAsking": "Handlinger kører uden at spørge dig først",
       "spacesTitle": "Vil du give Cua Spaces mere adgang?",
       "spacesMessage": "Agenter, der bruger Cua Spaces, vil kunne:",
       "spacesChanges": "Oprette og slette Spaces og køre kommandoer i dem",
@@ -165,7 +161,6 @@
     "menuUnavailable": "Programmenuen er ikke tilgængelig",
     "viewMenuUnavailable": "Vis-menuen er ikke tilgængelig",
     "menuItemUnavailable": "Menupunktet {{id}} er ikke tilgængeligt",
-    "fullAccessDismissed": "Bekræftelsen af fuld adgang blev lukket.",
     "fullAccessDeclined": "Fuld adgang blev ikke aktiveret.",
     "approvalDialogClosed": "Systemets godkendelsesdialog blev lukket uventet."
   },

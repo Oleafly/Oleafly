@@ -10,8 +10,9 @@ use std::sync::Arc;
 
 use serde_json::{json, Map, Value};
 
+use super::browser;
 use super::config::{ready, AllowedApp, CuaDriverConfig};
-use super::gate::{self, Answer, GateDecision};
+use super::gate::{self, Answer, GateDecision, SeenBrowser};
 use super::policy::{self, Family};
 use super::running::running_pids;
 use super::runtime::{BATCH_TIMEOUT, CALL_TIMEOUT};
@@ -131,6 +132,81 @@ fn element_list(structured: &Value) -> Option<String> {
     Some(lines.join("\n"))
 }
 
+/// A browser page read as text, for a chat: the page outline of a semantic
+/// read and the refs to act on, which the driver's own text only counts.
+/// Bounded like the element list.
+fn page_text(structured: &Value) -> Option<String> {
+    let mut sections = Vec::new();
+    // The outline leaves out the page itself, whose name is its title.
+    if let Some(title) = structured
+        .get("content_refs")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .find(|entry| entry.get("role").and_then(Value::as_str) == Some("rootwebarea"))
+        .and_then(|entry| entry.get("name"))
+        .and_then(Value::as_str)
+        .filter(|title| !title.trim().is_empty())
+    {
+        sections.push(format!(
+            "Title: {}",
+            policy::bounded(title, MAX_ELEMENT_LINE_CHARS)
+        ));
+    }
+    if let Some(outline) = structured
+        .get("outline")
+        .and_then(Value::as_str)
+        .filter(|outline| !outline.trim().is_empty())
+    {
+        sections.push(format!(
+            "Page:\n{}",
+            policy::bounded(outline, MAX_ELEMENT_LIST_CHARS)
+        ));
+    }
+    let refs = structured
+        .get("action_refs")
+        .or_else(|| structured.get("refs"))
+        .and_then(Value::as_array)
+        .filter(|refs| !refs.is_empty());
+    if let Some(refs) = refs {
+        let text = |entry: &Value, keys: &[&str]| {
+            keys.iter()
+                .filter_map(|key| entry.get(*key).and_then(Value::as_str))
+                .find(|text| !text.trim().is_empty())
+                .map(str::to_string)
+        };
+        let mut lines = vec!["Refs to act on (pass as ref):".to_string()];
+        let mut used = lines[0].len();
+        let mut listed = 0;
+        for entry in refs.iter().take(MAX_LISTED_ELEMENTS) {
+            let Some(reference) = text(entry, &["ref"]) else {
+                continue;
+            };
+            let mut parts = vec![reference];
+            parts.extend(text(entry, &["role", "node"]));
+            parts.extend(text(entry, &["name", "label"]).map(|name| format!("{name:?}")));
+            let line = format!(
+                "- {}",
+                policy::bounded(&parts.join(" "), MAX_ELEMENT_LINE_CHARS)
+            );
+            if used + line.len() + 1 > MAX_ELEMENT_LIST_CHARS {
+                break;
+            }
+            used += line.len() + 1;
+            lines.push(line);
+            listed += 1;
+        }
+        if listed < refs.len() {
+            lines.push(format!(
+                "{} more refs are not listed here.",
+                refs.len() - listed
+            ));
+        }
+        sections.push(lines.join("\n"));
+    }
+    (!sections.is_empty()).then(|| sections.join("\n"))
+}
+
 /// An error string as the model should read it: AppError envelopes in
 /// English, everything else as is.
 fn readable(error: &str) -> String {
@@ -207,7 +283,10 @@ fn outcome_with(result: &Value, keep_mcp: bool) -> DesktopAppsOutcome {
         if let Some(structured) = result.get("structuredContent") {
             text = structured.to_string();
         }
-    } else if let Some(listed) = result.get("structuredContent").and_then(element_list) {
+    } else if let Some(listed) = result
+        .get("structuredContent")
+        .and_then(|structured| element_list(structured).or_else(|| page_text(structured)))
+    {
         // The element tokens are only in the structured answer, and a chat
         // reads text alone.
         text.push('\n');
@@ -261,7 +340,12 @@ fn available_kinds(config: &CuaDriverConfig) -> Vec<RuntimeKind> {
 }
 
 fn allowed_lines(config: &CuaDriverConfig) -> Vec<String> {
-    let mut lines = Vec::new();
+    let mut lines = vec![if config.ask_before_actions {
+        "Clicks, typing, keys and page changes ask the user first, unless they allowed that tool for this chat, session or task."
+    } else {
+        "Clicks, typing, keys and page changes run without asking the user. Make each one deliberate, and check the result before the next."
+    }
+    .to_string()];
     if !config.apps.is_empty() {
         let names: Vec<&str> = config.apps.iter().map(|app| app.name.as_str()).collect();
         lines.push(format!("Allowed apps: {}", names.join(", ")));
@@ -282,6 +366,10 @@ fn allowed_lines(config: &CuaDriverConfig) -> Vec<String> {
             })
             .collect();
         lines.push(format!("Allowed sites: {}", sites.join(", ")));
+        lines.push(
+            "Websites: browser_prepare opens the browser. get_browser_state then connects to it and reads the page; its target_id and tab_id go to browser_navigate, browser_click, browser_type and browser_select, and Oleafly fills them in when you leave them out."
+                .into(),
+        );
         if config.sites.iter().any(|site| site.signed_in) {
             lines.push(
                 "Pass browser \"signed_in\" to work in the user's own browser on the sites marked for it."
@@ -454,6 +542,11 @@ pub(crate) async fn call_desktop_apps(
         .unwrap_or_default();
     let Some(tool) = policy::curated(tool_name).filter(|tool| exposed.contains(&tool.name)) else {
         log_outcome(tool_name, "error");
+        if tool_name.is_empty() {
+            return DesktopAppsOutcome::error(
+                "Put the tool name next to args, not inside them: {\"tool\": \"type_text\", \"args\": {\"pid\": 123, \"text\": \"Hello\"}}.",
+            );
+        }
         return DesktopAppsOutcome::error(format!(
             "Unknown tool \"{}\". Use one of: {}.",
             policy::bounded(tool_name, 60),
@@ -506,23 +599,46 @@ pub(crate) async fn call_desktop_apps(
         log_outcome(tool.name, "refused:outside_list");
         return DesktopAppsOutcome::error(text);
     }
+    let args = if kind == RuntimeKind::Desktop {
+        let filled = with_pids(&lock(&state.seen), tool.name, args, &mut steps);
+        match filled {
+            Ok(args) => args,
+            Err(text) => {
+                log_outcome(tool.name, "refused:target");
+                return DesktopAppsOutcome::error(text);
+            }
+        }
+    } else {
+        let filled =
+            with_browser_targets(state, scope, &config, kind, &label, tool.name, args).await;
+        match filled {
+            Ok(args) => args,
+            Err(text) => {
+                log_outcome(tool.name, "refused:target");
+                return DesktopAppsOutcome::error(text);
+            }
+        }
+    };
 
     let signed_in = kind == RuntimeKind::SignedInBrowser;
     let granted = !signed_in && already_allowed(state, scope, kind, tool, steps.as_deref());
     // Steps the dialog had no room for; they don't run.
-    let skipped_steps = match gate::decide(tool, denied, granted, signed_in) {
-        GateDecision::Run => 0,
-        GateDecision::Refuse(text) => {
-            log_outcome(tool.name, "refused:approval_rules");
-            return DesktopAppsOutcome::error(text);
-        }
-        GateDecision::Ask { session_option } => {
-            match ask_approval(state, scope, kind, tool, &args, &mut steps, session_option).await {
-                Ok(skipped) => skipped,
-                Err(text) => return DesktopAppsOutcome::error(text),
+    let skipped_steps =
+        match gate::decide(tool, denied, granted, signed_in, config.ask_before_actions) {
+            GateDecision::Run => 0,
+            GateDecision::Refuse(text) => {
+                log_outcome(tool.name, "refused:approval_rules");
+                return DesktopAppsOutcome::error(text);
             }
-        }
-    };
+            GateDecision::Ask { session_option } => {
+                match ask_approval(state, scope, kind, tool, &args, &mut steps, session_option)
+                    .await
+                {
+                    Ok(skipped) => skipped,
+                    Err(text) => return DesktopAppsOutcome::error(text),
+                }
+            }
+        };
 
     let timeout = if matches!(tool.name, "run_steps" | "run_script") {
         BATCH_TIMEOUT
@@ -792,6 +908,195 @@ fn schema_known_args(
     }
 }
 
+/// Cua Driver 0.38 only works in an allowed app's window when the call names
+/// the app's process ("window resource did not attest a pid"). Agents often
+/// pass just the window_id or element_token they were shown, so the pid the
+/// driver gave for it is filled in. A call to one window that still names no
+/// process is answered here, before any dialog, and so is an element token
+/// from a turn that ended, which the driver would refuse after the user was
+/// asked. A batch's steps can name their target by role and name instead, so
+/// a batch is only filled in.
+fn with_pids(
+    seen: &gate::Seen,
+    tool: &str,
+    mut args: Map<String, Value>,
+    steps: &mut Option<Vec<policy::Step>>,
+) -> Result<Map<String, Value>, &'static str> {
+    let carried_over = seen.names_ended_snapshot(&Value::Object(args.clone()))
+        || steps
+            .iter()
+            .flatten()
+            .any(|step| seen.names_ended_snapshot(&step.args));
+    if carried_over {
+        return Err(policy::EARLIER_TURN_TEXT);
+    }
+    let Some(steps) = steps.as_mut() else {
+        if !policy::targets_window(tool) {
+            return Ok(args);
+        }
+        seen.fill_pid(&mut args);
+        return if gate::names_pid(&args) {
+            Ok(args)
+        } else {
+            Err(policy::NEEDS_PID_TEXT)
+        };
+    };
+    for step in steps.iter_mut() {
+        if let Value::Object(map) = &mut step.args {
+            seen.fill_pid(map);
+        }
+    }
+    seen.fill_pid(&mut args);
+    // Steps that name no window take the batch's, so a batch whose steps
+    // all act in one process names it for them.
+    if !gate::names_pid(&args) && !args.contains_key("app") {
+        let mut pids = steps
+            .iter()
+            .filter_map(|step| step.args.get("pid").and_then(Value::as_u64));
+        if let Some(first) = pids.next() {
+            if pids.all(|pid| pid == first) {
+                args.insert("pid".into(), Value::from(first));
+            }
+        }
+    }
+    Ok(args)
+}
+
+/// Fills in what a 0.38 browser call needs and the agent left out (see
+/// `browser`), and answers here, before any dialog, a page outside the list
+/// and, in the separate profile, a browser Oleafly didn't open.
+async fn with_browser_targets(
+    state: &CuaDriverState,
+    scope: &CuaScope,
+    config: &CuaDriverConfig,
+    kind: RuntimeKind,
+    label: &str,
+    tool: &str,
+    mut args: Map<String, Value>,
+) -> Result<Map<String, Value>, &'static str> {
+    let seen = lock(&state.seen)
+        .browser(&scope.session_key, kind)
+        .cloned()
+        .unwrap_or_default();
+    match tool {
+        "browser_prepare" => {
+            browser::prepare_defaults(kind, &mut args);
+            // The user's own browser is attached at the window the last
+            // bind named, as the driver's refusal of that bind asks.
+            if kind == RuntimeKind::SignedInBrowser && !args.contains_key("pid") {
+                if let Some((pid, window_id)) = seen.window {
+                    args.insert("pid".into(), Value::from(pid));
+                    args.entry("window_id")
+                        .or_insert_with(|| Value::from(window_id));
+                    args.entry("strategy")
+                        .or_insert_with(|| json!({"kind": "existing_profile"}));
+                }
+            }
+        }
+        "browser_navigate" | "browser_click" | "browser_type" | "browser_select" => {
+            if tool == "browser_navigate" {
+                let url = args.get("url").and_then(Value::as_str).unwrap_or_default();
+                if !browser::site_allowed(config, kind, url) {
+                    return Err(policy::OUTSIDE_TEXT);
+                }
+            }
+            fill_tab(&seen, &mut args);
+            // Without a bound tab the driver refuses it, after the dialog.
+            if !args.contains_key("target_id") {
+                return Err(browser::BIND_FIRST_TEXT);
+            }
+        }
+        "get_browser_state" => {
+            let binding = !args.contains_key("target_id")
+                && (args.contains_key("pid") || seen.target.is_none());
+            if binding {
+                bind_args(state, scope, kind, label, &seen, &mut args).await?;
+            } else {
+                fill_tab(&seen, &mut args);
+                // The semantic read carries the page's text; the older
+                // default lists only links and fields.
+                args.entry("snapshot_format")
+                    .or_insert_with(|| Value::from("semantic_v2"));
+            }
+        }
+        _ => {}
+    }
+    Ok(args)
+}
+
+/// The target and tab of the last bind, page read or navigation, for a call
+/// that names neither (or names that target without a tab).
+fn fill_tab(seen: &SeenBrowser, args: &mut Map<String, Value>) {
+    let Some(target) = seen.target.as_deref() else {
+        return;
+    };
+    args.entry("target_id")
+        .or_insert_with(|| Value::from(target));
+    let same_target = args.get("target_id").and_then(Value::as_str) == Some(target);
+    if let (true, Some(tab)) = (same_target, seen.tab.as_deref()) {
+        args.entry("tab_id").or_insert_with(|| Value::from(tab));
+    }
+}
+
+/// The pid and window a bind names: the browser `browser_prepare` opened
+/// (in the signed-in profile, the user's running Chrome or Edge) and its
+/// largest window, from the driver's own window list.
+async fn bind_args(
+    state: &CuaDriverState,
+    scope: &CuaScope,
+    kind: RuntimeKind,
+    label: &str,
+    seen: &SeenBrowser,
+    args: &mut Map<String, Value>,
+) -> Result<(), &'static str> {
+    let named = args.get("pid").and_then(Value::as_u64);
+    let pids = match (kind, named) {
+        (RuntimeKind::Browser, Some(pid)) if Some(pid) != seen.prepared => {
+            return Err(browser::OWN_BROWSER_TEXT)
+        }
+        (_, Some(pid)) => vec![pid],
+        (RuntimeKind::Browser, None) => vec![seen.prepared.ok_or(browser::PREPARE_FIRST_TEXT)?],
+        (_, None) => {
+            let running = tauri::async_runtime::spawn_blocking(|| {
+                browser::known_browsers()
+                    .iter()
+                    .flat_map(running_pids)
+                    .map(u64::from)
+                    .collect::<Vec<_>>()
+            })
+            .await
+            .unwrap_or_default();
+            if running.is_empty() {
+                return Err(browser::NO_BROWSER_TEXT);
+            }
+            running
+        }
+    };
+    if args.contains_key("window_id") {
+        args.entry("pid").or_insert_with(|| Value::from(pids[0]));
+        return Ok(());
+    }
+    for pid in pids {
+        let call = state.runtimes.call(
+            kind,
+            label,
+            "list_windows",
+            json!({"session": label, "pid": pid}),
+            CALL_TIMEOUT,
+        );
+        let Some(answer) = call_until_turn_ends(state, scope, call).await else {
+            return Err(STOPPED_AT_TURN_END_TEXT);
+        };
+        if let Some(window_id) = answer.ok().as_ref().and_then(browser::main_window) {
+            args.insert("pid".into(), Value::from(pid));
+            args.insert("window_id".into(), Value::from(window_id));
+            lock(&state.seen).note_browser_window(&scope.session_key, kind, pid, window_id);
+            return Ok(());
+        }
+    }
+    Err(browser::NO_WINDOW_TEXT)
+}
+
 /// Asks the user about an action and waits for the answer. `Ok` holds how
 /// many steps of a batch the dialog had no room for: the batch is cut to the
 /// steps shown, and the rest don't run. `Err` is the text for a call that
@@ -1047,6 +1352,26 @@ mod tests {
             .as_str()
             .unwrap()
             .contains("None of the allowed apps is running"));
+    }
+
+    #[test]
+    fn a_page_read_reaches_a_chat_as_text() {
+        // The driver's text only counts what it read.
+        let semantic = json!({"content": [{"type": "text", "text": "semantic snapshot p2: 1 action ref(s), 13 content ref(s)"}],
+            "structuredContent": {"outline": "- heading \"Example Domain\"\n- paragraph",
+                "content_refs": [{"ref": "p2:0", "role": "rootwebarea", "name": "Example Domain"}],
+                "action_refs": [{"ref": "p2:9", "role": "link", "name": "Learn more"}]}});
+        let text = outcome_from_result(&semantic).text;
+        assert!(
+            text.contains("Title: Example Domain\nPage:\n- heading \"Example Domain\""),
+            "{text}"
+        );
+        assert!(text.contains("- p2:9 link \"Learn more\""), "{text}");
+        let links = json!({"content": [{"type": "text", "text": "snapshot p1: 1 interactive element(s)"}],
+            "structuredContent": {"refs": [{"ref": "p1:2", "node": "a", "label": "href=https://iana.org"}]}});
+        assert!(outcome_from_result(&links)
+            .text
+            .contains("- p1:2 a \"href=https://iana.org\""));
     }
 
     #[test]

@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly nu a putut verifica certificatul pentru {{host}}. Dacă organizația ta are propria autoritate de certificare, adaugă fișierul ei de certificat la cont, în Setări.",
     "tracked_secret_files": "Publicarea s-a oprit pentru că fișiere din istoricul Git al proiectului pot conține chei sau parole: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Accesul complet nu a fost activat."
-  },
+  "approvals": {},
   "trust": {
     "git": "Ai încredere în acest folder pentru a folosi controlul versiunilor.",
     "repository": "Ai încredere în depozitul {{name}} pentru a folosi aici controlul versiunilor.",

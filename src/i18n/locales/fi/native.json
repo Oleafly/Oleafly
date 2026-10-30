@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "Peruuta",
-    "fullAccess": {
-      "title": "Otetaanko täysi käyttöoikeus käyttöön?",
-      "message": "Täydellä käyttöoikeudella avustaja voi ajaa shell-komentoja ja muokata tiedostoja pyytämättä lupaa joka kerta erikseen. Otetaanko täysi käyttöoikeus käyttöön?",
-      "confirm": "Ota täysi käyttöoikeus käyttöön"
-    },
     "sharedShellEscape": {
       "title": "Sallitaanko ulkoiset komennot tässä jaetussa projektissa?",
       "message": "Silloin kuka tahansa, joka voi muokata projektia, voi suorittaa ohjelmia tällä koneella, kun käännät sen. Salli tämä vain, jos luotat kaikkiin projektin jäseniin.",
@@ -147,7 +142,7 @@
     },
     "desktopAppsSettings": {
       "title": "Sallitaanko työpöydän hallinta?",
-      "message": "Agentit voivat käyttää seuraavia. Ne kysyvät ennen jokaista toimintoa, ja tallentaminen poistaa kaikki ”Salli tässä keskustelussa” -valinnat:",
+      "message": "Agentit voivat käyttää seuraavia:",
       "confirm": "Salli",
       "enabled": "Computer Use",
       "app": "Sovellus: {{identity}} ({{name}})",
@@ -155,6 +150,7 @@
       "site": "Sivusto: {{origin}}",
       "signedIn": "Selaimesi, jolla olet kirjautunut sivustolle {{origin}}",
       "scripted": "Cua-skriptit",
+      "noAsking": "Toiminnot suoritetaan kysymättä sinulta ensin",
       "spacesTitle": "Annetaanko Cua Spacesille lisää käyttöoikeuksia?",
       "spacesMessage": "Cua Spacesia käyttävät agentit voivat:",
       "spacesChanges": "Luoda ja poistaa Space-ympäristöjä ja suorittaa niissä komentoja",
@@ -165,7 +161,6 @@
     "menuUnavailable": "Sovellusvalikko ei ole käytettävissä",
     "viewMenuUnavailable": "Näytä-valikko ei ole käytettävissä",
     "menuItemUnavailable": "Valikkokohde {{id}} ei ole käytettävissä",
-    "fullAccessDismissed": "Täyden käyttöoikeuden vahvistus ohitettiin.",
     "fullAccessDeclined": "Täyttä käyttöoikeutta ei otettu käyttöön.",
     "approvalDialogClosed": "Järjestelmän hyväksyntäikkuna sulkeutui odottamatta."
   },

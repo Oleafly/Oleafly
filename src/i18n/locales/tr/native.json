@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "İptal",
-    "fullAccess": {
-      "title": "Tam erişim etkinleştirilsin mi?",
-      "message": "Tam erişim, asistanın her seferinde onay istemeden shell komutları çalıştırmasına ve dosyaları düzenlemesine izin verir. Tam erişim etkinleştirilsin mi?",
-      "confirm": "Tam erişimi etkinleştir"
-    },
     "sharedShellEscape": {
       "title": "Bu paylaşılan projede dış komutlara izin verilsin mi?",
       "message": "Bu projeyi düzenleyebilen herkes, siz derleme yaptığınızda bu bilgisayarda program çalıştırabilir. Buna yalnızca projedeki herkese güveniyorsanız izin verin.",
@@ -147,7 +142,7 @@
     },
     "desktopAppsSettings": {
       "title": "Masaüstü denetimine izin verilsin mi?",
-      "message": "Ajanlar bunları kullanabilecek. Her işlemden önce sorarlar ve bunu kaydetmek tüm \"Bu sohbet için izin ver\" seçimlerini temizler:",
+      "message": "Ajanlar bunları kullanabilecek:",
       "confirm": "İzin ver",
       "enabled": "Computer Use",
       "app": "Uygulama: {{identity}} ({{name}})",
@@ -155,6 +150,7 @@
       "site": "Web sitesi: {{origin}}",
       "signedIn": "{{origin}} üzerinde oturum açılmış tarayıcınız",
       "scripted": "Cua betikleri",
+      "noAsking": "İşlemler önce size sorulmadan çalışır",
       "spacesTitle": "Cua Spaces'e daha fazla erişim verilsin mi?",
       "spacesMessage": "Cua Spaces kullanan ajanlar şunları yapabilecek:",
       "spacesChanges": "Space oluşturmak ve silmek, içlerinde komut çalıştırmak",
@@ -165,7 +161,6 @@
     "menuUnavailable": "Uygulama menüsü kullanılamıyor",
     "viewMenuUnavailable": "Görünüm menüsü kullanılamıyor",
     "menuItemUnavailable": "{{id}} menü ögesi kullanılamıyor",
-    "fullAccessDismissed": "Tam erişim onayı kapatıldı.",
     "fullAccessDeclined": "Tam erişim etkinleştirilmedi.",
     "approvalDialogClosed": "Yerel onay penceresi beklenmedik biçimde kapandı."
   },

@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "Annuleren",
-    "fullAccess": {
-      "title": "Volledige toegang inschakelen?",
-      "message": "Met volledige toegang kan de assistent shell-opdrachten uitvoeren en bestanden bewerken zonder telkens om goedkeuring te vragen. Volledige toegang inschakelen?",
-      "confirm": "Volledige toegang inschakelen"
-    },
     "sharedShellEscape": {
       "title": "Externe opdrachten toestaan in dit gedeelde project?",
       "message": "Iedereen die dit project kan bewerken, kan dan programma's op deze computer uitvoeren wanneer je compileert. Sta dit alleen toe als je iedereen in het project vertrouwt.",
@@ -147,7 +142,7 @@
     },
     "desktopAppsSettings": {
       "title": "Bediening van de desktop toestaan?",
-      "message": "Agents kunnen het volgende gebruiken. Ze vragen het voor elke actie, en als je dit opslaat, vervallen alle keuzes voor 'Toestaan voor deze chat':",
+      "message": "Agents kunnen het volgende gebruiken:",
       "confirm": "Toestaan",
       "enabled": "Computer Use",
       "app": "App: {{identity}} ({{name}})",
@@ -155,6 +150,7 @@
       "site": "Website: {{origin}}",
       "signedIn": "Je aangemelde browser op {{origin}}",
       "scripted": "Cua-scripts",
+      "noAsking": "Acties lopen zonder dat je eerst wordt gevraagd",
       "spacesTitle": "Cua Spaces meer toegang geven?",
       "spacesMessage": "Agents die Cua Spaces gebruiken, kunnen:",
       "spacesChanges": "Spaces maken en verwijderen en er opdrachten in uitvoeren",
@@ -165,7 +161,6 @@
     "menuUnavailable": "Het applicatiemenu is niet beschikbaar",
     "viewMenuUnavailable": "Het menu Beeld is niet beschikbaar",
     "menuItemUnavailable": "Menu-item {{id}} is niet beschikbaar",
-    "fullAccessDismissed": "De bevestiging voor volledige toegang is weggeklikt.",
     "fullAccessDeclined": "Volledige toegang is niet ingeschakeld.",
     "approvalDialogClosed": "Het systeemvenster voor goedkeuring is onverwacht gesloten."
   },

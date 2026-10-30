@@ -207,6 +207,7 @@ pub(crate) fn widening_lines(widening: &[Widening]) -> Vec<String> {
                 crate::i18n::t_with("dialog.desktopAppsSettings.signedIn", &[("origin", origin)])
             }
             Widening::ScriptedControl => crate::i18n::t("dialog.desktopAppsSettings.scripted"),
+            Widening::NoAsking => crate::i18n::t("dialog.desktopAppsSettings.noAsking"),
         })
         .collect()
 }

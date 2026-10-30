@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly kunne ikke bekræfte certifikatet for {{host}}. Hvis din organisation har sin egen certifikatudsteder, skal du tilføje dens certifikatfil til kontoen under Indstillinger.",
     "tracked_secret_files": "Udgivelsen stoppede, fordi filer i projektets Git-historik kan indeholde nøgler eller adgangskoder: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Fuld adgang blev ikke aktiveret."
-  },
+  "approvals": {},
   "trust": {
     "git": "Stol på denne mappe for at bruge versionsstyring.",
     "repository": "Stol på repositoryet {{name}} for at bruge versionsstyring her.",

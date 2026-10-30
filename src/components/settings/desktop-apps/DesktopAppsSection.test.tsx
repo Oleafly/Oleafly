@@ -44,7 +44,13 @@ import DesktopAppsSection from "./DesktopAppsSection";
 const copy = enSettings.integrations.desktopApps;
 const WINDOWS_LINE = 'powershell.exe -NoProfile -Command "irm https://cua.ai/driver/install.ps1 | iex"';
 
-const OFF: DesktopAppsSettings = { enabled: false, apps: [], sites: [], scriptedControl: false };
+const OFF: DesktopAppsSettings = {
+  enabled: false,
+  apps: [],
+  sites: [],
+  scriptedControl: false,
+  askBeforeActions: false,
+};
 
 function status(overrides: Partial<DesktopAppsStatus> = {}): DesktopAppsStatus {
   return {
@@ -193,6 +199,20 @@ describe("DesktopAppsSection", () => {
         ...on,
         sites: [{ origin: "https://journal.example.org", signedIn: true }],
       }),
+    );
+  });
+
+  it("leaves asking before each action off until the user turns it on", async () => {
+    const user = userEvent.setup();
+    const on = { ...OFF, enabled: true };
+    mocks.status.mockResolvedValue(status({ settings: on }));
+    mocks.settingsSet.mockImplementation(async (settings: DesktopAppsSettings) => settings);
+    renderSection();
+    const ask = await screen.findByRole("switch", { name: copy.ask.label });
+    expect(ask).toHaveAttribute("aria-checked", "false");
+    await user.click(ask);
+    await waitFor(() =>
+      expect(mocks.settingsSet).toHaveBeenCalledWith({ ...on, askBeforeActions: true }),
     );
   });
 

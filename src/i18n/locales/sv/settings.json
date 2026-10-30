@@ -1708,7 +1708,7 @@
     "desktopApps": {
       "tab": "Computer Use",
       "title": "Computer Use",
-      "description": "Låt agenter använda appar och webbplatser på den här datorn via Cua Driver. Oleafly frågar före varje åtgärd, om du inte tillåter den typen av åtgärd för chatten, sessionen eller uppgiften. Din inloggade webbläsare och skript frågar alltid.",
+      "description": "Låt agenter använda appar och webbplatser på den här datorn via Cua Driver. De når bara apparna och webbplatserna du anger här.",
       "docsLink": "Dokumentation för Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} är installerat.",
@@ -1744,7 +1744,7 @@
       },
       "enable": {
         "label": "Låt agenter använda skrivbordsappar",
-        "description": "Agenter kan se apparna och webbplatserna nedan. Klick, inskrivning och sidbyten frågar dig först, om du inte tillåter dem för chatten, sessionen eller uppgiften. När du lägger till en app eller webbplats rensas de valen."
+        "description": "Agenter kan se och använda apparna och webbplatserna nedan."
       },
       "apps": {
         "heading": "Tillåtna appar",
@@ -1754,7 +1754,7 @@
         "missing": "Programmet hittades inte på den här datorn. Ta bort det, eller installera om appen.",
         "dialog": {
           "title": "Lägg till en app",
-          "description": "Välj en app som agenter får använda. De kan öppna den, läsa dess fönster och utföra åtgärder i den när du har godkänt.",
+          "description": "Välj en app som agenter får använda. De kan öppna den, läsa dess fönster och agera i den.",
           "search": "Sök appar",
           "loading": "Letar efter appar…",
           "none": "Inga appar matchar.",
@@ -1790,7 +1790,11 @@
       },
       "scripted": {
         "label": "Skriptstyrning",
-        "description": "Låt agenter köra Cua-skript som gör många steg på en gång. Oleafly frågar före varje skript."
+        "description": "Låt agenter köra Cua-skript som gör många steg på en gång."
+      },
+      "ask": {
+        "label": "Fråga före varje åtgärd",
+        "description": "Godkänn varje klick, tangenttryckning, sidbyte och skript i en dialogruta. Du kan tillåta en sorts åtgärd resten av en chatt, session eller uppgift, utom i din inloggade webbläsare och för skript. När du lägger till en app eller webbplats rensas de valen."
       },
       "test": {
         "action": "Testa anslutningen",
@@ -1801,11 +1805,11 @@
       },
       "tool": {
         "description": "Använd de skrivbordsappar och webbplatser som du har tillåtit i Inställningar.",
-        "note": "Att titta sker direkt. Klick, inskrivning och sidbyten frågar först, om du inte tillåter dem för chatten."
+        "note": "Fungerar bara i apparna och på webbplatserna du har tillåtit. Åtgärder frågar först när \"Fråga före varje åtgärd\" är på."
       },
       "task": {
         "label": "Computer Use",
-        "description": "Låt den här uppgiften använda dina tillåtna skrivbordsappar. Du behöver vara vid datorn för att godkänna åtgärder.",
+        "description": "Låt den här uppgiften använda dina tillåtna skrivbordsappar. När \"Fråga före varje åtgärd\" är på behöver du vara vid datorn för att godkänna åtgärder.",
         "off": "Slå på Computer Use i Inställningar först.",
         "unattended": "Uppgifter som körs enligt schema eller efter att Oleafly har stängts kan inte använda skrivbordsappar."
       },
