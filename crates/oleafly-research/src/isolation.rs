@@ -1,5 +1,3 @@
-//! Task workspaces: a detached Git worktree or a verified copy of the
-//! project, plus the review diff against the baseline.
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File};
 use std::io::{Read, Seek, Write};
@@ -103,8 +101,6 @@ pub fn prepare(
     )
 }
 
-/// Where a task's copy comes from: a library project's own Git repository
-/// (a detached worktree), or a plain copy for linked folders.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IsolationSource {
     Repository,
@@ -183,10 +179,8 @@ pub fn prepare_at(
     prepared
 }
 
-/// What a review of a task's workspace found.
 pub struct TaskReview {
     pub changes: Vec<TaskFileChange>,
-    /// New files past the limits of a copy, which the review leaves out.
     pub left_out: usize,
 }
 
@@ -219,9 +213,6 @@ pub fn collect_review(
         .map(|entry| (entry.path.clone(), entry))
         .collect();
     let allowed: BTreeSet<_> = isolation.allowed_paths.iter().cloned().collect();
-    // A new source file outside the allowed paths fails the task. Logs,
-    // caches and data a script left there stay out of the review, as in
-    // 0.4.7, when only source files were tracked.
     let mut left_out = Vec::new();
     for path in after.keys() {
         if !baseline.contains_key(path) && !path_is_allowed(path, &allowed) {
@@ -324,7 +315,6 @@ pub fn normalized_relative(path: &str) -> Result<PathBuf, String> {
     Ok(candidate.to_path_buf())
 }
 
-/// Copy limits: per file, file count and total size.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct CopyLimits {
     pub max_file: u64,
@@ -368,11 +358,6 @@ pub(crate) fn collect_manifest_limited(
     Ok((walk.entries, walk.skipped))
 }
 
-/// The files of a finished task's workspace for its review, and how many
-/// new files were left out. The files the project had (`known`) are always
-/// listed. New ones count against the limits of a copy, but past them they
-/// are left out instead of failing the task: a run that wrote 25,000 files
-/// still has its work reviewed.
 fn collect_review_manifest(
     root: &Path,
     known: &BTreeSet<String>,
@@ -402,12 +387,10 @@ struct Walk<'a> {
     canonical_root: &'a Path,
     cancel: &'a CancellationToken,
     limits: CopyLimits,
-    /// A review: the project's files, which no limit applies to.
     known: Option<&'a BTreeSet<String>>,
     entries: Vec<ManifestEntry>,
     skipped: Vec<SkippedEntry>,
     total_bytes: u64,
-    /// A review: what the new files add up to, and those left out.
     new_files: usize,
     new_bytes: u64,
     left_out: usize,
@@ -441,8 +424,6 @@ impl<'a> Walk<'a> {
     }
 
     fn add(&mut self, portable: String, file: &Path, resolved_link: bool) -> Result<(), String> {
-        // A review lists the project's own files whatever the limits say,
-        // and counts only the new ones against them.
         let reviewing = self.known.is_some();
         let new_file = self
             .known
@@ -457,8 +438,6 @@ impl<'a> Walk<'a> {
             self.left_out += 1;
             return Ok(());
         }
-        // Size first: hashing refuses a file over the limit, and a large data
-        // file is skipped, not a reason to fail the whole copy.
         let size = fs::metadata(file)
             .map_err(|error| format!("could not inspect {}: {error}", file.display()))?
             .len();
@@ -530,8 +509,6 @@ fn collect_directory(walk: &mut Walk<'_>, directory: &Path) -> Result<(), String
             if !allowed_file(&portable) {
                 continue;
             }
-            // A link to a file inside the project is copied as that file;
-            // links to folders are never followed, so a cycle cannot form.
             match fs::canonicalize(&path) {
                 Err(_) => walk.skip(portable, SkipReason::BrokenLink),
                 Ok(target) if !target.starts_with(walk.canonical_root) => {
@@ -572,7 +549,6 @@ fn copy_manifest(
         }
         let relative = normalized_relative(&entry.path)?;
         let link = source.join(&relative);
-        // A resolved link is copied from its target, as a regular file.
         let from = if entry.resolved_link {
             fs::canonicalize(&link)
                 .map_err(|error| format!("could not read {}: {error}", entry.path))?
@@ -747,15 +723,12 @@ pub fn purge_task_workspaces(project: Option<&Path>, git: Option<&GitEnv>, task_
     remove_created_path(task_root);
 }
 
-/// Removes a task's earlier workspaces (and their baselines), keeping the
-/// workspace roots in `keep`.
 pub fn purge_generations(
     task_root: &Path,
     keep: &[PathBuf],
     project: Option<&Path>,
     git: Option<&GitEnv>,
 ) {
-    // Listed once up front, so a folder created while this runs is left alone.
     let Ok(entries) = fs::read_dir(task_root) else {
         return;
     };
@@ -795,8 +768,6 @@ pub fn purge_generations(
     }
 }
 
-/// After review only the before-copies of changed files are needed from
-/// the baseline; the rest is removed. Returns how many files went.
 pub fn prune_baseline(
     isolation: &TaskIsolation,
     changes: &[TaskFileChange],
@@ -822,10 +793,6 @@ pub fn prune_baseline(
     Ok(removed)
 }
 
-/// Puts back the baseline files [`prune_baseline`] removed, from project
-/// files that still hold what the task started from, so the review after a
-/// resume can show each file's earlier text. Files changed since stay out.
-/// Returns how many came back.
 pub fn restore_baseline(isolation: &TaskIsolation, project_root: &Path) -> usize {
     let baseline_root = PathBuf::from(&isolation.baseline_root);
     if !baseline_root.is_dir() {
@@ -852,8 +819,6 @@ pub fn restore_baseline(isolation: &TaskIsolation, project_root: &Path) -> usize
         {
             continue;
         }
-        // The copy is checked, not the source, so a file that changes while
-        // it is copied never becomes the baseline.
         if clone_or_copy(&source, &kept).is_err() {
             let _ = fs::remove_file(&kept);
             continue;
@@ -867,15 +832,12 @@ pub fn restore_baseline(isolation: &TaskIsolation, project_root: &Path) -> usize
     restored
 }
 
-/// How a file reached a task copy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CloneResult {
-    /// A copy-on-write clone (APFS, Btrfs, XFS): no data copied.
     Cloned,
     Copied,
 }
 
-/// Clones `source` to `destination` where the filesystem can, else copies.
 pub fn clone_or_copy(source: &Path, destination: &Path) -> Result<CloneResult, String> {
     if try_clone(source, destination) {
         return Ok(CloneResult::Cloned);
@@ -902,7 +864,6 @@ fn try_clone(source: &Path, destination: &Path) -> bool {
         return false;
     };
     // SAFETY: both paths are valid NUL-terminated strings for this call.
-    /// `CLONE_NOFOLLOW` from `<sys/clonefile.h>`.
     const CLONE_NOFOLLOW: u32 = 0x0001;
     if unsafe { libc::clonefile(from.as_ptr(), to.as_ptr(), CLONE_NOFOLLOW) } != 0 {
         return false;
@@ -920,7 +881,6 @@ fn try_clone(source: &Path, destination: &Path) -> bool {
 #[cfg(target_os = "linux")]
 fn try_clone(source: &Path, destination: &Path) -> bool {
     use std::os::unix::io::AsRawFd;
-    /// `_IOW(0x94, 9, int)`.
     const FICLONE: libc::c_ulong = 0x4004_9409;
     let Ok(input) = fs::File::open(source) else {
         return false;
@@ -1099,7 +1059,6 @@ fn scrub_directory(
     Ok(())
 }
 
-/// Whether `path` is one of the folders every task may write in.
 pub(crate) fn is_output_directory(path: &Path) -> bool {
     path.to_str()
         .is_some_and(|path| OUTPUT_DIRECTORIES.contains(&path))
@@ -1145,8 +1104,6 @@ fn manifest_hash(entries: &[ManifestEntry]) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-/// The source file types 0.4.7 tracked, which a task may not add outside
-/// its allowed paths.
 const SOURCE_EXTENSIONS: &[&str] = &[
     "bib", "bst", "cls", "css", "csv", "eps", "gif", "html", "ipynb", "jpeg", "jpg", "jl", "js",
     "json", "md", "m", "pdf", "png", "py", "r", "sh", "sty", "svg", "tex", "toml", "ts", "tsv",
@@ -1175,7 +1132,6 @@ fn allowed_file(path: &str) -> bool {
     if is_sensitive_component(&lower) || is_private_key_name(&lower) {
         return false;
     }
-    // Every other file type is copied: data, models and build inputs.
     true
 }
 
@@ -1216,7 +1172,6 @@ fn is_sensitive_component(component: &str) -> bool {
                 | ".netrc"
                 | "_netrc"
                 | ".pgpass"
-                // Folders of keys and cloud or cluster credentials.
                 | ".ssh"
                 | ".gnupg"
                 | ".aws"
@@ -1226,9 +1181,6 @@ fn is_sensitive_component(component: &str) -> bool {
         || matches!(extension, Some("key" | "pem" | "p12" | "pfx" | "kdbx"))
 }
 
-/// A private SSH key by its file name (`id_rsa`, `id_ed25519_work`,
-/// `deploy_key`), but not its `.pub` half or a data file such as
-/// `id_map.csv`.
 fn is_private_key_name(file_name: &str) -> bool {
     let lower = file_name.to_ascii_lowercase();
     let extension = Path::new(&lower)
@@ -1239,13 +1191,9 @@ fn is_private_key_name(file_name: &str) -> bool {
             || (extension.is_none() && (lower.starts_with("id_") || lower.ends_with("_key"))))
 }
 
-/// Files of one research record a fresh retry copies at most.
 const MAX_RECORD_FILES: usize = 2_000;
 const MAX_RECORD_BYTES: u64 = 256 * 1024 * 1024;
 
-/// Copies `research/<slug>/` from an earlier workspace into a new one, so a
-/// task that starts over keeps its research record. Links and files a task
-/// may not hold are skipped. Returns how many files were copied.
 pub fn carry_over_record(from_root: &Path, to_root: &Path, slug: &str) -> Result<usize, String> {
     let relative = normalized_relative(&crate::record::record_dir(slug))?;
     let source = from_root.join(&relative);
@@ -1352,8 +1300,6 @@ fn copy_file(source: &Path, destination: &Path) -> Result<(), String> {
     copied
 }
 
-/// A new, empty file beside `destination` that a finished copy is renamed
-/// over, so a destination never holds half a file.
 fn create_staging_file(destination: &Path) -> Result<(PathBuf, File), String> {
     static SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let parent = destination
@@ -1444,7 +1390,6 @@ fn reject_existing(path: &Path) -> Result<(), String> {
     }
 }
 
-// What a copy takes, skips and lists (data files, links, size limits).
 #[cfg(test)]
 mod copy_tests {
     use super::*;
@@ -1503,7 +1448,6 @@ mod copy_tests {
     fn files_over_the_default_limit_are_skipped_not_fatal() {
         let project = tempfile::tempdir().unwrap();
         std::fs::write(project.path().join("main.tex"), "manuscript").unwrap();
-        // Sparse, so the test writes almost nothing.
         let weights = std::fs::File::create(project.path().join("model.safetensors")).unwrap();
         weights.set_len(MAX_FILE_BYTES + 1).unwrap();
         let (entries, skipped) = collect_manifest_limited(
@@ -1555,15 +1499,12 @@ mod copy_tests {
         )
         .unwrap();
         let paths: Vec<&str> = entries.iter().map(|entry| entry.path.as_str()).collect();
-        // The three project files are over the limit of two and still listed
-        // (they would otherwise look deleted); two new files fit.
         assert_eq!(
             paths,
             ["a.tex", "b.tex", "c.tex", "runs/out0.csv", "runs/out1.csv"]
         );
         assert_eq!(left_out, 3);
 
-        // The new files also count by size, not only by number.
         let limits = CopyLimits {
             max_total: 12,
             ..CopyLimits::default()

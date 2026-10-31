@@ -16,7 +16,6 @@ export type TaskFileChangeKind = "added" | "modified" | "deleted";
 
 export type SkipReason = "too_large" | "link_outside" | "link_to_folder" | "broken_link" | "not_unicode";
 
-/** The task's workspace, without its file manifest. */
 export interface TaskIsolationSummary {
   kind: TaskIsolationKind;
   executionRoot: string;
@@ -24,7 +23,6 @@ export interface TaskIsolationSummary {
   baselineHash: string;
   fileCount: number;
   createdAt: number;
-  /** Project files the copy left out. */
   skipped?: { path: string; reason: SkipReason }[];
 }
 
@@ -134,7 +132,6 @@ export interface ApprovalRecord {
   decidedAt: number | null;
 }
 
-/** The brief a new task gets unless the composer changes it. */
 export function defaultBrief(goal = ""): ResearchBrief {
   return {
     goal,
@@ -207,7 +204,6 @@ export interface ResearchTask {
   finishedAt: number | null;
   brief: ResearchBrief;
   recordSlug: string;
-  /** `research/<recordSlug>` in the task workspace. */
   recordDir: string;
   runAfter: number | null;
   keepRunningAfterQuit: boolean;
@@ -219,9 +215,7 @@ export interface ResearchTask {
   pendingApprovals: number;
   activeMs: number;
   todos: TodoItem[];
-  /** 0.4.8 L: Oleafly asked the background helper for this task back. */
   reclaimRequested: boolean;
-  /** 0.4.8 L: the generation this one continues, when it resumed. */
   resumedFrom: number | null;
 }
 
@@ -241,10 +235,6 @@ export interface ResearchTaskDraft {
 
 type RawTask = Partial<ResearchTask> & Pick<ResearchTask, "id" | "projectId" | "status">;
 
-/**
- * Fills fields a task from an older app version lacks (during an update the
- * webview can briefly talk to the previous backend).
- */
 export function normalizeTask(raw: RawTask): ResearchTask {
   const brief = { ...defaultBrief(), ...raw.brief };
   return {
@@ -324,23 +314,16 @@ export interface TaskTranscriptEvent {
   sequence: number;
   event: TaskRuntimeEvent;
   createdAt: number;
-  /**
-   * Set by this window on a text row it built from live text that began
-   * after the row did: where its text starts in the row (UTF-16 units).
-   */
   textStart?: number;
 }
 
 export interface TaskTranscriptPage {
   events: TaskTranscriptEvent[];
   nextSequence: number | null;
-  /** A page read backwards: older rows come before this sequence (pass it as the next `beforeSequence`). */
   previousSequence?: number | null;
-  /** The generation this one resumed; `null` for a fresh start, where the chain of runs ends. */
   resumedFrom?: number | null;
 }
 
-/** A `beforeSequence` above every row: the page holds the newest rows. */
 export const NEWEST_EVENTS = Number.MAX_SAFE_INTEGER;
 
 export interface TaskApplyResult {
@@ -391,7 +374,6 @@ export const startResearchTask = (taskId: string) =>
 export const cancelResearchTask = (taskId: string) =>
   normalized(invoke<ResearchTask>("research_task_cancel", { taskId }));
 
-/** Resume continues in the saved workspace; fresh (the default) starts over. */
 export const retryResearchTask = (taskId: string, mode: RetryMode = "fresh") =>
   normalized(invoke<ResearchTask>("research_task_retry", { taskId, mode }));
 
@@ -401,7 +383,6 @@ export const acceptResearchTaskResult = (taskId: string) =>
 export const deleteResearchTask = (taskId: string) =>
   invoke<void>("research_task_delete", { taskId });
 
-/** 0.4.8 L: "Keep running when Oleafly is closed" for a task that has not finished. */
 export const setResearchTaskKeepRunning = (taskId: string, keep: boolean) =>
   normalized(invoke<ResearchTask>("research_task_set_keep_running", { taskId, keep }));
 
@@ -427,7 +408,6 @@ export const loadResearchTaskEvents = (
     limit,
   });
 
-/** The `limit` rows just before `beforeSequence`, oldest first (`NEWEST_EVENTS` reads the newest page). */
 export const loadResearchTaskEventsBefore = (
   taskId: string,
   executionGeneration: number,
@@ -457,7 +437,6 @@ export const listenForResearchTaskEvents = (
 ): Promise<UnlistenFn> =>
   listen<TaskTranscriptEvent>("research-task-event", (event) => onEvent(event.payload));
 
-/** Text added to a transcript row, sent only to windows watching the task. */
 export interface TaskTranscriptDelta {
   taskId: string;
   executionGeneration: number;
@@ -465,7 +444,6 @@ export interface TaskTranscriptDelta {
   kind: "text" | "reasoning";
   append: string;
   createdAt: number;
-  /** The row's text length after this append, in UTF-16 units. */
   textLength?: number;
 }
 
@@ -474,26 +452,21 @@ export const listenForResearchTaskDeltas = (
 ): Promise<UnlistenFn> =>
   listen<TaskTranscriptDelta>("research-task-delta", (event) => onDelta(event.payload));
 
-/** Transcript rows and deltas reach this window only for the watched task. */
 export const watchResearchTask = (taskId: string | null) =>
   invoke<void>("research_task_watch", { taskId });
 
-/** A plan-first task's plan as the review shows it; `truncated` when the file is longer (64 KiB). */
 export interface TaskPlanText {
   text: string;
   truncated: boolean;
 }
 
-/** The plan most a review can show, in UTF-8 bytes, as the backend counts it. */
 export const MAX_PLAN_BYTES = 64 * 1024;
 
 export const loadResearchTaskPlan = (taskId: string) =>
   invoke<TaskPlanText | string>("research_task_plan", { taskId }).then(
-    // An older backend sends the text alone.
     (plan): TaskPlanText => (typeof plan === "string" ? { text: plan, truncated: false } : plan),
   );
 
-/** Approves the plan, replacing it first when `editedPlan` is given. */
 export const approveResearchTaskPlan = (taskId: string, editedPlan?: string) =>
   normalized(
     invoke<ResearchTask>("research_task_approve_plan", { taskId, editedPlan: editedPlan ?? null }),
@@ -519,7 +492,6 @@ export interface BestMetric {
   name: string;
   value: number;
   runId: string;
-  /** The metric over the last 30 finished runs, oldest first. */
   series: number[];
 }
 
@@ -576,6 +548,5 @@ export const listenForResearchAttention = (
 
 export type NotificationPermission = "granted" | "denied" | "prompt";
 
-/** The notification permission; `request` asks the system first. */
 export const researchNotificationPermission = (request = false) =>
   invoke<NotificationPermission>("research_notification_permission", { request });

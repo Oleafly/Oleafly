@@ -4,9 +4,6 @@ use crate::config::{self, AppConfig};
 use crate::open_request::{OpenIntake, PendingOpen};
 use crate::project::{self, ProjectInfo};
 
-// Pre-computed startup snapshot: one IPC round-trip hands the shell everything
-// it previously hydrated with separate async invokes after mount. Fields are
-// best-effort so a broken config or library never blocks first paint.
 #[derive(Serialize)]
 pub struct InitialState {
     pub config: Option<AppConfig>,

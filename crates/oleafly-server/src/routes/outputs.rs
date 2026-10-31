@@ -7,8 +7,8 @@ use axum::routing::get;
 use axum::{Json, Router};
 use oleafly_collab_protocol::ids::{AccountId, SharedProjectId};
 use oleafly_collab_protocol::outputs::{
-    decode_main_file, encode_main_file, OutputKind, ProjectOutput, MAIN_FILE_HEADER,
-    MAX_MAIN_FILE_CHARS,
+    decode_main_file, encode_main_file, OutputKind, ProjectOutput, FOR_PDF_HEADER,
+    MAIN_FILE_HEADER, MAX_MAIN_FILE_CHARS,
 };
 use oleafly_collab_protocol::projects::{ProjectAction, ProjectStatus};
 
@@ -68,6 +68,28 @@ fn main_file(headers: &HeaderMap) -> Result<String, ServerError> {
     Ok(name.to_string())
 }
 
+fn for_pdf(kind: OutputKind, headers: &HeaderMap) -> Result<Option<String>, ServerError> {
+    let Some(value) = headers.get(FOR_PDF_HEADER) else {
+        return Ok(None);
+    };
+    let hash = value
+        .to_str()
+        .map(str::trim)
+        .ok()
+        .filter(|hash| hash.len() == 64 && hash.bytes().all(|byte| byte.is_ascii_hexdigit()))
+        .ok_or_else(|| {
+            ServerError::BadRequest(format!(
+                "{FOR_PDF_HEADER} names the PDF by its SHA-256 in hex."
+            ))
+        })?;
+    if kind != OutputKind::Synctex {
+        return Err(ServerError::BadRequest(format!(
+            "Only SyncTeX output names its PDF in {FOR_PDF_HEADER}."
+        )));
+    }
+    Ok(Some(hash.to_ascii_lowercase()))
+}
+
 fn looks_like(kind: OutputKind, bytes: &[u8]) -> bool {
     match kind {
         OutputKind::Pdf => bytes[..bytes.len().min(PDF_HEADER_WITHIN)]
@@ -116,6 +138,7 @@ pub(crate) async fn store_upload(
     body: Body,
 ) -> Result<ProjectOutput, ServerError> {
     let main_file = main_file(headers)?;
+    let for_pdf = for_pdf(kind, headers)?;
     let limit = megabytes(state.config.limits.max_file_mb);
     content_length_within(headers, limit)?;
     let owner = state
@@ -156,6 +179,7 @@ pub(crate) async fn store_upload(
         compiled_by: account,
         main_file,
         storage: Storage::for_upload(owner, account, state.config.quotas.storage_mb),
+        for_pdf,
     };
     let stored = outputs::store(state, new, bytes, state.clock.now_ms()).await?;
     #[cfg(feature = "web")]
@@ -230,5 +254,20 @@ mod tests {
         let long = "a".repeat(MAX_MAIN_FILE_CHARS + 1);
         headers.insert(MAIN_FILE_HEADER, HeaderValue::from_str(&long).unwrap());
         assert!(main_file(&headers).is_err());
+    }
+
+    #[test]
+    fn only_synctex_names_its_pdf_and_only_by_hash() {
+        let mut headers = HeaderMap::new();
+        assert_eq!(for_pdf(OutputKind::Synctex, &headers).unwrap(), None);
+        let hash = "AB".repeat(32);
+        headers.insert(FOR_PDF_HEADER, HeaderValue::from_str(&hash).unwrap());
+        assert_eq!(
+            for_pdf(OutputKind::Synctex, &headers).unwrap(),
+            Some("ab".repeat(32))
+        );
+        assert!(for_pdf(OutputKind::Pdf, &headers).is_err());
+        headers.insert(FOR_PDF_HEADER, HeaderValue::from_static("not-a-hash"));
+        assert!(for_pdf(OutputKind::Synctex, &headers).is_err());
     }
 }

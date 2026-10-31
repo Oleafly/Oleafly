@@ -1,7 +1,3 @@
-//! The app's `config.json`, read as plain JSON so keys this CLI doesn't know
-//! pass through untouched, and single-key writes under the app's own config
-//! lock (`.config-store.lock`), so the app and the CLI never write over each
-//! other.
 use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -12,8 +8,6 @@ use crate::contract::{CliError, ErrorKind};
 
 pub const CONFIG_FILE: &str = "config.json";
 const LOCK_FILE: &str = ".config-store.lock";
-/// The app reads its settings at any size; 4 MiB is the limit its other
-/// readers here use too (`desktop_config`), well above a real file.
 const MAX_CONFIG_BYTES: u64 = 4 * 1024 * 1024;
 const TOO_LARGE: &str = "config.json is larger than 4 MiB";
 const LOCK_BUDGET: Duration = Duration::from_secs(10);
@@ -43,7 +37,6 @@ fn read_object(path: &Path) -> Result<Option<Map<String, Value>>, String> {
     }
 }
 
-/// The app's settings (≤ 4 MiB); `None` when missing or unreadable.
 pub fn read_app_config(data_root: &Path) -> Option<Map<String, Value>> {
     read_object(&config_path(data_root)).ok().flatten()
 }
@@ -57,18 +50,15 @@ fn trimmed_text(config: &Map<String, Value>, key: &str) -> Option<String> {
         .map(str::to_owned)
 }
 
-/// The Typst version the app builds unpinned projects with.
 pub fn typst_default_choice(data_root: &Path) -> Option<String> {
     trimmed_text(&read_app_config(data_root)?, "typst_default_version")
 }
 
-/// `Some("latexmk")` when the app builds new LaTeX projects with latexmk.
 pub fn latex_default_engine(data_root: &Path) -> Option<String> {
     trimmed_text(&read_app_config(data_root)?, "latex_default_engine")
         .filter(|engine| engine == LATEXMK_ENGINE)
 }
 
-/// Holds the app's config lock.
 pub(crate) struct ConfigLock {
     _file: std::fs::File,
 }
@@ -112,8 +102,6 @@ pub(crate) fn lock_config(data_root: &Path) -> Result<ConfigLock, CliError> {
     }
 }
 
-/// Changes `config.json` under the app's lock, keeping every other key.
-/// A corrupt file is left alone.
 pub fn update_app_config(
     data_root: &Path,
     update: impl FnOnce(&mut Map<String, Value>) -> Result<(), CliError>,
@@ -230,7 +218,6 @@ mod tests {
     #[test]
     fn a_large_config_is_read_and_one_too_large_is_called_that() {
         let data = tempfile::tempdir().unwrap();
-        // Over the old 1 MiB cap: long provider model lists.
         let models: Vec<Value> = (0..40_000)
             .map(|index| serde_json::json!({"id": format!("model-{index}"), "enabled": true}))
             .collect();

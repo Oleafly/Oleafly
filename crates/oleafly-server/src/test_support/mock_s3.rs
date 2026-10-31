@@ -42,7 +42,6 @@ pub struct MockS3 {
 
 #[derive(Default)]
 struct Shared {
-    // Shared bytes, so answering a read never copies a large object.
     objects: Mutex<BTreeMap<String, Bytes>>,
     fault: Mutex<Option<MockS3Fault>>,
     rejections: Mutex<Vec<String>>,

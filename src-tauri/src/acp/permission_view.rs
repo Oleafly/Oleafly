@@ -1,10 +1,3 @@
-//! What a permission card shows: the tool kind, the target paths and the
-//! proposed file changes.
-//!
-//! Adapters often send the diff in the `tool_call` update and then ask for
-//! permission with only the `toolCallId`, so the runtime keeps the latest
-//! content of each tool call in memory and joins it here.
-
 use super::{redact::Redactor, types::PermissionDiff};
 use serde_json::{json, Value};
 use std::{
@@ -12,18 +5,12 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-/// Budget for all proposed diff text on one permission request.
 pub(super) const MAX_DIFF_BYTES: usize = 96 * 1024;
 const MAX_LOCATIONS: usize = 16;
 const MAX_DIFFS: usize = 16;
-/// Paths kept per tool call for the path policy, which sees more than a
-/// card shows.
 const MAX_TRACKED_PATHS: usize = 256;
-/// A path no project contains, for a tool call that names more paths than
-/// are kept: it is judged as outside.
 const UNTRACKED_PATH: &str = "../untracked";
 const MAX_KIND_CHARS: usize = 32;
-/// Tool calls remembered per session; older ones are forgotten.
 const MAX_TRACKED_CALLS: usize = 64;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -31,9 +18,7 @@ pub(super) struct ToolCallView {
     pub kind: Option<String>,
     pub locations: Vec<String>,
     pub diffs: Vec<ProposedDiff>,
-    /// The paths in the call's raw input (file, notebook, destination ...).
     pub input_paths: Vec<String>,
-    /// More paths came than are kept.
     pub overflowed: bool,
 }
 
@@ -42,13 +27,10 @@ pub(super) struct ProposedDiff {
     pub path: String,
     pub old_text: Option<String>,
     pub new_text: Option<String>,
-    /// The text was over budget and was not kept.
     pub oversized: bool,
 }
 
 impl ToolCallView {
-    /// Applies the fields a `tool_call`, `tool_call_update` or permission
-    /// `toolCall` carries. Fields it leaves out keep their earlier values.
     pub(super) fn apply(&mut self, update: &Value) {
         if let Some(kind) = update["kind"].as_str() {
             self.kind = Some(kind.chars().take(MAX_KIND_CHARS).collect());
@@ -82,7 +64,6 @@ impl ToolCallView {
         }
     }
 
-    /// Every path the call names, for the path policy.
     fn policy_paths(&self) -> impl Iterator<Item = &str> {
         self.locations
             .iter()
@@ -118,7 +99,6 @@ fn proposed_diffs(content: &[Value]) -> Vec<ProposedDiff> {
         .collect()
 }
 
-/// Remembers the content of a `tool_call` or `tool_call_update`.
 pub(super) fn track(calls: &mut HashMap<String, ToolCallView>, update: &Value) {
     let Some(id) = update["toolCallId"]
         .as_str()
@@ -132,9 +112,6 @@ pub(super) fn track(calls: &mut HashMap<String, ToolCallView>, update: &Value) {
     calls.entry(id.to_owned()).or_default().apply(update);
 }
 
-/// The permission card fields: the remembered tool call overlaid with what the
-/// request itself carries, redacted, with paths made project-relative and the
-/// diff text capped at [`MAX_DIFF_BYTES`] in total.
 pub(super) fn permission_view(
     root: &Path,
     remembered: Option<&ToolCallView>,
@@ -181,14 +158,7 @@ pub(super) fn permission_view(
     (kind, locations, diffs)
 }
 
-/// The tool call as the path policy judges it: its kind, and as locations
-/// every path the request names plus every path of the earlier `tool_call`
-/// updates it refers to (locations, raw input and diffs). Adapters often
-/// announce a call with its paths and then ask for permission with only its
-/// id, so the request alone shows nothing to judge.
 pub(super) fn policy_view(remembered: Option<&ToolCallView>, tool_call: &Value) -> Value {
-    // Both are judged: the request may name other paths than the call it
-    // refers to.
     let mut request = ToolCallView::default();
     request.apply(tool_call);
     let kind = request
@@ -204,7 +174,6 @@ pub(super) fn policy_view(remembered: Option<&ToolCallView>, tool_call: &Value) 
     json!({"kind": kind, "locations": paths})
 }
 
-/// Whether a policy view names any path.
 pub(super) fn names_paths(policy: &Value) -> bool {
     policy["locations"]
         .as_array()
@@ -239,8 +208,6 @@ pub(super) fn refused_path(
     Some(from_home.unwrap_or_else(|| raw.to_owned()))
 }
 
-/// `raw` relative to the project root with `/` separators when it is inside
-/// the root; otherwise unchanged.
 pub(super) fn display_path(root: &Path, raw: &str) -> String {
     let path = Path::new(raw);
     if path.is_relative() {
@@ -582,7 +549,6 @@ mod tests {
         assert!(!oleafly_acp::paths::permission_paths_allowed(
             &root, &root, &policy
         ));
-        // A card still shows only the first few.
         let (_, shown, _) = permission_view(
             &root,
             calls.get("many"),

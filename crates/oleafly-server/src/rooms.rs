@@ -56,9 +56,6 @@ pub fn frame_size(frame: &ServerFrame) -> usize {
 
 type PresenceKey = (SharedProjectId, DeviceId);
 
-// Cursor positions wait beside the edit queue rather than in it: only the
-// latest one per device is kept, so a burst of them never fills the queue
-// that edits need, and they go out whenever no edit is waiting.
 #[derive(Default)]
 struct LatestPresence {
     frames: HashMap<PresenceKey, Arc<Queued>>,

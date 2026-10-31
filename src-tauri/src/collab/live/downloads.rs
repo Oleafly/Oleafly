@@ -15,12 +15,7 @@ use crate::collab::commands::with_access;
 use crate::collab::disk::{safe_target, sha256_hex, write_file_over, WriteOutcome};
 use crate::folder_watch::FolderChange;
 
-// A few figures download at once, so one stalled transfer never holds up
-// the others.
 const AT_ONCE: usize = 3;
-// The most bytes kept for figures that downloaded but could not be
-// written. Past this the oldest are let go and fetched again on their next
-// try.
 const KEPT_BYTES: usize = 64 * 1024 * 1024;
 
 type Bytes = Arc<Vec<u8>>;
@@ -29,8 +24,6 @@ type Bytes = Arc<Vec<u8>>;
 pub(super) struct Figures {
     wanted: BTreeMap<String, String>,
     failing: BTreeMap<String, Failure>,
-    // Figures that downloaded fine but could not be written yet, oldest
-    // first, so the next try writes them without fetching them again.
     fetched: Vec<(String, Bytes)>,
     in_flight: BTreeMap<String, String>,
     running: bool,
@@ -61,9 +54,6 @@ impl Figures {
             .is_some_and(|failure| failure.next > now)
     }
 
-    // The figures to start now, at most `room` of them, each with its bytes
-    // when an earlier try downloaded them already, and the wait until the
-    // next figure that is backing off may be tried.
     fn due(&mut self, now: Instant, room: usize) -> (Picked, Option<Duration>) {
         let wanted = &self.wanted;
         self.failing
@@ -86,8 +76,6 @@ impl Figures {
         (picked, wait)
     }
 
-    // Downloads in progress, or about to start because nothing holds them
-    // back. A figure that is backing off after a failure doesn't count.
     fn busy(&self, now: Instant) -> bool {
         !self.in_flight.is_empty() || self.wanted.keys().any(|path| !self.backing_off(path, now))
     }
@@ -99,8 +87,6 @@ impl Figures {
             .map(|(_, bytes)| Arc::clone(bytes))
     }
 
-    // Keeps a figure's bytes for its next try. Once the kept figures hold
-    // more than `cap` between them, the oldest are let go.
     fn keep(&mut self, hash: &str, bytes: &Bytes, cap: usize) {
         self.fetched.retain(|(kept, _)| kept != hash);
         self.fetched.push((hash.to_owned(), Arc::clone(bytes)));
@@ -154,8 +140,6 @@ impl Active {
         self.upkeep.figures_closed.load(Ordering::SeqCst)
     }
 
-    // Stops the downloads. A figure being written doesn't hold the figure
-    // list, so quitting never waits on a slow write.
     pub(super) fn close_figures(&self) {
         self.upkeep.figures_closed.store(true, Ordering::SeqCst);
         let mut figures = guard(&self.upkeep.figures);
@@ -164,10 +148,6 @@ impl Active {
         figures.wake.notify_one();
     }
 
-    // The compile barrier waits up to `limit` for figures that are
-    // downloading or about to, so a compile right after a figure arrives
-    // finds it on disk. The limit covers the whole wait, also any wait for
-    // the figure list.
     pub(super) async fn wait_for_figures(&self, limit: Duration) {
         let deadline = Instant::now() + limit;
         let Some(landed) = self
@@ -201,7 +181,6 @@ impl Active {
         }
     }
 
-    // The figure list, or nothing when it is still taken at `deadline`.
     async fn figures_by(&self, deadline: Instant) -> Option<MutexGuard<'_, Figures>> {
         loop {
             if let Some(figures) = self.figures_now() {
@@ -225,9 +204,6 @@ impl Active {
             figures.in_flight.remove(path);
             !self.figures_closed() && figures.wanted.get(path).map(String::as_str) == Some(hash)
         };
-        // The list is let go while the figure is written, so a flush or a
-        // quit never waits on the write. A figure another program holds is
-        // left for its next try once one open finds it held, as text is.
         let placed = match (wanted, &fetched) {
             (false, _) => Placed::Dropped,
             (true, None) => Placed::Failed(UnwrittenReason::NotDownloaded),
@@ -329,9 +305,6 @@ async fn waited(wait: Option<Duration>) {
     }
 }
 
-// Downloads the figures the writer asked for, a few at a time. A download
-// whose figure is no longer wanted, or whose session closed, stops at once
-// instead of running out its transfer timeout.
 async fn fetch_figures(session: Weak<Active>) {
     let mut downloads: JoinSet<(String, String, Option<Bytes>)> = JoinSet::new();
     let mut running: BTreeMap<String, (String, AbortHandle)> = BTreeMap::new();
@@ -387,8 +360,6 @@ async fn fetch_figures(session: Weak<Active>) {
                     Ok((id, outcome)) => (id, Some(outcome)),
                     Err(error) => (error.id(), None),
                 };
-                // A download that was stopped, or replaced by one for a
-                // newer version, leaves the newer one's entries alone.
                 let Some(path) = paths_of.remove(&id) else {
                     continue;
                 };

@@ -16,7 +16,7 @@ const DASHED_COLOR = "color-mix(in oklch, var(--muted-foreground) 45%, transpare
 
 const SHADOW = "0 4px 14px -4px rgba(0, 0, 0, 0.3)";
 
-export const tableTheme = EditorView.theme({
+export const tableThemeSpec = {
   ".ofl-visual-table-widget": {
     position: "relative",
     padding: "6px 0",
@@ -137,7 +137,7 @@ export const tableTheme = EditorView.theme({
     backgroundColor: "var(--muted)",
     color: "var(--muted-foreground)",
     fontFamily: UI_FONT,
-    fontSize: "11px",
+    fontSize: "0.6875rem",
     lineHeight: "16px",
     cursor: "pointer",
     outline: "none",
@@ -172,7 +172,7 @@ export const tableTheme = EditorView.theme({
     color: "var(--popover-foreground)",
     boxShadow: SHADOW,
     fontFamily: UI_FONT,
-    fontSize: "12px",
+    fontSize: "0.75rem",
     lineHeight: "1.2",
     userSelect: "none",
     WebkitUserSelect: "none",
@@ -337,17 +337,17 @@ export const tableTheme = EditorView.theme({
     color: "var(--popover-foreground)",
     boxShadow: "0 12px 40px -10px rgba(0, 0, 0, 0.45)",
     fontFamily: UI_FONT,
-    fontSize: "13px",
+    fontSize: "0.8125rem",
     lineHeight: "1.5",
   },
   ".ofl-visual-table-dialog h2": {
     margin: "0 0 10px",
-    fontSize: "15px",
+    fontSize: "0.9375rem",
     fontWeight: "600",
   },
   ".ofl-visual-table-dialog h3": {
     margin: "12px 0 4px",
-    fontSize: "13px",
+    fontSize: "0.8125rem",
     fontWeight: "600",
   },
   ".ofl-visual-table-dialog p": {
@@ -359,7 +359,7 @@ export const tableTheme = EditorView.theme({
   },
   ".ofl-visual-table-dialog code": {
     fontFamily: "var(--font-mono, ui-monospace, monospace)",
-    fontSize: "12px",
+    fontSize: "0.75rem",
     padding: "0 3px",
     borderRadius: "3px",
     backgroundColor: "var(--muted)",
@@ -404,7 +404,7 @@ export const tableTheme = EditorView.theme({
     flex: "1 1 auto",
   },
   ".ofl-visual-table-field-label": {
-    fontSize: "12px",
+    fontSize: "0.75rem",
     color: "var(--muted-foreground)",
   },
   ".ofl-visual-table-input": {
@@ -424,7 +424,7 @@ export const tableTheme = EditorView.theme({
   },
   ".ofl-visual-table-hint": {
     margin: "8px 0 0",
-    fontSize: "12px",
+    fontSize: "0.75rem",
     color: "var(--muted-foreground)",
   },
   ".ofl-visual-table-error": {
@@ -435,7 +435,7 @@ export const tableTheme = EditorView.theme({
     backgroundColor: "var(--muted)",
     color: "var(--muted-foreground)",
     fontFamily: UI_FONT,
-    fontSize: "12px",
+    fontSize: "0.75rem",
     lineHeight: "1.5",
   },
   ".ofl-visual-table-error-title": {
@@ -453,4 +453,6 @@ export const tableTheme = EditorView.theme({
     cursor: "pointer",
     outline: "none",
   },
-});
+} as const;
+
+export const tableTheme = EditorView.theme(tableThemeSpec);

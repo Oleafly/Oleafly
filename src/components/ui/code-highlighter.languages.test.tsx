@@ -42,6 +42,27 @@ describe("code highlighting languages", () => {
     expect(isHighlightCached(language, source)).toBe(true);
   });
 
+  it("tags legacy token names inside a combined style, like a JSON key", async () => {
+    const { container } = render(<HighlightedCode language="json" source={"{\"key\": \"value\"}"} />);
+
+    await waitFor(() => expect(container.querySelector("span.tok-propertyName")).not.toBeNull());
+
+    const key = container.querySelector("span.tok-propertyName");
+    expect(key?.textContent).toBe("\"key\"");
+    expect(key?.className).toContain("text-[var(--cm-variable)]");
+    expect(key?.className).not.toContain("text-[var(--cm-string)]");
+    const value = Array.from(container.querySelectorAll("span.tok-string")).find(
+      (span) => span.textContent === "\"value\"",
+    );
+    expect(value?.className).not.toContain("tok-propertyName");
+  });
+
+  it("marks trailing whitespace in a diff as an error", async () => {
+    const { container } = render(<HighlightedCode language="diff" source={"+added  "} />);
+
+    await waitFor(() => expect(container.querySelector("span.tok-invalid")).not.toBeNull());
+  });
+
   it("shows unknown languages and unlabelled code as plain text", async () => {
     const { container, rerender } = render(<HighlightedCode language="brainfuck" source="+++." />);
     rerender(<HighlightedCode source="plain text" />);

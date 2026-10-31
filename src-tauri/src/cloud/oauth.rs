@@ -11,39 +11,24 @@ pub(crate) const LOOPBACK_PORTS: [u16; 3] = [53171, 53172, 53173];
 const DROPBOX_AUTHORIZE_URL: &str = "https://www.dropbox.com/oauth2/authorize";
 const MAX_RESPONSE_BYTES: usize = 1024 * 1024;
 
-/// How a provider takes back a sign-in when the person disconnects.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum Revoke {
-    /// POST to this URL with the access token as the bearer.
     Bearer(String),
-    /// POST to this URL with the access token as the `token` form field.
     TokenField(String),
 }
 
-/// What differs between OAuth providers. The PKCE flow, the loopback
-/// listener, the code exchange, refreshing and revoking are shared, so a new
-/// provider is one of these.
 #[derive(Clone, Debug)]
 pub(crate) struct OAuthConfig {
-    /// Names the provider in messages that end up in logs.
     pub(crate) name: &'static str,
     pub(crate) authorize_url: String,
     pub(crate) token_url: String,
     pub(crate) client_id: String,
-    /// Desktop clients of some providers get a secret that can't be kept
-    /// secret in an app; it is sent because their token endpoint wants it.
     pub(crate) client_secret: Option<String>,
     pub(crate) scopes: &'static str,
-    /// Extra authorize parameters, such as the ones that ask for a refresh
-    /// token.
     pub(crate) extra: &'static [(&'static str, &'static str)],
-    /// The authorize parameter that carries the interface language.
     pub(crate) locale_param: Option<&'static str>,
-    /// The loopback path the browser comes back to.
     pub(crate) callback: &'static str,
     pub(crate) revoke: Revoke,
-    /// Whether the provider can show a code to paste when no loopback port
-    /// is free.
     pub(crate) paste: bool,
 }
 
@@ -69,8 +54,6 @@ pub(crate) fn google_config() -> Option<OAuthConfig> {
         client_id: client_id.into(),
         client_secret: (!secret.is_empty()).then(|| secret.to_string()),
         scopes: "https://www.googleapis.com/auth/drive.file",
-        // A refresh token comes only with offline access, and again after the
-        // first time only when consent is asked for.
         extra: &[("access_type", "offline"), ("prompt", "consent")],
         locale_param: Some("hl"),
         callback: "/oauth/google",
@@ -190,8 +173,6 @@ impl PkceFlow {
 pub(crate) const SCOPES: &str =
     "account_info.read files.metadata.read files.content.read files.content.write";
 
-/// How long the browser tab waits for Oleafly to finish connecting before it
-/// says sign-in did not finish.
 const FINISH_WAIT: std::time::Duration = std::time::Duration::from_secs(180);
 
 pub(crate) fn redirect_uri(config: &OAuthConfig, port: u16) -> String {
@@ -233,7 +214,6 @@ pub(crate) fn authorize_url(
 
 #[derive(Clone)]
 pub(crate) struct LoopbackPages {
-    /// The language the messages are in, for the page's `lang`.
     pub(crate) lang: String,
     pub(crate) success: String,
     pub(crate) failure: String,
@@ -271,8 +251,6 @@ impl LoopbackListener {
         Arc::clone(&self.shutdown)
     }
 
-    /// Waits for the browser to bring back the sign-in code. The browser's
-    /// tab keeps waiting too, until `finish` says whether connecting worked.
     pub(crate) async fn wait(&mut self, timeout: std::time::Duration) -> OAuthResult<String> {
         match tokio::time::timeout(timeout, &mut self.receiver).await {
             Ok(Ok(result)) => result,
@@ -281,8 +259,6 @@ impl LoopbackListener {
         }
     }
 
-    /// Answers the browser's tab with whether Oleafly connected, then stops
-    /// listening.
     pub(crate) async fn finish(mut self, connected: bool) {
         if let Some(outcome) = self.outcome.take() {
             let _ = outcome.send(connected);
@@ -342,7 +318,6 @@ fn query_value(query: Option<&str>, key: &str) -> Option<String> {
     })
 }
 
-/// The tab the browser lands on, dressed like the collaboration sign-in pages.
 fn page(pages: &LoopbackPages, connected: bool) -> String {
     use oleafly_collab_protocol::page::{document_in, escape, status, Tone};
     let (tone, message) = if connected {
@@ -383,8 +358,6 @@ async fn loopback_handler(
     if let Some(sender) = sender {
         let _ = sender.send(result);
     }
-    // The code only says the provider approved; Oleafly still has to trade it for
-    // a token and read the account, so the tab waits to say how that went.
     let outcome = signed_in
         .then(|| {
             shared
@@ -980,7 +953,6 @@ mod tests {
         client.revoke("at-1").await.unwrap();
         let body = fake.last_body.lock().unwrap().clone();
         assert_eq!(query_value(Some(&body), "token").as_deref(), Some("at-1"));
-        // A token the provider no longer knows is already revoked.
         client.revoke("gone").await.unwrap();
     }
 }

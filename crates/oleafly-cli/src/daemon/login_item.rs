@@ -32,14 +32,12 @@ pub enum LoginItemState {
     },
 }
 
-/// What the entry starts.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LoginExec {
     pub program: PathBuf,
     pub args: Vec<String>,
 }
 
-/// The `Run` key, behind a trait so tests use a map.
 pub trait RunRegistry: Send + Sync {
     fn get(&self, name: &str) -> Option<String>;
     fn set(&self, name: &str, value: &str) -> io::Result<()>;
@@ -50,12 +48,10 @@ pub struct LoginEnv {
     pub platform: Platform,
     pub home: PathBuf,
     pub xdg_config_home: Option<PathBuf>,
-    /// Windows only.
     pub registry: Option<Box<dyn RunRegistry>>,
 }
 
 impl LoginEnv {
-    /// This computer's.
     pub fn current() -> Option<Self> {
         let home = std::env::var_os("HOME")
             .filter(|value| !value.is_empty())
@@ -83,7 +79,6 @@ fn windows_registry() -> Option<Box<dyn RunRegistry>> {
     None
 }
 
-/// The program to start: the AppImage when the app runs from one.
 pub fn login_exec(exe: &Path, appimage: Option<&Path>) -> LoginExec {
     LoginExec {
         program: appimage.unwrap_or(exe).to_path_buf(),
@@ -99,7 +94,6 @@ fn xml_escape(text: &str) -> String {
         .replace('\'', "&apos;")
 }
 
-/// `~/Library/LaunchAgents/com.oleafly.app.background.plist`.
 pub fn launch_agent_plist(exec: &LoginExec) -> String {
     let mut arguments = format!(
         "    <string>{}</string>\n",
@@ -129,7 +123,6 @@ pub fn launch_agent_plist(exec: &LoginExec) -> String {
     )
 }
 
-/// The `Run` value: the executable quoted, then the flags.
 pub fn run_value(exec: &LoginExec) -> String {
     let mut value = format!("\"{}\"", exec.program.to_string_lossy());
     for arg in &exec.args {
@@ -139,7 +132,6 @@ pub fn run_value(exec: &LoginExec) -> String {
     value
 }
 
-/// A Desktop Entry string value (`\\`, `\n`, `\t`, `\r`).
 fn desktop_string(text: &str) -> String {
     let mut escaped = String::with_capacity(text.len());
     for character in text.chars() {
@@ -154,9 +146,6 @@ fn desktop_string(text: &str) -> String {
     escaped
 }
 
-/// One `Exec` argument, quoted by the Desktop Entry rules: `"`, `` ` ``,
-/// `$` and `\` get a backslash, `%` doubles, and the string escape is
-/// applied over that (so a literal `$` is written `\\$`).
 fn exec_argument(text: &str) -> String {
     let mut quoted = String::from("\"");
     for character in text.chars() {
@@ -173,7 +162,6 @@ fn exec_argument(text: &str) -> String {
     desktop_string(&quoted)
 }
 
-/// `$XDG_CONFIG_HOME/autostart/com.oleafly.app.background.desktop`.
 pub fn autostart_entry(exec: &LoginExec) -> String {
     let program = exec.program.to_string_lossy();
     let mut command = exec_argument(&program);
@@ -226,7 +214,6 @@ fn no_registry() -> LoginItemState {
     }
 }
 
-/// `Enabled` only when our entry exists and starts `exec`.
 pub fn status(env: &LoginEnv, exec: &LoginExec) -> LoginItemState {
     let enabled = match env.platform {
         Platform::MacOs => {
@@ -266,7 +253,6 @@ fn remove_file(path: &Path) -> Result<(), String> {
     }
 }
 
-/// Adds or removes our entry; removing never touches anything else.
 pub fn set(env: &LoginEnv, exec: &LoginExec, enabled: bool) -> Result<LoginItemState, String> {
     match env.platform {
         Platform::MacOs => {
@@ -308,7 +294,6 @@ pub fn set(env: &LoginEnv, exec: &LoginExec, enabled: bool) -> Result<LoginItemS
 
 #[cfg(windows)]
 pub mod windows {
-    //! The `Run` key of the current user, through the registry API.
     use std::io;
 
     use windows_sys::Win32::Foundation::{ERROR_FILE_NOT_FOUND, ERROR_SUCCESS};
@@ -518,7 +503,6 @@ mod tests {
             assert_eq!(status(&env, &exec), LoginItemState::Disabled);
             assert_eq!(set(&env, &exec, true).unwrap(), LoginItemState::Enabled);
             assert_eq!(set(&env, &exec, true).unwrap(), LoginItemState::Enabled);
-            // An entry for another copy of the app is not ours to report as on.
             assert_eq!(
                 status(
                     &env,

@@ -210,7 +210,6 @@ describe("UsageReport", () => {
     const value = (label: string) =>
       screen.getByText(label, { selector: "dt" }).parentElement?.querySelector("dd");
     for (const label of ["Input tokens", "Cost estimate", "Sessions"]) {
-      // The value sits in the cell itself, with no marker element around it.
       expect(value(label)?.children).toHaveLength(0);
     }
     expect(value("Cost estimate")).toHaveTextContent("No estimate");

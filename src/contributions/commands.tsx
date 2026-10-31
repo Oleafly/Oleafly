@@ -451,7 +451,6 @@ export function registerOmnibarCommands() {
     order: 40,
     run: toggleTheme,
   });
-  // Figures insert into an open document, so only offer this with a project open.
   registerCommand({
     id: "omnibar.figure",
     surfaces: ["omnibar"],
@@ -757,8 +756,6 @@ export function registerPaletteCommands() {
     icon: () => <LibraryBig className="size-4 text-blue-600 dark:text-blue-300" />,
     order: 322,
     run: () => {
-      // Capture selection (or active/main .tex content) and .bib filter text
-      // before openHomePage closes the project and clears the files store.
       const files = useFilesStore.getState();
       useDocumentCitationUiStore
         .getState()

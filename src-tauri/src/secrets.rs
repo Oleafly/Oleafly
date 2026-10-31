@@ -1,15 +1,8 @@
-//! Shim over the `oleafly-secrets` crate that keeps the 0.4.7 API.
-//!
-//! The encrypted store now lives in a crate the `oleafly` CLI and the daemon
-//! share. The app passes its own data folder (`paths::oleafly_root`, which
-//! has a test-only default), so every caller and test sees the same files as
-//! before.
 use oleafly_secrets::{SecretFile, SecretStore};
 use std::collections::HashMap;
 
 pub use oleafly_secrets::keychain::{BackendChoice, SecretBackend};
 
-/// The store of the app's data folder.
 pub fn store() -> Result<SecretStore, String> {
     Ok(SecretStore::at(crate::paths::oleafly_root()?))
 }
@@ -18,13 +11,10 @@ pub fn set_secrets(values: &[(&str, &str)]) -> Result<(), String> {
     store()?.set(values)
 }
 
-/// Read a secret from the encrypted app-secrets store. `None` when missing.
 pub fn get_secret(account: &str) -> Result<Option<String>, String> {
     store()?.get(account)
 }
 
-/// Edit one app-secrets account under the store lock (see
-/// [`SecretStore::update`]).
 #[cfg(test)]
 pub fn update_secret<T>(
     account: &str,
@@ -41,7 +31,6 @@ pub fn mcp_token_account() -> &'static str {
     oleafly_secrets::accounts::MCP_TOKEN_ACCOUNT
 }
 
-/// 256-bit random bearer token, lowercase hex.
 pub fn generate_mcp_token() -> String {
     oleafly_secrets::generate_token()
 }
@@ -54,9 +43,6 @@ pub fn write_ai_secrets(values: &HashMap<String, String>) -> Result<(), String> 
     store()?.write(SecretFile::Ai, values)
 }
 
-/// Per-connector API keys for the research copilot (alphaXiv, Mathpix, …),
-/// keyed by connector id. Separate file from `ai-secrets.json` (AI provider
-/// keys) so the two credential namespaces never collide on key names.
 pub fn read_connector_secrets() -> Result<HashMap<String, String>, String> {
     store()?.read(SecretFile::Connector)
 }

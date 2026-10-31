@@ -1,9 +1,3 @@
-//! The cloud providers sync can use. Each one is a `CloudStore` for the
-//! engine, a way to sign in, and a description the settings tab draws from.
-//! The engine, the scheduler, conflicts, holds and settings sync never ask
-//! which provider they talk to, so adding one (Oleafly's own server, say) is a
-//! variant here, its store, and its sign-in.
-
 use super::drive::DriveStore;
 use super::oauth::OAuthConfig;
 use super::s3::{S3Config, S3Store};
@@ -13,6 +7,7 @@ use super::store::{
 };
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::time::Duration;
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -23,21 +18,17 @@ pub(crate) enum ProviderKind {
     S3,
 }
 
-/// What a connection needs besides its secret, kept in `connection.json`.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub(crate) enum ProviderConfig {
     S3(S3Config),
 }
 
-/// How a person connects a provider.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum AuthKind {
-    /// Sign in through the browser.
     #[serde(rename = "oauth")]
     OAuth,
-    /// Type in keys the person made at the provider.
     Credentials,
 }
 
@@ -46,12 +37,8 @@ pub(crate) enum AuthKind {
 pub(crate) struct ProviderInfo {
     kind: ProviderKind,
     auth: AuthKind,
-    /// False when this build can't connect it, such as a build made without
-    /// the provider's client id.
     available: bool,
-    /// Whether sign-in can fall back to pasting a code.
     paste_code: bool,
-    /// Whether the provider reports used and total space.
     quota: bool,
 }
 
@@ -88,7 +75,6 @@ impl ProviderKind {
         }
     }
 
-    /// The browser sign-in, for providers that use one.
     pub(crate) fn oauth(self) -> Option<OAuthConfig> {
         match self {
             Self::Dropbox => Some(super::oauth::dropbox_config()),
@@ -97,8 +83,6 @@ impl ProviderKind {
         }
     }
 
-    /// Where the provider's long-lived secret is kept. Dropbox keeps the name
-    /// it always had, so a computer already connected stays connected.
     pub(crate) fn secret_account(self) -> &'static str {
         match self {
             Self::Dropbox => "cloud/dropbox/refresh",
@@ -107,14 +91,10 @@ impl ProviderKind {
         }
     }
 
-    /// The account id sync state and project bindings are keyed by. Dropbox
-    /// ids are kept as they were; other providers' ids carry the provider so
-    /// they can never collide with one.
     pub(crate) fn account_key(self, provider_id: &str) -> String {
         match self {
             Self::Dropbox => provider_id.to_string(),
             Self::GoogleDrive => format!("gdrive:{provider_id}"),
-            // Already "s3:<server>/<bucket>/<folder>".
             Self::S3 => provider_id.to_string(),
         }
     }
@@ -127,8 +107,6 @@ pub(crate) fn providers() -> Vec<ProviderInfo> {
         .collect()
 }
 
-/// The connected provider's store. The engine is generic over `CloudStore`;
-/// commands hold one of these so they never name a provider.
 pub(crate) enum AnyStore {
     Dropbox(DropboxStore),
     Drive(DriveStore),
@@ -146,6 +124,10 @@ macro_rules! dispatch {
 }
 
 impl CloudStore for AnyStore {
+    fn label(&self) -> &'static str {
+        dispatch!(self, store => store.label())
+    }
+
     async fn get(&self, remote: &str, cap: usize) -> StoreResult<Option<(Vec<u8>, String)>> {
         dispatch!(self, store => store.get(remote, cap).await)
     }
@@ -172,6 +154,10 @@ impl CloudStore for AnyStore {
         dispatch!(self, store => store.put_path(remote, local).await)
     }
 
+    async fn put_content(&self, remote: &str, bytes: Vec<u8>) -> StoreResult<String> {
+        dispatch!(self, store => store.put_content(remote, bytes).await)
+    }
+
     async fn put_paths(
         &self,
         files: &[BatchFile],
@@ -194,8 +180,30 @@ impl CloudStore for AnyStore {
         dispatch!(self, store => store.delete(remote, parent_rev).await)
     }
 
+    async fn delete_folder(&self, remote: &str) -> StoreResult<()> {
+        dispatch!(self, store => store.delete_folder(remote).await)
+    }
+
     async fn delete_paths(&self, items: &[BatchDelete]) -> Vec<StoreResult<()>> {
         dispatch!(self, store => store.delete_paths(items).await)
+    }
+
+    async fn retire_versions(&self, versions: &[BatchDelete]) {
+        dispatch!(self, store => store.retire_versions(versions).await)
+    }
+
+    async fn stale_versions(
+        &self,
+        files_remote: &str,
+        manifest_remote: &str,
+        manifest_rev: &str,
+        min_age: Duration,
+    ) -> StoreResult<Vec<(String, String)>> {
+        dispatch!(self, store => {
+            store
+                .stale_versions(files_remote, manifest_remote, manifest_rev, min_age)
+                .await
+        })
     }
 
     async fn copy_paths(&self, items: &[BatchCopy]) -> Vec<StoreResult<Copied>> {

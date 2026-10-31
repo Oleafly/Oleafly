@@ -10,7 +10,6 @@ import {
 import { cuaDriverStatus, type DesktopAppsStatus } from "@/lib/desktop-apps";
 import { useSettingsStore } from "@/store/settings";
 
-/** Opens Settings, Integrations, Desktop apps, where the connector is turned on. */
 function openDesktopAppsSettings() {
   const settings = useSettingsStore.getState();
   settings.setSettingsInitialSection("integrations");
@@ -18,7 +17,6 @@ function openDesktopAppsSettings() {
   settings.setSettingsOpen(true);
 }
 
-/** Tasks can use desktop apps when the connector is on and allows at least one app or site. */
 export function desktopAppsReady(status: DesktopAppsStatus | undefined): boolean {
   if (!status?.supported) return false;
   const { enabled, apps, sites } = status.settings;
@@ -29,25 +27,17 @@ interface DesktopAppsBriefFieldProps {
   id: string;
   checked: boolean;
   disabled: boolean;
-  /** The task starts on a schedule or keeps running after Oleafly closes. */
   unattended: boolean;
   onCheckedChange: (checked: boolean) => void;
-  /** Opens Settings; the composer closes first, since Settings can't open inside it. */
   onOpenSettings?: (open: () => void) => void;
 }
 
-/** The brief's "Desktop apps" permission. */
 export function DesktopAppsBriefField(props: Readonly<DesktopAppsBriefFieldProps>) {
-  // Without the app's query client (tests, windows that don't load it) the
-  // connector's status is unknown, so the permission stays off.
   const client = useContext(QueryClientContext);
   return client ? <WithStatus {...props} /> : <DesktopAppsCheckbox {...props} ready={false} known={false} />;
 }
 
 function WithStatus(props: Readonly<DesktopAppsBriefFieldProps>) {
-  // The full status runs the driver, so this only reads it when Settings has
-  // already loaded it. Otherwise the tool spec says whether agents can use
-  // desktop apps, which is all the brief needs.
   const loaded = useQuery({ queryKey: DESKTOP_APPS_STATUS_KEY, queryFn: cuaDriverStatus, enabled: false });
   const spec = useDesktopAppsToolReady(loaded.data === undefined);
   const ready = loaded.data === undefined ? spec.data === true : desktopAppsReady(loaded.data);
@@ -67,8 +57,6 @@ function DesktopAppsCheckbox({
 }: Readonly<DesktopAppsBriefFieldProps & { ready: boolean; known: boolean }>) {
   const { t } = useTranslation(["settings", "researchTools"]);
   const blocked = !ready || unattended;
-  // A box shown unchecked must not save as on: a task that can't use desktop
-  // apps gives the permission up (once the connector's state is known).
   const drop = checked && (unattended || (known && !ready));
   useEffect(() => {
     if (drop) onCheckedChange(false);

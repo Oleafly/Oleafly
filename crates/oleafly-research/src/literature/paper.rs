@@ -1,6 +1,3 @@
-//! `read_paper`: fetch an open-access PDF (or read one in the workspace),
-//! keep it in the task's record as `papers/<key>.pdf`, and return its text
-//! with `[p. N]` page anchors, a window at a time.
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -29,7 +26,6 @@ pub const TOO_LARGE_LOCAL: &str =
     "This PDF is larger than 100 MB. Extract the pages you need first.";
 pub const NO_OPEN_COPY: &str = "No open-access copy was found for this DOI.";
 
-/// Which paper to read.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PaperRequest {
@@ -42,8 +38,6 @@ pub enum PaperRequest {
     Url {
         url: String,
     },
-    /// A PDF in the workspace, or in a linked data folder when `root_id`
-    /// names one (the caller resolves it).
     Path {
         path: String,
         root_id: Option<String>,
@@ -59,20 +53,14 @@ pub struct PaperText {
     pub pages: usize,
     pub text: String,
     pub next_offset: Option<usize>,
-    /// The record files written (the PDF and its text).
     pub stored: Vec<String>,
 }
 
-/// Turns a PDF into page texts (the app uses pdf.js; the fallback is Rust).
 #[async_trait::async_trait]
 pub trait PdfTextExtractor: Send + Sync {
     async fn pages(&self, pdf: PathBuf) -> Result<Vec<String>, String>;
 }
 
-/// A file name for what was read: the readable start of `value` and a short
-/// hash of all of it, so names that differ only in a character the readable
-/// part replaces (`Paper A.pdf`, `Paper_A.pdf`) or after its first 80
-/// characters never share a record.
 fn safe_key(prefix: &str, value: &str) -> String {
     let cleaned: String = value
         .chars()
@@ -94,8 +82,6 @@ fn url_key(url: &str) -> String {
     format!("url_{}", &digest[..12])
 }
 
-/// The window of `text` starting at byte `offset`, at most `max_chars`
-/// characters (and 48 KiB).
 fn window(text: &str, offset: usize, max_chars: usize) -> Result<(String, Option<usize>), String> {
     if offset > text.len() || !text.is_char_boundary(offset) {
         return Err("Use an offset from a previous read.".into());
@@ -114,7 +100,6 @@ fn window(text: &str, offset: usize, max_chars: usize) -> Result<(String, Option
     Ok((rest[..end].to_owned(), next))
 }
 
-/// Page texts as one document with `[p. N]` anchors (300 pages, 2 MiB at most).
 pub fn anchored_text(pages: &[String]) -> String {
     let mut text = String::new();
     for (index, page) in pages.iter().take(MAX_PAGES).enumerate() {
@@ -173,7 +158,6 @@ async fn download(url: &str) -> Result<Vec<u8>, String> {
     Ok(body)
 }
 
-/// Finds an open-access PDF for a DOI through OpenAlex.
 async fn open_access_pdf(
     client: &LiteratureClient,
     doi: &str,
@@ -214,7 +198,6 @@ async fn extract(
         tokio::task::spawn_blocking(move || rust_pages(&bytes, &reader_stop)),
     )
     .await;
-    // A reader that ran out of time stops at its next page.
     stop.store(true, Ordering::Relaxed);
     pages
         .map_err(|_| "Reading the PDF's text took longer than a minute.".to_string())?
@@ -255,7 +238,6 @@ fn rust_pages(bytes: &[u8], stop: &AtomicBool) -> Result<Vec<String>, String> {
         texts.push(text);
     }
     if texts.len() == MAX_PAGES {
-        // The pages left out still count, so the text says how many there are.
         texts.resize(pages.len(), String::new());
     }
     Ok(texts)
@@ -263,9 +245,7 @@ fn rust_pages(bytes: &[u8], stop: &AtomicBool) -> Result<Vec<String>, String> {
 
 /// Pages pdf-extract climbs for inherited attributes, at most.
 const MAX_PAGE_TREE_DEPTH: usize = 256;
-/// Form XObjects drawn inside each other, at most.
 const MAX_FORM_DEPTH: usize = 64;
-/// Form XObjects one page draws, counting repeats, at most.
 const MAX_FORM_DRAWS: usize = 4_096;
 const MALFORMED_PDF: &str = "The PDF's page structure is broken, so its text can't be read.";
 
@@ -374,9 +354,7 @@ fn check_forms(
     Ok(())
 }
 
-/// Reads a paper into the record (`{record_dir}/papers/`) and returns a
-/// window of its text. A paper read before comes from the record.
-#[allow(clippy::too_many_arguments)] // The tool's arguments plus the task's files.
+#[allow(clippy::too_many_arguments)]
 pub async fn read_paper(
     client: &LiteratureClient,
     request: PaperRequest,
@@ -401,7 +379,6 @@ pub async fn read_paper(
             (safe_key("doi", &doi), None, None)
         }
         PaperRequest::Url { url } => (url_key(url), None, Some(url.clone())),
-        // The same path in another data folder is another file.
         PaperRequest::Path { path, root_id } => (
             safe_key(
                 "file",
@@ -488,7 +465,6 @@ pub async fn read_paper(
     let extract_from = if stored_pdf {
         files.root.join(&pdf_path)
     } else {
-        // A workspace or data-folder file is extracted from a private copy.
         let scratch =
             std::env::temp_dir().join(format!("oleafly-paper-{}.pdf", rand::random::<u64>()));
         tokio::fs::write(&scratch, &bytes)
@@ -551,19 +527,16 @@ mod tests {
 
     #[test]
     fn different_papers_never_share_a_key() {
-        // Names that differ only in a character the readable part replaces.
         assert_ne!(
             safe_key("file", "data/Paper A.pdf"),
             safe_key("file", "data/Paper_A.pdf")
         );
-        // Names that differ only after the readable part ends.
         let long = "x".repeat(100);
         assert_ne!(
             safe_key("file", &format!("{long}a.pdf")),
             safe_key("file", &format!("{long}b.pdf"))
         );
         assert_ne!(safe_key("doi", "10.1/a/b"), safe_key("doi", "10.1/a_b"));
-        // The same key every time for the same paper, so a cached read is found.
         assert_eq!(safe_key("doi", "10.1/a"), safe_key("doi", "10.1/a"));
     }
 
@@ -623,8 +596,6 @@ mod tests {
         assert_eq!(error, TOO_LARGE_LOCAL);
     }
 
-    /// A one-page PDF that shows `text` in Helvetica, with a correct
-    /// cross-reference table.
     fn one_page_pdf(text: &str) -> Vec<u8> {
         let content = format!("BT /F1 24 Tf 72 720 Td ({text}) Tj ET");
         pdf_of(&[
@@ -644,8 +615,6 @@ mod tests {
         )
     }
 
-    /// A PDF of `objects` (numbered from 1, the catalog first) with a correct
-    /// cross-reference table.
     fn pdf_of(objects: &[String]) -> Vec<u8> {
         let mut pdf = b"%PDF-1.4\n".to_vec();
         let mut offsets = Vec::new();
@@ -724,7 +693,6 @@ mod tests {
                 MALFORMED_PDF
             );
         }
-        // A form drawn twice side by side is fine.
         let drawn_twice = pdf_of(&[
             "<< /Type /Catalog /Pages 2 0 R >>".to_owned(),
             "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_owned(),
@@ -748,7 +716,6 @@ mod tests {
             .is_empty());
     }
 
-    /// A pdf.js bridge stand-in: fixed pages, or a failure; it counts calls.
     struct Bridge {
         pages: Result<Vec<String>, String>,
         calls: std::sync::atomic::AtomicUsize,
@@ -758,7 +725,6 @@ mod tests {
     impl PdfTextExtractor for Bridge {
         async fn pages(&self, pdf: PathBuf) -> Result<Vec<String>, String> {
             self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            // It gets a readable copy of the PDF.
             assert!(std::fs::read(&pdf).unwrap().starts_with(b"%PDF"));
             self.pages.clone()
         }
@@ -771,7 +737,6 @@ mod tests {
         }
     }
 
-    /// A workspace with `research/paper.pdf` and its task files.
     fn workspace_with_pdf(pdf: &[u8]) -> (tempfile::TempDir, TaskFiles) {
         let root = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(root.path().join("research")).unwrap();
@@ -790,9 +755,6 @@ mod tests {
         }
     }
 
-    // A downloaded paper (DOI, arXiv, URL) is stored as `papers/<key>.pdf`
-    // too, but downloads only go to public HTTPS hosts, so this reads a
-    // workspace PDF instead.
     #[tokio::test]
     async fn read_paper_stores_page_anchored_text_in_the_record() {
         let (root, files) = workspace_with_pdf(&one_page_pdf("Oleafly"));
@@ -825,13 +787,11 @@ mod tests {
             std::fs::read_to_string(root.path().join(TEXT_PATH)).unwrap(),
             paper.text
         );
-        // The workspace PDF is read in place, not copied into the record.
         assert!(!root
             .path()
             .join("research/r-0000/papers/file_research_paper.pdf-d0cb6c00.pdf")
             .exists());
 
-        // Read again: the record answers, a window at a time.
         let window = read_paper(
             &client,
             workspace_paper(),

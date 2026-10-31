@@ -77,6 +77,18 @@ describe("renderTypstMath", () => {
     expect(other.render).toHaveBeenCalledTimes(1);
   });
 
+  it("renders again in another project", async () => {
+    let project = "p1";
+    const host: TypstMathHost = { render: vi.fn(async () => rendered()), typstVersion: () => "0.15.1", projectId: () => project };
+    setTypstMathHost(host);
+    const body = unique("w");
+    await renderTypstMath(body, THEME);
+    await renderTypstMath(body, THEME);
+    project = "p2";
+    await renderTypstMath(body, THEME);
+    expect(host.render).toHaveBeenCalledTimes(2);
+  });
+
   it("shares one render between concurrent requests", async () => {
     let resolve: (outcome: TypstMathOutcome) => void = () => undefined;
     const host = hostWith(() => new Promise((done) => (resolve = done)));

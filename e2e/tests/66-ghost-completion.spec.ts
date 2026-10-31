@@ -9,11 +9,6 @@ import {
   type Page,
 } from "../helpers";
 
-// Inline ghost completion in the real editor: a dim preview of the top
-// candidate after the cursor, accepted with Tab. The suggestion comes from the
-// completion sources the popup already uses, so this spec drives real typing
-// against the real LaTeX corpus rather than a stub.
-
 const PROJECT = "Ghost Completion";
 const GHOST = ".cm-ghostCompletion";
 
@@ -93,8 +88,6 @@ async function ghostText(page: Page): Promise<string> {
   );
 }
 
-// Tab reaches the editor only as a real key event; the ghost binding sits in
-// the keymap ahead of indentWithTab.
 async function pressTab(page: Page) {
   await page.evaluate(
     `(() => {
@@ -119,7 +112,6 @@ async function startDocument(page: Page) {
     page,
     "\\documentclass{article}\n\\begin{document}\n\n\\end{document}\n",
   );
-  // Type on the blank line inside the document body.
   await page.evaluate(
     `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
       const view = getEditorView();
@@ -144,7 +136,6 @@ test("a dim suggestion appears while typing a command", async ({
   await waitLong(tauriPage, `!!document.querySelector('${GHOST}')`, 15_000);
   const suggestion = await ghostText(tauriPage);
   expect(suggestion.length).toBeGreaterThan(0);
-  // The preview is the remainder only: it never repeats what was typed.
   expect(suggestion.startsWith("\\")).toBe(false);
   expect(`\\alph${suggestion}`.startsWith("\\alph")).toBe(true);
 });
@@ -163,7 +154,6 @@ test("Tab accepts the suggestion into the document", async ({ tauriPage }) => {
   await expect
     .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
     .toContain(`\\alph${suggestion}`);
-  // Accepting consumes the preview.
   expect(await ghostText(tauriPage)).toBe("");
 });
 
@@ -201,12 +191,9 @@ test("no suggestion appears when the preference is off", async ({
   await startDocument(tauriPage);
 
   await typeAtCaret(tauriPage, "\\alph");
-  // The widget is asynchronous, so wait out the window in which it would have
-  // appeared before asserting that it never did.
   await settle(tauriPage, 3_000);
   expect(await ghostText(tauriPage)).toBe("");
 
-  // With the preference off, Tab is the editor's own indent again.
   const before = await editorSource(tauriPage);
   await pressTab(tauriPage);
   await settle(tauriPage, 500);
@@ -226,7 +213,6 @@ test("the preference persists and stays out of the way of plain typing", async (
   ).toBe("1");
 
   await startDocument(tauriPage);
-  // Ordinary prose must not attract a suggestion on every short word.
   await typeAtCaret(tauriPage, "Hi ");
   await settle(tauriPage, 1_500);
   expect(await ghostText(tauriPage)).toBe("");

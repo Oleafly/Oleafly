@@ -1,6 +1,3 @@
-//! Paths, labels and references in a scanned Typst file
-//! (`packages/preflight/src/typst-references.ts`).
-
 use std::sync::LazyLock;
 
 use crate::jsre::JsRegex;
@@ -164,7 +161,6 @@ fn path_kind_of_call(name: &str) -> TypstPathKind {
     }
 }
 
-/// Every path the file names, sorted by position.
 pub fn typst_path_references(scan: &TypstScan) -> Vec<TypstPathReference> {
     let mut names = vec!["image", "bibliography"];
     names.extend_from_slice(DATA_CALLS);
@@ -197,14 +193,12 @@ fn imported_name(item: &str) -> String {
         .split(crate::text::is_js_space)
         .filter(|word| !word.is_empty())
         .collect();
-    // `item.split(/\s+/)` on a trimmed item: an empty item is one empty word.
     match words.iter().position(|&word| word == "as") {
         Some(alias) if alias > 0 && alias + 1 < words.len() => words[alias + 1].to_string(),
         _ => item.to_string(),
     }
 }
 
-/// Names a package import brings into scope (`: ieee` or `: a as b`).
 pub fn typst_package_import_names(scan: &TypstScan) -> Vec<String> {
     let masked = scan.masked.as_str();
     let mut names = Vec::new();
@@ -220,7 +214,6 @@ pub fn typst_package_import_names(scan: &TypstScan) -> Vec<String> {
     names
 }
 
-/// Show rules, `.with(...)` calls and calls of imported template functions.
 pub fn typst_template_calls(scan: &TypstScan) -> Vec<TypstCall> {
     let imported = typst_package_import_names(scan);
     let mut calls = typst_show_rule_calls(scan);
@@ -251,7 +244,6 @@ fn name_uses(regex: &JsRegex, source: &SourceText) -> Vec<(String, usize, usize)
         .collect()
 }
 
-/// `<label>` definitions in markup.
 pub fn typst_labels(scan: &TypstScan) -> Vec<TypstNameUse> {
     name_uses(&LABEL, &scan.markup)
         .into_iter()
@@ -263,7 +255,6 @@ fn trim_reference(name: &str) -> &str {
     name.trim_end_matches(['.', ':'])
 }
 
-/// `@name` references in markup; trailing `.` and `:` are punctuation.
 pub fn typst_at_references(scan: &TypstScan) -> Vec<TypstNameUse> {
     name_uses(&AT_REFERENCE, &scan.markup)
         .into_iter()

@@ -1159,6 +1159,8 @@
     "exportTxt": "导出为纯文本 (.txt)",
     "exportZipFailed": "无法导出项目压缩包。",
     "exporting": "正在导出 .{{format}}…",
+    "exportingStep": "正在导出 .{{format}}：{{step}}",
+    "stopExport": "停止",
     "fork": "复刻",
     "forkDescription": "将 <name>{{name}}</name> 及其 Git 历史复制到新项目。检查点初始为空。",
     "forkFailed": "无法复刻项目。",

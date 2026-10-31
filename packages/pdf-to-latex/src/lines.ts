@@ -21,7 +21,6 @@ export function buildLines(items: TextItem[]): Line[] {
     .sort((a, b) => b.y - a.y || a.x - b.x);
   const lines: Line[] = [];
   for (const item of sorted) {
-    // floor of 4 keeps sub/superscripts attached to their baseline line
     const tol = Math.max(4, item.fontSize * 0.4);
     const line = lines.find((l) => Math.abs(l.y - item.y) <= tol);
     if (line) line.items.push(item);
@@ -43,7 +42,6 @@ export function buildLines(items: TextItem[]): Line[] {
       .replace(/\s+/g, " ")
       .trim();
     l.fontSize = mode(l.items.map((i) => i.fontSize));
-    // baseline from dominant-font items so scripts don't skew it
     const baseYs = l.items
       .filter((i) => Math.abs(i.fontSize - l.fontSize) < 0.5)
       .map((i) => i.y)

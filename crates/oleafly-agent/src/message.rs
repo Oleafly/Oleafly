@@ -27,19 +27,14 @@ pub enum ContentPart {
         id: String,
         name: String,
         output: String,
-        /// Images the tool returned (data URLs). They travel with this
-        /// result, nested inside it where the wire allows.
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         images: Vec<String>,
     },
-    /// A file the renderer stored by content hash. Resolved into an image,
-    /// a document or text before a run; never sent as is.
     Attachment {
         sha256: String,
         name: String,
         mime: String,
     },
-    /// A document such as a PDF, as base64 without a `data:` prefix.
     Document {
         mime: String,
         data: String,
@@ -57,8 +52,6 @@ pub enum ContentPart {
     Reasoning {
         text: String,
     },
-    /// A block only one wire understands (server tool calls, their results,
-    /// cited text), replayed verbatim on that wire and skipped on others.
     ProviderBlock {
         wire: ProviderWire,
         block: Value,
@@ -125,7 +118,6 @@ pub(crate) struct DataUrl<'a> {
     pub base64: &'a str,
 }
 
-/// The image types every provider accepts.
 pub const SUPPORTED_IMAGE_TYPES: [&str; 4] = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 
 pub(crate) fn validate_image_type(media_type: &str) -> Result<()> {
@@ -138,7 +130,6 @@ pub(crate) fn validate_image_type(media_type: &str) -> Result<()> {
     }
 }
 
-/// A data URL whose image type every provider accepts.
 pub(crate) fn parse_image_url(url: &str) -> Result<DataUrl<'_>> {
     let data = parse_data_url(url)?;
     validate_image_type(data.media_type)?;

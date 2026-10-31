@@ -70,8 +70,6 @@ function target(edit: ArgumentEdit): ArgRef {
   return edit.remove;
 }
 
-// Plans one edit, applies it, and checks the two invariants every row must hold:
-// nothing outside the call changes, and the edited argument reads back as written.
 function edited(doc: string, callee: string, edit: ArgumentEdit, lineBreak = "\n", occurrence = 0): string {
   const args = argumentsOf(doc, callee, occurrence);
   const plan = planArgumentEdit(sourceText(doc), args, edit, lineBreak);
@@ -221,7 +219,6 @@ describe("inserting an argument", () => {
     ["#f(\n  a: 1,)", named("c"), "3", "#f(\n  a: 1,\n  c: 3,)"],
     ["#f(\n  a: 1, b: 2,\n)", named("c"), "3", "#f(\n  a: 1, b: 2,\n  c: 3,\n)"],
     ['#f(\n  "p",\n  a: 1,\n)', named("c"), "3", '#f(\n  c: 3,\n  "p",\n  a: 1,\n)'],
-    // The first argument shares the `(` line, but the call is laid out one argument per line.
     ['#info-box(title: "Q3",\n  tone: "note",\n)[Body]', named("summary"), '"x"', '#info-box(title: "Q3",\n  tone: "note",\n  summary: "x",\n)[Body]'],
     ["#f(a: 1,\n  b: 2)", named("c"), "3", "#f(a: 1,\n  b: 2,\n  c: 3)"],
     ["#f(x: 1,\n  [a], [b],\n)", named("c"), "3", "#f(x: 1,\n  c: 3,\n  [a], [b],\n)"],
@@ -277,7 +274,6 @@ describe("removing an argument", () => {
     ["#f(\n  a: 1,\n  b: 2,\n)", "a", "#f(\n  b: 2,\n)"],
     ["#f(\n  a: 1,\n  b: 2\n)", "b", "#f(\n  a: 1,\n)"],
     ["#f(\r\n  a: 1,\r\n  b: 2,\r\n)", "a", "#f(\r\n  b: 2,\r\n)"],
-    // The separators come from the tree, so comments and comma-first layouts keep the call whole.
     ["#f(a: 1 /* x */, b: 2)", "a", "#f(b: 2)"],
     ['#f(size: 11pt, // body text,\n  lang: "de")', "lang", "#f(size: 11pt, // body text,\n)"],
     ['#f(\n  paper: "a4"\n  , columns: 2\n)', "paper", "#f(\n  columns: 2\n)"],
@@ -328,7 +324,6 @@ describe("edits to random call layouts", () => {
     }
   }
 
-  // A call with up to four named and two positional arguments, on one line or several.
   function randomCall(random: () => number): { text: string; nl: string } {
     const pick = <T,>(list: readonly T[]): T => list[Math.floor(random() * list.length)];
     const items = ["a", "b", "c", "d"].slice(0, Math.floor(random() * 5)).map((name) => `${name}: ${pick(["1", '"s"', "true", "(1, 2)", "[x]"])}`);

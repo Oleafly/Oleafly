@@ -343,7 +343,6 @@ impl Canned {
             .insert(sha256_hex(bytes), bytes.to_vec());
     }
 
-    // How many times a figure was asked for.
     fn asked(&self, bytes: &[u8]) -> usize {
         let hash = sha256_hex(bytes);
         self.asked

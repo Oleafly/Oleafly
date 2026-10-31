@@ -5,11 +5,9 @@ export function decodeXmlEntities(s: string): string {
     .replaceAll("&quot;", '"')
     .replaceAll("&#39;", "'")
     .replaceAll("&apos;", "'")
-    // Decode &amp; last so &amp;lt; -> &lt; (not <).
     .replaceAll("&amp;", "&");
 }
 
-// So remote metadata compiles as literal text rather than LaTeX commands.
 export function escapeLatex(s: string): string {
   return s.replace(/[\\&%$#_{}~^]/g, (c) => {
     switch (c) {
@@ -29,9 +27,6 @@ export function cleanField(s: string): string {
   return escapeLatex(decodeXmlEntities(s));
 }
 
-// Strips markup tags to a fixed point (not a single pass) so a malformed or
-// nested tag like "<<script>script>" can't reconstitute into "<script>"
-// after one round of removal.
 export function stripTags(s: string): string {
   let prev: string;
   do {
@@ -41,7 +36,6 @@ export function stripTags(s: string): string {
   return s;
 }
 
-// "Jane Smith" -> "Smith, Jane"; already-comma'd names pass through.
 export function toBibName(name: string): string {
   const trimmed = name.trim();
   if (trimmed.includes(",")) return trimmed;

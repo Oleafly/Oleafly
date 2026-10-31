@@ -18,7 +18,6 @@ function ChangeRow({
   onToggle,
 }: Readonly<{ change: ProposedChange; open: boolean; onToggle: () => void }>) {
   const { t } = useTranslation(["common", "ai"]);
-  // A file outside the project arrives as an absolute path; show it as `~/…`.
   const displayPath = useDisplayPath();
   const shown = displayPath(change.path);
   const pathId = useId();
@@ -63,11 +62,6 @@ function ChangeRow({
   );
 }
 
-/**
- * The files an agent wants to change (or changed), with each proposed diff
- * collapsed behind "Show change". Only one diff is open at a time so the list
- * stays short; a change too large to keep points to the turn review instead.
- */
 export function ChangeList({
   changes,
   paths = [],

@@ -136,7 +136,6 @@ function highlightTomlSnippet(source: string, push: PushSnippetToken) {
 }
 
 function highlightShellSnippet(source: string, push: PushSnippetToken) {
-  // shell: flag, quoted string, bare token
   const re = /("(?:\\.|[^"\\])*")|(--?[\w-]+)|(\s+)|([^\s"]+)/g;
   let first = true;
   for (const m of source.matchAll(re)) {
@@ -153,7 +152,6 @@ function highlightShellSnippet(source: string, push: PushSnippetToken) {
   }
 }
 
-// Avoids pulling in a full syntax-highlighter dependency for these small snippets.
 export function highlightSnippet(source: string, lang: SnippetLang): ReactNode[] {
   const out: ReactNode[] = [];
   let key = 0;

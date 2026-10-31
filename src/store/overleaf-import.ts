@@ -41,7 +41,6 @@ interface OverleafImportState {
   open(): Promise<void>;
   load(): Promise<void>;
   signIn(title: string): Promise<boolean>;
-  /** Signs in with the cookies the browser sign-in copy brought in. */
   signInWithAppCookies(): Promise<boolean>;
   signOut(): Promise<void>;
   toggle(id: string): void;

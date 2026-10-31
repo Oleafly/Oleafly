@@ -1,6 +1,3 @@
-//! Function-level goldens: every rule family and helper against the output
-//! the TypeScript code wrote for the same inputs.
-
 mod support;
 
 use std::collections::BTreeMap;

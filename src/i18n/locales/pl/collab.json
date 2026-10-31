@@ -224,6 +224,8 @@
     "suggestion_not_found": "Tej sugestii już nie ma. Ktoś mógł ją przyjąć albo odrzucić.",
     "suggestion_not_yours": "Tylko osoba, która zgłosiła tę sugestię, może ją wycofać.",
     "suggestion_role": "Twoja rola w tym projekcie nie pozwala zgłaszać sugestii.",
+    "suggestion_changed": "Tekst wokół tej sugestii uległ zmianie, więc właściciel lub edytujący musi ją przyjąć albo odrzucić.",
+    "suggestion_too_long": "Sugerowane usunięcie może mieć najwyżej 20 000 znaków. Usuwaj mniejszymi fragmentami.",
     "chat_role": "Twoja rola w tym projekcie nie pozwala na to na czacie.",
     "history_unavailable": "Historii tego projektu nie ma jeszcze na tym komputerze. Spróbuj ponownie, gdy projekt się zsynchronizuje.",
     "account_storage_full": "Na koncie właściciela projektu zabrakło miejsca na tym serwerze. Usuń część plików, żeby je zwolnić, albo poproś administratora serwera o więcej miejsca.",
@@ -1126,7 +1128,7 @@
     },
     "restoreProjectConfirm": {
       "title": "Przywrócić cały projekt?",
-      "description": "Każdy plik wróci do stanu z {{time}} dla wszystkich w tym projekcie. Obecny tekst zostanie w historii, więc możesz do niego wrócić.",
+      "textAndDeleted": "Tekst każdego pliku wróci do stanu z {{time}} dla wszystkich w tym projekcie, a usunięte pliki zostaną przywrócone. Pliki ze zmienioną nazwą zachowają nowe nazwy, a rysunki i pliki dodane później pozostaną bez zmian. Obecny tekst zostanie w historii, więc możesz do niego wrócić.",
       "confirm": "Przywróć projekt"
     },
     "compareTitle": "Zmiany między dwiema wersjami",

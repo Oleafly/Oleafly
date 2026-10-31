@@ -73,9 +73,6 @@ export function parseAppLink(raw: string): AppLink {
   return malformed;
 }
 
-// A link someone pasted: an app link, or the web address of a project page
-// (https://server/p/<project>). Returns the app link to open, or null when
-// the text isn't a link to a shared project.
 export function pastedProjectLink(raw: string): string | null {
   const text = raw.trim();
   const app = parseAppLink(text);

@@ -17,13 +17,8 @@ interface Token {
   to: number;
 }
 
-/** Words compared on each side of the spot being looked up. */
 export const CONTEXT_WORDS = 8;
 const SOURCE_SLACK_WORDS = 4;
-/**
- * Words taken on each side of a candidate: a few more than the lookup side, for
- * text only one side has, such as `\cite` keys in the source or "[1]" in the PDF.
- */
 export const CANDIDATE_WORDS = CONTEXT_WORDS + SOURCE_SLACK_WORDS;
 const SOURCE_WINDOW = 400;
 const TOKEN = /[\p{L}\p{M}\p{N}\u200C\u200D]+/gu;
@@ -67,7 +62,6 @@ function alignment(query: readonly string[], candidate: readonly string[]): numb
   return previous[candidate.length];
 }
 
-/** Words on each side of a spot, nearest first, as `contextScore` compares them. */
 export interface ContextWords {
   before: readonly string[];
   after: readonly string[];
@@ -90,24 +84,15 @@ export function contextWords(context: WordContext, count: number): ContextWords 
   };
 }
 
-/**
- * How well the words around one spot line up with the words around another,
- * nearest first on each side. A matching word scores 1 at the same distance
- * from the spot and less the further its position shifts, so a few words that
- * only one side has (a `\cite` key, a "[1]") cost little.
- */
 export function contextScore(query: ContextWords, candidate: ContextWords): number {
   return alignment(query.before, candidate.before) + alignment(query.after, candidate.after);
 }
 
-/** Words right next to the spot that `ContextMatch.neighbours` compares. */
 const NEIGHBOURS = 2;
 
 export interface ContextMatch {
   score: number;
-  /** How many of the words right next to the spot agree, position for position. */
   neighbours: number;
-  /** How many of them both sides have. */
   compared: number;
 }
 
@@ -118,7 +103,6 @@ function neighbourAgreement(query: readonly string[], candidate: readonly string
   return [agreeing, compared];
 }
 
-/** `contextScore` plus how the words right next to the spot agree. */
 export function compareContexts(query: ContextWords, candidate: ContextWords): ContextMatch {
   const [beforeAgreeing, beforeCompared] = neighbourAgreement(query.before, candidate.before);
   const [afterAgreeing, afterCompared] = neighbourAgreement(query.after, candidate.after);
@@ -129,16 +113,9 @@ export function compareContexts(query: ContextWords, candidate: ContextWords): C
   };
 }
 
-/** Evidence a match away from where SyncTeX points has to show before it is taken. */
 export const FAR_EVIDENCE = 6;
-/** The lead a far match needs over the next best one. */
 export const FAR_LEAD = 2;
 
-/**
- * Whether the best of some far matches (sorted best first) is convincing: most
- * of the words around the spot in order, the words right next to it the same,
- * and a clear lead over the runner-up.
- */
 export function convincingFarMatch(first: ContextMatch | undefined, second: ContextMatch | undefined): boolean {
   return (
     !!first &&
@@ -149,10 +126,6 @@ export function convincingFarMatch(first: ContextMatch | undefined, second: Cont
   );
 }
 
-/**
- * How each candidate range in `doc` compares with the PDF text around the
- * click, in candidate order. All zero when there is no usable context.
- */
 export function contextMatches(
   doc: Text,
   candidates: readonly WordRange[],
@@ -179,7 +152,6 @@ export function contextMatches(
   });
 }
 
-/** The context score of each candidate, as `contextMatches` reports it. */
 export function contextScores(
   doc: Text,
   candidates: readonly WordRange[],

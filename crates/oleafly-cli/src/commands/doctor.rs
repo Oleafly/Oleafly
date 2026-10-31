@@ -1,5 +1,3 @@
-//! `oleafly doctor`: this computer's setup, and the project's when there is
-//! one.
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -45,8 +43,6 @@ fn check(name: &str, status: DoctorStatus, message: impl Into<String>) -> Doctor
     }
 }
 
-/// The project to check: always with an explicit `-C`, else only when the
-/// folder is (or looks like) a project.
 fn project_scope(ctx: &Context) -> Result<Option<OpenedProject>, CliError> {
     match open_project(ctx.project(), None, None) {
         Ok(opened) => Ok(Some(opened)),
@@ -69,8 +65,6 @@ async fn run_doctor(ctx: &Context) -> Result<Outcome, CliError> {
         Some(opened) => opened.workspace.root().to_path_buf(),
         None => std::env::current_dir().unwrap_or_default(),
     };
-    // Finding the engines runs each one (up to 5 seconds apiece): off the
-    // async threads, which also serve the MCP server's other calls.
     let (discovery, engine, inventory, tools, reports, mut report) = {
         let project = project.clone();
         let root = root.clone();
@@ -320,7 +314,6 @@ fn engine_check(
     check(&check_name, DoctorStatus::Warning, message)
 }
 
-/// Where `oleafly` on PATH leads, if anywhere.
 fn oleafly_on_path() -> Option<PathBuf> {
     let path = std::env::var_os("PATH")?;
     let name = crate::native::executable_name("oleafly");
@@ -648,7 +641,6 @@ pub(crate) fn typst_settings_lines(pin: Option<&str>, settings: &SettingsSummary
     .collect()
 }
 
-/// The doctor report as a value (the MCP `doctor` tool uses it).
 pub(crate) async fn doctor_value(ctx: &Context) -> Result<Value, CliError> {
     match run_doctor(ctx).await {
         Ok(outcome) => Ok(Value::Object(outcome.fields)),

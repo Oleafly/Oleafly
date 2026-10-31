@@ -525,8 +525,6 @@ async fn a_native_call_keeps_the_project_whose_rules_were_checked() {
         Some(rules.path().to_path_buf()),
     )
     .await;
-    // The project whose rules deny read_file opens before the call runs. The
-    // call still runs on the project that was checked, not on this one.
     *state.active_project.lock().await = Some("mcp-switch-denied".into());
 
     assert_eq!(

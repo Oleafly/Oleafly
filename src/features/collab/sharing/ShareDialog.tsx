@@ -264,9 +264,6 @@ function ShareStep({
 
   const renderUpload = () => {
     if (upload.kind === "sharing") {
-      // The backend counts only figures and other non-text files. Before its
-      // first report, and once they are all up and the project itself is
-      // being saved, there is nothing to count, so the bar just shows activity.
       const counting = upload.reported && upload.total > 0 && upload.done < upload.total;
       let phase = t(($) => $.collab.share.preparing);
       if (counting) {
@@ -289,7 +286,6 @@ function ShareStep({
       );
     }
     if (upload.kind === "failed") {
-      // Another share of this project is still running, so this one didn't fail as such.
       if (upload.elsewhere) return <InlineAlert>{upload.message}</InlineAlert>;
       return (
         <InlineAlert>
@@ -350,7 +346,6 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
   const serversStatus = useCollabStore((state) => state.status);
   const loadServers = useCollabStore((state) => state.load);
   const [share, setShare] = useState<CollabShareInfo | null | undefined>(undefined);
-  // Set once this dialog shared the project, for the note about trust.
   const [justShared, setJustShared] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [shareRequest, setShareRequest] = useState(0);

@@ -5,8 +5,6 @@ import type { CompileSettings, WebFile } from "../protocol";
 const ENGINES = new Set<DocumentEngineId>(["latex", "latexmk", "typst", "markdown", "quarto", "calepin"]);
 const FLAVORS = new Set<TexFlavor>(["pdflatex", "xelatex", "lualatex", "uplatex", "platex"]);
 
-// The root names, source families and repository notes of
-// crates/oleafly-core/src/detect.rs, which picks the main document in the app.
 const ROOT_MAINS = ["main.tex", "main.typ", "main.qmd", "main.md"];
 const NOTES = /^(?:readme|changelog|licen[cs]e|contributing|code_of_conduct|security)(?:\.|$)/iu;
 
@@ -28,12 +26,6 @@ function detectedMain(files: readonly WebFile[]): WebFile | null {
   return [...sources].sort((a, b) => depth(a) - depth(b) || a.path.localeCompare(b.path))[0] ?? null;
 }
 
-/**
- * What the project compiles. The app stores the main document and engine when
- * it shares a project; a project without them compiles the main file the
- * app's rules would pick from the file names, with the engine its extension
- * implies.
- */
 export function compileTargetOf(settings: CompileSettings, files: readonly WebFile[]): CompileTarget | null {
   const chosen = settings.main_doc ? files.find((file) => file.fileId === settings.main_doc && file.kind === "text") : undefined;
   const main = chosen ?? detectedMain(files);
@@ -47,7 +39,6 @@ export function compileTargetOf(settings: CompileSettings, files: readonly WebFi
   };
 }
 
-/** A path SyncTeX or a log names, as a file of the project, or null. */
 export function projectFileFor(path: string, files: readonly WebFile[]): WebFile | null {
   const clean = path.replaceAll("\\", "/").replace(/^(?:\.\/)+/u, "");
   if (!clean) return null;

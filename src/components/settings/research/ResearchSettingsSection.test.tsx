@@ -58,7 +58,6 @@ function server(name: string) {
 
 const toggle = (name: string) => screen.getByRole("switch", { name });
 
-/** A config that keeps what was saved, the way the Rust side does. */
 function storeConfig(initial: AppConfig) {
   let stored = initial;
   mocks.getConfig.mockImplementation(async () => stored);
@@ -73,7 +72,6 @@ function storeConfig(initial: AppConfig) {
   };
 }
 
-/** The time budget stays disabled until the config has loaded. */
 async function loaded() {
   await waitFor(() => expect(screen.getByRole("combobox", { name: copy.timeBudget })).toBeEnabled());
 }
@@ -254,7 +252,6 @@ describe("ResearchSettingsSection", () => {
   it("changes nothing until the config has loaded, and says when it cannot load", async () => {
     mocks.getConfig.mockRejectedValue(new Error("config locked"));
     render(<ResearchSettingsSection />);
-    // Not "could not be saved": nothing was saved.
     expect(await screen.findByRole("alert")).toHaveTextContent(copy.loadFailed);
     expect(screen.queryByText(copy.saveFailed)).toBeNull();
     expect(screen.getByRole("combobox", { name: copy.timeBudget })).toBeDisabled();
@@ -292,7 +289,6 @@ describe("ResearchSettingsSection", () => {
   it("saves only its own settings over a fresh read of the config", async () => {
     render(<ResearchSettingsSection />);
     await loaded();
-    // Another window changed an unrelated setting after this section loaded.
     mocks.getConfig.mockResolvedValue(config({ ai_system_prompt: "Be brief." }));
 
     await userEvent.click(toggle(copy.keepAwake));
@@ -306,7 +302,6 @@ describe("ResearchSettingsSection", () => {
     const store = storeConfig(config());
     render(<ResearchSettingsSection />);
     await loaded();
-    // A cloud settings round changed the time budget after this section loaded.
     store.set(config({ research_time_budget_minutes: 480 }));
 
     await userEvent.click(toggle(copy.keepAwake));
@@ -333,7 +328,6 @@ describe("ResearchSettingsSection", () => {
     releaseRead();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(copy.saveFailed);
-    // The first save set only keep awake, so the network stays off in the config and on screen.
     await waitFor(() => expect(toggle(copy.network)).toHaveAttribute("aria-checked", "false"));
     expect(store.get()).toEqual(config({ research_keep_awake: false }));
     expect(toggle(copy.keepAwake)).toHaveAttribute("aria-checked", "false");

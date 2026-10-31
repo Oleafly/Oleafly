@@ -1,18 +1,14 @@
-//! Bounded reads of a run log, which can be gigabytes: the tail reads
-//! backwards from the end, and grep stops at its match limit.
 use std::io::{BufRead, Read, Seek, SeekFrom};
 use std::path::Path;
 
 use super::LogQuery;
 use crate::task_tools::MAX_OUTPUT_BYTES;
 
-/// Bytes read from the end of a log for a tail, at most.
 const TAIL_WINDOW: u64 = 256 * 1024;
 const MAX_LINE_CHARS: usize = 500;
 pub const MAX_TAIL_LINES: usize = 2_000;
 pub const MAX_GREP_MATCHES: usize = 200;
 const MAX_PATTERN_CHARS: usize = 200;
-/// A grep looks at most this far into one line.
 const MAX_SCANNED_LINE_BYTES: u64 = 64 * 1024;
 
 fn cut(line: &str) -> String {
@@ -37,7 +33,6 @@ fn fit(lines: Vec<String>) -> String {
     out
 }
 
-/// The last `lines` lines (at most 2,000, read from the last 256 KiB).
 pub fn tail(path: &Path, lines: usize) -> Result<String, String> {
     let lines = lines.clamp(1, MAX_TAIL_LINES);
     let mut file = match std::fs::File::open(path) {
@@ -66,7 +61,6 @@ pub fn tail(path: &Path, lines: usize) -> Result<String, String> {
     }
     let from = all.len().saturating_sub(lines);
     let picked: Vec<String> = all[from..].iter().map(|line| cut(line)).collect();
-    // Keep the newest lines when the output limit cuts.
     let mut kept = Vec::new();
     let mut size = 0usize;
     for line in picked.into_iter().rev() {
@@ -80,8 +74,6 @@ pub fn tail(path: &Path, lines: usize) -> Result<String, String> {
     Ok(fit(kept))
 }
 
-/// Lines containing `pattern` (plain text, case-sensitive), numbered, at
-/// most `max_matches` (≤ 200).
 pub fn grep(path: &Path, pattern: &str, max_matches: usize) -> Result<String, String> {
     if pattern.is_empty() || pattern.chars().count() > MAX_PATTERN_CHARS {
         return Err("Search for 1 to 200 characters.".into());
@@ -99,8 +91,6 @@ pub fn grep(path: &Path, pattern: &str, max_matches: usize) -> Result<String, St
     let mut number = 0u64;
     loop {
         buffer.clear();
-        // A line without a newline (a progress bar, binary output) can be
-        // gigabytes: only its start is looked at, and the rest is skipped.
         let read = (&mut reader)
             .take(MAX_SCANNED_LINE_BYTES)
             .read_until(b'\n', &mut buffer)
@@ -123,7 +113,6 @@ pub fn grep(path: &Path, pattern: &str, max_matches: usize) -> Result<String, St
     Ok(fit(matches))
 }
 
-/// Reads on to the end of the current line without keeping it.
 fn skip_line(reader: &mut impl BufRead) -> std::io::Result<()> {
     loop {
         let available = reader.fill_buf()?;
@@ -143,7 +132,6 @@ fn skip_line(reader: &mut impl BufRead) -> std::io::Result<()> {
     }
 }
 
-/// [`answer`] on a blocking thread: a grep can read gigabytes.
 pub async fn answer_blocking(path: std::path::PathBuf, query: LogQuery) -> Result<String, String> {
     tokio::task::spawn_blocking(move || answer(&path, &query))
         .await

@@ -118,7 +118,6 @@ async fn a_number_without_a_recorded_run_is_flagged() {
         .unwrap();
     assert_eq!(mismatch.params["value"], "0.70");
     assert_eq!(mismatch.line, Some(3));
-    // Without the command-line tool the build and references are not checked.
     assert_eq!(
         find(&report, EvidenceCheckId::Build).status,
         EvidenceStatus::Skipped
@@ -254,7 +253,6 @@ fn a_library_that_links_back_to_itself_yields_no_entries_instead_of_crashing() {
     assert_eq!(entries.len(), 2);
 }
 
-/// Project maps by folder: the task's copy, then the baseline.
 struct Maps {
     root: PathBuf,
     after: Value,
@@ -280,7 +278,6 @@ impl WorkspaceTools for Maps {
     }
 }
 
-/// Workspace tools that keep the folder each build took its settings from.
 #[derive(Default)]
 struct Sources(std::sync::Mutex<Vec<Option<PathBuf>>>);
 
@@ -326,7 +323,6 @@ async fn a_capped_project_map_is_not_diffed_for_unresolved_citations() {
         let (root, baseline) = (root.clone(), baseline.clone());
         async move { references_check(Some(&maps), &root, &baseline).await }
     };
-    // Whole maps: what the task added is named.
     let whole = check(
         serde_json::json!({"unresolvedCites": ["old", "new"]}),
         serde_json::json!({"unresolvedCites": ["old"]}),
@@ -335,7 +331,6 @@ async fn a_capped_project_map_is_not_diffed_for_unresolved_citations() {
     assert_eq!(whole.status, EvidenceStatus::Warn);
     assert_eq!(whole.items.len(), 1);
     assert_eq!(whole.items[0].params["key"], "new");
-    // The baseline's list was cut: "old" would look new, so nothing is said.
     let capped = check(
         serde_json::json!({"unresolvedCites": ["old", "new"]}),
         serde_json::json!({"unresolvedCites": [], "truncatedCounts": {"unresolvedCites": 1}}),
@@ -343,7 +338,6 @@ async fn a_capped_project_map_is_not_diffed_for_unresolved_citations() {
     .await;
     assert_eq!(capped.status, EvidenceStatus::Skipped);
     assert_eq!(capped.items[0].code, "references.notChecked");
-    // Other lists cut do not matter.
     let other = check(
         serde_json::json!({"unresolvedCites": ["old", "new"], "truncatedCounts": {"bibKeys": 9}}),
         serde_json::json!({"unresolvedCites": ["old"]}),

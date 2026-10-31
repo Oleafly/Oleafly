@@ -1,10 +1,3 @@
-//! What agents may do through Cua Driver: the curated tools, the tools no
-//! manifest ever allows, the one dispatcher tool the model sees, batch
-//! steps, dialog previews, refusal texts and session labels.
-//!
-//! The model-facing text here is English by design: it is read by models,
-//! not shown as UI.
-
 use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
 
@@ -14,11 +7,8 @@ use crate::mcp::protocol::ToolMeta;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ToolClass {
-    /// `start_session` / `end_session`.
     Session,
-    /// Reads state; runs without asking.
     Observe,
-    /// Changes something; asks first.
     Act,
 }
 
@@ -34,9 +24,7 @@ pub(crate) struct CuratedTool {
     pub name: &'static str,
     pub family: Family,
     pub class: ToolClass,
-    /// "Allow for this chat/session/task" may cover it.
     pub session_grant: bool,
-    /// `dialog.desktopApps.actions.<key>` in native.json.
     pub action_key: Option<&'static str>,
 }
 
@@ -108,7 +96,6 @@ pub(crate) const CURATED: &[CuratedTool] = &[
     tool("browser_select", Browser, Act, true, Some("browserSelect")),
 ];
 
-/// Never in any manifest's `allow.tools`.
 pub(crate) const NEVER_ALLOWED: &[&str] = &[
     "kill_app",
     "install_extension",
@@ -127,14 +114,10 @@ pub(crate) const NEVER_ALLOWED: &[&str] = &[
     "escalate_session",
 ];
 
-/// Allowed in the desktop manifest for Oleafly's own checks; never exposed.
 pub(crate) const INTERNAL_TOOLS: &[&str] = &["health_report"];
 
-/// Allowed in the browser manifests so Oleafly can find the window of the
-/// browser it binds; never exposed there.
 pub(crate) const BROWSER_INTERNAL_TOOLS: &[&str] = &["list_windows"];
 
-/// What a `run_steps` batch may contain.
 pub(crate) const RUN_STEPS_TOOLS: &[&str] = &[
     "click",
     "double_click",
@@ -156,7 +139,6 @@ pub(crate) const NEEDS_PID_TEXT: &str = "This call needs args.pid, the app's pro
 
 pub(crate) const MAX_STEPS: usize = 64;
 
-/// The tool the bounded self-check calls; no manifest allows it.
 pub(crate) const SELF_CHECK_TOOL: &str = "get_screen_size";
 
 const SCRIPT_TOOL: &str = "run_script";
@@ -165,8 +147,6 @@ pub(crate) fn curated(name: &str) -> Option<&'static CuratedTool> {
     CURATED.iter().find(|tool| tool.name == name)
 }
 
-/// Curated names that pass `filter`. The never list is checked again here,
-/// so no table edit can put one of those tools in a manifest.
 fn names(filter: impl Fn(&CuratedTool) -> bool) -> Vec<&'static str> {
     CURATED
         .iter()
@@ -175,7 +155,6 @@ fn names(filter: impl Fn(&CuratedTool) -> bool) -> Vec<&'static str> {
         .collect()
 }
 
-/// The desktop daemon's `allow.tools`.
 pub(crate) fn desktop_allow_tools(config: &CuaDriverConfig) -> Vec<&'static str> {
     let mut tools = names(|tool| {
         matches!(tool.family, Family::Session | Family::Desktop)
@@ -191,7 +170,6 @@ pub(crate) fn browser_allow_tools() -> Vec<&'static str> {
     names(|tool| matches!(tool.family, Family::Session | Family::Browser))
 }
 
-/// The names in the dispatcher's `tool` enum.
 pub(crate) fn exposed_tools(config: &CuaDriverConfig) -> Vec<&'static str> {
     names(|tool| match tool.family {
         Family::Session => true,
@@ -216,7 +194,6 @@ pub(crate) const POLICY_LINES: &[&str] = &[
     "For a longer how-to, load the desktop-apps skill.",
 ];
 
-/// The one tool the model sees, or `None` until the connector is ready.
 pub(crate) fn tool_meta(config: &CuaDriverConfig) -> Option<ToolMeta> {
     if !ready(config) {
         return None;
@@ -258,7 +235,6 @@ pub(crate) struct Step {
     pub args: Value,
 }
 
-/// `run_steps` steps, as `{tool, args}` or `{<tool>: args}`.
 pub(crate) fn parse_steps(args: &Value) -> Result<Vec<Step>, String> {
     let Some(items) = args.get("steps").and_then(Value::as_array) else {
         return Err("run_steps needs a steps list.".into());
@@ -289,7 +265,6 @@ pub(crate) fn parse_steps(args: &Value) -> Result<Vec<Step>, String> {
             if !step_args.is_object() {
                 return Err(format!("Step {number} needs its arguments as an object."));
             }
-            // Like the top level: Oleafly sets the session, a step can't.
             let step_args = without_private_keys(&step_args);
             if !RUN_STEPS_TOOLS.contains(&tool.as_str()) {
                 return Err(format!(
@@ -304,12 +279,10 @@ pub(crate) fn parse_steps(args: &Value) -> Result<Vec<Step>, String> {
         .collect()
 }
 
-/// Keys the model may not set: Oleafly's own (`__…`) and the Cua session.
 pub(crate) fn is_private_key(key: &str) -> bool {
     key == "session" || key.starts_with("__")
 }
 
-/// An argument object without its private keys; anything else as it is.
 pub(crate) fn without_private_keys(args: &Value) -> Value {
     match args {
         Value::Object(map) => Value::Object(
@@ -322,9 +295,6 @@ pub(crate) fn without_private_keys(args: &Value) -> Value {
     }
 }
 
-/// `args` without the keys the tool's `inputSchema` doesn't list, so nothing
-/// reaches the driver that the driver says it doesn't take. A schema with no
-/// `properties` object leaves the arguments as they are.
 pub(crate) fn schema_args(schema: &Value, args: Map<String, Value>) -> Map<String, Value> {
     let Some(properties) = schema.get("properties").and_then(Value::as_object) else {
         return args;
@@ -334,10 +304,6 @@ pub(crate) fn schema_args(schema: &Value, args: Map<String, Value>) -> Map<Strin
         .collect()
 }
 
-/// The `run_steps` arguments Oleafly sends: the steps given (the ones the
-/// dialog listed), each in the shape the model used (`{tool, args}` or
-/// `{<tool>: args}`), so the driver runs exactly what the dialog listed.
-/// Other options are dropped.
 pub(crate) fn steps_payload(args: &Value, steps: &[Step]) -> Value {
     let originals = args.get("steps").and_then(Value::as_array);
     let items: Vec<Value> = steps
@@ -358,8 +324,6 @@ pub(crate) fn steps_payload(args: &Value, steps: &[Step]) -> Value {
     json!({ "steps": items })
 }
 
-/// Element handles are how the driver names a button or a field, not
-/// secrets: the dialog shows them.
 const ELEMENT_HANDLES: &[&str] = &["element_token"];
 
 fn secret_key(name: &str) -> bool {
@@ -384,7 +348,6 @@ fn secret_key(name: &str) -> bool {
         || lower.ends_with("_otp")
 }
 
-/// Array items a preview lists before it says how many more there are.
 const PREVIEW_ITEMS: usize = 64;
 
 fn redacted(value: &Value, more_items: &dyn Fn(usize) -> String) -> Value {
@@ -416,7 +379,6 @@ fn redacted(value: &Value, more_items: &dyn Fn(usize) -> String) -> Value {
     }
 }
 
-/// Shortens to `max_chars`, ending with an ellipsis when cut.
 pub(crate) fn bounded(text: &str, max_chars: usize) -> String {
     if text.chars().count() <= max_chars {
         return text.to_string();
@@ -426,7 +388,6 @@ pub(crate) fn bounded(text: &str, max_chars: usize) -> String {
     kept
 }
 
-/// The first `max_chars` characters of `text` and how many were left out.
 pub(crate) fn clipped(text: &str, max_chars: usize) -> (String, usize) {
     let total = text.chars().count();
     if total <= max_chars {
@@ -435,9 +396,6 @@ pub(crate) fn clipped(text: &str, max_chars: usize) -> (String, usize) {
     (text.chars().take(max_chars).collect(), total - max_chars)
 }
 
-/// The arguments as the dialog shows them: the session and private keys
-/// left out (Oleafly sets those), secrets redacted, and a marker where an
-/// array has more items than are listed. Nothing else is left out.
 pub(crate) fn preview_text(args: &Value, more_items: &dyn Fn(usize) -> String) -> String {
     let shown = redacted(&without_private_keys(args), more_items);
     match &shown {
@@ -446,7 +404,6 @@ pub(crate) fn preview_text(args: &Value, more_items: &dyn Fn(usize) -> String) -
     }
 }
 
-/// `preview_text` cut to `max_chars`, and how many characters that left out.
 pub(crate) fn preview_clipped(
     args: &Value,
     max_chars: usize,
@@ -457,9 +414,7 @@ pub(crate) fn preview_clipped(
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum RefusalKind {
-    /// The manifest expired or idled out; the daemon must restart.
     Expired,
-    /// The labeled session ended; start it again.
     SessionEnded,
     OutsideAllowList,
     NeedsUser,
@@ -469,21 +424,17 @@ pub(crate) enum RefusalKind {
 
 pub(crate) const RESTART_TEXT: &str = "Computer Use had to restart. Try again.";
 pub(crate) const OUTSIDE_TEXT: &str = "That app or site isn't on the user's allowed list. Ask the user to add it in Settings > Integrations > Computer Use.";
-/// For a pid or window the driver didn't place in an allowed app, often one
-/// remembered from an earlier turn.
 const OUTSIDE_PROCESS_TEXT: &str = "That pid or window isn't one of the user's allowed apps. Call list_apps for the allowed apps' current pids, then list_windows with the pid. If the app you need isn't there, ask the user to add it in Settings > Integrations > Computer Use.";
 const NEEDS_USER_TEXT: &str =
     "Cua Driver needs the user to approve this in Cua Driver itself. Stop and tell the user.";
 const STALE_TEXT: &str = "The window changed. Call get_window_state again before you act.";
 pub(crate) const EARLIER_TURN_TEXT: &str = "That element_token is from an earlier turn, and tokens last one turn. Call get_window_state again and use the new one.";
 
-/// The `launch_app` arguments that name the app to start.
 const LAUNCH_TARGET_KEYS: [&str; 4] = ["bundle_id", "name", "path", "executable"];
 
 const LAUNCH_NEEDS_TARGET_TEXT: &str =
     "launch_app needs the app to open: pass args.bundle_id (macOS) or args.name, from list_apps.";
 
-/// The names a `launch_app` call gives for the app to open.
 fn launch_targets(args: &Value) -> Vec<&str> {
     LAUNCH_TARGET_KEYS
         .iter()
@@ -493,12 +444,29 @@ fn launch_targets(args: &Value) -> Vec<&str> {
         .collect()
 }
 
-fn launches_allowed_app(args: &Value, apps: &[AllowedApp]) -> bool {
+fn bundle_path(target: &str) -> bool {
+    target.contains('/')
+        && target
+            .trim_end_matches('/')
+            .to_ascii_lowercase()
+            .ends_with(".app")
+}
+
+fn launches_allowed_app(
+    args: &Value,
+    apps: &[AllowedApp],
+    bundle_id_at: &dyn Fn(&str) -> Option<String>,
+) -> bool {
     launch_targets(args).into_iter().all(|target| {
-        // `name` can also be the .app path list_apps gives as launch_path.
-        let bundle_name = target
-            .strip_suffix(".app")
-            .and_then(|path| path.rsplit('/').next());
+        if bundle_path(target) {
+            return bundle_id_at(target).is_some_and(|found| {
+                apps.iter().any(|app| {
+                    app.bundle_id
+                        .as_deref()
+                        .is_some_and(|known| known.eq_ignore_ascii_case(&found))
+                })
+            });
+        }
         apps.iter().any(|app| {
             [
                 Some(app.name.as_str()),
@@ -507,10 +475,7 @@ fn launches_allowed_app(args: &Value, apps: &[AllowedApp]) -> bool {
             ]
             .into_iter()
             .flatten()
-            .any(|known| {
-                known.eq_ignore_ascii_case(target)
-                    || bundle_name.is_some_and(|name| known.eq_ignore_ascii_case(name))
-            })
+            .any(|known| known.eq_ignore_ascii_case(target))
         })
     })
 }
@@ -525,6 +490,7 @@ pub(crate) fn launch_outside_list(
     tool: &str,
     args: &Map<String, Value>,
     apps: &[AllowedApp],
+    bundle_id_at: &dyn Fn(&str) -> Option<String>,
 ) -> Option<&'static str> {
     if tool != "launch_app" {
         return None;
@@ -533,7 +499,7 @@ pub(crate) fn launch_outside_list(
     if launch_targets(&args).is_empty() {
         return Some(LAUNCH_NEEDS_TARGET_TEXT);
     }
-    (!launches_allowed_app(&args, apps)).then_some(OUTSIDE_TEXT)
+    (!launches_allowed_app(&args, apps, bundle_id_at)).then_some(OUTSIDE_TEXT)
 }
 
 fn refusal_parts(structured: &Value) -> Option<(String, String)> {
@@ -564,8 +530,6 @@ fn refusal_parts(structured: &Value) -> Option<(String, String)> {
     None
 }
 
-/// The code and message of a refusal in a result, however the driver
-/// shaped it.
 pub(crate) fn refusal_from_result(result: &Value) -> Option<(String, String)> {
     let structured = result
         .get("structuredContent")
@@ -584,8 +548,6 @@ pub(crate) fn refusal_from_result(result: &Value) -> Option<(String, String)> {
         .find_map(|value| refusal_parts(&value))
 }
 
-/// A refused call's kind and the text the model gets, or `None` when the
-/// result is not a refusal (success, or an error from running the tool).
 pub(crate) fn refusal(result: &Value) -> Option<(RefusalKind, String)> {
     if result.get("isError").and_then(Value::as_bool) != Some(true) {
         return None;
@@ -650,8 +612,6 @@ fn plain_refusal(result: &Value) -> Option<(String, String)> {
         .then(|| ("bounded_resource_outside_manifest".into(), text.to_string()))
 }
 
-/// The call a refusal says to make next (`browser_prepare` for a browser
-/// that needs attaching), without the session Oleafly sets itself.
 fn next_call(result: &Value) -> Option<String> {
     let structured = result.get("structuredContent")?;
     let next = structured
@@ -670,7 +630,6 @@ fn next_call(result: &Value) -> Option<String> {
     ))
 }
 
-/// The refusal code of a result, for the app log.
 pub(crate) fn refusal_code(result: &Value) -> Option<String> {
     if result.get("isError").and_then(Value::as_bool) != Some(true) {
         return None;
@@ -685,8 +644,6 @@ pub(crate) fn refusal_code(result: &Value) -> Option<String> {
 
 const LABEL_LIMIT: usize = 28;
 
-/// The Cua session label, shown on the agent cursor: `Oleafly <agent>
-/// <4 hex>`, at most 28 characters, unique per session key.
 pub(crate) fn session_label(agent_label: &str, session_key: &str) -> String {
     let digest = Sha256::digest(session_key.as_bytes());
     let hex4: String = digest
@@ -725,8 +682,6 @@ fn first_sentence(text: &str) -> String {
     bounded(sentence.trim(), 160)
 }
 
-/// One line per allowed tool from the driver's own `tools/list`:
-/// `- name {required, optional?}: first sentence`.
 pub(crate) fn render_tool_reference(tools: &[McpServerTool], allowed: &[&str]) -> String {
     let mut lines = Vec::new();
     for tool in tools {
@@ -804,17 +759,41 @@ mod tests {
                 executable: Some("/usr/lib/libreoffice/program/soffice".into()),
             },
         ];
+        let bundle_id_at = |path: &str| match path {
+            "/System/Applications/TextEdit.app" | "/System/Applications/TextEdit.app/" => {
+                Some("com.apple.TextEdit".to_string())
+            }
+            "/Users/me/Downloads/TextEdit.app" => Some("com.example.payload".to_string()),
+            "/Applications/Terminal.app" => Some("com.apple.Terminal".to_string()),
+            _ => None,
+        };
         let launch = |args: Value| {
             let Value::Object(args) = args else {
                 unreachable!()
             };
-            launch_outside_list("launch_app", &args, &apps)
+            launch_outside_list("launch_app", &args, &apps, &bundle_id_at)
         };
         assert_eq!(launch(json!({"bundle_id": "com.apple.textedit"})), None);
         assert_eq!(launch(json!({"name": "TextEdit"})), None);
         assert_eq!(
             launch(json!({"name": "/System/Applications/TextEdit.app"})),
             None
+        );
+        assert_eq!(
+            launch(json!({"path": "/System/Applications/TextEdit.app/"})),
+            None
+        );
+        assert_eq!(
+            launch(json!({"name": "/Users/me/Downloads/TextEdit.app"})),
+            Some(OUTSIDE_TEXT)
+        );
+        assert_eq!(
+            launch(json!({"path": "/Volumes/stick/TextEdit.app"})),
+            Some(OUTSIDE_TEXT)
+        );
+        assert_eq!(
+            launch(json!({"path": "/home/u/LibreOffice Writer.app"})),
+            Some(OUTSIDE_TEXT)
         );
         assert_eq!(
             launch(json!({"executable": "/usr/lib/libreoffice/program/soffice"})),
@@ -829,22 +808,22 @@ mod tests {
             launch(json!({"name": "/Applications/Terminal.app"})),
             Some(OUTSIDE_TEXT)
         );
-        // Both names count, so an allowed one can't carry another along.
         assert_eq!(
             launch(json!({"bundle_id": "com.apple.TextEdit", "name": "Calculator"})),
             Some(OUTSIDE_TEXT)
         );
-        // A launch that names no app has nothing to approve.
         assert_eq!(launch(json!({})), Some(LAUNCH_NEEDS_TARGET_TEXT));
         assert_eq!(
             launch(json!({"bundle_id": "  "})),
             Some(LAUNCH_NEEDS_TARGET_TEXT)
         );
-        // Other tools aren't launches.
         let Value::Object(click) = json!({"bundle_id": "com.apple.calculator"}) else {
             unreachable!()
         };
-        assert_eq!(launch_outside_list("click", &click, &apps), None);
+        assert_eq!(
+            launch_outside_list("click", &click, &apps, &bundle_id_at),
+            None
+        );
     }
 
     #[test]
@@ -980,8 +959,6 @@ mod tests {
 
     #[test]
     fn a_preview_shows_nested_keys_and_marks_the_items_it_leaves_out() {
-        // Only the top level is Oleafly's: a nested `session` or `__` key is
-        // sent to the driver as the model wrote it, so the dialog shows it.
         let nested = preview_text(&json!({"form": {"session": "other", "__x": 1}}), &more);
         assert!(nested.contains("\"session\":\"other\""), "{nested}");
         assert!(nested.contains("__x"), "{nested}");
@@ -1015,7 +992,6 @@ mod tests {
             Value::Object(schema_args(&schema, args.clone())),
             json!({"bundle_id": "org.zotero.zotero"})
         );
-        // A schema that lists nothing keeps everything.
         assert_eq!(schema_args(&json!({"type": "object"}), args.clone()), args);
     }
 
@@ -1069,7 +1045,6 @@ mod tests {
             .unwrap(),
             (RefusalKind::OutsideAllowList, OUTSIDE_TEXT.to_string())
         );
-        // A tool outside the manifest is never offered, so it stays as said.
         assert!(refusal(&plain(
             "Permission denied: tool 'get_screen_size' is outside the capability manifest"
         ))
@@ -1078,7 +1053,6 @@ mod tests {
             "structuredContent": {"status": "refused", "refusal": {"code": "protected_resource_scope_invalid",
                 "message": "the live browser origin is outside the capability manifest"}}});
         assert_eq!(refusal(&scope).unwrap().0, RefusalKind::OutsideAllowList);
-        // A browser that needs attaching says which call does it.
         let consent = json!({"isError": true, "content": [{"type": "text", "text": "x"}],
             "structuredContent": {"status": "refused",
                 "refusal": {"code": "browser_consent_required", "message": "attach first"},

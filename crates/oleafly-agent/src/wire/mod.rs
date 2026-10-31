@@ -27,8 +27,6 @@ pub(crate) fn role_str(role: Role) -> &'static str {
     }
 }
 
-/// Tools by name, so the list (and the provider's prompt cache) never
-/// depends on the order the renderer sent them in.
 pub(crate) fn sorted_tools(tools: &[ToolSchema]) -> Vec<&ToolSchema> {
     let mut sorted: Vec<&ToolSchema> = tools.iter().collect();
     sorted.sort_by(|left, right| left.name.cmp(&right.name));
@@ -47,7 +45,6 @@ fn data_url(mime: &str, data: &str) -> String {
     format!("data:{mime};base64,{data}")
 }
 
-/// Images returned by the tool results of a message, in result order.
 fn result_images(message: &Message) -> Vec<&str> {
     message
         .content
@@ -90,7 +87,6 @@ fn openai_tool_calls(rest: &[&ContentPart]) -> Vec<Value> {
         .collect()
 }
 
-/// One chat content part, or `None` for parts this wire leaves out.
 fn openai_content_part(part: &ContentPart, files: bool) -> Result<Option<Value>> {
     Ok(match part {
         ContentPart::Text { text } => Some(json!({ "type": "text", "text": text })),
@@ -153,9 +149,6 @@ fn expects_reasoning_back(base_url: &str) -> bool {
     .any(|domain| host == *domain || host.ends_with(&format!(".{domain}")))
 }
 
-/// Whether the next request sends the model's reasoning text back to it.
-/// Chat wires that take `reasoning_content` do so only for providers known to
-/// require it, not for every endpoint that accepts the field.
 pub fn replays_reasoning(resolved: &Resolved) -> bool {
     match &resolved.wire {
         Wire::OpenAiChat {
@@ -231,7 +224,6 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
         if content.is_null() && calls.is_empty() {
             continue;
         }
-        // Tool images go back as a user turn after the tool messages.
         let role = if images.is_empty() {
             role_str(message.role)
         } else {
@@ -624,7 +616,6 @@ pub fn wire_body(resolved: &Resolved, req: &CompletionRequest) -> Result<serde_j
     }
 }
 
-/// A request builder with its body and any beta header the body needs.
 pub(crate) fn body_request(
     client: &reqwest::Client,
     resolved: &Resolved,

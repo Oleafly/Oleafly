@@ -10,11 +10,6 @@ import { useFilesStore } from "@/store/files";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { currentProjectStateRevision } from "@/lib/project-state-revision";
 
-/**
- * Apply a successful compile produced by another window only when the event
- * still names the current project/main document and the PDF on disk has the
- * exact identity allocated under the backend compile lock.
- */
 export async function applyRemoteCompileSuccess(
   payload: unknown,
   selfProducerId: string,
@@ -89,9 +84,6 @@ export async function applyRemoteCompileSuccess(
         checkpoint.completedAt,
       ),
       lastCompileCheckpoint: checkpoint,
-      // Source contents are intentionally runtime-local and are not sent over
-      // the cross-window event. Keep remote output revision-gated until this
-      // window performs its own compile.
       compiledSources: null,
     });
     void import("@/lib/preview-window")

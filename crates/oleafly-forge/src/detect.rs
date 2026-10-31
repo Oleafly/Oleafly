@@ -1,5 +1,3 @@
-//! What kind of server a base URL is. The hosted presets answer without a
-//! network call; any other server gets four unauthenticated probes at once.
 use crate::http::{self, Call, ForgeHttp};
 use crate::kind::{preset, ForgeKind, ServerFlavor};
 use crate::ForgeError;
@@ -13,7 +11,6 @@ const PROBE_BODY_MAX_BYTES: usize = 64 * 1024;
 #[serde(rename_all = "camelCase")]
 pub struct ServerInfo {
     pub base: String,
-    /// `None` when the server answered but matched no known API.
     pub kind: Option<ForgeKind>,
     pub flavor: Option<ServerFlavor>,
 }
@@ -86,8 +83,6 @@ fn github_match(probe: &Result<Probe, ForgeError>) -> bool {
     }
 }
 
-/// Detect the server at a normalized base URL. Every probe failing with a
-/// certificate or connection error returns that error.
 pub async fn detect_server(http: &ForgeHttp, base: &str) -> Result<ServerInfo, ForgeError> {
     if let Some((kind, flavor)) = preset(base) {
         return Ok(ServerInfo {
@@ -137,7 +132,6 @@ pub async fn detect_server(http: &ForgeHttp, base: &str) -> Result<ServerInfo, F
     })
 }
 
-/// Whether a Gitea-compatible server is Forgejo.
 pub async fn gitea_flavor(http: &ForgeHttp, base: &str) -> ServerFlavor {
     if let Some((_, Some(flavor))) = preset(base) {
         return flavor;
@@ -243,7 +237,6 @@ mod tests {
         .await;
         assert_eq!(private.kind, Some(ForgeKind::GitHub));
 
-        // A 401 without GitHub's documentation link is not enough.
         let other = detect(vec![MockResponse::json(
             401,
             r#"{"message":"Unauthorized"}"#,

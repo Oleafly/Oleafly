@@ -1,11 +1,3 @@
-//! The sub-agent manager: agents are threads in the same process, spawned
-//! by the parent run's tool calls. Canonical task-name paths
-//! (`/root/task1/task_3`), depth and concurrency gates from
-//! `~/.oleafly/agent.toml`, bounded result reads, per-agent steering and
-//! interrupt, and SubagentStart/Stop hook events. One manager per run:
-//! completed agents stay listed (they count toward nothing once closed)
-//! until the run ends and the manager drops.
-
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -21,7 +13,6 @@ use tokio::sync::watch;
 
 use crate::agent_config::MultiAgentConfig;
 
-/// Everything a spawned child needs, cloned from the parent run.
 #[derive(Clone)]
 pub struct RunContext {
     pub app: Option<tauri::AppHandle>,
@@ -38,15 +29,10 @@ pub struct RunContext {
     pub tool_runner: ToolRunner,
     pub parent_sink: ActivitySink,
     pub project_id: String,
-    /// 0 for the root run; children record depth + 1.
     pub depth: u32,
-    /// The root run's canonical task path.
     pub task_path: String,
     pub multi_agent: MultiAgentConfig,
-    /// What the run and its subagents cost, summed as each one settles.
     pub cost_tally: Arc<super::usage::CostTally>,
-    /// The run's web context when the chat turned web on; its runner is
-    /// already inside `tool_runner`.
     pub web: Option<Arc<oleafly_agent::tools::web::WebToolContext>>,
 }
 
@@ -217,9 +203,6 @@ struct SubAgentEntry {
     task_path: String,
     label: String,
     thread_id: String,
-    /// The `external:` owner every command this child runs is tagged with, so
-    /// stopping the child cancels its native process tree without touching the
-    /// parent's or a sibling's commands.
     exec_owner: String,
     status: Arc<Mutex<SubagentStatus>>,
     final_output: Arc<Mutex<Option<String>>>,
@@ -237,8 +220,6 @@ struct SubAgentEntry {
 pub struct SubagentManager {
     mutation: tokio::sync::Mutex<()>,
     agents: Mutex<HashMap<String, SubAgentEntry>>,
-    /// Cancels a child's native command owner (its process tree and pending
-    /// approvals). Wired to the exec registry in production; None in tests.
     #[allow(clippy::type_complexity)]
     cancel_exec: Option<Arc<dyn Fn(&str) + Send + Sync>>,
 }
@@ -262,22 +243,12 @@ impl Drop for SubagentManager {
     }
 }
 
-/// A random prefix minted once per process launch. The subagent counter
-/// resets to 1 every launch, so without this a restart would remint
-/// `thread-agent-1` and append an unrelated turn onto the previous session's
-/// persisted rollout (and a resync could reattach that spliced history to the
-/// new project). The prefix makes every child's id and thread id unique across
-/// restarts.
 fn session_prefix() -> &'static str {
     use std::sync::OnceLock;
     static PREFIX: OnceLock<String> = OnceLock::new();
     PREFIX.get_or_init(|| format!("{:016x}", rand::random::<u64>()))
 }
 
-/// A fresh `external:<uuid-v4>` command owner for a child. Every command the
-/// child runs is tagged with it (see `exec_owner_tagging_runner`), so stopping
-/// the child cancels exactly its process tree. The shape matches the exec
-/// registry's `external:` owner syntax.
 fn new_exec_owner() -> String {
     let mut bytes = rand::random::<u128>().to_be_bytes();
     bytes[6] = (bytes[6] & 0x0f) | 0x40;
@@ -289,11 +260,6 @@ fn new_exec_owner() -> String {
     )
 }
 
-/// Tag a child's run_command calls with its exec owner so the frontend runs
-/// them under that owner and the manager can cancel them independently. Its
-/// desktop_apps calls get the same owner as their Cua session (0.4.8 I), so
-/// the child's session ends with the child. Other tools pass through
-/// untouched; a malformed argument object is left as-is.
 fn exec_owner_tagging_runner(owner: String, inner: ToolRunner) -> ToolRunner {
     Arc::new(move |mut call| {
         let inner = inner.clone();
@@ -323,7 +289,6 @@ fn next_agent_id() -> u64 {
     NEXT.fetch_add(1, Ordering::Relaxed)
 }
 
-/// Canonical child path: `/root/task1` + `task_3` → `/root/task1/task_3`.
 pub fn child_task_path(parent_path: &str, task_name: &str) -> Result<String, String> {
     let name: String = task_name
         .chars()
@@ -335,8 +300,6 @@ pub fn child_task_path(parent_path: &str, task_name: &str) -> Result<String, Str
     Ok(format!("{parent_path}/{name}"))
 }
 
-/// Bounded read: the child's final answer, truncated at a character budget
-/// with an explicit marker so the parent knows it is a projection.
 pub fn bounded_output(text: &str, max_chars: usize) -> String {
     if text.chars().count() <= max_chars {
         return text.to_string();
@@ -483,8 +446,6 @@ struct ListAgentsArgs {
     path_prefix: Option<String>,
 }
 
-/// One wait target: the agent's identity plus its done-signal and result
-/// cells.
 type WaitTarget = (
     String,
     watch::Receiver<bool>,
@@ -517,8 +478,6 @@ fn collect_wait_targets(
 }
 
 impl SubagentManager {
-    /// Build a manager that cancels each child's native command owner through
-    /// `cancel` on interrupt, close, and teardown.
     pub fn with_exec_canceller(cancel: Arc<dyn Fn(&str) + Send + Sync>) -> Self {
         Self {
             agents: Mutex::new(HashMap::new()),
@@ -586,8 +545,6 @@ impl SubagentManager {
         Value::Array(rows)
     }
 
-    /// Interrupt every running agent (the "stop all subagents" affordance):
-    /// the parent run keeps going. Returns how many were interrupted.
     pub fn interrupt_all(&self) -> usize {
         let owners = {
             let agents = lock(&self.agents);
@@ -691,8 +648,6 @@ impl SubagentManager {
         Ok(serde_json::json!({ "delivered": true }))
     }
 
-    /// Wait for whichever listed agent finishes first (or the agent named by
-    /// a single id). Returns that agent's bounded final output.
     pub async fn wait(
         self: &Arc<Self>,
         ids: &[String],
@@ -746,9 +701,6 @@ impl SubagentManager {
         }
     }
 
-    /// Spawn a child agent: registers it, launches its run in the background
-    /// (sharing the parent's gate and cancellation lineage), and returns the
-    /// agent id immediately.
     async fn spawn(
         self: &Arc<Self>,
         ctx: &RunContext,
@@ -787,13 +739,7 @@ impl SubagentManager {
         });
 
         let id = format!("agent-{}-{}", session_prefix(), next_agent_id());
-        // Deterministic from the agent id so the shell can read a child's
-        // full transcript back from the rollout store without extra plumbing.
         let thread_id = format!("thread-{id}");
-        // A fresh child must never adopt an existing rollout. With the
-        // per-launch prefix this cannot normally happen; guard anyway so a
-        // future id-scheme change fails loudly instead of silently splicing an
-        // unrelated transcript onto the new child.
         {
             if crate::rollout::rollout_path(&ctx.data_root, &thread_id)
                 .map(|path| path.exists())
@@ -830,8 +776,6 @@ impl SubagentManager {
         if child_depth >= ctx.multi_agent.max_agent_depth {
             strip_delegation_tools(&mut request);
         }
-        // A child on another model gets the local web tools its provider
-        // does not run itself; the run's web runner answers them.
         if let ChildSelection::BuiltIn(resolved) = &selection {
             let same_model = resolved.provider_id == ctx.resolved.provider_id
                 && resolved.model_id == ctx.resolved.model_id;
@@ -887,8 +831,6 @@ impl SubagentManager {
         Ok(id)
     }
 
-    /// Give a finished agent new work in its own thread (the audited
-    /// followup_task: a message plus a triggered turn).
     pub async fn followup_task(
         self: &Arc<Self>,
         ctx: &RunContext,
@@ -992,8 +934,6 @@ fn lock_output<'a>(
     lock(output)
 }
 
-/// Remove every delegation tool from a child's request (children at the
-/// depth cap cannot delegate further).
 pub fn strip_delegation_tools(request: &mut CompletionRequest) {
     const DELEGATION_TOOLS: [&str; 8] = [
         "spawn_agent",
@@ -1010,9 +950,6 @@ pub fn strip_delegation_tools(request: &mut CompletionRequest) {
         .retain(|tool| !DELEGATION_TOOLS.contains(&tool.name.as_str()));
 }
 
-/// The child run: the same loop the root run uses, recording into its own
-/// thread, publishing progress into the parent's stream, and settling its
-/// status/output for wait_agent.
 #[allow(clippy::too_many_arguments)]
 fn spawn_child_run(
     mut ctx: RunContext,
@@ -1031,7 +968,6 @@ fn spawn_child_run(
     manager: Arc<SubagentManager>,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
-        // 0.4.8 I: the child's Cua session ends with the child, however it ends.
         let _cua_turn = crate::cua_driver::TurnEndGuard::new(exec_owner.clone());
         let turn_id = format!("{id}-turn-{}", next_agent_id());
         let initial_user_message = request
@@ -1073,7 +1009,6 @@ fn spawn_child_run(
                     registry: ctx.registry.clone(),
                     gate: ctx.gate.clone(),
                     token: token.clone(),
-                    // 0.4.8 L: subagents never suspend for a handoff.
                     ..Default::default()
                 };
                 let runner =
@@ -1090,7 +1025,6 @@ fn spawn_child_run(
                         &ctx.client, resolved, request, &ctx.config, pipeline, Some(steer_rx), runner,
                         |event| {
                             usage.observe(&event);
-                            // A child's hosted search results are shared too.
                             if let Some(web) = &ctx.web {
                                 web.observe_event(&event);
                             }
@@ -1241,8 +1175,6 @@ fn message_text(message: &oleafly_agent::Message) -> String {
         .join("\n")
 }
 
-/// SubagentStart hook: the audited payload fields, routed through the
-/// two-bucket structured log.
 fn subagent_start_hook(
     thread_id: &str,
     label: &str,
@@ -1290,8 +1222,6 @@ fn subagent_stop_hook(thread_id: &str, label: &str, output: &str, status: Subage
     );
 }
 
-/// Dispatch one multi-agent tool call. `None` means the call is not ours and
-/// the caller falls through to the normal runner.
 pub async fn dispatch(
     manager: &Arc<SubagentManager>,
     ctx: &RunContext,
@@ -1421,7 +1351,6 @@ pub async fn dispatch(
                     .map(|result| ToolOutput::text(result.to_string())),
             )
         }
-        // Legacy batch tool: spawn + wait all + one report.
         crate::agent::SUBAGENT_TOOL => run_subagent_batch(manager, ctx, arguments).await,
         _ => None,
     }
@@ -1483,8 +1412,6 @@ async fn run_subagent_batch(
     Some(Ok(ToolOutput::text(report.trim_end().to_string())))
 }
 
-/// Wrap the normal tool runner with multi-agent dispatch: our tools run
-/// against the manager, everything else falls through unchanged.
 pub fn multi_agent_tool_runner(
     ctx: RunContext,
     manager: Arc<SubagentManager>,
@@ -1504,7 +1431,6 @@ pub fn multi_agent_tool_runner(
     })
 }
 
-/// Errors from dispatch become error-shaped tool outputs for the model.
 pub fn dispatch_error(message: String) -> ToolOutput {
     ToolOutput::text(serde_json::json!({ "error": message }).to_string())
 }
@@ -1729,7 +1655,6 @@ mod tests {
             *lock_status(&agents["agent-2"].status),
             SubagentStatus::Done
         );
-        // A second sweep finds nothing running.
         drop(agents);
         assert_eq!(manager.interrupt_all(), 0);
     }
@@ -1747,7 +1672,6 @@ mod tests {
             token.cancelled().await;
         });
         lock(&manager.agents).insert("agent-1".into(), running);
-        // A finished child must not have its owner cancelled by a stop-all.
         lock(&manager.agents).insert(
             "agent-2".into(),
             dummy_entry("agent-2", SubagentStatus::Done),
@@ -1756,8 +1680,6 @@ mod tests {
         assert_eq!(manager.interrupt_all(), 1);
         assert_eq!(cancelled.lock().unwrap().as_slice(), ["external:agent-1"]);
 
-        // Closing the finished child still cancels its owner (its process may
-        // outlive the agent), and does so exactly once.
         manager.close("agent-2").await.unwrap();
         assert_eq!(
             cancelled.lock().unwrap().as_slice(),
@@ -1781,7 +1703,6 @@ mod tests {
         assert_eq!(manager.interrupt_all(), 1);
     }
 
-    // 0.4.8 I: a child's desktop apps calls carry its own Cua session.
     #[tokio::test]
     async fn child_desktop_calls_carry_the_child_session() {
         let seen = Arc::new(Mutex::new(Vec::new()));
@@ -1851,8 +1772,6 @@ mod tests {
 
     #[tokio::test]
     async fn child_thread_ids_are_deterministic_from_agent_ids() {
-        // spawn() mints process-unique ids; the derived thread id shape is
-        // what the shell relies on to read transcripts back.
         assert!(dummy_entry("agent-7", SubagentStatus::Done)
             .thread_id
             .starts_with("thread-agent-"));

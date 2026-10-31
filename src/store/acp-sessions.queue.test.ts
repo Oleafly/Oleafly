@@ -17,7 +17,6 @@ const mocks = vi.hoisted(() => ({
   refreshOpenFilesFromDisk: vi.fn(),
   toPromptInput: vi.fn(),
   bufferContent: vi.fn(),
-  // The project the window shows.
   files: { projectId: "p" as string | null, tree: [] as { path: string; name: string; is_dir: boolean }[] },
 }));
 
@@ -457,7 +456,6 @@ describe("long conversations", () => {
     const first = useAcpSessionsStore.getState().events.s[0];
     for (let index = 0; index < 100; index++) store.ingest([event(MAX_VISIBLE_EVENTS + index + 1)]);
     const live = useAcpSessionsStore.getState().events.s;
-    // The projector starts over whenever the first event changes.
     expect(live[0]).toBe(first);
     expect(live).toHaveLength(MAX_VISIBLE_EVENTS + 100);
     store.ingest(Array.from({ length: 200 }, (_, index) => event(MAX_VISIBLE_EVENTS + 101 + index)));
@@ -629,7 +627,6 @@ describe("queued messages that would otherwise wait for nothing", () => {
   });
 
   it("sends the next queued message when the turn ended before the prompt call returned", async () => {
-    // The turn_complete batch was applied while the first message was still on its way.
     mocks.acpPrompt.mockResolvedValue(snapshot(session("s", { status: "ready", lastSequence: 3 })));
     const store = useAcpSessionsStore.getState();
     store.enqueue("s", draft("first"));
@@ -648,10 +645,8 @@ describe("queued messages that would otherwise wait for nothing", () => {
     store.enqueue("s", draft("now write the conclusion"));
     await store.dispatchQueued("p", "s");
     const state = useAcpSessionsStore.getState();
-    // Not offered again: sending it twice would give the agent the same message twice.
     expect(state.queues.s).toEqual([]);
     expect(state.sessionErrors.s).toBe("The agent stopped answering.");
-    // The conversation on show does not get the other one's error.
     expect(state.errors.p).toBeUndefined();
   });
 
@@ -682,7 +677,6 @@ describe("queued messages that would otherwise wait for nothing", () => {
     const store = useAcpSessionsStore.getState();
     const id = store.enqueue("s", draft("Also check the figures"));
     const steering = store.steerQueued("p", "s", id);
-    // The turn ends while the agent decides.
     useAcpSessionsStore.setState((state) => ({ sessions: { ...state.sessions, s: { ...state.sessions.s, status: "ready" } } }));
     await store.dispatchQueued("p", "s");
     expect(mocks.acpPrompt).not.toHaveBeenCalled();
@@ -699,7 +693,6 @@ describe("queued messages that would otherwise wait for nothing", () => {
     const store = useAcpSessionsStore.getState();
     const id = store.enqueue("s", draft("Also check the figures"));
     await store.steerQueued("p", "s", id);
-    // Not left marked as on its way, which would hold it back for good.
     expect(useAcpSessionsStore.getState().queues.s[0]).toMatchObject({ id, sending: false });
     useAcpSessionsStore.setState((state) => ({ sessions: { ...state.sessions, s: { ...state.sessions.s, status: "ready" } } }));
     await store.dispatchQueued("p", "s");
@@ -754,7 +747,6 @@ describe("listening while nothing shows the agents", () => {
     emitted.event(event(2, "controls", { controls: { modeId: "default" } }));
     emitted.summary({ projectId: "p", sessionId: "s", agentId: "agent", title: "s", status: "ready", updatedAt: 5, lastSequence: 2 });
     const value = useAcpSessionsStore.getState().sessions.s;
-    // Only the event carries the mode the agent switched to.
     expect(value.controls.modeId).toBe("default");
     expect(value.lastSequence).toBe(2);
     detach();

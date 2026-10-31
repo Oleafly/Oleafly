@@ -23,21 +23,17 @@ describe("isAltGraphCharacter on Windows", () => {
   it("recognises a character typed through AltGr", () => {
     // WebView2 reports AltGraph and clears Ctrl and Alt.
     expect(isAltGraphCharacter(keyEvent({ key: "@", modifierAltGraph: true }))).toBe(true);
-    // Engines that report AltGr as Ctrl+Alt.
     expect(
       isAltGraphCharacter(
         keyEvent({ key: "@", ctrlKey: true, altKey: true, modifierAltGraph: true }),
       ),
     ).toBe(true);
-    // Ctrl held with AltGr still types the character.
     expect(
       isAltGraphCharacter(keyEvent({ key: "]", ctrlKey: true, modifierAltGraph: true })),
     ).toBe(true);
-    // AltGr+Shift, such as £ on US-International.
     expect(
       isAltGraphCharacter(keyEvent({ key: "£", shiftKey: true, modifierAltGraph: true })),
     ).toBe(true);
-    // Some layouts type more than one code point with one key.
     expect(isAltGraphCharacter(keyEvent({ key: "ह़", modifierAltGraph: true }))).toBe(true);
   });
 
@@ -71,7 +67,6 @@ describe("isAltGraphCharacter on Linux", () => {
   });
 
   it("treats Ctrl with AltGr as a shortcut, because it types nothing", () => {
-    // Ctrl+AltGr+9 on a German layout.
     expect(
       isAltGraphCharacter(keyEvent({ key: "]", ctrlKey: true, modifierAltGraph: true })),
     ).toBe(false);
@@ -89,7 +84,6 @@ describe("isAltGraphCharacter on macOS", () => {
   });
 
   it("recognises Option typing plain ASCII on a non-US layout", () => {
-    // Option+L and Option+Shift+7 on a German layout.
     expect(isAltGraphCharacter(keyEvent({ key: "@", altKey: true }))).toBe(true);
     expect(isAltGraphCharacter(keyEvent({ key: "\\", altKey: true, shiftKey: true }))).toBe(
       true,

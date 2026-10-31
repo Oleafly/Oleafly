@@ -1,6 +1,3 @@
-//! Typst: headings, labels, `@` references, `#cite`, `#include`/`#import`,
-//! `#let` bindings and `#bibliography`, after the app's masking
-//! (`packages/editor/src/typst-syntax.ts`).
 use super::text::{
     is_js_space, is_mark, is_name_character, resolve_project_path, starts_with_at, string_of,
     trim_js, Source,
@@ -117,7 +114,6 @@ enum Frame {
     Code(CodeFrame),
 }
 
-/// The state of a `#` code expression.
 struct CodeFrame {
     line: bool,
     started: bool,
@@ -166,14 +162,12 @@ enum Step {
     Push(Frame, usize),
 }
 
-/// The two masks `mask_source` builds.
 struct Masks {
     text: Vec<char>,
     code: Vec<char>,
 }
 
 impl Masks {
-    /// Blanks `from..to` in both masks (line breaks kept).
     fn blank(&mut self, raw: &[char], from: usize, to: usize) {
         for (index, character) in raw.iter().enumerate().take(to).skip(from) {
             if *character != '\n' {
@@ -184,8 +178,6 @@ impl Masks {
     }
 }
 
-/// One step in markup. `close` marks a `[...]` block that ends at its
-/// matching `]`, and `brackets` counts the `[` opened inside it.
 fn markup_step(
     raw: &[char],
     index: usize,
@@ -220,8 +212,6 @@ fn markup_step(
     }
 }
 
-/// One step inside a string of a code expression: the contents are blanked
-/// in `code`, up to the closing quote.
 fn quoted_step(raw: &[char], index: usize, code: &mut [char], quoted: &mut bool) -> Step {
     let character = raw[index];
     let mut cursor = index;
@@ -239,7 +229,6 @@ fn quoted_step(raw: &[char], index: usize, code: &mut [char], quoted: &mut bool)
     Step::Advance(cursor + 1)
 }
 
-/// One step in a `#` code expression.
 fn code_step(raw: &[char], index: usize, masks: &mut Masks, frame: &mut CodeFrame) -> Step {
     let character = raw[index];
     if frame.quoted {
@@ -292,16 +281,12 @@ fn code_step(raw: &[char], index: usize, masks: &mut Masks, frame: &mut CodeFram
     }
 }
 
-/// `maskTypstSource`: `text` without comments and raw blocks; `code` also
-/// without string contents and autolinks.
 #[cfg(test)]
 pub(crate) fn mask_source(raw: &[char]) -> (Vec<char>, Vec<char>) {
     let (text, code, _) = mask_source_with_code_regions(raw);
     (text, code)
 }
 
-/// [`mask_source`], and which characters sit in code (after a `#`, inside
-/// its braces and parentheses) rather than markup.
 fn mask_source_with_code_regions(raw: &[char]) -> (Vec<char>, Vec<char>, Vec<bool>) {
     let mut masks = Masks {
         text: raw.to_vec(),
@@ -347,7 +332,6 @@ fn mask_source_with_code_regions(raw: &[char]) -> (Vec<char>, Vec<char>, Vec<boo
     (masks.text, masks.code, in_code)
 }
 
-/// `maskQuotedContents`: string contents blanked, quotes kept.
 fn mask_quoted_contents(source: &[char]) -> Vec<char> {
     let mut chars = source.to_vec();
     let mut quoted = false;
@@ -450,8 +434,6 @@ fn label_run(code: &[char], from: usize) -> usize {
     end
 }
 
-/// The keys inside a `#cite(...)` argument: `<key>` or `"key"` (as the
-/// first item, after `[`, `(` or `,`, or in `label("key")`).
 fn citation_keys(arguments: &[char], offset: usize) -> Vec<(String, usize)> {
     let mut keys = Vec::new();
     let mut index = 0;
@@ -488,7 +470,6 @@ fn citation_keys(arguments: &[char], offset: usize) -> Vec<(String, usize)> {
     keys
 }
 
-/// A file's facts, as the scans below add them.
 struct Facts<'a> {
     file: &'a str,
     source: &'a Source,
@@ -530,7 +511,6 @@ impl Facts<'_> {
     }
 }
 
-/// The first index at or after `cursor` that isn't white space.
 fn skip_spaces(chars: &[char], mut cursor: usize) -> usize {
     while chars
         .get(cursor)
@@ -541,8 +521,6 @@ fn skip_spaces(chars: &[char], mut cursor: usize) -> usize {
     cursor
 }
 
-/// Whether the `<` at `open` in `title` starts a `<label>` that ends it,
-/// set off by a space.
 fn ends_with_label(title: &str, open: usize) -> bool {
     let tail = &title[open..];
     let closes = tail.trim_end_matches([' ', '\t']).ends_with('>') && !tail[1..].contains('<');
@@ -551,8 +529,6 @@ fn ends_with_label(title: &str, open: usize) -> bool {
     closes && spaced
 }
 
-/// `= Title` at the start of a line: the title, its offset in the line and
-/// its level (the first is 0). A trailing `<label>` isn't part of the title.
 fn heading_in_line(line: &[char]) -> Option<(String, usize, u32)> {
     let equals = line
         .iter()
@@ -584,7 +560,6 @@ fn heading_in_line(line: &[char]) -> Option<(String, usize, u32)> {
     Some((title, content_offset + lead, equals as u32 - 1))
 }
 
-/// Headings: `= Title` at the start of a line.
 fn headings(facts: &mut Facts<'_>, text: &[char]) {
     let mut line_start = 0;
     while line_start <= text.len() {
@@ -598,8 +573,6 @@ fn headings(facts: &mut Facts<'_>, text: &[char]) {
     }
 }
 
-/// Whether the `<` at `index` sits in the unfinished arguments of `#ref(`,
-/// `#link(` or `#cite(`.
 fn in_reference_call(raw: &[char], index: usize) -> bool {
     let window = string_of(&raw[index.saturating_sub(80)..index]);
     ["#ref", "#link", "#cite"].iter().any(|call| {
@@ -610,7 +583,6 @@ fn in_reference_call(raw: &[char], index: usize) -> bool {
     })
 }
 
-/// Labels `<name>` (not inside `#ref(...)`, `#link(...)` or `#cite(...)`).
 fn labels(facts: &mut Facts<'_>, raw: &[char], code: &[char]) {
     let mut index = 0;
     while index < code.len() {
@@ -629,7 +601,6 @@ fn labels(facts: &mut Facts<'_>, raw: &[char], code: &[char]) {
     }
 }
 
-/// `@name` references.
 fn references(facts: &mut Facts<'_>, code: &[char]) {
     let mut index = 0;
     while index < code.len() {
@@ -651,8 +622,6 @@ fn references(facts: &mut Facts<'_>, code: &[char]) {
     }
 }
 
-/// A `"..."` string after at least one space at `from`: where it opens and
-/// where it closes.
 fn quoted_after_space(text: &[char], from: usize) -> Option<(usize, usize)> {
     let cursor = skip_spaces(text, from);
     if cursor == from || text.get(cursor) != Some(&'"') {
@@ -662,15 +631,12 @@ fn quoted_after_space(text: &[char], from: usize) -> Option<(usize, usize)> {
     Some((cursor, close))
 }
 
-/// `#include "x"` and `#import "x"`, and `include "x"` and `import "x"`
-/// inside code (`#let ch = include "ch.typ"`, `#{ include "a.typ" }`).
 fn includes(facts: &mut Facts<'_>, text: &[char], in_code: &[bool]) {
     for (keyword, kind) in [("include", UseKind::Include), ("import", UseKind::Import)] {
         includes_of_keyword(facts, text, in_code, keyword, kind);
     }
 }
 
-/// Every include or import written with `keyword`, recorded as a `kind` use.
 fn includes_of_keyword(
     facts: &mut Facts<'_>,
     text: &[char],
@@ -694,9 +660,6 @@ fn includes_of_keyword(
     }
 }
 
-/// Where the keyword at `index` ends: `#keyword` anywhere, or a bare
-/// `keyword` inside code that is not the tail of a longer name, a `#` escape
-/// or a field access.
 fn keyword_end_at(
     text: &[char],
     in_code: &[bool],
@@ -715,8 +678,6 @@ fn keyword_end_at(
     bare.then_some(index + keyword.len())
 }
 
-/// Records the include or import whose path string spans `open..close` (the
-/// quotes), when the path is not empty and resolves to a file.
 fn record_include(facts: &mut Facts<'_>, kind: UseKind, text: &[char], open: usize, close: usize) {
     let raw_target = string_of(&text[open + 1..close]);
     if raw_target.is_empty() {
@@ -727,7 +688,6 @@ fn record_include(facts: &mut Facts<'_>, kind: UseKind, text: &[char], open: usi
     }
 }
 
-/// `#let name` bindings.
 fn let_bindings(facts: &mut Facts<'_>, code_mask: &[char]) {
     let mut index = 0;
     while index < code_mask.len() {
@@ -758,8 +718,6 @@ fn let_bindings(facts: &mut Facts<'_>, code_mask: &[char]) {
     }
 }
 
-/// The `<label>` that opens a call's arguments, for a call whose name ends
-/// at `from`: the label and where it starts.
 fn call_label(code_mask: &[char], from: usize) -> Option<(String, usize)> {
     let cursor = skip_spaces(code_mask, from);
     if code_mask.get(cursor) != Some(&'(') {
@@ -776,7 +734,6 @@ fn call_label(code_mask: &[char], from: usize) -> Option<(String, usize)> {
     Some((string_of(&code_mask[cursor + 1..end]), cursor + 1))
 }
 
-/// `#ref(<x>)` and `#link(<x>)`.
 fn reference_calls(facts: &mut Facts<'_>, code_mask: &[char]) {
     for call in ["#ref", "#link"] {
         let mut index = 0;
@@ -791,8 +748,6 @@ fn reference_calls(facts: &mut Facts<'_>, code_mask: &[char]) {
     }
 }
 
-/// The end of the arguments that start at `content_from`, just after a
-/// call's `(`: the matching `)`, or the end of the text when it never closes.
 fn call_arguments_end(code_mask: &[char], content_from: usize) -> usize {
     let mut depth = 1;
     let mut end = content_from;
@@ -811,7 +766,6 @@ fn call_arguments_end(code_mask: &[char], content_from: usize) -> usize {
     }
 }
 
-/// `#cite(...)`.
 fn cite_calls(facts: &mut Facts<'_>, text: &[char], code_mask: &[char]) {
     let mut index = 0;
     while index < code_mask.len() {
@@ -831,8 +785,6 @@ fn cite_calls(facts: &mut Facts<'_>, text: &[char], code_mask: &[char]) {
     }
 }
 
-/// The end of the arguments that open at `open`: the matching `)`, or the
-/// end of the text.
 fn bibliography_arguments_end(text: &[char], code_mask: &[char], open: usize) -> usize {
     let mut depth = 0;
     let mut end = open;
@@ -852,7 +804,6 @@ fn bibliography_arguments_end(text: &[char], code_mask: &[char], open: usize) ->
     end
 }
 
-/// The string arguments of `#bibliography(...)` before any `name:` argument.
 fn bibliography_paths(facts: &mut Facts<'_>, text: &[char], from: usize, end: usize) {
     let mut position = from;
     while position < end {
@@ -872,8 +823,6 @@ fn bibliography_paths(facts: &mut Facts<'_>, text: &[char], from: usize, end: us
     }
 }
 
-/// Whether the arguments `from..end` hold `full: true`, which cites every
-/// entry of the bibliography.
 fn cites_full(code_mask: &[char], from: usize, end: usize) -> bool {
     (from..end).any(|at| {
         starts_with_at(code_mask, at, "full")
@@ -888,7 +837,6 @@ fn cites_full(code_mask: &[char], from: usize, end: usize) -> bool {
     })
 }
 
-/// `#bibliography("a.bib")` / `#bibliography(("a.bib", "b.yml"))`.
 fn bibliography_calls(facts: &mut Facts<'_>, text: &[char], code_mask: &[char]) {
     let mut index = 0;
     while index < code_mask.len() {
@@ -908,8 +856,6 @@ fn bibliography_calls(facts: &mut Facts<'_>, text: &[char], code_mask: &[char]) 
     }
 }
 
-/// The `"path"` string that opens the arguments of an `#image` call whose
-/// name ends at `from`: where it opens and where it closes.
 fn image_path(text: &[char], from: usize) -> Option<(usize, usize)> {
     let cursor = skip_spaces(text, from);
     if text.get(cursor) != Some(&'(') {
@@ -923,7 +869,6 @@ fn image_path(text: &[char], from: usize) -> Option<(usize, usize)> {
     Some((cursor, close))
 }
 
-/// `#image("x")` (missing figures).
 fn image_calls(facts: &mut Facts<'_>, text: &[char], code_mask: &[char]) {
     let mut index = 0;
     while index < text.len() {
@@ -940,7 +885,6 @@ fn image_calls(facts: &mut Facts<'_>, text: &[char], code_mask: &[char]) {
     }
 }
 
-/// Everything the project map needs from one Typst file.
 pub(crate) fn analyze(file: &str, raw_text: &str) -> FileFacts {
     let source = Source::new(raw_text);
     let raw = source.chars.clone();
@@ -1082,7 +1026,6 @@ mod tests {
             named(UseKind::Asset),
             [("fig.png".to_string(), Some("fig.png".to_string()))]
         );
-        // `../up` from the project root leaves the project.
         assert!(named(UseKind::Include).is_empty());
         assert_eq!(
             named(UseKind::Import),

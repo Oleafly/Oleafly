@@ -6,9 +6,6 @@ use std::time::{Duration, Instant};
 
 const DROP_LIFETIME: Duration = Duration::from_secs(10);
 const READ_LIFETIME: Duration = Duration::from_secs(60);
-/// The largest dropped file read into the webview. Above every importer's
-/// own limit (the converters take 128 MiB), so only a drop that would never
-/// be used is refused, before a multi-gigabyte read runs out of memory.
 const MAX_DROPPED_FILE_BYTES: u64 = 256 * 1024 * 1024;
 
 #[derive(Default)]
@@ -81,8 +78,6 @@ impl NativeDropState {
         f(&mut drop)
     }
 
-    /// Whether `path` came from the drop the webview just took, so a command
-    /// may read it as if it had been picked in a dialog.
     pub(crate) fn released(&self, path: &str) -> bool {
         self.with(|drop| drop.readable(path, Instant::now()))
     }
@@ -109,8 +104,6 @@ pub async fn read_dropped_file(
     Ok(tauri::ipc::Response::new(bytes))
 }
 
-/// A dropped file's bytes: a regular file of at most `cap` bytes, read no
-/// further than the cap even if it grows meanwhile.
 fn read_capped(path: &std::path::Path, cap: u64) -> Result<Vec<u8>, String> {
     use std::io::Read;
     let metadata = std::fs::metadata(path).map_err(|error| error.to_string())?;

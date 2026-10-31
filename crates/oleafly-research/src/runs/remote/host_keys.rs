@@ -1,7 +1,3 @@
-//! First contact with an SSH host, from Settings only: probe its keys into a
-//! scratch file, show their fingerprints, and trust exactly the keys the
-//! user saw, in Oleafly's own `known_hosts` (the user's files stay
-//! untouched).
 use std::collections::BTreeSet;
 use std::fs::OpenOptions;
 use std::path::Path;
@@ -46,8 +42,6 @@ pub fn fingerprint(known_hosts_line: &str) -> Option<HostKeyFingerprint> {
     })
 }
 
-/// Connects once with `accept-new` into a scratch file and returns the key
-/// lines the host offered. Authentication may fail; the keys arrive first.
 pub async fn probe(
     ctx: &SshContext,
     endpoint: &SshEndpoint,
@@ -93,8 +87,6 @@ pub async fn probe(
     Ok(lines)
 }
 
-/// Probes again and trusts the keys only when they are exactly the ones
-/// the user confirmed.
 pub async fn trust(
     ctx: &SshContext,
     endpoint: &SshEndpoint,
@@ -199,13 +191,10 @@ fn host_patterns(host: &str, port: Option<u16>) -> Vec<String> {
     }
 }
 
-/// Removes the keys Oleafly trusted for `host` (and `port`); returns how
-/// many lines went.
 pub fn forget(file: &Path, host: &str, port: Option<u16>) -> Result<usize, RunError> {
     if !file.exists() {
         return Ok(0);
     }
-    // Read under the lock, so a line a concurrent trust writes is never lost.
     let _lock = lock_for(file)?;
     let Ok(existing) = std::fs::read_to_string(file) else {
         return Ok(0);
@@ -270,7 +259,6 @@ mod tests {
     #[cfg(unix)]
     fn fake_ssh(dir: &Path, key: &str) -> SshContext {
         let program = dir.join("ssh");
-        // Writes the given key line into the UserKnownHostsFile like accept-new.
         crate::runs::remote::testing::write_script(
             &program,
             &format!(

@@ -82,6 +82,15 @@ describe("typstFigureSource", () => {
     expect(typstCaptionContent("Saved in C:\\data\\")).toBe("Saved in C:\\data\\\\");
   });
 
+  it("escapes a lone $, comment opener or backtick in a caption so the call stays whole", () => {
+    expect(typstCaptionContent("Revenue (in $M)")).toBe(String.raw`Revenue (in \$M)`);
+    expect(typstCaptionContent("a//b and\n/* c")).toBe(String.raw`a\//b and \/\* c`);
+    expect(typstCaptionContent("Use `x and $x$")).toBe(String.raw`Use \`x and $x$`);
+    expect(typstFigureSource({ ...BASE, caption: "Revenue (in $M)", label: null }, null).template).toBe(
+      '#figure(\n  image("figures/plot.png", width: 80%),\n  caption: [Revenue (in \\$M)],\n)',
+    );
+  });
+
   it("repairs labels that Typst would reject", () => {
     expect(typstFigureSource({ ...BASE, label: "fig plot!" }, null).template).toMatch(/\) <fig-plot->$/u);
   });

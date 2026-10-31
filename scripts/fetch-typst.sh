@@ -52,7 +52,6 @@ fetch() {
   if [[ "$actual" != "$expected" ]]; then
     rm -f "$archive"
     echo "fetching Typst $VERSION for $target ($asset)"
-    # Mirror first, upstream fallback; the checksum pin keeps either origin honest.
     curl -fSL --proto '=https' --connect-timeout 30 \
       --speed-limit 1024 --speed-time 60 \
       --retry 5 --retry-delay 3 --retry-connrefused -o "$tmp/download" "$mirror_url" \

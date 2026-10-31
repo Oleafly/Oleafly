@@ -19,7 +19,7 @@ let waitFor: typeof import("@testing-library/react").waitFor;
 let within: typeof import("@testing-library/react").within;
 let userEvent: typeof import("@testing-library/user-event").default;
 
-const native = vi.hoisted(() => ({ invoke: vi.fn(), open: vi.fn(), reveal: vi.fn() }));
+const native = vi.hoisted(() => ({ invoke: vi.fn(), open: vi.fn(), reveal: vi.fn(async (_path: string) => {}) }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: native.invoke }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickOpenPath: native.open }));
 vi.mock("@/lib/tauri", () => ({ revealInDir: native.reveal }));

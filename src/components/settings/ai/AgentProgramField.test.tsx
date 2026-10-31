@@ -85,12 +85,10 @@ describe("program row", () => {
     );
     const row = found.getByTestId("acp-agent-program-pi");
     expect(row).toHaveTextContent("/usr/local/bin/pi");
-    // Settings keeps program paths blurred until hovered or focused.
     expect(within(row).getByText("/usr/local/bin/pi")).toHaveAttribute("data-settings-path");
     expect(row).toHaveTextContent(copy.source.auto);
     expect(within(row).getByRole("button", { name: copy.choose })).toBeInTheDocument();
     expect(within(row).getByRole("button", { name: copy.test })).toBeInTheDocument();
-    // 0.4.8 (D11): the typed path stays available to point at another program.
     expect(within(row).getByRole("textbox", { name: fill(copy.inputLabel, { name: "Pi" }) })).toHaveValue("");
     expect(within(row).queryByRole("button", { name: copy.useAutomatic })).not.toBeInTheDocument();
     found.unmount();
@@ -240,8 +238,6 @@ describe("program row", () => {
       '@oleafly/error:{"code":"acp.program.network_path","params":{},"detail":null}',
     );
     fireEvent.click(ui.getByRole("button", { name: copy.choose }));
-    // Pick, check and the refused save each settle before the alert renders;
-    // under a full parallel run that chain can take longer than the 1 s default.
     expect(await ui.findByRole("alert", {}, { timeout: 10_000 })).toHaveTextContent(
       "\\\\server\\share\\pi.exe is on a network location. Choose a program on this computer.",
     );
@@ -406,7 +402,6 @@ describe("0.4.8 program checks", () => {
     fireEvent.click(ui.getByRole("button", { name: copy.choose }));
     const result = await ui.findByTestId("acp-agent-program-result-pi");
     expect(result).toHaveTextContent(fill(copy.check.needsSignIn, { name: "Pi" }));
-    // A program that only needs a sign-in works, so it is kept.
     expect(acpSetAgentProgram).toHaveBeenCalledWith("pi", PICKED);
     fireEvent.click(within(result).getByRole("button", { name: copy.signIn }));
     await waitFor(() => expect(openTerminalWith).toHaveBeenCalledWith({

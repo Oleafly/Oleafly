@@ -14,8 +14,6 @@ use crate::collab::disk::safe_target;
 
 pub const LIVE_UPLOADS_EVENT: &str = "collab-live-uploads";
 pub const UPLOAD_PROGRESS_EVENT: &str = "collab-upload-progress";
-// The window hears how far a figure's upload got at most this often, and
-// once more when it has all been sent.
 const PROGRESS_EVERY: Duration = Duration::from_millis(250);
 const MEBIBYTE: u64 = 1024 * 1024;
 const CHECK_ABOVE: u64 = 4 * MEBIBYTE;
@@ -51,7 +49,6 @@ pub struct UploadsPayload {
     pub files: Vec<UploadFile>,
 }
 
-// How many of a figure's bytes have gone up so far.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UploadProgress {
@@ -61,8 +58,6 @@ pub struct UploadProgress {
     pub total: u64,
 }
 
-// Tells the window how a figure's upload goes, a few times a second at
-// most, since the sync engine reports every 64 KiB.
 pub(super) fn progress_for(
     host: Arc<dyn LiveHost>,
     project_id: &str,
@@ -89,15 +84,10 @@ pub(super) fn progress_for(
     })
 }
 
-// What makes the waiting figures go out again.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Retry {
-    // The next try of a figure that failed, after its wait.
     Timer,
-    // The session came back online. A figure the server refused because the
-    // project was full goes again only if the server's limit has changed.
     Reconnect,
-    // The person asked with Retry.
     Asked,
 }
 
@@ -238,8 +228,6 @@ pub(super) async fn send(
     record(key(link), results, online)
 }
 
-// The figure is read from disk for each try, so a large one is never
-// held in memory between tries or copied once per retry.
 async fn sent(
     link: &LiveLink,
     root: &Path,
@@ -404,8 +392,6 @@ impl Active {
             self.host.uploads(payload);
         }
         if let Some((wait, token, active)) = timer {
-            // A server that asked with Retry-After to be left alone for a
-            // while gets at least that long before the next try.
             let wait = wait.max(self.link.client.asked_wait().unwrap_or_default());
             let key = self.upload_key();
             tauri::async_runtime::spawn(async move {

@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use axum::http::header::{COOKIE, USER_AGENT};
 use axum::http::{HeaderMap, HeaderValue};
 use oleafly_collab_protocol::admin::{MemberStatus, SecurityEventKind};
@@ -9,8 +11,8 @@ use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::json;
 use url::Host;
 
-use crate::auth::devices;
 use crate::auth::pending::{PendingSignIn, PENDING_TTL_MS};
+use crate::auth::{browser_binding, devices};
 use crate::config::ServerConfig;
 use crate::db::parse_id;
 use crate::error::ServerError;
@@ -20,6 +22,7 @@ use crate::state::DAY_MS;
 use crate::tokens::{self, hash_token, random_token};
 
 pub const COOKIE_NAME: &str = "oleafly_web";
+pub const HOST_COOKIE_NAME: &str = "__Host-oleafly_web";
 pub const PLATFORM: &str = "web";
 pub const SESSION_DAYS: i64 = 30;
 pub const SESSION_TTL_MS: i64 = SESSION_DAYS * DAY_MS;
@@ -294,22 +297,36 @@ pub fn prune(conn: &Connection, now: i64) -> Result<Vec<DeviceId>, ServerError> 
     Ok(devices)
 }
 
-pub fn presented(headers: &HeaderMap) -> Option<String> {
-    headers
+pub fn cookie_name(config: &ServerConfig) -> &'static str {
+    if browser_binding::host_only(config) {
+        HOST_COOKIE_NAME
+    } else {
+        COOKIE_NAME
+    }
+}
+
+pub fn presented(headers: &HeaderMap, config: &ServerConfig) -> Option<String> {
+    let wanted = cookie_name(config);
+    let tokens: BTreeSet<&str> = headers
         .get_all(COOKIE)
         .iter()
         .filter_map(|value| value.to_str().ok())
         .flat_map(|value| value.split(';'))
         .filter_map(|pair| pair.trim().split_once('='))
-        .filter(|(name, _)| *name == COOKIE_NAME)
+        .filter(|(name, _)| *name == wanted)
         .map(|(_, value)| value.trim())
-        .find(|value| {
+        .filter(|value| {
             value.len() == TOKEN_CHARS
                 && value
                     .bytes()
                     .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
         })
-        .map(str::to_string)
+        .collect();
+    let mut tokens = tokens.into_iter();
+    match (tokens.next(), tokens.next()) {
+        (Some(token), None) => Some(token.to_string()),
+        _ => None,
+    }
 }
 
 fn plain_loopback(config: &ServerConfig) -> bool {
@@ -334,8 +351,9 @@ fn cookie_with(config: &ServerConfig, value: &str, max_age: i64) -> HeaderValue 
         "; Secure"
     };
     let path = format!("{}/", config.path_prefix());
+    let name = cookie_name(config);
     HeaderValue::from_str(&format!(
-        "{COOKIE_NAME}={value}; Path={path}; Max-Age={max_age}; HttpOnly; SameSite=Lax{secure}"
+        "{name}={value}; Path={path}; Max-Age={max_age}; HttpOnly; SameSite=Lax{secure}"
     ))
     .unwrap_or_else(|_| HeaderValue::from_static("oleafly_web=; Path=/; Max-Age=0"))
 }
@@ -481,19 +499,48 @@ mod tests {
         assert!(cleared.contains("Max-Age=0"), "{cleared}");
     }
 
+    fn carrying(cookies: &str) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert(COOKIE, HeaderValue::from_str(cookies).unwrap());
+        headers
+    }
+
     #[test]
     fn only_a_well_formed_session_cookie_is_read() {
+        let mut config = test_config();
+        config.public_url = url::Url::parse("https://uni.edu/oleafly/").unwrap();
         let token = random_token();
-        let mut headers = HeaderMap::new();
-        headers.insert(
-            COOKIE,
-            HeaderValue::from_str(&format!(
-                "theme=dark; oleafly_web=short; oleafly_web={token}"
-            ))
-            .unwrap(),
+        let headers = carrying(&format!(
+            "theme=dark; oleafly_web=short; oleafly_web={token}; oleafly_web={token}"
+        ));
+        assert_eq!(presented(&headers, &config), Some(token));
+        assert_eq!(presented(&HeaderMap::new(), &config), None);
+    }
+
+    #[test]
+    fn a_session_cookie_planted_beside_the_real_one_is_not_trusted() {
+        let mut config = test_config();
+        config.public_url = url::Url::parse("https://uni.edu/oleafly/").unwrap();
+        let (mine, planted) = (random_token(), random_token());
+        let both = carrying(&format!("oleafly_web={planted}; oleafly_web={mine}"));
+        assert_eq!(presented(&both, &config), None);
+        config.public_url = url::Url::parse("https://collab.uni.edu/").unwrap();
+        assert_eq!(cookie_name(&config), HOST_COOKIE_NAME);
+        let text = cookie(&config, &mine).to_str().unwrap().to_owned();
+        assert!(
+            text.starts_with(&format!("__Host-oleafly_web={mine}; Path=/;")),
+            "{text}"
         );
-        assert_eq!(presented(&headers), Some(token));
-        assert_eq!(presented(&HeaderMap::new()), None);
+        assert!(
+            text.contains("Secure") && !text.contains("Domain"),
+            "{text}"
+        );
+        let sibling = carrying(&format!("oleafly_web={planted}; __Host-oleafly_web={mine}"));
+        assert_eq!(presented(&sibling, &config), Some(mine));
+        assert_eq!(
+            presented(&carrying(&format!("oleafly_web={planted}")), &config),
+            None
+        );
     }
 
     #[tokio::test]

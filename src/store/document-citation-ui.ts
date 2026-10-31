@@ -3,7 +3,6 @@ import { create } from "zustand";
 interface DocumentCitationUiState {
   modeRequest: "search" | "document";
   selectionOverride: string | null;
-  /** Snapshot of project .bib contents captured before closeProject (command palette path). */
   bibOverride: string | null;
   requestDocumentScan: (
     selection?: string,

@@ -73,8 +73,6 @@ describe("riskRequiresConfirm", () => {
     expect(riskRequiresConfirm("read")).toBe(false);
     expect(riskRequiresConfirm("write")).toBe(true);
     expect(riskRequiresConfirm("shell")).toBe(true);
-    // Network consent is granted when the user configures the connector, so
-    // classified network tools do not re-prompt per call.
     expect(riskRequiresConfirm("network")).toBe(false);
   });
 });

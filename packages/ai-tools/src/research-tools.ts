@@ -14,8 +14,6 @@ type RawToolDef = {
   execute: (input: Record<string, unknown>) => Promise<unknown>;
 };
 
-// The app builds one adapter over its Tauri client; this package stays free
-// of Tauri/store imports, matching the AiToolsHost split in tools.ts.
 export const LITERATURE_SOURCES = [
   "openalex",
   "semantic-scholar",
@@ -27,12 +25,7 @@ export const LITERATURE_SOURCES = [
 ] as const;
 
 export interface ResearchToolsHost {
-  /**
-   * Searches the scholarly indexes at once (all default ones when `sources`
-   * is empty) and returns `{ records, failures }`.
-   */
   searchLiterature(query: string, opts: { limit: number; sources?: string[] }): Promise<unknown>;
-  /** Checks a DOI (and title) or a title against Crossref; returns the verdict as is. */
   verifyCitation(input: { doi?: string; title?: string }): Promise<unknown>;
   retrieveProjectChunks(
     query: string,
@@ -172,7 +165,6 @@ export function createResearchTools(
   return tools;
 }
 
-/** What an agent may set when it creates a research task. */
 export interface ResearchTaskRequest {
   title: string;
   prompt: string;
@@ -187,23 +179,18 @@ export interface ResearchTaskRequest {
   start: boolean;
 }
 
-/** What the user sees before an agent creates a research task: all that it can do on its own. */
 export interface ResearchTaskApprovalDetails {
   title: string;
-  /** The whole prompt, as the task will get it. */
   prompt: string;
   goal: string | null;
   skills: string[];
-  /** A task an agent creates asks before each command it runs. */
   commands: "ask";
-  /** Network access for its commands; off unless the agent asked for it. */
   network: boolean;
   reviewPlanFirst: boolean;
   timeBudgetMinutes: number | null;
   start: boolean;
 }
 
-/** The prompt as far as a one-line summary shows it. */
 const SUMMARY_PROMPT_CHARS = 1_500;
 
 export function researchTaskSummary(details: ResearchTaskApprovalDetails): string {
@@ -218,7 +205,6 @@ export function researchTaskSummary(details: ResearchTaskApprovalDetails): strin
 
 export interface ResearchTaskToolsHost {
   createResearchTask(input: ResearchTaskRequest): Promise<{ id: string; title: string; status: string }>;
-  /** One task, or the latest ten when `id` is left out. */
   researchTaskStatus(id?: string): Promise<unknown>;
 }
 
@@ -249,7 +235,6 @@ interface ParsedResearchTask {
   start: boolean;
 }
 
-/** Checks what the agent passed; returns the parsed task or a message for the agent. */
 function parseResearchTaskInput(input: Record<string, unknown>): ParsedResearchTask | { error: string } {
   const title = trimmedString(input.title);
   const prompt = trimmedString(input.prompt);
@@ -273,13 +258,11 @@ function parseResearchTaskInput(input: Record<string, unknown>): ParsedResearchT
   };
 }
 
-/** The goal as the approval card shows it; `null` when it is missing or blank. */
 function approvalGoal(goal: unknown): string | null {
   const trimmed = trimmedString(goal);
   return trimmed ? trimmed.slice(0, 2_000) : null;
 }
 
-/** The brief the agent set, leaving out what it did not pass. */
 function researchTaskBrief(
   input: Record<string, unknown>,
   criteria: string[],
@@ -294,7 +277,6 @@ function researchTaskBrief(
   };
 }
 
-/** Tools that let an agent queue and check research tasks in the open project. */
 export function createResearchTaskTools(
   host: ResearchTaskToolsHost,
   opts?: { confirm?: ConfirmFn },
@@ -332,8 +314,6 @@ export function createResearchTaskTools(
         if ("error" in parsed) return parsed;
         const { title, prompt, skills, criteria, minutes, start } = parsed;
         if (confirm) {
-          // The user approves what the task may do, not only its name: the whole prompt,
-          // that its commands ask first, and whether they reach the network.
           const details: ResearchTaskApprovalDetails = {
             title,
             prompt,

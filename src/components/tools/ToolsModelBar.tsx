@@ -1,6 +1,3 @@
-// The Tools model in the converter views, the scanned-PDF banner and
-// Settings, AI, Tools: a picker, a notice that says where images go, and the
-// estimate shown before a long scan.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -33,7 +30,6 @@ import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/store/settings";
 
-/** The saved AI config, kept current with every settings write. */
 function useToolsConfig(): AppConfig | null {
   const [config, setConfig] = useState<AppConfig | null>(() => knownProviderConfig());
   useEffect(() => {
@@ -62,7 +58,6 @@ export interface ToolsModelState {
   select(providerId: string, modelId: string): Promise<void>;
 }
 
-/** The Tools' Ollama listing, shared by the picker and the notice. */
 function useOllamaModels(config: AppConfig | null, enabled = true) {
   const host = config ? toolsOllamaHost(config) : null;
   return useQuery({
@@ -135,10 +130,6 @@ export function ToolsModelPicker({
   );
 }
 
-/** Where images go with the current choice. Shown before the user converts.
- * With Automatic and no local model that reads images, the editor's Image to
- * LaTeX/Typst uses the assistant's model, so the images notice says so
- * unless `editorFallback` is false (a converter, which never falls back). */
 export function ToolsModelNotice({
   scope,
   editorFallback = true,
@@ -147,7 +138,6 @@ export function ToolsModelNotice({
   const config = useToolsConfig();
   const choice = config ? toolsChoice(config) : null;
   const checksFallback = editorFallback && scope === "images" && config !== null && choice === null;
-  // The listing also shows whether a picked Ollama model runs on Ollama Cloud.
   const ollama = useOllamaModels(config, checksFallback || choice?.provider === LOCAL_TOOLS_PROVIDER);
   if (!config) return null;
   const summary = describeToolsChoice(config, ollama.data);
@@ -192,16 +182,12 @@ export function ToolsModelNotice({
 
 type Translate = ReturnType<typeof useTranslation<["researchTools"]>>["t"];
 
-/** The assistant's model that editor images fall back to, once the Ollama
- * listing has answered or failed, or null when there is no such fallback. */
 function editorFallbackName(config: AppConfig, ollama: ReturnType<typeof useOllamaModels>): string | null {
   if (!ollama.isError && !ollama.isSuccess) return null;
   const fallback = editorImageFallback(config, ollama.isError ? null : (ollama.data ?? null));
   return fallback ? destinationName(fallback) : null;
 }
 
-/** The notice for a destination that is neither this computer nor the
- * assistant's model: the Ollama host, Mathpix or a hosted provider. */
 function sentToText(
   t: Translate,
   scope: "images" | "scans",
@@ -251,7 +237,6 @@ function estimateText(t: Translate, sizes: readonly PageSize[], summary: ToolsCh
   }
 }
 
-/** The page count of a scan and, for a hosted model or Mathpix, its rough price. */
 export function ScanEstimateText({ sizes }: Readonly<{ sizes: readonly PageSize[] }>) {
   const { t } = useTranslation(["researchTools"]);
   const config = useToolsConfig();
@@ -264,8 +249,6 @@ export function ScanEstimateText({ sizes }: Readonly<{ sizes: readonly PageSize[
   );
 }
 
-/** Opens Settings on AI (the Ollama card, on Providers and keys) or on AI,
- * Tools. */
 export function openToolsSettings(target: ToolsSettingsTarget): void {
   const settings = useSettingsStore.getState();
   settings.setSettingsInitialSection("ai");

@@ -4,12 +4,6 @@ use std::time::Duration;
 use rusqlite::Connection;
 use serde::Serialize;
 
-// The SQLite WAL library at ~/.oleafly/library.db: crash-safe mirror of the
-// per-project chat JSON, an FTS5 session index ("find the chat where…"), the
-// usage ledger, and per-project AI budgets. The JSON files under chats/
-// remain the canonical store for now; every save re-indexes here
-// best-effort, and a missing or corrupted database rebuilds from JSON.
-
 fn db_path(root: &Path) -> PathBuf {
     root.join("library.db")
 }
@@ -253,7 +247,6 @@ fn chat_text(chat: &serde_json::Value) -> (String, String, String) {
     (chat_id, title, content)
 }
 
-/// Deletes every row of one project from the store and the session index.
 fn clear_project_rows(conn: &Connection, project_id: &str) -> Result<(), String> {
     conn.execute("DELETE FROM chats WHERE project_id = ?1", [project_id])
         .map_err(|e| format!("library chats delete failed: {e}"))?;
@@ -265,8 +258,6 @@ fn clear_project_rows(conn: &Connection, project_id: &str) -> Result<(), String>
     Ok(())
 }
 
-/// Adds one chat's rows to the store and the session index. A chat without
-/// an id is left out (`false`).
 fn insert_chat_rows(
     conn: &Connection,
     project_id: &str,
@@ -291,8 +282,6 @@ fn insert_chat_rows(
     Ok(true)
 }
 
-/// Mirrors one project's chats JSON into the store and rebuilds its rows in
-/// the session index.
 pub fn index_project_chats(root: &Path, project_id: &str, json: &str) -> Result<(), String> {
     let parsed: serde_json::Value =
         serde_json::from_str(json).map_err(|e| format!("chats json invalid: {e}"))?;
@@ -309,7 +298,6 @@ pub fn index_project_chats(root: &Path, project_id: &str, json: &str) -> Result<
         .map_err(|e| format!("library commit failed: {e}"))
 }
 
-/// Replaces one chat's rows in the store and the session index.
 pub fn index_chat(root: &Path, project_id: &str, chat: &serde_json::Value) -> Result<(), String> {
     let (chat_id, _, _) = chat_text(chat);
     if chat_id.is_empty() {
@@ -334,7 +322,6 @@ pub fn index_chat(root: &Path, project_id: &str, chat: &serde_json::Value) -> Re
         .map_err(|e| format!("library commit failed: {e}"))
 }
 
-/// Removes one chat's rows from the store and the session index.
 pub fn drop_chat(root: &Path, project_id: &str, chat_id: &str) -> Result<(), String> {
     let mut conn = open(root)?;
     let tx = conn
@@ -354,15 +341,8 @@ pub fn drop_chat(root: &Path, project_id: &str, chat_id: &str) -> Result<(), Str
         .map_err(|e| format!("library commit failed: {e}"))
 }
 
-/// The `chat_id` of a row in `chats` that records a project's rows were
-/// built from its chats on disk, so later launches leave the project be.
-/// 0.4.7 rebuilds a project's rows from its legacy file after a downgrade,
-/// deleting every row of the project first, this one too: such a project is
-/// indexed again. A new name here indexes every project again. Chat ids
-/// never start with a dot.
 const INDEXED_MARK: &str = ".indexed-v1";
 
-/// The projects whose rows were built from their chats on disk.
 fn indexed_projects(conn: &Connection) -> Result<std::collections::HashSet<String>, String> {
     let mut statement = conn
         .prepare("SELECT project_id FROM chats WHERE chat_id = ?1")
@@ -377,17 +357,11 @@ fn indexed_projects(conn: &Connection) -> Result<std::collections::HashSet<Strin
     Ok(projects)
 }
 
-/// Where a project's chats are on disk.
 enum ChatSource {
-    /// `chats/<project>/`, one file per chat.
     Folder(PathBuf),
-    /// `chats/<project>.json`, a project 0.4.8 has not opened yet.
     Legacy(PathBuf),
 }
 
-/// Rebuilds one project's rows from its chats on disk in one transaction,
-/// and marks the project indexed. Returns what it counts as indexed: each
-/// chat file of a folder, or a legacy file as one.
 fn reindex_project(
     conn: &mut Connection,
     project_id: &str,
@@ -445,14 +419,6 @@ fn reindex_project(
     Ok(indexed)
 }
 
-/// Indexes the chats on disk of every project whose rows were not built from
-/// them yet: all of them in a new or rebuilt database, after that only new
-/// projects and those 0.4.7 re-indexed. A project's per-chat folder
-/// `chats/<project>/<chat>.json` (full bodies, so search covers chats the
-/// webview loads as stubs) is canonical once it exists, and the legacy
-/// `chats/<project>.json` that 0.4.8 leaves beside it is not read; a legacy
-/// file without a folder is indexed as it is. One connection, and one
-/// transaction per project.
 pub fn reindex_all(root: &Path) -> Result<usize, String> {
     let chats_dir = root.join("chats");
     let Ok(entries) = std::fs::read_dir(&chats_dir) else {
@@ -482,8 +448,6 @@ pub fn reindex_all(root: &Path) -> Result<usize, String> {
         if done.contains(&project_id) || crate::paths::validate_project_id(&project_id).is_err() {
             continue;
         }
-        // One project that cannot be read leaves the others be; it is tried
-        // again on the next launch.
         if let Ok(count) = reindex_project(&mut conn, &project_id, &source) {
             indexed += count;
         }
@@ -499,8 +463,6 @@ pub struct ChatSearchHit {
     pub snippet: String,
 }
 
-/// FTS5 MATCH is a query language, so raw user text with `(`, `"`, or `-`
-/// raises a syntax error instead of searching. Quote each token as a phrase.
 fn fts5_match_query(term: &str) -> Option<String> {
     let tokens: Vec<String> = term
         .split_whitespace()
@@ -622,8 +584,6 @@ pub fn usage_totals(root: &Path, project_id: &str) -> Result<UsageTotals, String
     .map_err(|e| format!("usage totals failed: {e}"))
 }
 
-/// What a research task's model calls cost so far, with the same parent
-/// dedupe as [`usage_totals`]; `None` when no record carries a cost.
 pub fn task_usage_cost(root: &Path, task_id: &str) -> Result<Option<f64>, String> {
     let conn = open(root)?;
     conn.query_row(
@@ -676,8 +636,6 @@ pub fn budget_set(root: &Path, project_id: &str, budget_usd: Option<f64>) -> Res
 
 static INDEX_BOOTSTRAP: std::sync::Once = std::sync::Once::new();
 
-/// Text a thread search should match: message bodies, reasoning summaries,
-/// tool outputs.
 fn thread_search_text(record: &oleafly_agent::items::TurnRecord) -> String {
     use oleafly_agent::items::ThreadItem;
     let mut content = String::new();
@@ -714,8 +672,6 @@ fn thread_search_text(record: &oleafly_agent::items::TurnRecord) -> String {
     content
 }
 
-/// Rewrite one thread's mirror rows from its rollout turns. The rollout file
-/// stays canonical; these tables are a rebuildable listing/search surface.
 pub fn resync_thread(
     root: &Path,
     thread_id: &str,
@@ -782,7 +738,6 @@ pub fn resync_thread(
         .map_err(|e| format!("library commit failed: {e}"))
 }
 
-/// Mark a thread archived (kept on disk, out of default listings).
 pub fn archive_thread(root: &Path, thread_id: &str) -> Result<(), String> {
     let conn = open(root)?;
     conn.execute(
@@ -793,7 +748,6 @@ pub fn archive_thread(root: &Path, thread_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Drop a thread's mirror rows entirely.
 pub fn drop_thread(root: &Path, thread_id: &str) -> Result<(), String> {
     let conn = open(root)?;
     conn.execute("DELETE FROM threads WHERE thread_id = ?1", [thread_id])
@@ -967,7 +921,6 @@ mod tests {
             {"role":"user","content":"draw a tikz diagram"}]}
     ]"#;
 
-    /// The indexes `usage_records` has.
     fn usage_indexes(conn: &Connection) -> Vec<String> {
         let mut statement = conn.prepare("PRAGMA index_list(usage_records)").unwrap();
         statement
@@ -982,7 +935,6 @@ mod tests {
         let root = temp_root("task-index");
         let conn = open(&root).unwrap();
         assert!(usage_indexes(&conn).contains(&"usage_records_task".to_string()));
-        // A library from before the index: same schema version 2, no index.
         conn.execute_batch("DROP INDEX usage_records_task;")
             .unwrap();
         conn.pragma_update(None, "user_version", 2).unwrap();
@@ -1092,7 +1044,6 @@ mod tests {
         let chats = root.path().join("chats");
         let folder = chats.join("proj-a");
         std::fs::create_dir_all(&folder).unwrap();
-        // 0.4.7's array: chat-1 as it was, and chat-2, deleted since in 0.4.8.
         std::fs::write(chats.join("proj-a.json"), CHATS).unwrap();
         std::fs::write(
             folder.join("chat-1.json"),
@@ -1105,7 +1056,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(reindex_all(root.path()).unwrap(), 2);
-        // Whatever order the folder and the file are listed in.
         assert_eq!(search_chats(root.path(), "synctex", 10).unwrap().len(), 1);
         assert!(search_chats(root.path(), "tikz", 10).unwrap().is_empty());
         assert_eq!(search_chats(root.path(), "bibfile", 10).unwrap().len(), 1);
@@ -1123,7 +1073,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(reindex_all(root.path()).unwrap(), 1);
-        // The next launch does not read the project's files again.
         std::fs::write(
             &chat,
             r#"{"id":"chat-1","title":"Bib","messages":[{"role":"user","content":"natbib now"}]}"#,
@@ -1131,8 +1080,6 @@ mod tests {
         .unwrap();
         assert_eq!(reindex_all(root.path()).unwrap(), 0);
         assert!(search_chats(root.path(), "natbib", 10).unwrap().is_empty());
-        // 0.4.7, after a downgrade, rebuilt the project's rows from its
-        // legacy file: the project is indexed again from its folder.
         index_project_chats(root.path(), "proj-a", "[]").unwrap();
         assert_eq!(reindex_all(root.path()).unwrap(), 1);
         assert_eq!(search_chats(root.path(), "natbib", 10).unwrap().len(), 1);
@@ -1217,11 +1164,9 @@ mod tests {
         assert_eq!(hits[0].thread_id, "thread-1");
         assert!(hits[0].snippet.contains("bibfile"));
 
-        // A resync with no turns drops the thread from listings.
         resync_thread(&root, "thread-1", "proj", &[]).unwrap();
         assert!(thread_summaries(&root, false).unwrap().is_empty());
 
-        // Archived threads stay out of default listings and search.
         resync_thread(&root, "thread-2", "proj", &turns).unwrap();
         archive_thread(&root, "thread-2").unwrap();
         assert!(thread_summaries(&root, false).unwrap().is_empty());

@@ -55,7 +55,6 @@ describe("runPreflight", () => {
     const readerText = ["Jane Doe", "Experience", "Acme", "Education", "MIT", "Skills", "Rust"].join("\n");
     const r = runPreflight({ source: "\\documentclass{article}", readerText });
     expect(r.atsParse?.isResume).toBe(true);
-    // No email in the reader text, so a parser-missing-email finding should fire.
     expect(r.findings.some((f) => f.id === "ats-no-email")).toBe(true);
   });
 

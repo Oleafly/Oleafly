@@ -7,9 +7,6 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { createSyncTexModule, type SyncTexExports } from "./engine";
 import { loadSyncTex, SYNCTEX_WASM_URL, type SyncTexModule, SyncTexError } from "./index";
 
-// The golden files hold the desktop's answers, written by the native search
-// in crates/oleafly-doctools/tests/synctex_golden.rs; the floats in them are
-// exact, so the module has to match them exactly.
 interface Golden {
   fixture: string;
   roots: string[];
@@ -27,7 +24,6 @@ const goldens: Golden[] = readdirSync(fixtures)
   .map((name) => JSON.parse(readFileSync(path.join(fixtures, name), "utf8")) as Golden);
 const gz = (golden: Golden) => new Uint8Array(readFileSync(path.join(fixtures, golden.fixture)));
 
-/** The same output as if it had been compiled in `root` instead. */
 function movedTo(golden: Golden, root: string): Uint8Array {
   const text = gunzipSync(gz(golden)).toString("utf8");
   const moved = text.replaceAll(`:${golden.roots[0]}/`, `:${root}`);
@@ -65,6 +61,15 @@ beforeAll(async () => {
 });
 
 describe("SyncTeX in the browser", () => {
+  it("maps lines between the compiled and the current source as the desktop does", () => {
+    const compiled = "alpha\nbeta\ngamma\ndelta";
+    const current = "intro\nalpha\nbeta\ngamma\ndelta";
+    expect(engine.mapLine(compiled, current, 4, true)).toEqual({ line: 3, exact: true });
+    expect(engine.mapLine(compiled, current, 2, false)).toEqual({ line: 3, exact: true });
+    expect(engine.mapLine("alpha\nbeta", "one\ntwo", 1, true)).toBeNull();
+    expect(codeOf(() => engine.mapLine(compiled, current, 0, true))).toBe("bad-input");
+  });
+
   it("has a golden file for every fixture", () => {
     expect(goldens.map((golden) => golden.fixture)).toEqual([
       "academic-article.synctex.gz",

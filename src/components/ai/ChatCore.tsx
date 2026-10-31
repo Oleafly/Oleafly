@@ -304,9 +304,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 const MAX_AGENT_TOOL_DEFINITIONS = 128;
 const IMAGE_TOOLS = new Set(["preview_figure", "load_image", "verify_pdf_pages"]);
-/** When the chat's cost is read back from the usage ledger after a run. */
 const CHAT_COST_REFRESH_MS = 1_000;
-/** The longest a streaming reply goes unsaved. */
 const PERSIST_MAX_WAIT_MS = 2_000;
 
 export function steerRunAlreadyEnded(error: unknown): boolean {
@@ -328,8 +326,6 @@ function steerQueuedFollowUp(
   });
 }
 
-/** Keeps what a run streamed since its last save, marked as stopped, in the
- * project the run belongs to (its chats are still the ones loaded). */
 function saveStoppedReply(
   runProjectId: string | null,
   runChatId: string | null,
@@ -512,18 +508,12 @@ function noTurnChanges(unavailable: TurnBegin["unavailable"]): ChatTurnChanges {
   return { snapshotId: null, files: [], moreFiles: 0, skipped: [], overlapped: false, unavailable };
 }
 
-/**
- * Saves open editors, then takes the before-turn copy. Unsaved edits must be
- * on disk first, or Undo would treat the user's typing as the assistant's.
- * When the save fails the turn runs without Undo.
- */
 async function beginBuiltInTurn(projectId: string): Promise<TurnBegin | null> {
   try {
     await flushOpenFilesToDisk(projectId, "save before assistant run");
   } catch {
     return null;
   }
-  // A turn a reload of this window left open would mark this one overlapped.
   await closeLeftoverBuiltInTurns();
   try {
     const begun = await agentTurnBegin(projectId, BUILT_IN_TURN_LABEL);
@@ -545,13 +535,9 @@ async function finishBuiltInTurn(
   if (!begun.snapshotId) return begun.unavailable ? noTurnChanges(begun.unavailable) : null;
   const snapshotId = begun.snapshotId;
   try {
-    // insert_figure edits the open editor; its text reaches the disk with the
-    // next save, which must land before the comparison, not in the next turn.
     await flushOpenFilesToDisk(projectId, "save after assistant run").catch(() => undefined);
     const changes = await agentTurnFinish(projectId, snapshotId, [...toolPaths]);
     if (changes.files.length + changes.moreFiles === 0 && !changes.unavailable) return null;
-    // A committed file may be one of the unlisted ones; keep it so Undo all
-    // does not ask for every file.
     const committedHere = Object.fromEntries(
       Object.entries(committed).filter(
         ([path]) => changes.moreFiles > 0 || changes.files.some((file) => file.path === path),
@@ -570,7 +556,6 @@ function toolWrittenPaths(args: unknown, output: Record<string, unknown> | null)
   const values = [
     ...(args && typeof args === "object" ? ["path", "from", "to"].map((key) => (args as Record<string, unknown>)[key]) : []),
     output?.path,
-    // insert_figure's saved PNG.
     output?.figure,
   ];
   return values.filter((value): value is string => typeof value === "string" && value.length > 0);
@@ -629,9 +614,6 @@ export function drainPendingImages(
   return supportsVision ? images : [];
 }
 
-// Multiple toolsets can share a mode (e.g. "project-tools" and "research-tools"
-// both run in "chat"); merge every match instead of picking only the first, or
-// later contributions silently never reach the model.
 export function resolveChatTools(
   toolsets: AiToolsetContribution[],
   mode: string,
@@ -739,15 +721,9 @@ export async function mentionAttachments(
 
 const EMPTY_FOLLOW_UPS: QueuedFollowUp[] = [];
 
-// The status pill floats over the bottom of the message scroller (bottom-2).
-// The scroller keeps pb-12 for the pill alone; while its card is pinned open
-// it reserves the overlay's measured height plus the offset and a small gap.
 const STATUS_PILL_ROOM_PX = 48;
 const STATUS_OVERLAY_OFFSET_PX = 8;
 const STATUS_CARD_GAP_PX = 12;
-// Card height cap: max-h-72 at most, never below a usable 96px, and in a
-// short chat small enough that the pill, its gaps and ~120px of the reply
-// stay visible above the composer.
 const STATUS_CARD_MAX_PX = 288;
 const STATUS_CARD_MIN_PX = 96;
 const STATUS_CARD_CHROME_PX = 56;
@@ -850,7 +826,6 @@ export function modelNoticeText(
   return chatOnly ? chatOnlyModelHint() : "";
 }
 
-/** The notice a run raised, or `null` for a code the chat does not show. */
 function runNoticeText(code: string, detail: string | null): string | null {
   const name = typeof detail === "string" ? detail : "";
   if (code === "attachment_sent_as_text") return i18n.t(($) => $.ai.attachments.sentAsText, { name });
@@ -859,7 +834,6 @@ function runNoticeText(code: string, detail: string | null): string | null {
   return null;
 }
 
-/** Swaps a tool call's inline screenshot for the reference it was stored under. */
 function withStoredToolImage(
   message: ChatMessage,
   toolId: string | undefined,
@@ -934,8 +908,6 @@ export function ChatCore() {
   const planApprovalStatus: PlanApprovalStatus = planMode
     ? planApprovalForChat(planApprovalByChat, activeChatId)
     : "planning";
-  // The sentinel keeps the selector's snapshot referentially stable for
-  // chats without queued follow-ups (a fresh [] loops useSyncExternalStore).
   const queuedFollowUps = useAgentTurnsStore((s) =>
     activeChatId ? s.queuedByChat[activeChatId] ?? EMPTY_FOLLOW_UPS : EMPTY_FOLLOW_UPS,
   );
@@ -992,8 +964,6 @@ export function ChatCore() {
   }, []);
 
   useEffect(() => {
-    // Close turns a reload of this window left open, before any agent begins
-    // a new one in the same project.
     void closeLeftoverBuiltInTurns();
   }, []);
 
@@ -1063,8 +1033,6 @@ export function ChatCore() {
   const commitLiveMessages = useCallback(() => {
     if (committedMessagesRef.current !== messagesRef.current) setMessages(messagesRef.current);
   }, [setMessages]);
-  // The transcript on show can hold files the saved chat does not list yet
-  // (a reply streaming); deleting another chat collects only what nothing uses.
   useEffect(() => registerAttachmentHolder(() => messageAttachmentRefs(messagesRef.current)), []);
   const delegatedSubagents = useMemo(
     () => messages.flatMap((message) => message.subagents ?? []),
@@ -1073,13 +1041,9 @@ export function ChatCore() {
   const agentThreadId = useAgentTurnsStore((s) =>
     activeChatId ? s.threadByChat[activeChatId] : undefined,
   );
-  // The composer's draft (text and attachments) lives in the drafts store,
-  // so it survives switching panels. Each chat has its own, and so has the
-  // next new chat: text typed for one chat is never sent into another.
   const composerId = builtinComposerId(projectId, chatsProjectId === projectId ? activeChatId : null);
   const composerIdRef = useRef(composerId);
   composerIdRef.current = composerId;
-  // The draft on show; it changes with the chat, in an effect further down.
   const shownDraftRef = useRef(composerId);
   const composerRef = useRef<ChatComposerHandle>(null);
   const [inputText, setInputText] = useState(() => draftText(composerId));
@@ -1110,23 +1074,15 @@ export function ChatCore() {
   const [model, setModel] = useState(initialProvider?.state.model ?? "gpt-4o");
   const [providerConfigReady, setProviderConfigReady] = useState(initialProvider !== null);
   const [providerConfigError, setProviderConfigError] = useState(false);
-  // So the switcher can offer every provider the user has set up, not just the default one.
   const [keysMap, setKeysMap] = useState<Record<string, string>>(
     () => initialProvider?.state.keysMap ?? {},
   );
-  // Per-provider enable/disable/custom model state from Settings; falls back
-  // to the static catalog for providers that haven't been touched there yet.
   const [providerModelsMap, setProviderModelsMap] = useState<Record<string, StoredModel[]>>(
     () => initialProvider?.state.providerModelsMap ?? {},
   );
-  // User-defined providers from Settings, so they appear in the switcher and
-  // so chat-time model construction can thread their base URL through.
   const [customProviders, setCustomProviders] = useState<CustomProvider[]>(
     () => initialProvider?.state.customProviders ?? [],
   );
-  // Whether the active provider can take a request: a key or host, or a custom
-  // provider that needs none. Derived from the provider on screen, so a model
-  // switch, a new chat and a config change all keep it right.
   const providerReady = isProviderConfigured(provider, keysMap, customProviders);
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [modelProbes, setModelProbes] = useState<Record<string, ModelProbe>>(() =>
@@ -1144,7 +1100,6 @@ export function ChatCore() {
   const [quotaWarning, setQuotaWarning] = useState(false);
   const [saveFailedWarning, setSaveFailedWarning] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<RegisteredApproval | null>(null);
-  // Effort and web for a chat not created yet; a chat keeps its own.
   const [newChatSettings, setNewChatSettings] = useState<{
     effort?: EffortLevel;
     web?: WebSetting;
@@ -1154,7 +1109,6 @@ export function ChatCore() {
   const [droppedTurns, setDroppedTurns] = useState(0);
   const saveProblems = useChatsStore((s) => s.saveProblems);
   const skippedOnLoad = useChatsStore((s) => s.skippedOnLoad);
-  // Editing a sent message: what to replay, and the draft to restore on cancel.
   const [editTarget, setEditTarget] = useState<{
     messageId: string;
     userIndex: number;
@@ -1163,12 +1117,8 @@ export function ChatCore() {
   } | null>(null);
   const editTargetRef = useRef(editTarget);
   editTargetRef.current = editTarget;
-  // The draft set aside by an edit is not in the drafts store; its files must
-  // survive an attachment collection (deleting a chat runs one).
   const editStash = editTarget?.stash.attachments;
   useEffect(() => (editStash && editStash.length > 0 ? holdDraftAttachments(editStash) : undefined), [editStash]);
-  // Leaving an edit, by cancelling it or by opening another chat, puts back
-  // the draft the composer held before it.
   const cancelEdit = useCallback(() => {
     const target = editTargetRef.current;
     if (!target) return;
@@ -1204,12 +1154,8 @@ export function ChatCore() {
   const handoffPending = useAgentHandoffStore((s) => s.pendingPrompt);
   const handoffAutoSend = useAgentHandoffStore((s) => s.autoSend);
   const pendingImagesRef = useRef<string[]>([]);
-  // Timestamp of the last stream part, for the stall watchdog.
   const lastPartAtRef = useRef<number>(0);
-  // User's own system-prompt addition (sandboxed into our prompt at send time).
   const [customPrompt, setCustomPrompt] = useState(initialProvider?.state.customPrompt ?? "");
-  // Named, colored saved prompts from AI settings; and the one active for
-  // this session (null = use customPrompt instead).
   const [personas, setPersonas] = useState<Persona[]>(
     () => initialProvider?.state.personas ?? [],
   );
@@ -1223,8 +1169,6 @@ export function ChatCore() {
   personasRef.current = personas;
   const activePersonaIdRef = useRef<string | null>(null);
   activePersonaIdRef.current = activePersonaId;
-  // Last-loaded config, so newChat can reset the session model to the saved
-  // default without an extra async round trip.
   const cfgRef = useRef<AppConfig | null>(initialProvider?.cfg ?? null);
   const goalInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -1238,14 +1182,9 @@ export function ChatCore() {
     inputPlaceholder = t(($) => $.ai.composer.planRevisionPlaceholder);
   else inputPlaceholder = t(($) => $.ai.composer.placeholderDefault);
   const scrollRef = useRef<HTMLDivElement>(null);
-  // Whether the user is pinned near the bottom. Only then do we auto-scroll on
-  // new tokens, so a user who has scrolled up to read isn't yanked back down.
   const nearBottomRef = useRef(true);
-  // Aborts the in-flight AI run (Stop button, project switch, unmount).
   const abortRef = useRef<AbortController | null>(null);
   const runOwnerRef = useRef(false);
-  // Persisted per-project decisions (~/.oleafly/approvals.toml), loaded per
-  // run: allow skips the prompt, deny skips execution.
   const projectApprovalsRef = useRef<Record<string, ToolDecision>>({});
   const queryClient = useQueryClient();
   const skillsQuery = useSkills(projectId);
@@ -1361,15 +1300,9 @@ export function ChatCore() {
       toast.error(i18n.t(($) => $.ai.toasts.skillDraftFailed, { error: describeError(error) }));
     }
   }, [openSkillsSettings, queryClient]);
-  // Trailing-debounce timer for persisting the streaming conversation.
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persistPendingRef = useRef<{ chatId: string; msgs: ChatMessage[] } | null>(null);
-  // When the save now waiting was first put off.
   const persistSinceRef = useRef(0);
-  // Two-tier stream flushing: text deltas ride the frame cadence (rAF while
-  // visible, a timer otherwise), structural output rides a 50 ms interval,
-  // and terminal events drain both before applying. Patches batch into one
-  // React update per flush either way.
   const streamPatchesRef = useRef<
     Record<
       "text" | "output",
@@ -1390,8 +1323,6 @@ export function ChatCore() {
   }, []);
   const runIsolationRef = useRef(new ChatRunIsolation());
 
-  // Surface a one-time warning if chat history can no longer be saved (quota
-  // in the browser build, a failed disk write on the desktop).
   useEffect(() => {
     const onQuota = () => setQuotaWarning(true);
     const onSaveFailed = () => setSaveFailedWarning(true);
@@ -1403,10 +1334,6 @@ export function ChatCore() {
     };
   }, []);
 
-  // Stall notice: if the provider goes quiet mid-run, tell the user it is
-  // still working rather than looking frozen. Hard aborts belong to the
-  // backend stream's idle timeout, which knows whether the provider is a
-  // local server (long silent prompt prefill is normal there) or a cloud API.
   useEffect(() => {
     if (!streaming) return;
     const id = window.setInterval(() => {
@@ -1473,8 +1400,6 @@ export function ChatCore() {
       .catch(() => setOllamaModels([]));
   }, [keysMap.ollama]);
 
-  // Session-local only: switching models mid-chat no longer changes the
-  // saved default, so other chats/sessions keep starting on the configured one.
   const selectModel = useCallback(
     (pid: string, mid: string) => {
       setProvider(pid);
@@ -1483,8 +1408,6 @@ export function ChatCore() {
     []
   );
 
-  // Providers the user has set up (a non-empty key/host, or a custom
-  // provider with an optional key), in catalog order.
   const allProviders = mergeCustomProviders(customProviders);
   const activeProviderName = allProviders.find((item) => item.id === provider)?.name;
   const modelGroupSource = {
@@ -1574,9 +1497,6 @@ export function ChatCore() {
     [composerMentionTargets, invocableSkillIds],
   );
 
-  // Load sticky agent memory when the project changes. Also drop the in-run
-  // checklist, which is not project-scoped, so project A's plan does not
-  // linger under project B.
   useEffect(() => {
     if (projectId) useAgentMemoryStore.getState().load(projectId);
     useAgentTodoStore.getState().bindProject(projectId);
@@ -1591,10 +1511,6 @@ export function ChatCore() {
     useAgentTodoStore.getState().selectChat(activeChatId);
   }, [activeChatId]);
 
-  // The panel unmounts whenever the sidebar collapses or another rail tab is
-  // shown, so this effect also runs on every REMOUNT - in that case (same
-  // project) restore the active conversation instead of resetting to a new
-  // chat. Only a real project switch starts fresh.
   useEffect(() => {
     if (!projectId) {
       setMessages([]);
@@ -1624,20 +1540,12 @@ export function ChatCore() {
     };
   }, [projectId, loadChats, setActiveChat, setMessages]);
 
-  // Immediate write (see persistDebounced below for the streaming path).
-  // Streaming saves skip the search index; the save at the end of a run
-  // indexes the finished reply.
   const persist = useCallback((chatId: string | null, msgs: ChatMessage[]) => {
     if (chatId) useChatsStore.getState().saveMessages(chatId, msgs, { index: false });
   }, []);
 
-  // Trailing-debounced persist: during streaming, `updateLast` fires often;
-  // without debouncing we'd rewrite the whole conversation per token.
-  // Coalesce to ~1 write/400ms (disk via Tauri, or localStorage in browser).
   const persistDebounced = useCallback(
     (chatId: string | null, msgs: ChatMessage[]) => {
-      // A reply that streams without a pause is still saved every couple of
-      // seconds, so little is lost when the window closes or the project changes.
       const now = Date.now();
       const pending = persistPendingRef.current;
       if (pending?.chatId !== chatId) persistSinceRef.current = now;
@@ -1663,7 +1571,6 @@ export function ChatCore() {
     [persist]
   );
 
-  // Reads the chat's cost (subagents included) from the usage ledger.
   const refreshChatCost = useCallback(
     async (costProjectId: string, chatId: string, threadId: string | null) => {
       if (!threadId) return;
@@ -1705,18 +1612,12 @@ export function ChatCore() {
     [flushPendingPersist],
   );
 
-  // Open an existing chat from history. Guarded by `streaming` (like newChat)
-  // so switching chats mid-stream can't splice the in-flight run's tokens into
-  // a different conversation. Covers the recent-chats list and the history modal.
   const openChat = useCallback(
     async (chat: StoredChat) => {
-      // A send that is still preparing has not set `streaming` yet, but it will
-      // take the chat on show: switching now would send into the other chat.
       if (streaming || sendPreparingRef.current || runOwnerRef.current) return;
       let body = chat;
       if (chat.stub) {
         const openingProject = useFilesStore.getState().projectId;
-        // Older chats load as stubs; read the messages before showing them.
         try {
           body = (await useChatsStore.getState().loadChatBody(chat.id)) ?? chat;
         } catch (error) {
@@ -1729,14 +1630,12 @@ export function ChatCore() {
           return;
         }
         if (sendPreparingRef.current || runOwnerRef.current) return;
-        // The project changed while the chat was read: it is not one of the open project's chats.
         if (useFilesStore.getState().projectId !== openingProject) return;
       }
       setActiveChat(body.id);
       setMessages(body.messages);
       useAgentTodoStore.getState().selectChat(body.id);
       setHistoryOpen(false);
-      // The usage of the last run and a trimmed-history note belong to the chat they ran in.
       setRunUsage(null);
       setDroppedTurns(0);
       cancelEdit();
@@ -1744,7 +1643,6 @@ export function ChatCore() {
     [streaming, setActiveChat, setMessages, cancelEdit]
   );
 
-  // Clears the transcript for a new chat, whatever is running.
   const startNewChat = useCallback(() => {
     setActiveChat(null);
     setMessages([]);
@@ -1754,8 +1652,6 @@ export function ChatCore() {
     setDroppedTurns(0);
     setRunUsage(null);
     cancelEdit();
-    // Drop any mid-chat model switch too: a fresh chat starts on the
-    // configured default, not whatever the last conversation was left on.
     const cfg = cfgRef.current;
     if (cfg) {
       const { providerId, modelId } = pickActiveProvider(cfg);
@@ -1769,9 +1665,6 @@ export function ChatCore() {
     startNewChat();
   }, [streaming, startNewChat]);
 
-  // Deleting the chat a run is writing into stops that run first, then clears
-  // the transcript: left alone, the run would write into a chat that is gone
-  // and the next message would bring the whole conversation back as a new chat.
   const deleteChat = useCallback(
     (id: string) => {
       const run = activeChatRun();
@@ -1785,14 +1678,12 @@ export function ChatCore() {
       const deletedDraft = builtinComposerId(projectId, id);
       const editing = editTargetRef.current;
       if (editing && wasShown) {
-        // What was typed before the edit goes to the new chat; the edit goes with the chat.
         drafts.setText(deletedDraft, editing.stash.text);
         drafts.setAttachments(deletedDraft, editing.stash.attachments);
         drafts.moveDraft(deletedDraft, builtinComposerId(projectId));
         editTargetRef.current = null;
         setEditTarget(null);
       }
-      // The chat's own draft goes too, so its files can be collected.
       drafts.setText(deletedDraft, "");
       drafts.setAttachments(deletedDraft, []);
       removeChat(id);
@@ -1893,7 +1784,6 @@ export function ChatCore() {
   }, []);
   const attachCommands = createAttachCommands(commandActions);
 
-  // Places the caret at the end of text the composer just received.
   const focusComposerAt = useCallback((position: number) => {
     requestAnimationFrame(() => {
       composerRef.current?.setCaret(position);
@@ -1903,7 +1793,6 @@ export function ChatCore() {
 
   const pickHomeSkill = useCallback(
     (skill: SkillEntry) => {
-      // The command goes before what the user typed, which stays.
       const command = `/${skill.id} `;
       const typed = inputRef.current.trimStart();
       setInput(typed.startsWith(command) ? typed : `${command}${typed}`);
@@ -1959,9 +1848,6 @@ export function ChatCore() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   };
 
-  // Show a jump-to-bottom button once the user has scrolled up, but only when the
-  // conversation is long enough to matter (content at least twice the viewport,
-  // i.e. the scroll thumb is at most half the track).
   const onMessagesScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
@@ -1975,8 +1861,6 @@ export function ChatCore() {
     chatId: string | null;
     apply: (message: ChatMessage) => ChatMessage;
   }>) => {
-    // A patch is for the chat on show; one that lands after another chat
-    // opened (a screenshot stored late) must not change or save that chat.
     const shownChatId = useChatsStore.getState().activeId;
     const applicable = patches.filter((patch) => patch.chatId === shownChatId);
     if (!applicable.length) return;
@@ -2041,9 +1925,6 @@ export function ChatCore() {
     [queueStreamDrain],
   );
 
-  // What the model picker holds now. The follow-up queued during a run is sent
-  // from that run's own `send`, a closure from when the run started, so `send`
-  // reads the picked model here and not from its closure.
   const pickedModelRef = useRef({ provider, model, providerModelsMap, providerReady, activeProviderName });
   pickedModelRef.current = { provider, model, providerModelsMap, providerReady, activeProviderName };
 
@@ -2052,20 +1933,13 @@ export function ChatCore() {
     queued?: QueuedFollowUp,
     options?: {
       approvedPlan?: boolean;
-      /**
-       * Regenerate or edit: send these attachments, not the draft's. `commit`
-       * puts the new turn in place of the old one; it runs once every check
-       * has passed, so a run that cannot start leaves the transcript as it was.
-       */
       replay?: { attachments: readonly DraftAttachment[]; commit?: () => Promise<void> | void };
-      /** Start a new chat with web access on (literature quick starts). */
       web?: boolean;
     },
   ) => {
     const { provider, model, providerModelsMap, providerReady, activeProviderName } = pickedModelRef.current;
     const sendComposerId = composerIdRef.current;
     const draft = draftAttachments(sendComposerId);
-    // Attachments still being prepared hold the message back.
     if (!options?.replay && !queued && draft.some((item) => item.status === "processing")) return;
     const outgoing: DraftAttachment[] = (
       options?.replay?.attachments ?? queued?.attachments ?? readyAttachments(draft)
@@ -2075,8 +1949,6 @@ export function ChatCore() {
     const sendSequence = sendSequenceRef.current + 1;
     sendSequenceRef.current = sendSequence;
     const inputRevision = inputRevisionRef.current;
-    // Steer-vs-queue: while a turn runs, Enter queues the message for the
-    // next turn; an explicit Steer injects it mid-run at a message boundary.
     if (streaming || activeChatRun()) {
       if (!queued && !options?.replay && activeChatId) {
         useAgentTurnsStore.getState().queueFollowUp(activeChatId, text, outgoing);
@@ -2266,12 +2138,9 @@ export function ChatCore() {
     const updateRunLastText = (fn: (message: ChatMessage) => ChatMessage) => {
       if (runIsCurrent()) updateLast(runChatId, fn, "text");
     };
-    // Screenshots this run stored, kept out of an attachment collection until
-    // the chat lists them; and the stores still under way.
     const runImageRefs: string[] = [];
     const runImageStores: Promise<unknown>[] = [];
     let releaseRunImages: (() => void) | null = null;
-    // Set once the run's last save is made: later patches go to the saved chat.
     let runSaved = false;
     const collectRunImage = (dataUrl: string) => {
       runPendingImages.push(dataUrl);
@@ -2288,9 +2157,6 @@ export function ChatCore() {
         return m;
       });
       releaseRunImages ??= registerAttachmentHolder(() => runImageRefs);
-      // The chat keeps the screenshot by reference. The data URL shows it until
-      // the reference is stored, then goes: a long run would otherwise hold
-      // every screenshot in memory until the app restarts.
       const stored = storeToolImage(runProjectId, dataUrl).then((ref) => {
         if (!ref) return;
         runImageRefs.push(ref.sha256);
@@ -2298,7 +2164,6 @@ export function ChatCore() {
           updateRunLast((m) => withStoredToolImage(m, toolId, ref));
           return;
         }
-        // The run is over: the saved chat takes the reference, whatever chat is on show now.
         const chats = useChatsStore.getState();
         const saved = runChatId && chats.projectId === runProjectId ? chats.byId(runChatId)?.messages : undefined;
         const next = saved?.map((m) => withStoredToolImage(m, toolId, ref));
@@ -2452,9 +2317,6 @@ export function ChatCore() {
 
     const priorMessages = messagesRef.current;
     const createdAt = Date.now();
-    // Optimistic turn + thread scoping: the record exists before any
-    // request, and the chat keeps one rollout thread across sends. The user
-    // message keeps the turn id, so a later edit can drop exactly this turn.
     const clientTurnId = crypto.randomUUID();
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -2502,7 +2364,6 @@ export function ChatCore() {
     lastPartAtRef.current = Date.now();
     runHandle.lastPartAt = Date.now();
 
-    // Persist this conversation as a chat (creates one on the first message).
     {
       const cs = useChatsStore.getState();
       let chatId = cs.projectId === projectId ? cs.activeId : null;
@@ -2512,12 +2373,10 @@ export function ChatCore() {
           web: options?.web ? WEB_ON : newChatSettingsRef.current.web,
         });
         chatId = created.id;
-        // What was typed for the next message since pressing send belongs to the chat that now exists.
         if (sendComposerId === builtinComposerId(projectId)) {
           useComposerDrafts.getState().moveDraft(sendComposerId, builtinComposerId(projectId, created.id));
         }
       } else if (chatId && options?.web) {
-        // A quick start that needs the web turns it on in the chat it starts in too.
         cs.setChatSettings(chatId, { web: WEB_ON });
       }
       runChatId = chatId;
@@ -2555,17 +2414,12 @@ export function ChatCore() {
         useAgentTodoStore.getState().beginTurn(runChatId, {
           keep: planTurn === "revision" || planTurn === "execution",
         });
-        // The checklist this planning turn starts from. update_todos always
-        // stores a new array, so an identical reference at the end means the
-        // model never wrote one.
         if (planGated) planTodosAtStart = useAgentTodoStore.getState().todosForChat(runChatId);
       } catch (error) {
         turnSetupError = error;
       }
     }
 
-    // An active persona replaces the user's default custom instructions for
-    // this request; otherwise fall back to those default instructions.
     const requestCustomPrompt = resolveResponseInstructions(
       personasRef.current,
       activePersonaIdRef.current,
@@ -2586,7 +2440,6 @@ USER_CUSTOM_INSTRUCTIONS`
     } catch {
       workspaceCtx = "(workspace context unavailable)";
     }
-    // Keyword RAG over project sources (no embeddings).
     try {
       const chunks = await retrieveProjectChunks(runText, { topK: 4 });
       const rag = formatRagContext(chunks);
@@ -2711,8 +2564,6 @@ ${sandboxedCustom}`;
       : "";
     const effectiveSystem = `${systemPrompt}${agentDelegationPrompt(runText, delegationTargetsRef.current)}${skillCatalogBlock}${requestedSkillSuffix}\n\n${approvalPostureLine(runApprovalMode)}${planTurnBlock}`;
 
-    // Conversation history: packed (recent + truncated) so long chats fit
-    // context. Recent turns send their stored attachments again.
     const runMetadata = runStoredModel?.metadata;
     const runVision = modelSupportsVision(provider, model, runMetadata?.inputModalities);
     const runNativePdf = runMetadata?.inputModalities?.includes("pdf") === true;
@@ -2736,7 +2587,6 @@ ${sandboxedCustom}`;
         await chatAttachments.userModelMessage(runText, outgoing, mentioned, attachmentContext),
       ];
     } catch (error) {
-      // The attachment module did not load: send the text alone.
       void logError("prepare chat messages", error);
       apiMessages = [
         ...packChatHistory(priorMessages).map((m): ModelMessage => ({
@@ -3085,9 +2935,6 @@ ${sandboxedCustom}`;
             await baseline;
           },
           onToolResult: ({ id, output }) => {
-            // Full output up to a generous safety ceiling: the tool badge
-            // scrolls, and the persisted chat must not silently lose payload
-            // data the run actually saw.
             const outStr = formatToolOutput(output).slice(0, 40_000);
             mirrorToolOutput(outputToolCalls.get(id), output);
             outputToolCalls.delete(id);
@@ -3209,13 +3056,10 @@ ${sandboxedCustom}`;
       if (runChatId && trackedTurnId) {
         useAgentFileChangesStore.getState().finishTurn(runChatId, trackedTurnId);
       }
-      // A planning turn that wrote no checklist gets a note under the reply,
-      // unless the reply ends in a question for the user to answer.
       if (runChatId && planTodosAtStart && runEndedCleanly && !runStoppedAtCap) {
         const checklist = useAgentTodoStore.getState().todosForChat(runChatId);
         if (checklist === planTodosAtStart || checklist.length === 0) {
           const planNote = checklist.length > 0 ? "unchanged" : "missing";
-          // Same tier as the streamed text, so it lands on the finished reply.
           updateRunLastText((m) =>
             /\?[*_)"'\s]*$/.test(m.content ?? "") ? m : { ...m, planNote },
           );
@@ -3279,7 +3123,6 @@ ${sandboxedCustom}`;
             context: usageContext ?? undefined,
           });
         }
-        // The usage ledger prices the run (subagents included) shortly after.
         const costChatId = runChatId;
         const costThreadId = turnThreadId;
         const costProjectId = projectId;
@@ -3347,7 +3190,6 @@ ${sandboxedCustom}`;
     void send(PLAN_APPROVED_MESSAGE, undefined, { approvedPlan: true });
   }, [activeChatId, send, streaming]);
 
-  // ---- Message actions: regenerate, retry, edit and resend ----
   const actionsEnabled = Boolean(
     projectId &&
       activeChatId &&
@@ -3366,7 +3208,6 @@ ${sandboxedCustom}`;
         if (draft) restored.push(draft);
         else left.push(meta.name);
       }
-      // A message saved before 0.4.8 kept only the names of its files.
       if (left.length > 0) {
         toast.info(i18n.t(($) => $.ai.attachments.notReplayed, { names: left.join(", ") }));
       }
@@ -3382,7 +3223,6 @@ ${sandboxedCustom}`;
       text: string;
       attachments: readonly DraftAttachment[];
       approvedPlan?: boolean;
-      /** The replay is going ahead: the run passed every check. */
       onCommit?: () => void;
     }) => {
       const chatsState = useChatsStore.getState();
@@ -3404,8 +3244,6 @@ ${sandboxedCustom}`;
           args.mode === "fork" ? userTurnsFrom(current, args.userIndex) : 0,
         );
         const kept = current.slice(0, args.userIndex);
-        // Nothing changes until the run is about to start: when the budget,
-        // a blocked model or a tool limit stops it, the turn is still there.
         if (args.mode === "inPlace") {
           await send(args.text, undefined, {
             replay: {
@@ -3435,8 +3273,6 @@ ${sandboxedCustom}`;
             attachments: args.attachments,
             commit: async () => {
               const newThread = threadId ? await agentThreadFork(threadId, projectId, drop) : null;
-              // The edit leaves the composer only once the fork exists: a fork
-              // that fails keeps the edited text to send again.
               args.onCommit?.();
               const fork = useChatsStore
                 .getState()
@@ -3462,7 +3298,6 @@ ${sandboxedCustom}`;
     [currentHead, projectId, send, setMessages, streaming],
   );
 
-  // Replacing replies that changed files asks first: their undo card goes away.
   const confirmReplace = useCallback((from: number, proceed: () => void) => {
     const files = changedFileCount(messagesRef.current, from);
     if (files > 0) setReplaceConfirm({ files, proceed });
@@ -3481,8 +3316,6 @@ ${sandboxedCustom}`;
     const attachments = readyAttachments(draftItems);
     if (!text.trim() && attachments.length === 0) return;
     const run = () => {
-      // The draft the user had before editing comes back once the replay is
-      // going ahead; when it cannot start, the edit stays as it is.
       const draftId = composerIdRef.current;
       void replay({
         userIndex: target.userIndex,
@@ -3530,15 +3363,12 @@ ${sandboxedCustom}`;
     };
     const attachments = savedAttachmentsAsDrafts(userMessage);
     setInput(userMessage.content);
-    // An image chip reads its stored file while it is shown (a cached URL
-    // kept in the draft could be revoked under it).
     useComposerDrafts.getState().setAttachments(composerIdRef.current, attachments);
     setEditTarget({ messageId, userIndex: index, mode: replayMode(current, index), stash });
     focusComposerAt(userMessage.content.length);
   };
   const handleMessageActionRef = useRef(handleMessageAction);
   handleMessageActionRef.current = handleMessageAction;
-  // Stable, so message rows keep their memo.
   const onMessageAction = useCallback((action: MessageAction, messageId: string) => {
     handleMessageActionRef.current(action, messageId);
   }, []);
@@ -3597,8 +3427,6 @@ ${sandboxedCustom}`;
       excludeContent: PLAN_APPROVED_MESSAGE,
     }),
   }));
-  // The conversation minimap only earns its space in the full-width AI-only
-  // layout, and only once there is more than one prompt to navigate between.
   const userPromptCount = messages.reduce(
     (count, message) => count + (message.role === "user" ? 1 : 0),
     0,
@@ -3611,8 +3439,6 @@ ${sandboxedCustom}`;
     (agentFileChangeTurn?.committedFiles.length ?? 0) > 0;
   const agentStatusActive =
     streaming || planApprovalStatus !== "planning" || agentTodosOpen;
-  // Live file counts ride the pill only while the run is going; afterwards the
-  // turn review card under the answer is the one place that lists changed files.
   const agentStatusPillVisible =
     agentStatusActive &&
     (planApprovalStatus !== "planning" || agentTodosActive.length > 0 || (streaming && agentFilesChanged));
@@ -3620,9 +3446,6 @@ ${sandboxedCustom}`;
   const firstUnavailableTurnId =
     messages.find((message) => message.role === "assistant" && message.turnChanges?.unavailable)?.id ?? null;
 
-  // Measure the status overlay (pill plus any open card) and the scroller, so
-  // a pinned card never covers the end of the reply. A callback ref follows
-  // the overlay through remounts, for example when the chat block re-renders.
   const [statusCardPinned, setStatusCardPinned] = useState(false);
   const [statusOverlayBox, setStatusOverlayBox] = useState(NO_STATUS_OVERLAY_BOX);
   const statusOverlayRef = useCallback((overlay: HTMLDivElement | null) => {
@@ -3650,8 +3473,6 @@ ${sandboxedCustom}`;
       setStatusOverlayBox(NO_STATUS_OVERLAY_BOX);
     };
   }, []);
-  // Only a pinned card (auto-pinned when a plan awaits approval, or clicked)
-  // gets reserved room; a hover card floats, so the reply does not jump.
   const statusCardRoom =
     agentStatusPillVisible && statusCardPinned && statusOverlayBox.overlay > 0
       ? Math.max(
@@ -3659,8 +3480,6 @@ ${sandboxedCustom}`;
           statusOverlayBox.overlay + STATUS_OVERLAY_OFFSET_PX + STATUS_CARD_GAP_PX,
         )
       : 0;
-  // The card opens after the message scroll effect has run, so pin the view
-  // to the bottom again once the room is added.
   useLayoutEffect(() => {
     if (statusCardRoom === 0 || !nearBottomRef.current) return;
     const scroller = scrollRef.current;
@@ -3713,10 +3532,6 @@ ${sandboxedCustom}`;
     [activeChatId, projectId, restoringCheckpoint, setMessages],
   );
 
-  // Consume only after the provider config has settled: on a cold mount the
-  // key has not loaded yet, and consuming early would silently downgrade an
-  // auto-send handoff into a draft. A draft handoff appends to whatever the
-  // user already typed instead of clobbering it.
   useEffect(() => {
     if (!handoffPending || streaming || !providerConfigReady) return;
     if (handoffAutoSend && providerReady && !engineLoaded) return;
@@ -3746,8 +3561,6 @@ ${sandboxedCustom}`;
         streamPatchesRef.current = { text: [], output: [] };
         streamDrainQueuedRef.current = { text: false, output: false };
       });
-      // What streamed since the last save is kept, marked as stopped, in the
-      // project the run belongs to (its chats are still the ones loaded).
       const pending = persistPendingRef.current;
       dropPendingPersist();
       saveStoppedReply(prev, run.chatId, pending);
@@ -3769,17 +3582,13 @@ ${sandboxedCustom}`;
     const leaving = shownDraftRef.current;
     const editing = editTargetRef.current;
     if (editing) {
-      // The draft from before the edit goes back to the chat it was typed in.
       useComposerDrafts.getState().setText(leaving, editing.stash.text);
       useComposerDrafts.getState().setAttachments(leaving, editing.stash.attachments);
     }
-    // The chat on show is not open when the project comes back, so what was
-    // typed for it waits in that project's next chat.
     useComposerDrafts.getState().moveDraft(leaving, builtinComposerId(prev));
     setEditTarget(null);
   }, [projectId, trackRunRequestId, dropPendingPersist]);
 
-  // Another chat, or another project, brings its own draft into the box.
   useEffect(() => {
     if (shownDraftRef.current === composerId) return;
     shownDraftRef.current = composerId;
@@ -3844,7 +3653,6 @@ ${sandboxedCustom}`;
           chatUsage.outputTokens > 0 ||
           chatUsage.steps > 0)),
   );
-  // The composer's context ring and usage popover.
   const activeContextWindow = activeStoredModel?.metadata?.contextWindow;
   const usageContext = (() => {
     const context = runUsage?.context ?? chatUsage?.context ?? null;
@@ -4175,10 +3983,6 @@ ${sandboxedCustom}`;
                       </>
                     )}
                   />
-                  {/* Kept OUT of the memoized items so frequent thinkingText updates
-                      don't reconcile the whole list. Suppressed while the tail
-                      message's ReasoningBlock is already streaming live, so there's
-                      only one indicator at a time. */}
                   {streaming &&
                     !messages[messages.length - 1]?.reasoningBlocks?.some(
                       (b) => b.ms === undefined,

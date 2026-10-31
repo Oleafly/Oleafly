@@ -19,8 +19,6 @@ pub(crate) struct Robots {
     groups: Vec<Group>,
 }
 
-/// Whether `pattern` (with `*` and a trailing `$`) matches the start of
-/// `path`, or all of it when anchored.
 fn pattern_matches(pattern: &str, path: &str) -> bool {
     let (pattern, anchored) = match pattern.strip_suffix('$') {
         Some(rest) => (rest, true),
@@ -38,7 +36,6 @@ fn pattern_matches(pattern: &str, path: &str) -> bool {
         }
         let last = index == pieces.len() - 1;
         if last && anchored {
-            // The final piece must end the path, after the current position.
             return path.len() >= position + piece.len() && path.ends_with(piece);
         }
         match path[position..].find(piece) {
@@ -99,8 +96,6 @@ impl Robots {
                         continue;
                     };
                     if value.is_empty() {
-                        // An empty Disallow allows everything; an empty
-                        // Allow says nothing.
                         continue;
                     }
                     group.rules.push(Rule {
@@ -119,7 +114,6 @@ impl Robots {
         Robots { groups }
     }
 
-    /// Whether `product_token` may read `path_and_query`.
     pub(crate) fn allows(&self, product_token: &str, path_and_query: &str) -> bool {
         if path_and_query == "/robots.txt" {
             return true;

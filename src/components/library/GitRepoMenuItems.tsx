@@ -10,11 +10,8 @@ import { hostLabel } from "@/lib/forge";
 import { forgeListRepos, type ForgeAccount, type ForgeRepo } from "@/lib/tauri";
 import { useForgeAccountsStore } from "@/store/forge-accounts";
 
-/** Rows per account in the menu; the rest are one click away in the dialog. */
 const MENU_REPOS = 30;
 
-/** How long the menu shows the repositories it listed before it asks the
- * hosts again; opening the submenu again within it costs no request. */
 const MENU_REPOS_FRESH_MS = 5 * 60_000;
 
 function menuReposQuery(account: ForgeAccount) {
@@ -22,7 +19,6 @@ function menuReposQuery(account: ForgeAccount) {
     queryKey: ["forge", "menu-repos", account.base, account.login] as const,
     queryFn: async () => (await forgeListRepos(account.base, 1, null)).repos.slice(0, MENU_REPOS),
     staleTime: MENU_REPOS_FRESH_MS,
-    // The menu offers its own retry.
     retry: false,
   };
 }
@@ -47,8 +43,6 @@ export function GitRepoMenuItems({
   const accounts = useForgeAccountsStore((s) => s.accounts);
   const status = useForgeAccountsStore((s) => s.status);
   const error = useForgeAccountsStore((s) => s.error);
-  // Each account's list is kept for a few minutes, so opening the submenu
-  // again does not ask every host again.
   const repoQueries = useQueries({ queries: accounts.map(menuReposQuery) });
 
   useEffect(() => {
@@ -100,7 +94,6 @@ export function GitRepoMenuItems({
 
   if (accounts.length === 0) {
     if (status === "error") {
-      // The accounts couldn't be read, which isn't the same as having none.
       return (
         <>
           <ErrorState

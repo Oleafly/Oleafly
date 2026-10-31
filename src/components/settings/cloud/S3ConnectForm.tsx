@@ -39,8 +39,6 @@ function Field({
   );
 }
 
-/** The keys and bucket for S3-compatible storage. Connect stays off until the
- * required fields are filled in and the endpoint is an http(s) URL. */
 export function S3ConnectForm({ onCancel }: Readonly<{ onCancel: () => void }>) {
   const { t } = useTranslation(["common", "cloud"]);
   const id = useId();

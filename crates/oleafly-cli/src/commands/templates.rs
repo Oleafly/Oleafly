@@ -1,7 +1,3 @@
-//! `oleafly new` and `oleafly templates list|show`: the app's template
-//! gallery from the command line. Templates come from the installed app's
-//! bundled set, downloaded packs and the user's own templates, in the app's
-//! order; a pack template is downloaded on first use.
 use std::path::{Path, PathBuf};
 
 use clap::{Args, Subcommand};
@@ -87,22 +83,18 @@ impl CommandModule for Commands {
     }
 }
 
-/// The app's resources folder (templates, the pack catalog).
 fn resources_dir() -> Option<PathBuf> {
     if let Some(dir) = crate::app_paths::installed_app().and_then(|app| app.resources_dir) {
         return Some(dir);
     }
-    // A development build of the CLI uses the repository's resources.
     let development = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../src-tauri/resources");
     (cfg!(debug_assertions) && development.is_dir()).then_some(development)
 }
 
-/// `<data>/templates`.
 fn templates_data(ctx: &Context) -> Option<PathBuf> {
     ctx.data_root().map(|root| root.join("templates"))
 }
 
-/// Bundled, then each downloaded pack, then custom: the app's order.
 fn template_roots(ctx: &Context) -> Vec<(PathBuf, &'static str)> {
     let mut roots = Vec::new();
     if let Some(bundled) = resources_dir()
@@ -138,8 +130,6 @@ fn pack_catalog(ctx: &Context) -> Vec<CatalogPack> {
     .unwrap_or_default()
 }
 
-/// A pack's templates from what is on disk (no network): a v1 pack's file
-/// list, or a v2 pack's cached index.
 fn cached_pack_templates(templates_root: &Path, pack: &CatalogPack) -> Vec<PackTemplate> {
     match &pack.source {
         PackSource::Files(_) => {
@@ -254,7 +244,6 @@ async fn run_list(ctx: &Context, args: ListArgs) -> Result<Outcome, CliError> {
     Ok(Outcome::success(json!({"templates": rows})))
 }
 
-/// Fetches the catalog and every v2 pack's index; failures are warnings.
 async fn refresh_everything(ctx: &Context) {
     let Some(data) = templates_data(ctx) else {
         return;
@@ -284,14 +273,12 @@ async fn refresh_everything(ctx: &Context) {
     }
 }
 
-/// An installed template's folder and where it came from.
 fn find_installed(ctx: &Context, id: &str) -> Option<(TemplateManifest, PathBuf, &'static str)> {
     list_templates_in_roots(&template_roots(ctx))
         .into_iter()
         .find(|(manifest, _, _)| manifest.id == id)
 }
 
-/// A template only a pack's catalog lists.
 fn find_available(ctx: &Context, id: &str) -> Option<(CatalogPack, PackTemplate)> {
     let data = templates_data(ctx)?;
     pack_catalog(ctx).into_iter().find_map(|pack| {
@@ -420,8 +407,6 @@ async fn run_show(ctx: &Context, args: ShowArgs) -> Result<Outcome, CliError> {
     ))
 }
 
-// ------------------------------------------------------------------ new
-
 fn folder_is_empty(dir: &Path) -> Result<bool, CliError> {
     match std::fs::read_dir(dir) {
         Ok(mut entries) => Ok(entries.next().is_none()),
@@ -430,7 +415,6 @@ fn folder_is_empty(dir: &Path) -> Result<bool, CliError> {
     }
 }
 
-/// A font pack the app downloaded under Settings › Downloads.
 fn font_pack_dir(data_root: Option<&Path>, pack: &str) -> Option<PathBuf> {
     if !is_valid_id(pack) {
         return None;
@@ -471,8 +455,6 @@ fn inside_git_repository(dir: &Path) -> bool {
         })
 }
 
-/// `git init` the way the app does for new projects (unless turned off, or
-/// already inside a repository); a failure is a warning.
 fn git_stdout(dir: &Path, args: &[&str]) -> Option<String> {
     let mut command = std::process::Command::new("git");
     crate::process::clear_inherited_git_env(&mut command);
@@ -599,7 +581,6 @@ fn write_project_json(dir: &Path, manifest: &ProjectManifest) -> Result<(), CliE
     file.write_all(&bytes).map_err(CliError::from)
 }
 
-/// Downloads a pack template into `<data>/templates/packs/<pack>/<id>`.
 async fn download_template(
     ctx: &Context,
     pack: &CatalogPack,
@@ -636,8 +617,6 @@ async fn download_template(
         .map_err(|message| download_error(&message))
 }
 
-/// A failed template download as what it was: the network (worth another
-/// try), what the server sent, or this computer's disk.
 fn download_error(message: &str) -> CliError {
     use oleafly_downloads::template_packs::{download_failure, DownloadFailure};
     let text = format!("Oleafly couldn't download the template: {message}");
@@ -795,8 +774,6 @@ async fn run_new(ctx: &Context, args: NewArgs) -> Result<Outcome, CliError> {
     let mut fields = match created {
         Ok(fields) => fields,
         Err(error) => {
-            // Leave the folder as it was: gone when this command made it,
-            // else empty again.
             if !existed {
                 let _ = tokio::fs::remove_dir_all(&dir).await;
                 return Err(error);
@@ -834,7 +811,6 @@ async fn run_new(ctx: &Context, args: NewArgs) -> Result<Outcome, CliError> {
     Ok(Outcome::success(fields))
 }
 
-/// A path as a shell word (quoted when it has spaces or quotes).
 fn shell_word(path: &Path) -> String {
     let text = path.display().to_string();
     if text

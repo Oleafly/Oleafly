@@ -21,7 +21,6 @@ use std::time::{Duration, Instant};
 #[path = "program_locator/windows.rs"]
 mod windows;
 
-// 0.4.8 F1: `oleafly` on the PATH of every child the app starts.
 #[path = "program_locator/cli.rs"]
 mod cli;
 pub(crate) use cli::{planned_cli_shim, refresh_cli_shim};
@@ -30,11 +29,9 @@ pub(crate) use cli::{planned_cli_shim, refresh_cli_shim};
 #[path = "program_locator/tests.rs"]
 mod tests;
 
-/// How long search results stay valid before the folders are read again.
 const CACHE_TTL: Duration = Duration::from_secs(30);
 /// Windows program extensions Oleafly starts, in the default `PATHEXT` order.
 const WINDOWS_EXTENSIONS: [&str; 4] = [".COM", ".EXE", ".BAT", ".CMD"];
-/// Programs that run whatever they are given; never accepted as an agent.
 const INTERPRETERS: &[&str] = &[
     "node",
     "python",
@@ -47,9 +44,7 @@ const INTERPRETERS: &[&str] = &[
     "zsh",
     "wsl",
 ];
-/// Package-manager shims are a few hundred bytes; anything larger is not one.
 const SHIM_LIMIT: u64 = 64 * 1024;
-/// At most this many skipped files are reported per program name.
 const REJECTED_LIMIT: usize = 8;
 /// cmd.exe cannot start a script whose path is longer than this.
 const CMD_PATH_LIMIT: usize = 260;
@@ -96,15 +91,12 @@ const LOGIN_PROBE_WAIT: Duration = Duration::from_secs(3);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ProgramKind {
-    /// A native executable.
     Native,
-    /// A Windows `.cmd` or `.bat` script.
     Script,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Located {
-    /// Plain (never `\\?\`) path as found; symlinks are not resolved.
     pub path: PathBuf,
     pub kind: ProgramKind,
 }
@@ -140,16 +132,12 @@ pub(crate) struct Rejected {
     pub reason: RejectReason,
 }
 
-/// The JavaScript entry point behind a recognised Windows package-manager shim.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ShimTarget {
     pub script: PathBuf,
-    /// The Node.js executable the shim itself would use, when it names one.
     pub node: Option<PathBuf>,
 }
 
-/// An empty directory owned by Oleafly, used as the working directory for
-/// probes, checks and installs. Removed when dropped.
 pub(crate) struct ProbeDir {
     path: PathBuf,
 }
@@ -172,17 +160,9 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-// ---------------------------------------------------------------------------
-// Search path
-// ---------------------------------------------------------------------------
-
 struct SearchCache {
     at: Instant,
-    /// Every folder searched, in order.
     dirs: Vec<PathBuf>,
-    /// The folders a terminal the user opens would search (login shell,
-    /// process and registry `PATH`), used to decide whether a program can be
-    /// named without its folder.
     user_dirs: HashSet<String>,
 }
 
@@ -200,14 +180,10 @@ static PROBING: Mutex<bool> = Mutex::new(false);
 #[cfg(unix)]
 static PROBED: std::sync::Condvar = std::sync::Condvar::new();
 
-/// Directories searched for programs, in order. Never waits for the login-shell
-/// probe.
 pub(crate) fn search_dirs() -> Vec<PathBuf> {
     with_search(|cache| cache.dirs.clone())
 }
 
-/// Whether a program in `dir` can be started by its bare name from a terminal
-/// the user opens.
 pub(crate) fn reachable_by_name(dir: &Path) -> bool {
     let key = dir_key(&dir.to_string_lossy(), cfg!(windows));
     with_search(|cache| cache.user_dirs.contains(&key))
@@ -256,13 +232,11 @@ fn compute_search() -> SearchCache {
     }
 }
 
-/// Starts the one-time login-shell PATH probe on a background thread (unix).
 pub(crate) fn start_background_probe() {
     #[cfg(unix)]
     spawn_login_probe();
 }
 
-/// Drops cached search results and re-runs the login-shell probe.
 pub(crate) fn refresh() {
     clear_caches();
     #[cfg(unix)]
@@ -330,8 +304,6 @@ fn wait_while_probing(probing: &Mutex<bool>, probed: &std::sync::Condvar, limit:
     }
 }
 
-/// `$SHELL` when it is absolute, else the account's shell from the password
-/// database (a GUI launch may leave `$SHELL` unset).
 #[cfg(unix)]
 fn login_shell() -> Option<PathBuf> {
     env_shell().or_else(account_shell)
@@ -365,7 +337,6 @@ fn env_shell() -> Option<PathBuf> {
         .filter(|shell| shell.is_absolute())
 }
 
-/// The account's shell from the password database.
 #[cfg(unix)]
 fn account_shell() -> Option<PathBuf> {
     use std::os::unix::ffi::OsStrExt;
@@ -398,8 +369,6 @@ fn account_shell() -> Option<PathBuf> {
     shell.is_absolute().then_some(shell)
 }
 
-/// The comparison key for a search folder: case-insensitive on Windows, with
-/// trailing separators removed.
 fn dir_key(text: &str, windows: bool) -> String {
     if windows {
         let mut key = text.replace('/', "\\").to_lowercase();
@@ -427,7 +396,6 @@ fn looks_absolute(text: &str, windows: bool) -> bool {
     }
 }
 
-/// `X:\` or `X:/` followed by anything.
 fn windows_drive_absolute(text: &str) -> bool {
     let bytes = text.as_bytes();
     bytes.len() >= 3
@@ -436,14 +404,10 @@ fn windows_drive_absolute(text: &str) -> bool {
         && matches!(bytes[2], b'\\' | b'/')
 }
 
-/// UNC (`\\server\share`), verbatim (`\\?\`) and device (`\\.\`) paths.
 fn windows_network_or_device(text: &str) -> bool {
     text.starts_with("\\\\") || text.starts_with("//")
 }
 
-/// Orders, de-duplicates and filters search folders: absolute only, no empty
-/// entries, no `"` (Windows) or `:` (unix) inside an entry, plain paths only,
-/// and only folders `exists` accepts.
 pub(crate) fn normalize_dirs(
     entries: impl IntoIterator<Item = PathBuf>,
     windows: bool,
@@ -522,8 +486,6 @@ const UNIX_SYSTEM_FOLDERS: &[&str] = &[
     "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin",
 ];
 
-/// (variable, folder below it) pairs for Windows installers and version
-/// managers. An empty folder means the variable names the folder itself.
 const WINDOWS_FOLDERS: &[(&str, &str)] = &[
     ("ProgramFiles", "nodejs"),
     ("ProgramFiles(x86)", "nodejs"),
@@ -549,7 +511,6 @@ const WINDOWS_FOLDERS: &[(&str, &str)] = &[
     ("USERPROFILE", ".npm-global"),
 ];
 
-/// Well-known install folders, as a pure function of the environment.
 pub(crate) fn known_dirs(env: Lookup<'_>, windows: bool) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     let home = home_dir(env, windows);
@@ -629,7 +590,6 @@ fn read_small(path: &Path) -> Option<String> {
         .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
 }
 
-/// The `prefix=` setting of an `.npmrc` file, when it is an absolute path.
 pub(crate) fn npmrc_prefix(text: &str) -> Option<String> {
     text.lines().rev().find_map(|line| {
         let line = line.trim();
@@ -683,9 +643,6 @@ pub(crate) fn nvm_default_bin(nvm_dir: &Path) -> Option<PathBuf> {
     Some(versions.join(newest.1).join("bin"))
 }
 
-/// Registry environment blocks (`HKLM\...\Environment`, `HKCU\Environment`)
-/// as name/value pairs, read or injected.
-// Only Windows reads the registry; the logic is tested on every OS.
 #[cfg_attr(not(windows), allow(dead_code))]
 #[derive(Clone, Debug, Default)]
 pub(crate) struct EnvironmentBlocks {
@@ -693,7 +650,6 @@ pub(crate) struct EnvironmentBlocks {
     pub user: Vec<(String, String)>,
 }
 
-// Only Windows reads the registry; the logic is tested on every OS.
 #[cfg_attr(not(windows), allow(dead_code))]
 impl EnvironmentBlocks {
     fn value<'a>(block: &'a [(String, String)], name: &str) -> Option<&'a str> {
@@ -728,7 +684,6 @@ impl EnvironmentBlocks {
         env
     }
 
-    /// The machine `Path` then the user `Path`, each expanded once.
     pub(crate) fn path_entries(&self, process: Lookup<'_>) -> Vec<PathBuf> {
         [&self.machine, &self.user]
             .into_iter()
@@ -744,7 +699,6 @@ impl EnvironmentBlocks {
 
 /// Expands `%NAME%` once, leaving unknown variables literal (Windows'
 /// `ExpandEnvironmentStrings` behaviour).
-// Only Windows reads the registry; the logic is tested on every OS.
 #[cfg_attr(not(windows), allow(dead_code))]
 pub(crate) fn expand_percent(value: &str, lookup: Lookup<'_>) -> String {
     let mut out = String::new();
@@ -775,7 +729,6 @@ pub(crate) fn expand_percent(value: &str, lookup: Lookup<'_>) -> String {
 
 /// Splits a Windows `PATH` value the way `std::env::split_paths` does on
 /// Windows: `;` separates, double quotes group and are removed.
-// Only Windows reads the registry; the logic is tested on every OS.
 #[cfg_attr(not(windows), allow(dead_code))]
 pub(crate) fn split_windows_path_list(value: &str) -> Vec<String> {
     let mut entries = Vec::new();
@@ -792,10 +745,6 @@ pub(crate) fn split_windows_path_list(value: &str) -> Vec<String> {
     entries.retain(|entry| !entry.trim().is_empty());
     entries
 }
-
-// ---------------------------------------------------------------------------
-// Matching
-// ---------------------------------------------------------------------------
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct MatchRules<'a> {
@@ -822,9 +771,6 @@ fn windows_kind(extension: &str, native_only: bool) -> Option<ProgramKind> {
     }
 }
 
-/// File names to try for `name` on Windows: the name itself when it already
-/// has an allowed extension, else `PATHEXT` order filtered to
-/// `.COM .EXE .BAT .CMD` (the default when nothing is left).
 pub(crate) fn candidate_names(
     name: &str,
     pathext: Option<&str>,
@@ -875,8 +821,6 @@ fn windows_store_python(path: &Path) -> bool {
 fn file_like(path: &Path, windows: bool) -> bool {
     match std::fs::metadata(path) {
         Ok(metadata) => metadata.is_file(),
-        // App execution aliases in WindowsApps are reparse points that cannot
-        // be opened as files but start like any program.
         Err(_) => {
             windows
                 && path
@@ -903,7 +847,6 @@ fn executable_by_user(_path: &Path) -> bool {
     true
 }
 
-/// Looks for `name` in one folder.
 pub(crate) fn match_in_dir(dir: &Path, name: &str, rules: MatchRules<'_>) -> LocateResult {
     if rules.windows {
         for (file, kind) in candidate_names(name, rules.pathext, rules.native_only) {
@@ -957,7 +900,6 @@ pub(crate) fn match_in_dir(dir: &Path, name: &str, rules: MatchRules<'_>) -> Loc
     }
 }
 
-/// Searches `dirs` in order; skipped files seen before the match are kept.
 pub(crate) fn search_in(dirs: &[PathBuf], name: &str, rules: MatchRules<'_>) -> LocateResult {
     let mut rejected = Vec::new();
     for dir in dirs {
@@ -1003,18 +945,14 @@ fn locate_cached(name: &str, native_only: bool) -> LocateResult {
     result
 }
 
-/// Finds an agent command line program. Windows `.cmd`/`.bat` files are allowed.
 pub(crate) fn locate(name: &str) -> (Option<Located>, Vec<Rejected>) {
     locate_cached(name, false)
 }
 
-/// Finds a native executable such as `node`, `uv` or `git`.
 pub(crate) fn locate_native(name: &str) -> Option<Located> {
     locate_cached(name, true).0
 }
 
-/// Checks an absolute program path from an agent definition: it must be a file
-/// Oleafly can start (on Windows a `.exe`, `.com`, `.cmd` or `.bat`).
 pub(crate) fn locate_path(path: &Path) -> Result<Located, RejectReason> {
     let windows = cfg!(windows);
     let text = path.to_string_lossy();
@@ -1053,11 +991,6 @@ fn windows_extension_reason(path: &Path) -> RejectReason {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Programs the user chooses
-// ---------------------------------------------------------------------------
-
-/// Replaces a leading `~` with the home folder.
 pub(crate) fn expand_tilde(path: &Path, home: Option<&Path>) -> PathBuf {
     let text = path.to_string_lossy();
     let Some(home) = home else {
@@ -1072,7 +1005,6 @@ pub(crate) fn expand_tilde(path: &Path, home: Option<&Path>) -> PathBuf {
     }
 }
 
-/// The PE subsystem of an executable image (3 = console, 2 = GUI).
 pub(crate) fn pe_subsystem(bytes: &[u8]) -> Option<u16> {
     if bytes.get(..2)? != b"MZ" {
         return None;
@@ -1081,8 +1013,6 @@ pub(crate) fn pe_subsystem(bytes: &[u8]) -> Option<u16> {
     if bytes.get(header..header.checked_add(4)?)? != b"PE\0\0" {
         return None;
     }
-    // Signature (4) + COFF header (20) + the Subsystem field at offset 68 of
-    // the optional header, which PE32 and PE32+ share.
     let field = header.checked_add(4 + 20 + 68)?;
     Some(u16::from_le_bytes(
         bytes.get(field..field.checked_add(2)?)?.try_into().ok()?,
@@ -1134,7 +1064,6 @@ impl Platform {
     }
 }
 
-/// Checks a program the user chose.
 pub(crate) fn inspect(path: &Path) -> Result<Located, RejectReason> {
     let home = crate::paths::home_dir().ok();
     inspect_on(&expand_tilde(path, home.as_deref()), Platform::current())
@@ -1143,8 +1072,6 @@ pub(crate) fn inspect(path: &Path) -> Result<Located, RejectReason> {
 pub(crate) fn inspect_on(path: &Path, platform: Platform) -> Result<Located, RejectReason> {
     let text = path.to_string_lossy();
     if platform.windows {
-        // Checked before touching the file system: opening a network path
-        // would send the user's credentials to that host.
         if windows_network_or_device(&text) {
             return Err(RejectReason::NetworkPath);
         }
@@ -1203,16 +1130,10 @@ pub(crate) fn inspect_on(path: &Path, platform: Platform) -> Result<Located, Rej
     })
 }
 
-// ---------------------------------------------------------------------------
-// Child processes
-// ---------------------------------------------------------------------------
-
-/// The path to hand to a child process: never the `\\?\` verbatim form.
 pub(crate) fn child_path(path: &Path) -> PathBuf {
     oleafly_core::plain_path(path)
 }
 
-/// `PATH` for an agent-related child process.
 pub(crate) fn child_search_path(prepend: &[PathBuf], append: &[PathBuf]) -> OsString {
     let dirs = normalize_dirs(
         prepend
@@ -1226,10 +1147,6 @@ pub(crate) fn child_search_path(prepend: &[PathBuf], append: &[PathBuf]) -> OsSt
     std::env::join_paths(&dirs).unwrap_or_else(|_| std::env::var_os("PATH").unwrap_or_default())
 }
 
-/// Environment every non-sandboxed agent-related child gets: the search path,
-/// on Windows a cmd.exe that never runs programs from its working folder, the
-/// user's network and provider settings the app process lacks, no proxy for
-/// loopback, and quiet Node.js and UTF-8 Python output.
 pub(crate) fn child_env(prepend: &[PathBuf], append: &[PathBuf]) -> Vec<(String, OsString)> {
     let mut env = vec![("PATH".to_string(), child_search_path(prepend, append))];
     if cfg!(windows) {
@@ -1305,8 +1222,6 @@ pub(crate) fn agent_env(
     } else {
         &["NO_PROXY", "no_proxy"]
     };
-    // Tools disagree on which spelling they read first, so both get one list
-    // with the user's entries from either spelling.
     let mut existing = Vec::new();
     for name in spellings {
         let added = env
@@ -1334,7 +1249,6 @@ pub(crate) fn with_loopback_no_proxy(existing: Option<&OsStr>) -> OsString {
     merged_no_proxy(&[existing])
 }
 
-/// The entries of every value, each once, then the loopback hosts.
 pub(crate) fn merged_no_proxy(values: &[Option<&OsStr>]) -> OsString {
     let texts: Vec<String> = values
         .iter()
@@ -1429,13 +1343,8 @@ fn program_label(program: &Path) -> String {
         .unwrap_or_else(|| program.to_string_lossy().into_owned())
 }
 
-// ---------------------------------------------------------------------------
-// Windows package-manager shims
-// ---------------------------------------------------------------------------
-
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct ParsedShim {
-    /// The script path relative to the shim folder, as written in the shim.
     pub relative: String,
     /// An absolute Node.js named in the shim (pnpm's `nodeExecPath`).
     pub node: Option<String>,
@@ -1481,8 +1390,6 @@ fn tokens(line: &str) -> Option<Vec<Token>> {
     Some(tokens)
 }
 
-/// Lines a recognised shim may contain besides the invocation (lowercase,
-/// without a leading `@`).
 const SHIM_LINES: &[&str] = &[
     "echo off",
     "goto start",
@@ -1574,10 +1481,6 @@ fn shim_invocation(line: &str) -> Option<ParsedShim> {
     })
 }
 
-/// Recognises npm's cmd-shim, pnpm's shim and Pi's managed launcher: every
-/// line must be one of the known template lines or an invocation of Node.js
-/// on one script next to the shim. Anything else (shebang arguments,
-/// environment settings, other interpreters) is not recognised.
 pub(crate) fn parse_shim(text: &str) -> Option<ParsedShim> {
     let mut parsed: Option<ParsedShim> = None;
     for line in text.lines() {
@@ -1604,8 +1507,6 @@ pub(crate) fn parse_shim(text: &str) -> Option<ParsedShim> {
     parsed
 }
 
-/// A shim's script path as components below the shim folder, refusing
-/// anything that could leave it.
 fn shim_relative_path(relative: &str) -> Option<PathBuf> {
     if relative.starts_with(['\\', '/']) || relative.contains(':') {
         return None;
@@ -1621,7 +1522,6 @@ fn shim_relative_path(relative: &str) -> Option<PathBuf> {
     (!path.as_os_str().is_empty()).then_some(path)
 }
 
-/// Resolves a recognised Windows package-manager shim to its JavaScript entry.
 pub(crate) fn npm_shim_target(cmd: &Path) -> Option<ShimTarget> {
     let text = read_small(cmd)?;
     let parsed = parse_shim(&text)?;
@@ -1658,11 +1558,6 @@ pub(crate) fn npm_shim_target(cmd: &Path) -> Option<ShimTarget> {
     })
 }
 
-// ---------------------------------------------------------------------------
-// Working folders
-// ---------------------------------------------------------------------------
-
-/// Creates an empty working directory for a probe, check or install.
 pub(crate) fn probe_dir() -> std::io::Result<ProbeDir> {
     let parent = crate::paths::oleafly_root()
         .map_err(std::io::Error::other)?
@@ -1671,7 +1566,6 @@ pub(crate) fn probe_dir() -> std::io::Result<ProbeDir> {
     probe_dir_in(&parent)
 }
 
-/// Creates an empty working directory below `parent`.
 pub(crate) fn probe_dir_in(parent: &Path) -> std::io::Result<ProbeDir> {
     let path = child_path(parent).join(crate::acp::new_id());
     std::fs::create_dir_all(&path)?;

@@ -1,24 +1,16 @@
-//! Where the background helper keeps its files: `<data>/daemon/`.
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HelperPaths {
     pub dir: PathBuf,
-    /// Held for the helper's whole life; one helper at a time.
     pub lock: PathBuf,
-    /// Who runs, since when, and the last heartbeat.
     pub state: PathBuf,
-    /// Written by the app, the CLI or the installer to ask the helper to stop.
     pub stop_request: PathBuf,
     pub log: PathBuf,
-    /// The app that is open (it shows task notifications itself).
     pub app_open: PathBuf,
-    /// The folders the app looks for programs in (the helper's own `PATH`
-    /// is minimal).
     pub search_dirs: PathBuf,
 }
 
-/// `<data>/daemon/{daemon.lock, state.json, stop-request, helper.log, app-open.json, search-dirs.json}`.
 pub fn helper_paths(data_root: &Path) -> HelperPaths {
     let dir = data_root.join("daemon");
     HelperPaths {
@@ -32,7 +24,6 @@ pub fn helper_paths(data_root: &Path) -> HelperPaths {
     }
 }
 
-/// Creates the folder, private to the user.
 pub fn ensure_dir(paths: &HelperPaths) -> std::io::Result<()> {
     std::fs::create_dir_all(&paths.dir)?;
     #[cfg(unix)]

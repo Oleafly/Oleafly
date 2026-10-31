@@ -48,6 +48,11 @@
     "stoppedTitle": "切断されました",
     "stoppedDescription": "もう一度接続するには、ページを再読み込みしてください。"
   },
+  "leave": {
+    "title": "このプロジェクトを離れますか？",
+    "description": "一部の編集がまだサーバーに届いていません。送信が終わるまでとどまってください。今離れると、それらの編集は失われます。",
+    "confirm": "離れる"
+  },
   "access": {
     "changed": "このプロジェクトでのあなたの役割が {{role}} に変わりました。"
   },
@@ -155,6 +160,11 @@
     "withdraw": "取り下げ",
     "acceptAll": "すべて承認",
     "rejectAll": "すべて却下",
+    "rejectAllConfirm": {
+      "title": "{{file}} のすべての提案を却下しますか？",
+      "description": "このプロジェクトの全員に対して、元のテキストがファイルに戻ります。レビュー待ちの提案: {{number}} 件。",
+      "confirm": "すべて却下"
+    },
     "pending_other": "提案 {{count}} 件",
     "card": "{{name}} の提案",
     "lineBreak": "改行"

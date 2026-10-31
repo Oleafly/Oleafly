@@ -5,9 +5,6 @@ import { remoteChange, sessionLineBreaks } from "./collaboration";
 import type { BackgroundDocumentChange } from "./controller";
 import type { Utf16Edit } from "./document-session";
 
-// What a file that isn't shown keeps between visits: a small editor state with
-// only its text, selection and undo history. A remote edit to it then costs as
-// much as the edit, not as much as the file.
 export interface PathViewState {
   state: EditorState;
   scroll: StateEffect<unknown>;

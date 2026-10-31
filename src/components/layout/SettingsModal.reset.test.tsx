@@ -187,7 +187,6 @@ describe("Settings section resets", () => {
       within(confirmation).getByRole("button", { name: "Reset to defaults" }),
     );
 
-    // General still differs (dialect), so this checks the dot follows this section.
     expect(reset).not.toHaveAccessibleDescription();
     expect(useSettingsStore.getState()).toMatchObject({
       latexTools: false,

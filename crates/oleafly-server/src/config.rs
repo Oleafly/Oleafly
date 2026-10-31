@@ -654,7 +654,6 @@ impl Source<'_> {
         present(self.vars, name).map(str::to_string)
     }
 
-    // Like get, but an empty value counts as set.
     fn written(&self, name: &str) -> Option<String> {
         self.noted(name);
         self.vars.get(name).map(|value| value.trim().to_string())

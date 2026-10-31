@@ -41,10 +41,6 @@ function diagnosticExcerpt(error) {
   return (lines.join("\n") || String(error.message)).slice(0, 1200);
 }
 
-/**
- * Compiles a fixture with the same sidecar and arguments the desktop app uses,
- * so a fixture that passes here cannot fail for a toolchain reason in the app.
- */
 export async function compileFixture(project, { keepOutput = false } = {}) {
   const source = project.sourceDir ?? seedFixtureDir(repositoryRoot, project);
   const work = await mkdtemp(join(tmpdir(), `seed-${project.slug}-`));
@@ -105,8 +101,6 @@ function flagValue(name) {
 }
 
 async function main() {
-  // Ad-hoc mode validates a directory that is not in the catalog yet, so a
-  // fixture can be proven to compile while it is still being authored.
   const adHocDir = flagValue("dir");
   if (adHocDir) {
     let normalizedDir = adHocDir;

@@ -1,7 +1,3 @@
-//! Session tasks: cancellation and interruption mechanics shared by every
-//! task type. A cancelled task gets a short grace window to finish on its
-//! own before it is aborted, so in-flight work can record its outcome.
-
 use std::future::Future;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, Weak};
@@ -9,22 +5,15 @@ use std::time::Duration;
 
 use tokio::sync::watch;
 
-/// How long a cancelled task may keep running before it is aborted.
 pub const GRACEFULL_INTERRUPTION_TIMEOUT_MS: u64 = 100;
 
 struct CancelInner {
     cancelled: AtomicBool,
-    /// Wake signal; the counter's value is meaningless — `send_modify`
-    /// notifies every subscriber and never fails, unlike `send` with zero
-    /// receivers.
     wake: watch::Sender<u64>,
     parent: Option<Weak<CancelInner>>,
     children: Mutex<Vec<Weak<CancelInner>>>,
 }
 
-/// A hierarchical cancellation token. Cancelling a token cancels every
-/// descendant created from it (at cancel time, top-down), so waiters at
-/// every level wake even though each token only watches its own channel.
 #[derive(Clone)]
 pub struct CancellationToken {
     inner: Arc<CancelInner>,
@@ -48,9 +37,6 @@ impl CancellationToken {
         }
     }
 
-    /// A token that cancels together with `self` but can also be cancelled
-    /// on its own (a subagent's turn dies with the parent's interrupt and
-    /// its own).
     pub fn child(&self) -> Self {
         let child = Self {
             inner: Arc::new(CancelInner {
@@ -65,7 +51,6 @@ impl CancellationToken {
         child
     }
 
-    /// Cancel this token and every live descendant. Idempotent.
     pub fn cancel(&self) {
         if self.inner.cancelled.swap(true, Ordering::SeqCst) {
             return;
@@ -83,8 +68,6 @@ impl CancellationToken {
         is_cancelled_deep(&self.inner)
     }
 
-    /// Resolves once this token is cancelled. Subscribing before the flag
-    /// check means a cancel racing this call is always observed.
     pub async fn cancelled(&self) {
         loop {
             let mut receiver = self.inner.wake.subscribe();
@@ -92,17 +75,11 @@ impl CancellationToken {
                 return;
             }
             if receiver.changed().await.is_err() {
-                // The sender lives as long as this token; unreachable in
-                // practice, but returning keeps a dropped token from
-                // hanging waiters forever.
                 return;
             }
         }
     }
 
-    /// Run `task` until it finishes or the token fires. On cancellation the
-    /// task keeps running for the grace window; if it finishes in time its
-    /// output is preserved, otherwise it is aborted and `None` returns.
     pub async fn run_with_graceful_abort<T>(
         &self,
         task: impl Future<Output = T> + Send + 'static,
@@ -131,8 +108,6 @@ fn is_cancelled_deep(inner: &CancelInner) -> bool {
     if inner.cancelled.load(Ordering::SeqCst) {
         return true;
     }
-    // Children born after an ancestor cancelled were never visited by the
-    // downward propagation, so the check walks up.
     inner
         .parent
         .as_ref()
@@ -208,7 +183,6 @@ mod tests {
         let result = token
             .run_with_graceful_abort(async move {
                 task_token.cancel();
-                // Finish after cancellation but inside the 100 ms window.
                 tokio::time::sleep(Duration::from_millis(5)).await;
                 "recorded"
             })
@@ -223,7 +197,6 @@ mod tests {
         let result = token
             .run_with_graceful_abort(async move {
                 task_token.cancel();
-                // Outlast the 100 ms grace window.
                 tokio::time::sleep(Duration::from_millis(400)).await;
                 "should not be recorded"
             })

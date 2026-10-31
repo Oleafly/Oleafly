@@ -74,7 +74,6 @@ describe("SpacesCard", () => {
       enErrors.desktop_apps.change_declined,
     );
     expect(fullAccess).toHaveAttribute("aria-checked", "false");
-    // A no is not a failure.
     expect(screen.queryByText(copy.failed)).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
   });

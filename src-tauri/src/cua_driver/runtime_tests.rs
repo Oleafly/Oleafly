@@ -1,19 +1,3 @@
-//! Runtimes, the dispatcher, the bridge and the task decorator against a
-//! fake Cua Driver: a small Node MCP server that logs every `tools/call`
-//! (with its runtime kind) as JSON lines and behaves as configured:
-//!
-//! - `FAKE_STANDARD=1`: `get_screen_size` succeeds (an unbounded driver);
-//! - `FAKE_EXPIRE_ON=n`: the n-th counted call is refused as expired, once;
-//! - `FAKE_HANG=<tool>`: that tool never answers;
-//! - `FAKE_FAIL=<tool>`: that tool runs and fails;
-//! - `FAKE_DELAY_MS=<ms>`: counted calls take that long;
-//! - `FAKE_SELF_CHECK=fails|denied_other`: the bounded self-check tool fails
-//!   for another reason, or is denied for a reason that isn't the manifest;
-//! - `FAKE_STRUCTURED=1`: `list_windows` and `get_window_state` also answer
-//!   with `structuredContent` (windows; elements with tokens);
-//! - `FAKE_HUGE=<tool>`: that tool answers with a line longer than the
-//!   launcher's `FAKE_MAX_MESSAGE_BYTES` (Rust side) allows.
-
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -105,7 +89,6 @@ struct FakeLauncher {
     log: PathBuf,
     env: BTreeMap<String, String>,
     opened: Mutex<HashMap<RuntimeKind, usize>>,
-    /// Kinds whose session can't be opened.
     failing: Mutex<HashSet<RuntimeKind>>,
 }
 
@@ -133,7 +116,6 @@ impl FakeLauncher {
         lock(&self.opened).get(&kind).copied().unwrap_or(0)
     }
 
-    /// Every call that started, in order.
     fn calls(&self) -> Vec<Value> {
         std::fs::read_to_string(&self.log)
             .unwrap_or_default()
@@ -143,7 +125,6 @@ impl FakeLauncher {
             .collect()
     }
 
-    /// Tool names called, without the bounded self-check.
     fn tools(&self) -> Vec<String> {
         self.calls()
             .iter()
@@ -276,12 +257,10 @@ fn settings(sites: &[(&str, bool)]) -> CuaDriverConfig {
             })
             .collect(),
         scripted_control: false,
-        // The approval tests need the dialogs.
         ask_before_actions: true,
     }
 }
 
-/// Fields drop in order: the state (and its processes) before the folder.
 struct Fixture {
     state: Arc<CuaDriverState>,
     launcher: Arc<FakeLauncher>,
@@ -319,8 +298,6 @@ fn chat(session_key: &str) -> CuaScope {
 }
 
 const WAIT: Duration = Duration::from_secs(10);
-
-// --- Runtimes -------------------------------------------------------------
 
 #[tokio::test]
 async fn a_standard_mode_driver_is_stopped_before_any_call() {
@@ -516,7 +493,6 @@ async fn a_cancelled_call_drops_the_session() {
         .unwrap();
     assert!(!result["isError"].as_bool().unwrap_or(false), "{result}");
     assert_eq!(f.launcher.opened(RuntimeKind::Desktop), 2);
-    // The cancelled click was never sent again.
     assert_eq!(
         f.launcher
             .tools()
@@ -607,7 +583,6 @@ async fn calls_on_one_runtime_are_serialized_but_kinds_run_in_parallel() {
         &[("FAKE_DELAY_MS", "300")],
         ScriptedApprover::default(),
     );
-    // Warm both runtimes so start-up time doesn't count.
     f.state
         .runtimes
         .call(RuntimeKind::Desktop, "", "list_apps", json!({}), WAIT)
@@ -680,8 +655,6 @@ async fn a_settings_change_restarts_only_runtimes_whose_manifest_changed() {
     assert_eq!(f.launcher.opened(RuntimeKind::Browser), 2);
 }
 
-// --- Dispatcher ------------------------------------------------------------
-
 async fn dispatch(
     f: &Fixture,
     scope: &CuaScope,
@@ -736,7 +709,6 @@ async fn oleafly_answers_list_apps_from_the_allowed_apps() {
     // Cua Driver 0.38 refuses an unbounded list of apps or windows, so
     // neither reaches the driver; a list of one app's windows does.
     let mut config = settings(&[]);
-    // No computer runs this app, whatever the test machine has open.
     config.apps = vec![AllowedApp {
         name: "Nowhere".into(),
         bundle_id: Some("org.example.never-installed".into()),
@@ -813,8 +785,6 @@ async fn a_call_that_leaves_out_its_pid_gets_the_one_the_driver_gave() {
             ("type_text".to_string(), json!(4312)),
         ]
     );
-    // Nothing to go on: answered before any dialog, and the driver never
-    // hears of it.
     let unknown = dispatch(
         &f,
         &chat("run:a"),
@@ -829,8 +799,6 @@ async fn a_call_that_leaves_out_its_pid_gets_the_one_the_driver_gave() {
         .calls()
         .iter()
         .any(|entry| entry["tool"] == "click"));
-    // The driver's session ends with the turn, and its tokens with it: one
-    // carried into the next turn is refused before the user is asked.
     turn_ended_in(&f.state, "run:a");
     let carried = dispatch(
         &f,
@@ -960,7 +928,6 @@ async fn an_answer_after_the_wait_is_ignored() {
     )
     .await;
     assert!(outcome.is_error);
-    // No answer is not a no: the model hears which it was.
     assert_eq!(
         outcome.text,
         "The user didn't answer the approval dialog in time, so nothing was done."
@@ -1008,7 +975,6 @@ async fn a_website_runs_in_the_browser_oleafly_opened() {
     assert_eq!(early.text, super::browser::PREPARE_FIRST_TEXT);
     let prepared = dispatch(&f, &scope, call("browser_prepare", json!({}))).await;
     assert!(!prepared.is_error, "{}", prepared.text);
-    // A page change before the bind would only be refused, after the dialog.
     let unbound = dispatch(
         &f,
         &scope,
@@ -1024,8 +990,6 @@ async fn a_website_runs_in_the_browser_oleafly_opened() {
         let outcome = dispatch(&f, &scope, call(tool, args)).await;
         assert!(!outcome.is_error, "{tool}: {}", outcome.text);
     }
-    // Another site, or another browser in the separate profile, is answered
-    // before any dialog.
     let away = dispatch(
         &f,
         &scope,
@@ -1045,7 +1009,6 @@ async fn a_website_runs_in_the_browser_oleafly_opened() {
         .calls()
         .iter()
         .filter(|entry| entry["phase"] == "start" && entry["kind"] == "browser")
-        // Not the start and its self-check.
         .filter(|entry| entry["tool"] != "start_session" && entry["tool"] != "get_screen_size")
         .map(|entry| {
             let mut args = entry["args"].clone();
@@ -1144,7 +1107,6 @@ async fn with_asking_off_actions_run_without_a_dialog() {
         assert!(!outcome.is_error, "{}", outcome.text);
     }
     assert!(f.approver.asked().is_empty());
-    // A deny rule still refuses.
     crate::approvals::set_decision(
         f.dir.path(),
         "p1",
@@ -1237,8 +1199,6 @@ async fn dropping_the_turn_guard_ends_the_session() {
             .await
     );
 }
-
-// --- Bridge and task decorator ----------------------------------------------
 
 #[tokio::test]
 async fn a_closed_bridge_answers_gone_and_ends_its_session() {
@@ -1384,7 +1344,6 @@ async fn task_desktop_calls_use_task_grants_and_end_at_shutdown() {
         assert_eq!(result["isError"], false, "{result}");
     }
     assert_eq!(f.approver.asked().len(), 1);
-    // The dialog says which task asks.
     assert!(
         f.approver.asked()[0].contains("Task: Export the survey data"),
         "{}",
@@ -1410,8 +1369,6 @@ async fn task_desktop_calls_use_task_grants_and_end_at_shutdown() {
     );
 }
 
-// --- Grants, approvals and denied projects -----------------------------------
-
 #[tokio::test]
 async fn a_signed_in_action_always_asks_and_never_shares_a_separate_profile_grant() {
     let f = fixture(
@@ -1420,14 +1377,11 @@ async fn a_signed_in_action_always_asks_and_never_shares_a_separate_profile_gran
         ScriptedApprover::with(&[Answer::Session, Answer::Session, Answer::Once]),
     );
     let click = |browser: &str| json!({"tool": "browser_click", "browser": browser, "args": {"ref": "e1", "target_id": "bt-1", "tab_id": "tab-1"}});
-    // Allowed for the chat in the separate profile...
     for _ in 0..2 {
         let outcome = dispatch(&f, &chat("run:a"), click("separate")).await;
         assert!(!outcome.is_error, "{}", outcome.text);
     }
     assert_eq!(f.approver.asked().len(), 1);
-    // ...does not cover the user's own browser, and an answer of "for this
-    // chat" there grants nothing (the dialog doesn't even offer it).
     for expected in [2, 3] {
         assert!(
             !dispatch(&f, &chat("run:a"), click("signed_in"))
@@ -1502,10 +1456,8 @@ async fn allowing_a_batch_for_the_chat_allows_only_the_tools_it_listed() {
     ]));
     assert!(!dispatch(&f, &chat("run:a"), clicks.clone()).await.is_error);
     assert_eq!(f.approver.asked().len(), 1);
-    // The same tools again run without a question.
     assert!(!dispatch(&f, &chat("run:a"), clicks).await.is_error);
     assert_eq!(f.approver.asked().len(), 1);
-    // A batch that also types is a different question, and lists its steps.
     let typing = batch(json!([
         {"tool": "click", "args": {"pid": 1}},
         {"type_text": {"text": "anything at all"}}
@@ -1517,7 +1469,6 @@ async fn allowing_a_batch_for_the_chat_allows_only_the_tools_it_listed() {
         "{}",
         f.approver.asked()[1]
     );
-    // Typing was allowed once, not for the chat.
     assert!(
         !dispatch(
             &f,
@@ -1528,7 +1479,6 @@ async fn allowing_a_batch_for_the_chat_allows_only_the_tools_it_listed() {
         .is_error
     );
     assert_eq!(f.approver.asked().len(), 3);
-    // Clicking was allowed for the chat, in a batch or on its own.
     assert!(
         !dispatch(
             &f,
@@ -1566,7 +1516,6 @@ async fn steps_the_dialog_did_not_list_never_run_and_are_not_allowed_for_the_cha
         .filter(|line| line.contains(". click"))
         .count();
     assert!(shown > 0 && shown < 61, "{shown}");
-    // The driver got exactly the listed steps: the hidden hotkey never ran.
     let sent = f
         .launcher
         .calls()
@@ -1579,7 +1528,6 @@ async fn steps_the_dialog_did_not_list_never_run_and_are_not_allowed_for_the_cha
         forwarded.iter().all(|step| step["tool"] == "click"),
         "{sent}"
     );
-    // And the model is told so.
     assert!(
         outcome
             .text
@@ -1587,7 +1535,6 @@ async fn steps_the_dialog_did_not_list_never_run_and_are_not_allowed_for_the_cha
         "{}",
         outcome.text
     );
-    // It was never allowed for the chat either: on its own it asks.
     assert!(
         !dispatch(
             &f,
@@ -1654,7 +1601,6 @@ async fn a_deny_rule_refuses_start_session_before_any_daemon_starts() {
     assert_eq!(outcome.text, super::gate::DENIED_TEXT);
     assert!(f.launcher.calls().is_empty());
     assert_eq!(f.launcher.opened(RuntimeKind::Desktop), 0);
-    // Another project is unaffected.
     let other = CuaScope {
         project_id: Some("p2".into()),
         ..chat("run:b")
@@ -1694,7 +1640,6 @@ async fn start_session_lists_a_runtime_that_could_not_start_and_keeps_the_rest()
         "{}",
         outcome.text
     );
-    // Apps still work.
     let apps = dispatch(
         &f,
         &chat("run:a"),
@@ -1703,7 +1648,6 @@ async fn start_session_lists_a_runtime_that_could_not_start_and_keeps_the_rest()
     .await;
     assert!(!apps.is_error, "{}", apps.text);
 
-    // With nothing working, it is an error that says why.
     let g = fixture(
         settings(&[("https://a.org", false)]),
         &[],
@@ -1785,8 +1729,6 @@ async fn a_chat_result_keeps_no_second_copy_of_the_screenshot() {
     assert_eq!(bridged.mcp_result["content"][1]["type"], "image");
 }
 
-// --- Runtimes: cancelling, stopping and the bounded self-check ---------------
-
 #[tokio::test]
 async fn cancelling_a_kind_stops_a_call_that_is_waiting_for_the_driver() {
     let f = fixture(
@@ -1821,7 +1763,6 @@ async fn cancelling_a_kind_stops_a_call_that_is_waiting_for_the_driver() {
     assert_eq!(result.unwrap_err(), STOPPED_TEXT);
     assert!(started.elapsed() < Duration::from_secs(5));
     assert!(f.state.runtimes.running().is_empty());
-    // The next call starts a fresh runtime.
     let result = f
         .state
         .runtimes
@@ -1929,7 +1870,6 @@ impl Launcher for StuckStart {
                 crate::process_identity::ProcessProbe::Running { started } => started,
                 crate::process_identity::ProcessProbe::Gone => None,
             };
-            // Reap it when it ends, so it never lingers as a zombie.
             std::thread::spawn(move || {
                 let _ = child.wait();
             });
@@ -1989,8 +1929,6 @@ async fn a_daemon_that_is_still_starting_is_on_record_and_is_ended_at_quit() {
             .await
     });
     assert!(eventually(|| lock(&launcher.owner_file_when_waiting).is_some()).await);
-    // The record exists before the daemon is ready, and the kind counts as
-    // having a daemon although nothing is running yet.
     assert_eq!(*lock(&launcher.owner_file_when_waiting), Some(true));
     assert!(state.runtimes.has_daemons());
     assert!(state.runtimes.running().is_empty());
@@ -2000,8 +1938,6 @@ async fn a_daemon_that_is_still_starting_is_on_record_and_is_ended_at_quit() {
         crate::process_identity::ProcessProbe::Running { .. }
     ));
 
-    // The start holds the slot, so a stop can't take it: quitting ends the
-    // daemon by its record instead of waiting.
     let began = Instant::now();
     super::stop_everything(&state, Duration::from_millis(600)).await;
     assert!(
@@ -2032,18 +1968,14 @@ fn a_daemon_is_found_by_the_socket_it_serves() {
 ";
     let found =
         super::runtime::parse_serving_pids(listing, "/Users/a b/.oleafly/cua/desktop.sock", 7777);
-    // Not the client, not another socket, not this process.
     assert_eq!(found, vec![202]);
     assert!(super::runtime::parse_serving_pids("", "/x.sock", 1).is_empty());
     assert!(super::runtime::parse_serving_pids("not a listing\n 12", "/x.sock", 1).is_empty());
 }
 
-// --- Dialog contents, structured answers and stops -------------------------
-
 #[tokio::test]
 async fn arguments_the_driver_does_not_take_never_reach_the_dialog_or_the_driver() {
     let f = fixture(settings(&[]), &[], ScriptedApprover::with(&[Answer::Once]));
-    // A start lists the driver's tools and the arguments each takes.
     let started = dispatch(&f, &chat("run:a"), json!({"tool": "start_session"})).await;
     assert!(!started.is_error, "{}", started.text);
     let outcome = dispatch(
@@ -2137,7 +2069,6 @@ async fn the_dialog_names_the_app_window_and_element_the_driver_described() {
     ] {
         assert!(asked.lines().any(|shown| shown == line), "{line}: {asked}");
     }
-    // The handle is shown, not redacted.
     assert!(asked.contains("\"element_token\":\"el-0\""), "{asked}");
 }
 
@@ -2225,8 +2156,6 @@ async fn an_answer_too_large_to_read_says_how_to_ask_for_less_and_keeps_the_daem
     );
     assert_ne!(outcome.text, TIMEOUT_TEXT);
     assert_eq!(f.state.runtimes.running(), vec![RuntimeKind::Desktop]);
-    // The next call gets a new session on the same daemon, with no second
-    // start (and no second bounded self-check).
     let next = dispatch(
         &f,
         &chat("run:a"),
@@ -2248,7 +2177,6 @@ struct LinkProbe;
 
 impl super::config::ExecutableProbe for LinkProbe {
     fn check(&self, path: &str) -> Result<String, super::config::AppRejection> {
-        // A link with a harmless name that points at a shell.
         if path == "/usr/local/bin/notes" {
             Ok("/bin/bash".into())
         } else {
@@ -2273,7 +2201,6 @@ async fn startup_checks_the_programs_in_the_background_and_drops_what_a_save_wou
         ..Default::default()
     };
     let own = "/opt/oleafly/oleafly";
-    // The quick check at startup never looks at the file system.
     let (quick, dropped) = super::config::sanitize_loaded(
         stored,
         super::Platform::Linux,

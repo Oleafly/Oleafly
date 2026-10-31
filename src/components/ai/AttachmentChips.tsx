@@ -8,21 +8,16 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { formatBytes } from "@/lib/format-bytes";
 import { cn } from "@/lib/utils";
 
-// The pages of a PDF the model reads (ATTACHMENT_LIMITS.pdfPages; the
-// intake module loads lazily, so the number is repeated here).
 const PDF_PAGE_LIMIT = 100;
 
-/** A chip; a draft's attachment also says where its file is stored. */
 type ChipItem = ComposerAttachment & { kind?: AttachmentKind; sha256?: string; scope?: string | null };
 
-/** A stored image without a thumbnail (a sent message put back to edit), read from the store. */
 function StoredThumbnail({ item, sha256 }: Readonly<{ item: ChipItem; sha256: string }>) {
   const { url } = useAttachmentUrl(item.scope ?? null, { sha256, mime: item.mime });
   if (!url) return <FileText className="size-4 shrink-0 text-muted-foreground" />;
   return <img src={url} alt="" className="size-6 shrink-0 rounded object-cover" />;
 }
 
-// The spinner while it processes, then the thumbnail, then a file icon.
 function AttachmentLeading({ item }: Readonly<{ item: ChipItem }>) {
   if (item.status === "processing") return <Spinner size="xs" aria-hidden="true" />;
   if (item.thumbnailUrl && item.status === "ready") {
@@ -34,7 +29,6 @@ function AttachmentLeading({ item }: Readonly<{ item: ChipItem }>) {
   return <FileText className="size-4 shrink-0 text-muted-foreground" />;
 }
 
-// Modeled on the AI SDK Elements "Attachments" inline variant.
 export function AttachmentChips({
   items,
   onRemove,
@@ -93,7 +87,6 @@ export function AttachmentChips({
                 size="icon"
                 onClick={() => onRemove(item.id)}
                 aria-label={t(($) => $.ai.attachments.remove, { name: item.name })}
-                // A 24px target: the chip is small, but the remove control is not.
                 className="absolute right-0.5 top-1/2 size-6 -translate-y-1/2 text-muted-foreground [&_svg]:size-3"
               >
                 <X />

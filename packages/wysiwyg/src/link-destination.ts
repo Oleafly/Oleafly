@@ -1,6 +1,5 @@
 const NEEDS_ANGLE_BRACKETS = /[\s()<>]|[^\x21-\x7e]/u;
 const URL_SCHEME = /^[a-z][a-z0-9+.-]*:/iu;
-/** A replacement that puts a backslash before the matched character. */
 const BACKSLASH_BEFORE_MATCH = String.raw`\$&`;
 
 export function markdownLinkDestination(path: string): string {

@@ -331,8 +331,6 @@ impl LoopbackListener {
             .map(|(_, value)| ServerUrl::parse(&value));
         match (named.next(), named.next()) {
             (Some(Ok(issuer)), None) if issuer.as_str() == self.issuer.as_str() => Issuer::Here,
-            // Servers from before the issuer check never send one. That is an
-            // update for the admin, not a sign of another server.
             (None, _) => Issuer::Unnamed,
             _ => Issuer::Elsewhere,
         }
@@ -945,8 +943,6 @@ mod tests {
         callback.answer(Ok(())).await;
         let (refused, finished) = requests.await.expect("requests");
         assert_eq!(refused.len(), 4);
-        // No issuer at all comes from a server older than the check, which is
-        // an update for its admin; a different one is stopped.
         let expected = [
             "Sign-in stopped",
             "Sign-in stopped",

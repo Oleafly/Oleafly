@@ -48,11 +48,6 @@ import { pickSavePath } from "@/lib/native-file-dialog";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { sharedWriteRefusal, writeSharedText } from "@/lib/shared-document-writes";
 
-// E2E / devtools hook: the native bridge cannot drive a real file input, so
-// specs can queue the next pick's result here instead of opening a picker
-// (name: null simulates the user canceling the dialog). The real button
-// click and the real applyLoadedContent() codepath still run end to end;
-// only the OS file dialog itself is bypassed.
 if (typeof window !== "undefined" && E2E_HOOKS) {
   const w = window as unknown as {
     __setNextTikzImport?: (name: string | null, content: string | null) => void;
@@ -130,9 +125,6 @@ function describedWriteFailure(error: unknown): unknown {
   return decodeAppError(error) ? new Error(describeError(error)) : error;
 }
 
-// A viewer can't change a shared project, and while it goes live the role
-// isn't known yet. The shared document isn't live then, so the save would
-// fall back to the local file.
 function assertSharedWritable(projectId: string): void {
   const refusal = sharedWriteRefusal(projectId);
   if (refusal) throw refusal;
@@ -221,7 +213,6 @@ const HOST: DiagramHost = {
   renderMermaid: renderMermaidFigure,
 };
 
-// Bridges app-specific stores/Tauri/editor into the package's headless composer.
 export function DiagramComposer() {
   const { t } = useTranslation(["diagram"]);
   const open = useHomeViewStore((s) => s.page === "diagram-composer");
@@ -248,9 +239,6 @@ export function DiagramComposer() {
   const [scratchId, setScratchId] = useState<string | null>(null);
   const activeTourId = useTourStore((s) => s.activeTourId);
   const activeStepIndex = useTourStore((s) => s.activeStepIndex);
-  // The "Compiled preview" step opens the real preview pane and the core
-  // compiles the starter drawing once (isolated; never touches user files) so
-  // the step shows an actual preview instead of the empty placeholder.
   const forcePreviewOpen =
     activeTourId === "diagram" &&
     tourRegistry.diagram.steps[activeStepIndex]?.id === "diagram-preview";

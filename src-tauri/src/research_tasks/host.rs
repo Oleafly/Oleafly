@@ -1,6 +1,3 @@
-//! The app's side of the research runtime's ports: trust, project
-//! locations, the project lock, Git, skills, webview events, notifications,
-//! spend, keep-awake and the workspace build tool.
 use std::any::Any;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -26,8 +23,6 @@ const CLI_UNAVAILABLE: &str = "The command-line tool isn't available.";
 const BUILD_TIMEOUT_SECONDS: u64 = 300;
 const MAX_LOG_TAIL: usize = 16 * 1024;
 
-/// Which task each webview shows (webview label → task id). Transcript rows
-/// and text deltas go only to the webviews watching their task.
 fn watchers() -> &'static Mutex<HashMap<String, String>> {
     static WATCHERS: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
     WATCHERS.get_or_init(Default::default)
@@ -39,7 +34,6 @@ fn lock<T>(value: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-/// Records the task a webview shows; `None` stops watching.
 pub(crate) fn watch(label: &str, task_id: Option<String>) {
     let mut watchers = lock(watchers());
     match task_id {
@@ -69,7 +63,6 @@ impl AppResearchHost {
         Self { app: Some(app) }
     }
 
-    /// A host that emits nothing (tests and early startup).
     #[cfg_attr(not(test), allow(dead_code))]
     pub fn detached() -> Self {
         Self { app: None }
@@ -256,11 +249,8 @@ impl ResearchHost for AppResearchHost {
     }
 }
 
-/// Builds task workspaces with the bundled command-line tool.
 struct AppWorkspaceTools;
 
-/// The command-line tool next to the app (or the one the CLI install set
-/// up), when there is one.
 fn cli_binary() -> Option<PathBuf> {
     if let Some(program) = crate::acp::cli_program().filter(|path| path.is_file()) {
         return Some(program);
@@ -284,7 +274,6 @@ fn tail(text: &str, max: usize) -> String {
     text[start..].to_owned()
 }
 
-/// Reads the CLI's `--json build` report.
 pub(crate) fn compile_summary(report: &Value) -> CompileSummary {
     let build = &report["build"];
     let (mut errors, mut warnings) = (0u32, 0u32);
@@ -374,12 +363,9 @@ impl WorkspaceTools for AppWorkspaceTools {
     }
 }
 
-/// The task workspace's outline, labels, references and citations, with any
-/// that do not resolve (what the command-line tool's helper answers too).
 pub(crate) fn project_map_of(root: &Path) -> Result<Value, String> {
     let workspace = match oleafly_core::Workspace::open(root) {
         Ok(workspace) => workspace,
-        // A copy of a folder without a project.json: the main file is guessed.
         Err(error) if error.kind() == oleafly_core::ErrorKind::NotInitialized => {
             oleafly_core::Workspace::detected(root, None)
                 .map_err(|error| error.message().to_string())?
@@ -393,7 +379,6 @@ pub(crate) fn project_map_of(root: &Path) -> Result<Value, String> {
         &oleafly_core::context::ContextLimits::default(),
     )
     .map_err(|error| error.message().to_string())?;
-    // Cut to fit a tool result, with `truncatedCounts` naming what was cut.
     Ok(oleafly_core::context::map_view(&scan.map))
 }
 
@@ -412,8 +397,6 @@ pub(crate) fn unavailable_skill(
         })
 }
 
-/// The notification permission as the settings page shows it, asking the
-/// system first when `request` is set.
 pub(crate) fn notification_permission(
     app: &tauri::AppHandle,
     request: bool,
@@ -475,7 +458,6 @@ mod tests {
         let map = project_map_of(root.path()).unwrap();
         let text = map.to_string();
         assert!(text.contains("sec:intro"), "{text}");
-        // What does not resolve is reported, so the evidence check can use it.
         assert!(text.contains("sec:missing"), "{text}");
         assert!(project_map_of(&root.path().join("missing")).is_err());
     }

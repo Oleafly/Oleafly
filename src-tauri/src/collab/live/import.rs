@@ -42,7 +42,6 @@ pub(super) struct LocalImport {
     pub(super) dirs: Vec<String>,
     pub(super) restamped: Vec<(String, String)>,
     pub(super) crlf: BTreeSet<String>,
-    // Folders whose nodes followed a move on disk, with where each is now.
     pub(super) moved_dirs: Vec<(String, String)>,
 }
 
@@ -270,8 +269,6 @@ pub(super) fn apply_local_import(
 
 pub(super) type Renamed = Vec<(String, String)>;
 
-// Imports like apply_local_import and also returns the files it renamed on
-// disk to the names the layout gave them.
 pub(super) fn import_renaming(
     live: &mut LiveProject,
     disk: &mut DiskState,
@@ -403,12 +400,9 @@ struct NewNames<'a> {
     before: &'a Layout,
     after: &'a Layout,
     beside: &'a [(String, String, String)],
-    // Nodes moved to follow a file moved on disk, with where it is now.
     adopted: &'a [(String, String)],
 }
 
-// Moves each file and folder this import added, or moved to follow a move
-// on disk, to the path the layout gives its node.
 fn follow_new_names(
     root: &Path,
     disk: &mut DiskState,
@@ -441,9 +435,6 @@ fn follow_new_names(
         }
     }
     let followed = follow_layout(root, wanted);
-    // A folder that followed a move on disk was written down where it went,
-    // so its entries move on to where the layout puts it, as a new node's
-    // do, whether it got there now or still owes the move.
     for (id, now) in adopted.iter() {
         let Some(laid) = after
             .get(id)
@@ -477,8 +468,6 @@ fn still_on_disk(root: &Path, path: &str, hash: &str) -> bool {
         .is_some_and(|bytes| sha256_hex(&bytes) == hash)
 }
 
-// Moves the node of each file moved on disk to where it went, and returns
-// each node moved with its new path.
 fn adopt_moved_files(
     live: &mut LiveProject,
     disk: &mut DiskState,

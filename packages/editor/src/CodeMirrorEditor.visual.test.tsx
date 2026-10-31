@@ -8,10 +8,9 @@ import { CodeMirrorEditor, type EditorHost, supportsVisualMode } from "./CodeMir
 import { getEditorView } from "./controller";
 import { englishEditorMessage, installEnglishEditorMessages } from "./test-messages";
 import { visualModeActive } from "./visual/facets";
+import { stubRangeGeometry } from "./test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 afterEach(() => {
   vi.restoreAllMocks();

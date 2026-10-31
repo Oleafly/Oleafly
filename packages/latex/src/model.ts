@@ -16,18 +16,18 @@ export interface DiagNode {
   id: string;
   shape: NodeShape;
   x: number;
-  y: number; // top-left in model px
+  y: number;
   w: number;
   h: number;
   label: string;
-  fill?: string; // hex "#RRGGBB" or "" for none
-  stroke?: string; // hex
+  fill?: string;
+  stroke?: string;
   strokeStyle?: StrokeStyle;
-  strokeWidth?: number; // px
-  textColor?: string; // hex
-  fontSize?: number; // pt
+  strokeWidth?: number;
+  textColor?: string;
+  fontSize?: number;
   fontFamily?: DiagramFontFamily;
-  radius?: number; // corner radius in pt (rectangle/roundrect/text)
+  radius?: number;
 }
 
 export interface DiagEdge {

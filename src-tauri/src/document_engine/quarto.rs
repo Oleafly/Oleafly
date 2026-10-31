@@ -1,4 +1,3 @@
-use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use super::{
@@ -9,6 +8,8 @@ use super::{
 };
 use crate::app_error::AppError;
 use crate::notebook_toolchain::NotebookTool;
+
+mod code_off;
 
 pub(super) struct QuartoEngine;
 pub(super) static QUARTO_ENGINE: QuartoEngine = QuartoEngine;
@@ -23,7 +24,6 @@ const PROJECT_FILES: [&str; 4] = [
     "_quarto.yaml",
 ];
 const EXTENSIONS_DIRECTORY: &str = "_extensions";
-const EXECUTABLE_KEYS: [&str; 4] = ["filters", "shortcodes", "pre-render", "post-render"];
 const DIAGRAM_CELLS: [&str; 2] = ["mermaid", "dot"];
 const MAX_ERRORS: usize = 200;
 
@@ -128,7 +128,7 @@ impl DocumentEngine for QuartoEngine {
             extension: None,
             allow_code: options.allow_shell_escape,
         };
-        plan.spec(&source, &yaml, artifacts, options.source_date_epoch)
+        plan.spec(artifacts, options.source_date_epoch)
     }
 
     fn parse_errors(&self, log: &str) -> Vec<CompileError> {
@@ -170,22 +170,14 @@ pub(super) struct QuartoRun {
 impl QuartoRun {
     pub(super) fn spec(
         &self,
-        source: &str,
-        yaml: &[String],
         artifacts: EngineArtifacts,
         source_date_epoch: Option<u64>,
     ) -> Result<EngineCompileSpec, String> {
         reject_project_local(&self.quarto, &self.project_dir)?;
-        if !self.allow_code {
-            let root = self
-                .project_dir
-                .canonicalize()
-                .unwrap_or_else(|_| self.project_dir.clone());
-            if runs_project_code(source, yaml, &root, &self.input) {
-                return Err(AppError::new("notebook.code_needed")
-                    .param("engine", NotebookTool::Quarto.label())
-                    .into());
-            }
+        if !self.allow_code && code_off::code_needed(&self.project_dir, &self.input) {
+            return Err(AppError::new("notebook.code_needed")
+                .param("engine", NotebookTool::Quarto.label())
+                .into());
         }
         let extension = self.extension.unwrap_or(self.output.extension());
         let args = quarto_args(
@@ -247,7 +239,7 @@ pub(super) fn export_spec(
         synctex: None,
         html: None,
     };
-    let mut spec = run.spec(&source, &yaml, artifacts, None)?;
+    let mut spec = run.spec(artifacts, None)?;
     if html {
         spec.args
             .extend(["-M".to_owned(), "embed-resources:true".to_owned()]);
@@ -311,11 +303,15 @@ fn restricted_variables(out_dir: &Path) -> Vec<(&'static str, String)> {
 }
 
 pub(super) fn read_bounded(path: &Path, limit: u64) -> Option<String> {
-    let file = std::fs::File::open(path).ok()?;
-    let mut bytes = Vec::new();
-    file.take(limit).read_to_end(&mut bytes).ok()?;
-    let text = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes);
-    Some(String::from_utf8_lossy(text).into_owned())
+    oleafly_core::read_bounded(path, limit).map(|read| source_text(&read))
+}
+
+fn source_text(read: &oleafly_core::BoundedRead) -> String {
+    let text = read.lossy_text();
+    match text.strip_prefix('\u{feff}') {
+        Some(rest) => rest.to_owned(),
+        None => text,
+    }
 }
 
 pub(super) fn project_yaml(project_dir: &Path, input: &Path) -> Vec<String> {
@@ -487,48 +483,46 @@ pub(crate) fn export_format(source: &str, project_yaml: &[String], format: &str)
     }
 }
 
-fn declares_hooks(text: &str) -> bool {
-    text.lines().any(|line| {
-        let key = line
-            .trim_start()
-            .trim_start_matches("- ")
-            .trim_start_matches(['"', '\'']);
-        EXECUTABLE_KEYS.iter().any(|name| {
-            key.strip_prefix(name).is_some_and(|rest| {
-                rest.trim_start_matches(['"', '\''])
-                    .trim_start()
-                    .starts_with(':')
-            })
-        })
-    })
+fn fence_ticks(line: &str) -> (usize, &str) {
+    let trimmed = line.trim_start_matches([' ', '\t', '>']);
+    let ticks = trimmed
+        .chars()
+        .take_while(|character| *character == '`')
+        .count();
+    (ticks, &trimmed[ticks..])
 }
 
-fn has_extensions(root: &Path, input: &Path) -> bool {
-    project_directories(root, input)
-        .iter()
-        .any(|directory| directory.join(EXTENSIONS_DIRECTORY).exists())
+pub(super) fn chunk_opener(line: &str) -> Option<&str> {
+    let (ticks, rest) = fence_ticks(line);
+    if ticks < 3 {
+        return None;
+    }
+    let inner = rest
+        .trim()
+        .strip_prefix('{')?
+        .strip_suffix('}')?
+        .trim_start();
+    inner
+        .starts_with(|character: char| character.is_ascii_alphanumeric() || character == '_')
+        .then_some(inner)
 }
 
 pub(crate) fn inline_knitr(source: &str) -> bool {
-    let mut fence: Option<usize> = None;
+    let mut chunk = false;
     for line in source.lines() {
-        let trimmed = line.trim_start();
-        let ticks = trimmed
-            .chars()
-            .take_while(|character| *character == '`')
-            .count();
-        if ticks >= 3 {
-            match fence {
-                Some(open) if ticks >= open && trimmed[ticks..].trim().is_empty() => fence = None,
-                None => fence = Some(ticks),
-                Some(_) => {}
-            }
+        if chunk {
+            let (ticks, rest) = fence_ticks(line);
+            chunk = !(ticks >= 3 && rest.trim().is_empty());
             continue;
         }
-        if fence.is_some() {
+        if chunk_opener(line).is_some() {
+            chunk = true;
             continue;
         }
-        if line.contains("`r ") || line.contains("`{r}") || line.contains("`{r ") {
+        if ["`r ", "`r#", "`{r}", "`{r "]
+            .iter()
+            .any(|pattern| line.contains(pattern))
+        {
             return true;
         }
     }
@@ -553,18 +547,6 @@ pub(crate) fn has_executable_cells(source: &str) -> bool {
                 .iter()
                 .any(|diagram| language.eq_ignore_ascii_case(diagram))
     })
-}
-
-pub(crate) fn runs_project_code(
-    source: &str,
-    project_yaml: &[String],
-    project_dir: &Path,
-    input: &Path,
-) -> bool {
-    front_matter(source).is_some_and(declares_hooks)
-        || project_yaml.iter().any(|text| declares_hooks(text))
-        || has_extensions(project_dir, input)
-        || inline_knitr(source)
 }
 
 fn strip_ansi(line: &str) -> String {
@@ -990,40 +972,27 @@ mod tests {
     }
 
     #[test]
-    fn inline_r_code_is_found_outside_code_blocks_only() {
+    fn inline_r_code_is_found_everywhere_knitr_reads_it() {
         assert!(inline_knitr("The mean is `r mean(x)`.\n"));
         assert!(inline_knitr("The mean is `{r} mean(x)`.\n"));
-        assert!(!inline_knitr("```{r}\nx <- 1\n```\n"));
-        assert!(!inline_knitr(
-            "```markdown\nThe mean is `r mean(x)`.\n```\n"
+        assert!(inline_knitr("The mean is `r#mean(x)`.\n"));
+        assert!(inline_knitr("```markdown\nThe mean is `r mean(x)`.\n```\n"));
+        assert!(inline_knitr(
+            "```{r}\nx <- 1\n```\n\n> The mean is `r mean(x)`.\n"
         ));
+        assert!(!inline_knitr("```{r}\nx <- `r 1`\n```\n"));
         assert!(!inline_knitr("Use `python` here.\n"));
     }
 
     #[test]
-    fn filters_and_scripts_mean_the_project_runs_code() {
-        assert!(declares_hooks("title: A\nfilters:\n  - lua/hook.lua\n"));
-        assert!(declares_hooks("format:\n  html:\n    filters: [x.lua]\n"));
-        assert!(declares_hooks("project:\n  pre-render: setup.py\n"));
-        assert!(declares_hooks("\"shortcodes\": [a.lua]\n"));
-        assert!(!declares_hooks("title: Filters for water\nformat: pdf\n"));
+    fn code_off_refuses_a_project_with_extensions() {
         let directory = tempfile::tempdir().unwrap();
         let input = directory.path().join("paper").join("main.qmd");
         std::fs::create_dir_all(input.parent().unwrap()).unwrap();
         std::fs::write(&input, "# Paper\n").unwrap();
-        assert!(!runs_project_code(
-            "# Paper\n",
-            &[],
-            directory.path(),
-            &input
-        ));
+        assert!(!code_off::code_needed(directory.path(), &input));
         std::fs::create_dir(directory.path().join("_extensions")).unwrap();
-        assert!(runs_project_code(
-            "# Paper\n",
-            &[],
-            directory.path(),
-            &input
-        ));
+        assert!(code_off::code_needed(directory.path(), &input));
     }
 
     #[test]

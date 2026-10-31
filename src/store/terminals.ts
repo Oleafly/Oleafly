@@ -36,23 +36,16 @@ export interface TerminalTab {
   title: string;
   color: TerminalColorKey | null;
   autoStart: boolean;
-  /** Typed into the shell once, when the tab's first session starts (a sign-in command). */
   initialInput?: string;
-  /** Project-relative folder the tab's shell starts in. */
   cwd?: string;
-  /** Extra environment for the tab's shell. */
   env?: Record<string, string>;
-  /** A command typed into the shell once it is ready, quoted for that shell. */
   launch?: TerminalCommand;
-  /** A program rang the bell while the tab was hidden. */
   bell: boolean;
-  /** The title the running program set (OSC 0/2), shown as the tab's tooltip. */
   oscTitle: string | null;
 }
 
 export interface AddTerminalOptions {
   initialInput?: string;
-  /** Shown on the tab; not saved to the tab's slot. */
   title?: string;
   cwd?: string;
   env?: Record<string, string>;
@@ -76,7 +69,6 @@ interface TerminalsState {
   closeTerminalsToTheRight: (id: string) => TerminalTab[];
   closeTerminalsToTheLeft: (id: string) => TerminalTab[];
   activateTerminal: (id: string) => void;
-  /** Activates the next (1) or previous (-1) tab, wrapping around. */
   activateRelativeTerminal: (step: 1 | -1) => void;
   renameTerminal: (id: string, title: string) => void;
   setTerminalColor: (id: string, color: TerminalColorKey | null) => void;
@@ -281,7 +273,6 @@ export const useTerminalsStore = create<TerminalsState>((set, get) => {
     },
     setTerminalOscTitle: (id, title) => {
       const state = get();
-      // A program that clears its title gives the tab its own name back.
       const oscTitle = title.trim() === "" ? null : title;
       if (!state.tabs.some((tab) => tab.id === id && tab.oscTitle !== oscTitle)) return;
       set({ tabs: state.tabs.map((tab) => (tab.id === id ? { ...tab, oscTitle } : tab)) });

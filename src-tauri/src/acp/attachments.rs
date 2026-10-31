@@ -1,7 +1,3 @@
-//! Files attached to a CLI-agent message. Agents read files themselves, so
-//! a stored attachment is copied into `<project>/.oleafly/attachments/
-//! <session>/` and linked; project files are linked in place. Small text
-//! files are also embedded for agents that take embedded context.
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
@@ -18,14 +14,14 @@ const MAX_SELECTION: usize = 64 * 1024;
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum PromptFile {
-    /// A file in Oleafly's attachment store (dropped or pasted files).
     Stored {
         sha256: String,
         name: String,
         mime: String,
     },
-    /// A file of the project, by project-relative path.
-    Project { path: String },
+    Project {
+        path: String,
+    },
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -45,8 +41,6 @@ pub struct PromptInput {
     pub skill_id: Option<String>,
 }
 
-/// What the `user_message` event keeps about a file: never bytes or paths
-/// outside the project.
 #[derive(Clone, Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileNote {
@@ -118,9 +112,6 @@ fn same_file(path: &Path, size: usize, sha256: &str) -> bool {
         && std::fs::read(path).is_ok_and(|bytes| sha256_hex(&bytes) == sha256)
 }
 
-/// Copies a stored attachment into the session's folder. The same bytes
-/// already copied under `name`, `name (2)`, … are reused; otherwise the
-/// first free name is written.
 pub(super) fn copy_into_session(
     root: &Path,
     session_id: &str,
@@ -186,19 +177,15 @@ fn embedded(path: &Path, name: &str, mime: Option<&str>, uri: &str) -> Option<Em
     })
 }
 
-/// Resolved files: links for every file, embedded texts for small text
-/// files, and what the transcript keeps about them.
 pub(super) struct Resolved {
     pub links: Vec<ResourceLink>,
     pub texts: Vec<EmbeddedText>,
     pub notes: Vec<FileNote>,
 }
 
-/// What resolving one message's files needs.
 struct FileScope<'a> {
     project_id: &'a str,
     root: &'a Path,
-    /// The project folder as the agent spells it.
     spelled: PathBuf,
     data_root: &'a Path,
     session_id: &'a str,
@@ -206,8 +193,6 @@ struct FileScope<'a> {
 }
 
 impl FileScope<'_> {
-    /// A file from Oleafly's attachment store: copied into the session
-    /// folder, then linked.
     fn add_stored(
         &self,
         resolved: &mut Resolved,
@@ -249,7 +234,6 @@ impl FileScope<'_> {
         Ok(())
     }
 
-    /// A file of the project, linked in place.
     fn add_project(&self, resolved: &mut Resolved, path: &str) -> Result<(), String> {
         let relative = Path::new(path);
         if path.is_empty()
@@ -288,7 +272,6 @@ impl FileScope<'_> {
         Ok(())
     }
 
-    /// A selection quoted as text; `None` for a blank one.
     fn selection_text(&self, selection: &PromptSelection) -> Option<EmbeddedText> {
         let text: String = selection.text.chars().take(MAX_SELECTION).collect();
         if text.trim().is_empty() {
@@ -313,9 +296,6 @@ impl FileScope<'_> {
             _ => ("Selection".to_string(), None),
         };
         Some(EmbeddedText {
-            // A selection is quoted, not linked: the link would bring the
-            // whole file. Embedded, it names its own resource, never the
-            // file's, so the agent does not take it for the file's content.
             uri: uri.filter(|_| self.caps.embedded_context),
             name,
             mime_type: Some("text/plain".into()),
@@ -324,8 +304,6 @@ impl FileScope<'_> {
     }
 }
 
-/// The resource a selection of the file at `file_uri` is sent as: the file's
-/// path under its own scheme (`oleafly-selection:///…/main.tex`).
 fn selection_uri(file_uri: &str) -> String {
     match file_uri.strip_prefix("file:") {
         Some(rest) => format!("oleafly-selection:{rest}"),
@@ -333,8 +311,6 @@ fn selection_uri(file_uri: &str) -> String {
     }
 }
 
-/// Turns the message's files and selections into links and texts.
-/// `data_root` is Oleafly's data folder (the attachment store).
 pub(super) fn resolve(
     input: &PromptInput,
     project_id: &str,
@@ -374,7 +350,6 @@ pub(super) fn resolve(
             .iter()
             .filter_map(|selection| scope.selection_text(selection)),
     );
-    // Without embedded context, file texts would only repeat the link.
     if !caps.embedded_context {
         resolved
             .texts

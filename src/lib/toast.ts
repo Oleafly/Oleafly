@@ -19,9 +19,6 @@ export const toast = {
   dismiss: (id: number) => useToastStore.getState().dismiss(id),
 };
 
-// Use this in `catch` blocks for user-triggered actions that would otherwise
-// fail silently (`logError` alone writes to `~/.oleafly/app.log` with no
-// visible feedback).
 export function notifyError(scope: string, e: unknown, message?: string): void {
   void logError(scope, e);
   toast.error(message ?? describeError(e));

@@ -227,7 +227,6 @@ function parseFlowchart(source: string): Flowchart {
   };
 }
 
-/** Convert the common Mermaid flowchart grammar into dependency-free TikZ. */
 export function mermaidToTikz(source: string): string {
   const { nodes, edges, positions, names } = parseFlowchart(source);
   const nodeLines = nodes.map((node) => {

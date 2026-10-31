@@ -11,10 +11,6 @@ import { remoteCursors, type RemoteCursor } from "../../src/features/collab/live
 import { RemoteDocumentSession } from "../../src/features/collab/live/remote-session";
 import type { CollabDocMessage } from "../../src/lib/tauri";
 
-// Budgets for the per-edit work shared documents do on the UI thread. Each one
-// has room for a slow CI runner, but a path that does work in proportion to
-// the file again (a background tab that rebuilds its state from a string, a
-// session that copies its text twice per edit) overshoots it many times over.
 const LARGE_BYTES = 5 * 1024 * 1024;
 const REMOTE_EDITS = 200;
 const ACTIVE_LARGE_BUDGET_MS = 3_000;
@@ -82,8 +78,6 @@ async function openSession(text: string, mirror: (text: string) => void) {
   return { session, deliver: (message: CollabDocMessage) => deliver(message) };
 }
 
-// Alternating one-character inserts and deletes at pseudo-random places, as
-// collaborators typing elsewhere in the file would send them.
 function remoteEdits(length: number, count: number, seed: number) {
   const random = randomFrom(seed);
   const messages: CollabDocMessage[] = [];
@@ -109,8 +103,6 @@ function applyToState(state: EditorState, change: RemoteChange): EditorState {
   }).state;
 }
 
-// One edit at a time to a plain string of the same text, read at the edit
-// like an editor does: the cost of one copy.
 function plainEditCost(text: string, edits: number): number {
   const random = randomFrom(5);
   let current = text;
@@ -125,9 +117,6 @@ function plainEditCost(text: string, edits: number): number {
   return elapsed / edits;
 }
 
-// Per-edit cost of an open shared file: the session, the store mirror with
-// its listeners, and the editor state. "typing" is a keystroke that Rust then
-// confirms; "remote" is a collaborator's edit.
 async function sharedEditCost(text: string, mode: "remote" | "typing"): Promise<number> {
   const files = create(() => ({ content: text }));
   for (let index = 0; index < STORE_LISTENERS; index += 1) files.subscribe(() => undefined);

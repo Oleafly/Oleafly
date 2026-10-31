@@ -35,8 +35,6 @@ pub enum ChannelError {
     Stale,
     #[error("the editor sent a change that does not fit: {0}")]
     Invalid(OtError),
-    // The editor made the change before the channel reset. It already has
-    // the reset text and sends its typing again on top of it.
     #[error("the change was made before the editor was reset")]
     BeforeReset,
 }
@@ -224,10 +222,6 @@ mod tests {
         assert_eq!(channel.text(), plain);
     }
 
-    // The median of many keystrokes, with plenty of room for a debug build
-    // on a busy CI runner: walking or copying the whole file, as the
-    // channel used to, takes about 200 ms per keystroke in a debug build,
-    // and a piece takes well under a millisecond.
     #[test]
     fn a_keystroke_in_a_five_megabyte_file_does_not_walk_the_whole_file() {
         let line = "@book{Müller1999, author = {Jürgen Müller}, year = {1999}},\n";

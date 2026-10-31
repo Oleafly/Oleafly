@@ -4,6 +4,8 @@ import { TextOperation } from "@/features/collab/live/ot";
 import { RemoteDocumentSession } from "@/features/collab/live/remote-session";
 import {
   type GatewayListener,
+  MAX_CHANGE_BYTES,
+  OfflineError,
   PROBE_AFTER_FAILURES,
   RECONNECT_MAX_MS,
   reconnectDelay,
@@ -21,6 +23,7 @@ function setup(listener: GatewayListener = {}, probe?: () => Promise<"ok" | "sig
     setTimer: timers.setTimer,
     random: () => 0.5,
     probe,
+    instance: "t",
   });
   gateway.start();
   return { server, timers, gateway };
@@ -136,7 +139,7 @@ describe("WebGateway document transport", () => {
     server.current.emit({ t: "opened", fileId: "f-main", rev: 1, text: "abc" });
     await opening;
     await gateway.transport.change("f-main", 1, new TextOperation().retain(3).insert("d").toWire());
-    expect(server.current.frames("change")).toEqual([{ t: "change", fileId: "f-main", rev: 1, op: [3, "d"] }]);
+    expect(server.current.frames("change")).toEqual([{ t: "change", fileId: "f-main", rev: 1, op: [3, "d"], id: "t:1" }]);
     server.current.emit({ t: "remote", fileId: "f-main", rev: 2, op: ["XY", 3], length: 5 });
     server.current.emit({ t: "ack", fileId: "f-main", rev: 3 });
     expect(messages).toEqual([
@@ -313,7 +316,7 @@ describe("WebGateway with the shared OT session", () => {
   it("confirms local typing that crossed a remote change", async () => {
     const { server, session } = await openSession();
     session.applyLocal([{ from: 3, to: 3, insert: "d" }], session.version());
-    expect(server.current.frames("change")).toEqual([{ t: "change", fileId: "f-main", rev: 1, op: [3, "d"] }]);
+    expect(server.current.frames("change")).toEqual([{ t: "change", fileId: "f-main", rev: 1, op: [3, "d"], id: "t:1" }]);
     server.current.emit({ t: "remote", fileId: "f-main", rev: 2, op: ["XY", 3], length: 5 });
     expect(session.text()).toBe("XYabcd");
     server.current.emit({ t: "ack", fileId: "f-main", rev: 3 });
@@ -330,7 +333,7 @@ describe("WebGateway with the shared OT session", () => {
     session.applyLocal([{ from: 1, to: 1, insert: "2" }], session.version());
     expect(server.current.frames("change")).toHaveLength(1);
     server.current.emit({ t: "ack", fileId: "f-main", rev: 2 });
-    expect(server.current.frames("change").at(-1)).toEqual({ t: "change", fileId: "f-main", rev: 2, op: [1, "2", 3] });
+    expect(server.current.frames("change").at(-1)).toEqual({ t: "change", fileId: "f-main", rev: 2, op: [1, "2", 3], id: "t:2" });
     server.current.emit({ t: "ack", fileId: "f-main", rev: 3 });
     await flush();
     expect(session.synchronized).toBe(true);
@@ -342,7 +345,7 @@ describe("WebGateway with the shared OT session", () => {
     session.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
     server.current.emit({ t: "reset", fileId: "f-main", rev: 4, text: "abcz" });
     expect(session.text()).toBe("abc!z");
-    expect(server.current.frames("change").at(-1)).toEqual({ t: "change", fileId: "f-main", rev: 4, op: [3, "!", 1] });
+    expect(server.current.frames("change").at(-1)).toEqual({ t: "change", fileId: "f-main", rev: 4, op: [3, "!", 1], id: "t:2" });
     server.current.emit({ t: "ack", fileId: "f-main", rev: 5 });
     await flush();
     expect(session.synchronized).toBe(true);
@@ -361,7 +364,124 @@ describe("WebGateway with the shared OT session", () => {
     server.current.emit({ t: "opened", fileId: "f-main", rev: 3, text: "abc." });
     await reopening;
     expect(session.text()).toBe(">abc.");
-    expect(server.current.frames("change")).toEqual([{ t: "change", fileId: "f-main", rev: 3, op: [">", 4] }]);
+    expect(server.current.frames("change")).toEqual([{ t: "change", fileId: "f-main", rev: 3, op: [">", 4], id: "t:1" }]);
     expect(gateway.online).toBe(true);
+  });
+});
+
+describe("WebGateway requests", () => {
+  it("settles a request on its own answer and keeps refusals out of the shared notice", async () => {
+    const errors: string[] = [];
+    const { server, gateway } = setup({ error: (code) => errors.push(code) });
+    server.current.emit(hello());
+    const sent = gateway.request({ t: "chat", action: "send", body: "hi" });
+    const refused = gateway.request({ t: "chat", action: "clear" });
+    const [first, second] = server.current.frames("chat");
+    expect(first).toEqual({ t: "chat", action: "send", body: "hi", reqId: "t:r1" });
+    expect(second).toMatchObject({ action: "clear", reqId: "t:r2" });
+    server.current.emit({ t: "done", reqId: "t:r1" });
+    server.current.emit({ t: "error", code: "chat_role", message: "No", reqId: "t:r2" });
+    await expect(sent).resolves.toBeUndefined();
+    await expect(refused).rejects.toMatchObject({ code: "chat_role" });
+    expect(errors).toEqual([]);
+    const lost = gateway.request({ t: "chat", action: "send", body: "again" });
+    server.current.drop();
+    await expect(lost).rejects.toBeInstanceOf(OfflineError);
+    await expect(gateway.request({ t: "chat", action: "send", body: "later" })).rejects.toBeInstanceOf(OfflineError);
+  });
+
+  it("ends for good when the project is too large to open before hello", () => {
+    const { server, timers, gateway } = setup();
+    server.current.emit({ t: "error", code: "project_too_large", message: "" });
+    expect(gateway.state).toBe("ended");
+    expect(gateway.end).toBe("too_large");
+    expect(timers.delays).toEqual([]);
+  });
+});
+
+describe("WebGateway reopening after a drop", () => {
+  it("reopens a file renamed while offline by its id, never the new file at its old path", async () => {
+    const { server, timers, gateway } = setup();
+    server.current.emit(hello());
+    server.current.drop();
+    const reopening = gateway.transport.open("main.tex", () => undefined);
+    const gone = gateway.transport.open("refs.bib", () => undefined);
+    timers.runNext();
+    server.current.emit(
+      hello("owner", {
+        files: [
+          { fileId: "f-main", path: "chapters/main.tex", kind: "text" },
+          { fileId: "f-other", path: "main.tex", kind: "text" },
+        ],
+      }),
+    );
+    expect(server.current.frames("open")).toEqual([{ t: "open", fileId: "f-main" }]);
+    server.current.emit({ t: "opened", fileId: "f-main", rev: 2, text: "abc" });
+    await expect(reopening).resolves.toMatchObject({ file_id: "f-main" });
+    await expect(gone).resolves.toBeNull();
+  });
+});
+
+describe("WebGateway change ids", () => {
+  async function typedThenDropped() {
+    const context = setup();
+    context.server.current.emit(hello());
+    const session = new RemoteDocumentSession("main.tex", "", { transport: context.gateway.transport });
+    const opening = session.open();
+    context.server.current.emit({ t: "opened", fileId: "f-main", rev: 1, text: "abc" });
+    await opening;
+    session.applyLocal([{ from: 3, to: 3, insert: "d" }], session.version());
+    context.server.current.drop();
+    expect(context.gateway.holds("f-main")).toBe(true);
+    session.applyLocal([{ from: 4, to: 4, insert: "e" }], session.version());
+    context.timers.runNext();
+    context.server.current.emit(hello());
+    expect(context.server.current.frames("open")).toEqual([{ t: "open", fileId: "f-main", resume: "t:1" }]);
+    return { ...context, session };
+  }
+
+  it("does not apply typing twice when the server took it but the ack was lost", async () => {
+    const { server, gateway, session } = await typedThenDropped();
+    server.current.emit({ t: "opened", fileId: "f-main", rev: 0, text: "abcd", resumed: true });
+    expect(session.text()).toBe("abcde");
+    expect(server.current.frames("change")).toEqual([{ t: "change", fileId: "f-main", rev: 0, op: [4, "e"], id: "t:2" }]);
+    expect(gateway.holds("f-main")).toBe(false);
+    server.current.emit({ t: "ack", fileId: "f-main", rev: 1 });
+    await flush();
+    expect(session.synchronized).toBe(true);
+    expect(session.confirmed()).toBe("abcde");
+  });
+
+  it("sends typing again when the server never got it", async () => {
+    const { server, session } = await typedThenDropped();
+    server.current.emit({ t: "opened", fileId: "f-main", rev: 5, text: "Xabc", resumed: false });
+    expect(session.text()).toBe("Xabcde");
+    expect(server.current.frames("change")).toEqual([
+      { t: "change", fileId: "f-main", rev: 5, op: [4, "de"], id: "t:2" },
+    ]);
+  });
+
+  it("keeps a change too large for the server off the socket and drops it after one more try", async () => {
+    const errors: string[] = [];
+    const discarded: string[] = [];
+    const { server, gateway } = setup({ error: (code) => errors.push(code) });
+    server.current.emit(hello());
+    const session = new RemoteDocumentSession("main.tex", "", {
+      transport: gateway.transport,
+      onDiscarded: (reason) => discarded.push(reason),
+    });
+    const opening = session.open();
+    server.current.emit({ t: "opened", fileId: "f-main", rev: 1, text: "abc" });
+    await opening;
+    session.applyLocal([{ from: 3, to: 3, insert: "x".repeat(MAX_CHANGE_BYTES) }], session.version());
+    expect(server.current.frames("change")).toEqual([]);
+    expect(server.current.frames("open")).toHaveLength(2);
+    server.current.emit({ t: "opened", fileId: "f-main", rev: 2, text: "abc" });
+    expect(server.current.frames("open")).toHaveLength(3);
+    server.current.emit({ t: "opened", fileId: "f-main", rev: 3, text: "abc" });
+    expect(session.text()).toBe("abc");
+    expect(discarded).toEqual(["refused"]);
+    expect(errors).toEqual(["too_large", "too_large"]);
+    expect(server.current.frames("change")).toEqual([]);
   });
 });

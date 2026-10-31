@@ -9,9 +9,6 @@ use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
 use crate::routes::ws::{MAX_SOCKETS, MAX_SOCKETS_PER_ACCOUNT};
 
-// A device keeps one socket in normal use. A flapping network can leave
-// several half open until they go idle, and past this many its oldest is
-// replaced, so one device never fills its account's allowance.
 pub const MAX_SOCKETS_PER_DEVICE: usize = 8;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -136,10 +133,6 @@ impl SocketRegistry {
         *self.limits.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    // An account at its allowance makes room for a device that already
-    // has a socket, by replacing that device's oldest one, which is most
-    // likely one a flapping network left half open. A device without a
-    // socket is refused.
     pub fn open_slot(&self, account: AccountId, device: DeviceId) -> Option<SocketSlot> {
         let limits = self.limits();
         let mut open = self.open.lock().unwrap_or_else(PoisonError::into_inner);
@@ -186,10 +179,6 @@ impl SocketRegistry {
             .total
     }
 
-    // Tells every socket the server is restarting: the registered ones
-    // through their control channel, and the ones still upgrading or
-    // waiting for their hello, and any registered from now on, through the
-    // restarting flag.
     pub fn restart_all(&self) -> usize {
         self.restarting.store(true, Ordering::SeqCst);
         self.restart.notify_waiters();

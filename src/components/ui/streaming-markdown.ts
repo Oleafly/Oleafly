@@ -133,9 +133,6 @@ function blockBoundaries(source: string, ranges: readonly SourceRange[]) {
     const protectedRange = Boolean(
       range !== undefined && range.from < boundary && range.to > matchFrom,
     );
-    // A boundary between a container block and a continuation-shaped next
-    // line would split one construct (a loose list, a multi-block quote)
-    // into two renders, so those blocks glue together instead.
     const glued =
       stickyBlock(source.slice(segmentFrom, matchFrom)) && stickyStart(source, boundary);
     if (!protectedRange && !glued) boundaries.push(boundary);

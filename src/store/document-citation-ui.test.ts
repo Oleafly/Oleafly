@@ -17,7 +17,6 @@ describe("useDocumentCitationUiStore", () => {
       .requestDocumentScan("  selected paragraph  ");
     const state = useDocumentCitationUiStore.getState();
     expect(state.modeRequest).toBe("document");
-    // Store keeps original text; emptiness is gated by trim.
     expect(state.selectionOverride).toBe("  selected paragraph  ");
   });
 

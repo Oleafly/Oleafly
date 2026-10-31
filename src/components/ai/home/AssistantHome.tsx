@@ -97,7 +97,6 @@ function AssistantHomeView({
   quickStarts?: readonly HomeQuickStart[];
   quickStartTestId?: string;
   showSkills?: boolean;
-  /** Quick starts can show before skills do (the CLI home has no session yet). */
   showQuickStarts?: boolean;
   before?: ReactNode;
   children?: ReactNode;

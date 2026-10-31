@@ -574,7 +574,6 @@ fn catalog_prefers_v2_cache_then_v1_cache_then_bundled() {
 
 #[test]
 fn the_bundled_v1_catalog_is_still_valid_and_browsable() {
-    // The app bundles the catalog; this crate reads it from there.
     let bundled = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../src-tauri/resources")
         .join("template-packs.json");
@@ -908,7 +907,6 @@ async fn a_shared_file_is_copied_when_it_cannot_be_linked() {
     assert!(no_part_files(dir.path()));
 }
 
-/// No `.part` file anywhere below `dir`.
 fn no_part_files(dir: &Path) -> bool {
     let mut pending = vec![dir.to_path_buf()];
     while let Some(folder) = pending.pop() {

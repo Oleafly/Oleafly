@@ -1,7 +1,3 @@
-//! "Let agents use my Oleafly API keys" (Experimental): an agent that
-//! supports `providers/*` is routed through a key the user keeps in
-//! Oleafly. The key goes only into the `providers/set` headers, is added to
-//! the session's redactor first and is cleared from memory afterwards.
 use serde::Serialize;
 use std::collections::BTreeMap;
 use zeroize::Zeroizing;
@@ -61,9 +57,6 @@ const ANTHROPIC_GATEWAYS: [(&str, &str); 2] = [
     ("zai", "https://api.z.ai/api/anthropic"),
 ];
 
-/// Where Oleafly's key for `provider` can send requests, in order: each
-/// route's agent protocol (`anthropic` or `openai`) and base URL, then the
-/// key. Providers without a key, Google and local models are not routed.
 pub(super) fn oleafly_routes(
     provider: &str,
     config: &AppConfig,
@@ -143,10 +136,6 @@ fn label(provider: &str, config: &AppConfig) -> String {
     }
 }
 
-/// The Oleafly providers (with a saved key) an agent could be routed
-/// through, given the protocols it supports (all, when not known yet), each
-/// with the first of its routes the agent accepts; Codex only the OpenAI
-/// key. Never returns keys.
 pub(super) fn provider_choices(
     agent_id: &str,
     supported: &[String],
@@ -169,8 +158,6 @@ pub(super) fn provider_choices(
         .collect()
 }
 
-/// What routing settled on: the Oleafly provider and the agent provider it
-/// was set on, and the protocols the agent supports.
 #[derive(Default)]
 pub(super) struct Routed {
     pub provider: Option<String>,
@@ -178,9 +165,6 @@ pub(super) struct Routed {
     pub supported: Vec<String>,
 }
 
-/// Lists the agent's providers and sets the chosen Oleafly key on the first
-/// one that accepts one of its routes, in the order the agent lists its
-/// protocols. Runs before `session/new`.
 pub(super) async fn route_agent(
     client: &AcpClient,
     redactor: &Redactor,

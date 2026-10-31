@@ -1,7 +1,6 @@
 import type { Para } from "./lines";
 
 export function bodyFontSize(paras: Para[]): number {
-  // weight by text length: body text dominates by characters, not by count
   const weights = new Map<number, number>();
   for (const p of paras) {
     const k = Math.round(p.fontSize * 2) / 2;

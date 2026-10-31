@@ -12,15 +12,11 @@ use serde_json::{json, Value};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
-    /// Answers are `application/json`.
     Json,
-    /// Answers are `text/event-stream`, with a notification first.
     Sse,
-    /// Never answers.
     Silent,
 }
 
-/// One request the fixture received.
 #[derive(Clone, Debug)]
 pub struct Received {
     pub method: String,
@@ -159,7 +155,6 @@ fn serve(stream: TcpStream, mode: Mode, received: Arc<Mutex<Vec<Received>>>) {
     }
 }
 
-/// Starts the fixture on a free local port.
 pub fn start(mode: Mode) -> McpFixture {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();

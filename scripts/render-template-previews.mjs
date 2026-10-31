@@ -1,17 +1,4 @@
 #!/usr/bin/env node
-// Render a page-1 PNG thumbnail for every bundled template.
-//
-// For each folder under src-tauri/resources/templates/<id>/, this compiles the
-// template's main doc with the bundled Tectonic sidecar and rasterizes page 1 to
-// `preview.png` (committed alongside the template). It doubles as a per-template
-// compile smoke test. Run it from the repo root:
-//
-//     node scripts/render-template-previews.mjs [templateId ...]
-//
-// Requires `pdftoppm` (poppler-utils) on PATH. Tectonic and Typst templates render
-// from their bundled sidecars; Markdown templates render via Pandoc (managed
-// download, PATH, or a common install location) with Tectonic as the PDF engine.
-// A template whose engine tool is unavailable is skipped, not failed.
 
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, cpSync, rmSync, copyFileSync, statSync, symlinkSync, writeFileSync } from "node:fs";
@@ -22,8 +9,6 @@ import { fileURLToPath } from "node:url";
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const templatesDir = join(repoRoot, "src-tauri", "resources", "templates");
 const fontCatalogPath = join(repoRoot, "src-tauri", "resources", "font-packs.json");
-// Shared with the app: fonts are cached under ~/.oleafly/assets/fonts/<id>/ so a
-// preview run and the running app reuse the same downloads.
 const fontCacheRoot = join(homedir(), ".oleafly", "assets", "fonts");
 
 let fontCatalog = null;
@@ -35,8 +20,6 @@ function loadFontCatalog() {
   return fontCatalog;
 }
 
-// Ensure a font pack is cached (downloading if needed), then copy its files into
-// the build dir's fonts/ folder so a font-dependent template compiles.
 async function stageFonts(fontIds, workDir) {
   if (!fontIds?.length) return;
   const catalog = loadFontCatalog();
@@ -59,8 +42,6 @@ async function stageFonts(fontIds, workDir) {
   }
 }
 
-// Resolve a bundled sidecar (tectonic/typst) for the host triple, or null if it
-// has not been fetched yet.
 function sidecarBinary(name) {
   const arch = { arm64: "aarch64", x64: "x86_64" }[process.arch] ?? process.arch;
   const platform = {
@@ -81,8 +62,6 @@ function tectonicBinary() {
   return bin;
 }
 
-// Mirror the app's find_pandoc: prefer our managed download, then PATH, then
-// common install locations. Returns a runnable path/command or null.
 function pandocBinary() {
   const managed = join(
     homedir(),
@@ -108,8 +87,6 @@ function pandocBinary() {
   return null;
 }
 
-// Resolved to an absolute path up front: an unqualified name would let a
-// writable directory earlier in PATH supply the binary.
 function pdftoppmBinary() {
   const candidates = [
     "/opt/homebrew/bin/pdftoppm",
@@ -127,7 +104,6 @@ function pdftoppmBinary() {
   return null;
 }
 
-// Rasterize page 1 of a PDF to <dir>/preview.png (width 600px, white background).
 function rasterize(pdftoppm, pdfPath, work, dir) {
   execFileSync(
     pdftoppm,
@@ -156,7 +132,6 @@ async function render(id, tools) {
     rmSync(join(work, "template.json"), { force: true });
     rmSync(join(work, "preview.png"), { force: true });
 
-    // Each engine produces a PDF in the work dir; the rasterize step is shared.
     let pdf;
     if (engineKind === "tectonic") {
       await stageFonts(manifest.requires?.fonts, work);
@@ -179,7 +154,6 @@ async function render(id, tools) {
       } catch {
         copyFileSync(tools.tectonic, enginePath);
       }
-      // Mirror the app's Markdown pipeline: Pandoc with Tectonic as the PDF engine.
       execFileSync(
         tools.pandoc,
         [mainDoc, "-o", "preview-out.pdf", `--pdf-engine=${enginePath}`, "--citeproc"],

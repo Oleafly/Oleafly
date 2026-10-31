@@ -394,8 +394,6 @@ describe("extractForPreflight", () => {
           return resolved.get(id);
         }),
       },
-      // The font arrives, then loads (FontFace.loaded) a moment after the
-      // operator list has resolved.
       getOperatorList: vi.fn(async () => {
         setTimeout(() => {
           const font = { name: "NimbusRomNo9L-Regu", data: new Uint8Array([1]) };

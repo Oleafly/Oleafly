@@ -1,6 +1,3 @@
-//! How Oleafly runs each engine: the arguments, the generated entry file and
-//! the checks around them, shared by the desktop app and the CLI so a build
-//! from either one runs the same command.
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
@@ -9,7 +6,6 @@ use crate::{Error, ErrorKind, TexFlavor};
 #[cfg(test)]
 mod tests;
 
-/// The generated LaTeX entry file every main-document build compiles.
 pub const ENTRY_STEM: &str = "_oleafly_entry";
 pub const ENTRY_TEX: &str = "_oleafly_entry.tex";
 /// Oleafly's mirror of the Tectonic TeX package bundle. Upstream's relay
@@ -23,7 +19,6 @@ pub const BUNDLE_FALLBACK_NOTE: &str =
     "[Oleafly] The TeX package mirror was unreachable; retried with the upstream bundle.\n";
 pub const MERMAID_FIGURES_FILTER_NAME: &str = "oleafly-mermaid-figures.lua";
 pub const MERMAID_FIGURES_FILTER: &str = include_str!("../resources/pandoc/mermaid-figures.lua");
-/// Records which latexmk produced a build folder.
 pub const LATEXMK_BINARY_MARKER: &str = ".oleafly-latexmk";
 const MAX_MARKER_BYTES: u64 = 64 * 1024;
 
@@ -34,7 +29,6 @@ pub struct EngineFlags {
     pub halt_on_error: bool,
 }
 
-/// The mirror, or `OLEAFLY_TEX_BUNDLE_URL` when it names another bundle.
 pub fn tex_bundle_url() -> String {
     std::env::var(TEX_BUNDLE_URL_VARIABLE)
         .ok()
@@ -42,7 +36,6 @@ pub fn tex_bundle_url() -> String {
         .unwrap_or_else(|| TEX_BUNDLE_MIRROR_URL.into())
 }
 
-/// A main document the generated entry can `\input` safely.
 pub fn validate_latex_main_document(path: &str) -> crate::Result<()> {
     if path.is_empty()
         || path.chars().any(|character| {
@@ -95,15 +88,12 @@ pub fn tectonic_args(
     args.extend([
         "--synctex".into(),
         "--keep-logs".into(),
-        // Write .aux/.toc to the build dir: reference numbering reads
-        // \newlabel entries from the last compile's aux files.
         "--keep-intermediates".into(),
         "--print".into(),
         "--outdir".into(),
         out_dir.as_os_str().to_owned(),
     ]);
     if flags.fast {
-        // One typesetting pass instead of reruns until the document settles.
         args.extend(["--reruns".into(), "0".into()]);
     }
     if !flags.halt_on_error {
@@ -128,7 +118,6 @@ pub fn shell_escape_arg(allow: bool, distribution_kind: &str) -> &'static str {
     }
 }
 
-/// latexmk's arguments, the entry last.
 pub fn latexmk_args(
     out_dir_arg: &str,
     entry_arg: &str,
@@ -152,7 +141,6 @@ pub fn latexmk_args(
     if flags.halt_on_error {
         args.push("-halt-on-error".into());
     } else {
-        // Push on to a best-effort PDF after TeX errors (Tectonic parity).
         args.push("-f".into());
     }
     if flavor == TexFlavor::Lualatex && !allow_shell_escape {
@@ -185,7 +173,6 @@ pub fn validate_latexmk_path_characters(path: &str) -> crate::Result<()> {
     }
 }
 
-/// `./<path>` with forward slashes, for a path inside the working folder.
 pub fn latexmk_relative_path_arg(path: &Path) -> crate::Result<String> {
     if path.as_os_str().is_empty()
         || path.is_absolute()
@@ -267,7 +254,6 @@ pub fn record_latexmk_binary(out_dir: &Path, latexmk: &Path) {
     let resolved = std::fs::canonicalize(latexmk).unwrap_or_else(|_| latexmk.to_owned());
     if std::fs::create_dir_all(out_dir).is_ok() {
         let marker = out_dir.join(LATEXMK_BINARY_MARKER);
-        // A link in the build folder is replaced, never written through.
         if std::fs::symlink_metadata(&marker)
             .is_ok_and(|metadata| metadata.file_type().is_symlink())
         {
@@ -277,8 +263,6 @@ pub fn record_latexmk_binary(out_dir: &Path, latexmk: &Path) {
     }
 }
 
-/// For the DVI routes (upLaTeX, pLaTeX): the compiler's name when it or
-/// `dvipdfmx` is missing beside latexmk.
 pub fn dvi_toolchain_missing(flavor: TexFlavor, latexmk: &Path) -> Option<&'static str> {
     if !flavor.goes_through_dvi() {
         return None;
@@ -299,15 +283,12 @@ pub fn dvi_toolchain_missing(flavor: TexFlavor, latexmk: &Path) -> Option<&'stat
     (!(available(flavor.as_str()) && available("dvipdfmx"))).then_some(label)
 }
 
-/// What a Markdown build hands Pandoc.
 pub struct MarkdownPdfArgs<'a> {
-    /// `--resource-path=...` (built by the engine scratch folder).
     pub resource_argument: &'a OsStr,
     pub tectonic: &'a Path,
     pub project: &'a Path,
     pub output: &'a Path,
     pub main: &'a Path,
-    /// Slash-relative to the project.
     pub bibliographies: &'a [PathBuf],
     pub bundle_url: Option<&'a str>,
 }
@@ -318,8 +299,6 @@ fn joined(prefix: &str, value: &OsStr) -> OsString {
     text
 }
 
-/// Pandoc's arguments for a Markdown PDF: sandboxed, the Mermaid figure
-/// filter, citeproc with every `.bib` file, Tectonic pinned to the bundle.
 pub fn markdown_pdf_args(spec: &MarkdownPdfArgs<'_>) -> Vec<OsString> {
     let mut args: Vec<OsString> = vec![
         spec.resource_argument.to_owned(),
@@ -340,8 +319,6 @@ pub fn markdown_pdf_args(spec: &MarkdownPdfArgs<'_>) -> Vec<OsString> {
     args.push(format!("--lua-filter={MERMAID_FIGURES_FILTER_NAME}").into());
     args.push("--citeproc".into());
     for bibliography in spec.bibliographies {
-        // Slash-relative even on Windows. Joining it part by part gives the
-        // path one kind of separator there, as 0.4.7 did.
         let mut path = spec.project.to_path_buf();
         path.extend(bibliography.components());
         args.push(joined("--bibliography=", path.as_os_str()));
@@ -351,8 +328,6 @@ pub fn markdown_pdf_args(spec: &MarkdownPdfArgs<'_>) -> Vec<OsString> {
     args
 }
 
-/// True when a failed Tectonic run died fetching bundle resources rather
-/// than on a TeX error: the only case where the upstream bundle can help.
 pub fn is_bundle_fetch_failure(log: &str) -> bool {
     [
         "couldn't get it from the internet",
@@ -365,7 +340,6 @@ pub fn is_bundle_fetch_failure(log: &str) -> bool {
     .any(|marker| log.contains(marker))
 }
 
-/// The arguments without the bundle pin (and its URL).
 pub fn args_without_bundle<T: AsRef<OsStr> + Clone>(args: &[T]) -> Vec<T> {
     let mut out = Vec::with_capacity(args.len());
     let mut skip_next = false;
@@ -384,10 +358,8 @@ pub fn args_without_bundle<T: AsRef<OsStr> + Clone>(args: &[T]) -> Vec<T> {
     out
 }
 
-/// How the line `compiler_crash_note` writes begins, for log parsers.
 pub const COMPILER_CRASH_LINE: &str = "error: the compiler crashed (";
 
-/// A line naming the signal or exception that killed a compiler.
 #[cfg(unix)]
 pub fn compiler_crash_note(status: &std::process::ExitStatus) -> Option<String> {
     use std::os::unix::process::ExitStatusExt;
@@ -418,10 +390,6 @@ pub fn compiler_crash_note(_status: &std::process::ExitStatus) -> Option<String>
     None
 }
 
-/// Every `.bib` file of the project, slash-relative and sorted; links, cloud
-/// placeholders and Oleafly's, git's and npm's folders are skipped. A
-/// bibliography may live anywhere else (`out/refs.bib`, `.refs/library.bib`),
-/// so the source walk's wider skip list doesn't apply.
 pub fn discover_bibliographies(project_root: &Path) -> crate::Result<Vec<String>> {
     if !project_root.is_dir() {
         return Ok(Vec::new());

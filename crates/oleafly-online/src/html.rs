@@ -1,4 +1,3 @@
-//! Reads `<meta>` tags from the service's pages.
 use std::collections::HashMap;
 
 pub fn meta_tags(html: &str) -> HashMap<String, String> {

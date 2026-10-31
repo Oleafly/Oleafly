@@ -49,8 +49,6 @@ if (typeof window !== "undefined" && E2E_HOOKS) {
   };
 }
 
-/** The E2E stand-in's answer in the dialog's shape: a folder or single pick
- * returns the first path, a multiple pick returns them all. */
 function e2eOpenResult(
   paths: string[] | null,
   options?: OpenDialogOptions,
@@ -60,7 +58,6 @@ function e2eOpenResult(
   return paths[0] ?? null;
 }
 
-/** Takes the one-shot E2E pick and records it the way a real pick is. */
 async function takeE2eOpenPick(
   state: E2eFileDialogState,
   options?: OpenDialogOptions,
@@ -71,15 +68,6 @@ async function takeE2eOpenPick(
   return result;
 }
 
-/**
- * The single application boundary for native open dialogs.
- *
- * The dialog runs in Rust, which records the picked paths: the commands that
- * read outside a project accept only those. E2E replaces only the
- * operating-system picker result and records it the same way. The production
- * click, import action, backend command, refresh, and conflict handling still
- * run.
- */
 export async function pickOpenPath<T extends OpenDialogOptions>(
   options?: T,
 ): Promise<OpenDialogReturn<T>> {
@@ -109,14 +97,6 @@ export async function pickTableImportPath(): Promise<string | null> {
   return pickTableImportFile();
 }
 
-/**
- * The single application boundary for native save dialogs.
- *
- * The dialog runs in Rust, which records the chosen path: the commands that
- * write outside a project accept only that. A DEV-only one-shot path lets
- * native E2E inspect the artifact written by the real export/download handler
- * without attempting to automate an OS dialog; it is recorded the same way.
- */
 export async function pickSavePath(options?: SaveDialogOptions): Promise<string | null> {
   const state = e2eState();
   if (state) {

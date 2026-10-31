@@ -80,9 +80,6 @@ test("the sidebar collapses and restores from the rail", async ({ tauriPage }) =
   await expect(
     tauriPage.locator('[data-testid="pdf-renderer"][data-e2e-sidebar-renderer="stable"]'),
   ).toBeVisible();
-  // Auto-compile is debounced by 2.5 seconds. Wait beyond that boundary so
-  // the assertion also catches a delayed compile request from the layout-only
-  // interaction.
   await new Promise((resolve) => setTimeout(resolve, 2_800));
   const after = await tauriPage.evaluate<{
     status: string;
@@ -168,8 +165,6 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
     await openProject(tauriPage, "E2E Doc");
     await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-    // Start from the declared defaults instead of inheriting another test run's
-    // saved split, then remount the Explorer so the panel group reads them.
     await openRailTab(tauriPage, "Search Project");
     await new Promise((resolve) => setTimeout(resolve, 150));
     await tauriPage.evaluate(
@@ -285,9 +280,6 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
     expect(sectionTops[0]).toBeLessThan(sectionTops[1]);
     expect(sectionTops[1]).toBeLessThan(sectionTops[2]);
 
-    // Collapsing one view can temporarily give its space to the next view. Do
-    // this in visual order so the final view hands the unused space to the
-    // dedicated filler rather than forcing an earlier header back open.
     for (const id of sectionIds) await setSectionOpen(id, false);
     for (const id of sectionIds) {
       await expect(sectionToggle(id)).toBeVisible();
@@ -315,10 +307,6 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
     );
     expect(fullyCollapsedSizes[3]).toBeGreaterThan(0);
 
-    // Re-enter Explorer with the all-collapsed layout restored from storage.
-    // The app mounts this stack in StrictMode, so opening Structure after the
-    // remount must still reclaim the filler instead of leaving its content at
-    // the minimum expanded height above a large blank area.
     await new Promise((resolve) => setTimeout(resolve, 250));
     await openRailTab(tauriPage, "Search Project");
     await openRailTab(tauriPage, "Explorer");
@@ -366,9 +354,6 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
     expect(afterResize.outlineTop).not.toBe(beforeResize.outlineTop);
     expect(afterResize.outlineHeight).not.toBe(beforeResize.outlineHeight);
 
-    // Persist a non-default collapse pattern so this round-trip also proves
-    // that the accordion headers are synchronized from the restored panel
-    // layout rather than merely falling back to their React defaults.
     await setSectionOpen("source-tree", false);
     await setSectionOpen("document-outline", true);
     await setSectionOpen("project-structure", true);
@@ -434,8 +419,6 @@ test("Explorer sections collapse, resize, and restore as one stack", async ({ ta
 test("the editor/preview split resizes from the separator", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  // The h-mid handle only exists in split view; an earlier spec can leave the
-  // persisted layout in editor-only or preview-only mode.
   await tauriPage.evaluate(
     `import("/src/store/settings.ts").then(({ useSettingsStore }) =>
       useSettingsStore.getState().setViewMode("split"),
@@ -450,8 +433,6 @@ test("the editor/preview split resizes from the separator", async ({ tauriPage }
       `Math.round(document.querySelector('.cm-editor')?.getBoundingClientRect().width || 0)`,
     );
   const before = await editorWidth();
-  // Keyboard resizing works when the panel handle is focused; h-mid is the
-  // editor/preview split (h-tree is the sidebar's).
   await tauriPage.evaluate(
     `(() => {
       const h = document.getElementById('h-mid');
@@ -519,8 +500,6 @@ test("editor tabs close from their x button", async ({ tauriPage }) => {
 test("code folding collapses and restores a region", async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  // The blank template's document environment is foldable. Target the
-  // marker's semantic state instead of its visual implementation.
   await tauriPage.waitForFunction(
     `document.querySelector('.cm-foldGutter .cm-fold-marker[data-fold-state="open"]')`,
     10_000,
@@ -534,7 +513,6 @@ test("code folding collapses and restores a region", async ({ tauriPage }) => {
     })()`,
   );
   await expect(tauriPage.locator(".cm-foldPlaceholder")).toBeVisible({ timeout: 5_000 });
-  // Click the placeholder to unfold; the ▸ gutter marker ignores synthetic clicks.
   await tauriPage.evaluate(
     `(() => {
       const p = document.querySelector('.cm-foldPlaceholder');

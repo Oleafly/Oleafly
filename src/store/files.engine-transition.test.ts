@@ -951,8 +951,6 @@ describe("clean-buffer saves", () => {
     await useFilesStore.getState().saveFile("main.tex");
     await useFilesStore.getState().saveActive();
 
-    // A no-op write bumps the project mtime and invalidates the library
-    // thumbnail cache.
     expect(mocks.writeFileContent).not.toHaveBeenCalled();
   });
 
@@ -1022,7 +1020,6 @@ describe("transactional quit flush", () => {
     );
     expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
     expect(useFilesStore.getState().files["notes.tex"].dirty).toBe(false);
-    // Quitting must not tear down project state itself; the window closes next.
     expect(useFilesStore.getState().projectId).toBe("project");
   });
 
@@ -1069,15 +1066,11 @@ describe("transactional quit flush", () => {
       flushing = useFilesStore.getState().flushForQuit();
       await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(1));
     } finally {
-      // Always unblock the close so a failing assertion cannot wedge the
-      // module-level transition queue for every later test.
       write.resolve();
     }
     await closing;
     await flushing;
 
-    // The close's flush already saved the buffer; a serialized quit flush finds
-    // nothing left to write instead of double-writing into a half-closed state.
     expect(mocks.writeFileContent).toHaveBeenCalledTimes(1);
   });
 });

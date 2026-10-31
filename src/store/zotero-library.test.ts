@@ -72,14 +72,15 @@ describe("Zotero library store", () => {
   });
 
   it("asks again on the next focus so the @ list learns that Zotero was closed", async () => {
-    const now = vi.spyOn(Date, "now").mockReturnValue(1_000_000);
+    const start = Date.now();
+    const now = vi.spyOn(Date, "now").mockReturnValue(start);
     try {
       mocks.sync.mockResolvedValueOnce(status(1));
       useZoteroLibraryStore.getState().syncInBackground();
       await vi.waitFor(() => expect(useZoteroLibraryStore.getState().status?.local.state).toBe("ready"));
       expect(zoteroHint(useZoteroLibraryStore.getState().status)).toBeNull();
-      mocks.sync.mockResolvedValueOnce({ ...status(1), local: { state: "notRunning" }, lastSync: 999_000 });
-      now.mockReturnValue(1_015_000);
+      mocks.sync.mockResolvedValueOnce({ ...status(1), local: { state: "notRunning" }, lastSync: start - 1_000 });
+      now.mockReturnValue(start + 15_000);
       useZoteroLibraryStore.getState().syncInBackground();
       expect(mocks.sync).toHaveBeenCalledTimes(2);
       await vi.waitFor(() => expect(zoteroHint(useZoteroLibraryStore.getState().status)).toBe("closedCached"));

@@ -189,10 +189,6 @@ export function applyPdfPlaceholderViewport(
   );
 }
 
-/**
- * Visit at most `limit` placeholders. Call again on the next animation frame
- * when this returns false, keeping zoom work bounded for long documents.
- */
 export function visitPdfPlaceholderBatch<T>(
   iterator: Iterator<T>,
   limit: number,
@@ -207,11 +203,6 @@ export function visitPdfPlaceholderBatch<T>(
   return false;
 }
 
-/**
- * Release raster backing stores before detaching their DOM nodes. Keeping a
- * stale canvas reference must not keep its potentially multi-megabyte pixel
- * allocation alive after eviction, cancellation, or document switch.
- */
 export function releasePdfRenderNodes(nodes: HTMLElement[]): void {
   for (const node of nodes) {
     if (node instanceof HTMLCanvasElement) {

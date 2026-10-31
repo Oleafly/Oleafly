@@ -1,7 +1,3 @@
-//! Copying a desktop browser's cookies into the app's webview, so a sign-in
-//! made in that browser works here. Reading the browser's cookie store lives
-//! in `oleafly-online` (the CLI reads the same stores); this module adds the
-//! caller checks, the native confirmation and the webview side.
 use std::collections::HashSet;
 
 use oleafly_online::browser_cookies::{
@@ -134,8 +130,6 @@ fn validate_import_request(
         return Err(CookieImportError::ConfirmationRequired);
     }
     reader::validate_profile(profile)?;
-    // A copy is for signing in to one site; every cookie of a profile is
-    // never needed.
     if reader::normalize_import_domain(domain)?.is_none() {
         return Err(CookieImportError::InvalidDomain);
     }
@@ -155,7 +149,6 @@ fn cookie_import_prompt(
     domain: Option<&str>,
 ) -> String {
     let browser_name = browser.name();
-    // 0.4.8 I: the copy signs in to a site; there is no in-app browser.
     match domain {
         Some(hostname) => crate::i18n::t_with(
             "dialog.cookieImport.copyHost",

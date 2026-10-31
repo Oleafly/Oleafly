@@ -595,7 +595,6 @@ describe("TerminalDock", () => {
     const dialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(dialog).getByRole("button", { name: enWorkspace.terminal.stop.switchProject }));
     expect(await first).toBe(true);
-    // A second check within the same leave (a retry after a failed save) doesn't ask again.
     expect(await leave()).toBe(true);
     expect(sessions.terminalJobs).toHaveBeenCalledTimes(1);
 

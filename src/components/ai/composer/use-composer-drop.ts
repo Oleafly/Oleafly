@@ -5,11 +5,6 @@ import { treeDragPath } from "@/lib/tree-drag";
 import { isLinux } from "@/lib/utils";
 import { composerDropKind, dropEffectFor, type ComposerDropKind } from "./composer-input";
 
-/**
- * Drops on the composer: files from the computer, project paths from the file
- * tree, and Linux file drops through the native bridge. `dropKind` is set
- * while an accepted drag is over the composer.
- */
 export function useComposerDrop({
   onAddFiles,
   onDropProjectPaths,

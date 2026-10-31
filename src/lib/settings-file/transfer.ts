@@ -77,11 +77,6 @@ const GROUP_PATHS: ReadonlySet<string> = new Set(
   }),
 );
 
-/**
- * Paths 0.4.7 wrote that 0.4.8 dropped. Reading a file skips them silently.
- * `appearance.browser` is listed as a whole because nothing under it is a
- * setting any more, so the reader never walks into it.
- */
 export const RETIRED_SETTING_PATHS: ReadonlySet<string> = new Set([
   "experimentation.webBrowser",
   "appearance.browser",

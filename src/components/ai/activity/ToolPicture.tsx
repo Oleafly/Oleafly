@@ -70,7 +70,6 @@ export function ToolPicture({ tc }: Readonly<{ tc: ToolEntry }>) {
   const { copied, copy } = useCopyStatus();
   const [saving, setSaving] = useState(false);
   const projectId = useFilesStore((state) => state.projectId);
-  // Screenshots saved since 0.4.8 are kept by reference in the attachment store.
   const stored = useAttachmentUrl(projectId, tc.image ? undefined : tc.imageRef);
   const imageUrl = tc.image ?? stored.url ?? undefined;
   const hasCode = Boolean(tc.code);

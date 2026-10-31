@@ -40,11 +40,6 @@ function publish(): void {
   }
 }
 
-/**
- * Publishes the one synchronized language-service runtime that editor
- * surfaces may query. Ownership makes cleanup race-safe: teardown from an old
- * runtime can never clear a newer replacement.
- */
 export function activateInteractiveLanguageService(
   session: InteractiveLanguageServiceSession,
 ): () => void {

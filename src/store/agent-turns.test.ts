@@ -36,7 +36,6 @@ describe("useAgentTurnsStore", () => {
     vi.advanceTimersByTime(20);
     const second = useAgentTurnsStore.getState().recordsByChat["chat-1"][0];
     expect(second).not.toBe(first);
-    // The earlier snapshot is not mutated by later deltas.
     expect(first.items[1]).toBeUndefined();
     expect(second.items[1]?.item).toEqual({ type: "agentMessage", text: "reply" });
   });
@@ -263,7 +262,6 @@ describe("useAgentTurnsStore", () => {
     const first = await store.threadFor("chat-1", "proj", claim);
     expect(first).toBe("prewarmed-thread");
     expect(claim).toHaveBeenCalledTimes(1);
-    // Second call reuses without claiming again.
     const second = await useAgentTurnsStore.getState().threadFor("chat-1", "proj", claim);
     expect(second).toBe("prewarmed-thread");
     expect(claim).toHaveBeenCalledTimes(1);
@@ -284,7 +282,6 @@ describe("useAgentTurnsStore", () => {
       persist,
     });
     expect(thread).toBe("thread-from-disk");
-    // The persisted thread wins: no prewarm claim, no re-persist.
     expect(claim).not.toHaveBeenCalled();
     expect(persist).not.toHaveBeenCalled();
   });
@@ -308,7 +305,6 @@ describe("useAgentTurnsStore", () => {
     store.applyEvent("chat-1", { kind: "textDelta", text: "partial" });
     useAgentTurnsStore.getState().interruptTurn("chat-1");
     expect(useAgentTurnsStore.getState().recordsByChat["chat-1"][0].status).toBe("interrupted");
-    // Late events after an interrupt are dropped.
     useAgentTurnsStore.getState().applyEvent("chat-1", { kind: "textDelta", text: "late" });
     expect(useAgentTurnsStore.getState().recordsByChat["chat-1"][0].items).toHaveLength(2);
   });

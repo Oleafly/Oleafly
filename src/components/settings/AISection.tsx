@@ -97,12 +97,8 @@ function customDiscoveryResult(res: CustomModelDiscovery): DiscoveryResult {
   return { ok: false, reason: res.failure === "auth" ? "invalid-key" : "unreachable" };
 }
 
-// Ids that already mean something else to the app.
 const RESERVED_PROVIDER_IDS = new Set([MATHPIX_TOOLS_PROVIDER]);
 
-// Lists a provider's new address under an id no saved provider can have
-// (user ids take no underscore), so Rust neither sends nor refuses for the
-// key that stays with the old address.
 const ADDRESS_CHECK_SUFFIX = "__address-check";
 
 const DEFAULT_CFG: AppConfig = {
@@ -195,7 +191,6 @@ export function AISection() {
   const [cfg, setCfg] = useState<AppConfig>(DEFAULT_CFG);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [keys, setKeys] = useState<Record<string, string>>({});
-  // Snapshot of persisted keys, used to detect unsaved edits (dirty check below).
   const [savedKeys, setSavedKeys] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [status, setStatus] = useState<Record<string, ProviderStatus>>({});
@@ -203,20 +198,14 @@ export function AISection() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [sysPrompt, setSysPrompt] = useState("");
   const [sysPromptSaved, setSysPromptSaved] = useState(false);
-  // Unset falls back to "open if active", so the in-use provider stays expanded.
   const [openProviders, setOpenProviders] = useState<Record<string, boolean>>({});
   const [customDialog, setCustomDialog] = useState<CustomDialogState | null>(null);
   const [preferencesResetVersion, setPreferencesResetVersion] = useState(0);
-  // A host the user probed explicitly from the provider card; null follows the
-  // saved (or default) host.
   const [probeHost, setProbeHost] = useState<string | null>(null);
 
   const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
   const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
   const projectId = useFilesStore((s) => s.projectId);
-  // The CLI agent card a deep link asked for; the token re-triggers a repeat link.
-  // The Agents tab clears it once applied, so coming back to the tab later does
-  // not follow the link again.
   const [agentFocus, setAgentFocus] = useState<{ id: string; token: number } | null>(null);
   const agentFocusSeq = useRef(0);
   const agentFocusHandled = useCallback((token: number) => {
@@ -243,9 +232,6 @@ export function AISection() {
 
   useEffect(() => {
     void getConfig().then((c) => {
-      // One-time migration from the old single ai_api_key field to the per-provider map.
-      // That key belonged to a hosted catalog provider, never to a host
-      // address or a server the user added.
       const merged: Record<string, string> = { ...c.ai_keys };
       const legacy = c.ai_provider || "openai";
       const legacyProvider = getProvider(legacy);
@@ -261,8 +247,6 @@ export function AISection() {
       setCfg(next);
       setSysPrompt(next.ai_system_prompt || "");
       const editable = editableKeys(merged);
-      // Merge under any keys already typed: the load resolves async and must
-      // not wipe an edit made before it landed.
       setKeys((prev) => ({ ...editable, ...prev }));
       setSavedKeys(merged);
       if (Object.keys(c.ai_keys ?? {}).length === 0 && c.ai_api_key) {
@@ -270,27 +254,20 @@ export function AISection() {
       }
       setConfigLoaded(true);
     }).catch((error: unknown) => {
-      // The switches stay off: the defaults shown are not the stored settings.
       void logError("read the AI settings", error);
       setMsg({ ok: false, text: describeError(error) });
     });
   }, []);
 
-  // Cheap localhost request that fails fast, so the query runs proactively
-  // instead of waiting on the user to configure a host first.
   const savedOllamaHost = cfg.ai_keys?.ollama ?? "";
   const ollamaHost = probeHost ?? (savedOllamaHost || DEFAULT_OLLAMA_HOST);
   const queryClient = useQueryClient();
-  // Same query as ProjectBudget, so saving or resetting the budget updates both.
   const projectBudget = useQuery({
     queryKey: ["project-budget", projectId],
     queryFn: () => budgetGet(projectId ?? ""),
     enabled: !!projectId,
     meta: { silent: true },
   });
-  // Only a turned-off model counts. Reset also restores built-in models that a
-  // model list refresh dropped, but the user did not choose that. Skill choices
-  // are left out: checking them would load every skill each time this opens.
   const preferencesChanged =
     configLoaded &&
     (Boolean(cfg.ai_system_prompt) ||
@@ -346,7 +323,6 @@ export function AISection() {
     },
     [refreshOllama],
   );
-  // Saving a new host takes over from any manual probe.
   // biome-ignore lint/correctness/useExhaustiveDependencies: savedOllamaHost is the trigger, not a read dependency; the reset must run exactly when the saved host changes
   useEffect(() => {
     setProbeHost(null);
@@ -363,11 +339,9 @@ export function AISection() {
     await setConfig(merged);
     setCfg(merged);
     setSavedKeys(merged.ai_keys);
-    // Notifies listeners outside this component tree, e.g. the chat panel.
     window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: merged }));
   };
 
-  // Saves the host and activates the model in one step; no separate "Save" button for Ollama.
   const applyOllamaModel = async (model: string) => {
     const host = (keys.ollama || DEFAULT_OLLAMA_HOST).trim();
     const nextKeys = withKey(cfg.ai_keys, "ollama", host);
@@ -389,8 +363,6 @@ export function AISection() {
     }
   };
 
-  // Pastes are validated by fetching the provider's live model list before
-  // the key is trusted; an unreachable or rejected key never gets persisted.
   const validateAndSave = async (id: string) => {
     const value = (keys[id] ?? "").trim();
     if (!value) return;
@@ -401,8 +373,6 @@ export function AISection() {
     try {
       const custom = cfg.ai_custom_providers.find((c) => c.id === id);
       const provider = getProvider(id);
-      // The key is checked against the saved address; a wrong address is
-      // fixed in the edit dialog, so /v1 is not tried here.
       const customRes: CustomModelDiscovery | null = custom
         ? await discoverCustomModels({
             providerId: id,
@@ -415,8 +385,6 @@ export function AISection() {
       const res: DiscoveryResult = customRes
         ? customDiscoveryResult(customRes)
         : await discoverModels({ providerId: id, key: value });
-      // A gateway may guard /models but still take the key for chat, so a
-      // custom provider keeps the key and says what the list check got.
       if (!res.ok && res.reason === "invalid-key" && !custom) {
         setStatus((s) => ({ ...s, [id]: "error" }));
         setErrorMsg((m) => ({ ...m, [id]: t(($) => $.settings.ai.section.errors.invalidKey) }));
@@ -495,7 +463,6 @@ export function AISection() {
         message: describeModelListFailure(res.failure, res.baseURL),
       };
     }
-    // Discovery's address is the entered one unless only /v1 answered.
     const baseURL = res.baseURL;
     const models: StoredModel[] = res.ok ? mergeFetchedModels([], res.models) : [];
     const customProvider: CustomProvider = { id, name, baseURL, keyOptional: !apiKey };
@@ -531,8 +498,6 @@ export function AISection() {
     }
   };
 
-  // Saves a rename even while the server is down, but a new address or key
-  // has to list models first, or be confirmed with `force`.
   const editCustomProvider = async (
     input: AddCustomProviderInput,
     options?: { force?: boolean },
@@ -541,12 +506,8 @@ export function AISection() {
     const current = cfg.ai_custom_providers.find((c) => c.id === id);
     if (!current) return { ok: false, message: t(($) => $.settings.ai.section.errors.providerGone) };
     const enteredURL = normalizeBaseURL(input.baseURL);
-    // Compared as stored: Rust drops the key when the saved address changes
-    // at all, even when only a pasted endpoint path is trimmed.
     const savedURL = current.baseURL.trim();
     const hadKey = (cfg.ai_keys[id] ?? "").trim().length > 0;
-    // Moving without typing a key means the new server needs none; the saved
-    // key stays behind, so the check must not borrow it either.
     const leavesKeyBehind = hadKey && !apiKey && enteredURL !== savedURL;
     const discovery = await discoverCustomModels({
       providerId: leavesKeyBehind ? `${id}${ADDRESS_CHECK_SUFFIX}` : id,
@@ -658,9 +619,6 @@ export function AISection() {
     }
   };
 
-  // Persists a model-manager edit (add, enable, disable, delete) for one
-  // provider; if the change drops the currently active model, fall back to
-  // the first remaining enabled model instead of leaving a dangling id.
   const persistModelList = async (id: string, next: StoredModel[], refreshedAt?: number) => {
     let nextConfig: AppConfig = {
       ...cfg,
@@ -757,7 +715,6 @@ export function AISection() {
       const next: AppConfig = {
         ...cfg,
         ai_keys: nextKeys,
-        // Clear the active provider/model too if this was the key in use.
         ai_provider: wasActive ? "" : cfg.ai_provider,
         ai_model: wasActive ? "" : cfg.ai_model,
         ai_api_key: wasActive ? "" : cfg.ai_api_key,

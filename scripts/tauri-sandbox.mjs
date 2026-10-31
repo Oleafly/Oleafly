@@ -6,9 +6,6 @@ import { spawn } from "node:child_process";
 const args = process.argv.slice(2);
 const env = { ...process.env };
 
-// Interactive development must never open the user's real Oleafly library.
-// CI and e2e callers already provide their own temporary OLEAFLY_DATA_DIR, so
-// preserve an explicit value and only supply the persistent local sandbox.
 if (args[0] === "dev" && !env.OLEAFLY_DATA_DIR) {
   env.OLEAFLY_DATA_DIR = join(homedir(), ".oleafly-dev");
   process.stderr.write(`Oleafly dev library: ${env.OLEAFLY_DATA_DIR}\n`);

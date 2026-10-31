@@ -1,19 +1,6 @@
-//! Citations and cross-references for pandoc conversions.
-//!
-//! Rendered exports (Word, HTML, EPUB, PowerPoint, plain text) run
-//! `export-references.lua` before `--citeproc`. This module stages that filter
-//! with its data: the .bib files to fall back on when a declared bibliography
-//! is missing, and the label numbers and `\bibcite` labels of the last
-//! compile's .aux files.
-//!
-//! Imports into LaTeX use natbib, so the bibliography files the source names
-//! are copied into the new project under local names. main.tex must never
-//! point at an absolute or home-relative path on the importing machine.
-
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-/// The filter's file name, next to its data file.
 pub const FILTER_NAME: &str = "export-references.lua";
 const FILTER: &str = include_str!("../resources/pandoc/export-references.lua");
 const DATA_NAME: &str = "export-references.tsv";
@@ -24,8 +11,6 @@ const MAX_ENTRY_BYTES: u64 = 64 * 1024;
 const MAX_BIBLIOGRAPHIES: usize = 16;
 const MAX_BIBLIOGRAPHY_BYTES: u64 = 32 * 1024 * 1024;
 
-/// A label's number from the .aux, and what it labels ("equation",
-/// "section", ...; empty when the .aux does not say).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuxLabel {
     pub number: String,
@@ -35,11 +20,9 @@ pub struct AuxLabel {
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct AuxRecords {
     pub labels: BTreeMap<String, AuxLabel>,
-    /// `\bibcite` labels for a hand-written bibliography.
     pub bibcites: BTreeMap<String, String>,
 }
 
-/// One balanced `{...}` group at `text[open..]`, skipping escaped braces.
 fn balanced_group(text: &str, open: usize) -> Option<(&str, usize)> {
     let bytes = text.as_bytes();
     if bytes.get(open) != Some(&b'{') {
@@ -68,7 +51,6 @@ fn skip_blanks(text: &str, from: usize) -> usize {
     from + text[from..].len() - text[from..].trim_start_matches([' ', '\t']).len()
 }
 
-/// The groups that follow a control word on one .aux line.
 fn groups_after<'a>(line: &'a str, command: &str, count: usize) -> Option<Vec<&'a str>> {
     let rest = line.trim_start().strip_prefix(command)?;
     let offset = line.len() - rest.len();
@@ -103,8 +85,6 @@ fn clean_number(number: &str) -> String {
         .to_string()
 }
 
-/// Reads `\newlabel` and `\bibcite` records from one .aux file and returns
-/// its `\@input{child.aux}` references.
 pub fn parse_aux(text: &str, records: &mut AuxRecords) -> Vec<String> {
     let mut children = Vec::new();
     let mut cleveref_kinds = BTreeMap::new();
@@ -170,7 +150,6 @@ pub fn parse_aux(text: &str, records: &mut AuxRecords) -> Vec<String> {
     children
 }
 
-/// A child aux reference that stays inside the build folder.
 fn safe_aux_child(name: &str) -> Option<&str> {
     let usable = name.ends_with(".aux")
         && !name.starts_with('/')
@@ -195,8 +174,6 @@ fn read_regular_file(path: &Path, limit: u64) -> Option<String> {
     Some(String::from_utf8_lossy(&bytes).into_owned())
 }
 
-/// Whether the build folder's .aux files belong to `main_doc`. The Tectonic
-/// entry file names the document it compiled; latexmk builds have none.
 fn aux_belongs_to(build_dir: &Path, main_doc: &str) -> bool {
     let entry = build_dir.join(oleafly_core::engine_spec::ENTRY_TEX);
     match read_regular_file(&entry, MAX_ENTRY_BYTES) {
@@ -205,8 +182,6 @@ fn aux_belongs_to(build_dir: &Path, main_doc: &str) -> bool {
     }
 }
 
-/// The last compile's label numbers for `main_doc`, following
-/// `\@input{child.aux}` within the build folder.
 pub fn read_aux_records(build_dir: &Path, main_doc: &str) -> AuxRecords {
     let mut records = AuxRecords::default();
     if !aux_belongs_to(build_dir, main_doc) {
@@ -251,8 +226,6 @@ fn is_bib_file(path: &Path) -> bool {
         .is_some_and(|extension| extension.eq_ignore_ascii_case("bib"))
 }
 
-/// Regular .bib files directly inside `dir` (no symlinks, no cloud
-/// placeholders), sorted by name.
 fn bib_files_in(dir: &Path) -> Vec<PathBuf> {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return Vec::new();
@@ -267,8 +240,6 @@ fn bib_files_in(dir: &Path) -> Vec<PathBuf> {
     found
 }
 
-/// The .bib files an export falls back on: next to the main document first,
-/// then at the project root.
 pub fn fallback_bibliographies(root: &Path, main_doc: &str) -> Vec<PathBuf> {
     let main_dir = root
         .join(main_doc)
@@ -283,13 +254,10 @@ pub fn fallback_bibliographies(root: &Path, main_doc: &str) -> Vec<PathBuf> {
     found
 }
 
-/// Tabs and line breaks would split a data record.
 fn data_field(value: &str) -> String {
     value.replace(['\t', '\r', '\n'], " ")
 }
 
-/// `path` relative to `root` with `/` separators, or `None` when it lies
-/// outside the project or does not read as UTF-8.
 fn root_relative(root: &Path, path: &Path) -> Option<String> {
     let parts = path
         .strip_prefix(root)
@@ -303,8 +271,6 @@ fn root_relative(root: &Path, path: &Path) -> Option<String> {
     (!parts.is_empty()).then(|| parts.join("/"))
 }
 
-/// The filter's data. Bibliographies are named relative to the project
-/// root, where pandoc runs, so no home folder is written to disk.
 fn filter_data(root: &Path, fallback: &[PathBuf], aux: &AuxRecords) -> String {
     let mut data = String::new();
     for path in fallback {
@@ -333,23 +299,15 @@ fn filter_data(root: &Path, fallback: &[PathBuf], aux: &AuxRecords) -> String {
     data
 }
 
-/// Writes the filter alone into `dir` (the Tools-page converter, which has
-/// no project around the source).
 pub fn stage_filter(dir: &Path) -> Result<(), String> {
     std::fs::write(dir.join(FILTER_NAME), FILTER)
         .map_err(|error| format!("Could not prepare the citation filter: {error}"))
 }
 
-/// The folder in a project's data area where exports stage the filter:
-/// `.oleafly/export-staging` in a library project, and the same name in the
-/// linked state area for a linked folder. Never the user's own folder.
 pub const STAGING_DIR: &str = "export-staging";
 
-/// Each staged filter folder's name starts with this.
 const STAGED_PREFIX: &str = "oleafly-export-";
 
-/// Names of the staged filter folders a running export still needs. Exports
-/// share the project lock, so one may start while another runs.
 static LIVE_STAGED: std::sync::Mutex<std::collections::BTreeSet<std::ffi::OsString>> =
     std::sync::Mutex::new(std::collections::BTreeSet::new());
 
@@ -359,19 +317,13 @@ fn live_staged() -> std::sync::MutexGuard<'static, std::collections::BTreeSet<st
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-/// The filter and its data, staged for one export. Keep it alive until
-/// pandoc exits.
 pub struct ExportFilter {
     dir: Option<tempfile::TempDir>,
     argument: PathBuf,
-    /// The folder's name in the project's staging folder, while it is live.
     live: Option<std::ffi::OsString>,
 }
 
 impl ExportFilter {
-    /// What pandoc gets as `--lua-filter`: relative to the project root,
-    /// where pandoc runs, when the filter is staged in the project's data
-    /// area.
     pub fn argument(&self) -> &Path {
         &self.argument
     }
@@ -407,8 +359,6 @@ fn same_component(a: std::path::Component<'_>, b: std::path::Component<'_>) -> b
     }
 }
 
-/// `target` from `base`, component by component: up to the folder they
-/// share, then down. `None` when they are not both absolute on one volume.
 fn lexical_relative(base: &Path, target: &Path) -> Option<PathBuf> {
     use std::path::Component;
     if !base.is_absolute() || !target.is_absolute() {
@@ -446,7 +396,6 @@ fn lexical_relative(base: &Path, target: &Path) -> Option<PathBuf> {
     Some(relative)
 }
 
-/// How pandoc, running in `root`, names `folder`.
 fn relative_to_root(root: &Path, folder: &Path) -> Option<PathBuf> {
     let folder = folder.canonicalize().ok()?;
     // A folder inside the project is the same path down from any spelling
@@ -470,8 +419,6 @@ fn relative_to_root(root: &Path, folder: &Path) -> Option<PathBuf> {
     lexical_relative(&base, &folder)
 }
 
-/// Removes filter folders an earlier export left in `staging`: a crash, or a
-/// removal Windows refused. Folders of running exports stay.
 fn clear_stale_staging(staging: &Path, live: &std::collections::BTreeSet<std::ffi::OsString>) {
     let Ok(entries) = std::fs::read_dir(staging) else {
         return;
@@ -492,8 +439,6 @@ fn clear_stale_staging(staging: &Path, live: &std::collections::BTreeSet<std::ff
     }
 }
 
-/// A filter folder in the project's staging folder that pandoc can name by
-/// a plain ASCII path relative to `root`.
 fn stage_in_project(root: &Path, staging: &Path) -> Option<ExportFilter> {
     if staging.file_name() != Some(std::ffi::OsStr::new(STAGING_DIR)) {
         return None;
@@ -515,8 +460,6 @@ fn stage_in_project(root: &Path, staging: &Path) -> Option<ExportFilter> {
     })
 }
 
-/// A filter folder in `temp`, named to pandoc by its full path: the 8.3
-/// short form on Windows when the long one is not plain ASCII.
 fn stage_in_temp(temp: &Path) -> Result<ExportFilter, String> {
     let dir = scratch_folder(temp)
         .map_err(|error| format!("Could not prepare the citation filter: {error}"))?;
@@ -584,8 +527,6 @@ fn write_staged(filter: &ExportFilter, data: &str) -> Result<(), String> {
         .map_err(|error| format!("Could not prepare the citation filter: {error}"))
 }
 
-/// The export's pandoc failure as a message. A bibliography pandoc cannot
-/// parse is named, relative to the project where it lives inside it.
 pub fn export_failure(log: &str, root: &Path) -> crate::DocError {
     const MARKER: &str = "Error reading bibliography file ";
     let Some(at) = log.find(MARKER) else {
@@ -632,17 +573,11 @@ pub fn export_failure(log: &str, root: &Path) -> crate::DocError {
     }
 }
 
-/// Like the app's cloud-file check: a placeholder for a file not yet
-/// downloaded from cloud storage.
 fn path_is_placeholder(path: &Path) -> bool {
     std::fs::symlink_metadata(path)
         .is_ok_and(|metadata| oleafly_core::is_cloud_placeholder(&metadata))
 }
 
-// Imports ---------------------------------------------------------------------
-
-/// The source language of an import or conversion that can name a
-/// bibliography.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BibliographySource {
     Markdown,
@@ -659,7 +594,6 @@ impl BibliographySource {
     }
 }
 
-/// The fence character and length of a ``` or ~~~ line.
 fn code_fence(line: &str) -> Option<(char, usize)> {
     let stripped = line.trim_start_matches(' ');
     if line.len() - stripped.len() > 3 {
@@ -670,7 +604,6 @@ fn code_fence(line: &str) -> Option<(char, usize)> {
     (length >= 3).then_some((marker, length))
 }
 
-/// The `bibliography` entry of one YAML metadata block, if it sets one.
 fn yaml_bibliography(yaml: &str) -> Option<Vec<String>> {
     let value = serde_norway::from_str::<serde_norway::Value>(yaml).ok()?;
     match value.get("bibliography")? {
@@ -741,9 +674,6 @@ fn front_matter_bibliographies(text: &str) -> Vec<String> {
     found
 }
 
-/// The string literals of one Typst call's positional arguments, from `open`
-/// (just past the opening parenthesis). Values of named arguments such as
-/// `style: "apa"` are skipped.
 fn typst_call_strings(text: &str, open: usize) -> Vec<String> {
     let mut strings = Vec::new();
     let mut depth = 1_usize;
@@ -796,8 +726,6 @@ fn is_typst_bibliography_file(value: &str) -> bool {
         })
 }
 
-/// The files a Typst `#bibliography(...)` call names. A Hayagriva file is
-/// named too: an import cannot copy it, but its note keeps the name.
 fn typst_bibliographies(text: &str) -> Vec<String> {
     let mut found = Vec::new();
     let mut search = 0;
@@ -813,7 +741,6 @@ fn typst_bibliographies(text: &str) -> Vec<String> {
     found
 }
 
-/// The bibliography files `text` names.
 pub fn declared_bibliographies(source: BibliographySource, text: &str) -> Vec<String> {
     match source {
         BibliographySource::Markdown => front_matter_bibliographies(text),
@@ -821,7 +748,6 @@ pub fn declared_bibliographies(source: BibliographySource, text: &str) -> Vec<St
     }
 }
 
-/// The last component of a declared path, whichever separator it uses.
 fn declared_file_name(entry: &str) -> &str {
     entry
         .rsplit(['/', '\\'])
@@ -850,7 +776,6 @@ pub fn local_bibliography_name(entry: &str) -> String {
     }
 }
 
-/// Local names for `entries`, unique within one project (case-insensitive).
 pub fn unique_local_names<'a>(entries: impl IntoIterator<Item = &'a str>) -> Vec<String> {
     let mut used = std::collections::HashSet::new();
     let mut names = Vec::new();
@@ -868,7 +793,6 @@ pub fn unique_local_names<'a>(entries: impl IntoIterator<Item = &'a str>) -> Vec
     names
 }
 
-/// Where a declared bibliography lives on this machine.
 fn resolve_declared(
     source: BibliographySource,
     source_dir: &Path,
@@ -905,12 +829,9 @@ fn read_bibliography(path: &Path) -> Option<Vec<u8>> {
     std::fs::read(path).ok()
 }
 
-/// Bibliographies an import copies into the new project.
 #[derive(Debug, Default)]
 pub struct ImportBibliographies {
-    /// Local file name and contents, written at the project root.
     pub files: Vec<(String, Vec<u8>)>,
-    /// Named files that could not be copied, by file name.
     pub missing: Vec<String>,
 }
 
@@ -920,8 +841,6 @@ impl ImportBibliographies {
     }
 }
 
-/// The bibliographies `text` (read from `source_path`) names, or the .bib
-/// files beside it when it names none.
 pub fn collect_import_bibliographies(
     source: BibliographySource,
     source_path: &Path,
@@ -968,8 +887,6 @@ pub fn collect_import_bibliographies(
     result
 }
 
-/// A comment for the new main document naming the bibliographies the import
-/// could not copy, in the comment syntax of `main_doc`.
 pub fn missing_bibliographies_note(main_doc: &str, missing: &[String]) -> Option<String> {
     if missing.is_empty() {
         return None;
@@ -1155,8 +1072,6 @@ mod tests {
 
     #[test]
     fn a_typst_source_naming_yaml_notes_it_instead_of_dropping_it() {
-        // No .bib beside the source, and nothing Oleafly can copy: the new
-        // main document names the file so the reference is not lost.
         let sources = tempfile::tempdir().unwrap();
         let paper = sources.path().join("paper.typ");
         let text = "See @smith2020.\n\n#bibliography(\"works.yml\", style: \"apa\")\n";
@@ -1177,7 +1092,6 @@ mod tests {
         assert!(!note.contains(&folder), "{note}");
     }
 
-    /// The names directly inside `folder`, sorted.
     fn names_in(folder: &Path) -> Vec<String> {
         let mut names: Vec<String> = std::fs::read_dir(folder)
             .unwrap()
@@ -1187,7 +1101,6 @@ mod tests {
         names
     }
 
-    /// A library project's staging folder, made the way an export makes it.
     fn library_staging(root: &Path) -> PathBuf {
         let staging = root.join(".oleafly").join(STAGING_DIR);
         std::fs::create_dir_all(&staging).unwrap();
@@ -1224,8 +1137,6 @@ mod tests {
         assert!(argument.ends_with(FILTER_NAME), "{argument:?}");
         let staged = root.join(&argument);
         assert!(staged.is_file(), "{staged:?}");
-        // Bibliographies are named from the project root, so no home folder
-        // is written into the project.
         let data = std::fs::read_to_string(staged.with_file_name(DATA_NAME)).unwrap();
         assert_eq!(
             data,
@@ -1237,7 +1148,6 @@ mod tests {
         assert_eq!(names_in(&root), before);
         assert!(names_in(&staging).is_empty());
 
-        // The layout does not depend on the temporary folder.
         let ascii_temp = outer.path().join("plain");
         std::fs::create_dir_all(&ascii_temp).unwrap();
         let filter =
@@ -1251,8 +1161,6 @@ mod tests {
         assert!(names_in(&ascii_temp).is_empty());
         drop(filter);
 
-        // With no staging folder the filter goes to the temporary folder by
-        // its full path, never to the project root.
         let filter =
             prepare_export_filter(&root, "paper/main.tex", None, None, &ascii_temp).unwrap();
         assert!(filter.argument().starts_with(&ascii_temp));
@@ -1262,9 +1170,6 @@ mod tests {
 
     #[test]
     fn a_linked_folder_stages_the_filter_in_its_state_area() {
-        // A linked folder belongs to the user; its state lives in Oleafly's
-        // data folder, which pandoc reaches by a relative path when that path
-        // is plain ASCII.
         let outer = tempfile::tempdir().unwrap();
         let root = outer.path().join("Übung 論文");
         std::fs::create_dir_all(&root).unwrap();
@@ -1286,8 +1191,6 @@ mod tests {
         drop(filter);
         assert!(names_in(&staging).is_empty());
 
-        // A state area reached only through a non-ASCII folder cannot be
-        // named that way, so the filter goes to the temporary folder.
         let far = outer.path().join("論文/export-staging");
         std::fs::create_dir_all(&far).unwrap();
         let ascii_temp = outer.path().join("plain");
@@ -1351,7 +1254,6 @@ mod tests {
                 relative(r"C:\Users\論文\Paper", r"c:\users\論文\.oleafly\linked\x"),
                 Some(PathBuf::from(r"..\.oleafly\linked\x"))
             );
-            // Another volume has no relative path.
             assert_eq!(relative(r"D:\Paper", r"C:\Users\x"), None);
             assert_eq!(relative(r"\\server\share\Paper", r"C:\Users\x"), None);
         }
@@ -1375,8 +1277,6 @@ mod tests {
             markdown("---\nbibliography: a.bib\n---\n\nText.\n\n---\nbibliography: b.bib\n---\n"),
             vec!["b.bib"]
         );
-        // Not metadata: a rule followed by a blank line, a setext underline,
-        // and a block inside a code fence.
         assert!(markdown("Text\n\n---\n\nbibliography: no.bib\n---\n").is_empty());
         assert!(markdown("Title\n---\nbibliography: no.bib\n---\n").is_empty());
         assert!(markdown("```\n\n---\nbibliography: no.bib\n---\n```\n").is_empty());

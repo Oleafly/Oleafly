@@ -1,4 +1,3 @@
-// 0.4.8 L: Settings › Research › Background tasks.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Moon } from "lucide-react";
@@ -27,14 +26,11 @@ import {
 
 type Busy = "enabled" | "atLogin" | "stop";
 
-/** Whether tasks keep running after Oleafly closes, the helper's sign-in
- * start, and what the helper is doing now. */
 export function BackgroundTasksCard() {
   const { t } = useTranslation(["common", "settings"]);
   const [status, setStatus] = useState<BackgroundHelperStatus | null>(null);
   const [statusFailed, setStatusFailed] = useState(false);
   const [busy, setBusy] = useState<Busy | null>(null);
-  // The task count the stop confirmation names, while it is open.
   const [confirmStop, setConfirmStop] = useState<number | null>(null);
   const live = useRef(true);
 
@@ -45,7 +41,6 @@ export function BackgroundTasksCard() {
       setStatus(next);
       setStatusFailed(false);
     } catch (error) {
-      // The card keeps what it showed; nothing the user asked for failed.
       void logError("background helper status", error);
       if (live.current) setStatusFailed(true);
     }
@@ -164,7 +159,6 @@ export function BackgroundTasksCard() {
                 variant="outline"
                 disabled={!status?.running || busy !== null}
                 onClick={() => {
-                  // Tasks in the helper come back and run here; with none, there is nothing to ask.
                   if (status && status.taskCount > 0) setConfirmStop(status.taskCount);
                   else stop();
                 }}

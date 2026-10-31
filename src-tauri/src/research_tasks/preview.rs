@@ -312,7 +312,6 @@ mod tests {
 
     #[test]
     fn preview_uses_the_pinned_baseline_and_rejects_changed_output() {
-        // A file preview looks the task's project up in the library.
         let _library = crate::collab::testing::TempLibrary::new();
         let temp = tempfile::tempdir().unwrap();
         let baseline = temp.path().join("baseline");

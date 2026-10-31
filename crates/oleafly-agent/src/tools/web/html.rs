@@ -10,17 +10,13 @@ use dom_query::{Document, NodeRef};
 use reqwest::Url;
 
 const MAX_LINKS: usize = 200;
-/// How deep elements may nest before a page is read as plain text.
 pub(crate) const MAX_NESTING: usize = 512;
-/// Elements that have no end tag or whose end tag may be left out, so
-/// repeating them does not nest.
 const UNNESTED: &[&str] = &[
     "area", "base", "basefont", "bgsound", "br", "col", "embed", "frame", "hr", "image", "img",
     "input", "keygen", "link", "meta", "param", "source", "track", "wbr", "p", "li", "dt", "dd",
     "option", "optgroup", "tr", "td", "th", "thead", "tbody", "tfoot", "rb", "rt", "rtc", "rp",
     "colgroup", "caption", "html", "head", "body",
 ];
-/// Elements whose content is text up to their end tag.
 const RAW_TEXT: &[&str] = &[
     "script",
     "style",
@@ -33,7 +29,6 @@ const RAW_TEXT: &[&str] = &[
     "noscript",
     "plaintext",
 ];
-/// Raw-text elements whose content is not part of the page's text.
 const HIDDEN_TEXT: &[&str] = &[
     "script", "style", "noscript", "iframe", "noembed", "noframes", "title",
 ];
@@ -84,9 +79,7 @@ const BREAKOUT: &[&str] = &[
     "ul",
     "var",
 ];
-/// Elements the Markdown writer handles by recursing.
 const RECURSIVE: &[&str] = &["ul", "ol", "blockquote", "table"];
-/// Elements that end a line in the plain-text reading.
 const LINE_BREAKING: &[&str] = &[
     "address",
     "article",
@@ -125,26 +118,18 @@ fn named(list: &[&str], name: &[u8]) -> bool {
         .any(|entry| entry.as_bytes().eq_ignore_ascii_case(name))
 }
 
-/// One tag found by `scan_tags`.
 struct Tag<'a> {
     name: &'a [u8],
     closing: bool,
     self_closing: bool,
 }
 
-/// What the `<` at some offset starts.
 enum Markup<'a> {
-    /// A comment, doctype or processing instruction; `end` is the offset
-    /// just past it.
     Skipped { end: usize },
-    /// A `<` that starts no markup.
     Stray,
-    /// A tag; `end` is the offset of its closing `>` (or the end of the
-    /// input when it never closes).
     Tag { tag: Tag<'a>, end: usize },
 }
 
-/// Reads the markup that starts at the `<` at offset `start` of `html`.
 fn markup_at(html: &str, start: usize) -> Markup<'_> {
     let bytes = html.as_bytes();
     if bytes[start + 1..].starts_with(b"!--") {
@@ -164,7 +149,6 @@ fn markup_at(html: &str, start: usize) -> Markup<'_> {
             .get(name_start)
             .is_some_and(|byte| matches!(byte, b'!' | b'?'))
         {
-            // A doctype or processing instruction.
             let end = bytes[start..]
                 .iter()
                 .position(|byte| *byte == b'>')
@@ -185,8 +169,6 @@ fn markup_at(html: &str, start: usize) -> Markup<'_> {
     Markup::Tag { tag, end }
 }
 
-/// Where the content of the raw-text element `name` ends: the start of its
-/// end tag at or after `from`, or the end of `html` when it never closes.
 fn raw_text_end(html: &str, from: usize, name: &[u8]) -> usize {
     let bytes = html.as_bytes();
     let mut search = from;
@@ -206,10 +188,6 @@ fn raw_text_end(html: &str, from: usize, name: &[u8]) -> usize {
     }
 }
 
-/// Walks the tags of `html` in order without building anything: comments,
-/// doctypes and stray `<` are skipped, and the content of raw-text elements
-/// (scripts, styles) is passed over in one step. `visit` gets each tag and
-/// the text before it; returning false stops the walk.
 fn scan_tags<'a>(html: &'a str, mut visit: impl FnMut(&'a str, Option<Tag<'a>>) -> bool) {
     let bytes = html.as_bytes();
     let mut text_from = 0usize;
@@ -233,7 +211,6 @@ fn scan_tags<'a>(html: &'a str, mut visit: impl FnMut(&'a str, Option<Tag<'a>>) 
                 at = (end + 1).min(bytes.len());
                 text_from = at;
                 if !closing && named(RAW_TEXT, name) {
-                    // Skip to the element's end tag; its content is never markup.
                     let content_end = raw_text_end(html, at, name);
                     if !visit(&html[at..content_end], None) {
                         return;
@@ -290,7 +267,6 @@ pub(crate) fn nesting_depth(html: &str, limit: usize) -> usize {
     deepest
 }
 
-/// The most recursive Markdown elements on one path below `node`.
 fn markdown_depth(node: &NodeRef) -> usize {
     let mut deepest = 0usize;
     let mut pending = vec![(*node, 0usize)];
@@ -302,7 +278,6 @@ fn markdown_depth(node: &NodeRef) -> usize {
     deepest
 }
 
-/// Character references in plain text, the common ones decoded.
 fn decode_entities(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
@@ -343,8 +318,6 @@ fn decode_entities(text: &str) -> String {
     out
 }
 
-/// A page read as plain text without parsing it: tags dropped, scripts and
-/// styles left out, block elements ending lines.
 pub(crate) fn flatten(html: &str) -> Extracted {
     let mut text = String::with_capacity(html.len() / 2);
     let mut title: Option<String> = None;
@@ -426,8 +399,6 @@ fn absolute(base: &Url, raw: &str) -> Option<Url> {
     base.join(raw).ok()
 }
 
-/// The readable content of an HTML page; a page nested deeper than
-/// `MAX_NESTING` as plain text.
 pub(crate) fn extract(html: &str, page_url: &Url) -> Extracted {
     if nesting_depth(html, MAX_NESTING) > MAX_NESTING {
         return flatten(html);
@@ -480,9 +451,6 @@ pub(crate) fn extract(html: &str, page_url: &Url) -> Extracted {
         .as_ref()
         .and_then(|selection| selection.nodes().first().copied())
         .unwrap_or_else(|| document.root());
-    // The tag count above can differ from the tree the parser built; the
-    // writer recurses per level, so a tree that still nests too deep is read
-    // as text, which walks it without recursing.
     let markdown = if markdown_depth(&node) > MAX_NESTING {
         node.text().to_string()
     } else {
@@ -507,7 +475,6 @@ fn charset_from_content_type(content_type: Option<&str>) -> Option<&'static enco
         })
 }
 
-/// A `<meta charset>` or `http-equiv` charset in the first kilobyte.
 fn charset_from_meta(bytes: &[u8]) -> Option<&'static encoding_rs::Encoding> {
     let head = String::from_utf8_lossy(&bytes[..bytes.len().min(1024)]).to_ascii_lowercase();
     let at = head.find("charset=")?;
@@ -521,8 +488,6 @@ fn charset_from_meta(bytes: &[u8]) -> Option<&'static encoding_rs::Encoding> {
     encoding_rs::Encoding::for_label(label.as_bytes())
 }
 
-/// The body as text, decoded from its declared charset, else a charset in
-/// the page's head, else UTF-8 (invalid bytes replaced).
 pub(crate) fn decode_body(bytes: &[u8], content_type: Option<&str>) -> String {
     let encoding = charset_from_content_type(content_type)
         .or_else(|| charset_from_meta(bytes))
@@ -605,7 +570,6 @@ mod tests {
 
     #[test]
     fn nesting_is_counted_the_way_the_parser_nests() {
-        // The parser ignores an end tag with nothing open to close.
         let stray = "<ul></div><blockquote></span>".repeat(300);
         assert!(nesting_depth(&stray, MAX_NESTING) > MAX_NESTING);
         // Paragraphs, list items and void elements do not nest; SVG shapes
@@ -619,14 +583,12 @@ mod tests {
         // An HTML element ends the SVG content, so `<ul/>` nests again.
         let breakout = format!("<svg>{}", "<ul/>".repeat(600));
         assert!(nesting_depth(&breakout, MAX_NESTING) > MAX_NESTING);
-        // Markup inside a script or a comment is text.
         let hidden = format!(
             "<script>{}</script><!-- {} -->",
             "<ul>".repeat(2_000),
             "<ul>".repeat(2_000)
         );
         assert_eq!(nesting_depth(&hidden, MAX_NESTING), 1);
-        // Closed elements unwind.
         assert_eq!(
             nesting_depth(&"<div><ul><li>x</li></ul></div>".repeat(1_000), MAX_NESTING),
             2

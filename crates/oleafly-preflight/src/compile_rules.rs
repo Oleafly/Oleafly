@@ -1,5 +1,3 @@
-//! Build log and page-size rules (`packages/preflight/src/compile-rules.ts`).
-
 use std::collections::HashSet;
 use std::sync::LazyLock;
 
@@ -237,7 +235,6 @@ pub fn distinct_page_sizes(pdf: &PdfFacts) -> Vec<String> {
     sizes
 }
 
-/// `Number(text)` for the `[0-9.]+` widths the overfull pattern captures.
 fn overfull_width(text: &str) -> f64 {
     text.parse::<f64>().unwrap_or(f64::NAN)
 }
@@ -295,7 +292,6 @@ pub fn run_compile_rules(context: Option<&CompileContext>, pdf: Option<&PdfFacts
         .map(|found| overfull_width(found.group(log, 1).unwrap_or("")))
         .collect();
     if !widths.is_empty() {
-        // `Math.max` is NaN as soon as one width is NaN.
         let widest = if widths.iter().any(|width| width.is_nan()) {
             f64::NAN
         } else {
@@ -431,7 +427,6 @@ mod tests {
         let good = "This is pdfTeX, Version 3.141592653\n(./main.tex\nLaTeX Warning: Reference `a' on page 1 undefined on input line 4.\nOverfull \\hbox (3.0pt too wide) in paragraph at lines 5--6\nPackage hyperref Warning: Token not allowed in a PDF string.\nOutput written on main.pdf (1 page, 12345 bytes).\nTranscript written on main.log.\n";
         assert_eq!(infer_compile_status(good), CompileStatus::Success);
         assert_eq!(infer_compile_status(""), CompileStatus::Success);
-        // Text of the document that mentions an error is not an error line.
         assert_eq!(
             infer_compile_status("[]\\OT1/cmr/m/n/10 An error: here\nwarning: a hint\n"),
             CompileStatus::Success

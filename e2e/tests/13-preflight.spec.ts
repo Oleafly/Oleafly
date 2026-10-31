@@ -15,7 +15,6 @@ test("preflight categories render and a single check runs independently", async 
   await tauriPage.click('[data-testid="toolbar-views"] button[aria-label="Split View"]');
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
 
-  // Preflight's PDF checks need a compiled PDF.
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok", {
     timeout: 90_000,
   });
@@ -85,9 +84,6 @@ Example University.
 `,
   );
 
-  // The blank template can still be completing its on-open compile when the
-  // replacement is queued. The shared helper retries that race and proves the
-  // latest source, not a prior green status, reached the PDF.
   const probe = await compileAndProbe(tauriPage, 120_000);
   expect(probe.text).toContain("GitHub Projects");
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({

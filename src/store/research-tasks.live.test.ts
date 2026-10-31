@@ -89,7 +89,6 @@ function delta(sequence: number, append: string, overrides: Partial<TaskTranscri
   return { taskId: "a", executionGeneration: 1, sequence, kind: "text", append, createdAt: 100 + sequence, ...overrides };
 }
 
-/** Answers each command with its entry (an Error rejects); an empty page for transcripts. */
 function answer(responses: Record<string, unknown> = {}): void {
   native.invoke.mockImplementation(async (command: string) => {
     if (command in responses) {
@@ -120,7 +119,6 @@ async function flush(): Promise<void> {
   for (let turn = 0; turn < 5; turn += 1) await Promise.resolve();
 }
 
-/** Calls of Array.prototype.sort while `work` runs. */
 function sortsDuring(work: () => void): number {
   const sort = vi.spyOn(Array.prototype, "sort");
   try {
@@ -158,12 +156,10 @@ beforeEach(async () => {
     eventsLoading: false,
     action: null,
     error: null,
-    // The dialog shows the selected task, so its rows load and stream.
     detailOpen: true,
     detailTab: null,
     composerDrafts: {},
   });
-  // Forget the task an earlier test left watched.
   await store().selectTask(null);
   native.invoke.mockClear();
 });
@@ -267,7 +263,6 @@ describe("live transcript text", () => {
     useResearchTasksStore.setState({ tasks: [task("a")] });
 
     const selecting = store().selectTask("a");
-    // "Reading the sources." is 20 long; the window started listening at "the".
     store().receiveDelta(delta(1, "the sources.", { textLength: 20 }));
     expect(store().events[0]).toMatchObject({ textStart: 8, event: { text: "the sources." } });
     page({ events: [text(1, "Reading the sou")], nextSequence: null });

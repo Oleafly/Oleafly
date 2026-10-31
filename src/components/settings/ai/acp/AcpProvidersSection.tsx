@@ -7,7 +7,6 @@ import { ACP_PREFERENCES_CHANGED, type AgentPreferences } from "./agent-preferen
 
 const OFF = "__off__";
 
-/** Routing an agent that supports it through one of the user's Oleafly API keys (Experimental). */
 export function AcpProvidersSection({
   agentId,
   preferences,
@@ -20,7 +19,6 @@ export function AcpProvidersSection({
 
   useEffect(() => {
     let current = true;
-    // The Experimental switch on this tab turns the picker on and off while the card is open.
     let announced = false;
     const onPreferences = (event: Event) => {
       const saved = (event as CustomEvent<AcpPreferences>).detail;

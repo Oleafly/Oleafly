@@ -47,7 +47,6 @@ export interface MarkdownLinkOptions {
   openHref: LinkHrefOpener | null;
 }
 
-/** The link under a click, if the editor shows one there. */
 function clickedHref(root: HTMLElement, event: MouseEvent): string | null {
   const anchor = event.target instanceof Element ? event.target.closest("a") : null;
   return anchor && root.contains(anchor) ? anchor.getAttribute("href") : null;

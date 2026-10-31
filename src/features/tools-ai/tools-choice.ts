@@ -1,6 +1,3 @@
-// The model the Tools converters use, and where their images go. Pure and
-// small: the editor toolbar imports it on startup to decide whether to show
-// Image to LaTeX/Typst. Nothing here talks to a model.
 import {
   effectiveProviderKeys,
   getProvider,
@@ -18,7 +15,6 @@ export const MATHPIX_TOOLS_PROVIDER = "mathpix";
 export const MATHPIX_TOOLS_MODEL = "mathpix";
 const MATHPIX_NAME = "Mathpix";
 
-/** The saved choice, or null for the automatic local model. */
 export function toolsChoice(cfg: Pick<AppConfig, "ai_tools_model">): ToolsModelChoice | null {
   const saved = cfg.ai_tools_model;
   const provider = saved?.provider?.trim() ?? "";
@@ -28,20 +24,16 @@ export function toolsChoice(cfg: Pick<AppConfig, "ai_tools_model">): ToolsModelC
   return { provider, model };
 }
 
-/** What a model picker selection saves: null for Automatic. */
 export function choiceFromSelection(providerId: string, modelId: string): ToolsModelChoice | null {
   return toolsChoice({ ai_tools_model: { provider: providerId, model: modelId } });
 }
 
-/** Whether a model can read images: its metadata or name says so, or it is
- * a known OCR model. */
 export function visionCapable(providerId: string, modelId: string, metadata?: ModelMetadata): boolean {
   return (
     modelSupportsVision(providerId, modelId, metadata?.inputModalities) || ocrProfileFor(modelId) !== null
   );
 }
 
-/** Ollama's capabilities when it reports them, the model name otherwise. */
 export function ollamaModelSeesImages(info: OllamaModelInfo): boolean {
   if (info.capabilities) return info.capabilities.includes("vision");
   return visionCapable(LOCAL_TOOLS_PROVIDER, info.name);
@@ -61,7 +53,6 @@ export function ollamaModelIsRemote(info: Pick<OllamaModelInfo, "name" | "remote
   return tag === "cloud" || tag.endsWith("-cloud") || base.endsWith("-cloud");
 }
 
-/** Models the user turned off in Settings for this provider. */
 export function disabledModels(cfg: AppConfig, providerId: string): ReadonlySet<string> {
   return new Set(
     (cfg.ai_provider_models?.[providerId] ?? [])
@@ -84,7 +75,6 @@ function parsedHost(host: string): URL | null {
   }
 }
 
-/** Whether `host` (a URL or `host:port`) is this computer. */
 export function isLoopbackHost(host: string): boolean {
   const url = parsedHost(host);
   if (!url) return false;
@@ -101,17 +91,13 @@ function hostLabel(host: string): string {
 
 export type ToolsDestination =
   | { kind: "device" }
-  /** Ollama on another computer, such as "192.168.1.9:11434". */
   | { kind: "host"; host: string }
-  /** A hosted provider or Mathpix. */
   | { kind: "provider"; providerId: string; name: string };
 
-/** The Ollama host the Tools use: the saved one, or this computer's. */
 export function toolsOllamaHost(cfg: Pick<AppConfig, "ai_keys">): string {
   return cfg.ai_keys?.ollama?.trim() || DEFAULT_OLLAMA_HOST;
 }
 
-/** A provider's display name, custom providers included. */
 export function toolsProviderName(cfg: Pick<AppConfig, "ai_custom_providers">, providerId: string): string {
   if (providerId === MATHPIX_TOOLS_PROVIDER) return MATHPIX_NAME;
   const catalog = getProvider(providerId);
@@ -119,12 +105,10 @@ export function toolsProviderName(cfg: Pick<AppConfig, "ai_custom_providers">, p
   return cfg.ai_custom_providers?.find((custom) => custom.id === providerId)?.name || providerId;
 }
 
-/** Whether a provider has a key (or needs none), as the backend decides. */
 export function toolsProviderConfigured(cfg: AppConfig, providerId: string): boolean {
   return isProviderConfigured(providerId, effectiveProviderKeys(cfg), cfg.ai_custom_providers);
 }
 
-/** Where the Tools send images with the current choice, or with `providerId`. */
 export function toolsDestination(
   cfg: AppConfig,
   providerId: string = toolsChoice(cfg)?.provider ?? LOCAL_TOOLS_PROVIDER,
@@ -136,7 +120,6 @@ export function toolsDestination(
   if (providerId === MATHPIX_TOOLS_PROVIDER) {
     return { kind: "provider", providerId, name: MATHPIX_NAME };
   }
-  // The backend resolves a catalog id before a custom provider of that id.
   const custom = getProvider(providerId)
     ? undefined
     : cfg.ai_custom_providers?.find((provider) => provider.id === providerId);
@@ -144,12 +127,10 @@ export function toolsDestination(
   return { kind: "provider", providerId, name: toolsProviderName(cfg, providerId) };
 }
 
-/** Where an Ollama Cloud model sends its input, whichever Ollama lists it. */
 export function ollamaCloudDestination(): ToolsDestination {
   return { kind: "provider", providerId: LOCAL_TOOLS_PROVIDER, name: OLLAMA_CLOUD_NAME };
 }
 
-/** A short name for where the images went, or null for this computer. */
 export function destinationName(destination: ToolsDestination): string | null {
   switch (destination.kind) {
     case "device":
@@ -164,16 +145,12 @@ export function destinationName(destination: ToolsDestination): string | null {
 export interface ToolsChoiceSummary {
   engine: "llm" | "mathpix";
   providerId: string;
-  /** "" = automatic local. */
   modelId: string;
-  /** Stored model name, model id, "Mathpix OCR", or "Automatic (best local model)". */
   label: string;
   destination: ToolsDestination;
   metadata?: ModelMetadata;
 }
 
-/** `ollama`, the current Ollama listing when there is one, also catches a
- * cloud model copied under a name without its cloud tag. */
 export function describeToolsChoice(
   cfg: AppConfig,
   ollama?: readonly OllamaModelInfo[] | null,
@@ -214,8 +191,6 @@ export function describeToolsChoice(
   };
 }
 
-/** Whether the editor toolbar offers Image to LaTeX/Typst. Automatic shows
- * it whenever any AI is set up; the conversion explains what is missing. */
 export function toolsImageReady(cfg: AppConfig): boolean {
   const choice = toolsChoice(cfg);
   if (!choice) return Boolean(cfg.ai_keys?.ollama?.trim()) || hasConfiguredProvider(cfg);

@@ -1,5 +1,3 @@
-//! TeX log errors and Pandoc diagnostics, shared by the app and the CLI so
-//! both report the same file, line and plain-English explanation.
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -11,7 +9,6 @@ pub struct CompileError {
     pub file: Option<String>,
     pub message: String,
     pub kind: String,
-    /// Deterministic plain-English explanation for common errors, when known.
     pub explanation: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub column: Option<u32>,
@@ -23,7 +20,6 @@ pub struct CompileError {
     pub source_line: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub code: Option<String>,
-    /// Values the app fills into the translated text for `code`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub params: BTreeMap<String, String>,
 }
@@ -137,9 +133,6 @@ fn current_tex_file(stack: &[String]) -> Option<String> {
         .cloned()
 }
 
-// Deterministic plain-English explanations for high-frequency TeX errors. This is
-// intentionally a small, curated set (Humanized Errors Milestone 1), not an
-// exhaustive catalog. Returns None for anything not recognized.
 pub fn humanize_tex_error(message: &str) -> Option<&'static str> {
     let m = message.trim();
     if m.starts_with("Undefined control sequence") {
@@ -214,7 +207,6 @@ fn float_warning(line: &str) -> Option<&'static str> {
     None
 }
 
-/// The line before the engine's raw output in a log Oleafly assembles.
 pub const ENGINE_OUTPUT_MARKER: &str = "[Oleafly] Engine output:";
 
 /// Errors (`! ...` with their `l.NN` line) and float warnings in a TeX log,
@@ -326,8 +318,6 @@ fn requested_font(lines: &[&str], index: usize) -> Option<(String, Option<String
         "" => index.checked_sub(1).map_or("", |previous| lines[previous]),
         prefix => prefix,
     };
-    // stdout comes first in the log and may not end in a newline, so the
-    // first warning can share a line with the end of the engine's output.
     let (file, line) = prefix
         .rfind("warning: ")
         .map(|start| prefix[start + "warning: ".len()..].trim())
@@ -338,7 +328,6 @@ fn requested_font(lines: &[&str], index: usize) -> Option<(String, Option<String
     Some((font, file, line))
 }
 
-/// `Name/B:features` names an installed font; `[path/file.otf:0]/OT` a file.
 fn font_display_name(request: &str) -> Option<String> {
     let name = match request.strip_prefix('[') {
         Some(file) => {
@@ -355,7 +344,6 @@ fn font_display_name(request: &str) -> Option<String> {
     (!name.is_empty()).then(|| name.to_owned())
 }
 
-/// Warnings and errors Pandoc (and the Tectonic it drives) printed.
 pub fn parse_pandoc_diagnostics(log: &str) -> Vec<CompileError> {
     log.lines()
         .filter_map(|line| {
@@ -401,7 +389,6 @@ fn with_tex_extension(project_dir: &Path, file: &str) -> Option<String> {
         .then(|| format!("{file}.tex"))
 }
 
-/// Makes file names in a log that ran in `log_dir` relative to the project.
 pub fn rebase_log_files(
     project_dir: &Path,
     log_dir: &Path,
@@ -516,7 +503,6 @@ mod tests {
 
     #[test]
     fn tex_errors_attribute_to_the_innermost_open_file() {
-        // main opens chapter, the error occurs inside chapter, then chapter closes.
         let log = "(./main.tex (./chapters/intro.tex\n! Missing $ inserted.\nl.7 x_1\n))\n";
         let errors = parse_tex_log_errors(log);
         assert_eq!(errors.len(), 1);
@@ -527,7 +513,6 @@ mod tests {
 
     #[test]
     fn tex_file_stack_ignores_non_path_parens() {
-        // Font/version parens must not be mistaken for the source file.
         let log = "(./main.tex (Font) (2021/01/01)\n! Undefined control sequence.\nl.9 \\bad\n)\n";
         let errors = parse_tex_log_errors(log);
         assert_eq!(errors[0].file.as_deref(), Some("main.tex"));
@@ -679,7 +664,6 @@ mod tests {
             std::process::ExitStatus::from_raw(0xC000_0005)
         };
         let note = crate::engine_spec::compiler_crash_note(&status).unwrap();
-        // The engine's stdout, with no newline before the stderr that follows.
         let log = format!(
             "(main.tex (fontspec.sty))warning: main.tex:5: Requested font \"Fira Sans Light\" at 10pt\n{note}"
         );

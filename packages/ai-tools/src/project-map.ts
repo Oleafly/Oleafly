@@ -1,6 +1,5 @@
 import type { ProjectIndexView } from "./tools";
 
-/** The structural map the `project_map` tool returns. */
 export interface ProjectMap {
   files: string[];
   sections: { title: string; level?: number; file?: string; line?: number }[];
@@ -15,11 +14,6 @@ export interface ProjectMap {
   ambiguousTypstAtUses: string[];
 }
 
-/**
- * The project map for an index. The CLI's `oleafly context` ports this
- * (`crates/oleafly-core/src/context`) and checks itself against goldens
- * this function writes.
- */
 export function projectMapFromIndex(index: ProjectIndexView): ProjectMap {
   const of = (kind: string) => index.defs.filter((d) => d.kind === kind);
   return {

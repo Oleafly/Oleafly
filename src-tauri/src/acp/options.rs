@@ -1,6 +1,3 @@
-//! Changing an agent's options (mode, model, effort, fast and the rest),
-//! remembering model, effort and mode for the agent's next sessions, and
-//! putting a resumed session's choices back.
 use oleafly_acp::controls::{ConfigKind, ConfigOptionView, ConfigValue};
 use serde_json::json;
 use std::path::Path;
@@ -12,22 +9,16 @@ use super::runtime::{AcpRuntime, LiveSession};
 use super::types::{SessionControls, SessionRecord, SessionSnapshot, SessionStatus};
 
 const BUSY: &str = "Wait for this turn to finish before changing the agent's options.";
-/// How often one session is moved out of a blocked mode: an agent that keeps
-/// going back to it is told to the user instead.
 const MAX_MODE_SWITCHES: u32 = 3;
 
-/// What happened to a task's requested model.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ModelChoice {
-    /// No model was asked for, or it is already the agent's model.
     Kept,
     Selected,
-    /// The agent does not offer it; it keeps its own model.
     NotOffered,
 }
 
 impl AcpRuntime {
-    /// Sends one option change and records the agent's confirmation.
     async fn send_config_option(
         &self,
         session: &Arc<LiveSession>,
@@ -80,7 +71,6 @@ impl AcpRuntime {
             .iter_mut()
             .find(|option| option.id == config_id)
         {
-            // The agent confirmed without returning its options.
             match (&mut option.kind, value) {
                 (ConfigKind::Select { current_value, .. }, ConfigValue::Id(id)) => {
                     *current_value = Some(id.clone());
@@ -105,7 +95,6 @@ impl AcpRuntime {
         )
     }
 
-    /// Remembers a model, effort or mode choice for the agent's next sessions.
     fn remember_choice(
         &self,
         session: &LiveSession,
@@ -178,7 +167,6 @@ impl AcpRuntime {
         self.snapshot(id).await
     }
 
-    /// Legacy mode switch for agents that only report `modes`.
     pub async fn set_mode(
         self: &Arc<Self>,
         id: &str,
@@ -403,8 +391,6 @@ impl AcpRuntime {
         }
     }
 
-    /// A task's model: kept when none is asked for or it is already
-    /// current, selected when offered, otherwise reported as not offered.
     pub async fn select_model_if_offered(
         self: &Arc<Self>,
         id: &str,
@@ -432,10 +418,6 @@ impl AcpRuntime {
         Ok(ModelChoice::Selected)
     }
 
-    /// Moves a session out of a mode Oleafly blocks (permission checks off:
-    /// the agent starts in it from its own settings, or goes into it later).
-    /// Oleafly cannot make an agent ask, so when the agent stays in the mode
-    /// the user is told.
     pub(super) async fn leave_blocked_mode(self: &Arc<Self>, session: &Arc<LiveSession>) {
         let Ok(record) = self.copy_record(session) else {
             return;
@@ -449,7 +431,6 @@ impl AcpRuntime {
         let Some(blocked) = record.controls.blocked_mode(remembered.as_deref()) else {
             return;
         };
-        // Past the limit the user was told already.
         let attempts = session.mode_switches.fetch_add(1, Ordering::AcqRel);
         if attempts > MAX_MODE_SWITCHES {
             return;
@@ -467,7 +448,6 @@ impl AcpRuntime {
             }
             None => false,
         };
-        // The agent's answer may still leave it in the mode.
         let still_blocked = self
             .copy_record(session)
             .ok()
@@ -613,9 +593,6 @@ impl AcpRuntime {
         }
     }
 
-    /// A new session starts with the agent's remembered model, effort and
-    /// (for interactive sessions) mode, when offered, allowed and different.
-    /// A failure is noted and never fails the start.
     pub(super) async fn apply_remembered(self: &Arc<Self>, session: &Arc<LiveSession>) {
         let Ok(record) = self.copy_record(session) else {
             return;

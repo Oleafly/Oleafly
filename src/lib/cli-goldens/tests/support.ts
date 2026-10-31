@@ -3,11 +3,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect } from "vitest";
 
-// Golden fixtures for the Rust ports in crates/oleafly-preflight and
-// crates/oleafly-lint. Inputs are written by hand; expected output is written
-// only here, from the TypeScript code, with OLEAFLY_WRITE_GOLDENS=1. In a
-// normal run these suites check that the committed goldens are current.
-
 export const WRITE = process.env.OLEAFLY_WRITE_GOLDENS === "1";
 
 // From the module's own path: the jsdom suites (pdf-facts) replace the global
@@ -22,7 +17,6 @@ export function byCodePoint(left: string, right: string): number {
   return Number(left > right) - Number(left < right);
 }
 
-/** Drops `undefined`, sorts object keys by code point. */
 export function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map((item) => canonicalize(item === undefined ? null : item));
   if (value && typeof value === "object") {
@@ -65,7 +59,6 @@ export function normalizeEndings(text: string): string {
   return text.replace(/\r\n?/g, "\n");
 }
 
-/** The app's file tree: no `.git`, `.oleafly` or symlinks, depth < 64, names sorted per folder. */
 export function walkProject(root: string): string[] {
   const out: string[] = [];
   const walk = (dir: string, depth: number) => {
@@ -82,7 +75,6 @@ export function walkProject(root: string): string[] {
   return out;
 }
 
-/** `[proseStart, sourceStart, length]` runs of a prose-to-source offset map. */
 export function compressMap(map: readonly number[]): [number, number, number][] {
   const runs: [number, number, number][] = [];
   for (let index = 0; index < map.length; index++) {
@@ -107,7 +99,6 @@ function withoutEmptyParams(value: unknown): unknown {
   return value;
 }
 
-/** A finding as `JSON.stringify` writes it, without empty message params. */
 export function normalizeFinding<T>(finding: T): T {
   return withoutEmptyParams(JSON.parse(JSON.stringify(finding))) as T;
 }

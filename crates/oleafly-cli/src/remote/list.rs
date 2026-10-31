@@ -1,4 +1,3 @@
-//! `remote list`, `import`, `status`, `unlink` and `open`.
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -20,10 +19,8 @@ use crate::auth::online::{online_error, server_for};
 use crate::auth::shared::{from_online, one_line, user_agent, Env, Report};
 use crate::contract::{CliError, Context, ErrorKind, Exit};
 
-/// Called with a project's name as its download goes.
 pub(crate) type Progress<'a> = dyn Fn(&str, ImportProgress) + Send + Sync + 'a;
 
-/// Download progress for people (every 10%) or as `download` events.
 pub(crate) fn progress_reporter(ctx: &Context) -> impl Fn(&str, ImportProgress) + Send + Sync + '_ {
     let shown = AtomicU64::new(u64::MAX);
     move |name: &str, progress: ImportProgress| {
@@ -47,8 +44,6 @@ fn http_for(server: &str) -> Result<Http, CliError> {
     Http::new(server, &user_agent()).map_err(|error| online_error(error, server))
 }
 
-/// `remote list`: the account's projects, with the ones the app already
-/// imported marked.
 pub(crate) async fn list(env: &Env, server: Option<&str>) -> Result<Report, CliError> {
     let server = server_for(env, server)?;
     let http = http_for(&server)?;
@@ -69,7 +64,6 @@ pub(crate) async fn list(env: &Env, server: Option<&str>) -> Result<Report, CliE
         one_line(&session.email)
     )];
     for project in &projects {
-        // Names come from other people's accounts: each stays on its line.
         let mut line = format!("  {}  {}", project.id, one_line(&project.name));
         if let Some(owner) = project.owner_name.as_deref().filter(|_| !project.owned) {
             line.push_str(&format!(" (shared by {})", one_line(owner)));
@@ -88,8 +82,6 @@ pub(crate) async fn list(env: &Env, server: Option<&str>) -> Result<Report, CliE
     )
 }
 
-/// `remote import`: each project into a new folder of its own. One failure
-/// doesn't stop the others; the exit code is the first failure's.
 pub(crate) async fn import(
     env: &Env,
     args: ImportArgs,
@@ -192,7 +184,6 @@ pub(crate) async fn import(
     })
 }
 
-/// A path as people would type it in a shell.
 fn quoted_path(path: &Path) -> String {
     let text = path.display().to_string();
     if text.contains(char::is_whitespace) {
@@ -215,8 +206,6 @@ fn session_state(env: &Env, server: &str) -> Result<&'static str, CliError> {
     )
 }
 
-/// `remote status`: the link, which token sync would use (never the
-/// token), and with `--fetch` whether either side changed.
 pub(crate) fn status(
     env: &Env,
     deps_for: &dyn Fn(&Path) -> Result<RemoteDeps, CliError>,
@@ -297,9 +286,6 @@ pub(crate) fn status(
     Ok(Report::new(data).lines(lines))
 }
 
-/// `remote unlink`: removes the private copy and the link record. The
-/// folder's files stay as they are. A saved copy of files that linking
-/// replaced is put in the folder first, since it lives in the private copy.
 pub(crate) fn unlink(
     env: &Env,
     deps_for: &dyn Fn(&Path) -> Result<RemoteDeps, CliError>,
@@ -331,8 +317,6 @@ pub(crate) fn unlink(
     Ok(report)
 }
 
-/// Puts the saved copies of replaced files in the folder. Without Git they
-/// can't be read, so a mirror that holds some is kept.
 fn saved_copies(
     deps_for: &dyn Fn(&Path) -> Result<RemoteDeps, CliError>,
     scope: &super::scope::RemoteScope,
@@ -369,7 +353,6 @@ fn can_open_browser() -> bool {
         .any(|name| std::env::var_os(name).is_some_and(|value| !value.is_empty()))
 }
 
-/// `remote open`: the linked (or imported-from) project's page.
 pub(crate) fn open(env: &Env, folder: &Path, print: bool) -> Result<Report, CliError> {
     let scope = resolve_scope(folder, &env.data_root)?;
     let (server, remote_id) = match (scope.current_link(&env.data_root)?, scope.imported_from()) {
@@ -382,9 +365,6 @@ pub(crate) fn open(env: &Env, folder: &Path, print: bool) -> Result<Report, CliE
         }
     };
     let url = project_url(&server, &remote_id);
-    // The server comes from a file in the folder. It is only launched when
-    // it is the service's own or one the user signed in to; the address can
-    // still be printed.
     if !print && !server_is_known(env, &server)? {
         return Err(CliError::new(
             ErrorKind::InvalidInput,
@@ -428,8 +408,6 @@ mod tests {
         .unwrap();
     }
 
-    /// A dashboard with two projects; `/download/zip` serves `p1` and fails
-    /// for anything else.
     async fn fixture() -> FixtureServer {
         let page = dashboard_page(&json!([
             remote_project_json("p1", "Thesis"),
@@ -562,7 +540,6 @@ mod tests {
             let record = json!({"importedFrom": {"service": oleafly_online::service::SERVICE_ID, "server": server, "projectId": project}});
             std::fs::write(folder.join("project.json"), record.to_string()).unwrap();
         };
-        // An address the user never signed in to can be printed, not launched.
         origin("https://evil.example", "p9");
         assert_eq!(
             open(&env, &folder, true).unwrap().data["url"],
@@ -575,8 +552,6 @@ mod tests {
             open(&env, &folder, false).unwrap_err().code,
             "remote.unknown_server"
         );
-        // Records that aren't an https (or local) address, or whose project
-        // isn't a project id, are not believed at all.
         for (server, project) in [
             ("file:///etc/passwd", "p9"),
             ("data:text/html,x", "p9"),
@@ -615,7 +590,6 @@ mod tests {
             .lines
             .iter()
             .all(|line| !line.contains(['\n', '\u{1b}'])));
-        // The data keeps the name as the service gave it.
         let names: Vec<&str> = report.data["projects"]
             .as_array()
             .unwrap()

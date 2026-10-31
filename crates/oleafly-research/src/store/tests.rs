@@ -327,17 +327,13 @@ fn an_evidence_check_counts_as_work_until_it_ends_and_a_dead_one_is_cleared() {
             TaskPhase::CheckingEvidence
         )
         .unwrap());
-    // The process that ran the task checks its evidence: that is work, so
-    // the background helper does not exit in the middle of it.
     assert_eq!(store.owned_work().unwrap().running, 1);
-    // This process is alive: startup recovery leaves its check alone.
     store.recover_interrupted().unwrap();
     assert_eq!(
         store.require(&reviewed.id).unwrap().phase,
         Some(TaskPhase::CheckingEvidence)
     );
 
-    // The checking process exited; the next start clears what it left.
     store.set_owner(&reviewed.id, Some(FOREIGN)).unwrap();
     assert_eq!(store.owned_work().unwrap().running, 0);
     let gone = TaskStore {
@@ -381,8 +377,6 @@ fn older_tool_rows_keep_only_the_start_of_their_detail() {
             other => panic!("not a tool row: {other:?}"),
         }
     };
-    // The two oldest of 502 fall outside the newest 500 and are cut; every
-    // row stays.
     for sequence in [1, 2] {
         let cut = detail(sequence);
         assert!(cut.starts_with(&format!("{sequence}:")), "{cut}");
@@ -395,7 +389,6 @@ fn older_tool_rows_keep_only_the_start_of_their_detail() {
             format!("{sequence}:").len() + 8 * 1024
         );
     }
-    // One more row cuts one more, once.
     store.write_events(&[tool(503)]).unwrap();
     assert!(detail(3).ends_with("\n[output truncated]"));
     assert!(!detail(4).ends_with("\n[output truncated]"));
@@ -435,7 +428,6 @@ fn transcripts_page_backwards_from_the_newest_row_and_know_what_they_resumed() {
         .unwrap();
     assert_eq!(sequences(&oldest), [1]);
     assert_eq!(oldest.previous_sequence, None);
-    // Forward pages are as before.
     let forward = store.events(&task.id, first, None, 2).unwrap();
     assert_eq!(sequences(&forward), [1, 2]);
     assert_eq!(
@@ -444,8 +436,6 @@ fn transcripts_page_backwards_from_the_newest_row_and_know_what_they_resumed() {
     );
     assert_eq!(forward.resumed_from, None);
 
-    // A resumed generation knows the one it continues; a fresh start
-    // continues none, and the earlier generation keeps what it knew.
     store.finish_failure(&task.id, first, "stopped").unwrap();
     store.retry_with(&task.id, RetryMode::Resume).unwrap_err();
     store.retry_with(&task.id, RetryMode::Fresh).unwrap();
@@ -503,8 +493,6 @@ fn a_task_whose_dependents_finished_can_be_deleted() {
     let mut dependent = draft("paper", "Write the summary");
     dependent.dependency_ids = vec![dependency.id.clone()];
     let dependent = store.create(dependent).unwrap();
-    // The dependent finished (here: cancelled), so nothing waits any more,
-    // and a finished task's dependencies can't be edited.
     store.request_cancel(&dependent.id).unwrap();
 
     store.delete(&dependency.id).unwrap();
@@ -793,7 +781,6 @@ fn a_failed_dependency_fails_waiting_dependents_with_a_reason() {
     let c = store.require(&c.id).unwrap();
     assert_eq!(c.status, ResearchTaskStatus::Failed);
     assert!(c.error.unwrap().contains("\"B\""));
-    // Never started, so it waits in the queue for a retry of A.
     assert_eq!(
         store.require(&d.id).unwrap().status,
         ResearchTaskStatus::Queued
@@ -916,7 +903,6 @@ fn a_0_4_7_store_migrates_to_version_2_without_losing_rows() {
         .unwrap()
         .query_row("PRAGMA user_version", [], |row| row.get(0))
         .unwrap();
-    // 0.4.8 L: the store migrates on to the handoff columns too.
     assert_eq!(version, SCHEMA_VERSION);
     let task = store.require("task-old").unwrap();
     assert_eq!(task.brief, ResearchBrief::default());
@@ -1008,7 +994,6 @@ fn brief_limits_are_enforced() {
     );
 }
 
-// 0.4.8 I: desktop apps need someone at the computer.
 #[test]
 fn tasks_with_desktop_apps_cannot_run_unattended() {
     let (_temp, store) = store();
@@ -1282,7 +1267,6 @@ fn a_plan_ready_task_can_be_cancelled() {
     );
 }
 
-// 0.4.8 L: handoffs between the app and the background helper.
 mod handoff {
     use std::collections::BTreeSet;
 
@@ -1435,7 +1419,6 @@ mod handoff {
                 },
             )
             .unwrap();
-        // A store from before the column: no `kind`, version 3.
         let path = temp.path().join("tasks").join("tasks.sqlite3");
         let connection = Connection::open(&path).unwrap();
         connection
@@ -1448,7 +1431,6 @@ mod handoff {
         drop(connection);
 
         let store = TaskStore::new(temp.path().join("tasks")).unwrap();
-        // The rows written before get their kind, and counting uses the index.
         assert_eq!(store.text_event_count(&task.id, generation).unwrap(), 2);
         let connection = Connection::open(&path).unwrap();
         let plan: Vec<String> = connection
@@ -1721,7 +1703,6 @@ mod handoff {
             live_helper.foreign_requests().unwrap().reclaim,
             vec![(held.id.clone(), held.execution_generation)]
         );
-        // Quitting again cancels the request: the helper keeps its task.
         assert_eq!(app.cancel_reclaim_requests().unwrap(), 1);
         assert!(!app.require(&held.id).unwrap().reclaim_requested);
     }
@@ -1829,7 +1810,6 @@ mod handoff {
         assert!(helper
             .set_native_session(&claimed.id, claimed.execution_generation, "agent-session-2")
             .unwrap());
-        // The helper crashes; the app opens.
         let app = TaskStore {
             probe: |_| ProcessProbe::Gone,
             ..app
@@ -1958,7 +1938,6 @@ mod handoff {
                 &first
             )
             .unwrap());
-        // The app quits again before the task starts.
         assert!(app
             .hand_off_queued(&running.id, OwnerKind::Daemon, &record(HandoffReason::Quit))
             .unwrap());
@@ -2017,8 +1996,6 @@ mod handoff {
         assert!(!gone.owned_by_other_live_process(&running.id).unwrap());
     }
 }
-
-// 0.4.8 E: schema setup once per root, resumes, and the approval and run rows.
 
 #[test]
 fn schema_initialization_runs_once_per_root() {
@@ -2139,7 +2116,6 @@ mod approval_rows {
         store
             .finish_failure(&first.id, first.execution_generation, "stopped")
             .unwrap();
-        // Nobody can answer for a task that stopped.
         assert_eq!(
             store.decide_approval(&old.id, true).unwrap_err(),
             NO_LONGER_WAITING
@@ -2147,7 +2123,6 @@ mod approval_rows {
         store.retry_with(&first.id, RetryMode::Fresh).unwrap();
         store.request_start(&first.id).unwrap();
         let second = store.claim_next().unwrap().unwrap();
-        // The task runs again, as a newer generation: still refused.
         assert_eq!(
             store.decide_approval(&old.id, true).unwrap_err(),
             NO_LONGER_WAITING

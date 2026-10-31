@@ -152,9 +152,6 @@ function visibleExpressions(
   }
   if (found.length <= MAX_RENDERED_EXPRESSIONS) return found;
 
-  // In a pathological math-dense window, retain the expressions nearest to
-  // what the user can actually see. The surrounding scan window still gives
-  // ordinary documents enough look-ahead for seamless scrolling.
   const visible = view.visibleRanges;
   const distanceToViewport = (expression: MathExpression): number => {
     let distance = Number.POSITIVE_INFINITY;
@@ -258,7 +255,6 @@ class MathPreviewWidget extends WidgetType {
   }
 
   ignoreEvent(): boolean {
-    // Let CodeMirror place the caret around the non-editable decoration.
     return false;
   }
 
@@ -373,10 +369,6 @@ const mathPreviewTheme = EditorView.baseTheme({
   },
 });
 
-/**
- * Live, source-preserving math preview for LaTeX document bodies, Pandoc
- * Markdown and Typst equations.
- */
 export function liveMathPreview(format: MathSourceFormat): Extension {
   const plugin = ViewPlugin.fromClass(
     class {
@@ -411,14 +403,6 @@ export function liveMathPreview(format: MathSourceFormat): Extension {
 
         if (update.docChanged) {
           this.revision++;
-          // Preserve every unaffected preview while the edited document is
-          // rescanned. Clearing the full set here made all inline widgets
-          // disappear for the debounce window and then remount together.
-          // Their widths participate in line wrapping, so math-heavy
-          // documents repeatedly collapsed and expanded above the caret while
-          // typing. Mapping keeps the existing DOM and geometry stable;
-          // the debounced scan below replaces only previews whose expression
-          // content actually changed.
           this.decorations = this.decorations.map(update.changes);
           this.coverage = [];
           this.schedule(update.view, EDIT_PREVIEW_DEBOUNCE_MS);
@@ -506,10 +490,6 @@ export function liveMathPreview(format: MathSourceFormat): Extension {
   return [mathPreviewTheme, plugin];
 }
 
-/**
- * Kept as a compatibility alias for older hosts. New callers should choose the
- * document format explicitly with `liveMathPreview`.
- */
 export function mathHover(): Extension {
   return liveMathPreview("latex");
 }

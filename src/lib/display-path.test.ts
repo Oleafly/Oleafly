@@ -92,7 +92,6 @@ describe("homeRelativeText", () => {
       String.raw`Open ~\x failed`,
     );
     expect(homeRelativeText("(c:/users/ada/tex/a.sty)", home)).toBe("(~/tex/a.sty)");
-    // Rust's `{path:?}` doubles every backslash.
     expect(homeRelativeText(String.raw`failed "C:\\Users\\ada\\x"`, home)).toBe(
       String.raw`failed "~\\x"`,
     );
@@ -126,9 +125,7 @@ describe("outsideCodeFences", () => {
     expect(outsideCodeFences("1. a\n\n    ```\n    b\n    ```\nc", upper)).toBe(
       "1. A\n\n    ```\n    b\n    ```\nC",
     );
-    // A shorter or different run does not close the fence.
     expect(outsideCodeFences("````\nb\n```\n~~~~\nc", upper)).toBe("````\nb\n```\n~~~~\nc");
-    // Still streaming: everything after the opening fence stays as written.
     expect(outsideCodeFences("a\n```sh\nb", upper)).toBe("A\n```sh\nb");
   });
 
@@ -141,7 +138,6 @@ describe("outsideCodeFences", () => {
   });
 
   it("formats lines the Markdown renderer shows as prose, even when they look like fences", () => {
-    // Four spaces at the top level is an indented code line, not a fence.
     expect(outsideCodeFences("a\n\n    ```\nb", upper)).toBe("A\n\n    ```\nB");
   });
 });

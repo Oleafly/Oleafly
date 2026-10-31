@@ -350,8 +350,6 @@ pub async fn seeded(server: &TestServer, name: &str) -> Person {
     Person { device, tokens }
 }
 
-// Large enough that reading or encoding it on the server's async thread
-// shows up as a stall, and small enough to fit in one frame.
 pub fn large_change(person: &Person, project: SharedProjectId) -> Envelope {
     envelope(person, project, &vec![b'x'; 7 << 20])
 }
@@ -364,9 +362,6 @@ impl Drop for Finished {
     }
 }
 
-// Runs `work` on a thread with a runtime of its own and sets the flag once
-// it ends, even by panicking. A client's own encoding and decoding of large
-// frames then never holds up the thread a test shares with its server.
 pub fn beside<F>(work: F) -> (tokio::task::JoinHandle<F::Output>, Arc<AtomicBool>)
 where
     F: Future + Send + 'static,
@@ -385,13 +380,8 @@ where
     (handle, done)
 }
 
-// How long a server that shares one thread with the test may keep a ping
-// waiting while it handles a large change.
 pub const LONGEST_STALL: Duration = Duration::from_millis(100);
 
-// Pings over `socket` until `done` is set and returns the longest time a
-// round took beyond its pause, which is how long the thread the test shares
-// with the server was held up.
 pub async fn longest_stall(socket: &mut Socket, done: &AtomicBool) -> Duration {
     let pause = Duration::from_millis(5);
     let mut slowest = Duration::ZERO;
@@ -413,9 +403,6 @@ pub async fn longest_stall(socket: &mut Socket, done: &AtomicBool) -> Duration {
     slowest
 }
 
-// Cursor and leave frames wait beside the edit queue and go out when no
-// other frame is waiting, so after a removal the room's access change can
-// arrive before the leave. Reads both, access change first.
 pub async fn told_of_removal(socket: &mut Socket) -> Vec<ServerFrame> {
     let mut told = vec![
         next_frame(socket).await.expect("a frame about the removal"),

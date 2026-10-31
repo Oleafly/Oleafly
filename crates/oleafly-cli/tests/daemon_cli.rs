@@ -1,5 +1,3 @@
-//! `oleafly daemon run|status|stop` as people and the app run them.
-// The test binaries share these fixture builders; this one uses one of them.
 #[allow(dead_code)]
 mod support;
 
@@ -56,7 +54,6 @@ fn state_path(data: &Path) -> PathBuf {
     data.join("daemon").join("state.json")
 }
 
-/// The lock-holder fixture, holding `<data>/daemon/daemon.lock`.
 fn hold_the_lock(data: &Path, bin: &Path) -> Guard {
     let holder = support::rust_fixture(bin, "lock_holder.rs", "lock-holder", None);
     let mut child = Command::new(holder)

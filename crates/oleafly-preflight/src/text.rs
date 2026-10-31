@@ -25,8 +25,6 @@ pub const SPACE: u16 = b' ' as u16;
 pub const TAB: u16 = b'\t' as u16;
 pub const CARRIAGE_RETURN: u16 = b'\r' as u16;
 
-/// `"\r\n"` and a lone `"\r"` become `"\n"`, exactly like the app's
-/// `/\r\n?/g` replacement before it indexes or lints a file.
 pub fn normalize_line_endings(text: &str) -> Cow<'_, str> {
     if !text.as_bytes().contains(&b'\r') {
         return Cow::Borrowed(text);
@@ -53,38 +51,27 @@ pub fn normalize_line_endings(text: &str) -> Cow<'_, str> {
     Cow::Owned(out)
 }
 
-/// A 1-based line and a 1-based column counted in UTF-16 code units.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Position {
     pub line: u32,
     pub column: u32,
 }
 
-/// A string with its UTF-16 view and offset tables.
 #[derive(Clone, Debug)]
 pub struct SourceText {
     text: String,
     units: Vec<u16>,
-    /// `text.len() + 1` entries: the UTF-16 offset of the character that
-    /// contains each byte.
     byte_to_unit: Vec<u32>,
-    /// `units.len() + 1` entries: the byte offset of the character that
-    /// contains each unit (both halves of a surrogate pair map to its start).
     unit_to_byte: Vec<u32>,
-    /// UTF-16 offsets where lines start. Only `'\n'` breaks a line.
     line_starts: Vec<usize>,
 }
 
 impl SourceText {
-    /// Callers normalise line endings first when offsets must match the app.
     pub fn new(text: String) -> Self {
         let units: Vec<u16> = text.encode_utf16().collect();
         Self::build(text, units)
     }
 
-    /// Keeps the unit count of `units` exactly, so offsets stay valid. A lone
-    /// surrogate becomes U+FFFD in the string view (also one unit) while
-    /// [`SourceText::units`] keeps the original unit.
     pub fn from_units(units: Vec<u16>) -> Self {
         let text = String::from_utf16_lossy(&units);
         Self::build(text, units)
@@ -104,8 +91,6 @@ impl SourceText {
             unit += ch.len_utf16() as u32;
         }
         byte_to_unit[text.len()] = unit;
-        // `from_units` can only differ from the string's own encoding in lone
-        // surrogates, which are one unit on both sides, so the counts agree.
         while unit_to_byte.len() < units.len() {
             unit_to_byte.push(text.len() as u32);
         }
@@ -146,14 +131,10 @@ impl SourceText {
         self.units.is_empty()
     }
 
-    /// The UTF-16 offset of a byte offset (a byte inside a character maps to
-    /// the character's start).
     pub fn utf16_at(&self, byte: usize) -> usize {
         self.byte_to_unit[byte.min(self.text.len())] as usize
     }
 
-    /// The byte offset of a UTF-16 offset. A unit inside a surrogate pair maps
-    /// to the start of that character.
     pub fn byte_at(&self, unit: usize) -> usize {
         self.unit_to_byte[unit.min(self.units.len())] as usize
     }
@@ -166,7 +147,6 @@ impl SourceText {
         String::from_utf16_lossy(&self.units[from..to])
     }
 
-    /// The unit at `index`, like `text.charCodeAt(index)`.
     pub fn unit(&self, index: usize) -> Option<u16> {
         self.units.get(index).copied()
     }
@@ -175,7 +155,6 @@ impl SourceText {
         &self.line_starts
     }
 
-    /// The 0-based line index that contains a UTF-16 offset.
     pub fn line_index(&self, unit: usize) -> usize {
         match self.line_starts.binary_search(&unit) {
             Ok(index) => index,
@@ -203,7 +182,6 @@ impl SourceText {
         position
     }
 
-    /// The text of the line that contains `unit`, without its newline.
     pub fn line_text(&self, unit: usize) -> String {
         let line = self.line_index(unit.min(self.units.len()));
         let start = self.line_starts[line];
@@ -225,7 +203,6 @@ pub fn to_units(text: &str) -> Vec<u16> {
     text.encode_utf16().collect()
 }
 
-/// `text.split("\n")` with the UTF-16 offset where each piece starts.
 pub fn lines_with_offsets(text: &str) -> impl Iterator<Item = (usize, &str)> {
     let mut offset = 0usize;
     text.split('\n').map(move |line| {
@@ -320,7 +297,6 @@ pub fn is_letter_number_unit(unit: u16) -> bool {
     unit_category(unit) == Some(GeneralCategory::LetterNumber)
 }
 
-/// `/[\p{L}\p{N}]/u` on one character.
 pub fn is_letter_or_number(c: char) -> bool {
     let category = general_category(c as u32);
     GeneralCategoryGroup::Letter.contains(category)
@@ -375,8 +351,6 @@ pub fn js_to_fixed(value: f64, digits: usize) -> String {
         return js_number_to_string(value);
     }
     let negative = value < 0.0;
-    // 1100 fractional digits hold every finite double exactly, so this
-    // string is the exact decimal expansion and no rounding happened yet.
     let exact = format!("{:.1100}", value.abs());
     let (whole, fraction) = exact.split_once('.').unwrap_or((exact.as_str(), ""));
     let mut digits_out: Vec<u8> = whole.bytes().chain(fraction.bytes().take(digits)).collect();
@@ -411,7 +385,6 @@ pub fn js_to_fixed(value: f64, digits: usize) -> String {
     out
 }
 
-/// `String.prototype.indexOf` over units, from `from`.
 pub fn index_of_units(haystack: &[u16], needle: &[u16], from: usize) -> Option<usize> {
     if needle.is_empty() {
         return Some(from.min(haystack.len()));
@@ -422,7 +395,6 @@ pub fn index_of_units(haystack: &[u16], needle: &[u16], from: usize) -> Option<u
     (from..=haystack.len() - needle.len()).find(|&index| haystack[index..].starts_with(needle))
 }
 
-/// `String.prototype.lastIndexOf` over units, at or before `before`.
 pub fn last_index_of_units(haystack: &[u16], needle: &[u16], before: usize) -> Option<usize> {
     if needle.len() > haystack.len() {
         return None;
@@ -433,7 +405,6 @@ pub fn last_index_of_units(haystack: &[u16], needle: &[u16], before: usize) -> O
         .find(|&index| haystack[index..].starts_with(needle))
 }
 
-/// Whether `units` spell exactly `text`.
 pub fn units_eq_str(units: &[u16], text: &str) -> bool {
     units.iter().copied().eq(text.encode_utf16())
 }
@@ -447,21 +418,15 @@ pub fn starts_with_units(haystack: &[u16], at: usize, needle: &str) -> bool {
     true
 }
 
-/// `value.replace(/^L|T$/g, "")`: one leading `L` and one trailing `T`. The
-/// trailing one is never the character the leading match already consumed.
 pub fn strip_one_each_end(value: &str, leading: char, trailing: char) -> &str {
     let rest = value.strip_prefix(leading).unwrap_or(value);
     rest.strip_suffix(trailing).unwrap_or(rest)
 }
 
-/// `value.replace(/^X?|X?$/g, "")`: the leading match always wins at offset
-/// zero, so a value that is only a trailing `X` keeps it.
 pub fn strip_optional_each_end(value: &str, leading: char, trailing: char) -> &str {
     if let Some(rest) = value.strip_prefix(leading) {
         return rest.strip_suffix(trailing).unwrap_or(rest);
     }
-    // The empty match at offset zero means the trailing character must start
-    // at offset one or later.
     if value.chars().nth(1).is_some() {
         value.strip_suffix(trailing).unwrap_or(value)
     } else {
@@ -469,8 +434,6 @@ pub fn strip_optional_each_end(value: &str, leading: char, trailing: char) -> &s
     }
 }
 
-/// `/^(["'])|(["'])$/g` style quote stripping used for bibliography targets:
-/// one leading quote and one trailing quote, each of either kind.
 pub fn strip_quotes(value: &str) -> &str {
     let rest = value
         .strip_prefix('"')

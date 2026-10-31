@@ -1,6 +1,3 @@
-//! The bounded line transport the SDK runs on: one JSON-RPC message per
-//! line, at most 1 MiB, with oversized `session/update` notifications cut to
-//! their identity instead of ending the connection, and a write timeout.
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::io;
@@ -13,30 +10,15 @@ use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWrite
 use crate::error::RpcError;
 use crate::limits::{MAX_DROPPED_UPDATE, MAX_FRAME, WRITE_TIMEOUT};
 
-/// The notification the transport inserts after an update it cut or
-/// dropped. Agents cannot send methods in the `_oleafly/` namespace.
 pub const DROPPED_UPDATE_METHOD: &str = "_oleafly/dropped_update";
 
-/// One newline-delimited message read from an agent.
 #[derive(Debug)]
 pub enum Frame {
     Message(Value),
-    /// An oversized `session/update` notification that was read and dropped.
-    DroppedUpdate {
-        bytes: usize,
-    },
-    /// An oversized tool call update that was read, with everything but the
-    /// tool call's identity and status dropped, so the call still ends.
-    TruncatedUpdate {
-        bytes: usize,
-        /// The `session/update` notification with only `sessionId` and the
-        /// update's `sessionUpdate`, `toolCallId`, `status`, `kind` and
-        /// `title`, marked `truncated`.
-        message: Value,
-    },
+    DroppedUpdate { bytes: usize },
+    TruncatedUpdate { bytes: usize, message: Value },
 }
 
-/// Reads one message of at most [`MAX_FRAME`] bytes.
 pub async fn read_frame<R: AsyncBufRead + Unpin>(
     reader: &mut R,
 ) -> Result<Option<Value>, RpcError> {
@@ -46,10 +28,6 @@ pub async fn read_frame<R: AsyncBufRead + Unpin>(
     }
 }
 
-/// Reads the next agent message. A `session/update` notification between
-/// 1 MiB and 16 MiB is read in full and its content dropped (a tool call
-/// update keeps its identity and status); every other message over 1 MiB,
-/// and anything over 16 MiB, is an error.
 pub async fn read_agent_frame<R: AsyncBufRead + Unpin>(
     reader: &mut R,
 ) -> Result<Option<Frame>, RpcError> {
@@ -71,7 +49,6 @@ pub async fn read_agent_frame<R: AsyncBufRead + Unpin>(
     }
 }
 
-/// A string field of an oversized update; any other value is ignored.
 #[derive(serde::Deserialize)]
 #[serde(untagged)]
 enum LooseText {
@@ -88,9 +65,6 @@ impl LooseText {
     }
 }
 
-/// Checks the envelope of an oversized frame without building its payload.
-/// `None`: not an update notification. `Some(None)`: an update that is only
-/// counted. `Some(Some(message))`: a tool call update cut to its identity.
 fn oversized_update(bytes: &[u8]) -> Option<Option<Value>> {
     #[derive(serde::Deserialize)]
     struct Envelope {
@@ -125,8 +99,6 @@ fn oversized_update(bytes: &[u8]) -> Option<Option<Value>> {
     {
         return None;
     }
-    // A second pass, so a params shape this reader does not expect still
-    // counts as a dropped update rather than ending the connection.
     Some((|| {
         let params = serde_json::from_slice::<Identity>(bytes).ok()?.params?;
         let session_id = LooseText::text(params.session_id, 512)?;
@@ -166,7 +138,6 @@ fn parse_envelope(bytes: &[u8]) -> Result<Value, RpcError> {
     Ok(value)
 }
 
-/// Reads one non-blank line of at most `limit` bytes.
 async fn read_frame_bytes<R: AsyncBufRead + Unpin>(
     reader: &mut R,
     limit: usize,
@@ -205,24 +176,14 @@ async fn read_frame_bytes<R: AsyncBufRead + Unpin>(
     }
 }
 
-/// What the line stream does with one agent line.
 enum LineFrame {
-    /// A message to hand to the SDK, as the agent wrote it.
     Line(String),
-    /// A message in Oleafly's reserved namespace, ignored.
     Skip,
     Stray(Vec<u8>),
-    Truncated {
-        bytes: usize,
-        message: Value,
-    },
-    Dropped {
-        bytes: usize,
-    },
+    Truncated { bytes: usize, message: Value },
+    Dropped { bytes: usize },
 }
 
-/// Checks a message's envelope without building a `Value` for its payload,
-/// and returns its method.
 fn checked_envelope(bytes: &[u8]) -> Result<Option<String>, RpcError> {
     #[derive(serde::Deserialize)]
     struct Envelope<'a> {
@@ -349,8 +310,6 @@ fn dropped_notice(bytes: usize) -> String {
         .to_string()
 }
 
-/// The incoming half: agent lines, each checked, cut or dropped as above.
-/// The first unreadable line ends the stream with an error.
 pub(crate) fn incoming_lines<R, F>(
     stdout: R,
     on_stray: F,
@@ -393,8 +352,6 @@ where
     )
 }
 
-/// The outgoing half: one line per message, refused at the frame limit,
-/// each write bounded by [`WRITE_TIMEOUT`].
 pub(crate) fn outgoing_lines<W>(stdin: W) -> impl Sink<String, Error = io::Error> + Send + 'static
 where
     W: AsyncWrite + Send + Unpin + 'static,
@@ -423,7 +380,6 @@ where
     })
 }
 
-/// The SDK transport over an agent's stdout and stdin.
 pub(crate) fn line_transport<R, W, F>(
     stdout: R,
     stdin: W,

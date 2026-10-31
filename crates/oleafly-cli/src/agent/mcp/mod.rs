@@ -1,14 +1,3 @@
-//! A small MCP client for the user's servers (the ones turned on in
-//! Oleafly's settings): stdio programs and streamable-HTTP servers. Tools
-//! keep the app's names (`mcp_ext_<server>_<tool>_<hash>`), so a run and the
-//! app call the same tool the same way.
-//!
-//! A stdio server runs a program, so it needs `--allow commands`; a remote
-//! server needs `--allow network`; `oleafly ask`, and an `agent run` whose
-//! changes don't go straight into the project, keep only tools that say they
-//! only read (a server acts on the real files, not on the run's review
-//! copy). Server values (env, headers) never appear in a warning, an error
-//! or a result.
 pub mod http;
 pub mod stdio;
 
@@ -29,8 +18,6 @@ use crate::app_paths::Platform;
 pub const MCP_PROTOCOL_VERSION: &str = "2025-06-18";
 #[cfg(not(test))]
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
-// Short in tests so the silent-server test stays quick, but long enough for
-// a fixture server to start on a loaded machine (2 s was not).
 #[cfg(test)]
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 pub(crate) const CALL_TIMEOUT: Duration = Duration::from_secs(120);
@@ -39,10 +26,8 @@ const MAX_TOOLS: usize = 256;
 const MAX_LIST_PAGES: usize = 16;
 const MAX_DESCRIPTION_CHARS: usize = 2_000;
 const MAX_ERROR_CHARS: usize = 600;
-/// A message (a line or an event) larger than this ends the connection.
 pub(crate) const MAX_FRAME_BYTES: usize = 4 << 20;
 
-/// Which servers a run uses.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum McpSelection {
     All,
@@ -52,16 +37,13 @@ pub enum McpSelection {
 
 #[derive(Clone)]
 pub struct McpToolSpec {
-    /// The name the model sees.
     pub agent_name: String,
     pub server: String,
-    /// The server's own tool name.
     pub tool: String,
     pub schema: ToolSchema,
     pub read_only_hint: bool,
 }
 
-/// One connected server.
 enum Connection {
     Stdio(stdio::StdioConnection),
     Http(http::HttpConnection),
@@ -101,11 +83,9 @@ struct Server {
     matcher: Option<AhoCorasick>,
 }
 
-/// The servers a run connected to, and their tools.
 pub struct McpHub {
     servers: Vec<Server>,
     tools: Vec<McpToolSpec>,
-    /// Every secret the run knows (keys, server values).
     secrets: Option<AhoCorasick>,
 }
 
@@ -134,7 +114,6 @@ fn identifier_part(value: &str, fallback: &str, max_len: usize) -> String {
     }
 }
 
-/// The model-facing name of `tool` on `server`; byte for byte the app's.
 pub fn agent_tool_name(server: &str, tool: &str) -> String {
     use sha2::Digest as _;
     let server_part = identifier_part(server, "server", 16);
@@ -235,7 +214,6 @@ pub(crate) fn resolve_program(
     None
 }
 
-/// A matcher over `values` (leftmost longest), or none.
 pub(crate) fn matcher(values: &[String]) -> Option<AhoCorasick> {
     let mut values: Vec<&str> = values
         .iter()
@@ -253,7 +231,6 @@ pub(crate) fn matcher(values: &[String]) -> Option<AhoCorasick> {
         .ok()
 }
 
-/// `text` with every match replaced.
 pub(crate) fn redact_with(text: &str, matcher: Option<&AhoCorasick>) -> String {
     let Some(matcher) = matcher else {
         return text.to_string();
@@ -331,8 +308,6 @@ fn server_values(server: &McpServer) -> Vec<String> {
     values
 }
 
-/// The text of a `tools/call` result: text parts joined, images left out
-/// with a note. An error result is an `Err`.
 pub(crate) fn result_text(result: &Value) -> Result<String, String> {
     let mut parts = Vec::new();
     let mut images = 0;
@@ -376,18 +351,13 @@ fn initialize_params() -> Value {
     })
 }
 
-/// Where a hub's stdio servers start, and which tools it offers.
 #[derive(Clone, Copy)]
 struct Placement<'a> {
-    /// The program search path (empty: this process's `PATH`).
     search_dirs: &'a [PathBuf],
-    /// The folder stdio servers start in (`None`: this process's).
     current_dir: Option<&'a Path>,
-    /// Offer only tools marked `readOnlyHint`.
     read_only: bool,
 }
 
-/// Connects one server and lists its tools.
 async fn connect_one(
     server: &McpServer,
     values: Option<&AhoCorasick>,
@@ -459,8 +429,6 @@ async fn connect_one(
     }
 }
 
-/// The servers a selection names. A named server that isn't turned on gets a
-/// warning.
 fn choose_servers<'a>(
     servers: &'a [McpServer],
     selection: &McpSelection,
@@ -485,7 +453,6 @@ fn choose_servers<'a>(
     }
 }
 
-/// Drops the servers the policy doesn't allow, with a warning for each.
 fn retain_allowed(chosen: &mut Vec<&McpServer>, policy: &RunPolicy, warnings: &mut Vec<String>) {
     chosen.retain(|server| match &server.transport {
         McpTransport::Stdio { .. } if policy.question => {
@@ -513,8 +480,6 @@ fn retain_allowed(chosen: &mut Vec<&McpServer>, policy: &RunPolicy, warnings: &m
     });
 }
 
-/// One listed tool as the run exposes it. `None` when its name is unusable or
-/// shows a stored value, a `read_only` hub can't use it, or `known` has it.
 fn tool_spec(
     server: &McpServer,
     tool: &Value,
@@ -525,7 +490,6 @@ fn tool_spec(
     let name = tool["name"]
         .as_str()
         .filter(|name| !name.is_empty() && name.len() <= 128)?;
-    // A tool named after a stored value would show it to the model.
     if values.is_some_and(|values| values.is_match(name)) {
         return None;
     }
@@ -559,7 +523,6 @@ fn tool_spec(
 }
 
 impl McpHub {
-    /// No servers.
     pub fn empty() -> Self {
         Self {
             servers: Vec::new(),
@@ -568,8 +531,6 @@ impl McpHub {
         }
     }
 
-    /// Connects the selected servers the policy allows, in parallel. A
-    /// server that fails is left out with a warning; the run goes on.
     pub async fn connect(
         servers: &[McpServer],
         policy: &RunPolicy,
@@ -580,9 +541,6 @@ impl McpHub {
         Self::connect_in(servers, policy, selection, secrets, &[], cancel).await
     }
 
-    /// [`Self::connect`] starting stdio servers with `search_dirs` as their
-    /// program search path (the background helper's; empty: this process's
-    /// `PATH`).
     pub async fn connect_in(
         servers: &[McpServer],
         policy: &RunPolicy,
@@ -599,10 +557,6 @@ impl McpHub {
         Self::connect_placed(servers, policy, selection, secrets, placement, cancel).await
     }
 
-    /// The servers of an `agent run` whose working folder is `work_root`
-    /// (the review copy, or the project with `--apply`). Stdio servers start
-    /// there. A server acts on whatever it reaches, not on the run's copy,
-    /// so outside `--apply` only tools that say they only read are offered.
     pub async fn connect_for_run(
         servers: &[McpServer],
         policy: &RunPolicy,
@@ -680,8 +634,6 @@ impl McpHub {
         (hub, warnings)
     }
 
-    /// Adds a server's tools, up to the run's limit, skipping the ones it
-    /// can't use.
     fn add_tools(
         &mut self,
         server: &McpServer,
@@ -705,7 +657,6 @@ impl McpHub {
         &self.tools
     }
 
-    /// Names of the connected servers.
     pub fn server_names(&self) -> Vec<String> {
         self.servers
             .iter()
@@ -713,8 +664,6 @@ impl McpHub {
             .collect()
     }
 
-    /// Calls a tool by its model-facing name; the raw `tools/call` result
-    /// with the server's values replaced.
     pub async fn call_raw(
         &self,
         agent_name: &str,
@@ -758,7 +707,6 @@ impl McpHub {
         }
     }
 
-    /// Calls a tool and returns its text.
     pub async fn call(
         &self,
         agent_name: &str,
@@ -768,7 +716,6 @@ impl McpHub {
         result_text(&self.call_raw(agent_name, arguments, cancel).await?)
     }
 
-    /// The tools for a research task in the background helper.
     pub fn as_task_tools(self: &Arc<Self>) -> Vec<oleafly_research::builtin::TaskMcpTool> {
         self.tools
             .iter()
@@ -790,14 +737,12 @@ impl McpHub {
             .collect()
     }
 
-    /// Stops every server.
     pub async fn shutdown(&self) {
         futures_util::future::join_all(self.servers.iter().map(|server| server.connection.close()))
             .await;
     }
 }
 
-/// The servers as ACP `mcpServers` entries, for a CLI agent's session.
 pub fn acp_server_specs(servers: &[McpServer]) -> Vec<Value> {
     let pairs = |values: &BTreeMap<String, String>| -> Vec<Value> {
         values

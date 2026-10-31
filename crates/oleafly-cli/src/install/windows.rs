@@ -10,11 +10,8 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-/// Under `%LOCALAPPDATA%`.
 pub const BIN_DIR: [&str; 2] = ["Oleafly", "bin"];
 pub const COMMAND_FILE: &str = "oleafly.exe";
-/// The app's record of the command it installed (shared with macOS and
-/// Linux, whose records have no `platform`).
 pub const RECORD_FILE: &str = "shell-command.json";
 const RECORD_VERSION: u32 = 1;
 const MAX_RECORD_BYTES: u64 = 16 * 1024;
@@ -26,34 +23,25 @@ pub struct WindowsRecord {
     pub path: PathBuf,
     pub method: String,
     pub sha256: String,
-    /// The PATH entry this install added (to remove exactly it).
     pub path_entry: String,
-    /// While a refresh replaces the copy: the old copy's sha256, which is
-    /// still this app's (a refresh cut short leaves either copy).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub replacing_sha256: Option<String>,
 }
 
-/// The user's `Path` value (`REG_SZ` or `REG_EXPAND_SZ`).
 pub trait UserPath {
-    /// The value and whether it is `REG_EXPAND_SZ`; `None` when unset.
     fn read(&self) -> std::io::Result<Option<(String, bool)>>;
     fn write(&self, value: &str, expand: bool) -> std::io::Result<()>;
-    /// Tells running programs the environment changed.
     fn broadcast(&self);
 }
 
 pub struct InstallEnv<'a> {
     pub local_app_data: PathBuf,
     pub data_root: PathBuf,
-    /// The CLI that ships with the app (`oleafly-cli.exe`).
     pub bundled: Option<PathBuf>,
     pub user_path: &'a dyn UserPath,
-    /// Expands `%VARIABLES%` in a PATH entry.
     pub expand: &'a dyn Fn(&str) -> String,
 }
 
-/// The shape of the app's `ShellCommandStatus`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct WindowsStatus {
     pub state: &'static str,
@@ -66,7 +54,6 @@ pub struct WindowsStatus {
     pub hint: Option<serde_json::Value>,
 }
 
-/// An error with the app's code (`errors.json` `shell_command.*`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InstallError {
     pub code: &'static str,
@@ -125,7 +112,6 @@ fn file_sha256(path: &Path) -> std::io::Result<String> {
         .collect())
 }
 
-/// Ours: a version 1 record for Windows.
 pub fn read_record(data_root: &Path) -> Option<WindowsRecord> {
     let path = data_root.join(RECORD_FILE);
     let metadata = std::fs::symlink_metadata(&path).ok()?;
@@ -163,7 +149,6 @@ pub fn path_contains(value: &str, dir: &str, expand: &dyn Fn(&str) -> String) ->
         .any(|entry| !entry.trim().is_empty() && normalize_entry(&expand(entry)) == wanted)
 }
 
-/// `value` with `dir` appended, keeping every other entry and its order.
 pub fn add_path_entry(value: &str, dir: &str) -> String {
     let trimmed = value.trim_end_matches(';');
     if trimmed.trim().is_empty() {
@@ -173,7 +158,6 @@ pub fn add_path_entry(value: &str, dir: &str) -> String {
     }
 }
 
-/// `value` without `dir`; `None` when it isn't there.
 pub fn remove_path_entry(
     value: &str,
     dir: &str,
@@ -197,7 +181,6 @@ fn on_path(env: &InstallEnv, dir: &Path) -> bool {
         .is_some_and(|(value, _)| path_contains(&value, &dir.to_string_lossy(), env.expand))
 }
 
-/// Whether `path` is the copy `record` describes.
 fn is_ours(path: &Path, record: Option<&WindowsRecord>) -> bool {
     record.is_some_and(|record| {
         normalize_entry(&record.path.to_string_lossy()) == normalize_entry(&path.to_string_lossy())
@@ -240,16 +223,12 @@ pub fn status(env: &InstallEnv) -> WindowsStatus {
     status
 }
 
-/// Puts `bundled` at `destination` through a temporary file; a copy that
-/// is running is renamed out of the way first.
 fn place_copy(bundled: &Path, destination: &Path) -> Result<(), InstallError> {
     let dir = destination.parent().unwrap_or_else(|| Path::new("."));
     std::fs::create_dir_all(dir)
         .map_err(|error| InstallError::new("shell_command.failed").detail(error))?;
     let temporary = dir.join(format!(".{COMMAND_FILE}.{}.tmp", std::process::id()));
     if let Err(error) = std::fs::copy(bundled, &temporary) {
-        // A copy that stopped halfway (disk full, a scanner) leaves a file
-        // the size of the CLI.
         let _ = std::fs::remove_file(&temporary);
         return Err(InstallError::new("shell_command.failed").detail(error));
     }
@@ -260,7 +239,6 @@ fn place_copy(bundled: &Path, destination: &Path) -> Result<(), InstallError> {
     let old = dir.join(format!("{COMMAND_FILE}.old-{}", std::process::id()));
     let moved = std::fs::rename(destination, &old).and_then(|()| {
         std::fs::rename(&temporary, destination).inspect_err(|_| {
-            // The running copy goes back where it was.
             let _ = std::fs::rename(&old, destination);
         })
     });
@@ -274,12 +252,8 @@ fn place_copy(bundled: &Path, destination: &Path) -> Result<(), InstallError> {
     Ok(())
 }
 
-/// How old a temporary copy must be before a sweep treats it as left over:
-/// an install running right now may still be writing its own.
 const STALE_TEMPORARY: std::time::Duration = std::time::Duration::from_secs(60);
 
-/// Removes the copies moved aside by an earlier install or uninstall, and
-/// temporary copies a crash left behind.
 fn sweep_old_copies(dir: &Path) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -319,9 +293,6 @@ pub fn install(env: &InstallEnv) -> Result<WindowsStatus, InstallError> {
     let existed = path.exists();
     place_copy(bundled, &path)?;
     let entry = dir.display().to_string();
-    // The record comes before the PATH edit: with the copy in place and no
-    // record, a retry (and an uninstall) would call the copy someone else's.
-    // A copy that can't be recorded is taken back if it is new.
     let recorded = file_sha256(&path)
         .map_err(|error| InstallError::new("shell_command.failed").detail(error))
         .and_then(|sha256| {
@@ -376,8 +347,6 @@ pub fn uninstall(env: &InstallEnv) -> Result<WindowsStatus, InstallError> {
                 .param("path", record.path.display().to_string()));
         }
         if std::fs::remove_file(&record.path).is_err() {
-            // A running copy can't be deleted, but it can be moved aside and
-            // swept on the next install.
             let old = record
                 .path
                 .with_file_name(format!("{COMMAND_FILE}.old-{}", std::process::id()));
@@ -401,15 +370,12 @@ pub fn uninstall(env: &InstallEnv) -> Result<WindowsStatus, InstallError> {
     }
     env.user_path.broadcast();
     let _ = std::fs::remove_file(env.data_root.join(RECORD_FILE));
-    // A copy moved aside because it was running goes now if it has stopped.
     if let Some(dir) = record.path.parent() {
         sweep_old_copies(dir);
     }
     Ok(status(env))
 }
 
-/// After an app update: replaces an installed copy that is ours and
-/// unchanged with the new CLI. `true` when it did.
 pub fn refresh_if_outdated(env: &InstallEnv) -> Result<bool, InstallError> {
     let Some(bundled) = env.bundled.as_deref().filter(|bundled| bundled.is_file()) else {
         return Ok(false);
@@ -425,9 +391,6 @@ pub fn refresh_if_outdated(env: &InstallEnv) -> Result<bool, InstallError> {
     if fresh == record.sha256 {
         return Ok(false);
     }
-    // The record names both copies before the copy changes, so a refresh
-    // that fails or is cut short at any point leaves a copy that is still
-    // this app's (to refresh, reinstall or remove).
     let current = file_sha256(&record.path)
         .map_err(|error| InstallError::new("shell_command.failed").detail(error))?;
     record.replacing_sha256 = Some(current.clone());
@@ -453,7 +416,6 @@ pub fn refresh_if_outdated(env: &InstallEnv) -> Result<bool, InstallError> {
     }
 }
 
-/// The user's PATH in the registry (`HKCU\Environment\Path`).
 #[cfg(windows)]
 pub struct RegistryUserPath;
 
@@ -578,7 +540,6 @@ impl UserPath for RegistryUserPath {
     }
 }
 
-/// `%NAME%` references expanded from this process's environment.
 pub fn expand_variables(entry: &str) -> String {
     let mut out = String::new();
     let mut rest = entry;
@@ -744,7 +705,6 @@ mod tests {
         assert_eq!(user_path.broadcasts.get(), 2);
     }
 
-    /// A user path whose writes fail, as a registry policy can make them.
     struct LockedPath(MemoryPath);
 
     impl UserPath for LockedPath {
@@ -775,7 +735,6 @@ mod tests {
         let blocked = env(local.path(), data.path(), Some(cli.clone()), &locked);
         let error = install(&blocked).unwrap_err();
         assert_eq!(error.code, "shell_command.path_failed");
-        // The copy is on disk and recorded, so it is still ours.
         assert!(command_path(&blocked).exists());
         assert!(read_record(data.path()).is_some());
         assert_eq!(status(&blocked).state, "installed");
@@ -785,7 +744,6 @@ mod tests {
         let installed = install(&retry).unwrap();
         assert_eq!((installed.state, installed.on_path), ("installed", true));
 
-        // And an install that failed the same way can be uninstalled.
         let other_local = tempfile::tempdir().unwrap();
         let other_data = tempfile::tempdir().unwrap();
         let blocked = env(other_local.path(), other_data.path(), Some(cli), &locked);
@@ -802,7 +760,6 @@ mod tests {
         let bundle = tempfile::tempdir().unwrap();
         let cli = bundle.path().join("oleafly-cli.exe");
         std::fs::write(&cli, b"cli v1").unwrap();
-        // A file where the data folder should be: the record can't be written.
         let blocked_data = data.path().join("not-a-folder");
         std::fs::write(&blocked_data, b"x").unwrap();
         let user_path = MemoryPath::new(None);
@@ -831,7 +788,6 @@ mod tests {
             .unwrap();
         sweep_old_copies(dir.path());
         assert!(!stale.exists() && !moved.exists());
-        // An install running right now may still be writing its own copy.
         assert!(fresh.exists() && unrelated.exists());
     }
 
@@ -845,7 +801,6 @@ mod tests {
         let user_path = MemoryPath::new(None);
         let env = env(local.path(), data.path(), Some(cli.clone()), &user_path);
         install(&env).unwrap();
-        // The record was written for v2, then the app quit before the copy.
         let mut record = read_record(data.path()).unwrap();
         record.replacing_sha256 = Some(record.sha256.clone());
         record.sha256 = "0".repeat(64);

@@ -47,8 +47,6 @@ pub(crate) enum SettingsOutcome {
     },
 }
 
-/// Words added on two computers can differ only in case, which the dictionary
-/// can't hold twice; the first spelling stays.
 fn without_repeated_words(mut values: Value) -> Value {
     if let Some(Value::Array(words)) = values.pointer_mut("/dictionary/words") {
         let mut seen = std::collections::BTreeSet::new();
@@ -80,8 +78,8 @@ pub(crate) fn strip_device_only(mut values: Value) -> Value {
     values
 }
 
-fn unreadable() -> RoundError {
-    RoundError::Unreadable("the settings in dropbox are unreadable".into())
+fn unreadable(label: &str) -> RoundError {
+    RoundError::Unreadable(format!("the settings in {label} are unreadable"))
 }
 
 struct RemoteSettings {
@@ -93,12 +91,13 @@ async fn fetch<S: CloudStore>(store: &S) -> Result<Option<RemoteSettings>, Round
     let Some((bytes, rev)) = store.get(SETTINGS_REMOTE, MAX_SETTINGS_BYTES).await? else {
         return Ok(None);
     };
-    let blob: SettingsBlob = serde_json::from_slice(&bytes).map_err(|_| unreadable())?;
+    let blob: SettingsBlob =
+        serde_json::from_slice(&bytes).map_err(|_| unreadable(store.label()))?;
     if blob.v > SETTINGS_VERSION {
         return Err(RoundError::NewerVersion);
     }
     if !blob.values.is_object() {
-        return Err(unreadable());
+        return Err(unreadable(store.label()));
     }
     Ok(Some(RemoteSettings {
         blob: SettingsBlob {

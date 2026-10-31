@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 
 use oleafly_agent::items::TurnRecord;
 
-/// Where a thread's rollout lives (and lives on after archiving).
 fn rollout_path_under(sessions_root: &Path, thread_id: &str) -> PathBuf {
     sessions_root
         .join("sessions")
@@ -35,10 +34,6 @@ pub fn rollout_path(sessions_root: &Path, thread_id: &str) -> Result<PathBuf, St
     ))
 }
 
-/// Truncate a torn trailing line (a crash mid-append leaves bytes with no
-/// closing newline) back to the last complete record. The reader tolerates a
-/// torn final line, but a blind append would fuse the new record onto the
-/// fragment, turning a skippable tail into permanent mid-file corruption.
 fn heal_torn_tail(path: &Path) -> Result<(), String> {
     let mut file = match OpenOptions::new().read(true).write(true).open(path) {
         Ok(file) => file,
@@ -65,21 +60,14 @@ fn heal_torn_tail(path: &Path) -> Result<(), String> {
         }
         position = start;
     }
-    // A complete file ends in '\n'; nothing to heal.
     if last_newline == Some(len - 1) {
         return Ok(());
     }
-    // Truncate to just after the last complete record (or to empty when no
-    // record ever completed).
     let keep = last_newline.map_or(0, |offset| offset + 1);
     file.set_len(keep).map_err(|e| e.to_string())?;
     file.flush().map_err(|e| e.to_string())
 }
 
-/// Append one completed turn to the thread's rollout, creating the file on
-/// first write. Writes are a single `write_all` of one line so a crash
-/// mid-write at worst corrupts the trailing line, which the reader skips and
-/// the next append heals before writing.
 pub fn append_turn(
     sessions_root: &Path,
     thread_id: &str,
@@ -103,9 +91,6 @@ pub fn append_turn(
         .map_err(|e| e.to_string())
 }
 
-/// Replay a thread's turns in order. A corrupt trailing line (torn write) is
-/// skipped; a corrupt line in the middle aborts the read so replay never
-/// silently drops history.
 pub fn read_turns(sessions_root: &Path, thread_id: &str) -> Result<Vec<TurnRecord>, String> {
     let path = rollout_path(sessions_root, thread_id)?;
     let file = File::open(&path).map_err(|e| e.to_string())?;
@@ -120,7 +105,6 @@ pub fn read_turns(sessions_root: &Path, thread_id: &str) -> Result<Vec<TurnRecor
         }
         match serde_json::from_str::<TurnRecord>(line) {
             Ok(record) => turns.push(record),
-            // A torn trailing write: drop it.
             Err(_) if index == lines.len() - 1 => {}
             Err(error) => {
                 return Err(format!("rollout line {index} is corrupt: {error}"));
@@ -130,7 +114,6 @@ pub fn read_turns(sessions_root: &Path, thread_id: &str) -> Result<Vec<TurnRecor
     Ok(turns)
 }
 
-/// Drop the last `num_turns` turns (the retry-turn flow rolls back one).
 pub fn rollback_turns(
     sessions_root: &Path,
     thread_id: &str,
@@ -143,8 +126,6 @@ pub fn rollback_turns(
     Ok(turns)
 }
 
-/// Fork: copy the first `turns.len() - exclude_turns` turns into a new
-/// thread's rollout. Zero-copy for the excluded tail.
 pub fn fork_turns(
     sessions_root: &Path,
     source_thread_id: &str,
@@ -158,8 +139,6 @@ pub fn fork_turns(
     Ok(forked)
 }
 
-/// Rewrite the whole rollout (rollback/fork). Staged to a temp file and
-/// atomically renamed so a crash never truncates the real rollout.
 fn rewrite(sessions_root: &Path, thread_id: &str, turns: &[TurnRecord]) -> Result<(), String> {
     let path = rollout_path(sessions_root, thread_id)?;
     if let Some(parent) = path.parent() {
@@ -179,9 +158,6 @@ fn rewrite(sessions_root: &Path, thread_id: &str, turns: &[TurnRecord]) -> Resul
     fs::rename(&temp, &path).map_err(|e| e.to_string())
 }
 
-/// Move a thread's rollout to the archive tree. Returns false when there was
-/// nothing to archive (a missing rollout for a thread id is not an error —
-/// the desktop treats it as recoverable).
 pub fn archive(sessions_root: &Path, thread_id: &str) -> Result<bool, String> {
     let source = rollout_path(sessions_root, thread_id)?;
     if !source.exists() {
@@ -196,7 +172,6 @@ pub fn archive(sessions_root: &Path, thread_id: &str) -> Result<bool, String> {
         .map(|_| true)
 }
 
-/// Delete a thread's rollout from both the active tree and the archive.
 pub fn delete(sessions_root: &Path, thread_id: &str) -> Result<(), String> {
     let thread_id = sanitized_thread_id(thread_id)?;
     for path in [
@@ -210,7 +185,6 @@ pub fn delete(sessions_root: &Path, thread_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Every thread id with an active rollout, oldest-file first.
 pub fn list_threads(sessions_root: &Path) -> Result<Vec<String>, String> {
     let sessions = sessions_root.join("sessions");
     let entries = match fs::read_dir(&sessions) {
@@ -237,10 +211,6 @@ pub fn list_threads(sessions_root: &Path) -> Result<Vec<String>, String> {
     Ok(found.into_iter().map(|(_, id)| id).collect())
 }
 
-/// Read-path migration: expand one legacy StoredChat's messages into turn
-/// records, mirroring the shell's `chatMessagesToTurns` (a user message
-/// opens a turn; reasoning blocks anchor before their tool; the assistant
-/// message closes it).
 pub fn turns_from_legacy_chat(chat: &serde_json::Value) -> Vec<TurnRecord> {
     use oleafly_agent::items::{ExecutionStatus, RecordedItem, ThreadItem, TurnRecordStatus};
 
@@ -285,8 +255,6 @@ pub fn turns_from_legacy_chat(chat: &serde_json::Value) -> Vec<TurnRecord> {
         }
 
         if turns.is_empty() {
-            // An assistant message before any user message still needs a
-            // turn to live in.
             open_turn(&mut turns, &mut seq);
         }
         let turn = turns.last_mut().expect("just opened");
@@ -438,13 +406,11 @@ mod tests {
         let root = temp_root();
         append_turn(&root, "t2", &record("turn-1", "first")).unwrap();
         let path = rollout_path(&root, "t2").unwrap();
-        // Torn trailing write.
         let mut file = OpenOptions::new().append(true).open(&path).unwrap();
         file.write_all(b"{\"turnId\":\"torn").unwrap();
         drop(file);
         assert_eq!(read_turns(&root, "t2").unwrap().len(), 1);
 
-        // Corrupt middle line: prepend garbage by rewriting with two lines.
         let mut lines = fs::read_to_string(&path).unwrap();
         lines = "{\"corrupt\": true}\n".to_string() + &lines;
         fs::write(&path, lines).unwrap();
@@ -457,15 +423,11 @@ mod tests {
         let root = temp_root();
         append_turn(&root, "t-heal", &record("turn-1", "first")).unwrap();
         let path = rollout_path(&root, "t-heal").unwrap();
-        // Simulate a crash mid-append: a fragment with no closing newline.
         let mut file = OpenOptions::new().append(true).open(&path).unwrap();
         file.write_all(b"{\"turnId\":\"torn").unwrap();
         drop(file);
 
-        // The next append must heal the fragment rather than fuse onto it.
         append_turn(&root, "t-heal", &record("turn-2", "second")).unwrap();
-        // A further append proves the healed line did not become permanent
-        // mid-file corruption.
         append_turn(&root, "t-heal", &record("turn-3", "third")).unwrap();
 
         let turns = read_turns(&root, "t-heal").unwrap();
@@ -479,7 +441,6 @@ mod tests {
         let root = temp_root();
         let path = rollout_path(&root, "t-allbad").unwrap();
         fs::create_dir_all(path.parent().unwrap()).unwrap();
-        // A file that never completed a single record (no newline at all).
         fs::write(&path, b"{\"turnId\":\"never-closed").unwrap();
 
         append_turn(&root, "t-allbad", &record("turn-1", "first")).unwrap();
@@ -515,7 +476,6 @@ mod tests {
         assert!(archive(&root, "t4").unwrap());
         assert!(!rollout_path(&root, "t4").unwrap().exists());
         assert!(archive_path_under(&root, "t4").exists());
-        // Archiving again finds nothing and is fine.
         assert!(!archive(&root, "t4").unwrap());
 
         delete(&root, "t4").unwrap();
@@ -564,7 +524,6 @@ mod tests {
         assert_eq!(turns.len(), 1);
         let items: Vec<&oleafly_agent::items::ThreadItem> =
             turns[0].items.iter().map(|r| &r.item).collect();
-        // user, reasoning, tool, reasoning, tool, message
         assert!(
             matches!(items[0], oleafly_agent::items::ThreadItem::UserMessage { text } if text == "fix my bibfile")
         );

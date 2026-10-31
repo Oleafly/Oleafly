@@ -52,8 +52,6 @@ import { NOTEBOOK_TOOL_LABELS, notebookToolForSettingsTarget } from "@/store/not
 
 const ENGINE_CHOICES: DefaultLatexEngine[] = ["tectonic", "latexmk"];
 
-// Plain-sentence summary of what a detected distribution ships and where
-// Oleafly runs it from, for the info icon on each row.
 function distroTooltip(distro: TexDistribution, binDir: string): string {
   const tools = [distro.latexmk && "latexmk", distro.tlmgr && "tlmgr"].filter(
     (tool): tool is string => typeof tool === "string",
@@ -66,11 +64,6 @@ function distroTooltip(distro: TexDistribution, binDir: string): string {
     : i18n.t(($) => $.settings.engine.distributions.rowTooltipNoTools, { binDir });
 }
 
-/**
- * Markdown projects compile through the bundled Pandoc into LaTeX and then
- * the bundled Tectonic. The install action is a recovery path for development
- * builds or damaged app bundles.
- */
 function MarkdownEngineTab() {
   const { t } = useTranslation(["common", "settings"]);
   const [pandoc, setPandoc] = useState<"checking" | "ready" | "missing" | "installing">("checking");
@@ -480,13 +473,9 @@ export function EngineSection() {
   }, [scrollTarget, setScrollTarget]);
 
   useEffect(() => {
-    // refreshPackages() needs engine info from refresh() first, so run in sequence.
     void refresh().then(() => refreshPackages());
   }, [refresh, refreshPackages]);
 
-  // Reload the distribution list whenever an install or removal lands, so the
-  // freshly installed TinyTeX row replaces the download card immediately (and
-  // returns after a removal).
   // biome-ignore lint/correctness/useExhaustiveDependencies: info triggers a reload after remove()
   useEffect(() => {
     if (installing || !isTauri()) return;

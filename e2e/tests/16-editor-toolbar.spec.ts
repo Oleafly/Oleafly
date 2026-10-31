@@ -40,7 +40,6 @@ test("bold wraps the selection; undo and redo round-trip", async ({ tauriPage })
   );
   await tauriPage.click('[aria-label^="Redo ("]');
   await expect(tauriPage.locator(".cm-content")).toContainText("\\textbf{Write}");
-  // Leave the document as we found it.
   await tauriPage.click('[aria-label^="Undo ("]');
   await expectSourceRestoredAndSaved(tauriPage, original);
 });
@@ -93,7 +92,6 @@ test("citation button opens the add-citation dialog", async ({ tauriPage }) => {
   await expect(
     tauriPage.locator('input[placeholder="DOI, arXiv id, URL, or a paper title…"]'),
   ).toBeVisible();
-  // The fixture's per-test reload cleans up the dialog.
 });
 
 test("right-click context menu offers editor actions and inserts an equation", async ({

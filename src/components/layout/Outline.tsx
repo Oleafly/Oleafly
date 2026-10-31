@@ -145,9 +145,6 @@ function useStatusNotice(): string | null {
 }
 
 export function Outline({
-  // The layout owns this, not the component: the sidebar collapses Structure
-  // because Outline sits above it and answers the more common question. Left
-  // expanded by default so rendering it on its own shows its content.
   defaultCollapsed = false,
   collapsed: controlledCollapsed,
   onCollapsedChange,
@@ -235,7 +232,6 @@ export function Outline({
 
   const navigate = useCallback((node: IntelligenceTreeNode) => {
     if (!node.target) return;
-    // Retained rows stay visible, but their old source offsets cannot navigate.
     const latest = acceptedProjectSnapshot(
       useIndexStore.getState().intelligenceState,
       useFilesStore.getState().projectId,

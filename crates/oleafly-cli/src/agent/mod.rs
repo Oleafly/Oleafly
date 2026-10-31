@@ -1,7 +1,3 @@
-//! `oleafly agent run`, `oleafly ask` and `oleafly agent apply`: the
-//! Oleafly agent without a window. It uses the app's providers, keys and
-//! MCP servers, works on a copy of the project (review mode) or the project
-//! itself (`--apply`), and prints one result.
 pub mod desktop_config;
 pub mod events;
 pub mod mcp;
@@ -173,8 +169,6 @@ impl crate::commands::CommandModule for Commands {
         }
     }
 
-    /// A run keeps the work done so far and prints its own result on Ctrl+C;
-    /// an apply finishes and says what it applied.
     fn handles_interrupt(&self) -> bool {
         matches!(
             self,

@@ -35,7 +35,6 @@ vi.mock("@/components/settings/CitationSearchIntegrationSection", () => ({
 const mockInvoke = vi.mocked(invoke);
 
 beforeEach(() => {
-  // The section only renders inside the open Settings dialog.
   useSettingsStore.setState({ settingsScrollTarget: null, settingsOpen: true });
   Element.prototype.scrollIntoView = vi.fn();
   mockInvoke.mockReset().mockImplementation(async (command) => {

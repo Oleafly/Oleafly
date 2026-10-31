@@ -1,5 +1,3 @@
-//! The CLI reports the app's version (it ships inside the app) and the
-//! engines it would build with.
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -10,16 +8,13 @@ use serde::Serialize;
 use crate::native::BuildTools;
 use crate::typst::TypstInventory;
 
-/// The desktop app's version (`src-tauri/tauri.conf.json`).
 pub const APP_VERSION: &str = env!("OLEAFLY_APP_VERSION");
 
-/// The commit this CLI was built from, when known.
 pub const COMMIT: Option<&str> = match option_env!("OLEAFLY_COMMIT") {
     Some(commit) if !commit.is_empty() => Some(commit),
     _ => None,
 };
 
-/// `0.4.8 (abc1234def56)` or `0.4.8 (dev)`.
 pub const VERSION_LINE: &str = concat!(
     env!("OLEAFLY_APP_VERSION"),
     " (",
@@ -27,19 +22,15 @@ pub const VERSION_LINE: &str = concat!(
     ")"
 );
 
-/// The Rust target triple this CLI was built for.
 pub const TARGET: &str = env!("OLEAFLY_BUILD_TARGET");
 
 const VERSION_OUTPUT_BYTES: u64 = 64 * 1024;
 
-/// One engine as `oleafly version` and `oleafly doctor` describe it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ToolReport {
     pub path: PathBuf,
     pub version: Option<String>,
-    /// `override`, `bundled`, `path`, `tex`, `system` or `downloaded`.
     pub source: &'static str,
-    /// For Pandoc: whether it is 2.19 or newer.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub supported: Option<bool>,
 }
@@ -76,8 +67,6 @@ fn probe_text(path: &std::path::Path, args: &[&str]) -> Option<String> {
         .then(|| String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
-/// Each engine's path, version and source, probed in parallel (each at
-/// most 5 seconds). Missing engines are `None`.
 pub(crate) fn engine_reports(
     tools: &BuildTools,
     inventory: &TypstInventory,

@@ -1,13 +1,6 @@
-//! Added and removed line counts for one changed file, computed the same way
-//! as `diffLineCounts` in `src/store/agent-file-changes.ts` so the turn card
-//! and the assistant's own summaries agree.
-
-/// Files larger than this on either side get no line counts.
 pub(super) const MAX_COUNTED_BYTES: u64 = 2 * 1024 * 1024;
 const MAX_DIFF_WORK: usize = 2_000_000;
 
-/// `(added, removed)` lines between two UTF-8 texts, or `None` when either
-/// side is not text.
 pub(super) fn line_counts(before: &[u8], after: &[u8]) -> Option<(u32, u32)> {
     let before = std::str::from_utf8(before).ok()?;
     let after = std::str::from_utf8(after).ok()?;
@@ -64,7 +57,6 @@ fn common_affix_bounds(old: &[&str], new: &[&str]) -> (usize, usize, usize) {
     (prefix, old_end, new_end)
 }
 
-/// Myers' edit distance with a work limit; `None` when the limit is hit.
 fn edit_distance(old: &[&str], new: &[&str]) -> Option<usize> {
     let (old_count, new_count) = (old.len(), new.len());
     if old_count == 0 {

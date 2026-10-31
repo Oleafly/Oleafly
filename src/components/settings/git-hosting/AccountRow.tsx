@@ -10,8 +10,6 @@ import { accountKey, hostLabel, kindLabel } from "@/lib/forge";
 import type { ForgeAccount } from "@/lib/tauri";
 import type { ForgeCheckState } from "@/store/forge-accounts";
 
-/** One signed-in account: who, where, what kind of server, whether it still
- * works, its certificate file, and the actions for it. */
 export function AccountRow({
   account,
   check,
@@ -33,8 +31,6 @@ export function AccountRow({
   const key = accountKey(account.base);
   const host = hostLabel(account.base);
   const kind = kindLabel(account);
-  // The badge already names GitHub or GitLab; a server whose name differs
-  // from its kind (Codeberg, a self-hosted address) still shows it.
   const subtitle = [host === kind ? null : host, account.name].filter(Boolean).join(" · ");
 
   return (

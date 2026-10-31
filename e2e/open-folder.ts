@@ -250,7 +250,6 @@ export async function startChat(page: Page, projectId: string, message: string):
       const dataDir = process.env.OLEAFLY_DATA_DIR;
       if (!dataDir) throw new Error("OLEAFLY_DATA_DIR is not set; run specs through scripts/e2e.sh");
       try {
-        // One file per chat: chats/<project id>/<chat id>.json.
         return readFileSync(join(dataDir, "chats", projectId, `${chatId}.json`), "utf8").includes(message);
       } catch {
         return false;

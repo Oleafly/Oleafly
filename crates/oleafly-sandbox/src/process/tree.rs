@@ -1,7 +1,3 @@
-//! Keep a child and everything it starts in one killable unit: a process
-//! group on Unix, a kill-on-close job object on Windows.
-
-/// `CREATE_NO_WINDOW` (winbase.h): the child runs without allocating a console.
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 #[cfg(windows)]
@@ -9,14 +5,10 @@ const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
 #[cfg(windows)]
 const CREATE_SUSPENDED: u32 = 0x0000_0004;
 
-/// Start the child in its own process group (Unix) or suspended in a new
-/// process group (Windows). Pair with [`contain_process_tree`] right after
-/// the spawn; on Windows the child only runs once it is in the job.
 pub fn isolate_process_tree(command: &mut tokio::process::Command) {
     isolate_std_process_tree(command.as_std_mut());
 }
 
-/// [`isolate_process_tree`] for a `std::process::Command`.
 pub fn isolate_std_process_tree(command: &mut std::process::Command) {
     #[cfg(unix)]
     unsafe {
@@ -93,9 +85,6 @@ impl Drop for ProcessTreeGuard {
 }
 
 impl ProcessTreeGuard {
-    /// The guard for a child that had already exited before it could be
-    /// contained. Nothing is left to kill, so it owns no process group or
-    /// job, lists no processes, and dropping it does nothing.
     pub fn for_exited_child() -> Self {
         #[cfg(not(windows))]
         {
@@ -127,9 +116,6 @@ pub fn contain_process_tree(pid: u32) -> std::io::Result<ProcessTreeGuard> {
         job: assign_process_to_new_job(pid)?,
     };
     if let Err(error) = resume_suspended_process(pid) {
-        // Closing a kill-on-close Job Object also terminates the child that is
-        // still suspended. Be explicit here so this error path cannot regress
-        // into leaking either the HANDLE or the child process.
         drop(guard);
         return Err(error);
     }

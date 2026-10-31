@@ -3,7 +3,6 @@ use std::process::Command;
 use super::*;
 use crate::test_support::FakeEnv;
 
-/// Git for the isolation code, as the app passes it.
 fn git_env() -> Option<GitEnv> {
     crate::host::default_git_env()
 }
@@ -134,8 +133,6 @@ fn staged_isolation_preserves_executable_permissions() {
     );
 }
 
-// 0.4.8 KSB: a link to a file inside the project is copied as that file; a
-// link that leaves the project is skipped and listed, never followed.
 #[test]
 fn source_links_are_copied_as_files_or_skipped_never_followed_out() {
     if !crate::test_support::symlinks_permitted() {
@@ -227,8 +224,6 @@ fn review_rejects_output_outside_the_path_allowlist() {
     assert!(error.contains("outside its allowed"));
 }
 
-// Logs, caches and data a script leaves outside the allowed paths are left
-// out of the review instead of failing the task, as 0.4.7 did.
 #[test]
 fn review_leaves_out_non_source_files_outside_the_allowlist() {
     let temp = tempfile::tempdir().unwrap();
@@ -282,7 +277,6 @@ fn a_resumed_task_gets_back_the_baseline_a_review_pruned() {
     assert_eq!(prune_baseline(&isolation, &changes).unwrap(), 2);
     let baseline = PathBuf::from(&isolation.baseline_root);
     assert!(!baseline.join("sections/intro.tex").exists());
-    // The project's bibliography changed since the task started.
     fs::write(project.join("refs.bib"), "@misc{b}").unwrap();
 
     assert_eq!(restore_baseline(&isolation, &project), 1);

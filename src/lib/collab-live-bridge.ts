@@ -3,12 +3,8 @@ import type { DocumentSession } from "@oleafly/editor/document-session";
 
 export interface CollabEditorPort {
   documentSession(path: string): DocumentSession | null;
-  // True while a live document session holds the file's text, without
-  // opening one. Disk writes of such a file only mirror text the window has.
   holds?(path: string): boolean;
   flush(projectId: string): Promise<void>;
-  // Before the project closes: typing the shared document hasn't confirmed
-  // goes back to the buffers as unsaved, so the save that follows keeps it.
   handBack?(projectId: string): Promise<void>;
 }
 
@@ -62,7 +58,6 @@ export function noteUnreviewedSuggestions(projectId: string | null, action: Revi
   if (projectId) reviewNotice?.(projectId, action);
 }
 
-// Called by the files store before it saves and leaves a project.
 export async function collabHandBack(projectId: string | null): Promise<void> {
   if (projectId && port?.handBack) await port.handBack(projectId);
 }

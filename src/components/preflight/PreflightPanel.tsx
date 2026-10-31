@@ -68,7 +68,6 @@ const bySeverity = (f: Finding[]) => SEV_ORDER.flatMap((sev) => f.filter((x) => 
 export function PreflightPanel() {
   const { t } = useTranslation(["common", "preflight"]);
   const tp = t as unknown as PreflightTranslate;
-  // Narrow selectors so unrelated store writes do not re-render the whole panel.
   const report = usePreflightStore((s) => s.report);
   const pageText = usePreflightStore((s) => s.pageText);
   const running = usePreflightStore((s) => s.running);
@@ -87,10 +86,6 @@ export function PreflightPanel() {
   const anonymousReview = usePreflightStore((s) => s.anonymousReview);
   const setAnonymousReview = usePreflightStore((s) => s.setAnonymousReview);
 
-  // Keyed on the main document PATH (not its content), reading a content snapshot
-  // imperatively. A successful compile is the low-frequency checkpoint that
-  // refreshes the suggestion after edits, without re-running whole-document
-  // resume detection on every keystroke.
   const mainDoc = useFilesStore((s) => s.mainDoc);
   const projectId = useFilesStore((s) => s.projectId);
   const checksRef = useRef<HTMLDivElement>(null);
@@ -99,8 +94,6 @@ export function PreflightPanel() {
   const engineLabel = useFilesStore((s) => s.engine.label);
   const sourcePreflight = useFilesStore((s) => s.engine.capabilities.source_preflight_profile);
   const detection = useMemo(() => {
-    // The timestamp is intentionally a cache key: source is read imperatively
-    // at this successful compile checkpoint, not subscribed to per keystroke.
     void lastCompiledAt;
     const source = useFilesStore.getState().files[mainDoc]?.content ?? "";
     const resume = looksLikeResumeSource(source);
@@ -125,7 +118,6 @@ export function PreflightPanel() {
   const enabled = storedEnabled ?? detection.suggested;
   const expanded = storedOpen ?? detection.suggestedOpen;
   const submissionProfile = storedSubmissionProfile ?? detection.profile;
-  // Which run is in flight, so only the clicked button shows a spinner.
   const [busy, setBusy] = useState<CheckId | "all" | null>(null);
 
   const flip = (id: CheckId) => setEnabled({ ...enabled, [id]: !enabled[id] });

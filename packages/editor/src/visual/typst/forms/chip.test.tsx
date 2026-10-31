@@ -14,6 +14,7 @@ import { typstFormsGolden } from "../../../typst-forms-test-support";
 import { parsedView } from "../../test-document";
 import { typstVisualMode } from "../index";
 import { placementFor } from "./chip";
+import { stubRangeGeometry } from "../../../test-geometry";
 
 const ACME = '#import "@local/acme-report:0.1.0": *\n';
 const DOC = `${ACME}The plan is #status-badge("review") for now, and #info-box[b] is inline too.`;
@@ -24,9 +25,7 @@ beforeAll(async () => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   installEnglishEditorMessages();
   await loadTypstParser();
-  if (!globalThis.Range.prototype.getClientRects) {
-    Object.defineProperty(globalThis.Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-  }
+  stubRangeGeometry();
 });
 
 afterEach(async () => {
@@ -197,7 +196,7 @@ describe("the chip's popover", () => {
     const text = popover()!.querySelector("textarea")!;
     text.focus();
     await act(async () => {
-      fireEvent.change(text, { target: { value: "Costs reached $5 million" } });
+      fireEvent.change(text, { target: { value: "Costs reached *5 million" } });
     });
     await act(async () => {
       fireEvent.mouseDown(document.body);
@@ -205,7 +204,39 @@ describe("the chip's popover", () => {
     await settle();
     await settle();
     expect(popover()).not.toBeNull();
-    expect(popover()!.querySelector("textarea")!.value).toBe("Costs reached $5 million");
+    expect(popover()!.querySelector("textarea")!.value).toBe("Costs reached *5 million");
+    expect(popover()!.querySelector("output")?.textContent).toContain("Typst can't read this text");
+    expect(editor.state.doc.toString()).toBe(DOC);
+  });
+
+  it.each([
+    ["Costs reached *5 million", false],
+    ["Costs reached 5 million", true],
+  ])("closes from its own chip only once the draft %j is written", async (value, closes) => {
+    const editor = await mount();
+    await act(async () => {
+      fireEvent.click(chips(editor)[1]);
+    });
+    const text = popover()!.querySelector("textarea")!;
+    text.focus();
+    await act(async () => {
+      fireEvent.change(text, { target: { value } });
+    });
+    await act(async () => {
+      fireEvent.mouseDown(chips(editor)[1]);
+      fireEvent.click(chips(editor)[1]);
+    });
+    await settle();
+    await settle();
+    if (closes) {
+      expect(popover()).toBeNull();
+      expect(document.activeElement).toBe(chips(editor)[1]);
+      expect(editor.state.doc.toString()).toContain(`#info-box[${value}]`);
+      return;
+    }
+    expect(popover()).not.toBeNull();
+    expect(document.activeElement).toBe(popover()!.querySelector("textarea"));
+    expect(popover()!.querySelector("textarea")!.value).toBe(value);
     expect(popover()!.querySelector("output")?.textContent).toContain("Typst can't read this text");
     expect(editor.state.doc.toString()).toBe(DOC);
   });

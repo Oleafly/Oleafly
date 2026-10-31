@@ -40,9 +40,6 @@ export interface PromptCategory {
   items: PromptShortcut[];
 }
 
-// Every prompt here is something the assistant's existing tools (file edit,
-// compile, the research/citation connectors, figure drawing) can actually
-// attempt - no card promises a capability the app doesn't have.
 export function promptCategories(profile = "latex"): PromptCategory[] {
   const typst = profile === "typst";
   return [

@@ -30,13 +30,9 @@ import { RuleWidget, ruleWidgetFor } from "./rule";
 import { createSpaceWidget, hasSpaceSubstitution, SpaceWidget } from "./space";
 import { TexLogoWidget } from "./tex-logo";
 import { TildeWidget } from "./tilde";
+import { stubRangeGeometry } from "../../test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 const DOC = String.raw`\title{A \textbf{bold} title}
 \author{Ann \and Bob}

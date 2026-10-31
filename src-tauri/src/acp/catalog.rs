@@ -29,7 +29,6 @@ pub struct RegistryEntry {
     pub version: String,
     pub definition: Option<AgentDefinition>,
     pub reason: Option<String>,
-    /// The built-in agent this registry entry corresponds to, when known.
     #[serde(default)]
     pub builtin_id: Option<String>,
 }
@@ -43,29 +42,20 @@ struct InstallReceipt {
 
 #[derive(Clone, Debug, Default)]
 pub struct Launch {
-    /// Plain path of the program to start.
     pub executable: PathBuf,
-    /// Plain paths only: a Node.js bridge's script comes first.
     pub args: Vec<String>,
     pub version: Option<String>,
     pub managed: bool,
-    /// The program is a Windows `.cmd`/`.bat` file started through cmd.exe.
     pub batch: bool,
-    /// The JavaScript entry point when Node.js runs the agent.
     pub entry: Option<PathBuf>,
     /// cmd.exe runs somewhere in the agent's process tree (the agent itself,
     /// or the CLI its bridge starts), so its working folder must not be a
     /// network path.
     pub needs_local_folder: bool,
-    /// Environment for a non-sandboxed launch: the search path, Windows
-    /// hardening, the user's network and provider settings, and the hand-off
-    /// of the CLI Oleafly found to the bridge.
     pub env: Vec<(String, OsString)>,
 }
 
 impl Launch {
-    /// The same launch with symlinks resolved, for sandbox read rules
-    /// (macOS and Linux tasks only).
     pub fn resolved_for_sandbox(&self) -> Launch {
         let resolve = |path: &Path| path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
         let mut launch = self.clone();
@@ -93,7 +83,6 @@ enum BuiltinDist {
     Native {
         cmd: &'static str,
         args: &'static [&'static str],
-        /// Other names the same program is installed under.
         alt_cmds: &'static [&'static str],
     },
     Bridge {
@@ -307,8 +296,6 @@ pub fn builtins() -> Vec<AgentDefinition> {
         .collect()
 }
 
-/// Other program names a built-in agent may be installed under (Cursor's
-/// CLI is `cursor-agent` or, in older installs, `agent`).
 pub(crate) fn builtin_alt_commands(id: &str) -> &'static [&'static str] {
     BUILTINS
         .iter()
@@ -320,8 +307,6 @@ pub(crate) fn builtin_alt_commands(id: &str) -> &'static [&'static str] {
         .unwrap_or(&[])
 }
 
-/// Removes bridge versions a newer install replaced (folders with a
-/// receipt other than `keep`) and install folders left for over a day.
 pub(crate) fn cleanup_old_versions(
     root: &Path,
     definition: &AgentDefinition,
@@ -601,8 +586,6 @@ fn validate_binaries(dist: &Distribution) -> Result<(), String> {
     Ok(())
 }
 
-/// Windows files an agent definition may not name: scripts that need an
-/// interpreter Oleafly would have to guess. `.cmd` and `.bat` are allowed.
 fn windows_command_script(executable: &str) -> bool {
     cfg!(windows)
         && Path::new(executable)
@@ -649,7 +632,6 @@ fn valid_command_name(value: &str) -> bool {
     locator::valid_program_name(value)
 }
 
-/// Test helper: finds a program the way agent launches do.
 #[cfg(test)]
 pub(crate) fn discover(name: &str) -> Option<PathBuf> {
     if Path::new(name).is_absolute() {
@@ -666,8 +648,6 @@ fn receipt_dir(root: &Path, definition: &AgentDefinition) -> PathBuf {
         .join(&definition.version)
 }
 
-/// A verified install receipt. The executable is checked against the
-/// canonical install folder and returned as a plain path.
 fn read_receipt(root: &Path, definition: &AgentDefinition) -> Option<InstallReceipt> {
     let directory = receipt_dir(root, definition).canonicalize().ok()?;
     let receipt: InstallReceipt =
@@ -685,8 +665,6 @@ fn read_receipt(root: &Path, definition: &AgentDefinition) -> Option<InstallRece
     })
 }
 
-/// Whether the program a user chooses for this agent is its CLI (handed to
-/// the bridge) or the program Oleafly starts itself.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ProgramRole {
     Cli,
@@ -701,7 +679,6 @@ pub(crate) fn program_role(definition: &AgentDefinition) -> ProgramRole {
     }
 }
 
-/// The vendor CLI Oleafly found or the user chose.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct CliProgram {
     pub located: Located,
@@ -709,8 +686,6 @@ pub(crate) struct CliProgram {
     pub version: Option<String>,
 }
 
-/// Everything Oleafly resolves about an agent before starting anything.
-/// Built by blocking file system searches; call it off the async runtime.
 pub(crate) struct Plan {
     pub launch: Result<Launch, String>,
     pub cli: Option<CliProgram>,
@@ -734,7 +709,6 @@ pub(crate) fn plan(root: &Path, definition: &AgentDefinition, program: Option<&P
     }
     let launch =
         resolve_launch(root, definition, launch_program, node.as_deref()).map(|mut launch| {
-            // A bridge handed a `.cmd` CLI starts it through cmd.exe.
             let script_handoff = vendor
                 .as_ref()
                 .and_then(|vendor| cli_handoff(vendor, cli.as_ref()))
@@ -761,7 +735,6 @@ fn resolve_cli(
     cli_program: Option<&Path>,
     launch_program: Option<&Path>,
 ) -> (Option<CliProgram>, Vec<Rejected>) {
-    // A chosen CLI, or a chosen program that is the agent's own CLI.
     let chosen = cli_program.or(launch_program.filter(|_| vendor.shares_bridge));
     if let Some(program) = chosen {
         return match locator::locate_path(program) {
@@ -884,7 +857,6 @@ fn launch_program(located: Located, args: Vec<String>, node: Option<&Path>) -> L
     }
 }
 
-/// The launch Oleafly would use with no program chosen. Blocking.
 #[cfg(test)]
 pub fn resolve(root: &Path, definition: &AgentDefinition) -> Result<Launch, String> {
     plan(root, definition, None).launch
@@ -1027,10 +999,6 @@ fn current_bridge(
     Err(outdated.unwrap_or_else(|| super::failures::coded(super::failures::NOT_INSTALLED)))
 }
 
-/// Environment for a non-sandboxed agent: Node.js first on the search path;
-/// the vendor CLI's folder before the rest when the bridge must find it,
-/// after it otherwise (so a CLI folder shipping its own tools cannot shadow
-/// system ones); and the CLI hand-off variable the bridge reads.
 pub(crate) fn launch_env(
     vendor: Option<&VendorCli>,
     node: Option<&Path>,
@@ -1038,7 +1006,6 @@ pub(crate) fn launch_env(
     launch: &Launch,
 ) -> Vec<(String, OsString)> {
     let (mut prepend, append) = search_path_folders(vendor, node, cli, launch);
-    // Agents can run Oleafly's own CLI (`oleafly`) from their shell.
     let oleafly = super::cli_program();
     if let Some(folder) = oleafly.as_ref().and_then(|path| path.parent()) {
         prepend.push(folder.to_path_buf());
@@ -1254,8 +1221,6 @@ fn existing_npm_launch_in(
     None
 }
 
-/// Why this agent cannot be installed here, if it cannot. Searches the file
-/// system; call it off the async runtime.
 pub fn install_reason(definition: &AgentDefinition) -> Option<String> {
     if definition.distribution.npx.is_some() {
         return if locator::locate_native("node").is_none() || npm_cli().is_none() {
@@ -1297,12 +1262,9 @@ pub fn task_unavailable_reason(definition: &AgentDefinition) -> Option<String> {
     task_unavailable_reason_for(definition, std::env::consts::OS, &windows)
 }
 
-/// What decides whether CLI agents can run as tasks on Windows.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct WindowsTaskSupport {
-    /// The Windows sandbox works here and its beta switch is on.
     pub sandbox_on: bool,
-    /// The libuv version of the Node.js that runs Node-based bridges.
     pub node_libuv: Option<(u32, u32, u32)>,
 }
 
@@ -1311,8 +1273,6 @@ pub(crate) struct WindowsTaskSupport {
 const LIBUV_FIXED: (u32, u32, u32) = (1, 53, 0);
 
 fn windows_task_support() -> WindowsTaskSupport {
-    // The switch first: checking availability creates and deletes a probe
-    // AppContainer profile, which machines with the beta off never need.
     let sandbox_on = crate::paths::oleafly_root()
         .is_ok_and(|root| oleafly_research::runs::remote::settings::windows_sandbox_enabled(&root))
         && matches!(
@@ -1340,8 +1300,6 @@ fn parse_libuv(text: &str) -> Option<(u32, u32, u32)> {
     ))
 }
 
-/// `node -p process.versions.uv`, outside any sandbox, at most 5 s, cached
-/// per Node.js path.
 pub(crate) fn node_libuv_version(node: &Path) -> Option<(u32, u32, u32)> {
     use crate::proc::NoConsole as _;
     type Versions = HashMap<PathBuf, Option<(u32, u32, u32)>>;
@@ -1386,7 +1344,6 @@ pub(crate) fn node_libuv_version(node: &Path) -> Option<(u32, u32, u32)> {
     version
 }
 
-/// The agent's bridge runs on Node.js (an npm package, or `node <script>`).
 pub(crate) fn runs_on_node(definition: &AgentDefinition) -> bool {
     definition.distribution.npx.is_some()
         || definition
@@ -1406,12 +1363,9 @@ pub(crate) fn runs_on_node(definition: &AgentDefinition) -> bool {
             })
 }
 
-/// Systems where an isolated Codex task passed a live run.
 const CODEX_TASKS_VERIFIED_ON: &[&str] = &["linux"];
-/// Systems where an isolated Pi task passed a live run.
 const PI_TASKS_VERIFIED_ON: &[&str] = &[];
 
-/// Codex's ACP bridge, by id, npm package or program name.
 pub(crate) fn is_codex(definition: &AgentDefinition) -> bool {
     definition.id == "codex"
         || definition.distribution.npx.as_ref().is_some_and(|package| {
@@ -1470,16 +1424,10 @@ pub(crate) struct VendorCli {
     pub(crate) display_name: &'static str,
     pub(crate) sign_in_command: &'static str,
     pub(crate) shares_bridge: bool,
-    /// The variable the bridge reads to find the vendor CLI.
     pub(crate) cli_env: Option<&'static str>,
-    /// Other names the CLI may be installed under.
     pub(crate) alternates: &'static [&'static str],
-    /// Set the variable only for a CLI the user chose, or one at least as
-    /// new as `bundled_cli`; otherwise the bridge uses the CLI it bundles.
     pub(crate) cli_env_needs_override: bool,
-    /// The bridge can start a Windows `.cmd`/`.bat` CLI.
     pub(crate) cli_env_accepts_script: bool,
-    /// The bridge cannot work without the vendor CLI.
     pub(crate) bridge_needs_cli: bool,
     pub(crate) version_args: &'static [&'static str],
     pub(crate) bundled_cli: Option<&'static str>,
@@ -1627,7 +1575,6 @@ pub(crate) fn parse_cli_version(output: &str) -> Option<String> {
     (!version.is_empty() && version.len() <= 40).then_some(version)
 }
 
-/// Runs blocking file system work (program searches) off the async runtime.
 pub(crate) async fn blocking<T: Send + 'static>(
     work: impl FnOnce() -> T + Send + 'static,
 ) -> Result<T, String> {
@@ -1636,16 +1583,11 @@ pub(crate) async fn blocking<T: Send + 'static>(
         .map_err(|_| "Oleafly stopped looking for the agent's programs unexpectedly.".to_string())
 }
 
-/// An empty working folder for a probe, below the ACP data folder.
 pub(crate) fn probe_folder(root: &Path) -> Result<locator::ProbeDir, String> {
     locator::probe_dir_in(&root.join("probe"))
         .map_err(|_| "Oleafly couldn't create a working folder for the check.".to_string())
 }
 
-/// Runs `<program> <args>` (the vendor's version arguments, `--version` for
-/// most) the way a bridge would start it: `.cmd` and `.bat` through Rust's
-/// cmd.exe launch, in an empty Oleafly-owned folder, with the agent's
-/// environment.
 pub(crate) async fn program_version(
     root: &Path,
     program: &Located,
@@ -1717,8 +1659,6 @@ pub(crate) fn known_cli_version(path: &Path) -> Option<String> {
 
 const STATUS_VERSION_LIMIT: Duration = Duration::from_secs(5);
 
-/// The sign-in command as the user would type it: the bare command when a
-/// terminal finds it by name, otherwise started by the CLI's full path.
 pub(crate) fn sign_in_command_text(sign_in: &str, path: Option<&Path>, reachable: bool) -> String {
     sign_in_command_for(sign_in, path, reachable, cfg!(windows))
 }
@@ -1878,7 +1818,6 @@ fn sign_in_hint(
     }
 }
 
-/// A Node.js version as (major, minor, patch).
 pub(crate) type NodeVersion = (u32, u32, u32);
 
 pub(crate) fn parse_node_version(output: &str) -> Option<NodeVersion> {
@@ -1894,7 +1833,6 @@ pub(crate) fn parse_node_version(output: &str) -> Option<NodeVersion> {
 static NODE_VERSION: std::sync::Mutex<Option<(PathBuf, std::time::Instant, Option<NodeVersion>)>> =
     std::sync::Mutex::new(None);
 
-/// `node --version` for this Node.js, cached for a minute.
 pub(crate) async fn node_version(root: &Path, node: &Path) -> Option<NodeVersion> {
     if let Ok(cache) = NODE_VERSION.lock() {
         if let Some((path, probed, version)) = cache.as_ref() {
@@ -1945,7 +1883,6 @@ async fn node_major_reason(
     }
 }
 
-/// What a status needs from the file system, gathered in one blocking pass.
 struct StatusFacts {
     plan: Plan,
     install_reason: Option<String>,
@@ -1979,7 +1916,6 @@ pub async fn status(root: &Path, definition: AgentDefinition, probe: bool) -> Ag
     status_with(root, definition, probe, None).await
 }
 
-/// An agent's status with the program the user chose for it, if any.
 pub async fn status_with(
     root: &Path,
     definition: AgentDefinition,
@@ -2016,7 +1952,6 @@ pub async fn status_with(
         }
     }
     let node_reason = node_major_reason(root, &definition, facts.plan.node.as_deref()).await;
-    // A program the user chose runs without the bridge's Node.js.
     if node_reason.is_some() && !(chosen && facts.plan.launch.is_ok()) {
         reason = node_reason.clone();
     }
@@ -2072,12 +2007,10 @@ pub async fn status_with(
             .as_ref()
             .is_some_and(|vendor| vendor.bridge_needs_cli),
         definition,
-        // The runtime fills in what the agent last reported.
         runtime: None,
     }
 }
 
-/// Fails unless Node.js `required` or newer is installed.
 pub async fn check_node(root: &Path, required: u32) -> Result<(), String> {
     let node = blocking(|| {
         locator::wait_for_login_probe();
@@ -2175,7 +2108,6 @@ struct PipeCapture {
     tail: Vec<String>,
     /// The first line that names the error (`Error: …`, `npm error …`).
     salient: Option<String>,
-    /// The first `code …` line, such as Node's `code: 'EISDIR',`.
     code: Option<String>,
 }
 
@@ -2254,15 +2186,11 @@ fn trailing_lines(text: &str) -> PipeCapture {
     buffer.finish()
 }
 
-/// What a failed installation reports for this output.
 #[cfg(test)]
 fn command_failure_message(stdout: &PipeCapture, stderr: &PipeCapture) -> String {
     CommandFailure::Failed(failure_lines(stdout, stderr)).install_message()
 }
 
-/// At most eight lines: the line naming the error and the `code` line when
-/// the tail no longer shows them, then the last lines of output. None when
-/// the command printed nothing.
 fn failure_lines(stdout: &PipeCapture, stderr: &PipeCapture) -> Option<String> {
     let tail: Vec<&String> = stdout.tail.iter().chain(stderr.tail.iter()).collect();
     let mut candidates: Vec<&String> = Vec::new();
@@ -2324,16 +2252,11 @@ where
     })
 }
 
-/// Why a bounded command gave no output to use.
 #[derive(Debug)]
 enum CommandFailure {
-    /// It could not be started: the error kind and the program.
     NotStarted(String),
-    /// Oleafly could not contain the process or read its output.
     Lost(&'static str),
-    /// It ran past its time limit and was stopped.
     TimedOut,
-    /// It exited with an error: [`failure_lines`], None when it printed nothing.
     Failed(Option<String>),
 }
 
@@ -2349,7 +2272,6 @@ impl CommandFailure {
         }
     }
 
-    /// The same failure for a version probe, `command` being `<file> <args>`.
     fn version_message(self, file: &str, command: &str) -> String {
         match self {
             Self::NotStarted(what) => format!("Oleafly couldn't start {file} ({what})."),
@@ -2372,7 +2294,6 @@ pub(crate) async fn failure_output(
     }
 }
 
-/// An installer run: its output, or why it failed in installer wording.
 async fn bounded_command(
     command: tokio::process::Command,
     duration: Duration,
@@ -2382,8 +2303,6 @@ async fn bounded_command(
         .map_err(CommandFailure::install_message)
 }
 
-/// Runs a command with no input, contained, for at most `duration`, and
-/// returns the first 64 KiB of its output.
 async fn run_bounded(
     mut command: tokio::process::Command,
     duration: Duration,
@@ -2520,7 +2439,12 @@ pub fn extract(bytes: &[u8], zip_format: bool, destination: &Path) -> Result<(),
             {
                 return Err("Archive symbolic links are not supported.".into());
             }
-            let path = PathBuf::from(entry.name());
+            let path = PathBuf::from(
+                entry
+                    .name()
+                    .map_err(|_| "The ZIP entry is invalid.")?
+                    .as_ref(),
+            );
             let size = entry.size();
             let directory = entry.is_dir();
             write_entry(&path, size, &mut entry, directory)?;
@@ -2840,7 +2764,6 @@ fn npm_install_message(failure: CommandFailure, host: &str) -> String {
     }
 }
 
-/// The programs an install runs, found off the async runtime.
 struct InstallTools {
     reason: Option<String>,
     node: Option<PathBuf>,
@@ -2943,8 +2866,6 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
             "npm_config_globalconfig",
             locator::child_path(&temporary.join("empty-globalnpmrc")),
         );
-        // The cache lives and ends with this install: one shared folder would
-        // keep every bridge version's tarballs for good.
         let cache = temporary.join("npm-cache");
         command.env("npm_config_cache", locator::child_path(&cache));
         command.env("npm_config_update_notifier", "false");
@@ -3115,7 +3036,6 @@ pub async fn registry_search(query: &str) -> Result<Vec<RegistryEntry>, String> 
     blocking(move || registry_entries(&bytes, &query)).await?
 }
 
-/// Registry ids of agents Oleafly already ships as built-ins.
 const REGISTRY_BUILTINS: &[(&str, &str)] = &[
     ("pi-acp", "pi"),
     ("claude-acp", "claude"),

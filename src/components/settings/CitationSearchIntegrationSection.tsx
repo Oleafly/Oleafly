@@ -31,7 +31,6 @@ const KEY_FREE_SOURCES: readonly {
   { name: "PubMed", Icon: PubMedBrandIcon, tone: "text-[#326599] dark:text-[#6FA0D2]" },
 ];
 
-/** Web search keys for the assistant, in the order a run prefers them. */
 type WebSearchConnector = "brave-search" | "tavily";
 
 const WEB_SEARCH_CONNECTORS: readonly WebSearchConnector[] = ["brave-search", "tavily"];

@@ -23,46 +23,20 @@ import {
   type CompletionSyntax,
 } from "./completion-trigger";
 
-// Inline "ghost" completion: the rest of the most likely candidate, drawn dim
-// after the cursor and accepted with Tab.
-//
-// Everything shown here comes from the completion sources the editor already
-// runs, so there is no model call, no network, and no latency. Only
-// synchronous source results are considered: a suggestion that arrives after
-// the next keystroke would flicker, and the popup already covers async
-// sources.
-//
-// While the completion popup is open the ghost mirrors the highlighted option
-// instead of guessing separately, so the two surfaces can never disagree. Tab
-// delegates to CodeMirror's completion command so guarded applies and snippets
-// keep their native behavior.
-
 const GHOST_CLASS = "cm-ghostCompletion";
 
-// Enough typed characters that a single suggestion is a fair guess. Commands
-// carry their backslash, so "\al" is three characters but two letters.
 const MIN_COMMAND_LETTERS = 2;
 const MIN_WORD_LETTERS = 3;
-// Scanning every candidate of a 400k-command corpus on each keystroke would be
-// wasted work: the best match is decided by prefix and boost alone.
 const MAX_OPTIONS_SCANNED = 2000;
 
 interface GhostSuggestion {
-  /** Cursor position the ghost is anchored to. */
   pos: number;
-  /** The text that would be inserted, already stripped of what was typed. */
   text: string;
 }
 
 const setGhost = StateEffect.define<GhostSuggestion | null>();
 const setDismissed = StateEffect.define<number | null>();
 
-/**
- * Where the user pressed Escape. Without this the suggestion would return
- * immediately: dismissing does not move the cursor or change the document, so
- * the very next recompute would offer the same candidate again. Reset by any
- * edit or cursor move, so dismissing is a one-shot rather than a mode.
- */
 const dismissedField = StateField.define<number | null>({
   create: () => null,
   update(value, tr) {
@@ -87,13 +61,10 @@ class GhostWidget extends WidgetType {
     const span = document.createElement("span");
     span.className = GHOST_CLASS;
     span.textContent = this.text;
-    // Decorative: screen readers announce the real document, and the popup
-    // remains the accessible way to choose a completion.
     span.setAttribute("aria-hidden", "true");
     return span;
   }
 
-  // The widget must not swallow clicks aimed at the text behind it.
   ignoreEvent(): boolean {
     return false;
   }
@@ -105,8 +76,6 @@ const ghostField = StateField.define<GhostSuggestion | null>({
     for (const effect of tr.effects) {
       if (effect.is(setGhost)) return effect.value;
     }
-    // Any edit or cursor move invalidates the suggestion. The view plugin
-    // recomputes one immediately after, so the ghost never lags the document.
     if (tr.docChanged || tr.selection) return null;
     return value;
   },
@@ -116,7 +85,6 @@ const ghostField = StateField.define<GhostSuggestion | null>({
         ? Decoration.set([
             Decoration.widget({
               widget: new GhostWidget(ghost.text),
-              // Draw after the cursor rather than pushing it right.
               side: 1,
             }).range(ghost.pos),
           ])
@@ -177,8 +145,6 @@ function bestOption(options: readonly Completion[], prefix: string): string | nu
     const label = previewLabel(options[index], prefix);
     if (!label) continue;
     const boost = options[index].boost ?? 0;
-    // Higher boost wins; ties go to the shortest completion, which is the one
-    // the typist is most likely reaching for.
     if (
       boost > bestBoost ||
       (boost === bestBoost && best !== null && label.length < best.length)
@@ -200,7 +166,6 @@ function syncResult(
   } catch {
     return null;
   }
-  // Promises are skipped by design: see the module comment.
   return result && !(result instanceof Promise) ? result : null;
 }
 
@@ -253,7 +218,6 @@ function computeGhost(
   const before = boundedCompletionContext(view.state, pos);
   if (!before || /\s$/u.test(before)) return null;
 
-  // Popup open: mirror the highlighted option so the two never disagree.
   if (completionStatus(view.state) === "active") return popupGhost(view, before, pos);
 
   if (!isCompletionTextLexicallyTriggered(before, syntax)) return null;
@@ -261,7 +225,6 @@ function computeGhost(
   return sourceGhost(view, sources, before, pos);
 }
 
-/** Insert the pending ghost suggestion. Bound to Tab. */
 export function acceptGhostCompletion(view: EditorView): boolean {
   // CodeMirror's built-in completion keymap accepts with Enter, not Tab. Route
   // Tab through its command explicitly when the popup is active; inserting the
@@ -279,7 +242,6 @@ export function acceptGhostCompletion(view: EditorView): boolean {
   return true;
 }
 
-/** Dismiss the pending suggestion. Bound to Escape. */
 export function clearGhostCompletion(view: EditorView): boolean {
   const ghost = view.state.field(ghostField, false);
   if (!ghost) return false;
@@ -287,33 +249,23 @@ export function clearGhostCompletion(view: EditorView): boolean {
   view.dispatch({
     effects: [setGhost.of(null), setDismissed.of(ghost.pos)],
   });
-  // With the popup open, report the key as unhandled so Escape also closes it.
-  // One press should clear both surfaces, not just this one.
   return !popupOpen;
 }
 
 const ghostTheme = EditorView.baseTheme({
   [`.${GHOST_CLASS}`]: {
     opacity: "0.45",
-    // The suggestion is a preview, so it must never be mistaken for text that
-    // is already in the document, nor become a selection target.
     pointerEvents: "none",
     userSelect: "none",
   },
 });
 
-/**
- * Inline ghost completion driven by `sources`, which should be the same
- * completion sources the popup uses so both surfaces agree.
- */
 export function ghostCompletion(
   sources: CompletionSource[],
   syntax: CompletionSyntax = "generic",
 ): Extension {
   const plugin = ViewPlugin.fromClass(
     class {
-      // Recomputing inside update() would dispatch during an update, so the
-      // work is deferred to a microtask and guarded against a stale view.
       private scheduled = false;
       private destroyed = false;
 
@@ -345,7 +297,6 @@ export function ghostCompletion(
 
       refresh() {
         const view = this.view;
-        // The plugin is destroyed with the view; bail if that already happened.
         if (!view.dom.isConnected) return;
         // Deliberately not gated on view.hasFocus: it depends on
         // document.hasFocus(), which an embedded webview reports as false even
@@ -369,8 +320,6 @@ export function ghostCompletion(
     dismissedField,
     plugin,
     ghostTheme,
-    // Ahead of indentWithTab and the completion keymap: both handlers decline
-    // when there is no ghost, so normal Tab behavior is untouched.
     Prec.highest(
       keymap.of([
         { key: "Tab", run: acceptGhostCompletion },
@@ -380,7 +329,6 @@ export function ghostCompletion(
   ];
 }
 
-/** The pending suggestion text, for tests and diagnostics. */
 export function pendingGhostCompletion(view: EditorView): string | null {
   return view.state.field(ghostField, false)?.text ?? null;
 }

@@ -10,15 +10,10 @@ import { decodeAppError, describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { useSaveAsTemplateStore } from "@/store/save-as-template";
 
-/**
- * Save a project's files as a template under Custom. Opened from a library
- * project's menu or the toolbar's Export menu; mounted once per app shell.
- */
 export function SaveAsTemplateDialog() {
   const { t } = useTranslation(["common", "library"]);
   const target = useSaveAsTemplateStore((state) => state.target);
   const close = useSaveAsTemplateStore((state) => state.close);
-  // Seeded from the project so a dialog mounted for it never shows an empty name.
   const [name, setName] = useState(() => target?.name ?? "");
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -26,8 +21,6 @@ export function SaveAsTemplateDialog() {
   const titleId = useId();
   const nameId = useId();
 
-  // A dialog mounted for a project already shows its name. Only a different
-  // project resets it, so typing in the first frame is never thrown away.
   const shownRef = useRef(target);
   useEffect(() => {
     if (shownRef.current === target) return;

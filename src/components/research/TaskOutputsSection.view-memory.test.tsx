@@ -20,12 +20,10 @@ vi.mock("@/lib/research-tasks", () => ({
   startResearchTask: vi.fn(),
   previewResearchTaskFile: vi.fn(),
   previewResearchTaskArtifact: vi.fn(),
-  // 0.4.8: the store also listens for live text and tells the backend which task it shows.
   listenForResearchTaskDeltas: vi.fn(async () => () => {}),
   watchResearchTask: vi.fn(async () => {}),
 }));
 
-// 0.4.8: research tasks are experimental; the section shows only while they are on.
 const flag = vi.hoisted(() => ({ enabled: true }));
 vi.mock("@/store/research-tasks-flag", () => ({ useResearchTasksEnabled: () => flag.enabled }));
 

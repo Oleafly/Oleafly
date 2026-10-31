@@ -14,7 +14,6 @@ import type { Page } from "../helpers";
 // they asked the window to be.
 
 const macOS = process.platform === "darwin";
-// Ignored on purpose off macOS, because the webview frame fix is macOS-only.
 test.skip(!macOS, "The webview frame fix is macOS-only.");
 
 type Frame = { x: number; y: number; width: number; height: number };
@@ -60,7 +59,6 @@ function appLog(page: Page) {
   );
 }
 
-// Largest gap, in points, between the webview frame and the content view.
 function frameGap({ frame, container }: FrameProbe) {
   return Math.max(
     Math.abs(frame.x - container.x),
@@ -84,8 +82,6 @@ async function expectViewport(page: Page, width: number, height: number) {
     .toBeLessThanOrEqual(1);
 }
 
-// Sizes the window and waits until the content view, the webview and the
-// page all agree on the new size.
 async function settleWindow(page: Page, width: number, height: number) {
   await resizeWindow(page, width, height);
   await expect
@@ -118,14 +114,10 @@ async function measureLaunchSize(page: Page): Promise<[number, number]> {
   return launchSize;
 }
 
-// The size the tests start from: the launch size, at most 1200x800, and even,
-// so that half of it is whole points.
 async function startSize(page: Page): Promise<[number, number]> {
   const [launchWidth, launchHeight] = await measureLaunchSize(page);
   const even = (value: number) => value - (value % 2);
   const size: [number, number] = [even(Math.min(launchWidth, 1200)), even(Math.min(launchHeight, 800))];
-  // The window's minimum content size is 900x600, and the tests take up to
-  // 60 points off the width and 40 off the height.
   expect(size[0], "the screen needs room for a window 960 points wide").toBeGreaterThanOrEqual(960);
   expect(size[1], "the screen needs room for a window 640 points tall").toBeGreaterThanOrEqual(640);
   return size;
@@ -133,7 +125,6 @@ async function startSize(page: Page): Promise<[number, number]> {
 
 test.afterEach(async ({ tauriPage }) => {
   if (!macOS) return;
-  // Never hand a half-size webview to the next spec.
   await frameStep(tauriPage, "resync");
   const [width, height] = await measureLaunchSize(tauriPage);
   await settleWindow(tauriPage, width, height);
@@ -158,8 +149,6 @@ test("AppKit keeps the main webview filling its window as the window resizes", a
   await expectViewport(page, width - 40, height - 40);
   await expectLogicalSizeMatchesPage(page);
 
-  // A resize through the Tauri window API ends with the page at the size
-  // that was asked for.
   await settleWindow(page, width - 60, height - 20);
   await expectLogicalSizeMatchesPage(page);
 });

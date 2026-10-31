@@ -58,7 +58,6 @@ describe("a message that failed to send", () => {
   it("tells a message the agent got from one it never got", () => {
     expect(acpPromptDelivered({ delivered: true, message: "The agent stopped answering." })).toBe(true);
     expect(acpPromptDelivered({ delivered: false, message: "x" })).toBe(false);
-    // A plain string (an older build) or another error does not say.
     expect(acpPromptDelivered("The agent is not connected.")).toBeNull();
     expect(acpPromptDelivered(new Error("boom"))).toBeNull();
     expect(acpPromptDelivered(null)).toBeNull();

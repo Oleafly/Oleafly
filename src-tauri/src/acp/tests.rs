@@ -379,7 +379,6 @@ async fn cancelling_a_compliant_turn_keeps_the_session_connected() {
     .unwrap();
 }
 
-// 0.4.8 I: a finished turn ends the agent's desktop apps session.
 #[tokio::test]
 async fn a_finished_turn_ends_the_agents_desktop_session() {
     let (_temp, runtime, snapshot) = runtime(Vec::new()).await;
@@ -395,8 +394,6 @@ async fn a_finished_turn_ends_the_agents_desktop_session() {
     runtime.close(&id).await.unwrap();
 }
 
-// 0.4.8 I: a session keeps one resource, so the research bridge and the
-// desktop apps bridge live (and go) together.
 #[tokio::test]
 async fn acp_sessions_keep_both_bridges_in_one_resource() {
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -556,8 +553,6 @@ fn missing_usage_is_not_zero_or_context_input() {
 
 #[test]
 fn the_ledger_reads_prompt_usage_as_the_session_view_does() {
-    // An agent that reports a turn's tokens only in `_meta.quota`, in
-    // snake case.
     let answer = json!({"stopReason":"end_turn","_meta":{"quota":{"token_count":{
         "input_tokens": 12, "output_tokens": 3, "cached_read_tokens": 4}}}});
     let counters = prompt_usage(&answer).unwrap();
@@ -595,7 +590,7 @@ fn archive_escape_and_symlinks_are_rejected() {
     use std::io::Write;
     let temp = tempfile::tempdir().unwrap();
     let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
-    let options: zip::write::FileOptions<'_, ()> = zip::write::FileOptions::default();
+    let options = zip::write::SimpleFileOptions::default();
     zip.start_file("../escape", options).unwrap();
     zip.write_all(b"x").unwrap();
     let bytes = zip.finish().unwrap().into_inner();
@@ -1298,8 +1293,6 @@ async fn cancellation_reaps_processes_and_releases_resources_when_persistence_fa
     let error = runtime.cancel(&id).await.unwrap_err();
     assert!(crate::app_error::english_error(&error).contains("could not be saved"));
     assert_eq!(dropped.load(std::sync::atomic::Ordering::SeqCst), 1);
-    // The child is signalled during cancel and reaped by its own task, so a
-    // loaded runner can still be tearing it down when cancel returns.
     tokio::time::timeout(Duration::from_secs(5), async {
         while unsafe { libc::kill(pid, 0) } == 0 {
             tokio::time::sleep(Duration::from_millis(20)).await;
@@ -1463,8 +1456,6 @@ async fn fixture_pid_paths_stay_in_the_harness_and_do_not_overwrite_files() {
                 .unwrap(),
             )
             .unwrap();
-        // A fixture that accepted the path would sleep at the barrier until the
-        // 60 s initialize timeout, so this deadline still reports it.
         let started = tokio::time::timeout(CHILD_PATIENCE, runtime.start(options)).await;
         runtime.shutdown_all().await;
         assert!(started
@@ -1722,8 +1713,6 @@ fn an_agent_in_a_trusted_folder_of_an_untrusted_repository_runs_git_restricted()
         json!("false")
     );
 }
-
-// --- Agent setup: plain launch paths, the Test check, chosen programs (#84) ---
 
 fn check_definition(root: &Path, extra: &[&str]) -> AgentDefinition {
     let mut arguments = vec![String::new(), "--fixture-any-cwd".to_string()];
@@ -2071,7 +2060,6 @@ fn sandboxed_task_launches_keep_the_sandbox_environment() {
             )
         })
         .collect();
-    // The CLI hand-off reaches the sandboxed bridge; the search path never does.
     assert!(envs.iter().any(
         |(name, value)| name == "PI_ACP_PI_COMMAND" && value.as_deref() == Some("/outside/pi")
     ));

@@ -1,5 +1,3 @@
-//! The tools `oleafly mcp` serves without the app. Names and result shapes
-//! follow the app's MCP tools, so a skill works against either.
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
@@ -12,7 +10,6 @@ use crate::contract::{Context, ContextOptions};
 
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-/// Bounds for the file tools.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ToolLimits {
     pub max_list: usize,
@@ -36,7 +33,6 @@ impl Default for ToolLimits {
     }
 }
 
-/// What a tool call knows.
 #[derive(Clone, Debug)]
 pub struct ToolContext {
     pub root: PathBuf,
@@ -45,7 +41,6 @@ pub struct ToolContext {
     pub limits: ToolLimits,
 }
 
-/// A tool failure, reported to the client as `isError` text.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ToolError(pub String);
 
@@ -58,7 +53,6 @@ impl From<crate::contract::CliError> for ToolError {
     }
 }
 
-/// A group of tools. Other workstreams add theirs to [`TOOL_SETS`].
 pub trait McpToolSet: Sync {
     fn tools(&self) -> Vec<ToolMeta>;
     fn call<'a>(
@@ -69,11 +63,7 @@ pub trait McpToolSet: Sync {
     ) -> Option<BoxFuture<'a, Result<Value, ToolError>>>;
 }
 
-pub(crate) static TOOL_SETS: &[&dyn McpToolSet] = &[
-    &CoreTools,
-    // 0.4.8 F3:
-    &crate::check::mcp::CheckTools,
-];
+pub(crate) static TOOL_SETS: &[&dyn McpToolSet] = &[&CoreTools, &crate::check::mcp::CheckTools];
 
 pub fn all_tools() -> Vec<ToolMeta> {
     TOOL_SETS.iter().flat_map(|set| set.tools()).collect()
@@ -137,7 +127,6 @@ pub(crate) fn object(required: &[&str], properties: Value) -> Value {
     json!({"type": "object", "properties": properties, "required": required})
 }
 
-/// The tools every `oleafly mcp` serves.
 pub struct CoreTools;
 
 impl McpToolSet for CoreTools {
@@ -339,9 +328,6 @@ async fn project_map(ctx: &ToolContext) -> Result<Value, ToolError> {
     Ok(oleafly_core::context::map_view(&scan.map))
 }
 
-/// `oleafly context --json` cut to fit a client's tool result: file roles
-/// counted rather than listed, and each list kept to a few hundred items
-/// (`truncated_counts` says what each lost).
 fn bounded_context(mut value: Value, scan: &oleafly_core::context::ContextScan) -> Value {
     if let Some(fields) = value.as_object_mut() {
         fields.remove("roles");
@@ -407,7 +393,6 @@ fn get_log(ctx: &ToolContext) -> Result<Value, ToolError> {
     Ok(json!({"log": log, "source": latest.source, "diagnostics": diagnostics}))
 }
 
-/// Every project file (slash paths), bounded.
 fn project_files(root: &Path, limit: usize) -> Result<(Vec<String>, usize, bool), ToolError> {
     let mut files: Vec<String> = Vec::new();
     let mut scanned = 0usize;
@@ -437,7 +422,6 @@ pub(crate) fn list_files(ctx: &ToolContext) -> Result<Value, ToolError> {
     Ok(json!({"files": files, "scanned_entries": scanned, "truncated": truncated}))
 }
 
-/// A path inside the project, or the reason it isn't one.
 fn project_file(ctx: &ToolContext, relative: &str) -> Result<PathBuf, ToolError> {
     let outside = || {
         ToolError(format!("{relative} isn't a path inside the project. Use a path relative to the project, with forward slashes."))
@@ -466,7 +450,6 @@ struct TextPage {
     truncated: bool,
 }
 
-/// The app's paging (`src-tauri/src/mcp/native.rs`).
 fn text_page(body: &str, offset: usize, take: usize, max_chars: usize) -> TextPage {
     let total_lines = body.lines().count();
     let start = offset.saturating_sub(1).min(total_lines);

@@ -48,6 +48,11 @@
     "stoppedTitle": "Desconectado",
     "stoppedDescription": "Recarregue a página para se conectar de novo."
   },
+  "leave": {
+    "title": "Sair deste projeto?",
+    "description": "Algumas das suas edições ainda não chegaram ao servidor. Fique até que sejam enviadas, ou saia e elas serão perdidas.",
+    "confirm": "Sair"
+  },
   "access": {
     "changed": "Sua nova função neste projeto: {{role}}."
   },
@@ -157,6 +162,11 @@
     "withdraw": "Retirar",
     "acceptAll": "Aceitar tudo",
     "rejectAll": "Recusar tudo",
+    "rejectAllConfirm": {
+      "title": "Recusar todas as sugestões em {{file}}?",
+      "description": "O texto original volta ao arquivo para todas as pessoas deste projeto. Sugestões pendentes: {{number}}.",
+      "confirm": "Recusar tudo"
+    },
     "pending_one": "{{count}} sugestão",
     "pending_many": "{{count}} sugestões",
     "pending_other": "{{count}} sugestões",

@@ -1201,6 +1201,8 @@
     "exportTxt": "Exportar como texto plano (.txt)",
     "exportZipFailed": "No se pudo exportar el zip del proyecto",
     "exporting": "Exportando .{{format}}…",
+    "exportingStep": "Exportando .{{format}}: {{step}}",
+    "stopExport": "Detener",
     "fork": "Duplicar",
     "forkDescription": "Copia <name>{{name}}</name> y su historial de Git en un proyecto nuevo. Los puntos de control empiezan vacíos.",
     "forkFailed": "No se pudo duplicar el proyecto.",

@@ -1,8 +1,3 @@
-//! Which sync state a folder uses. A project in the Oleafly app's library
-//! shares the app's private mirror and link record, so the app and the
-//! command line agree; any other folder keeps its own inside itself
-//! (`.oleafly/online/`), so a copied folder can never pair a base with the
-//! wrong files.
 use std::path::{Path, PathBuf};
 
 use oleafly_online::client::{project_id_in, valid_project_id};
@@ -25,9 +20,6 @@ pub(crate) enum RemoteScope {
         project_id: String,
         root: PathBuf,
     },
-    /// A folder the app opened in place. It keeps its sync state inside
-    /// itself like any other folder, but the app locks and restores its
-    /// files under `project_id`.
     Linked {
         project_id: String,
         state_dir: PathBuf,
@@ -38,7 +30,6 @@ pub(crate) enum RemoteScope {
     },
 }
 
-/// The scope of `folder`, which must be a folder.
 pub(crate) fn resolve_scope(folder: &Path, data_root: &Path) -> Result<RemoteScope, CliError> {
     let not_a_folder = || {
         CliError::new(
@@ -79,7 +70,6 @@ impl RemoteScope {
         }
     }
 
-    /// The project's id in the app, when the app knows this folder.
     fn app_identity(&self) -> Option<ProjectIdentity> {
         match self {
             Self::Library { project_id, .. } => Some(ProjectIdentity::Library {
@@ -97,9 +87,6 @@ impl RemoteScope {
         }
     }
 
-    /// Refuses while the app has a checkpoint restore it hasn't finished:
-    /// the files are half restored, and a sync would send the missing ones
-    /// online as deletions.
     pub(crate) fn ensure_no_pending_restore(&self) -> Result<(), CliError> {
         match self.app_identity() {
             Some(identity) if crate::app_paths::restore_pending(self.root(), &identity) => {
@@ -115,9 +102,6 @@ impl RemoteScope {
         }
     }
 
-    /// Takes the app's shell-escape trust away from a project whose files a
-    /// sync changed, as the app does for every change it didn't make in its
-    /// editor.
     pub(crate) fn revoke_shell_escape_trust(&self, data_root: &Path) -> Result<(), CliError> {
         match self.app_identity() {
             Some(identity) => crate::app_paths::revoke_shell_escape_trust(data_root, identity.id()),
@@ -140,8 +124,6 @@ impl RemoteScope {
         }
     }
 
-    /// The app's lock on a project's files, held while the command line
-    /// writes them. The app locks a folder it opened in place the same way.
     pub(crate) fn worktree_lock(&self, data_root: &Path) -> Option<WorktreeLock> {
         match self {
             Self::Library { project_id, .. } | Self::Linked { project_id, .. } => {
@@ -155,9 +137,6 @@ impl RemoteScope {
         }
     }
 
-    /// Where the project came from (`project.json` `importedFrom`). The
-    /// record sits in the folder, so it is only believed when it names a
-    /// usable server and project.
     pub(crate) fn imported_from(&self) -> Option<ImportedFrom> {
         let raw = std::fs::read_to_string(self.root().join("project.json")).ok()?;
         let meta: Value = serde_json::from_str(&raw).ok()?;
@@ -168,12 +147,8 @@ impl RemoteScope {
         })
     }
 
-    /// The folder's link. A library project's counts only when it matches
-    /// where the project came from, as in the app.
     pub(crate) fn current_link(&self, data_root: &Path) -> Result<Option<SyncLink>, CliError> {
         let link = read_link(&self.sync_paths(data_root)?).map_err(|error| from_online(&error))?;
-        // The record sits in the folder, so the server in it is checked
-        // before anything is sent there.
         let link = link
             .map(|link| {
                 let server = session::normalize_server(Some(&link.server))
@@ -196,7 +171,6 @@ impl RemoteScope {
     }
 }
 
-/// An online project named by its ID or its address.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct RemoteRef {
     pub server: String,
@@ -212,8 +186,6 @@ fn invalid_ref(input: &str) -> CliError {
     .hint("Use the project's ID or its address, such as https://latex.example.edu/project/64a1f0.")
 }
 
-/// `64a1f0` (with `--server` or the default server) or
-/// `https://latex.example.edu/project/64a1f0`.
 pub(crate) fn parse_remote_ref(
     input: &str,
     server_flag: Option<&str>,
@@ -258,7 +230,6 @@ pub(crate) fn parse_remote_ref(
     })
 }
 
-/// Where a Git token came from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum TokenSource {
     Env,
@@ -274,9 +245,6 @@ impl TokenSource {
     }
 }
 
-/// Whether `server` is the service's own or one the user has signed in to
-/// (a saved session or Git token). A server that only a folder's files name
-/// (a link record, an imported project's `project.json`) is not.
 pub(crate) fn server_is_known(env: &Env, server: &str) -> Result<bool, CliError> {
     if server == DEFAULT_SERVER {
         return Ok(true);
@@ -290,16 +258,10 @@ pub(crate) fn server_is_known(env: &Env, server: &str) -> Result<bool, CliError>
         || signed_in(session::git_token_servers(&env.store))?)
 }
 
-/// Whether `OLEAFLY_ONLINE_GIT_TOKEN` may be sent to `server`: one the user
-/// named on the command line, or a known one (see [`server_is_known`]).
 fn env_token_allowed(env: &Env, server: &str, named_by_user: bool) -> Result<bool, CliError> {
     Ok(named_by_user || server_is_known(env, server)?)
 }
 
-/// The Git token for `server`: `OLEAFLY_ONLINE_GIT_TOKEN` first, for the
-/// servers it may go to (see [`env_token_allowed`]), else the saved one.
-/// `named_by_user` says the server came from the command line, not from a
-/// folder.
 pub(crate) fn git_token_for(
     env: &Env,
     server: &str,
@@ -319,7 +281,6 @@ pub(crate) fn git_token_for(
     }
 }
 
-/// The project's page on the service.
 pub(crate) fn project_url(server: &str, project_id: &str) -> String {
     format!("{server}/project/{project_id}")
 }
@@ -463,7 +424,6 @@ mod tests {
         let folder = dir.path().join("paper");
         std::fs::create_dir_all(&folder).unwrap();
         let (scope, state_dir) = linked_scope(&data, &folder);
-        // Its sync state stays in the folder, and `status` still calls it one.
         assert_eq!(scope.kind(), "folder");
         assert_eq!(scope.project_id(), None);
         assert!(scope
@@ -471,7 +431,6 @@ mod tests {
             .unwrap()
             .dir
             .ends_with(".oleafly/online"));
-        // The app takes the same lock for it as for a library project.
         assert!(scope
             .worktree_lock(&data)
             .unwrap()
@@ -488,13 +447,11 @@ mod tests {
             (error.code.as_ref(), error.exit() as u8, error.retryable),
             ("conflict.restore_pending", 8, true)
         );
-        // Trust is kept per project id, as for any project the app knows.
         let trust = data.join("device-trust").join("latex-shell-escape");
         std::fs::create_dir_all(&trust).unwrap();
         std::fs::write(trust.join("l-1.json"), "{}").unwrap();
         scope.revoke_shell_escape_trust(&data).unwrap();
         assert!(!trust.join("l-1.json").exists());
-        // A plain folder has neither.
         let plain = RemoteScope::Folder { root: folder };
         plain.ensure_no_pending_restore().unwrap();
         plain.revoke_shell_escape_trust(&data).unwrap();
@@ -523,7 +480,6 @@ mod tests {
             (good.server.as_str(), good.project_id.as_str()),
             ("https://latex.example.edu", "64a1f0")
         );
-        // A Windows share path becomes an https address, never a share.
         let unc = origin("\\\\attacker\\share", "64a1f0").unwrap();
         assert!(unc.server.starts_with("https://"), "{}", unc.server);
         for server in [
@@ -577,10 +533,8 @@ mod tests {
         let mut env = env_at(dir.path());
         env.online_git_token = Some(Zeroizing::new("env_TOKEN44".into()));
         let planted = "https://evil.example";
-        // Named only by a file in a folder: not trusted with it.
         let error = git_token_for(&env, planted, false).unwrap_err();
         assert_eq!(error.code, "online.git_token_missing");
-        // The user typed it, or it is the service's own.
         assert_eq!(
             git_token_for(&env, planted, true).unwrap().1,
             TokenSource::Env
@@ -589,7 +543,6 @@ mod tests {
             git_token_for(&env, DEFAULT_SERVER, false).unwrap().1,
             TokenSource::Env
         );
-        // A server with a saved sign-in is one they chose before.
         let known = "https://latex.example.edu";
         assert!(git_token_for(&env, known, false).is_err());
         session::save(
@@ -607,7 +560,6 @@ mod tests {
             git_token_for(&env, known, false).unwrap().1,
             TokenSource::Env
         );
-        // A saved Git token for the planted server is the user's own choice.
         session::save_git_token(&env.store, planted, "olp_GITTOKEN88").unwrap();
         assert_eq!(
             git_token_for(&env, planted, false).unwrap().1,

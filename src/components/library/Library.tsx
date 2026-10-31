@@ -127,7 +127,6 @@ const thumbCache = new Map<string, string | null>();
 const MAX_THUMBNAILS = 64;
 const DIALOG_NAME_CLASS = "[overflow-wrap:anywhere]";
 const THUMBNAIL_SCROLL_SETTLE_MS = 160;
-// In-flight keys so a second hover during a load does not start a parallel job.
 const thumbInflight = new Set<string>();
 
 const ALL_FILTER = "all";
@@ -227,9 +226,6 @@ export function Library() {
   const { t } = useTranslation(["common", "library"]);
   const displayPath = useDisplayPath();
   const colorLabels = useBookColorLabels();
-  // Home-shell pages (deadlines/pdf-import/latex-tools/library) are mutually
-  // exclusive siblings gated on the same store, so switching between them
-  // never requires closing one first.
   const page = useHomeViewStore((s) => s.page);
   const projects = useFilesStore((s) => s.projects);
   const projectsLoaded = useFilesStore((s) => s.projectsLoaded);
@@ -463,8 +459,6 @@ export function Library() {
     const target = deleteTarget;
     if (!target) return;
 
-    // Close the confirmation before invoking the destructive backend command.
-    // This also makes repeated Enter/click events harmless.
     setDeleteTarget(null);
     try {
       await recycleProject(target.id);
@@ -517,8 +511,6 @@ export function Library() {
     toast.success(t(($) => $.library.folder.remove.done, { name: target.name }));
   };
 
-  // Successful PNGs are cached; failures are NOT permanently cached so a
-  // later compile can still produce a preview.
   const loadThumb = (id: string, updatedAt: number) => {
     const key = `${id}:${updatedAt}`;
     if (thumbCache.has(key)) {
@@ -531,12 +523,6 @@ export function Library() {
     const rasterizeLatest = async () => {
       const { pdfPageToPng } = await import("@/lib/pdf-image");
       const buf = await readCompiledPdf(id);
-      // A hover preview is low-stakes: the full worker retry/fallback chain
-      // can otherwise take 100+ seconds in the worst case, which just leaves
-      // the hover stuck looking broken far longer than any hover lasts. Bound
-      // it generously enough for the retry+fallback chain to get a fair shot
-      // (two worker-setup timeouts plus the main-thread fallback), but not
-      // the full multi-stage worst case.
       return pdfPageToPng(new Uint8Array(buf), 1, 1.2, "#ffffff", { overallTimeoutMs: 15_000 });
     };
     void rasterizeLatest()
@@ -546,7 +532,6 @@ export function Library() {
       })
       .catch((error) => {
         void logError("library thumbnail", error);
-        // No permanent negative cache: the project may compile later.
         setThumbs((t) => (t[id] === undefined ? t : { ...t, [id]: null }));
       })
       .finally(() => {
@@ -616,9 +601,6 @@ export function Library() {
     [],
   );
 
-  // Returning to the library refetches, so externally created or edited
-  // projects (and their dates) show up. The store single-flights this with
-  // App.tsx's boot call, so mounting during boot costs no extra IPC.
   useEffect(() => {
     void refreshProjects();
   }, [refreshProjects]);
@@ -910,8 +892,6 @@ export function Library() {
 
   const renderFirstRunWelcome = () => (
     projects.length === 0 && (
-      // Until the first listProjects resolves we don't know whether the
-      // library is empty, so don't flash the first-run welcome.
       projectsLoaded ? (
       <Empty className="min-h-[60vh] py-10">
         <EmptyHeader className="max-w-2xl">
@@ -1251,7 +1231,6 @@ export function Library() {
       </div>
       </div>
 
-      {/* New Project gallery is mounted globally (GlobalNewProject), not here. */}
       <ShareDialogHost />
       {renderPreviewDialog()}
 

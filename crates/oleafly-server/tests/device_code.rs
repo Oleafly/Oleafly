@@ -173,7 +173,6 @@ async fn the_complete_link_goes_straight_to_the_page_that_names_the_device() {
         "{}",
         page.body
     );
-    // Turning someone else's sign-in away is still one click, as a quiet link.
     assert!(
         page.body
             .contains("<button type=\"submit\" class=\"quiet\">"),

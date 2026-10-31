@@ -1509,6 +1509,7 @@
         "missing": "Nie znaleziono na tym komputerze."
       },
       "managedIdle": "Nieużywane. Oleafly najpierw korzysta z kopii znalezionej na tym komputerze.",
+      "superseded": "Nieużywane. Oleafly korzysta teraz z narzędzia {{tool}} {{version}}.",
       "download": {
         "optional": "Opcjonalne. Oleafly już korzysta z kopii na tym komputerze.",
         "license": "Licencja {{license}}.",

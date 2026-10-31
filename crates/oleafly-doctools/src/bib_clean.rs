@@ -1,8 +1,3 @@
-//! On-demand BibTeX library cleaning (moved from the app).
-//! On-demand BibTeX library cleaning: normalize citation keys to the app's
-//! `firstauthorYEARfirstword` scheme, dedupe compatible DOI entries and flag
-//! similar titles. Preview fingerprints the source before citations are updated.
-
 use biblatex::{Bibliography, ChunksExt, Entry, Pair, Person, RawBibliography, RawEntry, Spanned};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap};
@@ -17,7 +12,6 @@ const YEAR_WINDOW: i64 = 1;
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanAction {
-    /// "renamed-key" | "removed-duplicate" | "advisory"
     pub kind: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub old: Option<String>,
@@ -27,7 +21,6 @@ pub struct CleanAction {
     pub removed: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kept: Option<String>,
-    /// How a duplicate was detected: "doi", "title", or "similar title".
     #[serde(skip_serializing_if = "Option::is_none")]
     pub by: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -152,8 +145,6 @@ fn normalize_title(raw: &str) -> String {
         .to_ascii_lowercase()
 }
 
-/// Suffix a/b/... when a normalized key collides, mirroring the TS
-/// collisionSuffix helper.
 fn collision_suffix(mut n: usize) -> String {
     let mut s = String::new();
     loop {
@@ -173,8 +164,6 @@ fn entry_richness(entry: &Entry) -> usize {
         .count()
 }
 
-/// Apply disjoint edits against the original text, so a renamed key cannot
-/// accidentally be rewritten again by a later mapping.
 fn edit_text(source: &str, mut edits: Vec<(std::ops::Range<usize>, String)>) -> String {
     edits.sort_by_key(|(range, _)| range.start);
     let mut out = String::new();
@@ -264,16 +253,12 @@ fn citation_renames(actions: &[CleanAction]) -> HashMap<String, String> {
 const VERBATIM_ENVIRONMENTS: [&str; 5] =
     ["verbatim", "Verbatim", "lstlisting", "minted", "comment"];
 
-/// How a LaTeX citation command takes its arguments.
 struct CitationCommand {
-    /// The plural form (`\cites`) takes any number of groups.
     multiple: bool,
-    /// The volume forms (`\volcite`) take a volume group before the keys.
     volume: bool,
 }
 
 impl CitationCommand {
-    /// Braced groups a non-plural command reads.
     fn groups(&self) -> usize {
         if self.volume {
             2
@@ -337,8 +322,6 @@ fn citation_command(name: &str) -> Option<CitationCommand> {
     })
 }
 
-/// The end of the citation key that starts at `start`. A sentence-ending
-/// period is not part of a citation unless that exact key exists in the plan.
 fn reference_key_end(text: &str, start: usize, renames: &HashMap<String, String>) -> usize {
     let mut end = start;
     for ch in text[start..].chars().take_while(|c| key_char(*c)) {
@@ -353,7 +336,6 @@ fn reference_key_end(text: &str, start: usize, renames: &HashMap<String, String>
     end
 }
 
-/// Length of a LaTeX `\verb` span at the start of `tail`.
 fn tex_verb_length(tail: &str) -> Option<usize> {
     let start = if tail.as_bytes().get(5) == Some(&b'*') {
         6
@@ -369,7 +351,6 @@ fn tex_verb_length(tail: &str) -> Option<usize> {
         })
 }
 
-/// Length of a verbatim-like LaTeX environment at the start of `tail`.
 fn tex_environment_length(tail: &str) -> Option<usize> {
     VERBATIM_ENVIRONMENTS.iter().find_map(|env| {
         tail.starts_with(&format!("\\begin{{{env}}}")).then(|| {
@@ -379,7 +360,6 @@ fn tex_environment_length(tail: &str) -> Option<usize> {
     })
 }
 
-/// Length of the LaTeX comment or verbatim text at the start of `tail`.
 fn tex_masked_length(tail: &str) -> Option<usize> {
     if tail.starts_with('%') {
         Some(tail.find('\n').unwrap_or(tail.len()))
@@ -395,7 +375,6 @@ fn tex_masked_length(tail: &str) -> Option<usize> {
     }
 }
 
-/// Length of the backtick code span or fence at the start of `tail`.
 fn code_span_length(tail: &str) -> Option<usize> {
     if !tail.starts_with('`') {
         return None;
@@ -409,7 +388,6 @@ fn code_span_length(tail: &str) -> Option<usize> {
     )
 }
 
-/// The end of the Typst string that opens at `start`.
 fn typst_string_end(source: &str, start: usize) -> usize {
     let mut end = start + 1;
     while end < source.len() {
@@ -425,7 +403,6 @@ fn typst_string_end(source: &str, start: usize) -> usize {
     end
 }
 
-/// Whether a quoted Typst string holds a reference to a key the plan renames.
 fn quotes_renamed_reference(quoted: &str, renames: &HashMap<String, String>) -> bool {
     quoted
         .char_indices()
@@ -458,8 +435,6 @@ fn typst_block_comment_end(source: &str, start: usize) -> usize {
     end
 }
 
-/// Length of the Typst string or comment at byte `i`. A string may hold a
-/// reference to a renamed key; that sets `quoted_reference`.
 fn typst_masked_length(
     source: &str,
     i: usize,
@@ -469,9 +444,6 @@ fn typst_masked_length(
     let tail = &source[i..];
     if tail.starts_with('"') {
         let end = typst_string_end(source, i);
-        // Quotes may delimit code strings or quoted markup. Preserve both,
-        // and refuse a project rewrite if that ambiguity could leave a
-        // renamed citation unresolved.
         if quotes_renamed_reference(&source[i..end], renames) {
             *quoted_reference = true;
         }
@@ -485,7 +457,6 @@ fn typst_masked_length(
     }
 }
 
-/// Length of a `~~~` fenced code block at the start of `tail`.
 fn tilde_fence_length(tail: &str) -> usize {
     let tildes = |text: &str| text.bytes().take_while(|b| *b == b'~').count();
     let count = tildes(tail.trim_start_matches(' '));
@@ -504,7 +475,6 @@ fn tilde_fence_length(tail: &str) -> usize {
     length
 }
 
-/// Length of the Markdown code block or comment at byte `i`.
 fn markdown_masked_length(source: &str, i: usize) -> Option<usize> {
     let tail = &source[i..];
     let line_start = i == 0 || source.as_bytes()[i - 1] == b'\n';
@@ -519,7 +489,6 @@ fn markdown_masked_length(source: &str, i: usize) -> Option<usize> {
     }
 }
 
-/// Length of the comment or code that starts at byte `i`, if one does.
 fn masked_length(
     source: &str,
     i: usize,
@@ -553,9 +522,6 @@ fn unmasked_step(tail: &str) -> usize {
     }
 }
 
-/// Mask comments and code without changing byte offsets. The original text
-/// supplies every replacement, preserving formatting and comment contents.
-/// The flag says a quoted Typst string held a reference to a renamed key.
 fn mask_source(source: &str, extension: &str, renames: &HashMap<String, String>) -> (String, bool) {
     let mut quoted_reference = false;
     let mut masked = source.as_bytes().to_vec();
@@ -572,8 +538,6 @@ fn mask_source(source: &str, extension: &str, renames: &HashMap<String, String>)
     (mask, quoted_reference)
 }
 
-/// The index of the bracket that closes the group opened just before
-/// `cursor`, if the text has one.
 fn matching_close(bytes: &[u8], mut cursor: usize, open: u8, close: u8) -> Option<usize> {
     let mut depth = 1;
     while cursor < bytes.len() && depth > 0 {
@@ -590,8 +554,6 @@ fn matching_close(bytes: &[u8], mut cursor: usize, open: u8, close: u8) -> Optio
     (depth == 0).then_some(cursor)
 }
 
-/// Rewrite the keys in the braced groups after a LaTeX citation command and
-/// return where scanning resumes. `cursor` starts just after the command name.
 fn citation_group_edits(
     source: &str,
     bytes: &[u8],
@@ -675,8 +637,6 @@ fn is_suppressed_author(source: &str, at: usize) -> bool {
                 .is_some_and(|c| !key_char(c)))
 }
 
-/// Whether the `@` at `at` ends a longer word (an email address, a macro, a
-/// doubled sign) instead of starting a citation.
 fn at_sign_is_embedded(source: &str, at: usize, extension: &str) -> bool {
     let suppressed_author = extension == "md" && is_suppressed_author(source, at);
     !suppressed_author
@@ -707,7 +667,6 @@ fn at_sign_edits(
     edits
 }
 
-/// The text after the `<` of a `cite(<key>)` call, given the text after `cite`.
 fn typst_cite_key(after_cite: &str) -> Option<&str> {
     after_cite
         .trim_start()
@@ -848,7 +807,6 @@ fn contains_fields(keeper: &Entry, other: &Entry) -> bool {
         })
 }
 
-/// Edits for the keys that the `crossref`-style fields of an entry name.
 fn relation_key_edits(
     source: &str,
     fields: Vec<Pair<'_>>,
@@ -872,10 +830,6 @@ fn relation_key_edits(
         .collect()
 }
 
-/// Remove entries whose DOI matches a keeper that fully preserves their
-/// fields, and note the other DOI matches. Only fully preserved entries are
-/// removed: similar titles are review hints, not sufficient evidence to
-/// delete a reference, especially across editions or different authors.
 fn merge_doi_duplicates(
     bib: Bibliography,
     commented: &std::collections::HashSet<&str>,
@@ -941,7 +895,6 @@ fn linked(links: &HashMap<&str, Vec<String>>, a: &str, b: &str) -> bool {
     names(a, b) || names(b, a)
 }
 
-/// Whether two normalized titles, with their years, look like one work.
 fn titles_are_similar(first: &(String, i64), second: &(String, i64)) -> bool {
     let (a, year_a) = first;
     let (b, year_b) = second;
@@ -954,10 +907,7 @@ fn titles_are_similar(first: &(String, i64), second: &(String, i64)) -> bool {
             >= FUZZY_TITLE_THRESHOLD
 }
 
-/// Flag entries whose title is close to an earlier entry's.
 fn flag_similar_titles(kept: &[Entry], actions: &mut Vec<CleanAction>) {
-    // Bound expensive fuzzy comparisons in large libraries; exact DOI matching
-    // remains linear regardless of library size.
     if kept.len() > 500 {
         actions.push(CleanAction::advisory(
             String::new(),
@@ -992,7 +942,6 @@ fn flag_similar_titles(kept: &[Entry], actions: &mut Vec<CleanAction>) {
     }
 }
 
-/// The first key of the form `desired`, `desiredb`, ... that is not taken.
 fn unused_key(desired: &str, taken: &std::collections::HashSet<String>) -> String {
     let mut final_key = desired.to_string();
     let mut n = 0;
@@ -1003,8 +952,6 @@ fn unused_key(desired: &str, taken: &std::collections::HashSet<String>) -> Strin
     final_key
 }
 
-/// Rename keys to the app scheme, keeping each key unique, and note the
-/// entries that lack an author, title or year.
 fn rename_keys(kept: &mut [Entry], actions: &mut Vec<CleanAction>) {
     let mut taken: std::collections::HashSet<String> =
         kept.iter().map(|entry| entry.key.clone()).collect();
@@ -1044,8 +991,6 @@ fn rename_keys(kept: &mut [Entry], actions: &mut Vec<CleanAction>) {
     }
 }
 
-/// Edits that delete the removed entries, rename the kept keys and rewrite
-/// the keys that `crossref`-style fields name.
 fn library_edits(
     source: &str,
     entries: Vec<Spanned<RawEntry<'_>>>,
@@ -1071,8 +1016,6 @@ fn library_edits(
     Ok(edits)
 }
 
-/// The pure cleaning pass: parse `source`, plan every action, and emit the
-/// rewritten library. Exposed separately so it is unit-testable.
 pub fn clean_bibtex_source(source: &str) -> Result<CleanOutcome, DocError> {
     let bib = crate::bib_parse::parse_library(source)
         .map_err(|e| format!("the library could not be parsed: {e}"))?;
@@ -1127,7 +1070,6 @@ pub struct CleanPlan {
     changes: Vec<FileChange>,
 }
 
-/// Read every project source, within the size limits.
 fn read_project_sources(
     root: &Path,
     paths: Vec<PathBuf>,
@@ -1154,8 +1096,6 @@ fn read_project_sources(
     Ok(snapshots)
 }
 
-/// A key shared by another library is ambiguous. Preserve both libraries and
-/// ask the user to resolve the collision before rewriting citations.
 fn check_other_libraries(
     root: &Path,
     target: &Path,
@@ -1178,9 +1118,6 @@ fn check_other_libraries(
     Ok(())
 }
 
-/// The new text of a project file other than the cleaned library. A `.bib`
-/// file only follows renamed `crossref`-style keys; other sources have their
-/// citations rewritten.
 fn rewrite_project_source(
     source: &str,
     extension: &str,
@@ -1311,8 +1248,6 @@ pub fn apply_plan_to(
         }
         plan.outcome.backup_path = reported;
     }
-    // Stage every replacement before touching any destination. Keep originals
-    // for rollback if publishing a later file fails.
     let mut staged = Vec::new();
     for change in &plan.changes {
         staged.push(oleafly_core::atomic::stage_beside(
@@ -1353,12 +1288,10 @@ impl CleanPlan {
         &self.outcome.preview_token
     }
 
-    /// Whether applying the plan changes any file.
     pub fn changes_files(&self) -> bool {
         !self.changes.is_empty()
     }
 
-    /// The preview outcome, giving up the plan.
     pub fn into_outcome(self) -> CleanOutcome {
         self.outcome
     }

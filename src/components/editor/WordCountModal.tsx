@@ -10,11 +10,6 @@ import {
 import { isWysiwygActive } from "@/components/editor/wysiwyg/controller";
 import { ModalShell } from "@/components/ui/modal-shell";
 
-/**
- * The command-palette route into Project info. It renders the same content as
- * the toolbar popover so the two can never drift apart; only the chrome around
- * it differs.
- */
 export function WordCountModal() {
   const { t } = useTranslation(["common", "editor"]);
   const open = useSettingsStore((s) => s.wordCountOpen);

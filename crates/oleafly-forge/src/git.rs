@@ -1,19 +1,11 @@
-//! What reaches Git: tokens it can carry safely and paths it reads from its
-//! own configuration.
 use std::path::Path;
 
-/// The shortest token Oleafly accepts. Every server issues longer ones, so a
-/// shorter paste is a fragment.
 pub const MIN_TOKEN_LEN: usize = 8;
 
-/// A token Git's credential protocol can carry: the secret store's rule
-/// (printable ASCII without quotes or backslashes, at most 4096 bytes) plus
-/// a minimum length.
 pub fn valid_token(token: &str) -> bool {
     token.len() >= MIN_TOKEN_LEN && oleafly_secrets::accounts::valid_forge_token(token)
 }
 
-/// A file path as a Git configuration value on this platform.
 pub fn git_config_path(path: &Path) -> String {
     git_config_path_for(&path.to_string_lossy(), cfg!(windows))
 }

@@ -63,8 +63,6 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import type { PageSize } from "@/features/tools-ai/scan-estimate";
 import { scanProgressLabel } from "@/features/tools-ai/scan-progress";
 
-// The App shell loads this view eagerly, so the Tools model banner (model
-// list, estimate, Mathpix status) stays out of the entry chunk.
 const ScanTranscribeBanner = lazy(() =>
   import("@/components/tools/ScanTranscribeBanner").then((module) => ({
     default: module.ScanTranscribeBanner,
@@ -172,7 +170,6 @@ function PdfDropzoneLanding() {
                       data-testid="pdf-dropzone-browse"
                       className="font-medium text-primary underline underline-offset-2"
                       onClick={(e) => {
-                        // The whole dropzone opens the picker; don't fire it twice.
                         e.stopPropagation();
                         inputRef.current?.click();
                       }}
@@ -286,10 +283,6 @@ function PagePreviews() {
   );
 }
 
-/**
- * Where a scanned PDF's pages go, the Tools model and the estimate. It sits
- * above the panes, so every view shows it next to Transcribe scan.
- */
 function ScanNotice() {
   const { t } = useTranslation(["library"]);
   const storePages = useImportStore((s) => s.pages);
@@ -311,7 +304,6 @@ function ScanNotice() {
   );
 }
 
-/** The service Transcribe scan would send pages to, or null for this computer. */
 function usePendingScanDestination(pending: boolean): string | null {
   const [config, setConfig] = useState<AppConfig | null>(() => knownProviderConfig());
   useEffect(() => {
@@ -426,12 +418,10 @@ function FiguresStrip() {
   );
 }
 
-/** True for a scanned document whose pages have not been transcribed yet. */
 function useScanPending(): boolean {
   return useImportStore((s) => Boolean(s.result?.report.likelyScanned) && !s.scanTranscribed);
 }
 
-/** Runs one create-style action at a time; `creating` is true while it runs. */
 function useSingleCreate(): {
   creating: boolean;
   runCreate: (work: () => Promise<unknown>) => void;
@@ -537,8 +527,6 @@ function ImportActions({
   );
 }
 
-/** Where the document stays: this computer, the model that transcribed it, or
- * before a transcription the service Transcribe scan would send the pages to. */
 function ImportDestinationBadge({
   pdfLoaded,
   pendingScanTo,
@@ -643,7 +631,6 @@ function ImportViewSwitcher() {
   );
 }
 
-/** The conversion or scan progress, the cancel button for a scan and any error. */
 function ImportRunStatus() {
   const { t } = useTranslation(["library", "researchTools"]);
   const busy = useImportStore((s) => s.busy);
@@ -715,7 +702,6 @@ export function PdfImportView() {
   const { creating, runCreate } = useSingleCreate();
   const fullscreen = useFullscreen();
   const active = page === "pdf-import";
-  // Before a transcription, the pill names where Transcribe scan would send the pages.
   const pendingScanTo = usePendingScanDestination(active && scanPending);
   useEffect(() => {
     if (active) void refineAvailable().then(setRefineable);

@@ -240,7 +240,6 @@ export async function forwardFromCursor() {
   }
   const typst = files.engine.id === "typst";
   const column = typst ? cursorColumn() : null;
-  // Read before any await, while the cursor is still where the jump began.
   const spot = wordAtCursor();
   try {
     let compiledPath = activePath;
@@ -275,7 +274,6 @@ export async function forwardFromCursor() {
   }
 }
 
-// So a just-opened file has time to mount before we move the cursor into it.
 function nextFrames(n: number): Promise<void> {
   return new Promise((resolve) => {
     const step = (k: number) =>
@@ -284,7 +282,6 @@ function nextFrames(n: number): Promise<void> {
   });
 }
 
-// A log or PDF location with no file refers to the active file.
 export async function openFileAndGotoLine(file: string | null, line: number, column?: number) {
   if (!file) {
     if (column === undefined) gotoLine(line);
@@ -295,10 +292,6 @@ export async function openFileAndGotoLine(file: string | null, line: number, col
   if (target) await openProjectLocation(column === undefined ? { path: target, line } : { path: target, line, column });
 }
 
-// In a multi-file project the click may land on content from a different file
-// (an `\input` child), so switch to that file before jumping. `hit.file` is
-// project-relative when the input lives in the project; resolve it against the
-// project tree.
 async function resolveInverseTarget(
   context: SyncTexContext,
   hitFile: string,
@@ -324,7 +317,7 @@ async function focusInverseTarget(
   const activePath = useFilesStore.getState().activePath;
   if (!targetPath || targetPath === activePath) return true;
   await store.openFile(targetPath);
-  await nextFrames(2); // let the editor mount the new file
+  await nextFrames(2);
   return contextStillValid(context);
 }
 

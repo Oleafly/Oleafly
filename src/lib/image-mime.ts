@@ -1,6 +1,3 @@
-// Shared image extension/MIME helpers. data: URLs are used app-wide because
-// the CSP only allows img-src data:.
-
 interface ImageFormat {
   readonly extension: string;
   readonly mime: string;

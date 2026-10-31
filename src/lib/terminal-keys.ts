@@ -1,12 +1,6 @@
-// What a key pressed in the terminal does: bytes for the shell, an app
-// shortcut, copy or paste, find, or xterm's own handling. Pure, so the byte
-// table is tested per platform; TerminalPane wires it into xterm and the app's
-// capture-phase shortcut handlers ask it which keys the terminal owns.
-
 export type TerminalPlatform = "mac" | "windows" | "linux";
 export type TerminalShiftEnter = "newline" | "enter";
 
-/** The parts of a KeyboardEvent the router reads. */
 export interface TerminalKeyEvent {
   type: string;
   key: string;
@@ -22,22 +16,16 @@ export interface TerminalKeyEvent {
 export interface TerminalKeyContext {
   platform: TerminalPlatform;
   shiftEnter: TerminalShiftEnter;
-  /** The session's shell is WSL (Windows only). */
   wsl: boolean;
-  /** The shell program's name, such as `zsh` or `bash`, when known. */
   shellName?: string | null;
   hasSelection: boolean;
   optionIsMeta: boolean;
-  /** Allow-listed app shortcuts that work from inside the terminal. */
   isAppShortcut: (event: TerminalKeyEvent) => boolean;
 }
 
 export type TerminalKeyAction =
-  /** xterm handles the key. */
   | { kind: "default" }
-  /** These bytes go to the PTY and the event is cancelled. */
   | { kind: "send"; data: string }
-  /** xterm ignores the key and the event reaches the app's listeners. */
   | { kind: "app" }
   | { kind: "copy"; clearSelection: boolean }
   /** The webview runs its own paste, which xterm turns into a bracketed paste. */
@@ -46,7 +34,6 @@ export type TerminalKeyAction =
   | { kind: "clear" }
   | { kind: "ignore" };
 
-/** Marks the terminal dock's root, so focus inside it can be recognised. */
 export const TERMINAL_DOCK_ATTRIBUTE = "data-terminal-dock";
 
 const DEFAULT: TerminalKeyAction = { kind: "default" };
@@ -82,10 +69,8 @@ const NAMED_TERMINAL_KEYS = new Set([
 const FUNCTION_KEY = /^F(?:[1-9]|1\d|2[0-4])$/;
 const LETTER = /^[a-z]$/i;
 
-/** Keys other than letters that make a control character with Ctrl. */
 const CTRL_SYMBOLS = new Set([" ", "[", "\\", "]", "/", "@", "^", "_", "?", "2", "3", "4", "5", "6", "7", "8"]);
 
-/** The platform whose key conventions the terminal follows, read on every call. */
 export function terminalPlatform(): TerminalPlatform {
   const platform =
     typeof navigator === "undefined" ? "" : navigator.platform || navigator.userAgent || "";
@@ -101,7 +86,6 @@ interface Modifiers {
   meta?: boolean;
 }
 
-/** Exactly these modifiers and no others. */
 function only(event: TerminalKeyEvent, modifiers: Modifiers): boolean {
   return (
     event.ctrlKey === Boolean(modifiers.ctrl) &&
@@ -119,9 +103,7 @@ function send(data: string): TerminalKeyAction {
   return { kind: "send", data };
 }
 
-/** Shells whose line editor inserts a new line on ESC CR (Alt+Enter). */
 const ESC_CR_SHELLS: ReadonlySet<string> = new Set(["zsh", "fish"]);
-/** Readline shells, where ESC CR is the vi-mode toggle. */
 const READLINE_SHELLS: ReadonlySet<string> = new Set(["bash", "sh"]);
 
 function shellProgram(ctx: TerminalKeyContext): string {
@@ -134,7 +116,6 @@ function windowsShiftEnterBytes(ctx: TerminalKeyContext): string {
   const shell = shellProgram(ctx);
   // Git Bash is bash with the same readline binding as on Linux.
   if (READLINE_SHELLS.has(shell)) return "\n";
-  // cmd has no multi-line input; Alt+Enter only submits the line there.
   if (shell === "cmd") return "\r";
   // ESC CR survives ConPTY and libuv and is a no-op at a PSReadLine prompt.
   return "\x1b\r";
@@ -151,7 +132,6 @@ function shiftEnterBytes(ctx: TerminalKeyContext): string {
   return ESC_CR_SHELLS.has(shellProgram(ctx)) ? "\x1b\r" : "\n";
 }
 
-/** Ctrl+Shift+C copies a selection (nothing else happens without one), Ctrl+Shift+V pastes. */
 function shiftClipboardChord(key: string, ctx: TerminalKeyContext): TerminalKeyAction | null {
   if (key === "c") {
     return ctx.hasSelection ? { kind: "copy", clearSelection: false } : { kind: "ignore" };
@@ -213,12 +193,10 @@ function isFindChord(event: TerminalKeyEvent, key: string, platform: TerminalPla
   return platform === "mac" ? only(event, { meta: true }) : only(event, { ctrl: true, shift: true });
 }
 
-/** Ctrl+/ sends 0x1f, also on layouts that need Shift for "/". */
 function isCtrlSlash(event: TerminalKeyEvent): boolean {
   return event.key === "/" && event.ctrlKey && !event.altKey && !event.metaKey;
 }
 
-/** What a key event in the terminal does. Only keydown is routed. */
 export function routeTerminalKey(event: TerminalKeyEvent, ctx: TerminalKeyContext): TerminalKeyAction {
   if (event.type !== "keydown") return DEFAULT;
   // IME composition (including its Enter) and keyCode 229 belong to the IME.
@@ -234,17 +212,10 @@ export function routeTerminalKey(event: TerminalKeyEvent, ctx: TerminalKeyContex
   if (isCtrlSlash(event)) return send("\x1f");
   const mapped = arrowWithAlt(event, platform) ?? lineAndWordKeys(event, platform);
   if (mapped) return mapped;
-  // Every other Cmd chord on macOS is an app shortcut (menu items included).
   if (platform === "mac" && event.metaKey) return { kind: "app" };
   return DEFAULT;
 }
 
-/**
- * Whether the terminal can turn this key into input: control characters,
- * Alt/Meta prefixes, named keys, printable characters and the keys the
- * router maps. App chords with no terminal meaning (Ctrl+= zoom) are not
- * terminal keys, so they keep working from the terminal. AltGr characters have a single-character key, so they count.
- */
 export function isTerminalKey(event: TerminalKeyEvent, platform: TerminalPlatform): boolean {
   if (MODIFIER_KEYS.has(event.key)) return false;
   if (event.metaKey) {
@@ -276,7 +247,6 @@ export function isCtrlTerminalKey(event: TerminalKeyEvent): boolean {
   return !event.shiftKey && (NAMED_TERMINAL_KEYS.has(event.key) || FUNCTION_KEY.test(event.key));
 }
 
-/** Whether a capture-phase app handler must leave this key to the terminal. */
 export function terminalClaimsKey(event: TerminalKeyEvent, ctx: TerminalKeyContext): boolean {
   const action = routeTerminalKey(event, ctx);
   if (action.kind === "app") return false;
@@ -294,7 +264,6 @@ export function isTerminalTarget(target: EventTarget | null): boolean {
   return closestFrom(target, ".xterm") !== null;
 }
 
-/** Whether the event target is anywhere inside the terminal dock. */
 export function isInsideTerminalDock(target: EventTarget | null): boolean {
   return closestFrom(target, `[${TERMINAL_DOCK_ATTRIBUTE}]`) !== null;
 }

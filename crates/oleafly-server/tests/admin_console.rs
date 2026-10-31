@@ -479,7 +479,6 @@ async fn the_overview_charts_sign_ins_over_the_last_30_utc_days() {
     let admin = seed_member(&app, ServerRole::Admin).await;
     let maintainer = seed_member(&app, ServerRole::Maintainer).await;
     let member = seed_member(&app, ServerRole::Member).await;
-    // The test clock starts on Thursday 9 October 2025 at 08:53 UTC.
     let now = app.clock.now_ms();
     let today = now - now.rem_euclid(DAY);
     let first = today - 29 * DAY;
@@ -527,7 +526,6 @@ async fn the_overview_charts_sign_ins_over_the_last_30_utc_days() {
             },
         ]
     );
-    // 29 days before a Thursday is a Wednesday, like the day before.
     assert_eq!(
         charted.by_hour,
         vec![
@@ -610,7 +608,6 @@ struct SignInSetup {
     email_link_setting: bool,
 }
 
-// `mail` means email is set up and a check reached the mail server.
 async fn overview_and_manifest(
     setup: &SignInSetup,
 ) -> (

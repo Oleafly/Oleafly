@@ -339,6 +339,7 @@
   },
   "notebook": {
     "code_needed": "{{engine}} trebuie să ruleze cod ca să compileze acest document, iar codul este oprit pentru acest proiect. Permite rularea codului în acest proiect ca să-l poți compila.",
+    "export_stopped": "Exportul a fost oprit.",
     "quarto_missing": "Quarto nu este instalat. Instalează-l din Setări > Motoare > Quarto, apoi compilează din nou.",
     "calepin_missing": "Calepin nu este instalat. Instalează-l din Setări > Motoare > Calepin, apoi compilează din nou.",
     "not_offered": "Oleafly nu poate descărca {{tool}} pentru acest computer. Instalează-l tu, apoi compilează din nou.",

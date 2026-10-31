@@ -9,10 +9,6 @@ import type { DesktopAppsStatus } from "@/lib/desktop-apps";
 import { useCuaSpacesConnectorStore } from "@/store/cua-spaces-connector";
 import { runInTerminal } from "./run-in-terminal";
 
-/**
- * 0.4.8 I: Cua Spaces as an MCP server. Read-only and without the user's
- * agent sign-ins unless the user turns those on.
- */
 export function SpacesCard({
   status,
   projectId,
@@ -99,7 +95,6 @@ export function SpacesCard({
         <IntegrationError>{t(($) => $.settings.integrations.desktopApps.spaces.failed)}</IntegrationError>
       ) : null}
       {declined ? (
-        // Saying no to the system question is a note, not a failure; the switches show what is stored.
         <output className="mt-2 block text-xs text-muted-foreground" data-testid="desktop-apps-spaces-declined">
           {t(($) => $.errors.desktop_apps.change_declined)}
         </output>

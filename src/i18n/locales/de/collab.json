@@ -224,6 +224,8 @@
     "suggestion_not_found": "Diesen Vorschlag gibt es nicht mehr. Möglicherweise hat ihn jemand übernommen oder verworfen.",
     "suggestion_not_yours": "Nur die Person, die diesen Vorschlag gemacht hat, kann ihn zurückziehen.",
     "suggestion_role": "Ihre Rolle in diesem Projekt erlaubt keine Vorschläge.",
+    "suggestion_changed": "Der Text rund um diesen Vorschlag hat sich geändert, daher muss ihn ein Inhaber oder Bearbeiter übernehmen oder verwerfen.",
+    "suggestion_too_long": "Eine vorgeschlagene Löschung darf höchstens 20.000 Zeichen lang sein. Löschen Sie jeweils nur einen kleineren Teil.",
     "chat_role": "Ihre Rolle in diesem Projekt erlaubt das im Chat nicht.",
     "history_unavailable": "Der Verlauf dieses Projekts ist noch nicht auf diesem Computer. Versuchen Sie es erneut, sobald er abgeglichen ist.",
     "account_storage_full": "Das Konto der Person, der das Projekt gehört, hat auf diesem Server keinen Speicher mehr frei. Entfernen Sie einige Dateien, um Platz zu schaffen, oder bitten Sie den Admin des Servers um mehr Speicher.",
@@ -1126,7 +1128,7 @@
     },
     "restoreProjectConfirm": {
       "title": "Das ganze Projekt wiederherstellen?",
-      "description": "Jede Datei wird für alle in diesem Projekt auf den Stand vom {{time}} zurückgesetzt. Der aktuelle Text bleibt im Verlauf, sodass Sie zu ihm zurückkehren können.",
+      "textAndDeleted": "Der Text jeder Datei wird für alle in diesem Projekt auf den Stand vom {{time}} zurückgesetzt, und gelöschte Dateien kommen zurück. Umbenannte Dateien behalten ihre neuen Namen, und Abbildungen und später hinzugefügte Dateien bleiben unverändert. Der aktuelle Text bleibt im Verlauf, sodass Sie zu ihm zurückkehren können.",
       "confirm": "Projekt wiederherstellen"
     },
     "compareTitle": "Änderungen zwischen zwei Versionen",

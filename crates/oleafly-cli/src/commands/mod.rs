@@ -1,6 +1,3 @@
-//! Every command lives in a module here (or in a feature's own module) and
-//! is listed once in `registry.rs`. A module's `Commands` enum holds its
-//! top-level verbs; the registry flattens them into `oleafly`'s commands.
 use crate::contract::{CliError, Context, Outcome};
 
 pub mod build;
@@ -18,9 +15,7 @@ pub mod templates;
 pub mod typst_cmd;
 pub mod workspace;
 
-/// What a command module provides.
 pub trait CommandModule: clap::Subcommand + std::fmt::Debug + Send + Sized + 'static {
-    /// Stable name for the JSON envelope's `command`, such as "remote sync".
     fn name(&self) -> &'static str;
 
     fn run(
@@ -28,14 +23,11 @@ pub trait CommandModule: clap::Subcommand + std::fmt::Debug + Send + Sized + 'st
         ctx: &Context,
     ) -> impl std::future::Future<Output = Result<Outcome, CliError>> + Send;
 
-    /// True when the command handles Ctrl+C itself (watch, mcp, agent run).
     fn handles_interrupt(&self) -> bool {
         false
     }
 }
 
-/// Generates `Command` (every module's verbs, flattened) with its `name`,
-/// `handles_interrupt` and `run`.
 #[macro_export]
 macro_rules! command_modules {
     ($( $(#[$attr:meta])* $variant:ident => $ty:ty ),* $(,)?) => {

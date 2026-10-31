@@ -21,11 +21,6 @@ pub struct UnusedFile {
     pub hash: String,
 }
 
-// Stores a file and records it for the project. The project's size limit
-// is checked again where the file is recorded, so uploads that pass the
-// first check together can't take the project past it: the one that
-// would is refused, and its file is removed later unless another project
-// holds it.
 #[allow(clippy::too_many_arguments)]
 pub async fn upload(
     db: &Db,

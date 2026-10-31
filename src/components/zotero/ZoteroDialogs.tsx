@@ -28,13 +28,11 @@ const ROW_STYLE = { contentVisibility: "auto", containIntrinsicSize: "36px" } as
 function BibliographyChoiceDialog() {
   const { t } = useTranslation(["common", "references"]);
   const pending = useZoteroDialogStore((state) => state.bibliographyChoice);
-  const [choice, setChoice] = useState<string | null>(null);
+  const [picked, setPicked] = useState<{ readonly request: typeof pending; readonly path: string } | null>(null);
   const titleId = useId();
   const descriptionId = useId();
-  useEffect(() => {
-    setChoice(pending?.value[0] ?? null);
-  }, [pending]);
   if (!pending) return null;
+  const choice = picked?.request === pending ? picked.path : (pending.value[0] ?? "");
   return (
     <ModalShell
       open
@@ -54,8 +52,8 @@ function BibliographyChoiceDialog() {
         {t(($) => $.references.zotero.chooseBibliography.description)}
       </p>
       <RadioGroup
-        value={choice ?? undefined}
-        onValueChange={setChoice}
+        value={choice}
+        onValueChange={(path) => setPicked({ request: pending, path })}
         aria-labelledby={titleId}
         className="mt-4"
       >

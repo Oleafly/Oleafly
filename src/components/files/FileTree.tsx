@@ -97,14 +97,12 @@ import {
   type PeerMarks,
 } from "@/components/collab/CollabSlots";
 
-/** Opens a project terminal that starts in `dir`, the project root when empty. */
 function openInTerminal(dir: string): void {
   const title = dir ? basename(dir) : useFilesStore.getState().projectName;
   void import("@/lib/terminal-launch")
     .then(({ openTerminalWith, TerminalLaunchError }) =>
       openTerminalWith({ title, cwd: dir }).catch((error: unknown) => {
         if (!(error instanceof TerminalLaunchError)) throw error;
-        // The launcher already announced a full tab bar.
         if (error.reason === "no-project") toast.info(error.message);
         else if (error.reason === "invalid") toast.error(error.message);
       }),
@@ -431,9 +429,6 @@ export function FileTree({
     () => gitDecorations(gitProjectId === projectId ? gitChanges : []),
     [gitChanges, gitProjectId, projectId],
   );
-  // Git status is otherwise polled only on focus, every minute and from
-  // Source Control. Refresh once after a save of a file Git does not list as
-  // changed yet, so its badge appears on save. Later saves of it cost nothing.
   useEffect(() => {
     if (!projectId) return;
     let timer: number | undefined;
@@ -484,9 +479,6 @@ export function FileTree({
   const previousProjectId = useRef(projectId);
   const projectSession = useRef(0);
   useEffect(() => {
-    // A project switch replaces the complete file tree. Clear every local
-    // interaction state then, and prune state whose path disappeared after a
-    // same-project refresh, so an old selection cannot target another file.
     if (previousProjectId.current !== projectId) {
       previousProjectId.current = projectId;
       projectSession.current += 1;
@@ -586,9 +578,6 @@ export function FileTree({
           remapTreePath(path, from, to),
         ),
       );
-      // A nested draft is only mounted inside its expanded parent. Starting
-      // the draft expanded that parent, so preserve that visibility through
-      // the transient pruning caused by the rename refresh.
       if (remappedDraft.mode && remappedDraft.parent) {
         next.add(remappedDraft.parent);
       }
@@ -649,9 +638,6 @@ export function FileTree({
     try {
       const destination = await renameEntry(from, to);
       if (!currentProjectOperation(operation)) return null;
-      // The store refreshes the tree before this promise resolves. Restore
-      // from the pre-operation snapshot so the refresh cannot discard a
-      // selected or expanded descendant before its path is remapped.
       restoreRemappedInteractionPaths(
         from,
         destination,
@@ -769,9 +755,6 @@ export function FileTree({
     reason: NewEntryFinalizeReason,
     renderedParent: string,
   ) => {
-    // Refreshing the tree during a rename temporarily unmounts a draft whose
-    // parent still has its old path. That focus loss is structural, not a user
-    // request to create the old path, so let the rename restore and remap it.
     if (
       reason === "blur" &&
       ((renameOperationsInFlight.current.get(projectSession.current) ?? 0) > 0 ||
@@ -816,7 +799,7 @@ export function FileTree({
     const base = from.split("/").pop() ?? from;
     const to = toDir ? `${toDir}/${base}` : base;
     if (to === from) return;
-    if (toDir === from || toDir.startsWith(`${from}/`)) return; // into itself / a descendant
+    if (toDir === from || toDir.startsWith(`${from}/`)) return;
     const destination = await renameOrPrompt(from, to, "move");
     if (destination) {
       if (toDir) expand(toDir);
@@ -898,8 +881,6 @@ export function FileTree({
     selected: selected?.path ?? null,
     onSelect: select,
     onOpen: (path) => {
-      // Opening a file from the tree brings the editor forward if a layout was
-      // hiding it (AI-only or preview-only), then shows the file.
       useSettingsStore.getState().revealEditor();
       return openFile(path);
     },
@@ -1079,7 +1060,6 @@ export function FileTree({
         actions={sourceActions}
       >
         {noMainDocument && <NoMainDocumentHint />}
-        {/* The whole list is a drop target for moving entries back to the root. */}
         <div className="relative flex min-h-0 flex-1 flex-col">
         <ContextMenu>
         <ContextMenuTrigger asChild>
@@ -1522,7 +1502,6 @@ function TreeRowEditMenuItems({
   );
 }
 
-/** A changed file's status letter, or a dot on a folder that holds changes. */
 function TreeRowGitMark({ node, git }: Readonly<{ node: TreeNode; git: GitDecorations }>) {
   const meta = (node.isDir ? git.folders : git.files).get(node.path);
   if (!meta) return null;
@@ -1556,7 +1535,6 @@ function TreeRow({
   const hint = hintKey ? t(($) => $.workspace.files[hintKey]) : undefined;
   const rowRef = useRef<HTMLDivElement>(null);
 
-  // Dropping onto a folder targets that folder; onto a file targets its folder.
   const dropDir = node.isDir ? node.path : parentOf(node.path);
 
   const openRowMenu = (e: ReactMouseEvent<HTMLButtonElement>) => {

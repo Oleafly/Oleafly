@@ -157,8 +157,6 @@ function quotedFieldValue(
       valueStyle: "quoted",
       complete,
     },
-    // If a new top-level entry starts before the quote closes, recover at
-    // that entry instead of swallowing the rest of the bibliography.
     next: complete ? end + 1 : end,
     complete,
   };
@@ -477,9 +475,6 @@ function collectCrossReferences(
   const { file, source, starts } = scan;
   for (const field of fields) {
     if (!CROSS_REFERENCE_FIELDS.has(field.name)) continue;
-    // `field.value` is normalized for metadata display. Resolution ranges
-    // must instead be derived from the untouched source slice or whitespace
-    // folding would shift every key after the first newline.
     const originalValue = source.slice(field.valueRange.from, field.valueRange.to);
     for (const match of originalValue.matchAll(/[^,]+/g)) {
       const raw = match[0];

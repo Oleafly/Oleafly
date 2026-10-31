@@ -48,8 +48,6 @@ pub struct ImportOutcome {
     pub error: Option<String>,
 }
 
-/// Remote project id -> library project id, for projects imported from
-/// `base`.
 pub(crate) fn imported_projects(base: &str) -> HashMap<String, String> {
     let Ok(root) = crate::paths::projects_root() else {
         return HashMap::new();
@@ -57,8 +55,6 @@ pub(crate) fn imported_projects(base: &str) -> HashMap<String, String> {
     oleafly_online::projects::imported_projects(&root, base)
 }
 
-/// The account's projects, newest first, each marked with the library
-/// project it was imported as. An expired session is forgotten.
 pub(crate) async fn list(base: &str) -> Result<(Session, Vec<RemoteProject>), String> {
     let http = Http::new(base)?;
     let store = crate::secrets::store()?;

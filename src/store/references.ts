@@ -2,12 +2,6 @@ import { create } from "zustand";
 
 export type ReferenceQueryMode = "references" | "definitions";
 
-/**
- * A references query is an identity, never a result cache. The panel resolves
- * `targetId` from the matching immutable project-intelligence snapshot. That
- * makes an edit or project switch invalidate results immediately instead of
- * leaving stale source locations on screen.
- */
 export interface ReferenceLocation {
   path: string;
   from: number;

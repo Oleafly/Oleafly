@@ -53,7 +53,20 @@ describe("parseServerFrame", () => {
       fileId: "a",
       rev: 3,
       text: "x",
+      resumed: null,
     });
+    expect(parseServerFrame('{"t":"opened","fileId":"a","rev":0,"text":"x","resumed":true}')).toMatchObject({
+      resumed: true,
+    });
+    expect(parseServerFrame('{"t":"done","reqId":"r1"}')).toEqual({ t: "done", reqId: "r1" });
+    expect(parseServerFrame('{"t":"done"}')).toBeNull();
+    expect(parseServerFrame('{"t":"error","code":"chat_role","message":"No","reqId":"r2"}')).toEqual({
+      t: "error",
+      code: "chat_role",
+      message: "No",
+      reqId: "r2",
+    });
+    expect(parseServerFrame('{"t":"error","code":"x"}')).toMatchObject({ reqId: null });
     expect(parseServerFrame('{"t":"ack","fileId":"a","rev":4}')).toEqual({ t: "ack", fileId: "a", rev: 4, length: null });
     expect(parseServerFrame('{"t":"remote","fileId":"a","rev":5,"op":[1,"x",-2],"length":7}')).toEqual({
       t: "remote",

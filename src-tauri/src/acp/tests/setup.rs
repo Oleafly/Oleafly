@@ -49,7 +49,6 @@ fn node_script_cli(folder: &Path) -> Located {
     }
 }
 
-/// A `node` stand-in that reports `version`.
 fn fake_node(folder: &Path, version: &str) -> PathBuf {
     #[cfg(windows)]
     {
@@ -130,8 +129,6 @@ async fn a_node_script_cli_with_an_old_node_is_reported_as_node_too_old() {
 async fn an_installed_bridge_without_node_is_reported_as_missing_node_not_a_missing_bridge() {
     let temp = tempfile::tempdir().unwrap();
     let plan = Plan {
-        // What `resolve_launch` returns for a Node.js bridge receipt when
-        // Node.js cannot be found.
         launch: Err("Install Node.js to run this agent.".into()),
         cli: None,
         cli_rejected: Vec::new(),

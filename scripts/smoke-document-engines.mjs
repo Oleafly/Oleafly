@@ -1,5 +1,3 @@
-// Real compiler smoke tests. No user projects are read or modified.
-// Optional: OLEAFLY_TEX_BIN_DIR enables pdfLaTeX, XeLaTeX and LuaLaTeX.
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";

@@ -1,7 +1,3 @@
-//! The ACP client: the official SDK runs the JSON-RPC connection over
-//! Oleafly's bounded line transport, and one consumer task hands every
-//! inbound message to a [`ClientHost`] in wire order. A reply is delivered
-//! only after every update the agent sent before it.
 use std::collections::HashMap;
 use std::future::Future;
 use std::process::Stdio;
@@ -24,30 +20,15 @@ use crate::process::{contain_process_tree, isolate_process_tree, StderrTail};
 use crate::transport::{line_transport, DROPPED_UPDATE_METHOD};
 use crate::v2::{permission_params_to_v1, Translated, V2Translator};
 
-/// Receives what the agent sends. Calls arrive one at a time, in the order
-/// the agent wrote them. A host must not block for long and must not wait
-/// for a reply to one of its own requests inside a callback.
 pub trait ClientHost: Send + Sync + 'static {
-    /// `session/update` params. Under protocol v2 they arrive translated to
-    /// the v1 shape.
     fn on_update(&self, params: Value);
-    /// Permission, elicitation, file reads and any other agent request. The
-    /// host must answer it (respond or reject), now or later.
     fn on_request(&self, request: IncomingRequest);
-    /// Every other notification (`_auth/status_update`, …).
     fn on_notification(&self, method: &str, params: Value);
-    /// An update too large to keep was cut or dropped.
     fn on_dropped_update(&self, bytes: usize);
-    /// The connection ended. Called once.
     fn on_disconnected(&self);
-    /// A turn of `session_id` ended: its `session/prompt` reply arrived, or
-    /// under protocol v2 the session went idle. Called in order with the
-    /// session's updates, before the prompt's caller sees the reply, so an
-    /// update after this call came after the turn.
     fn on_turn_ended(&self, _session_id: &str) {}
 }
 
-/// A host for connections that only probe an agent (the agent check).
 pub struct NullHost;
 
 impl ClientHost for NullHost {
@@ -66,10 +47,8 @@ impl ClientHost for NullHost {
     fn on_disconnected(&self) {}
 }
 
-/// Room kept in a frame for a reply's envelope (version, id and method).
 const REPLY_ENVELOPE: usize = 256;
 
-/// A request from the agent, with the means to answer it once.
 pub struct IncomingRequest {
     method: String,
     params: Value,
@@ -90,9 +69,6 @@ impl IncomingRequest {
         serde_json::to_value(self.responder.id()).unwrap_or(Value::Null)
     }
 
-    /// Answers the request. A reply that would not fit one frame is sent as
-    /// an error instead: the transport ends the whole connection on a frame
-    /// that is too large.
     pub fn respond(self, result: Value) -> Result<(), RpcError> {
         let id = serde_json::to_vec(self.responder.id()).map_or(0, |id| id.len());
         let fits = serde_json::to_vec(&result)
@@ -112,7 +88,6 @@ impl IncomingRequest {
             .map_err(|_| RpcError::connection(ErrorKind::NotConnected, ""))
     }
 
-    /// Resolves when the agent sends `$/cancel_request` for this request.
     pub fn cancelled(&self) -> impl Future<Output = ()> + Send + 'static {
         let cancellation = self.responder.cancellation();
         async move { cancellation.cancelled().await }
@@ -153,19 +128,14 @@ pub struct ClientInfo {
 #[derive(Clone, Debug)]
 pub struct ClientOptions {
     pub info: ClientInfo,
-    /// Ask for protocol v2 (the Experimental switch); agents that answer
-    /// with v1 are restarted with v1.
     pub prefer_v2: bool,
-    /// Advertise `fs/read_text_file`.
     pub fs_read: bool,
 }
 
 #[derive(Debug)]
 pub enum InitializeError {
     Rpc(RpcError),
-    /// The program answered, but not as an ACP agent this client supports.
     NotAcp(u16),
-    /// The agent answered a v2 request with v1: start it again with v1.
     FallBackToV1,
 }
 
@@ -187,7 +157,6 @@ impl From<InitializeError> for String {
     }
 }
 
-/// What `initialize` settled on.
 #[derive(Clone, Debug)]
 pub struct Negotiated {
     pub protocol: ProtocolVersion,
@@ -196,19 +165,13 @@ pub struct Negotiated {
     pub agent_name: Option<String>,
     pub agent_title: Option<String>,
     pub agent_version: Option<String>,
-    /// The agent's full answer, for fields this crate does not model.
     pub raw: Value,
 }
 
-/// How long a turn may run.
 #[derive(Clone, Debug, Default)]
 pub struct TurnTiming {
-    /// Stop the agent when nothing arrives for this long, unless `hold`.
     pub inactivity: Option<Duration>,
-    /// Stop the agent when the whole turn takes longer than this.
     pub absolute: Option<Duration>,
-    /// While true (a permission card or question is open) the inactivity
-    /// clock is paused; it restarts when the value changes.
     pub hold: Option<watch::Receiver<bool>>,
 }
 
@@ -219,9 +182,6 @@ enum Routed {
         token: u64,
         result: Result<Value, agent_client_protocol::Error>,
     },
-    /// The connection ended with this error. It is queued behind what the
-    /// agent sent before, so replies and updates already received are
-    /// handled first; pending requests fail only then.
     Closed(RpcError),
 }
 
@@ -234,22 +194,15 @@ struct Shared {
     route: mpsc::Sender<Routed>,
     stop: watch::Sender<bool>,
     closed: watch::Sender<bool>,
-    /// Set once the agent's process has been reaped (or given up on), always
-    /// after `closed`. True from the start for a client over plain streams.
     exited: watch::Sender<bool>,
     closed_routed: AtomicBool,
-    /// Set once the consumer failed the pending requests after the close: a
-    /// request registered later fails at once.
     drained: AtomicBool,
     finished: watch::Sender<bool>,
     stderr: StderrTail,
     activity: watch::Sender<Instant>,
     negotiated: Mutex<Option<Negotiated>>,
     pid: Option<u32>,
-    /// v2: the running prompt of each session, ended by an idle state.
     turn_waiters: Mutex<HashMap<String, oneshot::Sender<Value>>>,
-    /// v1: the pending `session/prompt` requests, by token, with their
-    /// session. Their reply ends the turn.
     turn_replies: Mutex<HashMap<u64, String>>,
     translator: Mutex<V2Translator>,
 }
@@ -289,7 +242,6 @@ impl Shared {
         }
     }
 
-    /// Hands one agent notification to the host.
     fn route_notification(&self, host: &dyn ClientHost, message: UntypedMessage) {
         self.activity.send_replace(Instant::now());
         let (method, params) = message.into_parts();
@@ -305,8 +257,6 @@ impl Shared {
         }
     }
 
-    /// Translates a v2 `session/update` and hands the results to the host. A
-    /// turn's end also wakes the prompt waiting on it.
     fn route_v2_update(&self, host: &dyn ClientHost, params: &Value) {
         let translated = self
             .translator
@@ -334,8 +284,6 @@ impl Shared {
         }
     }
 
-    /// Hands one agent request to the host. A v2 permission request that
-    /// can't be translated is cancelled here.
     fn route_request(
         &self,
         host: &dyn ClientHost,
@@ -363,7 +311,6 @@ impl Shared {
         });
     }
 
-    /// Ends the turn a reply closes, then delivers the reply to its caller.
     fn route_reply(
         &self,
         host: &dyn ClientHost,
@@ -389,10 +336,6 @@ impl Shared {
         }
     }
 
-    /// Ends the connection. The close is queued behind everything the agent
-    /// sent before it: the consumer hands those to the host first, then
-    /// fails every pending request (and v2 turn) with `error` and tells
-    /// the host once.
     fn close_with(self: &Arc<Self>, error: RpcError) {
         self.closed.send_replace(true);
         let _ = self.stop.send(true);
@@ -401,7 +344,6 @@ impl Shared {
             let shared = self.clone();
             tokio::spawn(async move {
                 if let Err(unsent) = route.send(Routed::Closed(error)).await {
-                    // No consumer is left to drain them.
                     if let Routed::Closed(error) = unsent.0 {
                         shared.fail_pending(&error);
                     }
@@ -410,8 +352,6 @@ impl Shared {
         }
     }
 
-    /// Fails every pending request with `error` and ends every v2 turn
-    /// still waiting (its prompt sees the disconnect).
     fn fail_pending(&self, error: &RpcError) {
         self.drained.store(true, Ordering::Release);
         let drained: Vec<_> = self
@@ -431,7 +371,6 @@ impl Shared {
     }
 }
 
-/// A connection to one agent process (or any pair of streams in tests).
 pub struct AcpClient {
     shared: Arc<Shared>,
 }
@@ -443,7 +382,6 @@ impl Drop for AcpClient {
 }
 
 impl AcpClient {
-    /// Starts the agent, contains its process tree and connects to it.
     pub async fn spawn(
         mut command: tokio::process::Command,
         host: Arc<dyn ClientHost>,
@@ -501,12 +439,9 @@ impl AcpClient {
         let mut stop = shared.stop.subscribe();
         let mut finished = shared.finished.subscribe();
         tokio::spawn(async move {
-            // The stop branch drops its watch guard before the other
-            // branch awaits, which keeps this task `Send`.
             tokio::select! {
                 _ = async { let _ = stop.wait_for(|stop| *stop).await; } => {}
                 _ = child.wait() => {
-                    // Let the connection hand over what the agent wrote last.
                     let _ = tokio::time::timeout(
                         Duration::from_millis(500),
                         finished.wait_for(|done| *done),
@@ -527,7 +462,6 @@ impl AcpClient {
         Ok(client)
     }
 
-    /// Connects over an agent's stdout and stdin (tests use in-memory pipes).
     pub fn from_streams<R, W>(stdout: R, stdin: W, host: Arc<dyn ClientHost>) -> Arc<AcpClient>
     where
         R: AsyncRead + Send + Unpin + 'static,
@@ -568,9 +502,6 @@ impl AcpClient {
             translator: Mutex::new(V2Translator::default()),
         });
 
-        // The SDK connection. Its handlers only forward into the route
-        // channel; awaiting the bounded channel is the backpressure that
-        // stops reading while the host falls behind.
         let requests = route_tx.clone();
         let notifications = route_tx.clone();
         let mut stop = shared.stop.subscribe();
@@ -613,7 +544,6 @@ impl AcpClient {
             ));
         });
 
-        // One consumer, in wire order.
         let consumer = shared.clone();
         tokio::spawn(async move {
             while let Some(item) = route_rx.recv().await {
@@ -652,7 +582,6 @@ impl AcpClient {
         }
     }
 
-    /// Sends a request and registers its reply, without waiting.
     async fn send_request(
         &self,
         method: &str,
@@ -661,7 +590,6 @@ impl AcpClient {
         self.send_request_for(method, params, None).await
     }
 
-    /// `send_request` for a request whose reply ends a turn of `turn_of`.
     async fn send_request_for(
         &self,
         method: &str,
@@ -697,12 +625,9 @@ impl AcpClient {
             shared: self.shared.clone(),
             token,
         };
-        // The close was handled while this request was being registered:
-        // nothing will answer or fail it.
         if self.shared.drained.load(Ordering::Acquire) {
             return Err(RpcError::connection(ErrorKind::NotConnected, ""));
         }
-        // Known before the request goes out, so the reply can't beat it.
         if let (Some(session), Ok(mut turns)) = (turn_of, self.shared.turn_replies.lock()) {
             turns.insert(token, session.to_owned());
         }
@@ -730,9 +655,6 @@ impl AcpClient {
         )
     }
 
-    /// Like [`Self::request`], but `quiet` is how long the agent may send
-    /// nothing, not how long the whole reply may take: every message from the
-    /// agent restarts it. For a reply that streams updates first.
     async fn request_while_active(
         &self,
         method: &str,
@@ -767,8 +689,6 @@ impl AcpClient {
         }
     }
 
-    /// Sends `method` and waits for its reply. Past `deadline` the agent is
-    /// stopped.
     pub async fn request(
         &self,
         method: &str,
@@ -811,7 +731,6 @@ impl AcpClient {
             .map_err(|_| RpcError::connection(ErrorKind::NotConnected, ""))
     }
 
-    /// Negotiates the protocol and records what the agent can do.
     pub async fn initialize(&self, options: &ClientOptions) -> Result<Negotiated, InitializeError> {
         let version = if options.prefer_v2 {
             ProtocolVersion::V2
@@ -861,8 +780,6 @@ impl AcpClient {
                 "ACP v2 has no session/load. Resume the session instead.",
             ));
         }
-        // The agent answers only after replaying the whole conversation as
-        // updates, which can take longer than the deadline of a plain request.
         self.request_while_active(
             "session/load",
             json!({"sessionId": session, "cwd": cwd, "mcpServers": mcp_servers}),
@@ -949,7 +866,6 @@ impl AcpClient {
         .await
     }
 
-    /// Legacy v1 mode switch, for agents without config options.
     pub async fn set_mode(&self, session: &str, mode_id: &str) -> Result<Value, RpcError> {
         if self.protocol() == ProtocolVersion::V2 {
             return Err(RpcError::local(
@@ -1010,9 +926,6 @@ impl AcpClient {
         self.shared.protocol()
     }
 
-    /// Sends one turn and waits for its end under `timing`. Under v2 the
-    /// prompt is accepted at once and ends when the session reports idle,
-    /// after every earlier update reached the host.
     pub async fn prompt(
         &self,
         session: &str,
@@ -1022,8 +935,6 @@ impl AcpClient {
         self.prompt_with(session, blocks, timing, true).await
     }
 
-    /// [`Self::prompt`] for a turn whose time limits end only the turn: when
-    /// one passes the agent is sent `session/cancel` and keeps running.
     pub async fn prompt_or_cancel(
         &self,
         session: &str,
@@ -1033,8 +944,6 @@ impl AcpClient {
         self.prompt_with(session, blocks, timing, false).await
     }
 
-    /// Ends a turn whose time ran out: stops the agent, or with `stop`
-    /// false only cancels the turn.
     fn turn_timed_out(&self, session: &str, stop: bool) {
         if stop {
             let _ = self.shared.stop.send(true);
@@ -1067,7 +976,6 @@ impl AcpClient {
         } else {
             None
         };
-        // Under v1 the reply ends the turn; v2 ends it with an idle state.
         let ends_turn = waiter.is_none().then_some(session);
         let (_guard, reply) = self
             .send_request_for(
@@ -1142,12 +1050,10 @@ impl AcpClient {
         }
     }
 
-    /// Tells the agent to stop the running turn (`session/cancel`).
     pub fn cancel(&self, session: &str) -> Result<(), RpcError> {
         self.notify("session/cancel", json!({"sessionId": session}))
     }
 
-    /// Adds a message to a running turn.
     pub async fn steer(&self, session: &str, blocks: Vec<Value>) -> Result<Value, RpcError> {
         self.request(
             "_session/steering",
@@ -1161,7 +1067,6 @@ impl AcpClient {
         .await
     }
 
-    /// Stops the agent and waits (up to 7 s) until the connection is closed.
     pub async fn shutdown(&self) {
         let _ = self.shared.stop.send(true);
         let mut closed = self.shared.closed.subscribe();
@@ -1205,7 +1110,6 @@ async fn hold_changed(hold: &mut Option<watch::Receiver<bool>>) {
     }
 }
 
-/// Removes a v2 turn waiter when its prompt stops waiting.
 struct TurnWaiterGuard {
     shared: Arc<Shared>,
     session: String,
@@ -1219,7 +1123,6 @@ impl Drop for TurnWaiterGuard {
     }
 }
 
-/// Removes a request's reply slot when its waiter stops waiting.
 struct PendingGuard {
     shared: Arc<Shared>,
     token: u64,

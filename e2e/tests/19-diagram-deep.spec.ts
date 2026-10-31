@@ -8,8 +8,6 @@ test("place a shape, inspect it, and toggle canvas controls", async ({ tauriPage
     tauriPage.evaluate<number>(`document.querySelectorAll('.react-flow__node').length`);
   const before = await nodes();
   await tauriPage.click('[aria-label="Rectangle"]');
-  // Node creation is click-drag-to-draw (pointer events), not a plain click:
-  // pointerdown with a tool armed creates the node, the drag sizes it.
   await tauriPage.evaluate(
     `(() => {
       const pane = document.querySelector('.react-flow__pane');
@@ -54,9 +52,6 @@ test("code tab snippets insert TikZ", async ({ tauriPage }) => {
 test("canvas zoom controls change the viewport", async ({ tauriPage }) => {
   await openDiagramComposer(tauriPage);
 
-  // Mount runs an animated fitView that lands AT max zoom for the small
-  // starter drawing, so wait until the transform stops moving, then zoom
-  // OUT first (zooming in from max is a legitimate no-op).
   const transform = () =>
     tauriPage.evaluate<string>(
       `document.querySelector('.react-flow__viewport')?.style.transform || ''`,
@@ -145,15 +140,10 @@ test("arrow styling stays selected and matches the generated TikZ", async ({ tau
   await closeDiagramComposer(tauriPage);
 });
 
-// Multi-destination save: "Save to project" (new or existing) and "Download"
-// replaced the old in-document insert flow when the composer moved to a
-// standalone scratch-project page.
 test("saving to a new project creates a project visible from Home", async ({ tauriPage }) => {
   test.setTimeout(180_000);
   await openDiagramComposer(tauriPage);
 
-  // The diagram name is sanitized to [A-Za-z0-9_-] on commit and reused
-  // verbatim as the created project's name, so this must already be safe.
   const projectName = `E2E-Diagram-${Date.now().toString(36)}`;
   await tauriPage.click('[data-testid="diagram-name-display"]');
   await tauriPage.fill("#diagram-name", projectName);
@@ -171,9 +161,6 @@ test("saving to a new project creates a project visible from Home", async ({ tau
 
   await closeDiagramComposer(tauriPage);
   await expect(tauriPage.getByTestId("library")).toBeVisible();
-  // The project shelf isn't paginated, so the new card is already in the DOM
-  // without needing the Advanced filters search (which lives in a collapsed
-  // panel, not a plain input on the page).
   await expect(tauriPage.getByText(projectName, { exact: true })).toBeVisible({ timeout: 15_000 });
 });
 
@@ -183,9 +170,6 @@ test("the Download picker offers PNG and disables SVG", async ({ tauriPage }) =>
   await tauriPage.getByTestId("diagram-compile").click();
   await expect(tauriPage.locator('img[alt="Diagram preview"]')).toBeVisible({ timeout: 120_000 });
 
-  // Clicking PNG opens a native save dialog, which isn't drivable through the
-  // test bridge (same convention as PDF/Word/Markdown export - see
-  // 22-toolbar.spec.ts); this stops at verifying the picker itself.
   await tauriPage.click('[aria-label="Download"]');
   const png = tauriPage.getByText("PNG", { exact: true });
   await expect(png).toBeVisible();
@@ -194,9 +178,6 @@ test("the Download picker offers PNG and disables SVG", async ({ tauriPage }) =>
   await closeDiagramComposer(tauriPage);
 });
 
-// Import replaces the default draft; it never forces a project save (that
-// stays a separate, explicit "Save to project" action - see the "saving to
-// a new project" test above).
 test("importing hand-written TikZ draws it on the canvas", async ({ tauriPage }) => {
   await openDiagramComposer(tauriPage);
 
@@ -222,7 +203,6 @@ test("importing hand-written TikZ draws it on the canvas", async ({ tauriPage })
     `document.body.innerText.includes('Imported flowchart.tikz for editing.')`,
     10_000,
   );
-  // Drawable content lands on the Draw tab with one canvas node per TikZ node.
   await tauriPage.waitForFunction(
     `document.querySelectorAll('.react-flow__node').length === 3`,
     10_000,
@@ -231,8 +211,6 @@ test("importing hand-written TikZ draws it on the canvas", async ({ tauriPage })
     await expect(tauriPage.locator(".react-flow")).toContainText(label);
   }
 
-  // Returning to Code must hand back the imported source, not a regenerated
-  // approximation of it: nothing has been drawn on the canvas yet.
   await tauriPage.click('[data-testid="diagram-tab-code"]');
   await expect(tauriPage.locator(".cm-content")).toContainText("node distance=1.5cm");
 
@@ -257,7 +235,6 @@ test("importing TikZ with no shapes stays code-only", async ({ tauriPage }) => {
     5_000,
   );
   await expect(tauriPage.locator(".cm-content")).toContainText("circle");
-  // The draft's display name picks up the imported file's basename.
   await expect(tauriPage.locator('[data-testid="diagram-name-display"]')).toContainText(
     "hand-written",
   );
@@ -278,8 +255,6 @@ test("canceling the file picker during import leaves the draft untouched", async
     "diagram.tikz",
   );
 
-  // name: null simulates the user dismissing the picker without choosing a
-  // file - pickTikzFile() resolves null the same way for a real cancel.
   await tauriPage.evaluate(`window.__setNextTikzImport(null, null)`);
   await tauriPage.click('[aria-label="Import diagram file"]');
   await tauriPage.waitForFunction(

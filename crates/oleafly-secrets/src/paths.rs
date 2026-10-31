@@ -1,13 +1,7 @@
-//! Where Oleafly keeps its data, for processes that are not the app (the CLI
-//! and the daemon). The app keeps its own `paths::oleafly_root`, which has a
-//! test-only default of its own.
 use std::path::PathBuf;
 
-/// Points every Oleafly process at a throwaway data folder (e2e tests, dev
-/// sandboxes). Ignored when empty.
 pub const DATA_DIR_VARIABLE: &str = "OLEAFLY_DATA_DIR";
 
-/// The user's home directory: `HOME`, then `USERPROFILE` (Windows).
 pub fn home_dir() -> Result<PathBuf, String> {
     std::env::var_os("HOME")
         .filter(|value| !value.is_empty())
@@ -16,8 +10,6 @@ pub fn home_dir() -> Result<PathBuf, String> {
         .ok_or_else(|| "could not determine user home directory".to_string())
 }
 
-/// The Oleafly data folder: `$OLEAFLY_DATA_DIR` when set and non-empty, else
-/// `~/.oleafly`. Unit tests of this crate never fall back to the real folder.
 pub fn data_root() -> Result<PathBuf, String> {
     if let Some(dir) = configured_root() {
         return Ok(dir);
@@ -31,8 +23,6 @@ fn configured_root() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-/// `data_root` without the test-only default, so tests can check the
-/// production resolution order.
 #[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn resolved_root() -> Result<PathBuf, String> {
     match configured_root() {
@@ -46,9 +36,6 @@ fn default_root() -> Result<PathBuf, String> {
     Ok(home_dir()?.join(".oleafly"))
 }
 
-// A test without a data folder of its own still resolves the root in
-// passing. Those reads and writes go to one temporary folder shared by the
-// test process instead of the developer's real data.
 #[cfg(test)]
 fn default_root() -> Result<PathBuf, String> {
     static DIR: std::sync::OnceLock<Result<PathBuf, String>> = std::sync::OnceLock::new();

@@ -28,13 +28,9 @@ import {
   projectIntelligenceCompletion,
   projectIntelligenceExtensions,
 } from "./project-intelligence";
+import { stubRangeGeometry } from "../../../../packages/editor/src/test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 function snapshot(
   sources: Readonly<Record<string, string>>,
@@ -227,7 +223,6 @@ describe("project LaTeX completion revisions and argument parity", () => {
       false,
     );
     const project = synchronousProjectCompletion(context);
-    // This is the production override order after project completion.
     latexCommandCompletions(context);
     slashCompletions(context);
 

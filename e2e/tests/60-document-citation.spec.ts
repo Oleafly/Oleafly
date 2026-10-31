@@ -1,10 +1,5 @@
 import { test, expect } from "../fixtures";
 
-/**
- * Document citation scan + paper review UI (OpenLeaf parity surfaces).
- * Live literature/LLM calls are avoided via DEV hooks that seed results.
- */
-
 async function openCitationSearch(page: {
   click: (s: string) => Promise<void>;
   locator: (s: string) => { waitFor: (o?: { state?: string; timeout?: number }) => Promise<void> };
@@ -13,7 +8,6 @@ async function openCitationSearch(page: {
   await expect(page.getByTestId("library") as never).toBeVisible();
   await page.click('[data-testid="open-latex-tools"]');
   await expect(page.locator('[data-testid="latex-tools-view"]') as never).toBeVisible();
-  // Tool card id from tool-catalog: literature-search
   await page.click('[data-testid="latex-tool-card-literature-search"]');
   await expect(page.locator('[data-testid="literature-search-panel"]') as never).toBeVisible({
     timeout: 15_000,
@@ -36,7 +30,6 @@ test("Citation Search exposes From document and Review modes; e2e hooks seed res
   );
   expect(hookReady, "__e2eDocumentCitation hook must be present in DEV").toBe(true);
 
-  // The bridge evaluates a single expression; multi-statement scripts hang.
   await tauriPage.evaluate(`(() => {
     window.__e2eDocumentCitation.setSourceOverride(
       "Graph neural networks are used for molecule generation in this work.\\n\\n" +
@@ -88,7 +81,6 @@ test("Citation Search exposes From document and Review modes; e2e hooks seed res
     tauriPage.locator('[title="Relevance score"]'),
   ).toContainText("88");
 
-  // Review mode
   await tauriPage.click('[data-testid="citation-search-mode-review"]');
   await expect(tauriPage.locator('[data-testid="paper-review-panel"]')).toBeVisible({
     timeout: 10_000,

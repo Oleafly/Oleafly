@@ -34,9 +34,6 @@ export function notifyCompileSucceeded(
   checkpoint: CompileSuccessCheckpoint,
 ): void {
   if (!isTauri()) return;
-  // This event is deliberately success-only. Failed/best-effort output keeps
-  // its local log and status, but must never make another window mark a stale
-  // PDF successful.
   void emit(COMPILE_SUCCEEDED_EVENT, {
     projectStateRevision: currentProjectStateRevision(),
     checkpoint,

@@ -22,12 +22,10 @@ import { appRowKey, matchApps, MAX_PICKER_ROWS, sameApp, useAppIcons, useInstall
 export interface AppPickerDialogProps {
   open: boolean;
   onOpenChange(open: boolean): void;
-  /** Apps already allowed; they show but can't be picked again. */
   existing: readonly AllowedApp[];
   onPick(app: InstalledApp): void;
 }
 
-/** The line under an app's name: its bundle id, or the path of its program. */
 function AppSubtitle({ app }: Readonly<{ app: InstalledApp }>) {
   if (app.bundleId) return <span className="text-xs text-muted-foreground">{app.bundleId}</span>;
   if (app.executable) {
@@ -40,7 +38,6 @@ function AppSubtitle({ app }: Readonly<{ app: InstalledApp }>) {
   return null;
 }
 
-/** The app's own icon, or a plain window until it loads or when it has none. */
 function AppIcon({ url }: Readonly<{ url: string | undefined }>) {
   if (url) return <img src={url} alt="" draggable={false} className="size-8 shrink-0 object-contain" />;
   return (
@@ -50,7 +47,6 @@ function AppIcon({ url }: Readonly<{ url: string | undefined }>) {
   );
 }
 
-/** Picks an installed app agents may use. Blocked apps show why. */
 export default function AppPickerDialog({ open, onOpenChange, existing, onPick }: Readonly<AppPickerDialogProps>) {
   const { t } = useTranslation(["common", "settings"]);
   const apps = useInstalledApps(open);
@@ -63,8 +59,6 @@ export default function AppPickerDialog({ open, onOpenChange, existing, onPick }
   const shown = useMemo(() => matches.slice(0, MAX_PICKER_ROWS), [matches]);
   const shownKeys = useMemo(() => shown.map(appRowKey), [shown]);
   const icons = useAppIcons(shownKeys, apps.isSuccess);
-  // Add takes only a row the user can see: a search that hides the selected
-  // app leaves nothing to add until it shows again.
   const chosen = selected && shown.some((app) => appRowKey(app) === appRowKey(selected)) ? selected : null;
 
   const blockedText = (reason: BlockReason) => t(($) => $.settings.integrations.desktopApps.apps.blocked[reason]);
@@ -114,8 +108,6 @@ export default function AppPickerDialog({ open, onOpenChange, existing, onPick }
             const added = existing.some((known) => sameApp(known, app));
             const unavailable = Boolean(app.blocked) || added;
             const isSelected = selected !== null && appRowKey(selected) === appRowKey(app);
-            // The row's position, not its program: several entries can
-            // run the same program, and a path can hold spaces.
             const reasonId = `${reasonIds}-reason-${index}`;
             return (
               <li key={appRowKey(app)}>

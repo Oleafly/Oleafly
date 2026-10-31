@@ -79,7 +79,6 @@ type UsageReportProps = {
   report: UsageReportData;
   onExport?: (report: UsageReportData) => unknown;
   projectNames?: ReadonlyMap<string, string>;
-  /** Names of the user's own providers by id; the catalog and agent names need no entry. */
   providerNames?: ReadonlyMap<string, string>;
   onSelectFilter?: (dimension: UsageFilterDimension, value: string) => void;
   onPageChange?: (page: number) => void;

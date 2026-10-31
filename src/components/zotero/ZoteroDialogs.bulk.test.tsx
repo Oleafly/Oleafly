@@ -187,6 +187,43 @@ describe("choosing the bibliography for new entries", () => {
     await expect(answer).resolves.toBe("extra.bib");
   });
 
+  it("selects the first file from the first render and keeps the group controlled", async () => {
+    const warn = vi.spyOn(console, "warn");
+    render(<ZoteroDialogs />);
+    let answer: Promise<string | null> = Promise.resolve(null);
+    act(() => {
+      answer = useZoteroDialogStore.getState().chooseBibliography(["refs.bib", "extra.bib"]);
+    });
+
+    expect(screen.getByRole("radio", { name: "refs.bib" })).toBeChecked();
+    expect(screen.getByRole("button", { name: choose.confirm })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: choose.confirm }));
+
+    await expect(answer).resolves.toBe("refs.bib");
+    expect(warn.mock.calls.flat().join("\n")).not.toMatch(/RadioGroup is changing/);
+    warn.mockRestore();
+  });
+
+  it("starts a new request from its own first file, not the last pick", async () => {
+    render(<ZoteroDialogs />);
+    let first: Promise<string | null> = Promise.resolve(null);
+    act(() => {
+      first = useZoteroDialogStore.getState().chooseBibliography(["refs.bib", "extra.bib"]);
+    });
+    fireEvent.click(screen.getByRole("radio", { name: "extra.bib" }));
+    fireEvent.click(screen.getByRole("button", { name: choose.confirm }));
+    await expect(first).resolves.toBe("extra.bib");
+
+    let second: Promise<string | null> = Promise.resolve(null);
+    act(() => {
+      second = useZoteroDialogStore.getState().chooseBibliography(["thesis.bib", "extra.bib"]);
+    });
+    expect(screen.getByRole("radio", { name: "thesis.bib" })).toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: choose.confirm }));
+
+    await expect(second).resolves.toBe("thesis.bib");
+  });
+
   it("answers nothing when the reader cancels", async () => {
     render(<ZoteroDialogs />);
     let answer: Promise<string | null> = Promise.resolve("unset");

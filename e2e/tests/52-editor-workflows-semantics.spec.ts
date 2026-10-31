@@ -27,10 +27,6 @@ const RED_PNG =
 
 async function freshLatex(page: Page, suffix: string, source: string) {
   await createBlankProject(page, `E2E Workflow ${suffix} ${RUN}`);
-  // Project creation schedules a real on-open compile. Replacing the source
-  // while that compile is starting can queue follow-up compiles that survive
-  // into the fixture's next-page reload and starve the native webview. Wait
-  // for the blank template's verified output before applying the fixture.
   await page.waitForFunction(
     `import("/src/store/compile.ts").then(({ useCompileStore }) => {
       const compile = useCompileStore.getState();
@@ -133,9 +129,6 @@ async function openCodeIntelligence(page: TauriPage) {
   throw new Error("Code intelligence menu did not remain open");
 }
 
-// Find and click in one browser task; the menu can remount between a wait
-// that sees the action and a separate locator click (same race class the
-// shared clickToolbarControl fixed).
 async function clickCodeIntelligenceAction(page: TauriPage, label: string) {
   const buttonExpression = codeIntelligenceButtonExpression(label);
   const atomicClick = () =>
@@ -397,9 +390,6 @@ FOO Foo foo food
     "polite",
   );
   await tauriPage.focus('[aria-label="Find"]');
-  // The field carries its own fill and border; keyboard focus reads from a
-  // border tint on the box (no inset outline ring), so assert the affordance
-  // by comparing the focused and blurred border colors.
   const focusAffordance = await tauriPage.evaluate<{
     focused: string;
     blurred: string;
@@ -517,9 +507,6 @@ Resolved reference: \ref{sec:toolbar-original}.
     tauriPage.locator('[aria-label="References (Shift-F12)"]'),
   ).toBeVisible({ timeout: 10_000 });
 
-  // The action can land as a silent no-op when the menu remounts mid-click,
-  // so retry the whole caret -> menu -> action sequence until the dialog
-  // actually opens (same shape as 33-editor-toolbar-full's rename flow).
   for (let attempt = 0; ; attempt++) {
     await caretIn(tauriPage, "sec:toolbar-original", 2);
     await openCodeIntelligence(tauriPage);
@@ -605,12 +592,7 @@ WYSKEYBOARDSEMANTIC
   expect((await compileAndProbe(tauriPage)).text).toContain("note text");
 
   await tauriPage.click('[aria-label="Switch to WYSIWYG view"]');
-  // On a slow runner the first undo click can land before the shared history
-  // finished absorbing the WYSIWYG insertion; re-click until the source shows
-  // the insertion gone.
   for (let attempt = 0; ; attempt++) {
-    // Let the WYSIWYG view finish re-syncing from the shared text before
-    // undoing: an undo dispatched mid-resync can miss the insertion event.
     await tauriPage.waitForFunction(
       `!!document.querySelector(".cm-content .ofl-visual-end-document")`,
       10_000,
@@ -902,8 +884,6 @@ WYSPARAGRAPHANCHOR
     );
   };
 
-  // Insert in reverse structural order because every deterministic caret is
-  // immediately after the same anchor.
   await rawHeading("Paragraph", "WYSPARAGRAPHANCHOR");
   await rawHeading("Chapter", "WYSCHAPTERANCHOR");
   await rawHeading("Part", "WYSPARTANCHOR");
@@ -984,8 +964,6 @@ WYSPARAGRAPHANCHOR
   await rawAction('[aria-label="Insert fraction"]', "Fraction");
 
   await atAnchor();
-  // The shared insertSymbol handles trigger toggling, stale exit-animation
-  // portals, and reopen retries (proven on CI in spec 51).
   await insertSymbol(tauriPage, "Misc", "hash");
 
   await tauriPage.click('[aria-label="Project info"]');
@@ -1029,8 +1007,6 @@ WYSPARAGRAPHANCHOR
     "\\caption{}",
     "\\caption{VISUALTABLECAPTION}",
   );
-  // insertEnvironment (both CM and WYSIWYG raw-block paths) leaves a
-  // two-space caret line between begin/end, so the literal must include it.
   await replaceEditorLiteral(
     tauriPage,
     "\\begin{align}\n  \n\\end{align}",

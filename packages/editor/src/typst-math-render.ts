@@ -1,6 +1,3 @@
-// Typst math previews, rendered by the host as SVG. Kept apart from
-// math-render.ts, which pulls in KaTeX, so the source editor's startup
-// paths (Typst paste, the Typst host, the math tooltip) don't load it.
 import { editorMessage } from "./messages";
 
 export const MAX_EXPRESSION_INPUT = 8_192;
@@ -12,6 +9,7 @@ export type TypstMathOutcome =
 export interface TypstMathHost {
   render(source: string): Promise<TypstMathOutcome>;
   typstVersion(): string | null;
+  projectId?(): string | null;
 }
 
 export interface TypstMathTheme {
@@ -60,7 +58,8 @@ export function typstMathSnippet(body: string, theme: TypstMathTheme): string {
 }
 
 function typstCacheKey(body: string, theme: TypstMathTheme): string {
-  return [typstMathVersion() ?? "", theme.color, typstThemeSize(theme.size), body].join("\u0000");
+  const project = typstMathHost?.projectId?.() ?? "";
+  return [project, typstMathVersion() ?? "", theme.color, typstThemeSize(theme.size), body].join("\u0000");
 }
 
 function readTypstCache(key: string): TypstMathOutcome | null {

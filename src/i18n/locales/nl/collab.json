@@ -224,6 +224,8 @@
     "suggestion_not_found": "Die suggestie bestaat niet meer. Misschien heeft iemand haar al geaccepteerd of geweigerd.",
     "suggestion_not_yours": "Alleen wie deze suggestie heeft gedaan, kan haar intrekken.",
     "suggestion_role": "Je rol in dit project staat geen suggesties toe.",
+    "suggestion_changed": "De tekst rond deze suggestie is veranderd, dus een eigenaar of bewerker moet haar accepteren of weigeren.",
+    "suggestion_too_long": "Een voorgestelde verwijdering mag maximaal 20.000 tekens lang zijn. Verwijder telkens een kleiner deel.",
     "chat_role": "Je rol in dit project staat dat niet toe in de chat.",
     "history_unavailable": "De geschiedenis van dit project staat nog niet op deze computer. Probeer het opnieuw zodra die is gesynchroniseerd.",
     "account_storage_full": "Het account van de projecteigenaar heeft geen opslag meer op deze server. Haal wat bestanden weg om ruimte te maken, of vraag de beheerder van de server om meer ruimte.",
@@ -1126,7 +1128,7 @@
     },
     "restoreProjectConfirm": {
       "title": "Het hele project herstellen?",
-      "description": "Elk bestand gaat voor iedereen in dit project terug naar hoe het was op {{time}}. De huidige tekst blijft in de geschiedenis staan, dus je kunt ernaar teruggaan.",
+      "textAndDeleted": "De tekst van elk bestand gaat voor iedereen in dit project terug naar hoe die was op {{time}}, en verwijderde bestanden komen terug. Hernoemde bestanden houden hun nieuwe naam, en figuren en bestanden die later zijn toegevoegd blijven zoals ze zijn. De huidige tekst blijft in de geschiedenis staan, dus je kunt ernaar teruggaan.",
       "confirm": "Project herstellen"
     },
     "compareTitle": "Wijzigingen tussen twee versies",

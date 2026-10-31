@@ -1,17 +1,3 @@
-//! Git hosting accounts for the Oleafly app and the `oleafly` CLI: GitHub,
-//! GitLab, Gitea, Forgejo and Codeberg, hosted or run by the user.
-//!
-//! This crate owns the rules both runtimes share: base-URL normalization,
-//! which account a remote belongs to, the account metadata file
-//! (`forge-accounts.json`), the HTTP client (native roots, an optional
-//! per-account CA file, redirects that never carry a token to another
-//! origin), the per-server REST clients, server detection, and OAuth (the
-//! GitHub and GitLab device flow, GitLab token refresh).
-//!
-//! Tokens live only in the encrypted `forge_tokens` secret of
-//! `oleafly-secrets`. Nothing here touches Tauri; the app and the CLI pass
-//! their data folder in.
-
 pub mod accounts;
 pub mod address;
 pub mod api;
@@ -31,7 +17,6 @@ pub use kind::{AuthMethod, ForgeKind, ServerFlavor};
 pub use oleafly_secrets::accounts::ForgeToken;
 pub use store::{ForgeAccount, ForgeStore};
 
-/// Run blocking store work (file locks, file IO) off the async runtime.
 pub(crate) async fn blocking<T, F>(work: F) -> Result<T, ForgeError>
 where
     T: Send + 'static,
@@ -44,7 +29,6 @@ where
         })?
 }
 
-/// Milliseconds since the Unix epoch.
 pub fn now_ms() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

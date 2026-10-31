@@ -11,18 +11,14 @@ import {
   diagnosticCardSource,
 } from "./diagnostic-card";
 import { installEnglishEditorMessages } from "./test-messages";
+import { stubRangeGeometry } from "./test-geometry";
 
 installEnglishEditorMessages();
 
 // CodeMirror's delayed lint hover asks the DOM Range for layout rectangles.
 // jsdom intentionally has no layout engine, so provide the smallest safe
 // geometry shim for this behavior-only test and avoid an unhandled timer error.
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 let view: EditorView | null = null;
 
@@ -178,14 +174,12 @@ describe("proofreading hover card", () => {
 
     const dom = card(editor, FROM + 1)!;
     expect(dom).not.toBeNull();
-    // The message is the header; no "Did you mean" framing without a word.
     expect(dom.querySelector(".cm-proofread-header")?.textContent).toBe(
       "Image without alt text",
     );
     expect(dom.querySelector(".cm-proofread-dot")?.className).toContain(
       "is-error",
     );
-    // Quick fixes become rows, and none is marked as the best guess.
     const rows = [...dom.querySelectorAll(".cm-proofread-suggestion")];
     expect(rows.map((row) => row.textContent)).toEqual(["Add alt text"]);
     expect(rows[0].classList).not.toContain("cm-proofread-suggestion-top");
@@ -277,7 +271,6 @@ describe("proofreading gutter card", () => {
     const editor = mountWithGutter([spellingDiagnostic(["unbounded"])]);
     hoverMarker(editor);
 
-    // Rendered into the body: inside the editor it would be clipped by the pane.
     const card = document.body.querySelector<HTMLElement>(
       ".cm-proofread-card-floating",
     );

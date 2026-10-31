@@ -189,8 +189,6 @@ fn client_ip(parts: &Parts, config: &ServerConfig) -> Option<IpAddr> {
             .iter()
             .any(|range| range.contains(*address))
     };
-    // Without the connection's own address nobody can tell who wrote the
-    // header, so none of it is believed.
     let peer = peer?;
     if !trusted(&peer) {
         return Some(peer);

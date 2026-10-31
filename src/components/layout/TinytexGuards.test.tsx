@@ -55,9 +55,6 @@ describe("TinytexGuards quit interception", () => {
     });
     await screen.findByText(/still installing/i);
 
-    // The install completes: quitting is no longer destructive, the dialog
-    // hides — and the flush confirmation from the earlier quit attempt must
-    // be forgotten, or the NEXT quit would skip saving new edits.
     act(() => {
       useEngineStore.setState({ installing: false });
     });
@@ -74,8 +71,6 @@ describe("TinytexGuards quit interception", () => {
     });
     await screen.findByText(/still installing/i);
 
-    // The first /cancel/i match is the backdrop (mousedown-only); the real
-    // Cancel is the footer button.
     const cancelButtons = screen.getAllByRole("button", { name: /cancel/i });
     fireEvent.click(cancelButtons[cancelButtons.length - 1]);
 

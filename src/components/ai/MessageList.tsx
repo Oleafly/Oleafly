@@ -22,7 +22,6 @@ export interface RenderedMessage {
   live: boolean;
   isLatestAssistant: boolean;
   msg: ChatMessage;
-  /** Edit and Regenerate/Retry offered on this row. */
   actions?: MessageActionState;
 }
 
@@ -176,7 +175,6 @@ export function MessageList({
   renderExtras?: (entry: RenderedMessage) => ReactNode;
   actions?: ResearchChatActions;
   live?: LiveMessageStore;
-  /** A stable callback, so rows keep their memo. */
   onMessageAction?: (action: MessageAction, messageId: string) => void;
 }>) {
   const heightsRef = useRef(new Map<string, number>());

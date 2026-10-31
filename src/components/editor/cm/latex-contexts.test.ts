@@ -269,7 +269,6 @@ describe("optionKeysForCatalog", () => {
       "11pt",
       "twocolumn",
     ]);
-    // The package marker must not pick up class-only lookups.
     expect(optionKeysForCatalog(article, "package", "article")).toEqual([]);
   });
 

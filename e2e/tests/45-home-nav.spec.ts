@@ -6,8 +6,6 @@ import {
   pressGlobal,
 } from "../helpers";
 
-// Tools is a full home page. A converter's Back action returns here, and the
-// gallery's Back action returns to the Library.
 test("dock opens the Tools page, and a converter returns to it", async ({
   tauriPage,
 }) => {
@@ -18,8 +16,6 @@ test("dock opens the Tools page, and a converter returns to it", async ({
   await expect(tauriPage.getByText("Oleafly Tools", { exact: true })).toBeVisible();
   await expect(tauriPage.locator('[data-testid="latex-tool-card-deadlines"]')).toBeVisible();
 
-  // Opening PDF to LaTeX lands on its dropzone rather than immediately
-  // triggering an operating-system file picker.
   await tauriPage.click('[data-testid="latex-tool-card-pdf-to-latex"]');
   await expect(tauriPage.locator('[data-testid="pdf-import-view"]')).toBeVisible();
   await expect(tauriPage.locator('[data-testid="pdf-dropzone"]')).toBeVisible();
@@ -54,7 +50,6 @@ test("Oleafly Tools gallery filters by category and search, and opens a dedicate
   await expect(tauriPage.locator('[data-testid="table-tool-view"]')).toBeVisible();
   await expect(tauriPage.getByText("LaTeX Table Generator", { exact: true })).toBeVisible();
 
-  // Back returns to the full Tools page, which keeps the broader workflow in context.
   await tauriPage.click('[data-testid="table-tool-view-back"]');
   await expect(tauriPage.locator('[data-testid="latex-tools-view"]')).toBeVisible();
   await expect(tauriPage.locator('[data-testid="table-tool-view"]')).toBeHidden();
@@ -109,9 +104,6 @@ test("dock opens the Diagram Composer as a standalone page and back returns to L
   tauriPage,
 }) => {
   await expect(tauriPage.getByTestId("library")).toBeVisible();
-  // Library (and the dock with it) unmounts entirely once another home page
-  // is active (Library.tsx: `if (page !== "library") return null`), so there
-  // is no dock button left to check an active state on once the dialog opens.
   await tauriPage.click('[data-testid="open-diagram-composer"]');
   await chooseDiagramComposer(tauriPage, "tikz");
   await expect(
@@ -125,8 +117,6 @@ test("dock opens the Diagram Composer as a standalone page and back returns to L
     tauriPage.locator('[role="dialog"][data-tour="diagram-composer"]'),
   ).toBeHidden();
 
-  // Reopening reuses the same hidden scratch project rather than creating a
-  // new one each time (idempotent get-or-create on the Rust side).
   await tauriPage.click('[data-testid="open-diagram-composer"]');
   await chooseDiagramComposer(tauriPage, "tikz");
   await expect(

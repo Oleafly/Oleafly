@@ -27,9 +27,6 @@ fn compiler_fixture(directory: &TempDir) -> PathBuf {
 
 struct ChildGuard(Child);
 
-/// Whether this machine has a latexmk that Oleafly finds without PATH (in
-/// the TeX folders it searches since 0.4.8). Tests that need latexmk
-/// missing can't run here.
 fn latexmk_installed_outside_path() -> bool {
     let mut search = oleafly_core::tex_distro::TexSearch::from_env();
     search.path = None;
@@ -442,7 +439,6 @@ fn watch_recovers_from_environment_errors_and_reloads_the_manifest() {
     assert_eq!(finished["build"]["engine"], "latexmk");
 }
 
-/// A running `oleafly --json watch ...` and the lines of its stdout.
 fn spawn_watch(
     project: &std::path::Path,
     compiler: &std::path::Path,
@@ -491,8 +487,6 @@ fn watch_with_its_output_inside_the_project_builds_once() {
     assert_eq!(finished["warnings"], serde_json::json!([]));
     assert!(project.path().join("paper.pdf").is_file());
 
-    // The copy it made is the project's newest file, and it must not count as
-    // an edit: a rebuild loop would have started again well within this.
     let next = receiver.recv_timeout(Duration::from_secs(3));
     assert!(
         next.is_err(),
@@ -506,7 +500,6 @@ fn watch_and_build_stop_cleanly_on_sigterm_and_sighup() {
     let tools = TempDir::new().unwrap();
     let compiler = compiler_fixture(&tools);
     for signal in [libc::SIGTERM, libc::SIGHUP] {
-        // `watch` ends as it does for Ctrl+C: exit 0, not killed by the signal.
         let project = TempDir::new().unwrap();
         assert!(run(&["init"], Some(project.path())).status.success());
         let (mut watch, receiver) = spawn_watch(project.path(), &compiler, &[]);
@@ -521,7 +514,6 @@ fn watch_and_build_stop_cleanly_on_sigterm_and_sighup() {
             "watch {signal}"
         );
 
-        // `build` is interrupted: exit 130 and the usual error object.
         let project = TempDir::new().unwrap();
         assert!(run(&["init"], Some(project.path())).status.success());
         let mut build = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
@@ -589,8 +581,6 @@ fn completions_and_the_manual_are_generated_from_the_parser() {
     assert!(page.contains("oleafly"), "the manual must name the command");
 }
 
-// 0.4.8: the --json contract is versioned (`schema_version`), so the help
-// points to it instead of calling the interface unstable before 1.0.
 #[test]
 fn help_points_to_the_json_contract_and_the_exit_codes() {
     let output = run(&["--help"], None);
@@ -1131,8 +1121,6 @@ fn copy_executable(from: &std::path::Path, to: &std::path::Path) {
     std::fs::copy(from, to).unwrap();
 }
 
-/// Writes a script and makes it executable through `sh`, so this process never
-/// holds it open for writing either (see `copy_executable`).
 #[cfg(unix)]
 fn write_executable(path: &std::path::Path, contents: &str) {
     use std::io::Write as _;
@@ -2068,7 +2056,6 @@ fn a_headless_mcp_server_exits_on_sigterm_while_its_client_keeps_stdin_open() {
         .spawn()
         .unwrap();
     let mut guard = ChildGuard(child);
-    // The server answers, so it is reading its input.
     {
         use std::io::Write;
         let stdin = guard.0.stdin.as_mut().unwrap();

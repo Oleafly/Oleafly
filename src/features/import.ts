@@ -87,8 +87,6 @@ export function createZipDownloader(
       });
       if (!destination) return "cancelled";
 
-      // Keep compression out of the startup bundle and do not fetch its chunk
-      // until the user has committed to a destination.
       const { zipSync } = await dependencies.loadZipModule();
       const archive = zipSync(zipEntries(result.tex, figures));
       if (!isZipArchive(archive)) {
@@ -202,15 +200,10 @@ export async function handleDownloadZipClick(
   try {
     await action();
   } catch (error) {
-    // `downloadZip` contains all expected failures itself. This final boundary
-    // protects the fire-and-forget React event handler if that contract ever
-    // regresses or an unexpected caller implementation rejects.
     reportZipExportFailure(error);
   }
 }
 
-// E2E / devtools hook: the native test bridge cannot drive a real file input,
-// so specs feed bytes in directly.
 if (typeof window !== "undefined" && E2E_HOOKS) {
   const w = window as unknown as {
     __importFile?: (name: string, base64: string) => Promise<void>;

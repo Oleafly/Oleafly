@@ -1,11 +1,3 @@
-//! Durable, content-addressed compile checkpoints.
-//!
-//! This crate deliberately does not discover compiler dependencies. Callers
-//! must pass an explicit, already-proven list of project-local regular files.
-//! Staging seals those bytes into a private materialized tree. Publishing is a
-//! separate operation that is only valid after the compiler has consumed that
-//! tree and Oleafly has validated its output.
-
 use std::collections::{BTreeSet, HashSet};
 use std::fmt;
 use std::fs::{self, File, OpenOptions};
@@ -52,7 +44,6 @@ struct DeleteRecord {
     token: String,
 }
 
-/// Errors returned by checkpoint storage operations.
 #[derive(Debug, Error)]
 pub enum HistoryError {
     #[error("checkpoint I/O failed: {0}")]
@@ -85,11 +76,6 @@ impl From<oleafly_core::Error> for HistoryError {
     }
 }
 
-/// Coordinates cancellation with the one operation that makes a checkpoint
-/// visible.
-///
-/// `commit_visibility` must serialize its cancellation decision with `commit`.
-/// Returning `false` means cancellation won and `commit` was not invoked.
 pub trait PublicationGate {
     fn is_cancelled(&self) -> bool;
 
@@ -132,7 +118,6 @@ fn ensure_publication_active(gate: &dyn PublicationGate) -> Result<()> {
     Ok(())
 }
 
-/// The identity of a deterministic source manifest.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct SnapshotRoot(ContentHash);
 
@@ -221,7 +206,6 @@ pub fn conflicting_portable_paths<'a>(
     dropped
 }
 
-/// One project-local regular file eligible for a sealed candidate.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CaptureInput {
     relative_path: String,
@@ -273,7 +257,6 @@ impl CaptureInput {
     }
 }
 
-/// Provenance recorded for a successful, already-validated compile.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompileEvidence {
     pub engine: String,
@@ -320,7 +303,6 @@ impl CompileEvidence {
     }
 }
 
-/// A visible immutable checkpoint.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Checkpoint {
     pub snapshot_root: SnapshotRoot,
@@ -336,7 +318,6 @@ pub struct Checkpoint {
     chunk_references: u64,
 }
 
-/// Digest evidence for one file in a sealed candidate.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SealedFile {
     pub relative_path: String,
@@ -376,14 +357,12 @@ pub struct StoreInspection {
     pub packs: Vec<PackInspection>,
 }
 
-/// Whether publication created a new visible root or reused an exact one.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PublishOutcome {
     Created(Checkpoint),
     Existing(Checkpoint),
 }
 
-/// Storage measurements used by maintenance and UI surfaces.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct StoreStats {
     pub checkpoint_count: u64,
@@ -400,7 +379,6 @@ pub struct StoreStats {
     pub reclaimable_pack_bytes: u64,
 }
 
-/// Results of conservative reachability garbage collection.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct GarbageCollection {
     pub deleted_manifests: u64,
@@ -409,7 +387,6 @@ pub struct GarbageCollection {
     pub reclaimed_bytes: u64,
 }
 
-/// Result of verified materialization into a new staging directory.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Materialization {
     pub file_count: u64,
@@ -418,7 +395,6 @@ pub struct Materialization {
     pub layout: ManifestLayout,
 }
 
-/// Work performed by a complete integrity verification pass.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Verification {
     pub checked_checkpoints: u64,
@@ -427,7 +403,6 @@ pub struct Verification {
     pub checked_packs: u64,
 }
 
-/// Metadata for a portable logical checkpoint export.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExportSummary {
     pub snapshot_root: SnapshotRoot,
@@ -435,21 +410,18 @@ pub struct ExportSummary {
     pub logical_bytes: u64,
 }
 
-/// Metadata for a portable logical export of all visible roots.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct HistoryExportSummary {
     pub checkpoint_count: u64,
     pub logical_bytes: u64,
 }
 
-/// Result of an all-or-nothing portable history import.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct HistoryImportSummary {
     pub created_checkpoints: u64,
     pub existing_checkpoints: u64,
 }
 
-/// An invisible sealed candidate. Dropping it removes staging data.
 pub struct Candidate {
     store_root: PathBuf,
     staging_dir: PathBuf,
@@ -479,8 +451,6 @@ impl Candidate {
         &self.snapshot_root
     }
 
-    /// Reports whether this candidate's root is already a visible checkpoint,
-    /// using the store locks the candidate already holds.
     pub fn root_is_visible(&self) -> Result<bool> {
         let store = Store {
             root: self.store_root.clone(),
@@ -550,17 +520,11 @@ fn advance_capture_budget(
     Ok((file_bytes, checkpoint_bytes, chunk_references))
 }
 
-/// A single project's independent checkpoint store.
 #[derive(Clone, Debug)]
 pub struct Store {
     root: PathBuf,
 }
 
-/// A store used by automatic publication.
-///
-/// A first publication is assembled below a private sibling directory. The
-/// final store path remains absent until [`PublicationStore::commit`] installs
-/// a nonempty store with one same-filesystem rename.
 pub struct PublicationStore {
     store: Option<Store>,
     target_root: PathBuf,
@@ -568,13 +532,9 @@ pub struct PublicationStore {
     _initialization_lock: File,
 }
 
-/// Result of committing an automatic publication store.
 #[derive(Debug)]
 pub enum PublicationCommitOutcome {
-    /// The store is visible and its parent directory was durably synchronized.
     Durable(Store),
-    /// The initial store is visible, but parent-directory synchronization could
-    /// not prove that the install will survive a system crash.
     InstalledDurabilityUncertain(Store),
 }
 
@@ -593,13 +553,10 @@ impl PublicationStore {
             .expect("publication store is available until commit")
     }
 
-    /// Makes a successfully published initial store visible. Existing stores
-    /// need no installation and are returned unchanged.
     pub fn commit(self) -> Result<PublicationCommitOutcome> {
         self.commit_with_parent_sync(sync_directory)
     }
 
-    /// Publishes and installs a checkpoint without cancellation.
     pub fn publish(
         self,
         candidate: Candidate,
@@ -608,9 +565,6 @@ impl PublicationStore {
         self.publish_controlled(candidate, evidence, &UncancelledPublication)
     }
 
-    /// Publishes with one cancellation cutoff at the operation that first
-    /// makes the checkpoint visible. Existing stores cross the cutoff at the
-    /// catalog commit. A first store crosses it at the final directory rename.
     pub fn publish_controlled(
         self,
         candidate: Candidate,
@@ -699,9 +653,6 @@ impl PublicationStore {
         self.initialization_dir = None;
         drop(namespace_lock);
 
-        // Any residue here is private and will also be reaped before the next
-        // publication attempt. A later successful parent sync also makes the
-        // already-completed install durable.
         let _ = remove_path_without_following_links(&initialization_dir);
         durable |= sync_parent(parent).is_ok();
         if durable {
@@ -725,8 +676,6 @@ impl Drop for PublicationStore {
     }
 }
 
-/// An exclusive, cross-process store operation. Keep this guard alive while
-/// external journal files under the store root are in use.
 pub struct ExclusiveStoreGuard<'a> {
     store: &'a Store,
     _locks: StoreLocks,
@@ -751,8 +700,6 @@ impl ExclusiveStoreGuard<'_> {
 }
 
 impl Store {
-    /// Opens or creates the store at an application-data path supplied by the
-    /// caller. This method never accepts or derives a project source path.
     pub fn open(root: impl AsRef<Path>) -> Result<Self> {
         let requested_root = root.as_ref();
         let requested_parent = store_parent(requested_root)?;
@@ -803,16 +750,12 @@ impl Store {
         Ok(store)
     }
 
-    /// Opens an existing store for automatic publication or creates a private
-    /// first-publication store whose final path stays absent until commit.
     pub fn open_for_publication(root: impl AsRef<Path>) -> Result<PublicationStore> {
         Self::open_for_publication_checked(root.as_ref(), true)?.ok_or_else(|| {
             HistoryError::Corrupt("blocking checkpoint publication lock was not acquired".into())
         })
     }
 
-    /// Tries to reserve one store for automatic publication without waiting.
-    /// `None` means another process currently owns the publication lock.
     pub fn try_open_for_publication(root: impl AsRef<Path>) -> Result<Option<PublicationStore>> {
         Self::open_for_publication_checked(root.as_ref(), false)
     }
@@ -867,8 +810,6 @@ impl Store {
         }))
     }
 
-    /// Opens a previously created store without creating any path or file.
-    /// This is the listing/UI entry point for lazy checkpoint creation.
     pub fn open_existing(root: impl AsRef<Path>) -> Result<Option<Self>> {
         let requested_root = root.as_ref();
         if !requested_root.try_exists()? {
@@ -922,22 +863,14 @@ impl Store {
         })
     }
 
-    /// Atomically detaches and removes one exact store while blocking all
-    /// Store handles in this namespace. The namespace lock remains beside the
-    /// stores so a later recreation cannot race on a replacement lock inode.
     pub fn destroy(root: impl AsRef<Path>) -> Result<bool> {
         Ok(Self::destroy_checked(root.as_ref(), false, true)?.unwrap_or(false))
     }
 
-    /// Atomically removes a store only when it has no visible checkpoints.
-    /// The emptiness check and detach share the namespace lock, so a cleanup
-    /// attempt cannot race with publication in another process.
     pub fn destroy_if_empty(root: impl AsRef<Path>) -> Result<bool> {
         Ok(Self::destroy_checked(root.as_ref(), true, true)?.unwrap_or(false))
     }
 
-    /// Tries to atomically remove an empty store without waiting on another
-    /// process. `None` means the namespace is currently busy.
     pub fn try_destroy_if_empty(root: impl AsRef<Path>) -> Result<Option<bool>> {
         Self::destroy_checked(root.as_ref(), true, false)
     }
@@ -1018,8 +951,6 @@ impl Store {
         Ok(Some(removed))
     }
 
-    /// Seals only the explicit regular files in `inputs` into a private tree.
-    /// No directory traversal or dependency discovery occurs here.
     pub fn stage_candidate(
         &self,
         project_root: impl AsRef<Path>,
@@ -1028,8 +959,6 @@ impl Store {
         self.stage_candidate_controlled(project_root, inputs, &UncancelledPublication)
     }
 
-    /// Seals a candidate while polling a caller-owned cancellation gate between
-    /// files and bounded content chunks.
     pub fn stage_candidate_controlled(
         &self,
         project_root: impl AsRef<Path>,
@@ -1331,7 +1260,6 @@ impl Store {
         })
     }
 
-    /// Publishes a candidate root last, after its immutable pack is durable.
     pub fn publish(
         &self,
         candidate: Candidate,
@@ -1340,8 +1268,6 @@ impl Store {
         self.publish_inner(candidate, evidence, PublishFault::None)
     }
 
-    /// Publishes through a cancellation gate whose commit callback is the
-    /// single cutoff between cancellation and a visible checkpoint root.
     pub fn publish_controlled(
         &self,
         candidate: Candidate,
@@ -1497,7 +1423,6 @@ impl Store {
             )));
         }
 
-        // The visible root is intentionally the final catalog mutation.
         insert_checkpoint(&transaction, &checkpoint)?;
 
         if fault == PublishFault::BeforeCommit {
@@ -1517,13 +1442,8 @@ impl Store {
         if !gate.commit_visibility(&mut commit)? {
             return Err(HistoryError::PublicationCancelled);
         }
-        // Visibility is committed. Cleanup must not turn success into an error
-        // that a caller could mistake for a safe retry or rollback point.
         let _ = candidate.cleanup();
 
-        // Keep the variable alive until the transaction is committed. On an
-        // injected failure, the immutable file is an unreachable orphan that
-        // recovery can remove without exposing a checkpoint.
         drop(published_pack_path);
         Ok(PublishOutcome::Created(checkpoint))
     }
@@ -1625,7 +1545,6 @@ impl Store {
         })
     }
 
-    /// Lists visible checkpoints newest first. Candidates are never listed.
     pub fn list(&self) -> Result<Vec<Checkpoint>> {
         let _store_locks = self.acquire_shared_locks()?;
         self.list_inner()
@@ -1735,8 +1654,6 @@ impl Store {
         Ok(checkpoint)
     }
 
-    /// Removes a selected visible root. Payload reclamation is deliberately a
-    /// separate operation so a crash cannot make a retained root unreadable.
     pub fn delete_checkpoint(&self, root: &SnapshotRoot) -> Result<bool> {
         let _store_locks = self.acquire_exclusive_locks()?;
         let connection = self.connection()?;
@@ -1746,7 +1663,6 @@ impl Store {
         )? > 0)
     }
 
-    /// Retains only the newest visible checkpoint.
     pub fn keep_latest(&self) -> Result<u64> {
         let _store_locks = self.acquire_exclusive_locks()?;
         let connection = self.connection()?;
@@ -1761,15 +1677,12 @@ impl Store {
         )? as u64)
     }
 
-    /// Removes all visible roots without touching project files.
     pub fn reset(&self) -> Result<u64> {
         let _store_locks = self.acquire_exclusive_locks()?;
         let connection = self.connection()?;
         Ok(connection.execute("DELETE FROM checkpoints", [])? as u64)
     }
 
-    /// Reclaims only packs that contain no chunk reachable from a retained
-    /// root. Mixed packs remain intact until a future restartable compactor.
     pub fn garbage_collect(&self) -> Result<GarbageCollection> {
         let _store_locks = self.acquire_exclusive_locks()?;
         remove_stale_staging(&self.root)?;
@@ -1837,8 +1750,6 @@ impl Store {
         })
     }
 
-    /// Materializes one retained checkpoint into a newly created directory.
-    /// Every chunk, file, and the manifest root are rehashed before success.
     pub fn materialize(
         &self,
         root: &SnapshotRoot,
@@ -1915,7 +1826,6 @@ impl Store {
         })
     }
 
-    /// Verifies all retained roots and all indexed immutable packs.
     pub fn verify(&self) -> Result<Verification> {
         let _store_locks = self.acquire_shared_locks()?;
         validate_existing_format(&self.root)?;
@@ -2082,9 +1992,6 @@ impl Store {
         Ok(raw)
     }
 
-    /// Writes a self-contained, verified logical checkpoint stream. The
-    /// stream is not encrypted; callers must wrap it in their authenticated
-    /// user-selected encryption envelope before storing it as a backup.
     pub fn export_checkpoint<W: Write>(
         &self,
         root: &SnapshotRoot,
@@ -2101,9 +2008,6 @@ impl Store {
         Ok(record.export)
     }
 
-    /// Imports one logical checkpoint stream invisibly, then publishes its
-    /// root in the normal root-last transaction. Existing roots and chunks
-    /// are deduplicated by their BLAKE3 identities.
     pub fn import_checkpoint<R: Read>(&self, mut reader: R) -> Result<PublishOutcome> {
         let store_locks = self.acquire_exclusive_locks()?;
         remove_stale_staging(&self.root)?;
@@ -2221,9 +2125,6 @@ impl Store {
         }
     }
 
-    /// Streams every visible checkpoint, oldest first, as a logical portable
-    /// history. This stream is intentionally unencrypted for composition with
-    /// Oleafly's authenticated password envelope.
     pub fn export_history<W: Write>(&self, mut writer: W) -> Result<HistoryExportSummary> {
         let _store_locks = self.acquire_shared_locks()?;
         let mut connection = self.connection()?;
@@ -2262,17 +2163,10 @@ impl Store {
         })
     }
 
-    /// Imports a complete portable history. The catalog write transaction is
-    /// held until every record and payload has verified, so a corrupt late
-    /// record exposes no partial history.
     pub fn import_history<R: Read>(&self, reader: R) -> Result<HistoryImportSummary> {
         self.import_history_validated(reader, |_, _, _| Ok::<(), String>(()))
     }
 
-    /// Imports a complete portable history while letting the application
-    /// validate the portable `project.json` against each checkpoint's compile
-    /// identity. Validation runs before the catalog transaction commits, so a
-    /// rejected record exposes no partial history.
     pub fn import_history_validated<R, F>(
         &self,
         mut reader: R,
@@ -2396,7 +2290,6 @@ impl Store {
 
         let (missing, existing_checkpoints) = stage_imported_manifests(&transaction, checkpoints)?;
 
-        // All visible roots are inserted last in this single transaction.
         for checkpoint in &missing {
             let logical_bytes =
                 checkpoint
@@ -2444,9 +2337,6 @@ impl Store {
             }
         }
         transaction.commit()?;
-        // Visibility is committed above. Staging cleanup is best-effort so a
-        // cleanup failure cannot turn a successful import into an error that
-        // callers might treat as safe to roll back.
         let _ = guard.cleanup();
         Ok(HistoryImportSummary {
             created_checkpoints: missing.len() as u64,
@@ -4262,8 +4152,6 @@ fn reap_detached_stores(
             }
             Err(error) if error.kind() == io::ErrorKind::NotFound => {
                 if !live_root_exists {
-                    // The detached directory was fully removed and only its
-                    // durable completion record survived the prior attempt.
                     remove_delete_record(&record_path)?;
                     sync_directory(parent)?;
                     removed = true;

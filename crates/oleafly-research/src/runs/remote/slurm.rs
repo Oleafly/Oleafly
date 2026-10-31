@@ -41,10 +41,6 @@ pub struct SlurmHandleData {
     pub job_id: Option<String>,
 }
 
-/// The brief's resources over the target's defaults. The job's time limit is
-/// the shortest of what the brief asks for, the target's default and the
-/// run's timeout, so a cluster default of a day cannot outlast a run limit of
-/// half an hour; the timeout alone sets it when neither asks.
 pub fn merge_resources(
     requested: Option<&Resources>,
     defaults: &Resources,
@@ -68,8 +64,6 @@ pub fn merge_resources(
     }
 }
 
-/// The batch script: `#SBATCH` lines from checked resources, then the same
-/// environment, folder and exit-code handling as an SSH run.
 pub fn sbatch_script(
     run: &RemoteRun<'_>,
     resources: &Resources,
@@ -163,7 +157,6 @@ fn heredoc(file: &str, content: &str) -> String {
     text
 }
 
-/// Writes the command and batch script, submits once and prints the job id.
 fn submit_script(dir: &str, command: &str, batch: &str) -> String {
     let dir = sh_quote(dir);
     format!(
@@ -180,7 +173,6 @@ fn submit_script(dir: &str, command: &str, batch: &str) -> String {
     )
 }
 
-/// The job id from `sbatch --parsable` (`12345` or `12345;cluster`).
 pub fn parse_sbatch_parsable(stdout: &str) -> Result<String, RunError> {
     let line = stdout
         .lines()
@@ -246,8 +238,6 @@ fn state_named(name: &str, reason: &str) -> SlurmState {
     }
 }
 
-/// The first line of `squeue -h -t all -o '%T|%r'`; `None` when the job is
-/// not in the queue.
 pub fn parse_squeue(stdout: &str) -> Option<SlurmState> {
     let line = stdout
         .lines()
@@ -257,8 +247,6 @@ pub fn parse_squeue(stdout: &str) -> Option<SlurmState> {
     Some(state_named(state, reason))
 }
 
-/// `State|ExitCode` from `sacct -n -P -X`; the exit code is the part before
-/// the signal (`2:0` → 2).
 pub fn parse_sacct(stdout: &str) -> Option<(SlurmState, Option<i32>)> {
     let line = stdout
         .lines()
@@ -305,8 +293,6 @@ fn ended(state: &SlurmState, code: Option<i32>, exit_file: Option<i32>) -> Optio
     })
 }
 
-/// The run's status from what the queue, the accounting and the job's own
-/// marker files say, in that order.
 pub fn slurm_status(
     started_at: i64,
     queue: Option<SlurmState>,
@@ -569,7 +555,6 @@ impl RunExecutor for SlurmExecutor {
             mirror.finalize(&lost, None)?;
             return Ok(lost);
         }
-        // A job id written remotely before a crash is picked up here.
         if report.job_id.is_none() && data.job_id.is_none() {
             let lost = RunStatus::Lost {
                 reason: "The job was never submitted.".into(),
@@ -700,17 +685,14 @@ mod tests {
             ..Resources::default()
         };
         let half_hour = Duration::from_secs(30 * 60);
-        // A target default of a day is cut to the run limit...
         assert_eq!(
             merge_resources(None, &day, half_hour).time_minutes,
             Some(30)
         );
-        // ...and so is a request in the brief.
         assert_eq!(
             merge_resources(Some(&day), &Resources::default(), half_hour).time_minutes,
             Some(30)
         );
-        // A shorter ask stands; the brief's ask wins over the target's default.
         assert_eq!(
             merge_resources(Some(&quarter), &day, half_hour).time_minutes,
             Some(15)

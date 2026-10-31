@@ -231,8 +231,6 @@ fn listing_through_the_shim_still_says_signed_out_in_the_app_format() {
     std::env::remove_var("OLEAFLY_DATA_DIR");
 }
 
-// --- Gallery templates and account projects as custom templates -----------
-
 fn gallery_page(page: &str) -> String {
     format!(
         "<!DOCTYPE html><html><head><meta name=\"og:title\" content=\"Lab Thesis &amp; Report\">\
@@ -387,8 +385,6 @@ fn a_gallery_link_is_copied_into_the_account_and_saved_as_a_template() {
     let (base, result, posts) = run(async {
         let page = gallery_page(page_path);
         let dashboard = dashboard_page(&json!({ "projects": [] }));
-        // Everything sits in one folder, as in many online projects. The
-        // layout is kept so the server's main file path stays valid.
         let archive = zip_bytes(&[
             (
                 "thesis/main.tex",
@@ -590,7 +586,6 @@ fn an_account_project_is_saved_as_a_template_with_its_main_file_and_compiler() {
     std::env::remove_var("OLEAFLY_DATA_DIR");
 }
 
-// 0.4.8 I: the browser sign-in copy signs in with the main webview's cookies.
 fn app_cookie(
     name: &str,
     value: &str,

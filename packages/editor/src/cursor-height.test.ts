@@ -5,6 +5,9 @@ import { drawSelection, EditorView } from "@codemirror/view";
 import { vim } from "@replit/codemirror-vim";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CURSOR_EXTEND_PROPERTY, cursorFillsLine, cursorLineExtend } from "./cursor-height";
+import { stubRangeGeometry } from "./test-geometry";
+
+stubRangeGeometry();
 
 const views: EditorView[] = [];
 

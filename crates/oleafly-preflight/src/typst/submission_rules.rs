@@ -1,6 +1,3 @@
-//! Typst submission and privacy rules
-//! (`packages/preflight/src/typst-submission-rules.ts`).
-
 use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
 
@@ -64,8 +61,6 @@ fn typst_files(project: &ProjectContext) -> Vec<ScannedFile> {
         .collect()
 }
 
-/// Whether a line of the masked text matches `pattern` (anchored, with the
-/// leading whitespace as group 1) at a markup position.
 fn markup_lines(scan: &TypstScan, pattern: &JsRegex) -> bool {
     for (offset, line) in lines_with_offsets(scan.masked.as_str()) {
         let Some(found) = pattern.first_str(line) else {
@@ -340,8 +335,6 @@ fn caption_findings(scans: &[ScannedFile]) -> Vec<Finding> {
     out
 }
 
-/// Indexes into `files` of the images the Typst files reference, in first
-/// reference order.
 fn referenced_image_files(scans: &[ScannedFile], files: &[ProjectFile]) -> Vec<usize> {
     let by_lower: HashMap<String, usize> = files
         .iter()
@@ -366,7 +359,6 @@ fn referenced_image_files(scans: &[ScannedFile], files: &[ProjectFile]) -> Vec<u
     seen
 }
 
-/// Project paths of the images the Typst sources reference.
 pub fn typst_referenced_images(project: &ProjectContext) -> Vec<String> {
     referenced_image_files(&typst_files(project), &project.files)
         .into_iter()
@@ -438,7 +430,6 @@ fn email_domain_end(text: &SourceText, from: usize) -> Option<usize> {
     Some(text.utf16_at(byte + found.end))
 }
 
-/// The first `local@domain.tld` in `text`, as UTF-16 offsets.
 fn find_email(text: &SourceText) -> Option<(usize, usize)> {
     let units = text.units();
     let at_sign = b'@' as u16;
@@ -524,7 +515,6 @@ fn privacy_findings(
     pdf: Option<&PdfFacts>,
     anonymous_review: bool,
 ) -> Vec<Finding> {
-    // `new Map(...)`: a later file with the same path wins.
     let scanned: HashMap<&str, &TypstScan> = scans
         .iter()
         .map(|file| (file.path.as_str(), &file.scan))

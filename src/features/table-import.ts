@@ -1,8 +1,3 @@
-/**
- * CSV/XLSX to LaTeX/Typst table import (G17). SheetJS parses binary
- * spreadsheets in the webview; the emitter and its escaping live in
- * @oleafly/conversion-registry so both engines share one proven path.
- */
 import type { FileEntry } from "@oleafly/backend-port";
 import {
   delimiterOf,
@@ -177,7 +172,6 @@ export async function writeLinkedTableData(projectId: string, plan: LinkedTableP
   notifyProjectFilesChanged(projectId, [plan.dataPath]);
 }
 
-/** Parse CSV/TSV/XLSX bytes without reading outside the supplied payload. */
 export async function readTableRowsFromBytes(
   fileName: string,
   bytes: Uint8Array,
@@ -189,8 +183,6 @@ export async function readTableRowsFromBytes(
     const XLSX = await import("xlsx");
     const workbook = XLSX.read(bytes, {
       type: "array",
-      // Avoid materializing every row before the range guard can reject a
-      // large spreadsheet. The extra row makes the later limit check exact.
       sheetRows: MAX_TABLE_ROWS + 1,
     });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -198,29 +190,23 @@ export async function readTableRowsFromBytes(
       throw new Error("that spreadsheet has no sheets to import");
     }
     validateSheetRange(XLSX, sheet);
-    // Tab-separated so quoted cells survive the round trip through the
-    // shared delimited parser. Merged cells read as their value in the
-    // top-left cell; formulas export their cached result.
     const text = XLSX.utils.sheet_to_csv(sheet, { FS: "\t" });
     return validateTableRows(parseDelimited(text));
   }
   return validateTableRows(parseDelimited(new TextDecoder().decode(bytes)));
 }
 
-/** Parse a picked CSV/TSV/XLSX file into rows of cells. */
 export async function readTableRows(path: string): Promise<string[][]> {
   const base64 = await readPickedFileBase64(path);
   return readTableRowsFromBytes(path, bytesFromBase64(base64));
 }
 
-/** Emit the table source for the active engine. */
 export function emitTable(rows: string[][], options: TableImportOptions): string {
   return options.target === "typst"
     ? emitTypstTable(rows, options)
     : emitLatexTable(rows, options);
 }
 
-/** Alignment the preview shows for the current options. */
 export function previewAlignment(rows: string[][], hasHeader: boolean): string {
   return inferAlignment(rows, hasHeader);
 }
@@ -231,8 +217,6 @@ export function hasValidTableLabel(label: string): boolean {
 
 if (E2E_HOOKS && typeof window !== "undefined") {
   const w = window as unknown as Record<string, unknown>;
-  // Drives the full convert path (backend read + SheetJS + emitter) without
-  // the file dialog, for the conversion-matrix e2e spec.
   w.__e2eConvertTableFile = async (
     path: string,
     options: Partial<TableImportOptions> & { target: TableTarget },

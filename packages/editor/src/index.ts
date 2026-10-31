@@ -1,12 +1,3 @@
-// language/completions, theme, folding, linters, spelling/grammar, search.
-// The host app injects a document/settings port (EditorHost), the spelling
-// stack (setSpellHost), citation keys (setBibKeysProvider), and feature
-// extensions (extraExtensions/extraKeymap). No store, Tauri, or app imports.
-
-// CodeMirrorEditor is deliberately NOT exported here: it wires up the live
-// math preview, whose KaTeX dependency must not ride with consumers that only
-// need the index (controller, commands). Import it via the
-// "@oleafly/editor/CodeMirrorEditor" subpath instead.
 export * from "./controller";
 export * from "./messages";
 export { setEditorErrorReporter, type EditorErrorReporter } from "./error-report";
@@ -115,11 +106,6 @@ export {
   typstBibliographyParameterCompletions,
   typstSupportsMultipleBibliographies,
 } from "./typst-bibliography-parameters";
-// math-preview / math-render are deliberately NOT exported here: they import
-// KaTeX (plus its CSS), which would ride in every chunk that touches this
-// index. Import them via the "@oleafly/editor/math-preview" or
-// "@oleafly/editor/math-render" subpaths instead. The math scanner below is
-// KaTeX-free and safe to keep on the index.
 export {
   scanMathExpressions,
   type MathDelimiter,

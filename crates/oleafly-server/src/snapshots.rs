@@ -72,12 +72,13 @@ pub struct Snapshots {
     reads: Arc<AtomicU64>,
     building: Running,
     kept: Arc<kept::KeptDocuments>,
+    shedder: Arc<RwLock<Option<Shedder>>>,
 }
+
+type Shedder = Arc<dyn Fn() -> bool + Send + Sync>;
 
 type Running = Arc<std::sync::Mutex<HashMap<SharedProjectId, watch::Receiver<bool>>>>;
 
-// One snapshot build per project runs at a time. A hint that arrives while
-// one runs waits for it to finish and then takes its own turn.
 struct Building {
     running: Running,
     project: SharedProjectId,
@@ -135,7 +136,6 @@ impl Drop for Reserved {
 }
 
 impl Reserved {
-    // Gives back what the reservation holds beyond `bytes`.
     fn shrink_to(&mut self, bytes: u64) {
         if bytes < self.bytes {
             let mut held = self.held.write().unwrap_or_else(PoisonError::into_inner);
@@ -145,10 +145,6 @@ impl Reserved {
     }
 }
 
-// A document read under the snapshot memory budget. The share of the budget
-// it took goes back only when the document itself is dropped, wherever that
-// happens, so a caller that keeps it, or a blocking task that outlives the
-// request that started it, keeps paying for it.
 pub struct Budgeted {
     replay: Replay,
     reserved: Reserved,
@@ -188,8 +184,6 @@ impl Budgeted {
         )
     }
 
-    // Exports the document and keeps as much of its reservation as the
-    // exported bytes need, for the caller to hold while it stores them.
     fn exported(self) -> Option<(Vec<u8>, Reserved)> {
         let Budgeted {
             replay,
@@ -220,14 +214,8 @@ impl Held {
     }
 }
 
-// Giving back a large document's memory takes long enough to hold up the
-// other tasks on an async worker, so documents whose share of the budget is
-// at least this are dropped on a blocking thread.
 const FREE_APART_BYTES: u64 = 4 * 1024 * 1024;
 
-// Documents on their way to a blocking thread. Each keeps its share of the
-// budget counted until its memory is back, and is dropped here even when the
-// blocking thread never runs because the runtime is stopping.
 struct Freeing {
     documents: Vec<Budgeted>,
     counted: Arc<AtomicU64>,
@@ -429,7 +417,6 @@ pub struct Signed {
     pub signature: String,
 }
 
-// A snapshot opened to be sent.
 pub struct Opened {
     pub seq: u64,
     pub reader: BlobReader,
@@ -464,7 +451,26 @@ impl Snapshots {
             reads: Arc::new(AtomicU64::new(0)),
             building: Arc::new(std::sync::Mutex::new(HashMap::new())),
             kept: Arc::new(kept::KeptDocuments::default()),
+            shedder: Arc::new(RwLock::new(None)),
         }
+    }
+
+    pub fn on_pressure(&self, shed: impl Fn() -> bool + Send + Sync + 'static) {
+        *self.shedder.write().unwrap_or_else(PoisonError::into_inner) = Some(Arc::new(shed));
+    }
+
+    pub fn in_use(&self) -> u64 {
+        let held = *self.reserved.read().unwrap_or_else(PoisonError::into_inner);
+        held.saturating_sub(self.freeing.load(Ordering::SeqCst))
+    }
+
+    fn shed(&self) -> bool {
+        let shedder = self
+            .shedder
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        shedder.is_some_and(|shed| shed())
     }
 
     pub fn document_reads(&self) -> u64 {
@@ -529,9 +535,6 @@ impl Snapshots {
         self.store(db, project, 0, bytes, by, signed, now).await
     }
 
-    // Drops documents without holding up the async worker this runs on:
-    // large ones go to a blocking thread. Their share of the budget stays
-    // counted until they are gone, but a reservation can count on it.
     pub(crate) fn free(&self, documents: impl IntoIterator<Item = Budgeted>) {
         let (large, small): (Vec<Budgeted>, Vec<Budgeted>) = documents
             .into_iter()
@@ -553,13 +556,11 @@ impl Snapshots {
         drop(runtime.spawn_blocking(move || drop(freeing)));
     }
 
-    // Kept documents give their memory back when a reservation needs it,
-    // least recently used first, so only documents in use and builds can
-    // make a reservation wait. Memory still being given back counts as free.
     fn reserve(&self, bytes: u64) -> Option<Reserved> {
+        let mut shed = false;
         loop {
             let limit = self.budget().memory_bytes;
-            {
+            let short = {
                 let mut held = self
                     .reserved
                     .write()
@@ -572,21 +573,22 @@ impl Snapshots {
                         bytes,
                     });
                 }
-                if staying
+                staying
                     .saturating_sub(self.kept.bytes())
                     .saturating_add(bytes)
                     > limit
-                {
+            };
+            if short {
+                if shed || !self.shed() {
                     return None;
                 }
+                shed = true;
+                continue;
             }
             self.free([self.kept.least_recent()?]);
         }
     }
 
-    // Brings a kept document up to the project's latest change, growing its
-    // reservation by what the log since then costs. None when it can't be
-    // brought up to date, and the caller reads the project again.
     pub async fn caught_up(
         &self,
         db: &Db,
@@ -749,8 +751,6 @@ impl Snapshots {
         let Some((replay, _)) = self.current(db, project).await? else {
             return Ok(None);
         };
-        // A change the replay couldn't take in may be the one that uses a
-        // file, so no file counts as unused until it can be read.
         if replay.left_out().is_some() {
             return Ok(None);
         }
@@ -931,10 +931,6 @@ impl Snapshots {
         Ok(Upload::Stored)
     }
 
-    // Notes the object for removal before writing it, so a build that stops
-    // between writing and recording (a dropped request, a killed process)
-    // leaves it for the maintenance pass rather than in the store forever.
-    // Recording the snapshot clears the note.
     async fn stage(
         &self,
         db: &Db,
@@ -953,8 +949,6 @@ impl Snapshots {
         Ok((hash, size))
     }
 
-    // Tells when the snapshot build of `project` that is running now ends,
-    // if one is running.
     pub fn build_running(&self, project: SharedProjectId) -> Option<watch::Receiver<bool>> {
         self.building
             .lock()
@@ -1095,11 +1089,6 @@ impl Snapshots {
         self.remove_queued(db, project, hash).await
     }
 
-    // Opens the newest snapshot that can be read, or the newest before
-    // `before`, to be sent in pieces. One that doesn't hold the bytes it was
-    // stored with is passed over, and a small one is read and checked whole
-    // here, so a damaged snapshot falls back to the one before it. A large
-    // one is checked as it is sent.
     pub async fn open(
         &self,
         db: &Db,
@@ -1413,7 +1402,6 @@ pub struct Replay {
     reached: HashMap<u64, Reached>,
 }
 
-// How far the replayed entries took one writer id, and which entries did.
 #[derive(Clone, Copy)]
 struct Reached {
     end: i32,
@@ -1486,10 +1474,6 @@ impl Replay {
         })
     }
 
-    // The changes the replayed entries carried that the document does not
-    // hold, as the range of entries they came from. Such changes were
-    // accepted but could not be imported, so a snapshot built now would
-    // leave them out.
     pub fn left_out(&self) -> Option<(u64, u64)> {
         let held = self.doc.oplog_vv();
         self.reached
@@ -1856,8 +1840,6 @@ mod tests {
         assert_eq!(snapshots.kept_bytes(), 0);
     }
 
-    // Holds the runtime's only blocking thread, so a document sent there to
-    // be freed waits until `let_go`.
     struct HeldThread {
         release: std::sync::mpsc::Sender<()>,
         held: tokio::task::JoinHandle<()>,
@@ -1872,7 +1854,6 @@ mod tests {
             HeldThread { release, held }
         }
 
-        // Lets the thread go and waits for everything queued behind it.
         async fn let_go(self) {
             drop(self.release);
             self.held.await.unwrap();
@@ -2031,8 +2012,9 @@ mod tests {
         let checking = {
             let (db, snapshots) = (db.clone(), snapshots.clone());
             tokio::spawn(async move {
+                let reach = peers::update_reach(&typed).expect("a reach");
                 CommentGuard::default()
-                    .check(&db, &snapshots, project, typed)
+                    .check(&db, &snapshots, project, typed, &reach)
                     .await
             })
         };

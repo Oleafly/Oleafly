@@ -8,7 +8,6 @@ import {
   type AcpRememberedChoice,
 } from "@/lib/acp";
 
-/** Fired on `window` after Settings saves the agent preferences; `detail` is the stored `AcpPreferences`. */
 export const ACP_PREFERENCES_CHANGED = "oleafly:acp-preferences-changed";
 
 export function announceAcpPreferences(prefs: AcpPreferences) {
@@ -17,11 +16,9 @@ export function announceAcpPreferences(prefs: AcpPreferences) {
 
 export type AgentPreferenceSlot = "effort" | "mode" | "provider";
 
-/** One agent's remembered choices, shared by every section of its card. */
 export interface AgentPreferences {
   prefs: AcpAgentPreferences | null;
   loadError: string | null;
-  /** Saves one choice and keeps the others as stored. Resolves with the error to show, or null. */
   save(slot: AgentPreferenceSlot, value: AcpRememberedChoice | string | null): Promise<string | null>;
 }
 
@@ -29,7 +26,6 @@ export function useAgentPreferences(agentId: string): AgentPreferences {
   const [prefs, setPrefs] = useState<AcpAgentPreferences | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const live = useRef(true);
-  // One save at a time, so each answer already holds every earlier change.
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
   useEffect(() => {
@@ -50,7 +46,6 @@ export function useAgentPreferences(agentId: string): AgentPreferences {
           if (live.current) setPrefs(stored);
           return null;
         } catch (error) {
-          // Show what is stored, not what this card assumed.
           try {
             const stored = await acpAgentPreferences(agentId);
             if (live.current) setPrefs(stored);

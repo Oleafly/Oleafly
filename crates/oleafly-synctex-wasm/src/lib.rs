@@ -14,17 +14,14 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 use oleafly_synctex::{
-    forward_hit, gunzip, infer_roots, inverse, parse, Doc, GunzipError, MAX_SYNCTEX_FILE_BYTES,
-    MAX_SYNCTEX_TEXT_BYTES,
+    forward_hit, gunzip, infer_roots, inverse, map_source_line, parse, Doc, GunzipError,
+    MAX_SYNCTEX_FILE_BYTES, MAX_SYNCTEX_TEXT_BYTES,
 };
 
-/// A pointer, a project path list or a query that isn't usable.
 pub const STATUS_BAD_INPUT: i32 = -1;
 pub const STATUS_FILE_TOO_LARGE: i32 = -2;
 pub const STATUS_TEXT_TOO_LARGE: i32 = -3;
-/// Not gzip, cut short, or not text.
 pub const STATUS_UNREADABLE: i32 = -4;
-/// The handle was closed, or never opened.
 pub const STATUS_CLOSED: i32 = -5;
 pub const STATUS_INTERNAL: i32 = -6;
 
@@ -54,15 +51,12 @@ impl From<GunzipError> for Failure {
     }
 }
 
-/// A parsed SyncTeX file and the folders its project was compiled in.
 pub struct Index {
     doc: Doc,
     roots: Vec<String>,
 }
 
 impl Index {
-    /// `project_paths` is a JSON list of the project's files, relative to
-    /// its folder, from which the folder it was compiled in is inferred.
     pub fn open(gz: &[u8], project_paths: &[u8]) -> Result<Self, Failure> {
         Self::open_limited(
             gz,
@@ -93,13 +87,10 @@ impl Index {
         &self.roots
     }
 
-    /// The forward hit as JSON, in the shape the desktop's command returns.
     pub fn forward(&self, file: &str, line: i32) -> Result<Option<Vec<u8>>, Failure> {
         to_json(forward_hit(&self.doc, file, line, &self.roots))
     }
 
-    /// The inverse hit as JSON; its file is project-relative when the root
-    /// was inferred.
     pub fn inverse(&self, page: i32, x: f64, y: f64) -> Result<Option<Vec<u8>>, Failure> {
         if !x.is_finite() || !y.is_finite() {
             return Err(Failure::new(
@@ -133,8 +124,6 @@ impl State {
         }
     }
 
-    /// Handles are never reused while open, so a stale one can't reach
-    /// another index.
     fn next_handle(&mut self) -> i32 {
         loop {
             self.last = if self.last == i32::MAX {
@@ -166,7 +155,6 @@ impl State {
     }
 }
 
-// The module has one thread; natively each test thread gets its own.
 thread_local! {
     static STATE: RefCell<State> = const { RefCell::new(State::new()) };
 }
@@ -187,7 +175,6 @@ fn closed() -> Failure {
     )
 }
 
-/// Opens an index and returns its handle, or a failure status.
 pub fn open(gz: &[u8], project_paths: &[u8]) -> i32 {
     let opened = Index::open(gz, project_paths);
     with_state(|state| match opened {
@@ -222,7 +209,6 @@ pub fn inverse_at(handle: i32, page: i32, x: f64, y: f64) -> i32 {
     })
 }
 
-/// Frees an index. Closing it again reports `STATUS_CLOSED`.
 pub fn close(handle: i32) -> i32 {
     with_state(|state| {
         let result = match state.indexes.remove(&handle) {
@@ -231,6 +217,26 @@ pub fn close(handle: i32) -> i32 {
         };
         state.answer(result)
     })
+}
+
+pub fn map_line(compiled: &[u8], current: &[u8], line: i32, current_to_compiled: bool) -> i32 {
+    let mapped = match (
+        std::str::from_utf8(compiled),
+        std::str::from_utf8(current),
+        usize::try_from(line),
+    ) {
+        (Ok(compiled), Ok(current), Ok(line)) if line > 0 => to_json(map_source_line(
+            compiled,
+            current,
+            line,
+            current_to_compiled,
+        )),
+        _ => Err(Failure::new(
+            STATUS_BAD_INPUT,
+            "The source texts aren't UTF-8 or the line isn't above zero.",
+        )),
+    };
+    with_state(|state| state.answer(mapped))
 }
 
 fn bad_pointer() -> i32 {
@@ -255,8 +261,6 @@ unsafe fn bytes<'a>(ptr: *const u8, len: usize) -> Option<&'a [u8]> {
     Some(unsafe { std::slice::from_raw_parts(ptr, len) })
 }
 
-/// A buffer of `len` bytes for the page to fill, or null when memory has
-/// run out. Free it with `synctex_free` and the same length.
 #[no_mangle]
 pub extern "C" fn synctex_alloc(len: usize) -> *mut u8 {
     if len == 0 {
@@ -324,8 +328,23 @@ pub extern "C" fn synctex_close(handle: i32) -> i32 {
     close(handle)
 }
 
-/// Where the last call's answer or message starts. Valid until the next
-/// call.
+#[no_mangle]
+unsafe extern "C" fn synctex_map_line(
+    compiled: *const u8,
+    compiled_len: usize,
+    current: *const u8,
+    current_len: usize,
+    line: i32,
+    current_to_compiled: i32,
+) -> i32 {
+    match unsafe { (bytes(compiled, compiled_len), bytes(current, current_len)) } {
+        (Some(compiled), Some(current)) => {
+            map_line(compiled, current, line, current_to_compiled != 0)
+        }
+        _ => bad_pointer(),
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn synctex_output_ptr() -> *const u8 {
     STATE
@@ -500,6 +519,43 @@ mod tests {
         for handle in [second, third] {
             assert_eq!(close(handle), 0);
         }
+    }
+
+    #[test]
+    fn lines_map_between_the_compiled_and_the_current_source_as_the_desktop_maps_them() {
+        let compiled = "alpha\nbeta\ngamma\ndelta";
+        let current = "intro\nalpha\nbeta\ngamma\ndelta";
+        assert_eq!(
+            map_line(compiled.as_bytes(), current.as_bytes(), 4, true),
+            1
+        );
+        assert_eq!(
+            output(),
+            serde_json::to_string(&map_source_line(compiled, current, 4, true)).unwrap()
+        );
+        assert_eq!(output(), r#"{"line":3,"exact":true}"#);
+        assert_eq!(
+            map_line(compiled.as_bytes(), current.as_bytes(), 2, false),
+            1
+        );
+        assert_eq!(output(), r#"{"line":3,"exact":true}"#);
+        assert_eq!(map_line(b"alpha\nbeta", b"one\ntwo", 1, true), 0);
+        assert_eq!(map_line(&[0xff], b"x", 1, true), STATUS_BAD_INPUT);
+        assert_eq!(map_line(b"x", b"x", 0, true), STATUS_BAD_INPUT);
+        let status = unsafe {
+            synctex_map_line(
+                compiled.as_ptr(),
+                compiled.len(),
+                current.as_ptr(),
+                current.len(),
+                5,
+                1,
+            )
+        };
+        assert_eq!(status, 1);
+        assert_eq!(output(), r#"{"line":4,"exact":true}"#);
+        let missing = unsafe { synctex_map_line(std::ptr::null(), 3, current.as_ptr(), 1, 1, 1) };
+        assert_eq!(missing, STATUS_BAD_INPUT);
     }
 
     #[test]

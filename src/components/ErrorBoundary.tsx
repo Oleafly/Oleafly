@@ -36,16 +36,8 @@ const SURFACE_KEYS = {
 
 interface Props {
   children: ReactNode;
-  // Optional lightweight fallback for wrapping a single risky subtree (a panel)
-  // rather than the whole app. When provided, a caught error renders this
-  // instead of the full-screen crash screen, so the rest of the UI survives.
   fallback?: ReactNode;
-  // Names a UI surface (editor, chat, PDF preview…). A caught error renders a
-  // compact in-place fallback with Retry and Copy diagnostics instead of the
-  // full-screen crash screen, so the rest of the workspace survives.
   surface?: ErrorSurface;
-  // A new render payload (for example, a newly compiled PDF) gets one fresh
-  // attempt after a scoped child crashed.
   resetKey?: unknown;
   onError?: (error: Error) => void;
 }
@@ -106,7 +98,6 @@ export class ErrorBoundary extends Component<Props, State> {
     const detail = `UI crash: ${error.name}: ${error.message}\n${
       error.stack ?? ""
     }\ncomponentStack:${info.componentStack ?? ""}`;
-    // Best-effort; never throw from the error handler itself.
     void appendAppLog(detail).catch(() => {});
     this.props.onError?.(error);
   }
@@ -134,8 +125,6 @@ export class ErrorBoundary extends Component<Props, State> {
     const { error } = this.state;
     if (!error) return this.props.children;
 
-    // Scoped boundaries render their own compact fallback and leave the rest of
-    // the app mounted.
     if (this.props.fallback !== undefined) return this.props.fallback;
 
     if (this.props.surface !== undefined) {

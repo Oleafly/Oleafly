@@ -1509,6 +1509,7 @@
         "missing": "V tomto počítači nenalezeno."
       },
       "managedIdle": "Nepoužívá se. Oleafly přednostně používá kopii nalezenou v tomto počítači.",
+      "superseded": "Nepoužívá se. Oleafly nyní používá {{tool}} {{version}}.",
       "download": {
         "optional": "Volitelné. Oleafly už používá kopii v tomto počítači.",
         "license": "Licence {{license}}.",

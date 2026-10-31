@@ -1,9 +1,3 @@
-// The typed thread-item record, mirroring src-tauri's
-// crates/oleafly-agent/src/items.rs one-for-one: the store union (exact wire
-// tags), the recorded-item envelope, the persisted turn record, and the fold
-// that turns an AgentEvent stream into items. Framework-free on purpose: no
-// stores, no Tauri, no React.
-
 import type { AgentEvent } from "./agent-events";
 import type { AgentUsage } from "./usage";
 
@@ -106,7 +100,6 @@ export type StoreItem =
   | { type: "exitedReviewMode" }
   | { type: "sleep"; durationMs: number };
 
-/** An item with its identity and lifecycle stamp. */
 export type RecordedStoreItem = {
   id: string;
   item: StoreItem;
@@ -115,7 +108,6 @@ export type RecordedStoreItem = {
 
 export type TurnRecordStatus = "inProgress" | "completed" | "failed" | "interrupted";
 
-/** One turn as persisted: the items it produced plus bookkeeping. */
 export type TurnRecord = {
   turnId: string;
   clientTurnId: string | null;
@@ -138,7 +130,6 @@ export function newTurnRecord(turnId: string, clientTurnId?: string): TurnRecord
   };
 }
 
-/** Classify a tool name into its store item (mirrors the Rust classify_tool). */
 export function classifyTool(name: string): StoreItem {
   if (name === "run_command" || name === "exec_command" || name === "shell_command") {
     return {
@@ -206,7 +197,6 @@ function toolOutcome(output: string): { status: ExecutionStatus; exitCode: numbe
   }
 }
 
-/** Finalize a tool item's arguments from the call's JSON argument string. */
 function applyArguments(item: StoreItem, raw: string): void {
   const parsed = parseArguments(raw);
   if (item.type === "commandExecution") {
@@ -226,11 +216,6 @@ function applyArguments(item: StoreItem, raw: string): void {
   }
 }
 
-/**
- * Folds one run's event stream into a persisted turn record — the shell
- * counterpart of the Rust TurnRecorder. One instance per run: the open
- * tool-call map is instance state, never shared.
- */
 export class TurnFold {
   private readonly record: TurnRecord;
   private readonly openCalls = new Map<string, number>();
@@ -239,7 +224,6 @@ export class TurnFold {
     this.record = newTurnRecord(turnId, clientTurnId);
   }
 
-  /** Open the record with the optimistic user message (before any request). */
   pushUserMessage(text: string): this {
     this.record.items.push({
       id: `${this.record.turnId}:${this.record.items.length}`,

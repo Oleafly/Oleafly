@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { i18n } from "@/i18n";
 import { cssColorToHex, readClassVariables, readCssVariable } from "@/lib/css-color";
+import { downloadBlob } from "@/lib/download-blob";
 import { useTheme, type Theme } from "@/lib/theme";
 import { useSettingsStore } from "@/store/settings";
 import {
@@ -66,13 +67,10 @@ const TOKEN_LABELS: Record<ThemeTokenName, () => string> = {
 function downloadTheme(customization: ThemeCustomizationState) {
   const { editorThemeLight, editorThemeDark, editorColors } = useSettingsStore.getState();
   const editor = { themes: { light: editorThemeLight, dark: editorThemeDark }, colors: editorColors };
-  const blob = new Blob([serializeThemeCustomization(customization, editor)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "oleafly-theme.json";
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(
+    new Blob([serializeThemeCustomization(customization, editor)], { type: "application/json" }),
+    "oleafly-theme.json",
+  );
 }
 
 export function ThemeCustomization() {

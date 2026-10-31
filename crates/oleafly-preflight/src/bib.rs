@@ -1,10 +1,3 @@
-//! Bibliography helpers: declaration resolution
-//! (`packages/latex/src/bibliography-resolve.ts`), BibTeX entry types
-//! (`packages/latex/src/bibtex-entry-types.ts`), the tolerant entry parser
-//! (`src/lib/citation/bibtex.ts`), the legacy index's BibTeX keys
-//! (`src/lib/index/parse-file.ts`) and the Hayagriva YAML key reader
-//! (`src/lib/citation/hayagriva.ts`).
-
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::LazyLock;
 
@@ -85,7 +78,6 @@ fn directory_of(path: &str) -> &str {
     }
 }
 
-/// Trims and drops one surrounding quote.
 pub fn normalize_bibliography_target(raw: &str) -> String {
     strip_quotes(js_trim(raw)).to_string()
 }
@@ -105,8 +97,6 @@ pub fn bibliography_display_name(raw: &str, engine: BibliographyEngine) -> Strin
     format!("{raw}.bib")
 }
 
-/// `\bibliography{a,b}` and `\addbibresource{x.bib}` declarations; one entry
-/// per comma-separated name, all sharing the command's UTF-16 range.
 pub fn bibliography_declarations(source: &str) -> Vec<BibliographyDeclaration> {
     let text = SourceText::new(source.to_string());
     let mut declarations = Vec::new();
@@ -132,7 +122,6 @@ pub fn bibliography_declarations(source: &str) -> Vec<BibliographyDeclaration> {
     declarations
 }
 
-/// Project-relative spellings a declaration may name, in lookup order.
 pub fn bibliography_candidate_paths(
     raw: &str,
     from_file: &str,
@@ -173,8 +162,6 @@ pub fn bibliography_candidate_paths(
     candidates
 }
 
-/// The known file a declaration loads: an exact match first, then a
-/// case-insensitive one (the first known spelling wins).
 pub fn resolve_bibliography_path(
     raw: &str,
     from_file: &str,
@@ -462,7 +449,6 @@ static ENTRY_TYPES: LazyLock<Vec<BibtexEntryType>> = LazyLock::new(|| {
 
 pub const BIBTEX_DIRECTIVES: &[&str] = &["comment", "preamble", "string"];
 
-/// Every entry type, sorted by name like `BIBTEX_ENTRY_TYPES`.
 pub fn bibtex_entry_types() -> &'static [BibtexEntryType] {
     &ENTRY_TYPES
 }
@@ -476,7 +462,6 @@ pub fn is_bibtex_directive(name: &str) -> bool {
     BIBTEX_DIRECTIVES.contains(&name.to_lowercase().as_str())
 }
 
-/// The required field groups with no field present.
 pub fn missing_bibtex_required_fields(
     name: &str,
     present: &BTreeSet<String>,
@@ -492,7 +477,6 @@ pub fn missing_bibtex_required_fields(
         .collect()
 }
 
-/// A parsed BibTeX entry (`ParsedBib`).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ParsedBib {
     pub key: String,
@@ -536,8 +520,6 @@ fn entry_value(body: &str, i: usize) -> (String, usize) {
                 }
                 j += 1;
             }
-            // `body.slice(i + 1, j - 1)`: without a closing brace the last
-            // character is dropped, exactly like the TypeScript loop.
             let end = if closed {
                 j - 1
             } else {
@@ -584,7 +566,6 @@ fn parse_entry_fields(body: &str) -> BTreeMap<String, String> {
     fields
 }
 
-/// Tolerant of nested braces, quoted, or bare field values.
 pub fn parse_entry(bibtex: &str) -> Option<ParsedBib> {
     let text = js_trim(bibtex);
     let head = ENTRY_HEAD.first_str(text)?;
@@ -597,7 +578,6 @@ pub fn parse_entry(bibtex: &str) -> Option<ParsedBib> {
 
 static ENTRY_SPLIT: LazyLock<JsRegex> = LazyLock::new(|| JsRegex::std(r"@[0-9A-Za-z_]+\s*\{"));
 
-/// `content.split(/(?=@\w+\s*\{)/)`: pieces that start at each entry head.
 pub fn split_bib_entries(content: &str) -> Vec<&str> {
     let (heads, _) = ENTRY_SPLIT.captures_str(content);
     let mut pieces = Vec::new();
@@ -612,7 +592,6 @@ pub fn split_bib_entries(content: &str) -> Vec<&str> {
     pieces
 }
 
-/// A BibTeX key definition as the legacy index records it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LegacyBibKey {
     pub key: String,
@@ -624,8 +603,6 @@ pub struct LegacyBibKey {
 static LEGACY_ENTRY: LazyLock<JsRegex> =
     LazyLock::new(|| JsRegex::std(r"@([0-9A-Za-z_]+)\s*\{\s*([^,\s}]+)"));
 
-/// `@type{key` heads in the comment-masked text; `from`/`to` cover the head
-/// and `line` is 1-based.
 pub fn legacy_bib_keys(bib_text: &str) -> Vec<LegacyBibKey> {
     let masked = SourceText::new(mask_comments(bib_text));
     let mut keys = Vec::new();
@@ -644,9 +621,6 @@ pub fn legacy_bib_keys(bib_text: &str) -> Vec<LegacyBibKey> {
     keys
 }
 
-// ---------------------------------------------------------------------------
-// Hayagriva YAML
-
 pub const MAX_BIBLIOGRAPHY_YAML_CHARACTERS: usize = 1_000_000;
 const SNIFF_WINDOW: usize = 8192;
 
@@ -658,7 +632,6 @@ pub fn is_hayagriva_path(path: &str) -> bool {
     HAYAGRIVA_EXTENSION.is_match(path)
 }
 
-/// A YAML file the index reads: not hidden and not a lock file.
 pub fn is_bibliography_yaml_candidate(path: &str) -> bool {
     if !is_hayagriva_path(path) {
         return false;
@@ -914,7 +887,6 @@ fn flow_body(text: &str, open: char, close: char) -> Option<&str> {
     Some(&trimmed[open.len_utf8()..trimmed.len() - close.len_utf8()])
 }
 
-/// Keys of a YAML flow mapping (`{ type: Article, title: X }`).
 fn flow_map_keys(text: &str) -> Option<Vec<String>> {
     let body = flow_body(text, '{', '}')?;
     Some(
@@ -925,7 +897,6 @@ fn flow_map_keys(text: &str) -> Option<Vec<String>> {
     )
 }
 
-/// Names of the field blocks at the first content line's indentation.
 fn field_block_names(lines: &[&YamlLine<'_>]) -> Vec<String> {
     let content: Vec<&YamlLine<'_>> = lines.iter().copied().filter(|line| !line.blank).collect();
     let Some(first) = content.first() else {
@@ -959,12 +930,9 @@ fn is_document_marker(text: &str) -> bool {
     text.starts_with("---") || text.starts_with("...") || text.starts_with('%')
 }
 
-/// A top-level Hayagriva entry: its key, and whether it is a real entry (it
-/// has a `type` or a `title` field).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HayagrivaKey {
     pub key: String,
-    /// UTF-16 offset of the key's line.
     pub line_from: usize,
     pub is_entry: bool,
 }
@@ -1011,7 +979,6 @@ pub fn hayagriva_entry_keys(source: &str) -> Vec<HayagrivaKey> {
     entries
 }
 
-/// `hayagrivaKeys`: every top-level entry key.
 pub fn hayagriva_keys(source: &str) -> BTreeSet<String> {
     hayagriva_entry_keys(source)
         .into_iter()
@@ -1030,7 +997,6 @@ fn utf16_prefix(text: &str, units: usize) -> &str {
     text
 }
 
-/// Whether the first entry of a YAML file looks like a Hayagriva entry.
 pub fn looks_like_hayagriva(text: &str) -> bool {
     let window = utf16_prefix(text, SNIFF_WINDOW);
     let lines = yaml_lines(window);
@@ -1063,8 +1029,6 @@ pub fn looks_like_hayagriva(text: &str) -> bool {
         .any(|name| name == "type" || name == "title")
 }
 
-/// `acceptsBibliographyYaml`: small enough, and Hayagriva-shaped or named by
-/// a Typst bibliography.
 pub fn accepts_bibliography_yaml(text: &str, referenced: impl FnOnce() -> bool) -> bool {
     utf16_len(text) <= MAX_BIBLIOGRAPHY_YAML_CHARACTERS
         && (looks_like_hayagriva(text) || referenced())

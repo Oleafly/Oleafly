@@ -171,9 +171,6 @@ fn bundled_seed_path(app: &tauri::AppHandle) -> Option<PathBuf> {
     }
 }
 
-/// Bundled hand-curated venues outside the ccfddl dataset (neuroscience,
-/// physics, materials science, and venues with non-AoE timezones). Merged
-/// into every read so a dataset refresh never drops them.
 fn bundled_extra_path(app: &tauri::AppHandle) -> Option<PathBuf> {
     if let Ok(p) = app.path().resolve(
         "resources/deadlines-extra.json",
@@ -217,8 +214,6 @@ pub(crate) fn merge_extra(base_json: &str, extra_json: &str) -> Result<String, S
     serde_json::to_string(&base).map_err(|e| e.to_string())
 }
 
-/// The normalized deadlines JSON: refreshed cache if present, else the seed,
-/// always merged with the bundled extra venues.
 #[tauri::command]
 pub fn read_deadlines(app: tauri::AppHandle) -> Result<String, String> {
     let base = (|| {
@@ -402,8 +397,6 @@ mod tests {
 
     #[test]
     fn deadline_sources_try_the_mirror_before_upstream() {
-        // Ignores any OLEAFLY_DEADLINES_URL override set in the environment by
-        // asserting only the default branch's shape when the override is absent.
         if std::env::var("OLEAFLY_DEADLINES_URL").is_ok() {
             return;
         }

@@ -1,7 +1,3 @@
-// The pure helpers now live in the workspace packages (@oleafly/latex,
-// @oleafly/ai-core) and are re-exported here so existing `@/lib/ai-figure`
-// imports keep working. Only the stateful singletons below are truly
-// app-scoped.
 export {
   buildStandaloneDoc,
   slugifyFigureName,
@@ -19,7 +15,6 @@ export function getLastFigurePreview(): FigurePreview | null {
   return lastPreview;
 }
 
-// Captured at session start, not live.
 let insertTarget: { from: number; to: number } | null = null;
 export function setFigureInsertTarget(v: { from: number; to: number } | null) {
   insertTarget = v;

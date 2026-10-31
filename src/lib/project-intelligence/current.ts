@@ -26,11 +26,6 @@ function sameIdentity(
   );
 }
 
-/**
- * Returns only an accepted current-revision project snapshot. Unlike the PDF
- * preview, navigation surfaces must never retain stale ranges because a click
- * could jump to the wrong source after an edit or filesystem mutation.
- */
 export function acceptedProjectSnapshot(
   state: ProjectIntelligenceState,
   projectId: string | null,
@@ -48,11 +43,6 @@ export function acceptedProjectSnapshot(
   return snapshot;
 }
 
-/**
- * Returns analysis only when it belongs to the active project and the exact
- * active-file text. Retained running/error snapshots are deliberately
- * unavailable to editor decorations, completion, and navigation.
- */
 export function currentProjectIntelligence(
   editorText?: string,
 ): CurrentProjectIntelligence | null {

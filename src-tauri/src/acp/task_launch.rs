@@ -12,8 +12,6 @@ use std::{
 };
 use zeroize::Zeroizing;
 
-/// Variables a sandboxed agent keeps from its launch: the CLI hand-offs the
-/// bridges read, Windows search hardening and the Claude v2 switch.
 const TASK_ENV: [&str; 6] = [
     "PI_ACP_PI_COMMAND",
     "CLAUDE_CODE_EXECUTABLE",
@@ -41,11 +39,6 @@ const TASK_CERTIFICATE_FILES: [&str; 3] =
 
 const TASK_DEFAULTS: [(&str, &str); 2] = [("NODE_NO_WARNINGS", "1"), ("PYTHONIOENCODING", "utf-8")];
 
-/// The environment a sandboxed agent starts with on top of the sandbox's
-/// fixed one: [`TASK_ENV`] from the launch, the user's proxy and certificate
-/// settings (never API keys), no proxy for loopback, quiet Node.js and UTF-8
-/// Python output, and the project's Git hardening. Never a reserved variable
-/// (`PATH`, `HOME`, …).
 pub(super) fn task_env(
     launch: &Launch,
     project_id: &str,
@@ -102,8 +95,6 @@ fn task_env_with(
     } else {
         &["NO_PROXY", "no_proxy"]
     };
-    // One list for both spellings, so a tool that reads the spelling the user
-    // didn't set still sees their entries.
     let existing: Vec<Option<OsString>> = no_proxy
         .iter()
         .map(|name| launch_value(launch, name).or_else(|| host(name)))
@@ -149,8 +140,6 @@ fn python_venv_root(executable: &Path) -> Option<PathBuf> {
         .then(|| root.to_path_buf())
 }
 
-/// The package folder of the CLI a bridge is handed (Pi, Codex): the nearest
-/// ancestor with a `package.json`, else the CLI's own folder.
 fn pi_package_root(command: &Path) -> Option<PathBuf> {
     let real = command
         .canonicalize()
@@ -420,7 +409,6 @@ mod tests {
             get("NO_PROXY"),
             Some("corp.example,127.0.0.1,localhost,::1")
         );
-        // The lowercase spelling the launch didn't set gets the same list.
         assert_eq!(
             get("no_proxy"),
             Some("corp.example,127.0.0.1,localhost,::1")

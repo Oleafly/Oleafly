@@ -222,6 +222,7 @@
     "pathStyleHint": "MinIO și majoritatea serverelor autogăzduite au nevoie de asta."
   },
   "errors": {
+    "clock_skew": "Ceasul acestui computer nu arată ora corectă, așa că {{provider}} nu acceptă cereri de la el. Setează data și ora corecte ca sincronizarea să continue.",
     "code_invalid": "Codul acela nu a funcționat. Încearcă din nou.",
     "device_name_empty": "Introdu un nume.",
     "device_name_invalid": "Numele computerului nu poate conține \\ / : * ? \" < > | sau caractere de control și poate avea maximum 32 de caractere.",

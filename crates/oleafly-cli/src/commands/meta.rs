@@ -1,4 +1,3 @@
-//! `oleafly help`, `version`, `completions` and `man`.
 use clap::{Args, CommandFactory};
 use serde_json::json;
 
@@ -138,7 +137,6 @@ impl CommandModule for Commands {
             Self::Completions { shell } => {
                 let mut command = crate::Cli::command();
                 let name = command.get_name().to_string();
-                // Into memory first: `generate` panics on a closed pipe.
                 let mut script = Vec::new();
                 clap_complete::generate(shell, &mut command, name, &mut script);
                 crate::human::write_stdout(&script)?;
@@ -153,7 +151,6 @@ impl CommandModule for Commands {
                 Ok(Outcome::printed())
             }
             Self::Internal(InternalCommand::RemoveCommandLineTool) => {
-                // The uninstaller ignores the result; this never fails.
                 crate::install::remove_command_line_tool();
                 Ok(Outcome::success(json!({})))
             }
@@ -264,7 +261,6 @@ mod tests {
                 "`oleafly help environment` leaves out {variable}"
             );
         }
-        // `CI=0` and `CI=false` don't count, so "when set" alone is wrong.
         assert!(HELP_ENVIRONMENT.contains("anything but 0 or false"));
     }
 

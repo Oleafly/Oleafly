@@ -24,7 +24,6 @@ import {
   FolderOpen,
   GitFork,
   Github,
-  // Globe, (only used by the commented-out Author row)
   GraduationCap,
   HardDriveDownload,
   Keyboard,
@@ -333,7 +332,6 @@ export function SettingsModal() {
   const setOffline = useSettingsStore((s) => s.setOffline);
   const latexTools = useSettingsStore((s) => s.latexTools);
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
-  // 0.4.8: research tasks are experimental; Rust keeps the switch and stops running tasks when it goes off.
   const researchTasks = useResearchTasksEnabled();
   const [researchTasksBusy, setResearchTasksBusy] = useState(false);
   const [researchTasksFailed, setResearchTasksFailed] = useState(false);
@@ -475,7 +473,6 @@ export function SettingsModal() {
     if (!researchTasks && section === "research") setSection("general");
   }, [researchTasks, section]);
 
-  // The data section suggests Git hosting while no account is connected.
   useEffect(() => {
     if (open && section === "data") void useForgeAccountsStore.getState().ensureLoaded();
   }, [open, section]);
@@ -1450,20 +1447,17 @@ function DictionarySection() {
 
 
 const REPO_URL = "https://github.com/Oleafly/Oleafly";
-// const AUTHOR_URL = "https://prajwal.me";
 const DOCS_URL = "https://oleafly.com/docs/";
 const LEARN_URL = "https://oleafly.com/learn/";
 const X_URL = "https://x.com/OleaflyHQ";
 const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
 
-/** Community, docs and release-notes buttons pinned under the Settings navigation, one icon each. */
 function SettingsFooter() {
   const { t } = useTranslation(["shell"]);
   const [changelogOpen, setChangelogOpen] = useState(false);
   const links = [
     {
       id: "discord",
-      // Brand marks fill their whole box, so they draw a size smaller than lucide's to match.
       icon: <DiscordBrandIcon className="size-3.5" />,
       label: t(($) => $.shell.settings.footer.joinDiscord),
       onClick: () => void openExternal(DISCORD_URL),
@@ -1739,21 +1733,6 @@ function HelpSection() {
         ))}
       </div>
 
-      {/* Author row removed for now; will re-add later.
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <p className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">Author</p>
-          <button type="button"
-            onClick={ext(AUTHOR_URL)}
-            className="flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent"
-          >
-            <Globe className="size-4 shrink-0 text-muted-foreground" />
-            <span className="flex-1 truncate">Prajwal Murthy</span>
-            <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
-          </button>
-        </div>
-      </div>
-      */}
       <div className="space-y-1">
         <p className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">
           {t(($) => $.shell.settings.help.project)}

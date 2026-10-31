@@ -1,6 +1,3 @@
-//! The local copy of a remote run: `stdout.log`, `metrics.jsonl`,
-//! `exit_code` and the final status in the run's folder, the same files a
-//! local run writes, so everything that reads runs stays executor-agnostic.
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -10,24 +7,18 @@ use crate::model::now_ms;
 use crate::runs::metrics::{parse_metrics_line, MetricsPoint};
 use crate::runs::{RunError, RunStatus};
 
-/// Log bytes one poll brings back, at most.
 pub const POLL_LOG_BYTES: u64 = 1024 * 1024;
-/// The local copy of a log stops here; the full log stays remote.
 pub const MIRROR_CAP: u64 = 64 * 1024 * 1024;
 const MAX_PARTIAL: usize = 4 * 1024;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct MirrorState {
-    /// Bytes of the remote log already read.
     remote_offset: u64,
-    /// Bytes written to the local log (without the cap note).
     local_bytes: u64,
     capped: bool,
     lines: u64,
-    /// An unfinished last line, kept for the metrics parser.
     partial: String,
-    /// When the log was last brought up to date.
     synced_at: i64,
 }
 
@@ -73,8 +64,6 @@ impl RemoteMirror {
         write_atomic(&self.path("mirror.json"), &bytes)
     }
 
-    /// One poller at a time (the app and the daemon may both watch a run);
-    /// the lock holds until the returned file drops.
     pub(crate) fn try_poll_lock(&self) -> Option<std::fs::File> {
         let file = std::fs::OpenOptions::new()
             .create(true)
@@ -86,12 +75,10 @@ impl RemoteMirror {
         Some(file)
     }
 
-    /// Where the next read of the remote log starts.
     pub(crate) fn remote_offset(&self) -> u64 {
         self.state().remote_offset
     }
 
-    /// Milliseconds since the log was last synced.
     pub(crate) fn synced_ago(&self) -> i64 {
         now_ms() - self.state().synced_at
     }
@@ -126,7 +113,6 @@ impl RemoteMirror {
                 });
             }
         }
-        // A line longer than any metrics line can be dropped.
         state.partial = if rest.len() > MAX_PARTIAL {
             String::new()
         } else {
@@ -149,8 +135,6 @@ impl RemoteMirror {
         Ok(())
     }
 
-    /// Adds a chunk of the remote log: to the local log (up to 64 MiB, then
-    /// one note), its finished lines to `metrics.jsonl`.
     pub(crate) fn append_log(&self, chunk: &[u8], remote_dir: &str) -> Result<(), RunError> {
         let mut state = self.state();
         state.remote_offset += chunk.len() as u64;
@@ -179,12 +163,10 @@ impl RemoteMirror {
         self.save(&state)
     }
 
-    /// The local log stopped at its cap.
     pub(crate) fn capped(&self) -> bool {
         self.state().capped
     }
 
-    /// Log bytes the local copy can still take.
     pub(crate) fn room(&self) -> u64 {
         let state = self.state();
         if state.capped {
@@ -197,8 +179,6 @@ impl RemoteMirror {
         self.path("stdout.tail.log")
     }
 
-    /// Keeps the end of a log that outgrew the local copy (the agent reads
-    /// its tail), and the metrics on its complete lines.
     pub(crate) fn record_tail(&self, bytes: &[u8]) -> Result<(), RunError> {
         write_atomic(&self.tail_path(), bytes)?;
         let text = String::from_utf8_lossy(bytes);
@@ -209,8 +189,6 @@ impl RemoteMirror {
         self.save(&state)
     }
 
-    /// Answers a log query from the local copy (a tail from the kept end
-    /// when the copy was capped).
     pub(crate) async fn answer(&self, query: &crate::runs::LogQuery) -> Result<String, RunError> {
         let tail = self.tail_path();
         let path = match query {
@@ -222,7 +200,6 @@ impl RemoteMirror {
             .map_err(RunError::Io)
     }
 
-    /// Replaces the local log with a complete copy (Cua downloads it whole).
     pub(crate) fn replace_log(&self, source: &Path) -> Result<(), RunError> {
         let length = std::fs::metadata(source).map_err(io)?.len();
         if length > MIRROR_CAP {
@@ -246,7 +223,6 @@ impl RemoteMirror {
         self.save(&state)
     }
 
-    /// Records how the run ended: `exit_code` and `remote-status.json`.
     pub(crate) fn finalize(
         &self,
         status: &RunStatus,
@@ -262,7 +238,6 @@ impl RemoteMirror {
         write_atomic(&self.path("remote-status.json"), &json)
     }
 
-    /// The recorded end of the run, once there is one.
     pub(crate) fn finished(&self) -> Option<RunStatus> {
         let bytes = std::fs::read(self.path("remote-status.json")).ok()?;
         match serde_json::from_slice(&bytes).ok()? {

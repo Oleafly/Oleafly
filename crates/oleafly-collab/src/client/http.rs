@@ -16,7 +16,7 @@ use oleafly_collab_protocol::email::{
 };
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
 use oleafly_collab_protocol::outputs::{
-    encode_main_file, OutputKind, ProjectOutput, MAIN_FILE_HEADER,
+    encode_main_file, OutputKind, ProjectOutput, FOR_PDF_HEADER, MAIN_FILE_HEADER,
 };
 use oleafly_collab_protocol::projects::{
     MemberGrant, NewProject, PersonSummary, ProjectDevice, ProjectMember, ProjectPatch,
@@ -53,13 +53,9 @@ const SLOWEST_TRANSFER_BYTES_PER_SECOND: u64 = 32 * 1024;
 const STALLED_AFTER: Duration = Duration::from_secs(60);
 const NO_DEADLINE: Duration = Duration::from_secs(24 * 60 * 60);
 const LARGEST_PREALLOCATION: u64 = 64 * 1024 * 1024;
-// The most the app reads of a JSON answer, the same as for long-poll, and of
-// an error answer, which only needs room for the server's code and message.
 const JSON_ANSWER_BYTES: usize = 32 * 1024 * 1024;
 const ERROR_ANSWER_BYTES: usize = 64 * 1024;
 
-// Figures and snapshots get ten minutes, or the time a slow link needs for
-// their size when that is longer, so a large one on a slow link still fits.
 pub(crate) fn transfer_timeout(bytes: u64) -> Duration {
     TRANSFER_TIMEOUT.max(Duration::from_secs(
         bytes / SLOWEST_TRANSFER_BYTES_PER_SECOND,
@@ -87,7 +83,6 @@ impl ServerClient {
         &self.url
     }
 
-    // How much longer the server asked the app to stay away, if it did.
     pub fn asked_wait(&self) -> Option<Duration> {
         asked_wait_for(&self.url.endpoint(""))
     }
@@ -475,8 +470,6 @@ impl ServerClient {
         self.put_blob_with(access, project, hash, bytes, None).await
     }
 
-    // `progress` hears the bytes sent so far and the total as the upload
-    // goes.
     pub async fn put_blob_with(
         &self,
         access: &str,
@@ -503,8 +496,6 @@ impl ServerClient {
         self.get_blob_with(access, project, hash, None).await
     }
 
-    // `progress` hears the bytes received so far and the total the server
-    // gave, 0 when it gave none, as the download goes.
     pub async fn get_blob_with(
         &self,
         access: &str,
@@ -532,11 +523,46 @@ impl ServerClient {
         main_file: &str,
         bytes: Vec<u8>,
     ) -> Result<ProjectOutput, CollabError> {
-        let request = self
+        self.putting_output(access, project, kind, main_file, bytes, None)
+            .await
+    }
+
+    pub async fn put_synctex_for(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        main_file: &str,
+        bytes: Vec<u8>,
+        pdf_sha256: &str,
+    ) -> Result<ProjectOutput, CollabError> {
+        self.putting_output(
+            access,
+            project,
+            OutputKind::Synctex,
+            main_file,
+            bytes,
+            Some(pdf_sha256),
+        )
+        .await
+    }
+
+    async fn putting_output(
+        &self,
+        access: &str,
+        project: SharedProjectId,
+        kind: OutputKind,
+        main_file: &str,
+        bytes: Vec<u8>,
+        for_pdf: Option<&str>,
+    ) -> Result<ProjectOutput, CollabError> {
+        let mut request = self
             .http
             .put(self.project_url(project, &["output", kind.as_str()]))
             .bearer_auth(access)
             .header(MAIN_FILE_HEADER, encode_main_file(main_file));
+        if let Some(pdf) = for_pdf {
+            request = request.header(FOR_PDF_HEADER, pdf);
+        }
         let response = upload(request, bytes, None, STALLED_AFTER).await?;
         json_answer(response).await
     }
@@ -673,9 +699,6 @@ impl ServerClient {
         .await
     }
 
-    // Only the rows for these writer ids, at most PEERS_PER_REQUEST to a
-    // request. A server that does not filter yet sends every row, which
-    // merges the same way.
     pub async fn project_peers_among(
         &self,
         access: &str,
@@ -880,10 +903,6 @@ pub(crate) fn build_http(
     builder.build()
 }
 
-// The wait a server asks for with Retry-After on a 429 or 503, in seconds
-// or as a date. It never counts for more than ten minutes, so a wrong value
-// can't keep the app away for long. It is kept by the server's address for
-// whatever tries that server next.
 const LONGEST_ASKED_WAIT: Duration = Duration::from_secs(600);
 
 static ASKED_WAITS: std::sync::LazyLock<
@@ -943,8 +962,6 @@ async fn json_answer<T: DeserializeOwned>(response: Response) -> Result<T, Colla
     })
 }
 
-// Reads an answer up to `limit` bytes, refusing a larger one as soon as its
-// length or the bytes so far show it.
 pub(crate) async fn body_within(
     mut response: Response,
     limit: usize,
@@ -971,9 +988,6 @@ pub(crate) async fn body_within(
     Ok(body)
 }
 
-// A download fails when no bytes move for a minute, not at a deadline: a
-// large figure on a slow link finishes however long it takes while it
-// keeps moving, and a dead connection is noticed within a minute.
 async fn download(
     request: RequestBuilder,
 ) -> Result<(reqwest::header::HeaderMap, Vec<u8>), CollabError> {
@@ -1021,10 +1035,6 @@ async fn read_steadily_with(
 
 const UPLOAD_PIECE: usize = 64 * 1024;
 
-// An upload goes up in pieces. Like a download it has no deadline: it
-// fails when no piece has gone up, and no answer has come, for
-// `stalled_after`, so a large figure on a slow link finishes however long
-// it takes while it keeps moving.
 async fn upload(
     request: RequestBuilder,
     bytes: Vec<u8>,
@@ -1076,9 +1086,6 @@ async fn upload(
     }
 }
 
-// An error answer is read for its code and message only: a small part, in
-// at most the time of an ordinary request, even when the request itself has
-// no deadline.
 async fn error_answer(mut response: Response) -> Vec<u8> {
     let mut body = Vec::new();
     let reading = async {
@@ -1155,10 +1162,6 @@ pub(crate) async fn check_status(response: Response) -> Result<Response, CollabE
     })
 }
 
-// The 401 codes that mean the session is gone and the person has to sign in
-// again. Any other 401 the server explains, such as a sign-in check that
-// expired while the laptop slept, keeps its code so the caller can try
-// again.
 pub(crate) const SESSION_GONE: [&str; 4] = [
     "unauthorized",
     "revoked",
@@ -1326,6 +1329,53 @@ mod tests {
                 .await
                 .expect("synctex"),
             synctex
+        );
+    }
+
+    #[tokio::test]
+    async fn a_synctex_goes_up_only_beside_the_pdf_it_was_built_with() {
+        let (_server, client, _admin, member) = admin_and_member().await;
+        let access = &member.access_token;
+        let project = client
+            .create_project(access, "Thesis")
+            .await
+            .expect("project")
+            .project_id;
+        let pdf = |salt: u8| {
+            let mut bytes = b"%PDF-1.7\n".to_vec();
+            bytes.extend((0..2048).map(|at| (at % 251) as u8 ^ salt));
+            bytes
+        };
+        let mut synctex = vec![0x1f, 0x8b, 8, 0];
+        synctex.extend((0..512).map(|at| (at % 13) as u8));
+        let (first, second) = (pdf(1), pdf(2));
+        let first_hash = oleafly_server::blobs::sha256_hex(&first);
+        client
+            .put_output(access, project, OutputKind::Pdf, "main.tex", first)
+            .await
+            .expect("first pdf");
+        client
+            .put_synctex_for(access, project, "main.tex", synctex.clone(), &first_hash)
+            .await
+            .expect("its synctex");
+        client
+            .put_output(access, project, OutputKind::Pdf, "main.tex", second)
+            .await
+            .expect("second pdf");
+        let kinds: Vec<OutputKind> = client
+            .outputs(access, project)
+            .await
+            .expect("outputs")
+            .iter()
+            .map(|output| output.kind)
+            .collect();
+        assert_eq!(kinds, [OutputKind::Pdf]);
+        let late = client
+            .put_synctex_for(access, project, "main.tex", synctex, &first_hash)
+            .await;
+        assert!(
+            matches!(&late, Err(CollabError::Api { status: 409, .. })),
+            "{late:?}"
         );
     }
 
@@ -1952,7 +2002,6 @@ mod tests {
         ServerUrl::parse(&format!("http://127.0.0.1:{port}")).expect("address")
     }
 
-    // Answers with `head`, then keeps sending filler and never finishes.
     async fn endless(head: &'static str) -> ServerUrl {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))

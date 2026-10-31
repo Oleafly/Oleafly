@@ -1,8 +1,3 @@
-//! Which shell a terminal starts. Windows offers PowerShell 7, Windows
-//! PowerShell, Command Prompt, Git Bash, WSL and a custom program; macOS and
-//! Linux start the login shell or a custom program. Path handling for Windows
-//! is plain string work, so every case is tested on every host.
-
 use crate::app_error::AppError;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -20,7 +15,6 @@ pub(crate) enum ShellId {
     Custom,
 }
 
-/// How a shell quotes the commands Oleafly types into it.
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum ShellKind {
@@ -30,7 +24,6 @@ pub(crate) enum ShellKind {
     Cmd,
 }
 
-/// The shell setting as the frontend sends it.
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ShellChoice {
@@ -40,7 +33,6 @@ pub(crate) struct ShellChoice {
     pub path: Option<String>,
 }
 
-/// A resolved shell: what to start and how.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ShellSpec {
     pub id: ShellId,
@@ -51,20 +43,16 @@ pub(crate) struct ShellSpec {
     pub env: Vec<(String, String)>,
 }
 
-/// One entry of the shell picker in Settings.
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ShellOption {
     pub id: ShellId,
-    /// What `auto` starts on this computer; the id itself otherwise.
     pub resolved: ShellId,
     pub name: Option<String>,
     pub path: Option<String>,
     pub available: bool,
 }
 
-/// What shell resolution needs from the system, so tests can describe a
-/// Windows computer on any host.
 pub(crate) trait ShellProbe {
     fn is_file(&self, path: &str) -> bool;
     fn locate(&self, name: &str) -> Option<String>;
@@ -73,7 +61,6 @@ pub(crate) trait ShellProbe {
     fn login_shell(&self) -> String;
 }
 
-/// The real computer.
 pub(crate) struct SystemProbe;
 
 impl ShellProbe for SystemProbe {
@@ -114,8 +101,6 @@ impl ShellProbe for SystemProbe {
     }
 }
 
-// Start failures are app errors, so the terminal can show them in the user's
-// language; the English texts are `errors.terminal.*` in the errors catalog.
 const NO_PWSH: &str = "terminal.pwsh_missing";
 const NO_GIT_BASH: &str = "terminal.git_bash_missing";
 const NO_WSL: &str = "terminal.wsl_missing";
@@ -137,7 +122,6 @@ pub(crate) fn resolve_shell(
     probe: &dyn ShellProbe,
 ) -> Result<ShellSpec, AppError> {
     if !windows {
-        // A shell picked on Windows (synced settings) means nothing here.
         return match choice.id {
             ShellId::Custom => custom_shell(choice.path.as_deref(), false, probe),
             _ => Ok(login_shell_spec(probe)),
@@ -161,8 +145,6 @@ pub(crate) fn resolve_shell(
     }
 }
 
-/// Every shell the picker can offer on this platform, with what is
-/// installed marked available.
 pub(crate) fn shell_options(windows: bool, probe: &dyn ShellProbe) -> Vec<ShellOption> {
     if !windows {
         let login = probe.login_shell();
@@ -240,7 +222,6 @@ fn custom_option() -> ShellOption {
     }
 }
 
-/// How a shell quotes, from its program name (Windows or Unix path).
 pub(crate) fn shell_kind_for(program: &str) -> ShellKind {
     match program_name(program).to_ascii_lowercase().as_str() {
         "cmd" => ShellKind::Cmd,
@@ -277,14 +258,12 @@ pub(crate) fn git_bash_path(probe: &dyn ShellProbe) -> Option<String> {
         .find(|candidate| probe.is_file(candidate))
 }
 
-/// Join a Windows path and a relative part with exactly one backslash.
 pub(crate) fn win_join(base: &str, rel: &str) -> String {
     let base = base.trim_end_matches(['\\', '/']);
     let rel = rel.trim_start_matches(['\\', '/']);
     format!("{base}\\{rel}")
 }
 
-/// File name without the folder or a `.exe` ending, keeping its case.
 pub(crate) fn program_name(program: &str) -> String {
     let file = program.rsplit(['\\', '/']).next().unwrap_or(program);
     let lower = file.to_ascii_lowercase();
@@ -390,7 +369,6 @@ fn git_bash_spec(program: String) -> ShellSpec {
         args: vec!["--login".to_string(), "-i".to_string()],
         kind: ShellKind::Posix,
         name: "bash".to_string(),
-        // MSYS profiles cd to HOME unless this is set; keep the start folder.
         env: vec![("CHERE_INVOKING".to_string(), "1".to_string())],
     }
 }
@@ -400,7 +378,6 @@ fn wsl_spec(probe: &dyn ShellProbe) -> Result<ShellSpec, AppError> {
     if !probe.wsl_has_distro() {
         return Err(AppError::new(NO_WSL_DISTRO));
     }
-    // WSL starts in the working folder of the process, so no --cd.
     Ok(ShellSpec {
         id: ShellId::Wsl,
         program,
@@ -411,7 +388,6 @@ fn wsl_spec(probe: &dyn ShellProbe) -> Result<ShellSpec, AppError> {
     })
 }
 
-/// The user's `WSLENV` plus the terminal identity variables it lacks.
 fn wslenv(existing: Option<&str>) -> String {
     let mut entries: Vec<String> = existing
         .unwrap_or_default()

@@ -8,7 +8,6 @@ use tokio::io::{AsyncRead, AsyncReadExt};
 const OUTPUT_LIMIT: usize = 64 * 1024 * 1024;
 const CLEANUP_TIMEOUT: Duration = Duration::from_secs(2);
 
-/// How long a command may run, and how it is judged.
 #[derive(Clone, Copy, Debug)]
 pub struct OutputBounds {
     idle: Option<Duration>,
@@ -16,16 +15,10 @@ pub struct OutputBounds {
 }
 
 impl OutputBounds {
-    /// One wall-clock deadline that progress does not extend. Correct only
-    /// where the worst case is known and short, or where the command reports
-    /// nothing while it works.
     pub fn total(total: Duration) -> Self {
         Self { idle: None, total }
     }
 
-    /// Stop after `idle` with no bytes on either pipe, keeping `total` as a
-    /// backstop. Work that is slow but still moving must survive, so this only
-    /// bounds a command that reports progress while it runs.
     pub fn stalled_after(idle: Duration, total: Duration) -> Self {
         Self {
             idle: Some(idle),
@@ -39,8 +32,6 @@ impl OutputBounds {
     }
 }
 
-/// Synchronous callers must run on blocking workers. A single shared reactor
-/// drains both pipes without creating reader threads for every Git refresh.
 pub fn output_contained_with_timeout(command: Command, timeout: Duration) -> io::Result<Output> {
     output_contained_with_bounds(command, OutputBounds::total(timeout))
 }
@@ -80,8 +71,6 @@ async fn read_output(
     let mut bytes = [0; 8192];
     loop {
         let count = pipe.read(&mut bytes).await?;
-        // Both pipes share one clock, so a command that reports only on stderr
-        // still counts as making progress.
         activity.store(started.elapsed().as_millis() as u64, Ordering::Relaxed);
         if count == 0 {
             if truncated {
@@ -100,7 +89,6 @@ async fn read_output(
     }
 }
 
-/// Resolves once neither pipe has delivered anything for `idle`.
 async fn stalled(started: Instant, activity: &AtomicU64, idle: Duration) {
     loop {
         let last = Duration::from_millis(activity.load(Ordering::Relaxed));
@@ -135,9 +123,6 @@ async fn collect_output(
     limit: usize,
 ) -> io::Result<Output> {
     let started = Instant::now();
-    // CreateProcess and Job Object setup must not park the shared I/O reactor.
-    // If admission times out, the blocking task still owns the child/guard;
-    // dropping its eventual result closes that tree without publishing it.
     let launched = tokio::time::timeout(
         bounds.total,
         tokio::task::spawn_blocking(move || spawn_output(command)),
@@ -155,14 +140,10 @@ async fn collect_output(
         .take()
         .ok_or_else(|| io::Error::other("missing stderr"))?;
     let activity = AtomicU64::new(started.elapsed().as_millis() as u64);
-    // Keep reads in this future: cancellation closes the pipes immediately,
-    // rather than detaching tasks that can outlive the command indefinitely.
     let result = tokio::time::timeout(bounds.total.saturating_sub(started.elapsed()), async {
         let collect = async {
             let wait = async {
                 let status = child.wait().await?;
-                // A hook/helper may leave a descendant holding either pipe open.
-                // Stop the owned tree as soon as its leader finishes.
                 drop(containment.take());
                 Ok::<_, io::Error>(status)
             };
@@ -241,8 +222,6 @@ mod tests {
 
     #[test]
     fn leader_exit_closes_inherited_descendant_pipes() {
-        // The leader reports when it exits, so the bound covers only what follows
-        // its exit and not Node startup, which is slow on a loaded runner.
         let output = output_contained_with_timeout(node(
             "require('child_process').spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:['ignore',1,2]});process.stdout.write('leader');process.stderr.write('exited-at:'+Date.now());process.exit(0)",
         ), test_wait::CHILD_PATIENCE).unwrap();
@@ -250,7 +229,6 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_millis();
-        // The descendant shares stderr, so read only the leader's tagged value.
         let stderr = String::from_utf8_lossy(&output.stderr);
         let exited: u128 = stderr
             .rsplit_once("exited-at:")
@@ -263,9 +241,6 @@ mod tests {
 
     #[test]
     fn steady_progress_outlives_a_deadline_that_would_have_killed_it() {
-        // The idle budget includes Node startup, which is slow under emulation and
-        // on a loaded runner. Twenty reports at 500ms must keep the command alive
-        // for twice that budget.
         let output = output_contained_with_bounds(
             node(
                 "let n=0;const t=setInterval(()=>{process.stderr.write('sending ');\

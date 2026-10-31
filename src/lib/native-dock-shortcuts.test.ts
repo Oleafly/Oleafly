@@ -260,7 +260,6 @@ describe("native dock shortcuts", () => {
 
     native.projectId = null;
     native.listeners.get("menu://toggle-terminal")?.({ payload: null });
-    // With no project open, the dock does not respond.
     expect(useSettingsStore.getState().terminalOpen).toBe(true);
 
     stop();

@@ -16,7 +16,6 @@ use super::shared::{from_online, read_secret_input, user_agent, Env, Report};
 use super::{BrowserArg, OnlineLogin, OnlineLogout};
 use crate::contract::{CliError, ErrorKind};
 
-/// An online-service failure about `server`.
 pub(crate) fn online_error(mut error: OnlineError, server: &str) -> CliError {
     error
         .params
@@ -25,8 +24,6 @@ pub(crate) fn online_error(mut error: OnlineError, server: &str) -> CliError {
     from_online(&error)
 }
 
-/// The server a command means: `--server`, else the only one with a saved
-/// sign-in, else the service's own.
 pub(crate) fn server_for(env: &Env, server: Option<&str>) -> Result<String, CliError> {
     match server {
         Some(server) => {
@@ -76,7 +73,6 @@ fn browser_unsupported(browser: BrowserId, platform: HostPlatform) -> CliError {
     .hint(hint)
 }
 
-/// The `Cookie` header a browser profile holds for `server`.
 fn browser_cookie(
     env: &Env,
     server: &str,
@@ -123,7 +119,6 @@ fn browser_cookie(
             error.to_string(),
         )
     })?;
-    // One cookie per name, domain and path, the newest first.
     let cookies = browser_cookies::unique_cookies(cookies);
     let header = Zeroizing::new(browser_cookies::cookie_header_for(&cookies, &url));
     if header.is_empty() {
@@ -137,8 +132,6 @@ fn browser_cookie(
     Ok(header)
 }
 
-/// `auth login online`: a Git token, or a session checked against the
-/// service before it is saved.
 pub(crate) async fn login(
     env: &Env,
     args: OnlineLogin,
@@ -202,8 +195,6 @@ pub(crate) async fn login(
     let checked = session::session_from_cookie(&http, cookie.to_string(), &saved_by)
         .await
         .map_err(|error| {
-            // A cookie the service turns away is a failed sign-in, not an
-            // expired one.
             let error = match error.kind {
                 OnlineErrorKind::SessionExpired | OnlineErrorKind::SignedOut => {
                     OnlineError::new(OnlineErrorKind::SignInFailed)
@@ -236,8 +227,6 @@ pub(crate) async fn login(
     .line(line))
 }
 
-/// `auth logout online`: the session and the Git token, unless told to
-/// keep one.
 pub(crate) fn logout(env: &Env, args: &OnlineLogout) -> Result<Report, CliError> {
     let server = server_for(env, args.server.as_deref())?;
     let failed = |error| online_error(error, &server);
@@ -278,7 +267,6 @@ pub(crate) fn logout(env: &Env, args: &OnlineLogout) -> Result<Report, CliError>
     Ok(Report::new(json!({"removed": removed, "dryRun": args.dry_run})).line(line))
 }
 
-/// The Git token sync uses: `OLEAFLY_ONLINE_GIT_TOKEN`, else the saved one.
 pub(crate) fn token(env: &Env, server: Option<&str>) -> Result<Zeroizing<String>, CliError> {
     if let Some(token) = &env.online_git_token {
         return Ok(token.clone());
@@ -290,7 +278,6 @@ pub(crate) fn token(env: &Env, server: Option<&str>) -> Result<Zeroizing<String>
         .ok_or_else(|| online_error(OnlineError::new(OnlineErrorKind::GitTokenMissing), &server))
 }
 
-/// One row per server with a session or a Git token: presence only.
 pub(crate) fn status_rows(env: &Env) -> Result<Vec<Value>, CliError> {
     let failed = |error: OnlineError| from_online(&error);
     let mut servers = session::session_servers(&env.store).map_err(failed)?;
@@ -376,8 +363,6 @@ mod tests {
         }
     }
 
-    /// Answers the dashboard for `site_session=good`, else sends people to
-    /// the sign-in page.
     async fn fixture() -> FixtureServer {
         let page = dashboard_page(&json!([]));
         FixtureServer::start(Arc::new(move |request: &Request| {

@@ -6,23 +6,19 @@
  * characters where the source has a base letter and a combining mark.
  */
 
-/** `[source offset, rendered offset]` pairs, both increasing. */
 export type OffsetPairs = [number, number][];
 
 export interface RenderedText {
   text: string;
-  /** Null when `text` is the source unchanged. */
   offsets: OffsetPairs | null;
 }
 
-/** The source offset of an offset into `rendered.text`. */
 export function sourceOffset(rendered: RenderedText, index: number, roundUp: boolean): number {
   return rendered.offsets ? originalOffset(rendered.offsets, index, roundUp) : index;
 }
 
 const COMPOSES_WITH_PREVIOUS = /[\p{M}ᅠ-ᇿힰ-퟿]/u;
 
-/** NFC, keeping a map back to the original offsets. */
 export function normalizedSegments(text: string): RenderedText & { offsets: OffsetPairs } {
   const offsets: OffsetPairs = [[0, 0]];
   let normalized = "";
@@ -41,7 +37,6 @@ export function normalizedSegments(text: string): RenderedText & { offsets: Offs
   return { text: normalized, offsets };
 }
 
-/** The source offset of a rendered offset, rounding into or out of a character. */
 export function originalOffset(offsets: OffsetPairs, index: number, roundUp: boolean): number {
   let low = 0;
   let high = offsets.length;
@@ -94,7 +89,6 @@ const LETTER_MACRO = String.raw`(?<letter>ss|ae|AE|oe|OE|aa|AA|[oOlL])(?![A-Za-z
 const TEX_LETTER = new RegExp(String.raw`\\(?:${ACCENTED}|${NAMED_ACCENT}|${LETTER_MACRO})`, "g");
 const HAS_TEX_LETTER = /\\(?:['`"^~=.]|[uvHckrdb][\s{]|(?:ss|ae|AE|oe|OE|aa|AA|[oOlL])(?![A-Za-z]))/;
 
-// An accent on \i or \j sits on the dotless letter; the reader sees i, j.
 const DOTLESS_BASES: Readonly<Record<string, string>> = { [String.raw`\i`]: "i", [String.raw`\j`]: "j" };
 
 function baseLetter(base: string): string {

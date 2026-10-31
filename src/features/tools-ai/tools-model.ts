@@ -1,8 +1,3 @@
-// Which model a Tools conversion runs on. The saved choice is followed
-// exactly: a chosen model that cannot run is an error, never a quiet switch
-// to another provider. Nothing local falls back to a hosted model, except
-// the editor's Image to LaTeX/Typst with no Tools model saved, which used the
-// assistant's model before the Tools model existed (see `assistantFallback`).
 import { pickActiveProvider } from "@oleafly/ai-core";
 import { i18n } from "@/i18n";
 import { mergeFetchedModels } from "@/lib/ai-model-state";
@@ -27,7 +22,6 @@ import {
   type ToolsDestination,
 } from "./tools-choice";
 
-/** `image`: a photo, page or equation image. `equation-text`: typed math. */
 export type ToolsTask = "image" | "equation-text";
 
 export interface ResolvedLlm {
@@ -38,12 +32,9 @@ export interface ResolvedLlm {
   /** Not a model Ollama runs here: hosted API limits apply. Ollama Cloud
    * models are hosted; a custom provider on this computer is not. */
   hosted: boolean;
-  /** Where the input goes (privacy). */
   destination: ToolsDestination;
   metadata?: ModelMetadata;
   profile: OcrProfile | null;
-  /** The assistant's model, used because no Tools model is saved and no
-   * local model could run (the editor's Image to LaTeX/Typst only). */
   assistantFallback?: boolean;
 }
 
@@ -56,11 +47,8 @@ export interface ResolvedMathpix {
 
 export type ResolvedToolsModel = ResolvedLlm | ResolvedMathpix;
 
-/** Where a Tools model problem is fixed: Settings, AI (the Ollama card),
- * Settings, AI, Tools, or Settings, AI, Providers and keys. */
 export type ToolsSettingsTarget = "ai" | "ai-tools" | "ai-providers";
 
-/** A Tools model that cannot run. `settings` names the place that fixes it. */
 export class ToolsModelError extends Error {
   readonly settings: ToolsSettingsTarget;
 
@@ -71,7 +59,6 @@ export class ToolsModelError extends Error {
   }
 }
 
-/** Ollama is missing, stopped or has no fitting model: the Ollama card fixes it. */
 export class LocalModelError extends ToolsModelError {
   constructor(message: string) {
     super(message, "ai");
@@ -82,9 +69,6 @@ export class LocalModelError extends ToolsModelError {
 export const TOOLS_MAX_OUTPUT_TOKENS = 12_000;
 export const HOSTED_FALLBACK_OUTPUT_TOKENS = 8_192;
 
-/** The reply budget: 12,000 tokens, or less when the model's output limit
- * is lower. Hosted models without metadata get 8,192, which every hosted
- * vision model accepts. */
 export function toolsMaxTokens(model: Pick<ResolvedLlm, "hosted" | "metadata">): number {
   const limit = model.metadata?.outputLimit;
   if (typeof limit === "number" && Number.isFinite(limit) && limit > 0) {
@@ -127,8 +111,6 @@ export function pickLocalModel(
   return vision.find((model) => model.name === assistantModel)?.name ?? vision[0]?.name ?? null;
 }
 
-/** The backend refuses a model missing from a stored Ollama list, so a model
- * pulled since the last Settings refresh is added before it is used. */
 export async function ensureOllamaModelEnabled(
   cfg: AppConfig,
   modelId: string,
@@ -174,7 +156,6 @@ async function resolveMathpix(task: ToolsTask, cfg: AppConfig): Promise<Resolved
   return { engine: "mathpix", label: "Mathpix", hosted: true, destination: toolsDestination(cfg) };
 }
 
-/** Throws when the Ollama model the user chose cannot run the task. */
 function assertLocalModelCanRun(
   task: ToolsTask,
   explicit: string,
@@ -246,12 +227,9 @@ async function resolveLocal(task: ToolsTask, cfg: AppConfig, explicit: string): 
 }
 
 function resolveHosted(task: ToolsTask, cfg: AppConfig, choice: ToolsModelChoice): ResolvedLlm {
-  // A custom provider on this computer sends nothing off it: Offline mode does
-  // not apply, and it keeps the local image and reply limits.
   const destination = toolsDestination(cfg, choice.provider);
   const onDevice = destination.kind === "device";
   if (!onDevice && useSettingsStore.getState().offline) throw offlineError();
-  // Keys and model switches live under Providers and keys, not Tools.
   if (!toolsProviderConfigured(cfg, choice.provider)) {
     throw new ToolsModelError(
       i18n.t(($) => $.researchTools.converterModel.errors.providerNotConfigured, {
@@ -264,7 +242,6 @@ function resolveHosted(task: ToolsTask, cfg: AppConfig, choice: ToolsModelChoice
   const entry = stored?.find((model) => model.id === choice.model);
   const label = entry?.name || choice.model;
   if (stored && !entry) {
-    // Gone from the provider's model list, so there is no switch to turn on.
     throw new ToolsModelError(
       i18n.t(($) => $.researchTools.converterModel.errors.modelUnavailable, {
         model: label,
@@ -295,10 +272,8 @@ function resolveHosted(task: ToolsTask, cfg: AppConfig, choice: ToolsModelChoice
   };
 }
 
-/** The assistant's own model, when it is not Ollama and can do the task. */
 function assistantFallbackModel(task: ToolsTask, cfg: AppConfig): ResolvedLlm | null {
   const { providerId, modelId } = pickActiveProvider(cfg);
-  // No model chosen yet (a custom provider with an empty list): nothing to send images to.
   if (providerId === LOCAL_TOOLS_PROVIDER || !modelId) return null;
   try {
     return { ...resolveHosted(task, cfg, { provider: providerId, model: modelId }), assistantFallback: true };
@@ -307,10 +282,6 @@ function assistantFallbackModel(task: ToolsTask, cfg: AppConfig): ResolvedLlm | 
   }
 }
 
-/** Where the editor's Image to LaTeX/Typst sends images when nothing is
- * saved for Tools and the local Ollama cannot read them: the assistant's
- * hosted model, or null when the editor stays local (or fails). `ollama` is
- * the current listing, or null when Ollama could not be reached. */
 export function editorImageFallback(
   cfg: AppConfig,
   ollama: readonly OllamaModelInfo[] | null,
@@ -325,14 +296,9 @@ export function editorImageFallback(
 }
 
 export interface ResolveToolsOptions {
-  /** With no Tools model saved and no local model that can run, use the
-   * assistant's model when it can. Only the editor's Image to LaTeX/Typst
-   * asks for this: it used the assistant's model before 0.4.8, so a setup
-   * without Ollama keeps working. */
   assistantFallback?: boolean;
 }
 
-/** The model this conversion runs on, read fresh from the saved settings. */
 export async function resolveToolsModel(
   task: ToolsTask,
   options: ResolveToolsOptions = {},

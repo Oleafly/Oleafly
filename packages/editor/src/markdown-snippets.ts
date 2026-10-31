@@ -28,7 +28,6 @@ export const MARKDOWN_SNIPPETS: readonly MarkdownSnippet[] = [
 ];
 
 const SLASH_COMMAND = /(?:^|\s)(\/[A-Za-z]*)$/u;
-// A slash typed in code or math is content, not a command.
 const LITERAL_NODES = new Set(["FencedCode", "CodeBlock", "InlineCode", "PandocMath", "HTMLBlock", "CommentBlock"]);
 
 function inLiteral(state: EditorState, pos: number): boolean {

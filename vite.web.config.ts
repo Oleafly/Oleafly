@@ -3,7 +3,13 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { tailwindPropertiesFallbackPlugin } from "./src/build/tailwind-properties-fallback";
-import { entriesLoadingBeforePolyfills, LEGAL_COMMENT_PATTERN, POLYFILLS_CHUNK, polyfillsChunk } from "./vite.config";
+import {
+  entriesLoadingBeforePolyfills,
+  LEGAL_COMMENT_PATTERN,
+  pdfjsAssets,
+  POLYFILLS_CHUNK,
+  polyfillsChunk,
+} from "./vite.config";
 
 const repo = __dirname;
 
@@ -41,7 +47,7 @@ export default defineConfig({
   root: path.resolve(repo, "web"),
   base: "/web/",
   publicDir: false,
-  plugins: [react(), tailwindcss(), tailwindPropertiesFallbackPlugin(), requirePolyfillsFirst()],
+  plugins: [react(), tailwindcss(), tailwindPropertiesFallbackPlugin(), requirePolyfillsFirst(), pdfjsAssets()],
   resolve: { alias: WEB_ALIASES },
   worker: {
     format: "es",

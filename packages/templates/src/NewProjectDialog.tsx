@@ -30,7 +30,6 @@ import { modalCoordinator, visibleFocusable } from "./modal-coordinator";
 import type { TemplateInfo, TemplatesHost, TemplatesKit } from "./types";
 import type { TemplatesMessageKey, TemplatesTranslator } from "./messages";
 
-// Preferred category order (anything else falls to the end, alphabetically).
 const CATEGORY_ORDER = [
   "Blank",
   "Diagrams & Figures",
@@ -76,8 +75,6 @@ function categoryFullName(category: string, t: TemplatesTranslator): string | un
   return full ? t(full) : undefined;
 }
 
-// Aspirational, template-specific placeholders for the project-name field, keyed
-// by template id first, then falling back by category. A small, editable map.
 const NAME_HINT_BY_ID: Record<string, TemplatesMessageKey> = {
   blank: "nameHint.blank",
   "ats-resume": "nameHint.atsResume",
@@ -117,12 +114,8 @@ function nameHint(template: TemplateInfo | null, t: TemplatesTranslator): string
   return key ? t(key) : t("nameHint.default");
 }
 
-// The person's own templates lead: the ones they made, then AI-generated ones.
 const PERSONAL_CATEGORIES = ["Custom", "AI Generated"];
 
-// "All" first, then the person's own categories, then the curated order, then
-// anything new alphabetically so an unrecognised category still lands
-// somewhere sensible.
 export function orderedCategories(
   templates: readonly Pick<TemplateInfo, "category">[],
 ): string[] {
@@ -300,10 +293,6 @@ function Preview({
 }>) {
   const uri = useTemplatePreview(template, host);
   if (uri) {
-    // Diagram/figure previews are a standalone cropped image, not a document
-    // page, and rarely share the card's portrait aspect ratio. Cropping them
-    // like a page thumbnail (object-cover) can clip content off the bottom;
-    // show the whole figure instead.
     const isFigure = template.category === "Diagrams & Figures";
     return (
       <img
@@ -320,9 +309,6 @@ function Preview({
       />
     );
   }
-  // No rendered thumbnail (e.g. Markdown previews need Pandoc at build time):
-  // fall back to an intentional, engine-branded placeholder tinted by the
-  // template's accent color, rather than a generic gray file icon.
   const tint = /^#[0-9a-fA-F]{6}$/.test(template.default_color ?? "")
     ? (template.default_color as string)
     : null;
@@ -498,11 +484,8 @@ export function NewProjectDialog({
   onClose: () => void;
   onCreate: (name: string, templateId: string, color: string) => void | Promise<void>;
   onGenerateWithAi?: () => void;
-  /** Add a template of the person's own (a ZIP, a folder or a link). */
   onImportTemplate?: () => void;
-  /** App-owned import menu, used when multiple import sources are available. */
   importControl?: ReactNode;
-  /** Backward-compatible single import action. */
   onImportProject?: () => void;
   onOpenTemplateDownloads?: () => void;
   host: TemplatesHost;
@@ -695,8 +678,6 @@ export function NewProjectDialog({
 
   const submit = async () => {
     if (!selected || setup.active) return;
-    // Fetch any fonts/packages the template needs, showing live progress, before
-    // handing off to creation (which stages them into the project).
     if (!selected.assets_ready) {
       setSetup({ active: true, label: t("setup.preparing") });
       try {

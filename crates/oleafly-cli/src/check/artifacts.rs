@@ -1,4 +1,3 @@
-//! The last build's log and PDF, when they are newer than the sources.
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
@@ -6,32 +5,22 @@ use std::time::{Duration, SystemTime};
 use oleafly_core::engine_spec::ENTRY_STEM;
 use oleafly_preflight::CompileStatus;
 
-/// Logs are read up to this many bytes, like the app.
 pub const MAX_LOG_BYTES: u64 = 4 * 1024 * 1024;
-/// A PDF this much older than its log means the build failed.
 const PDF_LAG: Duration = Duration::from_secs(2);
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct BuildArtifacts {
     pub log: Option<(PathBuf, CompileStatus)>,
     pub pdf: Option<PathBuf>,
-    /// Build output exists but is older than the sources (so it was left out).
     pub stale: bool,
-    /// The log is what was left out (`stale` holds then too).
     pub log_stale: bool,
-    /// The PDF is what was left out (`stale` holds then too).
     pub pdf_stale: bool,
-    /// The last build was of this other main document, so its log and PDF
-    /// were left out.
     pub other_document: Option<String>,
 }
 
 /// A margin for file systems that round times (as `record::latest_log`).
 const RECORD_MARGIN: Duration = Duration::from_secs(2);
 
-/// A regular file's time. A link in the build folder (a project can ship
-/// one) is not the build's output, and reading through it would read
-/// whatever it points at.
 fn modified(path: &Path) -> Option<SystemTime> {
     std::fs::symlink_metadata(path)
         .ok()
@@ -46,8 +35,6 @@ fn first_file(candidates: &[PathBuf]) -> Option<PathBuf> {
         .cloned()
 }
 
-/// The build output of `build_dir` for `main_document`, kept only when it is
-/// at least as new as the newest source.
 pub fn discover(
     build_dir: &Path,
     main_document: &str,
@@ -57,9 +44,6 @@ pub fn discover(
         .file_stem()
         .map(|stem| stem.to_string_lossy().into_owned())
         .unwrap_or_default();
-    // As `record::latest_log`: the CLI's record and log count while no
-    // engine log or PDF is newer than it (the app rebuilds them without
-    // touching the CLI's log); then the engine's newer output is the build.
     let engine_log = build_dir.join(format!("{ENTRY_STEM}.log"));
     let engine_time = [
         modified(&engine_log),
@@ -76,7 +60,6 @@ pub fn discover(
         .as_ref()
         .filter(|record| record.main_document != main_document)
     {
-        // That build's log and PDF are another document's.
         return BuildArtifacts {
             other_document: Some(other.main_document.clone()),
             ..BuildArtifacts::default()
@@ -129,7 +112,6 @@ pub fn discover(
     artifacts
 }
 
-/// The start of a log (≤ 4 MiB, cut at a character), with LF line endings.
 pub fn read_log_head(path: &Path) -> std::io::Result<String> {
     let mut bytes = Vec::new();
     std::fs::File::open(path)?
@@ -152,7 +134,6 @@ pub fn read_log_tail(path: &Path) -> std::io::Result<Option<String>> {
     file.seek(SeekFrom::Start(start))?;
     let mut bytes = Vec::new();
     file.take(MAX_LOG_BYTES).read_to_end(&mut bytes)?;
-    // A character cut at the start is dropped.
     let skip = bytes
         .iter()
         .take(3)
@@ -167,7 +148,6 @@ fn log_text(bytes: Vec<u8>) -> String {
         Ok(text) => text,
         Err(error) => {
             let mut bytes = error.into_bytes();
-            // Drop a character the limit cut in half, then read the rest lossily.
             let valid = std::str::from_utf8(&bytes)
                 .map(str::len)
                 .unwrap_or_else(|error| error.valid_up_to());
@@ -249,7 +229,6 @@ mod tests {
             &build.path().join(crate::record::LOG_FILE),
             now - Duration::from_secs(600),
         );
-        // The app rebuilt since: its log and PDF are new.
         touch(&build.path().join(format!("{ENTRY_STEM}.log")), now);
         touch(&build.path().join(format!("{ENTRY_STEM}.pdf")), now);
         let found = discover(

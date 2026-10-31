@@ -11,9 +11,6 @@ import {
   type Page,
 } from "../helpers";
 
-// Local Git history needs neither a GitHub token nor a remote. Every history
-// entry in this spec is created through an explicit Source Control action.
-
 const RUN = Date.now().toString(36);
 const NAME = `GitHist ${RUN}`;
 const BASE = `gbase${RUN}`;
@@ -146,7 +143,6 @@ test("explicit local Git history restores the document backward and forward", as
     20_000,
   );
 
-  // Roll forward to the newest commit.
   await openHistory(tauriPage);
   await restoreCommit(tauriPage, EDIT_COMMIT);
   await tauriPage.waitForFunction(

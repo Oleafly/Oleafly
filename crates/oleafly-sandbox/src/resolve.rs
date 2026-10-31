@@ -1,31 +1,18 @@
-//! Spec checks shared by every backend: real, canonical paths, write grants
-//! inside the workspace or the home folder, no read grant of the whole disk,
-//! a home folder or the folder that holds one, and protected paths only where
-//! a write grant would otherwise cover them.
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use crate::roots::{broad_reason, note_refused};
 use crate::{home_dir, SandboxError, SandboxSpec};
 
-/// A [`SandboxSpec`] with every path checked and canonical.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ResolvedSpec {
     pub workspace: PathBuf,
     pub home: PathBuf,
-    /// Extra read grants (runtimes, skill folders), sorted, without duplicates.
     pub read_only: Vec<PathBuf>,
-    /// The project's linked data folders.
     pub project_read_only: Vec<PathBuf>,
     pub read_write: Vec<PathBuf>,
-    /// Paths inside a write grant that stay read-only.
     pub protected: Vec<PathBuf>,
-    /// The protected paths that did not exist yet (also in `protected`). A
-    /// command could create one with whatever it likes inside, so macOS
-    /// denies the path itself, and Linux and Windows create it as an empty
-    /// folder first (see [`create_missing_protected`]).
     pub missing_protected: Vec<PathBuf>,
-    /// Paths inside the grants the command can neither read nor change.
     pub hidden: Vec<PathBuf>,
     pub network: bool,
     pub gpu: bool,
@@ -33,7 +20,6 @@ pub(crate) struct ResolvedSpec {
     pub owner: String,
     pub project: Option<String>,
     pub path_prepend: Vec<PathBuf>,
-    /// The spec's own variables (the fixed ones were checked already).
     pub env: BTreeMap<String, String>,
 }
 
@@ -50,7 +36,6 @@ pub(crate) fn plain_path(path: &Path) -> PathBuf {
         } else {
             return path.to_path_buf();
         };
-        // A path of 260 characters or more needs the verbatim form.
         if plain.encode_utf16().count() < 260 && !plain.is_empty() {
             return PathBuf::from(plain);
         }
@@ -85,10 +70,6 @@ fn real_directory(path: &Path, what: &str) -> Result<PathBuf, SandboxError> {
 /// git runs hooks and `core.fsmonitor` from `.git` outside the sandbox later.
 const WORKSPACE_PROTECTED: [&str; 2] = [".git", ".oleafly"];
 
-/// The canonical form of a protected `path`, and whether it is missing. A
-/// missing path is its nearest existing folder made canonical with the rest
-/// joined back on, so a deny rule or a mount can name it. `None` when there
-/// is nothing to protect there (no folder holds it).
 fn protected_path(path: &Path) -> Result<Option<(PathBuf, bool)>, SandboxError> {
     let broken =
         || SandboxError::Invalid("A protected task path is a link that leads nowhere.".into());
@@ -133,9 +114,6 @@ fn protected_path(path: &Path) -> Result<Option<(PathBuf, bool)>, SandboxError> 
     }
 }
 
-/// Creates the missing protected paths of `spec` as empty folders, so a
-/// read-only mount (Linux) or a deny entry (Windows) can hold them. Never
-/// through a link: a link where a folder belongs refuses the command.
 #[cfg(any(target_os = "linux", windows, test))]
 pub(crate) fn create_missing_protected(spec: &ResolvedSpec) -> Result<(), SandboxError> {
     for path in &spec.missing_protected {
@@ -152,8 +130,6 @@ pub(crate) fn create_missing_protected(spec: &ResolvedSpec) -> Result<(), Sandbo
             .map_err(|error| SandboxError::Io(error.to_string()))?;
         match crate::safe_fs::create_folders_below(base, relative) {
             Ok(_) => {}
-            // Something that is not a link appeared there meanwhile; it is
-            // protected as it is.
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
             Err(error) => {
                 return Err(SandboxError::Invalid(format!(
@@ -171,8 +147,6 @@ fn sorted(mut paths: Vec<PathBuf>) -> Vec<PathBuf> {
     paths
 }
 
-/// Read grants must exist and must not be the filesystem root, the user's
-/// home folder or a folder that holds it, or a top-level system folder.
 fn read_grants(paths: &[PathBuf]) -> Result<Vec<PathBuf>, SandboxError> {
     let home = home_dir().map(|home| {
         home.canonicalize()
@@ -196,8 +170,6 @@ fn read_grants(paths: &[PathBuf]) -> Result<Vec<PathBuf>, SandboxError> {
     Ok(sorted(resolved))
 }
 
-/// The existing paths of `hidden` that lie inside a folder the command can
-/// otherwise reach; anything else has nothing to hide.
 fn hidden_paths(spec: &SandboxSpec, reachable: &[&Path]) -> Vec<PathBuf> {
     sorted(
         spec.deny_read
@@ -208,7 +180,6 @@ fn hidden_paths(spec: &SandboxSpec, reachable: &[&Path]) -> Vec<PathBuf> {
     )
 }
 
-/// Checks `spec` and makes every path canonical.
 pub(crate) fn resolve(spec: &SandboxSpec) -> Result<ResolvedSpec, SandboxError> {
     let workspace = real_directory(&spec.workspace, "task folder")?;
     #[cfg(windows)]
@@ -378,9 +349,6 @@ mod tests {
         spec.protected = vec![chapters.join(".git"), chapters.join(".oleafly"), outside];
         let resolved = resolve(&spec).unwrap();
         let real_chapters = plain_path(&chapters.canonicalize().unwrap());
-        // A `.git` that isn't there yet is kept: the command could make one.
-        // What no write grant reaches (the workspace's own `.git`, the
-        // folder beside `chapters`) has nothing to protect.
         assert_eq!(
             resolved.protected,
             vec![real_chapters.join(".git"), real_chapters.join(".oleafly")]
@@ -398,9 +366,7 @@ mod tests {
         let expected = vec![workspace.join(".git"), workspace.join(".oleafly")];
         assert_eq!(resolved.protected, expected);
         assert_eq!(resolved.missing_protected, expected);
-        // Nothing is created by resolving.
         assert!(!workspace.join(".git").exists());
-        // Without a write grant there is nothing to protect.
         let resolved = resolve(&fixture.spec()).unwrap();
         assert!(resolved.protected.is_empty());
     }
@@ -433,7 +399,6 @@ mod tests {
             assert!(path.is_dir(), "{}", path.display());
             assert_eq!(std::fs::read_dir(path).unwrap().count(), 0);
         }
-        // Doing it again is fine.
         create_missing_protected(&resolved).unwrap();
     }
 
@@ -445,7 +410,6 @@ mod tests {
         let mut spec = fixture.spec();
         spec.read_write = vec![fixture.workspace.path().to_path_buf()];
         let resolved = resolve(&spec).unwrap();
-        // A link appears where `.git` belongs after the spec was resolved.
         let git = &resolved.missing_protected[0];
         std::os::unix::fs::symlink(elsewhere.path(), git).unwrap();
         assert!(create_missing_protected(&resolved).is_err());

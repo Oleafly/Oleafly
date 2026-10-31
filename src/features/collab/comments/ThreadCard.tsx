@@ -197,7 +197,6 @@ function ThreadActions({ thread, self }: Readonly<{ thread: CollabCommentThread;
   const { t } = useTranslation(["collab"]);
   const [error, run] = useFailure();
   const [confirming, setConfirming] = useState(false);
-  // Resolve and Reopen send once: a second click while one is in flight does nothing.
   const [toggling, setToggling] = useState(false);
   const inFlight = useRef(false);
   const toggle = (action: () => Promise<void>) => {

@@ -1,5 +1,3 @@
-//! Server kinds, the hosted presets, API roots and the user name Git sends
-//! with a token.
 use crate::ForgeError;
 use serde::{Deserialize, Serialize};
 
@@ -16,7 +14,6 @@ pub enum ForgeKind {
     Gitea,
 }
 
-/// Which Gitea-compatible server it is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ServerFlavor {
@@ -24,7 +21,6 @@ pub enum ServerFlavor {
     Forgejo,
 }
 
-/// How the account signed in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthMethod {
@@ -32,7 +28,6 @@ pub enum AuthMethod {
     Token,
 }
 
-/// The kind of a hosted preset, answered without any network call.
 pub fn preset(base: &str) -> Option<(ForgeKind, Option<ServerFlavor>)> {
     match base {
         GITHUB_COM => Some((ForgeKind::GitHub, None)),
@@ -42,8 +37,6 @@ pub fn preset(base: &str) -> Option<(ForgeKind, Option<ServerFlavor>)> {
     }
 }
 
-/// The product name of a hosted preset, else the host and any non-default
-/// port: what messages say instead of a full address.
 pub fn host_label(url_or_base: &str) -> String {
     let host = crate::address::host_of(url_or_base).unwrap_or_else(|| url_or_base.to_string());
     match host.as_str() {
@@ -55,7 +48,6 @@ pub fn host_label(url_or_base: &str) -> String {
 }
 
 impl ForgeKind {
-    /// The API root, with a trailing slash so relative joins stay under it.
     pub fn api_root(self, base: &str) -> Result<url::Url, ForgeError> {
         let root = match self {
             ForgeKind::GitHub if base == GITHUB_COM => "https://api.github.com/".to_string(),
@@ -90,7 +82,6 @@ impl ForgeKind {
         }
     }
 
-    /// The token scopes Oleafly needs, as named on each server's token page.
     pub fn scopes_hint(self) -> &'static str {
         match self {
             ForgeKind::GitHub => "repo, read:user",
@@ -99,7 +90,6 @@ impl ForgeKind {
         }
     }
 
-    /// The product name.
     pub fn label(self, flavor: Option<ServerFlavor>) -> &'static str {
         match (self, flavor) {
             (ForgeKind::GitHub, _) => "GitHub",

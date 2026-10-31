@@ -1,6 +1,3 @@
-// Truncates tool outputs and long history so multi-step agent runs stay
-// inside model context windows.
-
 export const TOOL_RESULT_MAX_CHARS = 12_000;
 export const HISTORY_MSG_MAX_CHARS = 8_000;
 export const HISTORY_MAX_TURNS = 24;
@@ -11,8 +8,6 @@ export function truncateText(s: string, max: number): string {
   return `${s.slice(0, keep)}\n… [truncated ${s.length - keep} chars. Re-read with tools if needed]`;
 }
 
-// Keeps the start and the end, favouring the end, where command output
-// prints its errors and summary.
 export function truncateMiddle(s: string, max: number): string {
   if (s.length <= max) return s;
   const keep = Math.max(0, max - 80);
@@ -24,7 +19,6 @@ export function truncateMiddle(s: string, max: number): string {
 const SHORTENED_KEYS = ["content", "log", "text", "log_tail", "body", "output"];
 const MIDDLE_CUT_KEYS = new Set(["output"]);
 
-// Returns null when no field is long enough to shorten.
 function shortenFields(o: Record<string, unknown>, max: number): Record<string, unknown> | null {
   const packed = { ...o };
   let cut = false;
@@ -73,9 +67,6 @@ export function packToolOutput(output: unknown, maxChars = TOOL_RESULT_MAX_CHARS
 
 export type HistoryMsg = { role: string; content: string };
 
-// `messages` should be the conversation *before* the new user turn is
-// appended by the caller, or the full list excluding the trailing empty
-// assistant. `droppedTurns` counts the messages left out.
 export function packChatHistoryInfo(
   messages: { role: string; content: string }[],
   opts?: { maxTurns?: number; maxChars?: number },

@@ -339,6 +339,7 @@
   },
   "notebook": {
     "code_needed": "{{engine}} bu belgeyi derlemek için kod çalıştırmalı, ancak bu projede kod kapalı. Derlemek için bu projede kod çalıştırmaya izin verin.",
+    "export_stopped": "Dışa aktarma durduruldu.",
     "quarto_missing": "Quarto kurulu değil. Ayarlar > Motorlar > Quarto bölümünden kurun, sonra yeniden derleyin.",
     "calepin_missing": "Calepin kurulu değil. Ayarlar > Motorlar > Calepin bölümünden kurun, sonra yeniden derleyin.",
     "not_offered": "Oleafly, {{tool}} aracını bu bilgisayar için indiremiyor. Kendiniz kurun, sonra yeniden derleyin.",

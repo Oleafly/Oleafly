@@ -93,13 +93,11 @@ export function editorRedo() {
   coreEditorRedo();
 }
 
-/** Returns whether the active source editor accepted the Vim history command. */
 export function editorVimUndo(): boolean {
   if (isWysiwygActive()) return false;
   return coreEditorVimUndo();
 }
 
-/** Returns whether the active source editor accepted the Vim history command. */
 export function editorVimRedo(): boolean {
   if (isWysiwygActive()) return false;
   return coreEditorVimRedo();

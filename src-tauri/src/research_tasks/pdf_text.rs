@@ -40,7 +40,6 @@ fn new_token() -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
-/// Removes the request when the extractor stops waiting for it.
 struct Forget(String);
 
 impl Drop for Forget {
@@ -78,7 +77,6 @@ impl PdfTextExtractor for AppPdfText {
     }
 }
 
-/// The bytes of a PDF the window was asked to read.
 #[tauri::command]
 pub async fn research_pdf_text_fetch(token: String) -> Result<tauri::ipc::Response, String> {
     let path = lock(pending())
@@ -101,7 +99,6 @@ pub async fn research_pdf_text_fetch(token: String) -> Result<tauri::ipc::Respon
     Ok(tauri::ipc::Response::new(bytes))
 }
 
-/// The window's answer: the text of each page, or why it could not read them.
 #[tauri::command]
 pub fn research_pdf_text_result(
     token: String,

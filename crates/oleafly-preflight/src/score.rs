@@ -1,5 +1,3 @@
-//! Check scores (`packages/preflight/src/score.ts`).
-
 use crate::types::{CheckId, CheckScores, Finding, Lens, Severity, CHECK_IDS};
 
 pub fn points(severity: Severity) -> i64 {
@@ -10,7 +8,6 @@ pub fn points(severity: Severity) -> i64 {
     }
 }
 
-/// A `both` finding counts against ATS and accessibility.
 pub fn finding_applies_to(finding: &Finding, check: CheckId) -> bool {
     match finding.lens {
         Lens::Both => matches!(check, CheckId::Ats | CheckId::A11y),

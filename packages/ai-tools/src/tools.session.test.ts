@@ -510,8 +510,6 @@ describe("run_command", () => {
     const result = (await createOleaflyTools(makeHost(), opts).run_command.execute({
       command: "make",
     })) as Record<string, unknown>;
-    // Context packing may keep only the head of an oversized result, so the
-    // status fields must come before the long output.
     expect(Object.keys(result)).toEqual([
       "exec",
       "command",

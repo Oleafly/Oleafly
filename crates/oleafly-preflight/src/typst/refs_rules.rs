@@ -1,5 +1,3 @@
-//! Typst reference rules (`packages/preflight/src/typst-refs-rules.ts`).
-
 use std::collections::HashSet;
 use std::sync::LazyLock;
 
@@ -68,9 +66,6 @@ fn bibliography_state(sources: &[ScannedSource], files: &[String]) -> Bibliograp
     }
 }
 
-// The .bib files the document loads. Conflict copies, backups and samples
-// next to them must not count as repeated keys. Nothing declared keeps every
-// file, the same as before a bibliography is added.
 fn definitions_in_declared_files(sources: &[ScannedSource], ctx: &RefsContext) -> RefsContext {
     let mut declared: HashSet<String> = HashSet::new();
     for source in sources {

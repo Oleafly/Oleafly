@@ -1,6 +1,3 @@
-// Injected into the agent system prompt so the model starts oriented (open
-// file, compile status, compact project map) instead of burning the first
-// tool steps on discovery.
 import { activeContextProvider } from "@oleafly/registry";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
@@ -75,7 +72,7 @@ export async function buildWorkspaceContext(): Promise<string> {
   const ctx = {
     projectId: files.projectId,
     projectKind: files.projectKind ?? null,
-    theme: "light" as const, // theme is irrelevant to context; a placeholder is fine
+    theme: "light" as const,
   };
   const view = activeContextProvider(ctx)?.id ?? "editor";
 

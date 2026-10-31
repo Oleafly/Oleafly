@@ -22,7 +22,6 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
   loadResearchTaskEventsBefore: vi.fn(),
   retryResearchTask: vi.fn(),
   startResearchTask: vi.fn(),
-  // Selecting a task tells the backend which task this window shows.
   watchResearchTask: vi.fn(async () => {}),
 }));
 
@@ -220,7 +219,6 @@ describe("loading research tasks", () => {
 });
 
 describe("research task activity", () => {
-  // The transcript loads and streams only while the task dialog shows it.
   beforeEach(() => useResearchTasksStore.setState({ detailOpen: true }));
 
   it("loads no activity for a task that has not run or is unknown", async () => {
@@ -501,7 +499,6 @@ describe("research task subscriptions", () => {
     expect(useResearchTasksStore.getState().events).toHaveLength(1);
 
     unmount();
-    // The last unmount stops the listeners once their start has settled.
     await Promise.resolve();
     expect(unlistenTasks).toHaveBeenCalledTimes(1);
     expect(unlistenEvents).toHaveBeenCalledTimes(1);
@@ -560,7 +557,6 @@ describe("actions on different tasks", () => {
     slowCancel.resolve({ ...a, status: "cancelled", updatedAt: 3 });
     await cancelling;
 
-    // The first task's answer is no longer dropped when another task acted meanwhile.
     expect(useResearchTasksStore.getState().tasks.find((value) => value.id === "a")?.status).toBe("cancelled");
     expect(useResearchTasksStore.getState()).toMatchObject({ action: null, pendingActions: [] });
   });
@@ -601,7 +597,6 @@ describe("actions on different tasks", () => {
 
 describe("refresh and the open task's dialog", () => {
   beforeEach(async () => {
-    // Forget the task an earlier test left watched.
     await useResearchTasksStore.getState().selectTask(null);
     vi.mocked(api.watchResearchTask).mockClear();
   });
@@ -704,7 +699,6 @@ describe("refresh and the open task's dialog", () => {
     expect(api.watchResearchTask).not.toHaveBeenCalledWith("a");
     expect(useResearchTasksStore.getState()).toMatchObject({ selectedTaskId: "a", events: [], eventsLoading: false });
 
-    // Opening the dialog watches the task and loads what it missed.
     useResearchTasksStore.getState().openTaskDetail("a");
     await vi.waitFor(() => expect(useResearchTasksStore.getState().events).toHaveLength(1));
     expect(api.watchResearchTask).toHaveBeenLastCalledWith("a");

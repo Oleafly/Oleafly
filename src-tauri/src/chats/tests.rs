@@ -26,7 +26,6 @@ fn ids(load: &ChatsLoad) -> Vec<String> {
         .collect()
 }
 
-// 0.4.7's check, kept: a project id never leaves the chats folder.
 #[test]
 fn rejects_illegal_project_ids() {
     let root = std::path::Path::new("data");
@@ -67,13 +66,11 @@ fn migrates_a_legacy_project_file_into_per_chat_files() {
     assert!(migrate_legacy_chats(root.path(), "p1").unwrap());
     assert!(chats.join("p1").join("a.json").is_file());
     assert!(chats.join("p1").join("b.json").is_file());
-    // The file stays where 0.4.7 reads it, untouched, and is not renamed.
     assert_eq!(
         std::fs::read_to_string(chats.join("p1.json")).unwrap(),
         legacy
     );
     assert!(!chats.join("p1.json.migrated").exists());
-    // Merged once: an unchanged file is not merged again.
     assert!(!migrate_legacy_chats(root.path(), "p1").unwrap());
     assert_eq!(
         ids(&read_project_chats(root.path(), "p1", usize::MAX).unwrap()),
@@ -102,7 +99,6 @@ fn a_chat_deleted_after_the_merge_stays_deleted() {
     .unwrap();
     migrate_legacy_chats(root.path(), "p1").unwrap();
     delete_chat(root.path(), "p1", "a").unwrap();
-    // Every later load sees the same legacy file and leaves the history be.
     assert!(!migrate_legacy_chats(root.path(), "p1").unwrap());
     assert_eq!(
         ids(&read_project_chats(root.path(), "p1", usize::MAX).unwrap()),
@@ -117,7 +113,6 @@ fn a_legacy_file_written_after_a_downgrade_is_merged_again() {
     std::fs::create_dir_all(&chats).unwrap();
     std::fs::write(chats.join("p1.json"), format!("[{}]", chat("a", 1.0, 1))).unwrap();
     assert!(migrate_legacy_chats(root.path(), "p1").unwrap());
-    // 0.4.7 ran again, edited a chat and added one, and saved the array.
     std::fs::write(
         chats.join("p1.json"),
         format!("[{},{}]", chat("a", 7.0, 4), chat("c", 8.0, 1)),
@@ -143,7 +138,6 @@ fn a_chat_deleted_here_stays_deleted_when_0_4_7_saves_the_legacy_file_again() {
     .unwrap();
     assert!(migrate_legacy_chats(root.path(), "p1").unwrap());
     delete_chat(root.path(), "p1", "a").unwrap();
-    // 0.4.7 ran again: it still has a and changed it, and it added c.
     std::fs::write(
         chats.join("p1.json"),
         format!(
@@ -168,7 +162,6 @@ fn a_chat_continued_in_both_versions_keeps_both_copies() {
     std::fs::create_dir_all(&chats).unwrap();
     std::fs::write(chats.join("p1.json"), format!("[{}]", chat("a", 1.0, 1))).unwrap();
     assert!(migrate_legacy_chats(root.path(), "p1").unwrap());
-    // Five messages added here, then one in 0.4.7 after a downgrade.
     write_chat(root.path(), "p1", "a", &chat("a", 5.0, 6), false).unwrap();
     std::fs::write(chats.join("p1.json"), format!("[{}]", chat("a", 7.0, 2))).unwrap();
     assert!(migrate_legacy_chats(root.path(), "p1").unwrap());
@@ -180,7 +173,6 @@ fn a_chat_continued_in_both_versions_keeps_both_copies() {
     };
     let copy = legacy_copy_id("a", Some(7.0));
     assert_eq!((messages("a"), messages(&copy)), (6, 2));
-    // 0.4.7 carries on with its copy: that copy follows, the chat here stays.
     std::fs::write(chats.join("p1.json"), format!("[{}]", chat("a", 9.0, 3))).unwrap();
     assert!(migrate_legacy_chats(root.path(), "p1").unwrap());
     assert_eq!((messages("a"), messages(&copy)), (6, 3));
@@ -213,7 +205,6 @@ fn legacy_chats_that_cannot_be_files_are_counted_and_stay_in_the_legacy_file() {
     let legacy = format!(
         "[{},{},{},{}]",
         chat("fine", 1.0, 1),
-        // Not a file name, and no id at all.
         chat("chat.1710000000", 2.0, 1),
         serde_json::json!({ "title": "no id", "updatedAt": 2 }),
         huge
@@ -227,8 +218,6 @@ fn legacy_chats_that_cannot_be_files_are_counted_and_stay_in_the_legacy_file() {
             skipped: 3
         }
     );
-    // The count is remembered while the legacy file is unchanged, and the
-    // file still holds those chats.
     let second = migrate_legacy(root.path(), "p1").unwrap();
     assert_eq!(
         second,
@@ -340,7 +329,6 @@ fn older_chats_come_from_the_stub_index_without_their_bodies_being_read() {
     for (id, updated) in [("a", 1.0), ("b", 2.0), ("c", 3.0)] {
         write_chat(root.path(), "p1", id, &chat(id, updated, 3), false).unwrap();
     }
-    // The first load reads what it has not seen and records it.
     let first = read_project_chats(root.path(), "p1", 0).unwrap();
     assert!(parsed(&first).iter().all(|chat| chat["stub"] == true));
     assert!(root
@@ -350,8 +338,6 @@ fn older_chats_come_from_the_stub_index_without_their_bodies_being_read() {
         .join(STUB_INDEX)
         .is_file());
 
-    // Junk of the same length and the same modification time stands in for
-    // the bodies of a and b. A load that read them would skip them.
     for id in ["a", "b"] {
         let path = chat_file(root.path(), id);
         let meta = std::fs::metadata(&path).unwrap();
@@ -364,7 +350,6 @@ fn older_chats_come_from_the_stub_index_without_their_bodies_being_read() {
     assert_eq!(parsed(&second)[2]["messageCount"], 3);
     assert_eq!(parsed(&second)[2]["title"], "Chat a");
 
-    // Room for the newest only: it is read in full, the others stay stubs.
     let newest = std::fs::metadata(chat_file(root.path(), "c"))
         .unwrap()
         .len();
@@ -436,7 +421,6 @@ fn a_body_that_goes_bad_between_the_listing_and_the_read_is_skipped_not_returned
     let root = tempfile::tempdir().unwrap();
     write_chat(root.path(), "p1", "a", &chat("a", 1.0, 1), false).unwrap();
     read_project_chats(root.path(), "p1", 0).unwrap();
-    // Same length and time as the indexed file, but no longer a chat.
     let path = chat_file(root.path(), "a");
     let meta = std::fs::metadata(&path).unwrap();
     std::fs::write(&path, vec![b'{'; meta.len() as usize]).unwrap();

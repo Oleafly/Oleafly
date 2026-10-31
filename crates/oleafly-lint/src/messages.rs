@@ -1,6 +1,3 @@
-//! The editor's English catalog (`src/i18n/locales/en/editor.json`, the
-//! `package` subtree the editor package reads).
-
 use std::sync::LazyLock;
 
 use oleafly_preflight::messages::Catalog;

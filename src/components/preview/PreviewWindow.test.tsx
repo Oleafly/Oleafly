@@ -102,12 +102,6 @@ import type { PreviewWorkspaceSnapshot } from "@/lib/preview-workspace";
 import type { DocumentEngineDescriptor } from "@/lib/tauri";
 import { useTypstToolchainStore } from "@/store/typst-toolchain";
 
-/**
- * The detached window only displays output whose compile identity it can
- * verify, so every load starts from a `preview:refresh` state rather than the
- * project id alone. `outputRevision` orders the states the way the producing
- * window would.
- */
 function successState(
   projectId: string,
   value: number,
@@ -399,7 +393,6 @@ describe("detached preview request identity", () => {
     await screen.findByText("1");
 
     emitProject("beta");
-    // The old project's PDF must not linger while the new one is unverified.
     expect(screen.queryByTestId("detached-pdf-bytes")).not.toBeInTheDocument();
     expect(
       screen.getByText(enPreview.window.noVerifiedTitle),
@@ -522,8 +515,6 @@ describe("detached preview request identity", () => {
         requestGeneration: 12,
       },
       status: "compiling",
-      // In-progress identities never claim an older success checkpoint.
-      // The viewer retains the old bytes independently and marks them stale.
       checkpoint: null,
     });
 

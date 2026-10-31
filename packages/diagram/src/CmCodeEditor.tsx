@@ -20,8 +20,6 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirro
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 
-// Imperative handle so a toolbar can insert/wrap text in THIS editor, not the
-// app's main document editor.
 export interface CmHandle {
   insert: (text: string) => void;
   wrap: (before: string, after: string) => void;
@@ -29,8 +27,6 @@ export interface CmHandle {
   revealLine: (line: number, column?: number | null) => void;
 }
 
-// Deliberately independent of the app's document editor that insertAtCursor
-// targets.
 export const CmCodeEditor = forwardRef<
   CmHandle,
   { value: string; onChange: (v: string) => void; extensions?: Extension[] }
@@ -39,8 +35,6 @@ export const CmCodeEditor = forwardRef<
     const viewRef = useRef<EditorView | null>(null);
     const onChangeRef = useRef(onChange);
     onChangeRef.current = onChange;
-    // True while we push an external value in, so the change listener does not
-    // echo it back out as a user edit.
     const suppressRef = useRef(false);
 
     useEffect(() => {
@@ -86,8 +80,6 @@ export const CmCodeEditor = forwardRef<
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Controlled: reflect external value changes (e.g. a reset) without
-    // clobbering the caret while the user is typing.
     useEffect(() => {
       const view = viewRef.current;
       if (!view) return;

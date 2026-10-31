@@ -69,10 +69,6 @@ const SOURCE_ART: Record<ProjectImportFileKind, string> = {
   typst: CHOICE_ART.importTypst,
 };
 
-/**
- * Save the project an import just opened as a custom template too. It runs
- * after the dialog closes and reports through a toast, like the import.
- */
 async function keepImportAsTemplate(previousProjectId: string | null): Promise<void> {
   const { projectId, projectName } = useFilesStore.getState();
   if (!projectId || projectId === previousProjectId) return;
@@ -130,16 +126,13 @@ export function ProjectImportDialog({
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [arxivId, setArxivId] = useState("");
   const [busy, setBusy] = useState(false);
-  // The local source whose picker or import is running, so its card spins.
   const [busyKind, setBusyKind] = useState<ProjectImportFileKind | null>(null);
   const busyRef = useRef(false);
-  // A repository import or clone can be stopped; the other imports cannot.
   const [cancellable, setCancellable] = useState(false);
   const cancellableRef = useRef(false);
   const cancelledRef = useRef(false);
   const sessionRef = useRef(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  // Off every time the dialog opens: keeping an import as a template is rare.
   const [alsoTemplate, setAlsoTemplate] = useState(false);
   const alsoTemplateId = useId();
 
@@ -153,7 +146,6 @@ export function ProjectImportDialog({
     return () => { sessionRef.current += 1; };
   }, [open, initialView]);
 
-  // The Git card says whether accounts are connected.
   useEffect(() => {
     if (open) void useForgeAccountsStore.getState().ensureLoaded();
   }, [open]);
@@ -164,8 +156,6 @@ export function ProjectImportDialog({
     void logError("project import", error);
   };
 
-  /** Stop the repository import or clone that is running. The transfer
-   * ends, its staging folder goes and no project is created. */
   const cancelImport = () => {
     if (!busyRef.current || !cancellableRef.current || cancelledRef.current) return;
     cancelledRef.current = true;
@@ -194,7 +184,6 @@ export function ProjectImportDialog({
         if (keepAsTemplate) void keepImportAsTemplate(before);
       }
     } catch (error) {
-      // The person stopped it: nothing went wrong.
       if (!cancelledRef.current) reportError(error);
     } finally {
       busyRef.current = false;
@@ -485,8 +474,6 @@ export function ProjectImportDialog({
         if (!busyRef.current) {
           onClose();
         } else if (cancellableRef.current) {
-          // Closing the dialog stops a repository transfer instead of
-          // leaving it running with no way back.
           cancelImport();
           onClose();
         }
@@ -495,12 +482,7 @@ export function ProjectImportDialog({
       <DialogContent
         data-testid="project-import-dialog"
         className={cn(
-          // A flex column capped at the window height: when the window is too
-          // short for every card (the smallest is 900x600), the body below the
-          // header scrolls and the title and close button stay in view.
           "flex max-h-[calc(100dvh-2rem)] flex-col gap-4 overflow-hidden",
-          // The source cards use the chooser's width so the two dialogs line
-          // up; the single-purpose steps keep their narrower layout.
           VIEW_WIDTH[view],
         )}
       >

@@ -1,5 +1,3 @@
-//! The online service's HTTP client (in `oleafly-online`), with the app's
-//! user agent and errors in the app's format.
 use std::path::Path;
 
 use serde_json::Value;
@@ -27,7 +25,6 @@ impl Http {
         })
     }
 
-    /// The crate's client, for the crate's own operations.
     pub(crate) fn online(&self) -> &oleafly_online::client::Http {
         &self.inner
     }
@@ -36,7 +33,6 @@ impl Http {
         self.inner.url(path)
     }
 
-    /// A request for a public page, sent without the account's cookie.
     pub(crate) fn public_get(&self, path: &str) -> reqwest::RequestBuilder {
         self.inner.public_get(path)
     }

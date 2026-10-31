@@ -33,8 +33,6 @@ export interface DiagramProjectPick {
   language?: DiagramLanguageId;
 }
 
-// Services the host app injects into the diagram composer, so this package
-// stays free of store/Tauri/AI imports.
 export interface DiagramHost {
   compileIsolated(projectId: string, source: string): Promise<{ log?: string | null; has_pdf: boolean }>;
   readIsolatedPdf(projectId: string): Promise<ArrayBuffer | number[]>;
@@ -59,9 +57,6 @@ export interface DiagramHost {
   listProjectNames(): Promise<DiagramProjectPick[]>;
   saveFigureToCache(name: string, pngBase64: string, tikz: string): Promise<{ hash: string; alreadyCached: boolean }>;
   saveBytesToDisk(defaultName: string, extension: string, dataBase64: string): Promise<boolean>;
-  // Lets the user pick an arbitrary .tikz/.tex file from disk (not tied to
-  // any project) to load into the composer as a draft. Resolves null if the
-  // user cancels the picker.
   pickTikzFile(accept?: string): Promise<{ name: string; content: string } | null>;
   fixWithAi?(code: string, logTail: string, prompt?: DiagramFixPrompt): Promise<string>;
   insertTarget?(): DiagramInsertTarget | null;

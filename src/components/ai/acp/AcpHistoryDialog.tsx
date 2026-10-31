@@ -21,7 +21,6 @@ import { isDelegatedSession, useAcpSessionsStore } from "@/store/acp-sessions";
 const PAGE = 50;
 const SEARCH_DELAY_MS = 200;
 
-/** Deletes a conversation after the confirmation; shared by the dialog and the session header. */
 export async function deleteConversation(
   projectId: string,
   session: AcpSession,
@@ -35,7 +34,6 @@ export async function deleteConversation(
   }
 }
 
-/** A name field that saves on Enter or when it loses focus, and drops the edit on Escape. */
 export function RenameInput({
   initial,
   className,
@@ -63,7 +61,6 @@ export function RenameInput({
       onKeyDown={(event) => {
         if (event.key === "Enter") {
           event.preventDefault();
-          // Saving happens once, on the blur this causes.
           event.currentTarget.blur();
         } else if (event.key === "Escape") {
           event.preventDefault();
@@ -76,7 +73,6 @@ export function RenameInput({
   );
 }
 
-/** Asks before deleting; offers deleting the agent's own copy when it can. */
 export function DeleteConversationDialog({
   session,
   agentName,
@@ -116,7 +112,6 @@ export function DeleteConversationDialog({
   );
 }
 
-/** The agent's own conversations: a button to look them up, then a list to pick from. */
 function ImportPanel({
   entries,
   agentName,
@@ -127,7 +122,6 @@ function ImportPanel({
   onFind,
   onImport,
 }: Readonly<{
-  /** Null until the agent has been asked. */
   entries: AcpAgentSessionInfo[] | null;
   agentName: string;
   idPrefix: string;
@@ -185,7 +179,6 @@ function ImportPanel({
   );
 }
 
-/** Every conversation of the project: search, rename, delete, import. */
 export function AcpHistoryDialog({
   projectId,
   open,
@@ -205,9 +198,6 @@ export function AcpHistoryDialog({
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState<AcpSession[]>([]);
   const [hasMore, setHasMore] = useState(false);
-  // Where the next page starts: the last conversation the backend sent,
-  // delegated ones included. The last row shown can be older than that. The
-  // id breaks a tie between conversations updated at the same time.
   const [cursor, setCursor] = useState<{ before: number; beforeId: string } | undefined>(undefined);
   const search = useDebouncedValue(query.trim(), SEARCH_DELAY_MS, (value) => value === "");
   const [loading, setLoading] = useState(false);

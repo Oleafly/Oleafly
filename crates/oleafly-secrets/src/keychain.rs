@@ -1,7 +1,3 @@
-//! The OS keychain backend for cloud-sync credentials, with the encrypted
-//! file store as the fallback. Release builds probe the keychain once without
-//! a prompt; development builds and isolated data folders always use the
-//! file.
 use crate::SecretStore;
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;

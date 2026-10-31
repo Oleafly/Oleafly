@@ -135,8 +135,6 @@ export const TableProviders: FC<{ host: TableHost; children: ReactNode }> = ({ h
       changes.push(...writeCellEdit(host.parsed, current.row, current.column, content).changes);
     }
     editingRef.current = null;
-    // Both edits use the same parsed document positions. Dispatch them together
-    // so changing the cell's length cannot move a following row insertion.
     runEdit(host, {
       changes: [...changes, ...(nextEdit?.changes ?? [])],
       selection: nextEdit?.selection ?? null,

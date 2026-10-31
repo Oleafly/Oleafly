@@ -177,8 +177,6 @@ fn create_firefox_store(path: &Path) {
         .expect("Firefox host-only parent cookie");
 }
 
-/// A Firefox store holding `(name, value, host)` rows that expire in 2100,
-/// or at `expiry_ms` when given.
 fn write_firefox_store(path: &Path, rows: &[(&str, &str, &str, Option<i64>)]) {
     fs::create_dir_all(path.parent().expect("fixture parent")).expect("fixture directory");
     let connection = Connection::open(path).expect("firefox fixture");
@@ -999,7 +997,6 @@ fn imported_cookie_debug_hides_values() {
     assert!(printed.contains("site_session"));
 }
 
-/// The first Firefox profile `detect_sources_at` lists for the CLI.
 fn first_firefox_profile(home: &Path, platform: HostPlatform) -> Option<String> {
     detect_sources_at(home, platform, ImportPolicy::Cli)
         .into_iter()
@@ -1011,8 +1008,6 @@ fn first_firefox_profile(home: &Path, platform: HostPlatform) -> Option<String> 
 
 #[test]
 fn the_firefox_profile_the_browser_opens_is_listed_first() {
-    // Profile folders start with random letters, so by name an old profile
-    // can come before the one in use.
     let linux = TempDir::new().unwrap();
     let root = linux.path().join(".mozilla/firefox");
     for name in ["a1.default", "z9.default-release", "m5.dev-edition-default"] {
@@ -1031,7 +1026,6 @@ fn the_firefox_profile_the_browser_opens_is_listed_first() {
         first_firefox_profile(linux.path(), HostPlatform::Linux).as_deref(),
         Some("z9.default-release")
     );
-    // Without an install section, the profile marked as the default.
     fs::write(
         root.join("profiles.ini"),
         "[Profile0]\nName=x\nIsRelative=1\nPath=m5.dev-edition-default\nDefault=1\n",
@@ -1058,7 +1052,6 @@ fn the_firefox_profile_the_browser_opens_is_listed_first() {
         first_firefox_profile(mac.path(), HostPlatform::Macos).as_deref(),
         Some("z9.default-release")
     );
-    // A name that matches no profile changes nothing.
     fs::write(firefox.join("installs.ini"), "[X]\nDefault=Profiles/gone\n").unwrap();
     assert_eq!(
         first_firefox_profile(mac.path(), HostPlatform::Macos).as_deref(),
@@ -1069,7 +1062,6 @@ fn the_firefox_profile_the_browser_opens_is_listed_first() {
 #[test]
 fn a_cookie_name_two_cookies_share_is_sent_once_with_the_newest_value() {
     let url = url::Url::parse("https://latex.example.edu/").unwrap();
-    // A Chromium store is read newest first.
     let newest_first = vec![
         cookie("session", "new", "latex.example.edu", "/", true),
         cookie("session", "stale", ".example.edu", "/", true),

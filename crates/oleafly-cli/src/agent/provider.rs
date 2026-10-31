@@ -1,11 +1,3 @@
-//! Which provider and model a headless run uses, and its credential.
-//!
-//! Provider: `--provider`, then `OLEAFLY_PROVIDER`, then the app's choice.
-//! Model: `--model`, then `OLEAFLY_MODEL`, then the app's choice.
-//! Credential: the provider's own variable (or `OLEAFLY_API_KEY`, which a
-//! key-optional custom provider never gets), then the app's encrypted store.
-//! The app's model trust list is not applied: a model that is not turned on
-//! still runs, with a warning.
 use std::path::Path;
 
 use oleafly_agent::provider::{
@@ -18,7 +10,6 @@ use super::desktop_config::{model_entry, DesktopConfig};
 use super::EffortArg;
 use crate::contract::{CliError, ErrorKind};
 
-/// What the user asked for on the command line.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ProviderChoice {
     pub provider: Option<String>,
@@ -26,7 +17,6 @@ pub struct ProviderChoice {
     pub effort: Option<Effort>,
 }
 
-/// Where the credential came from (reported in the result; never the value).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CredentialSource {
     Store,
@@ -45,14 +35,12 @@ impl CredentialSource {
 }
 
 pub struct ResolvedProvider {
-    /// With `caps` filled from the model's metadata.
     pub resolved: oleafly_agent::Resolved,
     pub source: CredentialSource,
     pub price: Option<Price>,
     pub warnings: Vec<String>,
 }
 
-/// US dollars per million tokens.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Price {
     pub input_per_mtok: f64,
@@ -63,8 +51,6 @@ pub struct Price {
 }
 
 impl Price {
-    /// The metadata entry's `cost` object (`input`, `output`, `cacheRead`,
-    /// `cacheWrite`).
     pub fn from_entry(entry: &Value) -> Option<Price> {
         let cost = entry.get("cost")?;
         let rate = |name: &str| {
@@ -88,8 +74,6 @@ impl Price {
         }
     }
 
-    /// What `usage` costs at this price now. Cached tokens count at their
-    /// own rate (the input rate when the model has none).
     pub fn cost(&self, usage: &Usage) -> f64 {
         self.cost_at(usage, oleafly_agent::pricing::now_unix_ms())
     }
@@ -162,7 +146,6 @@ impl From<ResolveError> for CliError {
     }
 }
 
-/// The variables that hold a catalog provider's key (Ollama: its host).
 pub fn env_key_names(provider_id: &str) -> &'static [&'static str] {
     match provider_id {
         "openai" => &["OPENAI_API_KEY"],
@@ -195,7 +178,6 @@ pub fn all_key_variables() -> Vec<&'static str> {
     names
 }
 
-/// `--effort auto` sends no effort; `none` turns thinking off.
 pub fn effort_from_arg(arg: EffortArg) -> Option<Effort> {
     match arg {
         EffortArg::Auto => None,
@@ -219,8 +201,6 @@ fn configured(config: &DesktopConfig) -> bool {
         || config.ai.custom.iter().any(|custom| custom.key_optional)
 }
 
-/// Resolves the provider, model and credential for a run. `env` reads the
-/// environment (`|_| None` ignores it, as the background helper does).
 pub fn resolve(
     root: &Path,
     config: &DesktopConfig,
@@ -245,22 +225,18 @@ pub fn resolve(
     let provider_id = match explicit_provider {
         Some(provider) => provider,
         None if configured(config) => oleafly_agent::provider::pick_provider(&ai).0,
-        None => {
-            // Nothing set up in the app: a provider whose key is in the
-            // environment still works.
-            CATALOG
-                .iter()
-                .find(|entry| {
-                    !entry.is_host
-                        && env_key_names(entry.id)
-                            .iter()
-                            .any(|name| env_value(name).is_some())
-                })
-                .map(|entry| entry.id.to_string())
-                .ok_or_else(|| ResolveError::NoProvider {
-                    hint: NO_PROVIDER_HINT.into(),
-                })?
-        }
+        None => CATALOG
+            .iter()
+            .find(|entry| {
+                !entry.is_host
+                    && env_key_names(entry.id)
+                        .iter()
+                        .any(|name| env_value(name).is_some())
+            })
+            .map(|entry| entry.id.to_string())
+            .ok_or_else(|| ResolveError::NoProvider {
+                hint: NO_PROVIDER_HINT.into(),
+            })?,
     };
     let custom = ai
         .custom
@@ -288,13 +264,9 @@ pub fn resolve(
             hint: format!("Pass --model with a model of {provider_id}."),
         });
     }
-    // A custom entry never relaxes a catalog provider's key.
     let key_optional =
         catalog.is_none() && custom.as_ref().is_some_and(|custom| custom.key_optional);
     let is_host = catalog.is_some_and(|entry| entry.is_host);
-    // `OLEAFLY_API_KEY` stands in for a provider's own variable, but not for a
-    // key-optional custom provider: that is usually a local server, and the
-    // key was meant for some other service.
     let env_credential = env_key_names(&provider_id)
         .iter()
         .find_map(|name| env_value(name).map(|value| (*name, value)))
@@ -316,8 +288,6 @@ pub fn resolve(
                 .then(|| ai.legacy_key.clone())
         })
         .unwrap_or_default();
-    // An older settings entry with no key anywhere: it was most likely added
-    // for a key-less local server, so the run goes without one.
     let keyless = catalog.is_none() && config.keyless_custom.contains(&provider_id);
     let source = match &env_credential {
         Some((name, _)) => CredentialSource::Env(name),

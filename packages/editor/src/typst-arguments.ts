@@ -44,13 +44,11 @@ export interface NamedSlot {
   readonly argument: TextRange;
   readonly value: TextRange;
   readonly type: string;
-  // The commas on either side in the tree, past any comments; null at either end of the list.
   readonly commas: { readonly before: TextRange | null; readonly after: TextRange | null };
 }
 
 export interface CallArguments {
   readonly call: TextRange;
-  // The `Args` node: parentheses and trailing blocks together.
   readonly list: TextRange;
   readonly text: string;
   readonly parens: { readonly open: number; readonly close: number } | null;
@@ -98,7 +96,6 @@ function blockCommentEnd(text: string, from: number): number | null {
   return null;
 }
 
-// Where the whitespace or comment starting at `index` ends, or null when neither starts there.
 function skippedEnd(text: string, index: number): number | null {
   if (/\s/u.test(text[index])) return index + 1;
   if (text.startsWith("//", index)) {
@@ -108,7 +105,6 @@ function skippedEnd(text: string, index: number): number | null {
   return text.startsWith("/*", index) ? blockCommentEnd(text, index) : null;
 }
 
-// The length of `text` up to and including a comma that only whitespace and comments precede.
 function commaLength(text: string): number | null {
   let index = 0;
   while (index < text.length) {
@@ -142,7 +138,6 @@ export function namedArgument(doc: SourceText, args: SyntaxNode, name: string): 
   return null;
 }
 
-// The expression after the colon. A comment there (`title: /* c */ "Q3"`) is a sibling in the tree.
 export function namedValue(named: SyntaxNode): SyntaxNode | null {
   let value = named.getChild("Colon")?.nextSibling ?? null;
   while (value && COMMENTS.has(value.name)) value = value.nextSibling;
@@ -180,7 +175,6 @@ export function contentBody(block: SyntaxNode): TextRange | null {
   return { from: open.to, to: close.from };
 }
 
-// A depth-first walk with one cursor, so checking a call allocates no subtree copy.
 export function hasErrorNode(node: SyntaxNode): boolean {
   if (node.type.isError) return true;
   const cursor = node.cursor();
@@ -200,7 +194,6 @@ export function hasErrorNode(node: SyntaxNode): boolean {
   }
 }
 
-// The comma next to a parenthesised argument, past any comments, or null when the list ends there.
 function adjacentComma(node: SyntaxNode, side: "prevSibling" | "nextSibling"): TextRange | null {
   let sibling = node[side];
   while (sibling && COMMENTS.has(sibling.name)) sibling = sibling[side];
@@ -266,8 +259,6 @@ function lineBreakLength(doc: SourceText, pos: number): number {
   return doc.sliceString(pos, Math.min(doc.length, pos + 2)) === "\r\n" ? 2 : 1;
 }
 
-// Finds the separators in the text, not the tree, so it suits a table row: a span of several
-// cells in a call without comments. A single named argument goes through `namedRemoval`.
 export function deleteArgumentSpan(doc: SourceText, span: TextRange): TextChange {
   const indent = lineStartIndent(doc, span.from);
   const after = afterSeparator(doc, span.to);
@@ -299,8 +290,6 @@ function spacesBefore(doc: SourceText, pos: number): number {
   return pos - (before.length - start);
 }
 
-// A cut that leaves only spaces on its lines takes the whole lines. One that ends its line takes
-// the spaces before it too, so the line keeps no trailing spaces.
 function tidiedCut(doc: SourceText, from: number, to: number): TextChange {
   const first = doc.lineAt(from);
   const last = doc.lineAt(to);
@@ -311,8 +300,6 @@ function tidiedCut(doc: SourceText, from: number, to: number): TextChange {
   return { from: spacesBefore(doc, from), to: last.to, insert: "" };
 }
 
-// In a gap of whitespace and comments, where its last comment ends when one of them is a line
-// comment. A cut that took that comment's line break would pull what follows into the comment.
 function lineCommentGapEnd(gap: string): number | null {
   let index = 0;
   let end = 0;
@@ -329,10 +316,6 @@ function lineCommentGapEnd(gap: string): number | null {
   return line ? end : null;
 }
 
-// Removes a named argument with one of the commas the tree puts next to it: the one after it when
-// another argument follows or none comes before, otherwise the one before it, so a trailing comma
-// stays. A comment between the argument and its comma goes with it; a line comment between the
-// comma before and the argument stays, with that comma. An argument alone on its lines takes them.
 function namedRemoval(doc: SourceText, slot: NamedSlot, close: number): TextChange {
   const { argument } = slot;
   const { before, after } = slot.commas;
@@ -365,7 +348,6 @@ function namedSlot(args: CallArguments, name: string): NamedSlot | null {
   return args.named.find((slot) => slot.name === name) ?? null;
 }
 
-// The value an argument reference points at: a named argument's value, or a positional slot.
 export function argumentSlot(args: CallArguments, ref: ArgRef): { readonly node: TextRange; readonly type: string } | null {
   if ("named" in ref) {
     const slot = namedSlot(args, ref.named);
@@ -385,14 +367,11 @@ function lineIndent(doc: SourceText, pos: number): string {
   return /^[ \t]*/u.exec(doc.sliceString(line.from, pos))?.[0] ?? "";
 }
 
-// A call whose first argument shares the `(` line is still laid out one argument per line when
-// the new ones follow an argument on a later line, or `)` has a line of its own.
 function spansLines(doc: SourceText, parens: { readonly open: number; readonly close: number }, anchor: TextRange | null): boolean {
   if (!anchor) return false;
   return doc.lineAt(anchor.from).from !== doc.lineAt(parens.open).from || lineStartIndent(doc, parens.close) !== null;
 }
 
-// The indent of the first argument that starts a line, or of the anchor's line when none does.
 function laterIndent(doc: SourceText, items: readonly TextRange[], anchor: TextRange): string {
   for (const item of items) {
     const indent = lineStartIndent(doc, item.from);
@@ -401,9 +380,6 @@ function laterIndent(doc: SourceText, items: readonly TextRange[], anchor: TextR
   return lineIndent(doc, anchor.from);
 }
 
-// Adds arguments to the parenthesised list, after `anchor` (or first when it is null),
-// following the call's layout: one line, or one argument per line with the existing indent.
-// It never plans two insertions at one position, so any applier gets the same text.
 function insertParenthesised(
   doc: SourceText,
   args: CallArguments,
@@ -444,8 +420,6 @@ function insertOnOneLine(
   return insertion(anchor.to + comma, last ? ` ${joined}` : ` ${joined},`);
 }
 
-// One argument per line: the new ones go on lines of their own after `anchor`, unless the
-// anchor's comma is followed by more on the same line.
 function insertOnOwnLines(doc: SourceText, close: number, anchor: TextRange, newLine: string, joined: string): TextChange[] {
   const comma = commaLength(doc.sliceString(anchor.to, close));
   const after = anchor.to + (comma ?? 0);
@@ -460,8 +434,6 @@ function insertOnOwnLines(doc: SourceText, close: number, anchor: TextRange, new
   return [insertion(anchor.to, ","), insertion(line.to, newLine)];
 }
 
-// A new named argument joins the named ones that come before the positional arguments,
-// or goes first when a positional argument leads; without positionals it goes last.
 function namedAnchor(args: CallArguments): TextRange | null {
   const firstPositional = args.positional.find((slot) => !slot.trailing)?.node ?? null;
   if (!firstPositional) return parenthesised(args).at(-1) ?? null;
@@ -474,7 +446,6 @@ function refusalFor(doc: SourceText, args: CallArguments): ArgumentRefusal | nul
   return args.spread ? "spread" : null;
 }
 
-// Adds several named arguments in one change, in the given order.
 export function planNamedInsertions(
   doc: SourceText,
   args: CallArguments,

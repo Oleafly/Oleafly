@@ -47,7 +47,6 @@ pub fn rsync_args(shell: &str, local_root: &Path, remote_dir: &str, host: &str) 
     let mut args: Vec<OsString> = [
         "-rt",
         "--delete",
-        // The same per-file limit as a packed upload.
         "--max-size=64M",
         "--exclude=/.git",
         "--exclude=/.oleafly",

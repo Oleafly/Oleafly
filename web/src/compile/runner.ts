@@ -2,6 +2,7 @@ import {
   type BrowserEngine,
   type CompileOutput,
   type CompilePort,
+  type CompileSources,
   CompileStopped,
   type CompileTarget,
   createBrowserCompilePort,
@@ -19,10 +20,8 @@ import { compileTargetOf } from "./target";
 export interface CompileRunnerOptions {
   api: WebApi;
   projectId: string;
-  /** The engines this browser has; none until an engine ships. */
   engines?: () => Promise<readonly BrowserEngine[]>;
   openSyncTex?: SyncTexOpener;
-  /** The text this browser holds for an open file. */
   openText(path: string): string | null;
   setTimer?: (run: () => void, ms: number) => () => void;
   now?: () => number;
@@ -30,9 +29,7 @@ export interface CompileRunnerOptions {
   shareEveryMs?: number;
 }
 
-/** Recompile this long after the last edit, once the project compiled here. */
 const AUTO_DELAY_MS = 1_200;
-/** Share a compiled PDF with the project at most this often, as the app does. */
 const SHARE_EVERY_MS = 60_000;
 
 function defaultTimer(run: () => void, ms: number): () => void {
@@ -40,11 +37,6 @@ function defaultTimer(run: () => void, ms: number): () => void {
   return () => clearTimeout(timer);
 }
 
-/**
- * Compiles the project in this browser, keeps the newest output, shares it
- * with the project when the role allows, and answers click-to-source for
- * whichever PDF is on screen.
- */
 export class CompileRunner {
   private readonly options: CompileRunnerOptions;
   private readonly setTimer: (run: () => void, ms: number) => () => void;
@@ -56,6 +48,8 @@ export class CompileRunner {
   private pendingShare: CompileOutput | null = null;
   private lastShareAt = Number.NEGATIVE_INFINITY;
   private sync: { key: string; index: Promise<SyncTexIndex | null> } | null = null;
+  private reading: Map<string, string | null> | null = null;
+  private compiled: Map<string, string | null> | null = null;
   private unsubscribe: (() => void) | null = null;
   private stopped = false;
 
@@ -71,8 +65,23 @@ export class CompileRunner {
     const { api, projectId } = this.options;
     this.port = createBrowserCompilePort({
       engines,
-      sources: (signal) =>
-        readSources({ api, projectId, files: () => useWeb.getState().files, openText: this.options.openText }, signal),
+      sources: async (signal) => {
+        const read = await readSources(
+          { api, projectId, files: () => useWeb.getState().files, openText: this.options.openText },
+          signal,
+        );
+        const seen = new Map<string, string | null>();
+        this.reading = seen;
+        const recorded: CompileSources = {
+          files: read.files,
+          text(path) {
+            if (!seen.has(path)) seen.set(path, read.text(path));
+            return seen.get(path) ?? null;
+          },
+          bytes: (path) => read.bytes(path),
+        };
+        return recorded;
+      },
       openSyncTex: this.options.openSyncTex ?? (async () => Promise.reject(new Error("SyncTeX is not available."))),
     });
     this.refreshReady();
@@ -106,6 +115,7 @@ export class CompileRunner {
       const output = await this.port.compile(target);
       if (this.stopped) return;
       this.dropSyncIndex();
+      this.compiled = this.reading;
       patchCompile({ status: output.ok ? "done" : "failed", output, finishedAt: this.now(), shown: "local" });
       if (output.pdf && this.mayShare()) this.queueShare(output);
     } catch (error) {
@@ -114,7 +124,6 @@ export class CompileRunner {
     }
   }
 
-  /** This browser edited a file: recompile once the edits pause, if it compiled the project before. */
   edited(): void {
     const compile = useWeb.getState().compile;
     if (this.stopped || !compile.ready || (compile.finishedAt === null && compile.status !== "running")) return;
@@ -125,14 +134,19 @@ export class CompileRunner {
     }, this.options.autoDelayMs ?? AUTO_DELAY_MS);
   }
 
-  /** Click-to-source for the PDF on screen, loaded once per output. */
+  compiledSource(path: string): string | null {
+    if (!shownLocal(useWeb.getState()) || !this.compiled) return null;
+    return this.compiled.get(path) ?? null;
+  }
+
   syncIndex(): Promise<SyncTexIndex | null> {
     const state = useWeb.getState();
     const local = shownLocal(state);
     const shared = sharedOutputs(state.output);
+    const onScreen = shared.pdf && state.compile.shownShared === outputKey(shared.pdf);
     const key = local
       ? `local:${state.compile.finishedAt}`
-      : shared.pdf && shared.synctex
+      : shared.pdf && shared.synctex && onScreen
         ? `shared:${outputKey(shared.pdf)}:${outputKey(shared.synctex)}`
         : null;
     if (!key || !this.port) return Promise.resolve(null);
@@ -156,7 +170,6 @@ export class CompileRunner {
     return openSyncTex(bytes, paths);
   }
 
-  /** Forgets the index on screen, so the next search opens it again. */
   dropSyncIndex(): void {
     const previous = this.sync;
     this.sync = null;

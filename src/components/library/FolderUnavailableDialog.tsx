@@ -238,8 +238,6 @@ export function FolderUnavailableDialog({
   }, [state, reachable, busy]);
 
   if (!project) return null;
-  // The backend shortens a linked folder with one home only, so run its path
-  // through every home the UI knows (Windows with HOME set elsewhere).
   const values = { name: project.name, path: displayPath(folderDisplayPath(project) ?? "") };
   const copy = folderDialogCopy(t, state, reachable, values);
 

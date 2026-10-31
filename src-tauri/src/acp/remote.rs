@@ -14,9 +14,7 @@ pub struct RemoteHermes {
     /// `host` or `user@host` (an SSH config alias works too).
     pub host: String,
     pub port: Option<u16>,
-    /// The project folder on the remote machine (absolute).
     pub folder: String,
-    /// `hermes`, or an absolute path to it.
     pub command: String,
     pub profile: Option<String>,
 }
@@ -64,7 +62,6 @@ pub fn validate(remote: &RemoteHermes) -> Result<(), String> {
     Ok(())
 }
 
-/// A word quoted for a POSIX shell.
 pub fn sh_quote(word: &str) -> String {
     format!("'{}'", word.replace('\'', "'\\''"))
 }
@@ -93,14 +90,12 @@ fn base_args(remote: &RemoteHermes) -> Vec<String> {
     args
 }
 
-/// `ssh … -- host 'hermes' ['-p' 'profile'] acp`.
 pub fn ssh_args(remote: &RemoteHermes) -> Vec<String> {
     let mut args = base_args(remote);
     args.push("acp".into());
     args
 }
 
-/// The `ssh` program: the one on the search path, or Windows's own copy.
 pub fn locate_ssh() -> Option<PathBuf> {
     if let Some(found) = crate::program_locator::locate_native("ssh") {
         return Some(found.path);
@@ -138,8 +133,6 @@ fn explain(stderr: &str) -> String {
     first.chars().take(300).collect()
 }
 
-/// Runs `hermes --version` on the remote machine; the version text on
-/// success.
 pub async fn test_connection(ssh: &Path, remote: &RemoteHermes) -> Result<String, String> {
     validate(remote)?;
     let mut args = base_args(remote);

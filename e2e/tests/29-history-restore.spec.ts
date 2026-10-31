@@ -9,10 +9,6 @@ import {
   typeInEditorAfter,
 } from "../helpers";
 
-// Source Control initialization and commits are local operations. No GitHub
-// account or remote is needed for this restore flow.
-
-// Unique per run so re-runs against a live app never collide.
 const RUN = Date.now().toString(36);
 const BASE = `histbase${RUN}`;
 const EDIT = `histedit${RUN}`;
@@ -157,7 +153,6 @@ test("commit twice, restore the first commit, then roll forward again", async ({
   await expect(tauriPage.getByText(`e2e history base ${RUN}`)).toBeVisible();
   await expect(tauriPage.getByText(`e2e history edit ${RUN}`)).toBeVisible();
 
-  // Restore reloads every buffer from the restored working tree.
   await restoreCommit(tauriPage, `e2e history base ${RUN}`);
   await tauriPage.waitForFunction(
     `(() => {

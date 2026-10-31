@@ -156,8 +156,6 @@ async fn completed_disk_apply_is_recorded_before_its_dependent_task_starts() {
         crate::project::project_mutation_generation("paper".into()).unwrap(),
         mutation.generation
     );
-    // On a timeout, say where the dependent task stopped (this has only
-    // failed inside the full suite).
     let next = tokio::time::timeout(test_wait::CHILD_PATIENCE, starts.recv())
         .await
         .unwrap_or_else(|_| {
@@ -400,8 +398,6 @@ async fn recovery_keeps_a_run_owned_by_a_live_process_until_that_process_exits()
     );
 }
 
-// Discard changes after an apply that found the project changed cancels
-// the task: the failed apply left no journal, so its mark was cleared.
 #[tokio::test]
 async fn a_task_whose_apply_found_the_project_changed_can_still_be_cancelled() {
     let data = DataRoot::new();
@@ -409,7 +405,6 @@ async fn a_task_whose_apply_found_the_project_changed_can_still_be_cancelled() {
     let state = data.state(1);
     let task = pending_review(&state, &project).await;
     let store = state.store().unwrap();
-    // The user edited the manuscript after the task started.
     fs::write(
         project.join("main.tex"),
         "an edit saved after the task started",

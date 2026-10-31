@@ -24,7 +24,6 @@ async function openVisual(page: Page) {
   await expect(page.locator(".cm-editor.ofl-visual-parsed")).toBeVisible({ timeout: 20_000 });
 }
 
-// The scripts below name fixed files, so no test value is ever pasted into code.
 async function openFormsFile(page: Page) {
   await page.evaluate(
     `import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().openFile("oleafly-forms.toml"))`,
@@ -41,8 +40,6 @@ async function saveActiveFile(page: Page) {
   await page.evaluate(`import("/src/store/files.ts").then(({ useFilesStore }) => useFilesStore.getState().saveActive())`);
 }
 
-// The report imports @local/acme-report, and Visual mode asks for its forms. Until the catalog
-// has been read with that package, a check that no forms show proves nothing.
 async function waitForReportCatalog(page: Page) {
   await expect
     .poll(
@@ -56,8 +53,6 @@ async function waitForReportCatalog(page: Page) {
     .toBe(true);
 }
 
-// Edits the definitions the way a user does: in the editor, then saved. A library project has
-// no folder watcher, so a file written behind the editor's back reloads nothing; saving does.
 async function editFormsFile(page: Page, text: string) {
   await openFormsFile(page);
   await expect.poll(() => editorSource(page), { timeout: 10_000 }).toContain("[tool.oleafly]");
@@ -104,7 +99,6 @@ test("editing oleafly-forms.toml updates the cards and marks a broken definition
   await createProjectFromTemplate(tauriPage, "blank-typst", `E2E Typst forms file ${RUN}`);
   await writeFixtureProject(tauriPage);
   await openVisual(tauriPage);
-  // The bridge's count() ignores filter(), so a title is checked through its visibility.
   const formTitle = (text: string) =>
     tauriPage.locator(".cm-content .ofl-visual-form-card .ofl-visual-form-title").filter({ hasText: text });
   await expect(formTitle("Memo header")).toBeVisible({ timeout: 30_000 });
@@ -114,8 +108,6 @@ test("editing oleafly-forms.toml updates the cards and marks a broken definition
   await expect(formTitle("Team memo")).toBeVisible({ timeout: 30_000 });
   await expect(formTitle("Memo header")).toBeHidden();
 
-  // Autosave writes the edits here. The reload that follows marks the broken field, and after
-  // the fix clears the marker, with no further typing.
   await openFormsFile(tauriPage);
   await expect.poll(() => editorSource(tauriPage), { timeout: 10_000 }).toContain('label = "Team memo"');
   const markers = tauriPage.locator(".cm-editor .cm-lintRange-error");

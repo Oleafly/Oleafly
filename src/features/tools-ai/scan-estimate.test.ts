@@ -43,7 +43,6 @@ describe("scan estimates", () => {
 
   it("counts 28-pixel patches after the 2,000 px cap", () => {
     expect(imageTokens(979, 1267)).toBe(35 * 46);
-    // An A0 poster shrinks to 1415×2000.
     expect(imageTokens(3814, 5392)).toBe(51 * 72);
   });
 

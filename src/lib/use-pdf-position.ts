@@ -13,7 +13,6 @@ interface ScrollOffset {
   readonly left: number;
 }
 
-/** Ignore the viewer's initial page-one report while restoring the saved page. */
 export function usePdfPosition(
   projectId: string | null,
   viewer: RefObject<PdfViewerHandle | null>,

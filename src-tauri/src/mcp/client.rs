@@ -9,7 +9,6 @@ use std::time::Duration;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 
-// 0.4.8 I: a long-lived stdio session (Cua Driver keeps one per runtime).
 mod session;
 pub(crate) use session::{McpSessionLimits, McpStdioSession};
 
@@ -164,11 +163,9 @@ struct StdioTransport {
     stderr: Option<tokio::task::JoinHandle<()>>,
     stderr_output: std::sync::Arc<tokio::sync::Mutex<Vec<u8>>>,
     containment: Option<crate::proc::ProcessTreeGuard>,
-    /// The longest line the server may write.
     max_message_bytes: usize,
 }
 
-/// "2 MiB", "64 KiB": how a message limit reads in an error.
 fn byte_limit_label(bytes: usize) -> String {
     const MIB: usize = 1024 * 1024;
     if bytes >= MIB && bytes.is_multiple_of(MIB) {
@@ -182,8 +179,6 @@ fn byte_limit_label(bytes: usize) -> String {
 
 impl Drop for StdioTransport {
     fn drop(&mut self) {
-        // Dropping a JoinHandle detaches it. Cancellation must also stop the
-        // pipe reader, including when discovery or a tool request is aborted.
         if let Some(stderr) = self.stderr.take() {
             stderr.abort();
         }
@@ -289,8 +284,6 @@ impl StdioTransport {
     async fn shutdown(mut self) {
         self.stdin.take();
         let exited = tokio::time::timeout(Duration::from_millis(500), self.child.wait()).await;
-        // Close the Job Object before waiting on cleanup: this also closes
-        // inherited pipes owned by grandchildren after the server exits.
         self.containment.take();
         if !matches!(exited, Ok(Ok(_))) {
             let _ = self.child.start_kill();
@@ -307,8 +300,6 @@ impl StdioTransport {
         }
     }
 
-    /// One JSON message: the next line the server writes, at most
-    /// `max_message_bytes` long.
     async fn read_message(&mut self) -> Result<serde_json::Value, McpConnectionError> {
         let mut line = Vec::new();
         loop {
@@ -343,7 +334,6 @@ impl StdioTransport {
             .map_err(|_| protocol_error("server wrote invalid JSON to stdout"))
     }
 
-    /// Writes one message as a line and flushes it.
     async fn write_message(
         &mut self,
         message: &serde_json::Value,
@@ -1026,7 +1016,6 @@ fn agent_identifier_part(value: &str, fallback: &str, max_len: usize) -> String 
     }
 }
 
-// 0.4.8 L: the headless agent names tools the same way (parity test).
 pub(crate) fn agent_tool_name(server: &str, tool: &str) -> String {
     use sha2::Digest as _;
 
@@ -1840,8 +1829,6 @@ fn tool_call_request(
     })
 }
 
-/// The `tools/call` result, including `isError` results. A modern server
-/// must say the result is complete.
 fn tool_call_result(
     response: &serde_json::Value,
     id: u64,
@@ -3239,7 +3226,6 @@ pub async fn mcp_server_add<R: tauri::Runtime>(
 ) -> Result<McpManagedServer, String> {
     validate_command_webview(webview.label(), webview.window().label())?;
     let _guard = state.mutation.lock().await;
-    // 0.4.8 I: more power for Cua Spaces asks natively first.
     crate::cua_driver::commands::confirm_spaces_change(
         tauri::Manager::app_handle(&webview),
         None,
@@ -3255,10 +3241,6 @@ pub async fn mcp_server_add<R: tauri::Runtime>(
 
 const MAX_CONFIRMED_COMMAND_CHARS: usize = 600;
 
-/// Whether saving `next` over `stored` changes the program a stdio server
-/// starts: a new stdio server, a remote one turned into stdio, or a changed
-/// command, argument or environment variable. Settings sends a marker for a
-/// stored value it keeps, so a marker counts as the stored value.
 fn stdio_launch_changes(stored: Option<&McpServerConfig>, next: &McpServerConfig) -> bool {
     let McpServerTransport::Stdio { command, args, env } = &next.transport else {
         return false;
@@ -3274,17 +3256,27 @@ fn stdio_launch_changes(stored: Option<&McpServerConfig>, next: &McpServerConfig
     else {
         return true;
     };
-    // Cua Spaces' own settings change its arguments and environment, and
-    // ask natively when that gives agents more power; only a new program
-    // asks here.
-    if command == stored_command
-        && crate::cua_driver::commands::is_spaces_server(stored)
-        && crate::cua_driver::commands::is_spaces_server(next)
-    {
-        return false;
+    if command != stored_command {
+        return true;
     }
-    command != stored_command
-        || args != stored_args
+    match (
+        crate::cua_driver::commands::spaces_launch_without_switches(next),
+        crate::cua_driver::commands::spaces_launch_without_switches(stored),
+    ) {
+        (Some((args, env)), Some((stored_args, stored_env))) => {
+            arguments_or_environment_change(&args, &env, &stored_args, &stored_env)
+        }
+        _ => arguments_or_environment_change(args, env, stored_args, stored_env),
+    }
+}
+
+fn arguments_or_environment_change(
+    args: &[String],
+    env: &std::collections::BTreeMap<String, String>,
+    stored_args: &[String],
+    stored_env: &std::collections::BTreeMap<String, String>,
+) -> bool {
+    args != stored_args
         || env.len() != stored_env.len()
         || env.iter().any(|(key, value)| {
             stored_env
@@ -3300,7 +3292,6 @@ fn quoted_argument(argument: &str) -> String {
     format!("\"{}\"", argument.replace('"', "\\\""))
 }
 
-/// The command line a stdio server runs, as the confirmation shows it.
 fn stdio_command_line(command: &str, args: &[String]) -> String {
     let line = std::iter::once(quoted_argument(command))
         .chain(args.iter().map(|argument| quoted_argument(argument)))
@@ -3340,9 +3331,6 @@ fn stdio_confirmation_message(server: &McpServerConfig) -> Option<String> {
     Some(message)
 }
 
-/// Before a stdio MCP server is saved with a program it didn't run before,
-/// asks natively, so only the user can choose what Oleafly starts.
-/// `stored_name` is the server being edited.
 async fn confirm_stdio_launch<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     stored_name: Option<&str>,
@@ -3359,7 +3347,6 @@ async fn confirm_stdio_launch<R: tauri::Runtime>(
     .await
 }
 
-/// `confirm_stdio_launch` against `repository`, asking through `confirm`.
 async fn confirm_stdio_launch_with<Repo, C, Fut>(
     repository: Repo,
     stored_name: Option<&str>,
@@ -3418,8 +3405,6 @@ fn alphaxiv_server(api_key: &str) -> McpServerConfig {
     }
 }
 
-/// Moves an alphaXiv key an older version saved as a connector key to an
-/// alphaXiv MCP server, so the key never passes through the webview.
 #[tauri::command]
 pub async fn mcp_adopt_alphaxiv_key<R: tauri::Runtime>(
     webview: tauri::Webview<R>,
@@ -3429,37 +3414,64 @@ pub async fn mcp_adopt_alphaxiv_key<R: tauri::Runtime>(
     adopt_alphaxiv_key_with(
         &AppConfigRepository,
         &state,
-        || crate::connectors::take_connector_key(ALPHAXIV_LEGACY_CONNECTOR),
+        || crate::connectors::saved_connector_key(ALPHAXIV_LEGACY_CONNECTOR),
+        || crate::connectors::take_connector_key(ALPHAXIV_LEGACY_CONNECTOR).map(|_| ()),
         connect_server,
     )
     .await
 }
 
-/// `mcp_adopt_alphaxiv_key` against `repository`, with the key `take_key`
-/// removes from where it was saved.
-async fn adopt_alphaxiv_key_with<Repo, T, F, Fut>(
+fn rejects_credentials(error: &McpConnectionError) -> bool {
+    matches!(
+        error,
+        McpConnectionError::RemoteStatus {
+            status: 401 | 403,
+            ..
+        }
+    )
+}
+
+async fn adopt_alphaxiv_key_with<Repo, K, D, F, Fut>(
     repository: &Repo,
     state: &McpClientState,
-    take_key: T,
+    read_key: K,
+    drop_key: D,
     connect: F,
 ) -> Result<Option<McpManagedServer>, String>
 where
     Repo: McpConfigRepository,
-    T: FnOnce() -> Result<Option<String>, String> + Send + 'static,
+    K: FnOnce() -> Result<Option<String>, String> + Send + 'static,
+    D: FnOnce() -> Result<(), String> + Send + 'static,
     F: FnOnce(McpServerConfig) -> Fut,
     Fut: Future<Output = Result<Vec<McpServerTool>, McpConnectionError>>,
 {
     let _guard = state.mutation.lock().await;
-    let Some(api_key) = tauri::async_runtime::spawn_blocking(take_key)
+    let Some(api_key) = tauri::async_runtime::spawn_blocking(read_key)
         .await
         .map_err(|error| error.to_string())??
     else {
         return Ok(None);
     };
     let _permit = acquire_validation_slot(state)?;
-    add_server_with(repository, alphaxiv_server(&api_key), connect)
-        .await
-        .map(|server| Some(visible_managed_server(server)))
+    let refused = std::sync::atomic::AtomicBool::new(false);
+    let added = add_server_with(repository, alphaxiv_server(&api_key), |server| {
+        let attempt = connect(server);
+        let refused = &refused;
+        async move {
+            let result = attempt.await;
+            if result.as_ref().is_err_and(rejects_credentials) {
+                refused.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
+            result
+        }
+    })
+    .await;
+    if added.is_ok() || refused.load(std::sync::atomic::Ordering::Relaxed) {
+        tauri::async_runtime::spawn_blocking(drop_key)
+            .await
+            .map_err(|error| error.to_string())??;
+    }
+    added.map(|server| Some(visible_managed_server(server)))
 }
 
 #[tauri::command]
@@ -3557,9 +3569,6 @@ pub async fn mcp_server_remove<R: tauri::Runtime>(
     remove_server_with(&AppConfigRepository, &name)
 }
 
-// 0.4.8 E: the MCP servers research tasks may use, and Oleafly's own calls
-// to a connected server (the alphaXiv literature source).
-
 fn enabled_servers_named(names: &[String]) -> Vec<McpServerConfig> {
     if names.is_empty() {
         return Vec::new();
@@ -3577,9 +3586,6 @@ fn enabled_servers_named(names: &[String]) -> Vec<McpServerConfig> {
         .unwrap_or_default()
 }
 
-/// Runs a config read on the blocking pool. Reading the config takes the
-/// config lock and decrypts the secret files, which can wait seconds behind a
-/// settings save; on a runtime worker that would hold up other tasks.
 async fn read_config_off_runtime<T: Send + 'static>(
     read: impl FnOnce() -> Result<T, String> + Send + 'static,
 ) -> Result<T, String> {
@@ -3588,8 +3594,6 @@ async fn read_config_off_runtime<T: Send + 'static>(
         .map_err(|error| format!("MCP settings could not be read: {error}"))?
 }
 
-/// The agent tools of the enabled servers among `names`, named as the app's
-/// agent sees them. Servers that do not answer in time are left out.
 pub(crate) async fn task_server_tools(names: &[String]) -> Vec<McpAgentServer> {
     let names = names.to_vec();
     let servers = read_config_off_runtime(move || Ok(enabled_servers_named(&names)))
@@ -3612,7 +3616,6 @@ pub(crate) async fn task_server_tools(names: &[String]) -> Vec<McpAgentServer> {
     build_agent_tool_catalog(connected)
 }
 
-/// The same servers as ACP `mcpServers` entries, for a CLI agent's session.
 pub(crate) fn task_server_specs(names: &[String]) -> Vec<serde_json::Value> {
     let pairs = |values: &std::collections::BTreeMap<String, String>| -> Vec<serde_json::Value> {
         values
@@ -3639,8 +3642,6 @@ pub(crate) fn task_server_specs(names: &[String]) -> Vec<serde_json::Value> {
         .collect()
 }
 
-/// Calls one tool of an enabled server for Oleafly itself, with the agent
-/// tool path's deadline and redaction of the server's own values.
 pub(crate) async fn call_enabled_server_tool(
     server_name: &str,
     tool: &str,
@@ -3659,7 +3660,6 @@ pub(crate) async fn call_enabled_server_tool(
     Ok(redact_json_value(result, matcher.as_ref()))
 }
 
-/// Every string value in `arguments`, so an error that echoes one can hide it.
 fn argument_strings(arguments: &serde_json::Value, found: &mut Vec<String>) {
     match arguments {
         serde_json::Value::String(text) if text.len() >= 4 => found.push(text.clone()),
@@ -3673,8 +3673,6 @@ fn argument_strings(arguments: &serde_json::Value, found: &mut Vec<String>) {
     }
 }
 
-/// One tool call on a stdio server Oleafly starts for itself (the `cua`
-/// daemon for runs in Cua Spaces). Errors never repeat argument values.
 pub(crate) async fn call_stdio_tool(
     command: &std::path::Path,
     args: &[String],
@@ -3709,7 +3707,6 @@ pub(crate) async fn call_stdio_tool(
     })
 }
 
-/// The name of the enabled remote server whose address starts with `prefix`.
 pub(crate) fn enabled_remote_server(prefix: &str) -> Option<String> {
     AppConfigRepository
         .load()
@@ -3820,6 +3817,102 @@ mod tests {
         assert!(stdio_launch_changes(None, &full_access));
         let elsewhere = with_launch("/tmp/cua", &["daemon", "mcp"], &[]);
         assert!(stdio_launch_changes(Some(&read_only), &elsewhere));
+    }
+
+    #[test]
+    fn cua_spaces_asks_for_any_argument_or_variable_its_settings_do_not_manage() {
+        let cua = "/opt/homebrew/bin/cua";
+        let credentials = ("CUA_SPACES_AGENT_CREDENTIALS_HOME", "none");
+        let stored = with_launch(
+            cua,
+            &[
+                "daemon",
+                "mcp",
+                "--verbose",
+                "--permissions",
+                "spaces:readonly",
+            ],
+            &[credentials, ("CUA_HOME", "/Users/me/.cua")],
+        );
+        let switched = with_launch(
+            cua,
+            &["daemon", "mcp", "--verbose"],
+            &[("CUA_HOME", crate::config::REDACTED)],
+        );
+        assert!(!stdio_launch_changes(Some(&stored), &switched));
+        let full_access = with_launch(
+            cua,
+            &["daemon", "mcp", "--verbose"],
+            &[("CUA_HOME", "/Users/me/.cua")],
+        );
+        let read_only_again = with_launch(
+            cua,
+            &[
+                "daemon",
+                "mcp",
+                "--verbose",
+                "--permissions",
+                "spaces:readonly",
+            ],
+            &[credentials, ("CUA_HOME", crate::config::REDACTED)],
+        );
+        assert!(!stdio_launch_changes(Some(&full_access), &read_only_again));
+        let equals_form = with_launch(
+            cua,
+            &[
+                "daemon",
+                "mcp",
+                "--permissions=spaces:readonly",
+                "--verbose",
+            ],
+            &[credentials, ("CUA_HOME", "/Users/me/.cua")],
+        );
+        assert!(!stdio_launch_changes(Some(&equals_form), &switched));
+
+        for injected in [
+            ("LD_PRELOAD", "/home/u/project/x.so"),
+            ("DYLD_INSERT_LIBRARIES", "/tmp/x.dylib"),
+            ("PYTHONPATH", "/home/u/project"),
+        ] {
+            let next = with_launch(
+                cua,
+                &[
+                    "daemon",
+                    "mcp",
+                    "--verbose",
+                    "--permissions",
+                    "spaces:readonly",
+                ],
+                &[credentials, ("CUA_HOME", "/Users/me/.cua"), injected],
+            );
+            assert!(stdio_launch_changes(Some(&stored), &next), "{injected:?}");
+        }
+        let moved_home = with_launch(
+            cua,
+            &[
+                "daemon",
+                "mcp",
+                "--verbose",
+                "--permissions",
+                "spaces:readonly",
+            ],
+            &[credentials, ("CUA_HOME", "/tmp/elsewhere")],
+        );
+        assert!(stdio_launch_changes(Some(&stored), &moved_home));
+        let extra_argument = with_launch(
+            cua,
+            &[
+                "daemon",
+                "mcp",
+                "--verbose",
+                "--config",
+                "/tmp/x.toml",
+                "--permissions",
+                "spaces:readonly",
+            ],
+            &[credentials, ("CUA_HOME", "/Users/me/.cua")],
+        );
+        assert!(stdio_launch_changes(Some(&stored), &extra_argument));
     }
 
     #[test]
@@ -3969,18 +4062,52 @@ mod tests {
         );
     }
 
+    #[derive(Clone, Default)]
+    struct LegacyKey(std::sync::Arc<std::sync::Mutex<Option<String>>>);
+
+    impl LegacyKey {
+        fn saved(key: &str) -> Self {
+            Self(std::sync::Arc::new(std::sync::Mutex::new(Some(key.into()))))
+        }
+
+        fn current(&self) -> Option<String> {
+            self.0.lock().unwrap().clone()
+        }
+
+        fn adopt<F, Fut>(
+            &self,
+            repository: &DiskRepository,
+            state: &McpClientState,
+            connect: F,
+        ) -> Result<Option<McpManagedServer>, String>
+        where
+            F: FnOnce(McpServerConfig) -> Fut,
+            Fut: Future<Output = Result<Vec<McpServerTool>, McpConnectionError>>,
+        {
+            let read = self.clone();
+            let drop = self.clone();
+            tauri::async_runtime::block_on(adopt_alphaxiv_key_with(
+                repository,
+                state,
+                move || Ok(read.current()),
+                move || {
+                    drop.0.lock().unwrap().take();
+                    Ok(())
+                },
+                connect,
+            ))
+        }
+    }
+
     #[test]
     fn a_legacy_alphaxiv_key_moves_into_a_server_without_coming_back_out() {
         let (_directory, repository) = disk_repository();
         let state = McpClientState::default();
-        let adopted = tauri::async_runtime::block_on(adopt_alphaxiv_key_with(
-            &repository,
-            &state,
-            || Ok(Some("legacy-key".into())),
-            good_connect,
-        ))
-        .unwrap()
-        .expect("the key became a server");
+        let legacy = LegacyKey::saved("legacy-key");
+        let adopted = legacy
+            .adopt(&repository, &state, good_connect)
+            .unwrap()
+            .expect("the key became a server");
         assert_eq!(adopted.config.name, "alphaXiv");
         let shown = serde_json::to_string(&adopted).unwrap();
         assert!(!shown.contains("legacy-key"), "{shown}");
@@ -3988,21 +4115,61 @@ mod tests {
             repository.load().unwrap().mcp_servers,
             vec![alphaxiv_server("legacy-key")]
         );
+        assert_eq!(legacy.current(), None);
 
-        let nothing_saved = tauri::async_runtime::block_on(adopt_alphaxiv_key_with(
-            &repository,
-            &state,
-            || Ok(None),
-            good_connect,
-        ));
+        let nothing_saved = LegacyKey::default().adopt(&repository, &state, good_connect);
         assert_eq!(nothing_saved, Ok(None));
         let unreadable = tauri::async_runtime::block_on(adopt_alphaxiv_key_with(
             &repository,
             &state,
             || Err("connector keys are locked".into()),
+            || panic!("nothing to drop"),
             good_connect,
         ));
         assert_eq!(unreadable, Err("connector keys are locked".into()));
+    }
+
+    #[test]
+    fn a_legacy_alphaxiv_key_stays_saved_until_alphaxiv_takes_or_refuses_it() {
+        let (_directory, repository) = disk_repository();
+        let state = McpClientState::default();
+        let legacy = LegacyKey::saved("legacy-key");
+
+        let offline = legacy.adopt(&repository, &state, |_| async {
+            Err(McpConnectionError::Timeout)
+        });
+        assert!(offline.is_err());
+        assert_eq!(legacy.current().as_deref(), Some("legacy-key"));
+
+        let busy = state
+            .validations
+            .try_acquire_many(MAX_CONCURRENT_VALIDATIONS as u32)
+            .unwrap();
+        assert!(legacy.adopt(&repository, &state, good_connect).is_err());
+        drop(busy);
+        assert_eq!(legacy.current().as_deref(), Some("legacy-key"));
+
+        let failing = legacy.adopt(&repository, &state, |_| async {
+            Err(McpConnectionError::RemoteStatus {
+                status: 503,
+                method: "initialize".into(),
+                response: None,
+            })
+        });
+        assert!(failing.is_err());
+        assert_eq!(legacy.current().as_deref(), Some("legacy-key"));
+        assert!(repository.load().unwrap().mcp_servers.is_empty());
+
+        let refused = legacy.adopt(&repository, &state, |_| async {
+            Err(McpConnectionError::RemoteStatus {
+                status: 401,
+                method: "initialize".into(),
+                response: None,
+            })
+        });
+        assert!(refused.is_err());
+        assert_eq!(legacy.current(), None);
+        assert!(repository.load().unwrap().mcp_servers.is_empty());
     }
 
     fn register_agent_run(
@@ -5812,8 +5979,6 @@ mod tests {
             "const lines=readline.createInterface({input:process.stdin});",
             "lines.on('line',(line)=>{",
             "const message=JSON.parse(line);",
-            // The probe's clock starts at spawn, so the delay is timed from
-            // node's own start rather than from the discover line.
             "if(message.method==='server/discover'){setTimeout(()=>process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,result:{resultType:'complete',supportedVersions:['2026-07-28'],capabilities:{tools:{}}}})+'\\n'),Math.max(0,2100-performance.now()));}",
             "if(message.method==='tools/list'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:message.id,result:{resultType:'complete',tools:[{name:'slow_stdio_search',inputSchema:{type:'object'}}]}})+'\\n');}",
             "});"
@@ -6564,7 +6729,6 @@ mod tests {
         let mut execution = RemoteTransport::new_with_timeout(
             &url,
             &BTreeMap::new(),
-            // Only a ceiling: the reply arrives after about 75 ms.
             test_wait::CHILD_PATIENCE,
             McpConnectionError::ToolTimeout,
         )
@@ -6656,8 +6820,6 @@ mod tests {
             StatusCode::NO_CONTENT
         }
 
-        // Production caps the session DELETE at 1 s, so the call must land in
-        // the deadline's last second for cleanup to cross it.
         let deadline = tokio::time::Instant::now() + Duration::from_secs(3);
         let state = TestState {
             methods: Arc::default(),
@@ -7443,8 +7605,6 @@ mod tests {
 
     #[tokio::test]
     async fn a_config_read_waiting_on_the_lock_leaves_the_runtime_free() {
-        // One runtime thread: the read only gets its answer if the task
-        // below runs while the read waits.
         let (release, released) = std::sync::mpsc::channel::<()>();
         let read = read_config_off_runtime(move || {
             released

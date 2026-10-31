@@ -1,8 +1,3 @@
-//! `oleafly cite` (BibTeX for a DOI, arXiv id, ISBN or PubMed id, or a
-//! title search, added to the project's bibliography with `--add`),
-//! `oleafly literature` (the scholarly indexes the app searches) and
-//! `oleafly bib clean|check`. Lookups go to the same public registries as
-//! the app's citation dialog; only the identifier or query is sent.
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -28,7 +23,6 @@ use crate::engine::{open_project, OpenedProject, ProjectOrigin};
 
 const MAX_BIB_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_MAIN_BYTES: u64 = 8 * 1024 * 1024;
-/// Entries `bib check` verifies at once.
 const CHECK_CONCURRENCY: usize = 3;
 const LOCK_BUDGET: Duration = Duration::from_secs(10);
 
@@ -141,8 +135,6 @@ impl CommandModule for Commands {
     }
 }
 
-// ------------------------------------------------------- identifiers
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum InputKind {
     Doi,
@@ -177,8 +169,6 @@ fn detected(kind: InputKind, value: impl Into<String>) -> Detected {
     }
 }
 
-/// `10.<4–9 digits>/<anything but spaces, quotes and angle brackets>`,
-/// anywhere in the text, without trailing punctuation.
 fn find_doi(text: &str) -> Option<String> {
     let bytes = text.as_bytes();
     let mut from = 0;
@@ -259,7 +249,6 @@ fn modern_arxiv(text: &str) -> Option<String> {
     ok.then(|| id.to_string())
 }
 
-/// `hep-th/9901001` or `math.GT/0309136` (with an optional version).
 fn old_arxiv(text: &str) -> Option<String> {
     let id = strip_version(text);
     let (archive, number) = id.split_once('/')?;
@@ -299,7 +288,6 @@ fn isbn_candidate(text: &str) -> Option<String> {
     let thirteen = candidate.len() == 13
         && candidate.bytes().all(|byte| byte.is_ascii_digit())
         && (candidate.starts_with("978") || candidate.starts_with("979"));
-    // Ten bytes of ASCII, not ten bytes that may end inside a character.
     let ten = candidate.len() == 10
         && candidate.is_ascii()
         && candidate[..9].bytes().all(|byte| byte.is_ascii_digit())
@@ -340,7 +328,6 @@ fn pmid(text: &str) -> Option<String> {
     pubmed_number(text, 9, 6)
 }
 
-/// What a piece of text names, as the app's citation dialog reads it.
 pub(crate) fn detect_input(raw: &str) -> Detected {
     let text = raw.trim();
     if let Some(doi) = find_doi(text) {
@@ -362,19 +349,15 @@ pub(crate) fn detect_input(raw: &str) -> Detected {
     detected(InputKind::Title, text)
 }
 
-// ---------------------------------------------------------- BibTeX text
-
 fn decode_xml_entities(text: &str) -> String {
     text.replace("&lt;", "<")
         .replace("&gt;", ">")
         .replace("&quot;", "\"")
         .replace("&#39;", "'")
         .replace("&apos;", "'")
-        // Last, so `&amp;lt;` becomes `&lt;`, not `<`.
         .replace("&amp;", "&")
 }
 
-/// Remote metadata compiles as literal text, not LaTeX commands.
 fn escape_latex(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for character in text.chars() {
@@ -396,7 +379,6 @@ fn clean_field(text: &str) -> String {
     escape_latex(&decode_xml_entities(text))
 }
 
-/// Tags removed until none are left (so `<<b>b>` can't rebuild one).
 fn strip_tags(text: &str) -> String {
     let mut current = text.to_string();
     loop {
@@ -423,7 +405,6 @@ fn collapse_spaces(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// "Jane Smith" → "Smith, Jane"; names with a comma stay.
 fn to_bib_name(name: &str) -> String {
     let name = name.trim();
     if name.contains(',') {
@@ -436,7 +417,6 @@ fn to_bib_name(name: &str) -> String {
     }
 }
 
-/// The text of the first `<tag>…</tag>` (or `<tag attr…>…</tag>`).
 fn element_text<'a>(xml: &'a str, tag: &str) -> Option<&'a str> {
     let mut from = 0;
     while let Some(offset) = xml[from..].find(&format!("<{tag}")) {
@@ -452,7 +432,6 @@ fn element_text<'a>(xml: &'a str, tag: &str) -> Option<&'a str> {
     None
 }
 
-/// BibTeX for the first entry of an arXiv Atom feed ("" when there is none).
 pub(crate) fn arxiv_atom_to_bibtex(xml: &str) -> String {
     let Some(start) = xml.find("<entry") else {
         return String::new();
@@ -516,7 +495,6 @@ pub(crate) fn arxiv_atom_to_bibtex(xml: &str) -> String {
     format!("@misc{{{key},\n{}\n}}", fields.join(",\n"))
 }
 
-/// One Crossref match for a title search.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct CitationHit {
     pub doi: Option<String>,
@@ -537,7 +515,6 @@ fn first_text(value: &Value) -> Option<String> {
     Some(collapse_spaces(&decode_xml_entities(&strip_tags(text))))
 }
 
-/// The matches in a Crossref `works` answer.
 pub(crate) fn parse_crossref_hits(body: &str) -> Vec<CitationHit> {
     let Ok(data) = serde_json::from_str::<Value>(body) else {
         return Vec::new();
@@ -577,8 +554,6 @@ pub(crate) fn parse_crossref_hits(body: &str) -> Vec<CitationHit> {
         .collect()
 }
 
-/// The registry's BibTeX for a match with a DOI, else an entry built from
-/// what the search returned.
 async fn bibtex_for_hit(hit: &CitationHit) -> String {
     if let Some(doi) = &hit.doi {
         if let Ok(bibtex) = oleafly_research::citation::fetch_doi_bibtex(doi).await {
@@ -653,8 +628,6 @@ async fn lookup_detected(input: &Detected) -> Result<(String, &'static str), Cli
     result.map_err(lookup_error)
 }
 
-/// BibTeX for a DOI, arXiv id, ISBN or PubMed id, and which registry gave it
-/// (`doi`, `arxiv`, `isbn` or `pubmed`). Titles are refused.
 pub(crate) async fn lookup_bibtex(id: &str) -> Result<(String, &'static str), CliError> {
     lookup_detected(&detect_input(id)).await
 }
@@ -666,10 +639,6 @@ async fn search_titles(query: &str) -> Result<Vec<CitationHit>, CliError> {
     Ok(parse_crossref_hits(&body))
 }
 
-// ------------------------------------------------------- the .bib file
-
-/// `\bibliography{a,b}` and `\addbibresource[…]{x.bib}` names in LaTeX
-/// source, comments skipped.
 fn latex_bibliographies(text: &str) -> Vec<String> {
     let mut names = Vec::new();
     for line in text.lines() {
@@ -726,28 +695,22 @@ fn strip_tex_comment(line: &str) -> &str {
     line
 }
 
-/// The .bib file a citation goes to.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct BibTarget {
-    /// From the project root, with forward slashes.
     pub relative: String,
     pub path: PathBuf,
     pub exists: bool,
-    /// The document names it (or the user picked it).
     pub declared: bool,
 }
 
 fn read_bounded_bytes(path: &Path, limit: u64) -> Option<Vec<u8>> {
-    let metadata = std::fs::metadata(path).ok()?;
-    if !metadata.is_file() || metadata.len() > limit {
-        return None;
-    }
-    std::fs::read(path).ok()
+    oleafly_core::read_bounded(path, limit)?.whole()
 }
 
-/// For reading only: bytes that aren't UTF-8 become U+FFFD.
 fn read_bounded(path: &Path, limit: u64) -> Option<String> {
-    read_bounded_bytes(path, limit).map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+    oleafly_core::read_bounded(path, limit)
+        .filter(|read| read.complete)
+        .map(|read| read.lossy_text())
 }
 
 fn slash(path: &Path) -> String {
@@ -757,7 +720,6 @@ fn slash(path: &Path) -> String {
         .join("/")
 }
 
-/// A path the user gave, as a path from the project root.
 fn project_relative(workspace: &Workspace, given: &str) -> Result<String, CliError> {
     let path = Path::new(given);
     if path.is_absolute() {
@@ -786,9 +748,6 @@ fn project_relative(workspace: &Workspace, given: &str) -> Result<String, CliErr
     Ok(given.trim_start_matches("./").to_string())
 }
 
-/// Where a citation goes: `--bib`, else the first .bib the main document
-/// names that exists, else the first one it names (created, so the build
-/// finds it), else the project's first .bib, else `references.bib`.
 pub(crate) fn bibliography_target(
     ctx: &Context,
     workspace: &Workspace,
@@ -900,7 +859,6 @@ pub(crate) fn bibliography_target(
     })
 }
 
-/// How the main document should name a new bibliography.
 fn declaration_hint(engine: Engine, relative: &str) -> String {
     match engine {
         Engine::Tectonic | Engine::Latexmk => {
@@ -915,8 +873,6 @@ fn declaration_hint(engine: Engine, relative: &str) -> String {
     }
 }
 
-/// The app's lock on a project it knows, so the CLI never writes while the
-/// app restores a checkpoint or applies changes.
 pub(crate) fn app_project_lock(
     ctx: &Context,
     workspace: &Workspace,
@@ -939,8 +895,6 @@ pub(crate) fn app_project_lock(
     crate::app_paths::worktree_lock(data_root, identity.id(), LOCK_BUDGET).map(Some)
 }
 
-/// `updated` is `content` with an entry appended, in LF; in a CRLF file the
-/// appended part gets CRLF too.
 fn keep_line_endings(content: &str, updated: String) -> String {
     let kept = content.trim_end();
     match updated.strip_prefix(kept) {
@@ -1008,8 +962,6 @@ fn open(ctx: &Context) -> Result<OpenedProject, CliError> {
     }
     Ok(opened)
 }
-
-// ---------------------------------------------------------------- cite
 
 fn print_hits(ctx: &Context, hits: &[CitationHit]) {
     if ctx.json() {
@@ -1135,9 +1087,6 @@ async fn run_cite(ctx: &Context, args: CiteArgs) -> Result<Outcome, CliError> {
     })))
 }
 
-// ---------------------------------------------------------- literature
-
-/// Connector keys from the app's encrypted store, read once.
 struct CliSecrets(HashMap<String, Zeroizing<String>>);
 
 impl ConnectorSecrets for CliSecrets {
@@ -1212,10 +1161,6 @@ fn parse_sources(names: &[String]) -> Result<Vec<LiteratureSourceId>, CliError> 
     Ok(sources)
 }
 
-/// Where answers are cached: the data folder's cache, else a private folder
-/// (owner only) that lasts for this command. A shared, predictable file in
-/// the temporary folder could be read, or filled with chosen answers, by
-/// another user of the machine.
 fn literature_cache(data_root: Option<&Path>) -> (PathBuf, Option<tempfile::TempDir>) {
     if let Some(root) = data_root.filter(|root| root.is_dir()) {
         return (root.join("literature-cache.sqlite3"), None);
@@ -1227,7 +1172,6 @@ fn literature_cache(data_root: Option<&Path>) -> (PathBuf, Option<tempfile::Temp
         .filter(|private| owner_only(private.path()));
     match private {
         Some(private) => (private.path().join("cache.sqlite3"), Some(private)),
-        // No cache at all: a folder that doesn't exist can't be opened.
         None => (
             std::env::temp_dir()
                 .join(format!("oleafly-no-cache-{}", std::process::id()))
@@ -1237,7 +1181,6 @@ fn literature_cache(data_root: Option<&Path>) -> (PathBuf, Option<tempfile::Temp
     }
 }
 
-/// Makes `folder` reachable by its owner only.
 fn owner_only(folder: &Path) -> bool {
     #[cfg(unix)]
     {
@@ -1246,7 +1189,6 @@ fn owner_only(folder: &Path) -> bool {
     }
     #[cfg(not(unix))]
     {
-        // A temporary folder under the user's profile is the user's.
         let _ = folder;
         true
     }
@@ -1341,8 +1283,6 @@ async fn run_literature(ctx: &Context, args: LiteratureArgs) -> Result<Outcome, 
         "cached": results.cached.iter().map(|source| source.as_str()).collect::<Vec<_>>(),
     })))
 }
-
-// -------------------------------------------------------------- bib clean
 
 fn clean_json(outcome: &CleanOutcome) -> Value {
     json!({
@@ -1477,9 +1417,6 @@ async fn run_bib_clean(ctx: &Context, args: BibCleanArgs) -> Result<Outcome, Cli
     ))
 }
 
-// -------------------------------------------------------------- bib check
-
-/// A title without BibTeX's protective braces.
 fn plain_title(title: &str) -> String {
     collapse_spaces(&title.replace(['{', '}'], ""))
 }
@@ -1832,7 +1769,6 @@ mod tests {
 
     #[test]
     fn ten_byte_titles_with_wide_letters_are_titles_not_a_panic() {
-        // Each is ten bytes long with a character across byte 9.
         for title in ["Книга", "Programmé", "A机器学", "ΑΒΓΔΕ"] {
             assert_eq!(title.len(), 10, "{title}");
             assert_eq!(kind(title), (InputKind::Title, title.into()), "{title}");

@@ -493,10 +493,6 @@ function renderStartupStage(
   };
 }
 
-// The language service and the analysis it feeds are one step to the reader:
-// showing them apart lets analysis report "complete" above a service that is
-// still starting, which reads as an out-of-order checklist. Merge them so the
-// row only settles once both halves have.
 function mergedLanguageStartupStage(
   state: DocumentStartupState,
 ): DocumentStartupStage {
@@ -512,20 +508,14 @@ function mergedLanguageStartupStage(
   const analysisSettled =
     analysis.status === "complete" || analysis.status === "skipped";
   for (const status of ["error", "running", "pending"] as const) {
-    // Analysis speaks for the pair whenever it has something to say, since its
-    // detail names the project revision the reader is waiting on.
     if (analysis.status === status) return merge(status, analysis.detail);
     if (service.status === status) {
-      // Service details are written for a row of their own and can read as
-      // "language analysis has not run" even after it has. Speak for the pair.
       return merge(
         status,
         analysisSettled ? i18n.t(($) => $.preview.startup.language.waitingForService) : service.detail,
       );
     }
   }
-  // Analysis is the payload of the pair: if it cannot run, the row is skipped
-  // even when the service itself started fine.
   if (analysis.status === "skipped") return merge("skipped", analysis.detail);
   return merge("complete", analysis.detail);
 }
@@ -727,7 +717,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const projectLoading = useFilesStore((s) => s.loading);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const noMainDocument = useFilesStore(mainDocumentMissing);
-  // Image and diagram projects render a single figure: no pages/spreads, "PDF" reads as "image".
   const projectKindForPreview = useFilesStore((s) => s.projectKind);
   const isImage = projectKindForPreview === "image" || projectKindForPreview === "diagram";
   const inverted = useSettingsStore((state) => state.pdfDarkMode);
@@ -768,14 +757,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   );
   const [pdfPassword, setPdfPassword] = useState("");
   const [pdfReloadGeneration, setPdfReloadGeneration] = useState(0);
-  // Rotation is a dependency of PdfViewer's document-load effect, so turning
-  // the page re-parses the PDF. That work belongs on the rotate button, not
-  // behind the startup overlay.
   const [rotationPending, setRotationPending] = useState(false);
-  // Whether this pane has ever completed a render for the current project. The
-  // multi-stage startup panel explains a wait with nothing on screen; once a
-  // page is up, replacing it with that panel on every recompile is a flicker,
-  // so later loads keep the previous render visible instead.
   const [hasRendered, setHasRendered] = useState(false);
   const [passwordDraft, setPasswordDraft] = useState("");
   const [viewerDocument, setViewerDocument] =
@@ -824,8 +806,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     setRotation(0);
     setRotationPending(false);
     setScreenReaderMode(false);
-    // A different project has nothing on screen to preserve, so its first load
-    // gets the explanatory startup panel again.
     setHasRendered(false);
   }, [projectId]);
 
@@ -886,7 +866,9 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const staleSyncTexAvailable = pdfIsStale && syncTexAvailable;
   const displayedBytes = viewerDocument?.bytes ?? null;
   const htmlBuiltAt =
-    htmlOutput !== null && htmlOutput.projectId === projectId ? htmlOutput.builtAt : null;
+    htmlEngine && htmlOutput !== null && htmlOutput.projectId === projectId
+      ? htmlOutput.builtAt
+      : null;
   const showHtmlOutput =
     projectId !== null &&
     !noMainDocument &&
@@ -915,7 +897,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
       }}
     />
   );
-  // Only true fullscreen when the pane itself (not a descendant) is the fullscreen element.
   useEffect(() => {
     const onChange = () => {
       const fs = document.fullscreenElement === rootRef.current;
@@ -952,7 +933,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
       setPageInput(String(page));
       return;
     }
-    if (n !== page) pdfRef.current?.gotoPage(n); // avoid snapping on an unchanged blur
+    if (n !== page) pdfRef.current?.gotoPage(n);
   };
 
   const setClampedScale = useCallback((next: number) => {
@@ -988,10 +969,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   }, [projectId]);
   useEffect(() => {
     if (numPages <= 0 || autoFitProjectRef.current === projectId || userAdjustedZoomRef.current) return;
-    // Re-check at fire time, not just when scheduling: the user can zoom
-    // manually in the gap between this effect scheduling the frame and the
-    // frame actually running, and cancelAnimationFrame on unmount doesn't
-    // help there since the ref change alone doesn't retrigger this effect.
     const remembered = projectId
       ? sessionZoomByProject.get(projectId)
       : undefined;
@@ -1008,10 +985,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     return () => cancelAnimationFrame(raf);
   }, [fitPreview, numPages, projectId]);
 
-  // The auto-fit effect above is deferred a frame and can still be pending
-  // when the user first touches zoom, so every UI-triggered zoom change goes
-  // through this to cancel it - otherwise it silently overwrites whatever
-  // zoom level the user just picked.
   const userZoom = useCallback((mutate: () => void) => {
     userAdjustedZoomRef.current = true;
     pendingZoomProjectRef.current = projectId;
@@ -1193,8 +1166,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     if (!current || next.documentIdentity !== current.identity) return;
     pdfPosition.onLoad(next);
     setPdfLoadState(next);
-    // Anything that settles the load also settles a rotation: a failed rotate
-    // must not leave the button spinning forever.
     if (next.status !== "loading") setRotationPending(false);
     if (next.status === "ready") {
       readyRotationRef.current = rotation;
@@ -1362,8 +1333,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
 
   const renderStaleMarker = () => (
     (pdfIsStale || retainedLoadFailure) && (
-      // Tooltip wraps its child in a `relative` span, so the marker is
-      // positioned by this wrapper rather than by the button itself.
       <div className="absolute bottom-3 right-3 z-30">
       <Tooltip
         label={
@@ -1420,13 +1389,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
         }
       >
         <PdfViewer
-          // Deliberately NOT keyed on the document identity. That
-          // remounted the whole viewer on every recompile, tearing the
-          // rendered canvases out before a replacement existed - the
-          // blank flash between builds. The viewer already reloads on
-          // a `documentIdentity` change and now swaps its pages only
-          // once the new layout is ready. `pdfReloadGeneration` stays:
-          // retry-after-failure does want a clean instance.
           key={pdfReloadGeneration}
           ref={pdfRef}
           data={displayedBytes}
@@ -1470,11 +1432,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
       viewer.identity &&
       pdfLoadState.status !== "ready" &&
       pdfLoadState.status !== "idle" &&
-      // Once a page has been rendered, a reload (recompile, rotate,
-      // password retry) keeps that page on screen. Covering it with
-      // the startup panel and uncovering it a moment later is the
-      // flicker; failures still take over, because then there is
-      // something the user has to act on.
       (!hasRendered || pdfLoadState.status !== "loading") && (
         <PdfViewerOverlay
           loadState={pdfLoadState}
@@ -1543,14 +1500,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     tab !== "logs" && (displayedBytes && viewerDocument && !showHtmlOutput ? (
       <div className="flex h-full min-h-0 flex-col bg-sidebar">
         <div className="relative min-h-0 flex-1 overflow-hidden">
-          {/* Editing while a PDF is on screen is the normal case, so
-              staleness is a standing condition rather than news: a quiet
-              marker over the document that recompiles on click, not a
-              banner or a toolbar chip competing with the controls. */}
           {renderStaleMarker()}
-          {/* Kept mounted so closing animates too, not just opening. The
-              clipped parent hides it off-canvas and `inert` keeps a closed
-              panel out of the tab order and the accessibility tree. */}
           <PdfOutlinePanel
             id="pdf-outline-panel"
             open={outlineOpen}
@@ -1591,9 +1541,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
       data-tour="project-preview"
       data-testid="preview-pane"
       data-preview-layout={layout}
-      // Like data-preview-layout: the toolbar collapses its controls into an
-      // overflow menu below a width threshold, so the pane reports the state
-      // itself rather than making assertions depend on which form is rendered.
       data-preview-inverted={inverted ? "true" : "false"}
       className="relative flex h-full flex-col bg-background"
     >
@@ -1733,8 +1680,6 @@ function StartupStageIcon({
   if (status === "skipped") {
     return <Minus className={cn(size, "text-muted-foreground/60")} />;
   }
-  // Queued stages get a resting dot rather than a number: the list order
-  // already says which one is next.
   return (
     <span
       className={cn(
@@ -1898,8 +1843,6 @@ export function DocumentStartupProgress({
         </span>
       </div>
 
-      {/* One segment per stage, so the bar reads as the same checklist the
-          rows spell out rather than an opaque percentage. */}
       <div className={cn("flex gap-1", compact ? "mt-2" : "mt-2.5")} aria-hidden="true">
         {stages.map((stage) => (
           <span

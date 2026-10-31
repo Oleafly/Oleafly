@@ -7,11 +7,6 @@ import {
   type Page,
 } from "../helpers";
 
-// The native bridge cannot drive a real <input type="file"> file picker, so
-// this exercises the same parse-by-extension + addCitations path the Import
-// Reference Library dialog uses, through the DEV-only
-// window.__importCitationFile hook (src/features/citation.ts).
-
 const RIS = `TY  - JOUR
 AU  - Smith, Jane
 TI  - A RIS Import Paper

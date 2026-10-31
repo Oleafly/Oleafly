@@ -24,9 +24,6 @@ pub const REVOCATION_CHECK: Duration = Duration::from_secs(5 * 60);
 pub const MAX_POLL_SESSIONS: usize = 10_000;
 pub const MAX_POLL_SESSIONS_PER_ACCOUNT: usize = 64;
 pub const MAX_BATCH_BYTES: usize = 4 * 1024 * 1024;
-// Posts one account may have being read at once, across all its long
-// polls, so slowly arriving bodies can't hold memory however many
-// sessions the account opens.
 pub const MAX_POSTS_PER_ACCOUNT: usize = 8;
 
 pub struct PollHub {
@@ -109,8 +106,6 @@ impl PollHub {
         Duration::from_millis(self.revocation_check_ms.load(Ordering::SeqCst))
     }
 
-    // Holds the next long poll open right after its device proof, until the
-    // test resumes it.
     #[cfg(any(test, feature = "test-support"))]
     pub fn pause_next_open(&self) -> OpenPause {
         let pause = OpenPause::default();

@@ -1,10 +1,5 @@
-// How hard a model thinks. Mirrors crates/oleafly-agent/src/effort.rs:
-// `effortChoicesFor` follows `effort_choices` and both run the shared table
-// in crates/oleafly-agent/tests/fixtures/effort-cases.json.
-
 export type EffortLevel = "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 
-/** Every level, ascending. */
 export const EFFORT_LEVELS: readonly EffortLevel[] = [
   "none",
   "minimal",
@@ -15,7 +10,6 @@ export const EFFORT_LEVELS: readonly EffortLevel[] = [
   "max",
 ];
 
-/** One models.dev reasoning control: effort names, a token budget, or an on/off switch. */
 export interface ReasoningOption {
   type: "effort" | "budget_tokens" | "toggle";
   values?: readonly string[];
@@ -59,7 +53,6 @@ function asciiLower(value: string): string {
   return value.replace(/[A-Z]/g, (letter) => letter.toLowerCase());
 }
 
-/** Reads models.dev `reasoning_options`; unknown entries and names are ignored. */
 function reasoningCaps(metadata: ModelReasoningMetadata | null | undefined): ReasoningCaps {
   const caps: ReasoningCaps = {
     flag: typeof metadata?.reasoning === "boolean" ? metadata.reasoning : null,
@@ -89,7 +82,6 @@ function startsWithAny(id: string, prefixes: readonly string[]): boolean {
   return prefixes.some((prefix) => id.startsWith(prefix));
 }
 
-/** `o1`…`o9` and their variants (`o3-mini`, `o4-mini-high`). */
 function openAiOSeries(id: string): boolean {
   return id.length >= 2 && id.startsWith("o") && id[1] >= "1" && id[1] <= "9";
 }
@@ -128,7 +120,6 @@ function anthropicFallback(id: string, caps: ReasoningCaps): EffortLevel[] {
   return [];
 }
 
-/** What a provider's API accepts (`wire`) and what this model supports (`base`). */
 interface ProviderChoices {
   wire: EffortLevel[];
   base: EffortLevel[];
@@ -176,7 +167,6 @@ function googleChoices(id: string, caps: ReasoningCaps): ProviderChoices {
   const wire: EffortLevel[] = budgetModel ? [...LOW_TO_HIGH] : ["minimal", ...LOW_TO_HIGH];
   if (budgetModel && canTurnOff) wire.push("none");
   const base = googleBase(id, caps, budgetModel, canTurnOff);
-  // A budget model without metadata may still turn thinking off (Flash).
   if (budgetModel && base.includes("none") && !wire.includes("none")) wire.push("none");
   return { wire, base };
 }
@@ -240,10 +230,6 @@ function providerChoices(providerId: string, id: string, caps: ReasoningCaps): P
   }
 }
 
-/**
- * The levels the selector offers for this model, ascending. An empty list
- * hides the selector, and the request then sends no effort.
- */
 export function effortChoicesFor(
   providerId: string,
   modelId: string,
@@ -253,10 +239,6 @@ export function effortChoicesFor(
   return sortedUnique(base.filter((level) => wire.includes(level)));
 }
 
-/**
- * The accepted level nearest to `requested` (ties go up), or `null` when
- * the model takes no effort.
- */
 export function clampEffort(
   requested: EffortLevel,
   choices: readonly EffortLevel[],

@@ -76,8 +76,6 @@ const BACKDROP_TRANSITION = [
   "height 320ms cubic-bezier(0.4, 0, 0.2, 1)",
 ].join(", ");
 
-// Golden-ratio low-discrepancy sequence: spreads the decorative sparkles more
-// evenly than sampling would, and keeps their layout stable between renders.
 const GOLDEN_RATIO_CONJUGATE = 0.618033988749895;
 
 export function scatter(index: number, offset: number): number {
@@ -97,11 +95,6 @@ function ChordHint({ variant, back }: Readonly<{ variant?: "primary"; back?: boo
   );
 }
 
-// Dots read as "how far along am I" far better than a bar, but one dot per
-// step overflows the footer on the longer tours (settings has 12 steps). Keep
-// the dots and slide a fixed-size window over them instead: every dot occupies
-// the same slot, so the row's width never changes as the step advances, and the
-// slots at a truncated edge shrink to signal that more steps exist beyond them.
 const DOT_WINDOW = 7;
 
 export function tourDotWindowStart(index: number, size: number) {
@@ -200,7 +193,6 @@ function TourTooltip(props: Readonly<TourTooltipProps>) {
     <div
       {...tooltipProps}
       ref={(element) => {
-        // The runtime floater props carry a ref the public typings omit.
         const forwarded = (tooltipProps as { ref?: React.Ref<HTMLDivElement> }).ref;
         if (typeof forwarded === "function") forwarded(element);
         else if (forwarded && typeof forwarded === "object") {
@@ -945,9 +937,6 @@ export function TourGuide() {
     () => {
       void inputRevision;
       void t;
-      // Rebuilt per step: `toJoyrideStep` measures each target to decide whether
-      // Joyride may scroll for it, and a target's position is only meaningful
-      // once the tour has actually reached it.
       void activeStepIndex;
       return (
         definition?.steps.map((step) => {
@@ -1121,8 +1110,6 @@ export function TourGuide() {
     return () => cancelAnimationFrame(frame);
   }, [activeStep, activeTourId]);
 
-  // The sidebar view switchers only render while the sidebar is open, so the
-  // workspace tour opens it before anchoring its navigation step.
   useEffect(() => {
     if (activeTourId !== "workspace" || activeStep?.id !== "workspace-sidebar") return;
     const settings = useSettingsStore.getState();
@@ -1283,8 +1270,6 @@ export function TourGuide() {
       const requested = event instanceof CustomEvent ? event.detail : undefined;
       const requestedId = isTourAvailable(requested) ? requested : undefined;
       if (requested !== undefined && !requestedId) return;
-      // Guessing which tour was meant is hopeless with a diagram open behind
-      // Settings, but a caller that names one has already answered that.
       if (!requestedId && diagramOpen && settingsOpen) return;
       const contextualId = () => {
         if (diagramOpen) return "diagram";
@@ -1305,8 +1290,6 @@ export function TourGuide() {
       });
     };
     window.addEventListener(START_TOUR_EVENT, manualStart);
-    // A start asked for before this mounted. Taken a frame later, so a cleanup
-    // that runs first (StrictMode, a context change) leaves it for the next run.
     const replay = requestAnimationFrame(() => {
       const unheard = takeUnheardTourStart();
       if (unheard) manualStart(unheard);
@@ -1491,9 +1474,6 @@ export function TourGuide() {
     return () => window.clearTimeout(timeout);
   }, [activeStep, activeTourId]);
 
-  // The chooser is a portal and TourGuide is lazy, so the dialog's content is
-  // not reliably in the document by the time this effect runs. Poll briefly
-  // rather than reading the DOM once and giving up.
   useEffect(() => {
     if (activeTourId !== "home" || activeStep?.id !== "home-create" || !newProjectOpen) return;
     let attempts = 0;

@@ -1,10 +1,3 @@
-//! The desktop app's settings, read the way the app reads them, for the
-//! headless agent and the background helper: the AI providers and keys
-//! (`config.json` plus the encrypted secret store), the user's MCP servers
-//! with their stored values, connector keys and the research preferences.
-//!
-//! This is read-only. A config the app would call corrupt is an error here
-//! too; nothing is migrated or written.
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::OpenOptions;
 use std::path::Path;
@@ -21,28 +14,18 @@ const LOCK_FILE: &str = ".config-store.lock";
 const LOCK_BUDGET: Duration = Duration::from_secs(5);
 const MAX_CONFIG_BYTES: u64 = 4 * 1024 * 1024;
 
-/// The marker the app writes in place of a stored MCP value.
 const STORED: &str = "__stored__";
 const STORED_PREFIX: &str = "__stored__:";
 const STORED_REFERENCE_PREFIX: &str = "__stored__:v1:";
-/// Connector ids that hold a web search key, in the order runs prefer them.
 const SEARCH_KEY_IDS: [&str; 3] = ["brave-search", "tavily", "serper"];
 
-/// The app's settings that the agent and the helper use.
 pub struct DesktopConfig {
     pub ai: oleafly_agent::ProviderConfig,
-    /// `(provider, model)` → the metadata stored with an enabled model.
     pub stored_metadata: BTreeMap<(String, String), Value>,
-    /// Enabled MCP servers, with their stored values filled in.
     pub mcp_servers: Vec<McpServer>,
-    /// Names of the MCP servers research tasks may use.
     pub task_mcp_servers: Vec<String>,
     pub prefs: Prefs,
-    /// Connector keys (`openalex-api-key`, `brave-search`, …).
     pub connector: BTreeMap<String, Zeroizing<String>>,
-    /// Custom providers from an older settings file, which says nothing
-    /// about a key, that have no stored key. A run on one goes without a key
-    /// when none turns up anywhere else, `OLEAFLY_API_KEY` included.
     pub keyless_custom: BTreeSet<String>,
 }
 
@@ -81,7 +64,6 @@ impl std::fmt::Debug for DesktopConfig {
 }
 
 impl DesktopConfig {
-    /// No providers, no servers, the default preferences.
     pub fn empty() -> Self {
         Self {
             ai: oleafly_agent::ProviderConfig::default(),
@@ -123,12 +105,9 @@ pub enum McpTransport {
     },
 }
 
-/// The research preferences the helper follows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Prefs {
-    /// "Keep tasks running after Oleafly closes" (Settings › Research).
     pub background_enabled: bool,
-    /// Start the helper when the user signs in.
     pub background_at_login: bool,
     pub keep_awake: bool,
     pub notifications: bool,
@@ -147,10 +126,8 @@ impl Default for Prefs {
 
 #[derive(Debug)]
 pub enum ConfigError {
-    /// `config.json` does not parse (the app refuses it too).
     Corrupt(String),
     Unreadable(String),
-    /// The app is writing its settings right now.
     Locked,
 }
 
@@ -245,12 +222,8 @@ struct RawCustomProvider {
     id: String,
     #[serde(rename = "baseURL", default)]
     base_url: String,
-    /// The app's settings screen writes `keyOptional`; files from before it
-    /// have none.
     #[serde(rename = "keyOptional", default)]
     key_optional_camel: Option<bool>,
-    /// What older builds wrote. Kept apart from the camelCase field so a file
-    /// holding both does not fail as a duplicate.
     #[serde(default)]
     key_optional: bool,
 }
@@ -281,7 +254,6 @@ struct RawMcpServer {
     transport: RawTransport,
 }
 
-/// The app's key for a stored MCP value: `{len}:{server}:{kind}:{field}`.
 pub(crate) fn mcp_secret_key(server: &str, kind: &str, field: &str) -> String {
     format!("{}:{server}:{kind}:{field}", server.len())
 }
@@ -297,8 +269,6 @@ fn is_reference(value: &str) -> bool {
         })
 }
 
-/// Replaces the app's stored-value markers with the stored values. An error
-/// names the server and the field, never a value.
 pub(crate) fn hydrate_mcp_values(
     server: &str,
     kind: &str,
@@ -332,7 +302,6 @@ pub(crate) fn hydrate_mcp_values(
     Ok(())
 }
 
-/// Holds the app's config lock (shared) while the settings are read.
 struct ReadLock {
     _file: std::fs::File,
 }
@@ -344,7 +313,6 @@ fn lock_for_reading(root: &Path) -> Result<Option<ReadLock>, ConfigError> {
             return Err(ConfigError::Unreadable("the config lock is a link".into()))
         }
         Ok(_) => {}
-        // No lock file: the app has never written its settings here.
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(ConfigError::Unreadable(error.to_string())),
     }
@@ -394,10 +362,6 @@ fn read_secrets(
     store.read(file).map_err(ConfigError::Unreadable)
 }
 
-/// Reads the app's settings under `root` (the data folder). A missing data
-/// folder gives the defaults and is not created.
-/// Only the helper's choices from the app's settings (no secrets are
-/// read), for the helper to follow changes while it runs.
 pub fn load_prefs(root: &Path) -> Result<Prefs, ConfigError> {
     if !root.exists() {
         return Ok(Prefs::default());
@@ -464,10 +428,6 @@ pub fn load(root: &Path) -> Result<DesktopConfig, ConfigError> {
             )
         })
         .collect();
-    // An older build wrote `key_optional: false` for every provider added
-    // without a key, so such an entry with no stored key is remembered as
-    // probably key-less. The stated flag stays what the file says, so a
-    // gateway whose key only comes from `OLEAFLY_API_KEY` still gets it.
     let mut keyless_custom = BTreeSet::new();
     let custom = raw
         .ai_custom_providers
@@ -541,8 +501,6 @@ pub fn load(root: &Path) -> Result<DesktopConfig, ConfigError> {
     })
 }
 
-/// Every credential the config holds, so output and logs can hide them:
-/// provider keys, MCP env and header values, connector keys.
 pub fn secret_values(config: &DesktopConfig) -> Vec<String> {
     let mut values: Vec<String> = config.ai.keys.values().cloned().collect();
     values.push(config.ai.legacy_key.clone());
@@ -566,7 +524,6 @@ pub fn secret_values(config: &DesktopConfig) -> Vec<String> {
     let mut values: Vec<String> = values
         .into_iter()
         .map(|value| value.trim().to_string())
-        // Short values (a port, "1") would hide ordinary text.
         .filter(|value| value.len() >= 6)
         .collect();
     values.sort_by_key(|value| std::cmp::Reverse(value.len()));
@@ -574,7 +531,6 @@ pub fn secret_values(config: &DesktopConfig) -> Vec<String> {
     values
 }
 
-/// The first configured web search key: Brave, then Tavily, then Serper.
 pub fn search_key_from(
     connector: &BTreeMap<String, Zeroizing<String>>,
 ) -> Option<oleafly_agent::tools::web::SearchKey> {
@@ -612,10 +568,6 @@ fn snapshot_entry(path: &Path, provider: &str, model: &str) -> Option<Value> {
         .cloned()
 }
 
-/// The model's metadata entry (context window, prices): the app's metadata
-/// snapshot (its downloaded copy, then the installed app's bundled one),
-/// else the metadata stored with the model in the settings, as the app
-/// looks it up.
 pub fn model_entry(
     root: &Path,
     config: &DesktopConfig,
@@ -708,8 +660,6 @@ mod tests {
         assert_eq!(config.ai.legacy_key, "sk-legacy-0");
     }
 
-    /// Whether a run on `id` may go without a key: the stated flag, or an
-    /// older entry with no stored key.
     fn key_optional_of(config: &DesktopConfig, id: &str) -> bool {
         config
             .ai
@@ -732,7 +682,6 @@ mod tests {
                 {"id":"both","name":"E","baseURL":"http://localhost:8000/v1","keyOptional":true,"key_optional":false}
             ]}"#,
         );
-        // Every provider has a stored key, so only the flag can make it optional.
         SecretStore::at(root.path())
             .write(
                 SecretFile::Ai,
@@ -779,7 +728,6 @@ mod tests {
         assert!(key_optional_of(&config, "lemonade"));
         assert!(!key_optional_of(&config, "gateway"));
         assert!(key_optional_of(&config, "blank"));
-        // A custom entry that shadows a catalog provider never relaxes its key.
         assert!(!key_optional_of(&config, "openai"));
     }
 
@@ -794,7 +742,6 @@ mod tests {
         let config = load(root.path()).unwrap();
 
         assert_eq!(config.keyless_custom, BTreeSet::from(["older".to_string()]));
-        // The stated flags stay as written, so the shared env key still applies.
         assert!(config.ai.custom.iter().all(|custom| !custom.key_optional));
         assert!(!key_optional_of(&config, "stated"));
     }
@@ -945,7 +892,6 @@ mod tests {
         );
         let prefs = load(root.path()).unwrap().prefs;
         assert!(!prefs.background_enabled && prefs.background_at_login);
-        // The helper reads them again without the secrets.
         assert_eq!(load_prefs(root.path()).unwrap(), prefs);
         let quiet =
             data_root_with(r#"{"research_notifications":false,"research_keep_awake":false}"#);

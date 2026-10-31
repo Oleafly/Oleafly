@@ -12,6 +12,7 @@ import { createTabularDecoration } from "./decoration";
 import { stateOf, tabularNodeOf } from "./test-support";
 import { tableTheme } from "./theme";
 import { TableRenderingErrorWidget, TabularWidget } from "./widget";
+import { stubRangeGeometry } from "../../test-geometry";
 
 const DOC = `Intro text.
 \\begin{table}
@@ -49,12 +50,7 @@ let view: EditorView | null = null;
 
 beforeAll(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-  if (!globalThis.Range.prototype.getClientRects) {
-    Object.defineProperty(globalThis.Range.prototype, "getClientRects", {
-      configurable: true,
-      value: () => [],
-    });
-  }
+  stubRangeGeometry();
 });
 
 afterEach(async () => {

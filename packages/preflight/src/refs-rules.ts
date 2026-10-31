@@ -23,7 +23,6 @@ export interface RefsContext {
   duplicateLabels?: { label: string; files: string[] }[];
   unreferencedLabels?: { label: string; file: string }[];
   bibKeyDefinitions?: BibKeyDefinition[];
-  /** How the project's bibliography tool compares keys. Defaults to BibTeX. */
   bibKeyDialect?: BibKeyDialect;
 }
 
@@ -484,8 +483,6 @@ export function runRefsRules(
   ctx: RefsContext,
   options: { includeProjectQuality?: boolean; file?: string } = {},
 ): Finding[] {
-  // Blank out commented-out LaTeX so a commented `\cite`/`\ref`/`\label` does
-  // not raise a false finding. Offsets are preserved (comments become spaces).
   const source = maskComments(rawSource);
 
   const labels = collectLabels(source, ctx.definedLabels);

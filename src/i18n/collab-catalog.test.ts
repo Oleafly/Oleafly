@@ -47,6 +47,8 @@ const ERROR_CODES = [
   "suggestion_not_found",
   "suggestion_not_yours",
   "suggestion_role",
+  "suggestion_changed",
+  "suggestion_too_long",
   "chat_role",
   "history_unavailable",
   "account_storage_full",
@@ -143,19 +145,15 @@ describe("collab catalog", () => {
   });
 
   it("calls each collaboration idea by one name on every screen", () => {
-    // Admins suspend and reactivate accounts, so members see the same word.
     expect(collab.section.server.suspended).toBe(collab.admin.members.suspended);
     expect(collab.sync.suspended).toMatch(/suspended/u);
     expect(collab.section.server.suspendedHint).toMatch(/suspended/u);
     expect(collab.activity.suspended).toBe(collab.section.server.suspendedHint);
-    // The people list is "People", so its own buttons don't call them members,
-    // and the people let in are "Allowed people", not "the list".
     expect(collab.admin.members.removeConfirm.confirm).not.toMatch(/member/u);
     expect(collab.admin.members.suspendConfirm.confirm).not.toMatch(/member/u);
     expect(collab.section.server.manageHint).toContain(collab.admin.tabs.allowlist);
     for (const [key, value] of flat) if (key.startsWith("admin.allowlist.")) expect(value, key).not.toMatch(/the list/u);
     expect(collab.errors.duplicate_entry).not.toMatch(/list/u);
-    // One name for the list of people let in, the people list and server settings.
     expect(collab.admin.members.addHint).toContain(collab.admin.tabs.allowlist);
     expect(collab.admin.log.kinds.allowlistAdded).toContain(collab.admin.tabs.allowlist);
     expect(collab.admin.log.kinds.allowlistRemoved).toContain(collab.admin.tabs.allowlist);
@@ -166,7 +164,6 @@ describe("collab catalog", () => {
   });
 
   it("says why a project can't take new people in words that fit the person joining and the admin approving", () => {
-    // An admin approving a guest sees this too, so it doesn't send them to an admin.
     expect(collab.errors.owner_away).not.toMatch(/admin/iu);
     expect(collab.errors.owner_away).toMatch(/until their account is active again/u);
   });

@@ -7,8 +7,6 @@ export interface ConnectorManifest {
   capability: ConnectorCapability;
   auth: ConnectorAuthMode;
   docsUrl?: string;
-  // Names of the AI tools this connector contributes, for display/debugging;
-  // the tools themselves are defined and wired elsewhere (research-tools.ts).
   toolNames: string[];
 }
 
@@ -29,7 +27,6 @@ export function getConnector(id: string): ConnectorManifest | undefined {
   return connectors.get(id);
 }
 
-// Internal helper for tests: registry state is module-level and persists across tests in the same file.
 export function _clearRegistry(): void {
   connectors.clear();
 }

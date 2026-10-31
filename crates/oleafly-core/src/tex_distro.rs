@@ -10,11 +10,9 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
-/// Where to look for TeX on this machine.
 #[derive(Clone, Debug, Default)]
 pub struct TexSearch {
     pub home: Option<PathBuf>,
-    /// Oleafly's data folder (its managed TinyTeX lives in `tinytex/`).
     pub data_root: Option<PathBuf>,
     pub path: Option<OsString>,
     pub local_app_data: Option<PathBuf>,
@@ -23,8 +21,6 @@ pub struct TexSearch {
 }
 
 impl TexSearch {
-    /// The process environment: `HOME`/`USERPROFILE`, `OLEAFLY_DATA_DIR`
-    /// (or `~/.oleafly`), `PATH` and the Windows profile folders.
     pub fn from_env() -> Self {
         let var = |name: &str| std::env::var_os(name).filter(|value| !value.is_empty());
         let home = var("HOME")
@@ -44,7 +40,6 @@ impl TexSearch {
     }
 }
 
-/// The platform folder names under `bin/` this computer prefers, best first.
 pub fn host_platform_dirs() -> &'static [&'static str] {
     match (std::env::consts::OS, std::env::consts::ARCH) {
         ("macos", "aarch64") => &["universal-darwin", "aarch64-darwin"],
@@ -57,7 +52,6 @@ pub fn host_platform_dirs() -> &'static [&'static str] {
     }
 }
 
-/// Append the platform executable suffix.
 pub fn exe(name: &str) -> String {
     if cfg!(windows) {
         format!("{name}.exe")
@@ -139,7 +133,6 @@ pub fn tex_bin_dirs(search: &TexSearch) -> Vec<PathBuf> {
         );
     }
 
-    // Oleafly's own TinyTeX (managed install; may nest TinyTeX/bin/<platform>).
     if let Some(root) = &search.data_root {
         push_texdir_bins(&mut managed, &root.join("tinytex"));
     }
@@ -153,8 +146,6 @@ pub fn tex_bin_dirs(search: &TexSearch) -> Vec<PathBuf> {
         push_texdir_bins(&mut user_tinytex, &root);
     }
 
-    // Generic locations last: these usually hold symlinks into one of the real
-    // distributions above.
     #[cfg(target_os = "macos")]
     {
         push_existing(&mut generic, PathBuf::from("/usr/local/bin"));
@@ -178,9 +169,6 @@ pub fn tex_bin_dirs(search: &TexSearch) -> Vec<PathBuf> {
     compose_tex_bin_dirs(system, inherited, managed, user_tinytex, generic)
 }
 
-/// Locate a TeX tool (latexmk, lualatex, tlmgr, ...) by probing `tex_bin_dirs`
-/// and then the inherited PATH. Pure stat-based: never executes anything, so it
-/// is cheap enough to call from every compile-spec preparation.
 pub fn find_tex_tool(search: &TexSearch, name: &str) -> Option<PathBuf> {
     find_tex_tool_in_dirs(name, tex_bin_dirs(search))
 }
@@ -280,11 +268,8 @@ where
         .find_map(|dir| find_tool_in_dir(dir.as_ref(), name))
 }
 
-/// One detected TeX distribution, for the Settings "Manage TeX distributions"
-/// panel and the engine-picker modal.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct TexDistribution {
-    /// "oleafly-tinytex" | "mactex" | "texlive" | "miktex" | "tinytex" | "other"
     pub kind: String,
     pub label: String,
     pub bin_dir: String,
@@ -303,9 +288,6 @@ pub fn active_latexmk_distribution(search: &TexSearch) -> Option<TexDistribution
     distribution_for_bin_dir(search, latexmk.parent()?)
 }
 
-/// Enumerate distinct TeX distributions by classifying each discovered bin dir.
-/// Only the first bin dir of each root is reported so one install does not show
-/// up once per nested platform directory.
 pub fn list_distributions(search: &TexSearch) -> Vec<TexDistribution> {
     let mut seen_roots: Vec<PathBuf> = Vec::new();
     let mut result = Vec::new();
@@ -919,7 +901,6 @@ mod tests {
             distribution_kind_for_tool(&search, &managed),
             "oleafly-tinytex"
         );
-        // A full TeX installed on this machine stays first.
         let system = find_tex_tool(&TexSearch::default(), "latexmk");
         let found = find_tex_tool(&search, "latexmk").unwrap();
         assert!(

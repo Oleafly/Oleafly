@@ -215,10 +215,6 @@ function dropdownControl(
   };
 }
 
-/**
- * Formatting bar for Typst documents. Typst has no visual editing surface, so
- * this is source-only: every control writes Typst markup at the cursor.
- */
 export function TypstToolbar({
   wysiwyg,
   onToggleWysiwyg,

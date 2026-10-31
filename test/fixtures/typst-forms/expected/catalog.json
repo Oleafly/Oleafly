@@ -297,7 +297,10 @@
       "code": "builtinName",
       "path": "tool.oleafly.forms[4].function",
       "line": 69,
-      "detail": "\"table\" is a built-in Typst name. Bare calls keep the built-in widget, so only qualified or renamed calls use this form."
+      "message": {
+        "id": "builtinName",
+        "function": "table"
+      }
     }
   ]
 }

@@ -22,10 +22,6 @@ vi.mock("@tiptap/react", async (importOriginal) => {
 
 const MARKDOWN = "Hello world.\n";
 
-// The visual editor turns what it cannot show as rich text into atom nodes
-// with their own source inputs, and those inputs commit on Cmd/Ctrl+Enter.
-// Raw blocks and raw inlines only come out of LaTeX, which the component
-// still parses.
 const LATEX_WITH_SOURCE_NODES = [
   "\\documentclass{article}",
   "\\begin{document}",
@@ -99,8 +95,6 @@ function sourceOf(type: string): unknown {
   return source;
 }
 
-// Stands in for App.tsx's bubble-phase window listener, which owns the
-// recompile chord.
 let recompiles = 0;
 function countRecompile(event: KeyboardEvent): void {
   if (matchesShortcut(event, useShortcutStore.getState().bindings.recompile)) recompiles += 1;

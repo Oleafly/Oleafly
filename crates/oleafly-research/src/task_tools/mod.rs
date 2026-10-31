@@ -1,5 +1,3 @@
-//! The tools a research task uses on its isolated workspace: bounded file
-//! reads and writes, listing, search, and confined shell commands.
 use std::collections::BTreeSet;
 use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
@@ -65,7 +63,6 @@ pub fn relative_path(value: &str, allow_root: bool) -> Result<PathBuf, String> {
     Ok(path.to_path_buf())
 }
 
-/// A task workspace opened once, with the paths the task may write.
 pub struct TaskFiles {
     pub root: PathBuf,
     directory: Dir,
@@ -139,8 +136,6 @@ impl TaskFiles {
         Ok((directory, PathBuf::from(name.as_os_str())))
     }
 
-    /// Whether a file or folder exists at `value`, without following links.
-    /// A link or an unavailable folder on the way is an error.
     pub fn exists(&self, value: &str) -> Result<bool, String> {
         let path = self.checked(value)?;
         let (directory, name) = match self.parent(&path, false) {
@@ -160,7 +155,6 @@ impl TaskFiles {
         }
     }
 
-    /// A workspace file's bytes (a PDF), up to `max_bytes`, without following links.
     pub fn read_bytes(&self, value: &str, max_bytes: u64) -> Result<Vec<u8>, String> {
         let path = self.checked(value)?;
         let (directory, name) = self.parent(&path, false)?;
@@ -235,8 +229,6 @@ impl TaskFiles {
         self.write_bytes(value, content.as_bytes(), MAX_FILE_BYTES)
     }
 
-    /// Writes bytes (a downloaded PDF) with the same link and path checks as
-    /// [`Self::write`], up to `max_bytes`.
     pub fn write_bytes(
         &self,
         value: &str,
@@ -373,9 +365,6 @@ pub fn bounded(text: &str, max_bytes: usize) -> String {
     format!("{}\n[output truncated]", &text[..end])
 }
 
-/// The workspace tools every research task gets.
-/// The workspace tools. `network` is the task's network permission for
-/// commands, which the `run_command` description states.
 pub fn file_tool_schemas(network: bool) -> Vec<ToolSchema> {
     let command = if network {
         "Run a shell command in the isolated task workspace for up to two minutes. Writes are restricted to allowed paths. Network access is allowed. For anything longer, use start_run."

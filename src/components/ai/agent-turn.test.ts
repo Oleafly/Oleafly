@@ -426,8 +426,6 @@ describe("harness", () => {
 
   it("does not double-render a tool the webview executed itself", async () => {
     const execute = vi.fn(async () => ({ ok: true }));
-    // The webview request id is namespaced (tool-{gen}-{seq}-{providerId});
-    // the loop's outcome event carries the bare provider id.
     const h = harness(
       [
         { kind: "toolRequest", id: "tool-1-0-c1", name: "write_file", arguments: "{}" },
@@ -775,7 +773,6 @@ describe("harness progress events", () => {
     ]);
     await h.run();
 
-    // Since 0.4.8 the last step's usage and the context window come along, here unreported.
     expect(h.handlers.onUsage).toHaveBeenCalledWith(
       { input: 10, output: 2 },
       { lastStep: undefined, contextWindow: undefined },

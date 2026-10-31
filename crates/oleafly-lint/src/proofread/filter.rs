@@ -1,7 +1,3 @@
-//! Words the proofreader accepts: the built-in list, a user word list and
-//! the session rules for numbers and acronyms (`ignored.ts:38-48`, the
-//! worker's `normalizeWord` and `isIgnoredToken`).
-
 use std::collections::BTreeSet;
 use std::sync::LazyLock;
 
@@ -24,17 +20,14 @@ fn is_uppercase_letter(ch: char) -> bool {
     CodePointMapData::<GeneralCategory>::new().get(ch) == GeneralCategory::UppercaseLetter
 }
 
-/// `normalizeWord`: NFKC, no soft hyphens, trimmed, lower case.
 pub fn normalize_word(word: &str) -> String {
     js_trim(&without_soft_hyphens(&nfkc(word))).to_lowercase()
 }
 
-/// Words a user asked the proofreader to accept, normalised like the app.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct IgnoredWords(BTreeSet<String>);
 
 impl IgnoredWords {
-    /// One word per line; blank lines are skipped.
     pub fn from_lines(text: &str) -> Self {
         let mut words = Self::default();
         for line in text.lines() {
@@ -71,8 +64,6 @@ impl IgnoredWords {
     }
 }
 
-/// `isSessionIgnoredWord`: built-in words, anything with a digit, and
-/// all-caps acronyms of two or more units.
 pub fn is_session_ignored_word(word: &str) -> bool {
     let normalized = nfkc(word).to_lowercase();
     if BUILTIN_PROOFREADING_WORDS.contains(&normalized.as_str()) {
@@ -84,8 +75,6 @@ pub fn is_session_ignored_word(word: &str) -> bool {
     utf16_len(word) >= 2 && word == word.to_uppercase() && word.chars().any(is_uppercase_letter)
 }
 
-/// `isIgnoredToken`: the source text under a finding is a word the user
-/// accepts, or no word at all.
 pub fn is_ignored_token(word: &str, ignored: &IgnoredWords) -> bool {
     let trimmed = trim_to_word_characters(&without_soft_hyphens(&nfkc(word)));
     let normalized = normalize_word(&trimmed);
@@ -95,9 +84,6 @@ pub fn is_ignored_token(word: &str, ignored: &IgnoredWords) -> bool {
     ignored.contains(&normalized) || is_session_ignored_word(word)
 }
 
-/// The words handed to Harper's user dictionary (`syncGrammarDictionary`):
-/// the placeholder, the built-in words and the user's words that are plain
-/// words, sorted.
 pub fn imported_words(ignored: &IgnoredWords) -> Vec<String> {
     let mut words: BTreeSet<String> = BTreeSet::new();
     words.insert(PROSE_PLACEHOLDER.to_string());

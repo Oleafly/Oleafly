@@ -1,7 +1,3 @@
-//! The LaTeX syntax linter (`packages/editor/src/latex-linter.ts`): a linear,
-//! recovering pass over UTF-16 units that reports unbalanced braces, math
-//! delimiters and environments, malformed definitions and duplicate labels.
-
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
@@ -158,8 +154,6 @@ fn optional_argument_close(text: &[u16], opening: usize) -> Option<usize> {
     None
 }
 
-/// The first unit after optional `*` and `[…]` arguments; `Err(opening)` when
-/// an optional argument never closes.
 fn after_optional_arguments(text: &[u16], start: usize) -> Result<usize, usize> {
     let mut cursor = skip_whitespace(text, start);
     if text.get(cursor) == Some(&STAR) {
@@ -849,8 +843,6 @@ impl Scan<'_> {
         if next == CLOSE_PAREN || next == CLOSE_BRACKET {
             return Some(self.close_inline_math_step(cursor, next));
         }
-        // Control symbols such as \%, \_, \{, \}, \\ and \$ are complete
-        // two-character commands; their second character is not a delimiter.
         if !is_command_unit(Some(next)) {
             return Some(cursor + 2);
         }
@@ -913,9 +905,6 @@ impl Scan<'_> {
     }
 }
 
-/// A recovery-oriented, linear LaTeX syntax pass. It keeps scanning after
-/// damage, skips comments and verbatim content, and reports every useful
-/// delimiter and environment error.
 pub fn lint_latex_text(text: &SourceText) -> Vec<LintDiagnostic> {
     let mut scan = Scan {
         text: text.units(),

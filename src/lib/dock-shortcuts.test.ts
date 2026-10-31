@@ -16,11 +16,9 @@ vi.mock("@/lib/terminal-lifecycle", () => lifecycle);
 import { useTerminalsStore } from "@/store/terminals";
 import { handleDockShortcut, handleTerminalTabShortcut } from "./dock-shortcuts";
 
-/** A target inside an xterm (and so inside the dock). */
 const insideTerminal = {
   closest: (selector: string) => (selector === ".xterm" || selector === "[data-terminal-dock]" ? {} : null),
 };
-/** A target in the dock's tab strip, outside any xterm. */
 const insideDock = {
   closest: (selector: string) => (selector === "[data-terminal-dock]" ? {} : null),
 };
@@ -93,7 +91,6 @@ describe("dock shortcuts", () => {
         .getState()
         .setBinding("toggleTerminal", { key: "@", mod: true, shift: true, alt: true });
       const modifiers = { ctrlKey: true, altKey: true, shiftKey: true };
-      // From engines that report AltGr as Ctrl+Alt.
       const altGr = keyboard("@", {
         ...modifiers,
         getModifierState: (key: string) => key === "AltGraph",
@@ -103,7 +100,6 @@ describe("dock shortcuts", () => {
       expect(useSettingsStore.getState().terminalOpen).toBe(false);
       expect(altGr.preventDefault).not.toHaveBeenCalled();
 
-      // US Ctrl+Alt+Shift+2 carries the same key without AltGraph.
       const chord = keyboard("@", modifiers);
       expect(handleDockShortcut(chord)).toBe(true);
       expect(useSettingsStore.getState().terminalOpen).toBe(true);

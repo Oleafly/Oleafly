@@ -38,7 +38,6 @@ export const useAgentHandoffStore = create<AgentHandoffState>((set, get) => ({
   },
 }));
 
-// E2E / devtools hook: seed a handoff without going through inline AI.
 if (typeof window !== "undefined" && E2E_HOOKS) {
   const w = window as unknown as {
     __agentHandoff?: (prompt: string, autoSend?: boolean) => void;

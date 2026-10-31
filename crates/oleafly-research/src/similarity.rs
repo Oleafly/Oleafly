@@ -1,17 +1,10 @@
-//! Title matching for citation checks: the same paper written with other
-//! case, punctuation, accents or a subtitle still matches; a different paper
-//! with a similar title does not.
 use unicode_normalization::char::is_combining_mark;
 use unicode_normalization::UnicodeNormalization;
 
-/// A score at or above this means "the same title".
 pub const TITLE_MATCH_THRESHOLD: f32 = 0.92;
 
-/// Titles longer than this are cut before comparing (bounds the edit distance).
 const MAX_TITLE_CHARS: usize = 512;
 
-/// NFKD, combining marks dropped, lowercase, every run of other characters
-/// turned into one space.
 pub fn normalize_title(title: &str) -> String {
     let mut out = String::with_capacity(title.len());
     let mut space = false;
@@ -63,9 +56,6 @@ fn similarity(left: &str, right: &str) -> f32 {
     1.0 - levenshtein(&left, &right) as f32 / longest as f32
 }
 
-/// How closely `title` (with an optional `subtitle`) matches the `query`
-/// title: 1.0 for the same words, 0.95 when one is the other plus a
-/// subtitle, else the character similarity.
 pub fn title_match_score(query: &str, title: &str, subtitle: Option<&str>) -> f32 {
     let query = normalize_title(query);
     let title = normalize_title(title);

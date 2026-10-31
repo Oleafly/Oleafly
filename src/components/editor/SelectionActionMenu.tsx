@@ -113,8 +113,6 @@ export function SelectionActionMenu() {
     const update = (e?: Event) => {
       const target = e?.target as Node | null;
       if (target && containerRef.current?.contains(target)) return;
-      // Typing a request moves focus into the menu, which is not the editor
-      // losing it.
       if (containerRef.current?.contains(document.activeElement)) return;
       const v = getEditorView();
       if (!v?.hasFocus) {
@@ -182,15 +180,10 @@ export function SelectionActionMenu() {
       close();
       return;
     }
-    // These actions rewrite the selection, so they belong inline: the editor
-    // shows the shimmer while streaming and then a strikethrough/insert diff to
-    // accept or reject. Only fall back to the agent panel when no inline
-    // session can start (no editor, or one already running).
     const inline = view ? openInlineEditWithInstruction(view, request) : false;
     if (!inline) {
       handoffToAssistant(prompt, { autoSend: true });
     }
-    // Public event for integrations and the deterministic E2E probe.
     window.dispatchEvent(
       new CustomEvent("oleafly:ai-selection-action", {
         detail: { prompt, target: inline ? "inline" : "agent" },

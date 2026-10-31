@@ -3,9 +3,6 @@ import { setProjectColor as setProjectColorCmd } from "@/lib/tauri";
 import { logError } from "@/lib/log";
 import { readJson, writeJson } from "@/lib/local-storage";
 
-// Cover colors now live on disk in each project's project.json. This store keeps
-// a lightweight in-memory override for instant UI feedback and still reads the
-// legacy localStorage map so projects created before the on-disk color keep theirs.
 const KEY = "oleafly.projectColors";
 
 function load(): Record<string, string> {

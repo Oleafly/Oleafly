@@ -83,7 +83,6 @@ function maskBlockLines(chars: string[], text: string): void {
       blank(chars, offset, offset + line.length);
       footnoteContinuation = false;
     } else if (footnote) {
-      // The footnote label is metadata, but its body is rendered prose.
       blank(chars, offset, offset + footnote[0].length);
       footnoteContinuation = true;
     } else if (footnoteContinuation && continuesFootnote(line)) {

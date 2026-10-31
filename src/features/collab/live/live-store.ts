@@ -112,10 +112,7 @@ export interface CollabLiveStoreState {
   ended: CollabLiveEndedReason | null;
   accessNotice: AccessNotice | null;
   commentsNotSent: CollabCommentNotSent[] | null;
-  // Files of the live project that couldn't be written to this computer.
   unwritten: CollabLiveUnwritten["files"];
-  // The server refused a change because the project reached its size limit.
-  // Until the connection comes back, changes stay on this computer.
   projectFull: boolean;
   refreshShare: () => Promise<void>;
   refreshMembers: () => Promise<void>;
@@ -123,7 +120,6 @@ export interface CollabLiveStoreState {
   dismissEnded: () => void;
   dismissAccessNotice: () => void;
   dismissCommentsNotSent: () => void;
-  // Starts syncing again after it stopped on an error.
   goLiveAgain: () => void;
 }
 
@@ -196,7 +192,6 @@ function withPeople(
   );
 }
 
-// Set while the live lifecycle runs.
 let goLiveAgainNow: (() => void) | null = null;
 
 let shareRequest = 0;
@@ -251,9 +246,6 @@ interface LiveRun {
 
 const START_RETRY_MS = [1_000, 2_000, 5_000, 10_000, 30_000];
 
-// Retrying a live start can't fix these: the person has to sign in again, or
-// add the project's server back. They are tried again on the next server
-// change instead of on a timer.
 const START_REFUSALS: ReadonlySet<CollabErrorCode> = new Set([
   "signed_out",
   "server_removed",
@@ -262,7 +254,6 @@ const START_REFUSALS: ReadonlySet<CollabErrorCode> = new Set([
   "server_unknown",
 ]);
 
-// Endings that signing in again, or adding the server back, can undo.
 const RESUMABLE: ReadonlySet<CollabLiveEndedReason> = new Set(["signed_out", "server_removed", "account_suspended"]);
 
 function refusalReason(code: CollabErrorCode): CollabLiveEndedReason {
@@ -312,7 +303,6 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     releaseEditors(projectId);
     resumable = true;
     const state = store.getState();
-    // A status event from the start already said why, unless the server is gone.
     if (refusalReason(code) !== "server_removed" && state.status?.state === "ended") return;
     const reason = refusalReason(code);
     store.setState({ status: { state: "ended", reason }, ended: reason, peers: {} });
@@ -343,7 +333,6 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
         return;
       }
       if (live !== run) return;
-      // One line per run: the retries below would otherwise log every 30 seconds.
       if (attempt === 0) void logError("collab live start", error);
       const delay = START_RETRY_MS[Math.min(attempt, START_RETRY_MS.length - 1)];
       run.retry = setTimeout(() => {
@@ -371,8 +360,6 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
       }) ?? null;
   };
 
-  // Syncing stopped after an error. The next start skips the change at
-  // fault, so it can start again at once.
   const goLiveAgain = () => {
     const state = store.getState();
     if (disposed || live !== null || !state.projectId || !state.share || state.ended !== "failed") return;
@@ -405,8 +392,6 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
 
   const onStatus = (payload: CollabLiveStatus) => {
     if (payload.projectId !== current()) return;
-    // A connection that comes back tries the changes again, and the server
-    // says once more if the project is still full.
     const back = payload.status.state === "online" && store.getState().status?.state !== "online";
     store.setState((state) => ({
       status: heldStatus(state.status, payload.status),
@@ -509,8 +494,6 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     });
   };
 
-  // After a sign-in, or after the project's server is added back, a project
-  // that couldn't go live tries again.
   const onServerChanged = (payload: CollabServerChanged) => {
     const state = store.getState();
     const projectId = state.projectId;

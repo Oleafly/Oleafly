@@ -1,5 +1,3 @@
-//! Building the run's copy of the project, its build log, and the build
-//! service research tasks use in the background helper.
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -20,7 +18,6 @@ use crate::engine::{
 const BUILD_TIMEOUT: Duration = Duration::from_secs(300);
 const MAX_ERRORS: usize = 50;
 const LOG_TAIL_BYTES: usize = 16 * 1024;
-/// A build log is read from its last 256 KiB at most.
 pub(crate) const LOG_READ_BYTES: u64 = 256 * 1024;
 
 pub(super) fn specs() -> Vec<ToolSpec> {
@@ -50,7 +47,6 @@ pub(super) fn specs() -> Vec<ToolSpec> {
     ]
 }
 
-/// The last `max` bytes of `text`, starting at a character.
 pub(crate) fn tail_bytes(text: &str, max: usize) -> &str {
     if text.len() <= max {
         return text;
@@ -62,11 +58,6 @@ pub(crate) fn tail_bytes(text: &str, max: usize) -> &str {
     &text[start..]
 }
 
-/// The work root opened for a build. A review copy of a folder the app
-/// opened in place has no `project.json` (the app keeps the settings in its
-/// data folder, keyed by the real folder's path), so it is built with the
-/// real folder's settings (engine, main document, compiler, Typst) rather
-/// than ones detection guesses.
 fn opened_for_build(project: &Path, work_root: &Path) -> Result<OpenedProject, CliError> {
     if project != work_root {
         if let Ok(original) = open_project(project, None, None) {
@@ -89,7 +80,6 @@ fn opened_for_build(project: &Path, work_root: &Path) -> Result<OpenedProject, C
     open_project(work_root, None, None)
 }
 
-/// `compile`: builds the work root (the copy in review mode).
 pub(super) async fn compile(ctx: &Arc<ToolContext>) -> Result<Value, String> {
     let root = ctx.workspace.work_root().to_path_buf();
     let request = BuildRequest {
@@ -139,8 +129,6 @@ fn last_lines(text: &str, lines: usize) -> (String, bool) {
     (all[start..].join("\n"), start > 0)
 }
 
-/// The latest log of the project at `root`: its last `lines` lines, read
-/// from the end of the file.
 pub(crate) fn latest_log_tail(root: &Path, lines: usize) -> Result<Value, String> {
     let opened = open_project(root, None, None).map_err(|error| error.message)?;
     let workspace = &opened.workspace;
@@ -152,7 +140,6 @@ pub(crate) fn latest_log_tail(root: &Path, lines: usize) -> Result<Value, String
     Ok(json!({"log": log, "truncated": truncated, "source": latest.source}))
 }
 
-/// `get_build_log`: the run's own last build, else the latest log on disk.
 pub(super) async fn build_log(ctx: Arc<ToolContext>, arguments: Value) -> Result<Value, String> {
     let lines = arguments["tail_lines"]
         .as_u64()
@@ -167,11 +154,8 @@ pub(super) async fn build_log(ctx: Arc<ToolContext>, arguments: Value) -> Result
         .map_err(|_| "The tool stopped before it returned a result.".to_string())?
 }
 
-/// Builds and maps a research task's workspace with this CLI's engine.
 pub struct CliWorkspaceTools;
 
-/// A research task's copy at `root`, opened for a build. A copy of a folder
-/// the app opened in place takes `source`'s settings, as a review copy does.
 pub(crate) fn opened_for_task_copy(
     root: &Path,
     source: Option<&Path>,
@@ -179,7 +163,6 @@ pub(crate) fn opened_for_task_copy(
     opened_for_build(source.unwrap_or(root), root)
 }
 
-/// What a build reported, as a research task's checks read it.
 pub(crate) async fn compile_summary(
     root: PathBuf,
     source: Option<PathBuf>,
@@ -198,8 +181,6 @@ pub(crate) async fn compile_summary(
     })
 }
 
-/// A build's outcome as a [`CompileSummary`]: a missing compiler skips the
-/// check instead of failing it.
 fn summary_of(built: Result<BuildResult, CliError>) -> Result<CompileSummary, String> {
     match built {
         Ok(result) => Ok(CompileSummary {
@@ -225,7 +206,6 @@ fn summary_of(built: Result<BuildResult, CliError>) -> Result<CompileSummary, St
     }
 }
 
-/// The project's outline, labels, references and citations.
 pub(crate) fn project_map_of(root: &Path) -> Result<Value, String> {
     let opened = open_project(root, None, None).map_err(|error| error.message)?;
     let main = opened.workspace.manifest().main_doc.clone();
@@ -287,12 +267,10 @@ mod tests {
             r#"{"name":"P","main_doc":"main.tex","engine":"latexmk","tex_flavor":"lualatex"}"#,
         )
         .unwrap();
-        // Not linked: the copy is opened as itself.
         let copy = tempfile::tempdir().unwrap();
         std::fs::write(copy.path().join("main.tex"), "\\documentclass{article}").unwrap();
         let opened = opened_for_build(project.path(), copy.path()).unwrap();
         assert_eq!(opened.origin, ProjectOrigin::Detected);
-        // The same folder opens as it is.
         let opened = opened_for_build(project.path(), project.path()).unwrap();
         assert_eq!(
             opened.workspace.manifest().tex_flavor.as_deref(),
@@ -323,8 +301,6 @@ mod tests {
         assert_eq!(last_lines("a\nb\nc", 2), ("b\nc".to_string(), true));
     }
 
-    // Mapped without a build: emptying PATH for a real one broke the
-    // programs other tests start at the same time.
     #[test]
     fn workspace_tools_report_a_missing_compiler_as_skipped() {
         let missing = CliError::new(

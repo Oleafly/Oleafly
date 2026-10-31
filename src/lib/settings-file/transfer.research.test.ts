@@ -89,7 +89,6 @@ describe("research task defaults in the settings file", () => {
       commandNetwork: true,
       timeBudgetMinutes: 240,
     });
-    // The MCP servers tasks may use belong to this computer and stay out of the file.
     expect(text).not.toContain("lab-cluster-mcp");
     expect(readSettingsFile(text, captured)).toMatchObject({ ok: true, changed: [], ignored: [] });
 

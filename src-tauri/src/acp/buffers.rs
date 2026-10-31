@@ -1,6 +1,3 @@
-//! `fs/read_text_file`: an agent reads project files through Oleafly, so it
-//! sees the text open in the editor, unsaved changes included. Files that
-//! are not open are read from disk.
 use futures_util::future::BoxFuture;
 use serde_json::json;
 use std::collections::HashMap;
@@ -9,7 +6,6 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::oneshot;
 
-/// Bytes read from disk at most.
 pub(super) const MAX_READ_BYTES: u64 = 8 * 1024 * 1024;
 /// The reply's text as it travels, escaped as a JSON string at most: the ACP
 /// frame is 1 MiB, with room left for the envelope.
@@ -22,10 +18,7 @@ pub(super) const TOO_LARGE: &str =
     "The file is too large to send over ACP. Read it with your own file tool.";
 pub(super) const OUTSIDE: &str = "Oleafly only serves files inside this project.";
 
-/// Where open editor text comes from.
 pub trait BufferSource: Send + Sync {
-    /// The open text of `relative` in the `owner` window, or `None` when the
-    /// file is not open there (or the window does not answer in time).
     fn open_buffer(
         &self,
         owner: &str,
@@ -34,9 +27,6 @@ pub trait BufferSource: Send + Sync {
     ) -> BoxFuture<'static, Option<String>>;
 }
 
-/// Asks the owner window for its open text over `acp:buffer-request`.
-/// Requests waiting for a window, by request id: the window's label and
-/// where its answer goes.
 type Waiting = HashMap<String, (String, oneshot::Sender<Option<String>>)>;
 
 pub(crate) struct WindowBuffers {
@@ -52,7 +42,6 @@ impl WindowBuffers {
         })
     }
 
-    /// A window's answer. Only the window the request went to may answer.
     pub(super) fn reply(
         &self,
         window: &str,
@@ -89,8 +78,6 @@ impl BufferSource for Arc<WindowBuffers> {
         relative: &str,
     ) -> BoxFuture<'static, Option<String>> {
         use tauri::{Emitter, Manager};
-        // Only a window has open editor text: a task or helper owner is not
-        // one, and asking would only wait out the timeout.
         if self.app.get_webview_window(owner).is_none() {
             return Box::pin(async { None });
         }
@@ -133,8 +120,6 @@ impl BufferSource for Arc<WindowBuffers> {
     }
 }
 
-/// `absolute` relative to the project root as the editor names it
-/// (forward slashes), when it is inside the root.
 fn relative_name(roots: &[&Path], absolute: &Path) -> Option<String> {
     roots.iter().find_map(|root| {
         let rest = absolute.strip_prefix(root).ok()?;
@@ -146,7 +131,6 @@ fn relative_name(roots: &[&Path], absolute: &Path) -> Option<String> {
     })
 }
 
-/// 1-based `line` and `limit` lines of `text`.
 pub(super) fn slice_lines(text: &str, line: Option<u64>, limit: Option<u64>) -> String {
     if line.is_none() && limit.is_none() {
         return text.to_owned();
@@ -156,8 +140,6 @@ pub(super) fn slice_lines(text: &str, line: Option<u64>, limit: Option<u64>) -> 
     text.split_inclusive('\n').skip(skip).take(take).collect()
 }
 
-/// Opens `path` for reading without following a link in its last part (and,
-/// on Unix, without waiting on a named pipe).
 fn open_no_follow(path: &Path) -> std::io::Result<std::fs::File> {
     let mut options = std::fs::OpenOptions::new();
     options.read(true);
@@ -174,10 +156,6 @@ fn open_no_follow(path: &Path) -> std::io::Result<std::fs::File> {
     options.open(path)
 }
 
-/// Reads the file `path` leads to now, if it is still inside the canonical
-/// folder `within`. The path is resolved again at read time (a link made
-/// after the request was checked does not lead out), and the file is opened
-/// by its resolved path without following links.
 fn read_inside(path: &Path, within: &Path) -> Result<Vec<u8>, (i64, String)> {
     use std::io::Read as _;
     let unreadable = || (-32603, "The file could not be read.".to_string());
@@ -193,8 +171,6 @@ fn read_inside(path: &Path, within: &Path) -> Result<Vec<u8>, (i64, String)> {
     if metadata.len() > MAX_READ_BYTES {
         return Err((-32603, TOO_LARGE.to_string()));
     }
-    // The opened file is the one the resolved path names: no folder on the
-    // way was swapped for a link meanwhile.
     if real.canonicalize().ok().as_deref() != Some(real.as_path()) {
         return Err((-32602, OUTSIDE.to_string()));
     }
@@ -216,10 +192,6 @@ fn read_inside(path: &Path, within: &Path) -> Result<Vec<u8>, (i64, String)> {
     Ok(bytes)
 }
 
-/// The text an agent asked for: the open buffer of the owner window when
-/// there is one, otherwise the file on disk, which must still be inside
-/// the canonical folder `within`; then `line`/`limit`. Errors carry the
-/// JSON-RPC code to answer with.
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn read_for_agent(
     source: Option<&dyn BufferSource>,
@@ -259,8 +231,6 @@ pub(super) async fn read_for_agent(
 /// byte for each quote, backslash, newline and tab; five for other control
 /// characters).
 fn fits_reply(text: &str) -> bool {
-    // Escaping makes a byte at most six bytes, so only a text between a
-    // sixth of the limit and the whole limit needs measuring.
     if text.len() > MAX_REPLY_BYTES {
         return false;
     }
@@ -285,15 +255,12 @@ mod tests {
 
     #[test]
     fn a_reply_must_fit_the_frame_after_json_escaping() {
-        // Plain text: its raw size is what counts.
         assert!(fits_reply(&"a".repeat(MAX_REPLY_BYTES - 2)));
         assert!(!fits_reply(&"a".repeat(MAX_REPLY_BYTES)));
         // Quotes double in size: 600 KiB of them are 1.2 MiB on the wire,
         // though the raw text is well under the old 900 KiB limit.
         assert!(!fits_reply(&"\"".repeat(600 * 1024)));
         assert!(fits_reply(&"\"".repeat(400 * 1024)));
-        // So do backslashes and newlines; other control characters grow six
-        // times.
         assert!(!fits_reply(&"\\".repeat(600 * 1024)));
         assert!(!fits_reply(&"\n".repeat(600 * 1024)));
         assert!(!fits_reply(&"\u{1}".repeat(200 * 1024)));
@@ -328,15 +295,12 @@ mod tests {
         let root = root.canonicalize().unwrap();
         let secret = temp.path().join("id_ed25519");
         std::fs::write(&secret, "private key").unwrap();
-        // The request named a regular file; by the time it is read the file
-        // is a link to one outside the project.
         let notes = root.join("notes.md");
         std::os::unix::fs::symlink(&secret, &notes).unwrap();
         let roots = [root.as_path()];
         let refused =
             read_for_agent(None, None, "project", &roots, &root, &notes, None, None).await;
         assert_eq!(refused, Err((-32602, OUTSIDE.to_string())));
-        // A folder swapped for a link is refused the same way.
         let outside = temp.path().join("outside");
         std::fs::create_dir(&outside).unwrap();
         std::fs::write(outside.join("a.tex"), "outside").unwrap();
@@ -353,7 +317,6 @@ mod tests {
         )
         .await;
         assert_eq!(refused, Err((-32602, OUTSIDE.to_string())));
-        // A link that stays inside is read.
         std::fs::write(root.join("main.tex"), "inside").unwrap();
         std::os::unix::fs::symlink(root.join("main.tex"), root.join("alias.tex")).unwrap();
         let text = read_for_agent(

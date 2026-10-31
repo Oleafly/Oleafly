@@ -1099,7 +1099,6 @@ describe("McpServersManager", () => {
       const shown = "~/.local/bin/uvx notes-mcp --dir ~/notes";
       const endpoint = await screen.findByTitle(shown);
       expect(endpoint).toHaveTextContent(shown);
-      // Settings blurs the paths in the command, and only the paths.
       const blurred = (element: Element | null) =>
         [...(element?.querySelectorAll("[data-settings-path]") ?? [])].map((node) => node.textContent);
       expect(blurred(endpoint)).toEqual(["~/.local/bin/uvx", "~/notes"]);

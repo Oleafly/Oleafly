@@ -44,7 +44,6 @@ export interface ResearchTaskAgentOption {
 export interface ResearchTasksPanelProps {
   projectId: string | null;
   agents: ResearchTaskAgentOption[];
-  /** The user's own providers, so a task on one shows its name when no agent option lists it. */
   customProviders?: readonly { id: string; name: string }[];
   onOpenSession?: (task: ResearchTask) => void;
   onApplied?: (task: ResearchTask) => void;
@@ -256,8 +255,6 @@ export function ResearchTasksPanel({
 
   useEffect(() => {
     const state = useResearchTasksStore.getState();
-    // Task outputs in the Files rail may already hold this project and have opened
-    // a task for review; keep that selection and only bring the list up to date.
     if (projectId && state.projectId === projectId) void state.refresh();
     else void bindProject(projectId);
   }, [bindProject, projectId]);
@@ -346,9 +343,6 @@ export function ResearchTasksPanel({
     setEditingTaskId(null);
   };
 
-  // A Settings link in the composer closes it (its draft kept) so Settings
-  // isn't under the composer's modal layer, and the composer comes back,
-  // reading the settings again, once Settings closes.
   const [composerAfterSettings, setComposerAfterSettings] = useState<{
     projectId: string | null;
     taskId: string | null;
@@ -414,7 +408,6 @@ export function ResearchTasksPanel({
       >
         <div className="@container shrink-0 px-3 pt-3">
           <Tabs value={filter} onValueChange={(next) => setFilter(next as TaskFilter)}>
-            {/* Below 18rem the four tabs truncate to syllables; a menu takes over there. */}
             <TabsList size="sm" className="hidden w-full @[18rem]:flex">
               {FILTERS.map((entry) => (
                 <TabsTrigger

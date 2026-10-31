@@ -19,7 +19,6 @@ mod registry;
 mod subagents;
 pub mod task_runtime;
 pub mod usage;
-// 0.4.8 C:
 pub mod web;
 use registry::{acquire_request_slot, cancel_request, run_registered};
 #[cfg(test)]
@@ -55,8 +54,6 @@ struct RunResource<T> {
     value: T,
 }
 
-/// A run's steer channel and what a steered message needs: the run's
-/// attachment budget and its web context.
 #[derive(Clone)]
 pub(crate) struct RunSteer {
     pub handle: oleafly_agent::SteerHandle,
@@ -78,14 +75,10 @@ pub struct AgentState {
     requests: Mutex<RequestRegistry>,
     pending_tools: Mutex<HashMap<String, PendingTool>>,
     request_slots: std::sync::Arc<tokio::sync::Semaphore>,
-    /// Steer senders and cancellation tokens for in-flight runs; registered
-    /// at run start, cleaned up at run end and on cancel.
     steer_senders: Mutex<HashMap<String, RunResource<RunSteer>>>,
     run_tokens: Mutex<HashMap<String, RunResource<oleafly_agent::CancellationToken>>>,
     run_projects: Mutex<HashMap<String, RunResource<Option<String>>>>,
     run_tools: Mutex<HashMap<String, RunResource<HashSet<String>>>>,
-    /// Per-run subagent managers, so "stop all subagents" can reach the
-    /// children without stopping the parent run.
     subagent_managers: Mutex<HashMap<String, RunResource<std::sync::Arc<SubagentManager>>>>,
 }
 
@@ -343,8 +336,6 @@ async fn cancel_all_work(
     session_id: Option<&str>,
 ) {
     crate::agent_exec::cancel_all(exec_state);
-    // Cancel every run token first so in-flight tools (including subagent
-    // children sharing the token) wind down before their futures drop.
     let tokens: Vec<_> = {
         let mut tokens = lock_or_recover(&state.run_tokens);
         tokens.drain().map(|(_, token)| token.value).collect()
@@ -394,7 +385,6 @@ fn cancel_run(state: &AgentState, request_id: &str) {
         tokens.remove(request_id).map(|token| token.value)
     };
     if let Some(token) = &token {
-        // Cascades to subagent children through the shared pipeline token.
         token.cancel();
     }
     lock_or_recover(&state.steer_senders).remove(request_id);
@@ -530,8 +520,6 @@ pub struct SteerResult {
     pub status: SteerStatus,
 }
 
-/// Inject mid-run input into an active run; it lands at the next message
-/// boundary (after the pending tool batch completes).
 #[tauri::command]
 pub async fn agent_steer(
     state: State<'_, AgentState>,
@@ -541,7 +529,6 @@ pub async fn agent_steer(
     steer_run(state.inner(), &request_id, message).await
 }
 
-/// Stop every running subagent of a run without stopping the run itself.
 #[tauri::command]
 pub async fn agent_subagents_stop(
     state: State<'_, AgentState>,
@@ -605,9 +592,6 @@ async fn steer_run(
     }
 }
 
-/// Resolves a steered message's attachments against the run's remaining
-/// budget and records its URLs for web fetch. Notes for files that could
-/// not be sent stay in the message, where the model reads them.
 async fn prepare_steer(
     steer: &RunSteer,
     mut message: oleafly_agent::Message,
@@ -657,9 +641,6 @@ fn initiating_user_text(request: &CompletionRequest) -> String {
         .unwrap_or_default()
 }
 
-/// `seed_text` is the user's own words, read before attachments were
-/// resolved, so text extracted from a PDF never becomes the rollout's user
-/// message.
 fn turn_recorder_for_request(
     turn_id: String,
     client_turn_id: Option<String>,
@@ -721,7 +702,6 @@ fn standalone_usage(
     ))
 }
 
-/// The usage status of a finished run.
 fn run_status<E>(cancelled: bool, outcome: &Result<oleafly_agent::RunOutcome, E>) -> &'static str {
     if cancelled {
         "cancelled"
@@ -732,16 +712,12 @@ fn run_status<E>(cancelled: bool, outcome: &Result<oleafly_agent::RunOutcome, E>
     }
 }
 
-/// Appends the run's recorded turn to its thread's rollout and re-indexes
-/// the thread.
 async fn persist_recorded_turn(
     recorder: &Mutex<oleafly_agent::items::TurnRecorder>,
     thread_id: &str,
     project: String,
     stopped_at_cap: bool,
 ) {
-    // The guard must drop before the persist await keeps this future Send; a
-    // poisoned lock simply skips persistence.
     let snapshot = recorder.lock().ok().map(|mut recorder| {
         recorder.finish(stopped_at_cap);
         recorder.snapshot().clone()
@@ -764,7 +740,7 @@ async fn persist_recorded_turn(
 }
 
 #[tauri::command]
-#[allow(clippy::too_many_arguments)] // Tauri command surface; each arg is IPC-named.
+#[allow(clippy::too_many_arguments)]
 pub async fn agent_run(
     state: State<'_, AgentState>,
     app: tauri::AppHandle,
@@ -780,20 +756,14 @@ pub async fn agent_run(
     let agent_state = state.inner();
     let config = sanitized_run_config(config);
     let run_id = request_id.clone();
-    // The run is pinned to the project it started in; an invalid id disables
-    // native dispatch rather than failing the run.
     let pinned_project = project_id.filter(|id| crate::paths::validate_project_id(id).is_ok());
-    // Recorder inputs are captured before `run_registered` borrows the id.
     let record_scope = thread_id
         .as_deref()
         .map(|id| (id.to_string(), request_id.clone(), client_turn_id.clone()));
-    // The closure owns its own id copy; `run_registered` borrows the original.
     let run_registration_id = request_id.clone();
     run_registered(agent_state, &request_id, |generation| async move {
         let mut request = request;
         let seed_text = initiating_user_text(&request);
-        // A chat with web on may need the local web tools, so the model's
-        // tool support is checked for it too.
         let wants_tools = !request.tools.is_empty() || request.web.is_some_and(|web| web.any());
         let resolved = resolve_for_run_off_thread(provider_override, wants_tools).await?;
         let data_root = crate::paths::oleafly_root()?;
@@ -816,7 +786,6 @@ pub async fn agent_run(
                 let summaries = crate::config::read_config()
                     .map(|cfg| cfg.ai_reasoning_summaries)
                     .unwrap_or(false);
-                // The provider's own web tools skip the folder-trust prompt.
                 let hosted_web = trust_project
                     .as_deref()
                     .is_none_or(crate::trust::is_trusted);
@@ -837,14 +806,11 @@ pub async fn agent_run(
         let sink = on_event.clone();
         let allowed_tools: std::collections::HashSet<_> =
             request.tools.iter().map(|tool| tool.name.clone()).collect();
-        // Subagents on a model without hosted web tools add the local ones
-        // to their own requests; their calls pass through this runner.
         let mut shared_tools = allowed_tools.clone();
         if let Some(ctx) = &web_ctx {
             shared_tools.extend(web::web_tool_names(ctx));
         }
         let app_for_exec_cancel = app.clone();
-        // 0.4.8 I: desktop apps grants follow the chat; the Cua session is this run's.
         let cua_run =
             crate::cua_driver::RunScope::for_chat(thread_id.as_deref(), &run_registration_id);
         let inner_tool = composite_tool_runner(
@@ -859,23 +825,17 @@ pub async fn agent_run(
             Some(ctx) => oleafly_agent::tools::web::web_tool_runner(ctx.clone(), inner_tool),
             None => inner_tool,
         };
-        // The folder-trust gate asks before network tools, web ones included,
-        // in folders the user has not trusted.
         let base_tool = restricted_tool_runner(
             pinned_project.clone(),
             native_restricted_confirm(app.clone()),
             inner_tool,
         );
-        // Pre-classify every call: project denials short-circuit before any
-        // webview round trip; read-class tools may run concurrently under the
-        // pipeline's shared gate.
         let classified_tool = oleafly_agent::ToolOrchestrator::wrap(
             base_tool.clone(),
             approval_classifier(pinned_project.clone()),
         );
         let classified_tool = allowlisted_tool_runner(shared_tools, classified_tool);
         let pipeline = tool_pipeline();
-        // Sub-agents: threads in this run, managed by the tool dispatcher.
         let multi_agent = crate::agent_config::MultiAgentConfig::load(&data_root);
         for notice in notices {
             let _ = on_event.send(notice);
@@ -918,8 +878,6 @@ pub async fn agent_run(
             web: web_ctx.clone(),
         };
         let subagent_manager_for_registry = subagent_manager.clone();
-        // Hosted search results reach the shared web context from the
-        // run's events, so subagents on other models can fetch them.
         let event_web = web_ctx.clone();
         let run_tool = subagents::multi_agent_tool_runner(
             run_context,
@@ -927,9 +885,6 @@ pub async fn agent_run(
             classified_tool.clone(),
         );
         let run_tool = allowlisted_tool_runner(allowed_tools.clone(), run_tool);
-        // Steer channel + token registration: the shell can inject input or
-        // interrupt (cascading to subagents through the shared token) while
-        // the run is in flight.
         let (steer_handle, steer_rx) = oleafly_agent::SteerHandle::channel();
         register_run_resources(
             agent_state,
@@ -946,11 +901,8 @@ pub async fn agent_run(
             allowed_tools,
         );
         let _run_resources = RunResourcesGuard::new(agent_state, &run_registration_id, generation);
-        // 0.4.8 I: end the Cua session when the turn ends (finished, cancelled or dropped).
         let _cua_turn = crate::cua_driver::TurnEndGuard::new(run_registration_id.clone());
 
-        // A run scoped to a thread records its items into that thread's
-        // rollout as it completes.
         let mut persist_guard = InterruptedRunPersist {
             thread_id: record_sink.as_ref().map(|(id, _)| id.clone()),
             recorder: record_sink.as_ref().map(|(_, shared)| shared.clone()),
@@ -1001,7 +953,6 @@ pub async fn agent_run(
             .cancel_descendants("/root")
             .await;
         usage.finish(run_status(run_token.is_cancelled(), &outcome));
-        // The run's cost with its subagents', from the models' prices.
         let mut outcome = outcome;
         if let Ok(outcome) = &mut outcome {
             outcome.cost_usd = cost_tally.total();
@@ -1023,14 +974,8 @@ pub async fn agent_run(
     .await
 }
 
-/// The legacy batch delegation tool, still dispatched for older prompts.
 pub const SUBAGENT_TOOL: &str = "spawn_subagents";
 
-/// Risk classification mirroring the shell's approval-risk table
-/// (packages/ai-tools/src/approval-risk.ts): read tools run unprompted;
-/// everything else confirms, and unknown tools classify as write so nothing
-/// new runs silently. Read-class tools also run concurrently unless they are
-/// listed in SERIAL_READ_TOOLS.
 const READ_RISK_TOOLS: [&str; 33] = [
     "read_file",
     "read_skill_file",
@@ -1062,11 +1007,8 @@ const READ_RISK_TOOLS: [&str; 33] = [
     "interrupt_agent",
     "list_agents",
     "close_agent",
-    // 0.4.8 C: the folder-trust gate still asks before these in untrusted
-    // folders.
     "web_search",
     "web_fetch",
-    // 0.4.8 E: reports on the project's research tasks.
     "research_task_status",
 ];
 
@@ -1091,9 +1033,6 @@ fn tool_risk(name: &str) -> oleafly_agent::ToolRisk {
     oleafly_agent::ToolRisk::Write
 }
 
-// Control-plane delegation tools inherit the run's shared tool gate, and
-// wait_agent blocks on a child that needs that same gate to mutate. They take
-// no gate so a parent waiting on a child never starves the child.
 const ORCHESTRATION_TOOLS: [&str; 8] = [
     "spawn_agent",
     "spawn_subagents",
@@ -1121,9 +1060,6 @@ fn tool_pipeline() -> oleafly_agent::ToolPipeline {
     oleafly_agent::ToolPipeline::from_registry(registry)
 }
 
-/// Classify every tool call against the project's persisted decisions: a
-/// denial is Forbidden (never executes, never asks), an explicit allow or a
-/// read-class tool is Skip, everything else asks.
 fn approval_classifier(
     project_id: Option<String>,
 ) -> oleafly_agent::tools::orchestrator::Classifier {
@@ -1144,13 +1080,6 @@ fn approval_classifier(
         oleafly_agent::classification_from_policy(risk, decision)
     })
 }
-/// Execute a backend-capable tool natively, without a webview round trip.
-///
-/// `Some(output)` means the tool was answered natively — including native
-/// failures, which must NOT fall through to the webview (the two paths could
-/// diverge). `None` means the tool is not native and the webview runner owns
-/// it. Native coverage is the read-only set shared with the MCP server;
-/// mutating tools keep the webview path until the approval flow moves.
 async fn native_agent_tool(
     project_id: &str,
     name: &str,
@@ -1189,10 +1118,6 @@ fn unwrap_mcp_text(result: &serde_json::Value) -> String {
     }
 }
 
-/// A run stays pinned to the project it started in; native dispatch is only
-/// allowed while that project is still the active one. This mirrors the
-/// webview-side run guard, so a run surviving a project switch cannot read
-/// the old project's files into the model from either path.
 fn native_dispatch_allowed(pinned: &str, active_project: Option<&str>) -> bool {
     active_project == Some(pinned)
 }
@@ -1213,7 +1138,6 @@ fn composite_tool_runner(
         let handle = handle.clone();
         let cua = cua.clone();
         Box::pin(async move {
-            // 0.4.8 I: desktop apps run natively in Rust, behind their own gate.
             if call.name == crate::cua_driver::DESKTOP_APPS_TOOL {
                 return crate::cua_driver::agent_tool(&cua, project.as_deref(), &call.arguments)
                     .await;
@@ -1385,8 +1309,6 @@ fn allowlisted_tool_runner(
     })
 }
 
-/// Persists an interrupted turn when a run's future is dropped by a cancel:
-/// the natural completion path disarms the guard first.
 struct InterruptedRunPersist {
     thread_id: Option<String>,
     recorder: Option<std::sync::Arc<Mutex<oleafly_agent::items::TurnRecorder>>>,
@@ -1446,8 +1368,6 @@ pub fn agent_tool_result(
     let key = tool_key(&request_id, &call_id);
     let pending = { lock_or_recover(&state.pending_tools).remove(&key) };
     if let Some(pending) = pending {
-        // Defense-in-depth for persisted per-project denials: even if the
-        // webview ran a denied tool, its output never reaches the model.
         let denied = pending.project_id.as_deref().is_some_and(|project| {
             crate::paths::oleafly_root().is_ok_and(|root| {
                 crate::approvals::effective_decision_for(&root, project, &pending.tool_name)
@@ -1501,7 +1421,6 @@ fn sanitized_run_config(config: Option<RunConfig>) -> RunConfig {
     config.retry_base_ms = config
         .retry_base_ms
         .clamp(MIN_RETRY_BASE_MS, MAX_RETRY_BASE_MS);
-    // Long runs are for research tasks in the backend, never a webview request.
     config.allow_long_runs = false;
     config.max_duration_ms = None;
     config
@@ -1588,11 +1507,8 @@ async fn projected_provider_config(
 }
 
 const PROBE_TOOL: &str = "ping";
-// Thinking counts toward the output limit, so the probe leaves room for it.
 const PROBE_MAX_OUTPUT_TOKENS: u32 = 2_048;
 const PROBE_TIMEOUT: Duration = Duration::from_secs(30);
-// A local or custom server loads a model on its first request, which can take
-// minutes on modest hardware.
 const SELF_HOSTED_PROBE_TIMEOUT: Duration = Duration::from_secs(120);
 const PROBE_TIMEOUT_REASON: &str = "The model did not answer before the probe timed out.";
 const PROBE_UNREACHABLE_REASON: &str = "The provider could not be reached.";
@@ -1625,8 +1541,6 @@ pub async fn agent_probe_model(
     probe_and_record(&client, &resolved, probe_timeout(&resolved)).await
 }
 
-/// Probes the model and stores the verdict. A probe that could not tell is an
-/// error and stores nothing, so the model stays untested and is probed again.
 async fn probe_and_record(
     client: &reqwest::Client,
     resolved: &oleafly_agent::Resolved,
@@ -1714,8 +1628,6 @@ fn probe_request(timeout: Duration) -> CompletionRequest {
     }
 }
 
-/// Probes the model. Only an outcome that says something about the model is
-/// a verdict; a timeout or a provider that failed to answer is an error.
 pub(crate) async fn probe_model(
     client: &reqwest::Client,
     resolved: &oleafly_agent::Resolved,
@@ -1775,10 +1687,6 @@ fn replays_reasoning(
     }
 }
 
-/// Answers the ping and sends the model's reply back to it, as the next
-/// step of a run would. The reason is set when the provider dropped the
-/// replayed thinking because it no longer matched, or refused it; the error
-/// is a follow-up that never got an answer.
 async fn probe_follow_up(
     client: &reqwest::Client,
     resolved: &oleafly_agent::Resolved,
@@ -1845,10 +1753,6 @@ fn probe_status_is_transient(status: u16) -> bool {
     matches!(status, 401 | 403 | 404 | 408 | 429) || status >= 500
 }
 
-/// Whether a failed probe request says nothing about the model: the provider
-/// was slow, unreachable, busy, or refused the credential or the address.
-/// Anything else the provider rejected about the request itself (HTTP 400,
-/// say, for a tool it does not take) is a verdict on the model.
 fn probe_error_is_transient(error: &oleafly_agent::AgentError) -> bool {
     use oleafly_agent::AgentError;
     match error {
@@ -1861,8 +1765,6 @@ fn probe_error_is_transient(error: &oleafly_agent::AgentError) -> bool {
     }
 }
 
-/// The reason a failed probe request blocks the model, or the error itself
-/// when it says nothing about the model and must not become a verdict.
 fn blocking_probe_reason(
     error: oleafly_agent::AgentError,
 ) -> Result<String, oleafly_agent::AgentError> {
@@ -1873,8 +1775,6 @@ fn blocking_probe_reason(
     }
 }
 
-/// Whether a stored `Blocked` reason is one a failed attempt used to leave
-/// behind. Builds before this saved such attempts as verdicts.
 pub(crate) fn is_transient_probe_reason(reason: &str) -> bool {
     if [
         PROBE_TIMEOUT_REASON,
@@ -2169,7 +2069,6 @@ mod probe_tests {
 
     type SeenHeaders = Arc<Mutex<Vec<axum::http::HeaderMap>>>;
 
-    /// A fake Anthropic endpoint answering each request with the next body.
     async fn anthropic_probe_against(
         bodies: [String; 2],
     ) -> (
@@ -2653,9 +2552,6 @@ mod probe_tests {
 
     #[tokio::test]
     async fn a_silent_provider_times_out_without_a_verdict() {
-        // The provider stays silent far longer than the probe waits, so a probe
-        // that ignored its timeout could not finish inside the bound below,
-        // however slow the machine is.
         let silence = crate::test_wait::CHILD_PATIENCE;
         let started = std::time::Instant::now();
         let (probe, _) = try_probe_against(
@@ -2704,7 +2600,6 @@ mod probe_tests {
         for error in unresolved {
             assert!(probe_error_is_transient(&error), "{error:?}");
             assert_eq!(blocking_probe_reason(error.clone()), Err(error.clone()));
-            // What an older build stored for such a failure is recognised.
             assert!(
                 is_transient_probe_reason(&probe_error_reason(&error)),
                 "{error:?}"
@@ -2813,7 +2708,6 @@ mod probe_tests {
         assert_eq!(seen.lock().unwrap().len(), 1);
     }
 
-    /// Runs `body` with the app data folder pointing at a fresh temp dir.
     fn with_data_dir<T>(body: impl std::future::Future<Output = T>) -> T {
         let _env_guard = crate::paths::data_dir_env_lock();
         let dir = tempfile::tempdir().unwrap();

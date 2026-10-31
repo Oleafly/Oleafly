@@ -93,7 +93,6 @@ function mainThreadDownscale(request: DownscaleRequest): Promise<DownscaleReply>
   return runDownscale(request, { decode: decodeOriented, canvas: pageCanvas });
 }
 
-/** A copy the worker can own: transferring detaches the buffer. */
 function request(input: ImageInput, budget: ImageBudget): DownscaleRequest {
   return {
     bytes: input.bytes.slice().buffer,

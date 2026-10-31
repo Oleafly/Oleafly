@@ -43,7 +43,6 @@ function archivePath(seedRoot: string, project: ResearchSeedProject): string {
 }
 
 async function copySeedProject(seedRoot: string, project: ResearchSeedProject): Promise<void> {
-  // The archive isn't picked in a dialog; dev builds let the seeder record it.
   const [archive] = await grantTestOpenPaths([archivePath(seedRoot, project)]);
   const projectId = await importOverleafProjectCmd(archive, project.name);
   try {

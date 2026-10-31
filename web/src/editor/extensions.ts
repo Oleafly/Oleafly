@@ -6,7 +6,6 @@ import type { EditorBridge, ProjectActions } from "../controller";
 import { useWeb, type WebState } from "../store";
 import { type OverlaySource, overlayDecorations } from "./decorations";
 
-/** Mod-s compiles, as saving does in the app; Mod-Shift-j shows the cursor's line in the PDF. */
 export function webEditorKeymap(actions: Pick<ProjectActions, "compile" | "showInPdf">): KeyBinding[] {
   return [
     {

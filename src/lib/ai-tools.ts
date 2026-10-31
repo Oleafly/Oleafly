@@ -67,9 +67,6 @@ function assertFolderWritable(projectId: string): void {
   if (projectFolderIsReadOnly(projectId)) throw new Error(readOnlyFolderMessageInEnglish());
 }
 
-// A viewer can't change a shared project, and while it goes live the role
-// isn't known yet. The shared document isn't live then, so a write would fall
-// back to the local file, which the files store refuses for the same reason.
 function assertSharedWritable(projectId: string): void {
   const refusal = sharedWriteRefusal(projectId);
   if (refusal) throw refusal;
@@ -114,7 +111,6 @@ function currentDiskContent(projectId: string, path: string): Promise<string> {
   return Promise.resolve(cached ?? readFileContent(projectId, path));
 }
 
-/** The document insertAtCursor and replaceRange edit: the file open in the editor. */
 function insertTargetPathFor(files: ReturnType<typeof useFilesStore.getState>): string {
   return files.activePath || files.mainDoc || files.engine?.main_document || "main.tex";
 }
@@ -212,7 +208,6 @@ function syncTexAvailable(): boolean {
   return useCompileStore.getState().pdfBytes !== null;
 }
 
-// An AI jump must not pull the workspace open or take keyboard focus from the chat.
 export async function revealEditorLine(path: string, line: number): Promise<boolean> {
   return openProjectLocation({ path, line }, { keepFocus: true, showEditor: false, opener: "assistant" });
 }
@@ -323,8 +318,6 @@ const HOST: AiToolsHost = {
   },
   createFile: async (projectId, path, isDir, expectedGeneration) => {
     assertFolderWritable(projectId);
-    // The agent gets the strict contract: a collision is a structured error
-    // it must resolve by choosing a different name, never a silent overwrite.
     const result = await createFile(projectId, path, isDir, "error", expectedGeneration);
     recordMutationResult(projectId, result);
     return result;
@@ -448,7 +441,6 @@ const HOST: AiToolsHost = {
       })),
     ),
   getAiPdfCaptureEnabled: () => {
-    // Sync cache set by ChatPanel/settings; fall back to true-if-unknown only after config load.
     try {
       const v = localStorage.getItem("oleafly:ai_pdf_capture");
       if (v === "0") return false;
@@ -471,10 +463,6 @@ const HOST: AiToolsHost = {
     useAgentMemoryStore.getState().notes.map((n) => ({ id: n.id, content: n.content })),
 };
 
-// Call once at app startup, NOT at module load: doing IPC at import time
-// fires before the app is ready and, when `getConfig` is absent in a
-// unit-test mock, throws synchronously at import and breaks the whole test
-// file.
 export function initAiPdfCaptureFlag(): void {
   void getConfigCached()
     .then((c) => {
@@ -498,15 +486,9 @@ export function createOleaflyTools(opts?: {
     ...opts,
     resolveExecCwd: agentExecCwd,
     authorizeExec: async (projectId, command, runIdOverride) => {
-      // A subagent supplies its own external: owner so its commands can be
-      // cancelled independently; otherwise use the run's native id, and mint a
-      // renderer owner only as a last resort.
       const nativeRunId = runIdOverride ?? opts?.runId?.();
       const runId = nativeRunId ?? `external:${crypto.randomUUID()}`;
       if (!runId) throw new Error("The agent run ended before command approval.");
-      // Any external: owner (a subagent's or a renderer-minted one) must
-      // register with the trusted native registry before it can authorize;
-      // native run ids are already tracked.
       if (runId.startsWith("external:")) await agentExecRegisterExternal(runId);
       const approvalToken = await agentExecAuthorize(projectId, command, runId);
       return { approvalToken, runId };

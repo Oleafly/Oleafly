@@ -81,7 +81,6 @@ const SYM_CLASS = `[${Object.keys(SYM).join("")}]`;
 const SYM_RE = new RegExp(SYM_CLASS, "u");
 const SYM_RE_G = new RegExp(SYM_CLASS, "gu");
 
-/** Words safe to pull into an adjacent math run. Prose words stay out. */
 function isMathWord(w: string): boolean {
   if (SYM_RE.test(w)) return true;
   if (w.length === 1) return true;

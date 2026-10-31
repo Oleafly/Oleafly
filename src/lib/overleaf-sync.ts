@@ -11,8 +11,6 @@ export interface OverleafSyncStatus {
   lastSyncAt: number | null;
   tokenSaved: boolean;
   importedFrom: { server: string; projectId: string } | null;
-  /** Set by Stop syncing when it kept local files that linking with
-   * Overleaf's versions had replaced: the folder they are in. */
   backupsFolder?: string;
 }
 

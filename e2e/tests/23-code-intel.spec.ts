@@ -22,13 +22,8 @@ test.beforeEach(async ({ tauriPage }) => {
     `document.querySelector('.cm-content').textContent.includes('sec:e2eintro')`,
   );
   if (!has) {
-    // The label must sit in the body (not inside \section{...}) for the
-    // project index to record it as a definition; prose anchors are single
-    // syntax tokens.
     await typeInEditorAfter(tauriPage, "Write", "\\label{sec:e2eintro} ");
     await typeInEditorAfter(tauriPage, "here.", " See Section~\\ref{sec:e2eintro}.");
-    // Persist the seed (unsaved edits revert on the fixture's per-test
-    // reload) and give the project index a compile's worth of time.
     await pressGlobal(tauriPage, "Enter", { meta: true });
     await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute(
       "data-severity",
@@ -65,8 +60,6 @@ async function contextMenuAction(page: Page, item: string) {
 }
 
 test("go-to-definition on a \\ref jumps to its \\label", async ({ tauriPage }) => {
-  // The project index rebuilds on a debounce after the seed edit; retry the
-  // navigation until the index has the symbol.
   for (let attempt = 0; ; attempt++) {
     await caretIn(tauriPage, "sec:e2eintro", 2);
     await contextMenuAction(tauriPage, "Go to definition");

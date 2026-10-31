@@ -11,7 +11,7 @@ pub const COOKIE_NAME: &str = "oleafly_device_flow";
 pub const HOST_COOKIE_NAME: &str = "__Host-oleafly_device_flow";
 const SECRET_LENGTH: usize = 43;
 
-fn host_only(config: &ServerConfig) -> bool {
+pub(crate) fn host_only(config: &ServerConfig) -> bool {
     config.public_url.scheme() == "https" && config.path_prefix().is_empty()
 }
 

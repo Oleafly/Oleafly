@@ -235,7 +235,6 @@ describe("imageToLatex", () => {
       true,
     );
     expect(mocks.insertAtCursor).toHaveBeenCalledWith("x^2");
-    // The note stays after success instead of vanishing.
     expect(mocks.toast.dismiss).not.toHaveBeenCalled();
     expect(mocks.toast.infoUnique).toHaveBeenLastCalledWith(KEY, "Sent to Anthropic (assistant model)");
   });

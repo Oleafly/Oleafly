@@ -63,9 +63,7 @@ pub enum ConversionExport {
     Txt,
     Pptx,
     Epub,
-    /// Typst source, via pandoc's typst writer.
     Typst,
-    /// LaTeX source, via pandoc's latex writer (Typst and Markdown projects).
     Tex,
 }
 
@@ -95,8 +93,6 @@ pub enum TemplateKind {
 #[serde(rename_all = "snake_case")]
 pub enum CompilerPrerequisite {
     Pandoc,
-    /// A system TeX distribution (MacTeX, TeX Live, MiKTeX, or TinyTeX) that
-    /// provides `latexmk`. Used by engines Oleafly does not bundle.
     SystemTex,
     Quarto,
     Calepin,
@@ -124,9 +120,6 @@ pub struct EngineDescriptor {
     pub main_document: String,
     pub source_extensions: Vec<String>,
     pub capabilities: EngineCapabilities,
-    /// The project's pinned latexmk compiler ("pdflatex" | "xelatex" |
-    /// "lualatex" | "uplatex" | "platex"); None means auto-detect. Filled in by `project_engine`
-    /// from project.json, absent in engine-only contexts.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tex_flavor: Option<String>,
     pub allow_shell_escape: bool,
@@ -393,8 +386,6 @@ impl DocumentEngine for LatexEngine {
 
 pub type LatexmkFlavor = oleafly_core::TexFlavor;
 
-/// The user's pinned compiler wins over every source heuristic (magic comment
-/// included); detection only runs for the default "auto" choice.
 fn resolve_latexmk_flavor(pinned: Option<LatexmkFlavor>, source_head: &str) -> LatexmkFlavor {
     pinned.unwrap_or_else(|| detect_latexmk_flavor(source_head))
 }
@@ -425,7 +416,6 @@ fn detect_latexmk_flavor(source: &str) -> LatexmkFlavor {
         .unwrap_or(LatexmkFlavor::Pdflatex)
 }
 
-/// a giant generated file cannot balloon compile preparation.
 fn read_source_head(path: &Path) -> String {
     use std::io::Read;
     const MAX_SNIFF_BYTES: u64 = 512 * 1024;
@@ -692,7 +682,6 @@ fn latexmk_args_from(
     )
 }
 
-/// The engine flags the shared argument builders take.
 fn engine_flags(options: &CompileOptions) -> oleafly_core::engine_spec::EngineFlags {
     oleafly_core::engine_spec::EngineFlags {
         offline: options.offline,
@@ -701,7 +690,6 @@ fn engine_flags(options: &CompileOptions) -> oleafly_core::engine_spec::EngineFl
     }
 }
 
-/// `./<path>` for latexmk (see `oleafly_core::engine_spec`).
 fn latexmk_relative_path_arg(path: &Path) -> Result<String, String> {
     oleafly_core::engine_spec::latexmk_relative_path_arg(path).map_err(|error| error.to_string())
 }
@@ -1297,7 +1285,6 @@ fn markdown_compile_spec(
 pub(crate) fn discover_bibliographies(project_dir: &Path) -> Result<Vec<String>, String> {
     let mut found = oleafly_core::engine_spec::discover_bibliographies(project_dir)
         .map_err(|error| error.to_string())?;
-    // The app's placeholder check, which tests can also mark files for.
     found.retain(|relative| !crate::cloud_files::path_is_placeholder(&project_dir.join(relative)));
     Ok(found)
 }
@@ -1392,7 +1379,11 @@ pub(crate) struct NotebookExport<'a> {
     pub(crate) format: &'a str,
     pub(crate) destination: &'a Path,
     pub(crate) allow_code: bool,
+    pub(crate) cancel: Option<&'a crate::state::CompileCancel>,
+    pub(crate) log: Option<&'a tauri::AppHandle>,
 }
+
+pub(crate) const EXPORT_LOG_EVENT: &str = "export:log";
 
 fn notebook_export_spec(
     engine: DocumentEngineId,
@@ -1478,16 +1469,23 @@ pub(crate) async fn export_notebook(export: NotebookExport<'_>) -> Result<(), St
     let EngineExecutable::ExternalPath(program) = &spec.executable else {
         return Err("the export needs an external program".into());
     };
-    let (log, exit_code) = run_supervised_process_with_environment(
+    let scope = CompileCancelScope::new(export.cancel);
+    let run = run_supervised_process_with_environment(
         program,
         &spec.args,
         &spec.working_dir,
-        None,
+        export
+            .log
+            .map(|app| (app.clone(), EXPORT_LOG_EVENT.to_owned())),
         COMPILE_TIMEOUT,
-        None,
+        export.cancel,
         &spec.environment,
     )
-    .await?;
+    .await;
+    if scope.finish() {
+        return Err(crate::app_error::AppError::new("notebook.export_stopped").into());
+    }
+    let (log, exit_code) = run?;
     if exit_code != Some(0) || !output.is_file() {
         let label = match engine.id() {
             DocumentEngineId::Calepin => "Calepin",
@@ -1511,11 +1509,7 @@ use oleafly_core::tex_errors::{
 pub struct CompileResult {
     pub ok: bool,
     pub has_pdf: bool,
-    /// Fingerprint of the exact fresh PDF observed while the compile lock is
-    /// still held. The frontend verifies this before accepting IPC bytes.
     pub output_id: Option<String>,
-    /// Assigned only to successful main-document outputs by the command layer.
-    /// Isolated figure compiles leave this unset.
     pub output_revision: Option<u64>,
     pub log: String,
     pub errors: Vec<CompileError>,
@@ -1523,15 +1517,11 @@ pub struct CompileResult {
     pub synctex_path: Option<String>,
     pub out_dir: Option<String>,
     pub compile_time_ms: u64,
-    /// The user stopped this compile. Distinguishes an intentional stop from a
-    /// document that genuinely failed to build.
     pub stopped: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub html_output: Option<String>,
 }
 
-/// Must stay byte-for-byte compatible with
-/// `fingerprintCompileOutput` in `src/lib/compile-checkpoint.ts`.
 pub(crate) fn fingerprint_compile_output(bytes: &[u8]) -> String {
     let mut first = 0x811c_9dc5_u32;
     let mut second = 0x9e37_79b9_u32;
@@ -1543,17 +1533,11 @@ pub(crate) fn fingerprint_compile_output(bytes: &[u8]) -> String {
     format!("pdf-v1:{}:{first:08x}{second:08x}", bytes.len())
 }
 
-/// User-selected compiler behaviour for one request. Engines that cannot honour
-/// a flag ignore it; `supports_offline` already guards the offline case.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CompileOptions {
     pub offline: bool,
-    /// Single typesetting pass instead of reruns until the document stabilizes.
     pub fast: bool,
-    /// Stop at the first TeX error rather than pushing on to a best-effort PDF.
     pub halt_on_error: bool,
-    /// The project's pinned latexmk compiler; None means auto-detect from the
-    /// source. Ignored by every other engine.
     pub latex_flavor: Option<LatexmkFlavor>,
     pub allow_shell_escape: bool,
     pub source_date_epoch: Option<u64>,
@@ -1571,8 +1555,6 @@ pub struct CompileRequest<'a> {
     pub target: CompileTarget<'a>,
     pub log_event: &'a str,
     pub options: CompileOptions,
-    /// Set for main-document compiles so "Stop compilation" can reach them.
-    /// Figure builds run in their own lane and pass `None`.
     pub cancel: Option<&'a crate::state::CompileCancel>,
     pub prepared_spec: Option<EngineCompileSpec>,
 }
@@ -2454,9 +2436,6 @@ async fn execute_compile_spec(
                 &spec.environment,
             )
             .await?;
-            // Mirror outage (or a pre-mirror cache in offline mode): one retry
-            // against Tectonic's default upstream bundle. Gated on the log so
-            // ordinary TeX errors never trigger a second run.
             if name == &"tectonic"
                 && exit_code != Some(0)
                 && spec.args.iter().any(|arg| arg == "--bundle")
@@ -2527,16 +2506,11 @@ async fn execute_compile_spec(
     }
 }
 
-/// How waiting for the build lock ended: the lock (none for a build that
-/// doesn't need one), or the user stopped the compile first.
 enum BuildLockWait {
     Held(Option<BuildGuard>),
     Stopped,
 }
 
-/// What keeps other builds (the CLI's, another window's) out of a build
-/// folder while one runs: the lock file, or, where the file system can't
-/// lock files, the lock folder the CLI uses there too.
 #[derive(Debug)]
 struct BuildGuard {
     _file: Option<oleafly_core::build_output::BuildLock>,
@@ -2559,13 +2533,8 @@ impl BuildGuard {
     }
 }
 
-/// A lock folder older than the compile timeout plus this is a stopped
-/// build's.
 const DIR_LOCK_SLACK: std::time::Duration = std::time::Duration::from_secs(60);
 
-/// One try at the lock of `build_dir`: the lock file while `file_locks`, the
-/// lock folder once the file system turned out not to lock files. Returns
-/// the guard, if free, and whether file locks still work.
 fn try_build_lock(
     build_dir: &Path,
     file_locks: bool,
@@ -2583,9 +2552,6 @@ fn try_build_lock(
         .map(|lock| (lock.map(BuildGuard::folder), false))
 }
 
-/// Polls for the lock of `build_dir` until `timeout`. `stopped` is asked each
-/// time the lock turns out to be held, so Stop ends the wait within a poll;
-/// `on_wait` runs once, when the lock is first found held.
 async fn wait_for_build_lock(
     build_dir: &Path,
     timeout: std::time::Duration,
@@ -2604,8 +2570,6 @@ async fn wait_for_build_lock(
         match attempt {
             Ok((Some(guard), _)) => return Ok(BuildLockWait::Held(Some(guard))),
             Ok((None, files)) => file_locks = files,
-            // A linked lock file, no permission, a full disk: building
-            // anyway would let two builds overwrite each other's files.
             Err(error) => {
                 return Err(format!(
                     "Oleafly couldn't lock the build folder, so the build didn't run: {error}"
@@ -2629,11 +2593,6 @@ async fn wait_for_build_lock(
     }
 }
 
-/// One build of a project's main document at a time, shared with the CLI
-/// (`oleafly build`) through the lock file beside the build folder, or the
-/// lock folder where the file system can't lock files. Any other lock error
-/// stops the build. Stop ends the wait for another build instead of waiting
-/// it out.
 async fn acquire_build_lock(
     request: &CompileRequest<'_>,
     spec: &EngineCompileSpec,
@@ -2667,7 +2626,6 @@ pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, Strin
     let _build_lock = match acquire_build_lock(&request, &spec).await? {
         BuildLockWait::Held(lock) => lock,
         BuildLockWait::Stopped => {
-            // Stopped while another build held the folder: nothing ran.
             cancel_scope.finish();
             let mut log = String::new();
             append_bounded(
@@ -2954,7 +2912,6 @@ pub async fn run_supervised_external(
     run_supervised_process(path, args, working_dir, None, COMPILE_TIMEOUT, None).await
 }
 
-/// `run_supervised_external` with extra environment variables for the child.
 pub(crate) async fn run_supervised_external_with_variables(
     path: &Path,
     args: &[String],
@@ -3076,8 +3033,6 @@ async fn run_supervised_process(
     .await
 }
 
-/// The Biber choice reads the binary and, for a universal macOS Biber, copies
-/// a slice of about 40 MB, so it runs off the async runtime.
 async fn prepare_child_biber(
     program: &Path,
     path_env: &std::ffi::OsStr,
@@ -3093,6 +3048,46 @@ async fn prepare_child_biber(
     .flatten()
 }
 
+fn supervised_command(
+    path: &Path,
+    args: &[String],
+    working_dir: &Path,
+    path_env: &std::ffi::OsStr,
+    child_biber: Option<&crate::biber_toolchain::ChildBiber>,
+    environment: &EngineEnvironment,
+) -> tokio::process::Command {
+    use std::process::Stdio;
+    let mut command = tokio::process::Command::new(path);
+    command.no_console();
+    command
+        .args(args)
+        .current_dir(working_dir)
+        // TeX bin dirs + tectonic-biber for all supervised children (LaTeX primary;
+        // Typst/others ignore extra PATH entries that are not present or unused).
+        .env("PATH", path_env)
+        .env("NoDefaultCurrentDirectoryInExePath", "1")
+        .env("openout_any", "p");
+    if let Some(child_biber) = child_biber {
+        command.env(crate::biber_toolchain::UNPACK_ENV, &child_biber.unpack_dir);
+    }
+    for (name, value) in &environment.variables {
+        command.env(name, value);
+    }
+    if !is_luatex_invocation(path, args) {
+        command.env("openin_any", "p");
+    }
+    if !args.iter().any(|argument| argument == "-shell-escape") {
+        command.env("shell_escape", "f");
+    }
+    crate::proc::clear_appimage_env(command.as_std_mut());
+    command
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .kill_on_drop(true);
+    isolate_process_tree(&mut command);
+    command
+}
+
 async fn run_supervised_process_with_environment(
     path: &Path,
     args: &[String],
@@ -3102,8 +3097,6 @@ async fn run_supervised_process_with_environment(
     cancel: Option<&crate::state::CompileCancel>,
     environment: &EngineEnvironment,
 ) -> Result<(String, Option<i32>), String> {
-    use std::process::Stdio;
-    let is_luatex = is_luatex_invocation(path, args);
     let path_env = crate::biber_toolchain::compile_path_env_for(
         path,
         environment.path_excluded_root(working_dir),
@@ -3113,33 +3106,14 @@ async fn run_supervised_process_with_environment(
         Some(child_biber) => child_biber.path_env(&path_env),
         None => path_env,
     };
-    let mut command = tokio::process::Command::new(path);
-    command.no_console();
-    command
-        .args(args)
-        .current_dir(working_dir)
-        // TeX bin dirs + tectonic-biber for all supervised children (LaTeX primary;
-        // Typst/others ignore extra PATH entries that are not present or unused).
-        .env("PATH", &path_env)
-        .env("NoDefaultCurrentDirectoryInExePath", "1")
-        .env("openout_any", "p");
-    if let Some(child_biber) = &child_biber {
-        command.env(crate::biber_toolchain::UNPACK_ENV, &child_biber.unpack_dir);
-    }
-    for (name, value) in &environment.variables {
-        command.env(name, value);
-    }
-    if !is_luatex {
-        command.env("openin_any", "p");
-    }
-    if !args.iter().any(|argument| argument == "-shell-escape") {
-        command.env("shell_escape", "f");
-    }
-    command
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true);
-    isolate_process_tree(&mut command);
+    let mut command = supervised_command(
+        path,
+        args,
+        working_dir,
+        &path_env,
+        child_biber.as_ref(),
+        environment,
+    );
 
     let mut child = command
         .spawn()
@@ -3175,8 +3149,6 @@ async fn run_supervised_process_with_environment(
         pid: Some(child_pid),
     };
     if let Some(cancel) = cancel {
-        // A stop can land between the request and the spawn. `attach` reports
-        // that case so the child we just started is ended immediately.
         if !cancel.attach(child_pid) {
             terminate_process_tree(child_pid).await;
         }
@@ -3913,7 +3885,6 @@ mod tests {
         assert!(started.elapsed() < std::time::Duration::from_secs(5));
         drop(held);
 
-        // With the lock free, a stop request does not matter.
         let free = wait_for_build_lock(&build, std::time::Duration::from_secs(30), || true, || {})
             .await
             .unwrap();
@@ -3992,8 +3963,6 @@ mod tests {
     async fn exited_compiler_cannot_hang_on_inherited_output_pipes() {
         let root = tempfile::tempdir().unwrap().keep();
         let pid_path = root.join("descendant.pid");
-        // The descendant holds the pipes for twice the elapsed bound below, so
-        // a supervisor that waited for them to close would miss that bound.
         let script = format!(
             "sleep {} & printf '%s' \"$!\" > '{}'; exit 0",
             (2 * test_wait::CHILD_PATIENCE).as_secs(),
@@ -6265,7 +6234,6 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
         );
         let descriptor = descriptor_for("latexmk", "main.tex").unwrap();
         assert_eq!(descriptor.label, "LaTeX (latexmk)");
-        // The frontend keys LaTeX behavior off source_format, not the id.
         assert_eq!(descriptor.source_format, "latex");
     }
 
@@ -6308,7 +6276,6 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
         let _ = std::fs::remove_dir_all(&dir);
         let tinytex = Path::new("/tiny/bin/latexmk");
         let mactex = Path::new("/mactex/bin/latexmk");
-        // First compile in a fresh build dir: no marker yet, rebuild once.
         assert!(latexmk_binary_changed(&dir, tinytex));
         assert!(latexmk_binary_changed(&dir, tinytex));
         record_latexmk_binary(&dir, tinytex);
@@ -6322,8 +6289,6 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
 
     #[test]
     fn pinned_flavor_beats_every_source_heuristic() {
-        // An explicit per-project compiler wins over the magic comment and the
-        // fontspec upgrade; auto (None) falls back to detection.
         let source = "% !TeX program = xelatex\n\\usepackage{fontspec}";
         assert_eq!(
             resolve_latexmk_flavor(Some(LatexmkFlavor::Pdflatex), source),
@@ -6586,6 +6551,44 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             ["executed", "disabled", "failed"]
         );
         assert!(runsystem_statuses("runsystem(epstopdf a.eps)").is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn engine_spawns_drop_the_appimage_launcher_paths_for_host_programs() {
+        let image = crate::proc::SimulatedAppImage::start();
+        let working = tempfile::tempdir().unwrap();
+        let environment = EngineEnvironment::inherited(None)
+            .with_variable("QUARTO_PYTHON", "/usr/bin/python3".to_owned());
+        let applied =
+            |program: &Path| -> std::collections::HashMap<String, Option<std::ffi::OsString>> {
+                supervised_command(
+                    program,
+                    &["render".to_owned()],
+                    working.path(),
+                    std::ffi::OsStr::new("/usr/bin"),
+                    None,
+                    &environment,
+                )
+                .as_std()
+                .get_envs()
+                .map(|(name, value)| {
+                    (
+                        name.to_string_lossy().into_owned(),
+                        value.map(std::ffi::OsStr::to_os_string),
+                    )
+                })
+                .collect()
+            };
+        let quarto = applied(Path::new("/opt/quarto/bin/quarto"));
+        assert_eq!(quarto["PYTHONHOME"], None);
+        assert_eq!(quarto["PYTHONPATH"], None);
+        assert_eq!(quarto["LD_LIBRARY_PATH"], None);
+        assert_eq!(quarto["QUARTO_PYTHON"], Some("/usr/bin/python3".into()));
+        assert_eq!(quarto["shell_escape"], Some("f".into()));
+        let bundled = applied(&image.root.join("usr/bin/tectonic"));
+        assert!(!bundled.contains_key("PYTHONHOME"));
+        assert!(!bundled.contains_key("LD_LIBRARY_PATH"));
     }
 
     #[test]

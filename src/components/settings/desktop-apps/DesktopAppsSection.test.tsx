@@ -127,7 +127,6 @@ describe("DesktopAppsSection", () => {
       confirmText: copy.install.confirm,
     });
     await waitFor(() => expect(useSettingsStore.getState().settingsOpen).toBe(false));
-    // Opened again, Settings comes back here for Check again.
     expect(useSettingsStore.getState().settingsInitialSection).toBe("integrations");
     expect(useSettingsStore.getState().settingsScrollTarget).toBe("desktop-apps");
   });
@@ -168,7 +167,6 @@ describe("DesktopAppsSection", () => {
     expect(await screen.findByText(enErrors.desktop_apps.change_declined)).toBeVisible();
     expect(screen.getByRole("switch", { name: copy.enable.label })).toHaveAttribute("aria-checked", "false");
     expect(mocks.sync).not.toHaveBeenCalled();
-    // Saying no to the question is a note, not a failure.
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.getByRole("status")).toHaveTextContent(enErrors.desktop_apps.change_declined);
   });
@@ -264,7 +262,6 @@ describe("DesktopAppsSection", () => {
     renderSection();
     await user.type(await screen.findByRole("textbox", { name: copy.sites.add }), "example.org");
     await user.click(screen.getByRole("button", { name: copy.sites.add }));
-    // No browser validation in the way: a bare host reaches Rust.
     await waitFor(() =>
       expect(mocks.settingsSet).toHaveBeenCalledWith({
         ...on,
@@ -305,7 +302,6 @@ describe("DesktopAppsSection", () => {
     const row = await screen.findByTestId("desktop-apps-permissions");
     expect(within(row).getByRole("button", { name: copy.permissions.grant })).toBeDisabled();
     expect(within(row).getByText(copy.install.needsProject)).toBeVisible();
-    // The command the hint offers to copy is right there.
     expect(within(row).getByText("/Applications/CuaDriver.app/Contents/MacOS/cua-driver permissions grant")).toBeVisible();
     mocks.status.mockResolvedValue(status({ permissions: { accessibility: true, screenRecording: true } }));
     await user.click(within(row).getByRole("button", { name: copy.install.checkAgain }));

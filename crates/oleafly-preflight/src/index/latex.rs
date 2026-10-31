@@ -1,8 +1,3 @@
-//! LaTeX labels, `\bibitem` keys and reference uses, the way
-//! `analyze-file.ts` re-extracts them: on the text with comments and verbatim
-//! masked, reading each key from the original source so a comment inside a
-//! group is spliced out.
-
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
@@ -23,8 +18,6 @@ const CARRIAGE_RETURN: u16 = b'\r' as u16;
 const COMMA: u16 = b',' as u16;
 const SEMICOLON: u16 = b';' as u16;
 
-/// Opening offset → offset just past its closing bracket, for `[]` and `{}`
-/// separately, skipping escaped characters.
 fn build_command_group_index(source: &[u16]) -> HashMap<usize, usize> {
     let mut closing_by_opening = HashMap::new();
     let mut square = Vec::new();
@@ -150,8 +143,6 @@ fn skip_group_comment(source: &[u16], cursor: usize, content_to: usize) -> usize
     next
 }
 
-/// The keys in a group of the original source: comments spliced out, split
-/// on `,` and `;` when `split`, whitespace trimmed, `*` dropped.
 fn logical_group_tokens(source: &[u16], group: DelimitedGroup, split: bool) -> Vec<Token> {
     if !group.complete {
         return Vec::new();
@@ -201,8 +192,6 @@ static ACRONYM: LazyLock<JsRegex> =
 static BIBITEM: LazyLock<JsRegex> =
     LazyLock::new(|| JsRegex::std(r"\\bibitem\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}"));
 
-/// `\newglossaryentry`, `\newacronym` (labels in the legacy index) and
-/// `\bibitem` keys, from the comment-masked text.
 fn legacy_definitions(text: &str, out: &mut Vec<Definition>) {
     let masked = SourceText::new(mask_comments(text));
     let sources: [(&JsRegex, SymKind); 3] = [

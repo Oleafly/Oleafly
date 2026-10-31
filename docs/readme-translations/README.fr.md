@@ -399,7 +399,7 @@ Si vous utilisez Oleafly, une [étoile GitHub](https://github.com/Oleafly/Oleafl
   author  = {Venkateshmurthy, Prajwal S. and {The Oleafly contributors}},
   title   = {Oleafly: a local-first workspace for research writing},
   year    = {2026},
-  version = {0.4.8},
+  version = {0.4.9},
   url     = {https://github.com/Oleafly/Oleafly},
   license = {AGPL-3.0-or-later}
 }

@@ -72,9 +72,6 @@ describe("Tauri production style CSP audit", () => {
   });
 });
 
-// The packaged-app e2e that exercises this at runtime only runs against a
-// `tauri build` binary, so on ordinary CI it skips. These assertions are what
-// actually guard the shipped policy on every commit.
 describe("Tauri CSP permits CodeMirror's runtime stylesheet", () => {
   const shippedCsp = (
     tauriConfig as { app: { security: { csp: string } } }

@@ -7,11 +7,6 @@ const InlineDiffPreview = lazy(() =>
   })),
 );
 
-/**
- * A read-only unified diff, loaded on demand so the chat does not pull the
- * diff editor in until someone opens a change. The scroller is focusable and
- * named so keyboard users can scroll it; focus shows as a border colour.
- */
 export function DiffPreview({
   path,
   oldText,

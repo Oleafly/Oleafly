@@ -9,7 +9,6 @@ interface ResetToDefaultsProps {
   onReset: () => void;
   disabled?: boolean;
   confirmationDescription?: string;
-  /** Something this button would reset differs from its default. */
   changed?: boolean;
 }
 

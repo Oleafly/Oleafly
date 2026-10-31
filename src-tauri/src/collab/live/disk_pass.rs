@@ -13,10 +13,6 @@ use crate::collab::disk::{
     stamp_of, with_line_endings, write_file_over, DiskState, Stamp, WriteOutcome,
 };
 
-// What a disk pass leaves alone this time. Files at `blocked` paths stay as
-// they are: the sync hold holds or keeps them, or they wait for an owed
-// move. `pinned` paths don't move yet: the hold still waits for a decision
-// on them, or they wait for an owed move.
 pub(super) struct LeftAlone<'a> {
     pub(super) blocked: &'a dyn Fn(&str) -> bool,
     pub(super) pinned: &'a dyn Fn(&str) -> bool,
@@ -33,11 +29,6 @@ pub(super) const NOTHING_LEFT: LeftAlone<'static> = LeftAlone {
     pinned: &nothing,
 };
 
-// The planned steps a pass leaves for later: removals of a blocked path or
-// of a folder holding one, new folders at a blocked path, and moves from or
-// to a pinned path, with everything inside them. Their nodes keep their old
-// index entries, and new nodes where a waiting move goes stay out of the
-// index, so the next pass plans them all again.
 #[derive(Default)]
 struct Waiting {
     kept: BTreeSet<String>,
@@ -143,7 +134,6 @@ pub(super) struct DiskPass {
     pub(super) written: BTreeSet<String>,
     pub(super) done: BTreeSet<String>,
     pub(super) failed: Vec<(String, UnwrittenReason)>,
-    // Nodes whose steps wait for a later pass.
     pub(super) waiting: Vec<String>,
 }
 

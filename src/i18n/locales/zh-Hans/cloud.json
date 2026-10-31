@@ -194,6 +194,7 @@
     "pathStyleHint": "MinIO 和大多数自托管服务器都需要启用此项。"
   },
   "errors": {
+    "clock_skew": "这台电脑的时钟不准，因此 {{provider}} 不会接受来自它的请求。请设置正确的日期和时间以继续同步。",
     "code_invalid": "该代码无效。请重试。",
     "device_name_empty": "请输入名称。",
     "device_name_invalid": "电脑名称不能包含 \\ / : * ? \" < > | 或控制字符，且最多 32 个字符。",

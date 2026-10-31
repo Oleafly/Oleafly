@@ -17,8 +17,6 @@ import {
 } from "./ghost-completion";
 import { latexCompletions } from "./latex";
 
-// A source that offers the given labels whenever a backslash command or word
-// is being typed, mirroring how the real LaTeX sources behave.
 function sourceOf(
   labels: Array<string | { label: string; boost?: number; apply?: unknown }>,
 ): CompletionSource {
@@ -57,7 +55,6 @@ function caretToEnd(view: EditorView) {
   view.dispatch({ selection: { anchor: view.state.doc.length } });
 }
 
-// The plugin recomputes in a microtask so it never dispatches mid-update.
 const settle = () => new Promise((resolve) => queueMicrotask(() => resolve(null)));
 
 describe("ghost completion suggestions", () => {
@@ -87,7 +84,6 @@ describe("ghost completion suggestions", () => {
     const view = mount("\\alp", [sourceOf(["\\alpha", "\\alphabet"])]);
     caretToEnd(view);
     await settle();
-    // Ties on boost go to the shortest completion.
     expect(pendingGhostCompletion(view)).toBe("ha");
     view.destroy();
   });
@@ -132,8 +128,6 @@ describe("ghost completion suggestions", () => {
   });
 
   it("previews the label even when apply is a guarded function", async () => {
-    // Every real source wraps apply in a guard, so rejecting function applies
-    // would silence the feature entirely. The label is what Tab inserts.
     const view = mount("\\sec", [
       sourceOf([{ label: "\\section", apply: () => undefined }]),
     ]);
@@ -399,8 +393,6 @@ describe("dismissal", () => {
 
     clearGhostCompletion(view);
     await settle();
-    // Dismissing does not move the cursor, so without the dismissal memory the
-    // very next recompute would offer the same candidate again.
     expect(pendingGhostCompletion(view)).toBeNull();
 
     view.dispatch({ changes: { from: view.state.doc.length, insert: "h" } });

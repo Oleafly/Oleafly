@@ -1,6 +1,3 @@
-//! xparse argument specifications (`packages/editor/src/latex-xparse.ts`).
-//! Offsets are UTF-16 units relative to the specification's content.
-
 use oleafly_preflight::latex::lexical::{is_command_unit, latex_balanced_group_end};
 use oleafly_preflight::messages::MessageRef;
 use oleafly_preflight::msg;
@@ -183,7 +180,6 @@ fn argument_end(
     }
 }
 
-/// Problems in an xparse argument specification, as `(from, to, message)`.
 pub fn validate_xparse_argument_specification(source: &[u16]) -> Vec<(usize, usize, MessageRef)> {
     let mut issues = Issues::new();
     let mut cursor = 0;

@@ -27,7 +27,6 @@ pub struct SshEndpoint {
 }
 
 impl SshEndpoint {
-    /// `user@host` for rsync, `host` without a user.
     pub fn destination(&self) -> String {
         match &self.user {
             Some(user) => format!("{user}@{}", self.host),
@@ -65,7 +64,6 @@ impl SshContext {
     }
 }
 
-/// Oleafly's own trusted host keys.
 pub fn known_hosts_file(data_root: &Path) -> PathBuf {
     data_root.join("research").join("known_hosts")
 }
@@ -88,9 +86,7 @@ pub fn ssh_program_for(
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HostKeyMode {
-    /// Known keys only: Oleafly's file and the user's own files.
     Strict,
-    /// First contact from Settings: accept a new key into a scratch file.
     ProbeInto(PathBuf),
 }
 
@@ -125,7 +121,6 @@ fn known_hosts_value(ctx: &SshContext, mode: &HostKeyMode) -> String {
     }
 }
 
-/// The options every call uses, without the host and the command.
 pub fn ssh_options(ctx: &SshContext, endpoint: &SshEndpoint, mode: &HostKeyMode) -> Vec<String> {
     let strict = match mode {
         HostKeyMode::Strict => "yes",
@@ -226,7 +221,6 @@ pub fn child_env_fixes(
     }
 }
 
-/// No console window for children on Windows.
 pub fn no_window(command: &mut tokio::process::Command) {
     #[cfg(windows)]
     {
@@ -330,7 +324,6 @@ async fn feed(stdin: Option<tokio::process::ChildStdin>, input: SshInput) -> Res
     let _ = stdin.shutdown().await;
     drop(stdin);
     match written {
-        // The remote side stopped reading; its exit status tells why.
         Err(error) if error.kind() == std::io::ErrorKind::BrokenPipe => Ok(()),
         Err(error) => Err(Stop::Io(error)),
         Ok(()) => Ok(()),
@@ -455,7 +448,6 @@ pub async fn run(
     }
 }
 
-/// [`run`], then a non-zero exit becomes an error.
 pub async fn run_ok(
     ctx: &SshContext,
     endpoint: &SshEndpoint,
@@ -472,7 +464,6 @@ pub async fn run_ok(
     Err(classify(output.code, &output.stderr, &endpoint.host))
 }
 
-/// Blocking reads from the async stdout of ssh, on a blocking thread.
 struct BlockingReader {
     stream: tokio::process::ChildStdout,
     runtime: tokio::runtime::Handle,
@@ -485,9 +476,6 @@ impl std::io::Read for BlockingReader {
     }
 }
 
-/// Runs one remote command whose standard output is consumed as a stream
-/// on a blocking thread (an archive of outputs, a long log): `consume` may
-/// stop early, which ends the transfer.
 #[allow(clippy::too_many_arguments)]
 pub async fn run_streaming<T: Send + 'static>(
     ctx: &SshContext,
@@ -801,7 +789,6 @@ mod tests {
             &HostKeyMode::Strict,
             "true",
             SshInput::Empty,
-            // Long enough for the fake to start on a busy machine.
             SshLimits::new(Duration::from_secs(3), 1024),
             &CancellationToken::new(),
         )

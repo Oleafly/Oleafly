@@ -75,9 +75,6 @@ function ReviewMarkdown({ text }: Readonly<{ text: string }>) {
   );
 }
 
-/**
- * Dedicated Friendly / Fire paper review surface (OpenLeaf Review tab parity).
- */
 export function PaperReviewPanel() {
   const { t } = useTranslation(["common", "researchTools"]);
   const offline = useSettingsStore((state) => state.offline);
@@ -178,7 +175,6 @@ export function PaperReviewPanel() {
     setError(null);
   };
 
-  // E2E / DEV: seed review output without calling a live model.
   useEffect(() => {
     if (!E2E_HOOKS) return;
     const w = window as unknown as {

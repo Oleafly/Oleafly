@@ -9,10 +9,9 @@ import { Transaction } from "@codemirror/state";
 import { CodeMirrorEditor, minimalReplacement, type EditorHost } from "./CodeMirrorEditor";
 import { editBackgroundDocument, getEditorView } from "./controller";
 import { englishEditorMessage } from "./test-messages";
+import { stubRangeGeometry } from "./test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 interface HostState {
   activePath: string | null;

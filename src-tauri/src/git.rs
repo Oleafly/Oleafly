@@ -164,9 +164,6 @@ fn run_configured_git_bounded(
         .map_err(|error| spawn_failure(&error, root, &program))
 }
 
-/// [`run_configured_git_bounded`] for a step of an import the user can
-/// cancel: `idle` and `total` bound it as they do there, and flipping
-/// `cancel` kills Git's process tree and ends with the cancelled error.
 fn run_configured_git_cancellable(
     root: &PathBuf,
     args: &[&str],
@@ -228,11 +225,7 @@ fn git_not_installed() -> String {
     crate::app_error::AppError::new("git.not_installed").into()
 }
 
-/// A missing Git is probed again after this long, so installing it while
-/// Oleafly runs is noticed without a restart. A found Git stays found until a
-/// spawn cannot find it.
 const MISSING_GIT_RECHECK: Duration = Duration::from_secs(5);
-/// Bound for `git --version` and `xcode-select -p`.
 const GIT_PROBE_DEADLINE: Duration = Duration::from_secs(10);
 
 /// The program every Git spawn in this module runs. Tests point it at a path
@@ -260,14 +253,11 @@ fn git_probes() -> &'static Mutex<HashMap<OsString, GitProbe>> {
     PROBES.get_or_init(Default::default)
 }
 
-/// Whether a usable `git` program is installed. Cached, so callers may ask
-/// before every spawn.
 pub(crate) fn git_available() -> bool {
     git_available_as(&git_program())
 }
 
 fn git_available_as(program: &OsStr) -> bool {
-    // Holding the lock while probing keeps concurrent callers to one probe.
     let mut probes = git_probes().lock().unwrap_or_else(PoisonError::into_inner);
     if let Some(probe) = probes.get(program) {
         if probe.available || probe.checked.elapsed() < MISSING_GIT_RECHECK {
@@ -296,7 +286,6 @@ fn forget_git_probe(program: &OsStr) {
         .remove(program);
 }
 
-/// Write the missing program to the app log once per session.
 fn note_missing_git(program: &OsStr) {
     static LOGGED: AtomicBool = AtomicBool::new(false);
     if cfg!(test) || LOGGED.swap(true, Ordering::Relaxed) {
@@ -327,8 +316,6 @@ fn probe_git(program: &OsStr, developer_tools_installed: impl FnOnce() -> bool) 
         .is_ok_and(|output| output.status.success() && output.stdout.starts_with(b"git version"))
 }
 
-/// Where a spawn of `program` would look first: the path itself when it names
-/// a folder, else the first match in the process PATH.
 fn resolve_program(program: &OsStr) -> Option<PathBuf> {
     let path = Path::new(program);
     if path.is_absolute() || path.components().count() > 1 {
@@ -375,12 +362,8 @@ pub(crate) mod testing {
         static INHERITED: RefCell<Vec<(OsString, OsString)>> = const { RefCell::new(Vec::new()) };
     }
 
-    /// Restores this thread's inherited Git variables when dropped.
     pub(crate) struct InheritedEnvOverride(Vec<(OsString, OsString)>);
 
-    /// Start this thread's Git spawns with these variables, as if Oleafly had
-    /// inherited them, without touching the process environment. They are set
-    /// before the inherited Git variables are cleared.
     pub(crate) fn inherit_git_env(variables: Vec<(OsString, OsString)>) -> InheritedEnvOverride {
         InheritedEnvOverride(INHERITED.with(|slot| slot.replace(variables)))
     }
@@ -400,10 +383,8 @@ pub(crate) mod testing {
         }
     }
 
-    /// Restores this thread's Git program when dropped.
     pub(crate) struct GitProgramOverride(Option<OsString>);
 
-    /// Run this thread's Git spawns with `program` instead of `git`.
     pub(crate) fn use_git_program(program: impl Into<OsString>) -> GitProgramOverride {
         let previous = PROGRAM.with(|slot| slot.replace(Some(program.into())));
         GitProgramOverride(previous)
@@ -498,17 +479,9 @@ fn initialize_repo(root: &PathBuf, branch: &str) -> Result<(), String> {
     ensure_private_exclude(root, Excludes::NewRepository)
 }
 
-/// Which lines [`ensure_private_exclude`] makes sure are in a repository's
-/// private exclude file (`.git/info/exclude`).
 #[derive(Clone, Copy)]
 enum Excludes {
-    /// Only `.oleafly/`. Used when staging, which can happen in a repository
-    /// the user made: its own build outputs stay visible and stageable, and
-    /// no line written here can make Git refuse a path the user picked,
-    /// because paths inside `.oleafly` are refused before Git runs.
     StateFolder,
-    /// Every line of [`private_exclude_lines`]. Used only when Oleafly creates
-    /// the repository itself.
     NewRepository,
 }
 
@@ -570,7 +543,6 @@ fn ensure_private_exclude(root: &PathBuf, excludes: Excludes) -> Result<(), Stri
         .map_err(|error| format!("could not update repository excludes: {error}"))
 }
 
-/// Oleafly's own state folder, kept out of every repository Oleafly stages in.
 const STATE_FOLDER_EXCLUDE: &str = ".oleafly/";
 
 /// What Oleafly keeps out of a repository it creates, through the private
@@ -582,19 +554,13 @@ fn private_exclude_lines() -> impl Iterator<Item = &'static str> {
     oleafly_core::exclude::new_repository_exclude_lines()
 }
 
-/// Message of the first commit in a repository Oleafly creates for a new
-/// project.
 const BASELINE_MESSAGE: &str = "Create project";
-/// A new project whose files add up to more than this gets no first commit,
-/// so an imported data set is not copied into `.git` on its own.
 const BASELINE_SIZE_LIMIT: u64 = 100 * 1024 * 1024;
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Baseline {
     Committed,
-    /// HEAD already has a commit, or there is nothing to commit.
     NotNeeded,
-    /// The files add up to this many bytes, which is above the limit.
     TooLarge(u64),
     /// These files usually hold keys, tokens or passwords, so nothing is
     /// staged or committed. Paths are as Git lists them: relative to the
@@ -602,13 +568,6 @@ pub(crate) enum Baseline {
     SecretFiles(Vec<String>),
 }
 
-/// Record every file in a repository that has no commits yet as its first
-/// commit. Hooks, signing and the fsmonitor are off for this one commit so a
-/// global setting cannot block or prompt during project creation. Nothing is
-/// staged above the size limit, or when a file looks like it holds a secret
-/// (a key, token or password file an imported folder brought along): once
-/// committed, it would stay in history even after the user ignores it. When
-/// staging or committing fails, the index is emptied again.
 pub(crate) fn commit_baseline(root: &Path) -> Result<Baseline, String> {
     commit_baseline_with_limit(root, BASELINE_SIZE_LIMIT)
 }
@@ -679,7 +638,6 @@ fn untracked_files(root: &PathBuf) -> Result<Vec<PathBuf>, String> {
         .collect())
 }
 
-/// Folders whose files are kept out wherever the folder sits in the project.
 const SECRET_FOLDERS: [&[u8]; 7] = [
     b".private",
     b"secrets",
@@ -690,7 +648,6 @@ const SECRET_FOLDERS: [&[u8]; 7] = [
     b".kube",
 ];
 
-/// File names that hold keys, tokens or passwords.
 const SECRET_NAMES: [&[u8]; 23] = [
     b".env",
     b".envrc",
@@ -717,7 +674,6 @@ const SECRET_NAMES: [&[u8]; 23] = [
     b"token.pickle",
 ];
 
-/// Private keys, certificates with their keys, and password stores.
 const SECRET_EXTENSIONS: [&[u8]; 9] = [
     b"pem",
     b"key",
@@ -733,12 +689,8 @@ const SECRET_EXTENSIONS: [&[u8]; 9] = [
 /// SSH private key names. `<name>.pub` is the public half and is kept.
 const SSH_KEY_PREFIXES: [&[u8]; 4] = [b"id_rsa", b"id_dsa", b"id_ecdsa", b"id_ed25519"];
 
-/// How `.env` names with a suffix start, as in `.env.local`, `.env-prod` and
-/// `.env_test`.
 const ENV_PREFIXES: [&[u8]; 3] = [b".env.", b".env-", b".env_"];
 
-/// The last part of a `.env` name that marks a template without real values,
-/// as in `.env.example` or `example.env`.
 const ENV_TEMPLATES: [&[u8]; 6] = [
     b"example",
     b"sample",
@@ -748,15 +700,12 @@ const ENV_TEMPLATES: [&[u8]; 6] = [
     b"schema",
 ];
 
-/// How a zip archive, and so a single-file Keynote document, starts.
 const ZIP_SIGNATURE: &[u8; 4] = b"PK\x03\x04";
 
-/// What the name of a project path says about whether it holds a secret.
 #[derive(PartialEq)]
 enum NameVerdict {
     Secret,
     NotSecret,
-    /// A `.key` file, which is a key unless it is a Keynote document.
     KeyFile,
 }
 
@@ -821,7 +770,6 @@ fn judge_name(relative: &[u8]) -> NameVerdict {
     }
 }
 
-/// The name rules of [`looks_like_secret`], on a lowercase file name.
 fn has_secret_name(name: &[u8], extension: Option<&[u8]>) -> bool {
     let is_template = |stem: &[u8]| {
         let last = stem.rsplit(|byte| *byte == b'.').next().unwrap_or(stem);
@@ -846,8 +794,6 @@ fn has_secret_name(name: &[u8], extension: Option<&[u8]>) -> bool {
             && !matches!(extension, Some(b"pub")))
 }
 
-/// Whether `path` is a regular file that starts with a zip signature, which is
-/// how a single-file Keynote document starts.
 fn is_keynote_document(path: &Path) -> bool {
     if !std::fs::symlink_metadata(path).is_ok_and(|metadata| metadata.is_file()) {
         return false;
@@ -961,8 +907,6 @@ pub struct GitWorkspaceSnapshot {
     pub conflicts: Vec<GitConflict>,
     pub branches: Vec<String>,
     pub commits: Vec<GitCommit>,
-    /// False when no usable `git` program is installed. The other fields are
-    /// then empty, and `initialized` only says whether `.git` exists.
     pub git_available: bool,
 }
 
@@ -985,9 +929,6 @@ fn validate_repo_relative_path(path: &str) -> Result<(), String> {
     if path.is_empty() || path.contains('\0') || path.contains('\\') {
         return Err("Git paths must be non-empty, relative paths using forward slashes.".into());
     }
-    // Accept harmless `./` aliases while still validating their normalized
-    // components. The discard preflight uses that normalized destination to
-    // ensure aliases cannot schedule the same deletion twice.
     let mut components = std::path::Path::new(path)
         .components()
         .filter(|component| !matches!(component, Component::CurDir));
@@ -1027,7 +968,6 @@ fn git_is_initialized_sync(project_id: String) -> Result<bool, String> {
     Ok(initialized_repo(&project_id)?.is_some())
 }
 
-/// Initialize Source Control only in response to a direct user action.
 #[tauri::command]
 pub async fn git_initialize(project_id: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || git_initialize_sync(project_id))
@@ -1047,11 +987,8 @@ fn git_initialize_sync(project_id: String) -> Result<String, String> {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GitPublishPrepared {
-    /// A new commit was made.
     pub committed: bool,
-    /// The branch has a commit to push.
     pub has_commit: bool,
-    /// Files that were not staged because they look like secrets.
     pub left_out: Vec<String>,
 }
 
@@ -1061,9 +998,6 @@ pub struct GitPublishPreflight {
     pub tracked_secret_files: Vec<String>,
 }
 
-/// Prepare the project for the explicit Publish action. This is the
-/// sole convenience that initializes and commits all files in one operation;
-/// background save, compile, and assistant flows never call it.
 #[tauri::command]
 pub async fn git_prepare_publish(
     project_id: String,
@@ -1079,11 +1013,6 @@ pub async fn git_prepare_publish(
     .map_err(|e| e.to_string())?
 }
 
-/// Stage and commit everything for Publish, creating the repository
-/// when the project has none. Files that [`looks_like_secret`] are never
-/// staged and come back in `left_out`. When the history already holds such
-/// files, pushing the branch would upload them, so nothing changes unless the
-/// user approved every one of them by name.
 fn prepare_publish_at(
     root: &PathBuf,
     message: &str,
@@ -1111,8 +1040,6 @@ fn prepare_publish_at(
     })
 }
 
-/// The first five paths, then `(+N)` for the rest, so an error parameter
-/// stays short and carries no English words.
 fn first_files(files: &[String]) -> String {
     let mut text = files
         .iter()
@@ -1139,9 +1066,6 @@ fn git_publish_preflight_sync(project_id: &str) -> Result<GitPublishPreflight, S
     publish_preflight_at(&root)
 }
 
-/// What Publish must ask about before it creates a repository on a Git
-/// hosting server: a project inside another repository is refused, and files in the
-/// branch history that look like secrets are listed for the user to approve.
 fn publish_preflight_at(root: &PathBuf) -> Result<GitPublishPreflight, String> {
     if !root.join(".git").exists() {
         refuse_nested_repository(root)?;
@@ -1154,10 +1078,6 @@ fn publish_preflight_at(root: &PathBuf) -> Result<GitPublishPreflight, String> {
     })
 }
 
-/// Paths added by any commit reachable from HEAD, merges included, whose names
-/// look like secrets. Pushing the branch uploads all of them, even ones
-/// deleted since. Only names are judged, so a Keynote `.key` file counts too.
-/// Sorted and without repeats.
 fn secret_files_in_history(root: &PathBuf) -> Result<Vec<String>, String> {
     if !has_head(root) {
         return Ok(Vec::new());
@@ -1296,18 +1216,9 @@ fn restore_worktree(root: &PathBuf, oid: &str) -> Result<(), String> {
     if !conflicts_at(root)?.is_empty() {
         return Err("Resolve the current Git conflicts before restoring a version.".into());
     }
-    // Make the index and working tree exactly match the checkpoint without
-    // moving HEAD: restore modified files, bring back deleted ones, AND remove
-    // files created after the checkpoint. `checkout <oid> -- .` only touched
-    // paths present in <oid>, so files a later response added were left behind
-    // and "restore to before this response" did not actually undo them. A later
-    // user-authored commit can record the restored state without moving HEAD.
     ok_or_err(run_git(root, &["read-tree", "--reset", "-u", oid])?)
 }
 
-/// Collapse a progress line to the last frame it drew. `--progress` redraws in
-/// place with carriage returns, so a failed transfer would otherwise report
-/// every percentage it passed through instead of where it stopped.
 fn last_progress_frame(line: &str) -> &str {
     let line = line.strip_suffix('\r').unwrap_or(line);
     match line.rfind('\r') {
@@ -1333,7 +1244,6 @@ fn out_to_string(out: &std::process::Output) -> String {
         .to_string()
 }
 
-/// Strip any embedded credentials from a remote URL for display.
 fn sanitize_url(u: &str) -> String {
     if let Some(idx) = u.find("://") {
         let (scheme, rest) = u.split_at(idx + 3);
@@ -1394,8 +1304,6 @@ fn git_remote_credentials_need_cleanup_sync(project_id: String) -> Result<bool, 
     remote_credentials_need_cleanup(&root)
 }
 
-/// Removes cleartext credentials left in origin URLs by older Oleafly builds.
-/// This writes Git config only after the user chooses the repair action.
 #[tauri::command]
 pub async fn git_clean_remote_credentials(project_id: String) -> Result<bool, String> {
     tauri::async_runtime::spawn_blocking(move || git_clean_remote_credentials_sync(project_id))
@@ -1487,12 +1395,8 @@ const TOKEN_PREFIXES: [&str; 8] = [
     "gloas-",
 ];
 
-/// The shortest run of token characters that reads as a token, not a name.
 const TOKEN_LIKE_LEN: usize = 20;
 
-/// Whether a user name in a remote address looks like an access token: a
-/// known token prefix, or at least [`TOKEN_LIKE_LEN`] characters that are all
-/// letters, digits, `-` or `_`. Ordinary user names stay under that.
 fn looks_like_token(user: &str) -> bool {
     let lower = user.to_ascii_lowercase();
     TOKEN_PREFIXES
@@ -1504,9 +1408,6 @@ fn looks_like_token(user: &str) -> bool {
                 .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'))
 }
 
-/// How a command that talks to a remote signs in: with the user's own Git
-/// setup (credential helper, SSH agent), or with one Git hosting account's
-/// token, offered only for that account's base URL.
 pub(crate) enum RemoteAuth {
     User,
     Account(AccountCredential),
@@ -1518,15 +1419,12 @@ pub(crate) struct AccountCredential {
     /// The user name Git sends with the token, which depends on the server
     /// kind (GitLab wants `oauth2`).
     pub username: String,
-    /// The account's own login, for naming it in messages.
     pub login: String,
     pub token: String,
     pub ca_file: Option<PathBuf>,
 }
 
 impl AccountCredential {
-    /// The account as messages name it: `login@host`, such as
-    /// `octocat@github.com`.
     fn label(&self) -> String {
         let host = self
             .credential_url
@@ -1590,8 +1488,6 @@ fn run_git_for_remote(
     run_git_for_remote_with(root, auth, args, &[])
 }
 
-/// [`run_git_for_remote`] with `trailing` arguments after `args`: paths
-/// that may not be UTF-8, each passed as one argument.
 fn run_git_for_remote_with(
     root: &Path,
     auth: &RemoteAuth,
@@ -1601,7 +1497,6 @@ fn run_git_for_remote_with(
     run_git_for_remote_until(root, auth, args, trailing, None)
 }
 
-/// [`run_git_for_remote_with`] that `cancel`, when given, can stop.
 fn run_git_for_remote_until(
     root: &Path,
     auth: &RemoteAuth,
@@ -1643,8 +1538,6 @@ fn run_git_for_remote_until(
     }
 }
 
-/// The message for a failed remote command: a localizable reason when the
-/// output names one, else Git's own words without any user name or password.
 fn remote_failure(out: &std::process::Output, remote_url: &str, auth: &RemoteAuth) -> String {
     let mut text = out_to_string(out);
     if let RemoteAuth::Account(credential) = auth {
@@ -1662,9 +1555,6 @@ fn remote_failure(out: &std::process::Output, remote_url: &str, auth: &RemoteAut
     }
 }
 
-/// A localizable reason for Git's failure output, when it names one.
-/// `account` is the Git hosting account the command signed in with
-/// (`login@host`), so a refusal can say whose sign-in it was.
 fn classify_remote_failure(
     text: &str,
     remote_url: &str,
@@ -1675,14 +1565,11 @@ fn classify_remote_failure(
     let repository_named_missing = text
         .lines()
         .any(|line| line.contains("repository '") && line.trim_end().ends_with("' not found"));
-    // The sign-in worked but the account may not use this repository: no
-    // write access, or an organization that wants single sign-on approval.
     let access_denied = has(&["returned error: 403", "SAML SSO"])
         || text
             .lines()
             .any(|line| line.contains("Permission to ") && line.contains(" denied"));
     let mut with_reason = true;
-    // Settings can only add GitHub, GitLab, Gitea and Forgejo servers.
     let settings_can_sign_in = !is_unsupported_forge(remote_url);
     let code = if has(&[
         "could not read Username",
@@ -1741,7 +1628,6 @@ fn classify_remote_failure(
     if let Some(account) = account {
         match code {
             "git.auth_rejected" => error = error.param("account", account),
-            // The message has a variant that names the account.
             "git.access_denied" => {
                 error = error.param("account", account).param("context", "account");
             }
@@ -1764,10 +1650,6 @@ fn classify_remote_failure(
     })
 }
 
-/// Whether `remote_url` is on a hosted service that Settings can't add an
-/// account for (Bitbucket, Azure DevOps, SourceHut, AWS CodeCommit, Google
-/// Cloud Source). A server of any other name may be a GitLab, Gitea or
-/// Forgejo that Settings can add.
 fn is_unsupported_forge(remote_url: &str) -> bool {
     let Some(host) = oleafly_forge::address::host_of(remote_url) else {
         return false;
@@ -1786,8 +1668,6 @@ fn is_unsupported_forge(remote_url: &str) -> bool {
     .any(on)
 }
 
-/// Git's output on one line, without any user name or password, cut to a
-/// length that fits an error message.
 fn git_reason(text: &str) -> String {
     let joined = redact_userinfo(text)
         .lines()
@@ -1801,7 +1681,6 @@ fn git_reason(text: &str) -> String {
     }
 }
 
-/// Remove `user[:password]@` from every URL in Git's output.
 fn redact_userinfo(text: &str) -> String {
     let mut clean = String::with_capacity(text.len());
     let mut rest = text;
@@ -1824,8 +1703,6 @@ fn redact_userinfo(text: &str) -> String {
     clean
 }
 
-/// How the project's `origin` signs in. Only the shared worktree lock is
-/// taken, so pushing never waits for a reader.
 async fn remote_auth_for_project(project_id: &str) -> Result<RemoteAuth, String> {
     let id = project_id.to_string();
     let url = tauri::async_runtime::spawn_blocking(move || -> Result<Option<String>, String> {
@@ -1934,20 +1811,11 @@ pub(crate) fn git_failure_text(out: &std::process::Output) -> String {
     out_to_string(out)
 }
 
-/// Where an imported project's history comes from: the remote itself, with
-/// the account's sign-in, or a local clone made a moment before.
 pub(crate) enum HistorySource<'a> {
     Remote(&'a RemoteAuth),
     Local(&'a Path),
 }
 
-/// Attach the repository history to content imported through the guarded
-/// archive path. Resetting only the index keeps the archive import's path and
-/// symlink protections intact while placing the worktree on top of the real
-/// remote history. `commit` pins the history to the commit the archive was
-/// made from, so a branch that moved in between cannot mix two versions. The
-/// caller must hold the imported project's exclusive worktree lock for the
-/// full archive-import transaction. `cancel`, when given, stops the fetch.
 pub(crate) fn attach_imported_repository_history_lock_held(
     project_id: &str,
     remote_url: &str,
@@ -2042,8 +1910,6 @@ where
         ok_or_err(run_git(root, &["branch", &upstream, "--", default_branch])?)?;
 
         ensure_private_exclude(root, Excludes::NewRepository)?;
-        // A server's archive leaves out `export-ignore` files. They are still
-        // tracked, so bring them back instead of committing their deletion.
         restore_missing_tracked_files(root)?;
         restore_substituted_files(root);
         skip_never_restored(root);
@@ -2066,13 +1932,8 @@ where
     result
 }
 
-/// Names never written back from an imported history: Git's and Oleafly's
-/// own folders and operating-system clutter the importer drops on purpose.
 const NEVER_RESTORED: [&str; 5] = [".git", ".oleafly", "__MACOSX", ".DS_Store", "Thumbs.db"];
 
-/// Check out tracked files the imported archive left out, from the index.
-/// Best effort: a path this platform cannot hold stays missing, and the
-/// Prepare commit never records it as deleted.
 fn restore_missing_tracked_files(root: &PathBuf) -> Result<(), String> {
     let Ok(listing) = run_git_read_only(root, &["ls-files", "-z", "--deleted"]) else {
         return Ok(());
@@ -2100,7 +1961,6 @@ fn restore_missing_tracked_files(root: &PathBuf) -> Result<(), String> {
     Ok(())
 }
 
-/// Whether a tracked path has a [`NEVER_RESTORED`] name in it.
 fn never_restored(path: &[u8]) -> bool {
     path.split(|byte| *byte == b'/').any(|segment| {
         NEVER_RESTORED
@@ -2109,8 +1969,6 @@ fn never_restored(path: &[u8]) -> bool {
     })
 }
 
-/// `args` with each of `paths` (as Git spells them) after it, in groups
-/// small enough for any command line. Stops at the first failure.
 fn run_git_with_paths(
     root: &PathBuf,
     args: &[&str],
@@ -2147,7 +2005,6 @@ fn restore_substituted_files(root: &PathBuf) {
     ) else {
         return;
     };
-    // Each answer is `path NUL attribute NUL value NUL`.
     let substituted: Vec<Vec<u8>> = outputs
         .iter()
         .flat_map(|output| {
@@ -2192,14 +2049,11 @@ fn skip_never_restored(root: &PathBuf) {
     let _ = run_git_with_paths(root, &["update-index", "--skip-worktree", "--"], &left_out);
 }
 
-/// Refuses a commit whose files add up to more than `limit` bytes, read
-/// from its tree before any of them is written out.
 fn refuse_large_tree(repository: &PathBuf, commit: &str, limit: u64) -> Result<(), String> {
     let listing = git_listing(run_git_read_only(
         repository,
         &["ls-tree", "-r", "-l", "-z", commit],
     )?)?;
-    // Each entry is `mode type object size TAB path`; only blobs have a size.
     let total: u64 = listing
         .iter()
         .filter_map(|entry| {
@@ -2219,12 +2073,8 @@ fn refuse_large_tree(repository: &PathBuf, commit: &str, limit: u64) -> Result<(
     Ok(())
 }
 
-/// Clones larger than this, as an archive of the checked-out files, are
-/// refused.
 const CLONE_ARCHIVE_MAX_BYTES: u64 = 256 * 1024 * 1024;
 
-/// The address as typed, when Oleafly may clone it. A password or an access
-/// token in it is refused: the address becomes the project's `origin`.
 fn checked_clone_url(url: &str) -> Result<String, String> {
     let url = url.trim();
     if has_remote_password(url) {
@@ -2236,12 +2086,6 @@ fn checked_clone_url(url: &str) -> Result<String, String> {
     Ok(url.to_string())
 }
 
-/// Clone a repository by its address into a new library project, signing in
-/// with a matching Git hosting account or the user's own Git setup.
-///
-/// The webview can cancel it by emitting the import-cancel event
-/// ([`crate::forge::cancel::IMPORT_CANCEL_EVENT`]) with `cancel_id`: the
-/// clone stops, its staging folder goes, and no project is created.
 #[tauri::command]
 pub async fn git_clone_project(
     app: tauri::AppHandle,
@@ -2274,7 +2118,6 @@ fn clone_staging_folder() -> Result<PathBuf, String> {
     Ok(folder)
 }
 
-/// Best effort: remove `oleafly-clone-*` folders older than `age`.
 fn remove_stale_clone_staging(folder: &Path, age: Duration) {
     let Ok(entries) = std::fs::read_dir(folder) else {
         return;
@@ -2296,11 +2139,6 @@ fn remove_stale_clone_staging(folder: &Path, age: Duration) {
 
 const CLONE_STAGING_PREFIX: &str = "oleafly-clone-";
 
-/// Clone `source` in a staging folder, archive its files at the checked-out
-/// commit and import them through the guarded archive path, then attach the
-/// clone's history with `origin` set to `origin_url`. The archive keeps
-/// files that `export-ignore` would drop, and its fixed wrapper folder means
-/// nothing from the address reaches a path inside the archive.
 fn clone_into_library(
     source: &str,
     origin_url: &str,
@@ -2342,8 +2180,6 @@ fn clone_into_library(
     ok_or_err(head)?;
     validate_git_oid(&commit)?;
 
-    // A repository whose files can't fit is refused before its archive is
-    // written to disk and read into memory.
     refuse_large_tree(&repository, &commit, CLONE_ARCHIVE_MAX_BYTES)?;
 
     let info = repository.join(".git").join("info");
@@ -2386,7 +2222,6 @@ fn clone_into_library(
     })
 }
 
-/// A new project's name: the repository's last path segment.
 fn clone_project_name(url: &str) -> String {
     let path = oleafly_forge::address::parse_remote(url)
         .map(|remote| remote.path)
@@ -2438,7 +2273,6 @@ fn set_origin(root: &PathBuf, url: &str, replace: bool) -> Result<(), String> {
     }
 }
 
-/// Remove the `origin` remote (unlink a project from its Git server).
 #[tauri::command]
 pub async fn git_remove_remote(project_id: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || git_remove_remote_sync(project_id))
@@ -2508,8 +2342,6 @@ pub struct AheadBehind {
     pub has_upstream: bool,
 }
 
-/// How many commits the local branch is ahead/behind `origin/<branch>` (based
-/// on the locally-known remote-tracking ref; refreshes after a push or pull).
 #[tauri::command]
 pub async fn git_ahead_behind(project_id: String) -> Result<AheadBehind, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<AheadBehind, String> {
@@ -2565,8 +2397,6 @@ fn ahead_behind_at(root: &PathBuf) -> Result<AheadBehind, String> {
     })
 }
 
-/// Push the current branch to `origin` with a matching Git hosting account,
-/// or with the user's own Git sign-in or SSH key when no account matches.
 #[tauri::command]
 pub async fn git_push(project_id: String) -> Result<String, String> {
     let auth = remote_auth_for_project(&project_id).await?;
@@ -2721,7 +2551,6 @@ pub struct GitPullResult {
 #[derive(Clone, Serialize)]
 pub struct GitFileChange {
     pub path: String,
-    /// Short status code: "M", "A", "D", "R", "??", etc.
     pub status: String,
     pub staged: bool,
     pub conflict: bool,
@@ -2754,8 +2583,6 @@ fn parse_status_porcelain_bytes(bytes: &[u8]) -> Vec<GitFileChange> {
         let y = record[1];
         let mut path = String::from_utf8_lossy(&record[3..]).to_string();
         if matches!(x, b'R' | b'C') {
-            // With -z, the destination is the first path and the source is the
-            // second. Consume the source even though the UI operates on the destination.
             let _ = records.next();
         }
         if path.is_empty() || path.ends_with('/') {
@@ -2801,8 +2628,6 @@ fn parse_status_porcelain_bytes(bytes: &[u8]) -> Vec<GitFileChange> {
     changes
 }
 
-/// Kept as a text helper for unit tests and callers that already have legacy
-/// porcelain output. Production status reads use the byte-safe -z variant.
 #[cfg(test)]
 fn parse_status_porcelain(text: &str) -> Vec<GitFileChange> {
     if text.contains('\0') {
@@ -3156,9 +2981,6 @@ fn resolve_discard_candidate(root: &Path, path: &str) -> Result<PathBuf, String>
                 resolved_parent = relative.to_path_buf();
             }
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                // Preserve missing suffixes so a deleted tracked file can still
-                // be restored. Any existing prefix, including a directory
-                // symlink, has already been resolved above.
                 missing_parent = true;
                 resolved_parent.push(segment);
             }
@@ -3224,10 +3046,6 @@ fn preflight_discard_paths(
     let mut seen = std::collections::HashSet::new();
     let mut plan = Vec::with_capacity(paths.len());
     for path in paths {
-        // Resolve every existing parent component but deliberately leave the
-        // final basename unresolved. This makes Git classification agree with
-        // filesystem mutation through an in-project directory alias without
-        // following or merging distinct final symlink entries.
         let candidate = resolve_discard_candidate(root, path)?;
         if !seen.insert(candidate.clone()) {
             continue;
@@ -3260,8 +3078,6 @@ fn preflight_discard_paths(
                 plan.push(DiscardPath::UntrackedFile(candidate));
             }
             Err(error) if tracked && error.kind() == std::io::ErrorKind::NotFound => {
-                // A deleted tracked file is a valid discard target: checkout
-                // recreates it from the index.
                 plan.push(DiscardPath::Tracked(candidate));
             }
             Err(error) => {
@@ -3275,11 +3091,6 @@ fn preflight_discard_paths(
 fn discard_paths_at(root: &PathBuf, paths: &[String]) -> Result<(), String> {
     let repository = cap_std::fs::Dir::open_ambient_dir(root, cap_std::ambient_authority())
         .map_err(|error| format!("could not open the project for discard: {error}"))?;
-    // Resolve and inspect the complete batch before changing any file. Besides
-    // rejecting missing paths and directories up front, `resolve_within`
-    // prevents an untracked path from reaching outside the project through a
-    // symlinked ancestor. The capability-rooted removal then keeps the mutation
-    // bound to this repository if an ancestor changes after preflight.
     let plan = preflight_discard_paths(root, &repository, paths)?;
     for item in plan {
         match item {
@@ -3297,9 +3108,6 @@ fn discard_paths_at(root: &PathBuf, paths: &[String]) -> Result<(), String> {
             }
             DiscardPath::UntrackedFile(path) => match repository.remove_file(&path) {
                 Ok(()) => {}
-                // Two user-visible aliases may resolve to the same directory
-                // entry. Once the first alias has removed it, the requested
-                // end state already holds for the second one too.
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
                 Err(error) => {
                     return Err(format!(
@@ -3380,7 +3188,6 @@ fn git_head_oid_sync(project_id: String) -> Result<Option<String>, String> {
     Ok(if s.is_empty() { None } else { Some(s) })
 }
 
-/// Bound for each of the two Git calls behind [`head_state`].
 const HEAD_STATE_DEADLINE: Duration = Duration::from_secs(10);
 
 /// The HEAD commit of the repository at `root` and whether the working tree has
@@ -3436,32 +3243,24 @@ pub(crate) fn head_commit_time(root: &Path) -> Option<u64> {
     String::from_utf8_lossy(&output.stdout).trim().parse().ok()
 }
 
-/// Whether the repo has a HEAD commit yet (false on a fresh repo).
 fn has_head(root: &PathBuf) -> bool {
     run_git(root, &["rev-parse", "--verify", "--quiet", "HEAD"])
         .map(|o| o.status.success())
         .unwrap_or(false)
 }
 
-/// Whether the index holds anything different from HEAD (i.e. staged changes).
 fn has_staged_changes(root: &PathBuf) -> bool {
     if has_head(root) {
-        // `diff --cached --quiet` exits non-zero when there ARE staged changes.
         run_git(root, &["diff", "--cached", "--quiet"])
             .map(|o| !o.status.success())
             .unwrap_or(false)
     } else {
-        // No commit yet: any entry in the index counts as staged.
         run_git(root, &["ls-files", "--cached"])
             .map(|o| !String::from_utf8_lossy(&o.stdout).trim().is_empty())
             .unwrap_or(false)
     }
 }
 
-// 0.4.8 D: "Commit this turn" commits only the files one agent turn changed.
-/// Stages `paths` (additions and deletions) and commits exactly those
-/// paths; anything else already staged stays staged and uncommitted.
-/// Returns the new HEAD.
 pub(crate) fn commit_paths_sync(
     project_id: &str,
     paths: &[String],
@@ -3512,8 +3311,6 @@ fn stage(root: &PathBuf, path: &str) -> Result<(), String> {
 #[cfg(test)]
 fn unstage(root: &PathBuf, path: &str) -> Result<(), String> {
     validate_repo_relative_path(path)?;
-    // With a HEAD, reset the path back to HEAD in the index. Without one (initial
-    // commit), there's nothing to reset to, so drop it from the index instead.
     let out = if has_head(root) {
         run_git(
             root,
@@ -3592,8 +3389,6 @@ fn stage_all_except_secrets(root: &PathBuf) -> Result<Vec<String>, String> {
             continue;
         }
         let (x, y, path) = (record[0], record[1], &record[3..]);
-        // `add -A` would stage the worktree side. A deletion is kept, so a
-        // tracked secret can still be removed.
         let staged_by_add = is_unmerged_status(x, y) || (y != b' ' && y != b'D');
         if staged_by_add && looks_like_secret(root, path) {
             left_out.insert(path.to_vec());
@@ -3620,7 +3415,6 @@ fn stage_all_except_secrets(root: &PathBuf) -> Result<Vec<String>, String> {
         .collect())
 }
 
-/// Every path in the index, as Git spells it.
 pub(crate) fn tracked_paths(
     root: &std::path::Path,
 ) -> Result<std::collections::BTreeSet<String>, String> {
@@ -3632,8 +3426,6 @@ pub(crate) fn tracked_paths(
         .collect())
 }
 
-/// Paths the next commit would add, change or retype, or every index entry
-/// before the first commit.
 fn staged_paths(root: &PathBuf) -> Result<Vec<Vec<u8>>, String> {
     let output = if has_head(root) {
         run_git_read_only(
@@ -3655,10 +3447,6 @@ fn staged_paths(root: &PathBuf) -> Result<Vec<Vec<u8>>, String> {
     git_listing(output)
 }
 
-/// Run Git with `pathspecs` read from a temporary file, NUL-separated, so a
-/// path with a newline, quotes or bytes that are not Unicode reaches Git as it
-/// is and the list never meets a command-line length limit. The file is
-/// written and closed before Git opens it.
 fn run_git_with_pathspecs(
     root: &PathBuf,
     args: &[&str],
@@ -3709,7 +3497,6 @@ fn unstage_all(root: &PathBuf) -> Result<(), String> {
     ok_or_err(out)
 }
 
-/// Commit the staged index only. Returns false (no-op) when nothing is staged.
 fn commit_index(root: &PathBuf, message: &str) -> Result<bool, String> {
     if !has_staged_changes(root) {
         return Ok(false);
@@ -3722,9 +3509,6 @@ fn commit_index(root: &PathBuf, message: &str) -> Result<bool, String> {
     }
 }
 
-/// Content of `path` at a revision: `rev = "HEAD"` for the last commit, `"INDEX"`
-/// for the staged version. Missing in that revision (added/deleted/untracked)
-/// yields an empty string rather than an error.
 fn show(root: &PathBuf, rev: &str, path: &str) -> Result<String, String> {
     let object = if rev == "INDEX" {
         format!(":{path}")
@@ -4318,7 +4102,6 @@ mod tests {
         }
     }
 
-    /// Create a throwaway git repo in a temp dir with a fixed identity.
     fn temp_repo() -> PathBuf {
         let n = COUNTER.fetch_add(1, Ordering::SeqCst);
         let dir = std::env::temp_dir().join(format!("oleafly-git-test-{}-{n}", std::process::id()));
@@ -4909,7 +4692,6 @@ mod tests {
         let secret = root.join("secret.tex");
         std::fs::set_permissions(&secret, std::fs::Permissions::from_mode(0o000)).unwrap();
         if std::fs::read(&secret).is_ok() {
-            // Running as root: permissions cannot make the file unreadable.
             return;
         }
         assert!(ensure_repository(&root).unwrap());
@@ -5665,7 +5447,6 @@ mod tests {
                 .trim()
                 .to_string();
 
-        // A later explicit commit adds a file, deletes one, and modifies one.
         write(&root, "added-later.tex", "created by the response\n");
         std::fs::remove_file(root.join("removed-later.tex")).unwrap();
         write(&root, "keep.tex", "changed by the response\n");
@@ -5762,7 +5543,6 @@ mod tests {
         stage_all(&remote).unwrap();
         assert!(commit_index(&remote, "Remote base").unwrap());
 
-        // What a server's archive of that commit holds.
         let imported = temp_dir("history-import-subst");
         write(&imported, ".gitattributes", "version.tex export-subst\n");
         write(&imported, "version.tex", "\\newcommand\\commit{abc1234}\n");
@@ -5902,7 +5682,6 @@ mod tests {
         let s = status(&r);
         assert!(s[0].staged);
         assert_eq!(s[0].status, "A");
-        // No HEAD yet: unstage must fall back to `rm --cached`.
         unstage(&r, "a.txt").unwrap();
         let s = status(&r);
         assert!(!s[0].staged);
@@ -5914,12 +5693,11 @@ mod tests {
         let r = temp_repo();
         write(&r, "a.txt", "one\n");
         write(&r, "b.txt", "two\n");
-        stage(&r, "a.txt").unwrap(); // b.txt left unstaged
+        stage(&r, "a.txt").unwrap();
         assert!(commit_index(&r, "first").unwrap());
         let s = status(&r);
         assert_eq!(s.len(), 1);
         assert_eq!(s[0].path, "b.txt");
-        // Nothing staged now -> commit is a no-op returning false.
         assert!(!commit_index(&r, "noop").unwrap());
     }
 
@@ -5930,8 +5708,8 @@ mod tests {
         stage(&r, "a.txt").unwrap();
         commit_index(&r, "c1").unwrap();
         write(&r, "a.txt", "v2\n");
-        stage(&r, "a.txt").unwrap(); // index = v2
-        write(&r, "a.txt", "v3\n"); // worktree = v3, index = v2, HEAD = v1
+        stage(&r, "a.txt").unwrap();
+        write(&r, "a.txt", "v3\n");
         assert_eq!(show(&r, "HEAD", "a.txt").unwrap(), "v1\n");
         assert_eq!(show(&r, "INDEX", "a.txt").unwrap(), "v2\n");
         assert_eq!(show(&r, "HEAD", "missing.txt").unwrap(), "");
@@ -5970,21 +5748,16 @@ mod tests {
         let out = " M work.tex\nM  staged.tex\nMM both.tex\nA  added.tex\n?? new.tex";
         let c = parse_status_porcelain(out);
         assert_eq!(c.len(), 6);
-        // " M" = modified in working tree only (unstaged)
         assert_eq!(c[0].path, "work.tex");
         assert_eq!(c[0].status, "M");
         assert!(!c[0].staged);
-        // "M " = staged modification
         assert_eq!(c[1].status, "M");
         assert!(c[1].staged);
-        // "MM" appears in both sections: staged first, then unstaged.
         assert!(c[2].staged);
         assert_eq!(c[3].path, "both.tex");
         assert!(!c[3].staged);
-        // "A " = staged add
         assert_eq!(c[4].status, "A");
         assert!(c[4].staged);
-        // "??" = untracked, never staged
         assert_eq!(c[5].path, "new.tex");
         assert_eq!(c[5].status, "?");
         assert!(!c[5].staged);
@@ -7009,7 +6782,6 @@ mod tests {
             assert_eq!(code(text, false), Some(without_account), "{text}");
         }
         assert_eq!(code("error: something else went wrong", false), None);
-        // Settings can't add an account for these, so the advice leaves it out.
         for (remote, prompt, refused) in [
             (
                 "https://bitbucket.org/team/paper.git",
@@ -7095,7 +6867,6 @@ mod tests {
             super::classify_remote_failure(denied_text, url, Some("octo@github.com")).unwrap();
         assert_eq!(denied.code, "git.access_denied");
         assert_eq!(denied.params["account"], "octo@github.com");
-        // The message that names the account is the "account" variant.
         assert_eq!(denied.params["context"], "account");
 
         let rejected = super::classify_remote_failure(
@@ -7108,11 +6879,9 @@ mod tests {
         assert_eq!(rejected.params["account"], "octo@github.com");
         assert!(!rejected.params.contains_key("context"));
 
-        // Git's own sign-in has no account to name.
         let own = super::classify_remote_failure(denied_text, url, None).unwrap();
         assert!(!own.params.contains_key("account"));
         assert!(!own.params.contains_key("context"));
-        // Other failures do not name one either.
         let unreachable =
             super::classify_remote_failure("Connection refused", url, Some("octo@github.com"))
                 .unwrap();
@@ -7211,8 +6980,6 @@ mod tests {
 
     #[test]
     fn link_addresses_with_a_password_are_refused() {
-        // Setting a remote takes the project's worktree lock first, and the
-        // lock looks for a restore marker in the library.
         let _library = crate::collab::testing::TempLibrary::new();
         let refused = super::git_set_remote_sync(
             "no-such-project".into(),
@@ -7240,7 +7007,6 @@ mod tests {
         assert!(!super::has_remote_password("git@h.org:o/r.git"));
     }
 
-    /// The same rows as `hasRemotePassword` in src/lib/forge.test.ts.
     const TOKEN_USERS: [&str; 9] = [
         "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
         "gho_abc",
@@ -7317,7 +7083,6 @@ mod tests {
     #[test]
     fn git_runs_with_english_messages_and_keeps_the_other_locale_variables() {
         let root = temp_repo();
-        // As if Oleafly had been started under a German locale.
         let _inherited = super::testing::inherit_git_env(vec![
             ("LANGUAGE".into(), "de".into()),
             ("LC_MESSAGES".into(), "de_DE.UTF-8".into()),
@@ -7386,7 +7151,6 @@ mod tests {
         );
     }
 
-    /// Commit every file, ignored ones too, with plain Git.
     fn commit_all_with_ignored(root: &PathBuf, message: &str) -> String {
         ok_or_err(run_git(root, &["add", "-A", "-f", "--", "."]).unwrap()).unwrap();
         ok_or_err(run_git(root, &["commit", "--quiet", "-m", message]).unwrap()).unwrap();
@@ -7510,7 +7274,6 @@ mod tests {
         );
     }
 
-    /// A bare repository holding one commit of `files`.
     fn bare_remote(parent: &Path, files: &[(&str, &str)]) -> PathBuf {
         let work = temp_repo();
         for (name, content) in files {
@@ -7647,7 +7410,6 @@ mod tests {
         use std::os::unix::fs::PermissionsExt as _;
         let programs = temp_dir("clone-cancel-git");
         let fake = programs.join("fake-git");
-        // Answers the availability probe, then hangs like a huge download.
         std::fs::write(
             &fake,
             "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 'git version 2.40.0'; exit 0; fi\nsleep 60\n",
@@ -7896,7 +7658,6 @@ mod tests {
     }
 
     const PEM: &str = "-----BEGIN PRIVATE KEY-----\nMIIB\n-----END PRIVATE KEY-----\n";
-    /// The start of a single-file Keynote document, which is a zip archive.
     const KEYNOTE: &[u8] = b"PK\x03\x04\x14\x00\x00\x00keynote";
 
     fn write_file(root: &Path, relative: &str, content: impl AsRef<[u8]>) {
@@ -7905,7 +7666,6 @@ mod tests {
         std::fs::write(path, content).unwrap();
     }
 
-    /// The NUL-separated paths a Git listing prints, as text.
     fn listed(root: &Path, args: &[&str]) -> Vec<String> {
         super::git_listing(run_git(&root.to_path_buf(), args).unwrap())
             .unwrap()
@@ -7929,7 +7689,6 @@ mod tests {
         ok_or_err(run_git(&root, &["commit", "--quiet", "-m", message]).unwrap()).unwrap();
     }
 
-    /// Whether the object store holds the current content of `relative`.
     fn is_stored(root: &Path, relative: &str) -> bool {
         let hash = git_text(root, &["hash-object", "--", relative]);
         run_git(&root.to_path_buf(), &["cat-file", "-e", &hash])
@@ -7938,7 +7697,6 @@ mod tests {
             .success()
     }
 
-    /// The `files` parameter of a `git.tracked_secret_files` refusal.
     fn refused_files(error: &str) -> String {
         let envelope: serde_json::Value = serde_json::from_str(
             error
@@ -7950,10 +7708,6 @@ mod tests {
         envelope["params"]["files"].as_str().unwrap().to_string()
     }
 
-    /// Run this thread's Git spawns without the machine's global and system
-    /// Git configuration or its default excludes file. A test that publishes a
-    /// folder with no `.git` yet uses this, because [`without_global_excludes`]
-    /// needs a repository to configure.
     fn without_global_config() -> super::testing::InheritedEnvOverride {
         let empty = temp_dir("no-global-config");
         super::testing::inherit_git_env(vec![
@@ -8178,7 +7932,6 @@ mod tests {
         write_file(&root, "deploy/server.key", PEM);
         write_file(&root, "notes.txt", "notes\n");
         commit_everything(&root, "first");
-        // A secret name that arrives by rename is added too.
         ok_or_err(run_git(&root, &["mv", "notes.txt", "deploy/.env"]).unwrap()).unwrap();
         ok_or_err(run_git(&root, &["rm", "--cached", "-q", "--", ".env"]).unwrap()).unwrap();
         ok_or_err(run_git(&root, &["commit", "--quiet", "-m", "forget"]).unwrap()).unwrap();

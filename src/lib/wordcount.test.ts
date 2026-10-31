@@ -22,13 +22,10 @@ describe("countWords (masked)", () => {
   });
 
   it("does NOT treat an escaped percent as a comment", () => {
-    // `\%` is a literal percent sign, so the text after it still counts.
     expect(countWords("save 50\\% today words").words).toBe(3);
   });
 
   it("INTENTIONAL CHANGE: bare numbers are no longer counted as words", () => {
-    // The masked counter counts spellcheckable word tokens; "50" is not one.
-    // The old heuristic counted "save 50\% today" as 3 words.
     expect(countWords("save 50\\% today").words).toBe(2);
   });
 
@@ -38,12 +35,10 @@ describe("countWords (masked)", () => {
 
   it("drops bare commands and \\begin/\\end environments", () => {
     const tex = "\\begin{itemize}\\item apple\\end{itemize}";
-    expect(countWords(tex).words).toBe(1); // only "apple"
+    expect(countWords(tex).words).toBe(1);
   });
 
   it("INTENTIONAL CHANGE: inline math bodies are excluded from the count", () => {
-    // The old heuristic stripped only the `$` delimiters and counted "x" as a
-    // word (4 words). The mask excludes the whole math body: 3 prose words.
     expect(countWords("cost is $x$ dollars").words).toBe(3);
   });
 
@@ -51,7 +46,7 @@ describe("countWords (masked)", () => {
     const tex = "\\begin{equation}E = mc^2\\end{equation}\nProse sentence here.";
     const r = countWords(tex);
     expect(r.words).toBe(3);
-    expect(r.lines).toBe(1); // the equation-only line is not a content line
+    expect(r.lines).toBe(1);
   });
 
   it("INTENTIONAL CHANGE: verbatim bodies are excluded from the count", () => {
@@ -67,7 +62,6 @@ describe("countWords (masked)", () => {
   });
 
   it("INTENTIONAL CHANGE: labels, refs, and citation keys are excluded", () => {
-    // Old heuristic unwrapped `\ref{sec:intro}` to "sec:intro" and counted it.
     expect(countWords("See \\ref{sec:intro} and \\cite{knuth84}.").words).toBe(2);
   });
 

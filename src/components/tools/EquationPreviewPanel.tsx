@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-// Chemistry equations (\ce{...}) for the examples below.
 import "katex/contrib/mhchem";
 import { AlertCircle, Check, Copy, Maximize, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";

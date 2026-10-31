@@ -1,7 +1,3 @@
-//! Signed-in sessions and Git tokens per server, kept in the shared
-//! encrypted secret store. Every change goes through the store's
-//! cross-process update, so the app and the CLI never lose each other's
-//! entries.
 use std::collections::BTreeMap;
 
 use oleafly_secrets::SecretStore;
@@ -17,7 +13,6 @@ pub struct Session {
     pub cookie: String,
     pub user_id: String,
     pub email: String,
-    /// Who saved it: "app", "cli" or "cli:browser:<id>". Absent in 0.4.7.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub saved_by: Option<String>,
 }
@@ -33,7 +28,6 @@ impl std::fmt::Debug for Session {
     }
 }
 
-/// Whether `url` names this computer (`localhost`, `127.0.0.1`, `[::1]`).
 pub fn is_loopback(url: &url::Url) -> bool {
     match url.host() {
         Some(url::Host::Domain(domain)) => {
@@ -46,8 +40,6 @@ pub fn is_loopback(url: &url::Url) -> bool {
     }
 }
 
-/// A server address a session cookie or a Git token may be sent to: https,
-/// or http only for this computer.
 pub fn is_secure_server(server: &str) -> bool {
     url::Url::parse(server)
         .is_ok_and(|url| url.scheme() == "https" || (url.scheme() == "http" && is_loopback(&url)))
@@ -201,8 +193,6 @@ pub fn valid_git_token(token: &str) -> bool {
             .all(|byte| byte.is_ascii_graphic() && byte != b'"' && byte != b'\'' && byte != b'\\')
 }
 
-/// Checks a cookie against the dashboard and returns the session it opens,
-/// with any refreshed cookies merged in.
 pub async fn session_from_cookie(
     http: &Http,
     cookie: String,
@@ -236,7 +226,6 @@ fn encode<T: Serialize>(map: &BTreeMap<String, T>) -> Option<String> {
     }
 }
 
-/// Edits the `{base: Session}` map under the store's lock.
 fn with_sessions<T>(
     store: &SecretStore,
     work: impl FnOnce(&mut BTreeMap<String, Session>) -> T,
@@ -283,12 +272,10 @@ pub fn save(store: &SecretStore, base: &str, session: &Session) -> Result<(), On
     })
 }
 
-/// Removes the session for `base`; true when there was one.
 pub fn forget(store: &SecretStore, base: &str) -> Result<bool, OnlineError> {
     with_sessions(store, |sessions| sessions.remove(base).is_some())
 }
 
-/// Stores a refreshed cookie, unless another account signed in meanwhile.
 pub fn refresh_cookie(
     store: &SecretStore,
     base: &str,
@@ -339,8 +326,6 @@ pub fn git_token_servers(store: &SecretStore) -> Result<Vec<String>, OnlineError
     Ok(tokens.into_keys().collect())
 }
 
-/// The one server with a session or Git token; the service default when
-/// there is none or more than one.
 pub fn default_server(store: &SecretStore) -> Result<String, OnlineError> {
     let mut servers = session_servers(store)?;
     servers.extend(git_token_servers(store)?);

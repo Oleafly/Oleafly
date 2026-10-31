@@ -137,19 +137,14 @@ export interface EditorHost {
     editorTheme: string;
     tabSize: number;
     lineWrap: boolean;
-    /** Completion popups while typing; explicit Ctrl+Space always works. */
     autocomplete: boolean;
-    /** Auto-insert closing brackets, parentheses, and quotes. */
     autoCloseBrackets: boolean;
     autoCloseMath?: boolean;
     cursorBlinking: EditorCursorBlinking;
     highlightCurrentLine: boolean;
     cursorHeight: EditorCursorHeight;
-    /** Dim inline preview of the top completion, accepted with Tab. */
     ghostCompletion: boolean;
-    /** Pin the enclosing sections and environments to the top while scrolling. */
     stickyScroll: boolean;
-    /** Render the equation the cursor is in above the source. */
     mathPreview: boolean;
   };
   useLintRefreshDeps(): readonly unknown[];
@@ -279,7 +274,6 @@ function matchSessionLineBreaks(view: EditorView, compartment: Compartment, boun
   view.dispatch({ effects: compartment.reconfigure(bound ? boundLineBreaks : []) });
 }
 
-// Takes the session's text into the editor without sending it back.
 function realignWithSession(view: EditorView, session: DocumentSession): void {
   const current = view.state.doc.toString();
   const next = session.text();
@@ -336,8 +330,6 @@ class EditorSessions {
   sendLocal(view: EditorView, transactions: readonly Transaction[]): boolean {
     const session = this.current;
     if (!session) return false;
-    // Text an input method is still composing goes to the session but waits
-    // there, so collaborators only see the characters that are committed.
     if (view.compositionStarted) session.holdLocal?.();
     for (const transaction of transactions) {
       if (!transaction.docChanged || transaction.annotation(remoteChange) || transaction.annotation(documentLoad)) {
@@ -346,10 +338,6 @@ class EditorSessions {
       try {
         session.applyLocal(lfEdits(changesToUtf16Edits(transaction.changes)), this.currentVersion);
       } catch (error) {
-        // The editor already shows this change but the session refused it
-        // (read-only, stale, outside the text or splitting a character). Put
-        // the session's text back, or every later edit lands at the wrong
-        // offset for everyone.
         logException(view.state, error, "shared document");
         this.keepAligned(view, session, true);
         return true;
@@ -361,15 +349,10 @@ class EditorSessions {
     return true;
   }
 
-  // A composition can end without a last change, for example when it is
-  // cancelled, so the editor checks again once it has ended.
   compositionEnded(view: EditorView): void {
     if (!view.compositionStarted) this.current?.releaseLocal?.();
   }
 
-  // Every local edit is sent with the editor's offsets, so the editor must
-  // hold exactly the session's text. Comparing lengths is cheap enough for
-  // every change and catches a line break the two count differently.
   private keepAligned(view: EditorView, session: DocumentSession, force: boolean): void {
     if (this.current !== session) return;
     if (!force && view.state.doc.length === session.text().length) return;
@@ -379,7 +362,6 @@ class EditorSessions {
 
   release(backgroundPath: string | null): void {
     const session = this.current;
-    // Nothing composes into a file the editor no longer shows.
     session?.releaseLocal?.();
     this.stopCurrent?.();
     this.stopCurrent = null;
@@ -424,8 +406,6 @@ class EditorSessions {
       const saved = this.states.get(key);
       if (saved) this.states.set(key, remotePathViewState(saved, change.edits));
     });
-    // Follow a rename at once, so the file opens under its new name with its
-    // history instead of waiting for the next remote edit.
     const stopMoves = session.subscribeMove?.(followMove) ?? (() => {});
     const entry: BackgroundSession = {
       session,
@@ -437,8 +417,6 @@ class EditorSessions {
     this.background.set(path, entry);
   }
 
-  // A rename moves the session to a new path. Carry the saved view along, so
-  // the old path doesn't keep a copy that every remote edit updates.
   private follow(from: string, to: string, entry: BackgroundSession): string {
     const saved = this.states.get(from);
     this.states.delete(from);
@@ -491,9 +469,6 @@ function dispatchDocumentSync(
 const NON_TEXT_INPUTS = new Set(["button", "checkbox", "color", "file", "image", "radio", "range", "reset", "submit"]);
 const FOCUS_HOLDERS = '[role="dialog"], [role="alertdialog"], [role="menu"], [role="menubar"], dialog';
 
-// The person is working somewhere else: typing in another field, or in a
-// dialog or menu, which a collaborator's rename or delete must not pull the
-// focus out of when it switches the open file.
 function focusHeldElsewhere(view: EditorView): boolean {
   const active = view.dom.ownerDocument.activeElement;
   if (!(active instanceof HTMLElement) || view.dom.contains(active)) return false;
@@ -694,10 +669,6 @@ function latexSourceTools(
   ];
   return [
     latexFolding(),
-    // Before autocompletion: both register keymaps at the highest
-    // precedence, where the earlier extension wins, and the ghost's Escape
-    // has to record its dismissal before the popup consumes the key. Its
-    // handlers decline whenever the popup should own the key instead.
     ...(ghostCompletionEnabled ? [ghostCompletion(ghostSources, completionSyntax)] : []),
     autocompletion({
       override: sources,
@@ -816,15 +787,11 @@ function sourceToolsForPath(
   ];
 }
 
-// Sticky scroll reads LaTeX sectioning and environments, so it has nothing to
-// pin in a Markdown, BibTeX, or JSON buffer.
 function stickyScrollFor(path: string | null): Extension[] {
   if (isTypstSourcePath(path)) return [stickyScroll(typstStickySource)];
   return isLatexSourcePath(path) ? [stickyScroll()] : [];
 }
 
-// Bracket auto-closing and cursor rendering, both user preferences that must
-// reconfigure without recreating the editor.
 interface EditorPrefs {
   autoCloseBrackets: boolean;
   autoCloseMath: boolean;
@@ -915,11 +882,6 @@ export function CodeMirrorEditor({
   const visualActiveRef = useRef(visualActive);
   visualActiveRef.current = visualActive;
   const completionSyntax = host.useCompletionSyntax(activePath);
-  // NB: the active file's content is read imperatively (host.getContent) inside
-  // the file-swap effect below, NOT subscribed to. Subscribing here would
-  // re-render this component on every keystroke (the store updates on each
-  // edit), which is pure waste since CodeMirror owns the document and the
-  // effect only needs the content when the file or docVersion actually changes.
   const docVersion = host.useDocVersion();
   const hostEditLocked = host.useEditLocked?.() ?? false;
   const {
@@ -999,10 +961,6 @@ export function CodeMirrorEditor({
     updateTabFocusMode();
   };
 
-  // Construct during the layout phase. The corrective measurement effect
-  // below is also a layout effect and must see a live EditorView on the first
-  // active mount; constructing in a passive effect made that measurement run
-  // too early and get skipped permanently.
   useLayoutEffect(() => {
     if (!hostRef.current) return;
     const initialPath = host.getActivePath();
@@ -1213,18 +1171,11 @@ export function CodeMirrorEditor({
     return () => cancelAnimationFrame(frame);
   }, [active]);
 
-  // When the active file changes (or a version is restored), swap the document.
   synchronizeRef.current = () => {
     const activePath = host.getActivePath();
     const view = viewRef.current;
     if (!view) return;
     if (!activePath) {
-      // A direct project switch keeps this React component mounted while the
-      // files store intentionally passes through an empty state. Treat that
-      // as a hard document boundary: otherwise the previous project's
-      // diagnostics and pending proofreading actions can survive until the
-      // next project opens another file with the same path (usually
-      // `main.tex`).
       cancelSourceProofreading(prevPathRef.current ?? undefined);
       pathStatesRef.current.clear();
       sessionsRef.current.releaseAll();
@@ -1328,8 +1279,6 @@ export function CodeMirrorEditor({
         spellExtensionsForPath(activePath, { spell: spellcheck, harper }),
       ),
     );
-    // Drop the undo history when moving to a different file, so undo/redo never
-    // crosses file boundaries (a change from file A must not replay into file B).
     if (pathChanged) {
       effects.push(historyCompartmentRef.current!.reconfigure([]));
     }
@@ -1351,11 +1300,6 @@ export function CodeMirrorEditor({
     queueMicrotask(() => {
       suppressSyncRef.current = false;
     });
-    // Opening a file moves the focus here, but a resync of the same file must
-    // leave it alone: a disk reload or a shared session can bump the version
-    // while the person types somewhere else. A switch never takes the focus
-    // out of another text field, a dialog or a menu either, since a
-    // collaborator's rename or delete can switch the file.
     if (pathChanged && !focusHeldElsewhere(view)) view.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   };
@@ -1370,9 +1314,6 @@ export function CodeMirrorEditor({
     view.dispatch({ effects: compartment.reconfigure(editabilityExtensions(locked)) });
   }, [host, hostEditLocked]);
 
-  // Sticky scroll depends on both the preference and the file's syntax, and it
-  // rebuilds its own scope list on reconfigure, so a single effect covers a
-  // toggle and a file swap alike.
   useEffect(() => {
     const view = viewRef.current;
     const compartment = stickyCompartmentRef.current;
@@ -1450,8 +1391,6 @@ export function CodeMirrorEditor({
     });
   }, [editorKeysSignature]);
 
-  // Toggle bracket auto-closing and cursor blinking without recreating the
-  // editor.
   useEffect(() => {
     const view = viewRef.current;
     const compartment = editorPrefsCompartmentRef.current;
@@ -1469,9 +1408,6 @@ export function CodeMirrorEditor({
     });
   }, [activePath, autoCloseBrackets, autoCloseMath, cursorBlinking, highlightCurrentLine, cursorHeight]);
 
-  // Toggle completion-while-typing without recreating the editor. Completions
-  // live inside the source-tools compartment, so rebuild it for the current
-  // path.
   useEffect(() => {
     const view = viewRef.current;
     const compartment = sourceToolsCompartmentRef.current;
@@ -1493,7 +1429,6 @@ export function CodeMirrorEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autocomplete, ghostCompletionEnabled, completionSyntax, mathPreview]);
 
-  // Toggle spellcheck / Harper grammar without recreating the editor.
   useEffect(() => {
     const view = viewRef.current;
     const compartment = spellCompartmentRef.current;
@@ -1511,15 +1446,11 @@ export function CodeMirrorEditor({
     });
   }, [spellcheck, harper]);
 
-  // Re-lint when the ignore dictionary or lint-category mutes change (e.g. the
-  // user un-ignores a word or toggles a category in Settings).
   useEffect(() => {
     refreshEditorLints(viewRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, lintDeps);
 
-  // App-level proofreading preferences that do not affect editor construction
-  // (for example, the selected English dialect) request a lightweight re-lint.
   useEffect(() => {
     const refreshSettings = (event: Event) => {
       const detail = (

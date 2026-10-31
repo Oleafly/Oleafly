@@ -14,7 +14,6 @@ use oleafly_research::host::{Notification, NotificationKind};
 
 use super::serve::{AppLaunch, Localizer};
 
-/// The English texts (the app's `native.json`).
 pub const ENGLISH: &[(&str, &str)] = &[
     ("backgroundHelper.started.title", "Oleafly keeps working"),
     (
@@ -52,7 +51,6 @@ pub(crate) fn windows_app_id(start_menu_shortcut_exists: bool) -> &'static str {
     }
 }
 
-/// `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Oleafly.lnk`.
 #[cfg_attr(not(windows), allow(dead_code))]
 fn start_menu_shortcut() -> Option<PathBuf> {
     let appdata = std::env::var_os("APPDATA").filter(|value| !value.is_empty())?;
@@ -84,8 +82,6 @@ fn kind_key(kind: NotificationKind) -> &'static str {
 const MAX_WAITING: usize = 4;
 static WAITING: AtomicUsize = AtomicUsize::new(0);
 
-/// Runs `wait` (a wait for the notification's click) while fewer than
-/// [`MAX_WAITING`] others wait; `None` when that many already do.
 pub fn with_click_slot<T>(wait: impl FnOnce() -> T) -> Option<T> {
     struct Slot;
     impl Drop for Slot {
@@ -103,7 +99,6 @@ pub fn with_click_slot<T>(wait: impl FnOnce() -> T) -> Option<T> {
 }
 
 pub struct Notifier {
-    /// The user's choice, read again while the helper runs.
     enabled: AtomicBool,
     localize: Option<Localizer>,
     app_launch: Option<Arc<AppLaunch>>,
@@ -118,13 +113,10 @@ impl Notifier {
         }
     }
 
-    /// Notifications turned on or off in the app's settings since start.
     pub fn set_enabled(&self, enabled: bool) {
         self.enabled.store(enabled, Ordering::Release);
     }
 
-    /// A text by its key; the English text when there is no localizer or
-    /// it has none.
     pub(crate) fn text(&self, key: &str, title: Option<&str>) -> String {
         let params: Vec<(&str, &str)> = title
             .map(|title| vec![("title", title)])
@@ -150,7 +142,6 @@ impl Notifier {
         self.enabled.load(Ordering::Acquire)
     }
 
-    /// A research task's notification.
     pub fn notify(&self, notification: &Notification) {
         if !self.enabled() {
             return;
@@ -167,7 +158,6 @@ impl Notifier {
         self.show(title, body);
     }
 
-    /// Once, when the helper takes over work after the app quit.
     pub fn started(&self) {
         if !self.enabled() {
             return;
@@ -198,7 +188,6 @@ fn show_now(title: &str, body: &str, _launch: Option<Arc<AppLaunch>>) {
             .show()
             .is_ok();
     if !shown {
-        // AppleScript strings: quotes and backslashes escaped.
         let quote = |text: &str| text.replace('\\', "\\\\").replace('"', "\\\"");
         let script = format!(
             "display notification \"{}\" with title \"{}\"",

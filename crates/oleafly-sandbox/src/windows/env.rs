@@ -18,12 +18,10 @@ const SYSTEM_VARS: [&str; 9] = [
     "OS",
 ];
 
-/// The folder of the Python temp-folder shim inside the home.
 pub fn python_shim_dir(home: &Path) -> PathBuf {
     home.join("oleafly-python")
 }
 
-/// `PATH` without the task's own folders: the Windows system folders.
 pub fn system_path(system_root: &str) -> Vec<PathBuf> {
     vec![
         PathBuf::from(format!(r"{system_root}\System32")),
@@ -33,8 +31,6 @@ pub fn system_path(system_root: &str) -> Vec<PathBuf> {
     ]
 }
 
-/// The base environment: system variables from the host, user folders in
-/// `home`, `PATH` = `path` then the system folders.
 pub fn base_env(
     host: &dyn Fn(&str) -> Option<OsString>,
     home: &Path,
@@ -89,8 +85,6 @@ mod tests {
         assert!(env.contains_key("LOCALAPPDATA"));
     }
 
-    // PATH is joined with the host's separator, so the Windows folders in
-    // it only join on Windows.
     #[cfg(windows)]
     #[test]
     fn base_env_points_user_folders_at_the_task_home() {

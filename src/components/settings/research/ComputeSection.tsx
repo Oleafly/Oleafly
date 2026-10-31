@@ -193,7 +193,6 @@ function TargetRow({
   );
 }
 
-/** Settings › Research › Compute: run targets and the sandbox on this computer. */
 export function ComputeSection() {
   const { t } = useTranslation(["common", "researchTools"]);
   const [view, setView] = useState<ComputeView | null>(null);
@@ -204,7 +203,6 @@ export function ComputeSection() {
   const [editing, setEditing] = useState<ComputeTarget | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [removing, setRemoving] = useState<ComputeTarget | null>(null);
-  // Host keys waiting for the user, one dialog at a time; the first is the one shown.
   const [hostKeys, setHostKeys] = useState<readonly HostKeyEntry[]>([]);
   const mounted = useRef(true);
 
@@ -236,8 +234,6 @@ export function ComputeSection() {
     }
   }, []);
 
-  // A prompt never replaces the one on screen: the user is comparing that host's
-  // fingerprints, and the Trust button must trust what they compared.
   const queueHostKey = useCallback((entry: HostKeyEntry) => {
     setHostKeys((current) => {
       const index = current.findIndex((item) => item.target.id === entry.target.id);
@@ -247,7 +243,6 @@ export function ComputeSection() {
     });
   }, []);
 
-  // The latest test of each target; a test that a newer one replaced reports nothing.
   const testRuns = useRef(new Map<string, number>());
 
   const runTest = useCallback(
@@ -288,7 +283,6 @@ export function ComputeSection() {
       return next;
     });
 
-  /** Saves a target and tests it at once (errors go back to the dialog). */
   const save = async (target: ComputeTarget) => {
     const before = new Set(view?.targets.map((item) => item.id) ?? []);
     const next = await saveComputeTarget(target);
@@ -310,7 +304,6 @@ export function ComputeSection() {
       try {
         next = await saveComputeTarget(target);
       } catch (error) {
-        // The ones saved before this stay saved, so the list must show them.
         skipped.push({ label: target.label, error });
       }
     }
@@ -318,7 +311,6 @@ export function ComputeSection() {
       setView(next);
       announceTargetsChanged();
       const added = next.targets.filter((item) => !before.has(item.id));
-      // One host at a time, so each host-key prompt follows the test that asked for it.
       void (async () => {
         for (const target of added) {
           if (!mounted.current) return;
@@ -362,7 +354,6 @@ export function ComputeSection() {
     }
   };
 
-  /** Trusts the keys the user saw for `target`, then shows the new test (errors go back to the dialog). */
   const trust = async (target: ComputeTarget, fingerprints: string[]) => {
     const report = await trustHostKey(target.id, fingerprints);
     if (!mounted.current) return;
@@ -377,7 +368,6 @@ export function ComputeSection() {
   const closeHostKey = (target: ComputeTarget) =>
     setHostKeys((current) => current.filter((item) => item.target.id !== target.id));
 
-  /** Brings back the prompt of a host the user did not decide on. */
   const reviewHostKey = (target: ComputeTarget, prompt: HostKeyPrompt) =>
     setHostKeys((current) => [{ target, prompt }, ...current.filter((item) => item.target.id !== target.id)]);
 

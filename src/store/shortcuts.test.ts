@@ -91,14 +91,11 @@ describe("shortcut bindings", () => {
       if (!newTerminal || !toggleTerminal) throw new Error("missing terminal bindings");
       const backquote = { code: "Backquote", ctrlKey: true };
 
-      // UK layout: Shift+` types a not sign. German and French: a dead key.
       expect(matchesShortcut(keyboard("\u00ac", { ...backquote, shiftKey: true }), newTerminal)).toBe(true);
       expect(matchesShortcut(keyboard("Dead", { ...backquote, shiftKey: true }), newTerminal)).toBe(true);
       expect(matchesShortcut(keyboard("Dead", backquote), toggleTerminal)).toBe(true);
-      // US layout and test events without a code still match by the character.
       expect(matchesShortcut(keyboard("~", { ctrlKey: true, shiftKey: true }), newTerminal)).toBe(true);
       expect(matchesShortcut(keyboard("`", { ctrlKey: true }), toggleTerminal)).toBe(true);
-      // Modifiers and the key itself still have to match.
       expect(matchesShortcut(keyboard("\u00ac", backquote), newTerminal)).toBe(false);
       expect(matchesShortcut(keyboard("\u00ac", { ...backquote, shiftKey: true }), toggleTerminal)).toBe(false);
       expect(
@@ -144,7 +141,6 @@ describe("shortcut bindings", () => {
     vi.stubGlobal("navigator", { platform: "Win32" });
     try {
       const { bindingFromEvent } = await import("@/store/shortcuts");
-      // Engines that report AltGr as Ctrl+Alt.
       const altGr = { ctrlKey: true, altKey: true, getModifierState: altGraph };
 
       expect(bindingFromEvent(keyboard("@", altGr))).toBeNull();
@@ -153,7 +149,6 @@ describe("shortcut bindings", () => {
       expect(
         bindingFromEvent(keyboard("@", { ctrlKey: true, getModifierState: altGraph })),
       ).toBeNull();
-      // Ctrl with an accent key such as ^ on a French layout.
       expect(bindingFromEvent(keyboard("Dead", { ctrlKey: true }))).toBeNull();
       expect(bindingFromEvent(keyboard("q", { ctrlKey: true, altKey: true }))).toEqual({
         key: "q",

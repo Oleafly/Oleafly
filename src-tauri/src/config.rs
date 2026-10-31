@@ -20,7 +20,6 @@ pub struct StoredModel {
     pub name: String,
     #[serde(default = "default_true")]
     pub enabled: bool,
-    /// "builtin" | "fetched" | "custom"
     #[serde(default)]
     pub source: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -92,9 +91,6 @@ impl From<RawCustomProvider> for CustomProvider {
     }
 }
 
-// 0.4.8 H: Tools model
-/// The provider and model the Tools converters and the editor's
-/// Image to LaTeX/Typst send images to.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct ToolsModelChoice {
     pub provider: String,
@@ -150,41 +146,26 @@ pub struct AppConfig {
     pub github_token: String,
     #[serde(default)]
     pub github_user: String,
-    /// Derived, never trusted from disk: whether a token is stored. `get_config`
-    /// sets this and blanks `github_token` so the webview learns "connected"
-    /// without ever receiving the secret.
     #[serde(default)]
     pub github_connected: bool,
-    /// Legacy single AI key (kept for backward compat; `ai_keys` is preferred).
     #[serde(default)]
     pub ai_api_key: String,
-    /// Active AI provider id (e.g. "openai", "anthropic", "ollama").
     #[serde(default)]
     pub ai_provider: String,
-    /// Active AI model id.
     #[serde(default)]
     pub ai_model: String,
-    /// Per-provider credentials: provider id -> API key (or host URL for Ollama).
     #[serde(default)]
     pub ai_keys: HashMap<String, String>,
-    /// User-authored extra instructions, sandboxed into the AI system prompt.
     #[serde(default)]
     pub ai_system_prompt: String,
-    /// When true, the agent may rasterize compiled PDF pages for vision checks
-    /// (`verify_pdf_pages`). Defaults to true; users can disable for privacy.
     #[serde(default = "default_ai_pdf_capture")]
     pub ai_pdf_capture: bool,
-    /// Ask thinking models for readable summaries of their reasoning.
     #[serde(default)]
     pub ai_reasoning_summaries: bool,
-    /// Provider id -> per-model enable/source state (seeded from the static catalog).
     #[serde(default)]
     pub ai_provider_models: std::collections::HashMap<String, Vec<StoredModel>>,
     #[serde(default)]
     pub ai_custom_providers: Vec<CustomProvider>,
-    // 0.4.8 H: Tools model
-    /// The model the Tools converters and the editor's Image to LaTeX use.
-    /// `None` = automatic local (Ollama). Written only by `set_ai_tools_model`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_tools_model: Option<ToolsModelChoice>,
     #[serde(default)]
@@ -201,18 +182,12 @@ pub struct AppConfig {
     pub checkpoint_notifications: bool,
     #[serde(default = "default_true")]
     pub git_auto_init: bool,
-    /// MCP server: expose the in-app agent tools to external MCP clients
-    /// (Claude Desktop, Claude Code, Cursor, ...). Off by default.
     #[serde(default)]
     pub mcp_enabled: bool,
-    /// Loopback port for the MCP endpoint.
     #[serde(default = "default_mcp_port")]
     pub mcp_port: u16,
-    /// When true, mutating tools are removed from the advertised tool list.
     #[serde(default)]
     pub mcp_read_only: bool,
-    /// "ask" (confirm every write in-app) or "auto_writes" (writes proceed,
-    /// deletes still ask). Deletes always require a click.
     #[serde(default = "default_mcp_approval_policy")]
     pub mcp_approval_policy: String,
     #[serde(default)]
@@ -223,47 +198,28 @@ pub struct AppConfig {
     pub skills_share_with_agents: bool,
     #[serde(default = "default_ui_locale")]
     pub ui_locale: String,
-    /// Bumped by `oleafly config set --global` each time it changes one of
-    /// the settings the app also saves. A save from a copy read before that
-    /// keeps those settings as the CLI left them.
     #[serde(default)]
     pub cli_settings_revision: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub typst_default_version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub latex_default_engine: Option<String>,
-    // 0.4.8 E: research task defaults
-    /// Keep the computer awake while a research task or run is active.
     #[serde(default = "default_true")]
     pub research_keep_awake: bool,
-    /// Notify when a task needs the user and no Oleafly window is focused.
     #[serde(default = "default_true")]
     pub research_notifications: bool,
-    /// New tasks start with network access for their commands.
     #[serde(default)]
     pub research_command_network: bool,
-    /// The time budget new tasks start with, in minutes.
     #[serde(default = "default_research_minutes")]
     pub research_time_budget_minutes: u32,
-    /// Names of MCP servers research tasks may use (each call is approved).
     #[serde(default)]
     pub research_task_mcp_servers: Vec<String>,
-    // 0.4.8: research tasks are experimental and off until the user turns
-    // them on in Settings, Research. Changed only by
-    // `research_tasks_set_enabled`, which also tells the queue.
     #[serde(default)]
     pub research_tasks_enabled: bool,
-    // 0.4.8 L: background tasks. Changed only through their own commands
-    // (`background_tasks_set_enabled`, `background_helper_set_login_item`).
-    /// Tasks marked to keep running move to the background helper when
-    /// Oleafly quits.
     #[serde(default = "default_true")]
     pub research_background_enabled: bool,
-    /// Start the background helper when the user signs in.
     #[serde(default)]
     pub research_background_at_login: bool,
-    // 0.4.8 I: Desktop apps. Device-local, written only by
-    // `cua_driver_settings_set`, which asks before widening control.
     #[serde(default)]
     pub cua_driver: crate::cua_driver::CuaDriverConfig,
 }
@@ -290,8 +246,6 @@ fn default_ai_pdf_capture() -> bool {
 
 impl Default for AppConfig {
     fn default() -> Self {
-        // Match serde defaults so `AppConfig::default()` agrees with
-        // deserializing `{}` from disk (old configs without mcp_* keys).
         Self {
             github_token: String::new(),
             github_user: String::new(),
@@ -330,7 +284,6 @@ impl Default for AppConfig {
             research_time_budget_minutes: default_research_minutes(),
             research_task_mcp_servers: Vec::new(),
             research_tasks_enabled: false,
-            // 0.4.8 L:
             research_background_enabled: true,
             research_background_at_login: false,
             cua_driver: crate::cua_driver::CuaDriverConfig::default(),
@@ -388,9 +341,6 @@ fn read_config_unlocked() -> Result<AppConfig, String> {
         return hydrate_secrets(AppConfig::default());
     }
     let s = std::fs::read_to_string(&p).map_err(|e| e.to_string())?;
-    // A malformed config must NOT silently degrade to an empty AppConfig: a later
-    // set_config would then persist the blank over a good GitHub token. Surface
-    // the corruption so callers refuse to overwrite.
     let cfg: AppConfig =
         serde_json::from_str(&s).map_err(|e| format!("config.json is corrupt: {e}"))?;
     let needs_migrate = !cfg.github_token.is_empty()
@@ -562,16 +512,12 @@ pub(crate) fn set_typst_default_choice(version: Option<String>) -> Result<(), St
     })
 }
 
-// 0.4.8 H: Tools model
-/// Trims and checks a Tools model choice. An Ollama choice without a model is
-/// the automatic local choice, stored as `None`.
 pub(crate) fn normalize_tools_choice(
     choice: Option<ToolsModelChoice>,
 ) -> Result<Option<ToolsModelChoice>, String> {
     let Some(choice) = choice else {
         return Ok(None);
     };
-    // Checked before trimming: trim() would quietly drop a trailing newline.
     if choice.provider.chars().any(char::is_control) {
         return Err("Pick a provider for Tools.".into());
     }
@@ -607,9 +553,6 @@ pub(crate) fn set_ai_tools_model_blocking(choice: Option<ToolsModelChoice>) -> R
     })
 }
 
-/// Sets the model the Tools converters use. Whole-config writes from the
-/// webview keep the stored choice (`set_config_blocking`), so only this
-/// command changes where Tools send images.
 #[tauri::command]
 pub async fn set_ai_tools_model(choice: Option<ToolsModelChoice>) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || set_ai_tools_model_blocking(choice))
@@ -795,8 +738,6 @@ where
     Ok(())
 }
 
-/// Serialize `config` to `path` atomically and (on Unix) with owner-only
-/// permissions from the moment the file is created.
 fn write_config_at(path: &std::path::Path, config: &AppConfig) -> Result<(), String> {
     let s = serde_json::to_string_pretty(config).map_err(|e| e.to_string())?;
     let dir = path
@@ -986,11 +927,8 @@ pub async fn get_config() -> Result<AppConfig, String> {
 
 pub fn get_config_blocking() -> Result<AppConfig, String> {
     let mut cfg = read_config()?;
-    // Never expose the GitHub push token to the webview; report only presence.
     cfg.github_connected = !cfg.github_token.is_empty();
     cfg.github_token = String::new();
-    // Same for the MCP bearer token: only `mcp_connection_info` may hand it
-    // to the webview (for Settings copy buttons while the server is running).
     cfg.mcp_token = String::new();
     redact_ai_secrets(&mut cfg);
     redact_mcp_server_secrets(&mut cfg);
@@ -1127,9 +1065,6 @@ fn drop_probes_for_moved_endpoints(config: &mut AppConfig, stored: &AppConfig) {
         .retain(|key, _| !doomed.iter().any(|prefix| key.starts_with(prefix)));
 }
 
-/// Ids of the custom providers whose saved entry has no `keyOptional` field.
-/// Builds before it read and wrote the flag as `key_optional`, which the
-/// settings view never set, so those entries say nothing about the key.
 fn custom_providers_without_key_flag(source: &str) -> Vec<String> {
     let Ok(value) = serde_json::from_str::<serde_json::Value>(source) else {
         return Vec::new();
@@ -1147,10 +1082,6 @@ fn custom_providers_without_key_flag(source: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// An entry from an older build with no stored key could only ever work
-/// without one, so it becomes key-optional. An entry that states the flag
-/// keeps it: a key-needing provider whose key is missing (settings copied to
-/// another machine, say) should ask for the key, not send requests without it.
 fn mark_keyless_custom_providers_optional(config: &mut AppConfig, unflagged: &[String]) {
     for provider in &mut config.ai_custom_providers {
         if !unflagged.contains(&provider.id) {
@@ -1166,9 +1097,6 @@ fn mark_keyless_custom_providers_optional(config: &mut AppConfig, unflagged: &[S
     }
 }
 
-/// Drops `Blocked` verdicts that only recorded a failed attempt (a timeout, an
-/// unreachable or busy provider). Older builds saved those as verdicts, which
-/// left a model that was merely slow to load blocked for good.
 fn drop_transient_probe_verdicts(config: &mut AppConfig) {
     config.ai_model_probes.retain(|_, probe| {
         probe.verdict != ProbeVerdict::Blocked
@@ -1180,8 +1108,6 @@ fn is_known_provider(custom: &[CustomProvider], id: &str) -> bool {
     oleafly_agent::provider::catalog_entry(id).is_some() || custom.iter().any(|c| c.id == id)
 }
 
-/// A deleted custom provider leaves its list-refresh stamp behind; only the
-/// catalog providers and the current custom ones keep theirs.
 fn drop_stamps_for_removed_providers(config: &mut AppConfig) {
     let custom = &config.ai_custom_providers;
     config
@@ -1213,23 +1139,16 @@ fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     keep_cli_settings(&mut config, &stored);
     config.mcp_servers = stored.mcp_servers;
     config.typst_default_version = stored.typst_default_version;
-    // 0.4.8 H: only set_ai_tools_model changes where Tools send images.
     config.ai_tools_model = stored.ai_tools_model;
     config.latex_default_engine = stored.latex_default_engine;
-    // 0.4.8 I: only cua_driver_settings_set changes what agents may control.
     config.cua_driver = stored.cua_driver;
-    // 0.4.8: only research_tasks_set_enabled turns research tasks on or off.
     config.research_tasks_enabled = stored.research_tasks_enabled;
-    // 0.4.8 L: only the background commands change these.
     config.research_background_enabled = stored.research_background_enabled;
     config.research_background_at_login = stored.research_background_at_login;
     config.github_connected = false;
     write_config_unlocked(&config)
 }
 
-/// The settings `oleafly config set --global` writes, as the CLI left them
-/// when `config` was read before the CLI's last change (the settings views
-/// load once and save their whole copy later).
 fn keep_cli_settings(config: &mut AppConfig, stored: &AppConfig) {
     if config.cli_settings_revision != stored.cli_settings_revision {
         config.checkpoints_enabled = stored.checkpoints_enabled;
@@ -1291,7 +1210,6 @@ mod tests {
         );
     }
 
-    // 0.4.8: research tasks are experimental and start off for everyone.
     #[test]
     fn research_tasks_start_off_and_only_their_own_command_turns_them_on() {
         let config: AppConfig = serde_json::from_str("{}").unwrap();
@@ -1303,8 +1221,6 @@ mod tests {
         std::env::set_var("OLEAFLY_DATA_DIR", &dir);
         let _guard = DataDirGuard;
         write_config(&AppConfig::default()).unwrap();
-        // A whole-config save from a settings view that loaded before the
-        // switch was flipped must not flip it back.
         let mut incoming = get_config_blocking().unwrap();
         incoming.research_tasks_enabled = true;
         tauri::async_runtime::block_on(set_config(incoming)).unwrap();
@@ -1321,7 +1237,6 @@ mod tests {
         std::fs::remove_dir_all(dir).ok();
     }
 
-    // 0.4.8 L:
     #[test]
     fn background_settings_default_on_and_off_for_0_4_7_configs() {
         let config: AppConfig = serde_json::from_str("{}").unwrap();
@@ -1330,7 +1245,6 @@ mod tests {
         assert!(defaults.research_background_enabled && !defaults.research_background_at_login);
     }
 
-    // 0.4.8 L:
     #[test]
     fn a_full_config_write_keeps_the_background_settings() {
         let _env_guard = crate::paths::data_dir_env_lock();
@@ -1543,7 +1457,6 @@ mod tests {
             cli_settings_revision: 2,
             ..AppConfig::default()
         };
-        // Read before the CLI's change: its copy still says true.
         let mut stale = AppConfig {
             cli_settings_revision: 1,
             ai_model: "picked-in-the-app".into(),
@@ -1554,7 +1467,6 @@ mod tests {
         assert_eq!(stale.ui_locale, "de");
         assert_eq!(stale.ai_model, "picked-in-the-app");
         assert_eq!(stale.cli_settings_revision, 2);
-        // Read after it: the app's own change goes through.
         let mut fresh = AppConfig {
             cli_settings_revision: 2,
             git_auto_init: true,
@@ -2149,8 +2061,6 @@ mod tests {
 
     #[test]
     fn mcp_port_default_survives_missing_field() {
-        // Old config files on disk have no mcp_* keys; deserialization must
-        // produce the safe defaults, not zero.
         let cfg: AppConfig = serde_json::from_str("{}").unwrap();
         assert_eq!(cfg.mcp_port, 5323);
         assert_eq!(cfg.mcp_approval_policy, "ask");
@@ -2457,7 +2367,6 @@ mod tests {
         std::fs::remove_dir_all(dir).ok();
     }
 
-    // 0.4.8 I: Desktop apps settings survive a generic settings save.
     #[test]
     fn generic_settings_updates_preserve_the_desktop_apps_settings() {
         let _env_guard = crate::paths::data_dir_env_lock();
@@ -2668,7 +2577,6 @@ mod tests {
         assert!(provider.key_optional);
         assert_eq!(serde_json::to_value(&provider).unwrap(), source);
 
-        // Files written by earlier builds say `key_optional`.
         let older: CustomProvider = serde_json::from_value(serde_json::json!({
             "id": "lab",
             "name": "Lab",
@@ -2684,8 +2592,6 @@ mod tests {
 
     #[test]
     fn a_custom_provider_carrying_both_spellings_still_loads() {
-        // The webview spreads the object an older build wrote, so a save can
-        // hand over `key_optional` and `keyOptional` together.
         let provider = |legacy: Option<bool>, current: Option<bool>| -> CustomProvider {
             let mut object = serde_json::json!({
                 "id": "lab",
@@ -2736,7 +2642,6 @@ mod tests {
         std::env::set_var("OLEAFLY_DATA_DIR", &dir);
         let _guard = DataDirGuard;
         write_config(&AppConfig::default()).unwrap();
-        // Exactly what the settings view sends for a server added without a key.
         let incoming: AppConfig = serde_json::from_value(serde_json::json!({
             "ai_custom_providers": [{
                 "id": "lemonade",
@@ -2773,7 +2678,6 @@ mod tests {
             "sk-real".to_string(),
         )]))
         .unwrap();
-        // A file the way earlier builds left it: every flag saved as false.
         std::fs::write(
             config_path().unwrap(),
             serde_json::json!({
@@ -2803,7 +2707,6 @@ mod tests {
         let dir = temp_dir();
         std::env::set_var("OLEAFLY_DATA_DIR", &dir);
         let _guard = DataDirGuard;
-        // Settings restored on another machine without their secrets.
         std::fs::write(
             config_path().unwrap(),
             serde_json::json!({
@@ -2839,14 +2742,11 @@ mod tests {
         }))
         .unwrap();
 
-        // The file now states both flags, so loading it guesses nothing: a
-        // provider that needs a key and has none asks for one.
         let stored = read_config().unwrap();
         assert_eq!(
             custom_provider_names(&stored),
             vec![("lemonade", false), ("keyed", false)]
         );
-        // The key stays out of the config file and the keyed provider still has it.
         assert_eq!(
             stored.ai_keys.get("keyed").map(String::as_str),
             Some("sk-real")
@@ -2866,8 +2766,6 @@ mod tests {
             ]),
             ..AppConfig::default()
         };
-        // The settings copy no longer lists the provider and does not carry
-        // its stamp either.
         let mut incoming = AppConfig {
             ai_model_lists_refreshed_at: BTreeMap::from([("openai".to_string(), 25)]),
             ..AppConfig::default()
@@ -2881,8 +2779,6 @@ mod tests {
             BTreeMap::from([("openai".to_string(), 25)])
         );
 
-        // A stale copy that still carries the stamp loses it too, while a
-        // provider that is still there keeps its own.
         let mut stale = AppConfig {
             ai_custom_providers: vec![custom("kept", "http://kept.test/v1")],
             ai_model_lists_refreshed_at: BTreeMap::from([
@@ -3364,7 +3260,6 @@ mod tests {
         assert!(error.to_ascii_lowercase().contains("re-enter"));
     }
 
-    // 0.4.8 H: Tools model
     #[test]
     fn old_configs_start_with_the_automatic_local_tools_model() {
         let config: AppConfig = serde_json::from_str("{}").unwrap();
@@ -3434,7 +3329,6 @@ mod tests {
             }
         );
 
-        // A stale whole-config write from the webview cannot drop or change it.
         incoming.ai_tools_model = None;
         tauri::async_runtime::block_on(set_config(incoming.clone())).unwrap();
         assert_eq!(

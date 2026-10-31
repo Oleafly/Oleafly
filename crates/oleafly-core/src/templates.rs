@@ -1,10 +1,3 @@
-//! Document templates on disk, shared by the app's gallery and
-//! `oleafly new`/`oleafly templates`.
-//!
-//! A template is a folder named by its id with a `template.json` manifest,
-//! the source files (or a `files_dir` sub-folder holding them), an optional
-//! `preview.png`/`preview.webp` and an optional `LICENSE`. Errors are plain
-//! sentences; the app passes them through as they are.
 use std::collections::HashSet;
 use std::path::{Component, Path, PathBuf};
 
@@ -24,8 +17,6 @@ fn default_engine_kind() -> String {
     "tectonic".to_string()
 }
 
-/// Files in a template folder that are for the gallery and must not be
-/// copied into a new project.
 pub const META_FILES: &[&str] = &[
     "template.json",
     "preview.png",
@@ -33,14 +24,10 @@ pub const META_FILES: &[&str] = &[
     "SOURCE.json",
     "LICENSE",
 ];
-/// Gallery previews, in the order they are looked for, with their types.
 pub const PREVIEW_FILES: &[(&str, &str)] =
     &[("preview.png", "image/png"), ("preview.webp", "image/webp")];
-/// Cap on template folder nesting (templates are shallow; this is a backstop).
 pub const MAX_COPY_DEPTH: usize = 16;
-/// The gallery category for templates people import or save themselves.
 pub const CUSTOM_CATEGORY: &str = "Custom";
-/// The engine name `latexmk` projects record.
 const LATEXMK: &str = "latexmk";
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq, Eq)]
@@ -73,7 +60,6 @@ impl Default for TemplateRequires {
     }
 }
 
-/// The parsed `template.json`.
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct TemplateManifest {
     pub id: String,
@@ -100,24 +86,14 @@ pub struct TemplateManifest {
     pub requires: TemplateRequires,
     #[serde(default)]
     pub order: i64,
-    /// Project kind: "" / "document" for normal projects, "image" for a
-    /// single-figure project that previews the compiled image (standalone).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
-    /// A sub-folder holding the template's source tree. When set, every file
-    /// in it is copied into new projects as is, and `main_doc` is relative to
-    /// it. Imported templates use it so their own LICENSE or preview.png can
-    /// never be mistaken for gallery metadata.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub files_dir: Option<String>,
-    /// A LaTeX compiler the template was made for (pdflatex, xelatex, ...).
-    /// New projects use latexmk with it; without it they use the default
-    /// LaTeX engine.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tex_flavor: Option<String>,
 }
 
-/// Template ids (and `files_dir` names) are plain ASCII slugs.
 pub fn is_valid_id(id: &str) -> bool {
     !id.is_empty()
         && id
@@ -133,7 +109,6 @@ pub fn read_manifest(dir: &Path) -> Result<TemplateManifest, String> {
         .map_err(|e| format!("invalid template.json in {}: {e}", dir.display()))
 }
 
-/// Where a template's source files live: its folder, or its `files_dir`.
 pub fn source_root(dir: &Path, manifest: &TemplateManifest) -> Result<PathBuf, String> {
     match manifest.files_dir.as_deref() {
         None => Ok(dir.to_path_buf()),
@@ -157,13 +132,10 @@ pub fn validate_manifest_dir(dir: &Path, manifest: &TemplateManifest) -> Result<
     validate_manifest_files(dir, manifest)
 }
 
-/// Whether an engine makes image-only (standalone figure) projects.
 fn supports_image_templates(engine: Engine) -> bool {
     !matches!(engine, Engine::Markdown)
 }
 
-/// The checks that don't depend on the folder's name, so a template can be
-/// validated while it is still staged under a temporary name.
 pub fn validate_manifest_files(dir: &Path, manifest: &TemplateManifest) -> Result<(), String> {
     if let Some(flavor) = manifest.tex_flavor.as_deref() {
         if TexFlavor::parse(flavor).is_none() {
@@ -209,7 +181,6 @@ pub fn validate_manifest_files(dir: &Path, manifest: &TemplateManifest) -> Resul
     Ok(())
 }
 
-/// The first preview a template folder has, with its media type.
 pub fn preview_file(dir: &Path) -> Option<(PathBuf, &'static str)> {
     PREVIEW_FILES
         .iter()
@@ -217,8 +188,6 @@ pub fn preview_file(dir: &Path) -> Option<(PathBuf, &'static str)> {
         .find(|(path, _)| path.is_file())
 }
 
-/// Every valid template under `roots` (each `(folder, source)`), the first
-/// root winning when two share an id.
 pub fn list_templates_in_roots(
     roots: &[(PathBuf, &'static str)],
 ) -> Vec<(TemplateManifest, PathBuf, &'static str)> {
@@ -236,7 +205,6 @@ pub fn list_templates_in_roots(
                 continue;
             }
             let dir = entry.path();
-            // Folders without a valid manifest are skipped, not fatal.
             let Ok(manifest) = read_manifest(&dir) else {
                 continue;
             };
@@ -252,7 +220,6 @@ pub fn list_templates_in_roots(
     items
 }
 
-/// The gallery order: `order`, then name.
 pub fn sort_templates(items: &mut [(TemplateManifest, PathBuf, &'static str)]) {
     items.sort_by(|a, b| {
         a.0.order
@@ -261,20 +228,14 @@ pub fn sort_templates(items: &mut [(TemplateManifest, PathBuf, &'static str)]) {
     });
 }
 
-/// Copies the template in `src` into `dest` (an existing, fresh folder) and
-/// returns its manifest.
 pub fn instantiate_from(src: &Path, dest: &Path) -> Result<TemplateManifest, String> {
     let manifest = read_manifest(src)?;
     validate_manifest_dir(src, &manifest)?;
-    // A template with its own files folder copies every file in it; the
-    // older layout keeps the gallery metadata beside the source and skips it.
     let root = source_root(src, &manifest)?;
     copy_tree_with(&root, dest, 0, manifest.files_dir.is_none())?;
     Ok(manifest)
 }
 
-/// Copies a folder, refusing links and nesting deeper than
-/// [`MAX_COPY_DEPTH`]; `skip_meta` leaves the gallery files at the top out.
 pub fn copy_tree_with(
     src: &Path,
     dest: &Path,
@@ -312,7 +273,6 @@ pub fn copy_tree_with(
     Ok(())
 }
 
-/// The font packs a template needs that `available` says are missing.
 pub fn missing_font_packs(
     manifest: &TemplateManifest,
     available: impl Fn(&str) -> bool,
@@ -326,9 +286,6 @@ pub fn missing_font_packs(
         .collect()
 }
 
-/// The engine a main document gets in a new project: Typst and Markdown by
-/// extension, LaTeX otherwise (`xetex`, or `latexmk` when that is the
-/// default LaTeX engine).
 pub fn new_project_engine(
     main_doc: &str,
     latex_default_engine: Option<&str>,
@@ -349,9 +306,6 @@ pub fn new_project_engine(
     Ok(selected.to_string())
 }
 
-/// The engine and LaTeX compiler for a project made from a template: a
-/// template made for one LaTeX compiler gets latexmk with it; any other
-/// follows [`new_project_engine`].
 pub fn template_engine(
     main_doc: &str,
     tex_flavor: Option<&str>,

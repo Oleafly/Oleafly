@@ -48,10 +48,6 @@ export function FolderWatchKeeper() {
     isTauri(),
   );
 
-  // A live session that stopped names the open files it wrote, which the
-  // folder watch never reported. Heard here rather than in the live session,
-  // since it can arrive after Live collaboration was switched off. A file the
-  // disk holds other text for is checked like any outside change.
   useTauriEvent<CollabLiveWritten>(
     COLLAB_LIVE_WRITTEN_EVENT,
     (payload) => {

@@ -310,7 +310,6 @@ async fn dispatch_authenticated(
         ));
     }
     let tools = state.registry.lock().await.clone();
-    // The app's own version, not the shared protocol crate's.
     let server = crate::mcp::protocol::ServerInfo {
         name: "oleafly",
         title: "Oleafly",
@@ -326,9 +325,6 @@ async fn dispatch_authenticated(
 
 pub(super) const DENIED_BY_RULES: &str = "This tool is denied for this project in approvals.toml.";
 
-/// Whether approvals.toml denies the tool for the project. It is read on every
-/// call, so a new rule applies to the next request. No data folder or a file
-/// that can't be read denies, the same as for the in-app assistant.
 pub(super) fn denied_by_rules(
     rules_root: Option<&std::path::Path>,
     project_id: &str,
@@ -340,9 +336,6 @@ pub(super) fn denied_by_rules(
     })
 }
 
-/// Where a call goes, and the open project whose trust and rules were checked
-/// for it. A native call runs on that project even if another one opens
-/// before it starts, so it never reaches a project whose rules weren't read.
 pub(super) async fn forward_route(
     state: &McpState,
     renderer_session: u64,

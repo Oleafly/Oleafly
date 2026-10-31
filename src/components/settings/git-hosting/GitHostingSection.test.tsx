@@ -190,8 +190,6 @@ describe("GitHostingSection accounts", () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
-      // slow_down adds five seconds to the interval, whatever smaller
-      // number the server names.
       await act(async () => {
         await vi.advanceTimersByTimeAsync(10_000);
       });

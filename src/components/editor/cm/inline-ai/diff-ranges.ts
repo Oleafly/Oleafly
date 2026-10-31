@@ -7,9 +7,6 @@ export type DecoSpan = {
   text?: string;
 };
 
-// `same`/`del` tokens consume original-text characters (still in the doc during
-// review), advancing the cursor. `add` tokens are zero-width insertion points
-// carrying preview text instead of consuming any range.
 export function buildDecoSpans(original: string, proposed: string, base: number): DecoSpan[] {
   const spans: DecoSpan[] = [];
   let cursor = base;

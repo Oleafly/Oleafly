@@ -1,4 +1,3 @@
-//! Confined shell commands for research tasks.
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::Mutex;
@@ -52,9 +51,6 @@ pub fn sandbox_task_command_with_reads(
         .map_err(String::from)
 }
 
-/// What a task's command may touch: its workspace, write grants for the
-/// allowed paths (created when missing), the extra read grants and a private
-/// home. CLI-agent tasks add their environment and helper rule to it.
 pub fn task_sandbox_spec(
     execution_root: &Path,
     allowed_paths: &[String],
@@ -73,8 +69,6 @@ pub fn task_sandbox_spec(
     )
 }
 
-/// [`task_sandbox_spec`] for a named owner (`task:<id>`) and project; the
-/// Windows sandbox names the task's profile after the owner.
 pub fn task_sandbox_spec_for(
     owner: &str,
     project: Option<&str>,
@@ -84,8 +78,6 @@ pub fn task_sandbox_spec_for(
     network: bool,
     read_paths: &[PathBuf],
 ) -> Result<oleafly_sandbox::SandboxSpec, String> {
-    // Check the temporary folder before any write grant is created, so a bad
-    // folder fails without touching the workspace.
     oleafly_sandbox::prepare_home(writable_temp)?;
     let writable = task_writable_paths(execution_root, allowed_paths)?;
     let root = TaskFiles::open(execution_root, allowed_paths)?.root;
@@ -99,17 +91,11 @@ pub fn task_sandbox_spec_for(
     Ok(spec)
 }
 
-/// The allowed paths that no other allowed path contains. A grant on a folder
-/// covers everything below it, so a file or folder under another allowed
-/// folder needs none of its own: a project of thousands of files then
-/// grants its folders, not every file (a grant per file overflows the
-/// command line of the sandbox and slows every command down).
 fn outermost(allowed: &[PathBuf]) -> Vec<&Path> {
     let mut sorted: Vec<&Path> = allowed.iter().map(PathBuf::as_path).collect();
     sorted.sort_unstable();
     let mut kept: Vec<&Path> = Vec::new();
     for path in sorted {
-        // Sorted by components, a folder comes right before what is inside it.
         if kept.last().is_some_and(|folder| path.starts_with(folder)) {
             continue;
         }
@@ -118,9 +104,6 @@ fn outermost(allowed: &[PathBuf]) -> Vec<&Path> {
     kept
 }
 
-/// The task's write grants: its allowed paths inside the workspace, created
-/// when missing, never through a link. Paths below another allowed path are
-/// left out (see [`outermost`]).
 pub fn task_writable_paths(
     execution_root: &Path,
     allowed_paths: &[String],
@@ -137,9 +120,6 @@ pub fn task_writable_paths(
             Ok(metadata) if metadata.is_dir() || metadata.is_file() => {}
             Ok(_) => return Err("A task command can only use regular files and folders.".into()),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                // A folder the task is meant to write in comes back when it is
-                // gone. A file the task deleted or moved does not: creating it
-                // as a folder would break the next command that opens it.
                 if !is_known_folder(relative, &files.allowed) {
                     continue;
                 }
@@ -158,8 +138,6 @@ pub fn task_writable_paths(
     Ok(writable)
 }
 
-/// Whether a missing allowed path is a folder: one of the output folders, or
-/// one that holds other allowed paths (the parent of a tracked file).
 fn is_known_folder(relative: &Path, allowed: &[PathBuf]) -> bool {
     crate::isolation::is_output_directory(relative)
         || allowed
@@ -190,33 +168,21 @@ impl Drop for CommandTemp {
     }
 }
 
-/// What a task command may touch, resolved once per run.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CommandContext {
     pub execution_root: String,
     pub allowed_paths: Vec<String>,
-    /// Extra read-only grants (the selected skills' folders).
     pub read_paths: Vec<PathBuf>,
     pub network: bool,
-    /// `task:<id>`; names the task's sandbox profile on Windows.
     pub owner: String,
     pub project: Option<String>,
-    /// The task's home, kept across its commands and runs. Without one each
-    /// command gets a throwaway temporary folder.
     pub home: Option<PathBuf>,
-    /// The project's linked data folders (read-only).
     pub linked: Vec<oleafly_sandbox::profile::LinkedFolder>,
-    /// Where interpreters are looked for.
     pub search_dirs: Vec<PathBuf>,
-    /// The real project folder (its virtual environments stay out of the
-    /// task's copy).
     pub project_root: Option<PathBuf>,
-    /// Oleafly's data folder; its compute settings hold the Windows
-    /// sandbox switch.
     pub data_root: Option<PathBuf>,
 }
 
-/// The run-profile sandbox for a command of a task with a home folder.
 pub fn command_spec(
     context: &CommandContext,
     home: &Path,
@@ -253,7 +219,6 @@ pub fn command_spec(
     .map_err(String::from)
 }
 
-/// Commands started by one run; [`CommandJobs::finish`] waits for them all.
 #[derive(Default)]
 pub struct CommandJobs {
     pub(crate) tasks: Mutex<Vec<tokio::task::JoinHandle<()>>>,
@@ -325,8 +290,6 @@ pub async fn execute_command(
             let context = context.clone();
             let home = home.clone();
             let text = text.to_owned();
-            // Spec building detects runtimes and, on Windows, may grant
-            // folder access, so it stays off the async threads.
             let std_command = tokio::task::spawn_blocking(move || {
                 let spec = command_spec(&context, &home)?;
                 oleafly_sandbox::shell_command(&spec, &text).map_err(String::from)

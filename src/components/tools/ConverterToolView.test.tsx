@@ -739,7 +739,6 @@ describe("ConverterToolView and the Tools model", () => {
       files: [],
     });
     render(<ConverterToolView />);
-    // The field appears with a file, not before.
     expect(screen.queryByTestId("converter-page-range")).not.toBeInTheDocument();
     fireEvent.change(screen.getByTestId("converter-file-input"), {
       target: { files: [new File(["%PDF"], "scan.pdf", { type: "application/pdf" })] },
@@ -747,7 +746,6 @@ describe("ConverterToolView and the Tools model", () => {
     const field = screen.getByTestId("converter-page-range");
     expect(field).toHaveAttribute("placeholder", researchTools.converter.pageRangePlaceholder);
 
-    // Something that is not a range stops the run and says why.
     fireEvent.change(field, { target: { value: "five" } });
     expect(screen.getByRole("alert")).toHaveTextContent(researchTools.converter.pageRangeInvalid);
     expect(screen.getByTestId("converter-run")).toBeDisabled();
@@ -758,7 +756,6 @@ describe("ConverterToolView and the Tools model", () => {
     await waitFor(() => expect(mocks.runAdHocConverter).toHaveBeenCalledOnce());
     expect(mocks.runAdHocConverter.mock.calls[0][1]).toMatchObject({ pageRange: [61, 70] });
 
-    // Empty again: every page, and the input carries no range.
     fireEvent.change(field, { target: { value: "" } });
     fireEvent.click(screen.getByTestId("converter-run"));
     await waitFor(() => expect(mocks.runAdHocConverter).toHaveBeenCalledTimes(2));

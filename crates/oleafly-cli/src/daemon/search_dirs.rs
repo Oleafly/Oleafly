@@ -16,7 +16,6 @@ use std::path::{Path, PathBuf};
 const MAX_BYTES: u64 = 256 * 1024;
 const MAX_DIRS: usize = 512;
 
-/// Writes the app's search folders (absolute, UTF-8 ones).
 pub fn write(path: &Path, dirs: &[PathBuf]) -> io::Result<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -33,7 +32,6 @@ pub fn write(path: &Path, dirs: &[PathBuf]) -> io::Result<()> {
     Ok(())
 }
 
-/// The folders the app wrote; empty when there is no usable list.
 pub fn read(path: &Path) -> Vec<PathBuf> {
     let Ok(metadata) = std::fs::symlink_metadata(path) else {
         return Vec::new();
@@ -55,8 +53,6 @@ pub fn read(path: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
-/// The app's folders first, then the folders of `process_path` that are not
-/// in them already.
 pub fn merged(app: Vec<PathBuf>, process_path: Option<&OsStr>) -> Vec<PathBuf> {
     let mut dirs = app;
     if let Some(path) = process_path {
@@ -69,12 +65,10 @@ pub fn merged(app: Vec<PathBuf>, process_path: Option<&OsStr>) -> Vec<PathBuf> {
     dirs
 }
 
-/// What the helper searches: the app's list, then its own `PATH`.
 pub fn for_helper(path: &Path) -> Vec<PathBuf> {
     merged(read(path), std::env::var_os("PATH").as_deref())
 }
 
-/// The first of `names` that is a file in one of `dirs`.
 pub fn find_program(dirs: &[PathBuf], name: &str) -> Option<PathBuf> {
     let names: Vec<String> = if cfg!(windows) && !name.contains('.') {
         vec![format!("{name}.exe"), name.to_string()]

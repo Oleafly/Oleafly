@@ -1,5 +1,3 @@
-// Message actions on the built-in chat: which messages can be edited or
-// regenerated, and what a replay drops from the transcript and the thread.
 import type { ChatMessage } from "@/store/chats";
 
 export interface MessageActionState {
@@ -7,7 +5,6 @@ export interface MessageActionState {
   editable?: boolean;
 }
 
-/** The user message that started the turn holding `index`, or -1. Steered messages are part of a turn, not its start. */
 export function turnStartIndex(messages: readonly ChatMessage[], index: number): number {
   for (let at = Math.min(index, messages.length - 1); at >= 0; at -= 1) {
     const message = messages[at];
@@ -20,7 +17,6 @@ export function lastTurnStart(messages: readonly ChatMessage[]): number {
   return turnStartIndex(messages, messages.length - 1);
 }
 
-/** User turns that start at or after `from`. */
 export function userTurnsFrom(messages: readonly ChatMessage[], from: number): number {
   let turns = 0;
   for (let at = Math.max(0, from); at < messages.length; at += 1) {
@@ -29,7 +25,6 @@ export function userTurnsFrom(messages: readonly ChatMessage[], from: number): n
   return turns;
 }
 
-/** Files changed by the turns at or after `from`, as their undo cards count them. */
 export function changedFileCount(messages: readonly ChatMessage[], from: number): number {
   let files = 0;
   for (let at = Math.max(0, from); at < messages.length; at += 1) {
@@ -39,10 +34,6 @@ export function changedFileCount(messages: readonly ChatMessage[], from: number)
   return files;
 }
 
-/**
- * Thread turns to drop: from the turn recorded with `turnId` to the end.
- * Without a match (a chat saved before 0.4.8), `fallback`.
- */
 export function turnsToDrop(
   threadTurnIds: readonly (string | null)[],
   turnId: string | undefined,
@@ -55,7 +46,6 @@ export function turnsToDrop(
   return fallback;
 }
 
-/** The last turn is replayed in place; an earlier one forks a new chat. */
 export function replayMode(messages: readonly ChatMessage[], userIndex: number): "inPlace" | "fork" {
   return userIndex === lastTurnStart(messages) ? "inPlace" : "fork";
 }

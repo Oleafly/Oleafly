@@ -12,11 +12,6 @@ import {
 } from "@oleafly/latex-intelligence";
 import { useIndexStore } from "@/store/project-index";
 
-// Completion sources are synchronous, so the corpus is cached here and every
-// getter returns null until its background load resolves. Callers fall back
-// to the small built-in lists in the meantime; the next completion query
-// after a load sees the full data.
-
 const CLOSURE_CAP = 64;
 const RETAINED_CAP = CLOSURE_CAP * 2;
 
@@ -110,7 +105,6 @@ function noteCapped(names: readonly string[]): void {
   });
 }
 
-/** Kick off background loads for the given package/class catalog names. */
 export function requestPackageCatalogs(names: readonly string[]): void {
   const closure = new Set<string>();
   const roots = names.filter((name) => claim(closure, name));
@@ -125,7 +119,6 @@ export function requestPackageCatalogs(names: readonly string[]): void {
   }
 }
 
-/** Already-loaded catalogs (name → catalog) for the given names plus deps. */
 export function loadedCatalogsFor(
   names: readonly string[],
 ): Map<string, PackageCatalog> {
@@ -173,10 +166,6 @@ let coreCommandCompletions: Completion[] | null = null;
 
 let subscribed = false;
 
-/**
- * Register the corpus with the editor package and keep package catalogs
- * warm for whatever the project-intelligence snapshot detects.
- */
 export function installLatexCorpus(): void {
   if (subscribed) return;
   subscribed = true;

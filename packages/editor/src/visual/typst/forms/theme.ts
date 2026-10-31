@@ -4,10 +4,8 @@ import { editorColor } from "../../../color-roles";
 
 const UI_FONT = "var(--font-sans, ui-sans-serif, system-ui, sans-serif)";
 const MONO = "var(--ofl-visual-mono, var(--font-mono, ui-monospace, Menlo, monospace))";
-// The editor's own surface, which a colour theme can set apart from the app's light or dark mode.
 const TEXT = editorColor("text");
 const SURFACE = editorColor("background");
-// Opaque mixes, so text and edges keep their contrast on the card's own tint.
 const SECONDARY = `color-mix(in oklch, ${TEXT} 66%, ${SURFACE})`;
 const EDGE = `color-mix(in oklch, ${TEXT} 30%, ${SURFACE})`;
 const EDGE_HOVER = `color-mix(in oklch, ${TEXT} 48%, ${SURFACE})`;
@@ -17,8 +15,6 @@ const CHIP = `color-mix(in oklch, ${TEXT} 9%, ${SURFACE})`;
 const HOVER_TINT = `color-mix(in oklch, ${TEXT} 8%, transparent)`;
 const CONTROL_HEIGHT = "28px";
 
-// Focus and selection show as a border colour change or a background tint, never an
-// outline or a ring. Only the floating popover casts a drop shadow, to lift it off the page.
 export const typstFormsThemeSpec = {
   ".ofl-visual-form-card": {
     margin: "6px 0",
@@ -27,11 +23,10 @@ export const typstFormsThemeSpec = {
     borderRadius: "8px",
     backgroundColor: PANEL,
     fontFamily: UI_FONT,
-    fontSize: "13px",
+    fontSize: "0.8125rem",
     lineHeight: "1.45",
     color: TEXT,
     cursor: "default",
-    // The narrow layout below follows the card's own width, not the window's.
     containerType: "inline-size",
   },
   ".ofl-visual-form-header": {
@@ -52,7 +47,6 @@ export const typstFormsThemeSpec = {
     textOverflow: "ellipsis",
   },
   ".ofl-visual-form-summary": {
-    // Shortens before the header wraps, so only the button moves to a second line.
     flex: "1 1 6em",
     color: SECONDARY,
     overflow: "hidden",
@@ -64,18 +58,15 @@ export const typstFormsThemeSpec = {
     marginLeft: "auto",
   },
   ".ofl-visual-form-popover .ofl-visual-form-fields": {
-    // A long label wraps instead of squeezing its input to nothing.
     gridTemplateColumns: "fit-content(45%) minmax(0, 1fr) auto",
   },
   ".ofl-visual-form-fields": {
     display: "grid",
-    // Fixed label and action columns keep the inputs the same width from card to card.
     gridTemplateColumns: "9.5em minmax(0, 1fr) minmax(4.5em, max-content)",
     columnGap: "10px",
     rowGap: "8px",
     alignItems: "start",
   },
-  // In a narrow card or popover each label sits above its control, so the control keeps its width.
   "@container (max-width: 30em)": {
     ".ofl-visual-form-fields, .ofl-visual-form-popover .ofl-visual-form-fields": {
       gridTemplateColumns: "minmax(0, 1fr) auto",
@@ -203,7 +194,7 @@ export const typstFormsThemeSpec = {
     backgroundColor: BUTTON_FILL,
     color: "inherit",
     font: "inherit",
-    fontSize: "12px",
+    fontSize: "0.75rem",
     whiteSpace: "nowrap",
     cursor: "pointer",
     outline: "none",
@@ -215,7 +206,7 @@ export const typstFormsThemeSpec = {
     height: "20px",
     marginLeft: "6px",
     padding: "0 6px",
-    fontSize: "11px",
+    fontSize: "0.6875rem",
   },
   ".ofl-visual-form-action:focus-visible": {
     borderColor: "var(--primary)",
@@ -224,7 +215,7 @@ export const typstFormsThemeSpec = {
   },
   ".ofl-visual-form-hint": {
     marginTop: "2px",
-    fontSize: "12px",
+    fontSize: "0.75rem",
     color: SECONDARY,
   },
   ".ofl-visual-form-missing": {
@@ -236,7 +227,7 @@ export const typstFormsThemeSpec = {
     alignItems: "center",
     gap: "6px",
     marginTop: "4px",
-    fontSize: "12px",
+    fontSize: "0.75rem",
     color: "var(--destructive, #c4513f)",
   },
   ".ofl-visual-form-source": {
@@ -244,10 +235,9 @@ export const typstFormsThemeSpec = {
     padding: "2px 6px",
     borderRadius: "4px",
     border: `1px solid ${EDGE}`,
-    // The popover sits outside the editor, where the Visual chip tint isn't defined.
     backgroundColor: `var(--ofl-visual-chip, ${CHIP})`,
     fontFamily: MONO,
-    fontSize: "12px",
+    fontSize: "0.75rem",
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
   },
@@ -259,7 +249,7 @@ export const typstFormsThemeSpec = {
     backgroundColor: PANEL,
     color: SECONDARY,
     fontFamily: UI_FONT,
-    fontSize: "12px",
+    fontSize: "0.75rem",
   },
   ".ofl-visual-form-chip-button": {
     padding: "0 5px",
@@ -296,11 +286,10 @@ export const typstFormsThemeSpec = {
     border: `1px solid ${EDGE_HOVER}`,
     borderRadius: "8px",
     boxShadow: "0 10px 28px -8px rgba(0, 0, 0, 0.35)",
-    // A touch of the text colour keeps it at least as light as a card in a dark theme.
     backgroundColor: `color-mix(in oklch, ${TEXT} 6%, ${SURFACE})`,
     color: TEXT,
     fontFamily: UI_FONT,
-    fontSize: "13px",
+    fontSize: "0.8125rem",
     lineHeight: "1.45",
     containerType: "inline-size",
   },

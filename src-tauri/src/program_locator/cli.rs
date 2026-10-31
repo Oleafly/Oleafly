@@ -1,8 +1,3 @@
-//! `oleafly` for every program the app starts (CLI agents, terminals,
-//! research commands): the folder `<data>/cli/bin` holds `oleafly`
-//! (`oleafly.exe`), a link to the command-line tool that ships with the app,
-//! or a copy on Windows and in AppImages. Agents get the folder first on
-//! their PATH through `crate::acp::cli_program`.
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -10,8 +5,6 @@ use std::time::{Duration, SystemTime};
 
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
-/// A staged copy or link older than this belongs to a process that is gone
-/// (a copy takes seconds).
 const STALE_STAGING: Duration = Duration::from_secs(60);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -34,8 +27,6 @@ fn executable(name: &str) -> String {
     format!("{name}{}", std::env::consts::EXE_SUFFIX)
 }
 
-/// The command-line tool beside the app (`oleafly-cli`; a development
-/// build may only have `oleaflyc`).
 pub(crate) fn bundled_cli() -> Option<PathBuf> {
     let dir = oleafly_core::sidecar::executable_dir()?;
     let mut names = vec![executable("oleafly-cli")];
@@ -63,9 +54,6 @@ fn staging_name(shim: &Path, label: &str) -> PathBuf {
     ))
 }
 
-/// A file being prepared beside the shim, removed again unless it was
-/// moved into place: a copy that fails halfway (disk full, antivirus) must
-/// not leave a partial binary behind.
 struct Staged {
     path: PathBuf,
     in_place: bool,
@@ -83,7 +71,6 @@ impl Staged {
         &self.path
     }
 
-    /// The file is in place; there is nothing to remove.
     fn keep(&mut self) {
         self.in_place = true;
     }
@@ -97,9 +84,6 @@ impl Drop for Staged {
     }
 }
 
-/// Removes staged copies and links that a crashed or killed process left
-/// beside the shim: `.oleafly-copy-*` and `.oleafly-link-*` older than
-/// `older_than` (a copy another process is making right now is younger).
 fn sweep_staging(dir: &Path, older_than: Duration) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -156,14 +140,11 @@ fn copy_shim(shim: &Path, bundled: &Path) -> io::Result<()> {
     if same_binary(shim, bundled) {
         return Ok(());
     }
-    // Created before the copy starts, so a copy that fails partway is removed.
     let mut temporary = Staged::new(staging_name(shim, "copy"));
     std::fs::copy(bundled, temporary.path())?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        // The command lives in this user's own folder: they run it, and
-        // nobody else needs to.
         std::fs::set_permissions(temporary.path(), std::fs::Permissions::from_mode(0o700))?;
     }
     if let Err(error) = std::fs::rename(temporary.path(), shim) {
@@ -185,7 +166,6 @@ fn copy_shim(shim: &Path, bundled: &Path) -> io::Result<()> {
     Ok(())
 }
 
-/// Copies left behind by a replace while they were running.
 fn sweep_old_copies(shim: &Path) {
     let (Some(dir), Some(name)) = (shim.parent(), shim.file_name()) else {
         return;
@@ -201,7 +181,6 @@ fn sweep_old_copies(shim: &Path) {
     }
 }
 
-/// Makes `<dir>/oleafly[.exe]` run `bundled`; returns its path.
 pub(crate) fn ensure_shim_at(
     dir: &Path,
     bundled: &Path,
@@ -220,15 +199,12 @@ pub(crate) fn ensure_shim_at(
     sweep_staging(dir, STALE_STAGING);
     let shim = dir.join(executable("oleafly"));
     match method {
-        // A file system without links still gets a working command.
         ShimMethod::Symlink => link_shim(&shim, bundled).or_else(|_| copy_shim(&shim, bundled))?,
         ShimMethod::Copy => copy_shim(&shim, bundled)?,
     }
     Ok(shim)
 }
 
-/// The command an earlier launch left in `dir`, at the path
-/// [`ensure_shim_at`] writes it to.
 fn existing_shim(dir: &Path) -> Option<PathBuf> {
     let shim = dir.join(executable("oleafly"));
     std::fs::symlink_metadata(&shim)
@@ -245,7 +221,6 @@ pub(crate) fn planned_cli_shim() -> Option<PathBuf> {
     existing_shim(&crate::paths::oleafly_root().ok()?.join("cli").join("bin"))
 }
 
-/// Sets up `<data>/cli/bin/oleafly` for this build; returns its path.
 pub(crate) fn refresh_cli_shim() -> Result<PathBuf, String> {
     let bundled =
         bundled_cli().ok_or("this build doesn't include the oleafly command-line tool")?;
@@ -296,13 +271,10 @@ mod tests {
         let bundle = tempfile::tempdir().unwrap();
         let data = tempfile::tempdir().unwrap();
         let dir = data.path().join("cli").join("bin");
-        // What the copy is made from isn't a file: the copy fails.
         assert!(ensure_shim_at(&dir, bundle.path(), ShimMethod::Copy).is_err());
         assert_eq!(staged_leftovers(&dir), Vec::<String>::new());
     }
 
-    // On Windows a shim in the way is renamed aside, so this fails only
-    // elsewhere.
     #[cfg(unix)]
     #[test]
     fn a_copy_that_cannot_be_moved_into_place_is_removed() {
@@ -407,7 +379,6 @@ mod tests {
         let bundle = tempfile::tempdir().unwrap();
         let data = tempfile::tempdir().unwrap();
         let dir = data.path().join("cli").join("bin");
-        // Nothing yet: the first launch waits for the refresh.
         assert_eq!(existing_shim(&dir), None);
         let cli = fake_cli(bundle.path(), b"cli");
         let shim = ensure_shim_at(&dir, &cli, ShimMethod::Copy).unwrap();

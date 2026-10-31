@@ -1,27 +1,14 @@
 import * as pdfjsLib from "pdfjs-dist";
-import workerSrc from "@oleafly/preview/pdf.worker?worker&url";
-import { installMainThreadPdfWorker } from "@oleafly/preview/mainThreadWorker";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
-
-// Session-wide last resort shared with PdfViewer's ladder: a worker subsystem
-// wedged by WKWebView renders every fresh PDFWorker dead, so downgrade to the
-// main-thread loopback worker once two real-worker attempts have timed out.
-let mainThreadInstall: Promise<void> | null = null;
-
-async function forceMainThreadWorker(): Promise<void> {
-  mainThreadInstall ??= installMainThreadPdfWorker().catch((error) => {
-    mainThreadInstall = null;
-    throw error;
-  });
-  await mainThreadInstall;
-}
+import { pdfDocumentOptions } from "@oleafly/preview/pdfDocumentOptions";
+import {
+  destroyPdfWorker,
+  forceMainThreadPdfWorker,
+  waitForPdfWorker,
+  withTimeout,
+} from "@oleafly/preview/pdfWorkerRuntime";
 
 let sharedWorker: pdfjsLib.PDFWorker | null = null;
 
-// A wedged worker subsystem never resolves `worker.promise`, so a short
-// handshake probe detects it in seconds instead of letting the first render
-// burn its full timeout.
 const WORKER_SETUP_TIMEOUT_MS = 5_000;
 
 async function getReadyWorker(): Promise<pdfjsLib.PDFWorker> {
@@ -29,33 +16,13 @@ async function getReadyWorker(): Promise<pdfjsLib.PDFWorker> {
     sharedWorker = new pdfjsLib.PDFWorker();
   }
   const worker = sharedWorker;
-  await withTimeout(worker.promise, WORKER_SETUP_TIMEOUT_MS, "pdf worker setup");
+  await waitForPdfWorker(worker, WORKER_SETUP_TIMEOUT_MS, "pdf worker setup");
   return worker;
 }
 
 function resetWorker(): void {
-  try {
-    sharedWorker?.destroy();
-  } catch {
-    // The worker may already have terminated after a load failure.
-  }
+  if (sharedWorker) destroyPdfWorker(sharedWorker);
   sharedWorker = null;
-}
-
-function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error(`${what} timed out after ${ms}ms`)), ms);
-    p.then(
-      (v) => {
-        clearTimeout(t);
-        resolve(v);
-      },
-      (e) => {
-        clearTimeout(t);
-        reject(e);
-      },
-    );
-  });
 }
 
 const RENDER_TIMEOUT_MS = 30_000;
@@ -66,8 +33,6 @@ async function renderLoadedPage(
   scale: number,
   background?: string,
 ): Promise<string> {
-  // Out-of-range pages must FAIL, not silently clamp: clamping made
-  // page-by-page consumers render the last page over and over.
   if (page < 1 || page > doc.numPages) {
     throw new Error(`page ${page} out of range (document has ${doc.numPages})`);
   }
@@ -96,7 +61,9 @@ async function rasterize(
   scale: number,
   background?: string,
 ): Promise<string> {
-  const loadingTask = pdfjsLib.getDocument({ data: bytes.slice(), worker: await getReadyWorker() });
+  const loadingTask = pdfjsLib.getDocument(
+    pdfDocumentOptions({ data: bytes.slice(), worker: await getReadyWorker() }),
+  );
   try {
     return await withTimeout(
       (async () => renderLoadedPage(await loadingTask.promise, page, scale, background))(),
@@ -113,8 +80,6 @@ function isWorkerFailure(error: unknown): boolean {
   return /timed out|worker|messagehandler|transport/i.test(message);
 }
 
-/** Runs `attempt`; after a worker failure, again on a fresh worker, then
- * on the main-thread worker. */
 async function withWorkerRecovery<T>(attempt: () => Promise<T>): Promise<T> {
   try {
     return await attempt();
@@ -126,7 +91,7 @@ async function withWorkerRecovery<T>(attempt: () => Promise<T>): Promise<T> {
     } catch (retryError) {
       resetWorker();
       try {
-        await forceMainThreadWorker();
+        await forceMainThreadPdfWorker();
         return await attempt();
       } catch {
         resetWorker();
@@ -164,7 +129,9 @@ interface LoadedPdf {
 }
 
 async function openPdf(bytes: Uint8Array): Promise<LoadedPdf> {
-  const loadingTask = pdfjsLib.getDocument({ data: bytes.slice(), worker: await getReadyWorker() });
+  const loadingTask = pdfjsLib.getDocument(
+    pdfDocumentOptions({ data: bytes.slice(), worker: await getReadyWorker() }),
+  );
   const close = () => loadingTask.destroy().catch(() => {});
   try {
     const doc = await withTimeout(loadingTask.promise, RENDER_TIMEOUT_MS, "pdf load");
@@ -175,18 +142,10 @@ async function openPdf(bytes: Uint8Array): Promise<LoadedPdf> {
   }
 }
 
-/** The same recovery as one page: a fresh worker, then the main thread. */
 function openPdfWithRecovery(bytes: Uint8Array): Promise<LoadedPdf> {
   return withWorkerRecovery(() => openPdf(bytes));
 }
 
-/**
- * Renders the given 1-based `pages` of one PDF to PNG data URLs, in order,
- * one per `next()`. pdf.js loads the document once for all of them rather
- * than once per page, and the document is destroyed when the iteration
- * finishes or is stopped early (`return()`). A worker that dies part-way is
- * replaced and that page rendered again, once.
- */
 export async function* renderPages(
   bytes: Uint8Array,
   pages: readonly number[],

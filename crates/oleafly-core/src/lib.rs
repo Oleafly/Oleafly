@@ -1,6 +1,7 @@
 pub mod atomic;
 pub mod biber_env;
 pub mod bibkey;
+mod bounded_read;
 mod build;
 pub mod build_output;
 mod compile_log;
@@ -33,6 +34,7 @@ pub mod typst_toolchain;
 mod utf8_stream;
 mod workspace;
 
+pub use bounded_read::{read_bounded, BoundedRead};
 pub use build::PreparedBuild;
 pub use compile_log::{
     parse_latex_log, LogCategory, LogDiagnostic, LogSeverity, MAX_COMPILE_LOG_BYTES,

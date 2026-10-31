@@ -150,7 +150,6 @@ function handleCanvasKeyDown(e: KeyboardEvent, handlers: CanvasKeyHandlers): voi
     handlers.cancelDraw();
     return;
   }
-  // Keep Space from scrolling the page while panning the canvas.
   if (e.code === "Space") {
     if (isTypingTarget(e.target, true)) return;
     e.preventDefault();
@@ -199,10 +198,6 @@ const positionHandle: Record<Position, DiagramHandle> = {
   [Position.Left]: "l",
 };
 
-// Outward unit vector for each handle side, used to pull a connector's
-// endpoint a few pixels clear of the shape it's attached to (see
-// EDGE_SHAPE_GAP below) rather than terminating exactly on the shape's
-// boundary, where it can render underneath the shape's own fill.
 const positionOutward: Record<Position, DiagramPoint> = {
   [Position.Top]: { x: 0, y: -1 },
   [Position.Right]: { x: 1, y: 0 },
@@ -210,12 +205,6 @@ const positionOutward: Record<Position, DiagramPoint> = {
   [Position.Left]: { x: -1, y: 0 },
 };
 
-// Visible clearance between a connector's endpoint (and its arrowhead) and
-// the shape it connects to - the same idea as Miro's connector gap. Without
-// this, the endpoint sits exactly on the shape's true boundary, so for
-// shapes with rounded/curved edges (circles, round-rects) or shapes stacked
-// in front of other shapes, the line or arrowhead can visually disappear
-// under the shape's own opaque fill instead of stopping cleanly beside it.
 const EDGE_SHAPE_GAP = 6;
 
 function pointDistance(a: DiagramPoint, b: DiagramPoint) {
@@ -325,7 +314,6 @@ function modelEdgeToRf(e: DiagEdge): Edge {
     id: e.id,
     source: e.source,
     target: e.target,
-    // Handles default to bottom -> top so programmatic (starter) edges render.
     sourceHandle: e.sourceHandle ?? "b",
     targetHandle: e.targetHandle ?? "t",
     type: routingToType(e.routing),
@@ -333,7 +321,6 @@ function modelEdgeToRf(e: DiagEdge): Edge {
     markerEnd: e.arrow !== "none" ? marker : undefined,
     markerStart: e.arrow === "both" ? marker : undefined,
     style: edgeStrokeStyle(e.style),
-    // Allow dragging either end onto a new shape handle.
     reconnectable: true,
     data: { routing: e.routing, arrow: e.arrow, style: e.style, label: e.label },
   };
@@ -395,9 +382,6 @@ function CanvasInner({
   const { Tooltip, useThemeMode, t } = useDiagramKit();
   const themeMode = useThemeMode();
   const { screenToFlowPosition } = useReactFlow();
-  // Canvas theme is a per-diagram viewing preference (defaults to the app theme).
-  // It only affects the editor surface; shapes keep their own colors and the
-  // compiled figure is unaffected.
   const [canvasTheme, setCanvasTheme] = useState<"light" | "dark">(themeMode);
   const canvasDark = canvasTheme === "dark";
   const minimapActiveClass = canvasDark ? "bg-white/15" : "bg-black/10";
@@ -427,7 +411,6 @@ function CanvasInner({
   const [pending, setPending] = useState<{ shape: NodeShape; seed?: string; key: string } | null>(null);
   const [showMinimap, setShowMinimap] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
-  // Space+drag pans the viewport (grab cursor); plain drag never pans.
   const spacePressed = useKeyPress("Space");
   const [isPanning, setIsPanning] = useState(false);
 
@@ -439,7 +422,6 @@ function CanvasInner({
   const historyRef = useRef<DiagramModel[]>([model]);
   const historyIdxRef = useRef(0);
   const historyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Click-drag to draw: start point + in-progress node id while the tool is armed.
   const drawRef = useRef<{
     id: string;
     shape: NodeShape;
@@ -550,7 +532,6 @@ function CanvasInner({
             : defaults.radius,
       };
       const rf = modelNodeToRf(n);
-      // Keep style in sync so the rubber-band resize paints immediately.
       return { ...rf, style: { width: n.w, height: n.h } };
     },
     [canvasDark],
@@ -567,7 +548,6 @@ function CanvasInner({
       let w = Math.abs(end.x - d.startX);
       let h = Math.abs(end.y - d.startY);
       const def = DEFAULTS[d.shape];
-      // Click without a real drag → place the default-sized shape centered on the point.
       if (w < 8 && h < 8) {
         w = def.w;
         h = def.h;
@@ -576,7 +556,6 @@ function CanvasInner({
       } else {
         w = Math.max(w, 24);
         h = Math.max(h, 24);
-        // Circles stay circular from the bounding box's shorter side.
         if (d.shape === "circle") {
           const s = Math.max(w, h);
           if (end.x < d.startX) x = d.startX - s;
@@ -598,11 +577,10 @@ function CanvasInner({
   const onFlowPointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (e.button !== 0) return;
-      if (spacePressed) return; // Space+drag is for panning
+      if (spacePressed) return;
       const p = pendingRef.current;
       if (!p) return;
       const el = e.target as Element;
-      // Only start a draw on empty canvas, not on nodes/handles/UI chrome.
       if (!el.closest?.(".react-flow__pane")) return;
       if (el.closest?.(".react-flow__node, .react-flow__edge, .react-flow__handle, .react-flow__controls, .react-flow__minimap")) {
         return;
@@ -620,7 +598,6 @@ function CanvasInner({
         startY: start.y,
         pointerId: e.pointerId,
       };
-      // Seed a 1×1 rubber-band; pointer-move grows it.
       setNodes((ns) => [
         ...ns,
         makeDrawnNode(id, p.shape, start.x, start.y, 1, 1, p.seed ?? def.label),
@@ -641,7 +618,6 @@ function CanvasInner({
       let h = Math.max(Math.abs(cur.y - d.startY), 1);
       if (d.shape === "circle") {
         const s = Math.max(w, h);
-        // Grow from the start corner along the dominant axis.
         if (cur.x < d.startX) x = d.startX - s;
         if (cur.y < d.startY) y = d.startY - s;
         w = s;
@@ -669,8 +645,6 @@ function CanvasInner({
     [finishDraw],
   );
 
-  // Z-order: the node array order is the draw order (later draws on top). Move
-  // the selected node within it and reassign zIndex for the editing surface.
   const reorder = useCallback(
     (dir: "front" | "back" | "forward" | "backward") => {
       if (!selNode) return;
@@ -870,7 +844,6 @@ function CanvasInner({
         data-tour-selection={canvasSelectionFlag()}
         className={canvasClassName()}
         style={canvasStyle()}
-        // Block the app-wide dev context menu on the canvas.
         onContextMenu={(e) => e.preventDefault()}
         {...canvasPointerHandlers()}
       >
@@ -941,8 +914,6 @@ function CanvasInner({
             onMoveStart={() => setIsPanning(true)}
             onMoveEnd={() => setIsPanning(false)}
             onNodesDelete={(deleted) => {
-              // Remove edges attached to a deleted node so no orphan arrows
-              // survive into the compiled figure.
               const ids = new Set(deleted.map((n) => n.id));
               setEdges((es) => es.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
             }}
@@ -953,7 +924,6 @@ function CanvasInner({
             }}
             snapToGrid
             snapGrid={[10, 10]}
-            // Larger snap radius so arrow heads/tails stick to shape handles more easily.
             connectionRadius={28}
             fitView
             deleteKeyCode={readOnly ? null : ["Backspace", "Delete"]}

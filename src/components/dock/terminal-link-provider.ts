@@ -17,13 +17,11 @@ export interface TerminalFileTarget {
 }
 
 export interface TerminalLinkHover {
-  /** Project-relative location or URL, never an absolute path. */
   label: string;
   kind: "file" | "url";
 }
 
 export interface TerminalLinkActions {
-  /** Maps a path from the output onto a project file, or null. */
   resolve(path: string): string | null;
   openFile(target: TerminalFileTarget): void;
   openUrl(url: string): void;
@@ -31,7 +29,6 @@ export interface TerminalLinkActions {
   leave(): void;
 }
 
-// A path in a traceback can wrap over several rows; stop looking well past that.
 const MAX_WRAPPED_ROWS = 30;
 
 interface CellPosition {
@@ -48,7 +45,6 @@ export function isOpenLinkClick(event: MouseEvent, mac: boolean = isMac): boolea
   return event.button === 0 && (mac ? event.metaKey : event.ctrlKey);
 }
 
-/** Index after the last written cell; empty cells hold no characters. */
 function contentEnd(line: IBufferLine, cell: IBufferCell): number {
   let end = line.length;
   while (end > 0 && line.getCell(end - 1, cell) && cell.getWidth() === 1 && !cell.getChars()) {
@@ -70,8 +66,6 @@ function logicalLine(buffer: IBuffer, row: number): LogicalLine | null {
   for (let y = first; y <= last; y += 1) {
     const line = buffer.getLine(y);
     if (!line) break;
-    // A wide glyph that does not fit in the last column wraps and leaves that
-    // cell empty; as a space it would split the path across the rows.
     const end = y < last ? contentEnd(line, cell) : line.length;
     appendRow(logical, line, y, end, cell);
   }
@@ -83,7 +77,6 @@ interface LogicalLine {
   cells: CellPosition[];
 }
 
-/** The first and last rows of the wrapped line that holds `row`. */
 function wrappedRows(buffer: IBuffer, row: number): { first: number; last: number } {
   let first = row;
   while (first > 0 && row - first < MAX_WRAPPED_ROWS - 1 && buffer.getLine(first)?.isWrapped) {
@@ -94,12 +87,11 @@ function wrappedRows(buffer: IBuffer, row: number): { first: number; last: numbe
   return { first, last };
 }
 
-/** Adds the first `end` cells of row `y` to `logical`. */
 function appendRow(logical: LogicalLine, line: IBufferLine, y: number, end: number, cell: IBufferCell) {
   for (let x = 0; x < end; x += 1) {
     if (!line.getCell(x, cell)) break;
     const width = cell.getWidth();
-    if (width === 0) continue; // right half of a wide glyph
+    if (width === 0) continue;
     const chars = cell.getChars() || " ";
     logical.text += chars;
     // One position per UTF-16 unit, since match offsets index the string.

@@ -1,6 +1,3 @@
-//! `providers/*` (unstable): routing an agent's model traffic through an
-//! API key the user keeps in Oleafly. Keys travel only in request headers
-//! and are never printed.
 use std::collections::BTreeMap;
 
 use serde::Serialize;
@@ -10,11 +7,9 @@ pub const PROVIDERS_LIST: &str = "providers/list";
 pub const PROVIDERS_SET: &str = "providers/set";
 pub const PROVIDERS_DISABLE: &str = "providers/disable";
 
-/// Where an agent provider sends its requests, with the credential headers.
 #[derive(Clone, PartialEq, Eq)]
 pub struct ProviderRoute {
     pub provider_id: String,
-    /// `anthropic`, `openai`, …
     pub api_type: String,
     pub base_url: String,
     pub headers: BTreeMap<String, String>,
@@ -37,7 +32,6 @@ impl std::fmt::Debug for ProviderRoute {
 }
 
 impl ProviderRoute {
-    /// The `providers/set` params.
     pub fn params(&self) -> Value {
         json!({
             "providerId": self.provider_id,
@@ -47,7 +41,6 @@ impl ProviderRoute {
         })
     }
 
-    /// Clears the header values (the keys) from memory.
     pub fn clear(&mut self) {
         use zeroize::Zeroize;
         for value in self.headers.values_mut() {
@@ -62,7 +55,6 @@ impl Drop for ProviderRoute {
     }
 }
 
-/// One provider an agent can route, as `providers/list` reports it.
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentProvider {
@@ -85,8 +77,6 @@ fn word(value: &Value) -> Option<String> {
         .map(str::to_owned)
 }
 
-/// The providers in a `providers/list` answer (at most 16; invalid entries
-/// are skipped).
 pub fn parse_list(response: &Value) -> Vec<AgentProvider> {
     response["providers"]
         .as_array()
@@ -114,7 +104,6 @@ pub fn parse_list(response: &Value) -> Vec<AgentProvider> {
         .unwrap_or_default()
 }
 
-/// The first agent provider that accepts `api_type`.
 pub fn provider_for<'a>(
     providers: &'a [AgentProvider],
     api_type: &str,

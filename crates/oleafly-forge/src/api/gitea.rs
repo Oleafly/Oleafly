@@ -75,10 +75,6 @@ pub(super) async fn list_repos(session: &Session<'_>, page: u32) -> Result<RepoP
         .append_pair("limit", &PAGE_SIZE.to_string());
     let response = session.http.send(session.get(url)).await?;
     let total = header_text(&response, "x-total-count").and_then(|value| value.parse::<u64>().ok());
-    // The server says whether another page follows. A server that caps the
-    // page size below `limit` (`MAX_RESPONSE_ITEMS`) makes a count taken
-    // against `PAGE_SIZE` stop early, so the count is only the fallback for
-    // a reply without a `Link` header.
     let next_page = match header_text(&response, "link") {
         Some(link) => next_page_from_link(&link),
         None => match total {

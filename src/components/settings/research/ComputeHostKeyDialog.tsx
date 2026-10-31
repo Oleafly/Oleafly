@@ -16,10 +16,6 @@ import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { describeError } from "@/lib/app-error";
 import type { HostKeyPrompt } from "./compute-api";
 
-/**
- * Shows the host's key fingerprints for the user to compare, and trusts
- * exactly those keys. A changed key shows the warning and no trust button.
- */
 export function ComputeHostKeyDialog({
   prompt,
   onClose,
@@ -52,7 +48,6 @@ export function ComputeHostKeyDialog({
     } catch (error) {
       setFailure(describeError(error));
     } finally {
-      // The dialog stays when the new test asks about the host's keys again.
       setTrusting(false);
     }
   };

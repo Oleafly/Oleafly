@@ -1,4 +1,3 @@
-//! Runs on this computer: a detached supervisor process owns each run.
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
@@ -12,8 +11,6 @@ use super::{
 use crate::model::now_ms;
 use oleafly_sandbox::process::identity::{self, ProcessIdentity, ProcessProbe};
 
-/// The program (and leading arguments) that runs a supervisor; the run
-/// folder is appended.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SupervisorCommand {
     pub program: PathBuf,
@@ -23,7 +20,6 @@ pub struct SupervisorCommand {
 #[derive(Clone)]
 enum Launch {
     Process(SupervisorCommand),
-    /// Tests supervise in a thread of the test process.
     #[cfg(test)]
     InProcess,
 }
@@ -95,7 +91,6 @@ fn spawn_supervisor(
         unsafe {
             use std::os::unix::process::CommandExt;
             command.pre_exec(|| {
-                // Its own session: closing the app or its terminal leaves it running.
                 if libc::setsid() < 0 {
                     return Err(std::io::Error::last_os_error());
                 }
@@ -112,7 +107,6 @@ fn spawn_supervisor(
         command
     };
     match build(true).spawn() {
-        // A job that forbids breakaway refuses with ERROR_ACCESS_DENIED.
         Err(error) if cfg!(windows) && error.raw_os_error() == Some(5) => build(false).spawn(),
         result => result,
     }
@@ -159,10 +153,6 @@ fn status_from_file(status: StatusFile) -> Option<RunStatus> {
     }
 }
 
-/// Whether the process the status file names may still be the run: it is
-/// gone (its group can live on, and nothing else can have the id while it
-/// does), or it started when the supervisor saw it start. A pid another
-/// process has reused is left alone.
 fn may_be_the_run(probe: ProcessProbe, recorded: Option<u64>) -> bool {
     match probe {
         ProcessProbe::Gone => true,
@@ -172,7 +162,6 @@ fn may_be_the_run(probe: ProcessProbe, recorded: Option<u64>) -> bool {
     }
 }
 
-/// Kills the run's process group (or tree) after its supervisor died.
 fn kill_orphaned_run(child_pid: u32) {
     #[cfg(unix)]
     {
@@ -216,7 +205,6 @@ impl RunExecutor for LocalExecutor {
                 let mut child = spawn_supervisor(supervisor, &run_dir)
                     .map_err(|error| RunError::Io(format!("The run could not start: {error}")))?;
                 let identity = identity_of(child.id());
-                // Reap the supervisor when it exits while this process lives.
                 std::thread::spawn(move || {
                     let _ = child.wait();
                 });
@@ -247,7 +235,6 @@ impl RunExecutor for LocalExecutor {
             status if supervisor_alive(handle) => return Ok(status.unwrap_or(RunStatus::Starting)),
             _ => {}
         }
-        // The supervisor may have just written its final status.
         if let Some(finished @ RunStatus::Finished { .. }) =
             read_status(&handle.run_dir).and_then(status_from_file)
         {
@@ -282,7 +269,6 @@ impl RunExecutor for LocalExecutor {
     }
 }
 
-/// Writes a file only the user can read (it holds environment values).
 pub(crate) fn write_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
     let mut options = std::fs::OpenOptions::new();
     options.write(true).create(true).truncate(true);
@@ -306,15 +292,12 @@ mod tests {
 
     #[test]
     fn a_reused_pid_is_not_taken_for_the_run() {
-        // The run's process is gone: its group may still hold children.
         assert!(may_be_the_run(ProcessProbe::Gone, Some(10)));
         assert!(may_be_the_run(ProcessProbe::Gone, None));
-        // Still the process the supervisor saw start.
         assert!(may_be_the_run(
             ProcessProbe::Running { started: Some(10) },
             Some(10)
         ));
-        // Another process now has the id, or nothing says which one it is.
         assert!(!may_be_the_run(
             ProcessProbe::Running { started: Some(11) },
             Some(10)

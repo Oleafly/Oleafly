@@ -12,36 +12,24 @@ import {
   type ForgeKind,
 } from "@/lib/tauri";
 
-// Git hosting accounts shown across the app. Loaded lazily, the first time
-// Source Control, the import UI or Settings needs them, and reloaded when
-// another window (or the backend) changes them. Tokens never reach this
-// store: the backend keeps them and hands back accounts only.
-
 export type ForgeCheckState = "checking" | "ok" | "signed_out" | "unreachable";
 
 interface ForgeAccountsState {
   status: "idle" | "loading" | "ready" | "error";
   accounts: ForgeAccount[];
-  /** The last check of each account, by base URL. */
   checks: Record<string, ForgeCheckState>;
   error: string | null;
-  /** Load once; concurrent callers share one request. */
   ensureLoaded: () => Promise<ForgeAccount[]>;
   reload: () => Promise<ForgeAccount[]>;
-  /** `caFile` is the account's certificate file after signing in: a path
-   * sets it, an empty string clears it, and null or none keeps the one the
-   * account has. */
   signInWithToken: (input: {
     base: string;
     kind: ForgeKind;
     token: string;
     caFile?: string | null;
   }) => Promise<ForgeAccount>;
-  /** Record an account a browser sign-in just added. */
   accountSignedIn: (account: ForgeAccount) => void;
   signOut: (base: string) => Promise<void>;
   setCaFile: (base: string, caFile: string | null) => Promise<ForgeAccount>;
-  /** Check every account with its server, in parallel. */
   validateAll: () => Promise<void>;
 }
 
@@ -77,7 +65,6 @@ export const useForgeAccountsStore = create<ForgeAccountsState>((set, get) => {
       listening = false;
       void logError("forge accounts listen", error);
     };
-    // An async listener: a failure arrives as a rejection.
     onForgeAccountsChanged(() => {
       void get().reload();
     }).catch(failed);
@@ -173,7 +160,6 @@ export const useForgeAccountsStore = create<ForgeAccountsState>((set, get) => {
           try {
             const result = await forgeValidate(account.base);
             set((state) => {
-              // Signed out while the check ran: leave it gone.
               if (!state.accounts.some((existing) => existing.base === account.base)) return {};
               const checked = result.account;
               return {

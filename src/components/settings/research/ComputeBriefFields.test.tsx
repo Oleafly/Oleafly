@@ -51,7 +51,6 @@ const local = { executor: "local", target: null, resources: null };
 
 type Compute = Parameters<typeof ComputeBriefFields>[0]["value"];
 
-/** Keeps the value the way the composer does. */
 function Harness({
   initial,
   onChange,
@@ -224,7 +223,6 @@ describe("ComputeBriefFields", () => {
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ resources: expect.objectContaining({ gpus: 4 }) }));
     await userEvent.type(gpus, " GPUs");
 
-    // The field keeps what was typed; the brief keeps the last count that read.
     expect((gpus as HTMLInputElement).value).toBe("4 GPUs");
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ resources: expect.objectContaining({ gpus: 4 }) }));
     expect(screen.getByText(strings.form.errors.count)).toBeTruthy();
@@ -266,7 +264,6 @@ describe("ComputeBriefFields", () => {
 
     expect(screen.getByText(strings.form.errors.name)).toBeTruthy();
     expect(onProblemChange).toHaveBeenLastCalledWith(true);
-    // The last name that read is still the brief's, not the bad one.
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ resources: expect.objectContaining({ partition: "gpu" }) }));
     await userEvent.clear(partition);
     await userEvent.type(partition, "gpu,cpu");

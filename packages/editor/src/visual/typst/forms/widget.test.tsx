@@ -15,6 +15,7 @@ import { typstFormsGolden } from "../../../typst-forms-test-support";
 import { parsedView } from "../../test-document";
 import { typstVisualMode } from "../index";
 import { history } from "@codemirror/commands";
+import { stubRangeGeometry } from "../../../test-geometry";
 
 const created = vi.hoisted(() => ({ count: 0, renders: 0 }));
 
@@ -49,9 +50,7 @@ beforeAll(async () => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   installEnglishEditorMessages();
   await loadTypstParser();
-  if (!globalThis.Range.prototype.getClientRects) {
-    Object.defineProperty(globalThis.Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-  }
+  stubRangeGeometry();
 });
 
 afterEach(async () => {
@@ -201,7 +200,9 @@ describe("editing card fields", () => {
     });
     await settle();
     expect(editor.state.doc.toString()).toBe(DOC.replace('"Key result"', '"New result"'));
-    undo(editor);
+    await act(async () => {
+      undo(editor);
+    });
     expect(editor.state.doc.toString()).toBe(DOC);
   });
 
@@ -291,6 +292,65 @@ describe("editing card fields", () => {
     });
     await settle();
     expect(editor.state.doc.toString()).toContain('Remote words. Intro.\n\n#info-box(title: "Half typed"');
+  });
+
+  it("brings a draft back when a collaborator's half-typed argument hides the card for a while", async () => {
+    const editor = await mount();
+    const heading = input(card(editor), "Heading");
+    heading.focus();
+    await act(async () => {
+      fireEvent.change(heading, { target: { value: "Half typed" } });
+    });
+    const at = editor.state.doc.toString().indexOf("[Deliveries");
+    await act(async () => {
+      editor.dispatch({ changes: { from: at - 1, insert: ", author:" }, annotations: remoteChange.of(true) });
+      parsedView(editor);
+    });
+    await settle();
+    expect(editor.dom.querySelectorAll(".ofl-visual-form-card")).toHaveLength(1);
+    await act(async () => {
+      editor.dispatch({ changes: { from: at - 1 + ", author:".length, insert: ' "B"' }, annotations: remoteChange.of(true) });
+      parsedView(editor);
+    });
+    await settle();
+    const restored = input(card(editor), "Heading");
+    expect(restored).not.toBe(heading);
+    expect(restored.value).toBe("Half typed");
+    await act(async () => {
+      fireEvent.keyDown(restored, { key: "Enter" });
+    });
+    await settle();
+    expect(editor.state.doc.toString()).toContain('#info-box(title: "Half typed", tone: "note", author: "B")');
+  });
+
+  it.each([
+    ["next to the call, so CodeMirror reuses the card", "\n\n#info-box", "\n\n#info-box", true],
+    ["from further away, so CodeMirror draws a new card", "Intro.", "Intra.", false],
+  ])("keeps a working draft when an outside rewrite starts %s", async (_case, start, replacement, reused) => {
+    const editor = await mount();
+    const heading = input(card(editor), "Heading");
+    heading.focus();
+    await act(async () => {
+      fireEvent.change(heading, { target: { value: "Half typed" } });
+    });
+    const text = editor.state.doc.toString();
+    const from = text.indexOf(start);
+    const to = text.indexOf("revision: 3") + "revision: 3".length;
+    const rewritten = text.slice(from, to).replace(start, replacement).replace("revision: 3", "revision: 4");
+    await act(async () => {
+      editor.dispatch({ changes: { from, to, insert: rewritten } });
+      parsedView(editor);
+    });
+    await settle();
+    const after = input(card(editor), "Heading");
+    expect(after === heading).toBe(reused);
+    expect(after.value).toBe("Half typed");
+    await act(async () => {
+      fireEvent.keyDown(after, { key: "Enter" });
+    });
+    await settle();
+    expect(editor.state.doc.toString()).toContain('#info-box(title: "Half typed"');
+    expect(editor.state.doc.toString()).toContain("revision: 4");
   });
 
   it("dispatches nothing when a card with a draft goes away", async () => {

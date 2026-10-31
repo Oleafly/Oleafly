@@ -33,9 +33,6 @@ function linkedBibliographyMessage(path: string): string {
 }
 
 async function writeBibliography(projectId: string, path: string, content: string, base: string): Promise<void> {
-  // A viewer's change, or one while the project goes live, stops here with
-  // one message. The files store would refuse it as well and say so in a
-  // toast of its own.
   const refusal = sharedWriteRefusal(projectId);
   if (refusal) throw refusal;
   const files = useFilesStore.getState();

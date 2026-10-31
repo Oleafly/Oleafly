@@ -48,6 +48,11 @@
     "stoppedTitle": "Disconnected",
     "stoppedDescription": "Reload the page to connect again."
   },
+  "leave": {
+    "title": "Leave this project?",
+    "description": "Some of your edits have not reached the server yet. Stay until they are sent, or leave and lose them.",
+    "confirm": "Leave"
+  },
   "access": {
     "changed": "Your role in this project is now {{role}}."
   },
@@ -156,6 +161,11 @@
     "withdraw": "Withdraw",
     "acceptAll": "Accept all",
     "rejectAll": "Reject all",
+    "rejectAllConfirm": {
+      "title": "Reject every suggestion in {{file}}?",
+      "description": "The original text goes back into the file for everyone in this project. Suggestions waiting: {{number}}.",
+      "confirm": "Reject all"
+    },
     "pending_one": "{{count}} suggestion",
     "pending_other": "{{count}} suggestions",
     "card": "Suggestion by {{name}}",

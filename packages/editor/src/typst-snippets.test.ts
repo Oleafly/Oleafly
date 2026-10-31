@@ -11,13 +11,9 @@ import { EditorView } from "@codemirror/view";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { installEnglishEditorMessages } from "./test-messages";
 import { TYPST_SNIPPETS, typstSlashCompletions } from "./typst-snippets";
+import { stubRangeGeometry } from "./test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 const views: EditorView[] = [];
 

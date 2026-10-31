@@ -40,7 +40,6 @@ export function parseTexMagicComments(
     const value = match ? lineText.slice(match[0].length).trim() : "";
     if (match && value) {
       const key = match[1].toLowerCase() as keyof TexMagicComments;
-      // First occurrence of each key wins.
       result[key] ??= value;
     }
     start = end + 1;
@@ -48,11 +47,6 @@ export function parseTexMagicComments(
   return result;
 }
 
-/**
- * Resolves a magic-comment target against the directory of the file that
- * declares it, producing a normalized project-relative path. Returns null for
- * absolute paths, URLs, or paths that escape the project root. Pure.
- */
 export function resolveTexRootPath(
   declaredIn: string,
   rawTarget: string,
@@ -63,30 +57,13 @@ export function resolveTexRootPath(
 export type BrokenTexRootReason = "missing" | "not_tex";
 
 export interface EffectiveMainDoc {
-  /** Project-relative path of the document to compile. */
   mainDoc: string;
-  /**
-   * Project-relative path of the file whose `% !TEX root` comment supplied
-   * `mainDoc`, or null when the stored main document is in effect.
-   */
   overriddenBy: string | null;
-  /**
-   * Set when the active file declares a root that does not resolve to an
-   * existing project file. `mainDoc` then falls back to the stored main
-   * document, and the UI surfaces a warning.
-   */
   brokenRoot: { declaredIn: string; target: string; reason: BrokenTexRootReason } | null;
 }
 
-// Only TeX sources can redirect the root; a magic-looking comment in e.g. a
-// Markdown or Typst file never contributes an override.
 const OVERRIDE_CAPABLE_FILE = /\.(?:tex|latex|ltx)$/i;
 
-/**
- * The main document every compile/intelligence/SyncTeX/export consumer should
- * use right now: the active file's `% !TEX root` target when present and
- * valid, else the project's stored main document.
- */
 export function resolveEffectiveMainDoc(): EffectiveMainDoc {
   const files = useFilesStore.getState();
   const stored = files.mainDoc || "main.tex";

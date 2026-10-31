@@ -268,8 +268,6 @@ vi.mock("@/lib/terminal-keys", async (importOriginal) => ({
 
 vi.mock("./terminal-clipboard", () => ({ copyTerminalText: mocks.clipboard }));
 
-// The real adapters reach the files store, which the partial settings mock
-// below cannot satisfy. Keep the tooltip callbacks so tests can drive them.
 vi.mock("./terminal-link-actions", () => ({
   createTerminalLinkActions: (
     _projectId: string,
@@ -1228,7 +1226,6 @@ describe("TerminalPane", () => {
     expect(screen.queryByTestId("dock-terminal-host")).toBeNull();
     expect(screen.queryByTestId("dock-terminal-loading")).toBeNull();
     expect(screen.getByTestId("dock-terminal-inactive")).toHaveAttribute("aria-hidden", "true");
-    // Never opened, so it collapses instead of parking.
     expect(screen.getByTestId("dock-terminal-inactive").className).toContain("h-0");
 
     view.rerender(<TerminalPane projectId="project-1" visible active />);

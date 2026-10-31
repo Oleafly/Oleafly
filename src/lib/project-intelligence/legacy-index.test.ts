@@ -152,7 +152,6 @@ See \eqref{eq:mae}.`,
 
     const results = label("sec:results", "paper.tex");
     expect(index.definitionFor(link("sec:results"))).toBe(results);
-    // The local link in other.md points at other.md, not at paper.tex.
     expect(index.renamePlan(results, "sec:new").edits.map((edit) => edit.file)).toEqual([
       "notes.md",
       "paper.tex",

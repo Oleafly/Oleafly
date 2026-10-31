@@ -7,8 +7,6 @@ use std::collections::HashMap;
 
 use biblatex::{Bibliography, RawBibliography};
 
-/// `Bibliography::parse`, or an error when the library can't be parsed or its
-/// `crossref`/`xdata` links form a loop.
 pub fn parse_library(source: &str) -> Result<Bibliography, String> {
     let raw = RawBibliography::parse(source).map_err(|error| error.to_string())?;
     if let Some(key) = linked_loop(source, &raw) {
@@ -19,7 +17,6 @@ pub fn parse_library(source: &str) -> Result<Bibliography, String> {
     Bibliography::from_raw(raw).map_err(|error| error.to_string())
 }
 
-/// The key of an entry on a `crossref`/`xdata` loop, if there is one.
 fn linked_loop<'s>(source: &'s str, raw: &RawBibliography<'s>) -> Option<&'s str> {
     first_loop(&entry_links(source, raw))
 }
@@ -65,8 +62,6 @@ fn unbraced(text: &str) -> String {
         .to_string()
 }
 
-/// A depth-first walk over the links that reports the first entry it meets
-/// twice on the current path. Iterative, so a long chain can't overflow.
 fn first_loop<'s>(links: &HashMap<&'s str, Vec<String>>) -> Option<&'s str> {
     #[derive(Clone, Copy, PartialEq)]
     enum Mark {
@@ -80,7 +75,6 @@ fn first_loop<'s>(links: &HashMap<&'s str, Vec<String>>) -> Option<&'s str> {
         if marks.contains_key(start) {
             continue;
         }
-        // Each step on the path keeps the index of its next link to follow.
         let mut path: Vec<(&str, usize)> = vec![(start, 0)];
         marks.insert(start, Mark::OnPath);
         while let Some(&(key, next)) = path.last() {

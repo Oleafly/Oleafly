@@ -29,11 +29,6 @@ import {
   walkProject,
 } from "./support";
 
-// Whole projects through the app's own pipeline: the project-intelligence
-// analyzer and legacy index, the preflight store's context builders, the
-// Typst image sizes and runPreflight. crates/oleafly-preflight/tests/
-// golden_projects.rs runs the Rust port on the same files.
-
 const MAX_TEXT_BYTES = 2_000_000;
 const MAX_LOG_BYTES = 4 * 1024 * 1024;
 const MAX_MEASURED_IMAGES = 256;

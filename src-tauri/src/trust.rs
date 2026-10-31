@@ -19,8 +19,6 @@ const MAX_NESTED_SCAN_DEPTH: usize = 5;
 const MAX_GIT_CONFIG_BYTES: u64 = 256 * 1024;
 const RUN_COMMAND_REFUSAL: &str =
     "Commands are turned off in this folder until the user trusts it in Oleafly.";
-// 0.4.8 I: desktop apps act outside the project, so untrusted folders never
-// get them.
 const DESKTOP_APPS_REFUSAL: &str =
     "Oleafly limits this folder until the user trusts it, so Computer Use is off here.";
 const NETWORK_TOOLS: &[&str] = &[
@@ -139,21 +137,14 @@ pub struct ProjectTrust {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AiConfirm {
     Write(String),
-    /// A network tool and what it sends out, when the call names it (the
-    /// address a fetch reads, the words a search sends).
     Network {
         tool: String,
         target: Option<String>,
     },
 }
 
-/// The longest target a confirmation shows; a longer one keeps its start
-/// and end.
 const MAX_SHOWN_TARGET: usize = 200;
 
-/// What a network call sends out, as the confirmation shows it: control
-/// and direction-changing characters removed so it reads as one plain
-/// line, and a long one cut in the middle.
 fn shown_target(arguments: &serde_json::Value) -> Option<String> {
     let (raw, quoted) = match arguments.get("url").and_then(serde_json::Value::as_str) {
         Some(url) => (url, false),
@@ -686,11 +677,8 @@ pub fn ai_tool_gate(tool: &str, arguments: &serde_json::Value) -> AiToolGate {
 }
 
 fn read_bounded(path: &Path) -> Option<String> {
-    use std::io::Read as _;
-    let mut reader = std::fs::File::open(path).ok()?.take(MAX_GIT_CONFIG_BYTES);
-    let mut text = String::new();
-    reader.read_to_string(&mut text).ok()?;
-    Some(text)
+    let read = oleafly_core::read_bounded(path, MAX_GIT_CONFIG_BYTES)?;
+    String::from_utf8(read.bytes).ok()
 }
 
 fn git_dir_of(worktree: &Path) -> Option<PathBuf> {
@@ -1169,8 +1157,6 @@ pub async fn confirm_ai_tool<R: tauri::Runtime>(
         AiConfirm::Network { tool, target } => {
             let mut message =
                 crate::i18n::t_with("dialog.restrictedNetwork.message", &[("tool", tool)]);
-            // The address or words it sends, on their own line, so the user
-            // sees what leaves the computer before allowing it.
             if let Some(target) = target {
                 message.push_str("\n\n");
                 message.push_str(target);
@@ -1717,8 +1703,6 @@ mod tests {
             target("web_search", json!({"query": "thesis title"})).as_deref(),
             Some("\u{201c}thesis title\u{201d}")
         );
-        // A long address keeps its start and end; line breaks and
-        // direction marks cannot disguise it.
         let long = format!("https://evil.example/c?d={}END", "A".repeat(5_000));
         let shown = target("web_fetch", json!({ "url": long })).unwrap();
         assert!(shown.starts_with("https://evil.example/c?d=AAA"), "{shown}");

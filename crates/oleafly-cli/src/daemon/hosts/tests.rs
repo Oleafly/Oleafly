@@ -40,7 +40,6 @@ impl Fixture {
         }
     }
 
-    /// A task handed to the helper with `grant`; returns its id.
     fn handed_off(&self, grant: TaskGrant) -> String {
         let app = TaskStore::new(self.tasks_root()).unwrap();
         let task = app
@@ -175,7 +174,6 @@ fn a_linked_root_in_the_apps_canonical_form_resolves() {
     }];
     let roots = GrantLinkedRoots::new(&grant);
     assert_eq!(roots.resolve("paper", "data").unwrap(), app_form);
-    // Moved away: still refused in that form.
     std::fs::remove_dir(&app_form).unwrap();
     assert_eq!(roots.resolve("paper", "data").unwrap_err(), LINKED_MOVED);
 }
@@ -328,7 +326,6 @@ fn spooled_usage_carries_cost_from_the_model_entry() {
     };
     sink.observe(&usage(1_000_000, 0));
     assert!((live.get("t1") - 3.0).abs() < 1e-9);
-    // A second turn starts its totals again.
     sink.observe(&usage(0, 100_000));
     sink.finish("completed");
     sink.finish("completed");
@@ -370,8 +367,6 @@ fn a_turn_that_starts_above_the_last_ones_totals_is_still_counted() {
             ..Usage::default()
         })
     };
-    // A one-step turn, then a turn whose first totals are larger on both
-    // counters: no counter went down, but it is a new turn.
     sink.observe(&AgentEvent::StepStart { step: 0 });
     sink.observe(&usage(5_000, 300));
     sink.observe(&AgentEvent::StepStart { step: 0 });
@@ -484,7 +479,6 @@ fn run_supervisors_start_from_the_appimage_itself() {
 fn a_recovered_record_keeps_the_grant() {
     let fixture = Fixture::new();
     let task = fixture.handed_off(fixture.grant(&[TRUST_RESEARCH_TASKS]));
-    // The helper claims it, then dies without handing it back.
     let crashed = TaskStore::with_owner_kind(fixture.tasks_root(), OwnerKind::Daemon).unwrap();
     let claimed = crashed.claim_next().unwrap().unwrap();
     assert_eq!(claimed.id, task);

@@ -7,10 +7,9 @@ import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
 vi.mock("@/features/synctex", () => ({ openFileAndGotoLine: vi.fn() }));
 
 import { LogPane } from "./LogPane";
+import { stubRangeGeometry } from "../../../packages/editor/src/test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 type Snapshot = {
   log: string;

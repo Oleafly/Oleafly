@@ -1,8 +1,3 @@
-//! The LaTeX prose mask (`packages/editor/src/latex-mask.ts`): a same-length
-//! copy of the source where everything that is not prose becomes spaces
-//! (newlines kept), inline regions read as a placeholder word, and accents
-//! such as `\'e` are decoded so a checker sees `é`.
-
 use std::sync::LazyLock;
 
 use oleafly_preflight::jsre::JsRegex;
@@ -36,7 +31,6 @@ const STAR: u16 = b'*' as u16;
 const QUOTE: u16 = b'"' as u16;
 const EQUALS: u16 = b'=' as u16;
 
-/// Environments whose whole body is not prose (math, code, diagrams).
 const OPAQUE_ENVS: &[&str] = &[
     "math",
     "displaymath",
@@ -89,8 +83,6 @@ const REF_ARG_CMDS: &[&str] = &[
     "Cpagerefrange",
 ];
 
-/// Commands whose arguments are identifiers, keys, paths or URLs; with
-/// `REF_ARG_CMDS` they make `OPAQUE_ARG_CMDS`.
 const OPAQUE_ARG_CMDS: &[&str] = &[
     "label",
     "ref",
@@ -182,7 +174,6 @@ const OPAQUE_ARG_CMDS: &[&str] = &[
     "renewenvironment",
 ];
 
-/// With `REF_ARG_CMDS` they make `INLINE_ARG_CMDS`.
 const INLINE_ARG_CMDS: &[&str] = &[
     "ref",
     "eqref",
@@ -224,7 +215,6 @@ const INLINE_ARG_CMDS: &[&str] = &[
     "Acrfull",
 ];
 
-/// Commands whose first argument is opaque and the rest prose.
 const FIRST_ARG_OPAQUE_CMDS: &[&str] = &[
     "textcolor",
     "colorbox",
@@ -390,8 +380,6 @@ static SINGLE_LETTER: LazyLock<JsRegex> =
     LazyLock::new(|| JsRegex::std(r"\A[ \t]*(\p{L})[ \t]*\z"));
 static TIE_LETTERS: LazyLock<JsRegex> =
     LazyLock::new(|| JsRegex::std(r"\A[ \t]*(\p{L}{1,2})[ \t]*\z"));
-/// JavaScript adds `(?![a-zA-Z@])` after `[ij]`; whatever follows in a match
-/// is a space, a tab, `{` or the end, so the look-ahead never decides.
 static DOTLESS: LazyLock<JsRegex> =
     LazyLock::new(|| JsRegex::std(r"\A[ \t]*\\([ij])[ \t]*(?:\{\}[ \t]*)?\z"));
 static BABEL_OPTION_LIST: LazyLock<JsRegex> = LazyLock::new(|| {
@@ -415,7 +403,6 @@ fn is_inline_arg_cmd(name: &str) -> bool {
     INLINE_ARG_CMDS.contains(&name) || REF_ARG_CMDS.contains(&name)
 }
 
-/// `/.setup$/u`: at least one character before a final `setup`.
 fn is_setup_cmd(name: &str) -> bool {
     name.len() > "setup".len() && name.ends_with("setup")
 }
@@ -456,9 +443,6 @@ fn span(from: usize, to: usize) -> MaskSpan {
     MaskSpan { from, to }
 }
 
-/// The end of the environment that started before `from`, counting nested
-/// `\begin{env}` and `\end{env}` (with `\s*` before the brace and an
-/// optional `*`), like `findEnvEnd`'s global regex.
 fn find_env_end(text: &[u16], from: usize, env: &str) -> usize {
     let env: Vec<u16> = to_units(env);
     let mut depth = 1usize;
@@ -481,8 +465,6 @@ fn find_env_end(text: &[u16], from: usize, env: &str) -> usize {
     text.len()
 }
 
-/// `\\(begin|end)\s*\{ENV\*?\}` anchored at `at`: whether it is a begin and
-/// where the match ends.
 fn env_marker_at(text: &[u16], at: usize, env: &[u16]) -> Option<(bool, usize)> {
     let starts = |offset: usize, word: &str| {
         let word = to_units(word);
@@ -749,7 +731,6 @@ impl<'a> Collector<'a> {
         index_of_units(&self.chars, &[NEWLINE], k).unwrap_or(self.n)
     }
 
-    /// Modes: 1 `$`, 2 `$$`, 3 `\(`, 4 `\[`.
     fn math_close_at(&self, k: usize, mode: u8) -> Option<usize> {
         let ch = self.chars[k];
         if ch == NEWLINE {
@@ -844,7 +825,6 @@ impl<'a> Collector<'a> {
         args.end
     }
 
-    /// `/\$[^$]*\$/g` removed, then whether an `=` is left.
     fn option_has_assignment(units: &[u16]) -> bool {
         let mut index = 0;
         while index < units.len() {
@@ -1030,7 +1010,6 @@ impl<'a> Collector<'a> {
         let (_, mark) = ACCENT_MARKS.iter().find(|(accent, _)| *accent == name)?;
         let control_word = name.chars().any(|ch| ch.is_ascii_alphabetic());
         let (base, end) = self.accent_argument(j, control_word, name == "t")?;
-        // `${base[0]}${mark}${base.slice(1)}` in UTF-16 units, then NFC.
         let mut combined = vec![base[0]];
         combined.extend(mark.encode_utf16(&mut [0; 2]).iter());
         combined.extend_from_slice(&base[1..]);
@@ -1167,8 +1146,6 @@ fn mask_regions(text: &[u16], regions: &[MaskRegion]) -> Vec<u16> {
     out
 }
 
-/// A decoded prose view: `text` may differ in length from the source when
-/// accents or shorthands were decoded; `start`/`end` map its units back.
 #[derive(Clone, Debug)]
 pub(crate) struct DecodedProse {
     pub text: Vec<u16>,
@@ -1207,7 +1184,6 @@ impl DecodedProse {
     }
 }
 
-/// `uncommented`: no unescaped `%` before `index` on its line.
 fn uncommented(text: &[u16], index: usize) -> bool {
     let line_start = last_index_of_units(text, &[NEWLINE], index).map_or(0, |at| at + 1);
     let line = &text[line_start.min(index)..index];
@@ -1318,7 +1294,6 @@ fn decode_scan(text: &[u16], scan: &LatexScan) -> DecodedProse {
     }
 }
 
-/// A located word: source range and the word as the checker reads it.
 pub(crate) struct LocatedWord {
     pub from: usize,
     pub to: usize,
@@ -1330,7 +1305,6 @@ pub(crate) struct DecodedWord {
     pub compound: Option<LocatedWord>,
 }
 
-/// `decodedWords`: spelling words of the decoded prose, located in the source.
 pub(crate) fn decoded_words(prose: &DecodedProse, source: &[u16]) -> Vec<DecodedWord> {
     let text = SourceText::from_units(prose.text.clone());
     let locate = |from: usize, to: usize, word: &str| {
@@ -1383,8 +1357,6 @@ fn write_decoded_units(out: &mut [u16], text: &[u16], prose: &DecodedProse) -> V
     written
 }
 
-/// `writeDecodedWords`: decoded words replace their source spelling in the
-/// prose, and the replaced ranges join the masked regions.
 pub(crate) fn write_decoded_words(
     out: &mut [u16],
     masked: Vec<MaskSpan>,
@@ -1415,8 +1387,6 @@ fn is_letter_or_number_unit(unit: u16) -> bool {
     is_letter_unit(unit) || is_number_unit(unit)
 }
 
-/// `writeProsePlaceholder`: an inline region reads as `Dummy` (or `X` when
-/// shorter) unless it touches a word or spans a line break.
 pub(crate) fn write_prose_placeholder(out: &mut [u16], text: &[u16], from: usize, to: usize) {
     let length = to.saturating_sub(from);
     let placeholder = if length >= PROSE_PLACEHOLDER.len() {
@@ -1456,7 +1426,6 @@ fn blank_region_spans(out: &mut [u16], blanks: &[MaskSpan], from: usize) {
     }
 }
 
-/// `maskLatexForProseRegions`.
 pub fn mask_latex_for_prose_regions(text: &[u16]) -> ProseMask {
     let mut out = text.to_vec();
     let mut masked = Vec::new();

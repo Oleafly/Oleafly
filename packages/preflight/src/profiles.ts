@@ -32,10 +32,6 @@ export interface SubmissionProfile {
   };
 }
 
-/**
- * Declarative profiles are deliberately data-only. A future registry adapter
- * can replace these bundled defaults without changing the rule engine.
- */
 export const SUBMISSION_PROFILES: Record<SubmissionProfileId, SubmissionProfile> = {
   generic: {
     id: "generic",

@@ -1,4 +1,3 @@
-//! The client against a scripted agent on in-memory pipes.
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -7,7 +6,6 @@ use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, DuplexStream};
 use tokio::sync::mpsc;
 
-/// Records every callback, and answers permission requests as cancelled.
 #[derive(Default)]
 struct RecordingHost {
     log: Mutex<Vec<String>>,
@@ -35,7 +33,6 @@ impl ClientHost for RecordingHost {
         if request.method() == "session/request_permission" {
             let _ = request.respond(json!({"outcome": {"outcome": "cancelled"}}));
         } else if request.method() == "fs/read_text_file" {
-            // A reply the agent's frame cannot hold.
             let _ = request.respond(json!({"content": "x".repeat(oleafly_acp::limits::MAX_FRAME)}));
         } else if request.method() == "slow/request" {
             let cancelled = request.cancelled();
@@ -75,7 +72,6 @@ impl ClientHost for RecordingHost {
     }
 }
 
-/// The agent's end of the pipes.
 struct FakeAgent {
     reader: BufReader<DuplexStream>,
     writer: DuplexStream,
@@ -178,7 +174,6 @@ async fn a_reply_too_large_for_a_frame_becomes_an_error_and_the_connection_stays
         answer["error"]["message"],
         "The reply is too large to send over ACP."
     );
-    // The connection still works in both directions.
     let waiting = {
         let client = client.clone();
         tokio::spawn(async move {
@@ -206,7 +201,6 @@ async fn a_session_load_is_not_stopped_while_its_replay_keeps_arriving() {
     };
     let request = agent.next().await;
     assert_eq!(request["method"], "session/load");
-    // Longer than the 60 s of a plain request, with no 60 s of silence.
     for index in 0..6 {
         tokio::time::sleep(Duration::from_secs(50)).await;
         agent.send(update(index)).await;
@@ -574,8 +568,6 @@ async fn a_prompt_reply_ends_the_turn_in_order_with_the_updates() {
         }
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
-    // The update after the reply comes after the turn's end, however the
-    // tasks that read them are scheduled.
     assert_eq!(host.log(), ["update", "turn_ended:s1", "update"]);
 }
 
@@ -746,8 +738,6 @@ async fn steering_asks_for_prompt_required_idle_behavior() {
     assert_eq!(waiting.await.unwrap().unwrap()["outcome"], "injected");
 }
 
-/// Records updates slowly, so the agent's last messages are still queued
-/// when its output ends.
 #[derive(Default)]
 struct SlowHost {
     inner: RecordingHost,
@@ -805,7 +795,6 @@ async fn a_reply_sent_just_before_the_agent_exits_still_reaches_its_caller() {
     .await
     .expect("the host hears about the disconnect");
     let log = host.inner.log();
-    // Every update the agent sent was handled before the disconnect.
     assert_eq!(log.iter().filter(|entry| *entry == "update").count(), 100);
     assert_eq!(log.last().map(String::as_str), Some("disconnected"));
 }

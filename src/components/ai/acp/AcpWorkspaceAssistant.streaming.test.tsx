@@ -158,7 +158,6 @@ describe("ACP assistant streaming", () => {
     await publish(event(8, "turn_complete", { stopReason: "end_turn" }));
 
     await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready"));
-    // A conversation with messages keeps its agent: the picker stays hidden.
     expect(ui.queryByTestId("agent-picker-row")).not.toBeInTheDocument();
     expect(renders.picker).toBe(picker);
     expect(ui.getByText("Checking the tables now.")).toBeInTheDocument();

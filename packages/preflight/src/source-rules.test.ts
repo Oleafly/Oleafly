@@ -263,7 +263,6 @@ describe("comment masking", () => {
     expect(has("% a note\n\\usepackage{multicol}", "multi-column")).toBe(true);
   });
   it("treats an escaped percent as literal text, not a comment", () => {
-    // `\%` is a literal percent, so the multicol after it is NOT commented out.
     expect(has("\\documentclass{article} \\% literal percent \\usepackage{multicol}", "multi-column")).toBe(
       true,
     );

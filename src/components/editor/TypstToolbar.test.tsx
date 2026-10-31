@@ -225,7 +225,6 @@ describe("TypstToolbar", () => {
     render(<TypstToolbar />);
     await waitFor(() => expect(screen.getByTestId("image-to-typst")).toBeInTheDocument());
     const input = screen.getByTestId("image-to-typst-input") as HTMLInputElement;
-    // Any image, as before 0.4.8: other formats are drawn again as PNG.
     expect(input).toHaveAttribute("accept", "image/*");
     const file = new File([new Uint8Array([1])], "eq.png", { type: "image/png" });
     await act(async () => {

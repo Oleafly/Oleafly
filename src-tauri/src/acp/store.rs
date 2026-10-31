@@ -11,8 +11,6 @@ pub struct Store {
     db: Mutex<Connection>,
 }
 
-/// A stored record with the counters kept in their own columns, so an event
-/// append does not rewrite the record JSON.
 fn decode(record: &str, updated_at: i64, last_sequence: i64) -> Result<SessionRecord, String> {
     let mut session: SessionRecord = serde_json::from_str(record).map_err(|e| e.to_string())?;
     session.updated_at = session
@@ -24,7 +22,6 @@ fn decode(record: &str, updated_at: i64, last_sequence: i64) -> Result<SessionRe
     Ok(session)
 }
 
-/// Keeps what searches look at (title, agent) in step with the record.
 fn index_for_search(tx: &Transaction, session: &SessionRecord) -> Result<(), String> {
     tx.execute(
         "INSERT INTO session_search (session_id, title, agent_id) VALUES (?1,?2,?3)
@@ -39,7 +36,6 @@ fn signed(value: u64) -> i64 {
     i64::try_from(value).unwrap_or(i64::MAX)
 }
 
-/// `%`, `_` and `\` matched literally in a `LIKE ... ESCAPE '\'` pattern.
 fn like_pattern(query: &str) -> String {
     let mut pattern = String::from("%");
     for c in query.chars() {
@@ -81,9 +77,6 @@ impl Store {
                 .map_err(|e| e.to_string())?;
             names.iter().any(|name| name == "last_sequence")
         };
-        // 0.4.7 writes four unnamed values into `sessions`, so the event
-        // counter has a table of its own; a development build kept it in a
-        // fifth column, which moves there.
         if has_sequence {
             let tx = db.transaction().map_err(|e| e.to_string())?;
             tx.execute(
@@ -96,15 +89,11 @@ impl Store {
                 .map_err(|e| e.to_string())?;
             tx.commit().map_err(|e| e.to_string())?;
         }
-        // Conversations an older version deleted.
         db.execute(
             "DELETE FROM session_counters WHERE session_id NOT IN (SELECT id FROM sessions)",
             [],
         )
         .map_err(|e| e.to_string())?;
-        // What searches look at lives in a table of its own, so a search
-        // never parses the records. 0.4.7 does not write it: sessions it saved
-        // are added here, and ones it deleted are dropped.
         db.execute(
             "DELETE FROM session_search WHERE session_id NOT IN (SELECT id FROM sessions)",
             [],
@@ -117,8 +106,6 @@ impl Store {
             [],
         )
         .map_err(|e| e.to_string())?;
-        // No agent is connected yet: whatever a session was doing, it is not
-        // any more.
         db.execute(
             "UPDATE sessions SET record=json_set(record,'$.status','disconnected','$.error',?1)
              WHERE json_extract(record,'$.status') IN ('running','connecting','ready','cancelling','auth_required')",
@@ -208,8 +195,6 @@ impl Store {
         Ok(changed)
     }
 
-    /// Stores one event. The record JSON is rewritten only when `record` is
-    /// given (the record changed); otherwise only its counters move.
     pub fn append(&self, event: &AcpEvent, record: Option<&SessionRecord>) -> Result<(), String> {
         let mut db = self.lock()?;
         let tx = db.transaction().map_err(|e| e.to_string())?;
@@ -254,7 +239,6 @@ impl Store {
         tx.commit().map_err(|e| e.to_string())
     }
 
-    /// The highest stored event sequence of a session (0 without events).
     pub fn last_sequence(&self, id: &str) -> Result<u64, String> {
         let sequence: Option<i64> = self
             .lock()?
@@ -314,11 +298,6 @@ impl Store {
         )
     }
 
-    /// A project's conversations, newest first. `before` is the update time
-    /// of the last one already shown and `before_id` its id: together they
-    /// are where the next page starts, so conversations that share a
-    /// timestamp are not skipped (with `before` alone, only older ones
-    /// follow). `query` matches titles and agent ids literally.
     pub fn page(
         &self,
         project: &str,
@@ -345,8 +324,6 @@ impl Store {
         Ok((sessions, has_more))
     }
 
-    /// Which of `natives` (agent session ids) are already saved as
-    /// conversations of the project, in one pass over its records.
     pub fn imported_natives(
         &self,
         project: &str,
@@ -373,8 +350,6 @@ impl Store {
         rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
     }
 
-    /// A research task's conversation with the agent's own session
-    /// `native`, the latest when there are several.
     pub fn find_task_session(
         &self,
         task: &str,
@@ -392,10 +367,6 @@ impl Store {
             .next())
     }
 
-    /// Copies a conversation's events to another session (a fork); returns
-    /// the last sequence copied. The copy goes in chunks so appends of other
-    /// sessions are not held up behind one long write, and stops at the last
-    /// event the conversation had when it began.
     pub fn copy_events(&self, from: &str, to: &str) -> Result<u64, String> {
         const CHUNK: i64 = 500;
         let end = self.last_sequence(from)?;
@@ -428,7 +399,6 @@ impl Store {
             }
         })();
         if let Err(error) = result {
-            // Never leave half a transcript behind.
             if let Ok(db) = self.lock() {
                 let _ = db.execute("DELETE FROM events WHERE session_id=?1", [to]);
             }
@@ -470,8 +440,6 @@ impl Store {
         Ok(record)
     }
 
-    /// The size of a session's events toward its transcript cap. Usage
-    /// events are not counted (the runtime leaves them out too).
     pub fn byte_count(&self, id: &str) -> Result<usize, String> {
         self.lock()?
             .query_row(
@@ -513,7 +481,6 @@ impl Store {
         Ok(EventPage { events, has_more })
     }
 
-    /// Every stored event of a session, oldest first.
     pub fn events_all(&self, id: &str) -> Result<Vec<AcpEvent>, String> {
         let db = self.lock()?;
         let mut statement = db
@@ -564,7 +531,6 @@ impl Store {
         tx.commit().map_err(|e| e.to_string())
     }
 
-    /// Programs users chose for agents, by agent id.
     pub fn agent_programs(&self) -> Result<std::collections::HashMap<String, String>, String> {
         let db = self.lock()?;
         let mut statement = db
@@ -587,7 +553,6 @@ impl Store {
             .map_err(|e| e.to_string())
     }
 
-    /// Saves the program chosen for an agent, or forgets it with `None`.
     pub fn set_agent_program(&self, id: &str, path: Option<&str>) -> Result<(), String> {
         let db = self.lock()?;
         match path {
@@ -611,7 +576,6 @@ impl Store {
             .query_row(sql, params, |row| row.get(0))
             .optional()
             .map_err(|e| e.to_string())?;
-        // A value this version cannot read falls back to the defaults.
         Ok(value
             .and_then(|json| serde_json::from_str(&json).ok())
             .unwrap_or_default())
@@ -660,9 +624,6 @@ impl Store {
         )
     }
 
-    /// Changes an agent's preferences with `patch` in one step under the
-    /// store's lock, so two windows changing different choices keep both.
-    /// Returns the preferences before and after.
     pub fn patch_agent_preferences(
         &self,
         agent: &str,

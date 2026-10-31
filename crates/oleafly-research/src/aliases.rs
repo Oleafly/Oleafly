@@ -6,18 +6,13 @@
 const SEARCH_ALIAS: &str = "alphaxiv_search";
 const CONTENT_ALIAS: &str = "alphaxiv_paper_content";
 
-/// Who reads the skill.
 pub enum AliasAudience {
-    /// A research task. `alphaxiv_tools` holds the exposed names of the
-    /// connected alphaXiv search and paper-content tools, when connected.
     Task {
         alphaxiv_tools: Option<(String, String)>,
     },
-    /// A CLI agent with the user's own alphaXiv MCP server.
     CliAgent,
 }
 
-/// The note to append to a skill, or "" when it names neither alias.
 pub fn tool_alias_note(instructions: &str, audience: &AliasAudience) -> String {
     let search = instructions.contains(SEARCH_ALIAS);
     let content = instructions.contains(CONTENT_ALIAS);

@@ -1,26 +1,17 @@
-// The index types are the stable contract shared by parser, query, and UI layers.
-
 export type DefKind = "label" | "macro" | "bibentry" | "theorem" | "glossary" | "environment" | "section" | "file";
 export type UseKind = "ref" | "cite" | "atuse" | "macrouse" | "envuse" | "glossaryuse" | "inputedge";
 export type SymKind = DefKind | UseKind;
 
 export interface Sym {
   kind: SymKind;
-  // Label key, macro name (no backslash), bib key, env name, section title, or file path,
-  // depending on `kind`.
   name: string;
   file: string;
-  // 1-based.
   line: number;
-  // Full token span within `file` (for hit-testing and jump targets).
   from: number;
   to: number;
   nameFrom: number;
   nameTo: number;
-  // Only set for `section` symbols.
   level?: number;
-  // Set for `inputedge` symbols (the included path) and for `ref` symbols from
-  // a `file#anchor` link (the file and anchor they point at).
   target?: string;
 }
 

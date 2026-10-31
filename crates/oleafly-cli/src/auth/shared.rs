@@ -1,6 +1,3 @@
-//! What `auth`, `remote` and `server` share: the encrypted store and the
-//! data folder, reading a secret from standard input, the command line's
-//! own collaboration secrets, error mapping and the report type.
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
@@ -14,16 +11,10 @@ use zeroize::Zeroizing;
 
 use crate::contract::{CliError, Context, ErrorKind, Exit, Outcome, Warning};
 
-/// A Git token for the online LaTeX service that wins over saved ones (CI).
 pub(crate) const ONLINE_GIT_TOKEN_VARIABLE: &str = "OLEAFLY_ONLINE_GIT_TOKEN";
-/// The most a secret read from standard input may hold.
 pub(crate) const MAX_SECRET_INPUT: usize = 16 * 1024;
-/// The command line keeps its collaboration secrets under this prefix, so
-/// it never reads or replaces the app's device key and sessions.
 pub(crate) const CLI_ACCOUNT_PREFIX: &str = "cli:";
 
-/// What a command found: its JSON fields, the lines people see, warnings
-/// and the exit code.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Report {
     pub data: Value,
@@ -62,9 +53,6 @@ impl Report {
         self
     }
 
-    /// Prints the lines (people) and warnings, and returns the outcome.
-    /// The lines carry names and text from other people's accounts, so
-    /// nothing in them can steer the terminal.
     pub(crate) fn deliver(self, ctx: &Context) -> Outcome {
         for line in &self.lines {
             ctx.say(plain_text(line));
@@ -80,10 +68,6 @@ impl Report {
     }
 }
 
-/// `text` without anything a terminal would act on: control characters
-/// (escape sequences, carriage returns, bells) and the characters that
-/// reorder text. New lines and tabs stay. Text from a collaborator or a
-/// server (a project name, a comment) goes through this before it is printed.
 pub(crate) fn plain_text(text: &str) -> String {
     text.chars()
         .filter(|character| {
@@ -94,14 +78,10 @@ pub(crate) fn plain_text(text: &str) -> String {
         .collect()
 }
 
-/// [`plain_text`] for a value that belongs on one line, such as a project
-/// name: line breaks and tabs become spaces, so it can't start a line of its
-/// own.
 pub(crate) fn one_line(text: &str) -> String {
     plain_text(&text.replace(['\n', '\t', '\r'], " "))
 }
 
-/// Lists a failure's files for people (JSON has them in `details`).
 pub(crate) fn note_failure_files(ctx: &Context, error: &CliError) {
     let Some(details) = &error.details else {
         return;
@@ -115,21 +95,17 @@ pub(crate) fn note_failure_files(ctx: &Context, error: &CliError) {
     }
 }
 
-/// The process's view of accounts: where data lives and what it may ask.
 pub(crate) struct Env {
     pub data_root: PathBuf,
     pub home: PathBuf,
     pub store: SecretStore,
     pub online_git_token: Option<Zeroizing<String>>,
-    /// Questions may be asked (a terminal, no `--no-input`, not CI).
     pub interactive: bool,
     pub stdin_is_tty: bool,
     pub platform: HostPlatform,
 }
 
 impl Env {
-    /// The only place that reads the data folder, the home folder and the
-    /// token variable from the process.
     pub(crate) fn from_context(ctx: &Context) -> Result<Env, CliError> {
         use std::io::IsTerminal as _;
         let data_root = ctx.data_root().map(Path::to_path_buf).ok_or_else(no_home)?;
@@ -150,7 +126,6 @@ impl Env {
         })
     }
 
-    /// The app's library of projects.
     pub(crate) fn projects_root(&self) -> PathBuf {
         self.data_root.join("projects")
     }
@@ -165,8 +140,6 @@ fn no_home() -> CliError {
     .hint("Set HOME (or USERPROFILE on Windows), or OLEAFLY_DATA_DIR.")
 }
 
-/// One line of secret text: asked for with hidden input in a terminal,
-/// else read from standard input (at most 16 KB, one line).
 pub(crate) fn read_secret_input(
     input: &mut dyn Read,
     is_tty: bool,
@@ -219,7 +192,6 @@ pub(crate) fn read_secret_input(
     Ok(Zeroizing::new(value.to_string()))
 }
 
-/// `Oleafly/<version>`, the agent every request names.
 pub(crate) fn user_agent() -> String {
     format!("Oleafly/{}", crate::version::APP_VERSION)
 }
@@ -231,8 +203,6 @@ pub(crate) fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
-/// The command line's collaboration secrets in the shared store: every
-/// account is kept as `cli:<account>`.
 pub(crate) struct CliSecrets {
     store: SecretStore,
 }
@@ -272,7 +242,6 @@ impl SecretPort for CliSecrets {
     }
 }
 
-/// The encrypted store couldn't be read or written.
 pub(crate) fn from_store(error: String, root: &Path) -> CliError {
     CliError::new(
         ErrorKind::MissingTool,
@@ -289,8 +258,6 @@ const SIGNED_OUT_HINT: &str = "Run oleafly auth login online, or sign in from th
 const TOKEN_HINT: &str =
     "Create a Git token in your account settings, then run oleafly auth login online --with-token.";
 
-/// An online-service failure as the command line reports it. Credential
-/// failures never carry the error's detail, which may echo what was sent.
 pub(crate) fn from_online(error: &OnlineError) -> CliError {
     use OnlineErrorKind as Kind;
     let param = |name: &str| error.params.get(name).cloned();
@@ -383,7 +350,6 @@ pub(crate) fn from_online(error: &OnlineError) -> CliError {
     }
 }
 
-/// A collaboration-server failure as the command line reports it.
 pub(crate) fn from_collab(error: &CollabError, server: &str) -> CliError {
     let new =
         |kind: ErrorKind, code: &'static str, message: String| CliError::new(kind, code, message);

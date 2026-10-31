@@ -208,6 +208,7 @@
     "pathStyleHint": "MinIO og de fleste selvhostede servere har brug for det."
   },
   "errors": {
+    "clock_skew": "Uret på denne computer går forkert, så {{provider}} ikke accepterer forespørgsler fra computeren. Indstil den rigtige dato og det rigtige klokkeslæt for at blive ved med at synkronisere.",
     "code_invalid": "Den kode virkede ikke. Prøv igen.",
     "device_name_empty": "Angiv et navn.",
     "device_name_invalid": "Et computernavn må ikke indeholde \\ / : * ? \" < > | eller kontroltegn og må højst være 32 tegn langt.",

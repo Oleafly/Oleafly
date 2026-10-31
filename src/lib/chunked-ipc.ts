@@ -1,8 +1,5 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 
-// Mirror of src-tauri/src/chunked.rs: large command results stream as ordered
-// chunks over a tauri Channel instead of one giant invoke return. Every chunk
-// is acknowledged back so the sender can apply backpressure.
 export const CHUNKED_MARKER = "oleafly-chunked-message-v1";
 
 export type ChunkedMessage = {
@@ -15,10 +12,6 @@ export type ChunkedMessage = {
   | { kind: "end" }
 );
 
-/**
- * Collects one chunked text transfer. `start` invokes the backend command,
- * handing it the channel the chunks arrive on.
- */
 export function receiveChunkedText(
   start: (channel: Channel<ChunkedMessage>) => Promise<void>,
 ): Promise<string> {

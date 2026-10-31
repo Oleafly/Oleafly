@@ -339,6 +339,7 @@
   },
   "notebook": {
     "code_needed": "{{engine}} musí ke kompilaci tohoto dokumentu spustit kód a kód je pro tento projekt vypnutý. Chcete-li dokument zkompilovat, povolte kód v tomto projektu.",
+    "export_stopped": "Export byl zastaven.",
     "quarto_missing": "Nástroj Quarto není nainstalován. Nainstalujte ho v Nastavení > Enginy > Quarto a pak znovu spusťte kompilaci.",
     "calepin_missing": "Nástroj Calepin není nainstalován. Nainstalujte ho v Nastavení > Enginy > Calepin a pak znovu spusťte kompilaci.",
     "not_offered": "Oleafly nemůže nástroj {{tool}} pro tento počítač stáhnout. Nainstalujte ho sami a pak znovu spusťte kompilaci.",

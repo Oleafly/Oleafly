@@ -26,8 +26,6 @@ export function useConnectionTest(url: string): {
       if (current === runs.current) setTest({ state: "failed", message: collabErrorText(error) });
     }
   }, [url]);
-  // Forgets the last result, and any test still running, when the address
-  // it was for is no longer the one in question.
   const reset = useCallback(() => {
     runs.current += 1;
     setTest({ state: "idle" });

@@ -16,8 +16,6 @@ function percentile(values: readonly number[], share: number): number {
   return sorted[Math.max(0, Math.ceil(sorted.length * share) - 1)] ?? 0;
 }
 
-// Runs the operations in turn, starting each round with the next one, so a busy machine or a
-// garbage collection slows each of them about the same.
 function interleaved(operations: readonly (() => void)[]): { median: number; p95: number }[] {
   for (let run = 0; run < WARMUP_RUNS; run++) for (const operation of operations) operation();
   const samples = operations.map((): number[] => []);
@@ -32,7 +30,6 @@ function interleaved(operations: readonly (() => void)[]): { median: number; p95
   return samples.map((values) => ({ median: percentile(values, 0.5), p95: percentile(values, 0.95) }));
 }
 
-// About 5,000 lines: headings, prose and 1,000 form calls, half on their own lines and half inline.
 function largeReport(): string {
   const lines = [
     '#import "@local/acme-report:0.1.0" as acme',
@@ -86,11 +83,7 @@ describe("Typst function forms decoration cost", () => {
       `typst forms rebuild, median / p95: ${report("no port", base)}, ${report("empty catalog", empty)}, ` +
         `${report(`${FORM_CALLS} forms`, forms)}\n`,
     );
-    // An empty catalog runs the no-port code path, so its p95 differs only by timer and
-    // collector noise; the median is the honest comparison there.
     expect(empty.median).toBeLessThanOrEqual(base.median * 1.05 + 0.5);
-    // The forms budgets are ratios, so they hold on a CI runner twice as slow as a laptop
-    // (1.4x here, 1.5x on Windows CI). Reading every model eagerly cost 2-3x.
     expect(forms.median).toBeLessThanOrEqual(base.median * 1.8);
     expect(forms.p95).toBeLessThanOrEqual(base.p95 * 2.2);
   });

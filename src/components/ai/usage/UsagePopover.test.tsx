@@ -64,7 +64,6 @@ describe("UsagePopover", () => {
     const bars = screen.getAllByRole("progressbar");
     expect(bars.map((bar) => bar.getAttribute("aria-label"))).toEqual([en.usage.context, "Weekly", en.usage.budget]);
     expect(bars.map((bar) => bar.getAttribute("aria-valuenow"))).toEqual(["80", "62", "40"]);
-    // The tone still colours the bar: a context at 80% is in the warning range.
     expect(bars[0].firstElementChild?.className).toContain("bg-amber-500");
     expect(bars[1].firstElementChild?.className).toContain("bg-primary");
   });

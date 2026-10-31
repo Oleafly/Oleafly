@@ -46,9 +46,6 @@ export function buildIndex(files: Record<string, string>): ProjectIndex {
   return assembleIndex(parsed, files);
 }
 
-// Split out from buildIndex so callers can cache parseFile results and re-parse only
-// the file that changed instead of the whole project on every keystroke; raw texts
-// are still needed here for the project-wide macro-use pass.
 export function assembleIndex(
   parsedByPath: Record<string, FileSymbols>,
   files: Record<string, string>,
@@ -56,14 +53,12 @@ export function assembleIndex(
   const defs: Sym[] = [];
   const uses: Sym[] = [];
 
-  // Add a `file` def node per path for inputedge resolution.
   for (const [path, r] of Object.entries(parsedByPath)) {
     defs.push(...r.defs);
     uses.push(...r.uses);
     defs.push({ kind: "file", name: path, file: path, line: 1, from: 0, to: 0, nameFrom: 0, nameTo: 0 });
   }
 
-  // Second pass: macro uses. Needs the project-wide macro name set.
   collectMacroUses(defs, files, uses);
 
   return indexFromSymbols(defs, uses);
@@ -146,16 +141,9 @@ function nameScope(kind: DefKind, file: string): string {
 
 interface NameTarget {
   scope: string;
-  // The one file the definition must be in, or null for any file in scope.
   file: string | null;
 }
 
-/**
- * Where a symbol's name lives when it is looked up as `kind`. A definition
- * pins its own file. A `file#anchor` reference, such as a Markdown
- * `[results](paper.tex#sec:results)`, takes the scope of the file it names
- * and pins that file; any other use takes the scope of the file it sits in.
- */
 export function nameTarget(kind: DefKind, sym: Sym): NameTarget {
   if (isDefKind(sym.kind)) {
     return { scope: nameScope(kind, sym.file), file: sym.file };
@@ -177,11 +165,6 @@ function defKey(kind: DefKind, scope: string, name: string): string {
   return `${kind}:${scope}:${name}`;
 }
 
-/**
- * Hydrates the closure-based compatibility index from immutable symbols.
- * Project-scale parsers can run in a worker and use this inexpensive main-
- * thread step without rescanning source text.
- */
 export function indexFromSymbols(
   definitionSymbols: readonly Sym[],
   useSymbols: readonly Sym[],
@@ -200,7 +183,6 @@ export function indexFromSymbols(
     const candidates = defsByKey.get(defKey(kind, scope, name)) ?? [];
     return (file === null ? candidates[0] : candidates.find((d) => d.file === file)) ?? null;
   };
-  // The uses of `kind` named `name` that point at the same thing as `origin`.
   const usesOf = (kind: DefKind, name: string, origin: Sym): Sym[] => {
     const useKinds = DEF_TO_USES[kind] ?? [];
     const target = nameTarget(kind, origin);
@@ -246,7 +228,6 @@ export function indexFromSymbols(
   };
 
   const renamePlan = (sym: Sym, newName: string): RenamePlan => {
-    // Resolve to a definition (rename may be invoked from a use site).
     const def = isDefKind(sym.kind) ? sym : definitionFor(sym);
     const kind: DefKind = (def?.kind as DefKind) ?? "label";
     const name = def?.name ?? sym.name;
@@ -264,7 +245,6 @@ export function indexFromSymbols(
     for (const u of usesOf(kind, name, origin)) {
       edits.push({ file: u.file, from: u.nameFrom, to: u.nameTo, newText: newName });
     }
-    // Apply high-offset-first within each file so earlier edits don't shift later ones.
     edits.sort((a, b) => (a.file === b.file ? b.from - a.from : a.file.localeCompare(b.file)));
     const fileCount = new Set(edits.map((e) => e.file)).size;
     return { edits, fileCount, collision };

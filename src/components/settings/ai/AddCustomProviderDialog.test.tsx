@@ -71,8 +71,6 @@ describe("AddCustomProviderDialog", () => {
     );
   });
 
-  // The saved key stays with its old address (Rust drops it when the
-  // address moves): the dialog says so, and a blank key means none is needed.
   it("moves a provider that has a key with or without typing it again", async () => {
     const onSubmit = vi.fn().mockResolvedValue({ ok: true });
     render(
@@ -106,7 +104,6 @@ describe("AddCustomProviderDialog", () => {
         editing={{ ...ACME, baseURL: "https://api.acme.test/v1/chat/completions" }}
       />,
     );
-    // The form shows the stored address; trimming it on save moves the provider.
     expect(screen.getByTestId("custom-provider-baseurl-note")).toBeInTheDocument();
   });
 
@@ -312,6 +309,33 @@ describe("AddCustomProviderDialog presets", () => {
 
     rerender(<AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} editing={ACME} />);
     expect(screen.queryByRole("group", { name: enSettings.ai.customProvider.presetsLabel })).toBeNull();
+  });
+
+  it("checks a preset picked after a failed address instead of adding it anyway", async () => {
+    const onSubmit = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, canForce: true, message: "Could not reach it." })
+      .mockResolvedValue({ ok: true });
+    render(<AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />);
+
+    fireEvent.click(screen.getByTestId("custom-provider-preset-qwen"));
+    fill("custom-provider-key", "sk-qwen");
+    fireEvent.click(screen.getByTestId("custom-provider-submit"));
+    expect(await screen.findByTestId("custom-provider-error")).toHaveTextContent("Could not reach it.");
+    expect(screen.getByTestId("custom-provider-submit")).toHaveTextContent(
+      enSettings.ai.customProvider.submitAddAnyway,
+    );
+
+    fireEvent.click(screen.getByTestId("custom-provider-preset-kimi"));
+    expect(screen.getByTestId("custom-provider-submit")).toHaveTextContent(
+      enSettings.ai.customProvider.submitAdd,
+    );
+    expect(screen.queryByTestId("custom-provider-error")).toBeNull();
+    fireEvent.click(screen.getByTestId("custom-provider-submit"));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2));
+    expect(onSubmit.mock.calls[1]).toEqual([
+      { id: "kimi", name: "Kimi (Moonshot)", baseURL: "https://api.moonshot.cn/v1", apiKey: "sk-qwen" },
+    ]);
   });
 });
 

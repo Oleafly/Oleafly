@@ -734,8 +734,6 @@ function grammarLintOutcome(
       },
     };
   } catch {
-    // Retain other valid diagnostics, but report the incomplete analysis to
-    // the UI instead of silently claiming a fully successful pass.
     return { kind: "malformed" };
   } finally {
     freeHarperObjects(lint, span, suggestions);

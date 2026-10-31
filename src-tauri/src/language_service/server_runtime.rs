@@ -282,7 +282,6 @@ pub(super) async fn install_texlab(
         }
         Ok(None) => {}
         Err(error) => {
-            // A corrupt regular file is repaired by the atomic publisher below.
             if !is_replaceable_regular_file(&destination)? {
                 remember_failure(&state, kind, &error);
                 return Err(error);

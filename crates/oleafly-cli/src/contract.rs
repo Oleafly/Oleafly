@@ -1,7 +1,3 @@
-//! The machine contract every command follows: one JSON result per command
-//! on stdout (`--json`), progress events as JSON lines before it
-//! (`--events`), stable exit codes and error kinds, and no prompts without a
-//! terminal.
 use std::borrow::Cow;
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
@@ -11,10 +7,8 @@ use clap::{Args, ValueEnum};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 
-/// Bumped only for breaking changes to the JSON shapes.
 pub const SCHEMA_VERSION: u32 = 1;
 
-/// Process exit codes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[repr(u8)]
 pub enum Exit {
@@ -28,7 +22,6 @@ pub enum Exit {
     Network = 7,
     Conflict = 8,
     Findings = 9,
-    /// An agent run stopped at its step or time limit.
     Limit = 10,
     Interrupted = 130,
 }
@@ -42,8 +35,6 @@ pub enum ErrorKind {
     UnsafePath,
     MissingTool,
     Io,
-    /// A file outside the project (a client's settings, say) couldn't be
-    /// read or written.
     System,
     Build,
     Usage,
@@ -78,8 +69,6 @@ impl ErrorKind {
     }
 }
 
-/// The error a failed result without one of its own carries, so `ok: false`
-/// always comes with `error` (its kind matches the exit code).
 fn exit_error(exit: Exit) -> CliError {
     let (kind, code, message) = match exit {
         Exit::Ok | Exit::Internal => (ErrorKind::Internal, "internal", "The command failed."),
@@ -113,8 +102,6 @@ fn exit_error(exit: Exit) -> CliError {
     CliError::new(kind, code, message)
 }
 
-/// An error as commands report it: a kind (which decides the exit code), a
-/// stable dotted code, a sentence, and optionally a hint and details.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct CliError {
     pub kind: ErrorKind,
@@ -124,7 +111,6 @@ pub struct CliError {
     pub hint: Option<String>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub retryable: bool,
-    /// Boxed so a `Result<_, CliError>` stays small.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub details: Option<Box<Value>>,
 }
@@ -207,7 +193,6 @@ impl From<std::io::Error> for CliError {
     }
 }
 
-/// Something a command noticed but carried on past.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Warning {
     pub code: Cow<'static, str>,
@@ -223,14 +208,11 @@ impl Warning {
     }
 }
 
-/// What a command finished with.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Outcome {
     pub ok: bool,
     pub exit: Exit,
     pub fields: Map<String, Value>,
-    /// False when the command already wrote its own output (completions,
-    /// man pages, help, the MCP server).
     pub print_envelope: bool,
 }
 
@@ -265,7 +247,6 @@ impl Outcome {
         }
     }
 
-    /// A failure with its own `error` object; the exit code follows its kind.
     pub fn failure_with(error: &CliError, value: Value) -> Self {
         let mut outcome = Self::failure(error.exit(), value);
         outcome.fields.insert(
@@ -285,7 +266,6 @@ impl Outcome {
     }
 }
 
-/// `{schema_version, type: "result", ok, command, ...fields, warnings}`.
 pub fn envelope(command: &str, outcome: &Outcome, warnings: &[Warning]) -> Value {
     let mut value = Map::new();
     value.insert("schema_version".into(), json!(SCHEMA_VERSION));
@@ -302,8 +282,6 @@ pub fn envelope(command: &str, outcome: &Outcome, warnings: &[Warning]) -> Value
     Value::Object(value)
 }
 
-/// The result object of a command that failed (`command` is null for
-/// arguments that didn't parse).
 pub fn error_envelope(command: Option<&str>, error: &CliError, warnings: &[Warning]) -> Value {
     json!({
         "schema_version": SCHEMA_VERSION,
@@ -331,7 +309,6 @@ fn slashed(value: &str, windows: bool) -> Cow<'_, str> {
     }
 }
 
-/// Path arguments refuse control characters.
 pub fn path_arg(value: &str) -> Result<PathBuf, String> {
     if value.chars().any(char::is_control) {
         return Err("paths can't contain control characters".into());
@@ -391,14 +368,12 @@ pub struct GlobalArgs {
     pub no_input: bool,
 }
 
-/// Whether a command may ask questions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InputPolicy {
     pub interactive: bool,
 }
 
 impl InputPolicy {
-    /// `CI` counts when set to anything but empty, `0` or `false`.
     pub fn resolve(no_input: bool, ci: Option<&str>, terminals: bool) -> Self {
         let ci = ci.is_some_and(|value| {
             let value = value.trim();
@@ -423,7 +398,6 @@ pub struct ContextOptions {
     pub command: &'static str,
 }
 
-/// What a running command knows about how it was called.
 #[derive(Debug)]
 pub struct Context {
     project: PathBuf,
@@ -459,7 +433,6 @@ impl Context {
         }
     }
 
-    /// From the parsed global options and this process's environment.
     pub fn from_global(global: &GlobalArgs, project_explicit: bool, command: &'static str) -> Self {
         let terminals = std::io::stdin().is_terminal() && std::io::stderr().is_terminal();
         let ci = std::env::var("CI").ok();
@@ -525,7 +498,6 @@ impl Context {
         self.command
     }
 
-    /// Records a warning (JSON) and prints it (people) unless quiet.
     pub fn warn(&self, code: impl Into<Cow<'static, str>>, message: impl Into<String>) {
         let warning = Warning::new(code, message);
         if !self.json && !self.quiet {
@@ -544,14 +516,12 @@ impl Context {
             .clone()
     }
 
-    /// A note for people on stderr (nothing with `--json` or `--quiet`).
     pub fn note(&self, message: impl AsRef<str>) {
         if !self.json && !self.quiet {
             crate::human::note(message.as_ref());
         }
     }
 
-    /// A line for people on stdout (nothing with `--json`).
     pub fn say(&self, message: impl AsRef<str>) {
         if !self.json {
             let _guard = self
@@ -563,7 +533,6 @@ impl Context {
         }
     }
 
-    /// One NDJSON event line, only with `--events`.
     pub fn event(&self, name: &str, fields: Value) -> Result<(), CliError> {
         if !self.events {
             return Ok(());
@@ -571,8 +540,6 @@ impl Context {
         self.write_event(name, fields)
     }
 
-    /// An event line whenever JSON is on: for commands whose JSON output is
-    /// a stream of events (`watch`).
     pub fn stream_event(&self, name: &str, fields: Value) -> Result<(), CliError> {
         if !self.json {
             return Ok(());
@@ -601,8 +568,6 @@ impl Context {
         stdout.flush().map_err(CliError::from)
     }
 
-    /// Asks a yes/no question on stderr; `--yes` answers it, and without a
-    /// terminal it is a usage error naming `--yes`.
     pub fn confirm(&self, question: &str, assume_yes: bool) -> Result<bool, CliError> {
         if assume_yes {
             return Ok(true);
@@ -623,7 +588,6 @@ impl Context {
         Ok(answer == "y" || answer == "yes")
     }
 
-    /// A project-relative file path, checked to stay inside the project.
     pub fn resolve_project_file(
         &self,
         workspace: &oleafly_core::Workspace,

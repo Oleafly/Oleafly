@@ -13,13 +13,9 @@ use serde_json::{json, Value};
 
 #[derive(Clone, Debug)]
 pub enum Step {
-    /// The model calls one tool.
     ToolCall { name: String, arguments: String },
-    /// The model answers with text and ends its turn.
     Text(String),
-    /// The provider answers with an HTTP error and this body.
     Status { code: u16, body: String },
-    /// The provider never answers.
     Stall,
 }
 
@@ -40,7 +36,6 @@ pub struct MockProvider {
 }
 
 impl MockProvider {
-    /// Serves `steps` in order; after the last one every request gets "Done".
     pub fn script(steps: Vec<Step>) -> MockProvider {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let address = listener.local_addr().unwrap();
@@ -59,7 +54,6 @@ impl MockProvider {
         MockProvider { address, requests }
     }
 
-    /// `http://127.0.0.1:<port>/v1`.
     pub fn base_url(&self) -> String {
         format!("http://{}/v1", self.address)
     }
@@ -68,7 +62,6 @@ impl MockProvider {
         self.requests.lock().unwrap().clone()
     }
 
-    /// The tool names the first request offered.
     pub fn tool_names(&self, index: usize) -> Vec<String> {
         self.requests()
             .get(index)

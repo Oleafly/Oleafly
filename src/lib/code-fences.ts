@@ -1,15 +1,3 @@
-/**
- * Finds fenced code blocks in Markdown, inside blockquotes and list items
- * too. The chat's streaming renderer uses it to keep a fence in one block,
- * chat bubbles to leave code as written, and What's new to skip code when it
- * reads headings and list items.
- *
- * Known gaps, all rare in model output: a blockquote inside a list item
- * ("1. > ```"), a list item that starts on an empty line, a lazy line in a
- * list item, a tab-indented fence, and an unclosed fence, which runs to the
- * end of the text even after its blockquote or list item ends.
- */
-
 export interface SourceRange {
   from: number;
   to: number;
@@ -40,10 +28,6 @@ function stripQuotePrefix(line: string) {
   return { offset, quoteDepth };
 }
 
-/**
- * The line after its blockquote markers, the indent of `item` when the line
- * sits under that list item, and a list marker of its own.
- */
 export function openingContainerLine(line: string, item?: OpenContainer): ContainerLine {
   const underItem = item ? continuationContainerLine(line, item) : null;
   const quote = stripQuotePrefix(line);
@@ -104,16 +88,6 @@ const FENCE_RUN = /^[ \t]{0,3}(`{3,}|~{3,})/u;
 // and drops a final "\r", so the others can still sit inside a line.
 const LINE_TERMINATOR = /[\n\r\u2028\u2029]/u;
 
-/**
- * The run of three or more backticks or tildes that opens a fence on
- * `content`, after up to three spaces or tabs, or null. A line that holds a
- * line end opens no fence, and neither does a backtick run with a backtick
- * after it.
- *
- * The rest of the line is checked in code, not with a `(.*)$` group after
- * the run: the group and the run compete for the same characters, which
- * takes time quadratic in the run's length on a line that does not match.
- */
 function openingFenceRun(content: string): string | null {
   const start = FENCE_RUN.exec(content);
   if (!start || LINE_TERMINATOR.test(content)) return null;
@@ -133,7 +107,6 @@ function fenceOpensAt(logical: ContainerLine, lineFrom: number): OpenFence | nul
   };
 }
 
-/** Drops the list items `line` does not continue. A blank line continues them all. */
 function leaveEndedItems(items: OpenContainer[], line: string): void {
   if (!line.trim()) return;
   let item = items.at(-1);
@@ -143,7 +116,6 @@ function leaveEndedItems(items: OpenContainer[], line: string): void {
   }
 }
 
-/** The fence `line` opens outside a fence, keeping `items` up to date. */
 function fenceOpenedBy(line: string, lineFrom: number, items: OpenContainer[]): OpenFence | null {
   leaveEndedItems(items, line);
   const logical = openingContainerLine(line, items.at(-1));
@@ -152,15 +124,9 @@ function fenceOpenedBy(line: string, lineFrom: number, items: OpenContainer[]): 
   return open;
 }
 
-/**
- * Each fence, from its opening run to the end of its closing line, or to the
- * end of `source` when it is still open.
- */
 export function scanFences(source: string): SourceRange[] {
   const ranges: SourceRange[] = [];
   let open: OpenFence | null = null;
-  // The list items the scan is in, innermost last, so a fence indented under
-  // one ("1.  Run:" then "    ```sh") counts. Less indented text ends them.
   const items: OpenContainer[] = [];
   let lineFrom = 0;
 

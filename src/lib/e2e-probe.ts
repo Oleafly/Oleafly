@@ -1,10 +1,3 @@
-// The e2e devtools hooks (__importFile, __agentHandoff, __chatUsageGet, ...)
-// are installed as module side effects by the modules that own them. Several
-// of those modules only load when a lazy panel or view opens, so a suite that
-// calls a hook before opening its owner would find it undefined. This module
-// is imported at boot in dev, so importing them here guarantees every hook
-// exists from startup. The whole module is behind `E2E_HOOKS` at its
-// only call site, so none of this reaches a production build.
 import "@/features/import";
 import "@/features/citation";
 import "@/lib/native-file-dialog";
@@ -18,6 +11,7 @@ import {
   refreshEditorLints,
 } from "@oleafly/editor";
 import { diagnosticCardSource } from "@oleafly/editor/diagnostic-card";
+import { pdfDocumentOptions } from "@oleafly/preview/pdfDocumentOptions";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 export async function resizeCurrentWindow(width: number, height: number): Promise<void> {
@@ -170,8 +164,6 @@ function probeFontNames(
       loadedFontName: asProbeString(font?.loadedName),
     };
   } catch {
-    // Font identity from the text item remains useful even when an
-    // engine keeps the internal common object unavailable.
     return { pdfFontName: null, loadedFontName: null };
   }
 }
@@ -276,13 +268,10 @@ async function readCompiledPdfProbe(): Promise<E2ePdfProbe> {
   if (!projectId) throw new Error("no active project");
 
   const { readCompiledPdf } = await import("@/lib/tauri");
-  // Importing the preflight extractor configures pdf.js' worker URL through the
-  // same production module used by the application. The probe then reads richer
-  // public pdf.js metadata without introducing a test-only worker path.
   await import("@oleafly/preflight/pdf-extract");
   const pdfjs = await import("pdfjs-dist");
   const bytes = new Uint8Array(await readCompiledPdf(projectId));
-  const loadingTask = pdfjs.getDocument({ data: bytes.slice() });
+  const loadingTask = pdfjs.getDocument(pdfDocumentOptions({ data: bytes.slice() }));
 
   try {
     const document = await loadingTask.promise;
@@ -311,10 +300,6 @@ async function readCompiledPdfProbe(): Promise<E2ePdfProbe> {
   }
 }
 
-// Stands in for a user connecting a provider in Settings so provider-backed
-// e2e flows can run against the local fake endpoint. It lives here, not in
-// ai-tools, because ai-tools only loads when the AI panel is opened; this
-// module is imported at boot in dev, so the hook is always present.
 function installAiConnectHook() {
   (
     window as unknown as {
@@ -336,10 +321,6 @@ function installAiConnectHook() {
   };
 }
 
-// 0.4.8: research tasks are experimental and off by default; the task specs
-// turn them on the way the Settings switch does, and the switch spec turns
-// them off first, since a spec that ran earlier in the same data dir may
-// have left them on.
 function installResearchTasksHook() {
   (window as unknown as { __researchTasksSet?: (enabled: boolean) => Promise<boolean> }).__researchTasksSet = async (
     enabled,

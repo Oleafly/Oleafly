@@ -3,7 +3,6 @@ import { typstFormsThemeSpec } from "./theme";
 
 type Spec = Record<string, unknown>;
 
-// Every selector's declarations, with the rules inside an at-rule such as @container included.
 function ruleEntries(spec: Spec): [string, Spec][] {
   return Object.entries(spec).flatMap(([selector, rules]) =>
     selector.startsWith("@") ? ruleEntries(rules as Spec) : [[selector, rules as Spec]],
@@ -18,7 +17,6 @@ describe("the forms theme", () => {
       const shadows = Object.keys(declarations).filter((property) => /shadow|^ring/iu.test(property));
       expect(shadows, selector).toEqual(selector === ".ofl-visual-form-popover" ? ["boxShadow"] : []);
     }
-    // A ring is a shadow with no offset and no blur; this one is offset and blurred below the panel.
     const [x, y, blur] = typstFormsThemeSpec[".ofl-visual-form-popover"].boxShadow.split(" ").map((part) => Number.parseFloat(part));
     expect(x).toBe(0);
     expect(y).toBeGreaterThan(0);
@@ -37,6 +35,14 @@ describe("the forms theme", () => {
         expect(String(value), selector).not.toMatch(/var\(--(?:foreground|background)\)/u);
       }
     }
+  });
+
+  it("sizes its text in rem or em, so App font size scales the card and the popover", () => {
+    const sizes = ruleEntries(typstFormsThemeSpec).flatMap(([selector, rules]) =>
+      "fontSize" in rules ? [[selector, String(rules.fontSize)]] : [],
+    );
+    expect(sizes.length).toBeGreaterThan(0);
+    for (const [selector, size] of sizes) expect(size, selector).toMatch(/^\d*\.?\d+r?em$/u);
   });
 
   it("stacks each label above its control in a narrow card", () => {

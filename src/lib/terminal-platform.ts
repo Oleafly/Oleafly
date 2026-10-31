@@ -3,7 +3,6 @@
 import { version as osVersion } from "@tauri-apps/plugin-os";
 import { type TerminalPlatform, terminalPlatform } from "./terminal-keys";
 
-/** The build number in a Windows version string such as `10.0.22631`. */
 export function windowsBuildNumber(version: string): number | undefined {
   const match = /^\d+\.\d+\.(\d+)/.exec(version.trim());
   if (!match) return undefined;

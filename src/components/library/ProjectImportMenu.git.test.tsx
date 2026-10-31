@@ -433,8 +433,6 @@ describe("ProjectImportMenu Git submenu", () => {
     openGitSubmenu();
 
     const row = await screen.findByTestId(`import-git-repository-${PUBLIC_REPO.fullName}`);
-    // A menu item cannot hold a second control that arrow keys reach, so the
-    // row has none: opening the repository on its host is in the dialog.
     expect(within(row).queryAllByRole("button")).toHaveLength(0);
     expect(screen.queryByLabelText(openOnGitHub(PUBLIC_REPO))).toBeNull();
 

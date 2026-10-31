@@ -101,8 +101,6 @@ describe("MergeReviewDialog", () => {
     const row = (path: string) =>
       screen.getByRole("button", { name: fill(enCollab.activity.mergedFile, { path, number: "0" }) });
     expect(row("chapter-10.tex")).toHaveAttribute("aria-expanded", "false");
-    // The status region is there, empty, before anything closes, so the
-    // closing is announced as a change.
     const status = screen.getByRole("status");
     expect(status).toBeEmptyDOMElement();
     await user.click(row("chapter-10.tex"));

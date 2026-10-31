@@ -1,7 +1,3 @@
-// The view-model union and render grouping: store items (see thread-items.ts)
-// map into kebab-case view models, which group into named buckets the
-// renderer assigns one component family each. Framework-free.
-
 import type { PlanTodo, RecordedStoreItem, StoreItem, TurnRecord } from "./thread-items";
 
 export type ViewItem =
@@ -145,14 +141,12 @@ function toTimelineMetaViewItem(item: TimelineMetaItem, itemId: string): ViewIte
       return { type: "image-view", itemId, imagePaths: item.imagePaths };
     case "enteredReviewMode":
     case "exitedReviewMode":
-      // Review-mode transitions are metadata, not timeline entries.
       return { type: "steered", itemId };
     case "sleep":
       return { type: "sleep", itemId, durationMs: item.durationMs };
   }
 }
 
-/** Map one store item into its view model. */
 export function toViewItem(recorded: RecordedStoreItem, interrupted: boolean): ViewItem {
   const item: StoreItem = recorded.item;
   const itemId = recorded.id;
@@ -293,11 +287,9 @@ export function toViewItem(recorded: RecordedStoreItem, interrupted: boolean): V
   }
 }
 
-/** Named buckets one rendered turn splits into. */
 export interface RenderGroups {
   userItems: ViewItem[];
   agentItems: ViewItem[];
-  /** The final assistant message, hoisted out of agentItems. */
   assistantItem: ViewItem | null;
   toolOutputItems: ViewItem[];
   postAssistantItems: ViewItem[];
@@ -333,7 +325,6 @@ const EMPTY_GROUPS: RenderGroups = {
   forkedFromConversationItems: [],
 };
 
-/** Split one turn's items into render buckets, preserving item order. */
 export function splitIntoRenderGroups(record: TurnRecord): RenderGroups {
   const interrupted = record.status === "interrupted";
   const groups: RenderGroups = {
@@ -361,8 +352,6 @@ export function splitIntoRenderGroups(record: TurnRecord): RenderGroups {
         groups.userItems.push(view);
         break;
       case "assistant-message":
-        // The last assistant message wins the hoisted slot; earlier ones
-        // stay inline (multi-message turns).
         groups.agentItems.push(view);
         break;
       case "system-error":
@@ -408,8 +397,6 @@ export function splitIntoRenderGroups(record: TurnRecord): RenderGroups {
     }
   }
 
-  // Hoist the final assistant message: it renders after the tool output;
-  // anything after it becomes post-assistant output.
   let lastAssistantIndex = -1;
   groups.agentItems.forEach((item, index) => {
     if (item.type === "assistant-message") {

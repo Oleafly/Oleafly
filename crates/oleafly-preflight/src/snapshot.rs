@@ -1,7 +1,3 @@
-//! A read-only snapshot of a project as the app's preflight sees it: the file
-//! tree (`src-tauri/src/project.rs` walk) and the texts its project index
-//! reads (`src/lib/project-intelligence/source.ts`).
-
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{self, Read};
@@ -22,7 +18,6 @@ use crate::typst::scan::scan_typst;
 pub struct SnapshotLimits {
     pub max_text_bytes: usize,
     pub max_depth: usize,
-    /// All the sources together: past this, the rest are left unread.
     pub max_total_bytes: usize,
 }
 
@@ -46,11 +41,8 @@ pub struct SnapshotIssue {
 pub struct ProjectSnapshot {
     pub root: PathBuf,
     pub main_document: String,
-    /// Files (not folders), forward slashes, in the app's tree order.
     pub tree_paths: Vec<String>,
-    /// Indexable sources, LF-normalised.
     pub texts: BTreeMap<String, String>,
-    /// Indexable sources larger than the limit, listed without content.
     pub oversized: Vec<String>,
     pub unreadable: Vec<SnapshotIssue>,
 }
@@ -64,8 +56,6 @@ fn is_vendored_typst_package(path: &str) -> bool {
     trimmed.split('/').next() == Some("typst-packages")
 }
 
-/// `isProjectIntelligencePath` without the YAML candidates, which
-/// [`ProjectSnapshot::load`] accepts after reading them.
 pub fn is_indexable_path(path: &str) -> bool {
     !is_vendored_typst_package(path) && INDEXABLE.is_match(path)
 }
@@ -103,7 +93,6 @@ fn walk(
         let Ok(file_type) = entry.file_type() else {
             continue;
         };
-        // Symlinks are neither listed nor followed, like the app's tree.
         if file_type.is_symlink() {
             continue;
         }
@@ -142,7 +131,6 @@ fn read_text(path: &Path, max_bytes: usize) -> io::Result<TextRead> {
     Ok(TextRead::Text(normalize_line_endings(&text).into_owned()))
 }
 
-/// YAML files named by a `.typ` file's bibliography.
 fn referenced_bibliography_yaml(texts: &BTreeMap<String, String>) -> Vec<String> {
     let mut referenced = Vec::new();
     for (file, text) in texts {
@@ -164,16 +152,10 @@ fn referenced_bibliography_yaml(texts: &BTreeMap<String, String>) -> Vec<String>
 }
 
 impl ProjectSnapshot {
-    /// Walks `root` and reads every indexable source up to the size limit.
-    /// Only the root folder failing to open is an error.
     pub fn load(root: &Path, main_document: &str, limits: SnapshotLimits) -> io::Result<Self> {
         Self::load_with(root, main_document, limits, &|_| false)
     }
 
-    /// [`ProjectSnapshot::load`], leaving the sources unread in any folder
-    /// `unread` names (`node_modules`, a build folder): their files are
-    /// still in the tree, because a document may include a figure from
-    /// there, but they aren't projects' sources and aren't checked as such.
     pub fn load_with(
         root: &Path,
         main_document: &str,
@@ -199,7 +181,6 @@ impl ProjectSnapshot {
                 continue;
             }
             if read_bytes >= limits.max_total_bytes {
-                // One issue for the first file left out, not one for each.
                 if !over_total {
                     over_total = true;
                     unreadable.push(SnapshotIssue {
@@ -225,8 +206,6 @@ impl ProjectSnapshot {
                 }),
             }
         }
-        // YAML joins the index when it looks like Hayagriva or a Typst
-        // bibliography names it.
         let referenced = referenced_bibliography_yaml(&texts);
         for (path, text) in yaml_candidates {
             if accepts_bibliography_yaml(&text, || referenced.contains(&path)) {
@@ -243,7 +222,6 @@ impl ProjectSnapshot {
         })
     }
 
-    /// A snapshot from data already in memory (tests and MCP callers).
     pub fn from_parts(
         main_document: &str,
         tree_paths: Vec<String>,
@@ -259,7 +237,6 @@ impl ProjectSnapshot {
         }
     }
 
-    /// The size of a project file, read from disk.
     pub fn file_size(&self, path: &str) -> Option<u64> {
         if self.root.as_os_str().is_empty() {
             return None;
@@ -270,7 +247,6 @@ impl ProjectSnapshot {
             .map(|metadata| metadata.len())
     }
 
-    /// The newest modification time of the sources the snapshot read.
     pub fn newest_text_modified(&self) -> Option<SystemTime> {
         if self.root.as_os_str().is_empty() {
             return None;
@@ -332,7 +308,6 @@ mod tests {
         let snapshot =
             ProjectSnapshot::load_with(dir.path(), "main.tex", SnapshotLimits::default(), &unread)
                 .unwrap();
-        // A figure in `out/` is still there for `\includegraphics` to find.
         assert!(snapshot.tree_paths.contains(&"out/fig.pdf".to_string()));
         assert!(snapshot
             .tree_paths

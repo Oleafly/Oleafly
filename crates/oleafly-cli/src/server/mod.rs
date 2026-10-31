@@ -1,8 +1,3 @@
-//! `oleafly server`: Oleafly collaboration servers from the command line.
-//! The command line signs in as its own device (`server sign-in`), then
-//! lists shared projects, manages sharing and members, and reads and writes
-//! comments. Sharing a project for the first time stays in the app, which
-//! builds the live document.
 pub(crate) mod account;
 pub(crate) mod comments;
 pub(crate) mod projects;
@@ -179,7 +174,6 @@ impl Switch {
     }
 }
 
-/// A role as people read it.
 pub(crate) fn role_name(role: ProjectRole) -> &'static str {
     match role {
         ProjectRole::Owner => "owner",

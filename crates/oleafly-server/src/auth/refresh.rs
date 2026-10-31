@@ -10,11 +10,6 @@ use crate::error::ServerError;
 use crate::tokens::{hash_token, issue_access_token, random_token};
 
 pub const REFRESH_TTL_MS: i64 = 60 * 24 * 60 * 60 * 1000;
-// How long the previous refresh token can still fetch the pair that
-// replaced it: long enough for a laptop that went to sleep between the
-// server's reply and the app saving it. The caller has already checked the
-// device's signature, the token must belong to that device, and the replay
-// stops as soon as the new pair has been used. Anything else is reuse.
 pub const REPLAY_MS: i64 = 7 * 24 * 60 * 60 * 1000;
 const FAMILY_SEPARATOR: char = '.';
 

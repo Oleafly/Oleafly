@@ -9,10 +9,6 @@ function sameMentions(left: readonly MentionItem[], right: readonly MentionItem[
   );
 }
 
-/**
- * What the mention menu lists for `query`. The host may answer at once or
- * later; a late answer shows only while it still fits the query.
- */
 export function useMentionResults(
   mentionItems: ((query: string) => MentionItem[] | Promise<MentionItem[]>) | undefined,
   mentionQuery: string | null,

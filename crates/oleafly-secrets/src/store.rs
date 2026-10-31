@@ -1,29 +1,17 @@
-//! The encrypted secret files and their lock.
-//!
-//! Every file is a JSON map of account → value, encrypted with AES-256-GCM
-//! under one shared 32-byte key (`ai-secrets.key`, named for backward
-//! compatibility). One lock file per data folder serializes readers and
-//! writers across processes; a process-wide mutex serializes threads.
 use ring::{aead, rand as ring_rand};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
-/// The shared key file inside the data folder.
 pub const KEY_FILE: &str = "ai-secrets.key";
 const LOCK_FILE: &str = ".secret-store.lock";
 
-/// One encrypted file in the data folder.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SecretFile {
-    /// Git, Git-host, MCP, online-service and collaboration secrets.
     App,
-    /// AI provider keys.
     Ai,
-    /// Research connector keys (alphaXiv, Mathpix, …).
     Connector,
-    /// Secrets for user-configured MCP servers.
     McpServer,
 }
 
@@ -38,7 +26,6 @@ impl SecretFile {
     }
 }
 
-/// The secret files of one data folder.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SecretStore {
     root: PathBuf,
@@ -83,12 +70,10 @@ fn lock_secrets(parent: &Path) -> Result<SecretLock, String> {
 }
 
 impl SecretStore {
-    /// The store of the data folder `root`.
     pub fn at(root: impl Into<PathBuf>) -> SecretStore {
         SecretStore { root: root.into() }
     }
 
-    /// The store of [`crate::paths::data_root`].
     pub fn open_default() -> Result<SecretStore, String> {
         Ok(SecretStore::at(crate::paths::data_root()?))
     }
@@ -109,20 +94,16 @@ impl SecretStore {
         lock_secrets(&self.root)
     }
 
-    /// Every account in `file`. A missing file reads as empty and creates no
-    /// key.
     pub fn read(&self, file: SecretFile) -> Result<HashMap<String, String>, String> {
         let _lock = self.lock()?;
         read_secret_map_at(&self.path_of(file), &self.key_path())
     }
 
-    /// Replace every account in `file` with `values`.
     pub fn write(&self, file: SecretFile, values: &HashMap<String, String>) -> Result<(), String> {
         let _lock = self.lock()?;
         write_secret_map_at(&self.path_of(file), &self.key_path(), values)
     }
 
-    /// One account of the app file. An empty value reads as `None`.
     pub fn get(&self, account: &str) -> Result<Option<String>, String> {
         let _lock = self.lock()?;
         Ok(
@@ -133,7 +114,6 @@ impl SecretStore {
         )
     }
 
-    /// Set accounts in the app file. An empty value removes the account.
     pub fn set(&self, values: &[(&str, &str)]) -> Result<(), String> {
         set_secrets_at(&self.path_of(SecretFile::App), &self.key_path(), values)
     }
@@ -142,10 +122,6 @@ impl SecretStore {
         Ok(self.get(account)?.is_some())
     }
 
-    /// Edit one account of the app file under the store lock. `edit` sees the
-    /// current value (`None` when missing or empty) and may change it; the
-    /// file is only written when the value changed. `None` or `""` removes
-    /// the account.
     pub fn update<T>(
         &self,
         account: &str,
@@ -643,9 +619,6 @@ mod tests {
 
     #[test]
     fn a_0_4_7_store_decrypts_and_keeps_every_account() {
-        // Write the envelope exactly as 0.4.7 did, independently of this
-        // module's writer: a 32-byte key file and an AES-256-GCM sealed JSON
-        // map in a version-1 envelope.
         let dir = tempfile::tempdir().unwrap();
         let key_bytes = [7u8; 32];
         std::fs::write(dir.path().join(KEY_FILE), key_bytes).unwrap();

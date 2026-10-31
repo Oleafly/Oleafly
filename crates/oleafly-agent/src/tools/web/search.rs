@@ -1,6 +1,3 @@
-//! Web search through a search API the user holds a key for: Brave,
-//! Tavily or Serper. Keys travel in headers only and never appear in
-//! results or errors.
 use serde_json::{json, Value};
 
 use super::{SearchHit, SearchKey, WebClient, WebError, WebResult, MAX_SEARCH_RESULTS};
@@ -83,8 +80,6 @@ pub(crate) fn parse_serper(body: &Value) -> Vec<SearchHit> {
     })
 }
 
-/// The error for a failed search call. The body is never read into the
-/// message: it can echo the key.
 pub(crate) fn search_error(provider: &'static str, status: u16, _body: &str) -> WebError {
     WebError::Search {
         provider,

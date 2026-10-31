@@ -6,8 +6,6 @@ import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { openInSystemBrowser } from "@/lib/system-browser";
 import type { ForgeDeviceStart } from "@/lib/tauri";
 
-/** The one-time code of a browser sign-in, while Oleafly waits for the user
- * to enter it on the server's page. */
 export function DeviceCodeCard({
   start,
   host,

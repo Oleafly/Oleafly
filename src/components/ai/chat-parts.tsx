@@ -98,7 +98,6 @@ export function Shimmer({ text }: Readonly<{ text?: string }>) {
   return text ? <span className="ai-shimmer text-xs">{text}</span> : null;
 }
 
-// Used for low-urgency notices we don't want to spend a full banner on.
 export function InfoHint({ message }: Readonly<{ message: string }>) {
   return (
     <Popover ariaLabel={message} trigger={<Info className="size-4" />} className="w-60 p-2.5">
@@ -129,9 +128,6 @@ function todoStatusLabel(status: AgentTodo["status"]): string {
 
 function AgentTodoList({ todos }: Readonly<{ todos: readonly AgentTodo[] }>) {
   const { t } = useTranslation(["common", "ai"]);
-  // A plan read from the reply shows home paths as ~, as the message bubble
-  // does. The stored steps keep the real text, because the approved plan goes
-  // back to the model as written.
   const displayText = useDisplayText();
   return (
     <ul className="space-y-1">
@@ -219,9 +215,7 @@ export function AgentStatusPill({
   todos: readonly AgentTodo[];
   turn: AgentFileChangeTurn | null;
   approval?: AgentPlanApproval;
-  /** Caps the panel's height in pixels so a short chat keeps the reply in view. */
   panelMaxHeight?: number;
-  /** Reports when the panel is pinned open, so the chat can keep room for it. */
   onPinnedChange?: (pinned: boolean) => void;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
@@ -397,7 +391,6 @@ export function AgentStatusPill({
             </div>
             {todos.length > 0 && <AgentTodoList todos={todos} />}
             {awaiting && approval && (
-              // Sticky so Approve stays reachable when a short chat caps the panel.
               <div className="sticky bottom-0 mt-2 flex items-center gap-1.5 bg-popover pt-1">
                 <button
                   type="button"
@@ -564,8 +557,6 @@ export function CopyMessageButton({ text }: Readonly<{ text: string }>) {
   );
 }
 
-// Read-only tools whose consecutive calls collapse into one "Explored…"
-// summary, matching the reference exploration grouping.
 const EXPLORATION_TOOLS: Record<string, "file" | "search" | "list"> = {
   read_file: "file",
   read_skill_file: "file",
@@ -590,7 +581,6 @@ function exploredLists(count: number): string | null {
   return count === 0 ? null : i18n.t(($) => $.ai.chat.exploration.lists, { count });
 }
 
-// "Explored 3 files, 2 searches" from a run of read-only tool calls.
 export function explorationSummary(tools: ToolEntry[]): string {
   let files = 0;
   let searches = 0;
@@ -611,9 +601,6 @@ export function explorationSummary(tools: ToolEntry[]): string {
       });
 }
 
-// A collapsed run of read-only tool calls: "Explored 3 files, 2 searches",
-// expandable to the individual tool badges. Mirrors the reference exploration
-// grouping so a long read-heavy turn stays scannable.
 export function ExplorationGroup({
   tools,
   actions,
@@ -845,7 +832,6 @@ export function formatError(e: unknown, providerLabel?: string, errorKind?: stri
   });
 }
 
-// Keep active streams as plain text, then parse Markdown once reasoning is complete.
 export function ReasoningBlock({
   text,
   active,
@@ -880,8 +866,6 @@ export function ReasoningBlock({
     label = t(($) => $.ai.chat.reasoning.label);
   }
 
-  // A finished reasoning block with no text carries nothing to read; hide it
-  // rather than render an empty "Reasoning" collapsible.
   if (!active && !text.trim()) return null;
 
   return (
@@ -912,11 +896,6 @@ export function ReasoningBlock({
           data-select-all-scope
           className="ml-[0.4375rem] max-h-56 select-text overflow-x-hidden overflow-y-auto break-words border-l pl-3 py-1 text-[0.6875rem] leading-relaxed text-muted-foreground"
         >
-          {/* The reasoning trace is rendered as plain text, not Markdown. It is
-              a raw thinking dump, often dense with partial LaTeX and long: the
-              full math/mermaid/highlight renderer would choke on the fragments
-              (showing raw source) and block the main thread while parsing the
-              whole trace on expand. Plain pre-wrap opens instantly. */}
           <span className="whitespace-pre-wrap">{displayText(text)}</span>
         </div>
       )}
@@ -943,8 +922,6 @@ function SubagentStatusIcon({ state }: Readonly<{ state: string }>) {
   return <Spinner size="sm" className="text-muted-foreground" />;
 }
 
-// Delegated child run, in the multi-agent-action card shape: what it was
-// asked, where it is, and what came back.
 function subagentStatusLabel(entry: SubagentEntry, detailText: string): string {
   if (entry.state === "done") return i18n.t(($) => $.ai.chat.subagent.finished);
   if (entry.state === "error") return i18n.t(($) => $.ai.chat.subagent.failed);
@@ -1116,9 +1093,6 @@ export function SubagentCard({
   );
 }
 
-// Finished runs fold their reasoning and tool steps behind one header, so a
-// long agentic turn reads as its outcome first. Streaming turns stay fully
-// expanded; the fold only applies once the run is over.
 function WorkedSteps({
   rows,
   totalMs,
@@ -1161,10 +1135,6 @@ function WorkedSteps({
   );
 }
 
-// Memoized on the message object reference: `updateLast` only replaces the
-// *last* message's reference each streamed token, so every earlier message
-// skips re-render (and re-parsing its markdown) instead of reconciling the
-// whole list per token.
 type MessageRowContext = Readonly<{
   msg: ChatMessage;
   live?: boolean;
@@ -1274,7 +1244,6 @@ function messageTimestamp(createdAt: number | undefined): Readonly<{ iso?: strin
 
 const MessageAttachments = lazy(() => import("@/components/ai/MessageAttachments"));
 
-/** A chip per attachment, keyed so the same file attached twice stays two chips. */
 function AttachmentNameChips({
   attachments,
   identity,
@@ -1296,7 +1265,6 @@ function AttachmentNameChips({
   });
 }
 
-/** The files a message carries: stored ones load on demand; older chats keep only the names. */
 function MessageAttachmentRows({ attachments }: Readonly<{ attachments: readonly AttachmentMeta[] }>) {
   if (attachments.some((a) => a.sha256)) {
     return (
@@ -1321,7 +1289,6 @@ function MessageAttachmentRows({ attachments }: Readonly<{ attachments: readonly
   );
 }
 
-/** Whether a tool call ended in something the reader should see even when the steps fold away. */
 function hasVisibleOutcome(tools: readonly ToolEntry[]): boolean {
   return tools.some((tool) => {
     const view = projectToolEntry(tool);
@@ -1340,9 +1307,6 @@ function hasVisibleOutcome(tools: readonly ToolEntry[]): boolean {
 
 export type MessageAction = "regenerate" | "edit";
 
-// Replies often name files by absolute path; show the home folder as ~.
-// What the user typed and the copy button keep the text as written. Stored
-// English markers ("_Stopped._") show in the reader's language.
 function bubbleText(
   msg: ChatMessage,
   displayText: (text: string) => string,
@@ -1456,7 +1420,6 @@ function messageBubble({
   );
 }
 
-/** The edit and regenerate buttons beside a finished message. */
 function MessageActionButtons({
   messageId,
   editable,
@@ -1535,13 +1498,9 @@ export const MessageItem = memo(function MessageItem({
     ) : null;
   const hasActionButtons = actionButtons !== null;
   const tools = msg.toolCalls ?? [];
-  // Fall back to the legacy single-block fields for chats persisted before
-  // reasoningBlocks existed.
   const blocks =
     msg.reasoningBlocks ??
     (msg.reasoning ? [{ text: msg.reasoning, ms: msg.reasoningMs, beforeTool: 0 }] : []);
-  // Each block renders before the tool call whose index it recorded, to
-  // interleave thinking phases and tool badges in arrival order.
   const rows = buildMessageRows({ msg, live, actions, expansionScope, tools, blocks });
   const totalMs = blocks.reduce((sum, block) => sum + (block.ms ?? 0), 0);
   const foldSteps =

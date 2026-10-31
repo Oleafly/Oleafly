@@ -149,6 +149,10 @@ impl MemoryStore {
 }
 
 impl CloudStore for MemoryStore {
+    fn label(&self) -> &'static str {
+        "memory"
+    }
+
     // Copies here report Dropbox's content hash, so they're checked the same way.
     async fn copy_check_hash(&self, local: &std::path::Path) -> Option<String> {
         crate::cloud::store::dropbox_hash_of(local).await
@@ -157,9 +161,9 @@ impl CloudStore for MemoryStore {
     async fn get(&self, remote: &str, cap: usize) -> StoreResult<Option<(Vec<u8>, String)>> {
         self.enter()?;
         self.with(|inner| match inner.files.get(&remote.to_lowercase()) {
-            Some(stored) if stored.bytes.len() > cap => {
-                Err(StoreError::Server("dropbox response is too large".into()))
-            }
+            Some(stored) if stored.bytes.len() > cap => Err(StoreError::Server(
+                "the cloud service's reply is too large".into(),
+            )),
             Some(stored) => Ok(Some((stored.bytes.clone(), stored.rev.clone()))),
             None => Ok(None),
         })

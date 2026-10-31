@@ -39,7 +39,6 @@ function markdownDestinationAt(state: EditorState, pos: number, destination: str
 export interface FileLinkInsertionOptions {
   readonly embedImages: boolean;
   readonly text?: string;
-  /** `#heading` and the like, kept after the path. */
   readonly fragment?: string;
 }
 
@@ -114,12 +113,6 @@ function dropFileLink(event: DragEvent, view: EditorView): boolean {
   return true;
 }
 
-/**
- * What to insert for a link that carries the app's own address, as one copied
- * or dragged out of the preview does: the relative path inside a link
- * destination or a file command, and a link to the file in the document's own
- * syntax anywhere else. Null for any other text.
- */
 export function appLinkInsertion(state: EditorState, pos: number, text: string): string | null {
   const current = currentPlace();
   if (!current || /\s/u.test(text)) return null;
@@ -142,7 +135,6 @@ function pasteAppLink(event: ClipboardEvent, view: EditorView): boolean {
   return true;
 }
 
-/** The single URL a drag carries, if it carries one (a link dragged out of the preview). */
 function draggedUrl(data: DataTransfer | null): string | null {
   const uris = (data?.getData("text/uri-list") ?? "").split(/\r?\n/u).filter((line) => line && !line.startsWith("#"));
   const text = uris.length === 1 ? uris[0] : (data?.getData("text/plain") ?? "");

@@ -22,8 +22,6 @@ test("detached preview one-page controls stay bounded and zoom/invert work", asy
   await expect(page.getByLabel("Previous page")).toBeDisabled();
   await expect(page.getByLabel("Next page")).toBeDisabled();
 
-  // The window fits the first page to the viewport on load, so the starting
-  // zoom depends on the harness window size. Assert the step, not the origin.
   const zoom = page.getByTestId("detached-preview-zoom");
   const fitted = Number((await zoom.textContent())?.replace("%", ""));
   expect(Number.isFinite(fitted)).toBe(true);
@@ -48,8 +46,6 @@ test("detached preview two-page layout, previous/input/next, and invalid bounds 
   const input = page.getByLabel("Page number");
   await expect(page.getByLabel("Two-page view")).toBeVisible();
 
-  // Change layout first so navigation proves it reads the live spread mode
-  // instead of a stale click-handler closure.
   await page.getByLabel("Two-page view").click();
   await expect(page.getByLabel("Two-page view")).toHaveAttribute("aria-checked", "true");
   await page.getByLabel("Next page").click();
@@ -85,15 +81,11 @@ test("the document outline slides in and back out", async ({ page }) => {
   const left = async () => Math.round((await outline.boundingBox())!.x);
   const panelWidth = async () => Math.round((await outline.boundingBox())!.width);
 
-  // Closed: parked off the left edge, and out of reach of keyboard and pointer.
   const hidden = await left();
   expect(hidden).toBeLessThanOrEqual(-(await panelWidth()));
   await expect(outline).toHaveAttribute("inert", "");
-  // An invalid arbitrary value would silently leave the panel at rest, so pin
-  // the transition that carries it on and off screen.
   await expect(outline).toHaveCSS("transition-duration", "0.2s");
 
-  // The always-mounted panel shares this accessible name, so target the button.
   await page.getByRole("button", { name: "Document outline", exact: true }).click();
   await expect(outline).not.toHaveAttribute("inert", "");
   await expect.poll(left).toBeGreaterThanOrEqual(0);
@@ -107,7 +99,6 @@ test("the document outline slides in and back out", async ({ page }) => {
 
 test("paging scrolls the preview pane, not the page around it", async ({ page }) => {
   await openHarness(page, 3);
-  // Give the window an outer scrollbar, as the docked preview has inside the app.
   await page.evaluate(() => {
     document.body.style.minHeight = "300vh";
     window.scrollTo(0, 0);
@@ -120,7 +111,6 @@ test("paging scrolls the preview pane, not the page around it", async ({ page })
   await page.getByLabel("Next page").click();
   await expect(page.getByLabel("Page number")).toHaveValue("2");
 
-  // The pane moved to the next page...
   await expect.poll(paneTop).toBeGreaterThan(initialTop);
   // ...and `scrollIntoView` did not drag every scrollable ancestor with it.
   expect(await page.evaluate(() => window.scrollY)).toBe(0);

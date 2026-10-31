@@ -26,7 +26,6 @@ describe("terminal focus tracker", () => {
     const { editor, textarea, tracker } = setup();
     editor.focus();
     textarea.focus();
-    // Hiding the dock makes the textarea unfocusable; focus falls to the body.
     textarea.blur();
     expect(document.activeElement).toBe(document.body);
     expect(tracker.focusWasInDock()).toBe(true);

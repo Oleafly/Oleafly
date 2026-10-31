@@ -33,7 +33,6 @@ export function ResearchWorkspacePanel() {
     previousProjectId.current = projectId;
     setTab((current) => readSidebarView(projectId, "researchWorkspace")?.tab ?? current);
   }, [projectId]);
-  // A task opened for review from the Files rail needs the tasks tab, wherever this panel was left.
   const taskDetailOpen = useResearchTasksStore((state) => state.detailOpen);
   useEffect(() => {
     if (taskDetailOpen) setTab("tasks");
@@ -77,7 +76,6 @@ export function ResearchWorkspacePanel() {
   })), [groups, targets]);
   const openSession = useCallback((task: ResearchTask) => {
     if (!projectId || task.runtimeId !== "acp" || !task.nativeSessionId) return;
-    // The task dialog is modal; the assistant it opens must not sit behind it.
     useResearchTasksStore.getState().setDetailOpen(false);
     useAssistantRuntimeStore.getState().setRuntime("acp");
     useAcpSessionsStore.getState().setActive(projectId, task.nativeSessionId);

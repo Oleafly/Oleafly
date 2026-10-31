@@ -3,6 +3,8 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { installGetOrInsert, installIteratorFind } from "./polyfills";
 
+vi.mock("pdfjs-dist", async () => await import("pdfjs-dist/legacy/build/pdf.mjs"));
+
 let createPdfLinkService: typeof import("./PdfViewer").createPdfLinkService;
 let createPdfLinkViewerAdapter: typeof import("./PdfViewer").createPdfLinkViewerAdapter;
 let calculatePdfFitScale: typeof import("./PdfViewer").calculatePdfFitScale;

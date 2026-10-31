@@ -1,6 +1,3 @@
-//! Settings › Terminal command on Windows: a copy of the bundled CLI at
-//! `%LOCALAPPDATA%\Oleafly\bin\oleafly.exe` on the user's PATH. The logic
-//! is `oleafly_cli::install::windows`, shared with the uninstaller hook.
 use oleafly_cli::install::windows::{
     expand_variables, install, refresh_if_outdated, status, uninstall, InstallEnv, InstallError,
     RegistryUserPath, WindowsStatus,
@@ -97,8 +94,6 @@ pub async fn shell_command_uninstall() -> Result<ShellCommandChange, String> {
     .await
 }
 
-/// After an update: an installed terminal command that is still ours gets
-/// the new CLI. Failures only go to the log.
 pub fn refresh_installed_copy() {
     let _change = CHANGES
         .lock()

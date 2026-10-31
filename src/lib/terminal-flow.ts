@@ -1,12 +1,7 @@
-// Acknowledges terminal output to Rust once xterm has parsed it, in chunks,
-// so the shell's output pump can pause when the frontend falls behind.
-
 export const TERMINAL_ACK_CHUNK = 128 * 1024;
 
 export interface AckBatcher {
-  /** xterm parsed this many bytes of output. */
   written(bytes: number): void;
-  /** The session id is known: acknowledgements can go out. */
   ready(): void;
   dispose(): void;
 }

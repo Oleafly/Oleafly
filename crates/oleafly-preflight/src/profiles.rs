@@ -1,5 +1,3 @@
-//! Submission profiles (`packages/preflight/src/profiles.ts`).
-
 use std::sync::LazyLock;
 
 use serde::{Deserialize, Serialize};
@@ -220,7 +218,6 @@ fn skip_class_options(source: &str, from: usize) -> Option<usize> {
     Some(skip_whitespace(source, options_end + 1))
 }
 
-/// The `\documentclass` name, skipping options (`extractDocumentClass`).
 pub fn extract_document_class(source: &str) -> Option<String> {
     const COMMAND: &str = "\\documentclass";
     let mut search_from = 0;
@@ -241,7 +238,6 @@ pub fn extract_document_class(source: &str) -> Option<String> {
 static TYPST_TEMPLATE: LazyLock<JsRegex> =
     LazyLock::new(|| JsRegex::std(r#"(?m)^[ \t]*#import\s+"@[a-z0-9-]+/([a-z0-9-]+):"#));
 
-/// Package names from `#import "@namespace/name:version"` lines.
 pub fn extract_typst_templates(source: &str) -> Vec<String> {
     TYPST_TEMPLATE
         .captures_str(source)

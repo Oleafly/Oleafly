@@ -1,6 +1,3 @@
-//! `oleafly remote`: projects in an online LaTeX service account. List and
-//! download them, and keep a folder in two-way sync through the service's
-//! Git bridge, with the same private mirror the Oleafly app uses.
 pub(crate) mod latexdiff;
 pub(crate) mod list;
 pub(crate) mod scope;
@@ -199,8 +196,6 @@ impl CommandModule for Commands {
     }
 }
 
-/// Git as the remote commands run it; tests use a bare repository through
-/// a `file://` address instead of the service.
 pub(crate) struct RemoteDeps {
     pub git: Arc<dyn oleafly_online::git::MirrorGit>,
     pub url_for: fn(&str, &str) -> Result<String, oleafly_online::OnlineError>,

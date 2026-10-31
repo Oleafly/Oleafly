@@ -201,8 +201,6 @@ async fn a_child_without_a_permission_route_is_declined_instead_of_stalling() {
     runtime.close(&id).await.unwrap();
 }
 
-/// Starts a helper turn whose agent asks for a permission of `kind`, waits until
-/// the request is pending, and returns the turn and the request.
 async fn helper_asks(
     temp: &tempfile::TempDir,
     runtime: &Arc<AcpRuntime>,
@@ -382,8 +380,6 @@ async fn full_access_sends_a_request_no_rule_covers_to_the_card_while_a_deny_rul
     .unwrap();
     let (temp, runtime, id) = delegated_session(crate::acp::PermissionDelegate::ParentChat).await;
 
-    // A fetch matches no tool's rules, so it might do what the deny rule
-    // forbids. It waits for the user instead of being approved.
     let (turn, request) = helper_asks(&temp, &runtime, &id, "fetch").await;
     let refused = super::answer_pending_by_rules(&runtime, &id, Some(rules.path()), PROJECT).await;
 

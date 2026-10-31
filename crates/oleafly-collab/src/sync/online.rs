@@ -30,19 +30,9 @@ pub(super) struct Pace {
 struct InFlight {
     bytes: usize,
     sent: Duration,
-    // The server answered a ping sent after the change went out.
     answered: bool,
 }
 
-// The server owes an answer within `quiet_for`. While a change is on its
-// way up the link may carry nothing back, so the window grows by the time a
-// slow but working link needs to carry the change, counted from when it
-// went out. The server takes frames in order, so its answer to the change
-// comes before its answer to any ping sent after it. Once that ping is
-// answered the change's answer is overdue, however busy the connection is
-// otherwise. Until then it is not, so a long backlog that keeps the server
-// busy after a reconnect doesn't cut the connection. `heard` counts any
-// bytes coming in, not only whole frames.
 fn too_quiet(heard: Duration, in_flight: Option<InFlight>, quiet_for: Duration) -> bool {
     match in_flight {
         Some(flight) if flight.answered => true,
@@ -91,6 +81,10 @@ async fn flush(
         .await?;
     }
     Ok(())
+}
+
+pub(super) fn suggested_instead(project: &SharedLive, code: FrameErrorCode) -> bool {
+    code == FrameErrorCode::Forbidden && lock(project).edits_refused().unwrap_or(false)
 }
 
 pub(super) fn refused_for(
@@ -208,8 +202,6 @@ async fn online(
     let mut burst = 0u32;
     let mut held: Option<ServerFrame> = None;
     let mut missing_since: Option<tokio::time::Instant> = None;
-    // The change in flight, with the first ping sent after it went out, and
-    // the last change the server answered such a ping for.
     let mut watched: Option<(BatchId, u64)> = None;
     let mut answered: Option<BatchId> = None;
     loop {
@@ -289,10 +281,6 @@ async fn online(
                     }
                     ServerFrame::ProjectArchived { .. } => return Exit::End(EndReason::Archived),
                     ServerFrame::SessionRevoked { reason } => return Exit::End(EndReason::of_session(reason)),
-                    // The batch stays as it is, neither cut smaller nor given
-                    // up, and goes out again after the next reconnect. Until
-                    // then it waits for no answer, so it can't cut the
-                    // connection as overdue.
                     ServerFrame::Error { code: FrameErrorCode::ProjectTooLarge, .. } => {
                         if lock(project).refused_as_full() {
                             let _ = events.send(LiveEvent::ProjectFull);
@@ -305,7 +293,11 @@ async fn online(
                         }
                     }
                     ServerFrame::Error { code: code @ (FrameErrorCode::Forbidden | FrameErrorCode::CommentsOff), .. } => {
-                        if let Some(unsent) = refused_for(project, code) {
+                        if suggested_instead(project, code) {
+                            if flush(link, project, events, wire).await.is_err() {
+                                return retry;
+                            }
+                        } else if let Some(unsent) = refused_for(project, code) {
                             let _ = events.send(LiveEvent::CommentsNotSent(unsent));
                             if flush(link, project, events, wire).await.is_err() {
                                 return retry;
@@ -316,16 +308,10 @@ async fn online(
                     ServerFrame::Error { .. } => return retry,
                     _ => {}
                 }
-                // Silence counts from when the loop listens again. Taking in
-                // a large change can keep it busy longer than the quiet
-                // window on a slow computer, and what the server sent
-                // meanwhile is still waiting to be read.
                 last_heard = tokio::time::Instant::now();
             }
             command = commands.recv() => {
                 burst = 0;
-                // A desktop thread that panicked in the project marks it
-                // damaged, and the session ends as failed.
                 if lock(project).damaged() {
                     return retry;
                 }

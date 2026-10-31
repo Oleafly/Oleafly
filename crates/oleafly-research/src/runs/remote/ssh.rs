@@ -1,7 +1,3 @@
-//! Runs on an SSH host, and the lifecycle the Slurm executor shares: probe,
-//! upload, start detached, poll with a bounded log copy, and at the end the
-//! rest of the log and the files the run made, copied into
-//! `runs/<run id>/outputs/` in the task workspace.
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -34,10 +30,7 @@ const OUTPUTS_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 #[cfg(test)]
 const OUTPUTS_TIMEOUT: Duration = Duration::from_secs(3);
 const TAIL_BYTES: u64 = 256 * 1024;
-/// How long past its own time limit a run may stay out of reach before it
-/// counts as lost.
 const LOST_AFTER_MS: i64 = 60 * 60 * 1000;
-/// `read_log` brings the copy up to date when it is older than this.
 pub(crate) const SYNC_EVERY_MS: i64 = 5_000;
 const CANCEL_GRACE_SECS: u64 = 10;
 
@@ -57,12 +50,10 @@ pub struct SshHandleData {
     pub remote_home: String,
     pub sync: SyncMode,
     pub detach: Detach,
-    /// The task workspace the outputs come back to.
     pub workspace: PathBuf,
     pub timeout_secs: u64,
 }
 
-/// The compute target a run names, from `compute.json`.
 pub(crate) fn load_target(
     host: &dyn ComputeHost,
     target: Option<&str>,
@@ -143,8 +134,6 @@ fn exit_code_of(status: &RunStatus) -> Option<i32> {
     }
 }
 
-/// A run that cannot be reached right now keeps running with a note, until
-/// its time limit and another hour have passed.
 pub(crate) fn unreachable(
     handle: &RunHandle,
     timeout_secs: u64,
@@ -205,8 +194,6 @@ pub(crate) fn summary_note(summary: &UnpackSummary, run_id: &str) -> Option<Stri
     Some(note)
 }
 
-/// `runs/<id>/outputs` in the workspace, emptied of an earlier partial copy,
-/// opened so no link can lead out of the workspace.
 fn fresh_outputs(workspace: &Path, run_id: &str) -> Result<cap_std::fs::Dir, RunError> {
     let root = cap_std::fs::Dir::open_ambient_dir(workspace, cap_std::ambient_authority())
         .map_err(|error| {
@@ -225,7 +212,6 @@ fn outputs_done(run_dir: &Path) -> bool {
     run_dir.join("outputs.done").exists()
 }
 
-/// One host as every call of a run reaches it.
 pub(crate) struct Remote {
     pub(crate) ctx: SshContext,
     pub(crate) endpoint: SshEndpoint,
@@ -246,7 +232,6 @@ impl Remote {
         &self.endpoint.host
     }
 
-    /// Runs a script with `sh -s` and returns what it printed.
     pub(crate) async fn script(
         &self,
         script: &str,
@@ -274,15 +259,12 @@ impl Remote {
         )
     }
 
-    /// Sends the workspace to `<dir>/work`: rsync when both ends have it,
-    /// else a streamed `tar.gz`.
     pub(crate) async fn upload(
         &self,
         workspace: &Path,
         dir: &str,
         rsync: Option<&Path>,
     ) -> Result<SyncMode, RunError> {
-        // The walk can cover 100k entries: it runs off the async workers.
         let walked = workspace.to_path_buf();
         let bytes = tokio::task::spawn_blocking(move || workspace_bytes(&walked))
             .await
@@ -290,7 +272,6 @@ impl Remote {
         let timeout = Duration::from_secs((bytes / (1024 * 1024)).max(600));
         let quoted = sh_quote(dir);
         if let Some(program) = rsync {
-            // A packed upload refuses a workspace over the limits; so does this.
             let root = workspace.to_path_buf();
             tokio::task::spawn_blocking(move || check_upload_limits(&root, &PackLimits::default()))
                 .await
@@ -347,7 +328,6 @@ impl Remote {
             &self.cancel,
         )
         .await;
-        // A packing error (a workspace that is too large) explains more.
         packing.await.map_err(|error| {
             RunError::Io(format!("The workspace could not be packed: {error}"))
         })??;
@@ -358,8 +338,6 @@ impl Remote {
         Ok(SyncMode::Tar)
     }
 
-    /// Runs a poll script, adds its log chunk to the copy and returns
-    /// everything it printed.
     pub(crate) async fn exchange(
         &self,
         mirror: &RemoteMirror,
@@ -372,7 +350,6 @@ impl Remote {
         Ok(stdout)
     }
 
-    /// The rest of the log, up to what the local copy holds.
     pub(crate) async fn drain(
         &self,
         mirror: &RemoteMirror,
@@ -439,7 +416,6 @@ impl Remote {
         Ok(())
     }
 
-    /// The files the run made, into `runs/<id>/outputs/` of the workspace.
     pub(crate) async fn fetch_outputs(
         &self,
         dir: &str,
@@ -460,8 +436,6 @@ impl Remote {
         )
         .await;
         let (summary, output) = match streamed {
-            // A copy that ran out of time keeps what arrived. Starting it over
-            // would repeat the same slow transfer until the run counted as lost.
             Err(RunError::Network(_)) if started.elapsed() >= OUTPUTS_TIMEOUT => {
                 return Ok(UnpackSummary {
                     timed_out: true,
@@ -471,8 +445,6 @@ impl Remote {
             streamed => streamed?,
         };
         let summary = summary?;
-        // Stopping early at a cap ends the transfer, so the exit status of
-        // a copy that was cut short is not an error.
         if output.code != Some(0) && summary.files == 0 && summary.skipped.is_empty() {
             return Err(transport::classify(
                 output.code,
@@ -483,8 +455,6 @@ impl Remote {
         Ok(summary)
     }
 
-    /// The end of a run: the rest of the log, its outputs, the final status.
-    /// A connection problem keeps the run open to try again.
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn settle(
         &self,
@@ -546,8 +516,6 @@ impl SshExecutor {
     }
 }
 
-/// Answers a log query, bringing an active run's copy up to date first
-/// when it is a few seconds old.
 pub(crate) async fn read_remote_log(
     remote: Result<Remote, RunError>,
     mirror: &RemoteMirror,
@@ -616,7 +584,6 @@ impl RunExecutor for SshExecutor {
             started_at: now_ms(),
             data: serde_json::to_value(&data).map_err(|error| RunError::Io(error.to_string()))?,
         };
-        // Written before anything changes remotely, so a restart finds the run.
         save_handle(&handle)?;
         remote
             .upload(&spec.workspace, &data.remote_dir, rsync.as_deref())
@@ -809,8 +776,6 @@ mod tests {
         world.slow_outputs();
         let executor = SshExecutor::new(world.host.clone());
         let status = wait_for_end(&executor, &handle).await;
-        // The run ends with a note; it is not kept "running, retrying" so that
-        // the whole copy starts over.
         match status {
             RunStatus::Finished {
                 exit_code: Some(0),

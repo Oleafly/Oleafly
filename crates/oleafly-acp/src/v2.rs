@@ -8,7 +8,6 @@ use serde_json::{json, Value};
 use crate::capabilities::{auth_methods, text, AgentCapabilities, EnvShape};
 use crate::client::{ClientOptions, InitializeError, Negotiated, ProtocolVersion};
 
-/// The draft this client implements.
 pub const DRAFT_VERSION: &str = "2.0.0-alpha.9";
 
 pub fn initialize_params_v2(options: &ClientOptions) -> Value {
@@ -27,8 +26,6 @@ pub fn initialize_params_v2(options: &ClientOptions) -> Value {
     })
 }
 
-/// Reads a v2 `initialize` answer. Session listing, resume and close are
-/// part of the v2 baseline; `session/load` does not exist in v2.
 pub fn parse_initialize_v2(response: &Value) -> Result<Negotiated, InitializeError> {
     if response.get("protocolVersion").and_then(Value::as_u64) != Some(2) {
         return Err(InitializeError::NotAcp(2));
@@ -67,18 +64,13 @@ pub fn parse_initialize_v2(response: &Value) -> Result<Negotiated, InitializeErr
     })
 }
 
-/// Text kept per streamed message to turn v2 upserts into v1 deltas.
 const MAX_MESSAGE_TEXT: usize = 256 * 1024;
 const MAX_MESSAGES: usize = 64;
 const MAX_TOOL_IDS: usize = 4096;
 
-/// What one v2 `session/update` becomes.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Translated {
-    /// v1-shaped `session/update` params.
     Update(Value),
-    /// The session went idle: the running prompt ends with `outcome`
-    /// (`{stopReason, usage?, _meta?}`).
     TurnEnd { session_id: String, outcome: Value },
 }
 
@@ -88,12 +80,10 @@ struct MessageText {
     prefix: String,
 }
 
-/// Turns v2 session updates into v1 ones.
 #[derive(Default)]
 pub struct V2Translator {
     messages: HashMap<(String, String, String), MessageText>,
     order: VecDeque<(String, String, String)>,
-    /// Tool ids seen, each with when it was last seen (a counter).
     tools: HashMap<(String, String), u64>,
     tick: u64,
 }
@@ -141,9 +131,6 @@ impl V2Translator {
         );
     }
 
-    /// Marks a tool id as seen; true the first time. Past the limit the id
-    /// seen longest ago is forgotten, so a call still running keeps its
-    /// card.
     fn first_sight(&mut self, session: &str, id: &str) -> bool {
         self.tick += 1;
         let key = (session.to_owned(), id.to_owned());
@@ -283,7 +270,6 @@ impl V2Translator {
                 )]
             }
             "plan_update" => vec![Self::wrap(session, Self::plan(update))],
-            // The plan is gone: an empty one clears it from view.
             "plan_removed" => vec![Self::wrap(
                 session,
                 json!({"sessionUpdate": "plan", "entries": []}),
@@ -320,8 +306,6 @@ impl V2Translator {
     }
 }
 
-/// A v2 permission request in the v1 shape (`toolCall` + `options`). A
-/// subject Oleafly does not know returns `None` and is answered cancelled.
 pub fn permission_params_to_v1(params: &Value) -> Option<Value> {
     let subject = &params["subject"];
     let tool_call = match subject["type"].as_str() {
@@ -479,7 +463,6 @@ mod tests {
         );
         for index in 0..MAX_TOOL_IDS + 100 {
             translator.translate(&tool_update(&format!("other-{index}")));
-            // The long call keeps reporting, so it is never the oldest.
             if index % 100 == 0 {
                 assert_eq!(
                     tool_kinds(&translator.translate(&tool_update("long-running"))),
@@ -492,7 +475,6 @@ mod tests {
             ["tool_call_update"]
         );
         assert!(translator.tools.len() <= MAX_TOOL_IDS);
-        // An id that fell out long ago starts a new card, as before.
         assert_eq!(
             tool_kinds(&translator.translate(&tool_update("other-0"))),
             ["tool_call"]

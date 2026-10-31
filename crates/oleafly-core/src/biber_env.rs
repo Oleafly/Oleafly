@@ -6,10 +6,8 @@ use std::path::{Path, PathBuf};
 
 pub const UNPACK_ENV: &str = "PAR_GLOBAL_TMPDIR";
 pub const LAST_USED_MARKER: &str = ".last-used";
-/// How much of each end of a binary its fingerprint reads.
 pub const FINGERPRINT_SAMPLE_BYTES: u64 = 1024 * 1024;
 
-/// `<data>/assets/biber`.
 pub fn unpack_root(data_root: &Path) -> PathBuf {
     data_root.join("assets").join("biber")
 }
@@ -18,7 +16,6 @@ pub fn unpack_dir_for(data_root: &Path, biber: &Path) -> Option<PathBuf> {
     fingerprint(biber).map(|fingerprint| unpack_root(data_root).join(fingerprint))
 }
 
-/// Creates (and stamps) the unpack folder for this Biber.
 pub fn prepare_unpack_dir(data_root: &Path, biber: &Path) -> Option<PathBuf> {
     let dir = unpack_dir_for(data_root, biber)?;
     std::fs::create_dir_all(&dir).ok()?;
@@ -46,7 +43,6 @@ pub fn tectonic_biber_in(dir: &Path) -> Option<PathBuf> {
 type FingerprintCache =
     std::collections::HashMap<PathBuf, (u64, Option<std::time::SystemTime>, String)>;
 
-/// [`binary_fingerprint`], cached by size and modification time.
 pub fn fingerprint(path: &Path) -> Option<String> {
     static CACHE: std::sync::OnceLock<std::sync::Mutex<FingerprintCache>> =
         std::sync::OnceLock::new();
@@ -68,7 +64,6 @@ pub fn fingerprint(path: &Path) -> Option<String> {
     Some(fingerprint)
 }
 
-/// Eight hex digits from the length and the first and last MiB of a file.
 pub fn binary_fingerprint(path: &Path) -> std::io::Result<String> {
     use sha2::Digest;
     let mut file = std::fs::File::open(path)?;
@@ -112,9 +107,6 @@ pub fn path_is_within(path: &Path, root: &Path) -> bool {
     resolved_path == resolved_root || resolved_path.starts_with(&resolved_root)
 }
 
-/// `path` with its longest existing ancestor resolved, so a folder that
-/// doesn't exist yet (and could be made during a build) still compares by
-/// where it really is.
 fn resolve_existing_part(path: &Path) -> PathBuf {
     let mut missing = Vec::new();
     let mut current = path;
@@ -135,9 +127,6 @@ fn resolve_existing_part(path: &Path) -> PathBuf {
     }
 }
 
-/// A compile's `PATH`: the tool's own folder, then `extra_dirs` (Biber, TeX
-/// folders), then the inherited entries; relative entries and anything
-/// inside `excluded_root` (the project) are dropped, duplicates removed.
 pub fn compile_path_env(
     preferred_dir: Option<&Path>,
     extra_dirs: &[PathBuf],

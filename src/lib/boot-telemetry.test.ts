@@ -44,7 +44,7 @@ describe("markBootStage", () => {
     markBootStage("entry-evaluated");
     markBootStage("contributions-registered");
     markBootStage("react-mounted");
-    markBootStage("stores-ready"); // not a narration stage
+    markBootStage("stores-ready");
     expect(advance.mock.calls).toEqual([[1], [2], [3]]);
   });
 

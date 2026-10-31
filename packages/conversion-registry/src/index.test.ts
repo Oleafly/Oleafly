@@ -30,7 +30,6 @@ describe("conversion registry invariants", () => {
   });
 
   it("keeps pandoc import routes in lockstep with the Rust plan table", () => {
-    // Mirrors conversion::tests::conversion_routes_cover_the_registry_matrix.
     const expected: Array<[string, string]> = [
       ["docx", "latex"],
       ["docx", "markdown"],

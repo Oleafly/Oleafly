@@ -472,7 +472,6 @@ export const typstVisualField = StateField.define<TypstVisualState>({
     }
     const tree = syntaxTree(tr.state);
     const stillParsing = tree.length < tr.state.doc.length && tree.type === value.tree.type;
-    // A renamed or moved document resolves its relative imports from its new folder.
     const forms =
       tr.startState.field(typstFormsField, false) !== tr.state.field(typstFormsField, false) ||
       tr.startState.readOnly !== tr.state.readOnly ||

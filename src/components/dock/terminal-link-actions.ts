@@ -10,8 +10,6 @@ import type { TerminalLinkActions } from "./terminal-link-provider";
 
 type Resolver = (path: string) => string | null;
 
-// One resolver per tree listing: hovering stays cheap, and a refreshed tree
-// is a new array, so new files link as soon as the tree has them.
 const resolvers = new WeakMap<readonly FileEntry[], Resolver>();
 
 function resolverFor(tree: readonly FileEntry[]): Resolver {
@@ -24,11 +22,6 @@ function resolverFor(tree: readonly FileEntry[]): Resolver {
   return resolve;
 }
 
-/**
- * The app side of terminal links. Paths resolve against the file tree only
- * while the pane's project is the open one, files open in the editor, and web
- * links open in the system browser.
- */
 export function createTerminalLinkActions(
   projectId: string,
   tooltip: Pick<TerminalLinkActions, "hover" | "leave">,

@@ -18,7 +18,6 @@ export function XBrandIcon({ className }: Readonly<{ className?: string }>) {
   );
 }
 
-/** "12 online" with Discord's presence dot. Renders nothing until a count is known. */
 export function DiscordOnlineCount({
   online,
   className,

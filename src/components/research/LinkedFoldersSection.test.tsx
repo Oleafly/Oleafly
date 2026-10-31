@@ -203,15 +203,17 @@ describe("LinkedFoldersSection previews and states", () => {
     });
   }
 
-  async function openRoot() {
+  async function openRoot(settled: () => void) {
     render(<LinkedFoldersSection />);
     await waitFor(() => expect(page().getByTestId("linked-folders-section")).toBeInTheDocument());
     fireEvent.click(page().getByRole("button", { name: new RegExp(rootName) }));
+    await waitFor(settled);
   }
 
-  async function openFile(name: string) {
-    await waitFor(() => expect(page().getByRole("button", { name })).toBeInTheDocument());
+  async function openFile(name: string, settled: () => void) {
+    await openRoot(() => expect(page().getByRole("button", { name })).toBeInTheDocument());
     fireEvent.click(page().getByRole("button", { name }));
+    await waitFor(settled);
   }
 
   it("explains a binary file and copies its full path", async () => {
@@ -220,10 +222,8 @@ describe("LinkedFoldersSection previews and states", () => {
     backend([entry("scan.pdf")], (relativePath) => ({
       rootId: "data-root", relativePath, content: "", bytesRead: 4, truncated: false, isBinary: true,
     }));
-    await openRoot();
-    await openFile("scan.pdf");
+    await openFile("scan.pdf", () => expect(page().getByText(linked.binary)).toBeInTheDocument());
 
-    await waitFor(() => expect(page().getByText(linked.binary)).toBeInTheDocument());
     fireEvent.click(page().getByRole("button", { name: linked.copyPath }));
 
     await waitFor(() => expect(page().getByRole("button", { name: linked.pathCopied })).toBeInTheDocument());
@@ -236,10 +236,8 @@ describe("LinkedFoldersSection previews and states", () => {
     backend([entry("big.log")], (relativePath) => ({
       rootId: "data-root", relativePath, content: "first lines", bytesRead: 262144, truncated: true, isBinary: false,
     }));
-    await openRoot();
-    await openFile("big.log");
+    await openFile("big.log", () => expect(page().getByText("first lines")).toBeInTheDocument());
 
-    await waitFor(() => expect(page().getByText("first lines")).toBeInTheDocument());
     expect(page().getByText(linked.previewTruncated)).toBeInTheDocument();
   });
 
@@ -248,18 +246,14 @@ describe("LinkedFoldersSection previews and states", () => {
       if (relativePath === "locked.csv") throw new Error("permission denied");
       throw "busy";
     });
-    await openRoot();
-    await openFile("locked.csv");
-
-    await waitFor(() => expect(page().getByRole("alert")).toHaveTextContent("permission denied"));
+    await openFile("locked.csv", () => expect(page().getByRole("alert")).toHaveTextContent("permission denied"));
   });
 
   it("names a root that cannot be read and an empty folder", async () => {
     backend([], () => null, "unreadable");
-    await openRoot();
+    await openRoot(() => expect(page().getByText(linked.emptyFolder)).toBeInTheDocument());
 
     expect(page().getByText(linked.unreadable)).toBeInTheDocument();
-    await waitFor(() => expect(page().getByText(linked.emptyFolder)).toBeInTheDocument());
   });
 
   it("reloads the linked folders on request", async () => {

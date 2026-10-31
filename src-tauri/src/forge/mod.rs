@@ -1,7 +1,3 @@
-//! Git hosting accounts in the app: the Tauri commands over the
-//! `oleafly-forge` crate (accounts, sign-in, repositories), the one-time move
-//! of the 0.4.7 GitHub sign-in, and the glue that imports a repository from
-//! an account. Remote Git commands get their sign-in from `remote_auth`.
 pub(crate) mod cancel;
 pub(crate) mod commands;
 pub(crate) mod import;
@@ -18,15 +14,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::SystemTime;
 
-/// Emitted to every window after an account is added, changed or removed.
 pub(crate) const ACCOUNTS_CHANGED_EVENT: &str = "forge-accounts-changed";
 
-/// The account store of the app's data folder, with the 0.4.7 GitHub sign-in
-/// moved in once. A migration that fails (the legacy token is read through
-/// the app config, which fails on any unrelated bad secret) is logged and
-/// retried on the next call; it never stops a Git hosting command, which
-/// does not need the legacy sign-in. Blocking: call it from
-/// `spawn_blocking`.
 pub(crate) fn store() -> Result<ForgeStore, String> {
     let root = crate::paths::oleafly_root()?;
     let store = ForgeStore::new(&root);
@@ -36,7 +25,6 @@ pub(crate) fn store() -> Result<ForgeStore, String> {
     Ok(store)
 }
 
-/// Write a failed legacy migration to the app log, once per process.
 fn note_migration_failure(error: &str) {
     static LOGGED: AtomicBool = AtomicBool::new(false);
     if LOGGED.swap(true, Ordering::Relaxed) {
@@ -48,8 +36,6 @@ fn note_migration_failure(error: &str) {
     ));
 }
 
-/// Check the legacy GitHub sign-in at most once per data folder and process:
-/// migrated the first time, followed after an older build signed in again.
 fn migrate_once(store: &ForgeStore) -> Result<(), String> {
     static CHECKED: OnceLock<Mutex<HashSet<PathBuf>>> = OnceLock::new();
     let checked = CHECKED.get_or_init(Default::default);
@@ -70,10 +56,6 @@ fn migrate_once(store: &ForgeStore) -> Result<(), String> {
     Ok(())
 }
 
-/// The 0.4.7 GitHub sign-in: `github_token` from the encrypted store (the
-/// config hydrates it) and `github_user` from `config.json`. Called with the
-/// forge store's lock held; it takes the config lock after it, the one order
-/// both locks are ever taken in.
 fn read_legacy_github() -> Result<Option<LegacyGithub>, String> {
     let config = crate::config::read_config()?;
     let token = config.github_token.trim().to_string();
@@ -83,9 +65,6 @@ fn read_legacy_github() -> Result<Option<LegacyGithub>, String> {
     }))
 }
 
-/// A client for an account's CA file, or the default one. Clients are kept:
-/// loading the platform's certificate store is slow. A CA client is rebuilt
-/// when its file changes. Blocking: call it from `spawn_blocking`.
 pub(crate) fn http_for(ca_file: Option<&str>) -> Result<ForgeHttp, ForgeError> {
     static DEFAULT: Mutex<Option<ForgeHttp>> = Mutex::new(None);
     type CaKey = (PathBuf, Option<SystemTime>, u64);
@@ -117,7 +96,6 @@ pub(crate) fn http_for(ca_file: Option<&str>) -> Result<ForgeHttp, ForgeError> {
     Ok(client)
 }
 
-/// [`http_for`] off the async runtime.
 pub(crate) async fn http_for_async(ca_file: Option<String>) -> Result<ForgeHttp, ForgeError> {
     tauri::async_runtime::spawn_blocking(move || http_for(ca_file.as_deref()))
         .await
@@ -126,7 +104,6 @@ pub(crate) async fn http_for_async(ca_file: Option<String>) -> Result<ForgeHttp,
         })?
 }
 
-/// A localizable error envelope for a forge error, naming the server.
 pub(crate) fn app_error(error: &ForgeError, host: &str) -> String {
     use crate::app_error::AppError;
     let envelope = AppError::new(error.code()).param("host", host);
@@ -158,8 +135,6 @@ pub(crate) fn app_error(error: &ForgeError, host: &str) -> String {
     envelope.into()
 }
 
-/// What messages call a server: GitHub, GitLab or Codeberg for the hosted
-/// services, else its host and any non-default port.
 pub(crate) fn host_label(base: &str) -> String {
     oleafly_forge::kind::host_label(base)
 }
@@ -168,12 +143,6 @@ pub(crate) fn now_ms() -> u64 {
     oleafly_forge::now_ms()
 }
 
-/// Keep 0.4.7's `github_token` and `github_user` in step with the
-/// github.com account, so an older build still pushes after a downgrade.
-/// Other servers never touch them. The token's fingerprint is recorded in the
-/// account store under its lock (lock order: forge store, config), so the
-/// next launch's migration reads the mirror as this build's own write and
-/// keeps the account's name, picture and CA file.
 pub(crate) fn mirror_legacy_github(
     base: &str,
     signed_in: Option<(&str, &str)>,
@@ -197,10 +166,6 @@ pub(crate) fn mirror_legacy_github(
         .map_err(|error| app_error(&error, "GitHub"))
 }
 
-/// [`mirror_legacy_github`] after the account change already happened: the
-/// 0.4.7 fields only help a downgrade, so a config that can't be written
-/// (a damaged config.json, a secret that can't be decrypted) is logged and
-/// never fails the sign-in or sign-out. The next sign-in writes them again.
 pub(crate) fn mirror_legacy_github_or_log(base: &str, signed_in: Option<(&str, &str)>) {
     if let Err(error) = mirror_legacy_github(base, signed_in) {
         let _ = crate::project::append_app_log(format!(
@@ -210,8 +175,6 @@ pub(crate) fn mirror_legacy_github_or_log(base: &str, signed_in: Option<(&str, &
     }
 }
 
-/// Forget an account and its token on this device, then clear the 0.4.7
-/// copy of a github.com sign-in as best effort. Blocking.
 pub(crate) fn sign_out_here(base: &str) -> Result<(), String> {
     store()?
         .remove(base)
@@ -220,13 +183,11 @@ pub(crate) fn sign_out_here(base: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Normalize a base URL the user or the webview sent.
 pub(crate) fn normalized_base(base: &str) -> Result<String, String> {
     oleafly_forge::address::normalize_base_url(base)
         .map_err(|error| app_error(&error, &host_label(base.trim())))
 }
 
-/// An account, a usable token (refreshed when needed) and a client for it.
 pub(crate) async fn account_and_token(
     base: &str,
 ) -> Result<(ForgeAccount, ForgeToken, ForgeHttp), String> {
@@ -273,7 +234,6 @@ mod tests {
         serde_json::from_str(&error[PREFIX.len()..]).unwrap()
     }
 
-    /// A throwaway data folder for one test. Hold the env lock first.
     pub(crate) struct DataDir {
         dir: tempfile::TempDir,
         previous: Option<std::ffi::OsString>,
@@ -428,11 +388,8 @@ mod tests {
             expires_at: None,
         };
         store().unwrap().save(github.clone(), sign_in).unwrap();
-        // What `forge_sign_in_token` and the browser sign-in do next.
         mirror_legacy_github(GITHUB_COM, Some(("gho_signedin123", "octocat"))).unwrap();
 
-        // The next launch is a new process: a new store handle migrates again
-        // from the config the mirror wrote.
         let relaunched = ForgeStore::new(data.path());
         let changed = relaunched
             .migrate_legacy_github(read_legacy_github)
@@ -464,7 +421,6 @@ mod tests {
             )
             .unwrap();
         mirror_legacy_github(GITHUB_COM, Some(("gho_signedin123", "octocat"))).unwrap();
-        // A downgrade: 0.4.7 signs in as someone else.
         crate::config::update_config(|config| {
             config.github_token = "gho_elsewhere456".into();
             config.github_user = "other".into();
@@ -485,7 +441,6 @@ mod tests {
         let data = DataDir::new();
         std::fs::write(data.path().join("config.json"), "{ not json").unwrap();
 
-        // The legacy sign-in cannot be read, yet the accounts still open.
         let opened = store().expect("Git hosting works without the legacy sign-in");
         assert!(opened.accounts().unwrap().is_empty());
         opened
@@ -508,7 +463,6 @@ mod tests {
             "a migration that failed is not marked done"
         );
 
-        // Once the config reads again, the next call migrates.
         std::fs::remove_file(data.path().join("config.json")).unwrap();
         crate::config::update_config(|config| {
             config.github_token = "gho_legacy1234".into();

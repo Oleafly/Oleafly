@@ -1,5 +1,3 @@
-//! Word edge trimming (`src/lib/proofreading/word-edges.ts`).
-
 use oleafly_preflight::text::{is_letter, is_mark, is_number};
 
 fn trim_edges(text: &str, start: impl Fn(char) -> bool, end: impl Fn(char) -> bool) -> String {
@@ -15,13 +13,10 @@ fn trim_edges(text: &str, start: impl Fn(char) -> bool, end: impl Fn(char) -> bo
     chars[from..to].iter().collect()
 }
 
-/// `withoutSoftHyphens`: drops U+00AD.
 pub fn without_soft_hyphens(text: &str) -> String {
     text.replace('\u{AD}', "")
 }
 
-/// `trimToWordCharacters`: from the first letter or number to the last
-/// letter, mark or number.
 pub fn trim_to_word_characters(text: &str) -> String {
     trim_edges(
         text,
@@ -30,7 +25,6 @@ pub fn trim_to_word_characters(text: &str) -> String {
     )
 }
 
-/// `trimToLetters`: from the first letter to the last letter or mark.
 pub fn trim_to_letters(text: &str) -> String {
     trim_edges(text, is_letter, |ch| is_letter(ch) || is_mark(ch))
 }

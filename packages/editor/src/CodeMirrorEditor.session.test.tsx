@@ -14,10 +14,9 @@ import { englishEditorMessage, installEnglishEditorMessages } from "./test-messa
 import { staticTypstForms } from "./typst-forms";
 import { typstFormsGolden } from "./typst-forms-test-support";
 import type { VisualPorts } from "./visual/types";
+import { stubRangeGeometry } from "./test-geometry";
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => [] });
-}
+stubRangeGeometry();
 
 interface HostState {
   activePath: string | null;
@@ -99,8 +98,6 @@ function typeAt(pos: number, text: string): void {
   });
 }
 
-// Takes remote text exactly as sent, carriage returns included, the way a
-// shared document fed by an older client can. Local edits must be LF.
 class UncheckedRemoteSession implements DocumentSession {
   path: string;
   readonly readOnly = false;
@@ -142,7 +139,6 @@ class UncheckedRemoteSession implements DocumentSession {
   }
 }
 
-// A session whose file can be renamed, telling its listeners when it is.
 class MovingSession extends UncheckedRemoteSession {
   private readonly moves = new Set<(path: string) => void>();
 
@@ -187,8 +183,6 @@ function listeners(session: LocalDocumentSession): () => number {
   return () => live;
 }
 
-// Records what reaches the session and in what state, like a shared session
-// that holds typing while an input method composes.
 class HoldingSession extends LocalDocumentSession {
   readonly calls: string[] = [];
   holding = false;

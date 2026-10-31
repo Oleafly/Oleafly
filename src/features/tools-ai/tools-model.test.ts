@@ -113,7 +113,6 @@ describe("automatic local model", () => {
     expect(pickLocalModel([cloud, tagged], "image", "", new Set())).toBeNull();
     expect(pickLocalModel([{ ...text("gpt-oss:120b-cloud"), remote: true }], "equation-text", "", new Set())).toBeNull();
 
-    // The assistant runs on Ollama Cloud: Automatic stays on this computer.
     mocks.getConfig.mockResolvedValue(config({ ai_provider: "ollama", ai_model: "qwen3-vl:235b-cloud" }));
     mocks.listOllamaModelDetails.mockResolvedValue([cloud]);
     await expect(resolveToolsModel("image")).rejects.toThrow(researchTools.converterErrors.visionModelMissing);
@@ -126,7 +125,6 @@ describe("automatic local model", () => {
     );
     expect(pickLocalModel([embedding("all-minilm")], "equation-text", "", new Set())).toBeNull();
     expect(pickLocalModel([{ name: "bge-m3", capabilities: ["embedding", "vision"] }], "image", "", new Set())).toBeNull();
-    // Without capabilities, a model still counts.
     expect(pickLocalModel([{ name: "llama3.2", capabilities: null }], "equation-text", "", new Set())).toBe("llama3.2");
     mocks.listOllamaModelDetails.mockResolvedValue([embedding("bge-m3"), text("llama3.2")]);
     await expect(resolveToolsModel("equation-text")).resolves.toMatchObject({ modelId: "llama3.2" });
@@ -186,7 +184,6 @@ describe("explicit choices", () => {
       hosted: true,
       destination: { kind: "provider", providerId: "ollama", name: "Ollama Cloud" },
     });
-    // Hosted, so images are shrunk and re-encoded, and the hosted reply budget applies.
     expect(model.engine === "llm" && toolsMaxTokens(model)).toBe(8192);
 
     // Ollama marks it remote even without a cloud tag.
@@ -233,7 +230,6 @@ describe("explicit choices", () => {
     const refused = resolveToolsModel("image");
     await expect(refused).rejects.toBeInstanceOf(ToolsModelError);
     await expect(refused).rejects.toThrow(errors.providerNotConfigured.replace("{{provider}}", "Anthropic"));
-    // Keys live under Providers and keys, not Tools.
     await expect(refused).rejects.toMatchObject({ settings: "ai-providers" });
     expect(listOllamaModelDetailsCalls()).toBe(0);
   });
@@ -387,7 +383,6 @@ describe("the editor's fallback to the assistant's model", () => {
       profile: null,
       assistantFallback: true,
     });
-    // The converters keep to the local default.
     await expect(resolveToolsModel("image")).rejects.toThrow(researchTools.converterErrors.ollamaUnavailable);
   });
 

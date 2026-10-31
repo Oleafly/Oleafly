@@ -1,20 +1,10 @@
-//! Errors of the Git hosting layer. The app turns each one into a localizable
-//! error code ([`ForgeError::code`]); the CLI prints [`std::fmt::Display`],
-//! which is plain English. No variant ever carries a token: details built
-//! from a server reply go through `http::scrub` first.
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ForgeError {
-    /// The text is not a server address Oleafly can use. `input` has any
-    /// user name and password removed.
-    InvalidBaseUrl {
-        input: String,
-    },
-    /// A plain `http://` address outside the user's own network.
+    InvalidBaseUrl { input: String },
     HttpsRequired,
     InvalidToken,
-    /// The server turned down a token pasted to sign in.
     TokenRejected,
     InvalidRepository,
     InvalidRepositoryName,
@@ -22,54 +12,26 @@ pub enum ForgeError {
     DeviceFlowUnavailable,
     SignInExpired,
     SignInDenied,
-    SignInFailed {
-        detail: String,
-    },
+    SignInFailed { detail: String },
     Unauthorized,
-    Forbidden {
-        scopes: &'static str,
-    },
-    /// The server refused because the organization requires single sign-on
-    /// and this sign-in is not authorized for it yet.
+    Forbidden { scopes: &'static str },
     SsoRequired,
-    MissingScopes {
-        scopes: &'static str,
-    },
+    MissingScopes { scopes: &'static str },
     NotFound,
     Conflict,
-    RateLimited {
-        retry_after_secs: Option<u64>,
-    },
+    RateLimited { retry_after_secs: Option<u64> },
     RepositoryEmpty,
-    TooLarge {
-        limit_mb: u64,
-    },
-    Tls {
-        detail: String,
-    },
-    Unreachable {
-        detail: String,
-    },
-    RedirectRefused {
-        target: String,
-    },
-    InvalidResponse {
-        detail: String,
-    },
-    Server {
-        status: u16,
-        detail: String,
-    },
-    CaFile {
-        detail: String,
-    },
-    Store {
-        detail: String,
-    },
+    TooLarge { limit_mb: u64 },
+    Tls { detail: String },
+    Unreachable { detail: String },
+    RedirectRefused { target: String },
+    InvalidResponse { detail: String },
+    Server { status: u16, detail: String },
+    CaFile { detail: String },
+    Store { detail: String },
 }
 
 impl ForgeError {
-    /// The app's error code (an `errors.json` key).
     pub fn code(&self) -> &'static str {
         match self {
             ForgeError::InvalidBaseUrl { .. } => "git.forge_invalid_server",
@@ -102,8 +64,6 @@ impl ForgeError {
         }
     }
 
-    /// Errors that mean the token no longer works or lacks a permission, for
-    /// callers that map them to an exit code (the CLI uses 6 for these).
     pub fn is_auth(&self) -> bool {
         matches!(
             self,
@@ -116,8 +76,6 @@ impl ForgeError {
         )
     }
 
-    /// Errors about the network or the server's availability (the CLI uses
-    /// exit code 7 for these).
     pub fn is_network(&self) -> bool {
         matches!(
             self,

@@ -81,7 +81,6 @@ export function UpdateWindow() {
       } else if (manual) {
         setPhase("upToDate");
       } else {
-        // Auto-check with nothing to offer: this window shouldn't linger.
         void getCurrentWindow().close();
       }
     } catch (e) {
@@ -108,7 +107,6 @@ export function UpdateWindow() {
     setErrorMessage("");
     try {
       await installUpdate(update, setPercent);
-      // installUpdate relaunches the app on success; unreachable afterward.
     } catch (e) {
       await logError("updater", e);
       setErrorMessage(decodeAppError(e) ? describeError(e) : String(e));

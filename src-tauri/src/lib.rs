@@ -3,8 +3,6 @@ mod ad_hoc_conversion;
 mod agent;
 mod agent_config;
 mod agent_exec;
-// Protocol-vocabulary + scheduler foundation; emitters and command call
-// sites land with the session/tool restructure.
 #[allow(dead_code)]
 mod agent_server;
 mod agent_turns;
@@ -15,6 +13,7 @@ mod app_icon;
 mod approvals;
 mod arxiv_import;
 mod assets;
+mod attachments;
 mod bib_clean;
 mod biber_toolchain;
 mod browser_cookie_import;
@@ -38,7 +37,9 @@ mod compile_fingerprint;
 mod config;
 mod connectors;
 mod conversion;
+mod cua_driver;
 mod custom_templates;
+mod daemon_handoff;
 mod deadlines;
 mod deep_link;
 mod dictionaries;
@@ -48,6 +49,7 @@ mod folder_listing;
 mod folder_status;
 mod folder_watch;
 mod folder_write;
+mod forge;
 mod fs_identity;
 mod fsperm;
 mod git;
@@ -62,9 +64,9 @@ mod linked_copy;
 mod linked_registry;
 mod linked_removal;
 mod literature;
-// Two-bucket logging; emit sites land with per-sidecar adoption.
 #[allow(dead_code)]
 mod logsafe;
+mod mathpix;
 mod mcp;
 mod menu;
 mod native_drop;
@@ -94,13 +96,11 @@ mod protocol;
 mod quit_gate;
 mod rag;
 mod release_notes;
+mod research_compute;
 mod research_lifecycle;
 mod research_mcp;
 mod research_tasks;
 mod research_workspace;
-mod updater;
-mod usage_report;
-// Thread persistence; the thread-store commands land on top of it next.
 #[allow(dead_code)]
 mod rollout;
 mod sandbox;
@@ -139,7 +139,8 @@ mod typst_sync;
 mod typst_toolchain;
 mod typst_upgrade;
 mod typst_watch;
-// Only macOS sizes webviews itself; the frame logic is unit-tested everywhere.
+mod updater;
+mod usage_report;
 mod web_process;
 #[cfg(windows)]
 mod webview_focus;
@@ -149,18 +150,6 @@ mod window_commands;
 mod window_frame;
 mod worktree_lock;
 mod zotero;
-// 0.4.8 C:
-mod attachments;
-// 0.4.8 G:
-mod forge;
-// 0.4.8 H:
-mod mathpix;
-// 0.4.8 I:
-mod cua_driver;
-// 0.4.8 K:
-mod research_compute;
-// 0.4.8 L:
-mod daemon_handoff;
 
 use state::AppState;
 
@@ -198,8 +187,6 @@ fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
             api.prevent_close();
             return;
         }
-        // Secondary windows (PDF preview) hold no editor buffers and
-        // must close freely; the quit gates guard the main window only.
         if window.label() != "main" {
             return;
         }
@@ -241,10 +228,6 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     }
     program_locator::start_background_probe();
     acp::attach(app.handle()).map_err(std::io::Error::other)?;
-    // 0.4.8 F1: `oleafly` for agents, terminals and research commands, and
-    // the Windows terminal command kept current after an update. The shim's
-    // path is known up front, so a terminal restored before the refresh
-    // ends still finds `oleafly`.
     if let Some(shim) = program_locator::planned_cli_shim() {
         acp::set_cli_program(shim);
     }
@@ -258,8 +241,6 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(windows)]
         shell_command::refresh_installed_copy();
     });
-    // 0.4.8 I: desktop apps (Cua Driver) state, stale daemon cleanup, idle
-    // reaper. Without it desktop apps stay off; the app still starts.
     if let Err(error) = cua_driver::attach(app.handle()) {
         let _ = project::append_app_log(format!("desktop apps unavailable: {error}"));
     }
@@ -271,10 +252,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             handle.state::<research_tasks::ResearchTaskState>().inner(),
             &handle,
         );
-        // The built-in runtime uses the run services attach creates.
         agent::task_runtime::register_task_runtimes(app.handle()).map_err(std::io::Error::other)?;
-        // 0.4.8 L: the background helper's usage and tasks come back, and a
-        // watcher shows its progress while it still runs tasks.
         daemon_handoff::on_launch(
             &handle,
             std::sync::Arc::new(research_tasks::host::AppResearchHost::new(handle.clone())),
@@ -317,9 +295,6 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             let _ = window_vibrancy::apply_acrylic(&window, Some((18, 18, 18, 125)));
         }
     }
-    // The bridge returns eval results through a plugin command, so grant
-    // its permission at runtime here; a static capabilities/ entry would
-    // break normal builds, where the plugin (and its permission) doesn't exist.
     #[cfg(feature = "e2e-testing")]
     {
         use tauri::Manager;
@@ -345,9 +320,6 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Permanent deletion publishes a durable Checkpoints cleanup job
-    // before the recycled worktree disappears. Retry abandoned jobs
-    // off the UI thread, and never make a cleanup fault block startup.
     tauri::async_runtime::spawn_blocking(|| {
         if let Err(error) = crate::storage::retry_pending_checkpoint_cleanup() {
             eprintln!("Checkpoints cleanup retry failed: {error}");
@@ -365,8 +337,6 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     tauri::async_runtime::spawn_blocking(crate::build_hygiene::evict_idle_linked_builds_at_startup);
     tauri::async_runtime::spawn_blocking(crate::linked_removal::purge_expired_removals_at_startup);
 
-    // Start the MCP server on boot when the user has enabled it. Failure to
-    // bind must not prevent the app from starting; Settings shows the state.
     let handle = app.handle().clone();
     tauri::async_runtime::spawn(async move {
         if let Ok(cfg) = crate::config::read_config() {
@@ -408,24 +378,19 @@ fn e2e_boot_seed_script(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // MCP servers in this process report the app's version.
     oleafly_research::mcp::protocol::set_server_version(env!("CARGO_PKG_VERSION"));
-    // The Windows sandbox launcher, the sandbox self-test and a sandboxed
-    // run re-enter the app binary with their own flags.
     if let Some(code) = oleafly_sandbox::entry(research_compute::sandbox_config) {
         std::process::exit(code);
     }
     if let Some(config) = research_compute::sandbox_config() {
         oleafly_sandbox::configure(config);
     }
-    // A detached run supervisor re-enters the app binary with its flag.
     if let Some(code) = oleafly_research::runs::supervisor::run_if_requested() {
         std::process::exit(code);
     }
     if research_mcp::stdio_bridge_requested() {
         std::process::exit(research_mcp::serve_stdio_bridge());
     }
-    // 0.4.8 L: the background helper is this binary with its own flag.
     if daemon_handoff::daemon_requested(std::env::args_os()) {
         std::process::exit(daemon_handoff::serve_daemon());
     }
@@ -460,7 +425,6 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
-        // Research tasks tell the user when they need them.
         .plugin(tauri_plugin_notification::init());
 
     // Lets AppKit, not Tauri's scale-converting resize, size the webviews
@@ -494,7 +458,6 @@ pub fn run() {
             .on_menu_event(|app, event| menu::on_event(app, event.id().as_ref()));
     }
 
-    // The updater and process plugins are desktop-only.
     #[cfg(desktop)]
     {
         builder = builder
@@ -502,8 +465,6 @@ pub fn run() {
             .plugin(tauri_plugin_process::init());
     }
 
-    // E2E automation bridge, compiled in only for `--features e2e-testing`
-    // builds (real-webview Playwright control; see e2e/README.md).
     #[cfg(feature = "e2e-testing")]
     {
         let socket = std::env::var("TAURI_PLAYWRIGHT_SOCKET")
@@ -515,11 +476,6 @@ pub fn run() {
             ),
             None => tauri_plugin_playwright::init(),
         });
-        // Packaged suites cannot reload through the Vite dev server the way
-        // the dev fixture seeds localStorage, so seed it before any app code
-        // runs instead. The env var holds a JSON object of key -> string
-        // (null removes the key); it is validated here so a malformed value
-        // fails the launch instead of silently skipping the seed.
         let every_load = e2e_localstorage_seed("OLEAFLY_E2E_BOOT_LOCALSTORAGE");
         let once_per_launch = e2e_localstorage_seed("OLEAFLY_E2E_LAUNCH_LOCALSTORAGE");
         if every_load.is_some() || once_per_launch.is_some() {
@@ -557,9 +513,6 @@ pub fn run() {
         .manage(zotero::commands::ZoteroState::default())
         .manage(collab::state::CollabState::for_app())
         .manage(deep_link::LinkInbox::default())
-        // Closing the app mid-TinyTeX-install must be a deliberate choice: block
-        // the close, let the frontend show a confirm dialog, and only pass a
-        // close through after `confirm_quit_during_install`.
         .on_window_event(on_window_event)
         .setup(setup_app)
         .invoke_handler(traced_commands(tauri::generate_handler![
@@ -599,14 +552,11 @@ pub fn run() {
             acp::commands::acp_sessions,
             acp::commands::acp_snapshot,
             acp::commands::acp_events,
-            // CLI agent setup (#84)
             acp::commands::acp_check_agent,
             acp::commands::acp_pick_agent_program,
             acp::commands::acp_set_agent_program,
-            // CLI agent conversations (#84)
             acp::commands::acp_session_export,
             acp::commands::acp_session_events_all,
-            // Agent turn review (#84)
             agent_turns::agent_turn_begin,
             agent_turns::agent_turn_finish,
             agent_turns::agent_turn_status,
@@ -1174,7 +1124,6 @@ pub fn run() {
             git::git_continue_merge,
             git::git_abort_merge,
             git::git_show,
-            // 0.4.8 C:
             attachments::attachment_put,
             attachments::attachment_put_text,
             attachments::attachment_read,
@@ -1182,13 +1131,11 @@ pub fn run() {
             attachments::attachment_gc,
             agent::usage::agent_provider_credit,
             agent::web::agent_web_support,
-            // 0.4.8 B:
             chats::chats_load,
             chats::chat_read,
             chats::chat_save,
             chats::chat_delete,
             agent_server::agent_thread_rollback,
-            // 0.4.8 E:
             citation::verify_citation,
             skills::skills_replace_with_builtin,
             literature::literature_search_all,
@@ -1205,7 +1152,6 @@ pub fn run() {
             research_tasks::research_task_watch,
             research_tasks::pdf_text::research_pdf_text_fetch,
             research_tasks::pdf_text::research_pdf_text_result,
-            // 0.4.8 D:
             acp::commands::acp_preferences,
             acp::commands::acp_set_preferences,
             acp::commands::acp_agent_preferences,
@@ -1231,11 +1177,9 @@ pub fn run() {
             acp::commands::acp_hermes_status,
             acp::commands::acp_hermes_set_option,
             acp::commands::acp_test_remote_hermes,
-            // 0.4.8 A:
             terminal::term_shells,
             terminal::term_ack,
             terminal::term_foreground,
-            // 0.4.8 G:
             forge::public_stats::gh_public_repo_stats,
             forge::commands::forge_accounts_list,
             forge::commands::forge_detect,
@@ -1250,7 +1194,6 @@ pub fn run() {
             forge::commands::forge_create_repo,
             forge::import::forge_import_repo,
             git::git_clone_project,
-            // 0.4.8 H:
             config::set_ai_tools_model,
             ollama::ollama_list_model_details,
             mathpix::mathpix_key_status,
@@ -1261,7 +1204,6 @@ pub fn run() {
             mathpix::mathpix_pdf_upload,
             mathpix::mathpix_pdf_wait,
             mathpix::mathpix_pdf_cancel,
-            // 0.4.8 I:
             overleaf::overleaf_sign_in_with_app_cookies,
             cua_driver::commands::cua_driver_status,
             cua_driver::commands::cua_driver_settings_set,
@@ -1270,7 +1212,6 @@ pub fn run() {
             cua_driver::commands::cua_driver_pick_app,
             cua_driver::commands::cua_driver_test,
             cua_driver::commands::cua_driver_tool_spec,
-            // 0.4.8 K:
             research_compute::research_compute_settings,
             research_compute::research_compute_target_save,
             research_compute::research_compute_target_remove,
@@ -1282,7 +1223,6 @@ pub fn run() {
             research_compute::research_sandbox_set_windows,
             research_compute::research_sandbox_remove_access,
             research_compute::research_sandbox_check,
-            // 0.4.8 L:
             daemon_handoff::background_helper_status,
             daemon_handoff::background_helper_stop,
             daemon_handoff::background_helper_set_login_item,
@@ -1295,7 +1235,6 @@ pub fn run() {
         .run(|_, event| {
             if let tauri::RunEvent::Exit = event {
                 collab::live::finish_for_quit(collab::live::QUIT_WAIT);
-                // 0.4.8 I: stop the Cua Driver daemons Oleafly started.
                 cua_driver::shutdown_for_quit(std::time::Duration::from_millis(1500));
                 quit_gate::on_app_exit();
             }

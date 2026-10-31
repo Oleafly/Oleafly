@@ -87,8 +87,6 @@ describe("modelToTikz", () => {
         },
       ],
     });
-    // The route's ends are written as node anchors, not as the raw points they
-    // resolve to, so the connector survives a hand edit that moves a shape.
     expect(tikz).toContain(
       "(a.south) -- (1,-1.5) -- (1,-2) -- (0.75,-2) -- (0.75,-2.5) -- (b.north)",
     );
@@ -138,7 +136,6 @@ describe("modelToTikz", () => {
   it("draws edges on the background layer so they sit behind the shapes", () => {
     const t = modelToTikz(model);
     expect(t).toContain("\\begin{scope}[on background layer]");
-    // The edge must come after its nodes are declared, inside the scope.
     expect(t.indexOf("\\node (a)")).toBeLessThan(t.indexOf("on background layer"));
     expect(t.indexOf("on background layer")).toBeLessThan(t.indexOf("\\draw[->"));
   });

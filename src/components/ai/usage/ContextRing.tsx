@@ -5,7 +5,6 @@ import { contextFraction, USAGE_TONE_TEXT, usageTone } from "./usage-tone";
 const RADIUS = 6;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-/** A 16 px ring filled to the share of the context window in use. */
 export function ContextRing({
   snapshot,
   className,

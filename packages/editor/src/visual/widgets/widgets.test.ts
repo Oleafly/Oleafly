@@ -14,14 +14,10 @@ import { LatexLogoWidget } from "./latex-logo";
 import { paintMath, renderVisualMath } from "./math";
 import { PreambleWidget } from "./preamble";
 import { spaceWidthFor } from "./space";
+import { stubRangeGeometry } from "../../test-geometry";
 
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 let view: EditorView | null = null;
 

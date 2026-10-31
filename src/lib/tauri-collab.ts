@@ -1,7 +1,3 @@
-// The IPC wrappers for live collaboration. Only collaboration screens and
-// the live session import this module, so it loads once collaboration is in
-// use, not with the window. The app link pair that has to be heard from the
-// start stays in tauri.ts.
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
@@ -126,6 +122,8 @@ const COLLAB_ERROR_CODES = new Set<string>([
   "suggestion_not_found",
   "suggestion_not_yours",
   "suggestion_role",
+  "suggestion_changed",
+  "suggestion_too_long",
   "chat_role",
   "history_unavailable",
   "account_storage_full",
@@ -231,8 +229,6 @@ export const collabLeaveProject = (projectId: string) =>
 export const collabSharedWithMe = () => invoke<CollabSharedWithMe[]>("collab_shared_with_me");
 export const collabJoinProject = (serverId: string, sharedProjectId: string) =>
   invoke<string>("collab_join_project", { serverId, sharedProjectId });
-// Stops a running join and removes what it downloaded. The join then fails
-// with the code "cancelled".
 export const collabJoinCancel = (serverId: string, sharedProjectId: string) =>
   invoke<void>("collab_join_cancel", { serverId, sharedProjectId });
 
@@ -250,13 +246,8 @@ export const collabLiveStart = (projectId: string) =>
   invoke<CollabLiveInfo>("collab_live_start", { projectId });
 export const collabLiveStop = (projectId: string) =>
   invoke<void>("collab_live_stop", { projectId });
-// Writes the live project's text to disk now. With `waitForFigures` it also
-// waits a few seconds for figures still downloading, which only a compile
-// needs.
 export const collabLiveFlush = (projectId: string, options: { waitForFigures?: boolean } = {}) =>
   invoke<void>("collab_live_flush", { projectId, waitForFigures: options.waitForFigures ?? false });
-// Asks a live session that waits between reconnect tries to try now. It
-// answers even with nothing running, so callers can fire and forget.
 export const collabLiveReconnectNow = () => invoke<void>("collab_live_reconnect_now");
 export async function collabDocOpen(
   projectId: string,
@@ -624,6 +615,18 @@ export function onCollabSuggestionsChanged(
   handler: (payload: CollabSuggestionsChanged) => void,
 ): Promise<UnlistenFn> {
   return listen<CollabSuggestionsChanged>(COLLAB_SUGGESTIONS_CHANGED_EVENT, ({ payload }) => handler(payload));
+}
+
+export const COLLAB_SUGGESTION_REFUSED_EVENT = "collab://suggestion-refused";
+
+export interface CollabSuggestionRefused {
+  projectId: string;
+  path: string;
+  code: CollabErrorCode;
+}
+
+export function onCollabSuggestionRefused(handler: (payload: CollabSuggestionRefused) => void): Promise<UnlistenFn> {
+  return listen<CollabSuggestionRefused>(COLLAB_SUGGESTION_REFUSED_EVENT, ({ payload }) => handler(payload));
 }
 
 export const collabChatList = (projectId: string, before: string | null, limit: number) =>

@@ -339,6 +339,7 @@
   },
   "notebook": {
     "code_needed": "{{engine}} 需要运行代码才能构建此文档，但此项目的代码已关闭。要编译此文档，请在此项目中允许代码。",
+    "export_stopped": "导出已停止。",
     "quarto_missing": "未安装 Quarto。请在设置 > 引擎 > Quarto 中安装，然后重新编译。",
     "calepin_missing": "未安装 Calepin。请在设置 > 引擎 > Calepin 中安装，然后重新编译。",
     "not_offered": "Oleafly 无法为这台电脑下载 {{tool}}。请自行安装，然后重新编译。",

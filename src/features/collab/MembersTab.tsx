@@ -30,7 +30,6 @@ import { canChangeMember, isStaffRole, serverRoleAllows, toServerRole, type Serv
 
 export type MembersUpdate = (update: (members: CollabMember[]) => CollabMember[]) => void;
 
-// What suspending or removing someone means for the shared projects they own.
 function OwnedProjects({ member, action }: Readonly<{ member: CollabMember; action: "suspend" | "remove" }>) {
   const { t } = useTranslation(["collab"]);
   const owned = member.owned_projects ?? 0;
@@ -95,16 +94,13 @@ export function MembersTab({
   onRetry: () => void;
   onMembersChange: MembersUpdate;
   onAddPeople?: () => void;
-  // A guest invitation was approved, declined or withdrawn.
   onGuestsChanged?: () => void;
 }>) {
   const { t } = useTranslation(["collab"]);
   const rows = useBusyRows();
   const [rowError, setRowError] = useState<{ accountId: string; message: string } | null>(null);
   const [removing, setRemoving] = useState<CollabMember | null>(null);
-  // Suspending someone who owns shared projects waits for a yes.
   const [suspending, setSuspending] = useState<CollabMember | null>(null);
-  // A change to your own role takes your admin rights away, so it waits for a yes.
   const [stepping, setStepping] = useState<{ member: CollabMember; role: ServerRole } | null>(null);
   const [devicesFor, setDevicesFor] = useState<string | null>(null);
   const canSeeDevices = serverRoleAllows(actor, "signOutAnyDevice");

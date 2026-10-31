@@ -10,7 +10,6 @@ export type ToolSet = Record<
 export type TextPart = { type: "text"; text: string };
 export type ImagePart = { type: "image"; image: string };
 export type FilePart = { type: "file"; data: string; mediaType: string; name?: string };
-/** A file in the attachment store, sent by reference and resolved by the run. */
 export type AttachmentPart = { type: "attachment"; sha256: string; name: string; mime: string };
 export type ReasoningPart = { type: "reasoning"; text: string };
 export type ToolCallPart = {

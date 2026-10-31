@@ -2,8 +2,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-// Only the IPC boundary is mocked; the real bridge (tauri.ts) and the real
-// files store run, so this covers the conflict wiring end to end in jsdom.
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
   notifyError: vi.fn(),

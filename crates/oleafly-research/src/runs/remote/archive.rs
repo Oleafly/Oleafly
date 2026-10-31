@@ -1,5 +1,3 @@
-//! The task workspace as a streamed `tar.gz` for remote runs, and the files a
-//! run created, unpacked without ever leaving the destination folder.
 use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
 
@@ -10,7 +8,6 @@ use flate2::Compression;
 
 use crate::runs::RunError;
 
-/// Folders a remote run never needs (`runs` holds earlier runs' outputs).
 pub const UPLOAD_EXCLUDES: &[&str] = &[
     ".git",
     ".oleafly",
@@ -20,7 +17,6 @@ pub const UPLOAD_EXCLUDES: &[&str] = &[
     "venv",
     "node_modules",
 ];
-/// Excluded at any depth; the rest only at the top.
 const EXCLUDED_ANYWHERE: &[&str] = &["__pycache__", "node_modules"];
 const PIPE_BYTES: usize = 256 * 1024;
 const MAX_LISTED: usize = 200;
@@ -133,8 +129,6 @@ impl<W: Write> Packer<W> {
                 }
                 let mut header = tar::Header::new_gnu();
                 header.set_entry_type(tar::EntryType::Directory);
-                // Owner only: on a shared cluster the uploaded workspace stays
-                // private, and the run is the same user.
                 header.set_mode(0o700);
                 header.set_size(0);
                 header.set_mtime(mtime(&metadata));
@@ -145,7 +139,6 @@ impl<W: Write> Packer<W> {
                 continue;
             }
             if !metadata.is_file() {
-                // Links, reparse points and devices stay behind.
                 note_skipped(&mut self.summary.skipped, path);
                 continue;
             }
@@ -167,7 +160,6 @@ impl<W: Write> Packer<W> {
             header.set_mode(file_mode(&metadata));
             header.set_size(metadata.len());
             header.set_mtime(mtime(&metadata));
-            // A file that grows while it is read is cut at its listed size.
             self.builder
                 .append_data(&mut header, &path, file.take(metadata.len()))
                 .map_err(|error| {
@@ -180,8 +172,6 @@ impl<W: Write> Packer<W> {
     }
 }
 
-/// Writes the workspace as `tar.gz`: regular files and folders only, names
-/// joined with `/`, sorted, the excluded folders left out.
 pub fn pack_workspace<W: Write>(
     root: &Path,
     out: W,
@@ -248,7 +238,6 @@ pub fn check_upload_limits(root: &Path, limits: &PackLimits) -> Result<(), RunEr
     walk(root, "", limits, &mut 0, &mut 0)
 }
 
-/// The bytes [`pack_workspace`] would send, from file sizes alone.
 pub fn workspace_bytes(root: &Path) -> u64 {
     fn walk(folder: &Path, relative: &str, total: &mut u64, seen: &mut usize) {
         let Ok(entries) = std::fs::read_dir(folder) else {
@@ -284,7 +273,6 @@ pub fn workspace_bytes(root: &Path) -> u64 {
     total
 }
 
-/// Blocking writes into the async pipe, from a blocking thread.
 struct PipeWriter {
     stream: tokio::io::DuplexStream,
     runtime: tokio::runtime::Handle,
@@ -304,9 +292,6 @@ impl Write for PipeWriter {
     }
 }
 
-/// Packs on a blocking thread into a 256 KiB pipe, so the upload starts at
-/// once and the archive is never held in memory. Dropping the reader stops
-/// the packing.
 pub fn pack_reader(
     root: PathBuf,
     limits: PackLimits,
@@ -351,10 +336,7 @@ pub struct UnpackSummary {
     pub files: usize,
     pub bytes: u64,
     pub skipped: Vec<String>,
-    /// The copy stopped at a size or count cap, and the rest of the archive
-    /// was not read (so it was not transferred either).
     pub truncated: bool,
-    /// The transfer ran out of time; what arrived is kept.
     pub timed_out: bool,
 }
 
@@ -382,9 +364,6 @@ fn safe_relative(raw: &[u8]) -> Option<PathBuf> {
     (!path.as_os_str().is_empty()).then_some(path)
 }
 
-/// Unpacks a run's outputs into `dest`: regular files and folders only,
-/// every path checked and created through a handle on `dest` that cannot
-/// follow links out of it, within the size and count caps.
 pub fn unpack_outputs<R: Read>(
     archive: R,
     dest: &Path,
@@ -399,8 +378,6 @@ pub fn unpack_outputs<R: Read>(
     unpack_into(archive, &root, limits)
 }
 
-/// Opens `<workspace>/<relative>` without following a link out of the
-/// workspace (the task's own files may hold links), creating it.
 pub fn open_inside(workspace: &Path, relative: &str) -> Result<cap_std::fs::Dir, RunError> {
     let root = cap_std::fs::Dir::open_ambient_dir(workspace, cap_std::ambient_authority())
         .map_err(|error| {
@@ -413,7 +390,6 @@ pub fn open_inside(workspace: &Path, relative: &str) -> Result<cap_std::fs::Dir,
         .map_err(|error| RunError::Io(format!("The outputs folder could not be opened: {error}")))
 }
 
-/// [`unpack_outputs`] into an open folder.
 pub fn unpack_into<R: Read>(
     archive: R,
     root: &cap_std::fs::Dir,
@@ -452,8 +428,6 @@ pub fn unpack_into<R: Read>(
             note_skipped(&mut summary.skipped, display);
             continue;
         }
-        // At a cap the rest is not read: the caller drops the stream, which
-        // ends the transfer instead of downloading what would be thrown away.
         if summary.files >= limits.max_files || summary.bytes + size > limits.max_total {
             note_skipped(&mut summary.skipped, display);
             summary.truncated = true;
@@ -484,8 +458,6 @@ pub fn unpack_into<R: Read>(
                 #[cfg(unix)]
                 if entry.header().mode().is_ok_and(|mode| mode & 0o111 != 0) {
                     use std::os::unix::fs::PermissionsExt;
-                    // An output the run marked executable runs for its owner;
-                    // the rest of its mode stays what this user's umask gave it.
                     if let Ok(metadata) = file.metadata() {
                         let mut permissions = metadata.permissions();
                         permissions.set_mode(permissions.mode() | 0o100);
@@ -610,7 +582,6 @@ mod tests {
             if matches!(kind, tar::EntryType::Symlink | tar::EntryType::Link) {
                 header.set_link_name("/etc/passwd").unwrap();
             }
-            // Write the raw name so unsafe ones reach the reader as they are.
             let bytes = name.as_bytes();
             header.as_old_mut().name[..bytes.len()].copy_from_slice(bytes);
             header.set_cksum();
@@ -657,7 +628,6 @@ mod tests {
                 "{name}"
             );
         }
-        // These stay refused everywhere.
         for name in ["../x", "/x", "a\\b", "C:\\x"] {
             assert!(safe_relative(name.as_bytes()).is_none(), "{name}");
         }
@@ -669,7 +639,6 @@ mod tests {
         assert_eq!(dest.path().join("metrics:1.csv").is_file(), !cfg!(windows));
     }
 
-    /// A reader that counts the bytes taken from it.
     struct Counting<R> {
         inner: R,
         read: std::sync::Arc<std::sync::atomic::AtomicUsize>,
@@ -686,7 +655,6 @@ mod tests {
 
     #[test]
     fn unpacking_stops_reading_at_the_total_cap() {
-        // Twenty 256 KiB files of data that does not compress.
         let noise = |seed: u32| -> Vec<u8> {
             (0..256 * 1024u32)
                 .map(|index| ((index ^ seed).wrapping_mul(2_654_435_761) >> 13) as u8)
@@ -720,7 +688,6 @@ mod tests {
         assert_eq!(summary.files, 3);
         assert!(summary.truncated);
         assert_eq!(summary.skipped, vec!["f03".to_string()]);
-        // Most of the archive was never read, so it was never downloaded.
         let taken = read.load(std::sync::atomic::Ordering::SeqCst);
         assert!(taken < archive.len() / 2, "{taken} of {}", archive.len());
     }
@@ -728,7 +695,6 @@ mod tests {
     #[test]
     fn rsync_uploads_keep_to_the_same_limits_as_packed_ones() {
         let source = tree();
-        // Two files count (the links and excluded folders do not).
         assert!(check_upload_limits(source.path(), &PackLimits::default()).is_ok());
         let few = PackLimits {
             max_files: 1,

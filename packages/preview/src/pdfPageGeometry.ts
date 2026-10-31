@@ -126,13 +126,6 @@ export interface ScanPdfPageViewportsOptions {
   onError?: (error: unknown, pageNumber: number) => void;
 }
 
-/**
- * Progressively scan page geometry with bounded concurrency.
- *
- * The first real failure aborts every sibling wait and prevents workers from
- * claiming more pages. `done` resolves after teardown; the caller can keep the
- * already-built layout usable and retry individual pages on demand.
- */
 export function scanPdfPageViewports(
   doc: pdfjsLib.PDFDocumentProxy,
   options: ScanPdfPageViewportsOptions,

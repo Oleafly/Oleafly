@@ -1,6 +1,3 @@
-//! Settings › Research › Compute: where research runs execute (SSH hosts,
-//! Slurm clusters, Cua Spaces), their tests and host keys, and the local
-//! sandbox (the Windows beta switch, interpreters it found, shared access).
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -23,7 +20,6 @@ const MAX_TARGETS: usize = 32;
 const TEST_LIMIT: Duration = Duration::from_secs(60);
 const CUA_TEST_LIMIT: Duration = Duration::from_secs(120);
 
-/// The app as a host for runs on other computers.
 pub(crate) struct AppComputeHost {
     data_root: PathBuf,
 }
@@ -69,8 +65,6 @@ impl ComputeHost for AppComputeHost {
     }
 }
 
-/// Where the sandbox keeps its state, for the Windows launcher and the
-/// self-test (called before anything else starts).
 pub fn sandbox_config() -> Option<SandboxConfig> {
     let root = crate::paths::oleafly_root().ok()?;
     Some(SandboxConfig {
@@ -153,7 +147,6 @@ fn save_target(root: &std::path::Path, mut target: ComputeTarget) -> Result<Comp
     settings::validate_target(&target)?;
     settings::update(root, |saved| {
         let id = target.id().to_string();
-        // An edited target needs a new test.
         saved.tested.remove(&id);
         match saved
             .targets
@@ -308,8 +301,6 @@ pub async fn research_compute_forget_host_key<R: tauri::Runtime>(
         let endpoint = endpoint_of(&target)?;
         let removed = host_keys::forget(&known_hosts_file(&root), &endpoint.host, endpoint.port)
             .map_err(String::from)?;
-        // Saying it worked when nothing was removed would leave a replaced
-        // key trusted without the user knowing.
         if removed == 0 {
             return Err(format!(
                 "No trusted key for {} was found, so nothing was removed.",
@@ -332,7 +323,6 @@ pub struct SandboxStatus {
     pub platform: &'static str,
     pub available: bool,
     pub reason: Option<String>,
-    /// The Windows beta switch; `None` on other systems.
     pub windows_enabled: Option<bool>,
     pub runtimes: Vec<RuntimeInstall>,
     pub grants: Vec<SharedGrantView>,

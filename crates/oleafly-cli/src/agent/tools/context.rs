@@ -1,5 +1,3 @@
-//! `project_context`: the project's structure as Oleafly reads it (outline,
-//! labels, citations, missing files, packages).
 use std::path::Path;
 use std::sync::Arc;
 
@@ -28,9 +26,6 @@ pub(super) fn specs() -> Vec<ToolSpec> {
     }]
 }
 
-/// The scan of the project at `root`, cut to fit a tool result: each list
-/// keeps a few hundred items at most, and file roles are counted rather than
-/// listed.
 pub(crate) fn context_of(root: &Path) -> Result<Value, String> {
     let opened = open_project(root, None, None).map_err(|_| NO_MAIN_DOCUMENT.to_string())?;
     let main = opened.workspace.manifest().main_doc.clone();

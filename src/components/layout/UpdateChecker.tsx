@@ -25,11 +25,8 @@ type State =
 
 export function UpdateChecker({ className }: Readonly<{ className?: string }>) {
   const { t } = useTranslation(["shell"]);
-  // Snapshot once: in the browser dev server there is no updater at all, so we
-  // render an "unsupported" note instead of a misleading "up to date".
   const [supported] = useState(isTauri);
   const [state, setState] = useState<State>({ kind: "idle" });
-  // Surfaces a silent startup-check failure (recorded by runUpdateCheck).
   const lastCheckFailed = useUpdatesStore((s) => s.lastCheckFailed);
   const lastCheckAt = useUpdatesStore((s) => s.lastCheckAt);
 
@@ -41,7 +38,6 @@ export function UpdateChecker({ className }: Readonly<{ className?: string }>) {
       const update = await runUpdateCheck({ rethrow: true });
       setState(update ? { kind: "available", update } : { kind: "upToDate" });
     } catch {
-      // runUpdateCheck already logged the error and flagged the store.
       setState({ kind: "error" });
     }
   };
@@ -50,7 +46,6 @@ export function UpdateChecker({ className }: Readonly<{ className?: string }>) {
     setState({ kind: "downloading", percent: 0 });
     try {
       await installUpdate(update, (percent) => setState({ kind: "downloading", percent }));
-      // installUpdate relaunches on success; this line is unreachable in the app.
     } catch (e) {
       await logError("updater", e);
       setState({ kind: "error" });

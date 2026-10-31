@@ -114,9 +114,6 @@ pub fn storage(conn: &Connection, location: FilesLocation) -> Result<StorageUsag
     })
 }
 
-// Both read sign-ins through the security log's time index, so they cost
-// the same however long the log is kept. 1 January 1970 was a Thursday,
-// which makes (day + 4) % 7 the weekday counted from Sunday.
 const DAILY_SIGN_INS: &str = "SELECT at / 86400000, COUNT(*), COUNT(DISTINCT actor) \
      FROM security_log WHERE at >= ?1 AND at < ?2 AND kind = ?3 GROUP BY 1 ORDER BY 1";
 const HOURLY_SIGN_INS: &str =
@@ -131,8 +128,6 @@ fn tally(value: i64) -> u32 {
     u32::try_from(value).unwrap_or(u32::MAX)
 }
 
-// Sign-ins over the last ACTIVITY_DAYS UTC days, today included: per day,
-// with how many people signed in, and per weekday and hour.
 pub fn activity(conn: &Connection, now: i64) -> Result<ServerActivity, ServerError> {
     let today = now.div_euclid(DAY_MS);
     let since = ((today - i64::from(ACTIVITY_DAYS) + 1) * DAY_MS).max(0);
@@ -612,7 +607,6 @@ mod tests {
                     },
                 ]
             );
-            // START falls on a Thursday, so the day before is a Wednesday.
             assert_eq!(
                 counted.by_hour,
                 vec![

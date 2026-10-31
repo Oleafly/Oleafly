@@ -1,13 +1,8 @@
-//! Availability checks that start a program or call the OS: a success is
-//! remembered for the life of the process, a failure for a short while, so
-//! one transient error (a locked file, a busy profile service) doesn't switch
-//! the sandbox off until the app restarts.
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use crate::Availability;
 
-/// How long a failed check is remembered.
 pub(crate) const RETRY_AFTER: Duration = Duration::from_secs(30);
 
 pub(crate) struct ProbeCache {
@@ -21,8 +16,6 @@ impl ProbeCache {
         }
     }
 
-    /// The remembered answer, or the answer of `probe`. Callers that arrive
-    /// while a probe runs wait for it instead of starting their own.
     pub(crate) fn get(&self, probe: impl FnOnce() -> Availability) -> Availability {
         self.get_at(Instant::now(), probe)
     }
@@ -92,7 +85,6 @@ mod tests {
             }
         };
         assert_eq!(cache.get_at(start, fail_then_work), unavailable());
-        // Within the retry window the failure is served again.
         let soon = start + RETRY_AFTER / 2;
         assert_eq!(cache.get_at(soon, fail_then_work), unavailable());
         assert_eq!(calls.get(), 1);

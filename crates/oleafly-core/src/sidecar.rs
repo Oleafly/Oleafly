@@ -1,8 +1,5 @@
-//! Programs shipped beside an executable (the app's bundled engines, the
-//! CLI's copy of them).
 use std::path::{Path, PathBuf};
 
-/// `name` with `.exe` on Windows.
 pub fn exe_name(name: &str) -> String {
     if cfg!(windows) {
         format!("{name}.exe")
@@ -28,13 +25,10 @@ pub fn executable_dir_of(executable: &Path) -> Option<PathBuf> {
     })
 }
 
-/// The running program's folder (see [`executable_dir_of`]).
 pub fn executable_dir() -> Option<PathBuf> {
     executable_dir_of(&std::env::current_exe().ok()?)
 }
 
-/// `dir/name` (with `.exe` on Windows) when that file exists. `name` must
-/// be a single plain file name.
 pub fn sidecar_in(dir: &Path, name: &str) -> Option<PathBuf> {
     if name.is_empty() || name == "." || name == ".." || name.contains(['/', '\\']) {
         return None;

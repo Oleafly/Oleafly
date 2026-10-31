@@ -1,13 +1,9 @@
 import { type DiagramModel, modelToTikz, sameDiagramModel } from "@oleafly/latex";
 
 export interface ComposerSync {
-  /** The code buffer holds text the canvas did not generate. */
   codeDirty: boolean;
-  /** The canvas has changed since the buffer was last written from it. */
   canvasAhead: boolean;
-  /** The exact buffer the current model was read out of, if any. */
   adoptedSource: string | null;
-  /** The model as it was read out of that buffer, before any canvas edit. */
   adoptedModel: DiagramModel | null;
 }
 

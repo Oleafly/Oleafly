@@ -10,12 +10,10 @@ import { announceAcpPreferences } from "./agent-preferences";
 
 const INACTIVITY_CHOICES = [10, 20, 30, 60, 120] as const;
 
-/** Draft protocol switches and the silent-agent limit (kept with the agents, not in settings sync). */
 export function AcpExperimentalSection() {
   const { t } = useTranslation(["common", "settings"]);
   const [prefs, setPrefs] = useState<AcpPreferences | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Only the answer to the latest save is shown; an older one would undo a newer switch.
   const latest = useRef(0);
 
   useEffect(() => {
@@ -40,7 +38,6 @@ export function AcpExperimentalSection() {
         show(await acpSetPreferences(next));
       } catch (error_: unknown) {
         setError(acpError(error_));
-        // A newer save brings the stored values back with it.
         if (request !== latest.current) return;
         try {
           show(await acpPreferences());

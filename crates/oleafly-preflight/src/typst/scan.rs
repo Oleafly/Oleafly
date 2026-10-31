@@ -1,9 +1,3 @@
-//! A small Typst lexer (`packages/preflight/src/typst-scan.ts`).
-//!
-//! It classifies every UTF-16 unit as markup, code, string, comment, raw,
-//! math or escape, and builds three masks of the same length (newlines always
-//! kept), so regex offsets on a mask are offsets in the source.
-
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
 
@@ -33,7 +27,6 @@ pub const RAW: u8 = Kind::Raw as u8;
 pub const MATH: u8 = Kind::Math as u8;
 pub const ESCAPE: u8 = Kind::Escape as u8;
 
-/// `[\p{L}\p{M}\p{N}\p{Pc}][\p{L}\p{M}\p{N}\p{Pc}.:-]*`
 pub const TYPST_LABEL: &str = r"[\p{L}\p{M}\p{N}\p{Pc}][\p{L}\p{M}\p{N}\p{Pc}.:-]*";
 
 const LINE_KEYWORDS: &[&str] = &[
@@ -93,12 +86,10 @@ enum Frame {
     },
 }
 
-/// `/[\p{L}_]/u` on one unit.
 fn ident_start(unit: Option<u16>) -> bool {
     unit.is_some_and(|unit| unit == UNDERSCORE || is_letter_unit(unit))
 }
 
-/// `/[\p{L}\p{M}\p{N}_-]/u` on one unit.
 fn ident_continue(unit: Option<u16>) -> bool {
     unit.is_some_and(|unit| {
         unit == UNDERSCORE
@@ -109,7 +100,6 @@ fn ident_continue(unit: Option<u16>) -> bool {
     })
 }
 
-/// `/[0-9A-Za-z!#$%&*+,\-./:;=?@_~']/` on one unit.
 fn autolink_unit(unit: u16) -> bool {
     char::from_u32(u32::from(unit))
         .is_some_and(|ch| ch.is_ascii_alphanumeric() || "!#$%&*+,-./:;=?@_~'".contains(ch))
@@ -553,7 +543,6 @@ fn matching_close(code: &[u16], open: usize) -> usize {
     code.len()
 }
 
-/// `[from, to)` without leading and trailing whitespace.
 pub fn trimmed_range(code: &[u16], from: usize, to: usize) -> (usize, usize) {
     let mut start = from;
     let mut end = to.min(code.len());
@@ -617,7 +606,6 @@ fn split_arguments(code: &SourceText, open: usize, close: usize) -> Vec<TypstArg
     args
 }
 
-/// Escapes the characters `escapeName` escapes in the TypeScript.
 fn escape_name(name: &str) -> String {
     let mut out = String::with_capacity(name.len());
     for ch in name.chars() {
@@ -678,8 +666,6 @@ fn calls_from(scan: &TypstScan, regex: &JsRegex, source: &SourceText) -> Vec<Typ
         .collect()
 }
 
-/// Calls of any of `names` in code (`name(` not preceded by a name
-/// character).
 pub fn typst_calls(scan: &TypstScan, names: &[&str]) -> Vec<TypstCall> {
     if names.is_empty() {
         return Vec::new();
@@ -721,8 +707,6 @@ pub fn positional_argument<'c>(
         .nth(index)
 }
 
-/// `\n` and `\t` become their characters; any other escaped character
-/// stands for itself.
 pub fn unescape_typst_string(raw: &str) -> String {
     let mut out = String::with_capacity(raw.len());
     let mut chars = raw.chars().peekable();
@@ -753,7 +737,6 @@ pub struct TypstStringValue {
     pub to: usize,
 }
 
-/// The string literal that is exactly `[from, to)` (trimmed), unescaped.
 pub fn string_value(scan: &TypstScan, from: usize, to: usize) -> Option<TypstStringValue> {
     let code = scan.code.units();
     let (start, end) = trimmed_range(code, from, to);
@@ -783,7 +766,6 @@ pub fn strings_within(scan: &TypstScan, from: usize, to: usize) -> Vec<TypstStri
         .collect()
 }
 
-/// `none`, `()`, nothing, an empty string or empty content.
 pub fn is_blank_value(scan: &TypstScan, from: usize, to: usize) -> bool {
     let (start, end) = trimmed_range(scan.code.units(), from, to);
     let compact: String = scan
@@ -806,7 +788,6 @@ pub fn is_code_at(scan: &TypstScan, offset: usize) -> bool {
     scan.kind_at(offset) == Some(CODE)
 }
 
-/// `Number.parseInt(part, 10)`: leading whitespace, then digits.
 fn parse_int(part: &str) -> Option<f64> {
     let digits: String = js_trim_start(part)
         .chars()
@@ -818,8 +799,6 @@ fn parse_int(part: &str) -> Option<f64> {
     digits.parse::<f64>().ok()
 }
 
-/// Whether `version` is at least `minimum`. An unknown or unparsable version
-/// counts as new enough.
 pub fn typst_version_at_least(version: Option<&str>, minimum: &[u32]) -> bool {
     let Some(version) = version.filter(|version| !version.is_empty()) else {
         return true;
@@ -854,7 +833,6 @@ pub fn directory_of(path: &str) -> &str {
     }
 }
 
-/// `..` above the root makes the path unresolvable.
 pub fn normalize_project_path(path: &str) -> Option<String> {
     let replaced = path.replace('\\', "/");
     let mut parts: Vec<&str> = Vec::new();

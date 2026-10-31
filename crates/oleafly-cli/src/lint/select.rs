@@ -1,6 +1,3 @@
-//! Which files `oleafly lint` reads: the whole project (dependency and
-//! vendored folders left out), or the files and folders named, which must be
-//! inside the project.
 use std::path::{Path, PathBuf};
 
 use oleafly_lint::{format_for_path, is_bibtex_source_path, is_latex_source_path};
@@ -10,7 +7,6 @@ use crate::contract::{CliError, ErrorKind};
 pub(crate) const MAX_DEPTH: usize = 64;
 pub(crate) const MAX_FILES: usize = 20_000;
 
-/// A file `lint` has something for.
 pub fn lintable(path: &str) -> bool {
     is_latex_source_path(path) || is_bibtex_source_path(path) || format_for_path(path).is_some()
 }
@@ -34,8 +30,6 @@ fn skipped_folder(name: &str, top: bool) -> bool {
         || (top && name == oleafly_doctools::stats::VENDOR_DIR)
 }
 
-/// Adds the lintable files under `folder` to `out`; `cut` is set when the
-/// file or depth limit left some out.
 fn walk(root: &Path, folder: &Path, depth: usize, out: &mut Vec<String>, cut: &mut bool) {
     if depth > MAX_DEPTH || out.len() >= MAX_FILES {
         *cut = true;
@@ -73,9 +67,6 @@ fn walk(root: &Path, folder: &Path, depth: usize, out: &mut Vec<String>, cut: &m
     }
 }
 
-/// Project-relative slash paths to lint, sorted, and whether the walk's
-/// limits left files out. A relative path is read from `cwd`, or from the
-/// project root when it isn't there (`oleafly -C thesis lint chapters/a.tex`).
 pub fn lint_targets(
     root: &Path,
     requested: &[PathBuf],

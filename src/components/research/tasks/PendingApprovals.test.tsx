@@ -161,11 +161,9 @@ describe("PendingApprovals", () => {
     expect(command.tagName).toBe("PRE");
     expect(command.textContent).toBe(long);
     expect(command).not.toHaveClass("line-clamp-3");
-    // A long command scrolls inside the block instead of growing the card without end.
     expect(command).toHaveClass("max-h-48", "overflow-auto");
     expect(command).toHaveAttribute("tabindex", "0");
     expect(within(section).getByText(copy.detailCommand, { selector: "p" })).toBeInTheDocument();
-    // The command is copyable text, so it is not inside a button.
     expect(command.closest("button")).toBeNull();
   });
 
@@ -200,7 +198,6 @@ describe("PendingApprovals", () => {
     expect(panelHeading).not.toBe(dialogHeading);
     expect(panel.querySelector(`[id="${panelHeading}"]`)).not.toBeNull();
     expect(dialog.querySelector(`[id="${dialogHeading}"]`)).not.toBeNull();
-    // Each banner is named by its own heading, so both are found by name.
     expect(screen.getAllByRole("region", { name: copy.title })).toEqual([panel, dialog]);
     expect(document.querySelectorAll(`[id="${dialogHeading}"]`)).toHaveLength(1);
   });

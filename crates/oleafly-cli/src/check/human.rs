@@ -1,5 +1,3 @@
-//! The report for people: one line per finding, sorted by place, then a
-//! summary line.
 use super::report::{Level, ReportRow};
 use crate::human::plain;
 
@@ -15,14 +13,11 @@ fn sort_key(row: &ReportRow) -> (bool, String, u32, u32) {
     )
 }
 
-/// The rendered report (ends with a newline).
 pub fn render_human(rows: &[ReportRow], quiet: bool) -> String {
     let mut sorted: Vec<&ReportRow> = rows.iter().collect();
     sorted.sort_by_key(|row| sort_key(row));
     let mut out = String::new();
     for row in &sorted {
-        // File names, labels and citation keys come from the project, and an
-        // escape sequence in one would reach the terminal as it stands.
         let place = match (&row.file, &row.range) {
             (Some(file), Some(range)) => {
                 format!(

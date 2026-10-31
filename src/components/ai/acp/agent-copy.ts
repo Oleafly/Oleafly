@@ -14,7 +14,6 @@ export function cliLabel(agent: AcpAgentStatus): string {
   return cli.version ? `${cli.displayName} ${cli.version}` : cli.displayName;
 }
 
-/** The last segment of a Windows or POSIX path. */
 export function fileName(path: string): string {
   const parts = path.split(/[\\/]/);
   for (let index = parts.length - 1; index >= 0; index--) {
@@ -47,7 +46,6 @@ function rejectedLine(candidate: AcpRejectedCandidate, name: string): string | n
   }
 }
 
-/** Why a CLI that was searched for is missing: a skipped file when there is one, else "not found". */
 export function cliMissingDetail(cli: AcpCliStatus): string {
   const rejected = cli.rejected ?? [];
   const ordered = [

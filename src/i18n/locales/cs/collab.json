@@ -224,6 +224,8 @@
     "suggestion_not_found": "Tento návrh už neexistuje. Někdo ho možná přijal nebo odmítl.",
     "suggestion_not_yours": "Tento návrh může vzít zpět jen ten, kdo ho vytvořil.",
     "suggestion_role": "Vaše role v tomto projektu nedovoluje navrhovat změny.",
+    "suggestion_changed": "Text kolem tohoto návrhu se změnil, proto jej musí přijmout nebo odmítnout vlastník či editor.",
+    "suggestion_too_long": "Navržené smazání může mít nejvýše 20 000 znaků. Mažte po menších částech.",
     "chat_role": "Vaše role v tomto projektu to v chatu nedovoluje.",
     "history_unavailable": "Historie tohoto projektu ještě není v tomto počítači. Zkuste to znovu, až se projekt synchronizuje.",
     "account_storage_full": "Účet vlastníka projektu nemá na tomto serveru volné úložiště. Odeberte některé soubory, abyste uvolnili místo, nebo požádejte administrátora serveru o více místa.",
@@ -1126,7 +1128,7 @@
     },
     "restoreProjectConfirm": {
       "title": "Obnovit celý projekt?",
-      "description": "Všechny soubory se pro všechny v tomto projektu vrátí do stavu z {{time}}. Aktuální text zůstane v historii, takže se k němu můžete vrátit.",
+      "textAndDeleted": "Text každého souboru se vrátí do stavu z {{time}} pro všechny v tomto projektu a smazané soubory se obnoví. Přejmenované soubory si ponechají nové názvy a obrázky i soubory přidané později zůstanou beze změny. Aktuální text zůstane v historii, takže se k němu můžete vrátit.",
       "confirm": "Obnovit projekt"
     },
     "compareTitle": "Změny mezi dvěma verzemi",

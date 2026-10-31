@@ -8,6 +8,8 @@ const SOURCE_DIRS = ["src", "packages"];
 const SOURCE_FILE = /\.(ts|tsx)$/;
 const TEST_FILE = /\.(test|spec)\.(ts|tsx)$/;
 const PIXEL_TEXT = /(?:^|[\s"'`:])((?:text|leading)-\[\d+(?:\.\d+)?px\])/gm;
+const EDITOR_THEME = /\bEditorView\.(?:baseTheme|theme)\(/;
+const PIXEL_FONT_SIZE = /(?:\bfontSize|["']font-size["'])\s*:\s*["'`](\d+(?:\.\d+)?px)["'`]/g;
 
 function sourceFiles(): string[] {
   return SOURCE_DIRS.flatMap((dir) =>
@@ -22,6 +24,10 @@ function pixelTextClasses(text: string): string[] {
   return [...text.matchAll(PIXEL_TEXT)].map((match) => match[1]);
 }
 
+function pixelThemeFontSizes(text: string): string[] {
+  return EDITOR_THEME.test(text) ? [...text.matchAll(PIXEL_FONT_SIZE)].map((match) => match[1]) : [];
+}
+
 describe("text that follows the App font size", () => {
   it("recognises fixed pixel text sizes and line heights, with or without a variant", () => {
     expect(
@@ -32,6 +38,20 @@ describe("text that follows the App font size", () => {
   it("sizes interface text in rem, so App font size scales it", () => {
     const offenders = sourceFiles().flatMap((path) =>
       pixelTextClasses(readFileSync(path, "utf8")).map((found) => `${relative(ROOT, path)}: ${found}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it("recognises a fixed pixel font size in a CodeMirror theme, and only there", () => {
+    const theme = `EditorView.theme({ ".a": { fontSize: "11px" }, ".b": { "font-size": '12.5px' }, ".c": { fontSize: "0.75rem" }, ".d": { fontSize: "var(--cm-font-size, 13px)" } })`;
+    expect(pixelThemeFontSizes(theme)).toEqual(["11px", "12.5px"]);
+    expect(pixelThemeFontSizes(theme.replace("EditorView.theme", "EditorView.baseTheme"))).toEqual(["11px", "12.5px"]);
+    expect(pixelThemeFontSizes(`const style = { fontSize: "11px" };`)).toEqual([]);
+  });
+
+  it("sizes CodeMirror theme text in rem, so App font size scales the editor's panels and popups", () => {
+    const offenders = sourceFiles().flatMap((path) =>
+      pixelThemeFontSizes(readFileSync(path, "utf8")).map((found) => `${relative(ROOT, path)}: fontSize ${found}`),
     );
     expect(offenders).toEqual([]);
   });

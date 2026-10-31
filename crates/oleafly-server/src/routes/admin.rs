@@ -572,8 +572,6 @@ async fn patch_settings(
 ) -> Result<Json<RuntimeSettings>, ServerError> {
     auth.require(ServerAction::ChangeSettings)?;
     let change = json_body(body)?;
-    // Offering sign-in by email only makes sense once mail is known to get
-    // through; until then people would wait for links that never come.
     if change.email_link_sign_in == Some(true) && !state.mailer.is_working() {
         let message = if state.mailer.is_configured() {
             MAIL_NOT_WORKING
@@ -582,8 +580,6 @@ async fn patch_settings(
         };
         return Err(ServerError::refused("mail_not_working", message));
     }
-    // The same for notifications: turning them on while mail fails would
-    // look like it worked and send nothing.
     if change.email_notifications == Some(true) && !state.mailer.is_working() {
         let message = if state.mailer.is_configured() {
             NOTIFY_NOT_WORKING

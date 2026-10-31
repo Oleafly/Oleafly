@@ -1,7 +1,5 @@
 import { create } from "zustand";
 
-// Session state machine for the inline AI edit feature. Single source of truth:
-// the CodeMirror diff plugin and the React overlay both read/drive this store.
 export type Phase = "idle" | "prompting" | "streaming" | "reviewing" | "error" | "withdrawn";
 
 export interface Session {
@@ -12,9 +10,6 @@ export interface Session {
   instruction: string;
   proposed: string;
   error?: string;
-  // Set when the instruction was chosen up front (the selection menu's
-  // presets). The panel streams immediately instead of showing the prompt box,
-  // and clears the flag so a retry still lets the instruction be edited.
   autoRun?: boolean;
 }
 
@@ -28,8 +23,6 @@ interface InlineEditState {
     autoRun?: boolean;
   }) => void;
   setInstruction: (s: string) => void;
-  // `original` is the target text as it is when the run starts, which
-  // collaborators may have changed while the instruction was being typed.
   startStreaming: (original?: string) => void;
   appendProposed: (full: string) => void;
   finishReviewing: () => void;

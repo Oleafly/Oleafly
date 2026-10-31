@@ -4,11 +4,8 @@ import { filterMentionEntries } from "@/components/ai/MentionMenu";
 import type { AcpCommand, AcpSession } from "@/lib/acp";
 import { trimTrailingCharacter } from "@/lib/trim-character";
 
-/** What Enter does in the CLI composer. */
 export type AcpComposerMode = "send" | "queue" | "start" | "blocked";
 
-/** `sending`: a message is still on its way to the agent, so the next one
- * waits behind it instead of starting a second turn. */
 export function composerMode(
   session: AcpSession | undefined,
   agentUsable: boolean,
@@ -35,7 +32,6 @@ export interface SkillChoice {
   available?: boolean;
 }
 
-/** The agent's own commands first, then the skills that can be attached. */
 export function acpSlashItems(
   commands: readonly AcpCommand[],
   skills: readonly SkillChoice[],
@@ -84,7 +80,6 @@ export function acpMentionItems(entries: readonly MentionEntry[], query: string)
   }));
 }
 
-/** Images go only to agents that accept them (any agent before a session exists). */
 export function acpAttachmentKinds(session: AcpSession | undefined): AttachmentKind[] {
   return !session || session.capabilities.image ? ["image", "pdf", "text"] : ["pdf", "text"];
 }

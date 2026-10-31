@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { shortcut } from "@/lib/utils";
 
-// The second arg forces the platform so the test doesn't depend on the ambient
-// navigator (which the test host reports as Mac). On macOS `shortcut` is
-// identity, which is what e2e relies on (it runs in the macOS WKWebView and
-// selects buttons by aria-labels that keep the ⌘ glyphs).
 describe("shortcut", () => {
   it("converts mac modifier glyphs to Ctrl/Shift words off Mac", () => {
     expect(shortcut("⌘↵", false)).toBe("Ctrl+Enter");

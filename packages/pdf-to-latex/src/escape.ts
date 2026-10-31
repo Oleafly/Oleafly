@@ -15,7 +15,6 @@ export function escapeLatex(s: string): string {
   return s.replace(/[\\%$&#_{}~^]/g, (c) => MAP[c]);
 }
 
-/** Matches a url whose specials have already been escaped by escapeLatex. */
 const ESCAPED_URL_RE =
   /https?:\/\/(?:\\[%$&#_{}]|\\textasciitilde\{\}|\\textasciicircum\{\}|[^\s\\}]|\\(?=[%$&#_{}]))+/g;
 

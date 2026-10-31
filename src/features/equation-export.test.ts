@@ -136,7 +136,6 @@ describe("equationAtCursor", () => {
 const SVG_SOURCE = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="10"></svg>';
 const PNG_BYTES = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 255, 0, 128]);
 
-/** Stub the browser encoder while observing its drawing and cleanup contract. */
 function rasterizer(options: {
   width?: number;
   height?: number;

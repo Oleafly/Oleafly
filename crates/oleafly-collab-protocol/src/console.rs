@@ -9,7 +9,6 @@ pub const ADMIN_PROJECTS_PAGE_SIZE: u32 = 50;
 pub const ADMIN_PROJECTS_MAX_PAGE_SIZE: u32 = 100;
 pub const ADMIN_PROJECTS_MAX_QUERY_CHARS: usize = 200;
 pub const ADMIN_PROJECTS_MAX_OFFSET: u32 = 1_000_000;
-// How many UTC days, ending with today, the overview's activity covers.
 pub const ACTIVITY_DAYS: u32 = 30;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -40,9 +39,6 @@ pub struct SignInProblem {
     pub reason: String,
 }
 
-// A change that turned out to change comments in a project with comments
-// off. It could not be checked when it arrived, so it was stored and sent
-// to the project's members before a later check found it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommentChangeWhileOff {
     pub project_id: SharedProjectId,
@@ -91,17 +87,13 @@ pub struct StorageUsage {
     pub files_location: FilesLocation,
 }
 
-// Sign-ins on one UTC day: how many, and how many different people.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DailyActivity {
-    // Midnight UTC that starts the day, in milliseconds.
     pub day: i64,
     pub sign_ins: u32,
     pub people: u32,
 }
 
-// Sign-ins in one hour of one weekday, in UTC, over the whole range.
-// Weekday 0 is Sunday.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HourlyActivity {
     pub weekday: u8,
@@ -109,8 +101,6 @@ pub struct HourlyActivity {
     pub sign_ins: u32,
 }
 
-// What the security log recorded over the last `days` UTC days, starting at
-// `since`. Only days and hours with a sign-in are listed; the rest had none.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServerActivity {
     pub since: i64,
@@ -142,7 +132,6 @@ pub struct AdminOverview {
     pub sign_in_problems: Vec<SignInProblem>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub comments_changed_while_off: Vec<CommentChangeWhileOff>,
-    // Left out by servers older than the activity charts.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub activity: Option<ServerActivity>,
 }

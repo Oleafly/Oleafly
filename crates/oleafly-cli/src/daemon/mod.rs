@@ -1,7 +1,3 @@
-//! `oleafly daemon`: the background helper that keeps research tasks
-//! running after the app closes. The app starts it as its own executable
-//! (`--oleafly-daemon`); `oleafly daemon run` runs the same helper in a
-//! terminal, and `oleafly daemon status|stop` look at it and stop it.
 pub mod acp_task;
 pub mod client;
 pub mod control;
@@ -58,9 +54,7 @@ pub struct DaemonStopArgs {
     pub force: bool,
 }
 
-/// How long `oleafly daemon run` stays with nothing to do.
 const FOREGROUND_IDLE: Duration = Duration::from_secs(30);
-/// How long a forced stop waits for the lock after ending the helper.
 const AFTER_TERMINATE: Duration = Duration::from_secs(5);
 
 fn data_root(ctx: &Context) -> Result<PathBuf, CliError> {
@@ -89,7 +83,6 @@ impl crate::commands::CommandModule for Commands {
         }
     }
 
-    /// The helper turns Ctrl+C into its own stop.
     fn handles_interrupt(&self) -> bool {
         matches!(self, Self::Daemon(DaemonCommand::Run(_)))
     }
@@ -122,7 +115,6 @@ async fn run_helper(ctx: &Context, args: DaemonRunArgs) -> Result<Outcome, CliEr
         "The background helper is running. Its log is {}. Press Ctrl+C to stop it.",
         helper_paths(&data_root).log.display()
     ));
-    // The helper builds its own runtime, so it runs on a thread of its own.
     let helper = std::thread::Builder::new()
         .name("oleafly-helper".into())
         .spawn(move || serve(options))
@@ -217,10 +209,6 @@ async fn stop(ctx: &Context, args: DaemonStopArgs) -> Result<Outcome, CliError> 
     }
 }
 
-/// The flags this binary answers before it reads its arguments: the
-/// sandbox's own entries (the Windows launcher, its self-test, a sandboxed
-/// run), a detached run supervisor and the research tool bridge. The CLI's
-/// sandbox state lives in the data folder, as the app's does.
 pub fn reentry() -> Option<i32> {
     let config = crate::app_paths::data_root().map(|root| oleafly_sandbox::SandboxConfig {
         state_dir: root.join("sandbox"),
@@ -280,7 +268,6 @@ mod tests {
 
     #[test]
     fn re_entry_ignores_ordinary_arguments() {
-        // The test binary's own arguments are not re-entry flags.
         assert_eq!(reentry(), None);
     }
 }

@@ -1,13 +1,8 @@
-//! Fixes that are safe to apply without a person looking: one suggestion, a
-//! mechanical kind of problem, and source text that reads exactly like the
-//! prose Harper saw.
-
 use oleafly_preflight::text::SourceText;
 
 use crate::diagnostic::{LintDiagnostic, LintSource, SuggestionKind};
 use crate::prose::ProseInput;
 
-/// Harper lint kinds whose single suggestion can be applied unattended.
 pub const SAFE_FIX_KINDS: &[&str] = &[
     "Repetition",
     "Typo",
@@ -20,9 +15,6 @@ pub fn is_safe_fix_kind(kind: &str) -> bool {
     SAFE_FIX_KINDS.contains(&kind)
 }
 
-/// The prose range that reads the source range `[from, to)`: the identity
-/// without a map; with a Markdown map, from the last prose unit that maps to
-/// `from` (skipping a collapsed space) to the one that maps to `to - 1`.
 pub(crate) fn prose_range(input: &ProseInput, from: usize, to: usize) -> Option<(usize, usize)> {
     let Some(map) = &input.map else {
         return Some((from, to));
@@ -40,8 +32,6 @@ pub(crate) fn prose_range(input: &ProseInput, from: usize, to: usize) -> Option<
     (end > start).then_some((start, end))
 }
 
-/// The source text under `[from, to)` equals the prose under the range
-/// Harper read.
 pub(crate) fn source_matches_prose(
     source: &SourceText,
     input: &ProseInput,
@@ -59,9 +49,6 @@ pub(crate) fn source_matches_prose(
     units[from..to] == prose[prose_from..prose_to]
 }
 
-/// The edit a safe fix makes, as a UTF-16 range of the source and its
-/// replacement; `None` unless the diagnostic is a fixable Harper finding
-/// whose source still reads like the prose.
 pub fn safe_fix(
     diagnostic: &LintDiagnostic,
     source: &SourceText,
@@ -113,7 +100,6 @@ mod tests {
     fn a_fix_is_refused_when_prose_differs_from_source() {
         let text = SourceText::new("See \\cite{knuth} now.".to_string());
         let input = prose_for(ProseFormat::Latex, &text);
-        // "Dummy" stands in for the citation in the prose, not in the source.
         assert_eq!(
             safe_fix(
                 &harper(4, 9, SuggestionKind::Replace, "Dumb"),
@@ -155,7 +141,6 @@ mod tests {
     fn markdown_fixes_need_contiguous_prose() {
         let text = SourceText::new("A  `x`  teh end.".to_string());
         let input = prose_for(ProseFormat::Markdown, &text);
-        // Prose "A teh end." maps "teh" back to source units 8..11.
         assert_eq!(prose_range(&input, 8, 11), Some((2, 5)));
         assert_eq!(
             safe_fix(
@@ -165,7 +150,6 @@ mod tests {
             ),
             Some((8, 11, "the".to_string()))
         );
-        // The range spans a collapsed gap, so the prose reads differently.
         assert_eq!(
             safe_fix(&harper(0, 11, SuggestionKind::Replace, "x"), &text, &input),
             None

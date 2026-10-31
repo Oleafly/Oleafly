@@ -25,8 +25,6 @@ export function PermissionCard({
   onChoose: (id: string, option: string | null) => Promise<void>;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
-  // The agent writes its own title, often with absolute paths. Display only:
-  // the answer goes back by request id.
   const displayText = useDisplayText();
   const [busy, setBusy] = useState(false);
   const [expired, setExpired] = useState(request.expiresAt <= Date.now());

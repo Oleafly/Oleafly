@@ -36,8 +36,6 @@ function account(base: string, overrides: Partial<ForgeAccount> = {}): ForgeAcco
   return { base, kind: "gitlab", login: "octo", auth: "token", addedAt: 1, ...overrides };
 }
 
-// The same rows as crates/oleafly-forge/src/address.rs. "credential" is the
-// Rust rule that decides who gets a token; "ui" is the avatar and host shown.
 const MATCH_TABLE: [string, string, boolean, boolean][] = [
   ["https://gitlab.com", "https://gitlab.com/group/sub/paper.git", true, true],
   ["https://gitlab.com", "https://GITLAB.com:443/group/paper.git", true, true],
@@ -136,7 +134,6 @@ describe("remote address checks", () => {
   });
 
   it("spots an access token in the user name position and keeps ordinary user names", () => {
-    // The same rows as `has_remote_password` in git.rs.
     for (const token of [
       "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
       "gho_abc",
@@ -154,7 +151,6 @@ describe("remote address checks", () => {
     for (const user of ["u", "octocat", "zoe-q", "first.last", "me%40corp.example", "abcdefghijklmnopqrs"]) {
       expect(hasRemotePassword(`https://${user}@h.org/o/r.git`), user).toBe(false);
     }
-    // SSH user names are not credentials.
     expect(hasRemotePassword("ssh://ghp_abcdefghijklmnopqrstuvwxyz@h.org/o/r.git")).toBe(false);
     expect(hasRemotePassword("ghp_abcdefghijklmnopqrstuvwxyz@h.org:o/r.git")).toBe(false);
   });

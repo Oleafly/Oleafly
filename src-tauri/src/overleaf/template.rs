@@ -28,7 +28,6 @@ const GALLERY_KINDS: [&[&str]; 3] = [
     &["articles"],
 ];
 
-/// A gallery page: the server it lives on and its path below that server.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TemplateLink {
     pub base: String,
@@ -62,9 +61,6 @@ fn safe_segment(segment: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
 }
 
-/// Accept a link to a gallery page on overleaf.com (any language subdomain),
-/// or on the server the account import uses, which covers a university's own
-/// server. The page's PDF link is accepted too and read as the page.
 pub(crate) fn parse_link(input: &str, server: &str) -> Result<TemplateLink, String> {
     let raw = input.trim();
     let with_scheme = if raw.contains("://") {
@@ -126,7 +122,6 @@ pub(crate) fn parse_link(input: &str, server: &str) -> Result<TemplateLink, Stri
     })
 }
 
-/// What the page's Open as Template link carries.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct OpenAsTemplate {
     pub version_id: String,
@@ -206,8 +201,6 @@ fn strip_tags(fragment: &str) -> String {
     decoded.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// The value beside a bold label in the page's details list, such as
-/// `<div><b>Author:</b></div><div>IEEE</div>`.
 fn detail(page: &str, label: &str) -> Option<String> {
     let marker = format!("<b>{label}</b>");
     let at = page.find(&marker)? + marker.len();
@@ -236,8 +229,6 @@ pub(crate) fn parse_page(page: &str, page_path: &str) -> TemplatePage {
     }
 }
 
-/// Fetch a public page, following the gallery's own redirects (a renamed
-/// template keeps its old address) as long as they stay on the same server.
 async fn fetch_public(http: &Http, path: &str, limit: usize) -> Result<Vec<u8>, String> {
     let mut path = path.to_string();
     for _ in 0..=MAX_REDIRECTS {
@@ -308,7 +299,6 @@ fn compiler_name(engine: Option<&str>) -> Option<&'static str> {
 #[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct TemplateDetails {
-    /// The server whose sign-in the import needs.
     pub server: String,
     pub link: String,
     pub title: String,
@@ -340,8 +330,6 @@ fn details_for(link: &TemplateLink, page: TemplatePage) -> TemplateDetails {
     }
 }
 
-/// The body for the server's Open as Template request. Fields it does not
-/// know are left out, since it rejects unexpected or empty ones.
 pub(crate) fn create_body(open: &OpenAsTemplate, name: &str) -> Value {
     let mut body = Map::new();
     body.insert("templateId".into(), Value::String(open.template_id.clone()));
@@ -368,7 +356,6 @@ pub(crate) fn create_body(open: &OpenAsTemplate, name: &str) -> Value {
     Value::Object(body)
 }
 
-/// The saved sign-in for `base`, refreshed, with a token for form posts.
 async fn signed_in(base: &str) -> Result<(Http, String, String), String> {
     let stored =
         session::load(base)?.ok_or_else(|| String::from(AppError::new("overleaf.signed_out")))?;
@@ -442,8 +429,6 @@ fn forget_if_expired(base: &str, result: Result<String, String>) -> Result<Strin
     result
 }
 
-/// A gallery page's details, for showing before anything is imported. No
-/// sign-in is needed.
 #[tauri::command]
 pub async fn overleaf_template_details(
     server: Option<String>,
@@ -456,7 +441,6 @@ pub async fn overleaf_template_details(
     Ok(details_for(&link, page))
 }
 
-/// The PDF the gallery shows for a template, for rendering its first page.
 #[tauri::command]
 pub async fn overleaf_template_pdf(
     server: Option<String>,
@@ -472,9 +456,6 @@ pub async fn overleaf_template_pdf(
     Ok(tauri::ipc::Response::new(bytes))
 }
 
-/// Copy a gallery template into the signed-in account, download the copy and
-/// save it as a custom template. The copy stays in the account, as it would
-/// after Open as Template there.
 #[tauri::command]
 pub async fn overleaf_import_template(
     app: AppHandle,
@@ -523,8 +504,6 @@ pub(crate) async fn import_template(
     forget_if_expired(&link.base, result)
 }
 
-/// Save one of the account's projects as a custom template, keeping its main
-/// document and compiler. Nothing changes in the account.
 #[tauri::command]
 pub async fn overleaf_save_project_as_template(
     app: AppHandle,

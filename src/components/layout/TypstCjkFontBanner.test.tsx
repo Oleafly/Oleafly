@@ -93,14 +93,29 @@ describe("TypstCjkFontBanner", () => {
     expect(localStorage.getItem("oleafly.typstCjkFonts.cjk-close")).not.toBeNull();
   });
 
-  it("checks fonts once per project however often the document compiles", async () => {
+  it("checks fonts once per project however often the same characters compile", async () => {
     project("cjk-once", "中文");
     const { rerender } = render(<TypstCjkFontBanner />);
     await screen.findByTestId("typst-cjk-font-banner");
-    useCompileStore.setState({ compiledSources: { fsEpoch: 1, texts: { "main.typ": "中文 更多" } } });
+    useCompileStore.setState({ compiledSources: { fsEpoch: 1, texts: { "main.typ": "中文 again" } } });
     rerender(<TypstCjkFontBanner />);
     await screen.findByTestId("typst-cjk-font-banner");
     expect(coverage).toHaveBeenCalledTimes(1);
+  });
+
+  it("checks again when the document gains characters the last check did not cover", async () => {
+    coverage.mockResolvedValueOnce({ uncovered: "", packsApply: true });
+    project("cjk-grows", "中文");
+    const { rerender } = render(<TypstCjkFontBanner />);
+    await waitFor(() => expect(coverage).toHaveBeenCalledTimes(1));
+    expect(screen.queryByTestId("typst-cjk-font-banner")).toBeNull();
+
+    coverage.mockResolvedValueOnce({ uncovered: "한", packsApply: true });
+    useCompileStore.setState({ compiledSources: { fsEpoch: 1, texts: { "main.typ": "中文 한국어" } } });
+    rerender(<TypstCjkFontBanner />);
+
+    expect(await screen.findByTestId("typst-cjk-font-banner")).toBeInTheDocument();
+    expect(coverage).toHaveBeenLastCalledWith("cjk-grows", expect.stringContaining("한"));
   });
 
   it("stays hidden without CJK text, once the pack is installed, outside Typst, or when fonts cover the text", async () => {

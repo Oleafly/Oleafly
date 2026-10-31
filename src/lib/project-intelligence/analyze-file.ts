@@ -1986,9 +1986,6 @@ function addLatexBibliographyEdges(
 
 }
 
-// Keep command candidates in the per-file cache. Project assembly retains
-// only names actually defined by this project, avoiding false "unknown
-// command" findings for the LaTeX/package command universe.
 function addLatexCommandCandidates(
   file: string,
   masked: string,
@@ -2922,8 +2919,6 @@ function typstCitationArgumentEnd(
   let cursor = from;
   let depth = 1;
   while (cursor < codeMask.length && depth > 0) {
-    // String contents (including escaped quotes) are blanked in codeMask,
-    // while structural parentheses and offsets are preserved.
     if (codeMask[cursor] === "(") depth++;
     else if (codeMask[cursor] === ")") depth--;
     cursor++;
@@ -3040,7 +3035,6 @@ function legacyDefinitionSkipped(
   symbol: Sym,
   source: string,
 ): boolean {
-  // Re-extracted below with TeX comment-splicing and source mapping.
   if (engine === "latex" && symbol.kind === "label") return true;
   return (
     engine === "typst" &&
@@ -3064,8 +3058,6 @@ function addLegacyDefinitions(
       engine === "latex" &&
       (kind === "macro" || kind === "environment")
     ) {
-      // Re-extracted below with complete argument metadata and ignored-region
-      // masking so project completion never revives commented/code examples.
       continue;
     }
     const definition = addDefinition(
@@ -3091,9 +3083,6 @@ function legacyUseSkipped(
   engine: ProjectIntelligenceEngine,
   kind: ProjectUseKind,
 ): boolean {
-  // The engine-aware extractors below understand multiline/comment-spliced
-  // TeX groups and Markdown URL/code masking. Retaining the legacy regex
-  // copy would reintroduce false or incorrectly ranged duplicate uses.
   if (engine === "latex") {
     return kind === "reference" || kind === "citation";
   }

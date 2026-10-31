@@ -1,6 +1,3 @@
-//! `oleafly typst versions|install|default|remove`: the Typst versions the
-//! app manages under Settings › Downloads, from the command line. The rules
-//! and the verified download are the app's (`oleafly_downloads::typst`).
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
 
@@ -81,7 +78,6 @@ impl CommandModule for Commands {
     }
 }
 
-/// A Typst failure, with the exit code it deserves.
 pub(crate) fn typst_error(error: TypstToolchainError) -> CliError {
     let version = error.version.clone();
     let (kind, code): (ErrorKind, &'static str) = match (error.code, error.install) {
@@ -146,8 +142,6 @@ fn data_root(ctx: &Context) -> Result<PathBuf, CliError> {
     })
 }
 
-/// The toolchain as the app sees it: its data folder, the Typst that ships
-/// with Oleafly, and the app's default.
 fn toolchain(ctx: &Context, lookup: SystemLookup) -> Result<TypstToolchain, CliError> {
     let data_root = data_root(ctx)?;
     let discovery = Discovery::from_env(ctx.project());
@@ -173,7 +167,6 @@ async fn blocking<T: Send + 'static>(
         .map_err(|error| CliError::internal(format!("A background task failed: {error}")))?
 }
 
-/// The version the project in `-C` pins, when it is a Typst project.
 fn project_pin(ctx: &Context) -> Option<String> {
     let opened = crate::engine::open_project(ctx.project(), None, None).ok()?;
     let manifest = opened.workspace.manifest();
@@ -274,8 +267,6 @@ fn phase_label(phase: InstallPhase) -> &'static str {
     }
 }
 
-/// Shows install progress: events with `--events`, a line that updates in
-/// place on a terminal, one line per phase otherwise.
 struct ProgressReport {
     terminal: bool,
     last_phase: Option<InstallPhase>,

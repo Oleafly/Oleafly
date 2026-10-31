@@ -1,6 +1,3 @@
-//! Web search and fetch for a run: the provider's own tools where it has
-//! them, else the local tools (search needs the user's Brave, Tavily or
-//! Serper key from Settings).
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -16,10 +13,8 @@ pub(crate) const WEB_USER_AGENT: &str = concat!(
     " (+https://oleafly.com)"
 );
 
-/// Connector-secret ids, in the order the run prefers them.
 const SEARCH_KEY_IDS: [&str; 3] = ["brave-search", "tavily", "serper"];
 
-/// The first configured search key: Brave, then Tavily, then Serper.
 pub(crate) fn search_key_from(secrets: &HashMap<String, String>) -> Option<SearchKey> {
     SEARCH_KEY_IDS.iter().find_map(|id| {
         let key = secrets.get(*id)?.trim();
@@ -35,7 +30,6 @@ pub(crate) fn search_key_from(secrets: &HashMap<String, String>) -> Option<Searc
     })
 }
 
-/// Reads the connector secrets (blocking).
 pub(crate) fn configured_search_key() -> Option<SearchKey> {
     crate::secrets::read_connector_secrets()
         .ok()
@@ -47,9 +41,6 @@ pub(crate) struct RunWeb {
     pub notices: Vec<AgentEvent>,
 }
 
-/// Adds the local web tools a request needs on this model, those its
-/// provider does not run itself, and returns the notices for the user.
-/// Tools already in the request are kept as they are.
 pub(crate) fn add_local_web_tools(
     request: &mut CompletionRequest,
     resolved: &Resolved,
@@ -67,8 +58,6 @@ pub(crate) fn add_local_web_tools(
     add_missing_web_tools(request, web, native, has_search_key)
 }
 
-/// Adds the local tool for each web tool the request asks for that the
-/// provider does not run (`native`), with a notice when search has no key.
 fn add_missing_web_tools(
     request: &mut CompletionRequest,
     web: WebTools,
@@ -97,16 +86,6 @@ fn add_missing_web_tools(
     notices
 }
 
-/// Adds the local web tools the request needs and builds the run's web
-/// context, seeded with the URLs the conversation already holds. A no-op
-/// unless the chat turned web on. The context exists even when the
-/// provider runs both tools itself, so subagents on other models can use
-/// the local ones.
-///
-/// `hosted_allowed` is false in a folder the user has not trusted: the
-/// provider's own web tools run on its servers, where the folder-trust
-/// prompt cannot ask before them, so the run uses the local tools, which
-/// it asks about, and the request no longer asks the provider for its own.
 pub(crate) fn prepare_run_web(
     request: &mut CompletionRequest,
     resolved: &Resolved,
@@ -133,8 +112,6 @@ pub(crate) fn prepare_run_web(
     })
 }
 
-/// The tool names a run's web context can answer, for the allowlist that
-/// subagents' calls pass through.
 pub(crate) fn web_tool_names(ctx: &WebToolContext) -> Vec<String> {
     let mut names = vec![WEB_FETCH_TOOL.to_string()];
     if ctx.has_search() {
@@ -159,7 +136,6 @@ pub struct WebSupport {
     pub search_provider: Option<String>,
 }
 
-/// How web search and fetch work for this model, for the chat's Web toggle.
 pub(crate) fn web_support_for(resolved: &Resolved, key: Option<&SearchKey>) -> WebSupport {
     let native = native_web(
         &resolved.provider_id,
@@ -199,7 +175,6 @@ pub(crate) fn web_support_for(resolved: &Resolved, key: Option<&SearchKey>) -> W
     }
 }
 
-/// Web support for a model, or for the active model when no ids are given.
 #[tauri::command]
 pub async fn agent_web_support(
     provider_id: Option<String>,
@@ -355,8 +330,6 @@ mod tests {
             false,
         )
         .unwrap();
-        // The provider is not asked for its own tools, and the local ones
-        // stand in for them.
         assert_eq!(request.web, None);
         assert_eq!(names(&request), ["web_fetch", "web_search"]);
         assert!(run.ctx.is_some() && run.notices.is_empty());
@@ -369,7 +342,6 @@ mod tests {
             "{body}"
         );
 
-        // Without a search key only fetch is local, and the user is told.
         let mut keyless = web_request();
         let run = prepare_run_web(
             &mut keyless,

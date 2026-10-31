@@ -26,17 +26,11 @@ const IDLE: Duration = Duration::from_secs(15 * 60);
 const MAX_SLOTS: usize = 1_024;
 const BUSY_TRIES: u32 = 20;
 const BUSY_PAUSE: Duration = Duration::from_millis(100);
-// How long a check waits for a snapshot build of its own project, whose
-// reservation may have taken the check's kept document.
 const BUILD_WAIT: Duration = Duration::from_secs(60);
 const WARN_EVERY: Duration = Duration::from_secs(60 * 60);
-// Changes stored unchecked are checked in pages of this many, a check the
-// budget turned away is tried again after RECHECK_RETRY, and a change the
-// project's document doesn't hold is given up after MAX_RECHECKS tries.
 const RECHECK_PAGE: i64 = 64;
 const RECHECK_RETRY: Duration = Duration::from_secs(60);
 const MAX_RECHECKS: i64 = 5;
-// The admin overview names changes found in this many recent days.
 const NOTICE_DAYS: i64 = 30;
 const DAY_MS: i64 = 24 * 60 * 60 * 1000;
 const NOTICES: i64 = 20;
@@ -49,9 +43,6 @@ pub enum Verdict {
     Unchecked,
 }
 
-// One check per project runs at a time, so two changes that arrive together
-// don't both read the project. The document itself is kept with the
-// snapshots, inside their memory budget.
 struct Slot {
     turn: Mutex<()>,
     used: std::sync::Mutex<Instant>,
@@ -70,16 +61,9 @@ pub struct CommentGuard {
     rechecks: Arc<Rechecks>,
 }
 
-// Changes stored while comments were off but without their check, because
-// the project's document didn't fit the snapshot memory budget then. Each
-// is checked once it does: when a later check reads the project, a minute
-// after the budget was busy, and when the server starts, which is when a
-// larger budget takes effect. A change found to change comments is already
-// stored and sent, so it goes in the security log and the admin overview.
 #[derive(Default)]
 struct Rechecks {
     waiting: std::sync::Mutex<HashSet<SharedProjectId>>,
-    // Projects being checked, each with whether to go again once done.
     running: std::sync::Mutex<HashMap<SharedProjectId, bool>>,
     retrying: std::sync::Mutex<HashSet<SharedProjectId>>,
     busy: AtomicUsize,
@@ -111,15 +95,12 @@ struct Waiting {
     device: String,
 }
 
-// How a stored change stood once its project's document was read.
 enum Rechecked {
     Clean,
     ChangedComments,
     NotHeld,
 }
 
-// Notes a change stored without its comment check, in the transaction that
-// stores it.
 pub(crate) fn queue_recheck(
     conn: &Connection,
     project: SharedProjectId,
@@ -150,8 +131,6 @@ pub(crate) fn queue_recheck(
     Ok(())
 }
 
-// Changes tried fewer times come first, so one the document doesn't hold
-// never keeps the rest waiting.
 fn waiting_rechecks(
     conn: &Connection,
     project: SharedProjectId,
@@ -232,7 +211,6 @@ fn settle_rechecks(
     Ok(given_up)
 }
 
-// Changes found to have changed comments while they were off, newest first.
 pub fn noticed(conn: &Connection, now: i64) -> Result<Vec<CommentChangeWhileOff>, ServerError> {
     let mut statement = conn.prepare_cached(
         "SELECT s.target, p.title, s.actor, s.at FROM security_log s LEFT JOIN projects p ON p.id = s.target \
@@ -268,8 +246,6 @@ pub fn noticed(conn: &Connection, now: i64) -> Result<Vec<CommentChangeWhileOff>
         .collect())
 }
 
-// Whether the stored change with these spans changed comments, read from a
-// document that holds it.
 fn rechecked(doc: &LoroDoc, spans: &[Span]) -> Rechecked {
     let held = doc.oplog_vv();
     let trimmed = doc.shallow_since_vv();
@@ -293,7 +269,6 @@ fn rechecked(doc: &LoroDoc, spans: &[Span]) -> Rechecked {
     }
 }
 
-// Reads which projects have changes waiting and checks them.
 pub async fn resume(state: &AppState) {
     let waiting = state
         .db
@@ -355,8 +330,6 @@ async fn recheck_project(state: &AppState, project: SharedProjectId) {
     }
 }
 
-// Checks one page. False when the project's document can't be read now,
-// or the document doesn't hold any of the page's changes yet.
 async fn recheck_page(
     state: &AppState,
     project: SharedProjectId,
@@ -374,8 +347,6 @@ async fn recheck_page(
                 guard.recheck_later(state, project);
                 return Ok(false);
             }
-            // The budget only grows when the server starts again, and that
-            // checks every project with changes waiting.
             Current::TooLarge { .. } | Current::Missing => return Ok(false),
         },
     };
@@ -416,8 +387,6 @@ async fn recheck_page(
 }
 
 impl CommentGuard {
-    // Checks the project's changes waiting for a check, now or once the
-    // check running for it is done.
     pub fn recheck(&self, state: &AppState, project: SharedProjectId) {
         locked(&self.rechecks.waiting).insert(project);
         {
@@ -447,8 +416,6 @@ impl CommentGuard {
         });
     }
 
-    // A check that could read the project's document shows the budget has
-    // room for it, so the changes waiting for the project go next.
     pub fn read_project(&self, state: &AppState, project: SharedProjectId) {
         if locked(&self.rechecks.waiting).contains(&project) {
             self.recheck(state, project);
@@ -467,7 +434,6 @@ impl CommentGuard {
         });
     }
 
-    // Waits until no check of changes stored unchecked is running.
     pub async fn rechecks_settled(&self) {
         loop {
             let idle = self.rechecks.idle.notified();
@@ -518,14 +484,11 @@ impl CommentGuard {
         snapshots: &Snapshots,
         project: SharedProjectId,
         payload: Vec<u8>,
+        reach: &Reach,
     ) -> Result<Verdict, ServerError> {
         let slot = self.slot(project);
         let _turn = slot.turn.lock().await;
-        let kept = snapshots.take_kept(Keep::CommentChecks, project);
-        let current = match snapshots.caught_up(db, project, kept).await? {
-            Some(current) => Some(current),
-            None => self.read(db, snapshots, project).await?,
-        };
+        let current = self.current(db, snapshots, project, reach, true).await?;
         let Some((replay, seq)) = current else {
             return Ok(Verdict::Unchecked);
         };
@@ -553,15 +516,12 @@ impl CommentGuard {
         snapshots: &Snapshots,
         project: SharedProjectId,
         payload: Vec<u8>,
+        reach: &Reach,
         rule: RoleRule,
     ) -> Result<RoleVerdict, ServerError> {
         let slot = self.slot(project);
         let _turn = slot.turn.lock().await;
-        let kept = snapshots.take_kept(Keep::CommentChecks, project);
-        let current = match snapshots.caught_up(db, project, kept).await? {
-            Some(current) => Some(current),
-            None => self.read_quietly(db, snapshots, project).await?,
-        };
+        let current = self.current(db, snapshots, project, reach, false).await?;
         let Some((replay, seq)) = current else {
             return Ok(RoleVerdict::Unchecked);
         };
@@ -583,28 +543,21 @@ impl CommentGuard {
         Ok(verdict)
     }
 
-    async fn read_quietly(
+    async fn current(
         &self,
         db: &Db,
         snapshots: &Snapshots,
         project: SharedProjectId,
+        reach: &Reach,
+        warn: bool,
     ) -> Result<Option<(Budgeted, u64)>, ServerError> {
-        self.read_for(db, snapshots, project, false).await
+        let kept = snapshots.take_kept(Keep::CommentChecks, project);
+        match snapshots.caught_up(db, project, kept).await? {
+            Some(current) if !holds(current.0.doc(), reach) => Ok(Some(current)),
+            _ => self.read_for(db, snapshots, project, warn).await,
+        }
     }
 
-    async fn read(
-        &self,
-        db: &Db,
-        snapshots: &Snapshots,
-        project: SharedProjectId,
-    ) -> Result<Option<(Budgeted, u64)>, ServerError> {
-        self.read_for(db, snapshots, project, true).await
-    }
-
-    // Kept documents already give their memory to this read when it needs
-    // it, so waiting here only waits for documents in use and builds. A
-    // build of this very project is waited for to its end, once, since its
-    // memory comes back when it finishes.
     async fn read_for(
         &self,
         db: &Db,
@@ -675,6 +628,15 @@ fn rewound(project: SharedProjectId, replay: &Replay, before: &Frontiers) -> Opt
         })
         .ok()?;
     Replay::start(project, &bytes)
+}
+
+fn holds(doc: &LoroDoc, reach: &Reach) -> bool {
+    let known = doc.oplog_vv();
+    !reach.ends.is_empty()
+        && reach
+            .ends
+            .iter()
+            .all(|(peer, end)| known.get(peer).is_some_and(|at| at >= end))
 }
 
 fn judge(doc: &LoroDoc, payload: &[u8]) -> (Verdict, bool) {

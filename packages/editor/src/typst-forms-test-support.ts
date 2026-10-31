@@ -8,8 +8,6 @@ export function readTypstFormsFixture(relative: string): string {
   return readFileSync(path.join(TYPST_FORMS_FIXTURE_ROOT, relative), "utf8");
 }
 
-// The golden catalog the Rust parser produces for the fixture project. `version` and
-// `watch` depend on the machine, so the golden leaves them out.
 export function typstFormsGolden(): TypstFormCatalog {
   const golden = JSON.parse(readTypstFormsFixture("expected/catalog.json")) as Pick<
     TypstFormCatalog,

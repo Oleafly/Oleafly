@@ -21,8 +21,6 @@ let editor: Editor | null = null;
 let visible = false;
 let setVisibility: ((visible: boolean) => void) | null = null;
 let flushPendingEdits: (() => void) | null = null;
-// Distinguishes two mounts of the same project across close/reopen. Project ID
-// alone cannot reject a late cleanup from the earlier mount.
 let projectSessionGeneration = 0;
 let projectNavigation: {
   goToDefinition: () => boolean;
@@ -97,10 +95,6 @@ export function getWysiwygProjectSessionGeneration(): number {
   return projectSessionGeneration;
 }
 
-/**
- * Navigation targets source offsets, so cross-file definition/reference jumps
- * reveal the source editor before selecting the exact range.
- */
 export function revealSourceEditor() {
   setVisibility?.(false);
 }

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sharedPdfDocumentOptions } from "@oleafly/preview/pdfDocumentOptions";
 
 const mocks = vi.hoisted(() => ({
   destroy: vi.fn(),
@@ -83,6 +84,7 @@ describe("extractPdfText", () => {
     const passed = mocks.getDocument.mock.calls[0][0].data as Uint8Array;
     expect(passed).toEqual(bytes);
     expect(passed).not.toBe(bytes);
+    expect(mocks.getDocument.mock.calls[0][0]).toMatchObject(sharedPdfDocumentOptions());
   });
 
   it("keeps going when page cleanup throws and still destroys the task", async () => {

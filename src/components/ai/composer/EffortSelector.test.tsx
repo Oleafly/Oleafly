@@ -9,7 +9,6 @@ beforeAll(async () => {
   await initTestI18n();
 });
 
-// One press opens the menu; a second one (pointer, then Enter) would close it again.
 function open() {
   fireEvent.pointerDown(screen.getByTestId("ai-effort-selector"), { button: 0, ctrlKey: false, pointerType: "mouse" });
 }

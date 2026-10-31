@@ -11,8 +11,6 @@ fail() {
   exit 1
 }
 
-# A stand-in for npx: it records each call, keeps a copy of the staged
-# folder that `pack` receives, and writes a fake bundle.
 mkdir -p "$SCRATCH/bin"
 cat >"$SCRATCH/bin/npx" <<'EOF'
 #!/usr/bin/env bash

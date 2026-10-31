@@ -15,9 +15,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { ForgeAccount } from "@/lib/tauri";
 
-/** The project's remote in the Source Control header: open it on its server,
- * copy its link, or go to the Git hosting settings. Shows the account's
- * avatar only when an account matches the remote. */
 export function RemoteMenu({
   webUrl,
   host,

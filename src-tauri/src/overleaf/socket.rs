@@ -1,4 +1,3 @@
-//! The editor socket's settings exchange (in `oleafly-online`).
 use serde_json::Value;
 
 pub(crate) use oleafly_online::socket::{
@@ -8,7 +7,6 @@ pub(crate) use oleafly_online::socket::{
 use super::client::Http;
 use super::errors::app_error;
 
-/// The project as the editor's socket sends it (settings, root document).
 pub(crate) async fn fetch_project(
     http: &Http,
     cookie: &str,

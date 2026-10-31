@@ -615,7 +615,6 @@ fn the_shell_path_is_read_without_waiting_on_background_jobs() {
         ]
     );
     assert!(started.elapsed() < test_wait::CHILD_PATIENCE);
-    // The background job outlives the probe on purpose; stop it now.
     if let Some(pid) =
         test_wait::read_until_blocking(&background, test_wait::CHILD_PATIENCE, test_wait::pid)
     {
@@ -640,9 +639,6 @@ fn the_shell_path_is_read_without_waiting_on_background_jobs() {
             pid_file.display()
         ),
     );
-    // The probe kills the stuck shell when its timeout runs out, and on a
-    // loaded machine that can be before the shell has written helper.pid.
-    // Nothing writes it once the probe returns, so retry with a longer timeout.
     let mut helper = None;
     for timeout in [
         Duration::from_millis(500),

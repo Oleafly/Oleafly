@@ -4,12 +4,6 @@ use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 
-// Persisted per-project tool-approval decisions: ~/.oleafly/approvals.toml.
-// The webview consults these before running a tool (allow skips the prompt,
-// deny skips execution entirely); agent_tool_result re-checks deny as
-// defense-in-depth so a compromised webview cannot smuggle a denied tool's
-// output back into the model context.
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ToolDecision {
@@ -58,11 +52,6 @@ impl ApprovalsFile {
 
 static APPROVALS_WRITE_LOCK: Mutex<()> = Mutex::new(());
 
-/// Every tool name a rule can match: the assistant's tools, helper agents'
-/// and the MCP server's. Tools from connected MCP servers are named
-/// `mcp_ext_<server>_<tool>_<hash>`. Tests in src/lib/mcp-bridge.test.ts and
-/// packages/ai-tools/src/known-tools.test.ts keep this list in step with the
-/// tools the MCP bridge and the in-app chat register.
 const KNOWN_TOOLS: &[&str] = &[
     "close_agent",
     "compile",
@@ -117,11 +106,8 @@ const KNOWN_TOOLS: &[&str] = &[
 
 const MCP_TOOL_PREFIX: &str = "mcp_ext_";
 
-/// Tools Oleafly had and removed. Rules that still name them load without a
-/// warning and do nothing.
 const RETIRED_TOOLS: &[&str] = &["computer_use"];
 
-/// A rule whose tool name matches no tool, with the closest real name.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UnknownTool {
     pub name: String,
@@ -159,7 +145,6 @@ fn closest_tool(name: &str) -> Option<&'static str> {
         .map(|(_, known)| known)
 }
 
-/// One entry per unknown name, however many projects use it.
 fn unknown_tools(approvals: &ApprovalsFile) -> Vec<UnknownTool> {
     approvals
         .decisions
@@ -239,7 +224,6 @@ pub fn mode_for(root: &Path, project_id: &str) -> ApprovalMode {
     try_mode_for(root, project_id).unwrap_or(ApprovalMode::Custom)
 }
 
-// 0.4.8 D: the approval mode a CLI-agent session starts under (kebab-case).
 pub(crate) fn mode_name(root: &Path, project_id: &str) -> Option<String> {
     let mode = try_mode_for(root, project_id).ok()?;
     serde_json::to_value(mode)
@@ -274,8 +258,6 @@ pub fn effective_decision_for(root: &Path, project_id: &str, tool: &str) -> Opti
     }
 }
 
-/// The Oleafly tools whose rules cover an ACP agent's permission request of
-/// this kind.
 fn tools_for_acp_kind(kind: Option<&str>) -> &'static [&'static str] {
     match kind {
         Some("execute") => &["run_command"],
@@ -288,8 +270,6 @@ fn tools_for_acp_kind(kind: Option<&str>) -> &'static [&'static str] {
     }
 }
 
-/// The tool whose deny rule refuses an ACP agent's permission request of this
-/// kind, if any. A file that can't be read denies, as everywhere else.
 pub fn acp_request_denied_by(
     root: &Path,
     project_id: &str,
@@ -301,10 +281,6 @@ pub fn acp_request_denied_by(
         .find(|tool| effective_decision_for(root, project_id, tool) == Some(ToolDecision::Deny))
 }
 
-/// Whether Full access approves a helper agent's permission request of this
-/// kind without asking. A kind no tool's rules cover, such as fetch, think or
-/// none at all, asks while the project has any deny rule, because the request
-/// may do what a rule forbids. An unreadable file asks.
 pub fn helper_request_auto_approved(root: &Path, project_id: &str, kind: Option<&str>) -> bool {
     let Ok(approvals) = read_file(root) else {
         return false;
@@ -322,12 +298,6 @@ fn has_deny_rule(approvals: &ApprovalsFile, project_id: &str) -> bool {
         .is_some_and(|decisions| decisions.values().any(|d| *d == ToolDecision::Deny))
 }
 
-/// Whether the project's rules refuse a research task's permission request.
-/// A task works on a temporary copy that the user reviews before applying,
-/// and nobody answers its requests, so it gets no card: a deny rule refuses
-/// its tool, and while the project has any deny rule, a kind no tool's rules
-/// cover is refused too. Everything else goes ahead, in every mode. No data
-/// folder or a file that can't be read refuses, as everywhere else.
 pub fn task_request_refused(root: Option<&Path>, project_id: &str, kind: Option<&str>) -> bool {
     let Some(root) = root else {
         return true;
@@ -441,8 +411,6 @@ pub fn approvals_read_raw() -> Result<String, String> {
     read_raw(&crate::paths::oleafly_root()?)
 }
 
-/// Saves the rules file and returns a warning for each rule that names no
-/// tool, ready to show next to the saved message.
 #[tauri::command]
 pub fn approvals_write_raw(text: String) -> Result<Vec<String>, String> {
     let unknown = write_raw(&crate::paths::oleafly_root()?, &text)?;
@@ -478,8 +446,6 @@ fn ensure_mode_allowed(project_id: &str, mode: ApprovalMode) -> Result<(), Strin
     Ok(())
 }
 
-/// Choosing Full access applies at once, with no confirmation; the project
-/// still has to be in a trusted folder.
 #[tauri::command]
 pub fn approvals_mode_set(project_id: String, mode: ApprovalMode) -> Result<(), String> {
     crate::paths::validate_project_id(&project_id)?;
@@ -525,7 +491,6 @@ mod tests {
     #[test]
     fn research_task_requests_follow_the_projects_deny_rules_in_every_mode() {
         let root = temp_root("task-kinds");
-        // No deny rule: every kind goes ahead, whatever the mode.
         for kind in [Some("execute"), Some("fetch"), None] {
             assert!(!task_request_refused(Some(&root), "proj", kind), "{kind:?}");
         }
@@ -533,7 +498,6 @@ mod tests {
         set_decision(&root, "proj", "run_command", Some(ToolDecision::Deny)).unwrap();
         assert!(task_request_refused(Some(&root), "proj", Some("execute")));
         assert!(!task_request_refused(Some(&root), "proj", Some("edit")));
-        // A kind no tool's rules cover is refused while a deny rule exists.
         for kind in [Some("fetch"), Some("think"), None] {
             assert!(task_request_refused(Some(&root), "proj", kind), "{kind:?}");
         }
@@ -550,8 +514,6 @@ mod tests {
         set_mode(&root, "proj", ApprovalMode::FullAccess).unwrap();
         assert_eq!(acp_request_denied_by(&root, "proj", Some("execute")), None);
         set_decision(&root, "proj", "delete_file", Some(ToolDecision::Allow)).unwrap();
-        // With no deny rule, Full access approves every kind, even ones no
-        // tool's rules cover. An allow rule doesn't change that.
         for kind in [Some("execute"), Some("fetch"), Some("think"), None] {
             assert!(
                 helper_request_auto_approved(&root, "proj", kind),
@@ -560,7 +522,6 @@ mod tests {
         }
         set_decision(&root, "proj", "run_command", Some(ToolDecision::Deny)).unwrap();
         set_decision(&root, "proj", "replace_in_file", Some(ToolDecision::Deny)).unwrap();
-        // Once a deny rule exists, a kind no rule covers goes to the card.
         assert!(helper_request_auto_approved(&root, "proj", Some("delete")));
         for kind in [Some("fetch"), Some("think"), Some("other"), None] {
             assert!(
@@ -710,7 +671,6 @@ mod tests {
         std::fs::remove_dir_all(&root).ok();
     }
 
-    // 0.4.8 I: computer_use is gone and desktop_apps is a tool rules can name.
     #[test]
     fn desktop_apps_rules_are_known_and_computer_use_rules_are_retired_quietly() {
         let root = temp_root("retired");

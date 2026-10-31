@@ -41,9 +41,6 @@ pub const MAX_HELLO_BYTES: usize = 16 * 1024;
 // An 8 MiB change is about 10.7 MiB once base64 encoded, plus its envelope.
 pub const MAX_FRAME_BYTES: usize = 11 * 1024 * 1024;
 pub const MAX_UPDATE_BYTES: usize = 8 * 1024 * 1024;
-// The app keeps one live socket per running app, but a socket a flapping
-// network left half open still counts until it goes idle, so one person's
-// devices get room for several each.
 pub const MAX_SOCKETS_PER_ACCOUNT: usize = 32;
 pub const MAX_SOCKETS: usize = 512;
 pub const OUTBOUND_CAPACITY: usize = 512;
@@ -54,7 +51,6 @@ pub const REVIEWERS_SUGGEST: &str =
 pub const COMMENTERS_COMMENT: &str = "As a commenter you can comment, but not change the text.";
 const MOST_CHECKS: u32 = 3;
 const BRIEF_SEND: Duration = Duration::from_secs(5);
-// Frames at least this large are parsed and encoded on the blocking pool.
 pub const ASIDE_BYTES: usize = 256 * 1024;
 const TOO_LARGE: &str = "This change is too large to send.";
 const RESTARTING: &str = "The server is restarting.";
@@ -471,8 +467,6 @@ impl<'a> Link<'a> {
         let text = if queued.size() < ASIDE_BYTES {
             queued.text()
         } else {
-            // The first member of the room to send a large change encodes it
-            // on the blocking pool, and the others reuse that text.
             tokio::task::spawn_blocking(move || queued.text())
                 .await
                 .ok()
@@ -641,9 +635,6 @@ pub(crate) fn leave_rooms(state: &AppState, connection: u64, device: DeviceId) {
     }
 }
 
-// What storing a change came to. With comments off for the project, the
-// change comes back unstored, with what was read from it, for its comment
-// check, so nothing large is copied for the case that doesn't need it.
 enum Appendix {
     Stored(projects::Appended),
     Unchecked(Box<(Envelope, peers::Reach, Vec<u8>)>, Needed),
@@ -655,13 +646,10 @@ enum Needed {
     Role(RoleRule),
 }
 
-// Where a change stands with the comment check as it is stored.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Check {
-    // Not asked yet: with comments off, the change comes back unstored.
     Pending,
     Passed,
-    // Stored without the check, which runs once the budget allows.
     Later,
     Role {
         role: ProjectRole,
@@ -692,15 +680,11 @@ pub(crate) struct Peer<'a> {
     pub(crate) cursors: &'a CursorGate,
 }
 
-// The app sends a cursor position at most every 150 ms, so a connection
-// gets 10 a second with a burst of 20, and the rest are dropped.
 const CURSORS_PER_SECOND: f64 = 10.0;
 const CURSOR_BURST: f64 = 20.0;
 
 pub(crate) struct CursorGate {
     budget: std::sync::Mutex<(f64, Instant)>,
-    // Projects where the room was last shown a cursor from this connection,
-    // so a leave there has a cursor to clear.
     shown: std::sync::Mutex<std::collections::HashSet<SharedProjectId>>,
 }
 
@@ -712,9 +696,6 @@ impl CursorGate {
         }
     }
 
-    // Called for every cursor sent on and for every subscribe: after a
-    // reconnect, the room may still show the cursor an older connection
-    // of this device sent, so the first leave after a subscribe goes out.
     pub(crate) fn showed(&self, project: SharedProjectId) {
         self.shown
             .lock()
@@ -722,9 +703,6 @@ impl CursorGate {
             .insert(project);
     }
 
-    // A leave that clears a cursor always goes out, whatever the rate of
-    // cursor updates before it, so no cursor stays behind. A leave with no
-    // cursor to clear has nothing to say.
     fn hides(&self, project: SharedProjectId) -> bool {
         self.shown
             .lock()
@@ -899,9 +877,6 @@ impl Peer<'_> {
         );
         let public_key = self.public_key.to_vec();
         let mail = self.state.mailer.is_configured();
-        // Checking the signature, reading the change and encoding it for
-        // storage all walk the whole payload, so they run beside the async
-        // workers rather than on them.
         let read = tokio::task::spawn_blocking(move || {
             if !verify_ed25519(&public_key, &envelope.signing_bytes(), &envelope.signature) {
                 return Err(Unread::Unsigned);
@@ -976,8 +951,8 @@ impl Peer<'_> {
                 ));
             }
             let checked = match needed {
-                Needed::Comments => self.comment_check(project, &waiting.0).await,
-                Needed::Role(rule) => self.role_check(project, &waiting.0, rule).await,
+                Needed::Comments => self.comment_check(project, &waiting.0, &waiting.1).await,
+                Needed::Role(rule) => self.role_check(project, &waiting.0, &waiting.1, rule).await,
             };
             check = match checked {
                 Ok(check) => check,
@@ -1017,12 +992,11 @@ impl Peer<'_> {
         }
     }
 
-    // Checks a change to a project with comments off, and refuses one that
-    // changes comments.
     async fn comment_check(
         &self,
         project: SharedProjectId,
         envelope: &Envelope,
+        reach: &peers::Reach,
     ) -> Result<Check, Box<ServerFrame>> {
         let guard = &self.state.comment_guard;
         let verdict = guard
@@ -1031,6 +1005,7 @@ impl Peer<'_> {
                 &self.state.snapshots,
                 project,
                 envelope.payload.clone(),
+                reach,
             )
             .await;
         if matches!(
@@ -1061,6 +1036,7 @@ impl Peer<'_> {
         &self,
         project: SharedProjectId,
         envelope: &Envelope,
+        reach: &peers::Reach,
         rule: RoleRule,
     ) -> Result<Check, Box<ServerFrame>> {
         let guard = &self.state.comment_guard;
@@ -1070,6 +1046,7 @@ impl Peer<'_> {
                 &self.state.snapshots,
                 project,
                 envelope.payload.clone(),
+                reach,
                 rule,
             )
             .await;
@@ -1382,8 +1359,6 @@ impl Session<'_> {
         };
         let mut cursor = since;
         loop {
-            // A long catch-up doesn't hear the control channel until it's
-            // done, so it checks for a restart between pages.
             if self.state.sockets.is_restarting() {
                 link.ending = Some(Ending::Restarting);
                 return false;

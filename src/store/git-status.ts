@@ -6,7 +6,6 @@ import { projectFolderAvailable, reportLocationError } from "@/store/project-ava
 
 interface GitStatusState {
   count: number;
-  /** The project `changes` belong to, so a switch never shows another project's. */
   projectId: string | null;
   changes: readonly GitFileChange[];
   refresh: (projectId: string | null) => Promise<void>;
@@ -15,8 +14,6 @@ interface GitStatusState {
 
 const NO_CHANGES: readonly GitFileChange[] = [];
 
-// Bumped on every refresh so a slow response from a previous project can't
-// overwrite the count of the project the user has since switched to.
 let refreshSeq = 0;
 
 export const useGitStatusStore = create<GitStatusState>((set, get) => ({
@@ -42,8 +39,6 @@ export const useGitStatusStore = create<GitStatusState>((set, get) => ({
   apply: (projectId, changes) => {
     refreshSeq++;
     const previous = get();
-    // Polls usually find nothing new; keep the old list so the Explorer
-    // does not rebuild its badges for an identical status.
     set({
       count: changes.length,
       projectId,

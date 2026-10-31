@@ -13,13 +13,11 @@ vi.mock("@/lib/research-tasks", () => ({
   loadResearchAttention: () => loadResearchAttention(),
 }));
 
-// The badge reads only the open project, so a small store stands in for the files store.
 const files = await vi.hoisted(async () => {
   const { create } = await import("zustand");
   return create<{ projectId: string | null }>(() => ({ projectId: null }));
 });
 vi.mock("@/store/files", () => ({ useFilesStore: files }));
-// 0.4.8: the badge shows nothing while research tasks (experimental) are off.
 const flag = vi.hoisted(() => ({ enabled: true }));
 vi.mock("@/store/research-tasks-flag", () => ({ useResearchTasksEnabled: () => flag.enabled }));
 

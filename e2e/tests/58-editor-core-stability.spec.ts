@@ -92,16 +92,12 @@ async function activatePreviewControl(
     control.click();
     return "clicked";
   })()`;
-  // Reveal a control that the narrow toolbar moved into the overflow menu.
   const revealExpression = `(() => {
     const trigger = document.querySelector('[aria-label="More preview controls"]');
     if (!trigger) return "missing";
     return trigger.getAttribute('aria-expanded') === 'true' ? "open" : "closed";
   })()`;
   const deadline = Date.now() + 15_000;
-  // Captured the first time the control is actually present. Comparing against
-  // this fixed value (never against the latest reading) is what stops a click
-  // that committed late from being toggled straight back off by a retry.
   let baseline: string | null = null;
   let last = "";
   for (;;) {
@@ -120,8 +116,6 @@ async function activatePreviewControl(
     } else {
       baseline ??= current;
       last = await page.evaluate<string>(clickDirectExpression);
-      // No aria-pressed means an action, not a toggle: there is no committed
-      // state to wait for, so one delivered click is the whole contract.
       if (baseline === "none" && last === "clicked") return;
       if (last === "clicked") {
         try {
@@ -277,11 +271,6 @@ async function expectStableGeometry(
   line: number,
 ) {
   await goToLine(page, line);
-  // goToLine's fixed pause is not always enough on a loaded machine: the editor
-  // re-measures the gutter for a few more frames, and reading once right after
-  // it caught a transient 15px drift against the 1.5px bound below. Poll for the
-  // settled layout so the strict bound keeps its meaning instead of being
-  // loosened to absorb a delay that always resolves.
   let geometry = await editorGeometry(page);
   const settleDeadline = Date.now() + 5_000;
   while (geometry.maxLineNumberDelta > 1.5 && Date.now() < settleDeadline) {
@@ -289,11 +278,6 @@ async function expectStableGeometry(
     geometry = await editorGeometry(page);
   }
   expect(geometry.currentLine).toBe(line);
-  // A fixed source-line count is invalid in split view: ordinary prose can
-  // wrap to multiple visual rows as the native window width changes. Require
-  // enough lines to fill the measured viewport at the tallest legitimate row
-  // height, while the blank-space and row-multiple checks below remain the
-  // authoritative guards against the historical giant-spacer regression.
   const minimumVisibleLines = Math.max(
     4,
     Math.floor(
@@ -354,9 +338,6 @@ async function expectStableGeometry(
 async function expectFullAuthoringWorkspace(
   page: Parameters<typeof expectDesktopShellAnchored>[0],
 ) {
-  // A new PDF swaps each page's canvas for a stale copy (pdf-canvas-stale)
-  // until it is drawn again, so a check right after a compile can land
-  // mid-swap on a slow runner. Wait for a drawn page instead of sampling once.
   await waitLong(
     page,
     `Array.from(document.querySelectorAll(".pdf-canvas")).some((canvas) => canvas.getClientRects().length > 0)`,
@@ -762,8 +743,6 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
   tauriPage,
 }) => {
   test.setTimeout(600_000);
-  // Exercise wrapped prose at the minimum supported width, independently of
-  // window geometry left behind by earlier specs.
   await tauriPage.evaluate(`import("/src/lib/e2e-probe.ts").then(w => w.resizeCurrentWindow(900, 700))`);
   const fixture = buildLargeLatexBookProject();
   await createBlankProject(
@@ -1076,18 +1055,7 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
       };
     })`,
   );
-  // The invariant is that the text under the cursor does not jump on screen.
   expect(Math.abs(afterTyping.top - beforeTyping.top)).toBeLessThanOrEqual(3);
-  // scrollTop is the mechanism, not the invariant, and the two cannot both
-  // hold still once anything reflows: keeping the cursor at a fixed screen
-  // position while the content under it grows *requires* scrolling by the
-  // amount it grew. Typing here also opens an autocomplete tooltip, which the
-  // editor legitimately scrolls to keep in view. The observed movement on CI
-  // was 11px against a 3px bound; the exact cause (a wrap, or scrolling the
-  // tooltip into view) was not pinned down, so bound it rather than explain
-  // it: one visual line of movement is reflow, more than that is a jump. The
-  // bound is measured from the editor instead of hardcoded so it tracks the
-  // font settings.
   expect(
     Math.abs(afterTyping.scrollTop - beforeTyping.scrollTop),
   ).toBeLessThanOrEqual(afterTyping.lineHeight + 3);
@@ -1120,7 +1088,6 @@ test("a realistic 6,200-line book keeps the full authoring workspace stable unde
     )`,
   );
   await tauriPage.click('[data-testid="compile-button"]');
-  // Visit the formerly buffered rows too: they must align once scrolled into view.
   for (const line of [4_700, 420, 432, 3_480]) {
     await expectStableGeometry(tauriPage, line);
   }
@@ -1309,8 +1276,6 @@ The integrated preview renders a second page.
   await expect(
     tauriPage.locator('[aria-label="Project structure"]'),
   ).toContainText("Core section");
-  // Filtering expands every matching ancestor and therefore verifies the
-  // cross-file child without depending on a persisted tree expansion state.
   await tauriPage.getByLabel("Filter project structure").fill("Child result");
   await expect(
     tauriPage.locator('[aria-label="Project structure"]'),

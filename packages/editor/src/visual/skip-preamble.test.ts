@@ -9,14 +9,10 @@ import { visualMode } from "./index";
 import { skipAtomicRanges } from "./skip-preamble";
 import { positionOf, SAMPLE_DOCUMENT, untilParsed } from "./test-document";
 import { collapsePreambleEffect } from "./widgets/preamble";
+import { stubRangeGeometry } from "../test-geometry";
 
 
-if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
-  Object.defineProperty(Range.prototype, "getClientRects", {
-    configurable: true,
-    value: () => [],
-  });
-}
+stubRangeGeometry();
 
 const ports = { resolveImage: async () => null };
 let view: EditorView | null = null;

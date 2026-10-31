@@ -1180,6 +1180,8 @@
     "exportTxt": "Exporteren als platte tekst (.txt)",
     "exportZipFailed": "Kon de project-zip niet exporteren",
     "exporting": ".{{format}} exporteren…",
+    "exportingStep": ".{{format}} exporteren: {{step}}",
+    "stopExport": "Stoppen",
     "fork": "Forken",
     "forkDescription": "Kopieert <name>{{name}}</name> en de Git-geschiedenis naar een nieuw project. Checkpoints beginnen leeg.",
     "forkFailed": "Het forken van het project is niet gelukt.",

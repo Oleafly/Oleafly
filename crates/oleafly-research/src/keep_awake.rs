@@ -1,11 +1,7 @@
-//! Keeps the computer from sleeping while tasks or runs work. The screen
-//! may still turn off. Reference-counted: the first holder starts the
-//! system's inhibitor, the last one to go stops it.
 use std::sync::{Arc, Mutex};
 
 use crate::scheduler::lock;
 
-/// Starts the system's sleep inhibitor; dropping the returned value stops it.
 pub trait AwakeBackend: Send + Sync {
     fn start(&self, reason: &str) -> Option<Box<dyn Send>>;
 }
@@ -21,7 +17,6 @@ pub struct KeepAwake {
     shared: Arc<Mutex<Shared>>,
 }
 
-/// Holds the computer awake until dropped.
 pub struct KeepAwakeGuard {
     shared: Arc<Mutex<Shared>>,
 }
@@ -69,10 +64,8 @@ impl KeepAwake {
     }
 }
 
-/// The platform inhibitor.
 pub struct SystemBackend;
 
-/// A helper process that ends when dropped.
 #[cfg(not(windows))]
 struct Inhibitor(std::process::Child);
 
@@ -107,7 +100,6 @@ fn spawn_inhibitor(program: &str, args: &[String]) -> Option<Box<dyn Send>> {
     }
 }
 
-/// `systemd-inhibit` holding idle and sleep while this process lives.
 pub fn systemd_inhibit_args(pid: u32, reason: &str) -> Vec<String> {
     vec![
         "--what=idle:sleep".into(),
@@ -126,7 +118,6 @@ pub const fn execution_state_flags() -> u32 {
         | windows_sys::Win32::System::Power::ES_SYSTEM_REQUIRED
 }
 
-/// A thread holding the system awake until the sender is dropped.
 #[cfg(windows)]
 struct AwakeThread(Option<std::sync::mpsc::Sender<()>>);
 
@@ -169,7 +160,6 @@ impl AwakeBackend for SystemBackend {
             let (sender, receiver) = std::sync::mpsc::channel::<()>();
             std::thread::spawn(move || unsafe {
                 windows_sys::Win32::System::Power::SetThreadExecutionState(execution_state_flags());
-                // Returns once the sender is dropped.
                 let _ = receiver.recv();
                 windows_sys::Win32::System::Power::SetThreadExecutionState(
                     windows_sys::Win32::System::Power::ES_CONTINUOUS,

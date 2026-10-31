@@ -214,29 +214,18 @@ export const readCompiledPdf = (projectId: string) =>
 export const readBuildArtifact = (projectId: string, name: string) =>
   invoke<string | null>("read_build_artifact", { projectId, name });
 
-/** Null means the persisted record is missing or stale: compile normally. */
 export const validateCompileFingerprint = (projectId: string, mainDoc: string) =>
   invoke<ValidatedCompileFingerprint | null>("validate_compile_fingerprint", {
     projectId,
     mainDoc,
   });
 
-export const compileTex = (
-  projectId: string,
-  mainDoc: string,
-  source: string
-) => invoke<CompileResult>("compile_tex", { projectId, mainDoc, source });
-
-// Capture the local distro + tlmgr package versions into the project pin.
 export const recordProjectTexSpec = (projectId: string) =>
   invoke<TexSpec | null>("record_project_tex_spec", { projectId });
 
-// Import an Overleaf ZIP export (or a plain folder) as a new project; the
-// main document is inferred when the archive carries no project.json.
 export const importOverleafProjectCmd = (path: string, name?: string) =>
   invoke<string>("import_overleaf_project", { path, name: name ?? null });
 
-// Compare this machine against the project pin (null when not applicable).
 export const projectTexStatus = (projectId: string) =>
   invoke<TexStatus | null>("project_tex_status", { projectId });
 
@@ -304,15 +293,11 @@ export const checkpointExport = (projectId: string, dest: string, password: stri
 export const checkpointImport = (projectId: string, source: string, password: string) =>
   invoke<void>("checkpoint_import", { projectId, source, password });
 
-/// Ends the running main-document compile. Resolves to whether a compiler
-/// process was actually terminated.
 export const cancelCompile = () => invoke<boolean>("cancel_compile", {});
 
-/// Empties the project's build directory so the next compile reuses nothing.
 export const clearBuildDir = (projectId: string) =>
   invoke<void>("clear_build_dir", { projectId });
 
-// Runs in a separate build dir from the main project compile.
 export const compileIsolated = (projectId: string, source: string, offline = false) =>
   invoke<CompileResult>("compile_isolated", { projectId, source, offline });
 
@@ -357,7 +342,6 @@ export const writeProjectBytes = (
     }),
   );
 
-// Used for absolute paths from a save dialog.
 export const writeBytesFile = (dest: string, dataBase64: string) =>
   invoke<void>("write_bytes_file", { dest, dataBase64 });
 
@@ -367,11 +351,9 @@ export const exportProjectImage = (projectId: string, dest: string, dataBase64: 
 export const loadProjectChats = (projectId: string) =>
   invoke<string>("load_project_chats", { projectId });
 
-// Atomic write on the Rust side.
 export const saveProjectChats = (projectId: string, json: string) =>
   invoke<void>("save_project_chats", { projectId, json });
 
-/** A project's chats, newest first; chats past the load budget come as stubs. */
 export interface ChatsLoadResult {
   json: string;
   skipped: number;
@@ -383,7 +365,6 @@ export const chatsLoad = (projectId: string) =>
 export const chatRead = (projectId: string, chatId: string) =>
   invoke<string>("chat_read", { projectId, chatId });
 
-/** Saves one chat; `index: false` skips the search index (streaming saves). */
 export const chatSave = (projectId: string, chatId: string, json: string, index?: boolean) =>
   invoke<void>("chat_save", { projectId, chatId, json, index: index ?? true });
 
@@ -585,13 +566,10 @@ export interface SavePathOptions {
   canCreateDirectories?: boolean;
 }
 
-/** Native open dialog run by Rust, which records the picks as readable. */
 export const pickOpenPaths = (options?: OpenPathOptions) =>
   invoke<string[] | null>("pick_open_paths", { options: options ?? null });
-/** Native save dialog run by Rust, which records the choice as writable. */
 export const pickSaveDestination = (options?: SavePathOptions) =>
   invoke<string | null>("pick_save_path", { options: options ?? null });
-/** E2E and dev builds only: records a path a test chose in place of a dialog. */
 export const grantTestOpenPaths = (paths: string[]) =>
   invoke<string[]>("grant_test_open_paths", { paths });
 export const grantTestSavePath = (path: string) =>
@@ -603,7 +581,6 @@ export interface AdHocArtifact {
 }
 
 export interface AdHocConversionRequest {
-  /** `ocr-markdown` / `ocr-fragment`: Markdown an OCR model or Mathpix wrote. */
   source: "latex" | "markdown" | "typst" | "html" | "docx" | "equation" | "ocr-markdown" | "ocr-fragment";
   target: "latex" | "markdown" | "typst" | "html" | "docx";
   text?: string;
@@ -715,10 +692,6 @@ export const readAppLogChunked = (maxBytes: number) =>
 export const setMainDocCmd = (projectId: string, mainDoc: string) =>
   invoke<ProjectMeta>("set_main_doc", { projectId, mainDoc });
 
-// Pin a project's compile engine ("xetex" for bundled Tectonic, "latexmk" for
-// a system TeX toolchain) in its project.json. On latexmk, `flavor` pins the
-// compiler (pdflatex / xelatex / lualatex / uplatex / platex); null keeps
-// auto-detection.
 export const setProjectEngineCmd = (
   projectId: string,
   engine: string,
@@ -813,7 +786,6 @@ export const setProjectShellEscapeCmd = (
 export const renameProjectCmd = (projectId: string, name: string) =>
   invoke<ProjectMeta>("rename_project", { projectId, name });
 
-// No-op in release builds; only opens devtools in dev.
 export const openDevtools = () => invoke<void>("open_devtools");
 
 export const getProject = (projectId: string) =>
@@ -915,8 +887,6 @@ export const createProjectFromTemplate = (
 
 export const setProjectColor = (projectId: string, color: string) =>
   invoke<ProjectMeta>("set_project_color", { projectId, color });
-
-// --- Downloadable assets (font packs) ---
 
 export const listFontComponents = () => invoke<ComponentInfo[]>("list_font_components");
 
@@ -1262,6 +1232,8 @@ export interface RecentProjectEntry {
 export const setRecentProjects = (projects: RecentProjectEntry[]) =>
   invoke<void>("set_recent_projects", { projects });
 
+export const EXPORT_LOG_EVENT = "export:log";
+
 export const exportDocument = (
   projectId: string,
   mainDoc: string,
@@ -1272,27 +1244,19 @@ export const exportDocument = (
 
 export const hasPandoc = () => invoke<boolean>("has_pandoc");
 
-// Emits `pandoc-download-progress` events while downloading.
 export const downloadPandoc = () => invoke<string>("download_pandoc");
-
-// --- Optional LuaLaTeX engine (tagged / accessible export) ---
 
 export const texDistributions = () => invoke<TexDistribution[]>("tex_distributions");
 
 export const latexEngineInfo = () => invoke<EngineInfo>("latex_engine_info");
 export const hasTaggingEngine = () => invoke<boolean>("has_tagging_engine");
-// Emits phased `tinytex-install-progress` events (download/extract/packages);
-// a failed download keeps its partial file so a retry resumes.
 export const installTinytex = () => invoke<EngineInfo>("install_tinytex");
 export const tinytexInstallState = () =>
   invoke<TinytexInstallState>("tinytex_install_state");
-// The user confirmed quitting mid-install; the app exits immediately.
 export const confirmQuitDuringInstall = () =>
   invoke<void>("confirm_quit_during_install");
-// The quit flush finished (or was overridden): let the quit/restart through.
 export const confirmQuitFlush = (restart: boolean) =>
   invoke<void>("confirm_quit_flush", { restart });
-// The user chose to stay after a blocked quit; the next quit flushes again.
 export const cancelQuitFlush = () => invoke<void>("cancel_quit_flush");
 export const deleteTinytex = () => invoke<void>("delete_tinytex");
 export interface TexPackage {
@@ -1310,8 +1274,6 @@ export const tlmgrRemove = (packages: string[], userTree = false) =>
 export const compileTagged = (projectId: string, mainDoc: string) =>
   invoke<TaggedCompileResult>("compile_tagged", { projectId, mainDoc });
 
-// --- Citation lookup (auto-citation) ---
-
 export const fetchDoiBibtex = (doi: string) => invoke<string>("fetch_doi_bibtex", { doi });
 export const fetchArxiv = (id: string) => invoke<string>("fetch_arxiv", { id });
 export const fetchIsbnBibtex = (isbn: string) => invoke<string>("fetch_isbn_bibtex", { isbn });
@@ -1319,9 +1281,6 @@ export const fetchPmidBibtex = (pmid: string) => invoke<string>("fetch_pmid_bibt
 export const importArxivEprint = (arxivId: string, name?: string) =>
   invoke<string>("import_arxiv_eprint", { arxivId, name: name ?? null });
 
-// --- Conversion matrix (registry-driven tools) ---
-
-/** The kind of project an import produces. */
 export type ImportTarget = "latex" | "markdown" | "typst";
 
 export interface CleanAction {
@@ -1424,7 +1383,6 @@ export const literatureSearch = (
     yearTo: options.yearTo ?? null,
     openAccessOnly: options.openAccessOnly ?? false,
   });
-/** Whether a key is saved; the key itself never leaves Rust. */
 export const connectorKeySaved = (connectorId: string) =>
   invoke<boolean>("connector_key_saved", { connectorId });
 export const setConnectorKey = (connectorId: string, value: string) =>
@@ -1473,21 +1431,16 @@ export const zoteroUpdateProjectLinks = (
 export const searchDocs = (query: string) =>
   invoke<SearchHit[]>("search_docs", { query });
 
-// Used by the AI assistant, which must not surface other projects' contents
-// to the model.
 export const searchProject = (projectId: string, query: string) =>
   invoke<SearchHit[]>("search_project", { projectId, query });
 
 export const getConfig = () => invoke<AppConfig>("get_config");
 export const setConfig = (config: AppConfig) =>
   invoke<void>("set_config", { config });
-/** The model the Tools converters use; null = automatic local (Ollama). */
 export const setAiToolsModel = (choice: ToolsModelChoice | null) =>
   invoke<void>("set_ai_tools_model", { choice });
 export const seedStarterPersonas = (starters: Persona[]) =>
   invoke<AppConfig>("seed_starter_personas", { starters });
-
-// --- MCP server (token only via mcp_connection_info while running) ---
 
 export const mcpStatus = () => invoke<McpStatus>("mcp_status");
 export const mcpSetEnabled = (enabled: boolean) =>
@@ -1500,7 +1453,6 @@ export const mcpImportSource = (sourceTool: McpImportSourceTool) =>
 export const mcpServersList = () => invoke<McpManagedServer[]>("mcp_servers_list");
 export const mcpServerAdd = (server: McpServerConfig) =>
   invoke<McpManagedServer>("mcp_server_add", { server });
-/** Moves an alphaXiv key saved by an older version to its MCP server, in Rust. */
 export const mcpAdoptAlphaXivKey = () =>
   invoke<McpManagedServer | null>("mcp_adopt_alphaxiv_key");
 export const mcpServerUpdate = (originalName: string, server: McpServerConfig) =>
@@ -1649,9 +1601,6 @@ export const ghPublicRepoStats = (fullName: string) =>
 export const discordCommunityStats = () =>
   invoke<DiscordCommunityStats>("discord_community_stats");
 
-// --- Git hosting accounts. Tokens stay in the Rust core: a pasted token is
-// sent once to sign in, and nothing here ever returns one. ---
-
 export const FORGE_ACCOUNTS_CHANGED_EVENT = "forge-accounts-changed";
 
 export const forgeAccountsList = () => invoke<ForgeAccount[]>("forge_accounts_list");
@@ -1679,8 +1628,6 @@ export const forgeListRepos = (base: string, page: number, query?: string | null
 export const forgeCreateRepo = (base: string, name: string, isPrivate: boolean) =>
   invoke<ForgeRepo>("forge_create_repo", { base, name, private: isPrivate });
 let repositoryImportId: string | null = null;
-/** The id the repository import or clone this window started last can be
- * cancelled by (`cancelRepositoryImport` in `@/lib/forge`). */
 export const currentRepositoryImportId = (): string | null => repositoryImportId;
 function nextRepositoryImportId(): string {
   repositoryImportId = crypto.randomUUID();
@@ -1703,9 +1650,6 @@ export function onCollabOpenLink(handler: () => void): Promise<UnlistenFn> {
   return listen<null>(COLLAB_OPEN_LINK_EVENT, () => handler());
 }
 
-// A live session that stopped, or that the server ended, names the open files
-// it wrote. It can arrive after Live collaboration was switched off, so the
-// window hears it from the start too, outside the collaboration module.
 export const COLLAB_LIVE_WRITTEN_EVENT = "collab-live-written";
 export const gitSetRemote = (projectId: string, url: string, options?: { replace?: boolean }) =>
   invoke<void>("git_set_remote", { projectId, url, replace: options?.replace ?? false });
@@ -1767,7 +1711,6 @@ export const gitStagePaths = (projectId: string, paths: string[]) =>
 export const gitUnstagePaths = (projectId: string, paths: string[]) =>
   invoke<void>("git_unstage_paths", { projectId, paths });
 
-// Commits the staged index only. Returns false when nothing is staged.
 export const gitCommit = (projectId: string, message: string) =>
   invoke<boolean>("git_commit", { projectId, message });
 
@@ -1826,7 +1769,6 @@ export const recycleProject = (projectId: string) =>
   invoke<void>("recycle_project", { projectId });
 
 export const libraryRoot = () => invoke<string>("library_root");
-/** Spellings of the home folder that backend paths start with (see display-path.ts). */
 export const displayHomes = () => invoke<string[]>("display_homes");
 export const appVersion = () => invoke<string>("app_version");
 export const agentExecCwd = (projectId: string) =>
@@ -1863,8 +1805,6 @@ export const budgetSet = (projectId: string, budgetUsd: number | null) =>
   invoke<void>("budget_set_cmd", { projectId, budgetUsd });
 
 export const approvalsReadRaw = () => invoke<string>("approvals_read_raw");
-// Saves the approvals file and returns warnings about it, already in the
-// app's language, such as a tool name it doesn't know.
 export const approvalsWriteRaw = (text: string) => invoke<string[]>("approvals_write_raw", { text });
 export const approvalsList = (projectId: string) =>
   invoke<Record<string, ToolDecision>>("approvals_list", { projectId });

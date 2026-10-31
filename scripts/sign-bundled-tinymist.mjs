@@ -46,12 +46,6 @@ if (process.platform !== "darwin") {
   process.exit(0);
 }
 
-// Skipping has to be explicit. This previously exited 0 whenever the identity
-// was absent, which is exactly what happened on CI: the identity is exported by
-// a later workflow step, so this ran with none set, reported success, changed
-// nothing, and the failure only surfaced in notarization at the end of the
-// build. A signing step that silently does nothing is worse than one that
-// fails.
 const allowUnsigned = process.argv.includes("--allow-unsigned");
 const identity = process.env.APPLE_SIGNING_IDENTITY?.trim();
 if (!identity) {
@@ -72,13 +66,8 @@ const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
 const entry = manifest.servers.tinymist.targets[TARGET];
 if (!entry) throw new Error(`manifest has no ${TARGET} entry for tinymist`);
 
-// resourceRelativePath is relative to src-tauri, and the safety checks that
-// resolver applies are worth keeping rather than re-deriving the path here.
 const archivePath = resourceArchivePath(entry);
 const staged = readFileSync(archivePath);
-// Refuse to touch anything other than the exact bytes the fetch step verified
-// against upstream. Signing an archive we cannot vouch for would launder an
-// unverified payload into a signed bundle.
 const stagedDigest = sha256(staged);
 const expected = entry.upstreamArchiveSha256 ?? entry.archiveSha256;
 if (stagedDigest !== expected) {
@@ -105,8 +94,6 @@ run("codesign", [
 ]);
 run("codesign", ["--verify", "--strict", "--verbose=2", binaryPath]);
 
-// Rebuild with the same internal layout the manifest pins, so extraction at
-// runtime still finds `archiveMember` exactly where it expects it.
 const memberRoot = entry.archiveMember.split("/")[0];
 run("tar", ["--format", "ustar", "-czf", archivePath, "-C", workspace, memberRoot], {
   // codesign attaches extended attributes, and macOS tar then emits an

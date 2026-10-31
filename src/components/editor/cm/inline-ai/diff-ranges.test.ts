@@ -3,7 +3,6 @@ import { buildDecoSpans } from "./diff-ranges";
 
 describe("buildDecoSpans", () => {
   it("marks deleted words in the original at absolute offsets", () => {
-    // original 'the old cat' starts at doc offset 10; 'old ' spans 14..18
     const spans = buildDecoSpans("the old cat", "the new cat", 10);
     const del = spans.find((s) => s.kind === "del");
     expect(del).toMatchObject({ from: 14, to: 18, kind: "del" });

@@ -21,10 +21,8 @@ interface PlanReviewProps {
 
 const encoder = new TextEncoder();
 
-/** The plan a plan-first task wrote, editable, with Approve and Cancel task. */
 export function PlanReview({ task, busy, onApprove, onDiscard }: Readonly<PlanReviewProps>) {
   const { t } = useTranslation(["common", "researchTools"]);
-  // The plan, and the failure, are tagged with the run they belong to, so a new run starts empty.
   const [loaded, setLoaded] = useState<{ key: string; plan: TaskPlanText } | null>(null);
   const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
   const [draft, setDraft] = useState("");
@@ -58,9 +56,7 @@ export function PlanReview({ task, busy, onApprove, onDiscard }: Readonly<PlanRe
   }, []);
 
   const edited = original !== null && draft.trim() !== original.trim();
-  // The backend counts bytes, so a plan in a script of several bytes a character is measured the same way.
   const tooLong = edited && encoder.encode(draft).length > MAX_PLAN_BYTES;
-  // Only the start of a longer plan is shown: approving it unedited would run steps nobody read.
   const needsEdit = plan?.truncated === true && !edited;
 
   let body: ReactNode;

@@ -48,7 +48,6 @@ vi.mock("./hover-math", async (importOriginal) => ({
 import { loadMathRender } from "@oleafly/editor/math-render-loader";
 import { clearProjectHoverIntel, hoverIntel, kindNoun, projectHoverCard } from "./hover-intel";
 
-// KaTeX loads on first use; these cards are checked once it has.
 beforeAll(async () => {
   await loadMathRender();
 });

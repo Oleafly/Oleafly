@@ -99,8 +99,6 @@ fn browsers_on(
     }
 }
 
-/// The window to bind in a `list_windows` answer: the largest normal one,
-/// so a small "Restore pages?" bubble is never picked.
 pub(crate) fn main_window(answer: &Value) -> Option<u64> {
     answer
         .pointer("/structuredContent/windows")?
@@ -125,8 +123,6 @@ pub(crate) fn prepare_defaults(kind: RuntimeKind, args: &mut Map<String, Value>)
         return;
     }
     args.insert("allow_launch".into(), Value::Bool(true));
-    // A profile that isn't the driver's object form ("separate") would
-    // fail the whole call.
     if !args.get("profile").is_some_and(Value::is_object) {
         args.insert(
             "profile".into(),
@@ -135,8 +131,6 @@ pub(crate) fn prepare_defaults(kind: RuntimeKind, args: &mut Map<String, Value>)
     }
 }
 
-/// Whether a tab of `kind` may go to `url`: a listed site (in the signed-in
-/// profile, one marked for it), or a blank page in the separate one.
 pub(crate) fn site_allowed(config: &CuaDriverConfig, kind: RuntimeKind, url: &str) -> bool {
     if url.trim() == "about:blank" {
         return kind == RuntimeKind::Browser;
@@ -151,8 +145,6 @@ pub(crate) fn site_allowed(config: &CuaDriverConfig, kind: RuntimeKind, url: &st
         .any(|site| super::gate::origin_of(&site.origin).as_deref() == Some(origin.as_str()))
 }
 
-/// The tab a bind or page read names: its own `tab_id`, else the active one
-/// of the tabs a bind lists, else the first.
 pub(crate) fn answered_tab(structured: &Value) -> Option<String> {
     if let Some(tab) = structured.get("tab_id").and_then(Value::as_str) {
         return Some(tab.to_string());

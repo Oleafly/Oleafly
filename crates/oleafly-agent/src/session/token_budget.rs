@@ -1,44 +1,27 @@
-//! Token budget accounting and the auto-compaction roll-over rule. When a
-//! turn needs to continue (tool calls are pending) but the context window is
-//! exhausted, the session rolls over into a compacted context instead of
-//! failing the turn.
-
 use crate::complete::Usage;
 
-/// Why a compaction was triggered.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CompactionReason {
-    /// The estimated context crossed the model's window.
     ContextLimit,
-    /// The compaction hash changed (history mutated behind the session).
     CompHashChanged,
-    /// The model was downshifted to one with a smaller window.
     ModelDownshift,
 }
 
-/// Where in the turn lifecycle the compaction runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CompactionPhase {
-    /// Before the first sampling request of a turn.
     PreTurn,
-    /// Between tool results and the next sampling request.
     MidTurn,
 }
 
-/// Where the compacted summary is injected relative to the kept history.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InitialContextInjection {
-    /// The summary replaces older history and lands before the most recent
-    /// user message, so the active instruction is never summarized away.
     BeforeLastUserMessage,
 }
 
-/// Running token totals for one session, saturating on overflow.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct TokenBudget {
     pub input: u64,
     pub output: u64,
-    /// Zero means unlimited.
     pub input_limit: u64,
 }
 
@@ -57,9 +40,6 @@ impl TokenBudget {
     }
 }
 
-/// The roll-over rule, verbatim from the audited core: a context roll happens
-/// only when the turn must continue AND the window is exhausted (either the
-/// model asked for a fresh window or the token limit was reached).
 pub fn should_roll_over(
     needs_follow_up: bool,
     token_limit_reached: bool,
@@ -122,11 +102,8 @@ mod tests {
 
     #[test]
     fn roll_over_requires_both_a_reason_to_continue_and_a_window_signal() {
-        // No follow-up work: the turn simply ends, never compacts.
         assert!(!should_roll_over(false, true, true));
-        // Follow-up work but the window is fine.
         assert!(!should_roll_over(true, false, false));
-        // Follow-up work plus either signal rolls over.
         assert!(should_roll_over(true, true, false));
         assert!(should_roll_over(true, false, true));
         assert!(should_roll_over(true, true, true));

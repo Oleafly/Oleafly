@@ -70,10 +70,6 @@ pub fn safe_name(name: &str, id: &str) -> String {
     }
 }
 
-// The file keeps its type under the stand-in name, so it still opens with
-// the same program and references that go by type still find it. Only an
-// extension safe on its own is kept: short, plain letters, digits and a
-// few marks, and after a name, not a leading dot.
 fn safe_extension(name: &str) -> Option<&str> {
     let dot = name.rfind('.')?;
     let (stem, extension) = (&name[..dot], &name[dot + 1..]);
@@ -113,8 +109,6 @@ fn suffixed(name: &str, id: &str, number: usize) -> String {
     }
 }
 
-// Any name can already be taken, even one with this node's id in it, so
-// the suffix counts up until the name is free.
 fn free_suffixed(name: &str, id: &str, mut free: impl FnMut(&str) -> bool) -> String {
     let mut number = 1;
     loop {
@@ -142,9 +136,6 @@ fn in_trash(parents: &BTreeMap<&str, &NodeParent>, folders: &BTreeSet<&str>, id:
 
 type Groups<'a> = BTreeMap<(NodeParent, String), Vec<&'a FileNode>>;
 
-// Only a folder holds other nodes. A node whose parent is a file, which
-// only a modified client can make, sits at the top like an orphan, so it
-// never needs a folder where a file is.
 fn folders(nodes: &[FileNode]) -> BTreeSet<&str> {
     nodes
         .iter()

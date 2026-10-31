@@ -242,10 +242,6 @@ const bibtexParser: StreamParser<BibtexState> = {
     entryOpen: "{",
   }),
   token(stream, state) {
-    // A malformed/unclosed entry must not color every later entry as a string.
-    // BibTeX entries begin at a line boundary in the supported corpus, so a
-    // complete entry opener is a safe recovery point without hiding the damage
-    // that the recoverable BibTeX linter reports.
     if (
       state.mode !== "top" &&
       stream.sol() &&

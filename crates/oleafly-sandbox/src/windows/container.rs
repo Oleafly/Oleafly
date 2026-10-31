@@ -14,9 +14,7 @@ use windows_sys::Win32::System::Com::CoTaskMemFree;
 use super::sid::OwnedSid;
 use crate::SandboxError;
 
-/// `HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS)`.
 const ALREADY_EXISTS: i32 = 0x800700B7_u32 as i32;
-/// `HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND)` and `ERROR_PATH_NOT_FOUND`.
 const NOT_FOUND: [i32; 2] = [0x80070002_u32 as i32, 0x80070003_u32 as i32];
 
 fn wide(text: &str) -> Vec<u16> {
@@ -40,7 +38,6 @@ fn derive(name: &str) -> Result<OwnedSid, SandboxError> {
     Ok(OwnedSid::from_profile(sid))
 }
 
-/// The profile's folder, when the profile exists.
 pub(crate) fn folder(sid: &OwnedSid) -> Option<PathBuf> {
     let text = wide(&sid.to_sddl().ok()?);
     let mut path = std::ptr::null_mut();
@@ -59,7 +56,6 @@ pub(crate) fn folder(sid: &OwnedSid) -> Option<PathBuf> {
     }
 }
 
-/// The profile `name`, created when missing.
 pub(crate) fn ensure(name: &str) -> Result<OwnedSid, SandboxError> {
     let existing = derive(name)?;
     if folder(&existing).is_some() {
@@ -92,7 +88,6 @@ pub(crate) fn ensure(name: &str) -> Result<OwnedSid, SandboxError> {
     Ok(OwnedSid::from_profile(sid))
 }
 
-/// Deletes the profile `name`; a missing profile is not an error.
 pub(crate) fn delete(name: &str) -> Result<(), SandboxError> {
     let name = wide(name);
     // SAFETY: `name` is NUL-terminated.

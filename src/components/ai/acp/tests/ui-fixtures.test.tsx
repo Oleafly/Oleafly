@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { installUiDom } from "./ui-fixtures";
 
 describe("installUiDom", () => {
@@ -23,6 +23,7 @@ describe("installUiDom", () => {
     try {
       // Outside act, React queues this render on setImmediate, the way a
       // promise that settles as a test ends does.
+      vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", false);
       setLabel("second");
       await restore();
       await new Promise((resolve) => setImmediate(resolve));

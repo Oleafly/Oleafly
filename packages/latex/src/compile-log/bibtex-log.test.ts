@@ -79,9 +79,6 @@ describe("parseBibtexLog", () => {
   });
 
   it("categorizes \"didn't find a database entry\" messages as undefined-citation", () => {
-    // Synthetic --line continuation: the multi-line warning shape is the only
-    // pattern that keeps the "didn't find a database entry" phrase intact in
-    // the message, so it is the only route to the undefined-citation category.
     const log = [
       'Warning--I didn\'t find a database entry for "missing2020"',
       "--line 3 of file refs.bib",

@@ -292,11 +292,6 @@ function engineForPath(
   return null;
 }
 
-/**
- * Converts only symbols whose source meaning can be recovered exactly. Server
- * display-only nodes (figures, equations, list items, package internals) stay
- * out of the project graph instead of being guessed into a wrong namespace.
- */
 export function languageServiceContribution({
   identity,
   provider,

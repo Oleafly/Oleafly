@@ -18,6 +18,7 @@ pub struct NewOutput {
     pub compiled_by: AccountId,
     pub main_file: String,
     pub storage: Option<Storage>,
+    pub for_pdf: Option<String>,
 }
 
 pub struct OpenedOutput {
@@ -108,13 +109,26 @@ fn give_back(conn: &Connection, hash: &str, now: i64) -> Result<(), ServerError>
     Ok(())
 }
 
+fn unused(
+    conn: &Connection,
+    old: &str,
+    hash: &str,
+    now: i64,
+) -> Result<Option<String>, ServerError> {
+    if old == hash || projects::blob_in_use(conn, old)? {
+        return Ok(None);
+    }
+    projects::queue_removal(conn, Removal::File, None, old, now)?;
+    Ok(Some(old.to_owned()))
+}
+
 fn record(
     conn: &mut Connection,
     new: &NewOutput,
     hash: &str,
     size: u64,
     now: i64,
-) -> Result<(ProjectOutput, Option<String>), ServerError> {
+) -> Result<(ProjectOutput, Vec<String>), ServerError> {
     let transaction = conn.transaction()?;
     let shared = projects::project_row(&transaction, new.project)?
         .is_some_and(|row| row.status != ProjectStatus::Archived);
@@ -125,8 +139,26 @@ fn record(
             "This project is no longer shared.".to_string(),
         ));
     }
+    if let Some(wanted) = new.for_pdf.as_deref() {
+        let current = find(&transaction, new.project, OutputKind::Pdf)?;
+        if current.as_ref().map(|(_, pdf)| pdf.as_str()) != Some(wanted) {
+            give_back(&transaction, hash, now)?;
+            transaction.commit()?;
+            return Err(ServerError::Conflict(
+                "A newer PDF replaced the one this SyncTeX belongs to.".to_string(),
+            ));
+        }
+    }
     let previous = find(&transaction, new.project, new.kind)?;
-    let freeing = previous.as_ref().map_or(0, |(output, _)| output.size);
+    let stale = match new.kind {
+        OutputKind::Pdf => find(&transaction, new.project, OutputKind::Synctex)?,
+        _ => None,
+    };
+    let freeing = [&previous, &stale]
+        .into_iter()
+        .flatten()
+        .map(|(output, _)| output.size)
+        .sum();
     if let Some(storage) = new.storage {
         if let Some(refused) = storage.refusal(&transaction, size, freeing)? {
             give_back(&transaction, hash, now)?;
@@ -150,13 +182,17 @@ fn record(
         ],
     )?;
     projects::finish_removal(&transaction, Removal::File, None, hash)?;
-    let orphan = match previous {
-        Some((_, old)) if old != hash && !projects::blob_in_use(&transaction, &old)? => {
-            projects::queue_removal(&transaction, Removal::File, None, &old, now)?;
-            Some(old)
-        }
-        _ => None,
-    };
+    let mut orphans = Vec::new();
+    if let Some((_, old)) = previous {
+        orphans.extend(unused(&transaction, &old, hash, now)?);
+    }
+    if let Some((_, old)) = stale {
+        transaction.execute(
+            "DELETE FROM project_outputs WHERE project_id = ?1 AND kind = ?2",
+            params![new.project.to_string(), OutputKind::Synctex.as_str()],
+        )?;
+        orphans.extend(unused(&transaction, &old, hash, now)?);
+    }
     transaction.commit()?;
     let output = ProjectOutput {
         kind: new.kind,
@@ -165,7 +201,7 @@ fn record(
         compiled_at: now,
         main_file: new.main_file.clone(),
     };
-    Ok((output, orphan))
+    Ok((output, orphans))
 }
 
 pub async fn store(
@@ -179,7 +215,7 @@ pub async fn store(
     let hash = tokio::task::spawn_blocking(move || sha256_hex(&hashed))
         .await
         .map_err(|error| ServerError::Internal(format!("an output task failed: {error}")))?;
-    let (output, orphan) = {
+    let (output, orphans) = {
         let _held = state.blobs.hold(&hash).await;
         state.blobs.put(&hash, bytes).await?;
         let recorded = hash.clone();
@@ -188,7 +224,7 @@ pub async fn store(
             .call(move |conn| record(conn, &new, &recorded, size, now))
             .await?
     };
-    if let Some(orphan) = orphan {
+    for orphan in orphans {
         if let Err(error) = cleanup::remove_if_unused(&state.db, &state.blobs, &orphan).await {
             tracing::warn!(
                 "Could not remove the replaced output {orphan} yet, so maintenance removes it later: {error}"

@@ -165,8 +165,6 @@ pub(crate) fn run_refusal(
     let probe = probes.get(&model_probe_key(provider_id, model_id));
     let resolution = resolve_trust(registry.catalog_trust(provider_id, model_id), probe);
     match resolution.trust {
-        // A probe only checks tool calls, so its verdict says nothing about a
-        // run that offers no tools.
         ModelTrust::Blocked if !has_tools && resolution.source == Some(TrustSource::Probe) => None,
         ModelTrust::Blocked => Some(format!(
             "{BLOCKED_RUN_PREFIX}{}",
@@ -942,7 +940,6 @@ mod tests {
             assert_eq!(refusal(provider, model, false), None);
         }
 
-        // A catalog block still refuses every run, whatever a probe said.
         let catalog_reason =
             "This model is blocked for the assistant: This preview model's thinking output breaks the assistant loop.";
         assert_eq!(

@@ -155,7 +155,6 @@ describe("DocumentCitationScanPanel", () => {
     const button = screen.getByTestId("document-citation-scan");
     expect(button).toBeInTheDocument();
     expect(button).toHaveTextContent(enResearchTools.citationScan.findCitations);
-    // Disabled until provider check finishes
     await waitFor(() => expect(button).not.toBeDisabled());
   });
 

@@ -7,15 +7,11 @@
 use crate::agent::task_runtime::{skill_section, SkillAudience, MAX_SKILL_BYTES};
 use std::path::{Path, PathBuf};
 
-/// A skill attached to one prompt.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PromptSkill {
     pub id: String,
     pub name: String,
-    /// The text block sent to the agent after the user's message.
     pub block: String,
-    /// The skill's installed folder, spelled as the block names it. The agent
-    /// may read inside it during this turn, since the block points it there.
     pub folder: Option<PathBuf>,
 }
 

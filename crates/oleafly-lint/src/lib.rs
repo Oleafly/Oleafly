@@ -1,12 +1,3 @@
-//! Source linting for the Oleafly CLI.
-//!
-//! Ports of the editor's LaTeX and BibTeX linters
-//! (`packages/editor/src/{latex-linter,bibtex-linter}.ts`), the prose masks
-//! that keep markup out of spelling and grammar checks, and the proofreading
-//! worker's Harper pipeline (feature `proofread`). Every offset is a UTF-16
-//! code unit in LF-normalised text, exactly as in the app, and golden fixtures
-//! generated from the TypeScript code keep the two in step.
-
 pub mod bibtex;
 pub mod diagnostic;
 pub mod latex;
@@ -37,12 +28,10 @@ fn has_extension(path: &str, extensions: &[&str]) -> bool {
         .any(|candidate| extension.eq_ignore_ascii_case(candidate))
 }
 
-/// `isLatexSourcePath`: the files the editor runs the LaTeX linter on.
 pub fn is_latex_source_path(path: &str) -> bool {
     has_extension(path, &["tex", "latex", "ltx", "sty", "cls"])
 }
 
-/// `isBibtexSourcePath`: the files the editor runs the BibTeX linter on.
 pub fn is_bibtex_source_path(path: &str) -> bool {
     has_extension(path, &["bib"])
 }

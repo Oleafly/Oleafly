@@ -212,10 +212,6 @@ function appendTextProse(
       mathRange !== undefined &&
       index >= mathRange.from &&
       index < mathRange.to;
-    // Keep one UTF-16 code unit for every visible document position.
-    // Opaque inline math becomes whitespace so neighboring prose cannot be
-    // joined into a false word while worker ranges still map exactly back
-    // to ProseMirror positions.
     accumulator.text += hidden ? " " : visibleText[index];
     accumulator.map.push(position + index);
     accumulator.rawBlockIndex.push(-1);
@@ -371,9 +367,6 @@ function mapVisualDiagnostic(
   const structuralGaps =
     extraction.gapPrefix[diagnostic.to] -
     extraction.gapPrefix[firstInternalIndex];
-  // Never underline or mutate through an opaque/math/URL span or across a
-  // ProseMirror structural boundary. A suggestion must apply to one exact,
-  // contiguous, editable range.
   if (blocked > 0 || structuralGaps > 0) return null;
   const mappedRawBlock = extraction.rawBlockIndex[diagnostic.from];
   const rawBlock =
@@ -637,9 +630,6 @@ export const VisualProofreading = Extension.create({
           let requestGeneration = 0;
           let requestedPath: string | null = null;
           let destroyed = false;
-          // The extraction for the last painted revision. Presentation page
-          // flips reuse it so paging never re-walks the document or re-runs
-          // the worker for unchanged text.
           let cachedExtraction:
             | {
                 doc: ProseMirrorNode;
@@ -732,10 +722,6 @@ export const VisualProofreading = Extension.create({
                   surface: "visual",
                 },
                 text: extraction.text,
-                // This is already display prose rather than serialized
-                // LaTeX/Markdown. The worker's plaintext path additionally
-                // masks visible URLs and email addresses while retaining its
-                // own exact offset map.
                 format: "plaintext",
                 mode,
                 ignoredWords,
@@ -825,10 +811,6 @@ export const VisualProofreading = Extension.create({
             schedule(0);
           };
           const onPresentationChanged = () => {
-            // Fast path: paging through findings for an unchanged document
-            // repaints the next slice straight from the store and the cached
-            // extraction — no doc re-walk, no worker round trip. Those are
-            // main-thread heavy on book-sized documents and freeze the UI.
             const state = visualProofreadingKey.getState(
               editorView.state,
             );
@@ -902,10 +884,6 @@ export const VisualProofreading = Extension.create({
                   view.state.doc !== previousState.doc ||
                   current?.revision !== previous?.revision
                 ) {
-                  // This plugin owns only the request it recorded. Passing an
-                  // undefined path would cancel every Visual proofreading
-                  // lane, including a newer request started by another
-                  // mounted surface during a document transition.
                   if (requestedPath) {
                     cancelProofreading("visual", requestedPath);
                   }
@@ -984,11 +962,6 @@ function currentIssue(
   );
 }
 
-/**
- * Groups findings sharing one semantic raw block while retaining one bounded
- * ProseMirror node decoration for that block. The returned neighbors make
- * every exact source-mapped finding keyboard accessible from its popover.
- */
 export function groupVisualProofreadingIssues(
   issues: readonly VisualProofreadingIssue[],
   issue: VisualProofreadingIssue,

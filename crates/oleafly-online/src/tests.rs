@@ -139,7 +139,6 @@ fn plain_http_is_only_for_a_server_on_this_computer() {
         );
         assert!(!session::is_secure_server(remote), "{remote}");
     }
-    // A link record from disk is checked again before a token is sent.
     assert_eq!(
         crate::sync::remote_url("http://latex.uni.edu", "64a1f0")
             .unwrap_err()
@@ -523,7 +522,6 @@ fn sessions_persist_per_server_and_refresh_their_cookie() {
             .cookie,
         "a=9"
     );
-    // A refresh for a different account leaves the newer sign-in alone.
     session::refresh_cookie(&store, "https://two.example", &first, "stolen=1").unwrap();
     assert_eq!(
         session::load(&store, "https://two.example")
@@ -560,7 +558,6 @@ async fn listing_without_a_session_asks_to_sign_in_and_an_expired_session_is_for
     assert!(session::load(&store, &fixture.base).unwrap().is_none());
 }
 
-/// A server whose `/project` answers `reply`, and a saved session for it.
 async fn session_against(
     reply: fn(&Request) -> Reply,
 ) -> (FixtureServer, SecretStore, tempfile::TempDir) {
@@ -590,8 +587,6 @@ async fn a_firewall_or_maintenance_page_does_not_sign_the_account_out() {
             "the sign-in was forgotten after {error:?}"
         );
     }
-    // A page without the account's id is a sign-in that could not be
-    // confirmed, not an expired one.
     let (fixture, store, _data) =
         session_against(|_| Reply::ok("<html><body>Please wait</body></html>")).await;
     let http = Http::new(&fixture.base, AGENT).unwrap();
@@ -615,7 +610,6 @@ async fn only_the_services_own_login_page_forgets_the_sign_in() {
         assert_eq!(error.kind, OnlineErrorKind::SessionExpired);
         assert!(session::load(&store, &fixture.base).unwrap().is_none());
     }
-    // Another host's login page is not this service's.
     let (fixture, store, _data) = session_against(|_| {
         Reply::status(302).header("Location", "https://other.example.net/login")
     })

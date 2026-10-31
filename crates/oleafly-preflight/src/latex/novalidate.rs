@@ -1,5 +1,3 @@
-//! `% novalidate` directives (`packages/editor/src/latex-novalidate.ts`).
-
 use std::sync::LazyLock;
 
 use crate::jsre::JsRegex;
@@ -22,7 +20,6 @@ pub struct NovalidateScan {
 static NOVALIDATE_LINE: LazyLock<JsRegex> =
     LazyLock::new(|| JsRegex::std(r"^[ \t]*%+[ \t]*(?:(begin|end)[ \t]+)?novalidate[ \t]*\r?$"));
 
-/// The directive a whole comment line spells, if any.
 pub fn novalidate_directive(line: &[u16]) -> Option<Novalidate> {
     let line = String::from_utf16_lossy(line);
     let found = NOVALIDATE_LINE.first_str(&line)?;
@@ -41,7 +38,6 @@ fn comment_owns_line(text: &[u16], cursor: usize) -> bool {
     index == 0 || text[index - 1] == NEWLINE
 }
 
-/// The directive in the comment `[from, to)` when the comment starts its line.
 pub fn novalidate_directive_at(text: &[u16], from: usize, to: usize) -> Option<Novalidate> {
     if !comment_owns_line(text, from) {
         return None;
@@ -49,7 +45,6 @@ pub fn novalidate_directive_at(text: &[u16], from: usize, to: usize) -> Option<N
     novalidate_directive(&text[from..to.min(text.len())])
 }
 
-/// The offset after the `% end novalidate` line that closes a region.
 pub fn skip_novalidate_region(text: &[u16], from: usize) -> usize {
     let mut line_start = if text.get(from) == Some(&NEWLINE) {
         from + 1
@@ -97,7 +92,6 @@ pub fn scan_latex_novalidate(text: &[u16], ranges: &[IgnoredRange]) -> Novalidat
     }
 }
 
-/// [`scan_latex_novalidate`] with the ranges computed here.
 pub fn scan_latex_novalidate_text(text: &[u16]) -> NovalidateScan {
     scan_latex_novalidate(text, &latex_ignored_ranges(text))
 }

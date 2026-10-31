@@ -11,10 +11,8 @@ type GitStatusName =
   | "conflict";
 
 export type GitStatusMeta = Readonly<{
-  /** Letter shown in the badge. */
   label: string;
   name: GitStatusName;
-  /** Text colour of the badge. */
   text: string;
   fill: string;
 }>;
@@ -52,7 +50,6 @@ export function gitStatusMeta(status: string): GitStatusMeta {
 
 export type GitDecorations = Readonly<{
   files: ReadonlyMap<string, GitStatusMeta>;
-  /** Folders that contain changes, with the most urgent change inside. */
   folders: ReadonlyMap<string, GitStatusMeta>;
 }>;
 
@@ -70,7 +67,6 @@ const FOLDER_RANK: readonly GitStatusName[] = [
   "conflict",
 ];
 
-/** Path lookups for the Explorer, built once per Git status refresh. */
 export function gitDecorations(changes: readonly GitFileChange[]): GitDecorations {
   const winners = new Map<string, GitFileChange>();
   for (const change of changes) {

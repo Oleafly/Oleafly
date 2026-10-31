@@ -29,8 +29,6 @@ enum Renewal<'a> {
 }
 
 impl Renewal<'_> {
-    // Whether a good token in `now` will do instead of a refresh. A forced
-    // refresh takes only a token another caller got while this one waited.
     fn takes(self, seen: &SessionTokens, now: &SessionTokens) -> bool {
         match self {
             Renewal::IfStale => true,
@@ -126,8 +124,6 @@ impl SessionManager {
         }
     }
 
-    // Reads the stored session off the async workers: the secret store can
-    // wait on a file lock held by another process.
     async fn stored(&self, server: ServerId) -> Result<Option<SessionTokens>, CollabError> {
         let secrets = Arc::clone(&self.secrets);
         let json = tokio::task::spawn_blocking(move || secrets.get(&session_account(server)))
@@ -169,9 +165,6 @@ impl SessionManager {
         self.renew(server, client, Renewal::Always).await
     }
 
-    // For a caller the server turned away with `rejected`: a good token
-    // other than that one, say one another connection got meanwhile, is
-    // returned as it is instead of being rotated again.
     pub async fn refresh_rejected(
         &self,
         server: ServerId,
@@ -188,8 +181,6 @@ impl SessionManager {
         client: &ServerClient,
         renewal: Renewal<'_>,
     ) -> Result<String, CollabError> {
-        // A good token needs no lock, and each server refreshes under its
-        // own, so a refresh that hangs on one server holds up nobody else.
         let seen = self
             .stored(server)
             .await?
@@ -213,11 +204,6 @@ impl SessionManager {
             secrets: Arc::clone(&self.secrets),
             clocks: Arc::clone(&self.server_clocks),
         };
-        // The refresh runs in a task of its own, holding the lock, and
-        // keeps what the server answers even when the caller is gone. The
-        // server rotates the refresh token as it answers, the old one works
-        // for only a few minutes after that, and then using it counts as
-        // reuse and signs the device out.
         tokio::spawn(async move {
             let renewed = refresh.run().await;
             drop(guard);
@@ -256,9 +242,6 @@ impl Refresh {
                     self.kept(None).await?;
                     return Err(CollabError::Unauthorized);
                 }
-                // The check expires two minutes after it is handed out, by
-                // the server's clock: a laptop that slept in between needs
-                // one new check, not a new sign-in.
                 Err(error) if nonce_expired(&error) && !fresh_check => fresh_check = true,
                 Err(CollabError::Network(_)) if attempt < REFRESH_ATTEMPTS => {
                     attempt += 1;
@@ -288,8 +271,6 @@ impl Refresh {
         Ok(tokens)
     }
 
-    // Writes the stored session off the async workers: the secret store can
-    // wait on a file lock held by another process.
     async fn kept(&self, tokens: Option<SessionTokens>) -> Result<(), CollabError> {
         let secrets = Arc::clone(&self.secrets);
         let server = self.server;
@@ -595,7 +576,6 @@ mod tests {
         hanging.abort();
     }
 
-    // Answers the refresh only after a while, and says when it came in.
     async fn slow_to_renew(
         original: &SessionTokens,
     ) -> (crate::ServerUrl, Arc<tokio::sync::Notify>) {

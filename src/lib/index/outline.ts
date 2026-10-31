@@ -7,8 +7,6 @@ export interface OutlineItem {
   line: number;
   file: string;
   kind: "section" | "file";
-  // Token span, so a click can navigate through the shared project navigation
-  // path instead of opening the file and guessing at a delay before jumping.
   from: number;
   to: number;
 }

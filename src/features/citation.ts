@@ -197,8 +197,6 @@ function pickTargetBib(
   acceptHayagriva: boolean,
   preferred?: string,
 ): { path: string; content: string; readOnly: boolean } {
-  // Look for \bibliography in the document that actually compiles, which a
-  // `% !TEX root` comment in the active file may redirect.
   const effectiveMain = resolveEffectiveMainDoc().mainDoc;
   const declaringFile = source !== undefined ? files.mainDoc : effectiveMain;
   const mainContent = source ?? files.files[effectiveMain]?.content ?? "";
@@ -333,16 +331,11 @@ async function writeCitationTarget(
   newContent: string,
   base: string,
 ): Promise<string | null> {
-  // A viewer's change, or one while the project goes live, stops here with
-  // one message. The files store would refuse it as well and say so in a
-  // toast of its own.
   const refusal = sharedWriteRefusal(id);
   if (refusal) return refusal.message;
   if (files.files[targetPath] !== undefined) {
     const bumpVersion = useFilesStore.getState().activePath === targetPath;
     if (!files.setContent(targetPath, newContent, { bumpVersion })) return linkedBibliographyMessage(targetPath);
-    // Persist now instead of waiting for the autosave debounce, so a compile
-    // (which reads from disk) resolves the new \cite immediately.
     try {
       await useFilesStore.getState().saveFile(targetPath);
       assertCitationProject(id);
@@ -495,10 +488,6 @@ async function bulkImportBibliography(): Promise<string | undefined> {
   }
 }
 
-// Imports a whole reference library (from Zotero/EndNote/RIS/BibTeX) into the
-// project's bib file in one write, deduping by DOI against both the existing
-// file and the rest of the batch. Unlike addCitation, this never inserts a
-// \cite{} at the cursor - a bulk import is a library, not a citation action.
 export async function addCitations(entries: ParsedBib[]): Promise<BatchImportResult> {
   if (!entries.length) return { imported: 0, duplicates: 0, errors: [] };
   if (projectFolderIsReadOnly(useFilesStore.getState().projectId)) {
@@ -557,9 +546,6 @@ export function parseCitationFile(filename: string, text: string): ParsedBib[] |
   return null;
 }
 
-// E2E / devtools hook: the native test bridge cannot drive a real file input,
-// so specs feed file text in directly through the same parse/import path the
-// Connect Sources dialog uses.
 if (typeof window !== "undefined" && E2E_HOOKS) {
   const w = window as unknown as {
     __importCitationFile?: (name: string, text: string) => Promise<BatchImportResult | { error: string }>;

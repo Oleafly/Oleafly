@@ -1,3 +1,5 @@
+#[cfg(unix)]
+use super::remove_links;
 use super::{
     append_bounded, detect_latexmk_flavor, dotted, executable_name, fingerprint_file,
     ignored_flags, image_check_applies, pandoc_engine_path, parse_errors, read_stream, relative_to,
@@ -10,23 +12,20 @@ use crate::contract::ErrorKind as CliErrorKind;
 use crate::typst::PinnedTypst;
 use crate::typst_settings::TypstSettings;
 use oleafly_core::build_output::{BuildLock, OutputStaging};
+#[cfg(unix)]
+use oleafly_core::engine_spec::compiler_crash_note;
 use oleafly_core::engine_spec::{
     self, is_bundle_fetch_failure, latex_entry_source, tex_bundle_url, ENTRY_TEX,
     MERMAID_FIGURES_FILTER, MERMAID_FIGURES_FILTER_NAME,
 };
+#[cfg(unix)]
+use oleafly_core::tex_distro::TexSearch;
 use oleafly_core::tex_errors::ENGINE_OUTPUT_MARKER;
 use oleafly_core::typst_toolchain::{bundled_typst_version, capabilities_for, ToolchainVersion};
 use oleafly_core::{
     plain_path, Engine, EngineScratchBases, ErrorKind, InitOptions, ProjectManifest, TexFlavor,
     Workspace, ENGINE_TEMP_DIR, TEMP_DIRECTORY_VARIABLES,
 };
-// Used only by the Unix tests.
-#[cfg(unix)]
-use super::remove_links;
-#[cfg(unix)]
-use oleafly_core::engine_spec::compiler_crash_note;
-#[cfg(unix)]
-use oleafly_core::tex_distro::TexSearch;
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -64,7 +63,6 @@ fn arguments(command: &BuildCommand) -> Vec<String> {
         .collect()
 }
 
-/// Arguments without the per-build staging folder.
 fn stable_arguments(command: &BuildCommand) -> Vec<String> {
     arguments(command)
         .into_iter()
@@ -713,8 +711,6 @@ fn latexmk_comes_from_the_tex_search_not_beside_the_cli() {
         },
         ..Discovery::default()
     };
-    // A TeX installed on this machine can be found; the copy beside the CLI
-    // never is.
     let system = BuildTools::discover_with(&discovery).latexmk;
     assert_ne!(
         system,
@@ -728,7 +724,6 @@ fn latexmk_comes_from_the_tex_search_not_beside_the_cli() {
         .join(platform)
         .join("latexmk");
     make(&managed);
-    // The managed copy, unless a full TeX on this machine stays first.
     let chosen = BuildTools::discover_with(&discovery).latexmk;
     assert!(
         chosen == Some(managed.canonicalize().unwrap()) || (system.is_some() && chosen == system),
@@ -1876,7 +1871,6 @@ async fn latexmk_never_writes_through_a_link_planted_in_the_build_folder() {
     let build_dir = build.build_directory().to_path_buf();
     let victim = outside.path().join("bashrc");
     std::fs::write(&victim, "export PATH=safe\n").unwrap();
-    // The outputs latexmk writes, an auxiliary file and a linked folder.
     symlink(&victim, build_dir.join("_oleafly_entry.pdf")).unwrap();
     symlink(&victim, build_dir.join("_oleafly_entry.log")).unwrap();
     symlink(&victim, build_dir.join("_oleafly_entry.synctex.gz")).unwrap();
@@ -1910,7 +1904,6 @@ async fn latexmk_never_writes_through_a_link_planted_in_the_build_folder() {
             "{name} is still there"
         );
     }
-    // The folder a link led to is untouched; only the link went.
     assert!(outside.path().join("bashrc").is_file());
 }
 
@@ -1922,7 +1915,6 @@ fn the_link_sweep_removes_special_files_without_opening_them() {
     let c_path = std::ffi::CString::new(pipe.to_str().unwrap()).unwrap();
     assert_eq!(unsafe { libc::mkfifo(c_path.as_ptr(), 0o600) }, 0);
     std::fs::write(build.path().join("_oleafly_entry.aux"), "aux").unwrap();
-    // Another build's staging folder is left alone, links inside it too.
     let staging = build.path().join(format!(
         "{}1-abc",
         oleafly_core::build_output::STAGING_PREFIX
@@ -1953,7 +1945,6 @@ async fn a_failed_latexmk_build_keeps_the_last_good_pdf() {
     assert!(good.ok && good.fresh, "{}", good.log);
     let pdf = good.output.clone().unwrap();
     assert_eq!(std::fs::read(&pdf).unwrap(), b"%PDF-1.7\nfixture\n");
-    // A SyncTeX file from the good build stays with it.
     let synctex = pdf.with_file_name("_oleafly_entry.synctex.gz");
     std::fs::write(&synctex, b"good synctex").unwrap();
 
@@ -1999,7 +1990,6 @@ fn a_latexmk_build_that_never_finished_puts_the_last_good_outputs_back() {
     std::fs::write(&pdf, "good").unwrap();
     {
         let _running = InPlaceOutputs::prepare(build.path()).unwrap();
-        // The compiler was cut off partway through the PDF and wrote a log.
         std::fs::write(&pdf, "gar").unwrap();
         std::fs::write(build.path().join("_oleafly_entry.log"), "log").unwrap();
     }
@@ -2007,14 +1997,12 @@ fn a_latexmk_build_that_never_finished_puts_the_last_good_outputs_back() {
     assert!(build.path().join("_oleafly_entry.log").is_file());
     assert!(staging_leftovers(build.path()).is_empty());
 
-    // An output the compiler left alone is not replaced by its copy.
     let mut quiet = InPlaceOutputs::prepare(build.path()).unwrap();
     let before = std::fs::metadata(&pdf).unwrap().modified().unwrap();
     quiet.finish(false);
     assert_eq!(std::fs::metadata(&pdf).unwrap().modified().unwrap(), before);
     drop(quiet);
 
-    // A good build keeps what it wrote.
     let mut good = InPlaceOutputs::prepare(build.path()).unwrap();
     std::fs::write(&pdf, "new").unwrap();
     good.finish(true);
@@ -2027,9 +2015,6 @@ async fn the_bundle_fallback_retries_without_the_mirror() {
     let tools_directory = TempDir::new().unwrap();
     let project = TempDir::new().unwrap();
     let workspace = workspace_for_engine(&project, Engine::Tectonic, None);
-    // A fixture that fails only while `--bundle` is given, through the
-    // command-line switch the integration tests use; here the arguments are
-    // checked directly.
     let compiler = NativeCompiler::new(BuildTools {
         tectonic: Some(compiler_fixture(&tools_directory, false)),
         ..BuildTools::default()

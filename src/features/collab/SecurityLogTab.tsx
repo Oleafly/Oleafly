@@ -132,8 +132,6 @@ function projectRole(value: string | null): CollabProjectRole | null {
   return PROJECT_ROLES.find((role) => role === value) ?? null;
 }
 
-// A change stored while comments were off: the actor made it, and the project
-// it is about is named in the details, not as the target.
 const COMMENTS_CHANGED_WHILE_OFF = "comments_changed_while_off";
 
 function isProjectKind(kind: string): boolean {
@@ -292,8 +290,6 @@ function useEventDescription(names: ReadonlyMap<string, string>) {
   return (event: CollabSecurityEvent) => {
     const detail = detailOf(event);
     const target = targetOf(event, detail);
-    // A refused sign-in has no account behind it. The login, address or
-    // device that was refused is who the row is about, not the server.
     const targetIsSubject = event.actor === null && target !== null && SIGN_IN_KINDS.has(event.kind);
     const nobody = event.actor === null && target === null && event.kind === "sign_in_refused";
     let subject: string | null = null;

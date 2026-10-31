@@ -1,5 +1,3 @@
-//! External Checkpoints lifecycle and transactional worktree restore.
-
 use std::collections::{BTreeSet, HashMap, HashSet};
 #[cfg(unix)]
 use std::fs::File;
@@ -168,9 +166,6 @@ fn restore_coordination() -> &'static RestoreCoordination {
     })
 }
 
-/// Returns the shared per-project operation lock used by publication,
-/// retention, garbage collection, and archive import. Callers that also need
-/// `compile_lock` must acquire `compile_lock` first.
 pub(crate) fn checkpoint_operation_lock(
     project_id: &str,
 ) -> Result<Arc<tokio::sync::Mutex<()>>, String> {
@@ -370,8 +365,6 @@ fn checkpoint_delete_sync(project_id: &str, snapshot_root: &str) -> Result<(), S
     if !deleted {
         return Err("The selected Checkpoint no longer exists.".into());
     }
-    // The visible root is already gone. Reclamation is best-effort and can be
-    // retried later without misreporting the deletion as failed.
     let _ = store.garbage_collect();
     Ok(())
 }
@@ -395,16 +388,11 @@ fn checkpoint_reset_sync(project_id: &str) -> Result<(), String> {
     remove_project_checkpoint_data(project_id)
 }
 
-/// Removes the exact external store for one validated project identity.
-/// Store::destroy serializes the directory lifecycle across app processes.
 pub(crate) fn remove_project_checkpoint_data(project_id: &str) -> Result<(), String> {
     crate::paths::validate_project_id(project_id)?;
     crate::checkpoint_publication::cancel_project_publications_and_wait(project_id);
     let _activity = ActiveRestore::acquire(project_id);
-    // Resolve the exact validated namespace path even when the visible store
 
-    // has already been detached. Store::destroy also reaps its durable
-    // `.deleting.*` record, so retry must not stop at a missing original root.
     let store = crate::paths::checkpoint_store_dir(project_id)?;
     Store::destroy(&store)
         .map_err(|error| format!("could not remove project Checkpoints data: {error}"))?;
@@ -559,10 +547,6 @@ pub async fn checkpoint_restore(
         Some(expected_generation),
         move |project_root| {
             let _active = ActiveRestore::acquire(&restore_project_id);
-            // The mutation admission owns the exclusive cross-process
-            // worktree lock here. Resolve the external store only after that
-            // identity is pinned so deletion and project-id reuse cannot swap
-            // the store between validation and restore.
             let store = require_existing_store(&restore_project_id)?;
             let location = crate::project_location::locate(&restore_project_id)?;
             match location.kind {
@@ -1483,16 +1467,11 @@ fn has_phase(transaction: &Path, phase: &str) -> Result<bool, String> {
     }
 }
 
-/// Rolls back or finalizes a restore journal while the caller owns the same
-/// compile, figure, mutation-admission, and cross-process worktree coordination
-/// as an ordinary restore. Ordinary metadata reads never call this function.
 pub(crate) fn recover_interrupted_restore_lock_held(project_id: &str) -> Result<bool, String> {
     crate::paths::validate_project_id(project_id)?;
     let _activity = ActiveRestore::acquire(project_id);
     let location = crate::project_location::locate(project_id)?;
     let marker_dir = location.private_state_dir();
-    // Ordinary project reads remain independent from Checkpoints storage.
-    // Only a durable in-project marker proves that worktree mutation began.
     let pending = restore_pending_marker_exists(&marker_dir)?;
     let Some(store_path) = crate::paths::existing_checkpoint_store_dir(project_id)? else {
         return if pending {

@@ -29,6 +29,7 @@ const UPDATE: &[&str] = &[
 
 const PREVIEW: &[&str] = &[
     "grant_test_save_path",
+    "open_compiled_html",
     "pick_save_path",
     "read_compiled_pdf",
     "save_file_base64",
@@ -94,7 +95,6 @@ pub(crate) fn allowed(window: &str, webview: &str, command: &str) -> bool {
         .is_some_and(|own| EVERY_WINDOW.contains(&command) || own.contains(&command))
 }
 
-/// Wraps the app's command handler so each window reaches only its own commands.
 pub fn gated<R, F>(handler: F) -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'static
 where
     R: Runtime,
@@ -141,6 +141,7 @@ mod tests {
     fn secondary_windows_reach_only_their_own_commands() {
         assert!(allowed("preview", "preview", "read_compiled_pdf"));
         assert!(allowed("preview", "preview", "write_bytes_file"));
+        assert!(allowed("preview", "preview", "open_compiled_html"));
         assert!(!allowed("preview", "preview", "term_open"));
         assert!(!allowed("preview", "preview", "get_connector_key"));
         assert!(allowed("update", "update", "install_update"));

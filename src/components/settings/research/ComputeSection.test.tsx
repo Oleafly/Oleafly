@@ -53,7 +53,6 @@ const sandbox: SandboxStatus = { platform: "macos", available: true, reason: nul
 
 let current: ComputeView;
 let report: ComputeTestReport;
-/** Answers for commands a test adds (the SSH import, one target's own test result). */
 let extra: Record<string, (args: Record<string, unknown>) => unknown>;
 
 describe("ComputeSection", () => {
@@ -156,7 +155,6 @@ describe("ComputeSection", () => {
     await userEvent.click(within(lab).getByRole("button", { name: strings.targets.test }));
     await waitFor(() => expect(answers).toHaveLength(1));
 
-    // Edit the target and save while the first test still runs: that starts a second test.
     await userEvent.click(within(lab).getByRole("button", { name: strings.targets.more.replace("{{label}}", "Lab box") }));
     await userEvent.click(await screen.findByRole("menuitem", { name: strings.targets.edit }));
     const form = await screen.findByTestId("compute-target-dialog");
@@ -222,8 +220,6 @@ describe("ComputeSection", () => {
     });
 
     beforeEach(() => {
-      // Each target's test comes back with a prompt for its own host.
-      // The lab answers first and the cluster a little later.
       extra.research_compute_target_test = async (args) => {
         const targetId = args.targetId as string;
         await new Promise((resolve) => setTimeout(resolve, targetId === "t-a" ? 5 : 60));
@@ -245,7 +241,6 @@ describe("ComputeSection", () => {
       fireEvent.click(within(cluster).getByRole("button", { name: strings.targets.test }));
       const dialog = await screen.findByTestId("compute-host-key-dialog");
       expect(dialog).toHaveTextContent("lab-fingerprint");
-      // The cluster's test finishes while the user is still comparing the lab's fingerprints.
       await waitFor(() => expect(within(cluster).getByTestId("compute-host-key-t-b")).toBeTruthy());
 
       const stillOpen = screen.getByTestId("compute-host-key-dialog");
@@ -360,11 +355,9 @@ describe("ComputeSection", () => {
 
       expect(await within(dialog).findByRole("alert")).toHaveTextContent("Not added: h2. Up to 32 targets.");
       expect(saved).toEqual(["h1", "h3"]);
-      // The list behind the dialog already shows what was saved.
       expect(await screen.findByTestId("compute-target-id-h1")).toBeTruthy();
       expect(screen.getByTestId("compute-target-id-h3")).toBeTruthy();
       await waitFor(() => expect(tested).toEqual(["id-h1", "id-h3"]));
-      // The saved hosts are shown as added, so another try adds only the one that failed.
       expect(within(dialog).getByTestId("compute-ssh-import-add")).toHaveTextContent("Add 1 host");
       await userEvent.click(within(dialog).getByTestId("compute-ssh-import-add"));
       await waitFor(() => expect(within(dialog).getByRole("alert")).toHaveTextContent("Not added: h2"));

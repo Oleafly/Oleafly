@@ -1,7 +1,3 @@
-//! Turning attachment references into what the run's model can read: an
-//! image, a PDF document, extracted text, or a short note saying why a file
-//! was not sent. Newer messages are resolved first, so the most recent
-//! attachments win the request's size budget.
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -18,7 +14,6 @@ use oleafly_agent::{
 
 use super::{locate, read_bytes, read_meta, read_text, AttachmentMeta};
 
-/// Text one attachment may add, before the run's overall text budget.
 pub(crate) const PER_ATTACHMENT_TEXT_CHARS: usize = 200_000;
 
 const SKIPPED: &str = "attachment_skipped";
@@ -40,8 +35,6 @@ struct MediaBudget {
     text_chars: usize,
 }
 
-/// One run's attachment resolution, shared by the run start and every
-/// steered message so they draw on the same budget.
 pub(crate) struct RunMediaContext {
     root: PathBuf,
     project_id: Option<String>,
@@ -70,23 +63,16 @@ fn skipped(name: &str, reason: &str) -> Outcome {
     )
 }
 
-/// The length of `size` bytes as base64.
 fn base64_len(size: u64) -> usize {
     usize::try_from(size.div_ceil(3).saturating_mul(4)).unwrap_or(usize::MAX)
 }
 
-/// What a PDF with no recorded page count is counted as: one page for every
-/// 50 KB. Papers run lower and scans higher, so a guess that errs on the
-/// high side sends such a file as text sooner, which is the safe way to be
-/// wrong.
 const BYTES_PER_PAGE_GUESS: u64 = 50_000;
 
 fn guessed_pages(bytes: u64) -> u32 {
     u32::try_from(bytes.div_ceil(BYTES_PER_PAGE_GUESS).max(1)).unwrap_or(u32::MAX)
 }
 
-/// The PDF a page image belongs to: the renderer names the images it adds
-/// for a scanned PDF `<pdf name> page <n>.png`.
 fn page_image_owner(name: &str) -> Option<&str> {
     let (owner, page) = name.strip_suffix(".png")?.rsplit_once(" page ")?;
     (!page.is_empty() && page.bytes().all(|byte| byte.is_ascii_digit())).then_some(owner)
@@ -127,8 +113,6 @@ impl RunMediaContext {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
-    /// Resolves every attachment in the request. Images and documents
-    /// already inline in it count against the budget first.
     pub(crate) fn resolve_request(
         &self,
         request: &mut CompletionRequest,
@@ -166,9 +150,6 @@ impl RunMediaContext {
         Ok(events)
     }
 
-    /// Resolves the attachments of one message (a steer, mid-run). Within
-    /// the message, documents come first, then images, then attachment text
-    /// and notes, then the user's own parts.
     pub(crate) fn resolve_message(&self, message: &mut Message) -> Result<Vec<AgentEvent>, String> {
         if !message
             .content
@@ -177,8 +158,6 @@ impl RunMediaContext {
         {
             return Ok(Vec::new());
         }
-        // PDFs the renderer sent with page images of their own: a PDF that
-        // cannot go as a document or text is still partly sent, as images.
         let pdfs_with_pages: HashSet<String> = message
             .content
             .iter()
@@ -342,8 +321,6 @@ impl RunMediaContext {
         skipped(name, "no text could be extracted from it.")
     }
 
-    /// `header` and `text`, cut to what one attachment and the run's text
-    /// budget allow.
     fn attachment_text(&self, header: &str, text: &str) -> ContentPart {
         let mut budget = self.budget();
         let allowed = PER_ATTACHMENT_TEXT_CHARS.min(budget.text_chars);

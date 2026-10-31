@@ -7,10 +7,6 @@ import { BUILTIN_PROOFREADING_WORDS } from "@/lib/proofreading/ignored";
 import { ACADEMIC_PROFILE_RULES, HARPER_PANICKING_RULES } from "@/lib/proofreading/lint-profile";
 import { expectGolden, LINT_FIXTURES, PREFLIGHT_FIXTURES, readJson, REPO } from "./support";
 
-// Hand-ported data tables the Rust crates carry. A drift in any of them shows
-// up here as a golden change and in the Rust tables tests as a mismatch.
-
-/** The ids of `standards.ts`'s TABLE, in order. */
 const STANDARD_IDS = [
   "pdf-untagged-output",
   "pdf-structure-missing",

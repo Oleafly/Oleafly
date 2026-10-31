@@ -60,10 +60,6 @@ function buildLineSpans(text: string): LineSpan[] {
   return lines;
 }
 
-/**
- * Reusable line index for converting LSP positions without rescanning all
- * preceding lines for every range.
- */
 export class TextPositionIndex {
   readonly text: string;
   private readonly lines: LineSpan[];

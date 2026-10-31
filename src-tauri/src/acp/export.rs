@@ -1,11 +1,3 @@
-//! Conversation export as pretty JSON: `{ "session": …, "exportInfo": …,
-//! "events": […] }`. Nothing in it says where the project lives: the
-//! session leaves out its path and remote target, paths in the events are
-//! written relative to the project, and the agent's stderr is left out.
-//!
-//! Events are streamed from the store one page at a time, so a transcript
-//! near the 64 MiB session limit is never held in memory twice.
-
 use super::{store::Store, types::SessionRecord};
 use oleafly_acp::controls::ConfigKind;
 use serde::ser::{Error as _, Serialize, SerializeSeq, SerializeStruct, Serializer};
@@ -17,14 +9,9 @@ const PAGE: usize = 500;
 struct Events<'a> {
     store: &'a Store,
     id: &'a str,
-    /// Where the project lives, as events spell it, longest first.
     roots: Vec<String>,
 }
 
-/// The ways an event names the project folder: as a `file://` link and as
-/// a path, with `/` and (on Windows) `\`. `folder` is the project's
-/// canonical path, `spelled` the one the agent was started in, `remote` the
-/// folder on another machine.
 fn project_spellings(folder: &str, spelled: &str, remote: Option<&str>) -> Vec<String> {
     let mut roots = Vec::new();
     for root in [Some(folder), Some(spelled), remote].into_iter().flatten() {
@@ -45,7 +32,6 @@ fn project_spellings(folder: &str, spelled: &str, remote: Option<&str>) -> Vec<S
     roots
 }
 
-/// `text` with the project folder taken out of every path in it.
 fn relative_text(text: &str, roots: &[String]) -> String {
     let mut output = text.to_owned();
     for root in roots {
@@ -59,7 +45,6 @@ fn relative_text(text: &str, roots: &[String]) -> String {
     output
 }
 
-/// An event as exported: paths relative to the project, no stderr.
 fn exported_event(event: &super::types::AcpEvent, roots: &[String]) -> super::types::AcpEvent {
     fn walk(value: &mut Value, roots: &[String]) {
         match value {
@@ -118,7 +103,6 @@ impl Serialize for Export<'_> {
     }
 }
 
-/// The current choice of the option in `category`, by display name.
 fn option_choice(session: &SessionRecord, category: &str) -> Value {
     let Some(option) = session.controls.by_category(category) else {
         return Value::Null;
@@ -136,7 +120,6 @@ fn option_choice(session: &SessionRecord, category: &str) -> Value {
     }
 }
 
-/// What the export says about how the conversation ran.
 pub(super) fn export_info(session: &SessionRecord) -> Value {
     let mode = match option_choice(session, "mode") {
         Value::Null => json!(session.controls.mode_id),
@@ -155,7 +138,6 @@ pub(super) fn export_info(session: &SessionRecord) -> Value {
     })
 }
 
-/// The session as exported: without the project path and remote target.
 fn exported_session(session: &SessionRecord) -> Result<Value, String> {
     let mut value = serde_json::to_value(session).map_err(|e| e.to_string())?;
     if let Some(object) = value.as_object_mut() {
@@ -168,8 +150,6 @@ fn exported_session(session: &SessionRecord) -> Result<Value, String> {
     Ok(value)
 }
 
-/// Writes the saved conversation `id` to `destination`, an absolute path the
-/// user chose. The file appears only once it is complete.
 pub(super) fn write_export(store: &Store, id: &str, destination: &str) -> Result<(), String> {
     let session = store.get(id)?;
     let spelled = super::runtime::launch_root_for(std::path::Path::new(&session.project_path));

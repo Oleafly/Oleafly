@@ -1,7 +1,3 @@
-//! Git for the private mirror. The app runs Git through its own runner (it
-//! locates Git and bounds every call); the CLI uses [`SystemGit`]. Both use
-//! the same settings: no hooks, no signing, no credential helpers except the
-//! one that reads the token from the environment, never from argv.
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
@@ -25,7 +21,6 @@ pub trait MirrorGit: Send + Sync {
     }
 }
 
-/// The variable the credential helper reads the token from.
 pub const MIRROR_TOKEN_VARIABLE: &str = "OLEAFLY_MIRROR_TOKEN";
 
 pub(crate) fn null_device() -> &'static str {
@@ -36,7 +31,6 @@ pub(crate) fn null_device() -> &'static str {
     }
 }
 
-/// The `-c` settings every mirror call carries.
 pub fn mirror_config() -> Vec<String> {
     [
         format!("core.hooksPath={}", null_device()),
@@ -63,8 +57,6 @@ pub fn mirror_config() -> Vec<String> {
     .collect()
 }
 
-/// The `-c` settings that give the credential origin the token from
-/// [`MIRROR_TOKEN_VARIABLE`].
 pub fn credential_config(credential_origin: &str) -> Vec<String> {
     vec![
         "-c".to_string(),
@@ -86,7 +78,6 @@ fn last_progress_frame(line: &str) -> &str {
     }
 }
 
-/// stdout and stderr, each progress line reduced to its last frame.
 pub fn output_text(output: &Output) -> String {
     let mut text = String::new();
     text.push_str(&String::from_utf8_lossy(&output.stdout));
@@ -157,7 +148,6 @@ const LOCAL_TOTAL: Duration = Duration::from_secs(120);
 const LOCAL_SLOW_TOTAL: Duration = Duration::from_secs(600);
 const MAX_CAPTURE: usize = 64 * 1024 * 1024;
 
-/// Git found by the caller (the CLI resolves it on `PATH`).
 #[derive(Clone, Debug)]
 pub struct SystemGit {
     program: PathBuf,
@@ -168,7 +158,6 @@ impl SystemGit {
         SystemGit { program }
     }
 
-    /// The command for one call. `remote` is `(credential origin, token)`.
     pub fn command(&self, repo: &Path, args: &[&str], remote: Option<(&str, &str)>) -> Command {
         let mut command = Command::new(&self.program);
         command.args(mirror_config());
@@ -205,8 +194,6 @@ impl SystemGit {
     }
 }
 
-/// The Git subcommand in `args`, after any `-c name=value` pairs and global
-/// options such as `--git-dir=.git`.
 fn subcommand<'a>(args: &[&'a str]) -> Option<&'a str> {
     let mut args = args.iter().copied();
     while let Some(arg) = args.next() {
@@ -252,8 +239,6 @@ fn now_millis(started: Instant) -> u64 {
     u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX)
 }
 
-/// Runs `command`, killing it after `total`, or after `idle` without any
-/// output when set.
 fn run_bounded(
     mut command: Command,
     idle: Option<Duration>,
@@ -343,7 +328,6 @@ fn run_bounded(
     })
 }
 
-/// Git on `PATH` (the first `git`, or `git.exe` on Windows).
 pub fn git_on_path() -> Option<PathBuf> {
     let name = if cfg!(windows) { "git.exe" } else { "git" };
     let path = std::env::var_os("PATH")?;

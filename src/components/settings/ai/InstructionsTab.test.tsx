@@ -101,7 +101,6 @@ describe("InstructionsTab", () => {
 
     await user.click(checkbox);
     expect(props.persist).toHaveBeenCalledWith({ ...cfg, ai_pdf_capture: false });
-    // Never the screen's own copy of the whole config.
     expect(mocks.setConfig).not.toHaveBeenCalled();
     expect(localStorage.getItem("oleafly:ai_pdf_capture")).toBe("0");
   });

@@ -11,6 +11,7 @@ import { type TableDialect, type TableHost, useTableHost } from "./contexts";
 import { TableEditor } from "./TableEditor";
 import { fixtureOf } from "./test-support";
 import { TableRenderingErrorWidget, TabularWidget } from "./widget";
+import { stubRangeGeometry } from "../../test-geometry";
 
 const DOC = `\\begin{tabular}{ll}
 A & B \\\\
@@ -21,12 +22,7 @@ let view: EditorView | null = null;
 
 beforeAll(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-  if (!globalThis.Range.prototype.getClientRects) {
-    Object.defineProperty(globalThis.Range.prototype, "getClientRects", {
-      configurable: true,
-      value: () => [],
-    });
-  }
+  stubRangeGeometry();
 });
 
 afterEach(() => {

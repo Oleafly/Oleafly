@@ -1,13 +1,9 @@
-//! Short, bounded runs of a tool to ask its version: stdin and stderr are
-//! closed, stdout is read up to a cap, and the process is killed when it
-//! outlives its deadline.
 use std::io::Read;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-/// The deadline a version probe gets.
 pub const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 const POLL: Duration = Duration::from_millis(25);
 #[cfg(windows)]
@@ -19,8 +15,6 @@ pub struct ProbeOutput {
     pub stdout: Vec<u8>,
 }
 
-/// Runs `program args` and returns its exit status and up to `max_bytes`
-/// of its output, or `None` when it can't start or exceeds `timeout`.
 pub fn probe_output(
     program: &Path,
     args: &[&str],
@@ -70,7 +64,6 @@ pub fn probe_output(
         match receiver.recv_timeout(deadline.saturating_duration_since(Instant::now()).max(POLL)) {
             Ok(stdout) => stdout,
             Err(_) => {
-                // Something it started still holds the pipe open.
                 kill_group(child.id());
                 Vec::new()
             }
@@ -81,12 +74,9 @@ pub fn probe_output(
     })
 }
 
-/// Stops `child` and everything it started.
 fn kill_tree(child: &mut std::process::Child) {
     #[cfg(windows)]
     {
-        // `taskkill /T` follows the parent links from the child down; run
-        // it before the child goes, or its descendants lose that link.
         let system_root = std::env::var_os("SystemRoot").unwrap_or_else(|| "C:\\Windows".into());
         let taskkill = Path::new(&system_root)
             .join("System32")
@@ -108,7 +98,6 @@ fn kill_tree(child: &mut std::process::Child) {
     let _ = child.kill();
 }
 
-/// Kills the process group `pid` leads (the probe's, set at spawn).
 #[cfg(unix)]
 fn kill_group(pid: u32) {
     if let Ok(group) = i32::try_from(pid) {

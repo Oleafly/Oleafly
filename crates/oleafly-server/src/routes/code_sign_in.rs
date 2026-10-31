@@ -319,9 +319,6 @@ async fn entry(
 ) -> Result<Response, ServerError> {
     let csrf = csrf::token(&headers);
     let cookie = Some(csrf::cookie(&state.config, &csrf));
-    // Oleafly's own link carries the code, so it goes straight to the page
-    // that names the device instead of asking for the code again. Someone
-    // typing the address on another device gets the empty form.
     let Some(code) = query
         .code
         .as_deref()
@@ -516,12 +513,9 @@ struct Confirm<'a> {
     authorization: &'a Authorization,
     user_code: &'a str,
     here: Option<&'a str>,
-    // The sign-in method picked in Oleafly, when the link came from there.
     chosen: Option<&'a str>,
 }
 
-// Names the device that asked, so nobody approves someone else's computer by
-// following their link, then offers the ways to sign in.
 async fn confirm_page(
     locale: Locale,
     state: &AppState,
@@ -544,8 +538,6 @@ async fn confirm_page(
     if providers.is_empty() {
         body.push_str(&sign_in_pages::paragraph(locale.text(Key::CodeNoProviders)));
     }
-    // Asking again for the way someone already chose in Oleafly is one more
-    // decision for nothing, so only that one is offered when it's known.
     let chosen: Vec<_> = providers
         .iter()
         .filter(|provider| page.chosen == Some(provider.id.as_str()))
@@ -764,7 +756,6 @@ fn refused(
     let by_email = pending.provider_id == email_link::PROVIDER_ID;
     let provider = provider_label(locale, state, &pending.provider_id);
     let server = escape(&state.config.server_name);
-    // Say who was turned away and whom to ask, in one line.
     let who = account.map(|account| {
         let account = format!("<strong>{}</strong>", escape(account));
         let named = if by_email {

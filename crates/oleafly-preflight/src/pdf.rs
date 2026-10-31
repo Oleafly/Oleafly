@@ -1,8 +1,3 @@
-//! PDF facts for the submission rules, read with lopdf the way the app reads
-//! them with pdf.js (`packages/preflight/src/pdf-extract.ts`): page view
-//! boxes and rotation, outline items, links, form fields, attachments,
-//! encryption, the author, creator and producer, and the fonts text uses.
-
 use std::collections::{HashSet, VecDeque};
 use std::fmt;
 use std::io::Read;
@@ -16,7 +11,6 @@ use crate::jsre::JsRegex;
 use crate::text::js_trim;
 use crate::types::{FontFact, PdfFacts, PdfPageFacts};
 
-/// Larger PDFs are not read.
 pub const MAX_PDF_BYTES: u64 = 256 * 1024 * 1024;
 
 const LETTER_SIZE: [f64; 4] = [0.0, 0.0, 612.0, 792.0];
@@ -28,12 +22,8 @@ const MAX_DEPTH: usize = 64;
 /// process, which `catch_unwind` can't stop).
 #[derive(Clone, Copy, Debug)]
 struct Limits {
-    /// One page's or form's content stream. Decoding it into operations takes
-    /// many times its size again.
     stream: u64,
-    /// Every content stream read, together (time, not memory).
     total: u64,
-    /// The XMP metadata packet.
     xmp: u64,
     /// An object or cross-reference stream, which lopdf inflates in full
     /// while it loads the file.
@@ -49,8 +39,6 @@ const LIMITS: Limits = Limits {
 /// Object and cross-reference streams looked at before the file is loaded; a
 /// real PDF has a few hundred at most.
 const MAX_CONTAINER_STREAMS: usize = 20_000;
-/// How far past `/Type /ObjStm` or `/Type /XRef` its `stream` keyword is
-/// looked for.
 const CONTAINER_DICTIONARY_WINDOW: usize = 64 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -75,7 +63,6 @@ impl std::error::Error for PdfFactsError {}
 
 static HEADER_VERSION: LazyLock<JsRegex> = LazyLock::new(|| JsRegex::std(r"%PDF-([0-9]+\.[0-9]+)"));
 
-/// `%PDF-x.y` in the first 16 bytes, the way the app reads the header.
 fn header_version(bytes: &[u8]) -> Option<String> {
     let head = String::from_utf8_lossy(&bytes[..bytes.len().min(16)]).into_owned();
     HEADER_VERSION
@@ -83,8 +70,6 @@ fn header_version(bytes: &[u8]) -> Option<String> {
         .and_then(|found| found.group(&head, 1).map(str::to_string))
 }
 
-/// How far past a `trailer` keyword, or around an `/XRef` stream's type, its
-/// dictionary is looked at.
 const TRAILER_WINDOW: usize = 64 * 1024;
 
 fn find_from(haystack: &[u8], needle: &[u8], from: usize) -> Option<usize> {
@@ -102,7 +87,6 @@ fn rfind_before(haystack: &[u8], needle: &[u8], before: usize) -> Option<usize> 
         .rposition(|window| window == needle)
 }
 
-/// Whether `bytes` holds a `/Encrypt` key (not `/EncryptMetadata`).
 fn has_encrypt_key(bytes: &[u8]) -> bool {
     const KEY: &[u8] = b"/Encrypt";
     bytes.windows(KEY.len()).enumerate().any(|(index, window)| {
@@ -113,9 +97,6 @@ fn has_encrypt_key(bytes: &[u8]) -> bool {
     })
 }
 
-/// The bytes of every trailer dictionary: after each `trailer` keyword up to
-/// its `startxref`, and each cross-reference stream's dictionary (from its
-/// `obj` to its `stream`).
 fn trailer_dictionaries(bytes: &[u8]) -> Vec<&[u8]> {
     let mut found = Vec::new();
     let mut from = 0;
@@ -234,8 +215,6 @@ fn pdf_doc_char(byte: u8) -> char {
     }
 }
 
-/// An inheritable page attribute: the page's own value, else the nearest
-/// ancestor's.
 fn inherited<'a>(doc: &'a Document, page: &'a Dictionary, key: &[u8]) -> Option<&'a Object> {
     let mut node = page;
     for _ in 0..MAX_DEPTH {
@@ -364,7 +343,6 @@ fn outline_count(doc: &Document) -> u32 {
     count
 }
 
-/// Hidden (2) and NoView (32) annotations are not displayed.
 fn annotation_displayed(doc: &Document, annotation: &Dictionary) -> bool {
     let flags = get(doc, annotation, b"F")
         .and_then(|value| number(doc, value))
@@ -372,9 +350,6 @@ fn annotation_displayed(doc: &Document, annotation: &Dictionary) -> bool {
     flags & (2 | 32) == 0
 }
 
-/// A page's links and form fields (displayed ones), and its file
-/// attachment annotations (`\attachfile`), shown or not: a hidden one still
-/// carries its file.
 fn annotation_counts(doc: &Document, page: &Dictionary) -> (u32, u32, u32) {
     let Some(Object::Array(annotations)) = get(doc, page, b"Annots") else {
         return (0, 0, 0);
@@ -529,8 +504,6 @@ fn inflate(input: &[u8], limit: u64) -> Option<Vec<u8>> {
     (output.len() as u64 <= limit).then_some(output)
 }
 
-/// How many bytes a zlib stream would inflate to, counting only: `None` when
-/// that passes `limit`.
 fn inflated_size(input: &[u8], limit: u64) -> Option<u64> {
     let size = std::io::copy(
         &mut ZlibDecoder::new(input).take(limit.saturating_add(1)),
@@ -540,7 +513,6 @@ fn inflated_size(input: &[u8], limit: u64) -> Option<u64> {
     (size <= limit).then_some(size)
 }
 
-/// What the streams of one file have inflated to so far.
 struct Inflated {
     left: u64,
     limits: Limits,
@@ -554,10 +526,6 @@ impl Inflated {
         }
     }
 
-    /// The decoded content of a stream, at most `limit` bytes. A stream
-    /// with no filter is its own content; one with only FlateDecode (and no
-    /// predictor) is inflated up to the limit and the file's remaining
-    /// allowance; anything else, and anything too big, gives nothing.
     fn content(&mut self, stream: &Stream, limit: u64) -> Vec<u8> {
         let Ok(filters) = stream.filters() else {
             return stream.content.clone();
@@ -601,7 +569,6 @@ fn container_streams_are_bounded(bytes: &[u8], limits: Limits) -> bool {
         let mut from = 0;
         while let Some(at) = find(bytes, name, from, bytes.len()) {
             from = at + name.len();
-            // `/XRefStm` and the like are other names.
             if bytes.get(from).is_some_and(u8::is_ascii_alphanumeric) {
                 continue;
             }
@@ -612,7 +579,6 @@ fn container_streams_are_bounded(bytes: &[u8], limits: Limits) -> bool {
             let Some(keyword) = find(bytes, b"stream", from, CONTAINER_DICTIONARY_WINDOW) else {
                 continue;
             };
-            // A dictionary that ends its object has no stream after it.
             if find(bytes, b"endobj", from, keyword - from).is_some() {
                 continue;
             }
@@ -635,7 +601,6 @@ fn container_streams_are_bounded(bytes: &[u8], limits: Limits) -> bool {
     true
 }
 
-/// `dc:creator` from the XMP packet: the items of its sequence, joined.
 fn xmp_creator(doc: &Document, inflated: &mut Inflated) -> Option<String> {
     let catalog = doc.catalog().ok()?;
     let Object::Stream(stream) = get(doc, catalog, b"Metadata")? else {
@@ -712,7 +677,6 @@ fn font_fact(doc: &Document, font: &Dictionary, resource_name: &[u8]) -> FontFac
 }
 
 fn record_font(scan: &mut FontScan, fact: FontFact) {
-    // `Map.set`: a repeated name keeps its place and takes the new value.
     match scan
         .fonts
         .iter_mut()
@@ -871,8 +835,6 @@ fn read_document(bytes: &[u8], limits: Limits) -> Result<PdfFacts, PdfFactsError
     })
 }
 
-/// Reads the facts of a PDF. A broken, encrypted or huge file is an error,
-/// never a panic.
 pub fn read_pdf_facts(bytes: &[u8]) -> Result<PdfFacts, PdfFactsError> {
     if bytes.len() as u64 > MAX_PDF_BYTES {
         return Err(PdfFactsError::TooLarge {
@@ -887,8 +849,6 @@ pub fn read_pdf_facts(bytes: &[u8]) -> Result<PdfFacts, PdfFactsError> {
     }
 }
 
-/// Page sizes rounded to 0.1 pt and fonts sorted by name, the form the
-/// golden facts are stored in.
 pub fn normalized_facts(mut facts: PdfFacts) -> PdfFacts {
     for page in &mut facts.pages {
         page.width = crate::text::js_round(page.width * 10.0) / 10.0;
@@ -914,7 +874,6 @@ mod tests {
             .collect()
     }
 
-    /// A minimal PDF with a correct cross-reference table.
     fn pdf(objects: &[&str], trailer_extra: &str) -> Vec<u8> {
         let bodies: Vec<Vec<u8>> = objects
             .iter()
@@ -1066,7 +1025,6 @@ mod tests {
         encoder.finish().unwrap()
     }
 
-    /// `<< dictionary >> stream ... endstream` for compressed `content`.
     fn flate_stream(dictionary: &str, content: &[u8]) -> Vec<u8> {
         let compressed = zlib(content);
         let mut body = format!(
@@ -1079,8 +1037,6 @@ mod tests {
         body
     }
 
-    /// A page showing `Helvetica` in its content stream, which is `padding`
-    /// spaces longer than it needs to be.
     fn page_with_padded_content(padding: usize) -> Vec<u8> {
         let mut content = b"BT /F1 12 Tf (Hello) Tj ET\n".to_vec();
         content.extend(std::iter::repeat_n(b' ', padding));
@@ -1105,13 +1061,11 @@ mod tests {
 
     #[test]
     fn a_content_stream_that_inflates_past_the_limit_is_not_decoded() {
-        // 1 MiB of spaces is about a kilobyte of zlib.
         let bomb = page_with_padded_content(1 << 20);
         assert!(bomb.len() < 16 * 1024);
         let skipped = read_document(&bomb, SMALL).unwrap();
         assert_eq!(skipped.page_count, 1);
         assert!(skipped.fonts.is_empty());
-        // The same page under a roomier limit reads its font.
         let roomy = Limits {
             stream: 4 << 20,
             total: 4 << 20,
@@ -1121,7 +1075,6 @@ mod tests {
             font_names(&read_document(&bomb, roomy).unwrap())["Helvetica"],
             Some(false)
         );
-        // An ordinary page is read under the real limits.
         let facts = read_pdf_facts(&page_with_padded_content(10)).unwrap();
         assert_eq!(font_names(&facts)["Helvetica"], Some(false));
     }
@@ -1140,7 +1093,6 @@ mod tests {
             Stream::new(dict, zlib(bytes))
         };
         assert_eq!(inflated.content(&stream(&[b'a'; 1000]), 1000).len(), 1000);
-        // 500 left; this one needs 1000.
         assert!(inflated.content(&stream(&[b'b'; 1000]), 1000).is_empty());
         assert!(inflated.content(&stream(b"tiny"), 1000).is_empty());
     }
@@ -1180,14 +1132,12 @@ mod tests {
         );
         let xref = with_object_stream("/Type /XRef /Size 4");
         assert!(read_document(&xref, SMALL).is_err());
-        // Roomier limits let the same file through.
         let roomy = Limits {
             container: 4 << 20,
             total: 8 << 20,
             ..SMALL
         };
         assert_eq!(read_document(&bomb, roomy).unwrap().page_count, 1);
-        // An image is only decoded when its page's content asks for it.
         let image = pdf_of_bytes(
             &[
                 b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
@@ -1201,8 +1151,6 @@ mod tests {
             "",
         );
         assert_eq!(read_document(&image, SMALL).unwrap().page_count, 1);
-        // `/XRefStm` in a trailer names another thing than `/XRef`, and a
-        // stream after it is not a cross-reference stream.
         let mut hybrid = b"trailer\n<< /Size 9 /XRefStm 4711 >>\nstartxref\n0\n%%EOF\n".to_vec();
         hybrid.extend_from_slice(b"9 0 obj\n");
         hybrid.extend_from_slice(&flate_stream("/Subtype /Image", &zeros));
@@ -1222,7 +1170,6 @@ mod tests {
         );
         assert!(!declares_encryption(&bookmark));
         assert_eq!(read_pdf_facts(&bookmark).unwrap().restricted, Some(false));
-        // A cross-reference stream's dictionary is a trailer too.
         assert!(declares_encryption(
             b"9 0 obj\n<< /Type /XRef /Size 3 /Encrypt 5 0 R /W [1 2 1] >>\nstream\nxx\nendstream"
         ));

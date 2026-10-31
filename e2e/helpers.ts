@@ -22,8 +22,6 @@ export interface Page {
 }
 
 export async function clickCompile(page: Page, timeout = 120_000) {
-  // Auto-compile can disable the button between a separate enabled assertion
-  // and the native bridge's click. Check and click in the same browser task.
   await page.waitForFunction(`(() => {
     const button = document.querySelector('[data-testid="compile-button"]');
     if (!(button instanceof HTMLButtonElement) || button.disabled || !button.getClientRects().length) return false;
@@ -32,11 +30,6 @@ export async function clickCompile(page: Page, timeout = 120_000) {
   })()`, timeout);
 }
 
-/**
- * The desktop shell must always remain attached to the native viewport.
- * Editors and previews own their scroll positions; the browser document does
- * not. This catches both scrollTop leaks and the resulting displaced root.
- */
 export async function expectDesktopShellAnchored(page: Page) {
   const state = await page.evaluate<{
     scrollTop: number;
@@ -90,14 +83,6 @@ export async function expectDesktopShellAnchored(page: Page) {
   expect(["static", "relative"]).toContain(bodyPosition);
 }
 
-/**
- * Predicate expression: does the line the caret sits on contain `needle`?
- *
- * Read the editor state, not `.cm-activeLine`. That decoration is deliberately
- * suppressed while a selection exists, so the selection colour stays uniform
- * across every selected line - and navigation actions such as Go to definition
- * land with the symbol selected, which is exactly when these probes run.
- */
 export function caretLineIncludes(needle: string): string {
   return `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
     const view = getEditorView();
@@ -139,9 +124,6 @@ export async function pressGlobal(
   );
 }
 
-// The fixture reloads the SPA before each test, so wait for the library to
-// finish loading projects (one of the two buttons exists only after that)
-// before deciding which button to click - probing earlier races the load.
 export async function openGallery(page: Page) {
   const library = page.locator(
     '[data-testid="library"][data-projects-loaded="true"]',
@@ -169,7 +151,6 @@ export async function openNewProject(page: Page) {
   await page.click(hasWelcome ? '[data-testid="create-first-project"]' : '[data-testid="new-project"]');
 }
 
-// Creating a project now starts on a chooser: research, import or template.
 export async function chooseProjectKind(
   page: Page,
   kind: "research" | "import" | "template",
@@ -316,9 +297,6 @@ async function getCompiledPdfProbeOnce(
       : ""`,
   );
   if (error) {
-    // Attach the compile log's interesting lines: "no compiled PDF" class
-    // failures are usually the compile itself failing for an environmental
-    // reason the probe error alone cannot show.
     const logTail = await page
       .evaluate<string>(
         `import("/src/store/compile.ts").then(({ useCompileStore }) =>
@@ -347,21 +325,12 @@ export async function compileAndProbe(
   return getCompiledPdfProbe(page, timeoutMs);
 }
 
-/**
- * Compiles through the real toolbar and waits for a new verified output
- * revision without extracting every PDF page. Book-scale rendering tests use
- * this path so the measurement covers the product viewer, not an E2E-only
- * full-document semantic traversal on the WebView main thread.
- */
 type CompileSnapshot = {
   status: string;
   outputRevision: number;
   disabled: boolean;
 };
 
-// A layout or panel re-render can unmount the toolbar for a frame; tolerate
-// a brief absence instead of failing the whole compile wait, while a button
-// that stays gone still throws.
 async function compileSnapshot(page: Page): Promise<CompileSnapshot> {
   const absentDeadline = Date.now() + 3_000;
   for (;;) {
@@ -386,10 +355,6 @@ async function compileSnapshot(page: Page): Promise<CompileSnapshot> {
   }
 }
 
-// A project that just opened schedules its first compile from a React
-// effect. The button can briefly be enabled before that effect starts, so
-// waiting only for "enabled" can click into a compile-store reset. Require a
-// short quiescent window before the caller touches the compile button.
 export async function waitForCompileIdle(
   page: Page,
   timeoutMs = 120_000,
@@ -464,10 +429,6 @@ export async function compileAndWait(
         `semantic fixture failed to compile\n${diagnostics}`,
       );
     }
-    // A project-open effect can reset a just-started manual compile. If no
-    // compile state becomes observable, retry the real toolbar control instead
-    // of waiting until the suite timeout. The Rust output revision guarantees
-    // that a later success cannot be confused with an earlier PDF.
     if (
       state.status !== "compiling" &&
       state.outputRevision === before.outputRevision &&
@@ -856,19 +817,12 @@ export async function setNextSavePath(
   if (!available) throw new Error("DEV save-dialog adapter is unavailable");
 }
 
-/**
- * Records fixture paths as if the user had picked them in Oleafly's open
- * dialog, for specs that call an import directly instead of clicking through
- * the picker. Rust reads files outside a project only after such a pick.
- */
 export async function grantPickedPaths(page: Page, paths: string[]): Promise<void> {
   await page.evaluate(
     `import("/src/lib/tauri.ts").then((tauri) => tauri.grantTestOpenPaths(${scriptValue(paths)})).then(() => true)`,
   );
 }
 
-// The AI assistant is its own panel now, toggled from the workspace dock
-// controls rather than living as a sidebar tab.
 export async function openAssistant(page: Page) {
   const openExpr = `document.querySelector('[data-testid="rail-assistant-toggle"]')?.getAttribute('aria-pressed') === 'true'`;
   for (let attempt = 0; attempt < 10; attempt++) {
@@ -903,10 +857,6 @@ export async function closeAssistant(page: Page) {
   throw new Error("closeAssistant: the assistant panel never closed");
 }
 
-// The sidebar view switchers live in a bar at the top of the sidebar, which
-// only renders while the sidebar is open. Reveal the sidebar first, then select
-// the view; a view button reports aria-current="page" when it is the active
-// pane. Selecting a view no longer collapses the sidebar.
 export async function openRailTab(page: Page, ariaLabel: string) {
   if (ariaLabel === "Research Assistant") return openAssistant(page);
   const sel = scriptValue(`[aria-label=${JSON.stringify(ariaLabel)}]`);
@@ -932,8 +882,6 @@ export async function openRailTab(page: Page, ariaLabel: string) {
   throw new Error(`openRailTab: ${ariaLabel} never became the active tab`);
 }
 
-// The test fixture reloads the app to the library before every test, so
-// specs that need the editor start here.
 export async function shellStateSnapshot(page: Page): Promise<string> {
   return page.evaluate<string>(`(() => {
     const library = document.querySelector('[data-testid="library"]');
@@ -1073,10 +1021,6 @@ export async function openProject(page: Page & { getByText(t: string): { click()
   await expect(workspace).toBeVisible({ timeout: SHELL_READY_TIMEOUT_MS });
 }
 
-// Creating or clicking a file updates the tree before the editor finishes
-// switching documents, so typing right away can land in the previously active
-// document and silently leave the new file empty. Wait until the CM view holds
-// the target file's store content before typing.
 export async function waitEditorShowsFile(page: Page, path: string, timeoutMs = 15_000) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
@@ -1128,17 +1072,9 @@ export async function typeInEditorAtStart(page: Page, text: string) {
   if (!inserted) throw new Error("typeInEditorAtStart: editor input was rejected");
 }
 
-// The plugin's wait_for_function has a ~30s server-side cap, so poll
-// evaluate() client-side instead for anything that can take longer
-// (AI streaming, cold compiles).
 export async function waitLong(page: Page, expression: string, timeoutMs: number) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    // Many app-state predicates use dynamic import(...).then(...). Coercing
-    // that expression directly with `!!` treats the pending Promise itself as
-    // true and lets the test continue before its callback has run. Normalize
-    // both synchronous and asynchronous predicates through Promise.resolve so
-    // this helper observes the resolved boolean value.
     const ok = await page.evaluate<boolean>(
       `Promise.resolve(${expression}).then((value) => !!value)`,
     );
@@ -1148,8 +1084,6 @@ export async function waitLong(page: Page, expression: string, timeoutMs: number
   }
 }
 
-// A single evaluate() also has the bridge's 30-second cap. Start long-running
-// work without awaiting it in that request, then poll its settled result.
 export async function evaluateLong<T>(page: Page, expression: string, timeoutMs: number): Promise<T> {
   const slot = scriptValue(`__oleaflyE2eEval_${randomUUID()}`);
   try {
@@ -1198,9 +1132,6 @@ export async function waitEditorContains(page: Page, needle: string, timeoutMs: 
   }
 }
 
-// Conversations persist across panel remounts by design, so tests that
-// assert on a fresh reply must begin with a real New-chat click or a
-// restored transcript can satisfy their waits.
 export async function newChat(page: Page) {
   await page.evaluate(
     `(() => {
@@ -1230,13 +1161,8 @@ export async function fillTextarea(page: Page, selector: string, text: string) {
 export async function ensureGitHostingAccount(page: Page) {
   const token = process.env.E2E_GITHUB_TOKEN;
   if (!token) throw new Error("ensureGitHostingAccount: E2E_GITHUB_TOKEN not set");
-  // The Git panel itself needs no account (it works fully locally). Accounts
-  // and the token field live on the Git hosting tab of Settings ->
-  // Integrations, which is the tab's default.
   await openSettings(page, "integrations");
   const account = `[data-testid="git-hosting-account-github.com"]`;
-  // The account list loads on demand: wait until it shows either rows or
-  // the empty note before deciding whether to sign in.
   await page.waitForFunction(
     `!!document.querySelector('[data-testid="git-hosting-empty"], [data-testid^="git-hosting-account-"]')`,
     15_000,
@@ -1259,10 +1185,6 @@ export async function ensureGitHostingAccount(page: Page) {
   await openRailTab(page, "Source Control");
 }
 
-// Every interaction with the card must be scoped to it: OpenAI and Z.AI
-// share the "sk-…" input placeholder and a "Save" button, and a page-wide
-// selector once saved the Z.AI key into the OpenAI card and silently
-// switched the active provider (HTTP 401s).
 export async function expandProviderCard(page: Page) {
   const provider = process.env.E2E_AI_PROVIDER || "Z.AI";
   const providers = page.locator('[data-testid="ai-settings-tab-providers"]');
@@ -1304,8 +1226,6 @@ export async function ensureAiConnected(page: Page) {
   const token = process.env.E2E_AI_TOKEN;
   if (!token) throw new Error("ensureAiConnected: E2E_AI_TOKEN not set");
   await openRailTab(page, "Research Assistant");
-  // A composer can belong to a previous spec's mock provider. Reconnect the
-  // requested provider through settings before sending a live request.
   await openSettings(page, "ai");
   await expandProviderCard(page);
   await page.evaluate(
@@ -1331,10 +1251,6 @@ export async function ensureAiConnected(page: Page) {
       return 1;
     `),
   );
-  // Save a new/changed key, or activate an already-saved one via Use. If the
-  // card is already Active with the same key, neither button renders. The
-  // button appears one React render AFTER the input event, so wait for it
-  // rather than querying immediately (a lost race left the key unsaved).
   await page
     .waitForFunction(
       inProviderCard(
@@ -1379,8 +1295,6 @@ export async function ensureAiConnected(page: Page) {
 const SETTINGS_BUTTON = '[data-testid="open-settings"]';
 
 async function clickWorkspaceAction(page: Page, selector: string, menuItem?: string) {
-  // Window chrome and zoom can move an action into the workspace menu.
-  // Probe and click together so a resize cannot replace the target in between.
   await page.waitForFunction(`(() => {
     const visible = element => element instanceof HTMLElement &&
       element.getBoundingClientRect().width > 0 &&
@@ -1401,12 +1315,6 @@ export async function openVersioning(page: Page) {
 }
 
 export async function openSettings(page: Page, section?: string) {
-  // The settings modal is lazy-loaded. Wait for its always-present appearance
-  // nav via the locator-assertion path (tauriExpect), NOT waitForFunction: the
-  // bridge's eval intermittently hangs for its full timeout right after the
-  // settings modal opens deep in a long session (this is what previously forced
-  // the agent-tools test to test.fixme). If the settings-button click missed and
-  // the modal never opened, reset and re-open once.
   const appearance = page.locator(
     '[data-testid="settings-section-appearance"]',
   ) as unknown as LocatorLike;
@@ -1422,12 +1330,6 @@ export async function openSettings(page: Page, section?: string) {
   }
   if (section) {
     const sel = `[data-testid="settings-section-${section}"]`;
-    // Probe-and-click in one browser task, then confirm the nav button gained
-    // aria-current="page". A bare bridge click blocks its full 20s timeout when
-    // the button is momentarily absent (modal still populating its nav), so
-    // driving it through evaluate with our own short retry loop — and
-    // reopening the modal if the whole nav vanished — is both faster and more
-    // robust than waiting on one click.
     const activeExpr = `document.querySelector(${scriptValue(sel)})?.getAttribute("aria-current") === "page"`;
     const deadline = Date.now() + 15_000;
     for (let attempt = 0; ; attempt++) {
@@ -1456,7 +1358,6 @@ export async function openSettings(page: Page, section?: string) {
       );
       if (state === "active") return;
       if (state === "closed") {
-        // The modal lost its nav (or never fully opened); reopen and retry.
         await clickWorkspaceAction(page, SETTINGS_BUTTON);
         await expect(appearance).toBeVisible({ timeout: 8_000 });
       }
@@ -1590,9 +1491,6 @@ export async function chooseCommandPaletteItem(page: Page, label: string): Promi
   );
 }
 
-// Place the caret through CodeMirror's public state API. This never mutates
-// the document and is independent of viewport rendering, text-node splitting,
-// lint decorations, and WebKit's synthetic mouse-event handling.
 export async function caretIn(
   page: Page,
   anchorText: string,
@@ -1630,9 +1528,6 @@ export async function caretIn(
   }
 }
 
-// The Diagram Composer is now a standalone home-shell page (not a per-project
-// modal), reached from the dock and backed by a single hidden scratch
-// project, not the currently open project.
 export async function chooseDiagramComposer(
   page: Page,
   language: "tikz" | "typst" | "mermaid",
@@ -1775,9 +1670,6 @@ export async function clickLiveToolbarPopoverTrigger(page: Page, ariaLabel: stri
   }
   const deadline = Date.now() + 3_000;
   for (;;) {
-    // No elementFromPoint here: rows deep in a long overflow list sit below
-    // the popover's scrolled fold, where a hit-test fails forever even though
-    // a synthetic click works fine. Scroll the row near and click it.
     const menuClicked = await page.evaluate<boolean>(
       `(() => {
         const elements = Array.from(
@@ -1953,9 +1845,6 @@ export async function clickToolbarControl(page: Page, barSelector: string, menuT
   }
 }
 
-// Marks the visible editor context-menu entry whose own text is exactly
-// `label`. The shortcut hint beside a label sits in a child element, so it is
-// ignored, and "Table" never resolves to "Table from CSV/XLSX…".
 async function markEditorContextItem(page: Page, label: string): Promise<void> {
   await page.waitForFunction(
     `(() => {
@@ -2005,9 +1894,6 @@ export async function openEditorContextSubmenu(page: Page, label: string): Promi
   );
 }
 
-// Walks the open editor context menu: every label but the last names a
-// submenu to open, and the last is the entry to click, as in
-// ["Insert", "Heading", "Section"].
 export async function clickEditorContextPath(page: Page, path: readonly string[]): Promise<void> {
   for (const submenu of path.slice(0, -1)) await openEditorContextSubmenu(page, submenu);
   await markEditorContextItem(page, path[path.length - 1]);
@@ -2102,15 +1988,11 @@ export async function stageAllGitChanges(page: Page) {
       Object.values(useFilesStore.getState().files).every((file) => !file.dirty))`,
     60_000,
   );
-  // The rail may already be open from a previous commit. Request the current
-  // saved working tree instead of relying on a mount-time status snapshot.
   await page.click('[aria-label="Refresh"]');
   await page.waitForFunction(
     `document.querySelectorAll('[data-testid="source-control-changes"] [data-testid^="git-change-"]').length > 0`,
     30_000,
   );
-  // Section controls are hover-revealed, but remain in the accessibility tree.
-  // Activate the real direct bulk action once; polling must not enqueue work.
   await page.waitForFunction(
     `(() => {
       const button = document.querySelector('[data-testid="source-control-changes"] [aria-label="Stage all"]');
@@ -2156,7 +2038,6 @@ export async function unstageAllGitChanges(page: Page) {
   );
 }
 
-/** Inspect a completed tool card, never a tool name echoed in the user prompt. */
 export async function expectCompletedReadFile(page: Page) {
   await page.waitForFunction(`(() => {
     const message = Array.from(document.querySelectorAll('[data-message-role="assistant"]')).at(-1);
@@ -2252,9 +2133,6 @@ export async function acceptCompletion(
   );
 }
 
-// Sets a Typst form field the way typing does, so React sees the change, then commits it
-// with Enter (text and number fields) or lets the change commit it (lists). The field is
-// found by its label inside the card or popover whose title matches.
 export async function setTypstFormField(
   page: Page,
   title: string,

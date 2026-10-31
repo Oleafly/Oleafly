@@ -108,6 +108,28 @@ describe("PdfPane", () => {
     expect(output).toHaveBeenCalledTimes(2);
   });
 
+  it("records which shared PDF is on screen, keeping the old one until the new one arrives", async () => {
+    resetWebState({ projectId: "p1", output: [COMPILED], people: people() });
+    let arrive: (bytes: Uint8Array) => void = () => undefined;
+    const output = vi
+      .fn<WebApi["output"]>()
+      .mockResolvedValueOnce(new Uint8Array([1, 2, 3]))
+      .mockImplementationOnce(() => new Promise((resolve) => (arrive = resolve)));
+    renderPane({ api: api(output), projectId: "p1" });
+    expect(await screen.findByTestId("pdf-viewer")).toHaveTextContent("3");
+    expect(useWeb.getState().compile.shownShared).toBe(outputKey(COMPILED));
+    const newer = { ...COMPILED, compiledAt: COMPILED.compiledAt + 60_000, size: 5 };
+    await act(async () => {
+      useWeb.setState({ output: [newer] });
+    });
+    expect(useWeb.getState().compile.shownShared).toBe(outputKey(COMPILED));
+    await act(async () => {
+      arrive(new Uint8Array([1, 2, 3, 4, 5]));
+    });
+    expect(await screen.findByText("5")).toBeInTheDocument();
+    expect(useWeb.getState().compile.shownShared).toBe(outputKey(newer));
+  });
+
   it("offers a retry when the PDF cannot be fetched", async () => {
     resetWebState({ projectId: "p1", output: [COMPILED], people: people() });
     const output = vi

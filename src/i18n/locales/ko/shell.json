@@ -1159,6 +1159,8 @@
     "exportTxt": "일반 텍스트로 내보내기(.txt)",
     "exportZipFailed": "프로젝트 zip을 내보내지 못했습니다",
     "exporting": ".{{format}}(으)로 내보내는 중…",
+    "exportingStep": ".{{format}}(으)로 내보내는 중: {{step}}",
+    "stopExport": "중지",
     "fork": "포크",
     "forkDescription": "<name>{{name}}</name>과(와) 그 Git 이력을 새 프로젝트로 복사합니다. 체크포인트는 비어 있는 상태로 시작합니다.",
     "forkFailed": "프로젝트를 포크하지 못했습니다.",

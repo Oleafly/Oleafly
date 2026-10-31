@@ -5,25 +5,9 @@ export interface WordCountStats {
   words: number;
   characters: number;
   lines: number;
-  /**
-   * "masked" — counts derive from the spellchecker's LaTeX mask, the accurate
-   * prose boundary (math bodies, verbatim/code, tikz, labels/cite keys and
-   * other machine arguments are excluded). "heuristic" — the legacy regex
-   * fallback used when masking throws.
-   */
   method: "masked" | "heuristic";
 }
 
-/**
- * Counts prose words/characters/lines in a (LaTeX) document.
- *
- * Words are counted over the spellchecker's mask (`countedWordStarts`), so
- * the count matches what a reader perceives as prose: equation bodies, code
- * listings, comments, keys, and dimension arguments do not inflate it.
- * Characters and lines come from the same mask: characters over the compacted
- * prose (`maskToProse`), lines as the trimmed non-empty lines of the masked
- * text.
- */
 export function countWords(tex: string): WordCountStats {
   try {
     const masked = maskLatex(tex);
@@ -38,7 +22,6 @@ export function countWords(tex: string): WordCountStats {
   }
 }
 
-// Legacy regex-based counting, kept only as the fallback when the mask fails.
 function heuristicCount(tex: string): Omit<WordCountStats, "method"> {
   let t = splitLatexDocument(tex).body;
   t = t.replace(/(^|[^\\])%[^\n\r\u2028\u2029]*/gm, "$1");

@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
-import { renderHook } from "@testing-library/react";
-import { act } from "react";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { useFilesStore } from "@/store/files";

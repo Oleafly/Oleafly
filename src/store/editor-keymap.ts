@@ -85,7 +85,6 @@ export function parseEditorKey(value: string): ParsedEditorKey | null {
     modifiers.push(modifier);
   }
   if (modifiers.length === 0 && !isFunctionKey(key)) return null;
-  // Shift with a character or Space only types text.
   const shiftOnly = modifiers.every((modifier) => modifier === "Shift");
   if (shiftOnly && (key.length === 1 || key === "Space")) return null;
   if (modifiers.includes("Mod") && modifiers.includes("Cmd")) return null;

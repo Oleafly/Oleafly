@@ -1,9 +1,3 @@
-//! Which folders a sandboxed command may be granted to read. A runtime's
-//! folder, a skill folder or a linked data folder is fine; the whole disk,
-//! a home folder, the folder that holds the home folders and the top-level
-//! system folders are not. Some read roots come from files inside the user's
-//! project (a virtual environment's `pyvenv.cfg`, an `renv/library` link), so
-//! they are checked here and never trusted.
 use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
@@ -37,18 +31,13 @@ const BROAD_TOP: [&str; 24] = [
     "documents and settings",
 ];
 
-/// Top-level folders whose direct children are home folders.
 const HOME_CONTAINERS: [&str; 3] = ["home", "users", "documents and settings"];
 
-/// Folders directly below a home folder that hold a lot besides programs
-/// (other tools' data, keys, package-manager logins). A program found in
-/// their `bin` is granted on its own, never the folder.
 const SHARED_USER_FOLDERS: [&str; 11] = [
     ".local", ".cargo", ".config", ".cache", ".ssh", ".aws", ".gnupg", ".kube", ".docker",
     ".azure", ".npm",
 ];
 
-/// Files that mean a folder holds somebody's login.
 const CREDENTIAL_FILES: [&str; 9] = [
     "credentials",
     "credentials.toml",
@@ -80,7 +69,6 @@ pub(crate) fn comparable(path: &Path, fold_case: bool) -> PathBuf {
     })
 }
 
-/// The named parts of `path` below its root or drive, lowercase.
 fn tail(path: &Path) -> Vec<String> {
     path.components()
         .filter_map(|component| match component {
@@ -90,9 +78,6 @@ fn tail(path: &Path) -> Vec<String> {
         .collect()
 }
 
-/// Why `path` (plain and canonical) must not be a read grant, when it must
-/// not: it is the whole disk, a home folder or a folder that holds one, or a
-/// top-level system folder.
 pub(crate) fn broad_reason(path: &Path, home: Option<&Path>) -> Option<&'static str> {
     if path.parent().is_none() {
         return Some("it is the whole disk");
@@ -118,8 +103,6 @@ pub(crate) fn broad_reason(path: &Path, home: Option<&Path>) -> Option<&'static 
     }
 }
 
-/// Whether `folder` sits directly inside a shared user folder such as
-/// `~/.local` or `~/.cargo`, or holds a login file itself.
 pub(crate) fn is_shared_prefix(folder: &Path) -> bool {
     let shared_name = folder.file_name().is_some_and(|name| {
         let name = name.to_string_lossy().to_ascii_lowercase();
@@ -131,7 +114,6 @@ pub(crate) fn is_shared_prefix(folder: &Path) -> bool {
             .any(|name| std::fs::symlink_metadata(folder.join(name)).is_ok())
 }
 
-/// Logs a refused root once per process.
 pub(crate) fn note_refused(path: &Path, reason: &str) {
     static SEEN: Mutex<BTreeSet<PathBuf>> = Mutex::new(BTreeSet::new());
     let mut seen = SEEN
@@ -160,11 +142,9 @@ mod tests {
         for path in ["/home", "/Users", "/root", "/home/alice", "/Users/bob"] {
             assert!(refused(path, None), "{path}");
         }
-        // The user's own home and everything that holds it.
         assert!(refused("/Users/me", Some("/Users/me")));
         assert!(refused("/Users", Some("/Users/me")));
         assert!(refused("/srv/people", Some("/srv/people/me")));
-        // A folder inside the home is the user's own business.
         assert!(!refused("/Users/me/miniconda3", Some("/Users/me")));
         assert!(!refused("/Users/me/data/survey", Some("/Users/me")));
     }

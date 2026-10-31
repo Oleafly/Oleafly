@@ -1,14 +1,3 @@
-//! Persistent compile fingerprint (the on-disk record behind skip-recompile).
-//!
-//! After every successful compile the backend records what that compile was
-//! built from: the main document, engine, output identity, and a content hash
-//! of every source file. Reopening a project validates the record by
-//! re-hashing the sources; when nothing changed, the frontend seeds the
-//! preview from the already-built PDF instead of compiling again.
-//!
-//! Domain language: this is the "compile fingerprint" — never "checkpoint",
-//! which is reserved for agent restore points.
-
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -17,13 +6,6 @@ use std::path::{Path, PathBuf};
 
 pub const FINGERPRINT_VERSION: u32 = 1;
 
-/// Persistence switch for 0.3.7: OFF, together with the frontend restore
-/// flag. The post-compile hash walk is unbounded (every project file, no
-/// byte/count/time cap, detached and overlappable) and, hashed after the
-/// compile, can describe sources newer than the PDF. It provides no user
-/// value while restore is disabled. Activation requires: one coalesced,
-/// cancellable latest-compile-wins task over the exact compiled snapshot,
-/// with size bounds — then flip this and the App.tsx flag together.
 pub const PERSIST_ENABLED: bool = false;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -34,7 +16,6 @@ pub struct CompileFingerprint {
     pub output_id: String,
     pub output_revision: u64,
     pub compiled_at_ms: u64,
-    /// Relative slash path -> sha256 hex of every project source file.
     pub sources: BTreeMap<String, String>,
 }
 
@@ -45,7 +26,6 @@ pub fn fingerprint_path(project_root: &Path) -> PathBuf {
         .join("fingerprint.json")
 }
 
-/// Hash every project source file (excluding `.oleafly` and `.git`).
 pub fn source_hashes(project_root: &Path) -> Result<BTreeMap<String, String>, String> {
     let mut hashes = BTreeMap::new();
     collect_hashes(project_root, project_root, &mut hashes)?;
@@ -111,9 +91,6 @@ pub fn write_fingerprint(
     std::fs::write(&path, json).map_err(|e| e.to_string())
 }
 
-/// Load the stored fingerprint and re-hash current sources. Returns the
-/// fingerprint only when the record exists, matches the current main
-/// document and engine, and every source hash is unchanged.
 pub fn validate_fingerprint(
     project_root: &Path,
     current_main_document: &str,
@@ -148,8 +125,6 @@ fn stream_sha256(path: &Path) -> Result<String, String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
-/// Persist the compile log next to the fingerprint so a restored preview can
-/// also restore the logs pane instead of leaving it empty.
 pub fn write_compile_log(project_root: &Path, log: &str) -> Result<(), String> {
     let path = compile_log_path(project_root);
     if let Some(parent) = path.parent() {
@@ -158,13 +133,10 @@ pub fn write_compile_log(project_root: &Path, log: &str) -> Result<(), String> {
     std::fs::write(&path, log).map_err(|e| e.to_string())
 }
 
-/// The log recorded with the last successful compile; empty when absent.
 pub fn read_compile_log(project_root: &Path) -> String {
     std::fs::read_to_string(compile_log_path(project_root)).unwrap_or_default()
 }
 
-/// Everything a successful compile persists, in one call: the compile log and
-/// the source fingerprint. Runs off-thread from the compile command.
 pub fn persist_after_compile(
     project_root: &Path,
     main_document: &str,
@@ -190,7 +162,6 @@ pub fn persist_after_compile(
     )
 }
 
-/// Validation plus the recorded log, as the frontend consumes them together.
 pub fn validated_with_log(
     project_root: &Path,
     current_main_document: &str,

@@ -1,9 +1,3 @@
-//! Interpreters and environments a run may use: found on the search path,
-//! in the project and in well-known folders. Detection only reads metadata
-//! and small files; it never starts a program. What a project says about its
-//! own environment (`pyvenv.cfg`, an `renv/library` link) is untrusted: the
-//! folders it names become read grants only when they stay inside the
-//! project or look like an interpreter install.
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -23,9 +17,7 @@ pub struct RuntimeInstall {
     pub kind: RuntimeKind,
     pub executable: PathBuf,
     pub prefix: PathBuf,
-    /// Folders to put on `PATH`, in order.
     pub bin_dirs: Vec<PathBuf>,
-    /// Folders runs must be able to read.
     pub read_roots: Vec<PathBuf>,
     pub source: RuntimeSource,
     pub note: Option<String>,
@@ -82,8 +74,6 @@ fn canonical(path: &Path) -> PathBuf {
         .unwrap_or_else(|_| path.to_path_buf())
 }
 
-/// The folder an executable's install lives in: the parent of `bin`, or the
-/// executable's own folder.
 fn prefix_of(executable: &Path) -> PathBuf {
     let parent = executable.parent().unwrap_or(executable).to_path_buf();
     let name = parent
@@ -139,8 +129,6 @@ fn bin_dirs(kind: RuntimeKind, prefix: &Path, executable: &Path) -> Vec<PathBuf>
     folders
 }
 
-/// Read roots that are never allowed: the whole disk, a home folder or the
-/// folder that holds one, a top-level system folder.
 fn usable_root(path: &Path, home: Option<&Path>) -> bool {
     match broad_reason(path, home) {
         Some(reason) => {
@@ -169,7 +157,6 @@ impl Collector<'_> {
         self.push_roots(kind, executable, prefix, roots, source);
     }
 
-    /// Adds an install whose read grants are exactly `roots`.
     fn push_roots(
         &mut self,
         kind: RuntimeKind,
@@ -404,7 +391,6 @@ fn known_folders(
     folders
 }
 
-/// Where package managers install under the home folder.
 fn home_folders(home: &Path) -> Vec<(RuntimeKind, PathBuf)> {
     let mut folders = Vec::new();
     for name in [
@@ -496,7 +482,6 @@ fn detect_known(
     }
 }
 
-/// Interpreters and environments a run may use, project ones first.
 pub fn detect_runtimes(inputs: &DetectInputs<'_>) -> Vec<RuntimeInstall> {
     let mut collector = Collector {
         installs: Vec::new(),
@@ -518,7 +503,6 @@ fn cache() -> &'static RuntimeCache {
     CACHE.get_or_init(Default::default)
 }
 
-/// [`detect_runtimes`], remembered for a minute per search path and project.
 pub fn detect_runtimes_cached(inputs: &DetectInputs<'_>) -> Vec<RuntimeInstall> {
     let key = (
         inputs.search_dirs.to_vec(),
@@ -619,8 +603,6 @@ mod tests {
         }
     }
 
-    /// The read roots inside `root` (the machine's own `/opt/conda` and the
-    /// like are not the test's business).
     #[cfg(unix)]
     fn roots_of(installs: &[RuntimeInstall], root: &Path) -> Vec<PathBuf> {
         installs
@@ -648,7 +630,6 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let root = root.path().canonicalize().unwrap();
         let project = root.join("project");
-        // Something that holds the user's home, with a `python3` in its `bin`.
         touch(&root.join("bin/python3"));
         touch(&root.join("home/.local/bin/python3"));
         touch(&project.join(".venv/bin/python3"));
@@ -672,7 +653,6 @@ mod tests {
                 base.display()
             );
         }
-        // A real interpreter install elsewhere is still granted.
         touch(&root.join("python-install/bin/python3"));
         std::fs::write(
             project.join(".venv/pyvenv.cfg"),
@@ -694,8 +674,6 @@ mod tests {
         std::fs::create_dir_all(&secrets).unwrap();
         std::fs::create_dir_all(project.join("renv")).unwrap();
         std::os::unix::fs::symlink(&secrets, project.join("renv/library")).unwrap();
-        // A venv link to a shared folder is refused, one to a real Python
-        // environment outside the project is not.
         touch(&root.join("home/.local/bin/python3"));
         std::os::unix::fs::symlink(root.join("home/.local"), project.join(".venv")).unwrap();
         touch(&root.join("envs/py/bin/python3"));
@@ -733,7 +711,6 @@ mod tests {
         assert!(roots.contains(&home.join(".cargo/bin/pixi")), "{roots:?}");
         assert!(!roots.contains(&home.join(".local")), "{roots:?}");
         assert!(!roots.contains(&home.join(".cargo")), "{roots:?}");
-        // A tool in its own install folder keeps the whole install.
         assert!(roots.contains(&home.join("tools")), "{roots:?}");
     }
 

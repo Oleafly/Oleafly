@@ -135,12 +135,10 @@ describe("ResearchWorkspacePanel integration", () => {
     native.invoke.mockResolvedValue({});
     mount();
     expect(page().getByText(enResearchTools.tasks.panel.noProjectTitle)).toBeInTheDocument();
-    // 0.4.8: the gear opens Settings, Research (agents are still chosen per task).
     fireEvent.click(page().getByRole("button", { name: enResearchTools.workspace.openSettings }));
     expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "research" });
     await userEvent.setup({ document }).click(page().getByRole("tab", { name: "Linked folders" }));
     expect(page().getByText(enResearchTools.workspace.noProject)).toBeInTheDocument();
-    // A fresh page tells the backend once that it watches no task (one a reloaded page watched stops streaming).
     const calls = native.invoke.mock.calls.filter(([command]) => command !== "research_task_watch");
     expect(calls.map(([command]) => command)).toEqual(["get_config"]);
     for (const [command, args] of native.invoke.mock.calls) {
@@ -289,7 +287,6 @@ describe("ResearchWorkspacePanel integration", () => {
 
     expect(useAssistantRuntimeStore.getState().runtime).toBe("acp");
     expect(useSettingsStore.getState().assistantOpen).toBe(true);
-    // The modal task dialog closes, so the assistant isn't left behind it.
     expect(useResearchTasksStore.getState().detailOpen).toBe(false);
     await waitFor(() => expect(page().queryByRole("dialog")).toBeNull());
   });
@@ -315,10 +312,8 @@ describe("ResearchWorkspacePanel integration", () => {
     expect(page().getByRole("tab", { name: enResearchTools.workspace.tabFolders })).toHaveAttribute("data-state", "active");
     await waitFor(() => expect(useResearchTasksStore.getState().tasks).toHaveLength(1));
 
-    // The Review button in the Files rail's Task outputs does this.
     act(() => useResearchTasksStore.getState().openTaskDetail(reviewed.id, "review"));
 
-    // The dialog hides the tab strip from the accessibility tree while it is open.
     await waitFor(() =>
       expect(page().getByRole("tab", { name: enResearchTools.workspace.tabTasks, hidden: true })).toHaveAttribute("data-state", "active"),
     );

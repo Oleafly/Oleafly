@@ -35,13 +35,8 @@ const MIGRATIONS: [&str; 18] = [
     include_str!("../migrations/0018_web_sessions.sql"),
 ];
 
-// Reads that need no write go to their own connections, so token checks,
-// backlog pages and listings don't wait behind a write and its fsync. WAL
-// lets them run beside the writer and see everything it has committed.
 const READERS: usize = 4;
 
-// Writes that wait for the writer together share one commit, at most this
-// many to a commit.
 const GROUP_LIMIT: usize = 64;
 
 #[derive(Clone)]
@@ -52,9 +47,6 @@ pub struct Db {
     grouped: Arc<Grouped>,
 }
 
-// What a grouped write hands back: its result, and what to do once its
-// commit is durable. `then` runs in commit order, before the writer moves
-// on, so what it announces goes out in the order it was stored.
 pub struct Written<T> {
     pub value: T,
     pub then: Option<Box<dyn FnOnce() + Send>>,
@@ -85,8 +77,6 @@ fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-// Runs a write in its own savepoint, so one that fails takes back only its
-// own changes.
 fn in_savepoint<T>(
     transaction: &mut Transaction<'_>,
     write: impl FnOnce(&Connection) -> Result<T, ServerError>,
@@ -150,11 +140,6 @@ impl Db {
         })
     }
 
-    // A write that may share its commit with others waiting for the writer
-    // at the same moment. A lone write is committed at once. Writes that
-    // arrive while a commit is under way wait for it and then commit
-    // together, so many changes cost one sync to disk instead of one each.
-    // The result comes back once the commit is durable.
     pub async fn write_grouped<T, F>(&self, write: F) -> Result<T, ServerError>
     where
         T: Send + 'static,
@@ -193,9 +178,6 @@ impl Db {
         })?
     }
 
-    // Takes the writer, then every grouped write waiting for it, and commits
-    // them together, until none are left. A write that fails or panics is
-    // dropped from the group, and its caller hears so.
     fn drain_grouped(&self) {
         loop {
             let mut connection = locked(&self.connection);
@@ -279,8 +261,6 @@ impl Db {
     }
 }
 
-// Every statement of a read sees the same committed state, as they did
-// when reads shared the writer's connection.
 fn in_one_read<T>(
     conn: &mut Connection,
     f: impl FnOnce(&Connection) -> Result<T, ServerError>,

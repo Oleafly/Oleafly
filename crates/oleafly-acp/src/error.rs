@@ -1,9 +1,7 @@
-//! Errors from the agent connection and the messages Oleafly shows for them.
 use serde_json::Value;
 
 const MAX_RPC_MESSAGE_CHARS: usize = 600;
 
-/// The message of an agent's JSON-RPC error, cleaned for display.
 pub fn rpc_error_message(error: &Value) -> String {
     let message = clean_text(error["message"].as_str());
     let detail = clean_text(error_detail(&error["data"]));
@@ -43,13 +41,10 @@ fn is_generic(message: &str) -> bool {
     )
 }
 
-/// Whether stderr reads like a CLI's `--help` output (the agent did not
-/// accept the options it was started with).
 pub fn reads_as_command_help(tail: &str) -> bool {
     tail.contains("--help") || tail.contains("Options:") || tail.starts_with("Usage:")
 }
 
-/// `prefix`, followed by what the agent wrote to stderr when there is any.
 pub fn disconnect_message(prefix: &str, stderr_tail: &str) -> String {
     if stderr_tail.is_empty() {
         prefix.to_owned()
@@ -80,11 +75,15 @@ const AUTH_FAILURE_PHRASES: &[&str] = &[
     "no api key",
 ];
 
-/// Whether an error message says the agent needs the user to sign in.
 pub fn reads_as_auth_failure(message: &str) -> bool {
+    names_auth_failure(message, false)
+}
+
+fn names_auth_failure(message: &str, quotes_output: bool) -> bool {
     let message = message.to_lowercase();
     AUTH_FAILURE_PHRASES
         .iter()
+        .filter(|phrase| !quotes_output || phrase.contains(' '))
         .any(|phrase| message.contains(phrase))
         || (message.contains("api key") && message.contains("is invalid"))
 }
@@ -131,7 +130,6 @@ pub struct RpcError {
 }
 
 impl RpcError {
-    /// An error raised by Oleafly, not by the agent.
     pub fn local(message: &str) -> Self {
         Self {
             code: -32603,
@@ -171,7 +169,7 @@ impl RpcError {
     }
 
     pub fn auth_required(&self) -> bool {
-        self.code == -32000 || reads_as_auth_failure(&self.message)
+        self.code == -32000 || names_auth_failure(&self.message, self.output.is_some())
     }
 
     pub fn method_not_found(&self) -> bool {
@@ -275,6 +273,23 @@ mod tests {
         );
         assert!(error.auth_required());
         assert!(!error.method_not_found());
+    }
+
+    #[test]
+    fn a_crash_whose_stack_names_oauth_code_is_shown_as_the_crash() {
+        let crash = RpcError::connection(
+            ErrorKind::DisconnectedBeforeReply,
+            "Error: connect ETIMEDOUT 142.250.72.10:443 at OAuth2Client.refreshTokenNoCache (/usr/lib/node_modules/google-auth-library/build/src/auth/oauth2client.js:212:19) at handleUnauthorized (/srv/agent/unauthorized.js:3:1)",
+        );
+        assert!(!crash.auth_required());
+        assert!(crash.message.contains("ETIMEDOUT"));
+        assert!(RpcError::connection(
+            ErrorKind::Disconnected,
+            "Error: 401 Unauthorized. Not authenticated, run `agent login`"
+        )
+        .auth_required());
+        assert!(RpcError::agent(-32603, "Unauthorized".into()).auth_required());
+        assert!(RpcError::agent(-32603, "OAuth token was revoked".into()).auth_required());
     }
 
     #[test]

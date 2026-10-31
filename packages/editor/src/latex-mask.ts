@@ -1,14 +1,3 @@
-// ---------------------------------------------------------------------------
-// LaTeX masking: the single source of truth for both the Hunspell spellchecker
-// and the Harper spelling/grammar checker. It produces a SAME-LENGTH copy of
-// the source where everything that isn't prose is replaced with spaces
-// (newlines kept), so offsets in the masked copy map 1:1 back onto the document.
-// Getting this right is what keeps equations, code, citation keys, package
-// names, and file paths out of the checkers and stops false positives.
-//
-// `latex-mask.test.ts`.
-// ---------------------------------------------------------------------------
-
 import {
   EMAIL_ADDRESS_PATTERN,
   spellingWordSpans,
@@ -23,9 +12,6 @@ export interface Range {
   word: string;
 }
 
-// Environments whose entire body is non-prose (math, code, diagrams). Everything
-// between \begin{env} and \end{env} is blanked. Starred variants are matched by
-// stripping a trailing "*".
 const OPAQUE_ENVS = new Set([
   "math", "displaymath", "equation", "align", "gather", "multline", "eqnarray",
   "alignat", "flalign", "gathered", "aligned", "split", "cases", "array",
@@ -40,8 +26,6 @@ const REF_ARG_CMDS = [
   "cpagerefrange", "Cpagerefrange",
 ];
 
-// Commands whose arguments are identifiers, keys, paths, or URLs (never prose).
-// Every [optional] and {brace} argument that directly follows is blanked.
 const OPAQUE_ARG_CMDS = new Set([
   "label", "ref", "eqref", "pageref", "autoref", "cref", "Cref", "vref", "nameref",
   "cite", "citep", "citet", "citeauthor", "citeyear", "citealt", "nocite",
@@ -57,11 +41,7 @@ const OPAQUE_ARG_CMDS = new Set([
   "ce", "ch", "chemfig",
   "gls", "Gls", "glspl", "Glspl", "acrshort", "Acrshort", "acrlong",
   "Acrlong", "acrfull", "Acrfull", "index",
-  // Spacing/length commands whose arguments are dimensions ("2pt", "0.5in").
   "vspace", "hspace", "vskip", "hskip", "addvspace", "addtolength",
-  // Preamble metadata is not body prose. Names, affiliations, dates, and PDF
-  // metadata frequently contain proper nouns or machine-oriented values that
-  // should not produce document-body spelling and grammar diagnostics.
   "title", "subtitle", "author", "date", "subject", "keywords",
   "institute", "affiliation",
   "renewenvironment",
@@ -965,12 +945,6 @@ export function intersectsMaskedRegion(
 
 const TRAILING_PUNCT = new Set([".", ",", ";", ":", "!", "?", ")", "]", "}", "'"]);
 
-// Runs of blanked/whitespace characters collapse to a single space (or nothing
-// before closing punctuation), so the linter never sees the large gaps that
-// masking leaves behind, since those gaps otherwise trigger whitespace/formatting
-// and sentence-length false positives that map back onto `\commands`. `map[k]`
-// is the original document offset of `prose[k]`, so lint spans can be
-// translated back.
 export function maskToProse(text: string): { prose: string; map: number[] } {
   const masked = maskLatex(text);
   let prose = "";
@@ -979,7 +953,7 @@ export function maskToProse(text: string): { prose: string; map: number[] } {
   for (let i = 0; i < masked.length; i++) {
     const c = masked[i];
     if (c === " " || c === "\n" || c === "\t" || c === "\r") {
-      if (prose.length > 0) pending = true; // defer; drop leading whitespace
+      if (prose.length > 0) pending = true;
       continue;
     }
     if (pending) {

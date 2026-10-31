@@ -4,9 +4,6 @@ import type { FileSymbols, Sym, SymKind } from "./types";
 import { parseTypstFile } from "./parse-typst";
 import { parseMarkdownFile } from "./parse-markdown";
 
-// `macrouse` uses are NOT resolved here; they need the project-wide macro set,
-// which buildIndex adds in a second pass.
-
 const SECTION_LEVEL: Record<string, number> = {
   part: 0,
   chapter: 1,
@@ -85,7 +82,6 @@ function joinInput(dir: string, rel: string): string {
     : `${resolved}.tex`;
 }
 
-// Precompute line starts for O(log n) line lookup.
 function lineIndex(text: string): (offset: number) => number {
   const lineStarts: number[] = [0];
   for (let i = 0; i < text.length; i++) if (text[i] === "\n") lineStarts.push(i + 1);
@@ -150,8 +146,6 @@ function collectBibEntries(sink: SymSink): void {
   }
 }
 
-// Sectioning. Match up to the opening brace, then brace-match so titles with
-// nested braces (e.g. `\section{Intro to \texttt{x}}`) are captured whole.
 function collectSections(sink: SymSink): void {
   const { text } = sink;
   const { spans } = scanLatexDefinitions(text);
@@ -176,7 +170,7 @@ function collectSections(sink: SymSink): void {
       },
       { level: SECTION_LEVEL[m[1]] },
     );
-    sec.lastIndex = close + 1; // resume scanning after this section's title
+    sec.lastIndex = close + 1;
   }
 }
 
@@ -194,7 +188,6 @@ function collectLabels(sink: SymSink): void {
   }
 }
 
-// Macros: \newcommand / \renewcommand / \providecommand (braced or bare).
 const MACRO_PATTERNS: readonly RegExp[] = [
   /\\(?:newcommand|renewcommand|providecommand)\*?\s*(?:\{\s*)?\\([\p{L}\p{M}@]+)/gu,
   /\\def\s*\\([\p{L}\p{M}@]+)/gu,
@@ -216,7 +209,6 @@ function collectMacroDefinitions(sink: SymSink): void {
   }
 }
 
-// \bibitem is treated as an inline bib entry.
 const BRACE_DEFINITIONS: readonly [RegExp, SymKind][] = [
   [/\\newtheorem\*?\s*\{([^}]*)\}/g, "theorem"],
   [/\\(?:newenvironment|renewenvironment)\s*\{([^}]*)\}/g, "environment"],
@@ -240,7 +232,6 @@ function collectBraceDefinitions(sink: SymSink): void {
   }
 }
 
-// Multi-key commands: \ref-family and \cite-family. One use per key.
 function pushKeys(
   sink: SymSink,
   whole: string,

@@ -2,8 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { defineConfig } from "@playwright/test";
 
-// Load opt-in secrets/flags from e2e/.env (gitignored; see e2e/.env.example).
-// Values already set in the shell take precedence.
 try {
   const env = readFileSync(join(__dirname, ".env"), "utf8");
   for (const line of env.split("\n")) {
@@ -16,23 +14,13 @@ try {
   /* no .env file: everything stays opt-out */
 }
 
-// The app must already be running with the e2e bridge compiled in:
-//
-//   OLEAFLY_DATA_DIR=$(mktemp -d) pnpm tauri dev --features e2e-testing \
-//     --config src-tauri/tauri.e2e.conf.json
-//   pnpm test:e2e
 export default defineConfig({
   testDir: "./tests",
   // Compile+render tests can legitimately need a couple of minutes on a loaded
   // CI runner (real Tauri app, Tectonic compile, pdf.js render), so the per-test
   // cap has to clear that. Tests still set their own longer setTimeout as needed.
   timeout: 240_000,
-  // One retry on CI: a single environmental hiccup (runner load spike, slow
-  // filesystem) must not turn a run red, while a real regression still fails
-  // both attempts. Local runs keep zero retries so every flake stays visible
-  // to the developer who can actually debug it.
   retries: process.env.CI ? 1 : 0,
-  // The socket bridge drives one app instance; never parallelize against it.
   workers: 1,
   fullyParallel: false,
   reporter: [["list"]],

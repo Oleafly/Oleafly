@@ -339,6 +339,7 @@
   },
   "notebook": {
     "code_needed": "{{engine}} skal køre kode for at bygge dette dokument, og kode er slået fra for dette projekt. Tillad kode i dette projekt for at kompilere det.",
+    "export_stopped": "Eksporten blev stoppet.",
     "quarto_missing": "Quarto er ikke installeret. Installer det under Indstillinger > Motorer > Quarto, og kompiler så igen.",
     "calepin_missing": "Calepin er ikke installeret. Installer det under Indstillinger > Motorer > Calepin, og kompiler så igen.",
     "not_offered": "Oleafly kan ikke downloade {{tool}} til denne computer. Installer det selv, og kompiler så igen.",

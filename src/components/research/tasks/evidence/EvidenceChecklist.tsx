@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { i18n } from "@/i18n";
 import { describeError } from "@/lib/app-error";
+import { withOccurrenceKeys } from "@/lib/occurrence-keys";
 import type { EvidenceCheckId, EvidenceItem, EvidenceReport, EvidenceStatus } from "@/lib/research-tasks";
 
 function checkLabel(id: EvidenceCheckId): string {
@@ -34,7 +35,6 @@ function statusLabel(status: EvidenceStatus): string {
   }
 }
 
-/** The sentence for one finding; unknown codes show the code itself. */
 export function evidenceItemText(item: EvidenceItem): string {
   const p = item.params;
   switch (item.code) {
@@ -102,10 +102,8 @@ interface EvidenceChecklistProps {
   onRefresh: () => Promise<void>;
 }
 
-/** Items one check lists before saying how many more it found. */
 const SHOWN_ITEMS = 50;
 
-/** Evidence checks on a task's result. They only warn; applying stays possible. */
 export function EvidenceChecklist({ report, checking, onRefresh }: Readonly<EvidenceChecklistProps>) {
   const { t } = useTranslation(["researchTools"]);
   const [refreshing, setRefreshing] = useState(false);
@@ -117,7 +115,6 @@ export function EvidenceChecklist({ report, checking, onRefresh }: Readonly<Evid
     try {
       await onRefresh();
     } catch (cause) {
-      // The checks didn't run (the workspace is gone, the task moved on): say so.
       setFailure(describeError(cause));
     } finally {
       setRefreshing(false);
@@ -132,7 +129,6 @@ export function EvidenceChecklist({ report, checking, onRefresh }: Readonly<Evid
           </h5>
           <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.evidence.hint)}</p>
         </div>
-        {/* A check the task started can be cut off by an exit and say "Checking" for good, so it never locks this out. */}
         <Button size="xs" variant="outline" disabled={refreshing} onClick={() => void refresh()}>
           {refreshing ? t(($) => $.researchTools.evidence.running) : t(($) => $.researchTools.evidence.refresh)}
         </Button>
@@ -152,8 +148,8 @@ export function EvidenceChecklist({ report, checking, onRefresh }: Readonly<Evid
               </div>
               {check.items.length > 0 ? (
                 <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-                  {check.items.slice(0, SHOWN_ITEMS).map((item, index) => (
-                    <li key={`${item.code}-${index}`} className="select-text break-words">
+                  {withOccurrenceKeys(check.items.slice(0, SHOWN_ITEMS), (item) => item.code).map(({ item, key }) => (
+                    <li key={key} className="select-text break-words">
                       {evidenceItemText(item)}
                       {item.file ? (
                         <span className="ml-1 font-mono">

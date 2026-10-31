@@ -29,8 +29,6 @@ import { useOverleafImportStore } from "@/store/overleaf-import";
 
 type View = "sources" | "name" | "link" | "account";
 
-// A search narrows a long account list; drawing thousands of rows at once
-// would only slow the dialog down.
 const ACCOUNT_ROWS = 200;
 const DATA_URI_PREFIX = "data:image/png;base64,";
 
@@ -38,11 +36,6 @@ function pngBase64(uri: string | null): string | null {
   return uri?.startsWith(DATA_URI_PREFIX) ? uri.slice(DATA_URI_PREFIX.length) : null;
 }
 
-/**
- * Add a template of the person's own: a ZIP, a folder, a page from the
- * online gallery, or one of their online projects. Whatever it is lands
- * under Custom in the template gallery.
- */
 export function TemplateImportDialog({
   open,
   onClose,
@@ -71,9 +64,6 @@ export function TemplateImportDialog({
   const [remote, setRemote] = useState<OverleafProject | null>(null);
   const [search, setSearch] = useState("");
 
-  // Start over each time the dialog opens again. A freshly mounted dialog
-  // already starts clean, and resetting it a frame after mount would undo a
-  // choice made in that frame.
   const wasOpenRef = useRef(open);
   useEffect(() => {
     if (open === wasOpenRef.current) return;
@@ -100,8 +90,6 @@ export function TemplateImportDialog({
     if (!busyRef.current) onClose();
   };
 
-  // Each step puts the focus on its own first field, as the dialog does when
-  // it opens, instead of leaving it on the card that was just replaced.
   const bodyRef = useRef<HTMLDivElement>(null);
   const picked = remote !== null;
   // biome-ignore lint/correctness/useExhaustiveDependencies: picking an account project is a new step that needs the focus too.

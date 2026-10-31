@@ -53,7 +53,9 @@ fn values<T: Serialize>(items: Vec<T>) -> Vec<Value> {
 
 fn suggestion_refusal(error: &CollabError) -> Refusal {
     match error {
-        CollabError::Api { code, message, .. } if code == "too_large" => {
+        CollabError::Api { code, message, .. }
+            if code == "too_large" || code == "suggestion_too_long" =>
+        {
             Refusal::new("too_large", message)
         }
         CollabError::Api { code, message, .. } if code == "suggestion_changed" => {
@@ -314,6 +316,25 @@ mod tests {
                 .code,
             "not_found"
         );
+    }
+
+    #[test]
+    fn a_suggested_deletion_over_the_limit_reads_as_too_large_and_changes_nothing() {
+        let long = "x".repeat(oleafly_collab::suggestions::MAX_DELETED_CHARS + 5);
+        let mut doc = ProjectDoc::create().unwrap();
+        let file = doc
+            .add_node(None, "main.tex", NodeKind::Text, None, &long)
+            .unwrap();
+        let mut operation = TextOperation::new();
+        operation
+            .insert("pasted")
+            .delete(oleafly_collab::suggestions::MAX_DELETED_CHARS + 1)
+            .retain(4);
+        let refused =
+            suggest_operation(&mut doc, &file, &operation, account(0xa1), device(), 1).unwrap_err();
+        assert_eq!(refused.code, "too_large");
+        assert_eq!(doc.text(&file).unwrap(), long);
+        assert!(suggestions(&doc, &file).is_empty());
     }
 
     #[test]

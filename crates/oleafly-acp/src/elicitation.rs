@@ -1,6 +1,3 @@
-//! `elicitation/create`: the agent asks the user to fill in a form or to
-//! open a link. Only the shapes Oleafly can render are accepted; answers are
-//! checked against the agent's schema before they are sent.
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
@@ -8,7 +5,6 @@ use serde_json::{json, Map, Value};
 
 pub const ELICITATION_CREATE: &str = "elicitation/create";
 pub const ELICITATION_COMPLETE: &str = "elicitation/complete";
-/// How long a question waits for an answer.
 pub const ELICITATION_TTL_MS: u64 = 10 * 60 * 1000;
 const MAX_FIELDS: usize = 32;
 const MAX_CHOICES: usize = 256;
@@ -20,20 +16,15 @@ const MAX_ANSWER: usize = 64 * 1024;
 #[serde(rename_all = "camelCase")]
 pub struct ElicitationView {
     pub id: String,
-    /// "form" or "url".
     pub mode: String,
     pub message: String,
     pub url: Option<String>,
     pub fields: Vec<ElicitationField>,
-    /// The agent's session id for session-scoped questions.
     pub session_id: Option<String>,
     pub tool_call_id: Option<String>,
     pub expires_at: u64,
-    /// The agent's id for a link question (`elicitationId`), matched by
-    /// `elicitation/complete`.
     #[serde(skip)]
     pub elicitation_id: Option<String>,
-    /// Asked outside any session (during sign-in).
     #[serde(skip)]
     pub request_scoped: bool,
 }
@@ -47,7 +38,6 @@ pub struct ElicitationField {
     pub kind: FieldKind,
     pub required: bool,
     pub default: Option<Value>,
-    /// A password, token or key: shown masked, never prefilled.
     pub secret: bool,
 }
 
@@ -69,7 +59,6 @@ pub enum FieldKind {
         maximum: Option<f64>,
     },
     Boolean,
-    /// `(value, title)` pairs.
     Choice {
         options: Vec<(String, String)>,
         multiple: bool,
@@ -190,8 +179,6 @@ fn link_allowed(link: &str) -> Result<String, String> {
     }
 }
 
-/// Reads an `elicitation/create` request. Forms with more than 32 fields,
-/// unknown modes and unsafe links are refused.
 pub fn parse_create(params: &Value, now: u64) -> Result<ElicitationView, String> {
     let mode = params["mode"].as_str().unwrap_or("");
     let message = clean_text(&params["message"], MAX_MESSAGE).unwrap_or_default();
@@ -358,8 +345,6 @@ fn check(field: &ElicitationField, value: &Value) -> Result<Value, String> {
     }
 }
 
-/// The `accept` answer, after checking required fields and types. Fields
-/// the form does not have are dropped.
 pub fn accept(view: &ElicitationView, content: &Map<String, Value>) -> Result<Value, String> {
     if view.mode == "url" {
         return Ok(json!({"action": "accept"}));

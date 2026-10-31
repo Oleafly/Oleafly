@@ -288,11 +288,6 @@ function normalizeSymbol(
   };
 }
 
-/**
- * Converts the current regex index into immutable data. Consumers never need
- * its closure-based navigation methods, which keeps the future LSP index and
- * the existing ProjectIndex behind one serializable seam.
- */
 const normalizedProjectIndexes = new WeakMap<
   ProjectIndex,
   NormalizedProjectIndex

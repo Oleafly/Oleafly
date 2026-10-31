@@ -7,15 +7,12 @@ import { describe, expect, it, vi } from "vitest";
 import type { WebApi } from "../api";
 import { ProjectController } from "../controller";
 import type { CollabOutputInfo } from "../protocol";
-import { resetWebState, useWeb } from "../store";
+import { patchCompile, resetWebState, useWeb } from "../store";
 import { loadSyncTex } from "../synctex";
 import { FakeServer, ManualTimers } from "../testing/fake-socket";
+import { outputKey } from "./outputs";
 import { forwardSync, type SyncView } from "./sync";
 import { syncTexOpener } from "./synctex";
-
-// The phase 0 exit check: the test engine drives a whole compile in the
-// browser, the shared SyncTeX code answers both directions on its output, the
-// output goes up to the server, and a PDF compiled on another computer syncs too.
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const wasm = readFileSync(path.join(here, "../synctex/oleafly_synctex.wasm"));
@@ -120,13 +117,12 @@ describe("compiling in the browser", () => {
     if (!local) throw new Error("the test engine wrote no SyncTeX");
     const elsewhere = strFromU8(gunzipSync(local)).replaceAll(/^Input:(\d+):/gmu, "Input:$1:/home/ana/thesis/");
     server.share(gzipSync(strToU8(elsewhere)));
+    const pdf: CollabOutputInfo = { kind: "pdf", size: 10, compiledBy: "ana", compiledAt: 9_000, mainFile: "main.tex" };
     useWeb.setState({
-      output: [
-        { kind: "pdf", size: 10, compiledBy: "ana", compiledAt: 9_000, mainFile: "main.tex" },
-        { kind: "synctex", size: 10, compiledBy: "ana", compiledAt: 9_001, mainFile: "main.tex" },
-      ],
+      output: [pdf, { kind: "synctex", size: 10, compiledBy: "ana", compiledAt: 9_001, mainFile: "main.tex" }],
     });
     expect(useWeb.getState().compile.shown).toBe("shared");
+    patchCompile({ shownShared: outputKey(pdf) });
     const index = await controller.compiler.syncIndex();
     if (!index) throw new Error("no SyncTeX for the shared PDF");
     const main = view(5);

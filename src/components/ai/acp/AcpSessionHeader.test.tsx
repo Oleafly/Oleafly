@@ -169,7 +169,6 @@ describe("AcpSessionHeader", () => {
     let menu = await openMenu();
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Delete" }));
     let dialog = await screen.findByRole("alertdialog");
-    // Cancel ends with its key hint (esc), so match how its name starts.
     fireEvent.click(within(dialog).getByRole("button", { name: /^Cancel/ }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     menu = await openMenu();

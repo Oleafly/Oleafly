@@ -1,4 +1,3 @@
-//! New bibliography entries: each one is checked against its DOI or title.
 use std::collections::{BTreeMap, HashSet};
 use std::future::Future;
 use std::pin::Pin;
@@ -17,7 +16,6 @@ const AT_ONCE: usize = 4;
 const LOOKUP_LIMIT: Duration = Duration::from_secs(10);
 const DOI_MISMATCH: &str = "The DOI belongs to a different title.";
 
-/// Checks one reference by DOI or title (the real one asks Crossref).
 pub(crate) type Verifier = Arc<
     dyn Fn(
             Option<String>,
@@ -51,7 +49,6 @@ fn field(entry: &Entry, name: &str) -> Option<String> {
         .filter(|text| !text.is_empty())
 }
 
-/// Entries of `after` whose keys `before` did not have.
 pub(crate) fn new_entries(before: Option<&str>, after: &str, file: &str) -> Vec<NewEntry> {
     let Ok(after) = parse_library(after) else {
         return Vec::new();
@@ -85,13 +82,11 @@ fn item(code: &str, entry: &NewEntry, extra: Option<(&str, String)>) -> Evidence
     }
 }
 
-/// An entry and its check, or the time running out.
 type CheckedEntry = (
     NewEntry,
     Result<Result<CitationCheck, String>, tokio::time::error::Elapsed>,
 );
 
-/// Checks up to 50 entries, four at a time, ten seconds each.
 pub(crate) async fn verify_entries(entries: Vec<NewEntry>, verify: Verifier) -> Vec<EvidenceItem> {
     let results: Vec<CheckedEntry> =
         futures_util::stream::iter(entries.into_iter().take(MAX_ENTRIES))

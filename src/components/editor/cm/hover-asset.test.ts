@@ -94,18 +94,16 @@ describe("loadAssetThumbnail", () => {
     }
     expect(mockRead).toHaveBeenCalledTimes(16);
 
-    // A cache hit refreshes recency, so f0 survives the next eviction.
     await loadAssetThumbnail("p1", "f0.png");
     expect(mockRead).toHaveBeenCalledTimes(16);
 
-    // Inserting a 17th entry evicts the now-oldest f1, not f0.
     await loadAssetThumbnail("p1", "f16.png");
     expect(mockRead).toHaveBeenCalledTimes(17);
 
-    await loadAssetThumbnail("p1", "f0.png"); // still cached
+    await loadAssetThumbnail("p1", "f0.png");
     expect(mockRead).toHaveBeenCalledTimes(17);
 
-    await loadAssetThumbnail("p1", "f1.png"); // evicted, refetches
+    await loadAssetThumbnail("p1", "f1.png");
     expect(mockRead).toHaveBeenCalledTimes(18);
   });
 

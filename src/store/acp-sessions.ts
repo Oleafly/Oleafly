@@ -10,11 +10,8 @@ import {
   type AcpSession, type AcpSessionSummary, type AcpSessionUsage, type AcpSnapshot, type AcpTurnCommit,
 } from "@/lib/acp";
 
-/** A skill sent with the next message; shown as a removable chip. */
 export interface AcpComposerSkill { id: string; name: string }
-/** Quoted editor text sent with the next message. */
 export interface AcpSelection { id: string; path: string | null; text: string; label: string }
-/** What the CLI composer keeps besides its text and files (B's drafts store has those). */
 export interface AcpComposer { agentId: string | null; skill?: AcpComposerSkill | null; selections?: AcpSelection[] }
 export interface AcpQueuedPrompt {
   id: string;
@@ -29,21 +26,10 @@ export interface AcpQueuedPrompt {
 export type AcpPromptDraft = Omit<AcpQueuedPrompt, "id" | "sending" | "failed">;
 
 export const EMPTY_COMPOSER: AcpComposer = { agentId: null };
-/** Transcript events kept in memory for a shown conversation. */
 export const MAX_VISIBLE_EVENTS = 2000;
-/** What a conversation may keep after the reader loaded earlier events: those must not vanish under them. */
 const MAX_PINNED_EVENTS = 3 * MAX_VISIBLE_EVENTS;
-/**
- * A live transcript may run this far past the cap before its head is cut.
- * Every cut changes the first event, which makes the projector start over, so
- * cutting on every batch would rebuild every row about thirty times a second.
- */
 const TRIM_SLACK = 250;
 
-/**
- * The composer id of a CLI agent in a project. A conversation has its own
- * draft; before one starts, the draft belongs to the agent chosen to start it.
- */
 export function acpComposerId(projectId: string, agentId: string | null, sessionId: string | null = null): string {
   const base = `${projectId}:acp:${agentId ?? "none"}`;
   return sessionId ? `${base}:${sessionId}` : base;
@@ -58,18 +44,13 @@ interface AcpState {
   elicitations: Record<string, AcpElicitation[]>;
   composers: Record<string, AcpComposer>;
   queues: Record<string, AcpQueuedPrompt[]>;
-  /** Conversations shown somewhere other than the active slot (a task opened elsewhere). */
   watched: Record<string, number>;
-  /** Messages on their way to the agent, per conversation. */
   sending: Record<string, number>;
-  /** Earlier events the user loaded into a shown conversation; live events do not trim them away (up to a larger cap). */
   earlierLoaded: Record<string, number>;
   errors: Record<string, string | null>;
   setError: (projectId: string, message: string | null) => void;
-  /** Why a message of one conversation did not go out; shown only with that conversation. */
   sessionErrors: Record<string, string | null>;
   setSessionError: (sessionId: string, message: string | null) => void;
-  /** Returns true only when this request supplied the accepted catalog. */
   refreshCatalog: (probe?: boolean) => Promise<boolean>;
   loadProject: (projectId: string) => Promise<void>;
   open: (projectId: string, id: string) => Promise<void>;
@@ -84,17 +65,13 @@ interface AcpState {
   watch: (sessionId: string) => () => void;
   enqueue: (sessionId: string, draft: AcpPromptDraft) => string;
   removeQueued: (sessionId: string, id: string) => void;
-  /** Sends a message that failed once more. */
   retryQueued: (projectId: string, sessionId: string, id: string) => Promise<void>;
-  /** Drops everything the store holds for a deleted conversation. */
   forgetSession: (projectId: string, sessionId: string) => void;
-  /** False when the message was not sent (the conversation's error says why). */
   sendPrompt: (projectId: string, sessionId: string, draft: AcpPromptDraft) => Promise<boolean>;
   startWithPrompt: (projectId: string, agentId: string, draft: AcpPromptDraft) => Promise<void>;
   dispatchQueued: (projectId: string, sessionId: string) => Promise<void>;
   steerQueued: (projectId: string, sessionId: string, id: string) => Promise<void>;
   applySummary: (summary: AcpSessionSummary) => void;
-  /** Disconnects the project's idle conversations when the window leaves the project; a working one keeps going. */
   releaseProject: (projectId: string) => Promise<void>;
 }
 
@@ -126,7 +103,6 @@ export function mergeAcpEvents(
   return merged.length > cap + TRIM_SLACK ? merged.slice(merged.length - cap) : merged;
 }
 
-/** The events of a conversation that is no longer kept in memory. */
 function withoutEvents(
   state: Pick<AcpState, "events" | "earlierLoaded">,
   sessionId: string,
@@ -146,7 +122,6 @@ function turnCommitFrom({ data, timestamp }: AcpEvent): AcpTurnCommit {
   };
 }
 
-/** Fields an event changes on its session without a snapshot round trip. */
 function applySessionEvent(sessions: Record<string, AcpSession>, event: AcpEvent): void {
   const session = sessions[event.sessionId];
   if (!session || event.sequence <= session.lastSequence) return;
@@ -161,7 +136,6 @@ function applySessionEvent(sessions: Record<string, AcpSession>, event: AcpEvent
   switch (event.kind) {
     case "usage":
       if (data.session && typeof data.session === "object") {
-        // The plan text comes from a slower refresh and is not on every event.
         const incoming = data.session as AcpSessionUsage;
         next.usage = {
           ...incoming,
@@ -247,11 +221,6 @@ export function sameSessionView(shown: AcpSession | undefined, next: AcpSession 
 
 const QUEUE_FLUSHES_ITSELF: ReadonlySet<string> = new Set(["ready", "connecting", "running", "cancelling"]);
 
-/**
- * A conversation the user leaves while it cannot take messages (signed out,
- * disconnected) keeps its queue, which would send whenever it turns ready
- * again, maybe hours later. Those messages are marked as not sent instead.
- */
 function leftQueue(
   state: Pick<AcpState, "queues" | "sessions">,
   sessionId: string,
@@ -267,7 +236,6 @@ function leftQueue(
   };
 }
 
-/** Conversations whose transcript is kept in memory. */
 function visibleIds(state: Pick<AcpState, "activeByProject" | "watched">): Set<string> {
   const ids = new Set<string>();
   for (const id of Object.values(state.activeByProject)) if (id) ids.add(id);
@@ -346,9 +314,6 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
       get().setSnapshot(snapshot);
       const id = snapshot.session.id;
       get().setActive(projectId, id);
-      // What the agent sent while it started came before the conversation
-      // was shown, so it wasn't kept; load it as an opened conversation does.
-      // Missing, the first event looked like earlier activity to load.
       try {
         const page = await acpEvents(projectId, id, Math.max(0, snapshot.session.lastSequence - 300));
         set((state) => ({ events: { ...state.events, [id]: mergeAcpEvents(state.events[id] ?? [], page.events) } }));
@@ -374,8 +339,6 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     set((state) => {
       const earlier = page.events.filter((event) => event.sequence < first);
       const all = [...earlier, ...(state.events[id] ?? [])];
-      // Loading earlier history may go past the in-memory cap, and the next
-      // live batch must not trim away what the reader just asked for.
       return {
         events: { ...state.events, [id]: all },
         earlierLoaded: { ...state.earlierLoaded, [id]: (state.earlierLoaded[id] ?? 0) + earlier.length },
@@ -472,7 +435,6 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
           : state.activeByProject,
       };
     });
-    // The conversation's draft goes with it, so its files can be collected.
     const composerId = acpComposerId(projectId, session?.agentId ?? null, sessionId);
     const drafts = useComposerDrafts.getState();
     drafts.setText(composerId, "");
@@ -486,8 +448,6 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
       else delete sending[sessionId];
       return { sending };
     });
-    // Counted while the open files save too, so the composer queues the
-    // next message instead of starting a second turn.
     adjust(1);
     try {
       const [{ flushOpenFilesToDisk }, { SaveFlushError }] = await Promise.all([
@@ -508,8 +468,6 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
           import("@/components/ai/acp/acp-attachments"),
           import("@/store/files"),
         ]);
-        // A queued message can go while the window shows another project; its
-        // mentions were then read from the conversation's project when it was queued.
         const files = useFilesStore.getState();
         const input = await toPromptInput(draft, session, files.projectId === projectId ? files.tree : null);
         get().setSnapshot(await acpPrompt(projectId, sessionId, input));
@@ -523,14 +481,10 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
           const { promptErrorMessage } = await import("@/components/ai/acp/acp-attachments");
           get().setSessionError(sessionId, promptErrorMessage(error) ?? acpError(error));
         }
-        // The backend says whether the agent got the message before the turn
-        // failed; an older build only says why, and the transcript tells.
         return acpPromptDelivered(error) ?? sentUserMessage(before, sessionId);
       }
     } finally {
       adjust(-1);
-      // A message queued while this one was on its way waits for a turn to
-      // end; when this one never reached the agent, no turn will.
       if (!get().sending[sessionId]) void get().dispatchQueued(projectId, sessionId);
     }
   },
@@ -553,8 +507,6 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     const sent = await get().sendPrompt(projectId, sessionId, draft);
     if (sent) {
       get().removeQueued(sessionId, head.id);
-      // The turn can end before the prompt call returns; the next message
-      // then has no later event to wait for.
       await get().dispatchQueued(projectId, sessionId);
     } else {
       mark({ sending: false, failed: true });
@@ -565,7 +517,6 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     const session = get().sessions[sessionId];
     if (!item || item.sending || item.failed || session?.status !== "running" || !session.capabilities.steering) return;
     if (item.attachments.length > 0 || item.selections.length > 0 || item.skill) return;
-    // On its way while the agent decides: a turn that ends meanwhile must not send it again.
     const mark = (sending: boolean) => set((state) => ({
       queues: { ...state.queues, [sessionId]: (state.queues[sessionId] ?? []).map((entry) => entry.id === id ? { ...entry, sending } : entry) },
     }));
@@ -575,8 +526,6 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
       if (outcome === "injected") {
         get().removeQueued(sessionId, id);
       } else {
-        // The turn ended first: the message goes out as a turn of its own as
-        // soon as the conversation is ready.
         mark(false);
         await get().resync(projectId, sessionId).catch(() => {});
         await get().dispatchQueued(projectId, sessionId);
@@ -611,7 +560,6 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
       && (session.status === "ready" || session.status === "auth_required")
       && !state.sending[session.id]
       && !state.queues[session.id]?.some((item) => !item.failed));
-    // A conversation of another window is refused by the backend; that one stays as it is.
     await Promise.all(idle.map((session) => acpDisconnect(projectId, session.id).catch(() => {})));
   },
 }));
@@ -643,7 +591,6 @@ function mayHaveChangedFiles(event: AcpEvent): boolean {
   return event.kind === "turn_complete" || (event.kind === "tool_call_update" && event.data.status === "completed");
 }
 
-/** A batch event after which the next queued message may go. */
 function endsTurn(event: AcpEvent): boolean {
   return event.kind === "turn_complete" || (event.kind === "status" && event.data.status === "ready");
 }
@@ -653,7 +600,6 @@ let stopListeners: (() => void) | undefined;
 let listenerPromise: Promise<void> | undefined;
 let queued: AcpEvent[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | undefined;
-/** Set while nothing shows the agents but queued messages still wait for their turn to end. */
 let stopWhenSent: (() => void) | undefined;
 
 function statusForEvent(
@@ -668,7 +614,6 @@ function statusForEvent(
   return current;
 }
 
-/** Answers the agent's request for an open editor's text; with nothing when it cannot be read. */
 async function answerBufferRequest({ requestId, projectId, path }: AcpBufferRequest): Promise<void> {
   try {
     const { bufferContent } = await import("@/components/ai/acp/acp-buffers");
@@ -697,7 +642,6 @@ function applyEventBatch(batch: AcpEvent[]): void {
   }
 }
 
-/** Applies the events waiting for the 32 ms batch now. */
 function flushEventBatch(): void {
   if (flushTimer) clearTimeout(flushTimer);
   flushTimer = undefined;
@@ -706,7 +650,6 @@ function flushEventBatch(): void {
   if (batch.length > 0) applyEventBatch(batch);
 }
 
-/** Queued messages that go out when a turn ends, which only these listeners see. */
 function queueWaitsForTurn(state: Pick<AcpState, "queues" | "sessions">): boolean {
   return Object.entries(state.queues).some(([sessionId, queue]) =>
     QUEUE_FLUSHES_ITSELF.has(state.sessions[sessionId]?.status ?? "") && queue.some((item) => !item.failed));
@@ -715,7 +658,6 @@ function queueWaitsForTurn(state: Pick<AcpState, "queues" | "sessions">): boolea
 function detachListeners(): void {
   stopWhenSent?.();
   stopWhenSent = undefined;
-  // The last events still count: one of them may end the turn a queued message waits for.
   flushEventBatch();
   stopListeners?.();
   stopListeners = undefined;
@@ -727,11 +669,7 @@ export async function attachAcpListeners(): Promise<() => void> {
   stopWhenSent?.();
   stopWhenSent = undefined;
   listenerPromise ??= (async () => {
-    // Collected as they register: when a later registration fails, the ones
-    // already made must not stay behind to double every event.
     const stops: (() => void)[] = [];
-    // One push per registration, once it has completed: a single push of all
-    // four would lose the earlier ones when a later registration fails.
     const collectStop = async (registration: Promise<() => void>) => {
       stops.push(await registration);
     };
@@ -745,8 +683,6 @@ export async function attachAcpListeners(): Promise<() => void> {
         const state = useAcpSessionsStore.getState();
         for (const [project, id] of Object.entries(state.activeByProject)) if (id) void state.resync(project, id).catch(() => {});
       }));
-      // A summary is sent with each stored event: the event goes first, or the
-      // summary's sequence would make the store skip what only the event carries.
       await collectStop(onAcpSession((summary) => {
         flushEventBatch();
         useAcpSessionsStore.getState().applySummary(summary);
@@ -756,8 +692,6 @@ export async function attachAcpListeners(): Promise<() => void> {
       for (const stop of stops) stop();
       throw error;
     }
-    // A session can turn ready without a turn ending (a reconnect after
-    // signing in, a snapshot): a message that waited goes out then, too.
     stops.push(useAcpSessionsStore.subscribe((state, previous) => {
       for (const [sessionId, session] of Object.entries(state.sessions)) {
         if (session.status !== "ready" || previous.sessions[sessionId]?.status === "ready") continue;
@@ -776,9 +710,6 @@ export async function attachAcpListeners(): Promise<() => void> {
       detachListeners();
       return;
     }
-    // Nothing shows the agents now (the built-in assistant is open, or another
-    // project), but a queued message still goes when its turn ends, not when
-    // the user comes back.
     stopWhenSent ??= useAcpSessionsStore.subscribe((state) => {
       if (listenerCount === 0 && !queueWaitsForTurn(state)) detachListeners();
     });

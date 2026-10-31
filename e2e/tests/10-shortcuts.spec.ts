@@ -1,8 +1,6 @@
 import { expect, test } from "../fixtures";
 import { caretIn, openProject, pressGlobal, waitLong } from "../helpers";
 
-// Cmd+K and Cmd+Shift+F are covered in 04-commands; this file covers the rest.
-
 test("Cmd+Enter compiles and Cmd+Shift+J forward-SyncTeX highlights the PDF", async ({
   tauriPage,
 }) => {

@@ -212,10 +212,6 @@ test("personas: deep link from persona menu, create, switch in chat", async ({ t
     15_000,
   );
 
-  // The menu's create shortcut only renders while no persona exists; a
-  // profile that already carries personas from earlier specs goes to the
-  // Personas settings tab directly instead. Either path lands on the same
-  // create button, and a unique name keeps reruns independent.
   const personaName = `Copyeditor-${Date.now()}`;
   await openPersonaMenu(page);
   const createShortcut = await page.evaluate<boolean>(

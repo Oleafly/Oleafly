@@ -208,6 +208,7 @@
     "pathStyleHint": "MinIO og de fleste selvdrevne servere trenger dette."
   },
   "errors": {
+    "clock_skew": "Klokken på denne datamaskinen går feil, så {{provider}} godtar ikke forespørsler fra den. Still inn riktig dato og klokkeslett for å fortsette synkroniseringen.",
     "code_invalid": "Koden virket ikke. Prøv igjen.",
     "device_name_empty": "Skriv inn et navn.",
     "device_name_invalid": "Et datamaskinnavn kan ikke inneholde \\ / : * ? \" < > | eller kontrolltegn og kan være maks 32 tegn langt.",

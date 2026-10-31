@@ -172,8 +172,6 @@ test("the real terminal opens, echoes, and exits cleanly", async ({
 
   const output = await terminalOutput(tauriPage);
   await enterTerminalCommand(tauriPage, "exit");
-  // Asserting the exit event separately splits IPC-delivery failures from
-  // dock-close failures.
   await expect
     .poll(
       () =>
@@ -321,8 +319,6 @@ async function selectTerminalAppearanceTab(page: Page): Promise<void> {
 }
 
 async function pickOption(page: Page, triggerSelector: string, optionText: string): Promise<void> {
-  // A list that just closed fades out before it leaves the page; picking from
-  // it does nothing. Wait for it to go, and only use the open list.
   await page.waitForFunction(`!document.querySelector('[role="listbox"][data-state="closed"]')`, 5_000);
   await page.click(triggerSelector);
   const optionSelector = `[role="listbox"][data-state="open"] [role="option"][data-label=${JSON.stringify(optionText)}]`;
@@ -365,7 +361,6 @@ test("terminal font size and color theme apply to the open terminal", async ({ t
         { timeout: 5_000 },
       )
       .toEqual({ fontSize: 18, theme: "light" });
-    // The open terminal picks the change up without a restart.
     await expect(tauriPage.locator(TERMINAL)).toHaveAttribute("data-terminal-font-size", "18");
     await expect(tauriPage.locator(TERMINAL)).toHaveAttribute("data-terminal-color-theme", "light");
     await expect
@@ -397,6 +392,3 @@ test("terminal font size and color theme apply to the open terminal", async ({ t
     before.theme,
   );
 });
-
-// Native Ctrl dock accelerator keystrokes cannot be synthesized through the app bridge, so there is no
-// automated case for them here.

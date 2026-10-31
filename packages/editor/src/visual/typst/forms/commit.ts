@@ -27,7 +27,6 @@ const INVALID: CommitResult = { ok: false, reason: "invalid" };
 const REFUSED: CommitResult = { ok: false, reason: "refused" };
 const READ_ONLY: CommitResult = { ok: false, reason: "readOnly" };
 
-// The form call whose `#` sits at `anchor` in the current state, read against the current catalog.
 export function formCallAt(state: EditorState, anchor: number): { model: FormCallModel; call: SyntaxNode } | null {
   const tree = syntaxTree(state);
   const hash = tree.resolveInner(anchor, 1);
@@ -49,7 +48,7 @@ function encoded(field: TypstFormField, state: FieldState, edit: Extract<FieldEd
       return encodeTypstString(next.value);
     case "content":
       if (state.status === "value" && state.written === "str") return encodeTypstString(next.value);
-      return `[${layOutBlock(sanitizeTypstContent(next.value), state.status === "value" ? state.layout : null)}]`;
+      return `[${sanitizeTypstContent(layOutBlock(next.value, state.status === "value" ? state.layout : null))}]`;
     case "number":
       if (kind.type !== "number" || numberProblem(kind, next.value)) return null;
       return encodeTypstNumber(next.value, kind.integer);
@@ -68,7 +67,6 @@ function argumentEdit(field: TypstFormField, state: FieldState, edit: FieldEdit)
   return { insert: field.arg, text, content: field.kind.type === "content" && "positional" in field.arg };
 }
 
-// The edited stretch of source must still parse with no error nodes.
 function parsesCleanly(state: EditorState, changes: readonly TextChange[], call: SyntaxNode, hash: number): boolean {
   const parser = typstTools()?.typstParser;
   if (!parser) return false;
@@ -79,7 +77,6 @@ function parsesCleanly(state: EditorState, changes: readonly TextChange[], call:
   return !hasErrorNode(parser.parse(text).topNode);
 }
 
-// Writes one field's edit as one undoable transaction, after finding the call again.
 export function commitFieldEdit(view: EditorView, anchor: number, definitionId: string, field: number, edit: FieldEdit): CommitResult {
   if (view.state.readOnly) return READ_ONLY;
   const found = formCallAt(view.state, anchor);
@@ -96,6 +93,5 @@ export function commitFieldEdit(view: EditorView, anchor: number, definitionId: 
   if (!parsesCleanly(view.state, plan.changes, call, anchor)) return INVALID;
   const before = view.state.doc;
   view.dispatch({ changes: [...plan.changes], userEvent: "input.form" });
-  // An edit lock can filter the change out before the document turns read-only.
   return plan.changes.length > 0 && view.state.doc === before ? READ_ONLY : { ok: true };
 }

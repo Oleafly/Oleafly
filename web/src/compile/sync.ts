@@ -4,7 +4,6 @@ import { findWordOnPages, getCurrentLine, pickForwardLine, type SourceWord, word
 import { gotoRect, type PdfTextRun, pdfPageText } from "@oleafly/preview/controller";
 
 export interface SyncView {
-  /** The cursor's line in the open file, and the word it is on. */
   cursor(): { line: number; word: SourceWord | null } | null;
   pageText(page: number): Promise<readonly PdfTextRun[] | null>;
   show(rect: SynctexRect): void;
@@ -19,7 +18,6 @@ export const pageView: SyncView = {
   show: (rect) => gotoRect(rect),
 };
 
-/** The typeset line holding the cursor's word, as the app picks it, or SyncTeX's box. */
 async function lineWithWord(hit: SynctexForwardHit, word: SourceWord | null, view: SyncView): Promise<SynctexRect> {
   if (!word) return hit;
   const lines = hit.lines ?? [];
@@ -33,11 +31,17 @@ async function lineWithWord(hit: SynctexForwardHit, word: SourceWord | null, vie
   return found ?? hit;
 }
 
-/** Shows where the cursor's line of `path` is in the PDF. False when SyncTeX has no place for it. */
-export async function forwardSync(index: SyncTexIndex, path: string, view: SyncView = pageView): Promise<boolean> {
+export async function forwardSync(
+  index: SyncTexIndex,
+  path: string,
+  view: SyncView = pageView,
+  compiledLine: (line: number) => Promise<number | null> = async (line) => line,
+): Promise<boolean> {
   const cursor = view.cursor();
   if (!cursor) return false;
-  const hit = await index.forward(path, cursor.line);
+  const line = await compiledLine(cursor.line);
+  if (line === null) return false;
+  const hit = await index.forward(path, line);
   if (!hit) return false;
   view.show(await lineWithWord(hit, cursor.word, view));
   return true;

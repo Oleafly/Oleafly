@@ -93,8 +93,6 @@ pub(super) struct Upkeep {
     pub(super) figures: Mutex<super::downloads::Figures>,
     pub(super) figures_closed: AtomicBool,
     pub(super) owed: Mutex<super::owed::OwedTries>,
-    // Files written while the window had them open, which it isn't told
-    // about then, so it is told how they are on disk when the session stops.
     pub(super) unannounced: Mutex<BTreeSet<String>>,
 }
 
@@ -365,9 +363,6 @@ impl Active {
         Ok(reread)
     }
 
-    // Reads what the document has for the disk. The reads go through
-    // `guarded`, so a panic in the document engine ends the session as
-    // failed instead of leaving the project mutex poisoned.
     fn take_outgoing(
         &self,
         previous: &mut Layout,
@@ -478,11 +473,6 @@ impl Active {
         unannounced.extend(typed_here.iter().cloned());
     }
 
-    // When a session stops, the window takes the files it has open back as
-    // plain files on disk. It wasn't told when the session wrote them, so it
-    // hears how each one is on disk now, and stopping never looks like a
-    // change made outside. A file changed outside since the session wrote it
-    // is left out, so that change still shows.
     pub(super) fn announce_written(&self) {
         let paths = std::mem::take(&mut *guard(&self.upkeep.unannounced));
         if paths.is_empty() {
@@ -538,8 +528,6 @@ impl Active {
         }
     }
 
-    // Whether one of the moves took the shared main file along, so the
-    // project's main document may have to follow it.
     fn moves_the_main_file(&self, renamed: &[(String, String)]) -> bool {
         let live = lock(&self.live);
         let Some(main) = live.doc().settings().main_doc() else {
@@ -565,9 +553,6 @@ impl Active {
     }
 }
 
-// Tells the window about files moved on disk to the names the shared
-// layout gives them: the activity lists each one, and a tab open on the
-// old name follows it.
 pub fn announce_renames(host: &dyn LiveHost, project_id: &str, renamed: &[(String, String)]) {
     if renamed.is_empty() {
         return;
@@ -613,8 +598,6 @@ pub(super) async fn writer_loop(
         let Some(active) = active.upgrade() else {
             return;
         };
-        // A pass returns the paths to read again: conflicts, and files that
-        // just finished an owed move.
         if let Ok(reread) = active.write_out_paced(!waiters.is_empty()).await {
             if !reread.is_empty() {
                 let _ = active.import_paths(Some(reread)).await;

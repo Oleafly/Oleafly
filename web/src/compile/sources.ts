@@ -6,15 +6,9 @@ export interface SourceReader {
   api: WebApi;
   projectId: string;
   files(): readonly WebFile[];
-  /** The text the browser holds for an open file, edits it hasn't sent yet included. */
   openText(path: string): string | null;
 }
 
-/**
- * The project as a compile reads it now: the server's text for every file,
- * this browser's own text for the files it has open, and other files fetched
- * once, when the engine asks for them.
- */
 export async function readSources(reader: SourceReader, signal: AbortSignal): Promise<CompileSources> {
   const served = await reader.api.texts(reader.projectId, signal);
   const texts = new Map(served.map((entry) => [entry.path, entry.text]));

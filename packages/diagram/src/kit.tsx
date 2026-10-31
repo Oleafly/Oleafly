@@ -8,9 +8,6 @@ import {
 } from "react";
 import type { DiagramTranslator } from "./messages";
 
-// UI primitives the host app injects so this package never imports the app's
-// component library directly. The prop shapes are structural subsets of the
-// app's shadcn components, so the app can pass them through unchanged.
 export interface DiagramKit {
   Input: ComponentType<ComponentPropsWithRef<"input">>;
   Textarea: ComponentType<ComponentPropsWithRef<"textarea">>;

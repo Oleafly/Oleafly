@@ -1,4 +1,3 @@
-//! 0.4.8 L: the app's half of the background helper.
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -37,8 +36,6 @@ fn sorted(mut ids: Vec<String>) -> Vec<String> {
     ids
 }
 
-/// A temporary data folder for code that reads the app's own (config,
-/// secrets, trust, projects).
 struct DataRoot {
     directory: tempfile::TempDir,
     previous: Option<OsString>,
@@ -72,7 +69,6 @@ impl Drop for DataRoot {
     }
 }
 
-/// The app's host for the queue, recording what it was told to show.
 #[derive(Clone, Default)]
 struct RecordingHost {
     inner: FakeHost,
@@ -148,7 +144,6 @@ impl ResearchHost for RecordingHost {
     }
 }
 
-/// A runtime whose runs wait for a suspend, then save a conversation.
 struct ParkedRuntime {
     suspends: Arc<SuspendSignals>,
     started: mpsc::UnboundedSender<String>,
@@ -208,7 +203,6 @@ async fn next_start(started: &mut mpsc::UnboundedReceiver<String>) -> String {
         .expect("the runtime is gone")
 }
 
-/// A task queue over a temporary folder with one project, `paper`.
 struct Fixture {
     _temp: tempfile::TempDir,
     host: RecordingHost,
@@ -245,7 +239,6 @@ impl Fixture {
         }
     }
 
-    /// Runs started tasks in [`ParkedRuntime`]; returns their starts.
     fn park_tasks(&self) -> mpsc::UnboundedReceiver<String> {
         let (started, receiver) = mpsc::unbounded_channel();
         let runtime = ParkedRuntime {
@@ -266,14 +259,12 @@ impl Fixture {
         TaskStore::with_owner_kind(self.state.root().unwrap(), OwnerKind::Daemon).unwrap()
     }
 
-    /// A task waiting to start in the app.
     fn queued(&self, title: &str, keep: bool) -> ResearchTask {
         let store = self.app_store();
         let task = store.create(draft(title, keep)).unwrap();
         store.request_start(&task.id).unwrap()
     }
 
-    /// A task the helper was handed and has not started.
     fn helper_queued(&self, title: &str) -> ResearchTask {
         let task = self.queued(title, true);
         let record = HandoffRecord::new(
@@ -289,8 +280,6 @@ impl Fixture {
         self.app_store().require(&task.id).unwrap()
     }
 
-    /// A task the helper runs. This test process stands in for the helper,
-    /// so call it while no other helper task waits.
     fn helper_running(&self, title: &str) -> ResearchTask {
         let task = self.helper_queued(title);
         let claimed = self
@@ -303,7 +292,6 @@ impl Fixture {
     }
 }
 
-/// A process that is no longer running: this pid with another start time.
 fn gone_owner() -> ProcessIdentity {
     ProcessIdentity {
         pid: std::process::id(),
@@ -313,7 +301,6 @@ fn gone_owner() -> ProcessIdentity {
 
 #[derive(Default)]
 struct FakeHelper {
-    /// The version the helper reports (`None`: unknown).
     version: Mutex<Option<String>>,
     running: AtomicBool,
     hung: AtomicBool,
@@ -434,8 +421,6 @@ impl GrantSource for FakeGrants {
     }
 }
 
-// Exit.
-
 #[test]
 fn the_restart_after_an_install_is_an_update_not_a_quit() {
     assert_eq!(exit_mode(false, true, false), ExitMode::Update);
@@ -482,7 +467,6 @@ async fn quitting_hands_keep_running_tasks_to_the_helper_and_leaves_the_rest() {
             .grant
             .is_some_and(|grant| grant.allows(TRUST_RESEARCH_TASKS)));
     }
-    // The running task stopped at a step and its conversation went along.
     let record = store.handoff_record(&working.id).unwrap().unwrap();
     assert_eq!(record.conversation.as_deref(), Some(CONVERSATION));
     let saw_saved = grants.calls().into_iter().any(|(id, state)| {
@@ -536,7 +520,6 @@ async fn restart_and_update_keep_tasks_for_the_next_launch_without_a_helper() {
     assert!(record.grant.is_none());
     assert_eq!(store.require(&waiting.id).unwrap().owner, OwnerKind::App);
 
-    // An update starts no helper either.
     let summary = hand_off(&fixture.state, ExitMode::Update, true, &grants, &helper).await;
     assert!(summary.to_helper.is_empty() && !summary.spawned);
     assert_eq!(FakeHelper::count(&helper.ensure_calls), 0);
@@ -623,7 +606,6 @@ async fn a_helper_that_fails_to_start_leaves_its_tasks_for_the_next_launch() {
         fixture.app_store().require(&waiting.id).unwrap().owner,
         OwnerKind::Daemon
     );
-    // The next launch finds no helper and takes the task back.
     let reclaimed = reclaim(&fixture.state, &FakeHelper::default());
     assert_eq!(reclaimed.adopted, std::slice::from_ref(&waiting.id));
     assert_eq!(
@@ -657,12 +639,9 @@ async fn a_task_whose_grant_fails_waits_for_the_next_launch() {
     );
 }
 
-// Launch.
-
 #[tokio::test]
 async fn launch_adopts_a_dead_helpers_tasks_and_asks_a_live_one_for_its_own() {
     let fixture = Fixture::new();
-    // The helper ran one task and had another waiting when it died.
     let running = fixture.helper_running("Running");
     fixture
         .helper_store()
@@ -690,7 +669,6 @@ async fn launch_adopts_a_dead_helpers_tasks_and_asks_a_live_one_for_its_own() {
     assert_eq!(record.reason, HandoffReason::Recovered);
     assert!(record.turn_interrupted);
 
-    // A live helper gives its task back at the next step.
     let live = fixture.helper_running("Live");
     let helper = FakeHelper::running();
     let summary = reclaim(&fixture.state, &helper);
@@ -711,8 +689,6 @@ async fn a_helper_of_another_version_is_asked_to_stop_when_the_app_opens() {
 
     let summary = reclaim(&fixture.state, &helper);
 
-    // Its task still comes back through the reclaim request, and the helper
-    // is told to stop so the next hand-off starts a fresh one.
     assert_eq!(summary.requested, 1);
     assert_eq!(FakeHelper::count(&helper.stop_requests), 1);
     assert!(
@@ -723,7 +699,6 @@ async fn a_helper_of_another_version_is_asked_to_stop_when_the_app_opens() {
             .reclaim_requested
     );
 
-    // The same version, or one that is not known, keeps running.
     for version in [Some(oleafly_cli::version::APP_VERSION.to_string()), None] {
         let helper = FakeHelper::running();
         *helper.version.lock().unwrap() = version;
@@ -752,7 +727,6 @@ fn only_a_running_helper_of_a_known_other_version_is_stale() {
 async fn a_hung_helper_is_stopped_and_its_tasks_adopted() {
     let fixture = Fixture::new();
     let running = fixture.helper_running("Running");
-    // Once ended, the rows name a process that is gone.
     fixture
         .helper_store()
         .set_owner(&running.id, Some(gone_owner()))
@@ -775,8 +749,6 @@ async fn a_hung_helper_is_stopped_and_its_tasks_adopted() {
 async fn a_helper_that_dies_while_the_app_is_open_gives_its_tasks_back() {
     let fixture = Fixture::new();
     let running = fixture.helper_running("Running");
-    // The helper was killed after the app opened: its row names a process
-    // that is gone.
     fixture
         .helper_store()
         .set_owner(&running.id, Some(gone_owner()))
@@ -786,7 +758,6 @@ async fn a_helper_that_dies_while_the_app_is_open_gives_its_tasks_back() {
     let held = HelperLock::acquire(&lock, Duration::from_secs(1))
         .unwrap()
         .expect("the test holds the helper's lock");
-    // While its lock is held, the helper may still hand its tasks back.
     assert!(adopt_if_helper_gone(&fixture.state, &lock).is_empty());
     drop(held);
 
@@ -800,7 +771,6 @@ async fn a_helper_that_dies_while_the_app_is_open_gives_its_tasks_back() {
         (OwnerKind::App, ResearchTaskStatus::Queued)
     );
 
-    // While the app quits, tasks it just queued for a starting helper stay.
     let waiting = fixture.helper_queued("For the new helper");
     fixture.state.stop_admitting();
     assert!(adopt_if_helper_gone(&fixture.state, &lock).is_empty());
@@ -809,8 +779,6 @@ async fn a_helper_that_dies_while_the_app_is_open_gives_its_tasks_back() {
         OwnerKind::Daemon
     );
 }
-
-// Watcher.
 
 fn status_event(message: &str) -> TaskRuntimeEvent {
     TaskRuntimeEvent::Status {
@@ -829,7 +797,6 @@ fn result() -> TaskResultMetadata {
     }
 }
 
-/// The store's change times have millisecond steps.
 fn next_millisecond() {
     std::thread::sleep(Duration::from_millis(5));
 }
@@ -890,7 +857,6 @@ async fn the_watcher_pages_a_long_transcript_200_events_per_tick() {
     for expected in [200, 400, 452] {
         watch_tick(&mut watch, &fixture.state, &fixture.host).unwrap();
         forwarded = fixture.host.appended(&running.id);
-        // Each page repeats the last row of the one before (it may grow).
         assert_eq!(forwarded.len(), expected);
     }
     assert_eq!(forwarded.iter().max(), Some(&450));
@@ -960,12 +926,9 @@ async fn transitions_notify_like_the_apps_own_tasks() {
     assert_eq!(transition_notice(&asking, &before), None);
 }
 
-// Grants.
-
 #[tokio::test]
 async fn grants_hold_trust_location_roots_and_launch_but_no_credentials() {
     let data = DataRoot::new();
-    // Its own project id: the forced trust below is process-wide.
     let project = crate::paths::create_project_dir("grant-paper").unwrap();
     crate::secrets::write_ai_secrets(&HashMap::from([(
         "anthropic".to_string(),
@@ -1024,7 +987,6 @@ async fn grants_hold_trust_location_roots_and_launch_but_no_credentials() {
         assert!(!text.contains(secret), "the grant holds {secret}");
     }
 
-    // A project that is not trusted gets no grant.
     let _restricted = crate::trust::testing::restrict("grant-paper");
     let error = grants.grant(&task, None).await.unwrap_err();
     assert!(error.contains("trust.research_tasks"), "{error}");
@@ -1061,8 +1023,6 @@ async fn an_acp_grant_reuses_the_handed_off_home_or_prepares_a_new_one() {
     };
     assert_eq!(grant_home(tasks_root, &task, Some(&suspended)), handed);
 }
-
-// Settings.
 
 #[derive(Clone, Default)]
 struct MapRegistry(Arc<Mutex<HashMap<String, String>>>);
@@ -1115,7 +1075,6 @@ fn turning_background_tasks_off_removes_the_sign_in_entry_and_stops_the_helper()
     let config = crate::config::read_config().unwrap();
     assert!(!config.research_background_enabled && !config.research_background_at_login);
 
-    // On again: nothing starts and no sign-in entry comes back by itself.
     set_background_enabled(true, Some(&env), &exec, &helper).unwrap();
     assert!(
         crate::config::read_config()
@@ -1162,7 +1121,6 @@ fn update_preparation_stops_the_helper_before_settling_work() {
         prepare.find("stop_for_update").unwrap()
             < prepare.find("shutdown_work(app, true)").unwrap()
     );
-    // The exit path moves tasks before the queue shuts down.
     let work = &source[source.find("async fn shutdown_work").unwrap()..];
     assert!(work.find("hand_off_on_exit").unwrap() < work.find("tasks.shutdown()").unwrap());
 }
@@ -1186,26 +1144,18 @@ fn a_helper_that_is_stopping_or_exiting_does_not_take_new_tasks() {
         phase,
         ..FakeHelper::running().status()
     };
-    // Nothing runs: start one.
     assert!(needs_new_helper(&status(false, None)));
-    // A live one takes the tasks.
     assert!(!needs_new_helper(&status(true, Some(Phase::Ready))));
     assert!(!needs_new_helper(&status(true, Some(Phase::Starting))));
-    // One on its way out has already looked at its work.
     assert!(needs_new_helper(&status(true, Some(Phase::Exiting))));
     assert!(needs_new_helper(&status(true, Some(Phase::Stopping))));
-    // Its lock is still held but its state file is gone: it is exiting.
     assert!(needs_new_helper(&status(true, None)));
 }
 
 #[test]
 fn the_app_waits_out_the_helpers_whole_stop_before_ending_it() {
-    // The helper gives running tasks its stop budget, then a stopped agent
-    // its cancel grace, before it hands them back.
     assert!(STOP_WAIT > HELPER_STOP_SUSPEND + oleafly_acp::limits::CANCEL_GRACE);
 }
-
-// Usage.
 
 fn spool_event(id: &str, task: Option<&str>, cost: Option<f64>) -> UsageSpoolEvent {
     UsageSpoolEvent {
@@ -1251,7 +1201,6 @@ fn importing_the_usage_spool_twice_records_each_event_once() {
     assert_eq!(import_usage_spool(data.path(), &mut insert).unwrap(), 2);
     assert_eq!(import_usage_spool(data.path(), &mut insert).unwrap(), 0);
 
-    // An event the ledger could not take is tried again next time.
     usage_spool::append(data.path(), &spool_event("cli-agent-1", None, None)).unwrap();
     let mut locked =
         |_: &UsageSpoolEvent| -> Result<bool, String> { Err("database is locked".into()) };
@@ -1304,7 +1253,6 @@ fn the_spool_reaches_the_usage_ledger_once() {
     .unwrap();
 
     assert_eq!(import_spool_into_ledger(data.path()).unwrap(), 2);
-    // Read again from scratch, the same events add nothing.
     *lock(&SPOOL_CURSOR) = None;
     assert_eq!(import_spool_into_ledger(data.path()).unwrap(), 0);
 
@@ -1318,23 +1266,18 @@ fn the_spool_reaches_the_usage_ledger_once() {
 fn an_event_appended_during_an_import_is_read_by_the_next_one() {
     let before: SpoolSignature = (100, None);
     let appended: SpoolSignature = (180, None);
-    // Nothing changed since the signature was read: the spool is seen.
     assert_eq!(
         signature_to_keep(before, Some(before), false, || unreachable!()),
         Some(before)
     );
-    // The helper appended an event after the import read the spool: the
-    // later signature must not stand for an event that was never imported.
     assert_eq!(
         signature_to_keep(before, Some(appended), false, || false),
         None
     );
-    // Compaction rewrote the file and everything in it was imported.
     assert_eq!(
         signature_to_keep(before, Some(appended), false, || true),
         Some(appended)
     );
-    // A failed insert always reads the spool again.
     assert_eq!(signature_to_keep(before, Some(before), true, || true), None);
 }
 
@@ -1357,8 +1300,6 @@ fn the_spool_counts_as_imported_only_when_every_event_is() {
     imported.insert("daemon-2".into());
     assert!(spool_fully_imported(data.path(), &imported));
 }
-
-// Dispatch and installer.
 
 #[test]
 fn the_daemon_flag_is_recognised_only_as_its_own_argument() {
@@ -1387,7 +1328,6 @@ fn the_daemon_flag_is_recognised_only_as_its_own_argument() {
         "--at-login"
     ])));
     assert!(!at_login_requested(args(&["Oleafly", "--at-login"])));
-    // The helper, the sign-in entry and the app agree on the flags.
     assert_eq!(DAEMON_FLAG, oleafly_cli::daemon::client::DAEMON_FLAG);
     assert_eq!(login_item::DAEMON_ARGS, [DAEMON_FLAG, AT_LOGIN_FLAG]);
 }
@@ -1396,10 +1336,6 @@ fn the_daemon_flag_is_recognised_only_as_its_own_argument() {
 fn the_windows_installer_stops_the_helper_and_removes_its_sign_in_entry() {
     let hooks = include_str!("../../windows/hooks.nsh");
     assert!(hooks.contains("!macro NSIS_HOOK_PREINSTALL"));
-    // The tool finds the data folder itself (a relocated one included) and
-    // checks the helper's lock; the installer never looks at a state file,
-    // which a crash leaves behind.
-    // Long enough for the helper's whole stop budget (`STOP_WAIT`).
     assert!(hooks.contains(r#"daemon stop --wait 60 --force"#));
     assert!(STOP_WAIT <= Duration::from_secs(60));
     assert!(hooks.contains(r#"${FileExists} "$INSTDIR\oleafly-cli.exe""#));
@@ -1411,10 +1347,6 @@ fn the_windows_installer_stops_the_helper_and_removes_its_sign_in_entry() {
     );
     let uninstall = &hooks[hooks.find("!macro NSIS_HOOK_PREUNINSTALL").unwrap()..];
     assert!(uninstall.contains("!insertmacro OLEAFLY_STOP_BACKGROUND_HELPER"));
-    // The MSI does the same: it stops the helper before any file is touched
-    // (an upgrade's removal of the old version included), and on a full
-    // uninstall removes the terminal command and this installation's
-    // sign-in entry.
     let msi = include_str!("../../windows/explorer-menu.wxs");
     assert!(msi.contains(r#"oleafly-cli.exe&quot; daemon stop --wait 60 --force"#));
     assert!(msi.contains(r#"<Custom Action="StopOleaflyHelper" Before="RemoveExistingProducts">"#));
@@ -1437,9 +1369,6 @@ fn helper_texts_match_the_english_catalog() {
         );
     }
 }
-
-// Parity: the helper and the headless agent read and name things the way
-// the app does.
 
 #[test]
 fn cli_provider_config_matches_the_app() {

@@ -80,9 +80,6 @@ export class FakeChannel {
     if (!change) return false;
     const client = this.clients.get(change.client);
     if (!client?.open) return true;
-    // A change based on a revision before the last reset is dropped without
-    // an answer, as Rust does: the editor already has the reset text and
-    // sends its typing again on top of it.
     if (change.rev < this.firstRev) return true;
     if (this.refuseChanges) {
       client.outbox.push({ kind: "reset", rev: this.rev, text: this.text });

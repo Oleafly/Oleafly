@@ -1,5 +1,3 @@
-//! LaTeX: the subset of the app's analyzer (`analyze-file.ts`,
-//! `index/parse-file.ts`) that feeds the project map.
 use std::collections::HashMap;
 
 use super::text::{is_js_space, is_letter_mark, resolve_project_path, string_of, trim_js, Source};
@@ -94,8 +92,6 @@ const IMPORT_COMMANDS: [&str; 6] = [
     "subincludefrom",
 ];
 
-/// `maskComments` from the legacy parser: per line, an unescaped `%` blanks
-/// the rest of the line.
 fn mask_comments_by_line(chars: &[char]) -> Vec<char> {
     let mut out = chars.to_vec();
     let mut line_start = 0;
@@ -146,7 +142,6 @@ fn simple_braced_value(chars: &[char], at: usize) -> Option<(String, usize)> {
     Some((string_of(&chars[cursor + 1..close]), close + 1))
 }
 
-/// Blanks `from..to`, keeping line breaks.
 fn blank_span(chars: &mut [char], from: usize, to: usize) {
     for character in chars.iter_mut().take(to).skip(from) {
         if *character != '\n' {
@@ -155,8 +150,6 @@ fn blank_span(chars: &mut [char], from: usize, to: usize) {
     }
 }
 
-/// The end of a `\verb` span whose command name ends at `command_end`, or
-/// `None` when no delimiter follows.
 fn verb_span_end(chars: &[char], command_end: usize) -> Option<usize> {
     let mut delimiter_at = command_end;
     if chars.get(delimiter_at) == Some(&'*') {
@@ -173,8 +166,6 @@ fn verb_span_end(chars: &[char], command_end: usize) -> Option<usize> {
     )
 }
 
-/// The end (exclusive) of the `open`..`close` group at `at`, escapes
-/// skipped, or `None` when it doesn't close.
 fn balanced_group_end(chars: &[char], at: usize, open: char, close: char) -> Option<usize> {
     if chars.get(at) != Some(&open) {
         return None;
@@ -210,10 +201,6 @@ fn skip_inline_spaces(chars: &[char], mut at: usize) -> usize {
     at
 }
 
-/// The end of a `\lstinline` or `\mintinline` span whose command name ends
-/// at `command_end` (`latexInlineVerbatimSpan`): options, the language for
-/// `\mintinline`, then a body in braces or between two delimiters. `None`
-/// when no body follows.
 fn listing_span_end(chars: &[char], command_end: usize, minted: bool) -> Option<usize> {
     let line_end = |from: usize| {
         (from..chars.len())
@@ -251,8 +238,6 @@ fn listing_span_end(chars: &[char], command_end: usize, minted: bool) -> Option<
     )
 }
 
-/// The end of the opaque environment a `\begin` opens (its name starts at
-/// `command_end`), or `None` when the environment is an ordinary one.
 fn opaque_environment_end(chars: &[char], command_end: usize) -> Option<usize> {
     let (environment, after) = simple_braced_value(chars, command_end)?;
     if !OPAQUE_ENVIRONMENTS.contains(&environment.as_str()) {
@@ -266,8 +251,6 @@ fn opaque_environment_end(chars: &[char], command_end: usize) -> Option<usize> {
     )
 }
 
-/// Comments, opaque environments (`verbatim`, `lstlisting`, ...) and
-/// `\verb` spans, blanked (line breaks kept).
 pub(crate) fn mask_ignored(chars: &[char]) -> Vec<char> {
     let mut out = chars.to_vec();
     let mut cursor = 0;
@@ -317,7 +300,6 @@ pub(crate) fn mask_ignored(chars: &[char]) -> Vec<char> {
     out
 }
 
-/// Matching `]`/`}` (exclusive end) for every `[`/`{`, escapes skipped.
 fn group_index(chars: &[char]) -> HashMap<usize, usize> {
     let mut closing = HashMap::new();
     let mut square = Vec::new();
@@ -353,7 +335,6 @@ struct Group {
     complete: bool,
 }
 
-/// The `[...]`/`{...}` groups following a command.
 fn command_groups(masked: &[char], offset: usize, closing: &HashMap<usize, usize>) -> Vec<Group> {
     let mut groups = Vec::new();
     let mut cursor = offset;
@@ -382,8 +363,6 @@ fn command_groups(masked: &[char], offset: usize, closing: &HashMap<usize, usize
     groups
 }
 
-/// Adds the trimmed text collected in `logical` to `result` as one token
-/// (nothing for a blank one or `*`), and empties `logical`.
 fn flush_token(logical: &mut Vec<(char, usize)>, result: &mut Vec<(String, usize)>) {
     let start = logical
         .iter()
@@ -403,8 +382,6 @@ fn flush_token(logical: &mut Vec<(char, usize)>, result: &mut Vec<(String, usize
     logical.clear();
 }
 
-/// Where scanning resumes after the `%` comment at `cursor` in `group`, or
-/// `None` when the `%` is escaped (an odd run of backslashes before it).
 fn comment_end(source: &[char], group: &Group, cursor: usize) -> Option<usize> {
     let mut slashes = 0;
     let mut back = cursor;
@@ -430,8 +407,6 @@ fn comment_end(source: &[char], group: &Group, cursor: usize) -> Option<usize> {
     )
 }
 
-/// `latexLogicalGroupTokens`: the group's text with `%` comments removed,
-/// split on `,` and `;` when asked, each piece trimmed.
 fn logical_tokens(source: &[char], group: &Group, split: bool) -> Vec<(String, usize)> {
     if !group.complete {
         return Vec::new();
@@ -459,8 +434,6 @@ fn logical_tokens(source: &[char], group: &Group, split: bool) -> Vec<(String, u
     result
 }
 
-/// A `\name` command at `at`: its name and where it ends (letters, marks and
-/// `@`), or `None` when `at` isn't a backslash.
 fn command_at(chars: &[char], at: usize) -> Option<(String, usize)> {
     if chars.get(at) != Some(&'\\') {
         return None;
@@ -472,7 +445,6 @@ fn command_at(chars: &[char], at: usize) -> Option<(String, usize)> {
     (end > at + 1).then(|| (string_of(&chars[at + 1..end]), end))
 }
 
-/// Every `\command` (name, start, end after an optional `*`).
 fn commands(chars: &[char]) -> Vec<(String, usize, usize)> {
     let mut found = Vec::new();
     let mut cursor = 0;
@@ -523,7 +495,6 @@ fn skip_spaces(chars: &[char], mut at: usize) -> usize {
     at
 }
 
-/// The bodies of macro definitions, where a `\section` is not a section.
 fn definition_bodies(chars: &[char]) -> Vec<(usize, usize)> {
     let mut spans = Vec::new();
     for (name, _, after) in commands(chars) {
@@ -542,7 +513,6 @@ fn definition_bodies(chars: &[char]) -> Vec<(usize, usize)> {
             continue;
         }
         let mut cursor = skip_spaces(chars, after);
-        // The defined name: `\name` or `{\name}`.
         if chars.get(cursor) == Some(&'{') {
             match match_brace(chars, cursor) {
                 Some(close) => cursor = close + 1,
@@ -553,7 +523,6 @@ fn definition_bodies(chars: &[char]) -> Vec<(usize, usize)> {
         } else {
             continue;
         }
-        // Arguments (`[2]`, `[default]`, `#1#2`).
         loop {
             cursor = skip_spaces(chars, cursor);
             match chars.get(cursor) {
@@ -608,7 +577,6 @@ impl Facts<'_> {
     }
 }
 
-/// `\section{...}` and friends, from the comment-masked text.
 fn sections(facts: &mut Facts<'_>, legacy: &[char]) {
     let bodies = definition_bodies(legacy);
     let mut cursor = 0;
@@ -652,8 +620,6 @@ fn sections(facts: &mut Facts<'_>, legacy: &[char]) {
     }
 }
 
-/// `{...}` contents right after a command (spaces allowed), for the legacy
-/// regexes `\cmd\s*\{([^}]*)\}`.
 fn simple_group_after(chars: &[char], at: usize) -> Option<(usize, usize)> {
     let open = skip_spaces(chars, at);
     if chars.get(open) != Some(&'{') {
@@ -663,8 +629,6 @@ fn simple_group_after(chars: &[char], at: usize) -> Option<(usize, usize)> {
     Some((open + 1, close))
 }
 
-/// `\newacronym`, `\newglossaryentry` (labels, as the app files them) and
-/// `\bibitem` (citation keys), from the comment-masked text.
 fn legacy_brace_definitions(facts: &mut Facts<'_>, legacy: &[char]) {
     for (name, start, _) in commands(legacy) {
         let kind = match name.as_str() {
@@ -674,7 +638,6 @@ fn legacy_brace_definitions(facts: &mut Facts<'_>, legacy: &[char]) {
         };
         let end = start + 1 + name.chars().count();
         if legacy.get(end) == Some(&'*') {
-            // The legacy patterns take no star for these.
             continue;
         }
         let mut cursor = skip_spaces(legacy, end);
@@ -690,8 +653,6 @@ fn legacy_brace_definitions(facts: &mut Facts<'_>, legacy: &[char]) {
         let raw = string_of(&legacy[from..to]);
         facts.def(kind, trim_js(&raw).to_string(), from, None);
         if kind == DefKind::Label {
-            // A glossary entry, filed as a label by the app: never a
-            // cross-reference target, so never an "unused label".
             if let Some(def) = facts.facts.defs.last_mut() {
                 def.explicit = false;
             }
@@ -699,8 +660,6 @@ fn legacy_brace_definitions(facts: &mut Facts<'_>, legacy: &[char]) {
     }
 }
 
-/// `\input` and `\include` (the legacy parser's edges): include uses with
-/// the target relative to the referring file.
 fn legacy_inputs(facts: &mut Facts<'_>, legacy: &[char], raw_source: &[char]) {
     for (name, start, _) in commands(legacy) {
         if name != "input" && name != "include" {
@@ -743,9 +702,6 @@ fn add_macro_definitions(facts: &mut Facts<'_>, masked: &[char]) {
     }
 }
 
-/// `\newcommand{\name}...` and its relatives (`name` is the defining
-/// command, which ends at `after`): the macro's name and where it starts.
-/// `None` when the definition is incomplete.
 fn command_definition(masked: &[char], name: &str, after: usize) -> Option<(String, usize)> {
     let mut cursor = skip_spaces(masked, after);
     let braced = masked.get(cursor) == Some(&'{');
@@ -769,12 +725,10 @@ fn command_definition(masked: &[char], name: &str, after: usize) -> Option<(Stri
     has_body.then_some((macro_name, cursor + 1))
 }
 
-/// `{arg spec}{body}`
 fn has_xparse_body(masked: &[char], at: usize) -> bool {
     skip_group(masked, at).is_some_and(|spec_close| skip_group(masked, spec_close).is_some())
 }
 
-/// `[n][default]{body}`
 fn has_classic_body(masked: &[char], at: usize) -> bool {
     let mut cursor = skip_spaces(masked, at);
     let mut optional = 0;
@@ -788,8 +742,6 @@ fn has_classic_body(masked: &[char], at: usize) -> bool {
     masked.get(cursor) == Some(&'{')
 }
 
-/// `\def\name#1#2{...}` and its relatives: the macro's name and where it
-/// starts. `None` when the definition is incomplete.
 fn primitive_definition(masked: &[char], after: usize) -> Option<(String, usize)> {
     let cursor = skip_spaces(masked, after);
     if masked.get(cursor) != Some(&'\\') {
@@ -819,8 +771,6 @@ fn primitive_definition(masked: &[char], after: usize) -> Option<(String, usize)
     complete.then_some((macro_name, cursor + 1))
 }
 
-/// `\DeclareMathOperator{\name}{...}`: the operator's name and where it
-/// starts. `None` when the definition is incomplete.
 fn math_operator_definition(masked: &[char], after: usize) -> Option<(String, usize)> {
     let cursor = skip_spaces(masked, after);
     if masked.get(cursor) != Some(&'{') {
@@ -836,7 +786,6 @@ fn math_operator_definition(masked: &[char], after: usize) -> Option<(String, us
     has_body.then_some((operator, inner + 1))
 }
 
-/// The end (exclusive) of a `{...}` group starting after spaces at `at`.
 fn skip_group(chars: &[char], at: usize) -> Option<usize> {
     let open = skip_spaces(chars, at);
     if chars.get(open) != Some(&'{') {
@@ -890,8 +839,6 @@ fn key_uses(
     }
 }
 
-/// `\label{...}` and `\hypertarget{...}`: the first braced group names a
-/// label.
 fn label_defs(facts: &mut Facts<'_>, source: &[char], groups: &[Group]) {
     if let Some(group) = groups.iter().find(|group| group.open == '{') {
         for (token, from) in logical_tokens(source, group, false) {
@@ -909,7 +856,6 @@ fn hyperref_uses(facts: &mut Facts<'_>, source: &[char], groups: &[Group]) {
     }
 }
 
-/// `\ref` and its relatives: the first braced group, or two for a range.
 fn reference_uses(facts: &mut Facts<'_>, source: &[char], name: &str, groups: &[Group]) {
     let take = if name.to_ascii_lowercase().ends_with("range") {
         2
@@ -923,8 +869,6 @@ fn reference_uses(facts: &mut Facts<'_>, source: &[char], name: &str, groups: &[
     }
 }
 
-/// `\cite` and its relatives (`lower` is the lowercased name): the braced
-/// groups that hold keys depend on the command.
 fn citation_uses(facts: &mut Facts<'_>, source: &[char], lower: &str, groups: Vec<Group>) {
     let braced: Vec<Group> = groups
         .into_iter()
@@ -933,7 +877,6 @@ fn citation_uses(facts: &mut Facts<'_>, source: &[char], lower: &str, groups: Ve
     if braced.is_empty() {
         return;
     }
-    // `\nocite{*}` cites every entry of the bibliography.
     if lower == "nocite"
         && braced.iter().any(|group| {
             group.complete
@@ -968,8 +911,6 @@ fn edge_uses(
             {
                 import_use(facts, masked, after);
             }
-            // `\graphicspath{{figures/}{img/}}`: folders figures are also
-            // looked for in.
             "graphicspath" | "svgpath" => graphics_search_paths(facts, masked, after, closing),
             "includegraphics" | "includesvg" => {
                 graphic_uses(facts, source, masked, after, closing);
@@ -985,7 +926,6 @@ fn edge_uses(
     }
 }
 
-/// The first `{...}` group among the arguments that follow a command.
 fn first_braced_group(
     masked: &[char],
     after: usize,
@@ -996,8 +936,6 @@ fn first_braced_group(
         .find(|group| group.open == '{')
 }
 
-/// `\subfile{path}` and `\InputIfFileExists{path}`: the path starts at
-/// `from`, just past the command name.
 fn include_use(facts: &mut Facts<'_>, masked: &[char], from: usize) {
     let Some((group_from, group_to)) = simple_group_after(masked, from) else {
         return;
@@ -1007,7 +945,6 @@ fn include_use(facts: &mut Facts<'_>, masked: &[char], from: usize) {
     facts.use_(UseKind::Include, raw, group_from, target);
 }
 
-/// `\import{dir}{file}` and its relatives: the file is joined to its folder.
 fn import_use(facts: &mut Facts<'_>, masked: &[char], after: usize) {
     let Some((dir_from, dir_to)) = simple_group_after(masked, after) else {
         return;
@@ -1026,8 +963,6 @@ fn import_use(facts: &mut Facts<'_>, masked: &[char], after: usize) {
     facts.use_(UseKind::Import, raw, file_from, target);
 }
 
-/// `\graphicspath{{figures/}{img/}}`: each complete inner group names a
-/// folder that figures are also looked for in.
 fn graphics_search_paths(
     facts: &mut Facts<'_>,
     masked: &[char],
@@ -1050,7 +985,6 @@ fn graphics_search_paths(
     }
 }
 
-/// `\includegraphics{a,b}` and `\includesvg{a}`: every file named is an asset.
 fn graphic_uses(
     facts: &mut Facts<'_>,
     source: &[char],
@@ -1089,8 +1023,6 @@ fn bibliography_uses(
     }
 }
 
-/// `\usepackage{a,b}` and `\RequirePackage{a}`: every package named is
-/// recorded with its line.
 fn package_uses(
     facts: &mut Facts<'_>,
     source: &[char],
@@ -1111,7 +1043,6 @@ fn package_uses(
     }
 }
 
-/// Everything the project map needs from one LaTeX file.
 pub(crate) fn analyze(file: &str, text: &str) -> FileFacts {
     let source = Source::new(text);
     let chars = source.chars.clone();

@@ -1,5 +1,3 @@
-//! Résumé section headings (`packages/preflight/src/resume-sections.ts`).
-
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
@@ -130,8 +128,6 @@ fn section_aliases() -> Vec<(ResumeSectionId, Vec<String>)> {
     ]
 }
 
-/// NFKC, no NUL, whitespace collapsed and trimmed, lower case, and every run
-/// of characters that is not a letter or a number removed.
 pub fn normalize_resume_section_heading(value: &str) -> String {
     let normalized: String = value.nfkc().filter(|&ch| ch != '\0').collect();
     let mut collapsed = String::with_capacity(normalized.len());

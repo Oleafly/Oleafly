@@ -1,11 +1,3 @@
-//! Server base URLs, Git remote addresses, and which account a remote
-//! belongs to.
-//!
-//! A base URL is `scheme://host[:port][/path]`: the secret store's
-//! normalization (`oleafly_secrets::accounts::normalize_forge_base`, the one
-//! rule both runtimes key tokens by) plus the Git hosting rules on top:
-//! plain `http://` only on the user's own network, hosted presets without a
-//! `www.` or a repository path, and no API suffix.
 use crate::store::ForgeAccount;
 use crate::ForgeError;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
@@ -22,7 +14,6 @@ const PRIVATE_SUFFIXES: [&str; 7] = [
     ".ts.net",
 ];
 
-/// The account key for a server address the user typed or pasted.
 pub fn normalize_base_url(input: &str) -> Result<String, ForgeError> {
     let invalid = || ForgeError::InvalidBaseUrl {
         input: display_input(input),
@@ -53,8 +44,6 @@ pub fn normalize_base_url(input: &str) -> Result<String, ForgeError> {
     Ok(format!("{origin}{path}"))
 }
 
-/// The input as an error may show it: trimmed, without a user name or
-/// password, and at most 200 characters.
 fn display_input(input: &str) -> String {
     let trimmed = input.trim();
     let (scheme, rest) = match trimmed.find("://") {
@@ -121,16 +110,11 @@ pub enum RemoteProtocol {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RemoteAddress {
     pub protocol: RemoteProtocol,
-    /// Lowercase.
     pub host: String,
-    /// Only a port the address names explicitly.
     pub port: Option<u16>,
-    /// The repository path without leading or trailing slashes or `.git`.
     pub path: String,
 }
 
-/// Parse a remote address. Local paths, including Windows paths such as
-/// `C:/Users/a@b/repo` and `\\srv\share@x:y`, are not remotes.
 pub fn parse_remote(remote: &str) -> Option<RemoteAddress> {
     let text = remote.trim();
     if text.is_empty() {
@@ -211,8 +195,6 @@ fn base_path_len(base: &str) -> usize {
         .unwrap_or(0)
 }
 
-/// The account whose base URL the remote lies under, preferring the longest
-/// base path. Only `http(s)` remotes get an account's token.
 pub fn account_for_remote<'a>(
     accounts: &'a [ForgeAccount],
     remote: &str,
@@ -223,18 +205,14 @@ pub fn account_for_remote<'a>(
         .max_by_key(|account| base_path_len(&account.base))
 }
 
-/// The HTTPS clone address of a repository on a server, always under the
-/// account's base so it stays inside the account's credential scope.
 pub fn clone_url(base: &str, full_name: &str) -> String {
     format!("{base}/{full_name}.git")
 }
 
-/// The repository's page on the server.
 pub fn web_url(base: &str, full_name: &str) -> String {
     format!("{base}/{full_name}")
 }
 
-/// The host of a URL, base or scp-like remote, with any non-default port.
 pub fn host_of(url_or_base: &str) -> Option<String> {
     let text = url_or_base.trim();
     if text.contains("://") {

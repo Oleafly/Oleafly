@@ -1,17 +1,11 @@
-//! The system prompt of a headless run. This is text for the model, not
-//! for people, so it is not translated.
 use super::policy::{RunPolicy, WriteMode};
 
 pub struct PromptContext<'a> {
-    /// The project folder's name.
     pub project_name: &'a str,
     pub policy: &'a RunPolicy,
     pub main_document: Option<&'a str>,
-    /// MCP servers the run can use.
     pub mcp_servers: &'a [String],
-    /// The selected skills' sections (may be empty).
     pub skills: &'a str,
-    /// Files and folders the review copy leaves out for their names.
     pub left_out: usize,
 }
 
@@ -49,7 +43,6 @@ fn join(items: &[&str]) -> String {
     }
 }
 
-/// The system prompt for a run with `context`.
 pub fn system_prompt(context: &PromptContext) -> String {
     let mut prompt = String::new();
     if context.policy.question {

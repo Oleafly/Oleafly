@@ -33,8 +33,6 @@ async function disposeKeeper(
   try {
     await keeper.dispose();
   } catch {
-    // Keep the diagnostic stable and intentionally omit the backend error:
-    // native failures can contain filesystem paths or signed download URLs.
     console.error(LANGUAGE_SERVICE_DISPOSE_DIAGNOSTIC);
   }
 }
@@ -44,13 +42,8 @@ function currentProjectSnapshot(): LanguageServiceProjectSnapshot {
   const index = useIndexStore.getState();
   return {
     projectId: projectFolderAvailable(files.projectId) ? files.projectId : null,
-    // Language tooling follows the source format, not the compiler: a latexmk
-    // project ("latexmk" id, "latex" source_format) still wants texlab.
     engineId: files.engine.source_format,
     engineLoaded: files.engineLoaded,
-    // The effective main document: an active-file `% !TEX root` override wins
-    // over the stored main doc. The snapshot comparison sees it as a plain
-    // string, so tab switches that change the effective root re-publish.
     mainDoc: resolveEffectiveMainDoc().mainDoc,
     tree: files.tree,
     files: files.files,
@@ -88,11 +81,6 @@ function sameSnapshotInputs(
   );
 }
 
-/**
- * Owns one project language-service controller for the application lifetime.
- * Zustand subscriptions let it observe background buffers and tree refreshes
- * without subscribing the visible App tree to high-frequency editor changes.
- */
 export function LanguageServiceKeeper({
   controller,
   createController,

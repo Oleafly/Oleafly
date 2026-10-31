@@ -69,6 +69,19 @@ describe("form field controls", () => {
     expect(onCommit).toHaveBeenCalledWith(2, { set: { type: "content", value: "one\ntwo" } });
   });
 
+  it("shows a single-line text value that holds a line break in a text area, so editing keeps the break", async () => {
+    const { onCommit } = renderFields(String.raw`#info-box(title: "Annual\nReport")[b]`, "info-box");
+    const heading = screen.getByLabelText("Heading") as HTMLTextAreaElement;
+    expect(heading.tagName).toBe("TEXTAREA");
+    expect(heading.value).toBe("Annual\nReport");
+    fireEvent.change(heading, { target: { value: "Annual\nReports" } });
+    await act(async () => {
+      fireEvent.keyDown(heading, { key: "Enter", ctrlKey: true });
+    });
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith(0, { set: { type: "text", value: "Annual\nReports" } });
+    expect((screen.getByLabelText("Tone") as HTMLElement).tagName).toBe("SELECT");
+  });
+
   it("leaves an unchanged draft alone on blur", async () => {
     const { onCommit } = renderFields('#info-box(title: "a")[b]', "info-box");
     const heading = screen.getByLabelText("Heading");
@@ -135,6 +148,33 @@ describe("form field controls", () => {
   it("marks a missing required field and shows defaults", () => {
     renderFields("#info-box[b]", "info-box");
     expect(screen.getAllByText("Missing").length).toBeGreaterThan(0);
+  });
+
+  it("keeps the draft and says so when the call changed before the commit", async () => {
+    renderFields('#info-box(title: "a")[b]', "info-box", { result: { ok: false, reason: "stale" } });
+    const heading = screen.getByLabelText("Heading") as HTMLInputElement;
+    fireEvent.change(heading, { target: { value: "kept" } });
+    await act(async () => {
+      fireEvent.keyDown(heading, { key: "Enter" });
+    });
+    expect(heading.value).toBe("kept");
+    expect(heading.hasAttribute("data-ofl-form-draft")).toBe(true);
+    expect(screen.getByRole("status").textContent).toBe("The source changed before this was saved. Try again.");
+  });
+
+  it("keeps unsaved drafts in the store it is given, and starts from what is there", async () => {
+    const drafts = new Map([["n:title", "restored"]]);
+    const model = modelOf('#info-box(title: "a")[b]', "info-box");
+    render(<FormFields model={model} drafts={drafts} readOnly={false} onCommit={async () => ({ ok: true })} onReveal={vi.fn()} onHistory={vi.fn()} />);
+    const heading = screen.getByLabelText("Heading") as HTMLInputElement;
+    expect(heading.value).toBe("restored");
+    fireEvent.change(screen.getByLabelText("Text"), { target: { value: "body draft" } });
+    expect(Object.fromEntries(drafts)).toEqual({ "n:title": "restored", "p:0": "body draft" });
+    await act(async () => {
+      fireEvent.keyDown(heading, { key: "Enter" });
+    });
+    fireEvent.keyDown(screen.getByLabelText("Text"), { key: "Escape" });
+    expect(drafts.size).toBe(0);
   });
 
   it("keeps the draft and explains a refused commit", async () => {

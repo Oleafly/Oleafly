@@ -2,10 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
 
-/**
- * Reads the catalog straight out of the TypeScript source so the app and the
- * fixture tooling can never disagree about which projects exist.
- */
 export function loadResearchSeedCatalog(repositoryRoot) {
   const catalogFile = join(repositoryRoot, "src", "developer", "research-seed-catalog.ts");
   const source = readFileSync(catalogFile, "utf8");

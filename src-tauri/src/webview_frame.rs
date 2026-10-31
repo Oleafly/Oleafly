@@ -17,17 +17,12 @@
 //! and resize events check the frame, put it back if it drifted, and write a
 //! line to app.log when they do.
 
-/// Windows that hold one webview filling the whole window.
 const FILLING_WINDOWS: [&str; 5] = ["main", "preview", "update", "presentation", "presenter"];
 
 const ADMIN_CONSOLE_PREFIX: &str = "admin-console-";
 
-/// How far (in points) an edge may sit from where it belongs before the
-/// frame counts as wrong. Frames are floating point, so a fraction of a
-/// point is rounding, not a stale size.
 const TOLERANCE_POINTS: f64 = 0.5;
 
-/// A view rectangle in points, in its superview's coordinates.
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "e2e-testing", derive(serde::Serialize))]
 pub(crate) struct Frame {
@@ -37,7 +32,6 @@ pub(crate) struct Frame {
     pub(crate) height: f64,
 }
 
-/// Whether the window with this label is one whose webview must fill it.
 pub(crate) fn fills_window(label: &str) -> bool {
     FILLING_WINDOWS.contains(&label)
         || label
@@ -73,7 +67,6 @@ pub(crate) fn corrected_frame(frame: Frame, container: Frame) -> Option<Frame> {
     wrong.then_some(container)
 }
 
-/// The app.log line written when a frame had to be put back.
 pub(crate) fn correction_log_line(
     label: &str,
     trigger: &str,
@@ -106,8 +99,6 @@ mod mac {
     use tauri::webview::PlatformWebview;
     use tauri::{Manager, Webview, Window, WindowEvent};
 
-    /// A webview sitting directly in its window's content view, which is
-    /// the view it has to fill.
     pub(super) struct Hosted<'a> {
         pub(super) view: &'a NSView,
         pub(super) container: Retained<NSView>,
@@ -157,8 +148,6 @@ mod mac {
         )
     }
 
-    /// Puts the webview back over its whole container if it drifted, and
-    /// logs the old and new frames when it had to.
     pub(super) fn correct(hosted: &Hosted<'_>, label: &str, trigger: &str) {
         let frame = frame_of(hosted.view.frame());
         let Some(target) = corrected_frame(frame, frame_of(hosted.container.bounds())) else {
@@ -202,7 +191,6 @@ mod mac {
         });
     }
 
-    /// Appends to app.log without doing file I/O on the main thread.
     fn log(line: String) {
         tauri::async_runtime::spawn_blocking(move || {
             let _ = crate::project::append_app_log(line);
@@ -228,8 +216,6 @@ mod mac {
                 NSAutoresizingMaskOptions::ViewWidthSizable
                     | NSAutoresizingMaskOptions::ViewHeightSizable,
             );
-            // Autoresizing applies size changes as deltas, so start from an
-            // exact fit.
             correct(&hosted, &closure_label, "setup");
             hosted.window.setInitialFirstResponder(Some(hosted.view));
             claim_keyboard(&hosted);
@@ -240,8 +226,6 @@ mod mac {
         // the webview's window-id lock while the closure runs inline, and
         // `set_auto_resize` takes that lock again.
         if receiver.try_recv() != Ok(true) {
-            // Leave Tauri's own resizing in place rather than leave the
-            // webview with no resizing at all.
             log(format!(
                 "The {label} webview is not in its window's content view; Tauri keeps sizing it"
             ));
@@ -254,8 +238,6 @@ mod mac {
         }
     }
 
-    /// Checks the webview of a filling window and puts it back over the
-    /// whole window if it drifted.
     pub(super) fn resync(webview: &Webview, trigger: &'static str) {
         let label = webview.label().to_owned();
         let _ = webview.with_webview(move |platform| {
@@ -265,9 +247,6 @@ mod mac {
         });
     }
 
-    /// Plugin that sets up every filling window's webview once, as it is
-    /// created: the main window from the config, and the preview and update
-    /// windows the frontend opens later.
     pub(crate) fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
         tauri::plugin::Builder::new("oleafly-webview-frame")
             .on_webview_ready(|webview| fill_window_with(&webview))
@@ -299,17 +278,14 @@ mod mac {
 #[cfg(target_os = "macos")]
 pub(crate) use mac::{on_window_event, plugin};
 
-/// What `debug_webview_frame` does before it measures.
 #[cfg(all(target_os = "macos", feature = "e2e-testing"))]
 #[derive(Clone, Copy, serde::Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum FrameStep {
-    /// Only measure.
     Measure,
     /// Set the webview to half the window's width and height, pinned
     /// top-left: what the screenshots in #169 show.
     Shrink,
-    /// Run the same check the window events run.
     Resync,
     /// Shrink the window by 40 points each way natively, then measure in
     /// the same main-thread turn. tao's `Resized` event has not reached Tauri
@@ -317,7 +293,6 @@ pub enum FrameStep {
     ResizeWindow,
 }
 
-/// What `debug_webview_frame` measured, in points.
 #[cfg(all(target_os = "macos", feature = "e2e-testing"))]
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -328,9 +303,6 @@ pub struct FrameProbe {
     autoresizes: bool,
 }
 
-/// E2E builds only: breaks, repairs or measures a window's webview frame
-/// natively, so a spec can exercise the repair without a display that
-/// changes scale.
 #[cfg(all(target_os = "macos", feature = "e2e-testing"))]
 #[tauri::command]
 pub async fn debug_webview_frame(
@@ -445,7 +417,6 @@ mod tests {
     #[test]
     fn the_half_size_top_left_frame_from_issue_169_is_put_back() {
         let window = rect(0.0, 0.0, 2560.0, 1440.0);
-        // Non-flipped content view: a top-left half frame starts halfway up.
         let stuck = rect(0.0, 720.0, 1280.0, 720.0);
         assert_eq!(corrected_frame(stuck, window), Some(window));
     }

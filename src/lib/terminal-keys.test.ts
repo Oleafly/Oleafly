@@ -110,7 +110,6 @@ describe("terminal key router", () => {
     expect(shiftEnter("bash")).toEqual({ kind: "send", data: "\n" });
     expect(shiftEnter("bash.exe")).toEqual({ kind: "send", data: "\n" });
     expect(shiftEnter("sh")).toEqual({ kind: "send", data: "\n" });
-    // cmd has no multi-line input, so Shift+Enter is Enter.
     expect(shiftEnter("cmd")).toEqual({ kind: "send", data: "\r" });
     for (const shell of ["pwsh", "powershell", "zsh", "fish"]) {
       expect(shiftEnter(shell)).toEqual({ kind: "send", data: "\x1b\r" });

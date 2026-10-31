@@ -1,6 +1,3 @@
-//! Word counts for the app: the counting lives in `oleafly_doctools::stats`;
-//! this module reads a project's sources in batches (dirty buffers first)
-//! and serves the command.
 use std::collections::BTreeMap;
 
 use oleafly_doctools::stats::{
@@ -24,8 +21,6 @@ fn read_whole_file(project_id: &str, path: &str) -> Result<String, String> {
         .map_err(|error| error.to_string())
 }
 
-/// Batches through the project-source bridge; oversized files are read
-/// whole, like the frontend.
 struct ProjectReader<'a> {
     project_id: &'a str,
     limits: SourceLimits,

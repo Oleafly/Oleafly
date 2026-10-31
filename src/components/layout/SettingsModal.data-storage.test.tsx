@@ -324,9 +324,7 @@ describe("Settings Data Storage recycle bin", () => {
     await screen.findByText("3 inaccessible items were excluded.");
     const folder = screen.getByText("/tmp/.oleafly/projects");
     expect(folder).toHaveAttribute("data-settings-path");
-    // Keyboard focus shows it, as hover does.
     expect(folder).toHaveAttribute("tabindex", "0");
-    // The path is the only blurred value: sizes and counts are not personal.
     expect(document.querySelectorAll("[data-settings-path]")).toHaveLength(1);
   });
 });

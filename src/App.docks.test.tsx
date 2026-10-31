@@ -365,7 +365,6 @@ describe("project dock layout", () => {
       return 1;
     };
     window.cancelAnimationFrame = vi.fn();
-    // Account for cold module loading in setup, outside the interaction budget.
     await import("./App");
   });
 
@@ -434,6 +433,7 @@ describe("project dock layout", () => {
       root?.render(<App />);
     });
     await act(async () => {
+      await vi.dynamicImportSettled();
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
@@ -575,7 +575,6 @@ describe("project dock layout", () => {
     await act(async () => {
       root?.render(<App />);
     });
-    // Opening a project restores its saved docks, so open the terminal after mount.
     await act(async () => {
       useSettingsStore.setState({ terminalOpen: true });
     });
@@ -584,7 +583,6 @@ describe("project dock layout", () => {
     if (!handle) throw new Error("terminal divider is missing");
     const classes = Array.from(handle.classList);
     expect(classes).toEqual(expect.arrayContaining(["h-px", "border-t", "bg-background"]));
-    // A translucent fill on the handle itself shows the window vibrancy through.
     expect(classes.filter((name) => /(^|:)bg-[^[]*\/\d+$/.test(name))).toEqual([]);
     expect(classes.filter((name) => /(^|:)(outline|ring)(-|$)/.test(name))).toEqual([]);
 
@@ -744,7 +742,9 @@ describe("project dock layout", () => {
       );
     });
     expect(useSettingsStore.getState().hotkeysOpen).toBe(true);
-    useSettingsStore.setState({ hotkeysOpen: false });
+    await act(async () => {
+      useSettingsStore.setState({ hotkeysOpen: false });
+    });
 
     await act(async () => {
       window.dispatchEvent(
@@ -752,7 +752,9 @@ describe("project dock layout", () => {
       );
     });
     expect(useSettingsStore.getState().hotkeysOpen).toBe(true);
-    useSettingsStore.setState({ hotkeysOpen: false });
+    await act(async () => {
+      useSettingsStore.setState({ hotkeysOpen: false });
+    });
 
     await act(async () => {
       const handled = new window.KeyboardEvent("keydown", {

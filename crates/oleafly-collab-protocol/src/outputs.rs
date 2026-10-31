@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::ids::AccountId;
 
 pub const MAIN_FILE_HEADER: &str = "x-oleafly-main-file";
+pub const FOR_PDF_HEADER: &str = "x-oleafly-for-pdf";
 pub const MAX_MAIN_FILE_CHARS: usize = 1024;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

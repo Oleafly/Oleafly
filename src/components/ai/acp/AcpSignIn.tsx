@@ -14,10 +14,6 @@ function isTerminalMethod(method: AcpAuthMethod): boolean {
   return method.kind === "terminal" || !!method.terminalCommand;
 }
 
-/**
- * Opens the agent's sign-in command in a project terminal. With `confirmText`
- * the terminal shows the whole command line first and the user must agree.
- */
 export async function signInInTerminal(
   projectId: string | null,
   agentId: string,
@@ -38,7 +34,6 @@ export async function signInInTerminal(
   });
 }
 
-/** Sign-in choices for an agent that needs one: terminal, API key or the agent's own flow. */
 export function AcpSignIn({
   projectId,
   session,
@@ -57,7 +52,6 @@ export function AcpSignIn({
   const [terminalOpened, setTerminalOpened] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const apiMethod = session.authMethods.find((method) => method.apiKeyProvider);
-  // A conversation on another machine signs in there; a terminal here would sign in the wrong one.
   const remote = !!session.remote;
   const agentName = agent?.definition.name ?? session.agentId;
 
@@ -69,7 +63,6 @@ export function AcpSignIn({
       .catch(async (error: unknown) => {
         const { TerminalLaunchError } = await import("@/lib/terminal-launch");
         if (error instanceof TerminalLaunchError) {
-          // The launcher already showed the tab-limit toast.
           if (error.reason === "no-project") setNotice(t(($) => $.ai.acp.signIn.noProject));
           else if (error.reason === "invalid") setNotice(error.message);
           return;

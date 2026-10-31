@@ -1,9 +1,3 @@
-// The catalog of author-declared Typst function forms, as the desktop's Rust parser sends it
-// (`crates/oleafly-core/src/typst_forms.rs`). These types mirror its serde shapes by hand;
-// `test/fixtures/typst-forms/expected/catalog.json` locks both sides. Every absent optional
-// arrives as `null`. This module stays free of CodeMirror so the app can import it without
-// loading the Visual mode chunk.
-
 import type { ArgRef } from "./typst-arguments";
 
 export type TypstFormBinding =
@@ -47,7 +41,6 @@ export interface TypstFormDefinition {
   readonly fields: readonly TypstFormField[];
 }
 
-// `DiagnosticCode` in the Rust parser.
 export type TypstFormDiagnosticCode =
   | "parseError"
   | "schemaMissing"
@@ -68,13 +61,79 @@ export type TypstFormDiagnosticCode =
   | "duplicateArg"
   | "unknownKind";
 
+export type TypstFormValueType =
+  | "string"
+  | "integer"
+  | "float"
+  | "boolean"
+  | "datetime"
+  | "array"
+  | "inlineTable"
+  | "table"
+  | "arrayOfTables"
+  | "none";
+
+type FoundType = { readonly found: TypstFormValueType };
+type KeyName = { readonly key: string };
+type ModulePath = { readonly module: string };
+type FunctionName = { readonly function: string };
+
+export type TypstFormMessage =
+  | { readonly id: "fileTooLarge"; readonly size: number; readonly limit: number }
+  | { readonly id: "unreadable"; readonly reason: string }
+  | { readonly id: "invalidPackageSpec"; readonly spec: string }
+  | { readonly id: "notToml" | "notToml10"; readonly error: string }
+  | {
+      readonly id:
+        | "notUtf8"
+        | "noOleaflyTable"
+        | "formsNotList"
+        | "noSchema"
+        | "moduleNotAllowed"
+        | "moduleRequired"
+        | "noFields"
+        | "stepNotPositive"
+        | "noOptions";
+    }
+  | ({
+      readonly id:
+        | "oleaflyNotTable"
+        | "formNotTable"
+        | "schemaNotNumber"
+        | "fieldsNotList"
+        | "fieldNotTable"
+        | "optionsNotList"
+        | "optionNotStringOrTable";
+    } & FoundType)
+  | { readonly id: "schemaUnsupported"; readonly schema: number }
+  | { readonly id: "summaryNotAField" | "duplicateArg"; readonly arg: ArgRef }
+  | ({ readonly id: "duplicateFunction" | "invalidFunction" | "builtinName" } & FunctionName)
+  | ({ readonly id: "duplicateModuleFunction" } & FunctionName & ModulePath)
+  | ({
+      readonly id:
+        | "modulePathEmpty"
+        | "modulePathPackage"
+        | "modulePathBackslash"
+        | "modulePathAbsolute"
+        | "modulePathParent"
+        | "modulePathEmptyFolder";
+    } & ModulePath)
+  | { readonly id: "unknownKind"; readonly kind: string }
+  | { readonly id: "defaultNotOption" | "duplicateOption"; readonly value: string }
+  | { readonly id: "maxBelowMin"; readonly min: string; readonly max: string }
+  | ({ readonly id: "notArg" | "missingKey" | "unknownKey" | "blank" | "notFinite" } & KeyName)
+  | ({ readonly id: "keyNotForKind"; readonly kind: string } & KeyName)
+  | ({ readonly id: "notString" | "notNumber" | "notBoolean" } & KeyName & FoundType);
+
+export type TypstFormMessageId = TypstFormMessage["id"];
+
 export interface TypstFormDiagnostic {
   readonly source: string;
   readonly severity: "error" | "warning";
   readonly code: TypstFormDiagnosticCode;
   readonly path: string;
   readonly line: number | null;
-  readonly detail: string;
+  readonly message: TypstFormMessage;
 }
 
 export interface TypstFormCatalog {
@@ -101,7 +160,6 @@ export const EMPTY_TYPST_FORM_CATALOG: TypstFormCatalog = { version: "", watch: 
 export interface TypstFormsPort {
   snapshot(): TypstFormCatalog;
   subscribe(listener: () => void): () => void;
-  // The package specs (`@ns/name:version`) the open document imports.
   want(packages: readonly string[]): void;
 }
 

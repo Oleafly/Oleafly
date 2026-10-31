@@ -1,7 +1,3 @@
-//! The research record: `research/<slug>/` in the task workspace holds the
-//! brief, the plan, the ledger of results, hypotheses, sources, the handoff
-//! note for whoever continues, and the final report. It comes back through
-//! review with the rest of the work.
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -15,13 +11,10 @@ const MAX_LEDGER_ROWS: usize = 2_000;
 const MAX_PLAN_ITEMS: usize = 200;
 const MAX_SLUG_CHARS: usize = 40;
 
-/// `research/{slug}`.
 pub fn record_dir(slug: &str) -> String {
     format!("research/{slug}")
 }
 
-/// A stable ASCII folder name for a task's record: the title in lowercase
-/// with other characters turned into dashes, then four characters of the id.
 pub fn record_slug(title: &str, task_id: &str) -> String {
     let mut slug = String::new();
     let mut dash = false;
@@ -62,8 +55,6 @@ fn open_record(execution_root: &Path, slug: &str) -> Result<TaskFiles, String> {
     TaskFiles::open(execution_root, &[record_dir(slug)])
 }
 
-/// Creates the record folder and writes each starting file that is missing.
-/// Files the agent already changed are kept.
 pub fn init_record(execution_root: &Path, slug: &str, brief_md: &str) -> Result<(), String> {
     let files = open_record(execution_root, slug)?;
     let dir = record_dir(slug);
@@ -83,7 +74,6 @@ pub fn init_record(execution_root: &Path, slug: &str, brief_md: &str) -> Result<
     Ok(())
 }
 
-/// The brief as Markdown, for `brief.md`.
 pub fn render_brief_markdown(title: &str, prompt: &str, brief: &ResearchBrief) -> String {
     let mut out = format!("# {}\n\n{}\n", title.trim(), prompt.trim());
     if !brief.goal.trim().is_empty() {
@@ -117,7 +107,6 @@ pub fn render_brief_markdown(title: &str, prompt: &str, brief: &ResearchBrief) -
     out
 }
 
-/// One result in `ledger.tsv`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct LedgerRow {
@@ -142,8 +131,6 @@ fn parse_metrics(cell: &str) -> BTreeMap<String, f64> {
         .collect()
 }
 
-/// Reads `ledger.tsv` by its header, so extra or reordered columns and CRLF
-/// line ends are fine. Metrics that are not numbers are left out.
 pub fn parse_ledger(text: &str) -> Vec<LedgerRow> {
     let mut lines = text.lines().map(|line| line.trim_end_matches('\r'));
     let Some(header) = lines.next() else {
@@ -165,7 +152,6 @@ pub fn parse_ledger(text: &str) -> Vec<LedgerRow> {
         index("verdict"),
         index("notes"),
     );
-    // The newest rows are the ones that matter when a ledger outgrows the cap.
     let rows: Vec<&str> = lines.filter(|line| !line.trim().is_empty()).collect();
     let skipped = rows.len().saturating_sub(MAX_LEDGER_ROWS);
     rows.into_iter()
@@ -207,8 +193,6 @@ fn clean_cell(value: &str) -> String {
         .to_owned()
 }
 
-/// One ledger line (without the newline). Tabs and line breaks in cells
-/// become spaces; metrics are written as `name=value;name=value`.
 pub fn format_ledger_row(row: &LedgerRow) -> String {
     let metrics = row
         .metrics
@@ -229,7 +213,6 @@ pub fn format_ledger_row(row: &LedgerRow) -> String {
     .join("\t")
 }
 
-/// One checklist item of `plan.md`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanItem {
@@ -237,7 +220,6 @@ pub struct PlanItem {
     pub done: bool,
 }
 
-/// The `- [ ]` / `- [x]` / `* [X]` items of a plan.
 pub fn parse_plan_checklist(markdown: &str) -> Vec<PlanItem> {
     markdown
         .lines()
@@ -264,8 +246,6 @@ pub fn parse_plan_checklist(markdown: &str) -> Vec<PlanItem> {
         .collect()
 }
 
-/// A record file's text, at most `max_bytes` (cut at a character boundary),
-/// or `None` when it is missing, a link or not text.
 pub fn read_record_file(
     execution_root: &Path,
     slug: &str,
@@ -275,7 +255,6 @@ pub fn read_record_file(
     read_record_file_cut(execution_root, slug, name, max_bytes).map(|(text, _)| text)
 }
 
-/// [`read_record_file`], and whether the file was longer than `max_bytes`.
 pub fn read_record_file_cut(
     execution_root: &Path,
     slug: &str,
@@ -295,7 +274,6 @@ pub fn read_record_file_cut(
     Some((text, cut))
 }
 
-/// The last `count` ledger lines (header first), for a resumed conversation.
 pub fn ledger_tail(execution_root: &Path, slug: &str, count: usize) -> String {
     let Some(text) = read_record_file(execution_root, slug, "ledger.tsv", 1024 * 1024) else {
         return String::new();

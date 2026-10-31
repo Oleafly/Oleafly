@@ -466,7 +466,6 @@ export function ProofreadingDictionarySection() {
     return t(($) => $.settings.proofreading.clear.descriptionFallback);
   };
   const clearDescription = clearDescriptionFor();
-  // Everything the section's Reset clears: every word list and both rule lists.
   const changed =
     rulesChanged ||
     global.length > 0 ||

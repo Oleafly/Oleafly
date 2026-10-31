@@ -1,5 +1,3 @@
-//! Who owns a record: a process id plus its start time, so a reused pid is
-//! never mistaken for the process that wrote the record.
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 

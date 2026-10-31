@@ -131,8 +131,6 @@ pub struct SkillRecord {
     pub enabled: bool,
     pub removable: bool,
     pub validation: SkillValidation,
-    /// The user's own copy uses the id of a built-in skill, so the built-in
-    /// version (and its updates) never installs.
     pub shadows_bundled: bool,
 }
 
@@ -1837,8 +1835,6 @@ fn seed_in(skills: &Path, pack_root: Option<&Path>) {
     let _ = crate::skills_pack::seed_from_pack_in(skills, pack_root, &manifest);
 }
 
-/// The backup folder for a replaced skill: `<id>-YYYYMMDD-HHMMSS` in UTC
-/// (no colons, so it is a valid name on every system).
 pub fn backup_dir_name(id: &str, now: std::time::SystemTime) -> String {
     let seconds = now
         .duration_since(std::time::UNIX_EPOCH)
@@ -1858,12 +1854,9 @@ pub fn backup_dir_name(id: &str, now: std::time::SystemTime) -> String {
 #[serde(rename_all = "camelCase")]
 pub struct SkillReplaceResult {
     pub record: SkillRecord,
-    /// Where the user's copy went.
     pub backup_path: String,
 }
 
-/// Moves the user's own copy of a built-in skill to `skills-backup/` and
-/// installs the built-in version in its place. Nothing is deleted.
 pub fn replace_with_builtin(
     root: &Path,
     pack_root: &Path,
@@ -2228,8 +2221,6 @@ pub async fn skills_read_file(id: String, path: String) -> Result<SkillFileConte
     .await
 }
 
-/// Replaces the user's copy of a built-in skill with the built-in version,
-/// keeping the copy in a backup folder.
 #[tauri::command]
 pub async fn skills_replace_with_builtin(
     app: tauri::AppHandle,

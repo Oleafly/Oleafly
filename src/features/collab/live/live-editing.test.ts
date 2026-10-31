@@ -26,6 +26,8 @@ const mocks = vi.hoisted(() => ({
   cursorSource: null as null | RemoteCursorSource,
   pathMoves: new Set<(event: { projectId: string; from: string; to: string }) => void>(),
   pathDeletes: new Set<(event: { projectId: string; path: string }) => void>(),
+  refusals: new Set<(payload: { projectId: string; path: string; code: string }) => void>(),
+  toastInfo: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({}));
@@ -46,7 +48,12 @@ vi.mock("@/lib/tauri-collab", () => ({
   onCollabLiveNewDevice: vi.fn(),
   onCollabPresence: vi.fn(),
   onCollabPresenceLeft: vi.fn(),
+  onCollabSuggestionRefused: (handler: (payload: { projectId: string; path: string; code: string }) => void) => {
+    mocks.refusals.add(handler);
+    return Promise.resolve(() => mocks.refusals.delete(handler));
+  },
 }));
+vi.mock("@/lib/toast", () => ({ toast: { info: mocks.toastInfo } }));
 
 vi.mock("@/store/project-index", () => ({
   useIndexStore: { getState: () => ({ updateFile: mocks.indexUpdateFile }) },
@@ -103,6 +110,7 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { PRESENCE_INTERVAL_MS } from "./presence";
 import { type LivePeer, useCollabLiveStore } from "./live-store";
+import { i18n, loadNamespace } from "@/i18n";
 import { BACKGROUND_INDEX_MS, HAND_BACK_WAIT_MS, peerCursors, startLiveEditing } from "./live-editing";
 
 const PROJECT = "project-1";
@@ -185,6 +193,32 @@ describe("live editing", () => {
     release?.();
     release = null;
     expect(mocks.pathMoves.size).toBe(0);
+  });
+
+  it("says why typing was dropped when the shared document refused it as a too long suggested deletion", async () => {
+    await loadNamespace("collab");
+    start("reviewer");
+    const session = collabDocumentSession("main.tex");
+    await settle();
+    session?.applyLocal([{ from: 0, to: 6, insert: "" }], session.version());
+    await settle();
+    for (const listener of mocks.refusals) {
+      listener({ projectId: "other", path: "main.tex", code: "suggestion_changed" });
+      listener({ projectId: PROJECT, path: "main.tex", code: "suggestion_too_long" });
+    }
+    const reset = channels.get("id-main.tex");
+    reset?.({ kind: "reset", rev: 5, text: "shared" });
+    await settle();
+    expect(mocks.toastInfo).not.toHaveBeenCalled();
+    reset?.({ kind: "reset", rev: 6, text: "shared" });
+    await settle();
+    expect(mocks.toastInfo).toHaveBeenCalledTimes(1);
+    expect(mocks.toastInfo).toHaveBeenCalledWith(i18n.t(($) => $.collab.errors.suggestion_too_long));
+    expect(session?.text()).toBe("shared");
+    release?.();
+    release = null;
+    await settle();
+    expect(mocks.refusals.size).toBe(0);
   });
 
   it("opens a fresh shared document for a path whose file was deleted", async () => {

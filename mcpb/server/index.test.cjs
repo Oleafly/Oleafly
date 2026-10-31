@@ -1,6 +1,5 @@
 "use strict";
 
-// Run with: node --test mcpb/server/index.test.cjs
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
@@ -26,7 +25,6 @@ test("macOS looks at the chosen command, the app's link, PATH, then the app", ()
     "/Applications/Oleafly.app/Contents/MacOS/oleafly-cli",
     "/Users/ada/Applications/Oleafly.app/Contents/MacOS/oleafly-cli",
   ]);
-  // MacOS/oleafly is the app itself, never the command.
   assert.ok(!list.some((file) => file.endsWith("/MacOS/oleafly")));
 });
 

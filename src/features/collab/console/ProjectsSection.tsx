@@ -62,8 +62,6 @@ interface Load {
   readonly request: number;
 }
 
-// Each answer keeps the request it answers, so a later page is only added to
-// the list it continues, and a list for an older search reads as loading.
 type ListState =
   | { readonly status: "loading" }
   | { readonly status: "failed"; readonly load: Load; readonly message: string }
@@ -148,7 +146,6 @@ export function ProjectsSection({
     };
   }, [load]);
 
-  // The list on screen answers an earlier search, filter or sort.
   const refreshing = list.status === "ready" && list.load !== load;
   const loadingMore = list.status === "ready" && more?.status === "loading" && more.load === list.load;
   const moreError =

@@ -1,23 +1,10 @@
-//! 0.4.8 L: a built-in task's conversation, saved when the task moves to
-//! another process at a step boundary, so the next owner continues the same
-//! conversation instead of starting over from the research record.
-//!
-//! The snapshot sits beside the task's workspaces:
-//! `<tasks root>/workspaces/<task>/<generation>-conversation.json`. It is
-//! bounded (48 MiB): old images go first, then the middle of the
-//! conversation. A snapshot that cannot be read, or belongs to another task,
-//! generation, provider or model, is refused; the next owner then resumes
-//! from the research record.
 use std::path::{Path, PathBuf};
 
 use oleafly_agent::{ContentPart, Message, Role};
 use serde::{Deserialize, Serialize};
 
-/// The snapshot schema this version writes and reads.
 pub const CONVERSATION_VERSION: u32 = 1;
-/// The largest snapshot written.
 pub const MAX_CONVERSATION_BYTES: usize = 48 << 20;
-/// Messages kept from the end when the middle of a conversation is cut.
 const KEEP_LAST_MESSAGES: usize = 8;
 const IMAGE_LEFT_OUT: &str = "[image left out of the saved conversation]";
 const MIDDLE_LEFT_OUT: &str =
@@ -28,24 +15,19 @@ const MIDDLE_LEFT_OUT: &str =
 pub struct ConversationSnapshot {
     pub version: u32,
     pub task_id: String,
-    /// The generation that saved it.
     pub generation: u64,
     pub provider_id: String,
     pub model_id: String,
     pub messages: Vec<Message>,
-    /// The task was waiting for its runs when it was saved: the next owner
-    /// waits again instead of calling the model.
     #[serde(default)]
     pub waiting_for_runs: bool,
     pub saved_at: i64,
 }
 
-/// `<gen>-conversation.json`.
 pub fn conversation_file_name(generation: u64) -> String {
     format!("{generation}-conversation.json")
 }
 
-/// `<tasks root>/workspaces/<task>/<gen>-conversation.json`.
 pub fn conversation_path(tasks_root: &Path, task_id: &str, generation: u64) -> PathBuf {
     crate::isolation::task_workspace_root(tasks_root, task_id)
         .join(conversation_file_name(generation))
@@ -58,7 +40,6 @@ fn valid_file_name(file: &str) -> bool {
         })
 }
 
-/// Writes the snapshot (bounded) and returns its file name.
 pub fn save(tasks_root: &Path, snapshot: &ConversationSnapshot) -> Result<String, String> {
     let bytes = encode_bounded(snapshot, MAX_CONVERSATION_BYTES);
     let folder = crate::isolation::task_workspace_root(tasks_root, &snapshot.task_id);
@@ -71,8 +52,6 @@ pub fn save(tasks_root: &Path, snapshot: &ConversationSnapshot) -> Result<String
     Ok(conversation_file_name(snapshot.generation))
 }
 
-/// Only the user can read a saved conversation (it holds file contents
-/// and tool output).
 fn harden(path: &Path) {
     #[cfg(unix)]
     {
@@ -81,8 +60,6 @@ fn harden(path: &Path) {
     }
     #[cfg(not(unix))]
     {
-        // The data folder is inside the user's profile, which only they
-        // can read.
         let _ = path;
     }
 }
@@ -98,7 +75,6 @@ fn is_image(part: &ContentPart) -> bool {
     )
 }
 
-/// Old images (all but the last two messages') become a short note.
 fn drop_old_images(messages: &mut [Message]) {
     let keep_from = messages.len().saturating_sub(2);
     for message in &mut messages[..keep_from] {
@@ -114,9 +90,6 @@ fn drop_old_images(messages: &mut [Message]) {
     }
 }
 
-/// Keeps the first user message (with a note where the cut is) and the
-/// last messages. The kept tail starts at a reply of the model, so turns
-/// still alternate and every tool call keeps its result.
 fn cut_middle(messages: Vec<Message>) -> Vec<Message> {
     if messages.len() <= KEEP_LAST_MESSAGES + 1 {
         return messages;
@@ -136,10 +109,6 @@ fn cut_middle(messages: Vec<Message>) -> Vec<Message> {
     kept
 }
 
-/// The snapshot as JSON within `cap` bytes: images in all but the last two
-/// messages are left out first, then the middle of the conversation; a
-/// conversation still too large is saved empty (it then fails to load and
-/// the next owner resumes from the research record).
 pub fn encode_bounded(snapshot: &ConversationSnapshot, cap: usize) -> Vec<u8> {
     let bytes = encode(snapshot);
     if bytes.len() <= cap {
@@ -160,8 +129,6 @@ pub fn encode_bounded(snapshot: &ConversationSnapshot, cap: usize) -> Vec<u8> {
     encode(&smaller)
 }
 
-/// Reads a snapshot the previous generation saved. It must be this task's,
-/// from `generation`, for this provider and model, and not empty.
 pub fn load(
     tasks_root: &Path,
     task_id: &str,
@@ -198,8 +165,6 @@ pub fn load(
     Ok(snapshot)
 }
 
-/// The model's last reply text, for a summary when the conversation ends
-/// without another turn.
 pub fn last_assistant_text(messages: &[Message]) -> String {
     messages
         .iter()
@@ -283,7 +248,6 @@ mod tests {
         assert_eq!(decoded.messages.last(), original.messages.last());
         assert_eq!(decoded.messages.first(), original.messages.first());
 
-        // Too large even without old images: the middle goes.
         let mut long = snapshot(vec![Message::user("start")]);
         for index in 0..200 {
             long.messages.push(Message {

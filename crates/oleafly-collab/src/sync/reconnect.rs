@@ -15,10 +15,6 @@ use crate::client::client_protocol;
 use crate::CollabError;
 
 const BACKOFF_MS: [u64; 5] = [500, 1_000, 2_000, 3_000, 5_000];
-// The quick waits cover about a minute of failures. After that each wait
-// doubles up to a minute, so an hour-long outage costs a client about a
-// hundred attempts instead of well over a thousand, spread out so clients
-// don't all arrive the moment the server is back.
 const QUICK_ATTEMPTS: usize = 25;
 const LONGEST_WAIT_MS: u64 = 60_000;
 const HTTPS_CHECK_WITHIN: Duration = Duration::from_secs(10);
@@ -77,8 +73,6 @@ fn backoff_wait(attempt: usize) -> u64 {
     jittered(backoff_cap(attempt), random_u64())
 }
 
-// A busy server waits at least half the long wait, so the clients it
-// turned away don't all come back within a few seconds.
 fn busy_wait(attempt: usize, random: u64) -> u64 {
     let cap = backoff_cap(attempt);
     within(cap / 2, cap, random)
@@ -94,7 +88,6 @@ pub(super) fn busy(error: &CollabError) -> bool {
     )
 }
 
-// A server that says it is busy or rate limited gets the long waits at once.
 fn after_refusal(attempt: usize, error: &CollabError) -> usize {
     if busy(error) {
         attempt.max(QUICK_ATTEMPTS)
@@ -128,10 +121,7 @@ pub(super) enum Exit {
     End(EndReason),
     Retry(Reached),
     Switch,
-    // Reload from the server's snapshot: connect again at once, without
-    // showing the session as offline.
     Resync,
-    // The server answered 429 or 503: the long waits, on either transport.
     Busy,
 }
 
@@ -160,10 +150,6 @@ pub(super) fn refused_version(error: &CollabError) -> bool {
     matches!(error, CollabError::Api { code, .. } if code == "protocol_mismatch")
 }
 
-// Retrying never helps once the server refuses this app's protocol version
-// or a different server answers at the address. The server's manifest says
-// which side needs an update. Without the manifest this is left to the
-// usual retries.
 pub(super) async fn ending_for_version(link: &LiveLink) -> Option<EndReason> {
     let manifest = tokio::time::timeout(HTTPS_CHECK_WITHIN, link.client.capabilities())
         .await
@@ -302,8 +288,6 @@ pub(super) async fn run(
         } else {
             backoff_wait(attempt)
         };
-        // A server that said how long to stay away with Retry-After gets at
-        // least that long.
         let delay = link.client.asked_wait().map_or(delay, |asked| {
             delay.max(u64::try_from(asked.as_millis()).unwrap_or(u64::MAX))
         });

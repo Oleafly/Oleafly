@@ -1,7 +1,3 @@
-//! The parallel tool pipeline: concurrent execution, ordered feedback, one
-//! shared read-write gate, and abort semantics that preserve finished
-//! results.
-
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -17,9 +13,6 @@ use crate::tools::registry::{ParallelPolicy, ToolRegistry};
 
 use super::registry::{add_tool_batch_bytes, MAX_TOOL_RESULT_BATCH_BYTES};
 
-/// The single gate every tool call in a run shares. Parallel tools take a
-/// read guard (unbounded among themselves); exclusive tools take a write
-/// guard (excluding everything).
 #[derive(Clone, Default)]
 pub struct ToolGate(Arc<RwLock<()>>);
 
@@ -47,12 +40,6 @@ impl BatchBudget {
     }
 }
 
-/// Execute one batch of tool calls: they start concurrently (subject to the
-/// gate and the registry's parallel policy), results are bounded, and they
-/// are returned strictly in call order. `on_event` receives each
-/// `ToolOutcome` in call order. Calls that have not started when the token
-/// fires, or that are still running, resolve to an aborted marker output;
-/// calls that already finished keep their real output.
 #[allow(clippy::too_many_arguments)]
 pub async fn run_tool_calls<F>(
     calls: Vec<ToolCall>,
@@ -149,10 +136,6 @@ mod tests {
 
     #[tokio::test]
     async fn an_unguarded_orchestration_tool_never_holds_the_gate() {
-        // Models the parent-waits / child-writes deadlock: a long-running
-        // orchestration tool must not block a mutating tool that shares the
-        // gate. Without the Unguarded policy the exclusive "write" would wait
-        // the full 300ms for the orchestration tool's guard to drop.
         let mut registry = ToolRegistry::default();
         registry.register_trusted(
             "wait_agent",
@@ -225,9 +208,6 @@ mod tests {
     #[tokio::test]
     async fn parallel_tools_run_concurrently() {
         let registry = registry_with(&["fast_a", "fast_b"]);
-        // Overlap is counted, not timed: a loaded machine can stretch two
-        // concurrent 120ms sleeps past 240ms. The sleep keeps the first tool
-        // pending so a correct gate starts the second before it finishes.
         let running = Arc::new(AtomicUsize::new(0));
         let peak = Arc::new(AtomicUsize::new(0));
         let runner_peak = Arc::clone(&peak);
@@ -260,7 +240,7 @@ mod tests {
 
     #[tokio::test]
     async fn exclusive_tools_serialize_against_each_other() {
-        let registry = registry_with(&[]); // everything exclusive
+        let registry = registry_with(&[]);
         let runner: ToolRunner = Arc::new(|_| {
             Box::pin(async move {
                 tokio::time::sleep(Duration::from_millis(80)).await;
@@ -295,7 +275,6 @@ mod tests {
             CancellationToken::new(),
         )
         .await;
-        // The writer cannot start until the reader's guard drops.
         assert!(started.elapsed() >= Duration::from_millis(200));
         assert_eq!(results.len(), 2);
     }
@@ -373,7 +352,6 @@ mod tests {
                 if call.name == "fast" {
                     ToolOutput::text("finished")
                 } else {
-                    // Cancel while the slow tool is still running.
                     token.cancel();
                     tokio::time::sleep(Duration::from_millis(200)).await;
                     ToolOutput::text("late")

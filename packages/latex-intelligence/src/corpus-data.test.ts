@@ -19,8 +19,6 @@ function readJson(name: string): unknown {
   return JSON.parse(readFileSync(`${DATA_DIR}${name}`, "utf8"));
 }
 
-// The production loaders fetch the corpus over HTTP from public/. Tests run
-// under Node, so back the transport with the filesystem copy instead.
 beforeAll(() => {
   setCorpusTransport(async (relativePath) => {
     try {
@@ -113,9 +111,6 @@ describe("packages", () => {
 
   it("holds only .json catalogs, and enough of them to be a real corpus", () => {
     expect(readdirSync(PACKAGES_DIR)).toEqual(fileNames);
-    // Generated from a TeX installation, so the exact count tracks that
-    // installation. Assert a floor: a run that silently produced a handful of
-    // catalogs is a broken run, not a smaller TeX Live.
     expect(fileNames.length).toBeGreaterThan(3000);
   });
 
@@ -124,7 +119,6 @@ describe("packages", () => {
     expect(fileNames).toContain("class-beamer.json");
   });
 
-  // Thousands of catalogs to parse and validate; the default 5 s is not enough.
   it("every catalog passes validatePackageCatalog with well-formed entries", { timeout: 60_000 }, () => {
     for (const fileName of fileNames) {
       const catalog = validatePackageCatalog(

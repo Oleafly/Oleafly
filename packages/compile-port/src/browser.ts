@@ -7,7 +7,6 @@ export interface CompileFile {
   kind: "text" | "blob";
 }
 
-/** The project as one compile reads it: text in memory, other files on demand. */
 export interface CompileSources {
   readonly files: readonly CompileFile[];
   text(path: string): string | null;
@@ -25,11 +24,9 @@ export interface EngineResult {
   pdf: Uint8Array | null;
   synctex: Uint8Array | null;
   log: string;
-  /** Left out, the log is read as a TeX log. */
   diagnostics?: LogDiagnostic[];
 }
 
-/** An engine that runs in the page, usually by driving a worker. */
 export interface BrowserEngine {
   accepts(target: CompileTarget): boolean;
   run(job: EngineJob): Promise<EngineResult>;
@@ -39,7 +36,6 @@ export type SyncTexOpener = (synctex: Uint8Array, projectPaths: readonly string[
 
 export interface BrowserCompilePortOptions {
   engines: readonly BrowserEngine[];
-  /** Reads the project as it is now, once per compile. */
   sources(signal: AbortSignal): Promise<CompileSources>;
   openSyncTex: SyncTexOpener;
   now?: () => number;

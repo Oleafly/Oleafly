@@ -35,8 +35,6 @@ export interface CustomProviderEditTarget {
 export interface CustomProviderSubmitResult {
   ok: boolean;
   message?: string;
-  /** The save stopped because no models were listed; submitting again with
-   * `force` saves the provider anyway. */
   canForce?: boolean;
 }
 
@@ -53,7 +51,6 @@ export interface AddCustomProviderDialogProps {
 
 const EMPTY: AddCustomProviderInput = { id: "", name: "", baseURL: "", apiKey: "" };
 
-// Matches the longest provider id the Rust side accepts.
 const MAX_ID_LENGTH = 64;
 
 type FieldErrors = Partial<Record<"id" | "name" | "baseURL" | "apiKey", string>>;
@@ -105,8 +102,6 @@ function validate(form: AddCustomProviderInput, editing: CustomProviderEditTarge
   return errors;
 }
 
-// A saved key stays with its address: Rust drops it when the saved address
-// changes at all, so this compares against the address exactly as stored.
 function baseURLNeedsKeyAgain(
   form: AddCustomProviderInput,
   editing: CustomProviderEditTarget | null,
@@ -129,7 +124,6 @@ export function AddCustomProviderDialog({
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const keyRef = useRef<HTMLInputElement>(null);
   const presets = editing ? [] : CUSTOM_PROVIDER_PRESETS.filter((preset) => !takenIds.includes(preset.id));
-  // Set after a save found no models; the next submit saves anyway.
   const [forceReady, setForceReady] = useState(false);
   const editingId = editing?.id ?? "";
   const editingName = editing?.name ?? "";
@@ -169,6 +163,8 @@ export function AddCustomProviderDialog({
   const applyPreset = (preset: CustomProviderPreset) => {
     setForm((f) => ({ ...f, id: preset.id, name: preset.name, baseURL: preset.baseURL }));
     setFieldErrors({});
+    setError("");
+    setForceReady(false);
     keyRef.current?.focus();
   };
 
@@ -203,7 +199,6 @@ export function AddCustomProviderDialog({
   };
 
   const showKeyResendNote = baseURLNeedsKeyAgain(form, editing);
-  // The saved key only stays while the address does.
   const keepsSavedKey = Boolean(editing?.hasStoredKey) && !showKeyResendNote;
   const keyLabel = keepsSavedKey
     ? t(($) => $.settings.ai.customProvider.keyLabelKeepSaved)

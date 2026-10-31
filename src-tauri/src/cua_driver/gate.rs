@@ -1,11 +1,3 @@
-//! The approval gate for desktop apps. Observation runs; every action asks
-//! through a native dialog first, unless the user allowed that tool for the
-//! chat, session or task (never in the signed-in browser, never for
-//! scripts); a deny rule for `desktop_apps` blocks everything. Approval modes
-//! (Full access included) and allow rules never skip these prompts: they
-//! were granted for files and commands, and allow rules can be written from
-//! the renderer.
-
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::Hash;
 use std::sync::Arc;
@@ -25,15 +17,9 @@ const MAX_ADDRESS_CHARS: usize = 500;
 const MAX_PREVIEW_CHARS: usize = 600;
 const MAX_SCRIPT_CHARS: usize = 4_000;
 const MAX_GRANT_KEYS: usize = 256;
-/// How long a chat or task dialog waits. The built-in agent gives a tool
-/// five minutes; the wait plus a batch's run time stays under that, so an
-/// approval never arrives after the call was given up on.
 const CHAT_APPROVAL_WAIT: Duration = Duration::from_secs(3 * 60);
 const ACP_APPROVAL_WAIT: Duration = Duration::from_secs(90);
-/// A dialog keeps the one-at-a-time slot until it is answered, but never
-/// longer than this, in case the dialog never reports back.
 const MAX_DIALOG_HOLD: Duration = Duration::from_secs(15 * 60);
-/// Entries kept per kind of thing seen; a full map starts over.
 const MAX_SEEN: usize = 512;
 const MAX_SEEN_ELEMENTS: usize = 4_096;
 const MAX_SEEN_CHARS: usize = 80;
@@ -45,11 +31,6 @@ pub(crate) enum GateDecision {
     Refuse(&'static str),
 }
 
-/// What the gate does with one call. `granted` says the user already allowed
-/// this tool for the chat, session or task. A call in the user's own
-/// signed-in browser never takes part in grants: it asks every time, and the
-/// dialog has no "Allow for this chat" choice. With asking off in Settings
-/// nothing asks; a deny rule still refuses.
 pub(crate) fn decide(
     tool: &CuratedTool,
     denied_by_rules: bool,
@@ -71,8 +52,6 @@ pub(crate) fn decide(
     }
 }
 
-/// The name a grant is kept under: the tool on its runtime, so a grant for
-/// one profile never covers another.
 pub(crate) fn grant_name(kind: RuntimeKind, tool: &str) -> String {
     format!("{}:{tool}", kind.as_str())
 }
@@ -80,23 +59,18 @@ pub(crate) fn grant_name(kind: RuntimeKind, tool: &str) -> String {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Answer {
     Once,
-    /// Allow this tool for the rest of the chat, session or task.
     Session,
     Deny,
-    /// The wait ran out (for the dialog, or for the user) with no answer.
     Unanswered,
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct DialogLabels {
     pub once: String,
-    /// Empty on the two-button dialog.
     pub session: String,
     pub deny: String,
 }
 
-/// What the user chose. Escape lands on the cancel slot, which is always
-/// "Don't allow"; anything unexpected is a no.
 pub(crate) fn answer_from_dialog(
     result: &tauri_plugin_dialog::MessageDialogResult,
     labels: &DialogLabels,
@@ -123,22 +97,14 @@ fn capitalized(text: &str) -> String {
     }
 }
 
-/// Looks up a dialog string by key, filling in its values.
 pub(crate) type Translate<'a> = dyn Fn(&str, &[(&str, &str)]) -> String + 'a;
 
-/// What the dialog says, and how many of a batch's steps it lists.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct Approval {
     pub message: String,
-    /// Steps of a batch the message lists (0 for a single action). Only
-    /// these run when the batch is allowed: the user never saw the rest, and
-    /// the dialog says they won't run.
     pub shown_steps: usize,
 }
 
-/// What a dialog can say about what an action acts on, beyond its
-/// arguments: the app, window and element, as the driver last described
-/// them.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Target {
     pub app: Option<String>,
@@ -147,8 +113,6 @@ pub(crate) struct Target {
 }
 
 impl Target {
-    /// `Zotero, Button "Export"` for a step line; empty when nothing is
-    /// known.
     fn short(&self) -> String {
         [self.app.as_deref(), self.element.as_deref()]
             .into_iter()
@@ -158,16 +122,11 @@ impl Target {
     }
 }
 
-/// Everything a dialog names besides the arguments.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct DialogContext {
-    /// The research task that asks.
     pub task: Option<String>,
-    /// What one action acts on.
     pub target: Target,
-    /// What each step of a batch acts on, in step order.
     pub steps: Vec<Target>,
-    /// The origin of the signed-in browser's tab, as last seen.
     pub origin: Option<String>,
 }
 
@@ -180,8 +139,6 @@ fn more_items<'a>(t: &'a Translate<'a>) -> impl Fn(usize) -> String + 'a {
     }
 }
 
-/// `text` within `max_chars`; a line that was cut ends with how many
-/// characters it lost.
 fn clip_with_note(text: &str, max_chars: usize, t: &Translate<'_>) -> String {
     let total = text.chars().count();
     if total <= max_chars {
@@ -193,7 +150,6 @@ fn clip_with_note(text: &str, max_chars: usize, t: &Translate<'_>) -> String {
     format!("{kept} {}", note(total - keep))
 }
 
-/// A detail followed, when it was cut, by how much is not shown.
 fn with_cut(detail: String, cut: usize, t: &Translate<'_>) -> String {
     if cut == 0 {
         return detail;
@@ -214,7 +170,6 @@ fn step_line(index: usize, step: &Step, target: Option<&Target>, t: &Translate<'
     clip_with_note(line.trim_end(), MAX_STEP_LINE_CHARS, t)
 }
 
-/// The origin an address belongs to (`https://host[:port]`), when it is one.
 pub(crate) fn origin_of(url: &str) -> Option<String> {
     let parsed = tauri::Url::parse(url.trim()).ok()?;
     matches!(parsed.scheme(), "http" | "https")
@@ -222,8 +177,6 @@ pub(crate) fn origin_of(url: &str) -> Option<String> {
         .filter(|origin| origin != "null")
 }
 
-/// The site comes from where the tab goes (`browser_navigate`), else from
-/// the tab as last seen; never from an address another tool was given.
 fn signed_in_line(
     tool: &CuratedTool,
     args: &Value,
@@ -241,7 +194,6 @@ fn signed_in_line(
     }
 }
 
-/// The lines that name the task and what the action acts on.
 fn context_lines(context: &DialogContext, t: &Translate<'_>) -> Vec<String> {
     let mut lines = Vec::new();
     if let Some(task) = &context.task {
@@ -260,8 +212,6 @@ fn context_lines(context: &DialogContext, t: &Translate<'_>) -> Vec<String> {
     lines
 }
 
-/// Every argument, redacted: the text or address first, as a headline, then
-/// the rest.
 fn action_detail(args: &Value, t: &Translate<'_>) -> String {
     let more = more_items(t);
     let mut parts = Vec::new();
@@ -295,12 +245,6 @@ fn action_detail(args: &Value, t: &Translate<'_>) -> String {
     parts.join("\n")
 }
 
-/// The dialog text: what the agent wants to do, the task and what it acts
-/// on, then every argument. A batch lists every step it has room for, each
-/// line and the whole message bounded, and says what it cut: characters of
-/// a line or text, the steps it left out (which then don't run).
-/// `signed_in` adds a line that the action happens in the user's own
-/// signed-in browser.
 pub(crate) fn approval_message(
     agent: &str,
     tool: &CuratedTool,
@@ -375,7 +319,6 @@ pub(crate) fn approval_message(
     }
 }
 
-/// Asks the user. Implementations answer `Unanswered` once `wait` has passed.
 pub(crate) trait Approver: Send + Sync {
     fn ask<'a>(
         &'a self,
@@ -403,12 +346,8 @@ fn session_label_key(surface: Surface) -> &'static str {
     }
 }
 
-/// The native dialog, one at a time.
 pub(crate) struct NativeApprover {
     app: tauri::AppHandle,
-    /// Held while a dialog is on screen. The dialog's own answer releases
-    /// it, not the call that asked, so a dialog still open after its call
-    /// gave up never has a second one stacked behind it.
     turn: Arc<tokio::sync::Mutex<()>>,
 }
 
@@ -421,8 +360,6 @@ impl NativeApprover {
     }
 }
 
-/// The one-dialog slot, released by whichever comes first: the dialog's
-/// answer or `MAX_DIALOG_HOLD`.
 type HeldSlot = Arc<std::sync::Mutex<Option<tokio::sync::OwnedMutexGuard<()>>>>;
 
 fn hold_slot(guard: tokio::sync::OwnedMutexGuard<()>) -> HeldSlot {
@@ -494,7 +431,6 @@ impl Approver for NativeApprover {
                         let _ = sender.send(if allowed { Answer::Once } else { Answer::Deny });
                     });
             }
-            // A late answer finds the receiver gone and changes nothing.
             match tokio::time::timeout(deadline.saturating_duration_since(Instant::now()), receiver)
                 .await
             {
@@ -505,11 +441,9 @@ impl Approver for NativeApprover {
     }
 }
 
-/// "Allow for this chat/session/task" grants, per grant key and tool.
 #[derive(Default)]
 pub(crate) struct GrantStore {
     grants: HashMap<String, HashSet<String>>,
-    /// Keys in the order they were first granted; the oldest go first.
     order: VecDeque<String>,
 }
 
@@ -546,19 +480,14 @@ impl GrantStore {
     }
 }
 
-/// What the driver said about the browser one session uses on one runtime.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct SeenBrowser {
-    /// The browser `browser_prepare` opened.
     pub prepared: Option<u64>,
-    /// The process and window Oleafly bound, from the driver's window list.
     pub window: Option<(u64, u64)>,
-    /// The target and tab the last bind, page read or navigation named.
     pub target: Option<String>,
     pub tab: Option<String>,
 }
 
-/// An element as the driver's last look at its window described it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct SeenElement {
     description: String,
@@ -566,26 +495,18 @@ struct SeenElement {
     window_id: Option<u64>,
 }
 
-/// What the driver's own answers said about apps, windows, elements and the
-/// signed-in browser's tab, so a dialog can name what an action acts on.
-/// Only the driver writes here, never the model. Each map is bounded.
 #[derive(Default)]
 pub(crate) struct Seen {
     apps: HashMap<u64, String>,
     windows: HashMap<(u64, u64), String>,
-    /// Window id → the process that owns it.
     owners: HashMap<u64, u64>,
     /// A window read's `snapshot_id` → the session that read it, its process
     /// and its window. Cua Driver 0.38 leaves the elements out of the
     /// structured answer, and its element tokens are `<snapshot_id>:<row>`.
     snapshots: HashMap<String, (String, u64, u64)>,
-    /// Snapshots read in a turn that has ended. The driver's session ended
-    /// with the turn, and their element tokens with it.
     ended: HashSet<String>,
     browsers: HashMap<(String, RuntimeKind), SeenBrowser>,
-    /// By `element_token`, and by `<snapshot_id>#<element_index>`.
     elements: HashMap<String, SeenElement>,
-    /// Session key → the origin of its signed-in browser tab.
     origins: HashMap<String, String>,
 }
 
@@ -596,8 +517,6 @@ fn insert_bounded<K: Eq + Hash, V>(map: &mut HashMap<K, V>, cap: usize, key: K, 
     map.insert(key, value);
 }
 
-/// A name or label an app reported, fit for one dialog line: no control or
-/// format characters, spaces collapsed, at most 80 characters.
 fn shown_name(value: Option<&Value>) -> Option<String> {
     let text: String = value?
         .as_str()?
@@ -621,7 +540,6 @@ fn snapshot_id(value: Option<&Value>) -> Option<&str> {
         .filter(|snapshot| !snapshot.is_empty() && snapshot.len() <= 128)
 }
 
-/// The snapshot an element token or `snapshot_id` argument names.
 fn named_snapshot(args: &Value) -> Option<&str> {
     args.get("element_token")
         .and_then(Value::as_str)
@@ -630,7 +548,6 @@ fn named_snapshot(args: &Value) -> Option<&str> {
         .or_else(|| snapshot_id(args.get("snapshot_id")))
 }
 
-/// Whether a call names its process, directly or in its `target`.
 pub(crate) fn names_pid(args: &Map<String, Value>) -> bool {
     args.get("pid").is_some_and(|pid| !pid.is_null())
         || args
@@ -648,8 +565,6 @@ fn snapshot_key(snapshot: Option<&Value>, index: Option<&Value>) -> Option<Strin
     Some(format!("{snapshot}#{}", number(index)?))
 }
 
-/// `Button "Export"`: the role (without the `AX` prefix) and the label.
-/// Never the element's value, which can be what the user typed.
 fn element_description(element: &Value) -> Option<String> {
     let role = shown_name(element.get("role")).map(|role| match role.strip_prefix("AX") {
         Some(rest) if !rest.is_empty() => rest.to_string(),
@@ -685,8 +600,6 @@ impl Seen {
         }
     }
 
-    /// Learns which session, process and window a window read's snapshot
-    /// belongs to.
     fn record_snapshot(&mut self, session_key: &str, structured: &Value) {
         let (Some(pid), Some(window_id), Some(snapshot)) = (
             number(structured.get("pid")),
@@ -695,7 +608,6 @@ impl Seen {
         ) else {
             return;
         };
-        // A restarted driver counts its snapshots from the start again.
         self.ended.remove(snapshot);
         insert_bounded(
             &mut self.snapshots,
@@ -705,8 +617,6 @@ impl Seen {
         );
     }
 
-    /// Learns from one successful answer to `tool`, called with `args` on
-    /// `kind` for `session_key`.
     pub(crate) fn record(
         &mut self,
         session_key: &str,
@@ -797,8 +707,6 @@ impl Seen {
         }
     }
 
-    /// The process, window and element an action's arguments point at: as
-    /// given, or as the driver described the element, snapshot or window.
     fn located(&self, args: &Value) -> (Option<u64>, Option<u64>, Option<&SeenElement>) {
         let token = args.get("element_token").and_then(Value::as_str);
         let element = token
@@ -830,8 +738,6 @@ impl Seen {
         }
     }
 
-    /// The app, window and element an action's arguments point at, as far
-    /// as they were seen.
     pub(crate) fn target(&self, args: &Value) -> Target {
         let (pid, window_id, element) = self.located(args);
         Target {
@@ -843,14 +749,10 @@ impl Seen {
         }
     }
 
-    /// The signed-in browser tab's origin for this session, as last seen.
     pub(crate) fn origin(&self, session_key: &str) -> Option<String> {
         self.origins.get(session_key).cloned()
     }
 
-    /// Whether the arguments name a snapshot read in a turn that ended. Its
-    /// element tokens went with the driver's session, so the action would
-    /// only be refused, after the user had been asked.
     pub(crate) fn names_ended_snapshot(&self, args: &Value) -> bool {
         named_snapshot(args).is_some_and(|snapshot| self.ended.contains(snapshot))
     }
@@ -863,8 +765,6 @@ impl Seen {
         self.browsers.entry(key).or_default()
     }
 
-    /// Learns the browser a session opened, and the target and tab a bind,
-    /// page read or navigation named.
     fn record_browser(
         &mut self,
         session_key: &str,
@@ -900,13 +800,10 @@ impl Seen {
         }
     }
 
-    /// The browser this session uses on `kind`, as the driver described it.
     pub(crate) fn browser(&self, session_key: &str, kind: RuntimeKind) -> Option<&SeenBrowser> {
         self.browsers.get(&(session_key.to_string(), kind))
     }
 
-    /// Remembers the window Oleafly bound for this session, from the
-    /// driver's own window list.
     pub(crate) fn note_browser_window(
         &mut self,
         session_key: &str,
@@ -945,7 +842,6 @@ pub(crate) mod testing {
     use super::{Answer, Approver};
     use crate::cua_driver::{lock, BoxFuture, CuaScope};
 
-    /// Answers from a script, after an optional delay; records each message.
     #[derive(Default)]
     pub(crate) struct ScriptedApprover {
         pub answers: Mutex<VecDeque<Answer>>,
@@ -979,8 +875,6 @@ pub(crate) mod testing {
                 lock(&self.asked).push(message);
                 lock(&self.session_options).push(session_option);
                 let answer = lock(&self.answers).pop_front().unwrap_or(Answer::Deny);
-                // An answer that would come after the wait counts as none,
-                // like the native dialog's (no need to sleep through it).
                 if self.delay > wait {
                     return Answer::Unanswered;
                 }
@@ -1055,7 +949,6 @@ mod tests {
                 "granted: {granted}"
             );
         }
-        // Looking is still free there.
         assert_eq!(
             decide(
                 curated("get_browser_state").unwrap(),
@@ -1326,7 +1219,6 @@ mod tests {
         for line in message.lines().skip(1) {
             assert!(line.chars().count() <= MAX_STEP_LINE_CHARS, "{line}");
         }
-        // A step line that was cut says by how much.
         let second = message.lines().nth(1).unwrap();
         assert!(
             second.contains("(characters not shown: ") && second.ends_with(')'),
@@ -1343,8 +1235,6 @@ mod tests {
         assert!(text.contains("Items not shown: 1"), "{text}");
     }
 
-    /// The built-in agent's limit for one tool call (`oleafly-agent`'s
-    /// `MAX_TOOL_EXECUTION_DURATION`).
     const AGENT_TOOL_DEADLINE: Duration = Duration::from_secs(5 * 60);
 
     #[test]
@@ -1352,7 +1242,6 @@ mod tests {
         assert_eq!(approval_wait(Surface::Acp), Duration::from_secs(90));
         assert_eq!(approval_wait(Surface::Chat), Duration::from_secs(180));
         assert_eq!(approval_wait(Surface::Task), Duration::from_secs(180));
-        // An approval at the last moment still leaves a batch its full time.
         for surface in [Surface::Chat, Surface::Task] {
             assert!(
                 approval_wait(surface) + crate::cua_driver::runtime::BATCH_TIMEOUT
@@ -1376,7 +1265,6 @@ mod tests {
             headline.is_some() && rest.is_some() && headline < rest,
             "{text}"
         );
-        // Whatever else comes with a text is listed too.
         let launch = message(
             "launch_app",
             json!({"bundle_id": "org.zotero.zotero", "webkit_inspector_port": 9222, "text": "Opening Zotero"}),
@@ -1404,7 +1292,6 @@ mod tests {
                 && !click.contains("browser, on "),
             "{click}"
         );
-        // The tab as last seen does.
         let seen = approval_message(
             "assistant",
             curated("browser_click").unwrap(),
@@ -1516,7 +1403,6 @@ mod tests {
             Some("TextField".into())
         );
         assert_eq!(seen.target(&json!({"pid": 1})), Target::default());
-        // An error answer teaches nothing.
         seen.record(
             "run:a",
             RuntimeKind::Desktop,
@@ -1579,14 +1465,12 @@ mod tests {
             filled(json!({"element_token": "s00000001:1", "text": "hi"})),
             Some(json!(52508))
         );
-        // A pid the call gives is kept, and nothing is made up.
         assert_eq!(
             filled(json!({"pid": 7, "window_id": 178776})),
             Some(json!(7))
         );
         assert_eq!(filled(json!({"window_id": 5, "text": "hi"})), None);
         assert_eq!(filled(json!({"element_token": "s0000000f:1"})), None);
-        // The dialog can name the window an element token is in.
         assert_eq!(
             seen.target(&json!({"element_token": "s00000001:1"})),
             Target {
@@ -1595,8 +1479,6 @@ mod tests {
                 element: None,
             }
         );
-        // The turn's end takes its snapshots along; another session's
-        // stay, and a driver that reuses the id makes it current again.
         let read = |snapshot: &str| json!({"structuredContent": {"pid": 52508, "window_id": 178776, "snapshot_id": snapshot}});
         let state = RuntimeKind::Desktop;
         seen.record(
@@ -1646,7 +1528,6 @@ mod tests {
             seen.origin("run:a").as_deref(),
             Some("https://library.example.edu")
         );
-        // The separate profile never counts for the signed-in line.
         seen.record(
             "run:b",
             RuntimeKind::Browser,
