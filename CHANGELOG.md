@@ -169,6 +169,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Scrolling the new project gallery after downloading a template from a pack
+  no longer crashes the app (#359). If a dialog or panel does run into an
+  error, only that part closes now and the details go to the log. Before, the
+  whole window switched to the crash screen.
 - The Oleafly icon no longer looks bigger than other apps' icons in the Dock
   and Finder on macOS 15 and earlier. The bundled icon and the icons in
   Settings > Appearance now leave the margin macOS expects around an app icon.
