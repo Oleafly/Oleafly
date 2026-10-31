@@ -547,6 +547,7 @@
     "specimenViewer": "Specimenviewer",
     "stackTrace": "Stacktrace",
     "surfaceCrashed": "Er is een fout opgetreden in {{surface}}.",
+    "surfaceClosed": "Het venster liep tegen een fout aan en is gesloten. De details staan in het logboek.",
     "surfaces": {
       "aiAssistant": "de AI-assistent",
       "assistantPanel": "het assistentpaneel",
@@ -555,7 +556,9 @@
       "editor": "de editor",
       "pdfPreview": "het PDF-voorbeeld",
       "researchAssistant": "de onderzoeksassistent",
-      "terminalDock": "het terminaldock"
+      "terminalDock": "het terminaldock",
+      "library": "de bibliotheek",
+      "tool": "het hulpmiddel"
     },
     "title": "Er is iets misgegaan"
   },

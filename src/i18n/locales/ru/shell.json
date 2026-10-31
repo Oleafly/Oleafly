@@ -553,6 +553,7 @@
     "specimenViewer": "Просмотр образца",
     "stackTrace": "Трассировка стека",
     "surfaceCrashed": "Аварийно завершилось: {{surface}}.",
+    "surfaceClosed": "В окне произошла ошибка, и оно закрылось. Подробности сохранены в журнале.",
     "surfaces": {
       "aiAssistant": "ИИ-ассистент",
       "assistantPanel": "панель ассистента",
@@ -561,7 +562,9 @@
       "editor": "редактор",
       "pdfPreview": "просмотр PDF",
       "researchAssistant": "исследовательский ассистент",
-      "terminalDock": "панель терминала"
+      "terminalDock": "панель терминала",
+      "library": "библиотека",
+      "tool": "инструмент"
     },
     "title": "Что-то пошло не так"
   },

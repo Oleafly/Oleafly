@@ -1,10 +1,23 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ComponentProps } from "react";
 import { ConfirmHost } from "@/components/ui/confirm-host";
 import { confirmAction, useConfirmDialogStore } from "@/store/confirm-dialog";
 
 const QUESTION = "Delete notes.tex?";
+let crashDialog = false;
+
+vi.mock("@/components/ui/confirmation-dialog", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/ui/confirmation-dialog")>();
+  return {
+    ...actual,
+    ConfirmationDialog: (props: ComponentProps<typeof actual.ConfirmationDialog>) => {
+      if (crashDialog) throw new Error("dialog broke");
+      return <actual.ConfirmationDialog {...props} />;
+    },
+  };
+});
 const originalConfirm = window.confirm;
 
 // What tauri-plugin-dialog installs in every webview: an async function, so
@@ -39,6 +52,7 @@ afterEach(() => {
   window.confirm = originalConfirm;
   vi.restoreAllMocks();
   useConfirmDialogStore.setState({ queue: [] });
+  crashDialog = false;
 });
 
 describe("confirmAction", () => {
@@ -90,6 +104,21 @@ describe("confirmAction", () => {
     expect(screen.queryByText("Second?")).toBeNull();
     fireEvent.click(dialogButton("Cancel"));
     await expect(first).resolves.toBe(false);
+    await screen.findByText("Second?");
+    fireEvent.click(dialogButton("Confirm"));
+    await expect(second).resolves.toBe(true);
+  });
+
+  it("answers no when the dialog crashes, so the next question still shows", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    installPluginConfirm();
+    render(<ConfirmHost />);
+    crashDialog = true;
+    const first = ask({ message: "First?" });
+    await expect(first).resolves.toBe(false);
+
+    crashDialog = false;
+    const second = ask({ message: "Second?" });
     await screen.findByText("Second?");
     fireEvent.click(dialogButton("Confirm"));
     await expect(second).resolves.toBe(true);

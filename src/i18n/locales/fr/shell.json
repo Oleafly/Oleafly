@@ -550,6 +550,7 @@
     "specimenViewer": "Visionneuse de spécimen",
     "stackTrace": "Pile d'appels",
     "surfaceCrashed": "{{surface}} a planté.",
+    "surfaceClosed": "La fenêtre a rencontré une erreur et s'est fermée. Les détails ont été enregistrés dans le journal.",
     "surfaces": {
       "aiAssistant": "L'assistant IA",
       "assistantPanel": "Le panneau de l'assistant",
@@ -558,7 +559,9 @@
       "editor": "L'éditeur",
       "pdfPreview": "L'aperçu PDF",
       "researchAssistant": "L'assistant de recherche",
-      "terminalDock": "Le dock du terminal"
+      "terminalDock": "Le dock du terminal",
+      "library": "La bibliothèque",
+      "tool": "L'outil"
     },
     "title": "Une erreur est survenue"
   },

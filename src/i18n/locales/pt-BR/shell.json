@@ -550,6 +550,7 @@
     "specimenViewer": "Visualizador de espécime",
     "stackTrace": "Rastreamento de pilha",
     "surfaceCrashed": "O {{surface}} travou.",
+    "surfaceClosed": "A janela encontrou um erro e foi fechada. Os detalhes foram salvos no log.",
     "surfaces": {
       "aiAssistant": "assistente de IA",
       "assistantPanel": "painel do assistente",
@@ -558,7 +559,9 @@
       "editor": "editor",
       "pdfPreview": "visualizador de PDF",
       "researchAssistant": "assistente de pesquisa",
-      "terminalDock": "painel de terminal"
+      "terminalDock": "painel de terminal",
+      "library": "painel da biblioteca",
+      "tool": "painel da ferramenta"
     },
     "title": "Algo deu errado"
   },

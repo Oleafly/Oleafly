@@ -3,6 +3,7 @@ import type { SyntaxNode } from "@lezer/common";
 import type { TypstDecorationBuilder } from "../field";
 import { TypstFormChipWidget } from "./chip";
 import { hasErrorNode } from "../../../typst-arguments";
+import { reportEditorError } from "../../../error-report";
 import { type FormCallModel, readFormCall } from "./model";
 import type { FormScope } from "./scope";
 import { type FormCallRef, TypstFormCardWidget } from "./widget";
@@ -44,7 +45,7 @@ export function formDecorations(
     }
     return false;
   } catch (error) {
-    console.error("Typst form decoration failed", error);
+    reportEditorError("Typst form decoration failed", error);
     return undefined;
   }
 }

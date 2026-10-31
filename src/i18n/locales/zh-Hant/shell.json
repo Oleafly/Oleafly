@@ -544,6 +544,7 @@
     "specimenViewer": "標本檢視器",
     "stackTrace": "堆疊追蹤",
     "surfaceCrashed": "{{surface}}當機了。",
+    "surfaceClosed": "該視窗發生錯誤，已關閉。詳細資訊已儲存至記錄檔。",
     "surfaces": {
       "aiAssistant": "AI 助理",
       "assistantPanel": "助理面板",
@@ -552,7 +553,9 @@
       "editor": "編輯器",
       "pdfPreview": "PDF 預覽",
       "researchAssistant": "研究助理",
-      "terminalDock": "終端機停駐區"
+      "terminalDock": "終端機停駐區",
+      "library": "專案庫",
+      "tool": "工具"
     },
     "title": "發生錯誤"
   },

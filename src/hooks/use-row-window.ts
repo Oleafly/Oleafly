@@ -73,6 +73,14 @@ export function useRowWindow({
     rowHeight: 0,
   }));
   const rowHeightRef = useRef(0);
+  const lastSample = useRef<{ element: HTMLElement | null; height: number; width: number; count: number }>({
+    element: null,
+    height: 0,
+    width: 0,
+    count: 0,
+  });
+  const countRef = useRef(count);
+  countRef.current = count;
   const frame = useRef(0);
   const foundScroller = useRef<HTMLElement | null>(null);
 
@@ -92,12 +100,33 @@ export function useRowWindow({
   const geometry = useCallback(() => {
     const scroller = resolveScroller();
     const list = listRef.current;
-    if (!scroller || !list) return null;
+    if (!scroller || !list) {
+      lastSample.current = { element: null, height: 0, width: 0, count: countRef.current };
+      return null;
+    }
+    const listRect = list.getBoundingClientRect();
     const sample = list.querySelector<HTMLElement>(`[${ROW_WINDOW_ITEM}]`);
     const sampled = sample?.getBoundingClientRect().height ?? 0;
-    if (sampled > 0) rowHeightRef.current = sampled;
+    if (sample && sampled > 0) {
+      const last = lastSample.current;
+      const resized =
+        sample === last.element
+          ? sampled !== last.height && last.count === countRef.current
+          : listRect.width !== last.width;
+      if (rowHeightRef.current <= 0 || last.element === null || resized) {
+        rowHeightRef.current = sampled;
+      }
+      lastSample.current = {
+        element: sample,
+        height: sampled,
+        width: listRect.width,
+        count: countRef.current,
+      };
+    } else {
+      lastSample.current = { element: null, height: 0, width: listRect.width, count: countRef.current };
+    }
     const listTop =
-      list.getBoundingClientRect().top -
+      listRect.top -
       scroller.getBoundingClientRect().top +
       scroller.scrollTop;
     return {

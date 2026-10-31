@@ -4101,6 +4101,7 @@ ${sandboxedCustom}`;
               </div>
             ) : (
               <ErrorBoundary
+                resetKey={activeChatId}
                 fallback={
                   <div className="px-1 py-4 text-center text-sm text-muted-foreground">
                     {t(($) => $.ai.conversation.renderFailed)}

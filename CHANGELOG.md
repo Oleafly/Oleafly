@@ -182,6 +182,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Scrolling the new project gallery after downloading a template from a pack
+  no longer crashes the app (#359). If a dialog or panel does run into an
+  error, only that part closes now and the details go to the log. Before, the
+  whole window switched to the crash screen.
 - Computer Use works with Cua Driver 0.38, the version its installer gives
   you now. Oleafly refused to start every 0.38 driver, saying it wasn't
   running with Oleafly's limits, because 0.38 words that check's answer

@@ -547,6 +547,7 @@
     "specimenViewer": "Örnek Görüntüleyici",
     "stackTrace": "Yığın izi",
     "surfaceCrashed": "{{surface}} çöktü.",
+    "surfaceClosed": "Pencerede bir hata oluştu ve pencere kapandı. Ayrıntılar günlüğe kaydedildi.",
     "surfaces": {
       "aiAssistant": "Yapay zeka asistanı",
       "assistantPanel": "asistan paneli",
@@ -555,7 +556,9 @@
       "editor": "düzenleyici",
       "pdfPreview": "PDF önizlemesi",
       "researchAssistant": "araştırma asistanı",
-      "terminalDock": "terminal yuvası"
+      "terminalDock": "terminal yuvası",
+      "library": "kitaplık",
+      "tool": "araç"
     },
     "title": "Bir sorun oluştu"
   },

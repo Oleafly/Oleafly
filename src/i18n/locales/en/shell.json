@@ -547,6 +547,7 @@
     "specimenViewer": "Specimen Viewer",
     "stackTrace": "Stack trace",
     "surfaceCrashed": "The {{surface}} crashed.",
+    "surfaceClosed": "That window ran into an error and closed. Details were saved to the log.",
     "surfaces": {
       "aiAssistant": "AI assistant",
       "assistantPanel": "assistant panel",
@@ -555,7 +556,9 @@
       "editor": "editor",
       "pdfPreview": "PDF preview",
       "researchAssistant": "research assistant",
-      "terminalDock": "terminal dock"
+      "terminalDock": "terminal dock",
+      "library": "library",
+      "tool": "tool"
     },
     "title": "Something went wrong"
   },

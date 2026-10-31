@@ -10,6 +10,7 @@ import {
   languageForPath,
 } from "@oleafly/diagram";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { closeAfterCrash } from "@/lib/close-after-crash";
 import { KIT } from "@/components/diagram/diagram-kit";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { WindowControls } from "@/components/layout/WindowControls";
@@ -262,7 +263,11 @@ export function DiagramComposer() {
   if (!open || !scratchId) return null;
 
   return (
-    <ErrorBoundary surface="diagram composer" resetKey={scratchId}>
+    <ErrorBoundary
+      fallback={null}
+      resetKey={scratchId}
+      onError={() => closeAfterCrash(() => useHomeViewStore.getState().goTo("library"))}
+    >
       <DiagramKitContext.Provider value={kit}>
         <DiagramComposerCore
           open={open}

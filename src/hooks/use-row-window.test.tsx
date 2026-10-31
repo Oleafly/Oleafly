@@ -133,13 +133,13 @@ function ScrolledRows({
   );
 }
 
-function rect(top: number, height: number): DOMRect {
+function rect(top: number, height: number, width = 100): DOMRect {
   return {
     top,
     bottom: top + height,
     left: 0,
-    right: 100,
-    width: 100,
+    right: width,
+    width,
     height,
     x: 0,
     y: top,
@@ -147,7 +147,15 @@ function rect(top: number, height: number): DOMRect {
   };
 }
 
-function laidOutRows(rowHeight: number, viewportHeight: number) {
+function laidOutRows(
+  rowHeight: number | ((index: number) => number),
+  viewportHeight: number,
+  listWidth: () => number = () => 100,
+) {
+  const heightOf = (element: Element) => {
+    if (typeof rowHeight === "number") return rowHeight;
+    return rowHeight(Number(element.textContent?.replace(/^row /, "")));
+  };
   let scrollTop = 0;
   const frames: FrameRequestCallback[] = [];
   vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
@@ -168,8 +176,8 @@ function laidOutRows(rowHeight: number, viewportHeight: number) {
   vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (
     this: Element,
   ) {
-    if (this.hasAttribute("data-row-window-item")) return rect(0, rowHeight);
-    if (this.getAttribute("data-testid") === "list") return rect(-scrollTop, 0);
+    if (this.hasAttribute("data-row-window-item")) return rect(0, heightOf(this));
+    if (this.getAttribute("data-testid") === "list") return rect(-scrollTop, 0, listWidth());
     return rect(0, viewportHeight);
   });
   return {
@@ -231,6 +239,62 @@ describe("useRowWindow with layout", () => {
     layout.scrollTo(view.getByTestId("scroller"), 4_000);
 
     expect(view.getByText("row 200")).toBeTruthy();
+  });
+
+  it("settles when rows differ in height and the first rendered row changes the measured height", () => {
+    const layout = laidOutRows((index) => (index < 100 ? 20 : 40), 200);
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const view = render(<ScrolledRows count={1_000} />);
+
+    expect(() => layout.scrollTo(view.getByTestId("scroller"), 4_000)).not.toThrow();
+
+    expect(view.getAllByText(/^row /).length).toBeGreaterThan(0);
+    expect(errors).not.toHaveBeenCalledWith(expect.stringContaining("Maximum update depth"));
+  });
+
+  it("follows a row that grows in place, such as after a font size change", () => {
+    let height = 20;
+    const layout = laidOutRows(() => height, 200);
+    const view = render(<ScrolledRows count={1_000} />);
+    layout.scrollTo(view.getByTestId("scroller"), 4_000);
+    expect(view.getByText("row 200")).toBeTruthy();
+
+    height = 40;
+    view.rerender(<ScrolledRows count={1_000} />);
+
+    expect(view.getByText("row 100")).toBeTruthy();
+    expect(view.queryByText("row 200")).toBeNull();
+  });
+
+  it("measures again when rows come back after the list was empty", () => {
+    let height = 20;
+    const layout = laidOutRows(() => height, 200);
+    const view = render(<ScrolledRows count={1_000} />);
+    layout.scrollTo(view.getByTestId("scroller"), 4_000);
+    expect(view.getByText("row 200")).toBeTruthy();
+
+    view.rerender(<ScrolledRows count={0} />);
+    height = 40;
+    view.rerender(<ScrolledRows count={1_000} />);
+
+    expect(view.getByText("row 100")).toBeTruthy();
+    expect(view.queryByText("row 200")).toBeNull();
+  });
+
+  it("measures again when the list width changes while the first row changes too", () => {
+    let height = 20;
+    let width = 100;
+    const layout = laidOutRows(() => height, 200, () => width);
+    const view = render(<ScrolledRows count={1_000} />);
+    layout.scrollTo(view.getByTestId("scroller"), 4_000);
+    expect(view.getByText("row 200")).toBeTruthy();
+
+    height = 40;
+    width = 80;
+    layout.scrollTo(view.getByTestId("scroller"), 4_400);
+
+    expect(view.getByText("row 110")).toBeTruthy();
+    expect(view.queryByText("row 220")).toBeNull();
   });
 
   it("renders the rows for a new scroll position inside the scroll event, before the next frame", () => {

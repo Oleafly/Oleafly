@@ -16,8 +16,10 @@ export type ErrorSurface =
   | "chat"
   | "diagram composer"
   | "editor"
+  | "library"
   | "research assistant"
-  | "terminal dock";
+  | "terminal dock"
+  | "tool";
 
 const SURFACE_KEYS = {
   "AI assistant": "aiAssistant",
@@ -26,8 +28,10 @@ const SURFACE_KEYS = {
   chat: "chat",
   "diagram composer": "diagramComposer",
   editor: "editor",
+  library: "library",
   "research assistant": "researchAssistant",
   "terminal dock": "terminalDock",
+  tool: "tool",
 } as const;
 
 interface Props {
@@ -43,6 +47,7 @@ interface Props {
   // A new render payload (for example, a newly compiled PDF) gets one fresh
   // attempt after a scoped child crashed.
   resetKey?: unknown;
+  onError?: (error: Error) => void;
 }
 
 interface State {
@@ -103,6 +108,7 @@ export class ErrorBoundary extends Component<Props, State> {
     }\ncomponentStack:${info.componentStack ?? ""}`;
     // Best-effort; never throw from the error handler itself.
     void appendAppLog(detail).catch(() => {});
+    this.props.onError?.(error);
   }
 
   componentDidUpdate(previousProps: Props) {

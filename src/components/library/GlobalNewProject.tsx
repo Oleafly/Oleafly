@@ -4,6 +4,8 @@ import { warmChoiceArt } from "@/components/library/choice-art";
 import { NewProjectDialog } from "@/components/library/NewProjectDialog";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { closeAfterCrash } from "@/lib/close-after-crash";
 import { listTemplates, type TemplateInfo } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 import { logError } from "@/lib/log";
@@ -11,9 +13,26 @@ import { useTourStore } from "@/store/tours";
 import { clearTemplateRequest, useTemplateRequestStore } from "@/store/template-request";
 import { finishHomeTourAfterProjectCreation } from "@/lib/tours/coordinator";
 
+function closeNewProject() {
+  useTourStore.getState().stop();
+  useSettingsStore.getState().setNewProjectOpen(false);
+  clearTemplateRequest();
+}
+
+const onNewProjectCrash = () => closeAfterCrash(closeNewProject);
+
 // Mounted at the app root so it can be opened from anywhere (Library, the
 // omnibar's `/create`, the command palette), not just the Library screen.
 export function GlobalNewProject() {
+  const open = useSettingsStore((s) => s.newProjectOpen);
+  return (
+    <ErrorBoundary fallback={null} resetKey={open} onError={onNewProjectCrash}>
+      <NewProjectFlow />
+    </ErrorBoundary>
+  );
+}
+
+function NewProjectFlow() {
   const { t } = useTranslation(["library"]);
   const open = useSettingsStore((s) => s.newProjectOpen);
   const setOpen = useSettingsStore((s) => s.setNewProjectOpen);

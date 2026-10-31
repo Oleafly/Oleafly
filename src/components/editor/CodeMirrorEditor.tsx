@@ -13,6 +13,7 @@ import {
 import {
   setSpellHost,
   setBibKeysProvider,
+  setEditorErrorReporter,
   setEditorTranslator,
   setTypstCslStyleProvider,
   setTypstStyleVersionProvider,
@@ -120,6 +121,7 @@ const wysiwygMessage: WysiwygTranslator = (key, params) =>
   translate(`editor:package.wysiwyg.${key}`, params);
 
 setEditorTranslator(packageMessage);
+setEditorErrorReporter((scope, error) => void logError(scope, error));
 setWysiwygTranslator(wysiwygMessage);
 
 // Module side effect: must install before any lint runs.

@@ -115,7 +115,7 @@ describe("table editor host", () => {
     };
     render(<TableEditor host={hostFor(editor, dialect)} />);
     expect(screen.getByRole("alert").textContent).toContain("visual.table.errorTitle");
-    expect(error.mock.calls.some(([message]) => message === "Visual table rendering failed")).toBe(true);
+    expect(error.mock.calls.some(([message]) => String(message).startsWith("Visual table rendering failed"))).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "visual.table.viewSource" }));
     expect(editor.state.selection.main.head).toBe(0);
     error.mockRestore();

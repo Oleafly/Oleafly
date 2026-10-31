@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ProjectInfo } from "@/lib/tauri";
@@ -70,6 +70,47 @@ function Scroller({ layout, count }: Readonly<{ layout: "grid" | "list"; count: 
   );
 }
 
+function FilteredGrid({ projects }: Readonly<{ projects: ProjectInfo[] }>) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  return (
+    <div ref={scrollRef} data-testid="scroller" style={{ overflowY: "auto" }}>
+      <ProjectGrid projects={projects} data={data} scrollRef={scrollRef} />
+    </div>
+  );
+}
+
+function laidOutLibrary() {
+  let scrollTop = 0;
+  const frames: FrameRequestCallback[] = [];
+  vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+    frames.push(callback);
+    return frames.length;
+  });
+  vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
+  vi.spyOn(Element.prototype, "clientHeight", "get").mockImplementation(function (this: Element) {
+    return this.getAttribute("data-testid") === "scroller" ? 600 : 0;
+  });
+  vi.spyOn(Element.prototype, "scrollTop", "get").mockImplementation(function (this: Element) {
+    return this.getAttribute("data-testid") === "scroller" ? scrollTop : 0;
+  });
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+    const grid = this.getAttribute("data-testid") === "project-grid";
+    const card = this.hasAttribute("data-row-window-item");
+    const height = card ? (this.className.includes("pb-14") ? 256 : 200) : grid ? 0 : 600;
+    const top = grid ? -scrollTop : 0;
+    return { top, bottom: top + height, left: 0, right: 100, width: 100, height, x: 0, y: top, toJSON: () => ({}) };
+  });
+  return {
+    scrollTo(scroller: HTMLElement, top: number) {
+      scrollTop = top;
+      act(() => {
+        scroller.dispatchEvent(new Event("scroll"));
+        for (const frame of frames.splice(0)) frame(0);
+      });
+    },
+  };
+}
+
 function openButtons() {
   return screen.queryAllByRole("button", { name: /^Open Project \d+$/ });
 }
@@ -133,6 +174,26 @@ describe("project collection windowing", () => {
       false,
     ]);
     expect(screen.getByTestId("project-grid")).not.toHaveClass("gap-y-14");
+  });
+});
+
+describe("project collection windowing under a filter", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("keeps the full row height after a filter leaves one card in the shorter last row", () => {
+    stubColumns(null);
+    const layout = laidOutLibrary();
+    const all = Array.from({ length: 60 }, (_, index) => project(index));
+    const view = render(<FilteredGrid projects={all} />);
+
+    view.rerender(<FilteredGrid projects={[all[0]]} />);
+    view.rerender(<FilteredGrid projects={all.slice(1)} />);
+    layout.scrollTo(view.getByTestId("scroller"), 4_500);
+
+    expect(screen.getByRole("button", { name: "Open Project 35" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open Project 40" })).toBeInTheDocument();
   });
 });
 
