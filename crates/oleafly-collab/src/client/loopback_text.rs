@@ -6,7 +6,7 @@ use oleafly_collab_protocol::page::escape;
 
 type Catalog = HashMap<String, String>;
 
-const SOURCES: [(&str, &str); 21] = [
+const SOURCES: [(&str, &str); 22] = [
     ("en", include_str!("../../locales/en.json")),
     ("zh-Hans", include_str!("../../locales/zh-Hans.json")),
     ("zh-Hant", include_str!("../../locales/zh-Hant.json")),
@@ -28,6 +28,7 @@ const SOURCES: [(&str, &str); 21] = [
     ("ro", include_str!("../../locales/ro.json")),
     ("ja", include_str!("../../locales/ja.json")),
     ("ko", include_str!("../../locales/ko.json")),
+    ("vi", include_str!("../../locales/vi.json")),
 ];
 
 macro_rules! texts {

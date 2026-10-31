@@ -33,6 +33,7 @@ const SOURCES: &[(&str, &str)] = &[
     ("ro", include_str!("../locales/ro.json")),
     ("ja", include_str!("../locales/ja.json")),
     ("ko", include_str!("../locales/ko.json")),
+    ("vi", include_str!("../locales/vi.json")),
 ];
 
 macro_rules! keys {
@@ -275,7 +276,7 @@ mod tests {
             locales().collect::<Vec<_>>(),
             [
                 "en", "zh-Hans", "zh-Hant", "de", "fr", "es", "it", "nl", "pt-BR", "pl", "ru",
-                "uk", "tr", "cs", "da", "sv", "nb", "fi", "ro", "ja", "ko"
+                "uk", "tr", "cs", "da", "sv", "nb", "fi", "ro", "ja", "ko", "vi"
             ]
         );
         assert_eq!(locales().collect::<Vec<_>>(), LOCALES);

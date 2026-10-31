@@ -1,0 +1,175 @@
+{
+  "dialog": {
+    "title": "Báo cáo sử dụng",
+    "description": "Hoạt động token được ghi lại theo dự án, agent, nhà cung cấp, mô hình và phiên.",
+    "from": "Từ",
+    "through": "Đến",
+    "quickRangesLegend": "Khoảng nhanh",
+    "utcNote": "Ngày và giờ theo UTC.",
+    "apply": "Áp dụng",
+    "refresh": "Làm mới",
+    "refreshLabel": "Làm mới báo cáo sử dụng",
+    "loading": "Đang tải mức sử dụng…",
+    "loadFailed": "Không thể tải báo cáo sử dụng.",
+    "loadFailedHint": "Hãy thử lại sau giây lát.",
+    "tryAgain": "Thử lại",
+    "emptyTitle": "Không có mức sử dụng nào được ghi cho các bộ lọc này.",
+    "emptyDescription": "Hãy đổi khoảng ngày hoặc bỏ một bộ lọc."
+  },
+  "quickRanges": {
+    "days7": "7 ngày",
+    "days30": "30 ngày",
+    "days90": "90 ngày",
+    "month": "Tháng này"
+  },
+  "filters": {
+    "project": "Dự án",
+    "projectAll": "Tất cả dự án",
+    "agent": "Agent",
+    "agentAll": "Tất cả agent",
+    "provider": "Nhà cung cấp",
+    "providerAll": "Tất cả nhà cung cấp",
+    "model": "Mô hình",
+    "modelAll": "Tất cả mô hình",
+    "session": "Phiên",
+    "sessionAll": "Tất cả phiên"
+  },
+  "report": {
+    "range": "{{start}} đến {{end}} (UTC)",
+    "costDisclaimer": "Chi phí ước tính dùng dữ liệu giá đã lưu, không phải hoá đơn hay hạn mức gói của nhà cung cấp.",
+    "exportCsv": "Xuất CSV",
+    "exportSaved": "Đã lưu {{path}}",
+    "exportFailed": "Không thể lưu báo cáo sử dụng.",
+    "inputTokens": "Token đầu vào",
+    "inputIncludesCache": "Bao gồm đầu vào đã lưu đệm",
+    "outputTokens": "Token đầu ra",
+    "outputIncludesReasoning": "Bao gồm token suy luận",
+    "cacheReads": "Lần đọc bộ đệm",
+    "costEstimate": "Chi phí ước tính",
+    "allRecordsPriced": "Mọi bản ghi đã có giá",
+    "sessions": "Phiên",
+    "dailyTokens": "Token theo ngày",
+    "activityByHour": "Hoạt động theo giờ",
+    "projects": "Dự án",
+    "agents": "Agent",
+    "providers": "Nhà cung cấp",
+    "models": "Mô hình"
+  },
+  "counts": {
+    "records_other": "{{total}} bản ghi",
+    "sessions_other": "{{total}} phiên",
+    "tokens_other": "{{total}} token",
+    "inputUnknown_other": "{{total}} bản ghi không có số đầu vào",
+    "outputUnknown_other": "{{total}} bản ghi không có số đầu ra",
+    "cacheUnknown_other": "{{total}} bản ghi không có dữ liệu bộ đệm so sánh được",
+    "unpriced_other": "{{total}} bản ghi chưa có giá",
+    "partlyUnpriced_other": "{{unpriced}} trên {{total}} bản ghi chưa có giá",
+    "onPlan_other": "{{total}} bản ghi thuộc gói hoặc cục bộ",
+    "childRuns_other": "{{total}} lượt chạy con",
+    "usageRecords_other": "{{total}} bản ghi sử dụng",
+    "excludedChildRecords_other": "{{total}} bản ghi con đã được tính trong tổng của bản ghi cha, nên không tính hai lần.",
+    "unmeasured_other": "{{total}} bản ghi không có số token đo được."
+  },
+  "cache": {
+    "rate": "{{percent}}% đầu vào so sánh được",
+    "rateWithUnknown": "{{percent}}% đầu vào so sánh được, {{unknown}} không so sánh được"
+  },
+  "cost": {
+    "local": "Cục bộ",
+    "plan": "Gói",
+    "notBilledPerToken": "Không tính phí theo token",
+    "noEstimate": "Không ước tính",
+    "noSavedPrice": "Không có giá đã lưu cho các bản ghi này",
+    "priceSource": "Nguồn giá: {{version}}"
+  },
+  "trend": {
+    "chartLabel": "Xu hướng token đầu vào và đầu ra theo ngày",
+    "chartTitle": "Dùng token theo ngày",
+    "empty": "Không có hoạt động theo ngày.",
+    "tokensUnavailable": "Không có số token",
+    "inOut": "{{input}} vào, {{output}} ra",
+    "incompleteDays": "Những ngày có số token không đầy đủ được bỏ khỏi đường.",
+    "day": "Ngày",
+    "inputTokens": "Token đầu vào",
+    "outputTokens": "Token đầu ra"
+  },
+  "heatmap": {
+    "label": "Hoạt động token theo thứ và giờ UTC",
+    "cell": "{{weekday}} {{hour}}:00 UTC: {{detail}}",
+    "noActivity": "Không có hoạt động được ghi",
+    "tokenUnavailable": "Không có số token",
+    "hoursInUtc": "Giờ theo UTC",
+    "less": "Ít hơn",
+    "more": "Nhiều hơn",
+    "weekdays": {
+      "sun": "CN",
+      "mon": "T2",
+      "tue": "T3",
+      "wed": "T4",
+      "thu": "T5",
+      "fri": "T6",
+      "sat": "T7"
+    }
+  },
+  "breakdown": {
+    "empty": "Không có mức sử dụng được ghi.",
+    "name": "Tên",
+    "tokens": "Token",
+    "cost": "Chi phí",
+    "sessions": "Phiên"
+  },
+  "sessions": {
+    "title": "Phiên",
+    "subtitle": "Trò chuyện, tác vụ, lượt chạy subagent và lệnh gọi trợ giúp, mới nhất trước.",
+    "emptyTitle": "Không có phiên nào khớp với bộ lọc này",
+    "emptyDescription": "Hãy đổi khoảng ngày hoặc bỏ một bộ lọc.",
+    "session": "Phiên",
+    "project": "Dự án",
+    "agent": "Agent",
+    "model": "Mô hình",
+    "lastActivity": "Hoạt động cuối (UTC)",
+    "input": "Đầu vào",
+    "output": "Đầu ra",
+    "cost": "Chi phí",
+    "billing": "Tính phí",
+    "status": "Trạng thái",
+    "rowsPerPage": "Số dòng mỗi trang",
+    "page": "Trang {{page}} trên {{pageCount}}",
+    "previous": "Trước",
+    "next": "Sau"
+  },
+  "labels": {
+    "unknown": "Không rõ",
+    "mixed": "Hỗn hợp",
+    "generalProject": "Chung",
+    "runtimeBuiltIn": "Trợ lý Oleafly",
+    "runtimeHelper": "Lệnh gọi trợ giúp",
+    "runtimeAcp": "Agent CLI"
+  },
+  "billing": {
+    "api": "API",
+    "subscription": "Gói",
+    "local": "Cục bộ",
+    "unknown": "Không rõ",
+    "mixed": "Hỗn hợp"
+  },
+  "scope": {
+    "child": "Subagent",
+    "task": "Tác vụ",
+    "helper": "Trợ giúp"
+  },
+  "status": {
+    "in_progress": "Đang tiến hành",
+    "completed": "Đã hoàn thành",
+    "failed": "Thất bại",
+    "cancelled": "Đã huỷ",
+    "interrupted": "Bị ngắt"
+  },
+  "measurement": {
+    "provider_reported": "Do nhà cung cấp đếm",
+    "runtime_reported": "Do agent đếm",
+    "estimated": "Ước tính cục bộ",
+    "unavailable": "Chưa đo",
+    "mixed_or_unavailable": "Đo một phần"
+  }
+}

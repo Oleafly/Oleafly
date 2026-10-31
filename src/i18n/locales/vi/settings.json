@@ -1,0 +1,2398 @@
+{
+  "ai": {
+    "agents": {
+      "bridgePathLabel": "Tệp thực thi",
+      "bridgeSourceLabel": "Nguồn",
+      "bridgeTitle": "Cầu nối ACP",
+      "bridgeUnresolved": "Chưa xác định được tệp thực thi cầu nối.",
+      "checkAgain": "Kiểm tra lại",
+      "checkFailedTitle": "Không thể kiểm tra các agent đã cài",
+      "checkInstalled": "Kiểm tra agent đã cài",
+      "checkingAction": "Đang kiểm tra",
+      "checkingDescription": "Việc này có thể mất một chút trong khi Oleafly kiểm tra các công cụ dòng lệnh trên máy tính này.",
+      "checkingInstalled": "Đang kiểm tra agent đã cài",
+      "checkingTitle": "Đang tìm CLI agent",
+      "cliPathLabel": "Phát hiện tại",
+      "cliTitle": "Công cụ dòng lệnh",
+      "copySignInCommand": "Sao chép lệnh đăng nhập",
+      "emptyDescription": "Hãy cài một CLI agent được hỗ trợ rồi kiểm tra lại.",
+      "emptyTitle": "Không tìm thấy CLI agent nào",
+      "custom": {
+        "description": "Dán một định nghĩa agent để đăng ký agent mà Oleafly không cung cấp sẵn.",
+        "hint": "Dán định nghĩa agent với gói npm hoặc uv được ghim phiên bản, một tệp nhị phân đã xác minh hoặc một tệp thực thi đã cài. Không đưa mật khẩu hay khoá API vào JSON này.",
+        "label": "Đăng ký agent tuỳ chỉnh",
+        "submit": "Đăng ký định nghĩa",
+        "title": "Thêm agent tuỳ chỉnh",
+        "useExample": "Dùng ví dụ"
+      },
+      "install": {
+        "confirm": "Cài đặt",
+        "description": "Oleafly tải gói đã ghim phiên bản này vào thư mục agent riêng. Agent sau đó chạy bằng tài khoản CLI của bạn khi bạn bắt đầu cuộc trò chuyện.",
+        "installing": "Đang cài đặt",
+        "location": "Thư mục agent Oleafly, {{id}}/{{version}}",
+        "locationLabel": "Cài vào",
+        "packageLabel": "Gói",
+        "title": "Cài cầu nối {{name}} {{version}}"
+      },
+      "installBridge": "Cài cầu nối",
+      "installBridgeNextStep": "Hãy cài cầu nối ACP, rồi đăng nhập qua công cụ dòng lệnh.",
+      "intro": "Các CLI agent như Claude Code, Codex và Gemini CLI kết nối qua Agent Client Protocol (ACP). Một số cần cầu nối, một bộ chuyển đổi nhỏ do Oleafly cài để có thể giao tiếp với chúng. Mỗi agent tự quản lý mô hình, công cụ và đăng nhập, còn cài đặt nhà cung cấp API được tách riêng. Hãy dùng tài khoản CLI chính thức để đăng nhập: Oleafly không nhập token tài khoản hay ước tính hạn mức thuê bao.",
+      "nextStepTitle": "Bước tiếp theo",
+      "notReported": "Không được báo cáo",
+      "notice": {
+        "installed": "Đã cài {{name}}. Hãy đăng nhập qua CLI của nó trước khi bắt đầu cuộc trò chuyện.",
+        "registered": "Đã đăng ký {{name}}. Việc đăng ký không cài đặt hay khởi chạy agent.",
+        "removed": "Đã gỡ định nghĩa agent. Các tệp đã cài và cuộc trò chuyện đã lưu vẫn còn.",
+        "terminalOpen": "Terminal của dự án đang mở. Hãy chạy lệnh đăng nhập hiển thị cho agent của bạn, rồi kết nối lại cuộc trò chuyện."
+      },
+      "openSignInTerminal": "Mở terminal đăng nhập",
+      "openTerminal": "Mở terminal",
+      "platformLabel": "Nền tảng",
+      "refreshingStatus": "Đang làm mới trạng thái agent. Danh sách hiện tại được giữ nguyên.",
+      "registry": {
+        "description": "Tìm trong danh mục ACP các CLI agent do nhóm khác phát hành.",
+        "hideDistribution": "Ẩn bản phân phối",
+        "register": "Đăng ký agent",
+        "registered": "Đã đăng ký",
+        "reviewHint": "Các mục trong danh mục mô tả phần mềm do nhà phát hành cung cấp. Hãy xem xét bản phân phối trước khi đăng ký hoặc cài đặt.",
+        "search": "Tìm kiếm",
+        "searchLabel": "Tìm một CLI agent",
+        "searchPlaceholder": "Tìm CLI agent",
+        "searching": "Đang tìm",
+        "showDistribution": "Hiện bản phân phối",
+        "title": "Tìm thêm agent"
+      },
+      "sectionLabel": "CLI Agent",
+      "signInCommandLabel": "Lệnh đăng nhập",
+      "versionLabel": "Phiên bản",
+      "updateBridge": "Cập nhật cầu nối",
+      "program": {
+        "label": "Chương trình",
+        "bridgeLabel": "Chương trình {{cli}}",
+        "notFound": "Không tìm thấy trên máy tính này",
+        "bridgeDefault": "Cầu nối dùng bản sao riêng của nó.",
+        "source": {
+          "auto": "Tự động tìm thấy",
+          "override": "Do bạn chọn",
+          "managed": "Do Oleafly cài đặt"
+        },
+        "choose": "Chọn…",
+        "test": "Kiểm tra",
+        "testing": "Đang kiểm tra",
+        "saving": "Đang lưu",
+        "useAutomatic": "Dùng phát hiện tự động",
+        "useAnyway": "Vẫn dùng",
+        "inputLabel": "Vị trí của {{name}}",
+        "pathPlaceholder": "Ví dụ, {{example}}",
+        "saved": "Đã lưu. Oleafly sẽ dùng chương trình này.",
+        "skippedTitle": "Các tệp Oleafly đã bỏ qua",
+        "skippedReason": {
+          "notFound": "Không tìm thấy",
+          "isDirectory": "Thư mục",
+          "notExecutable": "Không thể khởi chạy",
+          "unsupportedScript": "Loại script không được hỗ trợ",
+          "guiProgram": "Ứng dụng máy tính",
+          "interpreter": "shell hoặc môi trường chạy",
+          "networkPath": "Vị trí mạng"
+        },
+        "check": {
+          "ready": "{{name}} {{version}} đã khởi động và phản hồi.",
+          "readyNoVersion": "{{name}} đã khởi động và phản hồi.",
+          "notFound": "Không có tệp tại {{path}}.",
+          "isDirectory": "{{path}} là một thư mục. Hãy chọn tệp chương trình bên trong.",
+          "powershellScript": "Không thể khởi chạy script PowerShell. Hãy chọn {{command}}.cmd hoặc {{command}}.exe.",
+          "unsupportedScript": "Oleafly không thể khởi chạy trực tiếp {{file}}. Hãy chọn {{command}}.exe.",
+          "notExecutable": "{{path}} không phải chương trình mà Oleafly có thể khởi chạy.",
+          "guiProgram": "{{path}} là ứng dụng máy tính. Hãy chọn chương trình dòng lệnh.",
+          "interpreter": "{{path}} là một shell hoặc môi trường chạy script. Hãy chọn chính chương trình {{name}}.",
+          "networkPath": "{{path}} nằm ở vị trí mạng. Hãy chọn một chương trình trên máy tính này.",
+          "cliMissing": "Oleafly không thể chạy {{cli}}. Hãy chọn chương trình {{cli}}.",
+          "bridgeMissing": "Cầu nối cho {{name}} chưa được cài.",
+          "nodeMissing": "{{name}} cần Node.js và Oleafly không tìm thấy.",
+          "nodeTooOld": "{{name}} cần phiên bản Node.js mới hơn.",
+          "startFailed": "Không thể khởi chạy {{name}}.",
+          "timeout": "{{name}} đã khởi động nhưng không phản hồi kịp thời.",
+          "exited": "{{name}} đã dừng trước khi phản hồi.",
+          "notAcp": "{{name}} đã khởi động, nhưng Oleafly không hiểu được phản hồi của nó.",
+          "needsSignIn": "{{name}} hoạt động. Hãy đăng nhập trước khi bắt đầu cuộc trò chuyện.",
+          "sessionFailed": "{{name}} đã khởi động nhưng không thể mở cuộc trò chuyện."
+        },
+        "getNode": "Tải Node.js",
+        "copyDetails": "Sao chép chi tiết",
+        "signIn": "Đăng nhập",
+        "afterSignIn": "Hãy hoàn tất đăng nhập trong terminal, rồi kiểm tra lại chương trình."
+      },
+      "experimental": {
+        "title": "Thử nghiệm",
+        "description": "Các mục này dùng những phần còn ở dạng nháp của Agent Client Protocol. Chúng có thể thay đổi hoặc ngừng hoạt động.",
+        "v2": "Dùng ACP v2 khi có sẵn",
+        "v2Description": "Các agent hỗ trợ phiên bản 2 dạng nháp sẽ dùng phiên bản này. Các agent khác vẫn dùng phiên bản 1.",
+        "providers": "Cho phép agent dùng khoá API Oleafly của tôi",
+        "providersDescription": "Agent có thể định tuyến các lệnh gọi mô hình sẽ dùng khoá bạn chọn trên thẻ của nó. Khoá chỉ được gửi đến tiến trình của agent đó."
+      },
+      "inactivity": {
+        "label": "Dừng agent im lặng sau",
+        "description": "Khi agent không gửi gì trong khoảng thời gian này, Oleafly sẽ dừng nó. Bạn có thể kết nối lại.",
+        "minutes_other": "{{count}} phút"
+      },
+      "protocolLabel": "Giao thức",
+      "remembered": {
+        "title": "Lựa chọn đã ghi nhớ",
+        "effort": "Mức nỗ lực: {{name}}",
+        "mode": "Chế độ: {{name}}",
+        "forget": "Quên",
+        "none": "Cuộc trò chuyện mới dùng mặc định của agent."
+      },
+      "providers": {
+        "label": "Dùng khoá API Oleafly của tôi",
+        "off": "Tắt (agent tự đăng nhập)",
+        "note": "Oleafly gửi khoá đến agent này khi cuộc trò chuyện bắt đầu và không đưa khoá vào bản ghi.",
+        "unavailable": "Hãy thêm khoá API trong Cài đặt, Trợ lý AI, Nhà cung cấp và khoá để dùng ở đây."
+      },
+      "hermes": {
+        "title": "Hồ sơ Hermes cho dự án này",
+        "default": "Hồ sơ mặc định (dùng chung)",
+        "project": "Hồ sơ dự án",
+        "remote": "Từ xa qua SSH",
+        "profileName": "Hồ sơ {{name}}",
+        "memory": "Bộ nhớ dự án",
+        "memoryDescription": "Hermes ghi nhớ thông tin giữa các cuộc trò chuyện trong dự án này.",
+        "toolGateway": "Cổng công cụ",
+        "toolGatewayDescription": "Dùng các công cụ tìm kiếm web, hình ảnh, giọng nói và trình duyệt được lưu trữ từ gói đăng ký Nous của bạn.",
+        "status": {
+          "ready": "Cổng đang chạy",
+          "starting": "Cổng đang khởi động",
+          "stopped": "Cổng đã dừng",
+          "unknown": "Không rõ trạng thái cổng",
+          "outdated": "Hãy cập nhật Hermes để xem trạng thái cổng"
+        },
+        "refresh": "Kiểm tra lại",
+        "keepsRunning": "Ngắt kết nối Oleafly không bao giờ dừng cổng.",
+        "host": "Máy chủ",
+        "port": "Cổng",
+        "folder": "Thư mục dự án trên máy đó",
+        "command": "Lệnh Hermes",
+        "remoteProfile": "Hồ sơ (tuỳ chọn)",
+        "test": "Kiểm tra kết nối",
+        "testOk": "Đã kết nối: {{version}}",
+        "save": "Lưu",
+        "sshNote": "Oleafly chỉ đăng nhập bằng khoá SSH của bạn.",
+        "folderHint": "Đường dẫn đầy đủ trên máy đó, ví dụ /home/ada/paper.",
+        "needsValid": "Kiểm tra kết nối và Lưu cần giá trị hợp lệ cho: {{fields}}.",
+        "unsavedEdit": "Chưa được lưu. Hãy lưu để dùng các thay đổi này.",
+        "unsavedMode": "Chưa được lưu. Cho đến khi bạn lưu, dự án này vẫn dùng: {{mode}}.",
+        "errors": {
+          "hostRequired": "Hãy nhập tên máy chủ hoặc user@host.",
+          "hostInvalid": "Chỉ dùng chữ cái, chữ số, dấu chấm, dấu gạch ngang và @, và không bắt đầu bằng dấu gạch ngang.",
+          "port": "Hãy dùng cổng từ 1 đến 65535.",
+          "folderRequired": "Hãy nhập đường dẫn đầy đủ của thư mục dự án trên máy đó.",
+          "folderInvalid": "Hãy dùng đường dẫn đầy đủ, bắt đầu bằng /.",
+          "command": "Hãy dùng hermes hoặc đường dẫn đầy đủ tới nó bắt đầu bằng /.",
+          "profile": "Hãy dùng chữ thường, chữ số, dấu gạch ngang và dấu gạch dưới."
+        }
+      }
+    },
+    "approvals": {
+      "file": {
+        "description": "Tệp nằm tại ~/.oleafly/approvals.toml và áp dụng cho mọi dự án trên thiết bị này. Quy tắc từ chối chặn công cụ trong mọi chế độ phê duyệt. Quy tắc cho phép chỉ có hiệu lực ở chế độ Tuỳ chỉnh.",
+        "discard": "Huỷ thay đổi",
+        "emptyFile": "Tệp hiện đang trống.",
+        "help": {
+          "comments": "Chú thích bắt đầu bằng # được giữ khi bạn lưu ở đây, nhưng lựa chọn \"Luôn trong dự án này\" trên thẻ phê duyệt sẽ ghi lại tệp mà không có chúng.",
+          "modes": "Bảng đầu tiên, <modesTable>[\"$approval_modes\"]</modesTable>, đặt chế độ phê duyệt cho từng dự án: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> hoặc <custom>\"custom\"</custom>. Dự án không được liệt kê sẽ dùng Phê duyệt thay tôi.",
+          "openProject": "Dự án đang mở, {{name}}, có id <projectId>{{id}}</projectId>.",
+          "projectIds": "Id dự án là tên thư mục dưới ~/.oleafly/projects.",
+          "rules": "Sau đó là một bảng cho mỗi id dự án, chứa một quy tắc cho mỗi công cụ: <allow>\"allow\"</allow> chạy công cụ mà không hỏi, còn <deny>\"deny\"</deny> từ chối công cụ. Quy tắc từ chối áp dụng trong mọi chế độ, kể cả Toàn quyền truy cập. Quy tắc cho phép chỉ có hiệu lực ở chế độ Tuỳ chỉnh.",
+          "toolNames": "Tên công cụ bạn có thể dùng: <names>{{names}}</names> và mọi công cụ MCP theo tên đầy đủ từ danh sách Công cụ."
+        },
+        "helpToggle": "Cách tệp hoạt động",
+        "insertExample": "Chèn ví dụ",
+        "reload": "Tải lại",
+        "saved": "Đã lưu. Các quy tắc áp dụng cho lần gọi công cụ tiếp theo.",
+        "saving": "Đang lưu",
+        "title": "Tệp quy tắc phê duyệt"
+      },
+      "project": {
+        "allowed": "Luôn được phép",
+        "denied": "Luôn bị từ chối",
+        "description": "Quy tắc đã lưu cho {{name}}. Công cụ bị từ chối vẫn bị chặn trong mọi chế độ phê duyệt. Công cụ được phép chỉ bỏ qua lời nhắc ở chế độ Tuỳ chỉnh. Hãy gỡ một quy tắc để dùng chính sách rủi ro tiêu chuẩn cho công cụ đó.",
+        "empty": "Chưa có quy tắc nào được lưu. Hãy dùng \"Luôn trong dự án này\" trên lời nhắc phê duyệt để thêm một quy tắc.",
+        "removeRule": "Gỡ quy tắc cho {{tool}}",
+        "thisProject": "dự án này",
+        "title": "Phê duyệt công cụ"
+      }
+    },
+    "budget": {
+      "clear": "Xóa ngân sách",
+      "inputLabel": "Ngân sách AI tính bằng đô-la Mỹ",
+      "inputPlaceholder": "Không có ngân sách",
+      "limit": "Các lượt chạy tạm dừng khi đạt ngân sách.",
+      "save": "Lưu ngân sách",
+      "spent": "Chi phí ước tính đến nay: {{amount}}. Các lượt chạy tạm dừng khi đạt ngân sách.",
+      "title": "Ngân sách AI"
+    },
+    "customProvider": {
+      "addDescription": "Kết nối bất kỳ điểm cuối tương thích OpenAI nào qua URL cơ sở của nó.",
+      "addTitle": "Thêm nhà cung cấp tuỳ chỉnh",
+      "baseUrlLabel": "URL cơ sở",
+      "baseUrlNote": "Khoá API đã lưu không được gửi đến địa chỉ mới. Hãy nhập lại hoặc để trống nếu máy chủ mới không cần khoá.",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "discovery": {
+        "auth": "{{url}} từ chối khoá API.",
+        "rejected": "{{url}} không trả về danh sách mô hình. Hầu hết máy chủ cục bộ cần /v1 ở cuối địa chỉ, như http://localhost:13305/v1.",
+        "timeout": "{{url}} mất quá lâu để liệt kê các mô hình.",
+        "unreachable": "Không thể kết nối tới {{url}}. Hãy kiểm tra máy chủ đang chạy và địa chỉ đúng.",
+        "unreadable": "{{url}} có phản hồi nhưng không liệt kê mô hình nào. Hãy kiểm tra máy chủ đã tải mô hình."
+      },
+      "editDescription": "Thay đổi tên hoặc URL cơ sở.",
+      "editTitle": "Sửa nhà cung cấp tuỳ chỉnh",
+      "errors": {
+        "addFailed": "Không thể thêm nhà cung cấp đó.",
+        "baseUrlCredentials": "Hãy đặt khoá vào trường khoá API, không đặt trong URL.",
+        "baseUrlHost": "URL thiếu máy chủ.",
+        "baseUrlInvalid": "Hãy nhập URL đầy đủ, ví dụ https://api.example.com/v1 hoặc http://localhost:1234/v1.",
+        "baseUrlProtocol": "Hãy dùng https://, hoặc http:// cho máy chủ cục bộ.",
+        "baseUrlQuery": "Hãy xóa dấu ? và mọi thứ sau nó.",
+        "baseUrlRequired": "Cần có URL cơ sở.",
+        "idFormat": "Chỉ dùng chữ thường, chữ số và dấu gạch ngang, ví dụ acme.",
+        "idRequired": "Cần có ID.",
+        "idTooLong": "Hãy dùng tối đa 64 ký tự.",
+        "nameRequired": "Cần có tên.",
+        "saveFailed": "Không thể lưu nhà cung cấp đó."
+      },
+      "idLabel": "ID",
+      "idPlaceholder": "acme",
+      "keyLabel": "Khoá API (tuỳ chọn)",
+      "keyLabelKeepSaved": "Khoá API (để trống để giữ khoá đã lưu)",
+      "keyPlaceholder": "Để trống nếu không cần khoá",
+      "keyPlaceholderStored": "Khoá đã lưu được giữ nguyên trừ khi bạn nhập khoá mới",
+      "namePlaceholder": "Acme",
+      "presetsLabel": "Nhà cung cấp phổ biến",
+      "saveAnyway": "Vẫn lưu",
+      "submitAdd": "Thêm nhà cung cấp",
+      "submitAddAnyway": "Thêm không có mô hình"
+    },
+    "instructions": {
+      "capabilitiesTitle": "Khả năng của agent",
+      "customDescription": "Được thêm vào mọi yêu cầu AI như phong cách và sở thích cá nhân của bạn. Trợ lý tuân theo các hướng dẫn này bên cạnh hành vi tích hợp sẵn. Chúng không thể ghi đè công cụ hay quy tắc an toàn của trợ lý.",
+      "customPlaceholder": "Ví dụ: Luôn viết bằng tiếng Anh Anh. Giữ phần giải thích ngắn gọn. Ưu tiên gói enumitem cho danh sách.",
+      "customTitle": "Hướng dẫn tuỳ chỉnh",
+      "defaultModelDescription": "Được dùng mỗi khi bạn bắt đầu cuộc trò chuyện mới. Bạn vẫn có thể đổi mô hình cho từng cuộc trò chuyện từ bảng trò chuyện.",
+      "defaultModelTitle": "Mô hình trò chuyện mặc định",
+      "pdfCaptureDescription": "Cho phép agent chuyển các trang đã biên dịch thành ảnh (verify_pdf_pages) để kiểm tra bố cục bằng thị giác. Hãy tắt nếu bạn không muốn gửi ảnh trang đến nhà cung cấp.",
+      "pdfCaptureLabel": "Cho phép chụp trang PDF cho AI",
+      "reasoningSummariesDescription": "Các mô hình suy nghĩ trước khi trả lời sẽ gửi một bản tóm tắt ngắn về lý luận của chúng. Áp dụng cho mô hình Anthropic và OpenAI.",
+      "reasoningSummariesLabel": "Hiện tóm tắt lý luận",
+      "save": "Lưu hướng dẫn",
+      "saved": "Đã lưu",
+      "toolsHint": "Hãy yêu cầu những việc như \"sửa lỗi LaTeX\", \"thêm phần Công bố\" hoặc \"biên dịch lại và kiểm tra PDF\".",
+      "toolsTitle": "Trợ lý hiện hỗ trợ các công cụ này"
+    },
+    "models": {
+      "addError": {
+        "duplicate": "Mô hình đó đã có trong danh sách.",
+        "empty": "Hãy nhập id mô hình.",
+        "spaces": "Id mô hình không được chứa dấu cách."
+      },
+      "addPlaceholder": "Thêm id mô hình",
+      "changeSummary": "Đã thêm {{added}}, đã gỡ {{removed}}",
+      "custom": "Tuỳ chỉnh",
+      "deleteAriaLabel": "Xóa mô hình {{model}}",
+      "deleteDialog": {
+        "description": "Gỡ \"{{model}}\" khỏi danh sách mô hình của nhà cung cấp này? Mô hình tích hợp sẵn có thể trở lại qua Khôi phục mặc định. Mô hình tuỳ chỉnh có thể thêm lại bằng ID.",
+        "title": "Xóa mô hình"
+      },
+      "deleteTooltip": "Xóa mô hình",
+      "empty": "Chưa có mô hình nào. Hãy thêm một mô hình bên dưới.",
+      "invalidKey": "Khoá API không hợp lệ.",
+      "metadata": {
+        "refreshFailed": "Không thể làm mới dữ liệu mô hình.",
+        "unknownDate": "ngày không rõ",
+        "updated": "Dữ liệu mô hình được cập nhật {{date}}",
+        "updatedBundled": "Dữ liệu mô hình được cập nhật {{date}}, đi kèm ứng dụng",
+        "updatedFromCache": "Dữ liệu mô hình được cập nhật {{date}}, từ lần tải xuống gần nhất"
+      },
+      "noChanges": "Không có thay đổi",
+      "refresh": "Làm mới",
+      "refreshThrottled": "Vừa làm mới cách đây một lúc. Hãy thử lại sau {{seconds}} giây",
+      "restore": "Khôi phục mặc định",
+      "restoreTooltip": "Thêm lại các mô hình tích hợp của nhà cung cấp này",
+      "title": "Mô hình",
+      "unreachable": "Không thể kết nối tới nhà cung cấp.",
+      "unreadableList": "Nhà cung cấp trả về danh sách mô hình mà Oleafly không đọc được.",
+      "updated": "Đã cập nhật {{time}}"
+    },
+    "personas": {
+      "addStarter": "Thêm phong cách",
+      "addStarterFailed": "Không thể thêm {{name}}. {{error}}",
+      "addStarterNamed": "Thêm phong cách {{name}}",
+      "colors": {
+        "forest": "Rừng",
+        "grape": "Nho",
+        "ocean": "Đại dương",
+        "slate": "Đá phiến",
+        "sunset": "Hoàng hôn"
+      },
+      "create": "Tạo phong cách",
+      "delete": "Xóa phong cách",
+      "deleteDescription": "Xóa \"{{name}}\"? Lời nhắc của phong cách này bị gỡ vĩnh viễn và mọi cuộc trò chuyện đang dùng nó sẽ quay về hướng dẫn mặc định của bạn.",
+      "deleteNamed": "Xóa phong cách {{name}}",
+      "description": "Hướng dẫn dùng lại được về cách trợ lý nên làm việc. Hãy chọn một phong cách trong cuộc trò chuyện cho một tác vụ. Khi được chọn, phong cách thay thế hướng dẫn mặc định của bạn.",
+      "edit": "Sửa phong cách",
+      "editNamed": "Sửa phong cách {{name}}",
+      "empty": "Chưa thêm phong cách nào.",
+      "form": {
+        "color": "Màu",
+        "create": "Tạo",
+        "createTitle": "Tạo phong cách",
+        "description": "Đặt hướng dẫn dùng lại được về cách trợ lý nên làm việc.",
+        "editTitle": "Sửa phong cách",
+        "instructions": "Hướng dẫn",
+        "instructionsPlaceholder": "Hãy xem lại bài viết của tôi để rõ ràng và liệt kê những vấn đề quan trọng nhất trước.",
+        "namePlaceholder": "Biên tập viên ngắn gọn",
+        "required": "Cần có tên và lời nhắc.",
+        "saveFailed": "Không thể lưu phong cách đó."
+      },
+      "starters": {
+        "criticalReviewer": "Tìm điểm yếu trong lập luận, phương pháp, bằng chứng và cách trình bày.",
+        "documentEditor": "Sửa văn xuôi, cấu trúc, trích dẫn và mã nguồn LaTeX hoặc Typst bằng các thay đổi tập trung, an toàn.",
+        "figure": "Tạo hình và sơ đồ chất lượng công bố bằng TikZ trong LaTeX hoặc CeTZ trong Typst.",
+        "researchWriter": "Soạn và cấu trúc văn bản học thuật mà không bịa bằng chứng hay trích dẫn."
+      },
+      "suggestedDescription": "Hãy bắt đầu với một trong các phong cách này, rồi sửa hướng dẫn cho phù hợp với cách bạn làm việc.",
+      "suggestedTitle": "Phong cách gợi ý",
+      "title": "Phong cách"
+    },
+    "providers": {
+      "addCustom": "Thêm nhà cung cấp tuỳ chỉnh",
+      "badge": {
+        "connected": "Đã kết nối",
+        "notRunning": "Không chạy",
+        "running": "Đang chạy",
+        "suggested": "Gợi ý"
+      },
+      "blurbs": {
+        "anthropic": "Mô hình Claude - mạnh về mã và viết lách.",
+        "custom": "Nhà cung cấp tuỳ chỉnh.",
+        "deepseek": "Mô hình DeepSeek V4.",
+        "google": "Mô hình Gemini từ Google AI Studio.",
+        "groq": "Suy luận mô hình mở rất nhanh.",
+        "mistral": "Mô hình Mistral và Codestral.",
+        "ollama": "Chạy mô hình trên máy của bạn. Không cần khoá - hãy cài Ollama và tải một mô hình.",
+        "openai": "Mô hình GPT.",
+        "openrouter": "Một khoá, truy cập mô hình từ nhiều phòng thí nghiệm.",
+        "perplexity": "Mô hình Sonar với dữ liệu web trực tiếp.",
+        "xai": "Mô hình Grok từ xAI.",
+        "zai": "Mô hình GLM qua gói đăng ký Z.AI GLM Coding Plan."
+      },
+      "deleteKeyAriaLabel": "Xóa khoá {{provider}}",
+      "deleteKeyTooltip": "Xóa khoá",
+      "docs": "Tài liệu",
+      "editAriaLabel": "Sửa {{provider}}",
+      "editTooltip": "Sửa tên hoặc điểm cuối",
+      "getKey": "Lấy khoá",
+      "intro": "Kết nối những nhà cung cấp bạn dùng bên dưới. Khoá chỉ được lưu ngay trên máy. Lưu một khoá sẽ đặt nó làm mặc định. Bạn có thể chuyển giữa các nhà cung cấp và mô hình đã cấu hình từ danh sách thả xuống trong bảng trò chuyện.",
+      "keyPlaceholder": "Dán khoá API của bạn vào đây",
+      "modelLabel": "Mô hình",
+      "ollama": {
+        "active": "Đang hoạt động",
+        "changeHost": "Đổi máy chủ (nâng cao)",
+        "check": "Kiểm tra Ollama",
+        "checking": "Đang kiểm tra…",
+        "disconnect": "Ngắt kết nối",
+        "hideHost": "Ẩn máy chủ",
+        "installedHint": "Ollama đã được cài ở đây. Khởi động nó mất một chút.",
+        "modelPlaceholder": "Chọn một mô hình để dùng",
+        "noModels": "Ollama đang chạy nhưng chưa cài mô hình nào. Hãy chạy <pull>ollama pull llama3.2</pull>, rồi Kiểm tra lại.",
+        "noneResponding": "Không có Ollama nào phản hồi tại <host>{{host}}</host>.",
+        "notChecked": "Chưa kiểm tra",
+        "notDetected": "Không phát hiện",
+        "recheck": "Kiểm tra lại",
+        "runningModels_other": "Đang chạy · {{count}} mô hình",
+        "setupSteps": "1. Cài từ <download>ollama.com <icon></icon></download> · 2. Ollama tự khởi động (hoặc chạy <serve>ollama serve</serve>) · 3. Tải một mô hình, ví dụ <pull>ollama pull llama3.2</pull> · 4. Kiểm tra lại.",
+        "start": "Khởi động Ollama"
+      },
+      "removeAriaLabel": "Gỡ {{provider}}",
+      "removeDialog": {
+        "description": "Gỡ \"{{provider}}\"? Khoá đã lưu và danh sách mô hình của nó cũng bị xóa theo.",
+        "title": "Gỡ nhà cung cấp tuỳ chỉnh"
+      },
+      "removeTooltip": "Gỡ nhà cung cấp tuỳ chỉnh",
+      "replaceKey": "Thay khoá",
+      "status": {
+        "error": "Lỗi: {{message}}",
+        "errorFallback": "Không thể xác thực khoá.",
+        "valid": "Khoá hợp lệ. Các mô hình đã sẵn sàng bên dưới.",
+        "validating": "Đang kiểm tra khoá..."
+      }
+    },
+    "section": {
+      "agentsLoading": "Đang tải agent…",
+      "errors": {
+        "invalidKey": "Khoá API không hợp lệ.",
+        "keyNotKept": "URL cơ sở đã được lưu nhưng khoá thì chưa. Hãy nhập lại khoá.",
+        "providerGone": "Nhà cung cấp đó không còn tồn tại.",
+        "providerIdInUse": "ID nhà cung cấp đó đã được dùng."
+      },
+      "messages": {
+        "keyRemoved": "Đã gỡ khoá {{provider}}.",
+        "keyRemovedAccessDisabled": "Đã gỡ khoá {{provider}}. Quyền truy cập AI đã bị tắt.",
+        "keySavedCheckedOnUse": "Đã lưu khoá {{provider}}. Khoá sẽ được kiểm tra ở lần dùng đầu tiên.",
+        "keySavedModelsNotListed": "Đã lưu khoá {{provider}} nhưng không có mô hình nào được liệt kê. {{reason}}",
+        "ollamaConnected": "Đã kết nối Ollama · {{model}}",
+        "preferencesReset": "Đã khôi phục tuỳ chọn Trợ lý AI về mặc định.",
+        "providerAdded": "Đã thêm {{provider}}.",
+        "providerAddedAt": "Đã thêm {{provider}} tại {{url}}.",
+        "providerAddedWithoutModels": "Đã thêm {{provider}} không có mô hình. Hãy thêm một mô hình theo tên bên dưới.",
+        "providerConnected": "Đã kết nối {{provider}}.",
+        "providerUpdated": "Đã cập nhật {{provider}}.",
+        "providerUpdatedWithoutModels": "Đã cập nhật {{provider}}. Không thể làm mới danh sách mô hình của nó."
+      },
+      "reset": {
+        "confirmWithProject": "Khôi phục tuỳ chọn Trợ lý AI về mặc định, gồm tình trạng khả dụng của mô hình, các kỹ năng đã bật và ngân sách của dự án này. Nhà cung cấp và mô hình đang dùng, khoá nhà cung cấp, phong cách, quy tắc phê duyệt, lịch sử sử dụng và máy chủ MCP sẽ được giữ nguyên.",
+        "confirmWithoutProject": "Khôi phục tuỳ chọn Trợ lý AI về mặc định, gồm tình trạng khả dụng của mô hình và các kỹ năng đã bật. Nhà cung cấp và mô hình đang dùng, khoá nhà cung cấp, phong cách, quy tắc phê duyệt, lịch sử sử dụng và máy chủ MCP sẽ được giữ nguyên.",
+        "sectionName": "Trợ lý AI"
+      },
+      "tabs": {
+        "agents": "CLI Agent",
+        "instructions": "Hướng dẫn",
+        "mcp": "MCP",
+        "personas": "Phong cách",
+        "providers": "Nhà cung cấp và khoá",
+        "skills": "Kỹ năng"
+      }
+    },
+    "skills": {
+      "addFolder": "Thêm thư mục",
+      "addFolderDialogTitle": "Thêm thư mục kỹ năng",
+      "catalog": {
+        "allDomains": "Tất cả",
+        "description": "Các kỹ năng bổ sung cho những lĩnh vực nghiên cứu cụ thể. Hãy cài một kỹ năng để thêm vào danh sách phía trên.",
+        "domainFilterLabel": "Lọc kệ theo lĩnh vực",
+        "empty": "Danh mục không có kỹ năng bổ sung nào để cài.",
+        "install": "Cài đặt",
+        "loading": "Đang tải danh mục...",
+        "messages": {
+          "installed": "Đã cài {{name}}.",
+          "removed": "Đã gỡ {{name}}."
+        },
+        "progress": {
+          "downloading": "Đang tải xuống...",
+          "downloadingPercent": "Đang tải {{percent}}%",
+          "extracting": "Đang giải nén...",
+          "extractingPercent": "Đang giải nén {{percent}}%",
+          "failed": "Cài đặt thất bại.",
+          "finishing": "Đang hoàn tất cài đặt..."
+        },
+        "refresh": "Làm mới",
+        "source": {
+          "bundled": "Danh mục tích hợp",
+          "bundledOffline": "Danh mục tích hợp, không thể kết nối mạng",
+          "cached": "Danh mục đã lưu đệm từ cdn.oleafly.com, tải lần cuối {{when}}",
+          "cachedOffline": "Danh mục đã lưu đệm từ cdn.oleafly.com, tải lần cuối {{when}}, không thể kết nối mạng",
+          "cachedUnknown": "Danh mục đã lưu đệm từ cdn.oleafly.com, tải lần cuối vào thời điểm không rõ",
+          "cachedUnknownOffline": "Danh mục đã lưu đệm từ cdn.oleafly.com, tải lần cuối vào thời điểm không rõ, không thể kết nối mạng",
+          "remote": "Danh mục từ cdn.oleafly.com, tải {{when}}",
+          "remoteUnknown": "Danh mục từ cdn.oleafly.com, tải vào thời điểm không rõ"
+        },
+        "title": "Kệ lĩnh vực",
+        "uninstall": "Gỡ cài đặt",
+        "update": "Cập nhật"
+      },
+      "changedForProject": "Đã thay đổi cho dự án này",
+      "createSkill": "Tạo kỹ năng",
+      "description": "Trợ lý chỉ tải toàn bộ hướng dẫn của kỹ năng khi cần, hoặc ngay khi bạn nhập /skill-id trong cuộc trò chuyện. Kỹ năng bạn bật ở đây được bật trong mọi dự án. Để chỉ thay đổi cho dự án đang mở, hãy chuyển sang Dự án này.",
+      "editAria": "Sửa {{name}}",
+      "editor": {
+        "createDescription": "Tạo bản nháp SKILL.md trong thư mục kỹ năng Oleafly của bạn.",
+        "createTitle": "Tạo kỹ năng",
+        "descriptionPlaceholder": "Kiểm tra xem mỗi khẳng định có bằng chứng hỗ trợ không.",
+        "editDescription": "Tinh chỉnh siêu dữ liệu và hướng dẫn được lưu trong SKILL.md.",
+        "editTitle": "Sửa kỹ năng",
+        "instructions": "Hướng dẫn",
+        "instructionsHint": "Để trống để tạo khung hướng dẫn tối thiểu.",
+        "instructionsPlaceholder": "Liệt kê khi nào nên dùng kỹ năng này và các bước trợ lý cần làm theo.",
+        "namePlaceholder": "Trình kiểm tra khẳng định",
+        "requiredAll": "Cần có tên, mô tả và hướng dẫn.",
+        "requiredBasics": "Cần có tên và mô tả.",
+        "submitCreate": "Tạo"
+      },
+      "empty": "Không tìm thấy kỹ năng nào. Hãy thêm một thư mục hoặc tạo mới.",
+      "fileCount_other": "{{count}} tệp",
+      "groups": {
+        "shelf": "Kệ lĩnh vực",
+        "user": "Kỹ năng của bạn"
+      },
+      "invalidBadge": "Không hợp lệ",
+      "loadFailed": "Không thể tải kỹ năng. {{message}}",
+      "loading": "Đang tải kỹ năng...",
+      "messages": {
+        "added": "Đã thêm {{name}}.",
+        "created": "Đã tạo {{name}}.",
+        "editorClosed": "Trình biên tập kỹ năng không còn mở.",
+        "removed": "Đã gỡ {{name}}.",
+        "saved": "Đã lưu {{name}}.",
+        "updated": "Đã cập nhật {{name}}."
+      },
+      "missingDescription": "Kỹ năng này cần có mô tả.",
+      "phases": {
+        "authoring": "Soạn thảo",
+        "communication": "Giao tiếp",
+        "figures": "Hình ảnh",
+        "research": "Nghiên cứu",
+        "review": "Xem xét",
+        "submission": "Nộp bài",
+        "tooling": "Công cụ"
+      },
+      "removeAria": "Gỡ {{name}}",
+      "removeDialog": {
+        "description": "Gỡ \"{{name}}\" và thư mục của nó khỏi Oleafly? Không thể hoàn tác thao tác này.",
+        "title": "Gỡ kỹ năng"
+      },
+      "resetProject": "Đặt lại",
+      "resetProjectAria": "Đặt lại {{name}} về thiết lập Mọi dự án",
+      "scope": {
+        "device": "Mọi dự án",
+        "label": "Nơi áp dụng các thiết lập này",
+        "project": "Dự án này"
+      },
+      "search": {
+        "ariaLabel": "Tìm kỹ năng và kệ lĩnh vực",
+        "empty": "Không có kỹ năng nào phù hợp",
+        "placeholder": "Tìm kỹ năng"
+      },
+      "share": {
+        "description": "Liên kết kỹ năng của bạn vào những thư mục mà các agent lập trình khác trên máy tính này đã đọc, để bạn chỉ viết một lần và mọi agent đều dùng được.",
+        "emptyBody": "Không tìm thấy thư mục agent nào khác trên máy tính này.",
+        "status": {
+          "linked": "Đã liên kết {{linked}} trên {{total}}",
+          "undetected": "Không tìm thấy trên thiết bị này",
+          "unsupported": "Không được hỗ trợ trên hệ thống này"
+        },
+        "summary": {
+          "checking": "Đang kiểm tra thư mục agent",
+          "linked_other": "Đã liên kết {{linked}} trên {{count}} agent",
+          "none": "Không tìm thấy thư mục agent nào khác"
+        },
+        "title": "Chia sẻ kỹ năng với các agent khác trên máy tính này"
+      },
+      "source": {
+        "added": "Đã thêm",
+        "bundled": "Tích hợp sẵn",
+        "catalog": "Đã cài"
+      },
+      "tier": {
+        "credits": "Từ {{credits}}",
+        "native": "Quy trình Oleafly",
+        "shelf": "Kỹ năng kệ lĩnh vực",
+        "shelfWithLicense": "Kệ lĩnh vực, {{license}}",
+        "user": "Kỹ năng của bạn",
+        "vendored": "Kỹ năng đi kèm"
+      },
+      "title": "Kỹ năng",
+      "updateAction": "Cập nhật",
+      "updateDialog": {
+        "description": "Thay \"{{name}}\" bằng phiên bản tích hợp mới nhất? Mọi chỉnh sửa cục bộ đối với các tệp của nó sẽ bị mất.",
+        "title": "Cập nhật kỹ năng"
+      },
+      "useInAllProjectsAria": "Dùng {{name}} trong mọi dự án",
+      "useInProjectAria": "Dùng {{name}} trong dự án này",
+      "validateAria": "Kiểm tra {{name}}",
+      "shadowNote": "Đã có phiên bản Oleafly mới hơn của kỹ năng này.",
+      "replaceAction": "Dùng phiên bản Oleafly",
+      "replaceTitle": "Thay bản sao {{name}} của bạn?",
+      "replaceBody": "Bản sao của bạn được chuyển vào thư mục sao lưu. Không có gì bị xóa.",
+      "replaced": "Bản sao của bạn nằm tại {{path}}."
+    },
+    "tools": {
+      "tabLabel": "Công cụ",
+      "loading": "Đang tải cài đặt Công cụ…",
+      "modelTitle": "Mô hình cho Công cụ",
+      "modelDescription": "Ảnh sang LaTeX, ảnh phương trình và PDF quét dùng mô hình này. Lựa chọn tự động dùng Ollama để ảnh ở lại trên máy tính này. Nếu Ollama không chạy hoặc không có mô hình đọc được hình ảnh, tính năng Ảnh sang LaTeX và Ảnh sang Typst của trình biên tập sẽ gửi ảnh đến mô hình của trợ lý thay thế.",
+      "ocrHint": "Để có kết quả cục bộ tốt nhất, hãy tải một mô hình OCR trong Ollama:",
+      "mathpix": {
+        "title": "Mathpix",
+        "description": "Tuỳ chọn. Mathpix đọc phương trình, bảng và PDF quét, đồng thời tính phí vào tài khoản Mathpix của bạn cho mỗi hình ảnh và trang.",
+        "docs": "Lấy khoá Mathpix",
+        "appIdLabel": "App ID",
+        "appKeyLabel": "App key",
+        "save": "Lưu khoá",
+        "remove": "Gỡ khoá",
+        "connected": "Đã kết nối với tư cách {{appId}}",
+        "saved": "Đã lưu khoá Mathpix.",
+        "removed": "Đã gỡ khoá Mathpix.",
+        "privacy": "Oleafly yêu cầu Mathpix không giữ hình ảnh của bạn và xóa từng PDF khỏi Mathpix sau khi đọc kết quả."
+      }
+    }
+  },
+  "appearance": {
+    "app": {
+      "accent": {
+        "description": "Dùng cho nút, vùng chọn và con trỏ của trình biên tập.",
+        "label": "Màu nhấn",
+        "swatchAriaLabel": "Màu nhấn {{name}}"
+      },
+      "appIcon": {
+        "about": "Nơi biểu tượng ứng dụng hiển thị",
+        "aurora": "Cực quang",
+        "blue": "Xanh dương",
+        "coral": "San hô",
+        "description": "Chọn biểu tượng Oleafly hiển thị trong Dock hoặc thanh tác vụ khi ứng dụng đang mở.",
+        "iridescent": "Óng ánh",
+        "label": "Biểu tượng ứng dụng",
+        "light": "Sáng",
+        "mint": "Bạc hà",
+        "note": "Finder, menu Start và trình khởi chạy ứng dụng vẫn hiển thị biểu tượng mặc định.",
+        "ocean": "Đại dương",
+        "pastel": "Pastel",
+        "prism": "Lăng kính",
+        "sunset": "Hoàng hôn"
+      },
+      "bgPattern": {
+        "description": "Chọn họa tiết phía sau kệ dự án.",
+        "dots": "Chấm",
+        "grid": "Lưới",
+        "label": "Họa tiết nền"
+      },
+      "dock": {
+        "bottom": "Dưới",
+        "description": "Chọn vị trí của dock trên màn hình chính.",
+        "label": "Vị trí dock",
+        "left": "Trái",
+        "right": "Phải"
+      },
+      "font": {
+        "description": "Chọn bất kỳ phông chữ nào đã cài trên máy tính cho menu, bảng điều khiển và hộp thoại.",
+        "label": "Phông chữ ứng dụng"
+      },
+      "fontSize": {
+        "description": "Điều chỉnh cỡ chữ trên menu, bảng điều khiển và nút.",
+        "label": "Cỡ chữ ứng dụng"
+      },
+      "zoom": {
+        "description": "Làm mọi thứ trong Oleafly lớn hơn hoặc nhỏ hơn, kể cả trình biên tập và PDF.",
+        "label": "Thu phóng",
+        "option": "{{value}}%"
+      },
+      "theme": {
+        "description": "Chế độ Hệ thống theo hệ điều hành và thay đổi cùng hệ điều hành.",
+        "label": "Giao diện"
+      }
+    },
+    "customTheme": {
+      "cleared": "Đã xóa tuỳ chỉnh giao diện.",
+      "customCss": {
+        "description": "Các khai báo tuỳ chọn chỉ áp dụng bên trong ứng dụng. Quy tắc, lệnh import và URL bị chặn.",
+        "label": "Khai báo CSS giới hạn phạm vi"
+      },
+      "darkRestored": "Đã khôi phục các token tối.",
+      "description": "Thay đổi token màu của ứng dụng cho từng chế độ. Các thay đổi được lưu ngay trên máy và có hiệu lực tức thì.",
+      "exportTheme": "Xuất giao diện",
+      "fileTooLarge": "Tệp giao diện lớn hơn 128 KiB.",
+      "importFileAriaLabel": "Nhập tệp giao diện",
+      "importTheme": "Nhập giao diện",
+      "imported": "Đã nhập và áp dụng giao diện.",
+      "importedSkippedMore_other": "Đã nhập và áp dụng giao diện. Đã bỏ qua {{count}} token mà Oleafly không dùng: {{tokens}}, và nhiều mục khác.",
+      "importedSkipped_other": "Đã nhập và áp dụng giao diện. Đã bỏ qua {{count}} token mà Oleafly không dùng: {{tokens}}.",
+      "lightRestored": "Đã khôi phục các token sáng.",
+      "modeDark": "Chế độ tối",
+      "modeFieldsetAriaLabel": "Chế độ giao diện cần sửa",
+      "modeLight": "Chế độ sáng",
+      "pickColorDark": "Chọn màu {{token}} cho chế độ tối",
+      "pickColorLight": "Chọn màu {{token}} cho chế độ sáng",
+      "radius": {
+        "description": "Dùng một giá trị như 8px, 0.5rem hoặc 1em. Để trống để dùng mặc định.",
+        "label": "Bán kính góc"
+      },
+      "resetAll": "Đặt lại tất cả",
+      "resetMode": "Đặt lại",
+      "title": "Tuỳ chỉnh giao diện",
+      "tokenInputDark": "Token {{token}} cho chế độ tối",
+      "tokenInputLight": "Token {{token}} cho chế độ sáng",
+      "tokens": {
+        "accent": "Màu nhấn",
+        "accentForeground": "Chữ trên màu nhấn",
+        "background": "Nền",
+        "border": "Viền",
+        "card": "Bảng điều khiển",
+        "cardForeground": "Chữ trên bảng điều khiển",
+        "destructive": "Nguy hiểm",
+        "destructiveForeground": "Chữ nguy hiểm",
+        "foreground": "Chữ",
+        "input": "Viền ô nhập",
+        "muted": "Dịu",
+        "mutedForeground": "Chữ dịu",
+        "popover": "Bảng nổi",
+        "popoverForeground": "Chữ trên bảng nổi",
+        "primary": "Chính",
+        "primaryForeground": "Chữ chính",
+        "ring": "Vòng tiêu điểm",
+        "secondary": "Phụ",
+        "secondaryForeground": "Chữ phụ",
+        "sidebar": "Thanh bên",
+        "sidebarAccent": "Màu nhấn thanh bên",
+        "sidebarAccentForeground": "Chữ trên màu nhấn thanh bên",
+        "sidebarBorder": "Viền thanh bên",
+        "sidebarForeground": "Chữ thanh bên"
+      }
+    },
+    "editor": {
+      "autoCloseBrackets": {
+        "description": "Tự động chèn dấu ngoặc đóng và dấu ngoặc đơn đóng.",
+        "label": "Tự đóng ngoặc"
+      },
+      "autoCloseEnvironments": {
+        "description": "Chèn \\end khi bạn nhấn Enter sau \\begin.",
+        "label": "Tự đóng môi trường"
+      },
+      "autoCloseMath": {
+        "description": "Ghép cặp $, \\( và \\[ khi bạn nhập.",
+        "label": "Tự đóng công thức"
+      },
+      "autocomplete": {
+        "description": "Hiện gợi ý mã khi bạn nhập. Ctrl+Space vẫn mở gợi ý khi tắt tuỳ chọn này.",
+        "label": "Tự động hoàn thành"
+      },
+      "font": {
+        "description": "Chọn bất kỳ phông chữ nào đã cài trên máy tính cho tệp mã nguồn.",
+        "label": "Phông chữ trình biên tập",
+        "monospace": "Đơn cách"
+      },
+      "useAppFont": {
+        "description": "Trình biên tập dùng phông chữ và cỡ chữ của ứng dụng.",
+        "disabledHint": "Hãy tắt Dùng phông chữ ứng dụng để thay đổi mục này.",
+        "label": "Dùng phông chữ ứng dụng"
+      },
+      "fontSize": {
+        "description": "Đặt cỡ chữ của trình biên tập mã nguồn.",
+        "label": "Cỡ chữ trình biên tập",
+        "custom": "Tuỳ chỉnh",
+        "customLabel": "Cỡ chữ trình biên tập tuỳ chỉnh theo pixel"
+      },
+      "ghostCompletion": {
+        "description": "Hiện gợi ý hoàn thành khả dĩ sau con trỏ. Nhấn Tab để chấp nhận.",
+        "label": "Gợi ý nội tuyến"
+      },
+      "stickyScroll": {
+        "description": "Giữ phần, tiêu đề và môi trường hiện tại ở đầu khi bạn cuộn.",
+        "label": "Cuộn dính"
+      },
+      "theme": {
+        "dark": {
+          "description": "Giao diện trình biên tập khi ứng dụng ở chế độ tối.",
+          "label": "Giao diện ở chế độ tối"
+        },
+        "light": {
+          "description": "Giao diện trình biên tập khi ứng dụng ở chế độ sáng.",
+          "label": "Giao diện ở chế độ sáng"
+        }
+      },
+      "colors": {
+        "description": "Thay đổi bất kỳ màu nào của giao diện trình biên tập. Thay đổi được giữ riêng cho từng giao diện.",
+        "editing": "Đang sửa {{theme}}",
+        "editorGroup": "Trình biên tập",
+        "mode": {
+          "dark": "Chế độ tối",
+          "light": "Chế độ sáng"
+        },
+        "modeAriaLabel": "Giao diện cần tuỳ chỉnh",
+        "names": {
+          "background": "Nền",
+          "command": "Lệnh",
+          "comment": "Chú thích",
+          "environment": "Môi trường",
+          "formatting": "Định dạng",
+          "heading": "Tiêu đề",
+          "lineNumbers": "Số dòng",
+          "link": "Liên kết",
+          "math": "Công thức",
+          "name": "Tên và khoá",
+          "reference": "Trích dẫn và tham chiếu",
+          "selection": "Vùng chọn",
+          "structure": "Phần mở đầu và import",
+          "symbol": "Dấu ngoặc và ký hiệu",
+          "text": "Văn bản",
+          "value": "Giá trị và chuỗi"
+        },
+        "pick": "Chọn màu cho {{color}}",
+        "previewAriaLabel": "Ngôn ngữ xem trước",
+        "reset": "Đặt lại",
+        "syntaxGroup": "Cú pháp",
+        "title": "Màu trình biên tập",
+        "useThemeColor": "Dùng màu giao diện cho {{color}}"
+      },
+      "keymap": {
+        "description": "Chọn bộ phím tắt mà trình biên tập mã nguồn sử dụng.",
+        "label": "Phím tắt",
+        "options": {
+          "default": "Mặc định",
+          "emacs": "Emacs",
+          "vim": "Vim"
+        }
+      },
+      "lineHeight": {
+        "description": "Đặt khoảng cách dọc giữa các dòng mã nguồn.",
+        "label": "Chiều cao dòng",
+        "options": {
+          "compact": "Gọn",
+          "normal": "Bình thường",
+          "wide": "Rộng",
+          "custom": "Tuỳ chỉnh"
+        },
+        "customLabel": "Chiều cao dòng tuỳ chỉnh"
+      },
+      "letterSpacing": {
+        "customLabel": "Khoảng cách chữ tuỳ chỉnh theo pixel",
+        "description": "Thêm khoảng trống giữa các ký tự trong trình biên tập mã nguồn. Tuỳ chọn này cũng tạo thêm chỗ quanh con trỏ.",
+        "label": "Khoảng cách chữ",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "Bình thường",
+          "custom": "Tuỳ chỉnh"
+        }
+      },
+      "cursorWidth": {
+        "label": "Độ rộng con trỏ",
+        "description": "Đặt độ dày của con trỏ trình biên tập.",
+        "option": "{{width}}px"
+      },
+      "cursorHeight": {
+        "label": "Chiều cao con trỏ",
+        "description": "Đặt chiều cao của con trỏ trình biên tập. Dòng làm con trỏ cao bằng cả dòng.",
+        "options": {
+          "text": "Theo chữ",
+          "line": "Theo dòng"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Nhấp nháy con trỏ",
+        "description": "Chọn cách con trỏ trình biên tập nhấp nháy. Tắt để giữ con trỏ đứng yên.",
+        "options": {
+          "blink": "Nhấp nháy",
+          "smooth": "Mượt",
+          "phase": "Theo pha",
+          "expand": "Mở rộng",
+          "off": "Tắt"
+        }
+      },
+      "cursorColor": {
+        "label": "Màu con trỏ",
+        "description": "Giao diện sáng và tối của trình biên tập có màu con trỏ riêng. Cho đến khi bạn chọn, màu của giao diện được dùng.",
+        "light": "Sáng",
+        "dark": "Tối",
+        "pickLight": "Chọn màu con trỏ cho giao diện trình biên tập sáng",
+        "pickDark": "Chọn màu con trỏ cho giao diện trình biên tập tối",
+        "useTheme": "Dùng màu giao diện"
+      },
+      "lineWrap": {
+        "description": "Ngắt dòng dài thay vì cuộn ngang.",
+        "label": "Ngắt dòng dài"
+      },
+      "highlightCurrentLine": {
+        "label": "Tô sáng dòng hiện tại",
+        "description": "Tô màu dòng đang chứa con trỏ."
+      },
+      "tabSize": {
+        "description": "Số dấu cách chèn cho mỗi cấp thụt lề và độ rộng hiển thị của một tab.",
+        "label": "Cỡ tab"
+      },
+      "mathPreview": {
+        "description": "Hiện công thức đã kết xuất phía trên công thức chứa con trỏ.",
+        "label": "Xem trước công thức"
+      },
+      "typst": {
+        "title": "Typst",
+        "formatOnSave": {
+          "description": "Sắp xếp tệp Typst bằng typstyle khi bạn nhấn ⌘S hoặc Ctrl+S. Tự động lưu không thay đổi tệp.",
+          "label": "Định dạng khi lưu"
+        },
+        "lineWidth": {
+          "description": "typstyle ngắt các dòng dài hơn mức này.",
+          "label": "Độ rộng dòng của trình định dạng"
+        },
+        "indent": {
+          "description": "Số dấu cách cho mỗi cấp thụt lề trong mã Typst đã định dạng.",
+          "label": "Thụt lề của trình định dạng"
+        },
+        "inlayHints": {
+          "description": "Hiện tên tham số trước đối số trong các lệnh gọi hàm Typst.",
+          "label": "Gợi ý tên tham số"
+        },
+        "lint": {
+          "description": "Kiểm tra tệp Typst để tìm lỗi khả dĩ mỗi khi được lưu. Bật hoặc tắt tuỳ chọn này sẽ khởi động lại máy chủ ngôn ngữ Typst.",
+          "label": "Kiểm tra lint Typst"
+        }
+      },
+      "fileMove": {
+        "label": "Khi tệp được di chuyển",
+        "description": "Cập nhật đường dẫn trỏ tới tệp đã đổi tên hoặc di chuyển trong mã nguồn LaTeX, Typst và Markdown.",
+        "options": {
+          "ask": "Hỏi",
+          "always": "Luôn cập nhật",
+          "never": "Không bao giờ cập nhật"
+        }
+      }
+    },
+    "files": {
+      "hidden": {
+        "addAriaLabel": "Thêm mẫu tệp ẩn",
+        "description": "Chọn những tệp và thư mục được tạo ra sẽ không hiện trong cây dự án.",
+        "inputAriaLabel": "Tên hoặc mẫu tệp cần ẩn",
+        "placeholder": "Thêm tên hoặc mẫu tệp",
+        "removeAriaLabel": "Gỡ {{pattern}} khỏi danh sách tệp ẩn",
+        "title": "Ẩn tệp khỏi cây tệp"
+      },
+      "homeView": {
+        "description": "Chọn cách sắp xếp dự án trong thư viện.",
+        "grid": "Lưới",
+        "label": "Chế độ xem trang chủ mặc định",
+        "list": "Danh sách"
+      },
+      "openIn": {
+        "description": "Chọn bố cục dùng khi mở dự án.",
+        "label": "Mở dự án trong"
+      },
+      "showTree": {
+        "description": "Mở cây tệp mã nguồn mỗi khi bạn vào một dự án.",
+        "label": "Hiện cây tệp khi mở"
+      }
+    },
+    "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} chưa được cài nên phông chữ mặc định được dùng thay thế.",
+    "preview": {
+      "darkMode": {
+        "description": "Đảo màu PDF theo mặc định. Bạn vẫn có thể đổi màu từ thanh công cụ xem trước.",
+        "label": "Chế độ tối cho PDF"
+      },
+      "hoverPreview": {
+        "description": "Hiện trang đã biên dịch gần nhất khi bạn rê chuột qua một dự án trong thư viện.",
+        "label": "Xem trước PDF khi rê chuột"
+      }
+    },
+    "sectionName": "Giao diện",
+    "tabs": {
+      "app": "Ứng dụng",
+      "editor": "Trình biên tập",
+      "files": "Dự án",
+      "pdf": "Xem trước PDF",
+      "terminal": "Terminal"
+    },
+    "terminal": {
+      "colorTheme": {
+        "ariaLabel": "Giao diện màu terminal",
+        "description": "Chọn bảng màu ANSI của terminal.",
+        "label": "Giao diện màu",
+        "optionDark": "{{name}} · tối",
+        "optionLight": "{{name}} · sáng"
+      },
+      "colors": {
+        "background": "Nền",
+        "backgroundAriaLabel": "Màu nền terminal",
+        "cursor": "Con trỏ",
+        "cursorAriaLabel": "Màu con trỏ terminal",
+        "description": "Điều chỉnh các màu nền tảng trong khi vẫn giữ bảng màu ANSI đã chọn.",
+        "followingAppTheme": "Đang theo giao diện ứng dụng: bảng màu tối ở chế độ tối, bảng màu sáng ở chế độ sáng. Hãy chọn một bảng màu cụ thể ở trên để tuỳ chỉnh các màu này.",
+        "foreground": "Chữ",
+        "foregroundAriaLabel": "Màu chữ terminal",
+        "label": "Màu terminal"
+      },
+      "confirmClose": {
+        "description": "Hỏi trước khi đóng một terminal vẫn đang chạy chương trình, kể cả khi đóng dự án hoặc thoát ứng dụng.",
+        "label": "Hỏi trước khi đóng terminal bận"
+      },
+      "copyOnSelect": {
+        "description": "Sao chép văn bản terminal ngay khi bạn chọn.",
+        "label": "Sao chép khi chọn"
+      },
+      "cursorBlink": {
+        "description": "Làm con trỏ terminal nhấp nháy.",
+        "label": "Nhấp nháy con trỏ"
+      },
+      "cursorStyle": {
+        "ariaLabel": "Kiểu con trỏ terminal",
+        "bar": "Vạch",
+        "block": "Khối",
+        "description": "Chọn hình dạng con trỏ terminal.",
+        "label": "Kiểu con trỏ",
+        "underline": "Gạch chân"
+      },
+      "font": {
+        "ariaLabel": "Họ phông chữ terminal",
+        "description": "Chọn phông chữ đơn cách mà terminal sử dụng.",
+        "label": "Phông chữ terminal"
+      },
+      "fontSize": {
+        "description": "Đặt cỡ chữ trong terminal.",
+        "label": "Cỡ chữ terminal"
+      },
+      "fontWeight": {
+        "description": "Đặt độ đậm cho chữ terminal thường.",
+        "label": "Độ đậm chữ thường"
+      },
+      "fontWeightBold": {
+        "description": "Đặt độ đậm cho chữ terminal in đậm.",
+        "label": "Độ đậm chữ in đậm"
+      },
+      "optionIsMeta": {
+        "description": "Gửi tổ hợp phím Option đến shell dưới dạng Meta. Phím Option không còn nhập ký tự đặc biệt.",
+        "label": "Dùng Option như Meta"
+      },
+      "scrollback": {
+        "ariaLabel": "Bộ đệm cuộn terminal",
+        "description": "Số dòng mỗi terminal lưu lại. Càng nhiều dòng càng tốn bộ nhớ.",
+        "label": "Bộ đệm cuộn",
+        "lines_other": "{{value}} dòng"
+      },
+      "shell": {
+        "ariaLabel": "shell của terminal",
+        "description": "Terminal mới khởi động shell này. Terminal đang mở giữ nguyên shell hiện có.",
+        "label": "Shell",
+        "notFound": "{{name}} (không tìm thấy)",
+        "notFoundNote": "{{name}} không khả dụng trên máy tính này nên terminal mới không thể khởi động. Hãy chọn shell khác.",
+        "options": {
+          "auto": "Mặc định ({{name}})",
+          "cmd": "Command Prompt",
+          "custom": "Đường dẫn tuỳ chỉnh",
+          "defaultShell": "shell mặc định",
+          "gitBash": "Git Bash",
+          "powershell": "Windows PowerShell",
+          "pwsh": "PowerShell 7",
+          "wsl": "WSL"
+        },
+        "path": {
+          "ariaLabel": "Đường dẫn shell tuỳ chỉnh",
+          "description": "Chương trình mà terminal mới sẽ chạy.",
+          "label": "Đường dẫn shell",
+          "missing": "Hãy nhập đường dẫn đầy đủ tới một shell. Terminal mới không thể khởi động cho đến khi bạn nhập."
+        },
+        "windowsOnly": "{{name}} (chỉ Windows)",
+        "windowsOnlyNote": "{{name}} chỉ chạy trên Windows. Terminal mới ở đây sẽ khởi động {{fallback}} thay thế.",
+        "windowsOnlyNoteDefault": "{{name}} chỉ chạy trên Windows. Terminal mới ở đây sẽ khởi động shell mặc định thay thế."
+      },
+      "shiftEnter": {
+        "ariaLabel": "Shift+Enter trong terminal",
+        "description": "Điều Shift+Enter gửi đến chương trình trong terminal. Xuống dòng cho phép các công cụ kiểu trò chuyện như Claude Code thêm một dòng vào lời nhắc. Enter gửi đi, giống phím Enter.",
+        "enter": "Gửi Enter",
+        "label": "Shift+Enter",
+        "newline": "Chèn dòng mới"
+      },
+      "startWithProject": {
+        "description": "Khởi động shell khi mở dự án thay vì lần đầu bạn hiện terminal.",
+        "label": "Khởi động shell cùng dự án"
+      }
+    },
+    "zen": {
+      "fullScreen": {
+        "description": "Lấp đầy màn hình ở chế độ Zen và khôi phục cửa sổ khi bạn thoát.",
+        "label": "Chuyển toàn màn hình"
+      },
+      "showPdf": {
+        "description": "Nếu PDF đang bị ẩn ở chế độ Zen, hãy mở nó cạnh trình biên tập khi bạn biên dịch.",
+        "label": "Hiện PDF khi biên dịch"
+      },
+      "title": "Chế độ Zen"
+    }
+  },
+  "checkpoints": {
+    "afterCompile": {
+      "description": "Oleafly lưu ở chế độ nền và chỉ khi mã nguồn đã thay đổi.",
+      "label": "Lưu điểm kiểm tra sau mỗi lần biên dịch thành công"
+    },
+    "config": {
+      "loadFailed": "Không thể tải cài đặt điểm kiểm tra.",
+      "saveFailed": "Không thể lưu cài đặt điểm kiểm tra."
+    },
+    "description": "Điểm kiểm tra ghi lại các tệp mã nguồn mà một lần biên dịch thành công đã dùng.",
+    "notifyOnFailure": {
+      "description": "Oleafly thông báo khi không thể lưu điểm kiểm tra, kể cả khi có vấn đề lưu trữ hoặc những tệp không thể ghi lại.",
+      "label": "Hiện thông báo khi không thể lưu điểm kiểm tra"
+    },
+    "title": "Điểm kiểm tra"
+  },
+  "citations": {
+    "actions": {
+      "removeApiKey": "Gỡ khoá API",
+      "removeEmail": "Gỡ email",
+      "removeKey": "Gỡ khoá",
+      "saveApiKey": "Lưu khoá API",
+      "saveEmail": "Lưu email",
+      "saveKey": "Lưu khoá"
+    },
+    "braveSearch": {
+      "docsLink": "API Brave Search",
+      "hint": "Tuỳ chọn. Cho phép trợ lý tìm kiếm web khi nhà cung cấp của nó không có công cụ tìm kiếm riêng.",
+      "keyLabel": "Khoá API Brave Search",
+      "keyRemoveFailed": "Không thể gỡ khoá API Brave Search.",
+      "keyRemoved": "Đã gỡ khoá API Brave Search",
+      "keySaveFailed": "Không thể lưu khoá API Brave Search.",
+      "keySaved": "Đã lưu khoá API Brave Search"
+    },
+    "connected": "Đã kết nối",
+    "description": "Quản lý thông tin xác thực dùng cho các nguồn tìm kiếm học thuật.",
+    "keyFree": {
+      "description": "Các nguồn này dùng được mà không cần khoá API.",
+      "title": "Nguồn không cần thông tin xác thực"
+    },
+    "openAlex": {
+      "docsLink": "Giới hạn tần suất OpenAlex",
+      "emailLabel": "Email liên hệ OpenAlex",
+      "emailPlaceholder": "ban@example.com",
+      "emailRemoveFailed": "Không thể gỡ email liên hệ OpenAlex.",
+      "emailRemoved": "Đã gỡ email liên hệ OpenAlex",
+      "emailSaveFailed": "Không thể lưu email liên hệ OpenAlex.",
+      "emailSaved": "Đã lưu email liên hệ OpenAlex",
+      "hint": "Nên dùng khoá API. OpenAlex yêu cầu khoá cho truy cập thường xuyên, còn tìm kiếm không khoá dùng chung một hạn mức nhỏ mỗi ngày. Email liên hệ cũng cho phép dùng nhóm ưu tiên. Cả hai chỉ được lưu trên thiết bị này.",
+      "keyLabel": "Khoá API OpenAlex",
+      "keyRemoveFailed": "Không thể gỡ khoá API OpenAlex.",
+      "keyRemoved": "Đã gỡ khoá API OpenAlex",
+      "keySaveFailed": "Không thể lưu khoá API OpenAlex.",
+      "keySaved": "Đã lưu khoá API OpenAlex"
+    },
+    "semanticScholar": {
+      "docsLink": "Thông tin API Semantic Scholar",
+      "hint": "Khoá API là tuỳ chọn. Tìm kiếm ẩn danh dùng hạn mức công khai của Semantic Scholar.",
+      "keyLabel": "Khoá API Semantic Scholar",
+      "keyRemoveFailed": "Không thể gỡ khoá API Semantic Scholar.",
+      "keyRemoved": "Đã gỡ khoá API Semantic Scholar",
+      "keySaveFailed": "Không thể lưu khoá API Semantic Scholar.",
+      "keySaved": "Đã lưu khoá API Semantic Scholar"
+    },
+    "serper": {
+      "docsLink": "API Serper",
+      "hint": "Tuỳ chọn. Bật nguồn Google Scholar trong Tìm trích dẫn qua Serper. Nếu không có khoá, nguồn đó sẽ bị bỏ qua khi được chọn.",
+      "keyLabel": "Khoá API Serper",
+      "keyRemoveFailed": "Không thể gỡ khoá API Serper.",
+      "keyRemoved": "Đã gỡ khoá API Serper",
+      "keySaveFailed": "Không thể lưu khoá API Serper.",
+      "keySaved": "Đã lưu khoá API Serper"
+    },
+    "tavily": {
+      "docsLink": "API Tavily",
+      "hint": "Tuỳ chọn. Cho phép trợ lý tìm kiếm web khi nhà cung cấp của nó không có công cụ tìm kiếm riêng.",
+      "keyLabel": "Khoá API Tavily",
+      "keyRemoveFailed": "Không thể gỡ khoá API Tavily.",
+      "keyRemoved": "Đã gỡ khoá API Tavily",
+      "keySaveFailed": "Không thể lưu khoá API Tavily.",
+      "keySaved": "Đã lưu khoá API Tavily"
+    },
+    "title": "Tìm trích dẫn",
+    "webSearchOrder": "Khi tìm kiếm web, trợ lý dùng Brave trước, rồi Tavily, rồi Serper."
+  },
+  "cite": {
+    "apa": "Cùng tài liệu tham khảo đó theo APA nằm sau Cite this repository trên GitHub",
+    "description": "Oleafly miễn phí và mã nguồn mở, và vẫn như vậy khi mọi người biết đến nó. Nếu nó đã giúp ích cho một bài báo, một mục trong thư mục tài liệu của bạn sẽ cho nhà nghiên cứu tiếp theo biết công cụ này đến từ đâu. Hãy sao chép, dán vào tệp .bib của bạn và trích dẫn khoá <citeKey>oleafly</citeKey>.",
+    "title": "Trích dẫn Oleafly trong bài báo của bạn"
+  },
+  "downloads": {
+    "actions": {
+      "allDownloaded": "Đã tải tất cả",
+      "download": "Tải xuống",
+      "downloadAll": "Tải tất cả"
+    },
+    "yourTemplates": {
+      "toggle": "Quản lý mẫu của bạn",
+      "import": "Nhập mẫu",
+      "empty": "Bạn chưa có mẫu riêng nào. Hãy nhập một mẫu ở đây, lưu một dự án thành mẫu từ menu của dự án hoặc tạo mẫu trong thư viện mẫu.",
+      "aiDescription": "Mẫu do AI tạo",
+      "customDescription": "Mẫu của bạn",
+      "deleteTitle": "Xóa mẫu",
+      "deleteDescription": "Xóa \"{{name}}\" khỏi các mẫu của bạn? Những dự án bạn đã tạo từ mẫu này vẫn giữ bản sao riêng.",
+      "deleted": "Đã xóa \"{{name}}\" khỏi các mẫu của bạn",
+      "deleteFailed": "Không thể xóa \"{{name}}\"."
+    },
+    "fontPacks": {
+      "lato": {
+        "description": "Một phông sans-serif nhân văn ấm áp được nhiều mẫu sơ yếu lý lịch và CV hiện đại sử dụng.",
+        "label": "Lato"
+      },
+      "ptsans": {
+        "description": "Một phông sans-serif sạch, trung tính, dễ đọc trên màn hình và bản in.",
+        "label": "PT Sans"
+      },
+      "ptserif": {
+        "description": "Một phông serif chuyển tiếp tinh tế, rất phù hợp với tài liệu học thuật và quản lý.",
+        "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans và Serif CJK, Fandol và LXGW WenKai. Chúng cũng thay thế cho SimSun, SimHei và KaiTi.",
+        "label": "Trung, Nhật và Hàn"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 và 7 Free, cùng Noto Color Emoji.",
+        "label": "Biểu tượng và emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code và Source Code Pro.",
+        "label": "Mã"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans và IBM Plex.",
+        "label": "Sans và serif hiện đại"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus cùng New Computer Modern Sans và Mono.",
+        "label": "Văn bản cổ điển"
+      }
+    },
+    "fonts": {
+      "empty": "Không có phông chữ nào có thể tải xuống.",
+      "engineNote": "Công cụ LuaLaTeX (cho PDF có gắn thẻ, dễ tiếp cận) được quản lý trong phần Công cụ LaTeX.",
+      "heading": "Phông chữ",
+      "tooltip": "Một số mẫu dùng phông chữ mã nguồn mở cao cấp. Để giữ Oleafly nhỏ gọn, những phông này được tải khi cần: khi bạn tạo một mẫu như vậy, phông chữ được tải và sao chép vào dự án để dự án tự chứa và biên dịch được ngoại tuyến. Bạn cũng có thể tải trước ở đây, hoặc gỡ chúng để giải phóng dung lượng."
+    },
+    "packProgress": "{{index}} trên {{total}}",
+    "progress": "{{label}} ({{index}} trên {{total}})",
+    "size": {
+      "kilobytes": "{{value}} KB",
+      "megabytes": "{{value}} MB"
+    },
+    "tabs": {
+      "fonts": "Phông chữ",
+      "templates": "Mẫu",
+      "dictionaries": "Từ điển"
+    },
+    "templates": {
+      "empty": "Không có gói mẫu nào có thể tải xuống.",
+      "heading": "Mẫu",
+      "tooltip": "Các gói mẫu bổ sung được tải khi cần để Oleafly nhỏ gọn. Hãy tải một gói ở đây để dùng mẫu ngoại tuyến, hoặc gỡ sau để giải phóng dung lượng."
+    },
+    "dictionaries": {
+      "empty": "Chưa tải thêm ngôn ngữ nào.",
+      "heading": "Từ điển chính tả",
+      "note": "Hãy chọn một ngôn ngữ trong phần Chung để tải xuống. Năm gói có sẵn luôn dùng được và không được liệt kê ở đây.",
+      "tooltip": "Năm gói ngôn ngữ đi kèm Oleafly. Mọi ngôn ngữ khác được tải khi cần lúc bạn chọn làm từ điển chính tả và được giữ ở đây để dùng ngoại tuyến sau đó. Gỡ một gói sẽ giải phóng dung lượng và quay về thiết lập của ứng dụng."
+    },
+    "errors": {
+      "fontDownloadFailed": "Không thể tải phông chữ.",
+      "fontsDownloadFailed": "Không thể tải các phông chữ.",
+      "fontRemoveFailed": "Không thể gỡ phông chữ.",
+      "packDownloadFailed": "Không thể tải gói mẫu.",
+      "packsDownloadFailed": "Không thể tải các gói mẫu.",
+      "packRemoveFailed": "Không thể gỡ gói mẫu.",
+      "templateDownloadFailed": "Không thể tải mẫu.",
+      "packsRefreshFailed": "Không thể kiểm tra gói mới."
+    },
+    "typstFonts": {
+      "heading": "Phông chữ cho Typst",
+      "tooltip": "Các phông chữ miễn phí mà nhiều mẫu Typst yêu cầu. Sau khi tải, mọi dự án Typst đều có thể dùng chúng, trừ dự án đã tắt phông chữ hệ thống."
+    },
+    "packs": {
+      "browse": "Duyệt",
+      "back": "Quay lại các gói",
+      "count_other": "{{count}} mẫu",
+      "installedCount": "Đã cài {{installed}} trên {{total}}",
+      "downloadPack": "Tải gói",
+      "refresh": "Kiểm tra gói mới",
+      "searchPacks": "Tìm gói",
+      "searchTemplates": "Tìm mẫu",
+      "noPacks": "Không có gói nào phù hợp",
+      "noTemplates": "Không có mẫu nào phù hợp",
+      "loading": "Đang tải mẫu",
+      "loadFailed": "Không thể tải gói này.",
+      "retry": "Thử lại",
+      "installed": "Đã cài",
+      "engineFilter": "Công cụ",
+      "kindFilter": "Loại",
+      "languageFilter": "Ngôn ngữ",
+      "allEngines": "Mọi công cụ",
+      "allKinds": "Mọi loại",
+      "allLanguages": "Mọi ngôn ngữ",
+      "groups": {
+        "curated": "Tuyển chọn",
+        "community": "Cộng đồng",
+        "typst": "Typst",
+        "university": "Đại học"
+      },
+      "preview": {
+        "image": "Trang đầu của {{name}}",
+        "previous": "Mẫu trước",
+        "next": "Mẫu tiếp theo",
+        "engine": "Công cụ",
+        "license": "Giấy phép",
+        "kind": "Loại",
+        "languages": "Ngôn ngữ",
+        "country": "Quốc gia",
+        "institution": "Cơ sở",
+        "originalSource": "Nguồn gốc",
+        "getTemplate": "Tải mẫu này",
+        "useTemplate": "Dùng mẫu này",
+        "getAndCreate": "Tải và tạo dự án"
+      }
+    }
+  },
+  "engine": {
+    "choices": {
+      "latexmk": {
+        "detail": "Chỉ dùng cho dự án tin cậy. Chạy một bản phân phối TeX cục bộ có thể đọc các tệp mà tài khoản của bạn truy cập được. Hỗ trợ đầy đủ bộ gói và quy trình nhiều lượt. Quyền thực thi lệnh trên máy vẫn là một quyền riêng cho từng dự án.",
+        "name": "latexmk (TeX hệ thống)"
+      },
+      "tectonic": {
+        "detail": "Đi kèm Oleafly. Nhanh, ngoại tuyến, không cần thiết lập. Hỗ trợ LaTeX thông thường và hầu hết gói phổ biến.",
+        "name": "Tectonic (tích hợp sẵn)"
+      }
+    },
+    "defaultEngine": {
+      "heading": "Công cụ biên dịch mặc định",
+      "tooltip": "Áp dụng cho dự án mới. Mỗi dự án ghim công cụ riêng trong project.json, nên cộng tác viên mở cùng dự án sẽ biên dịch giống nhau bất kể thiết lập này."
+    },
+    "distributions": {
+      "empty": "Không phát hiện bản phân phối TeX nào trên máy này.",
+      "heading": "Quản lý bản phân phối TeX",
+      "rowTooltip": "Đi kèm với {{tools}}. Oleafly chạy các công cụ TeX của nó từ {{binDir}}.",
+      "rowTooltipNoTools": "Không tìm thấy latexmk hay tlmgr trong bản cài này. Oleafly chạy các công cụ TeX của nó từ {{binDir}}.",
+      "tooltip": "Mọi thứ mà công cụ latexmk có thể dùng trên máy này. TinyTeX cài vào thư mục home của bạn mà không cần quyền quản trị. Các bản cài hệ thống (MacTeX, TeX Live, MiKTeX) được phát hiện tự động."
+    },
+    "latexmkMissing": "không tìm thấy latexmk",
+    "markdown": {
+      "downloading": "Đang tải…",
+      "heading": "Trình biên dịch Markdown",
+      "install": "Cài Pandoc",
+      "repair": "Sửa Pandoc",
+      "note": "Việc chọn một phụ trợ PDF khác cho Markdown, hoặc dùng pandoc hệ thống thay cho bản được quản lý, chưa được hỗ trợ.",
+      "status": {
+        "checking": "Đang tìm Pandoc…",
+        "installing": "Đang tải một bản phát hành Pandoc đã ghim phiên bản. Lần dùng đầu tiên sẽ mất một chút.",
+        "missing": "Không tìm thấy. Oleafly có thể tải một bản pandoc tương thích (2.19 trở lên) vào thư mục riêng. Không có gì khác trên hệ thống của bạn bị thay đổi.",
+        "ready": "Đã phát hiện. Dự án Markdown được chuyển sang LaTeX bằng pandoc, rồi biên dịch bằng Tectonic tích hợp."
+      },
+      "tectonicDetail": "Dàn trang LaTeX do pandoc tạo ra. Công cụ này đi kèm Oleafly và không cần thiết lập.",
+      "tooltip": "Dự án Markdown được chuyển bằng pandoc (Pandoc Markdown: bảng, chú thích cuối trang, trích dẫn, công thức) sang LaTeX, rồi dàn trang thành PDF bằng Tectonic tích hợp. Pandoc đi kèm Oleafly."
+    },
+    "packages": {
+      "ariaLabel": "Gói LaTeX",
+      "badge": {
+        "breaks": "làm hỏng việc gắn thẻ",
+        "caution": "gắn thẻ: cần lưu ý"
+      },
+      "emptySearch": "Không tìm thấy gói nào. Hãy thử tên hoặc từ khoá khác.",
+      "emptySuggested": "Không có gói gợi ý nào phù hợp. Hãy tìm trên TeX Live để xem toàn bộ danh mục.",
+      "error": {
+        "install": "Không thể cài {{name}}.",
+        "read": "Không thể đọc các gói đã cài.",
+        "remove": "Không thể gỡ {{name}}.",
+        "withDetail": "{{message}} {{detail}}"
+      },
+      "filterAriaLabel": "Tìm gói LaTeX",
+      "filterPlaceholder": "Lọc gói…",
+      "heading": "Gói",
+      "includedIn": "Nằm trong {{package}}. Gỡ gói này cũng gỡ các tệp khác trong gói đó.",
+      "intro": {
+        "available": "Các gói này dành cho dự án dùng latexmk (TeX hệ thống). Tectonic dùng bộ gói riêng.",
+        "unavailable": "Quản lý gói cần TeX Live hoặc TinyTeX. Với MiKTeX, hãy dùng MiKTeX Console."
+      },
+      "refreshInstalled": "Làm mới gói đã cài",
+      "resultsCapped": "{{total}} kết quả TeX Live. Hãy tìm cụ thể hơn để thu hẹp danh sách.",
+      "results_other": "{{count}} kết quả TeX Live.",
+      "search": "Tìm trên TeX Live",
+      "searching": "Đang tìm…",
+      "suggested": "Gói gợi ý. Hãy tìm trên TeX Live để xem thêm.",
+      "tree": {
+        "both": "trong cả hai cây",
+        "system": "trong cây hệ thống",
+        "user": "trong cây cá nhân của bạn"
+      }
+    },
+    "sectionName": "Công cụ",
+    "tagging": {
+      "heading": "Xuất có gắn thẻ / dễ tiếp cận",
+      "hint": {
+        "none": "Hãy cài TinyTeX trong “Quản lý bản phân phối TeX” ở trên để bật xuất có gắn thẻ.",
+        "system": "Đã phát hiện trên hệ thống của bạn. Không cần cài gì.",
+        "tinytex": "Do TinyTeX cung cấp (được quản lý ở trên)."
+      },
+      "status": {
+        "none": "Chưa cài công cụ gắn thẻ",
+        "system": "Đang dùng LuaLaTeX / TeX Live của hệ thống",
+        "tinytex": "Đã cài TinyTeX"
+      },
+      "tooltip": "Công cụ mặc định (Tectonic) nhanh và ngoại tuyến nhưng không tạo được PDF có gắn thẻ, đạt Section 508 / PDF-UA. Việc đó cần LuaLaTeX hệ thống, công cụ có thể đọc tệp cục bộ mà tài khoản của bạn truy cập được và chỉ nên dùng với dự án tin cậy. Oleafly có thể dùng bản phân phối sẵn có hoặc TinyTeX được quản lý."
+    },
+    "tinytex": {
+      "detail": "Một bản TeX Live gọn nhẹ trong thư mục home của bạn. Bản tải lõi khoảng 250 MB. Mẫu tạp chí có thể thêm gói sau này, tổng cộng tối đa khoảng 1 GB. Cài trước giúp LaTeX hệ thống sẵn sàng khi bạn chủ động chọn.",
+      "download": "Tải TinyTeX (~250 MB)",
+      "resume": "Tiếp tục tải (đã xong {{size}} MB)"
+    },
+    "typst": {
+      "detail": "Đi kèm Oleafly nên không cần thiết lập. Chỉ cần kết nối mạng ở lần đầu tài liệu import một gói @preview.",
+      "heading": "Trình biên dịch Typst",
+      "name": "Typst (tích hợp sẵn)",
+      "note": "Chọn phiên bản dự án dùng từ menu Biên dịch. Dự án giữ phiên bản đó cho đến khi bạn thay đổi.",
+      "tooltip": "Oleafly đi kèm một phiên bản Typst và có thể tải thêm phiên bản khác. Mỗi dự án biên dịch bằng phiên bản nó ghim, hoặc bằng mặc định nếu không ghim.",
+      "system": {
+        "name": "Typst trên máy tính này",
+        "detail": "Dự án ghim phiên bản {{version}} có thể biên dịch bằng phiên bản đó."
+      },
+      "versions": {
+        "heading": "Phiên bản",
+        "tooltip": "Dự án mới bắt đầu bằng phiên bản mặc định, và dự án không ghim cũng vậy.",
+        "loading": "Đang kiểm tra phiên bản Typst",
+        "default": "Mặc định",
+        "setDefault": "Dùng Typst {{version}} làm mặc định",
+        "released": "Phát hành {{date}}",
+        "install": "Cài đặt",
+        "installAria": "Cài Typst {{version}}",
+        "removeAria": "Gỡ Typst {{version}}",
+        "removeDefault": "Đây là phiên bản mặc định. Hãy chọn mặc định khác trước khi gỡ.",
+        "tinymist": "Tinymist {{version}}",
+        "source": {
+          "bundled": "Tích hợp sẵn",
+          "downloaded": "Đã tải xuống",
+          "system": "Hệ thống"
+        }
+      },
+      "progress": {
+        "starting": "Đang khởi động",
+        "downloading": "Đang tải {{percent}}%",
+        "verifying": "Đang kiểm tra",
+        "extracting": "Đang giải nén",
+        "done": "Đang hoàn tất"
+      },
+      "languageServer": {
+        "unused_other": "{{count}} bản tải máy chủ ngôn ngữ không được phiên bản Typst nào đã cài dùng.",
+        "remove": "Gỡ các bản tải máy chủ ngôn ngữ không dùng",
+        "removed_other": "Đã gỡ {{count}} bản tải máy chủ ngôn ngữ."
+      },
+      "error": {
+        "load": "Không thể đọc các phiên bản Typst.",
+        "install": "Không thể cài Typst {{version}}.",
+        "remove": "Không thể gỡ Typst {{version}}.",
+        "default": "Không thể đổi phiên bản Typst mặc định.",
+        "removeTinymist": "Không thể gỡ các bản tải máy chủ ngôn ngữ không dùng."
+      },
+      "upgrade": {
+        "heading": "Thử phiên bản mới hơn",
+        "detail": "Biên dịch dự án đang mở bằng một phiên bản mới hơn đã cài và so sánh kết quả trước khi chuyển.",
+        "check": "Kiểm tra bằng Typst {{version}}"
+      }
+    },
+    "notebook": {
+      "loading": "Đang kiểm tra Quarto, Calepin và các ngôn ngữ trên máy này",
+      "source": {
+        "system": "Trên máy tính này",
+        "managed": "Do Oleafly tải xuống"
+      },
+      "active": {
+        "version": "{{tool}} {{version}}",
+        "missing": "Không tìm thấy trên máy tính này."
+      },
+      "managedIdle": "Không được dùng. Oleafly ưu tiên bản sao tìm thấy trên máy tính này.",
+      "download": {
+        "optional": "Tuỳ chọn. Oleafly đã dùng bản sao trên máy tính này.",
+        "license": "Giấy phép {{license}}.",
+        "action": "Tải {{tool}} {{version}} ({{size}})",
+        "actionNoSize": "Tải {{tool}} {{version}}",
+        "notOffered": "Oleafly không thể tải {{tool}} cho máy tính này. Hãy tự cài và Oleafly sẽ tìm thấy."
+      },
+      "removeAria": "Gỡ {{tool}} mà Oleafly đã tải",
+      "languages": {
+        "heading": "Ngôn ngữ",
+        "tooltip": "Mã trong tài liệu Quarto và Calepin chạy bằng các chương trình này.",
+        "notFound": "Không tìm thấy",
+        "note": "Oleafly chạy mã bằng R, Python và Julia đã có trên máy tính này. Ứng dụng không bao giờ cài chúng."
+      },
+      "codeNote": "Mã trong tài liệu chỉ chạy sau khi bạn cho phép mã cho dự án đó trong menu Biên dịch.",
+      "progress": {
+        "starting": "Đang khởi động",
+        "downloading": "Đang tải {{percent}}%",
+        "verifying": "Đang kiểm tra",
+        "extracting": "Đang giải nén",
+        "done": "Đang hoàn tất"
+      },
+      "error": {
+        "load": "Không thể kiểm tra Quarto, Calepin và các ngôn ngữ.",
+        "install": "Không thể cài {{tool}}.",
+        "remove": "Không thể gỡ {{tool}}."
+      }
+    },
+    "quarto": {
+      "heading": "Quarto",
+      "tooltip": "Quarto chuyển tài liệu .qmd và .Rmd thành PDF, trang web hoặc trình chiếu. Oleafly dùng Quarto trên máy tính này khi tìm thấy, hoặc một bản do ứng dụng tải xuống.",
+      "detail": "Oleafly biên dịch tài liệu .qmd và .Rmd bằng bản này.",
+      "downloadDetail": "Oleafly giữ bản sao riêng trong thư mục ứng dụng. Quarto bao gồm Pandoc và các công cụ khác theo giấy phép riêng của chúng."
+    },
+    "calepin": {
+      "heading": "Calepin",
+      "tooltip": "Calepin chạy mã trong tài liệu Typst và đưa kết quả vào PDF. Oleafly dùng Calepin trên máy tính này khi tìm thấy, hoặc một bản do ứng dụng tải xuống.",
+      "detail": "Oleafly biên dịch tài liệu Calepin bằng bản này.",
+      "downloadDetail": "Oleafly giữ bản sao riêng trong thư mục ứng dụng.",
+      "typstNote": "Calepin kết xuất bằng Typst tích hợp trong Oleafly. Calepin cần Typst 0.15 trở lên."
+    }
+  },
+  "gitHosting": {
+    "account": {
+      "ariaLabel": "{{login}} trên {{host}}",
+      "caAdd": "Thêm tệp chứng chỉ",
+      "caChange": "Đổi tệp chứng chỉ",
+      "caFile": "Tệp chứng chỉ: {{file}}",
+      "checking": "Đang kiểm tra…",
+      "signInAgain": "Đăng nhập lại",
+      "signOut": "Đăng xuất",
+      "signedInAs": "Đã đăng nhập với tên {{login}}",
+      "signedOut": "Đã đăng xuất",
+      "unreachable": "Không thể kết nối tới máy chủ"
+    },
+    "add": {
+      "browserHint": "Đăng nhập bằng mã dùng một lần trong trình duyệt của bạn.",
+      "caChoose": "Chọn tệp…",
+      "caFilter": "Tệp chứng chỉ",
+      "caHint": "Chỉ cần khi chứng chỉ của máy chủ do tổ chức của bạn tự cấp.",
+      "caLabel": "Tệp nhà cấp chứng chỉ",
+      "caPickerTitle": "Chọn tệp chứng chỉ",
+      "caRemove": "Gỡ",
+      "chooseKind": "Loại máy chủ",
+      "connect": "Kết nối",
+      "continue": "Tiếp tục",
+      "createToken": "Tạo token trên {{host}}",
+      "detecting": "Đang kiểm tra máy chủ…",
+      "found": "Đây là máy chủ {{kind}}.",
+      "kindGitea": "Gitea hoặc Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
+      "otherServer": "Máy chủ khác",
+      "replaces": "Đăng nhập sẽ thay thế {{login}} trên {{host}}.",
+      "scopesGitea": "Hãy cấp quyền đọc và ghi cho repository và user.",
+      "scopesGithub": "Hãy cấp các phạm vi repo và read:user.",
+      "scopesGitlab": "Hãy cấp các phạm vi api và write_repository.",
+      "serverLabel": "Địa chỉ máy chủ",
+      "serverPlaceholder": "https://git.example.org",
+      "signInBrowser": "Đăng nhập bằng {{host}}",
+      "title": "Thêm tài khoản lưu trữ Git",
+      "tokenLabel": "Token truy cập",
+      "useToken": "Dùng token truy cập thay thế"
+    },
+    "addAccount": "Thêm tài khoản",
+    "description": "Đăng nhập để push và pull, công bố dự án và nhập kho lưu trữ. Hoạt động với GitHub, GitLab, Gitea, Forgejo và Codeberg, cùng máy chủ do bạn tự chạy.",
+    "device": {
+      "open": "Mở {{host}}",
+      "opened": "Oleafly đã mở <verificationLink>{{url}}</verificationLink> trong trình duyệt của bạn. Hãy nhập mã ở đó để hoàn tất đăng nhập.",
+      "timedOut": "Đăng nhập quá thời gian. Hãy thử lại.",
+      "title": "Nhập mã này trên {{host}}",
+      "waiting": "Đang chờ bạn hoàn tất trong trình duyệt…"
+    },
+    "empty": "Chưa có tài khoản nào. Dự án bạn liên kết bằng địa chỉ vẫn push và pull bằng đăng nhập Git hoặc khoá SSH của bạn.",
+    "notice": {
+      "signedIn": "Đã đăng nhập vào {{host}} với tên {{login}}.",
+      "signedOut": "Đã đăng xuất khỏi {{host}}."
+    },
+    "title": "Lưu trữ Git"
+  },
+  "github": {
+    "autoInit": {
+      "description": "Dự án mới và dự án đã mở sẽ có kho lưu trữ Git để bảng Git theo dõi thay đổi. Dự án mới thường bắt đầu với một lần commit các tệp. Sau đó, Oleafly chỉ commit khi bạn yêu cầu.",
+      "label": "Khởi tạo Git cho mọi dự án"
+    },
+    "config": {
+      "loadFailed": "Không thể tải cài đặt Git.",
+      "saveFailed": "Không thể lưu cài đặt Git."
+    }
+  },
+  "integrations": {
+    "actions": {
+      "connect": "Kết nối",
+      "disconnect": "Ngắt kết nối"
+    },
+    "alphaxiv": {
+      "apiKeyHint": "Để lấy khoá, hãy đăng nhập tại <siteLink>alphaxiv.org</siteLink>, mở Cài đặt > API Keys, tạo một khoá và dán vào đây. Oleafly dùng khoá này để kết nối tới <docsLink>máy chủ MCP</docsLink> của alphaXiv.",
+      "apiKeyLabel": "Khoá API alphaXiv",
+      "connected": "Đã kết nối. Trợ lý giờ có thể dùng alphaXiv và sẽ hỏi bạn trước mỗi lần.",
+      "connectFailed": "alphaXiv không chấp nhận khoá này hoặc không thể kết nối. Hãy kiểm tra khoá rồi thử lại.",
+      "description": "Công cụ tìm tài liệu và phân tích bài báo cho trợ lý.",
+      "disconnectFailed": "Không thể ngắt kết nối alphaXiv. Hãy thử lại."
+    },
+    "cookies": {
+      "confirmTitle": "Xác nhận nhập cookie",
+      "detecting": "Đang tìm hồ sơ trình duyệt đã cài...",
+      "dialogDescription": "Hãy chọn một hồ sơ trình duyệt đã cài. Oleafly chỉ đọc hồ sơ đó sau khi bạn xem xét và xác nhận nhập. Cookie của Chromium được mở khoá cục bộ qua macOS Keychain. Oleafly không gửi giá trị cookie đến dịch vụ Oleafly.",
+      "dialogTitle": "Nhập cookie trình duyệt",
+      "empty": "Không tìm thấy hồ sơ trình duyệt được hỗ trợ nào.",
+      "errors": {
+        "chooseProfile": "Hãy chọn một hồ sơ trình duyệt khả dụng."
+      },
+      "profileGroupLabel": "Hồ sơ trình duyệt",
+      "profileLegend": "Hồ sơ trình duyệt",
+      "review": "Xem lại bản nhập",
+      "status": {
+        "available": "Khả dụng",
+        "comingSoon": "Sắp ra mắt",
+        "noCookieStore": "Không có kho cookie",
+        "notInstalled": "Chưa cài"
+      },
+      "tryAgain": "Thử lại",
+      "label": "Đăng nhập bằng trình duyệt",
+      "useBrowserSignIn": "Dùng đăng nhập từ trình duyệt của tôi",
+      "signInDescription": "Sao chép đăng nhập của bạn cho {{server}} từ trình duyệt trên máy tính này để bạn không phải đăng nhập lại.",
+      "site": "Trang: {{domain}}",
+      "confirmCopy": "Oleafly sẽ đọc cookie cho {{domain}} từ hồ sơ {{profile}} trong {{browser}}. Cookie ở lại trong Oleafly và chỉ được gửi đến {{domain}}. Bạn sẽ xác nhận thêm một lần trong hộp thoại hệ thống.",
+      "copyAction": "Sao chép đăng nhập",
+      "copying": "Đang sao chép…",
+      "notSignedIn_other": "Đã sao chép {{count}} cookie từ {{browser}} nhưng chúng không giúp bạn đăng nhập. Hãy đăng nhập trực tiếp."
+    },
+    "zotero": {
+      "apiKeyHint": "Để lấy khoá: đăng nhập tại <siteLink>zotero.org</siteLink>, mở <keyLink>trang khoá API</keyLink> của bạn để tạo khoá và sao chép ID người dùng dạng số từ cùng trang đó.",
+      "apiKeyLabel": "Khoá API Zotero",
+      "connected": "Đã kết nối tới thư viện Zotero của bạn.",
+      "connectedAs": "Đã kết nối với tên {{username}}.",
+      "disconnectFailed": "Oleafly không thể gỡ khoá Zotero đã lưu. Hãy thử lại.",
+      "userIdLabel": "ID người dùng Zotero",
+      "userIdPlaceholder": "ID người dùng",
+      "citeDescription": "Tìm trong toàn bộ thư viện Zotero khi bạn viết và chỉ thêm những gì bạn trích dẫn. Oleafly chỉ đọc thư viện và không bao giờ thay đổi.",
+      "local": {
+        "heading": "Zotero trên máy tính này",
+        "ready": "Đã kết nối tới Zotero {{version}}.",
+        "readyNoVersion": "Đã kết nối tới Zotero.",
+        "bbtFound": "Đã cài Better BibTeX {{version}} nên khoá trích dẫn lấy từ Better BibTeX.",
+        "bbtMissing": "Chưa cài Better BibTeX nên khoá trích dẫn lấy từ Zotero.",
+        "notRunning": "Zotero không chạy. Hãy mở Zotero để tìm trong thư viện, hoặc kết nối tài khoản zotero.org bên dưới.",
+        "apiDisabled": "Trong Zotero, hãy mở Cài đặt > Nâng cao và bật \"Cho phép ứng dụng khác trên máy tính này giao tiếp với Zotero\".",
+        "unsupported": "Phiên bản Zotero này không chia sẻ được thư viện. Hãy cập nhật lên Zotero 7 trở lên.",
+        "unknown": "Oleafly chưa tìm Zotero."
+      },
+      "test": "Kiểm tra kết nối",
+      "syncNow": "Đồng bộ ngay",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Không tìm thấy Better BibTeX",
+        "local": "Đọc từ Zotero trên máy tính này",
+        "web": "Đọc từ zotero.org",
+        "library_other": "{{name}}: {{formatted}} mục"
+      },
+      "library": {
+        "heading": "Thư viện cần tìm",
+        "myLibrary": "Thư viện của tôi",
+        "toggle": "Tìm trong {{name}}",
+        "items_other": "{{formatted}} mục"
+      },
+      "sync": {
+        "never": "Chưa đồng bộ.",
+        "syncing": "Đang đồng bộ thư viện Zotero của bạn…",
+        "progress": "Đang đồng bộ {{done}} trên {{total}} mục…",
+        "status_other": "{{formatted}} mục sẵn sàng để trích dẫn, đồng bộ {{time}}.",
+        "fromCache": "Zotero đã đóng nên tìm kiếm @ dùng bản sao từ lần đồng bộ cuối.",
+        "rateLimited": "zotero.org yêu cầu Oleafly chờ. Ứng dụng sẽ thử lại sau {{time}}."
+      },
+      "account": {
+        "heading": "Tài khoản zotero.org",
+        "description": "Dùng tài khoản của bạn khi Zotero không mở trên máy tính này. Thư viện nhóm cũng được bao gồm."
+      }
+    },
+    "overleaf": {
+      "description": "Mang dự án từ tài khoản Overleaf hoặc máy chủ Overleaf của trường đại học về đây và giữ chúng đồng bộ. Oleafly lưu thông tin đăng nhập và token Git được mã hoá trên máy tính này.",
+      "signedInAs": "Đã đăng nhập với tên {{email}} trên {{server}}",
+      "signedIn": "Đã đăng nhập trên {{server}}",
+      "signOut": "Đăng xuất",
+      "signOutFailed": "Oleafly không thể đăng xuất khỏi Overleaf.",
+      "gitTitle": "Token Git để đồng bộ",
+      "gitSaved": "Đã lưu token Git. Các dự án bạn liên kết vẫn đồng bộ với Overleaf.",
+      "gitMissing": "Chưa có token Git. Hãy tạo một token trong phần tích hợp Git trong cài đặt tài khoản Overleaf để đồng bộ dự án.",
+      "gitOpenSettings": "Mở cài đặt tài khoản Overleaf",
+      "gitPlanNote": "Tích hợp Git cần gói Overleaf trả phí hoặc gói đại học đối với chủ sở hữu dự án.",
+      "gitLabel": "Token Git Overleaf",
+      "gitSave": "Lưu",
+      "gitRemove": "Gỡ",
+      "gitFailed": "Oleafly không thể lưu token Git. Hãy kiểm tra bạn đã dán toàn bộ token."
+    },
+    "desktopApps": {
+      "tab": "Computer Use",
+      "title": "Computer Use",
+      "description": "Cho phép agent dùng ứng dụng và trang web trên máy tính này qua Cua Driver. Agent chỉ truy cập được các ứng dụng và trang web bạn liệt kê ở đây.",
+      "docsLink": "Tài liệu Cua Driver",
+      "status": {
+        "installed": "Đã cài Cua Driver {{version}}.",
+        "installedNoVersion": "Đã cài Cua Driver.",
+        "notInstalled": "Chưa cài Cua Driver.",
+        "tooOld": "Cua Driver {{version}} quá cũ. Oleafly cần {{minimum}} trở lên.",
+        "noAppBundle": "Hãy cài Cua Driver bằng trình cài đặt chính thức để nó có thể giữ quyền macOS.",
+        "unreadableVersion": "Oleafly không thể đọc phiên bản của Cua Driver. Hãy kiểm tra nó chạy được rồi kiểm tra lại.",
+        "path": "Tìm thấy tại {{path}}"
+      },
+      "install": {
+        "heading": "Cài Cua Driver",
+        "hint": "Hãy chạy lệnh này trong terminal hoặc dùng Chạy trong terminal. Lệnh sẽ khởi chạy trình cài đặt chính thức của Cua, và Oleafly không tự tải Cua Driver.",
+        "run": "Chạy trong terminal",
+        "needsProject": "Hãy mở một dự án để chạy lệnh này trong terminal của Oleafly, hoặc sao chép lệnh.",
+        "confirm": "Thao tác này tải trình cài đặt Cua Driver từ cua.ai và chạy trong terminal của bạn. Tiếp tục?",
+        "terminalTitle": "Cài Cua Driver",
+        "checkAgain": "Kiểm tra lại"
+      },
+      "permissions": {
+        "heading": "Quyền trên macOS",
+        "granted": "Cua Driver có thể dùng Trợ năng và Ghi màn hình.",
+        "needed": "Cua Driver cần Trợ năng và Ghi màn hình. Hãy chạy bước cấp quyền và làm theo hướng dẫn.",
+        "unknown": "Oleafly không thể đọc quyền của Cua Driver.",
+        "unchecked": "Cua Driver chưa kiểm tra quyền của nó. Hãy dùng Cấp quyền, rồi bật Trợ năng và Ghi màn hình cho CuaDriver trong Cài đặt hệ thống.",
+        "grant": "Cấp quyền",
+        "terminalTitle": "Quyền của Cua Driver"
+      },
+      "gnome": {
+        "heading": "Trợ giúp GNOME",
+        "needed": "Trên GNOME, hãy chạy trợ giúp cửa sổ Cua một lần, rồi đăng xuất và đăng nhập lại.",
+        "active": "Trợ giúp cửa sổ GNOME đang bật."
+      },
+      "enable": {
+        "label": "Cho phép agent dùng ứng dụng máy tính",
+        "description": "Agent có thể thấy và dùng các ứng dụng và trang web bên dưới."
+      },
+      "apps": {
+        "heading": "Ứng dụng được phép",
+        "empty": "Chưa có ứng dụng nào. Agent chỉ dùng được các ứng dụng bạn thêm ở đây.",
+        "add": "Thêm ứng dụng",
+        "remove": "Gỡ {{name}}",
+        "missing": "Không tìm thấy chương trình này trên máy tính. Hãy gỡ hoặc cài lại ứng dụng.",
+        "dialog": {
+          "title": "Thêm ứng dụng",
+          "description": "Chọn một ứng dụng mà agent được dùng. Chúng có thể mở ứng dụng, đọc cửa sổ và thao tác trong đó.",
+          "search": "Tìm ứng dụng",
+          "loading": "Đang tìm ứng dụng…",
+          "none": "Không có ứng dụng nào phù hợp.",
+          "choose": "Chọn ứng dụng khác…",
+          "add": "Thêm",
+          "added": "Đã thêm trước đó.",
+          "more": "Đang hiển thị {{shown}} trên {{total}}. Hãy tìm kiếm để thu hẹp danh sách.",
+          "refresh": "Làm mới"
+        },
+        "blocked": {
+          "oleafly": "Oleafly không thể điều khiển chính nó.",
+          "driver": "Cua Driver không thể điều khiển chính nó.",
+          "terminal": "Terminal và trình biên tập mã chạy lệnh mà không qua phê duyệt lệnh của Oleafly.",
+          "system_settings": "Cài đặt hệ thống có thể thay đổi quyền.",
+          "passwords": "Ứng dụng quản lý mật khẩu luôn bị cấm.",
+          "scripting": "Trình chạy script có thể làm mọi thứ trên máy tính này.",
+          "wrapper": "Mục này khởi chạy một chương trình khác. Hãy chọn chương trình đó thay thế.",
+          "sandboxed": "Ứng dụng Flatpak và Snap chưa được hỗ trợ.",
+          "browser": "Hãy thêm trang web của trình duyệt trong mục Trang web được phép."
+        }
+      },
+      "sites": {
+        "heading": "Trang web được phép",
+        "empty": "Chưa có trang web nào.",
+        "add": "Thêm trang web",
+        "placeholder": "https://www.example.org",
+        "remove": "Gỡ {{origin}}",
+        "signedIn": {
+          "label": "Dùng trình duyệt đã đăng nhập của tôi",
+          "labelFor": "Dùng trình duyệt đã đăng nhập của tôi trên {{origin}}",
+          "description": "Bật Dùng trình duyệt đã đăng nhập của tôi cho một trang để agent làm việc trong Chrome hoặc Edge của chính bạn ở đó. Khi tắt, agent dùng một hồ sơ trình duyệt riêng."
+        }
+      },
+      "scripted": {
+        "label": "Điều khiển bằng script",
+        "description": "Cho phép agent chạy script Cua thực hiện nhiều bước cùng lúc."
+      },
+      "ask": {
+        "label": "Hỏi trước mỗi hành động",
+        "description": "Phê duyệt từng lần nhấp, lần gõ phím, lần đổi trang và script trong một hộp thoại. Bạn có thể cho phép một loại hành động trong phần còn lại của cuộc trò chuyện, phiên hoặc tác vụ, trừ trình duyệt đã đăng nhập và script. Thêm ứng dụng hoặc trang web sẽ xoá các lựa chọn đó."
+      },
+      "test": {
+        "action": "Kiểm tra kết nối",
+        "running": "Đang kiểm tra…",
+        "ok": "Cua Driver đang chạy với các giới hạn của bạn.",
+        "problems": "Bước tự kiểm tra của Cua Driver cũng báo cáo:",
+        "failed": "Kiểm tra thất bại: {{detail}}"
+      },
+      "tool": {
+        "description": "Dùng các ứng dụng máy tính và trang web bạn đã cho phép trong Cài đặt.",
+        "note": "Chỉ hoạt động trong các ứng dụng và trang web bạn đã cho phép. Khi bật Hỏi trước mỗi hành động, các hành động sẽ hỏi bạn trước."
+      },
+      "task": {
+        "label": "Computer Use",
+        "description": "Cho phép tác vụ này dùng các ứng dụng máy tính được phép của bạn. Khi bật Hỏi trước mỗi hành động, bạn cần ngồi trước máy để phê duyệt hành động.",
+        "off": "Hãy bật Computer Use trong Cài đặt trước.",
+        "unattended": "Tác vụ chạy theo lịch hoặc sau khi đóng Oleafly không dùng được ứng dụng máy tính."
+      },
+      "spaces": {
+        "title": "Cua Spaces",
+        "description": "Kết nối các màn hình máy tính và vùng chứa cô lập từ Cua Spaces dưới dạng máy chủ MCP.",
+        "notInstalled": "Chưa cài lệnh cua.",
+        "connect": {
+          "label": "Kết nối Cua Spaces",
+          "description": "Agent có thể liệt kê các Spaces của bạn và kiểm tra agent đang chạy ở đó."
+        },
+        "fullAccess": {
+          "label": "Cho phép thay đổi",
+          "description": "Agent cũng có thể tạo, xóa Spaces và chạy lệnh trong đó."
+        },
+        "credentials": {
+          "label": "Chia sẻ đăng nhập agent của tôi",
+          "description": "Cho phép agent khởi chạy trong một Space dùng đăng nhập Claude Code hoặc Codex của bạn."
+        },
+        "failed": "Oleafly không thể cập nhật kết nối Cua Spaces.",
+        "install": {
+          "terminalTitle": "Cài Cua",
+          "confirm": "Thao tác này tải trình cài đặt Cua từ cua.ai và chạy trong terminal của bạn. Tiếp tục?"
+        }
+      }
+    }
+  },
+  "language": {
+    "ariaLabel": "Ngôn ngữ giao diện",
+    "description": "Chọn ngôn ngữ giao diện. Mặc định hệ thống sẽ theo hệ điều hành của bạn.",
+    "label": "Ngôn ngữ",
+    "note": "Đổi ngôn ngữ giao diện không làm thay đổi ngôn ngữ tài liệu hay cài đặt hiệu đính.",
+    "system": "Mặc định hệ thống"
+  },
+  "mcp": {
+    "import": {
+      "candidateLabel": "Nhập {{name}} từ {{source}}",
+      "description": "Chọn máy chủ từ các công cụ đã cài trên máy tính này.",
+      "detecting": "Đang tìm máy chủ MCP...",
+      "duplicateOverwritten": "Đã tồn tại. Mục này sẽ bị ghi đè.",
+      "duplicateSkipped": "Đã tồn tại. Mục này sẽ bị bỏ qua.",
+      "duplicates": {
+        "legend": "Khi tên trùng nhau",
+        "overwrite": {
+          "description": "Thay bằng máy chủ đã chọn.",
+          "label": "Ghi đè mục đã có"
+        },
+        "skip": {
+          "description": "Giữ máy chủ đã lưu trong Oleafly.",
+          "label": "Bỏ qua mục đã có"
+        }
+      },
+      "emptyState": "Không tìm thấy cấu hình máy chủ MCP nào.",
+      "importing": "Đang nhập...",
+      "keys": {
+        "environment": "Biến môi trường: {{names}}",
+        "headers": "Tiêu đề: {{names}}"
+      },
+      "sourceError": "{{source}}: {{message}}",
+      "submit": "Nhập mục đã chọn",
+      "summary": {
+        "commandFallback": "Lệnh cục bộ",
+        "remote": "Máy chủ từ xa: {{origin}}.",
+        "remoteUnknown": "Máy chủ từ xa.",
+        "stdio_other": "Lệnh cục bộ: {{command}}. {{count}} đối số."
+      },
+      "title": "Nhập máy chủ MCP"
+    },
+    "registry": {
+      "argumentsLine": "Đối số: {{args}}",
+      "description": "Tìm siêu dữ liệu máy chủ công khai. Không có gì được cài hay khởi chạy ở đây. Hãy xem lại lệnh hoặc URL trước khi thêm.",
+      "emptyQuery": "Hãy nhập tên máy chủ để tìm trong danh mục MCP chính thức.",
+      "environmentLine": "Biến môi trường: {{names}}",
+      "loadMore": "Tải thêm",
+      "noResults": "Không có mục nào phù hợp trong danh mục được trả về.",
+      "review": "Xem lại trước khi thêm",
+      "searchLabel": "Tìm trong danh mục MCP chính thức",
+      "searchPlaceholder": "Tìm tên máy chủ",
+      "title": "Danh mục MCP chính thức",
+      "unsupportedEntry": "Mục này không liệt kê gói hay phương thức truyền từ xa mà Oleafly có thể xem xét.",
+      "version": "v{{version}}"
+    },
+    "section": {
+      "clients": {
+        "title": "Kết nối ứng dụng của bạn"
+      },
+      "description": "Claude Desktop, Claude Code, Cursor và các ứng dụng MCP khác có thể đọc, sửa và biên dịch dự án đang mở, với sự phê duyệt của bạn cho mọi thay đổi.",
+      "enable": {
+        "ariaLabel": "Bật máy chủ MCP",
+        "description": "Chỉ lắng nghe trên máy tính này khi Oleafly đang mở.",
+        "label": "Bật máy chủ MCP"
+      },
+      "footer": "Máy chủ chỉ lắng nghe trên máy tính này (127.0.0.1) và yêu cầu token ở trên. Với hai chính sách đầu, việc xóa tệp luôn yêu cầu bạn xác nhận trong Oleafly. claude.ai trên trình duyệt không thể kết nối tới máy chủ cục bộ. Hãy dùng Claude Desktop thay thế.",
+      "policy": {
+        "ask": {
+          "description": "Ghi, đổi tên và xóa sẽ hiện thẻ phê duyệt trong Oleafly kèm bản so sánh trước khi áp dụng bất cứ điều gì.",
+          "label": "Xác nhận mọi thay đổi"
+        },
+        "autoWrites": {
+          "description": "Ghi và đổi tên được áp dụng ngay. Xóa vẫn hiện thẻ phê duyệt.",
+          "label": "Tự phê duyệt chỉnh sửa, xác nhận khi xóa"
+        },
+        "legend": "Chính sách phê duyệt",
+        "trust": {
+          "description": "Thay đổi tệp được áp dụng mà không hỏi. Lệnh shell và tác vụ nghiên cứu mới luôn hỏi trước. Ứng dụng MCP của bạn vẫn có thể tự hỏi.",
+          "label": "Tin cậy kết nối này"
+        }
+      },
+      "port": {
+        "ariaLabel": "Cổng máy chủ MCP được chọn tự động",
+        "label": "Cổng",
+        "restartAriaLabel": "Khởi động lại máy chủ MCP và chọn một cổng khả dụng",
+        "restartTooltip": "Khởi động lại máy chủ MCP. Oleafly dùng lại cổng này nếu khả dụng, hoặc chọn cổng trống khác."
+      },
+      "readOnly": {
+        "ariaLabel": "Chế độ chỉ đọc",
+        "description": "Ứng dụng bên ngoài có thể đọc và biên dịch nhưng không bao giờ sửa tệp.",
+        "label": "Chỉ đọc"
+      },
+      "status": {
+        "restartedAt": "Đã khởi động lại tại {{url}}",
+        "runningAt": "Đang chạy tại {{url}}"
+      },
+      "title": "Máy chủ MCP Oleafly",
+      "token": {
+        "copyUrl": "Sao chép URL",
+        "enableToView": "Hãy bật máy chủ để xem token.",
+        "help": "Hiện hoặc sao chép token bearer, sao chép URL máy chủ, hoặc tạo lại token cho các ứng dụng MCP đã kết nối.",
+        "hide": "Ẩn",
+        "label": "Token bearer",
+        "regenerate": "Tạo lại",
+        "regenerateWarning": "Các ứng dụng hiện có sẽ cần token mới.",
+        "reveal": "Hiện"
+      }
+    },
+    "servers": {
+      "addServer": "Thêm máy chủ",
+      "browseRegistry": "Duyệt danh mục",
+      "card": {
+        "editLabel": "Sửa {{name}}",
+        "enableLabel": "Bật {{name}}",
+        "noTools": "Không có công cụ nào được báo cáo.",
+        "removeLabel": "Gỡ {{name}}",
+        "toolCount_other": "{{count}} công cụ",
+        "toolsLabel": "Công cụ từ {{name}}",
+        "validate": "Kiểm tra",
+        "validateLabel": "Kiểm tra {{name}}"
+      },
+      "description": "Kết nối Trợ lý AI với các lệnh cục bộ hoặc điểm cuối MCP từ xa. Oleafly kiểm tra từng máy chủ đã bật khi mở trang này, mỗi phút và khi được yêu cầu. Trang cũng hiển thị các công cụ mà mỗi máy chủ cung cấp.",
+      "editor": {
+        "addAndValidate": "Thêm và kiểm tra",
+        "argsHint": "Mỗi dòng một đối số.",
+        "argsLabel": "Đối số",
+        "commandLabel": "Lệnh",
+        "description": "Máy chủ đã bật được kiểm tra trước khi lưu cài đặt.",
+        "formView": "Biểu mẫu",
+        "jsonHint": "Dán một máy chủ theo tên, hoặc một khối được bọc trong mcpServers.",
+        "jsonLabel": "Cấu hình đầy đủ",
+        "jsonView": "JSON",
+        "nameLabel": "Tên máy chủ",
+        "pairs": {
+          "addHeader": "Thêm tiêu đề",
+          "addVariable": "Thêm biến",
+          "environmentKeyLabel": "Khoá biến môi trường {{index}}",
+          "environmentTitle": "Biến môi trường",
+          "environmentValueLabel": "Giá trị biến môi trường {{index}}",
+          "headerKeyLabel": "Khoá tiêu đề {{index}}",
+          "headerValueLabel": "Giá trị tiêu đề {{index}}",
+          "headersTitle": "Tiêu đề yêu cầu",
+          "removeHeaderLabel": "Gỡ tiêu đề {{index}}",
+          "removeVariableLabel": "Gỡ biến {{index}}",
+          "storedValuePlaceholder": "Giá trị đã lưu",
+          "valuePlaceholder": "Giá trị"
+        },
+        "saveAndValidate": "Lưu và kiểm tra",
+        "saveChanges": "Lưu thay đổi",
+        "titleAdd": "Thêm máy chủ MCP",
+        "titleEdit": "Sửa máy chủ MCP",
+        "transportLegend": "Phương thức truyền",
+        "transportRemote": "URL từ xa",
+        "transportStdio": "Lệnh cục bộ",
+        "urlLabel": "URL từ xa",
+        "viewSwitchLabel": "Trình biên tập cấu hình"
+      },
+      "empty": {
+        "description": "Hãy thêm máy chủ để cấp công cụ mới cho trợ lý, hoặc nhập những máy chủ bạn đã dùng trong trình biên tập khác.",
+        "title": "Chưa thêm máy chủ nào"
+      },
+      "hideRegistry": "Ẩn danh mục",
+      "importButton": "Nhập từ công cụ khác",
+      "importFailure": "{{name}}: {{reason}}",
+      "importSummary": "Đã nhập {{imported}}, bỏ qua {{skipped}}, thất bại {{failed}}.",
+      "live": {
+        "checking": "Đang kiểm tra {{name}}.",
+        "connected_other": "Đã kết nối {{name}}. Có {{count}} công cụ.",
+        "disabled": "{{name}} đã bị tắt.",
+        "disabledLastCheckFailed": "{{name}} đã bị tắt. Lần kiểm tra cuối thất bại.",
+        "disabledLastCheckFound_other": "{{name}} đã bị tắt. Lần kiểm tra cuối tìm thấy {{count}} công cụ.",
+        "failed": "Kiểm tra {{name}} thất bại."
+      },
+      "loading": "Đang tải máy chủ...",
+      "remove": {
+        "confirm": "Gỡ máy chủ",
+        "description": "Thao tác này gỡ {{name}} khỏi Oleafly. Bạn có thể thêm lại sau.",
+        "descriptionFallback": "Thao tác này gỡ máy chủ khỏi Oleafly. Bạn có thể thêm lại sau.",
+        "title": "Gỡ máy chủ?"
+      },
+      "status": {
+        "checking": "Đang kiểm tra...",
+        "connected": "Đã kết nối",
+        "disabled": "Đã tắt",
+        "error": "Lỗi"
+      },
+      "title": "Máy chủ MCP của trợ lý"
+    }
+  },
+  "proofreading": {
+    "addWord": {
+      "globalAriaLabel": "Thêm một từ bị bỏ qua trên toàn cục",
+      "placeholder": "Thêm một từ hoặc thuật ngữ",
+      "projectAriaLabel": "Thêm một từ bị bỏ qua trong {{project}}",
+      "submitAriaLabel": "Thêm từ bị bỏ qua"
+    },
+    "clear": {
+      "confirm": "Xóa các từ",
+      "descriptionFallback": "Thao tác này gỡ mọi thuật ngữ khỏi từ điển này. Chúng sẽ được kiểm tra lại ngay.",
+      "descriptionGlobal": "Thao tác này gỡ mọi thuật ngữ khỏi từ điển chung. Chúng sẽ được kiểm tra lại ngay.",
+      "descriptionProject": "Thao tác này gỡ mọi thuật ngữ khỏi {{project}}. Chúng sẽ được kiểm tra lại ngay.",
+      "descriptionSuppressed": "Thao tác này gỡ mọi thuật ngữ khỏi các phát hiện đã bỏ qua trong {{project}}. Chúng sẽ được kiểm tra lại ngay.",
+      "suppressedConfirm": "Hiện lại",
+      "suppressedTitle": "Hiện lại các phát hiện đã bỏ qua?",
+      "title": "Xóa các từ bị bỏ qua?"
+    },
+    "dismissed": {
+      "countTitle": "{{dismissed}} mục đã bỏ qua, trong giới hạn {{limit}} mà dự án có thể ghi nhớ",
+      "hidden_other": "{{count}} phát hiện ngữ pháp đang bị ẩn trong dự án này vì bạn đã chọn Bỏ qua trong dự án này. Hiện lại sẽ gạch chân chúng một lần nữa.",
+      "none": "Không có mục nào bị bỏ qua. Khi bạn chọn Bỏ qua trong dự án này trên một phát hiện ngữ pháp, phát hiện đó được liệt kê ở đây.",
+      "showAgain": "Hiện lại",
+      "title": "Phát hiện đã bỏ qua",
+      "titleInProject": "Phát hiện đã bỏ qua trong {{project}}"
+    },
+    "global": {
+      "emptyDescription": "Những từ bạn thêm ở đây được trình hiệu đính bỏ qua trong mọi dự án.",
+      "scope": "Áp dụng cho mọi dự án"
+    },
+    "intro": "Thêm từ vào từ điển chính tả cá nhân của bạn. Những từ này được lưu trong cài đặt cục bộ và bị bỏ qua trên mọi dự án. Việc so khớp được chuẩn hoá Unicode và không phân biệt chữ hoa chữ thường.",
+    "profileRules": {
+      "description": "Mặc định tắt vì chúng cản trở bài báo. Hãy bật những quy tắc bạn muốn.",
+      "example": "Ví dụ: {{example}}",
+      "help": "Harper được tinh chỉnh cho trò chuyện và email. Các quy tắc này hoặc áp đặt phong cách mà bài báo không theo, như viết đầy đủ kB và min, hoặc vấp phải các chỗ giữ chỗ thay cho đánh dấu LaTeX, nên Oleafly để chúng tắt. Mỗi quy tắc hiển thị những gì nó sẽ đánh dấu. Hãy bật nếu bạn muốn các phát hiện đó.",
+      "reasons": {
+        "AvoidContractions": "Yêu cầu bạn viết đầy đủ mọi dạng rút gọn.",
+        "CompoundNouns": "Ghép một danh từ ghép vốn được viết thành hai từ.",
+        "Dashes": "Thay -- hoặc --- đã nhập bằng ký tự gạch ngang thích hợp.",
+        "DiscourseMarkers": "Đánh dấu câu mở đầu bằng một liên từ như however mà thiếu dấu phẩy sau nó.",
+        "EllipsisLength": "Sửa dấu lửng không đủ ba chấm.",
+        "ExpandAlgorithm": "Muốn viết đầy đủ algo.",
+        "ExpandArgument": "Muốn viết đầy đủ arg.",
+        "ExpandCoordinate": "Muốn viết đầy đủ coord.",
+        "ExpandMemoryShorthands": "Muốn viết đầy đủ KB và MB.",
+        "ExpandParameter": "Muốn viết đầy đủ param.",
+        "ExpandStandardInputAndOutput": "Muốn viết đầy đủ stdin và stdout.",
+        "ExpandTimeShorthands": "Muốn viết đầy đủ min và sec.",
+        "ExplainLikeImFive": "Mở rộng một từ viết tắt thành đầy đủ các từ.",
+        "FillerWords": "Đánh dấu những từ nó coi là từ thừa.",
+        "Hedging": "Đánh dấu các cụm từ rào đón như I would argue that và to a certain degree.",
+        "LongSentences": "Đánh dấu mọi câu vượt quá giới hạn độ dài.",
+        "MergeWords": "Ghép một từ bị dấu cách lạc tách làm hai, như to gether.",
+        "MoreAdjective": "Ưu tiên dạng so sánh hơn thay vì more cộng tính từ.",
+        "NoFrenchSpaces": "Gỡ dấu cách trước dấu câu theo kiểu chữ Pháp.",
+        "NoOxfordComma": "Gỡ dấu phẩy liệt kê.",
+        "NumericRangeEnDash": "Muốn có gạch ngang ngắn giữa hai đầu của một khoảng số.",
+        "OxfordComma": "Yêu cầu dấu phẩy liệt kê.",
+        "SentenceCapitalization": "Viết hoa từ đầu câu, kể cả câu bắt đầu sau phần đánh dấu đã được che.",
+        "Spaces": "Gộp các dấu cách lặp lại, vốn bị phần che văn xuôi để lại ở nơi đánh dấu bị thay bằng khoảng trắng.",
+        "SplitWords": "Tách một từ lẽ ra phải là hai từ, như alot.",
+        "TransposedSpace": "Dời dấu cách nằm sai phía của dấu câu, điều thường xảy ra khi che đánh dấu."
+      },
+      "title": "Các quy tắc hồ sơ học thuật giữ tắt",
+      "toggleAriaLabel": "Bật {{rule}}"
+    },
+    "projects": {
+      "empty": "Hãy mở một dự án để thêm thuật ngữ riêng cho dự án.",
+      "emptyDescription": "Những từ được thêm cho dự án này chỉ bị trình hiệu đính bỏ qua ở đây.",
+      "terms_other": "{{used}} / {{limit}} thuật ngữ"
+    },
+    "reset": {
+      "confirmationDescription": "Thao tác này gỡ vĩnh viễn mọi từ bị bỏ qua, cả chung lẫn theo dự án, và bật lại mọi quy tắc ngữ pháp bạn đã tắt. Hồ sơ học thuật vẫn giữ các quy tắc riêng của nó ở trạng thái tắt. Trình hiệu đính sẽ đánh dấu lại những từ đó.",
+      "sectionName": "Từ điển"
+    },
+    "search": {
+      "ariaLabel": "Tìm từ bị bỏ qua",
+      "placeholder": "Tìm trong từ điển"
+    },
+    "tabs": {
+      "global": "Chung",
+      "projects": "Dự án"
+    },
+    "turnedOff": {
+      "description": "Các quy tắc bạn đã tắt và phát hiện bạn đã bỏ qua trong dự án này.",
+      "help": "Hãy rê chuột qua một từ hoặc câu bị gạch chân trong trình biên tập và một thẻ nhỏ sẽ hiển thị những gì Harper tìm thấy, kèm hành động sửa hoặc bỏ qua. Các quy tắc bạn tắt từ thẻ đó và phát hiện bạn bỏ qua trong dự án này được liệt kê ở đây để bạn có thể khôi phục bất kỳ mục nào.",
+      "listAriaLabel": "Quy tắc ngữ pháp đã tắt",
+      "none": "Bạn chưa tắt quy tắc nào.",
+      "restoreAriaLabel": "Bật lại quy tắc {{rule}}",
+      "restoreTitle": "Bật lại quy tắc “{{rule}}”",
+      "title": "Quy tắc ngữ pháp và phát hiện đã bỏ qua"
+    },
+    "words": {
+      "emptyCompact": "Chưa bỏ qua từ nào.",
+      "emptyTitle": "Chưa bỏ qua từ nào",
+      "listAriaLabel": "Từ bị bỏ qua",
+      "noMatches": "Không có từ bị bỏ qua nào phù hợp với tìm kiếm này.",
+      "removeAriaLabel": "Ngừng bỏ qua {{word}}",
+      "removeTitle": "Ngừng bỏ qua “{{word}}”"
+    }
+  },
+  "reset": {
+    "button": "Đặt lại về mặc định",
+    "changed": "Một số cài đặt ở đây khác với mặc định.",
+    "confirmDescription": "Khôi phục tuỳ chọn {{sectionName}} về mặc định. Các cài đặt khác sẽ được giữ nguyên.",
+    "confirmTitle": "Đặt lại cài đặt {{sectionName}}?",
+    "description": "Khôi phục tuỳ chọn {{sectionName}} về mặc định.",
+    "label": "Đặt lại cài đặt"
+  },
+  "shellCommand": {
+    "afterSignIn": "{{directory}} sẽ có trong PATH sau khi bạn đăng xuất và đăng nhập lại. Sau đó hãy mở terminal mới.",
+    "checking": "Đang kiểm tra…",
+    "description": "Nhập <code>oleafly .</code> trong terminal để mở thư mục đó trong Oleafly.",
+    "install": "Cài đặt",
+    "installing": "Đang cài đặt…",
+    "loadFailed": "Không thể kiểm tra lệnh terminal.",
+    "notOnPath": {
+      "file": "{{directory}} chưa có trong PATH. Hãy thêm dòng này vào {{file}}, rồi mở terminal mới:",
+      "run": "{{directory}} chưa có trong PATH. Hãy chạy lệnh này một lần, rồi mở terminal mới:"
+    },
+    "removing": "Đang gỡ…",
+    "result": {
+      "copied": "Đã sao chép lệnh vào {{path}}.",
+      "linked": "Đã liên kết {{path}} tới bản Oleafly này.",
+      "removed": "Đã gỡ {{path}}."
+    },
+    "state": {
+      "installed": "Đã cài tại {{path}}.",
+      "moveApp": "Hãy chuyển Oleafly vào thư mục Ứng dụng trước, rồi cài lệnh ở đây.",
+      "notInstalled": "Thêm oleafly vào {{directory}}.",
+      "occupied": "{{path}} đã tồn tại và không do Oleafly tạo.",
+      "outdated": "{{path}} vẫn trỏ tới một bản Oleafly cũ hơn. Hãy cập nhật để dùng bản này.",
+      "packaged": "Đã cài tại {{path}} bởi gói Oleafly của bạn.",
+      "unavailable": "Bản Oleafly này không bao gồm lệnh."
+    },
+    "title": "Lệnh terminal",
+    "update": "Cập nhật",
+    "newTerminal": "Hãy mở terminal mới để dùng oleafly. Terminal đang mở sẽ không thấy thay đổi.",
+    "replace": "Thay thế",
+    "replaceTitle": "Thay lệnh oleafly?",
+    "replaceDescription": "Sau thao tác này, lệnh oleafly trong terminal sẽ chạy bản Oleafly này. Tệp đang có ở đó sẽ bị thay thế.",
+    "replaceConfirm": "Thay thế"
+  },
+  "shortcuts": {
+    "actions": {
+      "commandPalette": {
+        "description": "Tìm và chạy lệnh Oleafly.",
+        "label": "Bảng lệnh"
+      },
+      "forwardSync": {
+        "description": "Nhảy từ con trỏ trình biên tập đến PDF đã biên dịch.",
+        "label": "Đi tới PDF"
+      },
+      "recompile": {
+        "description": "Biên dịch dự án hiện tại và hiện PDF của nó.",
+        "label": "Biên dịch lại"
+      },
+      "searchDocuments": {
+        "description": "Tìm trên các dự án và tài liệu.",
+        "label": "Tìm mọi tài liệu"
+      },
+      "shortcutReference": {
+        "description": "Mở bảng tham chiếu phím tắt của dự án.",
+        "label": "Tham chiếu phím tắt"
+      },
+      "toggleSidebar": {
+        "description": "Hiện hoặc ẩn thanh bên của dự án.",
+        "label": "Bật/tắt thanh bên"
+      },
+      "togglePreview": {
+        "label": "Bật/tắt xem trước PDF",
+        "description": "Hiện hoặc ẩn PDF bên cạnh trình biên tập, kể cả ở chế độ Zen."
+      },
+      "toggleTerminal": {
+        "description": "Hiện hoặc ẩn terminal của dự án.",
+        "label": "Bật/tắt terminal"
+      },
+      "newTerminal": {
+        "description": "Mở thêm một tab terminal.",
+        "label": "Terminal mới"
+      },
+      "closeTerminal": {
+        "description": "Đóng tab terminal bạn đang nhập.",
+        "label": "Đóng terminal"
+      },
+      "nextTerminal": {
+        "description": "Chuyển sang tab terminal tiếp theo.",
+        "label": "Terminal tiếp theo"
+      },
+      "previousTerminal": {
+        "description": "Chuyển về tab terminal trước.",
+        "label": "Terminal trước"
+      },
+      "openFolder": {
+        "label": "Mở thư mục",
+        "description": "Mở một thư mục từ máy tính của bạn dưới dạng dự án."
+      },
+      "toggleZenMode": {
+        "description": "Ẩn mọi thứ trừ nội dung bạn viết, hoặc hiện lại.",
+        "label": "Bật/tắt chế độ Zen"
+      },
+      "openSettings": {
+        "label": "Mở cài đặt",
+        "description": "Mở cài đặt của Oleafly."
+      },
+      "zoomIn": {
+        "description": "Làm toàn bộ ứng dụng lớn hơn.",
+        "label": "Phóng to"
+      },
+      "zoomOut": {
+        "description": "Làm toàn bộ ứng dụng nhỏ hơn.",
+        "label": "Thu nhỏ"
+      },
+      "resetZoom": {
+        "description": "Đặt ứng dụng về 100%.",
+        "label": "Đặt lại thu phóng"
+      }
+    },
+    "application": {
+      "editAriaLabel": "Sửa {{action}}, hiện là {{shortcut}}",
+      "heading": "Phím tắt ứng dụng",
+      "prompt": "Hãy nhấn tổ hợp phím mới",
+      "recordAriaLabel": "Đang ghi {{action}}. Hãy nhấn một phím tắt.",
+      "recording": "Đang ghi",
+      "resetAriaLabel": "Đặt lại {{action}}"
+    },
+    "builtIn": {
+      "labels": {
+        "askAiEditSelection": "Yêu cầu AI sửa vùng chọn",
+        "bold": "In đậm",
+        "findAndReplace": "Tìm và thay thế",
+        "findReferences": "Tìm tham chiếu",
+        "goToDefinition": "Đi tới định nghĩa",
+        "goToDefinitionWithPointer": "Đi tới định nghĩa bằng con trỏ chuột",
+        "indentOrAcceptAutocomplete": "Thụt lề hoặc chấp nhận tự động hoàn thành",
+        "italic": "In nghiêng",
+        "jumpToSourceFromPdf": "Nhảy tới mã nguồn từ PDF",
+        "redo": "Làm lại",
+        "renameSymbol": "Đổi tên ký hiệu hoặc tệp trong toàn dự án",
+        "slashCommandMenu": "Menu chèn bằng lệnh gạch chéo",
+        "triggerAutocomplete": "Kích hoạt tự động hoàn thành",
+        "undo": "Hoàn tác"
+      },
+      "managed": "Do trình biên tập quản lý"
+    },
+    "categories": {
+      "codeIntelligence": "Hiểu mã",
+      "editor": "Trình biên tập",
+      "pdf": "PDF"
+    },
+    "error": {
+      "conflict": "Đã được gán cho {{action}}.",
+      "nativeKey": "Phím tắt menu không dùng được phím này. Chữ cái, chữ số và phím chức năng thì được.",
+      "reserved": "{{shortcut}} được hệ điều hành giữ riêng."
+    },
+    "intro": "Tuỳ chỉnh phím tắt ứng dụng và xem lại các tổ hợp phím gốc của trình biên tập.",
+    "reserved": {
+      "closeWindow": "Đóng cửa sổ",
+      "copy": "Sao chép",
+      "cut": "Cắt",
+      "hide": "Ẩn ứng dụng",
+      "minimize": "Thu nhỏ cửa sổ",
+      "paste": "Dán",
+      "quit": "Thoát",
+      "save": "Lưu",
+      "selectAll": "Chọn tất cả",
+      "systemSearch": "Tìm kiếm hệ thống",
+      "windowSwitching": "Chuyển cửa sổ"
+    },
+    "reset": {
+      "sectionName": "Phím tắt bàn phím"
+    },
+    "tabs": {
+      "application": "Ứng dụng"
+    },
+    "editorKeys": {
+      "clearHint": "Nhấn Backspace để bỏ gán hành động này.",
+      "heading": "Phím của trình biên tập",
+      "intro": "Các phím này hoạt động trong trình biên tập mã nguồn. Chế độ Vim và Emacs giữ cách gán riêng của chúng.",
+      "labels": {
+        "addCursorAbove": "Thêm con trỏ phía trên",
+        "addCursorBelow": "Thêm con trỏ phía dưới",
+        "deleteLine": "Xóa dòng",
+        "duplicate": "Nhân bản vùng chọn hoặc dòng",
+        "gotoLine": "Đi tới dòng",
+        "indentLess": "Giảm thụt lề",
+        "indentMore": "Tăng thụt lề",
+        "lowercase": "Chữ thường",
+        "selectNextOccurrence": "Chọn lần xuất hiện tiếp theo",
+        "titleCase": "Viết hoa đầu từ",
+        "toggleComment": "Bật/tắt chú thích",
+        "uppercase": "Chữ hoa"
+      },
+      "unbound": "Chưa đặt"
+    }
+  },
+  "systemIntegration": {
+    "title": "Tích hợp hệ thống",
+    "description": "Mở thư mục trong Oleafly từ trình quản lý tệp của bạn.",
+    "checking": "Đang kiểm tra…",
+    "loadFailed": "Không kiểm tra được thiết lập trình quản lý tệp của bạn.",
+    "state": {
+      "installed": "Đã cài đặt",
+      "notInstalled": "Chưa cài đặt",
+      "needsAttention": "Cần chú ý"
+    },
+    "actions": {
+      "install": "Cài đặt",
+      "repair": "Sửa chữa"
+    },
+    "failed": {
+      "install": "Không cài được. Hãy thử lại.",
+      "remove": "Không gỡ được. Hãy thử lại."
+    },
+    "packaged": "Được cài cùng gói Oleafly.",
+    "quickAction": {
+      "label": "Thao tác nhanh của Finder",
+      "description": "Thêm Mở trong Oleafly vào menu Dịch vụ khi bạn nhấp chuột phải vào một thư mục trong Finder.",
+      "menuHint": "Chưa có trong Thao tác nhanh. Nhấp chuột phải vào một thư mục, chọn Thao tác nhanh › Tuỳ chỉnh và bật {{title}}."
+    },
+    "explorerMenu": {
+      "label": "Menu chuột phải của File Explorer",
+      "description": "Nhấp chuột phải vào một thư mục, hoặc vùng trống bên trong, và chọn Mở bằng Oleafly. Trên Windows 11, mục này nằm dưới Hiện thêm tuỳ chọn.",
+      "toggle": "Hiện Mở bằng Oleafly trong File Explorer"
+    },
+    "dolphin": {
+      "label": "Dolphin",
+      "description": "Thêm Mở bằng Oleafly khi bạn nhấp chuột phải vào một thư mục trong Dolphin."
+    },
+    "nemo": {
+      "label": "Nemo",
+      "description": "Thêm Mở bằng Oleafly khi bạn nhấp chuột phải vào một thư mục trong Nemo."
+    },
+    "nautilus": {
+      "label": "Tệp",
+      "description": "Thêm Mở bằng Oleafly vào menu Script khi bạn nhấp chuột phải vào một thư mục trong Tệp của GNOME."
+    },
+    "folderOpenWith": {
+      "label": "Menu Mở bằng cho thư mục",
+      "description": "Liệt kê Oleafly trong Mở bằng cho thư mục. Trình quản lý tệp mặc định của bạn vẫn giữ nguyên."
+    },
+    "attention": {
+      "outdated": "Nó đã lỗi thời hoặc bị macOS chặn. Hãy sửa chữa để khôi phục.",
+      "elsewhere": "Menu mở một bản Oleafly khác. Hãy sửa chữa để dùng bản này.",
+      "moved": "Nó trỏ tới một bản Oleafly đã chuyển đi. Hãy sửa chữa để dùng bản này.",
+      "noDefaultFileManager": "Hệ thống của bạn không có trình quản lý tệp mặc định cho thư mục, nên mục này có thể mở mọi thư mục trong Oleafly. Hãy gỡ nó."
+    }
+  },
+  "research": {
+    "background": {
+      "title": "Tác vụ nền",
+      "enabled": {
+        "label": "Giữ tác vụ chạy sau khi đóng Oleafly",
+        "description": "Các tác vụ bạn đánh dấu giữ chạy sẽ chuyển sang một trình trợ giúp nền nhỏ khi bạn thoát. Oleafly nhận lại chúng khi bạn mở ứng dụng."
+      },
+      "atLogin": {
+        "label": "Khởi động trình trợ giúp khi bạn đăng nhập",
+        "description": "Tiếp tục các tác vụ nền sau khi khởi động lại. Trình trợ giúp tự thoát khi không còn việc.",
+        "moveApp": "Hãy chuyển Oleafly vào thư mục Ứng dụng trước.",
+        "needsBackground": "Hãy bật tác vụ nền trước."
+      },
+      "status": {
+        "label": "Trình trợ giúp nền",
+        "running": "Đang chạy",
+        "stopped": "Không chạy",
+        "notResponding": "Không phản hồi",
+        "tasks_other": "Đang làm {{count}} tác vụ"
+      },
+      "stop": "Dừng trình trợ giúp",
+      "stopHint": "Các tác vụ của nó chuyển về Oleafly và tiếp tục chạy ở đây.",
+      "stopConfirm": {
+        "title": "Dừng trình trợ giúp nền?",
+        "description_other": "{{count}} tác vụ của nó chuyển về Oleafly và tiếp tục chạy ở đây."
+      },
+      "stopFailed": "Trình trợ giúp không dừng. Hãy thử lại.",
+      "openLog": "Hiện nhật ký",
+      "statusFailed": "Không thể đọc trạng thái của trình trợ giúp nền.",
+      "toggleFailed": "Không thể thay đổi cài đặt này. Hãy thử lại."
+    },
+    "mcpServers": {
+      "loadFailed": "Không thể đọc danh sách máy chủ MCP.",
+      "missing": "{{name}} (không tìm thấy)"
+    }
+  }
+}

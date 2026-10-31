@@ -1,0 +1,207 @@
+{
+  "app": {
+    "name": "Oleafly",
+    "loading": "Đang tải",
+    "loadFailed": "Oleafly không thể kết nối đến máy chủ.",
+    "retry": "Thử lại",
+    "dismiss": "Bỏ qua",
+    "projects": "Dự án",
+    "account": "Tài khoản",
+    "signOut": "Đăng xuất",
+    "signOutFailed": "Không thể đăng xuất. Hãy thử lại.",
+    "cancel": "Huỷ"
+  },
+  "signIn": {
+    "title": "Đăng nhập vào Oleafly",
+    "description": "Đăng nhập bằng tài khoản mà người đồng tác giả đã chia sẻ dự án.",
+    "action": "Đăng nhập"
+  },
+  "projects": {
+    "title": "Được chia sẻ với bạn",
+    "emptyTitle": "Chưa có gì được chia sẻ với bạn",
+    "emptyDescription": "Khi ai đó chia sẻ dự án với tài khoản của bạn, dự án sẽ hiện ở đây.",
+    "untitled": "Dự án chưa có tên",
+    "ownedBy": "Thuộc về {{name}}",
+    "loadFailed": "Không thể tải các dự án của bạn.",
+    "list": "Dự án"
+  },
+  "roles": {
+    "owner": "Chủ sở hữu",
+    "editor": "Biên tập viên",
+    "reviewer": "Phản biện viên",
+    "commenter": "Người bình luận",
+    "viewer": "Người xem",
+    "unknown": "Chỉ đọc"
+  },
+  "connection": {
+    "connecting": "Đang kết nối",
+    "online": "Đã kết nối",
+    "offline": "Ngoại tuyến",
+    "offlineBanner": "Bạn đang ngoại tuyến. Thay đổi của bạn được giữ lại và gửi khi có kết nối trở lại.",
+    "ended": "Đã ngắt kết nối"
+  },
+  "ended": {
+    "signedOutTitle": "Bạn đã đăng xuất",
+    "signedOutDescription": "Hãy đăng nhập lại để tiếp tục làm việc trên dự án này.",
+    "noAccessTitle": "Bạn không thể mở dự án này",
+    "noAccessDescription": "Dự án không được chia sẻ với tài khoản của bạn, hoặc quyền truy cập của bạn đã bị gỡ.",
+    "stoppedTitle": "Đã ngắt kết nối",
+    "stoppedDescription": "Hãy tải lại trang để kết nối lại."
+  },
+  "access": {
+    "changed": "Vai trò của bạn trong dự án này giờ là {{role}}."
+  },
+  "discarded": {
+    "read_only": "Các chỉnh sửa cuối của bạn không được lưu vì giờ bạn không chỉnh sửa được dự án này.",
+    "refused": "Không thể lưu các chỉnh sửa cuối của bạn."
+  },
+  "views": {
+    "label": "Bảng điều khiển",
+    "files": "Tệp",
+    "source": "Mã nguồn",
+    "pdf": "PDF",
+    "comments": "Bình luận",
+    "chat": "Trò chuyện"
+  },
+  "presence": {
+    "label": "Người đang ở đây"
+  },
+  "files": {
+    "title": "Tệp",
+    "empty": "Dự án này chưa có tệp nào.",
+    "tree": "Tệp dự án"
+  },
+  "source": {
+    "noFileTitle": "Mở một tệp",
+    "noFileDescription": "Chọn một tệp trong danh sách để đọc.",
+    "opening": "Đang mở {{path}}",
+    "removed": "{{path}} đã bị gỡ khỏi dự án.",
+    "readOnly": "Chỉ đọc",
+    "readOnlyHint": "Vai trò của bạn đọc được dự án này nhưng không chỉnh sửa được.",
+    "modeLabel": "Chế độ chỉnh sửa",
+    "editing": "Đang chỉnh sửa",
+    "suggesting": "Đang đề xuất",
+    "suggestingHint": "Thay đổi của bạn là đề xuất để chủ sở hữu hoặc biên tập viên xem xét.",
+    "comment": "Bình luận",
+    "commentHint": "Chọn văn bản để bình luận về nội dung đó.",
+    "binary": "Không thể hiển thị tệp này trong trình duyệt.",
+    "blobFailed": "Không thể tải tệp."
+  },
+  "pdf": {
+    "title": "PDF",
+    "compiledBy": "Được {{name}} biên dịch lúc {{time}}",
+    "emptyTitle": "Chưa có PDF",
+    "emptyDescription": "PDF hiện ở đây sau khi ai đó biên dịch dự án trong ứng dụng Oleafly.",
+    "loading": "Đang tải PDF",
+    "failed": "Không thể tải PDF.",
+    "zoomIn": "Phóng to",
+    "zoomOut": "Thu nhỏ",
+    "fitWidth": "Vừa chiều rộng",
+    "download": "Tải xuống",
+    "zoom": "{{percent}}%"
+  },
+  "compile": {
+    "action": "Biên dịch",
+    "hint": "Biên dịch dự án trong trình duyệt này ({{shortcut}})",
+    "running": "Đang biên dịch",
+    "compiledHere": "Đã biên dịch trong trình duyệt của bạn trong {{seconds}} giây",
+    "failedNoPdf": "Quá trình biên dịch dừng trước khi tạo được PDF.",
+    "couldNotRun": "Không thể chạy quá trình biên dịch.",
+    "emptyReady": "Hãy biên dịch dự án để xem PDF ở đây.",
+    "shareFailed": "Chỉ bạn thấy được PDF này. Không thể chia sẻ với dự án.",
+    "showLog": "Hiện nhật ký",
+    "hideLog": "Ẩn nhật ký",
+    "logTitle": "Nhật ký biên dịch",
+    "problems": "Lỗi: {{errors}} · Cảnh báo: {{warnings}}",
+    "noProblems": "Không có lỗi hay cảnh báo.",
+    "showRawLog": "Nhật ký đầy đủ",
+    "showProblems": "Vấn đề",
+    "showInPdf": "Hiện trong PDF",
+    "showInPdfHint": "Hiện dòng này trong PDF ({{shortcut}})"
+  },
+  "comments": {
+    "emptyTitle": "Không có bình luận hay đề xuất",
+    "emptyCanComment": "Chọn văn bản trong mã nguồn và chọn Bình luận để bắt đầu một chuỗi.",
+    "emptyReadOnly": "Bình luận và đề xuất về dự án này hiện ở đây.",
+    "newComment": "Bình luận mới",
+    "placeholder": "Thêm bình luận",
+    "submit": "Bình luận",
+    "reply": "Trả lời",
+    "replyPlaceholder": "Trả lời",
+    "replyLabel": "Trả lời chuỗi này",
+    "edit": "Sửa",
+    "editLabel": "Sửa bình luận",
+    "save": "Lưu",
+    "delete": "Xóa",
+    "deleteTitle": "Xóa bình luận này?",
+    "deleteDescription": "Không thể hoàn tác.",
+    "messageActions": "Hành động với bình luận",
+    "resolve": "Giải quyết",
+    "reopen": "Mở lại",
+    "resolvedBy": "Được {{name}} giải quyết",
+    "deleted": "Bình luận đã bị xóa",
+    "edited": "đã chỉnh sửa",
+    "anchorLost": "Đoạn văn bản chứa bình luận này đã bị gỡ.",
+    "showInSource": "Hiện trong mã nguồn",
+    "thread": "Bình luận của {{name}}",
+    "hideResolved": "Ẩn mục đã giải quyết",
+    "resolvedCount_other": "{{count}} mục đã giải quyết"
+  },
+  "suggestions": {
+    "inserted": "Đã chèn",
+    "deleted": "Đã xóa",
+    "accept": "Chấp nhận",
+    "reject": "Từ chối",
+    "withdraw": "Rút lại",
+    "acceptAll": "Chấp nhận tất cả",
+    "rejectAll": "Từ chối tất cả",
+    "pending_other": "{{count}} đề xuất",
+    "card": "Đề xuất của {{name}}",
+    "lineBreak": "Ngắt dòng"
+  },
+  "chat": {
+    "emptyTitle": "Chưa có tin nhắn nào",
+    "emptyDescription": "Tin nhắn ở đây được mọi người trong dự án nhìn thấy.",
+    "placeholder": "Viết tin nhắn",
+    "label": "Tin nhắn",
+    "send": "Gửi",
+    "readOnly": "Bạn đọc được trò chuyện. Người xem không đăng tin được.",
+    "delete": "Xóa tin nhắn",
+    "clear": "Xóa cuộc trò chuyện",
+    "clearTitle": "Xóa cuộc trò chuyện với mọi người?",
+    "clearDescription": "Mọi người trong dự án sẽ mất các tin nhắn này.",
+    "messages": "Tin nhắn trò chuyện"
+  },
+  "people": {
+    "you": "Bạn",
+    "someone": "Ai đó",
+    "unverified": "Tác giả chưa xác minh"
+  },
+  "errors": {
+    "offline": "Bạn đang ngoại tuyến. Hãy thử lại khi có kết nối.",
+    "generic": "Máy chủ từ chối thay đổi đó.",
+    "suggestion_not_found": "Đề xuất đó đã được xử lý rồi.",
+    "suggestion_not_yours": "Bạn chỉ rút lại được đề xuất của mình.",
+    "suggestion_role": "Vai trò của bạn không tạo hay xem xét được đề xuất.",
+    "chat_role": "Vai trò của bạn không đăng tin được trong trò chuyện.",
+    "comment_not_live": "Bình luận hiện không khả dụng.",
+    "comment_not_yours": "Bạn chỉ sửa được bình luận của mình.",
+    "comment_off_server": "Bình luận đã bị tắt trên máy chủ này.",
+    "comment_off_project": "Bình luận đã bị tắt cho dự án này.",
+    "comment_viewer": "Người xem không bình luận được.",
+    "comment_someone_replied": "Đã có người trả lời nên không xóa được bình luận này.",
+    "comment_message_deleted": "Bình luận đó đã bị xóa.",
+    "comment_selection_changed": "Văn bản đã thay đổi trong lúc bạn viết. Hãy chọn lại.",
+    "comment_too_long": "Bình luận quá dài.",
+    "comment_empty": "Hãy viết nội dung trước.",
+    "rate_limited": "Quá nhiều thay đổi cùng lúc. Hãy chờ một lát rồi thử lại.",
+    "too_large": "Nội dung quá lớn để gửi.",
+    "project_too_large": "Dự án này quá lớn để mở trong trình duyệt.",
+    "server_busy": "Máy chủ đang bận. Hãy thử lại sau giây lát.",
+    "not_open": "Hãy mở tệp trước khi thay đổi.",
+    "cross_site": "Yêu cầu này không đến từ ứng dụng web Oleafly trên máy chủ này. Hãy tải lại trang và thử lại.",
+    "conflict": "Thay đổi xung đột với thay đổi của người khác. Hãy thử lại.",
+    "account_storage_full": "Tài khoản chủ sở hữu dự án đã hết dung lượng trên máy chủ này.",
+    "too_many_uploads": "Bạn đã tải lên quá nhiều trong giờ qua. Hãy thử lại sau."
+  }
+}
