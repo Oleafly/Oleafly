@@ -385,10 +385,10 @@
     "command_declined": "Máy chủ MCP không được lưu."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver chưa được cài. Hãy cài từ Cài đặt, Tích hợp, Ứng dụng máy tính.",
+    "not_installed": "Cua Driver chưa được cài. Hãy cài từ Cài đặt, Tích hợp, Computer Use.",
     "too_old": "Cua Driver {{version}} quá cũ. Hãy cập nhật lên {{minimum}} trở lên.",
     "no_app_bundle": "Hãy cài Cua Driver bằng bộ cài chính thức để nó có các quyền macOS.",
-    "change_declined": "Bạn đã giữ cài đặt Ứng dụng máy tính trước đó.",
+    "change_declined": "Bạn đã giữ cài đặt Computer Use trước đó.",
     "app_blocked": "Agent không thể dùng {{name}}.",
     "app_invalid": "Oleafly không thể dùng {{name}} như một ứng dụng.",
     "site_invalid": "\"{{site}}\" không phải địa chỉ trang web Oleafly có thể dùng. Hãy dùng https://, hoặc http:// cho máy tính này.",
@@ -398,6 +398,6 @@
     "not_bounded": "Cua Driver không khởi động với giới hạn của Oleafly, nên Oleafly đã dừng nó.",
     "needs_permissions": "Cua Driver đang chờ quyền trên macOS. Hãy bật Trợ năng và Ghi màn hình cho CuaDriver trong Cài đặt hệ thống rồi thử lại.",
     "task_unattended": "Tác vụ chạy theo lịch hoặc sau khi Oleafly đóng không thể dùng ứng dụng máy tính.",
-    "main_window": "Hãy thay đổi Ứng dụng máy tính từ cửa sổ chính."
+    "main_window": "Hãy thay đổi Computer Use từ cửa sổ chính."
   }
 }

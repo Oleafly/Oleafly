@@ -102,7 +102,7 @@
       "confirm": "Cho phép trên máy tính này"
     },
     "desktopApps": {
-      "title": "Ứng dụng máy tính",
+      "title": "Computer Use",
       "action": "{{agent}} muốn {{action}}.",
       "steps": "{{agent}} muốn chạy các bước sau trong một ứng dụng máy tính:",
       "moreSteps": "Các bước không hiển thị và không chạy: {{count}}",
@@ -142,9 +142,9 @@
     },
     "desktopAppsSettings": {
       "title": "Cho phép điều khiển máy tính?",
-      "message": "Agent sẽ có thể dùng các mục này. Chúng sẽ hỏi trước mỗi thao tác, và việc lưu sẽ xoá mọi lựa chọn \"Cho phép trong cuộc trò chuyện này\":",
+      "message": "Agent sẽ có thể dùng các mục này:",
       "confirm": "Cho phép",
-      "enabled": "Ứng dụng máy tính",
+      "enabled": "Computer Use",
       "app": "Ứng dụng: {{identity}} ({{name}})",
       "more": "Và {{count}} mục khác",
       "site": "Trang web: {{origin}}",

@@ -128,7 +128,7 @@
     },
     "integrations": {
       "title": "Tích hợp",
-      "content": "Kết nối dịch vụ lưu trữ Git (GitHub, GitLab, Codeberg và các dịch vụ khác), alphaXiv, Zotero, tìm kiếm trích dẫn, ứng dụng máy tính cho agent và máy chủ MCP cục bộ của Oleafly."
+      "content": "Kết nối dịch vụ lưu trữ Git (GitHub, GitLab, Codeberg và các dịch vụ khác), alphaXiv, Zotero, tìm kiếm trích dẫn, Computer Use cho agent và máy chủ MCP cục bộ của Oleafly."
     },
     "shortcuts": {
       "title": "Phím tắt",

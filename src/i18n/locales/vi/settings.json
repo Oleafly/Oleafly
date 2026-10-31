@@ -1692,9 +1692,9 @@
       "gitFailed": "Oleafly không thể lưu token Git. Hãy kiểm tra bạn đã dán toàn bộ token."
     },
     "desktopApps": {
-      "tab": "Ứng dụng máy tính",
-      "title": "Ứng dụng máy tính",
-      "description": "Cho phép tác nhân dùng ứng dụng và trang web trên máy tính này qua Cua Driver. Oleafly hỏi trước mỗi hành động, trừ khi bạn cho phép loại hành động đó cho cuộc trò chuyện, phiên hoặc tác vụ. Trình duyệt đã đăng nhập và script của bạn luôn được hỏi trước.",
+      "tab": "Computer Use",
+      "title": "Computer Use",
+      "description": "Cho phép tác nhân dùng ứng dụng và trang web trên máy tính này qua Cua Driver. Tác nhân chỉ truy cập được các ứng dụng và trang web bạn liệt kê ở đây.",
       "docsLink": "Tài liệu Cua Driver",
       "status": {
         "installed": "Đã cài Cua Driver {{version}}.",
@@ -1730,7 +1730,7 @@
       },
       "enable": {
         "label": "Cho phép tác nhân dùng ứng dụng máy tính",
-        "description": "Tác nhân có thể thấy các ứng dụng và trang web bên dưới. Nhấp, gõ và thay đổi trang sẽ hỏi bạn trước, trừ khi bạn cho phép cho cuộc trò chuyện, phiên hoặc tác vụ. Thêm một ứng dụng hoặc trang web sẽ xóa các lựa chọn đó."
+        "description": "Tác nhân có thể thấy và dùng các ứng dụng và trang web bên dưới."
       },
       "apps": {
         "heading": "Ứng dụng được phép",
@@ -1740,7 +1740,7 @@
         "missing": "Không tìm thấy chương trình này trên máy tính. Hãy gỡ hoặc cài lại ứng dụng.",
         "dialog": {
           "title": "Thêm ứng dụng",
-          "description": "Chọn một ứng dụng mà tác nhân được dùng. Chúng có thể mở ứng dụng, đọc cửa sổ và thao tác trong đó sau khi bạn phê duyệt.",
+          "description": "Chọn một ứng dụng mà tác nhân được dùng. Chúng có thể mở ứng dụng, đọc cửa sổ và thao tác trong đó.",
           "search": "Tìm ứng dụng",
           "loading": "Đang tìm ứng dụng…",
           "none": "Không có ứng dụng nào phù hợp.",
@@ -1771,12 +1771,12 @@
         "signedIn": {
           "label": "Dùng trình duyệt đã đăng nhập của tôi",
           "labelFor": "Dùng trình duyệt đã đăng nhập của tôi trên {{origin}}",
-          "description": "Tác nhân làm việc trong Chrome hoặc Edge của chính bạn trên trang này. Hãy tắt để dùng hồ sơ trình duyệt riêng."
+          "description": "Bật Dùng trình duyệt đã đăng nhập của tôi cho một trang để tác nhân làm việc trong Chrome hoặc Edge của chính bạn ở đó. Khi tắt, tác nhân dùng một hồ sơ trình duyệt riêng."
         }
       },
       "scripted": {
         "label": "Điều khiển bằng script",
-        "description": "Cho phép tác nhân chạy script Cua thực hiện nhiều bước cùng lúc. Oleafly hỏi trước mỗi script."
+        "description": "Cho phép tác nhân chạy script Cua thực hiện nhiều bước cùng lúc."
       },
       "ask": {
         "label": "Hỏi trước mỗi hành động",
@@ -1791,12 +1791,12 @@
       },
       "tool": {
         "description": "Dùng các ứng dụng máy tính và trang web bạn đã cho phép trong Cài đặt.",
-        "note": "Thao tác xem chạy ngay. Nhấp, gõ và thay đổi trang sẽ hỏi trước, trừ khi bạn cho phép cho cuộc trò chuyện."
+        "note": "Chỉ hoạt động trong các ứng dụng và trang web bạn đã cho phép. Khi bật Hỏi trước mỗi hành động, các hành động sẽ hỏi bạn trước."
       },
       "task": {
-        "label": "Ứng dụng máy tính",
-        "description": "Cho phép tác vụ này dùng các ứng dụng máy tính được phép của bạn. Bạn cần ngồi trước máy để phê duyệt hành động.",
-        "off": "Hãy bật Ứng dụng máy tính trong Cài đặt trước.",
+        "label": "Computer Use",
+        "description": "Cho phép tác vụ này dùng các ứng dụng máy tính được phép của bạn. Khi bật Hỏi trước mỗi hành động, bạn cần ngồi trước máy để phê duyệt hành động.",
+        "off": "Hãy bật Computer Use trong Cài đặt trước.",
         "unattended": "Tác vụ chạy theo lịch hoặc sau khi đóng Oleafly không dùng được ứng dụng máy tính."
       },
       "spaces": {
