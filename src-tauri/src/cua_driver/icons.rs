@@ -398,6 +398,9 @@ mod tests {
         );
     }
 
+    // Named icons come from Linux `.desktop` files, and their lookup reads
+    // Unix paths, so these two don't run on Windows.
+    #[cfg(not(windows))]
     #[test]
     fn only_listed_apps_get_an_icon() {
         let dir = tempfile::tempdir().unwrap();
@@ -423,6 +426,7 @@ mod tests {
         assert!(icons_for(&[key]).is_empty());
     }
 
+    #[cfg(not(windows))]
     #[test]
     fn linux_icons_come_from_hicolor_then_pixmaps() {
         let root = tempfile::tempdir().unwrap();
