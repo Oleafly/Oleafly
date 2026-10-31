@@ -813,7 +813,10 @@ async fn a_folder_downloads_as_one_zip_within_its_limit() {
         std::fs::metadata(&archive).unwrap().len()
     );
     let mut zip = zip::ZipArchive::new(std::fs::File::open(&archive).unwrap()).unwrap();
-    let mut names: Vec<String> = zip.file_names().map(str::to_string).collect();
+    let mut names: Vec<String> = zip
+        .file_names()
+        .map(|name| name.unwrap().into_owned())
+        .collect();
     names.sort();
     assert_eq!(
         names,

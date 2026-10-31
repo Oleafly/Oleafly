@@ -397,22 +397,23 @@ jobs:
           cargo +1.87.0 check --all-targets
           -p oleafly-core -p oleafly-secrets -p oleafly-doctools
           -p oleafly-synctex -p oleafly-synctex-wasm
-          -p oleafly-downloads -p oleafly-sandbox -p oleafly-forge
+          -p oleafly-sandbox -p oleafly-forge
           -p oleafly-agent
 
       # Preflight and research read PDFs with lopdf 0.42 (research through
       # pdf-extract), which uses let chains, so they need Rust 1.88 although
       # lopdf declares 1.85. The ACP client needs 1.88 for the official ACP SDK
-      # and schema crates. Lint builds on 1.88 without its proofread feature;
+      # and schema crates. Downloads unpacks toolchain archives with zip 9,
+      # which needs 1.88. Lint builds on 1.88 without its proofread feature;
       # harper-core's dependencies need 1.90.
       - name: Install the PDF crates' minimum supported Rust toolchain
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
         with:
           toolchain: 1.88.0
 
-      - name: Check the PDF crates, the ACP client and lint against their Rust 1.88 MSRV
+      - name: Check the PDF crates, the ACP client, downloads and lint against their Rust 1.88 MSRV
         run: |
-          cargo +1.88.0 check -p oleafly-preflight -p oleafly-research -p oleafly-acp --all-targets
+          cargo +1.88.0 check -p oleafly-preflight -p oleafly-research -p oleafly-acp -p oleafly-downloads --all-targets
           cargo +1.88.0 check -p oleafly-lint --no-default-features --all-targets
 
       # The CLI links the collaboration client, and online import decrypts

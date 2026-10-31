@@ -367,6 +367,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   snapshots taken during agent turns, from 0.13.3 to 0.14.3. It fixes four
   security advisories in how zstd handles memory (RUSTSEC-2026-0391,
   RUSTSEC-2026-0398, RUSTSEC-2026-0403 and RUSTSEC-2026-0410).
+- Updated zip, which opens and writes the app's ZIP files (downloaded tools
+  and agents, TinyTeX, imported and exported projects, log bundles), from
+  4.6.1 to 9.1.3. It fixes a critical advisory where an entry's two headers
+  disagree, so what passes the checks is not what gets written
+  (GHSA-m665-v7pm-7grj), and four more about symlinks, AES-encrypted entries
+  and old compression methods. The app updater moves to 2.14.1, so Windows
+  updates are unpacked with the fixed zip as well. That release also keeps
+  the installed app on macOS when an update fails.
+- Two Markdown libraries that still asked for KaTeX 0.16 now get 0.18, which
+  the rest of the app already uses, and seroval moves to 1.6.12. Both fix
+  security advisories (GHSA-238p-pmpm-9mq7, GHSA-9wx9-5pv9-3349 and
+  GHSA-f86p-h4j2-7qgj).
 
 ## [0.4.8] - 2026-10-25
 

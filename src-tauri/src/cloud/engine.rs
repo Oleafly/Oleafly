@@ -1563,10 +1563,10 @@ fn unpack_zip(
     };
     let mut entries: BTreeMap<String, Option<usize>> = BTreeMap::new();
     for index in 0..zip.len() {
-        let Some((_, inner)) = zip
-            .name_for_index(index)
-            .and_then(|name| name.split_once('/'))
-        else {
+        let Some(Ok(name)) = zip.name_for_index(index) else {
+            continue;
+        };
+        let Some((_, inner)) = name.split_once('/') else {
             continue;
         };
         if inner.is_empty() || inner.ends_with('/') {
