@@ -23,11 +23,24 @@ overrides:
   # Mermaid's math labels call katex.renderToString only, which 0.18 keeps;
   # one KaTeX instead of two takes 260 KB off the bundle.
   "mermaid>katex": "catalog:"
+  # GHSA-238p-pmpm-9mq7: prototype pollution can bypass the trust option in
+  # katex < 0.18.2. @lobehub/ui calls renderToString, and the HTML extension
+  # of micromark-extension-math (remark-math never loads it) calls the default
+  # export; 0.18 exports both.
+  "@lobehub/ui>katex": "catalog:"
+  "micromark-extension-math>katex": "catalog:"
   nanoid@<3.3.18: "3.3.18"
   # GHSA-6g55-p6wh-862q: source map disclosure in postcss < 8.5.23.
   postcss@<8.5.23: "8.5.23"
-  # GHSA-g9mf-h72j-4rw9 and related advisories fixed in undici 7.29.0.
-  undici@<7.29.0: "7.29.0"
+  # GHSA-68fv-2mgg-jv7q: event-loop denial of service through indexed source
+  # map section offsets in source-map-js < 1.2.2, reached through postcss,
+  # Tailwind and jsdom.
+  source-map-js@<1.2.2: "1.2.2"
+  # GHSA-g9mf-h72j-4rw9 and related advisories fixed in undici 7.29.0, then
+  # GHSA-4w7w-5xrc-9h26, GHSA-2m5v-pch6-74hx, GHSA-qrxm-fqhp-jwvm,
+  # GHSA-9fm3-97px-rjf6 and GHSA-xjj6-f33q-929c fixed in 7.30.1. jsdom is the
+  # only consumer.
+  undici@<7.30.1: "7.30.1"
   # GHSA-c4c3-pg64-4m4v, GHSA-6x64-9x62-f2gx,
   # GHSA-3rrr-jr9j-h3q3, GHSA-2v8p-3f2j-5mp7, GHSA-rhh3-jpg6-66xh.
   mermaid@<11.16.1: "11.16.1"
@@ -41,6 +54,10 @@ overrides:
   # reached through tiptap-markdown and prosemirror-markdown.
   markdown-it@<14.3.3: "14.3.3"
   solid-js@<1.9.16: "1.9.16"
+  # GHSA-9wx9-5pv9-3349 and GHSA-f86p-h4j2-7qgj: script injection through
+  # RegExp sources and code injection through a typed array's constructor in
+  # seroval < 1.6.11, reached through solid-js (TanStack Query devtools).
+  seroval@<1.6.11: "1.6.12"
   # GHSA-73wf-gq98-2v4g and GHSA-c83g-rgw3-j3cx: prototype write via untrusted
   # browserslist-stats.json and unbounded cache growth in browserslist <= 4.28.6.
   browserslist@<4.28.7: "4.28.7"

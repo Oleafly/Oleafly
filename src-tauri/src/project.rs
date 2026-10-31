@@ -5725,7 +5725,7 @@ pub(crate) fn extract_zip_for_import(archive: &Path, dest: &Path) -> Result<(), 
     for index in 0..zip.len() {
         let mut entry = zip.by_index(index).map_err(|e| e.to_string())?;
         let Some(rel) = entry.enclosed_name() else {
-            continue; // unsafe path (absolute / traversal): skip
+            continue; // unsafe path (`..` escape): skip; absolute ones come back relative
         };
         let rel_text = rel.to_string_lossy().replace('\\', "/");
         if import_skip(&rel_text) || rel.components().count() > IMPORT_MAX_DEPTH {

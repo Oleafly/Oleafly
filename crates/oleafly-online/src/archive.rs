@@ -171,7 +171,8 @@ pub fn extract_project_zip(
     let mut declared: u64 = 0;
     for index in 0..zip.len() {
         let entry = zip.by_index_raw(index).map_err(not_an_archive)?;
-        let Some(rel) = entry_path(entry.name()) else {
+        let name = entry.name().map_err(not_an_archive)?;
+        let Some(rel) = entry_path(&name) else {
             continue;
         };
         if skipped(&rel)

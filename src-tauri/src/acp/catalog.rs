@@ -2520,7 +2520,12 @@ pub fn extract(bytes: &[u8], zip_format: bool, destination: &Path) -> Result<(),
             {
                 return Err("Archive symbolic links are not supported.".into());
             }
-            let path = PathBuf::from(entry.name());
+            let path = PathBuf::from(
+                entry
+                    .name()
+                    .map_err(|_| "The ZIP entry is invalid.")?
+                    .into_owned(),
+            );
             let size = entry.size();
             let directory = entry.is_dir();
             write_entry(&path, size, &mut entry, directory)?;
