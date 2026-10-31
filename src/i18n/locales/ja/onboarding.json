@@ -128,7 +128,7 @@
     },
     "integrations": {
       "title": "連携",
-      "content": "Git ホスティング（GitHub、GitLab、Codeberg など）、alphaXiv、Zotero、引用検索、エージェント用のデスクトップアプリ、Oleafly のローカル MCP サーバーに接続します。"
+      "content": "Git ホスティング（GitHub、GitLab、Codeberg など）、alphaXiv、Zotero、引用検索、エージェント用の Computer Use、Oleafly のローカル MCP サーバーに接続します。"
     },
     "shortcuts": {
       "title": "キーボードショートカット",

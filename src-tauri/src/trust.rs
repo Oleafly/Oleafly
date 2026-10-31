@@ -22,7 +22,7 @@ const RUN_COMMAND_REFUSAL: &str =
 // 0.4.8 I: desktop apps act outside the project, so untrusted folders never
 // get them.
 const DESKTOP_APPS_REFUSAL: &str =
-    "Oleafly limits this folder until the user trusts it, so desktop apps are off here.";
+    "Oleafly limits this folder until the user trusts it, so Computer Use is off here.";
 const NETWORK_TOOLS: &[&str] = &[
     "literature_search",
     "verify_citation",

@@ -471,14 +471,6 @@ pub fn approvals_mode_get(project_id: String) -> Result<ApprovalMode, String> {
     try_mode_for(&crate::paths::oleafly_root()?, &project_id)
 }
 
-// FullAccess suppresses the native run_command confirmation, so switching the
-// renderer into it must clear a trusted native boundary. Only a transition
-// INTO FullAccess from a lesser mode is gated; re-affirming FullAccess or
-// moving to a stricter mode never prompts, and neither escalates privilege.
-pub fn full_access_needs_confirmation(current: ApprovalMode, requested: ApprovalMode) -> bool {
-    requested == ApprovalMode::FullAccess && current != ApprovalMode::FullAccess
-}
-
 fn ensure_mode_allowed(project_id: &str, mode: ApprovalMode) -> Result<(), String> {
     if mode == ApprovalMode::FullAccess {
         crate::trust::require_trusted(project_id, crate::trust::Capability::FullAccess)?;
@@ -486,40 +478,13 @@ fn ensure_mode_allowed(project_id: &str, mode: ApprovalMode) -> Result<(), Strin
     Ok(())
 }
 
+/// Choosing Full access applies at once, with no confirmation; the project
+/// still has to be in a trusted folder.
 #[tauri::command]
-pub async fn approvals_mode_set(
-    app: tauri::AppHandle,
-    project_id: String,
-    mode: ApprovalMode,
-) -> Result<(), String> {
+pub fn approvals_mode_set(project_id: String, mode: ApprovalMode) -> Result<(), String> {
     crate::paths::validate_project_id(&project_id)?;
     ensure_mode_allowed(&project_id, mode)?;
-    let root = crate::paths::oleafly_root()?;
-    if full_access_needs_confirmation(try_mode_for(&root, &project_id)?, mode)
-        && !confirm_full_access(app).await?
-    {
-        return Err(crate::app_error::AppError::new("approvals.full_access_declined").into());
-    }
-    set_mode(&root, &project_id, mode)
-}
-
-async fn confirm_full_access(app: tauri::AppHandle) -> Result<bool, String> {
-    use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
-    let (sender, receiver) = tokio::sync::oneshot::channel();
-    app.dialog()
-        .message(crate::i18n::t("dialog.fullAccess.message"))
-        .title(crate::i18n::t("dialog.fullAccess.title"))
-        .kind(MessageDialogKind::Warning)
-        .buttons(MessageDialogButtons::OkCancelCustom(
-            crate::i18n::t("dialog.fullAccess.confirm"),
-            crate::i18n::t("dialog.cancel"),
-        ))
-        .show(move |confirmed| {
-            let _ = sender.send(confirmed);
-        });
-    receiver
-        .await
-        .map_err(|_| crate::i18n::t("errors.fullAccessDismissed"))
+    set_mode(&crate::paths::oleafly_root()?, &project_id, mode)
 }
 
 #[cfg(test)]

@@ -58,7 +58,7 @@ describe("desktop apps tool", () => {
   });
 
   it("sends settings to Rust as they are", async () => {
-    const settings = { enabled: true, apps: [], sites: [{ origin: "https://a.org", signedIn: true }], scriptedControl: false };
+    const settings = { enabled: true, apps: [], sites: [{ origin: "https://a.org", signedIn: true }], scriptedControl: false, askBeforeActions: false };
     mocks.invoke.mockResolvedValueOnce(settings);
     await expect(cuaDriverSettingsSet(settings)).resolves.toEqual(settings);
     expect(mocks.invoke).toHaveBeenCalledWith("cua_driver_settings_set", { settings });

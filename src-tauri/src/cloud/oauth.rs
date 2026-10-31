@@ -233,6 +233,8 @@ pub(crate) fn authorize_url(
 
 #[derive(Clone)]
 pub(crate) struct LoopbackPages {
+    /// The language the messages are in, for the page's `lang`.
+    pub(crate) lang: String,
     pub(crate) success: String,
     pub(crate) failure: String,
 }
@@ -240,6 +242,7 @@ pub(crate) struct LoopbackPages {
 impl Default for LoopbackPages {
     fn default() -> Self {
         Self {
+            lang: "en".into(),
             success: "You're connected. You can close this tab and go back to Oleafly.".into(),
             failure: "Sign-in did not finish. You can close this tab and go back to Oleafly."
                 .into(),
@@ -339,12 +342,16 @@ fn query_value(query: Option<&str>, key: &str) -> Option<String> {
     })
 }
 
-fn page(message: &str) -> String {
-    let message = message
-        .replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;");
-    format!("<!doctype html><html><head><meta charset=\"utf-8\"><title>Oleafly</title></head><body><p>{message}</p></body></html>")
+/// The tab the browser lands on, dressed like the collaboration sign-in pages.
+fn page(pages: &LoopbackPages, connected: bool) -> String {
+    use oleafly_collab_protocol::page::{document_in, escape, status, Tone};
+    let (tone, message) = if connected {
+        (Tone::Success, &pages.success)
+    } else {
+        (Tone::Problem, &pages.failure)
+    };
+    let card = format!("{}<h1>{}</h1>", status(tone), escape(message));
+    document_in(&pages.lang, "Oleafly", &card, None)
 }
 
 async fn loopback_handler(
@@ -395,12 +402,7 @@ async fn loopback_handler(
         None => false,
     };
     shared.shutdown.notify_one();
-    let message = if connected {
-        &shared.pages.success
-    } else {
-        &shared.pages.failure
-    };
-    axum::response::Html(page(message)).into_response()
+    axum::response::Html(page(&shared.pages, connected)).into_response()
 }
 
 pub(crate) async fn bind_loopback(
@@ -728,7 +730,13 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(right.status().as_u16(), 200);
-        assert!(right.text().await.unwrap().contains("You're connected"));
+        let page = right.text().await.unwrap();
+        assert!(
+            page.starts_with("<!doctype html><html lang=\"en\">"),
+            "{page}"
+        );
+        assert!(page.contains("<div class=\"status success\">"), "{page}");
+        assert!(page.contains("<h1>You&#39;re connected."), "{page}");
         assert_eq!(waiting.await.unwrap().unwrap(), "code-123");
     }
 
@@ -761,7 +769,8 @@ mod tests {
             .text()
             .await
             .unwrap();
-        assert!(page.contains("Sign-in did not finish"), "{page}");
+        assert!(page.contains("<div class=\"status problem\">"), "{page}");
+        assert!(page.contains("<h1>Sign-in did not finish"), "{page}");
         assert_eq!(waiting.await.unwrap().unwrap(), "code-123");
     }
 

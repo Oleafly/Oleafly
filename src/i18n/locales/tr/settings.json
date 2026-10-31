@@ -1707,9 +1707,9 @@
       "gitFailed": "Oleafly Git belirtecini kaydedemedi. Belirtecin tamamını yapıştırdığınızdan emin olun."
     },
     "desktopApps": {
-      "tab": "Masaüstü uygulamaları",
-      "title": "Masaüstü uygulamaları",
-      "description": "Ajanların bu bilgisayardaki uygulamaları ve web sitelerini Cua Driver aracılığıyla kullanmasına izin verin. Oleafly, o tür bir işleme sohbet, oturum veya görev için izin vermediğiniz sürece her işlemden önce sorar. Oturum açtığınız tarayıcınız ve betikler için her zaman sorulur.",
+      "tab": "Computer Use",
+      "title": "Computer Use",
+      "description": "Ajanların bu bilgisayardaki uygulamaları ve web sitelerini Cua Driver üzerinden kullanmasına izin verin. Yalnızca burada listelediğiniz uygulamalara ve web sitelerine erişebilirler.",
       "docsLink": "Cua Driver belgeleri",
       "status": {
         "installed": "Cua Driver {{version}} kurulu.",
@@ -1734,6 +1734,7 @@
         "granted": "Cua Driver, Erişilebilirlik ve Ekran Kaydı izinlerini kullanabiliyor.",
         "needed": "Cua Driver için Erişilebilirlik ve Ekran Kaydı izinleri gerekir. İzin verme adımını çalıştırıp yönergeleri izleyin.",
         "unknown": "Oleafly, Cua Driver'ın izinlerini okuyamadı.",
+        "unchecked": "Cua Driver izinlerini henüz kontrol etmedi. “İzin ver” düğmesini kullanın, sonra Sistem Ayarları'nda CuaDriver için Erişilebilirlik ve Ekran Kaydı izinlerini açın.",
         "grant": "İzin ver",
         "terminalTitle": "Cua Driver izinleri"
       },
@@ -1744,7 +1745,7 @@
       },
       "enable": {
         "label": "Ajanların masaüstü uygulamalarını kullanmasına izin ver",
-        "description": "Ajanlar aşağıdaki uygulamaları ve web sitelerini görebilir. Tıklama, yazma ve sayfa değişiklikleri için, bunlara sohbet, oturum veya görev için izin vermediğiniz sürece, önce size sorulur. Bir uygulama veya web sitesi eklemek bu seçimleri temizler."
+        "description": "Ajanlar aşağıdaki uygulamaları ve web sitelerini görebilir ve kullanabilir."
       },
       "apps": {
         "heading": "İzin verilen uygulamalar",
@@ -1754,7 +1755,7 @@
         "missing": "Bu program bu bilgisayarda bulunamadı. Kaldırın ya da uygulamayı yeniden kurun.",
         "dialog": {
           "title": "Uygulama ekle",
-          "description": "Ajanların kullanabileceği bir uygulama seçin. Onayladıktan sonra ajanlar uygulamayı açabilir, pencerelerini okuyabilir ve içinde işlem yapabilir.",
+          "description": "Ajanların kullanabileceği bir uygulama seçin. Uygulamayı açabilir, pencerelerini okuyabilir ve içinde işlem yapabilirler.",
           "search": "Uygulama ara",
           "loading": "Uygulamalar aranıyor…",
           "none": "Eşleşen uygulama yok.",
@@ -1785,12 +1786,16 @@
         "signedIn": {
           "label": "Oturum açılmış tarayıcımı kullan",
           "labelFor": "{{origin}} için oturum açılmış tarayıcımı kullan",
-          "description": "Ajanlar bu sitede kendi Chrome veya Edge tarayıcınızda çalışır. Ayrı bir tarayıcı profili kullanmak için kapalı bırakın."
+          "description": "Ajanların bir sitede kendi Chrome veya Edge tarayıcınızda çalışmasını istiyorsanız o site için “Oturum açılmış tarayıcımı kullan” seçeneğini açın. Kapalıyken ayrı bir tarayıcı profili kullanırlar."
         }
       },
       "scripted": {
         "label": "Betikli denetim",
-        "description": "Ajanların birçok adımı tek seferde yapan Cua betiklerini çalıştırmasına izin verin. Oleafly her betikten önce sorar."
+        "description": "Ajanların birçok adımı tek seferde yapan Cua betiklerini çalıştırmasına izin verin."
+      },
+      "ask": {
+        "label": "Her işlemden önce sor",
+        "description": "Her tıklamayı, tuş vuruşunu, sayfa değişikliğini ve betiği bir iletişim kutusunda onaylayın. Bir işlem türüne sohbetin, oturumun veya görevin geri kalanı için izin verebilirsiniz. Oturum açılmış tarayıcınız ve betikler bunun dışındadır. Bir uygulama veya web sitesi eklemek bu seçimleri temizler."
       },
       "test": {
         "action": "Bağlantıyı test et",
@@ -1801,12 +1806,12 @@
       },
       "tool": {
         "description": "Ayarlar'da izin verdiğiniz masaüstü uygulamalarını ve web sitelerini kullanın.",
-        "note": "Bakma hemen yapılır. Tıklama, yazma ve sayfa değişiklikleri için, sohbet için izin vermediğiniz sürece önce sorulur."
+        "note": "Yalnızca izin verdiğiniz uygulamalarda ve web sitelerinde çalışır. \"Her işlemden önce sor\" açıkken işlemler önce sorar."
       },
       "task": {
-        "label": "Masaüstü uygulamaları",
-        "description": "Bu görevin izin verdiğiniz masaüstü uygulamalarını kullanmasına izin verin. İşlemleri onaylamak için bilgisayarın başında olmanız gerekir.",
-        "off": "Önce Ayarlar'dan Masaüstü uygulamalarını açın.",
+        "label": "Computer Use",
+        "description": "Bu görevin izin verdiğiniz masaüstü uygulamalarını kullanmasına izin verin. \"Her işlemden önce sor\" açıkken işlemleri onaylamak için bilgisayarın başında olmanız gerekir.",
+        "off": "Önce Ayarlar'dan Computer Use özelliğini açın.",
         "unattended": "Bir zamanlamaya göre veya Oleafly kapandıktan sonra çalışan görevler masaüstü uygulamalarını kullanamaz."
       },
       "spaces": {

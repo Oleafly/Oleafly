@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly nie mógł zweryfikować certyfikatu {{host}}. Jeśli Twoja organizacja ma własny urząd certyfikacji, dodaj jego plik certyfikatu do konta w Ustawieniach.",
     "tracked_secret_files": "Publikacja została przerwana, bo pliki w historii Git tego projektu mogą zawierać klucze lub hasła: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Pełny dostęp nie został włączony."
-  },
+  "approvals": {},
   "trust": {
     "git": "Zaufaj temu folderowi, aby korzystać z kontroli wersji.",
     "repository": "Zaufaj repozytorium {{name}}, aby korzystać tu z kontroli wersji.",
@@ -387,10 +385,10 @@
     "command_declined": "Serwer MCP nie został zapisany."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver nie jest zainstalowany. Zainstaluj go w sekcji Ustawienia → Integracje → Aplikacje na komputerze.",
+    "not_installed": "Cua Driver nie jest zainstalowany. Zainstaluj go w sekcji Ustawienia → Integracje → Computer Use.",
     "too_old": "Cua Driver {{version}} jest za stary. Zaktualizuj go do wersji {{minimum}} lub nowszej.",
     "no_app_bundle": "Zainstaluj Cua Driver oficjalnym instalatorem, aby mógł przechowywać uprawnienia macOS.",
-    "change_declined": "Zachowano poprzednie ustawienia aplikacji na komputerze.",
+    "change_declined": "Zachowano poprzednie ustawienia funkcji Computer Use.",
     "app_blocked": "Agenci nie mogą używać {{name}}.",
     "app_invalid": "Oleafly nie może używać {{name}} jako aplikacji.",
     "site_invalid": "„{{site}}” nie jest adresem strony, którego Oleafly może użyć. Użyj https:// albo http:// dla tego komputera.",
@@ -398,7 +396,8 @@
     "too_many_sites": "Możesz zezwolić na najwyżej {{limit}} stron.",
     "start_failed": "Nie udało się uruchomić Cua Driver: {{detail}}",
     "not_bounded": "Cua Driver nie uruchomił się z limitami Oleafly, więc Oleafly go zatrzymał.",
+    "needs_permissions": "Cua Driver czeka na uprawnienia w macOS. Włącz Dostępność i Nagrywanie ekranu dla CuaDriver w Ustawieniach systemowych, a potem spróbuj ponownie.",
     "task_unattended": "Zadania uruchamiane według harmonogramu lub po zamknięciu Oleafly nie mogą używać aplikacji na komputerze.",
-    "main_window": "Zmieniaj ustawienia aplikacji na komputerze w oknie głównym."
+    "main_window": "Zmieniaj ustawienia funkcji Computer Use w oknie głównym."
   }
 }

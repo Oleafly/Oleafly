@@ -128,7 +128,7 @@
     },
     "integrations": {
       "title": "集成",
-      "content": "连接 Git 托管（GitHub、GitLab、Codeberg 等）、alphaXiv、Zotero、引用搜索、供代理使用的桌面应用，以及 Oleafly 的本地 MCP 服务器。"
+      "content": "连接 Git 托管（GitHub、GitLab、Codeberg 等）、alphaXiv、Zotero、引用搜索、供代理使用的 Computer Use，以及 Oleafly 的本地 MCP 服务器。"
     },
     "shortcuts": {
       "title": "键盘快捷键",

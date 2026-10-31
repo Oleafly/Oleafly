@@ -822,6 +822,7 @@ pub async fn cloud_connect_begin(
         (None, None, true)
     } else {
         let pages = LoopbackPages {
+            lang: crate::i18n::current().into(),
             success: crate::i18n::t("cloud.connectedPage"),
             failure: crate::i18n::t("cloud.failedPage"),
         };

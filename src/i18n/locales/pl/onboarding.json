@@ -128,7 +128,7 @@
     },
     "integrations": {
       "title": "Integracje",
-      "content": "Połącz hosting Git (GitHub, GitLab, Codeberg i inne), alphaXiv, Zotero, wyszukiwanie cytowań, aplikacje na komputerze dla agentów oraz lokalny serwer MCP Oleafly."
+      "content": "Połącz hosting Git (GitHub, GitLab, Codeberg i inne), alphaXiv, Zotero, wyszukiwanie cytowań, funkcję Computer Use dla agentów oraz lokalny serwer MCP Oleafly."
     },
     "shortcuts": {
       "title": "Skróty klawiaturowe",

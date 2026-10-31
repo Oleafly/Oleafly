@@ -15,7 +15,7 @@ surface is designed to provide without duplicating task walkthroughs.
 | Research and document tools | [Tools gallery](Tools.md) |
 | Citations and literature metadata | [Citations](Citations.md) |
 | Templates and diagrams | [Templates](Templates.md), [Diagram composer](DiagramComposer.md) |
-| Desktop apps and terminal workspace | [General](General.md), [Desktop apps](desktop-apps.md) |
+| Computer Use and terminal workspace | [General](General.md), [Computer Use](desktop-apps.md) |
 | Compilation and conversion | [Compilation engines](CompilationEngines.md), [Export](Export.md) |
 | Compile, submission, accessibility, reference, privacy, and ATS checks | [Preflight](Preflight.md) |
 | Release and update operations | [Releasing](releasing.md), [Code signing](signing.md), [Auto-updates](updates.md) |

@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "取消",
-    "fullAccess": {
-      "title": "要啟用完整存取權嗎？",
-      "message": "完整存取權可讓助理執行 shell 指令並編輯檔案，不必每次徵求核准。要啟用完整存取權嗎？",
-      "confirm": "啟用完整存取權"
-    },
     "sharedShellEscape": {
       "title": "要在這個分享專案中允許外部命令嗎？",
       "message": "允許後，任何能編輯這個專案的人都可以在你編譯時，在這台電腦上執行程式。只有在你信任專案中的每個人時才允許。",
@@ -107,7 +102,7 @@
       "confirm": "在這台電腦上允許"
     },
     "desktopApps": {
-      "title": "桌面應用程式",
+      "title": "Computer Use",
       "action": "{{agent}} 想要{{action}}。",
       "steps": "{{agent}} 想要在桌面應用程式中執行以下步驟：",
       "moreSteps": "未顯示且不會執行的步驟：{{count}}",
@@ -147,14 +142,15 @@
     },
     "desktopAppsSettings": {
       "title": "要允許控制桌面嗎？",
-      "message": "代理程式將能夠使用以下項目。每次動作前仍會詢問，儲存後所有「在這個聊天中允許」的選擇都會被清除：",
+      "message": "代理程式將能夠使用以下項目：",
       "confirm": "允許",
-      "enabled": "桌面應用程式",
+      "enabled": "Computer Use",
       "app": "應用程式：{{identity}}（{{name}}）",
       "more": "還有 {{count}} 個",
       "site": "網站：{{origin}}",
       "signedIn": "你在 {{origin}} 上已登入的瀏覽器",
       "scripted": "Cua 指令碼",
+      "noAsking": "動作會直接執行，不會先詢問你",
       "spacesTitle": "要讓 Cua Spaces 擁有更多存取權限嗎？",
       "spacesMessage": "使用 Cua Spaces 的代理程式將能夠：",
       "spacesChanges": "建立與刪除 Space，並在其中執行指令",
@@ -165,7 +161,6 @@
     "menuUnavailable": "應用程式選單無法使用",
     "viewMenuUnavailable": "檢視選單無法使用",
     "menuItemUnavailable": "選單項目 {{id}} 無法使用",
-    "fullAccessDismissed": "完整存取權確認已關閉。",
     "fullAccessDeclined": "未啟用完整存取權。",
     "approvalDialogClosed": "原生核准對話框意外關閉。"
   },

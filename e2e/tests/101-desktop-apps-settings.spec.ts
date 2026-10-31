@@ -1,7 +1,7 @@
 import { test, expect } from "../fixtures";
 import { openSettings, waitLong } from "../helpers";
 
-// 0.4.8 I: Settings › Integrations › Desktop apps on a machine without Cua
+// 0.4.8 I: Settings › Integrations › Computer Use on a machine without Cua
 // Driver (every CI runner): the official install line for this OS, the
 // switch held off, and "Run in terminal" off until a project is open.
 async function openDesktopAppsTab(page: import("../helpers").Page) {

@@ -1737,9 +1737,9 @@
       "gitFailed": "Oleafly nie mógł zapisać tokenu Git. Sprawdź, czy wklejony został cały token."
     },
     "desktopApps": {
-      "tab": "Aplikacje na komputerze",
-      "title": "Aplikacje na komputerze",
-      "description": "Pozwól agentom używać aplikacji i stron na tym komputerze przez Cua Driver. Oleafly pyta przed każdą akcją, chyba że zezwolisz na taki rodzaj akcji w czacie, sesji lub zadaniu. Twoja zalogowana przeglądarka i skrypty zawsze wymagają pytania.",
+      "tab": "Computer Use",
+      "title": "Computer Use",
+      "description": "Pozwól agentom używać aplikacji i stron na tym komputerze przez Cua Driver. Docierają tylko do aplikacji i stron, które tu wpiszesz.",
       "docsLink": "Dokumentacja Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} jest zainstalowany.",
@@ -1764,6 +1764,7 @@
         "granted": "Cua Driver może korzystać z dostępności i nagrywania ekranu.",
         "needed": "Cua Driver potrzebuje uprawnień do dostępności i nagrywania ekranu. Uruchom krok nadawania uprawnień i postępuj zgodnie z instrukcjami.",
         "unknown": "Oleafly nie mógł odczytać uprawnień Cua Driver.",
+        "unchecked": "Cua Driver nie sprawdził jeszcze swoich uprawnień. Użyj „Nadaj uprawnienia”, a potem włącz Dostępność i Nagrywanie ekranu dla CuaDriver w Ustawieniach systemowych.",
         "grant": "Nadaj uprawnienia",
         "terminalTitle": "Uprawnienia Cua Driver"
       },
@@ -1774,7 +1775,7 @@
       },
       "enable": {
         "label": "Pozwól agentom używać aplikacji na komputerze",
-        "description": "Agenci widzą poniższe aplikacje i strony. Przed kliknięciami, pisaniem i zmianami stron najpierw pytają Cię, chyba że zezwolisz na nie w czacie, sesji lub zadaniu. Dodanie aplikacji lub strony usuwa te wybory."
+        "description": "Agenci widzą i mogą używać poniższych aplikacji i stron."
       },
       "apps": {
         "heading": "Dozwolone aplikacje",
@@ -1784,7 +1785,7 @@
         "missing": "Nie znaleziono tego programu na tym komputerze. Usuń go albo zainstaluj aplikację ponownie.",
         "dialog": {
           "title": "Dodaj aplikację",
-          "description": "Wybierz aplikację, której mogą używać agenci. Po Twoim zatwierdzeniu mogą ją otwierać, czytać jej okna i w niej działać.",
+          "description": "Wybierz aplikację, której agenci mogą używać. Mogą ją otworzyć, czytać jej okna i działać w niej.",
           "search": "Szukaj aplikacji",
           "loading": "Wyszukiwanie aplikacji...",
           "none": "Brak pasujących aplikacji.",
@@ -1815,12 +1816,16 @@
         "signedIn": {
           "label": "Użyj mojej zalogowanej przeglądarki",
           "labelFor": "Użyj mojej zalogowanej przeglądarki na {{origin}}",
-          "description": "Na tej stronie agenci pracują w Twoim własnym Chrome lub Edge. Zostaw wyłączone, aby używać osobnego profilu przeglądarki."
+          "description": "Włącz „Użyj mojej zalogowanej przeglądarki” dla strony, aby agenci pracowali na niej w Twoim własnym Chrome lub Edge. Gdy opcja jest wyłączona, używają osobnego profilu przeglądarki."
         }
       },
       "scripted": {
         "label": "Sterowanie skryptami",
-        "description": "Pozwól agentom uruchamiać skrypty Cua, które wykonują wiele kroków naraz. Oleafly pyta przed każdym skryptem."
+        "description": "Pozwól agentom uruchamiać skrypty Cua, które wykonują wiele kroków naraz."
+      },
+      "ask": {
+        "label": "Pytaj przed każdą akcją",
+        "description": "Zatwierdzaj każde kliknięcie, naciśnięcie klawisza, zmianę strony i skrypt w oknie dialogowym. Możesz zezwolić na dany rodzaj akcji do końca czatu, sesji lub zadania, z wyjątkiem zalogowanej przeglądarki i skryptów. Dodanie aplikacji lub strony usuwa te wybory."
       },
       "test": {
         "action": "Testuj połączenie",
@@ -1831,12 +1836,12 @@
       },
       "tool": {
         "description": "Używaj aplikacji na komputerze i stron dozwolonych w Ustawieniach.",
-        "note": "Oglądanie działa od razu. Kliknięcia, pisanie i zmiany stron wymagają najpierw pytania, chyba że zezwolisz na nie w czacie."
+        "note": "Działa tylko w aplikacjach i na stronach, na które zezwolisz. Gdy opcja „Pytaj przed każdą akcją” jest włączona, akcje najpierw pytają."
       },
       "task": {
-        "label": "Aplikacje na komputerze",
-        "description": "Pozwól temu zadaniu używać dozwolonych aplikacji na komputerze. Musisz być przy komputerze, aby zatwierdzać czynności.",
-        "off": "Najpierw włącz aplikacje na komputerze w Ustawieniach.",
+        "label": "Computer Use",
+        "description": "Pozwól temu zadaniu używać dozwolonych aplikacji na komputerze. Gdy opcja „Pytaj przed każdą akcją” jest włączona, musisz być przy komputerze, aby zatwierdzać czynności.",
+        "off": "Najpierw włącz funkcję Computer Use w Ustawieniach.",
         "unattended": "Zadania uruchamiane według harmonogramu lub po zamknięciu Oleafly nie mogą używać aplikacji na komputerze."
       },
       "spaces": {

@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly kunne ikke bekræfte certifikatet for {{host}}. Hvis din organisation har sin egen certifikatudsteder, skal du tilføje dens certifikatfil til kontoen under Indstillinger.",
     "tracked_secret_files": "Udgivelsen stoppede, fordi filer i projektets Git-historik kan indeholde nøgler eller adgangskoder: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Fuld adgang blev ikke aktiveret."
-  },
+  "approvals": {},
   "trust": {
     "git": "Stol på denne mappe for at bruge versionsstyring.",
     "repository": "Stol på repositoryet {{name}} for at bruge versionsstyring her.",
@@ -387,10 +385,10 @@
     "command_declined": "MCP-serveren blev ikke gemt."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver er ikke installeret. Installer den under Indstillinger → Integrationer → Skrivebordsapps.",
+    "not_installed": "Cua Driver er ikke installeret. Installer den under Indstillinger → Integrationer → Computer Use.",
     "too_old": "Cua Driver {{version}} er for gammel. Opdater til {{minimum}} eller nyere.",
     "no_app_bundle": "Installer Cua Driver med det officielle installationsprogram, så den kan få macOS-tilladelserne.",
-    "change_declined": "Du beholdt dine tidligere indstillinger for Skrivebordsapps.",
+    "change_declined": "Du beholdt dine tidligere indstillinger for Computer Use.",
     "app_blocked": "Agenter kan ikke bruge {{name}}.",
     "app_invalid": "Oleafly kan ikke bruge {{name}} som app.",
     "site_invalid": "»{{site}}« er ikke en hjemmesideadresse, som Oleafly kan bruge. Brug https://, eller http:// for denne computer.",
@@ -398,7 +396,8 @@
     "too_many_sites": "Du kan tillade op til {{limit}} hjemmesider.",
     "start_failed": "Cua Driver kunne ikke starte: {{detail}}",
     "not_bounded": "Cua Driver startede ikke med Oleaflys grænser, så Oleafly stoppede den.",
+    "needs_permissions": "Cua Driver venter på sine tilladelser i macOS. Slå Tilgængelighed og Skærmoptagelse til for CuaDriver under Systemindstillinger, og prøv igen.",
     "task_unattended": "Opgaver, der kører efter en tidsplan eller efter at Oleafly er lukket, kan ikke bruge skrivebordsapps.",
-    "main_window": "Ændr Skrivebordsapps fra hovedvinduet."
+    "main_window": "Ændr Computer Use fra hovedvinduet."
   }
 }

@@ -10,12 +10,14 @@ import type { InstalledApp } from "@/lib/desktop-apps";
 const mocks = vi.hoisted(() => ({
   installed: vi.fn(),
   pick: vi.fn(),
+  icons: vi.fn(),
 }));
 
 vi.mock("@/lib/desktop-apps", () => ({
   cuaDriverInstalledApps: mocks.installed,
   cuaDriverStatus: vi.fn(),
   cuaDriverPickApp: mocks.pick,
+  cuaDriverAppIcons: mocks.icons,
 }));
 
 import AppPickerDialog from "./AppPickerDialog";
@@ -36,6 +38,7 @@ function renderPicker(onPick = vi.fn(), existing: InstalledApp[] = []) {
 beforeEach(() => {
   mocks.installed.mockReset();
   mocks.pick.mockReset();
+  mocks.icons.mockReset().mockResolvedValue({});
   Element.prototype.hasPointerCapture = vi.fn(() => false);
   Element.prototype.scrollIntoView = vi.fn();
 });
@@ -89,6 +92,42 @@ describe("AppPickerDialog", () => {
     });
     expect(filterApps(apps, "app 12")).toHaveLength(111);
     expect(filterApps(apps, "")).toHaveLength(MAX_PICKER_ROWS);
+  });
+
+  it("shows each app's own icon, and a plain one for an app without", async () => {
+    mocks.installed.mockResolvedValue([
+      { name: "TextEdit", bundleId: "com.apple.TextEdit" },
+      { name: "Zotero", bundleId: "org.zotero.zotero" },
+    ]);
+    mocks.icons.mockResolvedValue({ "TextEdit\u0000com.apple.TextEdit": "data:image/png;base64,iVBORw0KGgo=" });
+    renderPicker();
+    const textEdit = await screen.findByRole("button", { name: /^TextEdit/ });
+    await waitFor(() =>
+      expect(textEdit.querySelector("img")).toHaveAttribute("src", "data:image/png;base64,iVBORw0KGgo="),
+    );
+    expect(mocks.icons).toHaveBeenCalledWith(["TextEdit\u0000com.apple.TextEdit", "Zotero\u0000org.zotero.zotero"]);
+    // The icon is decoration: the row is still named by the app alone.
+    expect(textEdit.querySelector("img")).toHaveAttribute("alt", "");
+    expect(screen.getByRole("button", { name: /^Zotero/ }).querySelector("img")).toBeNull();
+  });
+
+  it("adds nothing while a search hides the selected app", async () => {
+    mocks.installed.mockResolvedValue([
+      { name: "Activity Monitor", bundleId: "com.apple.ActivityMonitor" },
+      { name: "Zotero", bundleId: "org.zotero.zotero" },
+    ]);
+    const user = userEvent.setup();
+    const onPick = renderPicker();
+    await user.click(await screen.findByRole("button", { name: /^Activity Monitor/ }));
+    const add = screen.getByRole("button", { name: copy.dialog.add });
+    expect(add).toBeEnabled();
+    const search = screen.getByRole("searchbox", { name: copy.dialog.search });
+    await user.type(search, "zotero");
+    expect(add).toBeDisabled();
+    await user.clear(search);
+    expect(add).toBeEnabled();
+    await user.click(add);
+    expect(onPick).toHaveBeenCalledWith({ name: "Activity Monitor", bundleId: "com.apple.ActivityMonitor" });
   });
 
   it("marks apps that are already allowed", async () => {

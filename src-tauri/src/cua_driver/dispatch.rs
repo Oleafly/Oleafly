@@ -10,9 +10,11 @@ use std::sync::Arc;
 
 use serde_json::{json, Map, Value};
 
-use super::config::{ready, CuaDriverConfig};
-use super::gate::{self, Answer, GateDecision};
+use super::browser;
+use super::config::{ready, AllowedApp, CuaDriverConfig};
+use super::gate::{self, Answer, GateDecision, SeenBrowser};
 use super::policy::{self, Family};
+use super::running::running_pids;
 use super::runtime::{BATCH_TIMEOUT, CALL_TIMEOUT};
 use super::{global, lock, log, CuaDriverState, CuaScope, RuntimeKind, Surface, DESKTOP_APPS_TOOL};
 use crate::mcp::client::McpServerTool;
@@ -22,7 +24,7 @@ const MAX_IMAGE_DATA_URL_BYTES: usize = 14 * 1024 * 1024;
 const IMAGE_TYPES: &[&str] = &["image/png", "image/jpeg", "image/webp", "image/gif"];
 
 const OFF_TEXT: &str =
-    "Desktop apps are off. The user can turn them on in Settings > Integrations > Desktop apps.";
+    "Computer Use is off. The user can turn it on in Settings > Integrations > Computer Use.";
 const DECLINED_TEXT: &str = "The user didn't allow this action.";
 const NO_ANSWER_TEXT: &str =
     "The user didn't answer the approval dialog in time, so nothing was done.";
@@ -36,7 +38,7 @@ const BATCH_TOO_LONG_TEXT: &str =
 const MAX_LISTED_ELEMENTS: usize = 300;
 const MAX_ELEMENT_LIST_CHARS: usize = 24 * 1024;
 const MAX_ELEMENT_LINE_CHARS: usize = 240;
-const NO_SIGNED_IN_TEXT: &str = "No website is marked for the user's signed-in browser. Use browser \"separate\", or ask the user to mark the site in Settings > Integrations > Desktop apps.";
+const NO_SIGNED_IN_TEXT: &str = "No website is marked for the user's signed-in browser. Use browser \"separate\", or ask the user to mark the site in Settings > Integrations > Computer Use.";
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct DesktopAppsOutcome {
@@ -130,6 +132,81 @@ fn element_list(structured: &Value) -> Option<String> {
     Some(lines.join("\n"))
 }
 
+/// A browser page read as text, for a chat: the page outline of a semantic
+/// read and the refs to act on, which the driver's own text only counts.
+/// Bounded like the element list.
+fn page_text(structured: &Value) -> Option<String> {
+    let mut sections = Vec::new();
+    // The outline leaves out the page itself, whose name is its title.
+    if let Some(title) = structured
+        .get("content_refs")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .find(|entry| entry.get("role").and_then(Value::as_str) == Some("rootwebarea"))
+        .and_then(|entry| entry.get("name"))
+        .and_then(Value::as_str)
+        .filter(|title| !title.trim().is_empty())
+    {
+        sections.push(format!(
+            "Title: {}",
+            policy::bounded(title, MAX_ELEMENT_LINE_CHARS)
+        ));
+    }
+    if let Some(outline) = structured
+        .get("outline")
+        .and_then(Value::as_str)
+        .filter(|outline| !outline.trim().is_empty())
+    {
+        sections.push(format!(
+            "Page:\n{}",
+            policy::bounded(outline, MAX_ELEMENT_LIST_CHARS)
+        ));
+    }
+    let refs = structured
+        .get("action_refs")
+        .or_else(|| structured.get("refs"))
+        .and_then(Value::as_array)
+        .filter(|refs| !refs.is_empty());
+    if let Some(refs) = refs {
+        let text = |entry: &Value, keys: &[&str]| {
+            keys.iter()
+                .filter_map(|key| entry.get(*key).and_then(Value::as_str))
+                .find(|text| !text.trim().is_empty())
+                .map(str::to_string)
+        };
+        let mut lines = vec!["Refs to act on (pass as ref):".to_string()];
+        let mut used = lines[0].len();
+        let mut listed = 0;
+        for entry in refs.iter().take(MAX_LISTED_ELEMENTS) {
+            let Some(reference) = text(entry, &["ref"]) else {
+                continue;
+            };
+            let mut parts = vec![reference];
+            parts.extend(text(entry, &["role", "node"]));
+            parts.extend(text(entry, &["name", "label"]).map(|name| format!("{name:?}")));
+            let line = format!(
+                "- {}",
+                policy::bounded(&parts.join(" "), MAX_ELEMENT_LINE_CHARS)
+            );
+            if used + line.len() + 1 > MAX_ELEMENT_LIST_CHARS {
+                break;
+            }
+            used += line.len() + 1;
+            lines.push(line);
+            listed += 1;
+        }
+        if listed < refs.len() {
+            lines.push(format!(
+                "{} more refs are not listed here.",
+                refs.len() - listed
+            ));
+        }
+        sections.push(lines.join("\n"));
+    }
+    (!sections.is_empty()).then(|| sections.join("\n"))
+}
+
 /// An error string as the model should read it: AppError envelopes in
 /// English, everything else as is.
 fn readable(error: &str) -> String {
@@ -206,7 +283,10 @@ fn outcome_with(result: &Value, keep_mcp: bool) -> DesktopAppsOutcome {
         if let Some(structured) = result.get("structuredContent") {
             text = structured.to_string();
         }
-    } else if let Some(listed) = result.get("structuredContent").and_then(element_list) {
+    } else if let Some(listed) = result
+        .get("structuredContent")
+        .and_then(|structured| element_list(structured).or_else(|| page_text(structured)))
+    {
         // The element tokens are only in the structured answer, and a chat
         // reads text alone.
         text.push('\n');
@@ -260,7 +340,12 @@ fn available_kinds(config: &CuaDriverConfig) -> Vec<RuntimeKind> {
 }
 
 fn allowed_lines(config: &CuaDriverConfig) -> Vec<String> {
-    let mut lines = Vec::new();
+    let mut lines = vec![if config.ask_before_actions {
+        "Clicks, typing, keys and page changes ask the user first, unless they allowed that tool for this chat, session or task."
+    } else {
+        "Clicks, typing, keys and page changes run without asking the user. Make each one deliberate, and check the result before the next."
+    }
+    .to_string()];
     if !config.apps.is_empty() {
         let names: Vec<&str> = config.apps.iter().map(|app| app.name.as_str()).collect();
         lines.push(format!("Allowed apps: {}", names.join(", ")));
@@ -281,6 +366,10 @@ fn allowed_lines(config: &CuaDriverConfig) -> Vec<String> {
             })
             .collect();
         lines.push(format!("Allowed sites: {}", sites.join(", ")));
+        lines.push(
+            "Websites: browser_prepare opens the browser. get_browser_state then connects to it and reads the page; its target_id and tab_id go to browser_navigate, browser_click, browser_type and browser_select, and Oleafly fills them in when you leave them out."
+                .into(),
+        );
         if config.sites.iter().any(|site| site.signed_in) {
             lines.push(
                 "Pass browser \"signed_in\" to work in the user's own browser on the sites marked for it."
@@ -371,7 +460,7 @@ async fn start_session(
     if failures.len() == kinds.len() {
         log_outcome("start_session", "error");
         let reasons = failures.join("\n");
-        return DesktopAppsOutcome::error(format!("Desktop apps couldn't start:\n{reasons}"));
+        return DesktopAppsOutcome::error(format!("Computer Use couldn't start:\n{reasons}"));
     }
     if !references.is_empty() {
         sections.push(format!(
@@ -453,6 +542,11 @@ pub(crate) async fn call_desktop_apps(
         .unwrap_or_default();
     let Some(tool) = policy::curated(tool_name).filter(|tool| exposed.contains(&tool.name)) else {
         log_outcome(tool_name, "error");
+        if tool_name.is_empty() {
+            return DesktopAppsOutcome::error(
+                "Put the tool name next to args, not inside them: {\"tool\": \"type_text\", \"args\": {\"pid\": 123, \"text\": \"Hello\"}}.",
+            );
+        }
         return DesktopAppsOutcome::error(format!(
             "Unknown tool \"{}\". Use one of: {}.",
             policy::bounded(tool_name, 60),
@@ -501,23 +595,50 @@ pub(crate) async fn call_desktop_apps(
         }
     };
     let args = schema_known_args(state, kind, tool, args, &mut steps);
+    if let Some(text) = policy::launch_outside_list(tool.name, &args, &config.apps) {
+        log_outcome(tool.name, "refused:outside_list");
+        return DesktopAppsOutcome::error(text);
+    }
+    let args = if kind == RuntimeKind::Desktop {
+        let filled = with_pids(&lock(&state.seen), tool.name, args, &mut steps);
+        match filled {
+            Ok(args) => args,
+            Err(text) => {
+                log_outcome(tool.name, "refused:target");
+                return DesktopAppsOutcome::error(text);
+            }
+        }
+    } else {
+        let filled =
+            with_browser_targets(state, scope, &config, kind, &label, tool.name, args).await;
+        match filled {
+            Ok(args) => args,
+            Err(text) => {
+                log_outcome(tool.name, "refused:target");
+                return DesktopAppsOutcome::error(text);
+            }
+        }
+    };
 
     let signed_in = kind == RuntimeKind::SignedInBrowser;
     let granted = !signed_in && already_allowed(state, scope, kind, tool, steps.as_deref());
     // Steps the dialog had no room for; they don't run.
-    let skipped_steps = match gate::decide(tool, denied, granted, signed_in) {
-        GateDecision::Run => 0,
-        GateDecision::Refuse(text) => {
-            log_outcome(tool.name, "refused:approval_rules");
-            return DesktopAppsOutcome::error(text);
-        }
-        GateDecision::Ask { session_option } => {
-            match ask_approval(state, scope, kind, tool, &args, &mut steps, session_option).await {
-                Ok(skipped) => skipped,
-                Err(text) => return DesktopAppsOutcome::error(text),
+    let skipped_steps =
+        match gate::decide(tool, denied, granted, signed_in, config.ask_before_actions) {
+            GateDecision::Run => 0,
+            GateDecision::Refuse(text) => {
+                log_outcome(tool.name, "refused:approval_rules");
+                return DesktopAppsOutcome::error(text);
             }
-        }
-    };
+            GateDecision::Ask { session_option } => {
+                match ask_approval(state, scope, kind, tool, &args, &mut steps, session_option)
+                    .await
+                {
+                    Ok(skipped) => skipped,
+                    Err(text) => return DesktopAppsOutcome::error(text),
+                }
+            }
+        };
 
     let timeout = if matches!(tool.name, "run_steps" | "run_script") {
         BATCH_TIMEOUT
@@ -528,12 +649,28 @@ pub(crate) async fn call_desktop_apps(
     let observed_args = Value::Object(args.clone());
     let mut forwarded = forwarded_args(args, steps.as_deref());
     forwarded.insert("session".into(), Value::String(label.clone()));
-    let call = state
-        .runtimes
-        .call(kind, &label, tool.name, Value::Object(forwarded), timeout);
-    let Some(called) = call_until_turn_ends(state, scope, call).await else {
-        log_outcome(tool.name, "refused:turn_ended");
-        return DesktopAppsOutcome::error(STOPPED_AT_TURN_END_TEXT);
+    let listed = if kind == RuntimeKind::Desktop {
+        allowed_listing(state, scope, &config, &label, tool.name, &observed_args).await
+    } else {
+        None
+    };
+    let called = match listed {
+        Some(Some(listed)) => listed,
+        Some(None) => {
+            log_outcome(tool.name, "refused:turn_ended");
+            return DesktopAppsOutcome::error(STOPPED_AT_TURN_END_TEXT);
+        }
+        None => {
+            let call =
+                state
+                    .runtimes
+                    .call(kind, &label, tool.name, Value::Object(forwarded), timeout);
+            let Some(called) = call_until_turn_ends(state, scope, call).await else {
+                log_outcome(tool.name, "refused:turn_ended");
+                return DesktopAppsOutcome::error(STOPPED_AT_TURN_END_TEXT);
+            };
+            called
+        }
     };
     match called {
         Ok(result) => {
@@ -554,6 +691,154 @@ pub(crate) async fn call_desktop_apps(
             DesktopAppsOutcome::error(readable(&error))
         }
     }
+}
+
+/// Whether `app` matches a `list_windows` `app` filter, which Cua Driver
+/// reads as part of the name or the exact bundle id.
+fn matches_app_filter(app: &AllowedApp, filter: Option<&str>) -> bool {
+    let Some(filter) = filter.map(str::trim).filter(|filter| !filter.is_empty()) else {
+        return true;
+    };
+    app.name.to_lowercase().contains(&filter.to_lowercase())
+        || app
+            .bundle_id
+            .as_deref()
+            .is_some_and(|id| id.eq_ignore_ascii_case(filter))
+}
+
+/// `list_apps` as Oleafly answers it: the allowed apps and the processes of
+/// those that run.
+pub(crate) fn allowed_apps_result(apps: &[(AllowedApp, Vec<u32>)]) -> Value {
+    let mut lines = vec!["Allowed apps:".to_string()];
+    let mut listed = Vec::new();
+    for (app, pids) in apps {
+        let identity = app
+            .bundle_id
+            .as_deref()
+            .or(app.executable.as_deref())
+            .unwrap_or_default();
+        let state = if pids.is_empty() {
+            "not running. launch_app opens it.".to_string()
+        } else {
+            let pids: Vec<String> = pids.iter().map(u32::to_string).collect();
+            format!(
+                "running, pid {}. Call list_windows with that pid.",
+                pids.join(", ")
+            )
+        };
+        lines.push(format!("- {} ({identity}): {state}", app.name));
+        let mut entry = json!({"name": app.name, "running": !pids.is_empty(), "pids": pids});
+        if let Some(bundle_id) = &app.bundle_id {
+            entry["bundle_id"] = json!(bundle_id);
+        }
+        if let Some(executable) = &app.executable {
+            entry["executable"] = json!(executable);
+        }
+        listed.push(entry);
+    }
+    json!({
+        "content": [{"type": "text", "text": lines.join("\n")}],
+        "structuredContent": {"apps": listed},
+    })
+}
+
+/// The windows of every `list_windows` answer in `answers`, as one answer in
+/// the driver's own shape.
+pub(crate) fn merged_windows_result(answers: &[Value], any_running: bool) -> Value {
+    let windows: Vec<Value> = answers
+        .iter()
+        .filter(|answer| answer.get("isError").and_then(Value::as_bool) != Some(true))
+        .filter_map(|answer| {
+            answer
+                .pointer("/structuredContent/windows")?
+                .as_array()
+                .cloned()
+        })
+        .flatten()
+        .collect();
+    let text = if !any_running {
+        "None of the allowed apps is running. launch_app opens one.".to_string()
+    } else if windows.is_empty() {
+        "The allowed apps that run have no windows.".to_string()
+    } else {
+        let mut lines = vec![format!("Found {} window(s).", windows.len())];
+        for window in &windows {
+            let text = |key: &str| window.get(key).and_then(Value::as_str).unwrap_or_default();
+            let number = |key: &str| window.get(key).and_then(Value::as_u64).unwrap_or_default();
+            lines.push(format!(
+                "- {} (pid {}) \"{}\" [window_id: {}]",
+                text("app_name"),
+                number("pid"),
+                text("title"),
+                number("window_id")
+            ));
+        }
+        lines.join("\n")
+    };
+    json!({
+        "content": [{"type": "text", "text": text}],
+        "structuredContent": {"windows": windows},
+    })
+}
+
+/// Cua Driver 0.38 counts a list of every app, or of every window, as
+/// watching the whole desktop, which Oleafly's manifests never allow. The
+/// allowed apps are known, so Oleafly answers `list_apps` itself and asks for
+/// each running allowed app's windows by pid. `None` for every other call;
+/// `Some(None)` when the turn ended meanwhile.
+async fn allowed_listing(
+    state: &CuaDriverState,
+    scope: &CuaScope,
+    config: &CuaDriverConfig,
+    label: &str,
+    tool: &str,
+    args: &Value,
+) -> Option<Option<Result<Value, String>>> {
+    let listing_windows = tool == "list_windows" && args.get("pid").is_none();
+    if tool != "list_apps" && !listing_windows {
+        return None;
+    }
+    let filter = args.get("app").and_then(Value::as_str).map(str::to_string);
+    let apps: Vec<AllowedApp> = config
+        .apps
+        .iter()
+        .filter(|app| !listing_windows || matches_app_filter(app, filter.as_deref()))
+        .cloned()
+        .collect();
+    let found = tauri::async_runtime::spawn_blocking(move || {
+        apps.into_iter()
+            .map(|app| {
+                let pids = running_pids(&app);
+                (app, pids)
+            })
+            .collect::<Vec<_>>()
+    })
+    .await
+    .unwrap_or_default();
+    if tool == "list_apps" {
+        return Some(Some(Ok(allowed_apps_result(&found))));
+    }
+    let mut answers = Vec::new();
+    for pid in found.iter().flat_map(|(_, pids)| pids) {
+        let mut forwarded = json!({"session": label, "pid": pid});
+        if let Some(on_screen) = args.get("on_screen_only") {
+            forwarded["on_screen_only"] = on_screen.clone();
+        }
+        let call = state.runtimes.call(
+            RuntimeKind::Desktop,
+            label,
+            "list_windows",
+            forwarded,
+            CALL_TIMEOUT,
+        );
+        match call_until_turn_ends(state, scope, call).await {
+            None => return Some(None),
+            Some(Ok(answer)) => answers.push(answer),
+            Some(Err(error)) => return Some(Some(Err(error))),
+        }
+    }
+    let any_running = found.iter().any(|(_, pids)| !pids.is_empty());
+    Some(Some(Ok(merged_windows_result(&answers, any_running))))
 }
 
 /// The runtime a tool runs on. A call for the user's signed-in browser needs
@@ -621,6 +906,195 @@ fn schema_known_args(
             None => args,
         },
     }
+}
+
+/// Cua Driver 0.38 only works in an allowed app's window when the call names
+/// the app's process ("window resource did not attest a pid"). Agents often
+/// pass just the window_id or element_token they were shown, so the pid the
+/// driver gave for it is filled in. A call to one window that still names no
+/// process is answered here, before any dialog, and so is an element token
+/// from a turn that ended, which the driver would refuse after the user was
+/// asked. A batch's steps can name their target by role and name instead, so
+/// a batch is only filled in.
+fn with_pids(
+    seen: &gate::Seen,
+    tool: &str,
+    mut args: Map<String, Value>,
+    steps: &mut Option<Vec<policy::Step>>,
+) -> Result<Map<String, Value>, &'static str> {
+    let carried_over = seen.names_ended_snapshot(&Value::Object(args.clone()))
+        || steps
+            .iter()
+            .flatten()
+            .any(|step| seen.names_ended_snapshot(&step.args));
+    if carried_over {
+        return Err(policy::EARLIER_TURN_TEXT);
+    }
+    let Some(steps) = steps.as_mut() else {
+        if !policy::targets_window(tool) {
+            return Ok(args);
+        }
+        seen.fill_pid(&mut args);
+        return if gate::names_pid(&args) {
+            Ok(args)
+        } else {
+            Err(policy::NEEDS_PID_TEXT)
+        };
+    };
+    for step in steps.iter_mut() {
+        if let Value::Object(map) = &mut step.args {
+            seen.fill_pid(map);
+        }
+    }
+    seen.fill_pid(&mut args);
+    // Steps that name no window take the batch's, so a batch whose steps
+    // all act in one process names it for them.
+    if !gate::names_pid(&args) && !args.contains_key("app") {
+        let mut pids = steps
+            .iter()
+            .filter_map(|step| step.args.get("pid").and_then(Value::as_u64));
+        if let Some(first) = pids.next() {
+            if pids.all(|pid| pid == first) {
+                args.insert("pid".into(), Value::from(first));
+            }
+        }
+    }
+    Ok(args)
+}
+
+/// Fills in what a 0.38 browser call needs and the agent left out (see
+/// `browser`), and answers here, before any dialog, a page outside the list
+/// and, in the separate profile, a browser Oleafly didn't open.
+async fn with_browser_targets(
+    state: &CuaDriverState,
+    scope: &CuaScope,
+    config: &CuaDriverConfig,
+    kind: RuntimeKind,
+    label: &str,
+    tool: &str,
+    mut args: Map<String, Value>,
+) -> Result<Map<String, Value>, &'static str> {
+    let seen = lock(&state.seen)
+        .browser(&scope.session_key, kind)
+        .cloned()
+        .unwrap_or_default();
+    match tool {
+        "browser_prepare" => {
+            browser::prepare_defaults(kind, &mut args);
+            // The user's own browser is attached at the window the last
+            // bind named, as the driver's refusal of that bind asks.
+            if kind == RuntimeKind::SignedInBrowser && !args.contains_key("pid") {
+                if let Some((pid, window_id)) = seen.window {
+                    args.insert("pid".into(), Value::from(pid));
+                    args.entry("window_id")
+                        .or_insert_with(|| Value::from(window_id));
+                    args.entry("strategy")
+                        .or_insert_with(|| json!({"kind": "existing_profile"}));
+                }
+            }
+        }
+        "browser_navigate" | "browser_click" | "browser_type" | "browser_select" => {
+            if tool == "browser_navigate" {
+                let url = args.get("url").and_then(Value::as_str).unwrap_or_default();
+                if !browser::site_allowed(config, kind, url) {
+                    return Err(policy::OUTSIDE_TEXT);
+                }
+            }
+            fill_tab(&seen, &mut args);
+            // Without a bound tab the driver refuses it, after the dialog.
+            if !args.contains_key("target_id") {
+                return Err(browser::BIND_FIRST_TEXT);
+            }
+        }
+        "get_browser_state" => {
+            let binding = !args.contains_key("target_id")
+                && (args.contains_key("pid") || seen.target.is_none());
+            if binding {
+                bind_args(state, scope, kind, label, &seen, &mut args).await?;
+            } else {
+                fill_tab(&seen, &mut args);
+                // The semantic read carries the page's text; the older
+                // default lists only links and fields.
+                args.entry("snapshot_format")
+                    .or_insert_with(|| Value::from("semantic_v2"));
+            }
+        }
+        _ => {}
+    }
+    Ok(args)
+}
+
+/// The target and tab of the last bind, page read or navigation, for a call
+/// that names neither (or names that target without a tab).
+fn fill_tab(seen: &SeenBrowser, args: &mut Map<String, Value>) {
+    let Some(target) = seen.target.as_deref() else {
+        return;
+    };
+    args.entry("target_id")
+        .or_insert_with(|| Value::from(target));
+    let same_target = args.get("target_id").and_then(Value::as_str) == Some(target);
+    if let (true, Some(tab)) = (same_target, seen.tab.as_deref()) {
+        args.entry("tab_id").or_insert_with(|| Value::from(tab));
+    }
+}
+
+/// The pid and window a bind names: the browser `browser_prepare` opened
+/// (in the signed-in profile, the user's running Chrome or Edge) and its
+/// largest window, from the driver's own window list.
+async fn bind_args(
+    state: &CuaDriverState,
+    scope: &CuaScope,
+    kind: RuntimeKind,
+    label: &str,
+    seen: &SeenBrowser,
+    args: &mut Map<String, Value>,
+) -> Result<(), &'static str> {
+    let named = args.get("pid").and_then(Value::as_u64);
+    let pids = match (kind, named) {
+        (RuntimeKind::Browser, Some(pid)) if Some(pid) != seen.prepared => {
+            return Err(browser::OWN_BROWSER_TEXT)
+        }
+        (_, Some(pid)) => vec![pid],
+        (RuntimeKind::Browser, None) => vec![seen.prepared.ok_or(browser::PREPARE_FIRST_TEXT)?],
+        (_, None) => {
+            let running = tauri::async_runtime::spawn_blocking(|| {
+                browser::known_browsers()
+                    .iter()
+                    .flat_map(running_pids)
+                    .map(u64::from)
+                    .collect::<Vec<_>>()
+            })
+            .await
+            .unwrap_or_default();
+            if running.is_empty() {
+                return Err(browser::NO_BROWSER_TEXT);
+            }
+            running
+        }
+    };
+    if args.contains_key("window_id") {
+        args.entry("pid").or_insert_with(|| Value::from(pids[0]));
+        return Ok(());
+    }
+    for pid in pids {
+        let call = state.runtimes.call(
+            kind,
+            label,
+            "list_windows",
+            json!({"session": label, "pid": pid}),
+            CALL_TIMEOUT,
+        );
+        let Some(answer) = call_until_turn_ends(state, scope, call).await else {
+            return Err(STOPPED_AT_TURN_END_TEXT);
+        };
+        if let Some(window_id) = answer.ok().as_ref().and_then(browser::main_window) {
+            args.insert("pid".into(), Value::from(pid));
+            args.insert("window_id".into(), Value::from(window_id));
+            lock(&state.seen).note_browser_window(&scope.session_key, kind, pid, window_id);
+            return Ok(());
+        }
+    }
+    Err(browser::NO_WINDOW_TEXT)
 }
 
 /// Asks the user about an action and waits for the answer. `Ok` holds how
@@ -814,6 +1288,93 @@ mod tests {
     use super::*;
 
     #[test]
+    fn oleafly_lists_the_allowed_apps_with_their_processes() {
+        let textedit = AllowedApp {
+            name: "TextEdit".into(),
+            bundle_id: Some("com.apple.TextEdit".into()),
+            executable: None,
+        };
+        let stata = AllowedApp {
+            name: "Stata".into(),
+            bundle_id: None,
+            executable: Some(r"C:\Program Files\Stata 18\StataSE-64.exe".into()),
+        };
+        let result =
+            allowed_apps_result(&[(textedit.clone(), vec![52508]), (stata.clone(), vec![])]);
+        let text = result["content"][0]["text"].as_str().unwrap();
+        assert!(
+            text.contains("TextEdit (com.apple.TextEdit): running, pid 52508"),
+            "{text}"
+        );
+        assert!(
+            text.contains("Stata (C:\\Program Files\\Stata 18\\StataSE-64.exe): not running"),
+            "{text}"
+        );
+        assert_eq!(
+            result["structuredContent"]["apps"][0]["pids"],
+            json!([52508])
+        );
+        assert_eq!(
+            result["structuredContent"]["apps"][1]["running"],
+            json!(false)
+        );
+        assert!(matches_app_filter(&textedit, Some("text")));
+        assert!(matches_app_filter(&textedit, Some("COM.APPLE.TEXTEDIT")));
+        assert!(!matches_app_filter(&textedit, Some("com.apple")));
+        assert!(matches_app_filter(&stata, None));
+    }
+
+    #[test]
+    fn windows_of_each_allowed_process_come_back_as_one_answer() {
+        // cua-driver 0.38.0, `list_windows {pid}`, trimmed.
+        let textedit = json!({"content": [{"type": "text", "text": "Found 1 window(s)."}], "structuredContent": {"windows": [
+            {"app_name": "TextEdit", "pid": 52508, "title": "Untitled", "window_id": 178776}
+        ]}});
+        let refused = json!({"isError": true, "structuredContent": {"refusal": {"code": "bounded_resource_outside_manifest"}, "windows": [
+            {"app_name": "Other", "pid": 1, "title": "x", "window_id": 2}
+        ]}});
+        let merged = merged_windows_result(&[textedit, refused], true);
+        let text = merged["content"][0]["text"].as_str().unwrap();
+        assert!(text.starts_with("Found 1 window(s)."), "{text}");
+        assert!(
+            text.contains("- TextEdit (pid 52508) \"Untitled\" [window_id: 178776]"),
+            "{text}"
+        );
+        assert_eq!(
+            merged["structuredContent"]["windows"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+        let none = merged_windows_result(&[], false);
+        assert!(none["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("None of the allowed apps is running"));
+    }
+
+    #[test]
+    fn a_page_read_reaches_a_chat_as_text() {
+        // The driver's text only counts what it read.
+        let semantic = json!({"content": [{"type": "text", "text": "semantic snapshot p2: 1 action ref(s), 13 content ref(s)"}],
+            "structuredContent": {"outline": "- heading \"Example Domain\"\n- paragraph",
+                "content_refs": [{"ref": "p2:0", "role": "rootwebarea", "name": "Example Domain"}],
+                "action_refs": [{"ref": "p2:9", "role": "link", "name": "Learn more"}]}});
+        let text = outcome_from_result(&semantic).text;
+        assert!(
+            text.contains("Title: Example Domain\nPage:\n- heading \"Example Domain\""),
+            "{text}"
+        );
+        assert!(text.contains("- p2:9 link \"Learn more\""), "{text}");
+        let links = json!({"content": [{"type": "text", "text": "snapshot p1: 1 interactive element(s)"}],
+            "structuredContent": {"refs": [{"ref": "p1:2", "node": "a", "label": "href=https://iana.org"}]}});
+        assert!(outcome_from_result(&links)
+            .text
+            .contains("- p1:2 a \"href=https://iana.org\""));
+    }
+
+    #[test]
     fn images_become_data_urls_and_refusals_become_plain_text() {
         let window = json!({"content": [
             {"type": "text", "text": "Zotero window"},
@@ -831,7 +1392,7 @@ mod tests {
         assert!(outcome.is_error);
         assert_eq!(
             outcome.text,
-            "That app or site isn't on the user's allowed list. Ask the user to add it in Settings > Integrations > Desktop apps."
+            "That app or site isn't on the user's allowed list. Ask the user to add it in Settings > Integrations > Computer Use."
         );
         assert_eq!(outcome.mcp_result["isError"], true);
     }

@@ -402,6 +402,10 @@ pub(crate) fn driver_home(
 pub(crate) struct PermissionsStatus {
     pub accessibility: Option<bool>,
     pub screen_recording: Option<bool>,
+    /// The driver answered that it hasn't checked yet: from 0.38 it reports
+    /// `"status": "unknown"` until `permissions grant` has run under its own
+    /// identity, so the grant step is the way to find out.
+    pub unchecked: bool,
 }
 
 fn normalized(text: &str) -> String {
@@ -473,6 +477,12 @@ pub(crate) fn parse_permissions_status(json: &str) -> PermissionsStatus {
     let mut status = PermissionsStatus::default();
     if let Ok(value) = serde_json::from_str::<Value>(json) {
         scan_permissions(&value, &mut status, 0);
+        status.unchecked = status.accessibility.is_none()
+            && status.screen_recording.is_none()
+            && value
+                .get("status")
+                .and_then(Value::as_str)
+                .is_some_and(|text| normalized(text) == "unknown");
     }
     status
 }
@@ -872,7 +882,8 @@ mod tests {
             parse_permissions_status(r#"{"accessibility":"granted","screen_recording":false}"#),
             PermissionsStatus {
                 accessibility: Some(true),
-                screen_recording: Some(false)
+                screen_recording: Some(false),
+                unchecked: false
             }
         );
         assert_eq!(
@@ -881,7 +892,8 @@ mod tests {
             ),
             PermissionsStatus {
                 accessibility: Some(true),
-                screen_recording: None
+                screen_recording: None,
+                unchecked: false
             }
         );
         assert_eq!(
@@ -892,6 +904,25 @@ mod tests {
             parse_permissions_status("garbage"),
             PermissionsStatus::default()
         );
+    }
+
+    #[test]
+    fn a_driver_that_has_not_checked_yet_says_so() {
+        // cua-driver 0.38.0, before `permissions grant` has run.
+        let fresh = parse_permissions_status(
+            r#"{"daemon_running":false,"reason":"No CuaDriver daemon is running.","status":"unknown"}"#,
+        );
+        assert!(fresh.unchecked);
+        assert_eq!((fresh.accessibility, fresh.screen_recording), (None, None));
+        let listening = parse_permissions_status(
+            r#"{"daemon_running":true,"reason":"Not yet available.","status":"unknown"}"#,
+        );
+        assert!(listening.unchecked);
+        // 0.38.0 once granted.
+        let granted = parse_permissions_status(r#"{"accessibility":true,"screen_recording":true}"#);
+        assert!(!granted.unchecked);
+        assert_eq!(granted.accessibility, Some(true));
+        assert!(!parse_permissions_status("garbage").unchecked);
     }
 
     #[test]

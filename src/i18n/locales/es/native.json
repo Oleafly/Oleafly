@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "Cancelar",
-    "fullAccess": {
-      "title": "¿Activar el acceso completo?",
-      "message": "El acceso completo permite que el asistente ejecute comandos de shell y edite archivos sin pedir aprobación cada vez. ¿Quieres activarlo?",
-      "confirm": "Activar acceso completo"
-    },
     "sharedShellEscape": {
       "title": "¿Permitir comandos externos en este proyecto compartido?",
       "message": "Cualquier persona que pueda editar este proyecto podría ejecutar programas en este equipo cuando compiles. Permítelo solo si confías en todas las personas del proyecto.",
@@ -107,7 +102,7 @@
       "confirm": "Permitir en este equipo"
     },
     "desktopApps": {
-      "title": "Aplicaciones de escritorio",
+      "title": "Computer Use",
       "action": "{{agent}} quiere {{action}}.",
       "steps": "{{agent}} quiere hacer estos pasos en una aplicación de escritorio:",
       "moreSteps": "Pasos que no se muestran y no se ejecutan: {{count}}",
@@ -147,14 +142,15 @@
     },
     "desktopAppsSettings": {
       "title": "¿Permitir el control del escritorio?",
-      "message": "Los agentes podrán usar lo siguiente. Preguntan antes de cada acción y, al guardar, se borran todas las opciones \"Permitir en este chat\":",
+      "message": "Los agentes podrán usar lo siguiente:",
       "confirm": "Permitir",
-      "enabled": "Aplicaciones de escritorio",
+      "enabled": "Computer Use",
       "app": "Aplicación: {{identity}} ({{name}})",
       "more": "Y {{count}} más",
       "site": "Sitio web: {{origin}}",
       "signedIn": "Tu navegador con la sesión iniciada en {{origin}}",
       "scripted": "Scripts de Cua",
+      "noAsking": "Las acciones se ejecutan sin preguntarte antes",
       "spacesTitle": "¿Dar más acceso a Cua Spaces?",
       "spacesMessage": "Los agentes que usan Cua Spaces podrán:",
       "spacesChanges": "Crear y eliminar Spaces, y ejecutar comandos en ellos",
@@ -165,7 +161,6 @@
     "menuUnavailable": "El menú de la aplicación no está disponible",
     "viewMenuUnavailable": "El menú Ver no está disponible",
     "menuItemUnavailable": "El elemento de menú {{id}} no está disponible",
-    "fullAccessDismissed": "Se descartó la confirmación de acceso completo.",
     "fullAccessDeclined": "No se activó el acceso completo.",
     "approvalDialogClosed": "El diálogo nativo de aprobación se cerró de forma inesperada."
   },

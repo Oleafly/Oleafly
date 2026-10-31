@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "Annulla",
-    "fullAccess": {
-      "title": "Vuoi abilitare l'accesso completo?",
-      "message": "Con l'accesso completo l'assistente può eseguire comandi shell e modificare i file senza chiederti ogni volta l'approvazione. Vuoi abilitare l'accesso completo?",
-      "confirm": "Abilita l'accesso completo"
-    },
     "sharedShellEscape": {
       "title": "Consentire i comandi esterni in questo progetto condiviso?",
       "message": "Chiunque possa modificare questo progetto potrebbe eseguire programmi su questo computer quando compili. Consentilo solo se ti fidi di tutte le persone del progetto.",
@@ -107,7 +102,7 @@
       "confirm": "Consenti su questo computer"
     },
     "desktopApps": {
-      "title": "App desktop",
+      "title": "Computer Use",
       "action": "{{agent}} vuole {{action}}.",
       "steps": "{{agent}} vuole eseguire questi passaggi in un'app desktop:",
       "moreSteps": "Passaggi non mostrati e non eseguiti: {{count}}",
@@ -147,14 +142,15 @@
     },
     "desktopAppsSettings": {
       "title": "Consentire il controllo del desktop?",
-      "message": "Gli agenti potranno usare quanto segue. Chiedono prima di ogni azione e, quando salvi, tutte le scelte \"Consenti per questa chat\" vengono cancellate:",
+      "message": "Gli agenti potranno usare quanto segue:",
       "confirm": "Consenti",
-      "enabled": "App desktop",
+      "enabled": "Computer Use",
       "app": "App: {{identity}} ({{name}})",
       "more": "E altri {{count}}",
       "site": "Sito web: {{origin}}",
       "signedIn": "Il tuo browser con accesso effettuato su {{origin}}",
       "scripted": "Script Cua",
+      "noAsking": "Le azioni vengono eseguite senza chiederti prima",
       "spacesTitle": "Dare più accesso a Cua Spaces?",
       "spacesMessage": "Gli agenti che usano Cua Spaces potranno:",
       "spacesChanges": "Creare ed eliminare Spaces ed eseguire comandi al loro interno",
@@ -165,7 +161,6 @@
     "menuUnavailable": "Il menu dell'applicazione non è disponibile",
     "viewMenuUnavailable": "Il menu Visualizza non è disponibile",
     "menuItemUnavailable": "La voce di menu {{id}} non è disponibile",
-    "fullAccessDismissed": "La conferma dell'accesso completo è stata ignorata.",
     "fullAccessDeclined": "L'accesso completo non è stato abilitato.",
     "approvalDialogClosed": "La finestra di approvazione nativa si è chiusa in modo imprevisto."
   },

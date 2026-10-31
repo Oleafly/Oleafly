@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "Abbrechen",
-    "fullAccess": {
-      "title": "Vollzugriff aktivieren?",
-      "message": "Mit Vollzugriff darf der Assistent shell-Befehle ausführen und Dateien bearbeiten, ohne jedes Mal nachzufragen. Vollzugriff aktivieren?",
-      "confirm": "Vollzugriff aktivieren"
-    },
     "sharedShellEscape": {
       "title": "Externe Befehle in diesem geteilten Projekt erlauben?",
       "message": "Dann kann jede Person, die dieses Projekt bearbeiten darf, Programme auf diesem Computer ausführen, wenn Sie kompilieren. Erlauben Sie das nur, wenn Sie allen im Projekt vertrauen.",
@@ -107,7 +102,7 @@
       "confirm": "Auf diesem Computer erlauben"
     },
     "desktopApps": {
-      "title": "Desktop-Apps",
+      "title": "Computer Use",
       "action": "{{agent}} möchte {{action}}.",
       "steps": "{{agent}} möchte diese Schritte in einer Desktop-App ausführen:",
       "moreSteps": "Nicht angezeigte und nicht ausgeführte Schritte: {{count}}",
@@ -147,14 +142,15 @@
     },
     "desktopAppsSettings": {
       "title": "Desktop-Steuerung erlauben?",
-      "message": "Agenten können diese verwenden. Sie fragen vor jeder Aktion, und beim Speichern werden alle Entscheidungen „Für diesen Chat erlauben“ gelöscht:",
+      "message": "Agenten können diese verwenden:",
       "confirm": "Erlauben",
-      "enabled": "Desktop-Apps",
+      "enabled": "Computer Use",
       "app": "App: {{identity}} ({{name}})",
       "more": "Und {{count}} weitere",
       "site": "Website: {{origin}}",
       "signedIn": "Ihr angemeldeter Browser auf {{origin}}",
       "scripted": "Cua-Skripte",
+      "noAsking": "Aktionen laufen ohne vorherige Nachfrage",
       "spacesTitle": "Cua Spaces mehr Zugriff geben?",
       "spacesMessage": "Agenten, die Cua Spaces verwenden, können dann:",
       "spacesChanges": "Spaces erstellen und löschen und darin Befehle ausführen",
@@ -165,7 +161,6 @@
     "menuUnavailable": "Das Programmmenü ist nicht verfügbar",
     "viewMenuUnavailable": "Das Menü Ansicht ist nicht verfügbar",
     "menuItemUnavailable": "Der Menüeintrag {{id}} ist nicht verfügbar",
-    "fullAccessDismissed": "Die Bestätigung für den Vollzugriff wurde geschlossen.",
     "fullAccessDeclined": "Der Vollzugriff wurde nicht aktiviert.",
     "approvalDialogClosed": "Der native Bestätigungsdialog wurde unerwartet geschlossen."
   },

@@ -1707,9 +1707,9 @@
       "gitFailed": "Oleafly kon het Git-token niet opslaan. Controleer of je het hele token hebt geplakt."
     },
     "desktopApps": {
-      "tab": "Desktop-apps",
-      "title": "Desktop-apps",
-      "description": "Laat agents via Cua Driver apps en websites op deze computer gebruiken. Oleafly vraagt het voor elke actie, tenzij je dat soort actie toestaat voor de chat, de sessie of de taak. Je aangemelde browser en scripts vragen het altijd.",
+      "tab": "Computer Use",
+      "title": "Computer Use",
+      "description": "Laat agents apps en websites op deze computer gebruiken via Cua Driver. Ze komen alleen bij de apps en websites die je hier opgeeft.",
       "docsLink": "Documentatie van Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} is geïnstalleerd.",
@@ -1734,6 +1734,7 @@
         "granted": "Cua Driver kan Toegankelijkheid en Schermopname gebruiken.",
         "needed": "Cua Driver heeft Toegankelijkheid en Schermopname nodig. Voer de stap voor het verlenen van rechten uit en volg de aanwijzingen.",
         "unknown": "Oleafly kon de rechten van Cua Driver niet lezen.",
+        "unchecked": "Cua Driver heeft zijn rechten nog niet gecontroleerd. Gebruik “Rechten verlenen” en zet daarna Toegankelijkheid en Schermopname aan voor CuaDriver in Systeeminstellingen.",
         "grant": "Rechten verlenen",
         "terminalTitle": "Rechten van Cua Driver"
       },
@@ -1744,7 +1745,7 @@
       },
       "enable": {
         "label": "Agents desktop-apps laten gebruiken",
-        "description": "Agents kunnen de apps en websites hieronder zien. Voor klikken, typen en paginawijzigingen vragen ze het je eerst, tenzij je ze toestaat voor de chat, de sessie of de taak. Als je een app of website toevoegt, vervallen die keuzes."
+        "description": "Agents kunnen de apps en websites hieronder zien en gebruiken."
       },
       "apps": {
         "heading": "Toegestane apps",
@@ -1754,7 +1755,7 @@
         "missing": "Dit programma is niet gevonden op deze computer. Verwijder het of installeer de app opnieuw.",
         "dialog": {
           "title": "Een app toevoegen",
-          "description": "Kies een app die agents mogen gebruiken. Na je goedkeuring kunnen ze hem openen, de vensters lezen en erin handelen.",
+          "description": "Kies een app die agents mogen gebruiken. Ze kunnen hem openen, de vensters lezen en erin handelen.",
           "search": "Apps zoeken",
           "loading": "Apps zoeken…",
           "none": "Geen apps gevonden.",
@@ -1785,12 +1786,16 @@
         "signedIn": {
           "label": "Mijn aangemelde browser gebruiken",
           "labelFor": "Mijn aangemelde browser op {{origin}} gebruiken",
-          "description": "Agents werken op deze site in je eigen Chrome of Edge. Laat het uit staan om een apart browserprofiel te gebruiken."
+          "description": "Zet “Mijn aangemelde browser gebruiken” aan voor een site als agents daar in je eigen Chrome of Edge moeten werken. Staat het uit, dan gebruiken ze een apart browserprofiel."
         }
       },
       "scripted": {
         "label": "Bediening met scripts",
-        "description": "Laat agents Cua-scripts uitvoeren die veel stappen tegelijk doen. Oleafly vraagt het voor elk script."
+        "description": "Laat agents Cua-scripts uitvoeren die veel stappen tegelijk doen."
+      },
+      "ask": {
+        "label": "Vragen voor elke actie",
+        "description": "Keur elke klik, toetsaanslag, paginawijziging en elk script goed in een dialoogvenster. Je kunt een soort actie toestaan voor de rest van een chat, sessie of taak, behalve in je aangemelde browser en voor scripts. Als je een app of website toevoegt, vervallen die keuzes."
       },
       "test": {
         "action": "Verbinding testen",
@@ -1801,12 +1806,12 @@
       },
       "tool": {
         "description": "Gebruik de desktop-apps en websites die je bij Instellingen hebt toegestaan.",
-        "note": "Kijken gebeurt meteen. Voor klikken, typen en paginawijzigingen wordt het eerst gevraagd, tenzij je ze toestaat voor de chat."
+        "note": "Werkt alleen in de apps en websites die je hebt toegestaan. Acties vragen het eerst als 'Vragen voor elke actie' aan staat."
       },
       "task": {
-        "label": "Desktop-apps",
-        "description": "Laat deze taak je toegestane desktop-apps gebruiken. Je moet bij de computer zijn om acties goed te keuren.",
-        "off": "Zet eerst desktop-apps aan bij Instellingen.",
+        "label": "Computer Use",
+        "description": "Laat deze taak je toegestane desktop-apps gebruiken. Als 'Vragen voor elke actie' aan staat, moet je bij de computer zijn om acties goed te keuren.",
+        "off": "Zet eerst Computer Use aan bij Instellingen.",
         "unattended": "Taken die volgens een schema of na het sluiten van Oleafly draaien, kunnen geen desktop-apps gebruiken."
       },
       "spaces": {

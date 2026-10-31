@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "取消",
-    "fullAccess": {
-      "title": "启用完全访问权限？",
-      "message": "完全访问权限允许助手运行 shell 命令和编辑文件，无需每次请求批准。要启用完全访问权限吗？",
-      "confirm": "启用完全访问权限"
-    },
     "sharedShellEscape": {
       "title": "要在这个共享项目中允许外部命令吗？",
       "message": "允许后，任何能编辑此项目的人都可以在你编译时，在这台电脑上运行程序。只有在你信任项目中的每个人时才允许。",
@@ -107,7 +102,7 @@
       "confirm": "在这台电脑上允许"
     },
     "desktopApps": {
-      "title": "桌面应用",
+      "title": "Computer Use",
       "action": "{{agent}} 想要{{action}}。",
       "steps": "{{agent}} 想要在桌面应用中执行以下步骤：",
       "moreSteps": "未显示且不会运行的步骤：{{count}}",
@@ -147,14 +142,15 @@
     },
     "desktopAppsSettings": {
       "title": "允许控制桌面？",
-      "message": "代理将能够使用以下内容。每次操作前仍会询问，保存后所有“在此聊天中允许”的选择都会被清除：",
+      "message": "代理将能够使用以下内容：",
       "confirm": "允许",
-      "enabled": "桌面应用",
+      "enabled": "Computer Use",
       "app": "应用：{{identity}}（{{name}}）",
       "more": "还有 {{count}} 个",
       "site": "网站：{{origin}}",
       "signedIn": "你在 {{origin}} 上已登录的浏览器",
       "scripted": "Cua 脚本",
+      "noAsking": "操作将直接运行，不会先询问你",
       "spacesTitle": "授予 Cua Spaces 更多访问权限？",
       "spacesMessage": "使用 Cua Spaces 的代理将能够：",
       "spacesChanges": "创建和删除 Space，并在其中运行命令",
@@ -165,7 +161,6 @@
     "menuUnavailable": "应用菜单不可用",
     "viewMenuUnavailable": "视图菜单不可用",
     "menuItemUnavailable": "菜单项 {{id}} 不可用",
-    "fullAccessDismissed": "完全访问权限确认已关闭。",
     "fullAccessDeclined": "未启用完全访问权限。",
     "approvalDialogClosed": "原生审批对话框意外关闭了。"
   },

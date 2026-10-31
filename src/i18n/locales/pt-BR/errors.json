@@ -131,9 +131,7 @@
     "tls_failed": "O Oleafly não conseguiu verificar o certificado de {{host}}. Se a sua organização tem uma autoridade certificadora própria, adicione o arquivo de certificado dela à conta em Configurações.",
     "tracked_secret_files": "A publicação parou porque arquivos no histórico do Git deste projeto podem conter chaves ou senhas: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "O acesso total não foi ativado."
-  },
+  "approvals": {},
   "trust": {
     "git": "Confie nesta pasta para usar o controle de versão.",
     "repository": "Confie no repositório {{name}} para usar o controle de versão aqui.",
@@ -387,10 +385,10 @@
     "command_declined": "O servidor MCP não foi salvo."
   },
   "desktop_apps": {
-    "not_installed": "O Cua Driver não está instalado. Instale em Configurações, Integrações, Aplicativos de desktop.",
+    "not_installed": "O Cua Driver não está instalado. Instale em Configurações, Integrações, Computer Use.",
     "too_old": "O Cua Driver {{version}} é antigo demais. Atualize para {{minimum}} ou mais recente.",
     "no_app_bundle": "Instale o Cua Driver com o instalador oficial para que ele possa manter as permissões do macOS.",
-    "change_declined": "Você manteve suas configurações anteriores de Aplicativos de desktop.",
+    "change_declined": "Você manteve suas configurações anteriores de Computer Use.",
     "app_blocked": "Os agentes não podem usar {{name}}.",
     "app_invalid": "O Oleafly não consegue usar {{name}} como aplicativo.",
     "site_invalid": "\"{{site}}\" não é um endereço de site que o Oleafly possa usar. Use https://, ou http:// para este computador.",
@@ -398,7 +396,8 @@
     "too_many_sites": "Você pode permitir até {{limit}} sites.",
     "start_failed": "O Cua Driver não conseguiu iniciar: {{detail}}",
     "not_bounded": "O Cua Driver não iniciou com os limites do Oleafly, então o Oleafly o parou.",
+    "needs_permissions": "O Cua Driver está aguardando as permissões do macOS. Ligue Acessibilidade e Gravação de Tela para o CuaDriver em Ajustes do Sistema e tente de novo.",
     "task_unattended": "Tarefas que rodam em um horário agendado ou depois que o Oleafly fecha não podem usar aplicativos de desktop.",
-    "main_window": "Altere Aplicativos de desktop na janela principal."
+    "main_window": "Altere Computer Use na janela principal."
   }
 }

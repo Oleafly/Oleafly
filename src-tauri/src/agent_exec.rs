@@ -1161,27 +1161,6 @@ mod tests {
         );
     }
 
-    #[test]
-    fn full_access_confirmation_only_gates_transitions_into_full_access() {
-        use crate::approvals::{full_access_needs_confirmation, ApprovalMode};
-        assert!(full_access_needs_confirmation(
-            ApprovalMode::ApproveForMe,
-            ApprovalMode::FullAccess
-        ));
-        assert!(full_access_needs_confirmation(
-            ApprovalMode::Custom,
-            ApprovalMode::FullAccess
-        ));
-        assert!(!full_access_needs_confirmation(
-            ApprovalMode::FullAccess,
-            ApprovalMode::FullAccess
-        ));
-        assert!(!full_access_needs_confirmation(
-            ApprovalMode::FullAccess,
-            ApprovalMode::ApproveForMe
-        ));
-    }
-
     #[tokio::test(flavor = "current_thread")]
     async fn a_finished_chat_run_does_not_mint_an_exec_approval() {
         let root = test_root("run-finished-before-approval");

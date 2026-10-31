@@ -28,6 +28,7 @@ import {
   type InstalledApp,
 } from "@/lib/desktop-apps";
 import { openInSystemBrowser } from "@/lib/system-browser";
+import { shellCommandLine } from "@/lib/terminal-quote";
 import { useFilesStore } from "@/store/files";
 import { SpacesCard } from "./SpacesCard";
 import { storeSavedSettings, useDesktopAppsStatus } from "./desktop-apps-queries";
@@ -132,7 +133,9 @@ export default function DesktopAppsSection() {
         <DriverStatus status={data} projectId={projectId} onCheckAgain={() => void status.refetch()} />
       </IntegrationCard>
 
-      {data.permissions ? (
+      {/* The grants belong to the app the installer puts in place, so they
+          wait until Cua Driver is installed and new enough. */}
+      {data.permissions && data.driverProblem === null ? (
         <PermissionsRow
           status={data}
           projectId={projectId}
@@ -177,6 +180,15 @@ export default function DesktopAppsSection() {
         checked={settings.scriptedControl}
         disabled={saving}
         onChange={(scriptedControl) => void save({ ...settings, scriptedControl })}
+      />
+
+      <SettingsToggleRow
+        testId="desktop-apps-ask"
+        label={t(($) => $.settings.integrations.desktopApps.ask.label)}
+        description={t(($) => $.settings.integrations.desktopApps.ask.description)}
+        checked={settings.askBeforeActions}
+        disabled={saving}
+        onChange={(askBeforeActions) => void save({ ...settings, askBeforeActions })}
       />
 
       {error ? <IntegrationError>{error}</IntegrationError> : null}
@@ -307,9 +319,6 @@ function AllowedSites({ settings, saving, siteError, site, onSiteChange, onSubmi
   return (
     <section className="space-y-2" data-testid="desktop-apps-sites">
       <SectionHeading as="h4">{t(($) => $.settings.integrations.desktopApps.sites.heading)}</SectionHeading>
-      <p className="text-xs text-muted-foreground">
-        {t(($) => $.settings.integrations.desktopApps.sites.signedIn.description)}
-      </p>
       {/* No browser validation: WebKit blocks a bad address without saying
           so. Rust checks the address and the message shows below. */}
       <form
@@ -342,47 +351,50 @@ function AllowedSites({ settings, saving, siteError, site, onSiteChange, onSubmi
       {settings.sites.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t(($) => $.settings.integrations.desktopApps.sites.empty)}</p>
       ) : (
-        settings.sites.map((entry, index) => (
-          <SettingsRow
-            key={entry.origin}
-            label={entry.origin}
-            control={
-              <div className="flex shrink-0 items-center gap-3">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Switch
-                    checked={entry.signedIn}
-                    disabled={saving}
-                    aria-label={t(($) => $.settings.integrations.desktopApps.sites.signedIn.labelFor, {
-                      origin: entry.origin,
-                    })}
-                    onCheckedChange={(signedIn) =>
-                      onSave({
-                        ...settings,
-                        sites: settings.sites.map((known, position) =>
-                          position === index ? { ...known, signedIn } : known,
-                        ),
-                      })
-                    }
-                  />
-                  <span aria-hidden>{t(($) => $.settings.integrations.desktopApps.sites.signedIn.label)}</span>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  disabled={saving}
-                  aria-label={t(($) => $.settings.integrations.desktopApps.sites.remove, { origin: entry.origin })}
-                  onClick={() =>
-                    onSave({ ...settings, sites: settings.sites.filter((_, position) => position !== index) })
-                  }
-                >
-                  <Trash2 aria-hidden className="size-4" />
-                </Button>
-              </div>
-            }
-          />
-        ))
+        <p className="text-xs text-muted-foreground">
+          {t(($) => $.settings.integrations.desktopApps.sites.signedIn.description)}
+        </p>
       )}
+      {settings.sites.map((entry, index) => (
+        <SettingsRow
+          key={entry.origin}
+          label={entry.origin}
+          control={
+            <div className="flex shrink-0 items-center gap-3">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Switch
+                  checked={entry.signedIn}
+                  disabled={saving}
+                  aria-label={t(($) => $.settings.integrations.desktopApps.sites.signedIn.labelFor, {
+                    origin: entry.origin,
+                  })}
+                  onCheckedChange={(signedIn) =>
+                    onSave({
+                      ...settings,
+                      sites: settings.sites.map((known, position) =>
+                        position === index ? { ...known, signedIn } : known,
+                      ),
+                    })
+                  }
+                />
+                <span aria-hidden>{t(($) => $.settings.integrations.desktopApps.sites.signedIn.label)}</span>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={saving}
+                aria-label={t(($) => $.settings.integrations.desktopApps.sites.remove, { origin: entry.origin })}
+                onClick={() =>
+                  onSave({ ...settings, sites: settings.sites.filter((_, position) => position !== index) })
+                }
+              >
+                <Trash2 aria-hidden className="size-4" />
+              </Button>
+            </div>
+          }
+        />
+      ))}
     </section>
   );
 }
@@ -540,8 +552,10 @@ function PermissionsRow({
   if (!permissions) return null;
   const granted = permissions.accessibility === true && permissions.screenRecording === true;
   const missing = permissions.accessibility === false || permissions.screenRecording === false;
-  const canGrant = Boolean(status.driverPath);
-  let description = t(($) => $.settings.integrations.desktopApps.permissions.unknown);
+  const grant = status.driverPath ? { program: status.driverPath, args: ["permissions", "grant"] } : null;
+  let description = permissions.unchecked
+    ? t(($) => $.settings.integrations.desktopApps.permissions.unchecked)
+    : t(($) => $.settings.integrations.desktopApps.permissions.unknown);
   if (granted) description = t(($) => $.settings.integrations.desktopApps.permissions.granted);
   else if (missing) description = t(($) => $.settings.integrations.desktopApps.permissions.needed);
   return (
@@ -550,26 +564,29 @@ function PermissionsRow({
       label={t(($) => $.settings.integrations.desktopApps.permissions.heading)}
       description={description}
       details={
-        !granted && canGrant && !projectId ? (
-          <p className="mt-1 text-xs text-muted-foreground">
-            {t(($) => $.settings.integrations.desktopApps.install.needsProject)}
-          </p>
+        !granted && grant && !projectId ? (
+          <div className="mt-2 space-y-1">
+            <CodeBlock
+              code={shellCommandLine("posix", { command: grant.program, args: grant.args })}
+              preClassName="whitespace-pre-wrap break-words"
+            />
+            <p className="text-xs text-muted-foreground">
+              {t(($) => $.settings.integrations.desktopApps.install.needsProject)}
+            </p>
+          </div>
         ) : null
       }
       control={
         granted ? null : (
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {canGrant ? (
+            {grant ? (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 disabled={!projectId}
                 onClick={() =>
-                  void runInTerminal(t(($) => $.settings.integrations.desktopApps.permissions.terminalTitle), {
-                    program: status.driverPath ?? "",
-                    args: ["permissions", "grant"],
-                  })
+                  void runInTerminal(t(($) => $.settings.integrations.desktopApps.permissions.terminalTitle), grant)
                 }
               >
                 {t(($) => $.settings.integrations.desktopApps.permissions.grant)}

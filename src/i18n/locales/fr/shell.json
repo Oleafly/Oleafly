@@ -993,7 +993,7 @@
         "experimentation": "labo, laboratoire, bêta, fonctionnalités en avant-première",
         "general": "préférences, langue, région, vérification orthographique, orthographe, fautes de frappe, hors ligne, visites guidées, commande du terminal",
         "help": "à propos, version, mises à jour, journal des modifications, nouveautés, documentation, assistance, aide, communauté, Discord, licence, rapport de plantage",
-        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hébergement Git, applications de bureau, Cua, MCP, citations, comptes, connexions",
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hébergement Git, Computer Use, applications de bureau, Cua, MCP, citations, comptes, connexions",
         "shortcuts": "raccourcis clavier, raccourcis, touches, clavier",
         "research": "recherche tâches budget notifications veille expériences exécutions research tasks"
       },

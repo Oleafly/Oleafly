@@ -112,7 +112,13 @@ function LaunchDialog({ prompt }: Readonly<{ prompt: LaunchPrompt }>) {
       onConfirm={() => answer(true)}
       onCancel={() => answer(false)}
     >
-      <CodeBlock code={prompt.commandLine} className="mt-3" data-testid="terminal-launch-command" />
+      {/* Wrapped, so the whole command shows before the user agrees to it. */}
+      <CodeBlock
+        code={prompt.commandLine}
+        className="mt-3"
+        preClassName="whitespace-pre-wrap break-words"
+        data-testid="terminal-launch-command"
+      />
     </ConfirmationDialog>
   );
 }

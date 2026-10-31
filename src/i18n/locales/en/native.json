@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "Cancel",
-    "fullAccess": {
-      "title": "Enable full access?",
-      "message": "Full access lets the assistant run shell commands and edit files without asking for approval each time. Enable full access?",
-      "confirm": "Enable full access"
-    },
     "sharedShellEscape": {
       "title": "Allow external commands in this shared project?",
       "message": "Anyone who can edit this project could then run programs on this computer when you compile. Only allow this if you trust everyone in the project.",
@@ -107,7 +102,7 @@
       "confirm": "Allow on this computer"
     },
     "desktopApps": {
-      "title": "Desktop apps",
+      "title": "Computer Use",
       "action": "{{agent}} wants to {{action}}.",
       "steps": "{{agent}} wants to run these steps in a desktop app:",
       "moreSteps": "Steps not shown and not run: {{count}}",
@@ -147,14 +142,15 @@
     },
     "desktopAppsSettings": {
       "title": "Allow desktop control?",
-      "message": "Agents will be able to use these. They ask before each action, and saving this clears any \"Allow for this chat\" choices:",
+      "message": "Agents will be able to use these:",
       "confirm": "Allow",
-      "enabled": "Desktop apps",
+      "enabled": "Computer Use",
       "app": "App: {{identity}} ({{name}})",
       "more": "And {{count}} more",
       "site": "Website: {{origin}}",
       "signedIn": "Your signed-in browser on {{origin}}",
       "scripted": "Cua scripts",
+      "noAsking": "Actions run without asking you first",
       "spacesTitle": "Give Cua Spaces more access?",
       "spacesMessage": "Agents that use Cua Spaces will be able to:",
       "spacesChanges": "Create and delete Spaces, and run commands in them",
@@ -165,7 +161,6 @@
     "menuUnavailable": "Application menu is unavailable",
     "viewMenuUnavailable": "View menu is unavailable",
     "menuItemUnavailable": "Menu item {{id}} is unavailable",
-    "fullAccessDismissed": "The full access confirmation was dismissed.",
     "fullAccessDeclined": "Full access was not enabled.",
     "approvalDialogClosed": "The native approval dialog closed unexpectedly."
   },

@@ -110,7 +110,7 @@ pub(crate) async fn agent_tool(
         return tool_error("The tool arguments were not valid JSON.");
     };
     let Some(state) = global() else {
-        return tool_error("Desktop apps aren't available.");
+        return tool_error("Computer Use isn't available.");
     };
     let scope = CuaScope {
         grant_key: run.grant_key.clone(),

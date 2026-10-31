@@ -31,11 +31,6 @@
   },
   "dialog": {
     "cancel": "Annuler",
-    "fullAccess": {
-      "title": "Activer l'accès complet ?",
-      "message": "L'accès complet permet à l'assistant d'exécuter des commandes shell et de modifier des fichiers sans demander votre autorisation à chaque fois. Activer l'accès complet ?",
-      "confirm": "Activer l'accès complet"
-    },
     "sharedShellEscape": {
       "title": "Autoriser les commandes externes dans ce projet partagé ?",
       "message": "Toute personne qui peut modifier ce projet pourrait alors lancer des programmes sur cet ordinateur quand vous compilez. Autorisez-le seulement si vous faites confiance à tous les membres du projet.",
@@ -107,7 +102,7 @@
       "confirm": "Autoriser sur cet ordinateur"
     },
     "desktopApps": {
-      "title": "Applications de bureau",
+      "title": "Computer Use",
       "action": "{{agent}} veut {{action}}.",
       "steps": "{{agent}} veut effectuer ces étapes dans une application de bureau :",
       "moreSteps": "Étapes non affichées et non exécutées : {{count}}",
@@ -147,14 +142,15 @@
     },
     "desktopAppsSettings": {
       "title": "Autoriser le contrôle du bureau ?",
-      "message": "Les agents pourront utiliser les éléments suivants. Ils demandent avant chaque action, et l'enregistrement efface tous les choix « Autoriser pour cette discussion » :",
+      "message": "Les agents pourront utiliser les éléments suivants :",
       "confirm": "Autoriser",
-      "enabled": "Applications de bureau",
+      "enabled": "Computer Use",
       "app": "Application : {{identity}} ({{name}})",
       "more": "Et {{count}} autres",
       "site": "Site web : {{origin}}",
       "signedIn": "Votre navigateur connecté sur {{origin}}",
       "scripted": "Scripts Cua",
+      "noAsking": "Les actions s'exécutent sans vous demander d'abord",
       "spacesTitle": "Donner plus d'accès à Cua Spaces ?",
       "spacesMessage": "Les agents qui utilisent Cua Spaces pourront :",
       "spacesChanges": "Créer et supprimer des Spaces, et y exécuter des commandes",
@@ -165,7 +161,6 @@
     "menuUnavailable": "Le menu de l'application est indisponible",
     "viewMenuUnavailable": "Le menu Affichage est indisponible",
     "menuItemUnavailable": "L'élément de menu {{id}} est indisponible",
-    "fullAccessDismissed": "La confirmation d'accès complet a été fermée.",
     "fullAccessDeclined": "L'accès complet n'a pas été activé.",
     "approvalDialogClosed": "La boîte de dialogue d'autorisation native s'est fermée de façon inattendue."
   },

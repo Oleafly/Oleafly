@@ -1266,6 +1266,7 @@ pub fn run() {
             cua_driver::commands::cua_driver_status,
             cua_driver::commands::cua_driver_settings_set,
             cua_driver::commands::cua_driver_installed_apps,
+            cua_driver::commands::cua_driver_app_icons,
             cua_driver::commands::cua_driver_pick_app,
             cua_driver::commands::cua_driver_test,
             cua_driver::commands::cua_driver_tool_spec,

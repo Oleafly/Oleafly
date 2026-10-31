@@ -1722,9 +1722,9 @@
       "gitFailed": "O Oleafly não conseguiu salvar o token Git. Confira se você colou o token inteiro."
     },
     "desktopApps": {
-      "tab": "Aplicativos de desktop",
-      "title": "Aplicativos de desktop",
-      "description": "Deixe os agentes usarem aplicativos e sites deste computador pelo Cua Driver. O Oleafly pergunta antes de cada ação, a menos que você permita esse tipo de ação para a conversa, a sessão ou a tarefa. Seu navegador conectado e os scripts sempre perguntam.",
+      "tab": "Computer Use",
+      "title": "Computer Use",
+      "description": "Deixe os agentes usarem aplicativos e sites neste computador pelo Cua Driver. Eles só alcançam os aplicativos e sites que você listar aqui.",
       "docsLink": "Documentação do Cua Driver",
       "status": {
         "installed": "O Cua Driver {{version}} está instalado.",
@@ -1749,6 +1749,7 @@
         "granted": "O Cua Driver pode usar Acessibilidade e Gravação de Tela.",
         "needed": "O Cua Driver precisa de Acessibilidade e Gravação de Tela. Execute a etapa de concessão e siga as instruções.",
         "unknown": "O Oleafly não conseguiu ler as permissões do Cua Driver.",
+        "unchecked": "O Cua Driver ainda não verificou as permissões dele. Use “Conceder permissões” e depois ligue Acessibilidade e Gravação de Tela para o CuaDriver em Ajustes do Sistema.",
         "grant": "Conceder permissões",
         "terminalTitle": "Permissões do Cua Driver"
       },
@@ -1759,7 +1760,7 @@
       },
       "enable": {
         "label": "Deixar os agentes usarem aplicativos de desktop",
-        "description": "Os agentes podem ver os aplicativos e os sites abaixo. Cliques, digitação e mudanças de página perguntam a você primeiro, a menos que você os permita para a conversa, a sessão ou a tarefa. Adicionar um aplicativo ou site limpa essas escolhas."
+        "description": "Os agentes podem ver e usar os aplicativos e os sites abaixo."
       },
       "apps": {
         "heading": "Aplicativos permitidos",
@@ -1769,7 +1770,7 @@
         "missing": "Este programa não foi encontrado neste computador. Remova-o ou reinstale o aplicativo.",
         "dialog": {
           "title": "Adicionar um aplicativo",
-          "description": "Escolha um aplicativo que os agentes podem usar. Depois da sua aprovação, eles podem abri-lo, ler as janelas dele e agir nele.",
+          "description": "Escolha um aplicativo que os agentes podem usar. Eles podem abri-lo, ler suas janelas e agir nele.",
           "search": "Buscar aplicativos",
           "loading": "Procurando aplicativos…",
           "none": "Nenhum aplicativo corresponde.",
@@ -1800,12 +1801,16 @@
         "signedIn": {
           "label": "Usar meu navegador conectado",
           "labelFor": "Usar meu navegador conectado em {{origin}}",
-          "description": "Os agentes trabalham no seu próprio Chrome ou Edge neste site. Deixe desligado para usar um perfil de navegador separado."
+          "description": "Ligue “Usar meu navegador conectado” em um site para que os agentes trabalhem nele no seu próprio Chrome ou Edge. Com a opção desligada, eles usam um perfil de navegador separado."
         }
       },
       "scripted": {
         "label": "Controle por script",
-        "description": "Deixe os agentes executarem scripts do Cua que fazem várias etapas de uma vez. O Oleafly pergunta antes de cada script."
+        "description": "Deixe os agentes executarem scripts do Cua que fazem muitas etapas de uma vez."
+      },
+      "ask": {
+        "label": "Perguntar antes de cada ação",
+        "description": "Aprove cada clique, tecla, mudança de página e script em uma caixa de diálogo. Você pode permitir um tipo de ação pelo resto de uma conversa, sessão ou tarefa, exceto no seu navegador conectado e para scripts. Adicionar um aplicativo ou site limpa essas escolhas."
       },
       "test": {
         "action": "Testar a conexão",
@@ -1816,12 +1821,12 @@
       },
       "tool": {
         "description": "Usar os aplicativos de desktop e os sites que você permitiu em Configurações.",
-        "note": "Olhar acontece na hora. Cliques, digitação e mudanças de página perguntam primeiro, a menos que você os permita para a conversa."
+        "note": "Funciona apenas nos aplicativos e sites que você permitiu. As ações perguntam antes quando \"Perguntar antes de cada ação\" está ativado."
       },
       "task": {
-        "label": "Aplicativos de desktop",
-        "description": "Deixar esta tarefa usar seus aplicativos de desktop permitidos. Você precisa estar no computador para aprovar as ações.",
-        "off": "Primeiro ligue Aplicativos de desktop em Configurações.",
+        "label": "Computer Use",
+        "description": "Deixar esta tarefa usar seus aplicativos de desktop permitidos. Com \"Perguntar antes de cada ação\" ativado, você precisa estar no computador para aprovar as ações.",
+        "off": "Primeiro ligue Computer Use em Configurações.",
         "unattended": "Tarefas que rodam em um horário agendado ou depois que o Oleafly fecha não podem usar aplicativos de desktop."
       },
       "spaces": {

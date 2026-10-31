@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly konnte das Zertifikat von {{host}} nicht überprüfen. Wenn Ihre Organisation eine eigene Zertifizierungsstelle betreibt, fügen Sie deren Zertifikatsdatei in den Einstellungen dem Konto hinzu.",
     "tracked_secret_files": "Veröffentlichen abgebrochen, weil Dateien im Git-Verlauf dieses Projekts Schlüssel oder Passwörter enthalten können: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Der Vollzugriff wurde nicht aktiviert."
-  },
+  "approvals": {},
   "trust": {
     "git": "Vertrauen Sie diesem Ordner, um die Versionsverwaltung zu nutzen.",
     "repository": "Vertrauen Sie dem Repository {{name}}, um hier die Versionsverwaltung zu nutzen.",
@@ -387,10 +385,10 @@
     "command_declined": "Der MCP-Server wurde nicht gespeichert."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver ist nicht installiert. Installieren Sie es unter Einstellungen → Integrationen → Desktop-Apps.",
+    "not_installed": "Cua Driver ist nicht installiert. Installieren Sie es unter Einstellungen → Integrationen → Computer Use.",
     "too_old": "Cua Driver {{version}} ist zu alt. Aktualisieren Sie auf {{minimum}} oder neuer.",
     "no_app_bundle": "Installieren Sie Cua Driver mit dem offiziellen Installer, damit es die macOS-Berechtigungen erhalten kann.",
-    "change_declined": "Ihre bisherigen Einstellungen für Desktop-Apps wurden beibehalten.",
+    "change_declined": "Ihre bisherigen Einstellungen für Computer Use wurden beibehalten.",
     "app_blocked": "Agenten können {{name}} nicht verwenden.",
     "app_invalid": "Oleafly kann {{name}} nicht als App verwenden.",
     "site_invalid": "„{{site}}“ ist keine Website-Adresse, die Oleafly verwenden kann. Verwenden Sie https://, oder http:// für diesen Computer.",
@@ -398,7 +396,8 @@
     "too_many_sites": "Sie können bis zu {{limit}} Websites erlauben.",
     "start_failed": "Cua Driver konnte nicht starten: {{detail}}",
     "not_bounded": "Cua Driver ist nicht mit den Grenzen von Oleafly gestartet, daher hat Oleafly es beendet.",
+    "needs_permissions": "Cua Driver wartet auf seine macOS-Berechtigungen. Aktivieren Sie Bedienungshilfen und Bildschirmaufnahme für CuaDriver in den Systemeinstellungen und versuchen Sie es dann erneut.",
     "task_unattended": "Aufgaben, die nach Zeitplan oder nach dem Schließen von Oleafly laufen, können keine Desktop-Apps verwenden.",
-    "main_window": "Ändern Sie Desktop-Apps im Hauptfenster."
+    "main_window": "Ändern Sie Computer Use im Hauptfenster."
   }
 }

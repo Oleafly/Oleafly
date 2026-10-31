@@ -128,7 +128,7 @@
     },
     "integrations": {
       "title": "Integrationer",
-      "content": "Anslut Git-värdtjänster (GitHub, GitLab, Codeberg med flera), alphaXiv, Zotero, citeringssökning, skrivbordsappar för agenter och Oleaflys lokala MCP-server."
+      "content": "Anslut Git-värdtjänster (GitHub, GitLab, Codeberg med flera), alphaXiv, Zotero, citeringssökning, Computer Use för agenter och Oleaflys lokala MCP-server."
     },
     "shortcuts": {
       "title": "Kortkommandon",

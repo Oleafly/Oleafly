@@ -131,9 +131,7 @@
     "tls_failed": "Oleafly, {{host}} sertifikasını doğrulayamadı. Kuruluşunuz kendi sertifika yetkilisini çalıştırıyorsa, onun sertifika dosyasını Ayarlar'dan hesaba ekleyin.",
     "tracked_secret_files": "Bu projenin Git geçmişindeki dosyalar anahtar veya parola içerebileceği için yayımlama durduruldu: {{files}}"
   },
-  "approvals": {
-    "full_access_declined": "Tam erişim etkinleştirilmedi."
-  },
+  "approvals": {},
   "trust": {
     "git": "Kaynak Denetimi'ni kullanmak için bu klasöre güvenin.",
     "repository": "Burada Kaynak Denetimi'ni kullanmak için {{name}} deposuna güvenin.",
@@ -387,10 +385,10 @@
     "command_declined": "MCP sunucusu kaydedilmedi."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver kurulu değil. Ayarlar, Tümleştirmeler, Masaüstü uygulamaları bölümünden kurun.",
+    "not_installed": "Cua Driver kurulu değil. Ayarlar, Tümleştirmeler, Computer Use bölümünden kurun.",
     "too_old": "Cua Driver {{version}} çok eski. {{minimum}} veya daha yeni bir sürüme güncelleyin.",
     "no_app_bundle": "macOS izinlerini tutabilmesi için Cua Driver'ı resmi yükleyiciyle kurun.",
-    "change_declined": "Önceki Masaüstü uygulamaları ayarlarınızı korudunuz.",
+    "change_declined": "Önceki Computer Use ayarlarınızı korudunuz.",
     "app_blocked": "Ajanlar {{name}} uygulamasını kullanamaz.",
     "app_invalid": "Oleafly, {{name}} öğesini uygulama olarak kullanamaz.",
     "site_invalid": "\"{{site}}\", Oleafly'nin kullanabileceği bir web sitesi adresi değil. https:// kullanın, bu bilgisayar için http:// kullanabilirsiniz.",
@@ -398,7 +396,8 @@
     "too_many_sites": "En fazla {{limit}} web sitesine izin verebilirsiniz.",
     "start_failed": "Cua Driver başlatılamadı: {{detail}}",
     "not_bounded": "Cua Driver, Oleafly'nin sınırlarıyla başlamadığı için Oleafly onu durdurdu.",
+    "needs_permissions": "Cua Driver macOS izinlerini bekliyor. Sistem Ayarları'nda CuaDriver için Erişilebilirlik ve Ekran Kaydı izinlerini açın, sonra yeniden deneyin.",
     "task_unattended": "Bir zamanlamaya göre veya Oleafly kapandıktan sonra çalışan görevler masaüstü uygulamalarını kullanamaz.",
-    "main_window": "Masaüstü uygulamaları ayarlarını ana pencereden değiştirin."
+    "main_window": "Computer Use ayarlarını ana pencereden değiştirin."
   }
 }
