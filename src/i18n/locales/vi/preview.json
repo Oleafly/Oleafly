@@ -1,0 +1,319 @@
+{
+  "toolbar": {
+    "logs": "Nhật ký",
+    "showLogs": "Hiện nhật ký biên dịch",
+    "showPdf": "Hiện bản xem trước PDF",
+    "askAi": "Hỏi AI",
+    "more": "Thêm điều khiển xem trước",
+    "duration": "{{seconds}}s",
+    "failed": "Thất bại",
+    "compiledWithErrors": "Đã biên dịch với lỗi",
+    "compiledWithWarnings": "Đã biên dịch với cảnh báo",
+    "compiledSuccessfully": "Đã biên dịch thành công"
+  },
+  "pageLayout": {
+    "group": "Bố cục trang",
+    "single": "Xem một trang",
+    "double": "Xem hai trang"
+  },
+  "pages": {
+    "previous": "Trang trước",
+    "next": "Trang sau",
+    "number": "Số trang",
+    "ofTotal": "trên {{total}}",
+    "pageOfTotal": "Trang {{page}} trên {{total}}"
+  },
+  "zoom": {
+    "in": "Phóng to",
+    "out": "Thu nhỏ",
+    "fitToWidth": "Vừa chiều rộng",
+    "fitToHeight": "Vừa chiều cao",
+    "reset": "Đặt lại về 100%",
+    "percent": "{{percent}}%",
+    "percentLabel": "Thu phóng {{percent}} phần trăm",
+    "menuLabel": "Thu phóng · {{percent}}%"
+  },
+  "outline": {
+    "open": "Dàn ý tài liệu",
+    "panel": "Dàn ý tài liệu PDF",
+    "title": "Dàn ý tài liệu",
+    "close": "Đóng dàn ý tài liệu",
+    "loading": "Đang tải dàn ý…",
+    "empty": "PDF này không có dàn ý tài liệu.",
+    "externalLink": "Liên kết ngoài",
+    "externalBadge": "Liên kết"
+  },
+  "search": {
+    "open": "Tìm trong PDF",
+    "panel": "Tìm trong PDF này",
+    "placeholder": "Tìm trong tài liệu",
+    "input": "Tìm văn bản PDF",
+    "previous": "Kết quả tìm kiếm trước",
+    "next": "Kết quả tìm kiếm tiếp theo",
+    "close": "Đóng tìm kiếm PDF"
+  },
+  "viewer": {
+    "scrollArea": "Vùng cuộn liên tục PDF",
+    "crashedTitle": "Bản xem trước PDF gặp sự cố",
+    "crashedDetail": "Hãy biên dịch lại bản sửa đổi hiện tại hoặc thử lại trình xem.",
+    "retry": "Thử lại trình xem",
+    "loadingLatest": "Đang tải PDF đã biên dịch mới nhất…",
+    "retryingLoad": "Đang thử tải lại PDF…",
+    "retainedFailure": "{{detail}} Thay vào đó đang hiển thị PDF tải thành công gần nhất.",
+    "retainedFailureDetail": "Không thể tải PDF hiện tại",
+    "invalidTitle": "PDF không hợp lệ",
+    "emptyTitle": "PDF trống",
+    "unavailableTitle": "Trình xem PDF không khả dụng",
+    "loadFailedTitle": "Tải PDF thất bại",
+    "loadFailedDetail": "Không thể tải PDF."
+  },
+  "password": {
+    "title": "Cần mật khẩu",
+    "label": "Mật khẩu PDF",
+    "placeholder": "Mật khẩu PDF",
+    "submit": "Mở khoá PDF"
+  },
+  "actions": {
+    "downloadImage": "Tải hình ảnh",
+    "downloadPdf": "Tải PDF",
+    "downloadDisplayedPdf": "Tải PDF đang hiển thị",
+    "downloadStalePdf": "Tải PDF cũ, không phải bản hiện tại",
+    "saveImage": "Lưu hình ảnh vào dự án",
+    "savePdf": "Lưu PDF vào dự án",
+    "invert": "Đảo màu bản xem trước PDF",
+    "restoreColors": "Khôi phục màu",
+    "readerView": "Chế độ đọc",
+    "exitReaderView": "Thoát chế độ đọc",
+    "rotate": "Xoay theo chiều kim đồng hồ",
+    "rotateTooltip": "Xoay PDF theo chiều kim đồng hồ (90°). Hiện tại {{degrees}}°",
+    "openWindow": "Mở bản xem trước trong cửa sổ mới",
+    "hideToolbar": "Ẩn thanh công cụ",
+    "showToolbar": "Hiện thanh công cụ",
+    "settings": "Cài đặt xem trước PDF",
+    "fullscreen": "Xem trước toàn màn hình",
+    "exitFullscreen": "Thoát toàn màn hình",
+    "retryCompile": "Thử biên dịch lại",
+    "chooseEngine": "Chọn engine",
+    "installPackages_other": "Tìm và cài đặt {{count}} tệp",
+    "downloadTypst": "Tải Typst {{version}}",
+    "useTypst": "Dùng Typst {{version}}",
+    "installTool": "Cài đặt {{tool}} {{version}}",
+    "installToolSize": "Cài đặt {{tool}} {{version}} ({{size}})",
+    "engineSettings": "Mở cài đặt engine"
+  },
+  "html": {
+    "builtTitle": "Đã dựng thành trang web",
+    "builtDetail": "Dựng lúc {{time}}. Trang web mở trong trình duyệt của bạn.",
+    "building": "Đang dựng trang web",
+    "buildingDetail": "Khi xong, bạn có thể mở nó trong trình duyệt.",
+    "pendingTitle": "Tài liệu này dựng thành trang web",
+    "pendingDetail": "Hãy biên dịch, rồi mở nó trong trình duyệt.",
+    "open": "Mở trong trình duyệt",
+    "compile": "Biên dịch"
+  },
+  "stale": {
+    "badge": "Cũ",
+    "badgeLabel": "Bản xem trước cũ, không phải bản hiện tại. Hãy biên dịch lại.",
+    "tooltip": "Bản xem trước đã cũ so với thay đổi trong trình soạn thảo. {{explanation}} {{syncTex}} Nhấp để biên dịch lại.",
+    "explanation": "PDF này không đại diện cho bản sửa đổi đang hoạt động của dự án.",
+    "revisionExplanation": "Đang hiển thị bản sửa đổi dự án {{displayed}}. Dự án đang hoạt động ở bản sửa đổi {{active}}.",
+    "noIdentity": "PDF đang hiển thị không có danh tính biên dịch đã xác minh cho bản sửa đổi đang hoạt động.",
+    "syncTexAvailable": "Đồng bộ mã nguồn dùng dòng gần nhất không thay đổi cho các chỉnh sửa.",
+    "syncTexUnavailable": "Đồng bộ mã nguồn cần một lần biên dịch hiện tại."
+  },
+  "save": {
+    "title": "Lưu PDF vào dự án",
+    "imageTitle": "Lưu hình ảnh vào dự án",
+    "close": "Đóng hộp thoại lưu",
+    "staleDescription": "Lưu PDF cũ đang hiển thị vào cây dự án. Nó không đại diện cho bản sửa đổi đang hoạt động.",
+    "description": "Lưu PDF đang hiển thị vào cây dự án (được commit qua Git).",
+    "nameLabel": "Tên lưu trong dự án",
+    "namePlaceholder": "document.pdf",
+    "imageSaved": "Đã lưu hình ảnh vào dự án.",
+    "pdfSaved": "Đã lưu PDF vào dự án.",
+    "failed": "Không thể lưu vào dự án."
+  },
+  "download": {
+    "pngFilter": "Hình ảnh PNG",
+    "imageSaved": "Đã lưu hình ảnh · {{name}}",
+    "pdfSaved": "Đã lưu PDF · {{name}}",
+    "showInFolder": "Hiện trong thư mục",
+    "folderUnavailable": "Không thể mở thư mục.",
+    "imageFailed": "Không thể tải hình ảnh.",
+    "imageFailedDetail": "Không thể tải hình ảnh: {{detail}}",
+    "pdfFailed": "Không thể tải PDF.",
+    "pdfFailedDetail": "Không thể tải PDF: {{detail}}"
+  },
+  "empty": {
+    "compileUnavailable": "Biên dịch PDF hiện không khả dụng.",
+    "compileFailed": "Biên dịch thất bại. Mở thẻ Nhật ký để xem lỗi."
+  },
+  "a11y": {
+    "stale": "PDF cũ, không phải bản hiện tại. {{explanation}}",
+    "page": "Trang PDF {{page}} trên {{total}}.",
+    "searchResult": "Kết quả tìm kiếm {{current}} trên {{total}}."
+  },
+  "startup": {
+    "headingReady": "Bản xem trước PDF đã sẵn sàng",
+    "headingPreparing": "Đang chuẩn bị bản xem trước PDF",
+    "headingAttention": "Khởi động cần được chú ý",
+    "progressLabel": "Khởi động tài liệu: {{completed}} trên {{total}} giai đoạn đã xong hoặc bỏ qua",
+    "doneCount": "{{completed}}/{{total}} xong",
+    "metaRunning": "{{stages}} đang chạy",
+    "metaQueued": "{{stages}} đang chờ",
+    "metaFailed": "{{stages}} thất bại",
+    "compileNow": "Biên dịch ngay",
+    "noProject": "Không có dự án đang mở",
+    "waitingForEngine": "Đang chờ engine tài liệu",
+    "orPress": "hoặc nhấn <shortcutKey>{{keys}}</shortcutKey>",
+    "status": {
+      "done": "xong",
+      "running": "đang chạy",
+      "queued": "đang chờ",
+      "skipped": "đã bỏ qua",
+      "failed": "thất bại"
+    },
+    "language": {
+      "serviceLabel": "Dịch vụ ngôn ngữ",
+      "analysisLabel": "Phân tích ngôn ngữ",
+      "openingFiles": "Đang mở tệp dự án",
+      "starting": "Đang khởi động dịch vụ ngôn ngữ",
+      "restarting": "Đang khởi động lại dịch vụ ngôn ngữ",
+      "installing": "Đang cài đặt dịch vụ ngôn ngữ",
+      "connected": "Đã khởi động và kết nối",
+      "ready": "Sẵn sàng",
+      "localOnly": "Không cần. Đang dùng phân tích cục bộ.",
+      "notApplicable": "Không áp dụng cho dự án này",
+      "unavailable": "Không khả dụng. Phân tích cục bộ vẫn dùng được.",
+      "waitingToStart": "Đang chờ khởi động",
+      "waitingForFiles": "Đang chờ tệp dự án",
+      "syncing": "Đang đồng bộ tệp dự án hiện tại",
+      "analyzing": "Đang phân tích cấu trúc dự án",
+      "analyzed": "Đã phân tích bản sửa đổi hiện tại của dự án",
+      "partial": "Phân tích một phần dùng được đã sẵn sàng",
+      "needsAttention": "Phân tích cần được chú ý",
+      "notAvailable": "Không khả dụng cho dự án này",
+      "queued": "Đã xếp hàng cho bản sửa đổi hiện tại",
+      "waitingForService": "Đang chờ dịch vụ ngôn ngữ"
+    },
+    "compile": {
+      "label": "Đang biên dịch",
+      "saving": "Đang lưu thay đổi hiện tại",
+      "downloading": "Đang tải các gói LaTeX cần thiết",
+      "producing": "Đang tạo và xác minh đầu ra PDF",
+      "unavailable": "Trình biên dịch không khả dụng",
+      "failed": "Biên dịch thất bại. Mở Nhật ký để xem chi tiết.",
+      "accepted": "Đã chấp nhận đầu ra đã xác minh",
+      "waiting": "Đang chờ biên dịch bản sửa đổi hiện tại"
+    },
+    "render": {
+      "label": "Đang kết xuất PDF",
+      "preparing": "Đang chuẩn bị trang, văn bản và liên kết",
+      "reading": "Đang đọc PDF · {{percent}}%",
+      "passwordRequired": "Cần mật khẩu",
+      "needsAttention": "Kết xuất PDF cần được chú ý",
+      "ready": "Bản xem trước đã sẵn sàng",
+      "waitingForRenderer": "Đang chờ bộ kết xuất PDF đã xác minh",
+      "waitingForCompile": "Đang chờ đầu ra biên dịch đã xác minh"
+    }
+  },
+  "window": {
+    "fitWidth": "Vừa chiều rộng",
+    "fitHeight": "Vừa chiều cao",
+    "invert": "Đảo màu",
+    "invertLabel": "Đảo màu PDF",
+    "rotateLabel": "Xoay PDF theo chiều kim đồng hồ",
+    "staleHeading": "Cũ · bản xem trước không phải hiện tại",
+    "staleCompiling": "Một bản sửa đổi dự án mới hơn đang biên dịch. Đây là PDF đã xác minh cuối cùng cho bản sửa đổi {{revision}}.",
+    "staleUnknownRevision": "không rõ",
+    "staleCompileFailed": "{{detail}} PDF đã xác minh cuối cùng vẫn hiển thị.",
+    "staleCompileFailedDetail": "Lần biên dịch mới hơn không tạo ra PDF dùng được",
+    "staleIdentity": "PDF này không đại diện cho danh tính biên dịch được chấp nhận mới nhất.",
+    "crashedDetail": "Hãy thử lại trình xem này hoặc biên dịch lại trong cửa sổ chính.",
+    "compilingTitle": "Đang biên dịch PDF",
+    "compileFailedTitle": "Biên dịch thất bại",
+    "compileUnavailableTitle": "Biên dịch không khả dụng",
+    "artifactUnavailableTitle": "PDF không khả dụng",
+    "noVerifiedTitle": "Chưa có PDF đã xác minh",
+    "compilingDetail": "PDF đã xác minh sẽ xuất hiện khi biên dịch hoàn tất.",
+    "noVerifiedDetail": "Hãy biên dịch dự án trong cửa sổ chính. Cửa sổ này chỉ hiển thị đầu ra có danh tính biên dịch đã xác minh.",
+    "loadingTitle": "Đang tải PDF",
+    "loadingVerified": "Đang tải PDF đã xác minh…",
+    "restoringLast": "Đang khôi phục PDF tải thành công gần nhất…",
+    "retryingLoad": "Đang thử tải lại PDF…",
+    "unlocking": "Đang mở khoá PDF…",
+    "rotating": "Đang xoay PDF…",
+    "retainedFailureDetail": "Không thể tải PDF mới nhất",
+    "artifactFailure": "Không thể xác minh hoặc đọc PDF đã biên dịch. PDF tải thành công gần nhất được giữ lại khi có.",
+    "downloadStarted": "Đã bắt đầu tải PDF.",
+    "downloadSaved": "Đã lưu PDF thành công.",
+    "downloadFailed": "Không thể lưu PDF đang hiển thị."
+  },
+  "package": {
+    "error": {
+      "passwordIncorrect": "Mật khẩu PDF không được chấp nhận.",
+      "passwordRequired": "PDF này được bảo vệ bằng mật khẩu.",
+      "invalid": "Đầu ra đã biên dịch không phải PDF hợp lệ. Hãy biên dịch lại hoặc xem nhật ký biên dịch.",
+      "unavailable": "Bộ kết xuất PDF không khả dụng trong cửa sổ này. Hãy thử lại sau khi khôi phục cửa sổ hoặc khởi động lại ứng dụng.",
+      "generic": "Không thể tải PDF. Hãy biên dịch lại bản sửa đổi hiện tại và thử lại.",
+      "empty": "PDF đã biên dịch trống.",
+      "firstPage": "PDF đã mở, nhưng không thể kết xuất trang đầu."
+    },
+    "link": {
+      "blockedScheme": "Liên kết PDF này dùng lược đồ URL bị chặn."
+    },
+    "search": {
+      "failed": "Tìm kiếm không thể đọc mọi trang. Hãy thử lại sau khi tải lại PDF."
+    },
+    "outline": {
+      "empty": "PDF này không có dàn ý tài liệu.",
+      "failed": "Không thể tải dàn ý PDF.",
+      "destinationUnavailable": "Đích dàn ý đó không khả dụng.",
+      "blockedScheme": "Liên kết này dùng lược đồ URL bị chặn.",
+      "noDestination": "Mục dàn ý này không có đích.",
+      "untitled": "Mục chưa đặt tên"
+    },
+    "status": {
+      "loading": "Đang tải PDF…"
+    },
+    "a11y": {
+      "document": "Bản xem trước tài liệu PDF",
+      "page": "Trang PDF {{page}} trên {{total}}",
+      "textLayer": "Văn bản có thể chọn cho trang PDF {{page}}"
+    },
+    "screenReader": {
+      "layer": "Chế độ trình đọc màn hình, trang {{page}} trên {{total}}",
+      "title": "Chế độ trình đọc màn hình",
+      "pageLabel": "Trang {{page}} trên {{total}}",
+      "empty": "Không tìm thấy văn bản đọc được trên trang này."
+    }
+  },
+  "presentation": {
+    "windowTitle": "Thuyết trình",
+    "presenterTitle": "Chế độ người thuyết trình",
+    "present": "Thuyết trình",
+    "presentFromStart": "Thuyết trình từ đầu",
+    "presentFromPage": "Thuyết trình từ trang này",
+    "presentWithPresenter": "Thuyết trình với chế độ người thuyết trình",
+    "loading": "Đang mở các trang chiếu",
+    "failed": "Không thể mở các trang chiếu. Hãy biên dịch dự án, rồi thử lại.",
+    "close": "Đóng",
+    "slideLabel": "Trang chiếu {{page}} trên {{total}}",
+    "current": "Trang chiếu hiện tại",
+    "next": "Trang chiếu tiếp theo",
+    "lastSlide": "Đây là trang chiếu cuối cùng.",
+    "notes": "Ghi chú của người nói",
+    "notesLoading": "Đang đọc ghi chú của người nói",
+    "noNotes": "Không có ghi chú cho trang chiếu này.",
+    "elapsed": "Thời gian đã trôi",
+    "clock": "Thời gian hiện tại",
+    "pause": "Tạm dừng đồng hồ",
+    "resume": "Tiếp tục đồng hồ",
+    "reset": "Đặt lại đồng hồ",
+    "previousAction": "Trang chiếu trước",
+    "nextAction": "Trang chiếu tiếp theo",
+    "end": "Kết thúc thuyết trình",
+    "blank": "Màn hình khán giả đang trống. Nhấn B để hiện các trang chiếu.",
+    "toggleBlank": "Làm trống màn hình khán giả"
+  }
+}

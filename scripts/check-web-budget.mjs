@@ -12,8 +12,10 @@ const limits = {
   // it imports statically. 445,181 bytes when this budget was set, 1.6 KB over
   // the browser app before compiling came in.
   startupJavaScript: 460_000,
-  // Every JavaScript chunk: 7,105,776 bytes.
-  totalJavaScript: 7_250_000,
+  // Every JavaScript chunk: 7,105,776 bytes when this budget was set. Each
+  // interface language adds about 85 KB of catalog chunks that load on
+  // demand; with Vietnamese, the 22nd, the total is 7,288,582 bytes.
+  totalJavaScript: 7_450_000,
   // Each WebAssembly module by name. One not listed here fails the check, so
   // a new one is added on purpose, with its size.
   wasm: {

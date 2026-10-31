@@ -1,0 +1,592 @@
+{
+  "accents": {
+    "blue": "Xanh dương",
+    "green": "Xanh lá",
+    "orange": "Cam",
+    "purple": "Tím",
+    "rose": "Hồng",
+    "teal": "Xanh ngọc"
+  },
+  "acp": {
+    "readiness": {
+      "bridgeMissing": "Cần bridge",
+      "cliMissing": "Không tìm thấy CLI",
+      "ready": "Sẵn sàng",
+      "unavailable": "Không khả dụng"
+    },
+    "requestFailed": "Không hoàn tất được yêu cầu ACP."
+  },
+  "aiBudget": {
+    "approximateCost": "~{{amount}}",
+    "blocked": "Dự án này đã đạt hạn mức AI {{budget}}. Hãy tăng hoặc xoá hạn mức trong Cài đặt để tiếp tục.",
+    "warned": "Dự án này đã dùng {{spent}} trong hạn mức AI {{budget}}."
+  },
+  "assistant": {
+    "handoffRuntimeSwitch": "Đã chuyển sang trợ lý Oleafly cho thao tác này."
+  },
+  "bibtex": {
+    "duplicateDoi": "DOI trùng với: {{keys}}",
+    "duplicateKey": "Khoá trích dẫn bị trùng",
+    "invalidYear": "Năm \"{{year}}\" không phải số có bốn chữ số",
+    "missingField": "Thiếu trường bắt buộc: {{fields}}",
+    "missingKey": "Mục kiểu @{{type}} thiếu khoá trích dẫn",
+    "unknownType": "Kiểu mục không rõ @{{type}}",
+    "unreadableFields": "Không đọc được các trường của \"{{entry}}\"",
+    "unterminatedEntry": "Mục chưa kết thúc gần ký tự {{position}}",
+    "unusualField": "Trường không thường gặp cho @{{type}}: {{field}}"
+  },
+  "citation": {
+    "fileChanged": "{{path}} đã thay đổi trong khi nhập trích dẫn. Hãy thử lại.",
+    "noArxivEntry": "Không tìm thấy mục arXiv.",
+    "noReferences": "Không tìm thấy tham chiếu nào trong tệp đó.",
+    "offline": "Tra cứu trích dẫn cần mạng. Hãy tắt chế độ ngoại tuyến trong Cài đặt.",
+    "parseFailed": "Không phân tích được trích dẫn.",
+    "projectChanged": "Dự án đã thay đổi trong khi nhập trích dẫn.",
+    "projectChangedNotInserted": "Dự án đã thay đổi trong khi nhập trích dẫn. Trích dẫn chưa được chèn.",
+    "projectChangedRetry": "Dự án đã thay đổi trong khi nhập trích dẫn. Hãy thử lại trong dự án ban đầu.",
+    "readFailed": "Không đọc được {{path}}: {{detail}}",
+    "unrecognizedFile": "Loại tệp không nhận diện được: {{name}}",
+    "writeFailed": "Không ghi được {{path}}: {{detail}}",
+    "linkedBibliography": "{{path}} liên kết tới một tệp ngoài thư mục này, nên Oleafly không thêm vào được. Hãy thêm tham chiếu trong Zotero hoặc nơi lưu tệp đó."
+  },
+  "citeOleafly": {
+    "added": "Đã thêm mục Oleafly vào {{path}}. Trích dẫn bằng {{markup}}.",
+    "failed": "Không thêm được trích dẫn Oleafly. Hãy sao chép từ Cài đặt, Trợ giúp & Giới thiệu.",
+    "present": "{{path}} đã có mục Oleafly. Trích dẫn bằng {{markup}}.",
+    "undo": "Hoàn tác"
+  },
+  "compile": {
+    "noOfflineMode": "{{engine}} không cung cấp chế độ biên dịch ngoại tuyến. Biên dịch bình thường.",
+    "retry": "Biên dịch lại",
+    "bundleFetchFailed": "Oleafly không tải được các gói TeX mà tài liệu này cần. Hãy kiểm tra kết nối và biên dịch lại.",
+    "typstMissing": "Typst {{version}} chưa được cài. Hãy tải xuống, hoặc chuyển dự án này sang phiên bản khác.",
+    "typstPackage": {
+      "downloadFailed": "Typst không tải được {{spec}}. Hãy kiểm tra kết nối mạng và biên dịch lại.",
+      "downloadFailedUnnamed": "Typst không tải được một gói mà tài liệu này import. Hãy kiểm tra kết nối mạng và biên dịch lại.",
+      "offlineNotCached": "Bạn đang ngoại tuyến và {{spec}} chưa có trong bộ nhớ đệm gói. Hãy biên dịch một lần khi trực tuyến, hoặc vendor các gói của dự án.",
+      "offlineNotCachedUnnamed": "Bạn đang ngoại tuyến và một gói mà tài liệu này import chưa có trong bộ nhớ đệm gói. Hãy biên dịch một lần khi trực tuyến.",
+      "notFound": "Typst Universe không có gói {{spec}}. Hãy kiểm tra tên trong câu import.",
+      "localNotFound": "Gói cục bộ {{spec}} chưa được cài. Hãy đặt nó trong thư mục gói Typst của Oleafly hoặc trong thư mục typst-packages của dự án.",
+      "versionMissing": "Gói này không có phiên bản {{version}}. Phiên bản mới nhất là {{latest}}.",
+      "versionMissingNoLatest": "Gói này không có phiên bản {{version}}. Hãy kiểm tra phiên bản trong câu import."
+    },
+    "saveFailed": "Không lưu được {{path}}, nên Oleafly không biên dịch. Hãy kiểm tra tệp đó rồi biên dịch lại.",
+    "saveFailedSeveral": "Không lưu được {{path}} và các tệp khác, nên Oleafly không biên dịch. Hãy kiểm tra những tệp đó rồi biên dịch lại.",
+    "saveFailedOther": "Không lưu được tài liệu, nên Oleafly không biên dịch. {{reason}}"
+  },
+  "developer": {
+    "actions": {
+      "clearProjects": {
+        "description": "Chuyển mọi dự án phát triển vào Thùng rác. Không có gì bị xoá vĩnh viễn.",
+        "title": "Xoá dự án"
+      },
+      "replayFirstRun": {
+        "description": "Đặt lại mọi hướng dẫn, đóng dự án hiện tại và quay về luồng chào mừng.",
+        "title": "Chạy lại lần đầu"
+      },
+      "resetAndSeed": {
+        "description": "Chuyển các dự án hiện tại vào Thùng rác, rồi sao chép tất cả {{count}} fixture thực tế đã ghim từ bộ nhớ đệm cục bộ.",
+        "title": "Đặt lại và nạp dữ liệu"
+      },
+      "resetUiState": {
+        "description": "Xoá cài đặt cục bộ và trạng thái giao diện đã lưu của Oleafly mà không xoá dự án.",
+        "title": "Đặt lại trạng thái giao diện"
+      },
+      "seedCorpus": {
+        "action": "Nạp bộ dữ liệu",
+        "description": "Sao chép {{count}} dự án nghiên cứu từ ~/Codespace/Oleafly/oleafly-seed. Bài báo, luận văn, sách, bài nói, poster và hình bằng LaTeX và Typst, tất cả đều đã được kiểm chứng biên dịch được với engine đi kèm. Các fixture hiện có được giữ lại.",
+        "title": "Nạp bộ dữ liệu nghiên cứu"
+      }
+    },
+    "confirm": {
+      "clearProjects": {
+        "action": "Xoá dự án",
+        "description": "Mọi dự án trong thư viện phát triển biệt lập sẽ được chuyển vào Thùng rác của nó. Thư viện Oleafly sản xuất của bạn không bị ảnh hưởng.",
+        "title": "Xoá tất cả dự án phát triển?"
+      },
+      "fallbackTitle": "Xác nhận thao tác phát triển",
+      "resetAndSeed": {
+        "action": "Đặt lại và nạp dữ liệu",
+        "description": "Mọi dự án phát triển hiện tại được chuyển vào Thùng rác, rồi Oleafly sao chép {{count}} fixture nghiên cứu từ bộ nhớ đệm oleafly-seed cục bộ.",
+        "title": "Đặt lại và nạp dữ liệu cho thư viện phát triển?"
+      },
+      "resetBrowser": {
+        "action": "Đặt lại trạng thái giao diện",
+        "description": "Thao tác này xoá cài đặt Oleafly, hướng dẫn và trạng thái trình duyệt khác cho origin phát triển này, rồi tải lại ứng dụng. Tệp dự án vẫn ở trên đĩa.",
+        "title": "Đặt lại trạng thái giao diện phát triển?"
+      }
+    },
+    "debugOnly": {
+      "description": "Những điều khiển này chỉ được tải bởi bản build phát triển của Vite. Bản build sản xuất từ chối module này nếu dấu hiệu của nó xuất hiện trong bất kỳ asset nào được phát ra.",
+      "title": "Chỉ bản build gỡ lỗi"
+    },
+    "library": {
+      "checking": "Đang kiểm tra đường dẫn thư viện…",
+      "label": "Thư viện phát triển",
+      "locked": "Các điều khiển dự án bị khoá vì đây không phải sandbox .oleafly-dev."
+    },
+    "nav": "Nhà phát triển",
+    "projectsRecycled_other": "Đã chuyển {{count}} dự án vào Thùng rác.",
+    "replayFailed": "Không đặt lại được hướng dẫn lần chạy đầu.",
+    "resetAndSeedSummary": "Đã chuyển {{removed}} dự án vào Thùng rác và nạp bộ dữ liệu nghiên cứu: {{created}} được tạo, {{skipped}} đã có sẵn.",
+    "resetFailed": "Không đặt lại được sandbox phát triển.",
+    "sandboxOnly": "Fixture nghiên cứu chỉ có thể được sao chép vào sandbox .oleafly-dev.",
+    "seedFailed": "Không nạp được bộ dữ liệu nghiên cứu.",
+    "seedFailures_other": "{{summary}} {{count}} fixture thất bại. Lỗi đầu tiên: {{name}}: {{message}}",
+    "seedSummary": "Đã nạp bộ dữ liệu nghiên cứu: {{created}} được tạo, {{skipped}} đã có sẵn.",
+    "unknownSeedError": "Lỗi nạp dữ liệu không rõ"
+  },
+  "dialog": {
+    "filters": {
+      "pngImage": "Ảnh PNG",
+      "zipArchive": "Tệp zip"
+    }
+  },
+  "dictionary": {
+    "full": "Từ điển của bạn đã đầy, nên từ đó bị ẩn trong tài liệu này thay vào đó. Hãy gỡ một từ trong Cài đặt để lưu nó.",
+    "unsupportedCharacters": "Từ đó có ký tự mà từ điển không lưu được.",
+    "wordTooLong": "Từ đó quá dài để lưu làm một từ, nên nó bị ẩn trong tài liệu này thay vào đó. Một từ có thể dài tới {{max}} ký tự."
+  },
+  "documentScan": {
+    "complete": "Quét xong",
+    "failed": "Quét tài liệu thất bại",
+    "processed": "Đã xử lý {{current}}/{{total}} đoạn…",
+    "processing": "Đang xử lý {{current}}/{{total}} đoạn…",
+    "skippedEmpty": "Bỏ qua truy vấn rỗng ({{current}}/{{total}})",
+    "splitting": "Đang tách tài liệu thành đoạn…"
+  },
+  "engine": {
+    "error": {
+      "loadFailed": "Không tải được chi tiết engine tài liệu. Các thao tác riêng của engine bị tắt.",
+      "renameReloadFailed": "Không tải được chi tiết engine tài liệu sau khi đổi tên tài liệu chính.",
+      "stillLoading": "Chi tiết engine tài liệu vẫn đang tải."
+    }
+  },
+  "export": {
+    "pdfFailed": "Không lưu được PDF",
+    "pdfFailedDetail": "Không lưu được PDF: {{detail}}",
+    "pngFailed": "Không lưu được PNG",
+    "pngFailedDetail": "Không lưu được PNG: {{detail}}",
+    "revealFailed": "Tệp đã được lưu, nhưng không mở được thư mục của nó.",
+    "saved": "Đã lưu {{kind}} · {{fileName}}",
+    "showInFolder": "Hiện trong thư mục"
+  },
+  "externalChange": {
+    "reloadFailed": "Cài đặt dự án đã được cập nhật, nhưng không tải lại được một số tệp đã thay đổi."
+  },
+  "fonts": {
+    "systemDefault": "Mặc định hệ thống",
+    "terminalDefault": "Mặc định terminal"
+  },
+  "imageToLatex": {
+    "failed": "Chuyển ảnh thành LaTeX thất bại: {{detail}}",
+    "transcribing": "Đang chép lại ảnh…",
+    "notInserted": "Tệp đang mở đã thay đổi nên LaTeX không được chèn. Hãy sao chép rồi dán vào nơi bạn muốn."
+  },
+  "import": {
+    "chooseOfferedProjectType": "Hãy chọn một trong các loại dự án được cung cấp cho tệp này.",
+    "invalidArxivId": "Hãy dán liên kết bài arXiv hoặc mã như 2301.01234.",
+    "supportedDocumentTypes": "Hãy chọn một trong các loại tài liệu được hỗ trợ.",
+    "conversionNotice": "Đã chuyển sang {{format}}. Bảng, hình và trích dẫn có thể cần chỉnh kiểu.",
+    "figureSaved": "Đã lưu {{name}}",
+    "pickPdfOrDocx": "Hãy chọn tệp .pdf hoặc .docx.",
+    "texSaved": "Đã lưu .tex",
+    "unsupportedFile": "Hãy chọn tệp .zip, .docx, .md hoặc .markdown.",
+    "zipSaveFailed": "Không lưu được tệp ZIP.",
+    "zipSaved": "Đã lưu .zip"
+  },
+  "inlineAi": {
+    "concise": "Làm gọn",
+    "expand": "Mở rộng",
+    "fixSource": "Sửa mã nguồn",
+    "grammar": "Sửa ngữ pháp",
+    "improve": "Cải thiện",
+    "translate": "Dịch"
+  },
+  "intelligence": {
+    "analysisFailed": "Phân tích dự án ở bản sửa đổi hiện tại thất bại.",
+    "analyzing": "Bộ phân tích dự án đang phân tích bản sửa đổi hiện tại.",
+    "couldNotSend": "Không gửi được phân tích dự án tới worker.",
+    "disposed": "Worker phân tích dự án đã bị huỷ.",
+    "disposedDuringRequest": "Worker phân tích dự án đã bị huỷ trong lúc xử lý yêu cầu.",
+    "failed": "Phân tích dự án thất bại.",
+    "identityMismatch": "Danh tính phản hồi của bộ phân tích dự án không khớp với yêu cầu.",
+    "malformedResponse": "Worker phân tích dự án trả về phản hồi sai định dạng.",
+    "malformedSnapshotIdentity": "Danh tính ảnh chụp của bộ phân tích dự án sai định dạng.",
+    "noProject": "Không có dự án nào đang mở.",
+    "partialFiles_other": "{{count}} tệp cho kết quả phân tích một phần có thể phục hồi.",
+    "retainedStale": "Nội dung dự án đã thay đổi. Phân tích đã giữ lại đã cũ trong khi bản sửa đổi hiện tại đang chạy.",
+    "sourceGraphRefreshing": "Các tệp dự án đã thay đổi. Đồ thị mã nguồn đang được làm mới.",
+    "sourceSnapshotsLoading": "Các tệp dự án đã thay đổi. Ảnh chụp mã nguồn đang được tải cho phân tích hiện tại.",
+    "staleSnapshot": "Worker phân tích dự án không có phân tích nào cho ảnh chụp này.",
+    "stopped": "Bộ phân tích dự án đã dừng.",
+    "timedOut": "Bộ phân tích dự án hết thời gian chờ.",
+    "typeMismatch": "Loại phản hồi của bộ phân tích dự án không khớp với yêu cầu.",
+    "unexpectedResponse": "Worker phân tích dự án trả về phản hồi ngoài dự kiến.",
+    "workerFailed": "Worker phân tích dự án thất bại.",
+    "workerRestarted": "Worker phân tích dự án đã khởi động lại sau khi hết thời gian chờ.",
+    "workerUnavailable": "Worker phân tích dự án không khả dụng."
+  },
+  "latexPackages": {
+    "algorithm2e": "Soạn thuật toán",
+    "amsmath": "Soạn toán học nâng cao",
+    "amssymb": "Ký hiệu toán học mở rộng",
+    "amsthm": "Môi trường định lý và chứng minh",
+    "array": "Mảng và bảng mở rộng",
+    "authblk": "Khối tác giả và đơn vị",
+    "babel": "Hỗ trợ đa ngôn ngữ và ngôn ngữ tài liệu",
+    "biblatex": "Hỗ trợ tài liệu tham khảo nâng cao",
+    "bookmark": "Dấu trang PDF tốt hơn",
+    "booktabs": "Đường kẻ bảng chuyên nghiệp",
+    "caption": "Tuỳ chỉnh chú thích",
+    "cleveref": "Tham chiếu chéo thông minh (nạp sau hyperref)",
+    "csquotes": "Trích dẫn theo ngữ cảnh (biblatex cần)",
+    "enumitem": "Tuỳ chỉnh danh sách",
+    "fancyhdr": "Đầu trang và chân trang tuỳ chỉnh",
+    "float": "Đặt vị trí hình bảng tốt hơn",
+    "fontspec": "Chọn phông OpenType (Xe/LuaLaTeX)",
+    "geometry": "Tuỳ chỉnh bố cục trang",
+    "graphicx": "Chèn đồ hoạ và hình ảnh",
+    "hyperref": "Siêu liên kết, dấu trang và metadata PDF",
+    "inputenc": "Mã hoá đầu vào (không cần trên Xe/LuaLaTeX)",
+    "lineno": "Số dòng cho bản xem lại",
+    "lipsum": "Văn bản giữ chỗ (lorem ipsum)",
+    "listings": "Danh sách mã (nội dung không được gắn thẻ)",
+    "mathtools": "Bộ mở rộng của amsmath với bản sửa và công cụ",
+    "microtype": "Tinh chỉnh vi kiểu chữ",
+    "minted": "Danh sách mã tô màu bằng Pygments",
+    "multirow": "Ô bảng nhiều dòng",
+    "natbib": "Trích dẫn tác giả-năm và số",
+    "parskip": "Khoảng cách đoạn",
+    "pdfpages": "Chèn nguyên trang từ PDF khác",
+    "setspace": "Điều khiển giãn dòng",
+    "siunitx": "Đơn vị SI và định dạng số",
+    "subcaption": "Hình con và bảng con",
+    "subfig": "Gói bố cục hình con cũ",
+    "tabularx": "Bảng tự động co giãn",
+    "threeparttable": "Bảng có ghi chú bên dưới",
+    "tikz": "Đồ hoạ vector lập trình được (cần alt text thủ công)",
+    "titlesec": "Định dạng tiêu đề mục",
+    "todonotes": "Ghi chú việc cần làm bên lề cho bản nháp",
+    "unicode-math": "Toán Unicode cho Xe/LuaLaTeX (cần cho toán có gắn thẻ)",
+    "url": "Soạn URL",
+    "wrapfig": "Hình có văn bản bao quanh",
+    "xcolor": "Hỗ trợ màu"
+  },
+  "literatureSources": {
+    "arxiv": "Hơn 2,4 triệu preprint trong vật lý, toán học, khoa học máy tính, sinh học định lượng và các lĩnh vực liên quan.",
+    "crossref": "Cơ sở đăng ký DOI với metadata cho hơn 150 triệu kết quả nghiên cứu.",
+    "googleScholar": "Kết quả Google Scholar qua Serper. Cần API key Serper trong Cài đặt → Tích hợp → Tìm trích dẫn.",
+    "openalex": "Danh mục mở các công trình học thuật, tác giả, nguồn, tổ chức, chủ đề, nhà xuất bản và nhà tài trợ.",
+    "pubmed": "Hơn 40 triệu trích dẫn và tóm tắt từ tài liệu y sinh và khoa học sự sống, gồm cả MEDLINE.",
+    "semanticScholar": "Chỉ mục học thuật với đồ thị trích dẫn, dữ liệu trích dẫn ảnh hưởng và tóm tắt TLDR.",
+    "uspto": "Bằng sáng chế Hoa Kỳ và đơn đăng ký đã công bố cho prior art và nghiên cứu ứng dụng. Tìm kiếm tạm dừng trong quá trình PatentsView chuyển đổi.",
+    "usptoPaused": "USPTO tạm dừng các API tìm kiếm PatentsView trong đợt chuyển sang Cổng dữ liệu mở.",
+    "yearRangeInvalid": "Năm bắt đầu không thể muộn hơn năm kết thúc."
+  },
+  "mcp": {
+    "deniedByRules": "Bị từ chối bởi quy tắc deny trong approvals.toml",
+    "openProjectSummary": "Mở dự án {{id}}",
+    "rulesUnreadable": "Bị từ chối vì không đọc được approvals.toml",
+    "useToolSummary": "Dùng {{tool}} từ máy chủ MCP {{server}}"
+  },
+  "mcpConfig": {
+    "conflictingDeclarations": "Máy chủ MCP '{{name}}' có khai báo type và transport xung đột.",
+    "exactlyOneServer": "JSON máy chủ MCP phải chứa đúng một máy chủ.",
+    "fieldBoolean": "Trường '{{field}}' của máy chủ MCP '{{name}}' phải là boolean.",
+    "fieldString": "Trường '{{field}}' của máy chủ MCP '{{name}}' phải là chuỗi.",
+    "fieldStringArray": "Trường '{{field}}' của máy chủ MCP '{{name}}' phải là mảng chuỗi.",
+    "fieldStringRecord": "Trường '{{field}}' của máy chủ MCP '{{name}}' phải là đối tượng gồm các giá trị chuỗi.",
+    "jsonMalformed": "JSON máy chủ MCP sai định dạng.",
+    "jsonNotObject": "JSON máy chủ MCP phải là một đối tượng.",
+    "mcpServersNotObject": "Trường 'mcpServers' trong JSON máy chủ MCP phải là một đối tượng.",
+    "serverNotObject": "Máy chủ MCP '{{name}}' phải là một đối tượng.",
+    "structural": "{{detail}} Cần một trong hai dạng {\"server-name\": {...}} hoặc {\"mcpServers\": {\"server-name\": {...}}}.",
+    "unknownServer": "Máy chủ không rõ",
+    "unsupportedTransport": "Máy chủ MCP '{{name}}' có transport '{{transport}}' không được hỗ trợ.",
+    "unsupportedType": "Máy chủ MCP '{{name}}' có type '{{type}}' không được hỗ trợ."
+  },
+  "mermaid": {
+    "diagram": "Sơ đồ",
+    "renderFailed": "Không hiển thị được sơ đồ.",
+    "rendering": "Đang hiển thị sơ đồ"
+  },
+  "missingPackages": {
+    "action_other": "Tìm và cài {{count}} tệp",
+    "installing_other": "Đang cài {{count}} gói. Lần biên dịch sẽ khởi động lại khi xong.",
+    "summary_other": "Lần biên dịch không tìm thấy {{names}}. Hãy tìm gói cung cấp chúng trong TeX Live.",
+    "userTree": "Cây TeX hệ thống chỉ đọc, nên các gói được đưa vào cây cá nhân của bạn tại {{path}}."
+  },
+  "models": {
+    "chips": {
+      "contextTitle": "Cửa sổ ngữ cảnh {{tokens}} token",
+      "deprecated": {
+        "label": "Ngừng hỗ trợ",
+        "title": "Nhà cung cấp đã ngừng hỗ trợ mô hình này"
+      },
+      "reasoning": {
+        "label": "Suy luận",
+        "title": "Mô hình suy luận"
+      },
+      "tools": {
+        "label": "Công cụ",
+        "title": "Có thể gọi công cụ"
+      },
+      "vision": {
+        "label": "Thị giác",
+        "title": "Nhận hình ảnh"
+      }
+    },
+    "listChange": {
+      "none": "Không thay đổi",
+      "summary": "Thêm {{added}}, gỡ {{removed}}"
+    }
+  },
+  "navigation": {
+    "analysisUnavailable": "Phân tích tham chiếu của dự án không khả dụng.",
+    "analysisUpdating": "Tham chiếu của dự án đang được cập nhật.",
+    "definitionsFor": "Định nghĩa của {{name}}",
+    "edits_other": "{{count}} chỉnh sửa",
+    "files_other": "{{count}} tệp",
+    "nameExists": "\"{{name}}\" đã tồn tại.",
+    "noDefinition": "Không tìm thấy định nghĩa cho \"{{name}}\"",
+    "noReferences": "Không có tham chiếu tới \"{{name}}\"",
+    "notRenamable": "Không thể đổi tên ký hiệu này.",
+    "nothingToRename": "Không có gì để đổi tên.",
+    "referencesFor": "Tham chiếu tới {{name}}",
+    "renameFailed": "Không đổi tên được thành \"{{name}}\".",
+    "renamePartial": "Đã đổi tên thành \"{{name}}\" trong {{edited}} trên {{total}} tệp. Không ghi được {{files}}.",
+    "renamed": "Đã đổi tên thành \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) trong $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "\"{{path}}\" không khớp với tệp nào trong dự án này."
+  },
+  "pandoc": {
+    "downloadFailed": "Không tải được pandoc. Hãy cài thủ công rồi thử lại.",
+    "downloadingPercent": "Đang tải pandoc… {{progress}}%",
+    "downloadingSize": "Đang tải pandoc… {{megabytes}} MB",
+    "installGuide": "Hướng dẫn cài đặt"
+  },
+  "project": {
+    "copyFailed": "Không sao chép được \"{{path}}\".",
+    "dateUnavailable": "Không có",
+    "importFailed": "Không nhập được. Xem nhật ký ứng dụng để biết chi tiết.",
+    "openFailed": "Không mở được dự án. Xem nhật ký ứng dụng để biết chi tiết.",
+    "saveBlockedClose": "Dự án vẫn mở vì không lưu được một hoặc nhiều tệp.",
+    "saveBlockedDiscard": "Bỏ thay đổi và rời đi",
+    "saveBlockedMany": "{{count}} tệp không lưu được: {{files}}. Tệp đầu tiên đang mở trong trình soạn thảo với thay đổi chưa lưu ({{reason}}). Ở lại để sửa lỗi, hoặc bỏ các thay đổi chưa lưu trong những tệp đó và rời đi.",
+    "saveBlockedOne": "Không lưu được {{file}} ({{reason}}). Tệp đang mở trong trình soạn thảo với thay đổi chưa lưu của bạn. Ở lại để sửa lỗi, hoặc bỏ những thay đổi đó và rời đi.",
+    "saveBlockedStay": "Ở lại",
+    "saveBlockedSwitch": "Dự án vẫn mở vì không lưu được một hoặc nhiều tệp.",
+    "saveBlockedTitle": "Không lưu được một số tệp",
+    "updatedDaysAgo_other": "Cập nhật {{count}} ngày trước",
+    "updatedOn": "Cập nhật {{date}}",
+    "updatedToday": "Cập nhật hôm nay",
+    "updatedYesterday": "Cập nhật hôm qua",
+    "autosaveFailed": "Không lưu được thay đổi của bạn. Chúng vẫn còn trong trình soạn thảo.",
+    "openFileEncoding": "Không mở được \"{{path}}\" vì đây không phải tệp văn bản UTF-8. Nếu là văn bản, hãy lưu dưới dạng UTF-8 rồi mở lại.",
+    "openFileFailed": "Không mở được \"{{path}}\". Xem nhật ký ứng dụng để biết chi tiết.",
+    "changedOnDiskElsewhere": "{{path}} đã thay đổi trên đĩa nên Oleafly không lưu nó. Hãy mở tệp để chọn phiên bản muốn giữ."
+  },
+  "projectDiagnostics": {
+    "analysisFailed": "Phân tích thất bại: {{message}}",
+    "beginIsHere": "{{command}} ở đây.",
+    "beginWithoutEnd": "{{command}} không có \\end tương ứng.",
+    "bibliographyFileMissing": "Không tìm thấy tệp tài liệu tham khảo \"{{file}}\" trong dự án.",
+    "citationHasManyDefinitions_other": "Trích dẫn \"{{name}}\" có {{count}} định nghĩa khả dĩ.",
+    "citationKeyDuplicated_other": "Khoá trích dẫn \"{{name}}\" được định nghĩa {{count}} lần.",
+    "citationUnresolved": "Không phân giải được trích dẫn \"{{name}}\".",
+    "definedHere": "{{kind}} \"{{name}}\" được định nghĩa ở đây.",
+    "duplicateTargetDefined_other": "Đích {{kind}} \"{{name}}\" được định nghĩa {{count}} lần.",
+    "endWithoutBegin": "{{command}} không có \\begin tương ứng.",
+    "entryMissingFieldList": "Mục tài liệu tham khảo \"{{key}}\" không có danh sách trường.",
+    "expectedEndBefore": "Cần {{expected}} trước {{found}}.",
+    "fieldIncompleteValue": "Trường \"{{name}}\" có giá trị chưa đầy đủ.",
+    "fieldMissingEquals": "Trường \"{{name}}\" thiếu \"=\".",
+    "fieldRepeated": "Trường \"{{name}}\" bị lặp trong mục tài liệu tham khảo \"{{key}}\".",
+    "fileNotLoaded": "Tệp mã nguồn chưa được tải để phân tích dự án hiện tại.",
+    "fileUnreadable": "Không đọc được tệp.",
+    "incompleteEntry": "Mục @{{type}} chưa đầy đủ.",
+    "invalidYear": "Năm \"{{year}}\" không phải năm BibTeX bốn chữ số.",
+    "kinds": {
+      "anchor": "điểm neo",
+      "asset": "tài nguyên",
+      "bibentry": "mục tài liệu tham khảo",
+      "bibliography": "tài liệu tham khảo",
+      "environment": "môi trường",
+      "file": "tệp",
+      "glossary": "mục từ điển thuật ngữ",
+      "import": "import",
+      "include": "include",
+      "label": "nhãn",
+      "link": "liên kết",
+      "macro": "macro",
+      "section": "mục"
+    },
+    "malformedDirective": "Chỉ thị hoặc kiểu mục BibTeX sai định dạng.",
+    "missingCitationKey": "@{{type}} thiếu khoá trích dẫn.",
+    "missingRequiredField": "{{entry}} thiếu trường bắt buộc {{fields}}.",
+    "possibleTarget": "Đích khả dĩ: {{file}}",
+    "projectFileUnreadable": "Không đọc được tệp dự án.",
+    "referenceHasManyDefinitions_other": "Tham chiếu \"{{name}}\" có {{count}} định nghĩa khả dĩ.",
+    "referenceUnresolved": "Không phân giải được tham chiếu \"{{name}}\".",
+    "targetMatchesManyFiles_other": "Đích {{kind}} \"{{target}}\" khớp với {{count}} tệp dự án.",
+    "targetUnresolved": "Không phân giải được đích {{kind}} \"{{target}}\".",
+    "typeDelimiterExpected": "@{{type}} phải được theo sau bởi dấu ngoặc nhọn hoặc ngoặc đơn mở.",
+    "unclosedDelimiter": "Dấu phân cách \"{{char}}\" chưa được đóng bằng \"{{expected}}\".",
+    "unclosedDirective": "Chỉ thị @{{type}} chưa được đóng.",
+    "unclosedEntry": "Mục @{{type}} chưa được đóng.",
+    "unclosedEntryNamed": "Mục tài liệu tham khảo \"{{key}}\" chưa được đóng.",
+    "unclosedFence": "Khối mã rào chưa được đóng.",
+    "unclosedFrontMatter": "Phần đầu YAML chưa được đóng.",
+    "unclosedString": "Chuỗi chưa được đóng.",
+    "unclosedTypstComment": "Chú thích khối Typst chưa được đóng.",
+    "unexpectedClosingDelimiter": "Dấu phân cách đóng ngoài dự kiến \"{{char}}\".",
+    "unknownEntryType": "Kiểu mục tài liệu tham khảo không rõ @{{type}}.",
+    "unparsableField": "Không phân tích được một trường @{{type}}.",
+    "unparsableFieldNamed": "Không phân tích được một trường trong \"{{key}}\"."
+  },
+  "proofreading": {
+    "cancelled": "Hiệu đính đã bị huỷ.",
+    "couldNotStart": "Không khởi động được hiệu đính ngoại tuyến.",
+    "disposed": "Hiệu đính ngoại tuyến đã bị huỷ.",
+    "invalidResponse": "Hiệu đính ngoại tuyến trả về phản hồi không hợp lệ.",
+    "outOfRangeDiagnostic": "Hiệu đính ngoại tuyến trả về chẩn đoán ngoài phạm vi.",
+    "postFailed": "Không gửi được tài liệu tới hiệu đính ngoại tuyến.",
+    "restarted": "Hiệu đính ngoại tuyến đã khởi động lại.",
+    "restartedAfterTimeout": "Hiệu đính ngoại tuyến khởi động lại sau khi hết thời gian chờ.",
+    "staleResponse": "Hiệu đính ngoại tuyến trả về phản hồi đã cũ.",
+    "stopped": "Hiệu đính ngoại tuyến dừng ngoài dự kiến.",
+    "superseded": "Một yêu cầu hiệu đính mới hơn đã thay thế yêu cầu này.",
+    "timedOut": "Hiệu đính ngoại tuyến hết thời gian chờ và sẽ khởi động lại ở lần sửa tiếp theo.",
+    "dictionaryUnavailable": "Từ điển chính tả đã chọn chưa được cài. Hãy tải trong Cài đặt."
+  },
+  "skillGroups": {
+    "shelf": "Kệ lĩnh vực",
+    "user": "Kỹ năng của bạn"
+  },
+  "tagged": {
+    "compileFailed": "Biên dịch có gắn thẻ thất bại. Hãy kiểm tra engine và thử lại.",
+    "compiled": "Đã biên dịch PDF có gắn thẻ. Xem kết luận trợ năng bên dưới.",
+    "compiledWithErrors": "Biên dịch có gắn thẻ xong với lỗi. Hãy kiểm tra nhật ký.",
+    "engineRequired": "Hãy bật engine gắn thẻ trong Cài đặt, LaTeX Engine, trước."
+  },
+  "terminal": {
+    "defaultTitle": "Terminal {{index}}"
+  },
+  "tex": {
+    "distributionGap": "Dự án này được ghim với {{pinned}}. Bản {{local}} đang dùng thiếu {{count}} gói của nó, nên biên dịch có thể lỗi cho tới khi dùng lại bản phân phối đó."
+  },
+  "theme": {
+    "cssForbiddenSyntax": "CSS tuỳ chỉnh không được dùng at-rule, URL hoặc selector.",
+    "cssNotSimple": "CSS tuỳ chỉnh phải chứa các khai báo thuộc tính đơn giản.",
+    "cssNotText": "CSS tuỳ chỉnh phải là văn bản.",
+    "cssPropertyNotAllowed": "Thuộc tính CSS tuỳ chỉnh không được phép: {{property}}.",
+    "cssTooLarge": "CSS tuỳ chỉnh lớn hơn 64 KiB.",
+    "cssTooManyDeclarations": "CSS tuỳ chỉnh chỉ được chứa tối đa 64 khai báo.",
+    "cssUnsafeValue": "CSS tuỳ chỉnh chứa giá trị không an toàn.",
+    "customizationNotObject": "Tuỳ chỉnh giao diện phải là một đối tượng.",
+    "dark": {
+      "notObject": "Các biến CSS cho giao diện tối phải là một đối tượng.",
+      "tooManyEntries": "Danh sách biến CSS cho giao diện tối có hơn {{max}} mục."
+    },
+    "fileMissingCssVars": "Tệp giao diện phải có cssVars với mục light và dark.",
+    "fileMissingModes": "Tệp giao diện phải có biến CSS cho giao diện sáng và tối.",
+    "fileNotJson": "Tệp giao diện không phải JSON hợp lệ.",
+    "fileNotObject": "Tệp giao diện phải chứa một đối tượng.",
+    "fileNotText": "Tệp giao diện phải là văn bản.",
+    "fileTooLarge": "Tệp giao diện lớn hơn 128 KiB.",
+    "invalidColor": "Token giao diện {{token}} có giá trị màu không hợp lệ.",
+    "invalidRadius": "Bán kính góc phải dùng px, rem, em hoặc phần trăm.",
+    "light": {
+      "notObject": "Các biến CSS cho giao diện sáng phải là một đối tượng.",
+      "tooManyEntries": "Danh sách biến CSS cho giao diện sáng có hơn {{max}} mục."
+    },
+    "tokens": {
+      "notObject": "Token giao diện phải là một đối tượng.",
+      "tooManyEntries": "Danh sách token giao diện có hơn {{max}} mục."
+    },
+    "unknownProperty": "không rõ",
+    "unsupportedToken": "Token giao diện không được hỗ trợ: {{token}}.",
+    "unsupportedVersion": "Tệp giao diện này dùng phiên bản không được hỗ trợ."
+  },
+  "themes": {
+    "matchApp": "Khớp giao diện ứng dụng"
+  },
+  "tinytex": {
+    "installFailed": "Không cài được TinyTeX.",
+    "installGuide": "Hướng dẫn cài đặt",
+    "installed": "Đã cài TinyTeX.",
+    "phase": {
+      "addingPackages": "Đang thêm gói…",
+      "downloading": "Đang tải…",
+      "downloadingPercent": "Đang tải… {{progress}}%",
+      "installing": "Đang cài đặt…",
+      "unpacking": "Đang giải nén…"
+    },
+    "removeFailed": "Không gỡ được TinyTeX.",
+    "removed": "Đã gỡ TinyTeX."
+  },
+  "toolActivity": {
+    "labels": {
+      "alphaxivPaperContent": "Đọc bài báo",
+      "alphaxivSearch": "Tìm bài báo",
+      "compile": "Biên dịch tài liệu",
+      "getLog": "Đọc nhật ký biên dịch",
+      "insertFigure": "Chèn hình",
+      "listFiles": "Liệt kê tệp dự án",
+      "literatureSearch": "Tìm tài liệu",
+      "previewFigure": "Xem trước hình",
+      "projectLibrarySearch": "Tìm trong mã nguồn dự án",
+      "projectMap": "Lập bản đồ dự án",
+      "readFile": "Đọc tệp",
+      "readLinkedFile": "Đọc tệp liên kết",
+      "readPdfText": "Đọc PDF đã biên dịch",
+      "readResearchRootFile": "Đọc tệp liên kết",
+      "runCommand": "Chạy lệnh",
+      "searchProject": "Tìm trong dự án",
+      "sendMessage": "Cập nhật tác vụ được giao",
+      "spawnAgent": "Bắt đầu tác vụ được giao",
+      "verifyCitation": "Kiểm tra trích dẫn",
+      "verifyPdfPages": "Kiểm tra các trang PDF",
+      "waitAgent": "Chờ tác vụ được giao"
+    },
+    "skillsBudgetNotice": "Codex không liệt kê được tất cả kỹ năng. Nó giữ 2% ngân sách ngữ cảnh cho mô tả kỹ năng, nên hãy lược bớt thư mục kỹ năng hoặc gọi kỹ năng theo tên.",
+    "status": {
+      "cancelled": "Đã dừng",
+      "declined": "Đã từ chối",
+      "done": "Xong",
+      "failed": "Thất bại",
+      "failedWithCode": "Thất bại với mã thoát {{code}}",
+      "interrupted": "Bị ngắt",
+      "running": "Đang chạy",
+      "timedOut": "Hết thời gian chờ"
+    },
+    "summary": {
+      "citationUnverified": "Không tìm thấy bản ghi khớp",
+      "citationVerified": "Đã xác minh bởi dịch vụ trích dẫn",
+      "compileFailed": "Biên dịch thất bại",
+      "compileSucceeded": "Biên dịch thành công",
+      "diagnostics_other": "{{count}} chẩn đoán",
+      "papers_other": "{{count}} bài báo",
+      "sourcesFailed_other": "{{count}} nguồn thất bại"
+    }
+  },
+  "ui": {
+    "transparent": "Trong suốt"
+  },
+  "update": {
+    "projectChangedWhileSaving": "Dự án đã thay đổi trong khi lưu. Vui lòng thử cập nhật lại."
+  },
+  "checkpoint": {
+    "storageUnavailable": "Không lưu được điểm lưu. Đĩa đã đầy hoặc không ghi được vào thư mục điểm lưu. Hãy giải phóng dung lượng hoặc kiểm tra quyền thư mục, rồi biên dịch lại.",
+    "incompleteCapture": "Không lưu được vài điểm lưu gần nhất vì không đọc được một số tệp dự án. Hãy kiểm tra quyền của chúng, rồi biên dịch lại."
+  },
+  "folderUnavailable": {
+    "compile": "Biên dịch tạm dừng cho tới khi thư mục dự án trở lại.",
+    "saveReason": "thư mục dự án không khả dụng"
+  },
+  "imageToTypst": {
+    "failed": "Chuyển ảnh thành Typst thất bại: {{detail}}",
+    "copied": "Đã sao chép mã Typst",
+    "notInserted": "Tệp đang mở đã thay đổi nên Typst không được chèn. Hãy sao chép rồi dán vào nơi bạn muốn."
+  }
+}

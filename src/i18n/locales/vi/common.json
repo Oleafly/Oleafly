@@ -1,0 +1,85 @@
+{
+  "actions": {
+    "cancel": "Huỷ",
+    "close": "Đóng",
+    "save": "Lưu",
+    "delete": "Xoá",
+    "remove": "Gỡ",
+    "rename": "Đổi tên",
+    "open": "Mở",
+    "copy": "Sao chép",
+    "copied": "Đã sao chép",
+    "retry": "Thử lại",
+    "back": "Quay lại",
+    "next": "Tiếp",
+    "done": "Xong",
+    "edit": "Sửa",
+    "add": "Thêm",
+    "search": "Tìm kiếm",
+    "clear": "Xoá",
+    "apply": "Áp dụng",
+    "confirm": "Xác nhận",
+    "ok": "OK",
+    "yes": "Có",
+    "no": "Không",
+    "learnMore": "Tìm hiểu thêm",
+    "showMore": "Hiện thêm",
+    "showLess": "Thu gọn"
+  },
+  "state": {
+    "loading": "Đang tải…",
+    "saving": "Đang lưu…",
+    "none": "Không có",
+    "unknown": "Không rõ",
+    "enabled": "Đã bật",
+    "disabled": "Đã tắt",
+    "on": "Bật",
+    "off": "Tắt",
+    "beta": "Beta",
+    "new": "Mới",
+    "default": "Mặc định"
+  },
+  "labels": {
+    "name": "Tên",
+    "type": "Loại",
+    "size": "Kích thước",
+    "date": "Ngày",
+    "status": "Trạng thái",
+    "description": "Mô tả",
+    "optional": "Không bắt buộc",
+    "required": "Bắt buộc"
+  },
+  "toast": {
+    "repeatCount": "×{{count}}"
+  },
+  "byteSize": {
+    "bytes": "{{value}} B",
+    "kilobytes": "{{value}} KB",
+    "megabytes": "{{value}} MB",
+    "gigabytes": "{{value}} GB",
+    "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "Gợi ý tìm kiếm",
+    "exclude": "Loại trừ",
+    "excludeField": "Loại trừ {{field}}",
+    "dateHint": "Ngày có dạng 2026-10-02 hoặc @today-7d. Thêm >, >=, < hoặc <= để so sánh, hoặc viết một khoảng như 2026-01-01..2026-03-31.",
+    "issues": {
+      "unclosedGroup": "( này chưa được đóng",
+      "unexpectedClose": ") này không có ( đi kèm",
+      "danglingOperator": "{{operator}} thiếu từ khoá tìm kiếm",
+      "tooDeep": "Chỉ có thể lồng nhóm tối đa 5 cấp",
+      "emptyGroup": "Cặp ngoặc này đang trống",
+      "unterminatedQuote": "Dấu nháy này chưa được đóng",
+      "unknownQualifier": "Bộ lọc không rõ: {{key}}",
+      "missingValue": "Thêm giá trị sau {{key}}:",
+      "invalidValue": "{{value}} không phải giá trị hợp lệ cho {{key}}",
+      "invalidDate": "{{value}} không phải ngày. Hãy thử 2026-10-02 hoặc @today-7d",
+      "invalidNumber": "{{value}} không phải số",
+      "sortNegated": "Không thể loại trừ {{key}}"
+    }
+  },
+  "avatar": {
+    "more_other": "{{count}} người khác"
+  }
+}

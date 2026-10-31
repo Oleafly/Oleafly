@@ -1,4 +1,4 @@
-export const SUPPORTED_LOCALES = ["en", "zh-Hans", "zh-Hant", "de", "fr", "es", "it", "nl", "pt-BR", "pl", "ru", "uk", "tr", "cs", "da", "sv", "nb", "fi", "ro", "ja", "ko"] as const;
+export const SUPPORTED_LOCALES = ["en", "zh-Hans", "zh-Hant", "de", "fr", "es", "it", "nl", "pt-BR", "pl", "ru", "uk", "tr", "cs", "da", "sv", "nb", "fi", "ro", "ja", "ko", "vi"] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 export type LocalePreference = "system" | SupportedLocale;
 export const DEFAULT_LOCALE: SupportedLocale = "en";
@@ -30,6 +30,7 @@ export const LOCALE_INFO: Record<SupportedLocale, LocaleInfo> = {
   ro: { nativeName: "Română", dir: "ltr" },
   ja: { nativeName: "日本語", dir: "ltr" },
   ko: { nativeName: "한국어", dir: "ltr" },
+  vi: { nativeName: "Tiếng Việt", dir: "ltr" },
 };
 
 const FALLBACKS: Record<string, readonly SupportedLocale[]> = {

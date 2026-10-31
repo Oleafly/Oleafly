@@ -176,8 +176,8 @@ describe("trust banner copy in every language", () => {
     catalog.openedFolder.trust,
   ] as const);
 
-  it("covers all 21 catalogs", () => {
-    expect(entries).toHaveLength(21);
+  it("covers all 22 catalogs", () => {
+    expect(entries).toHaveLength(22);
   });
 
   it.each(entries)("%s ends the banner with a question", (locale, trust) => {
